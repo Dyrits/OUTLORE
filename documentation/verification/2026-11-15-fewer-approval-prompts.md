@@ -43,3 +43,9 @@ Red then green: with `CLAUDE_CONFIG_DIR=/nonexistent/leak` and `vitest.setup.ts`
 - Red then green: with the one condition in `needsOf` (`facts.isEscape && !facts.canWorkOutsideSandbox`) reverted to `facts.isEscape`, 2 tests fail ("needs nothing for an escape once the owner allowed working outside the sandbox", "runs an escape without a question, naming the command in its line"); restored, all 55 in those two files pass. The tests were written before the code.
 - Covered: off by default; an escape and a Codex-style escape run unasked with `AllowedAutomatically` lines; an unprotected harness, an unsandboxed thread, a widening request, a file outside the folder, and a thread's own `request_approval` still ask; the instructions change with the setting; `change_setting` refuses it.
 - Not checked: the Permissions page in a window (the toggle's look, its refresh after a click); a live Claude Code or Codex thread running an escape; OpenCode's unconfirmed-containment prompt under the setting (by the same condition, not exercised); the installed Outlore app, which has none of this until rebuilt.
+
+## After the rebase onto origin/main `3825f9c` (2026-11-15 19:18)
+
+Inside the sandbox, in the worktree: `bun run check` passes, `bun run typecheck` passes for all seven packages, and `CI=1 bun run test` gives 1,600 passed, 0 failed, 54 skipped (160 files passed, 1 skipped). The worktree needed `bun install --frozen-lockfile --ignore-scripts` first, for the `@outlore/*` workspace links.
+
+A second rebase onto `8458902` (mobile navigation and Dock bounce had landed on `origin/main`) renumbered these entries to CHG-0294 and CHG-0295. Re-run on the new tip (2026-11-15 19:22, inside the sandbox): `bun run check` and `bun run typecheck` pass; `CI=1 bun run test` gives 1,603 passed, 0 failed, 54 skipped (161 files passed, 1 skipped).

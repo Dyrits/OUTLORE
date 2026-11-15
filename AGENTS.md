@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the agent directory watch list (nine products added to the inspirations, with a research note; committed on local `main` as `a8982fc`; the push to `origin/main` needs the owner's approval for `--no-verify`), read the [current handoff](.agents/handoffs/2026-11-15-1910-agent-directory-watch-landed.md). Handoffs are shared and committed.
-
 - To resume the mobile navigation (full-screen menu, Chronicler as the whole screen and Back to the parent, committed as CHG-0292; open: starting a quest on a phone, other screens at phone widths, a real phone look), read the [current handoff](.agents/handoffs/2026-11-15-1913-mobile-navigation.md). Handoffs are shared and committed.
+
+- To resume the fewer sandbox approval prompts (the suite runs inside the sandbox, CHG-0294; an owner-only setting to leave it without a question, CHG-0295; rebased onto `origin/main`; open: the push, a live check), read the [current handoff](.agents/handoffs/2026-11-15-1920-fewer-approval-prompts.md). Handoffs are shared and committed.
 
 - To resume the Dock icon bounce on summons (rebased on `origin/main`; the repeated bounce is chosen; open: a real Mac check and the push to `main`), read the [current handoff](.agents/handoffs/2026-11-15-1916-dock-bounce-rebased.md). Handoffs are shared and committed.
