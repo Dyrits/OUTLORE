@@ -129,9 +129,102 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  android:
+    name: Package Android app
+    needs: check
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    # The mobile app is the same Expo app as the web app and the desktop window, built natively (0009). Expo generates
+    # the android/ folder (it is not committed) and Gradle builds one APK for current phones (arm64-v8a).
+    env:
+      ANDROID_VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.4"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: bun install --frozen-lockfile
+      - name: Stamp the tag into the app's release
+        if: github.ref_type == 'tag'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          # The host refuses a web or mobile app of another release than its own, so the APK carries the tag's release.
+          node -e '
+            const fs = require("node:fs");
+            const file = "apps/app/package.json";
+            const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+            manifest.version = process.env.RELEASE_TAG.replace(/^v/, "");
+            fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + "\n");
+          '
+          grep '"version"' apps/app/package.json
+      - name: Prepare the release key
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [[ -z "$KEYSTORE_BASE64" || -z "$KEYSTORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
+            # An update installs over the previous app only when both carry the same key, so a release is never signed
+            # with a throwaway one. A manual run (not a tag) may build with the debug key to check the build.
+            if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+              echo "::error::The Android release key is not set: add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD to the repository's secrets."
+              exit 1
+            fi
+            echo "No release key: this manual run signs with the debug key."
+            echo "SIGNING=debug" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/outlore-release.jks"
+          {
+            echo "SIGNING=release"
+            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/outlore-release.jks"
+            echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+      - name: Generate the Android project
+        working-directory: apps/app
+        run: bunx expo prebuild --platform android --no-install
+      - name: Build the APK
+        working-directory: apps/app/android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+      - name: Check and name the APK
+        shell: bash
+        run: |
+          apks=(apps/app/android/app/build/outputs/apk/release/*.apk)
+          [[ ${#apks[@]} -eq 1 ]]
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+          "$apksigner" verify --print-certs "${apks[0]}" | tee "$RUNNER_TEMP/certs.txt"
+          if [[ "$SIGNING" == "release" ]]; then
+            ! grep -q "CN=Android Debug" "$RUNNER_TEMP/certs.txt"
+            name="Outlore-$(node -p 'require("./apps/app/package.json").version')-android.apk"
+          else
+            name="Outlore-$(node -p 'require("./apps/app/package.json").version')-android-debug-signed.apk"
+          fi
+          mkdir apk
+          cp -- "${apks[0]}" "apk/$name"
+          test -s "apk/$name"
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          path: apk/*.apk
+          archive: false
+          if-no-files-found: error
+          retention-days: 14
+
   release:
-    name: Publish installers
-    needs: package
+    name: Publish installers and Android app
+    needs: [package, android]
     if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -156,8 +249,8 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           # Publish only after every platform succeeded and every installer is present.
-          files=(installers/*.dmg installers/*.exe installers/*.AppImage)
-          [[ ${#files[@]} -eq 4 ]]
+          files=(installers/*.dmg installers/*.exe installers/*.AppImage installers/*.apk)
+          [[ ${#files[@]} -eq 5 ]]
           for file in "${files[@]}"; do test -s "$file"; done
           # The Windows and Linux update files, and the checksums the installed macOS app checks its download against.
           updates=(installers/latest*.yml)
@@ -174,7 +267,7 @@ jobs:
             legacy=(installers/Iskios-*-mac-*.dmg)
             [[ ${#legacy[@]} -eq 2 ]]
           fi
-          (cd installers && sha512sum -- *.dmg *.exe *.AppImage > SHA512SUMS.txt)
+          (cd installers && sha512sum -- *.dmg *.exe *.AppImage *.apk > SHA512SUMS.txt)
           test -s installers/SHA512SUMS.txt
           isPrerelease=false
           if [[ "$RELEASE_TAG" == *-* ]]; then isPrerelease=true; fi

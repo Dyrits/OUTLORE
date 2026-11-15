@@ -9,3 +9,5 @@ The interface is one Expo app (React Native with `react-native-web`): its web bu
 - **Foldkit**: rejected for now; its Elm architecture is attractive, but it is young and has few libraries.
 
 Amendment (CHG-0283): the web build is the **web app**, used from any browser on a phone or a computer and served by the relay ([0019](0019-browsers-use-the-relay-served-web-app.md)); the native builds are the **mobile app**. The desktop, web, and mobile apps stay one Expo app ([0017](0017-typescript-and-effect-no-rust.md)).
+
+Amendment (CHG-0298): the native Android build reaches testers as an APK attached to each GitHub release, signed with the owner's release key held in the repository's secrets, not through Firebase App Distribution: no account or token to set up, and the release already carries the installers. Firebase stays possible later for push to testers.

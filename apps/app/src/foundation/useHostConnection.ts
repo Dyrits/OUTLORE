@@ -1,8 +1,9 @@
 import type { KnownHost } from "@outlore/contracts";
 import { createPairedHosts, openBrowserTransport, pairFromBrowser } from "@outlore/controller";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { isBrowserPage, pageSettings } from "./browser/page";
+import { isBrowserPage, pageSettings, remoteDeviceNoun } from "./browser/page";
 import { ServiceClient } from "./client";
+import { pairingStorage } from "./native/pairingStorage";
 
 /**
  * Owns the window's local service and its selected host connection. In a plain browser there is no local service: the
@@ -10,7 +11,7 @@ import { ServiceClient } from "./client";
  */
 export function useHostConnection() {
   const isBrowser = useMemo(isBrowserPage, []);
-  const pairedHosts = useMemo(() => (isBrowser ? createPairedHosts(window.localStorage) : null), [isBrowser]);
+  const pairedHosts = useMemo(() => (isBrowser ? createPairedHosts(pairingStorage()) : null), [isBrowser]);
   // The local service always stays connected: it lists the hosts and pairs with them. The window shows either its own
   // data or, through it, a paired host's (device-pairing).
   const [localClient, setLocalClient] = useState<ServiceClient | null>(null);
@@ -19,7 +20,7 @@ export function useHostConnection() {
   );
   const [hostClient, setHostClient] = useState<ServiceClient | null>(null);
   const [hosts, setHosts] = useState<readonly KnownHost[]>(() => pairedHosts?.known() ?? []);
-  const [computerName, setComputerName] = useState(isBrowser ? "This browser" : "This computer");
+  const [computerName, setComputerName] = useState(isBrowser ? `This ${remoteDeviceNoun}` : "This computer");
   const setHostId = useCallback(
     (next: string | null) => {
       pairedHosts?.setActive(next);

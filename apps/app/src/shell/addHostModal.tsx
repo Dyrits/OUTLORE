@@ -18,8 +18,8 @@ export function AddHostModal({
 }: {
   /** The name offered for this computer. */
   computerName: string;
-  /** What this device is called in the dialog: a browser is not a computer. */
-  deviceNoun?: "browser" | "computer";
+  /** What this device is called in the dialog: a browser or a phone is not a computer. */
+  deviceNoun?: "browser" | "computer" | "phone";
   /** A browser with no host has nothing else to show, so the dialog cannot be dismissed. */
   isRequired?: boolean;
   onCancel?: () => void;

@@ -1,4 +1,5 @@
 import {
+  type DeviceKind,
   decodeBase64Url,
   decodePairingCode,
   encodeBase64Url,
@@ -24,6 +25,8 @@ import { hostLinkCodes, type OpenTransport } from "./transport.ts";
 export interface PageSettings {
   /** Whether a pairing code may name a relay on this computer: only a page served from this computer. */
   readonly allowLocalRelay: boolean;
+  /** What the host lists this device as: a browser is a "desktop" (the default), the mobile app a "phone". */
+  readonly deviceKind?: DeviceKind;
   /** The release of the web app that is running; the host must run the same one. */
   readonly release: string;
 }
@@ -150,10 +153,10 @@ export const pairFromBrowser = async (
   }
   const name = deviceName.trim();
   if (name === "" || name.length > maxDeviceNameLength) {
-    throw new Error(`Name this browser in 1 to ${maxDeviceNameLength} characters.`);
+    throw new Error(`Name this device in 1 to ${maxDeviceNameLength} characters.`);
   }
   const { channel, reply } = await openToHost(pairing, {
-    deviceKind: "desktop",
+    deviceKind: page.deviceKind ?? "desktop",
     deviceName: name,
     secret: encodeBase64Url(pairing.secret),
     t: "pair",

@@ -1,3 +1,5 @@
+import "./src/foundation/native/cryptoPolyfill";
+
 import { registerRootComponent } from "expo";
 
 import App from "./App";

@@ -2,6 +2,7 @@ import type { MissionId, ThreadId } from "@outlore/contracts";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { ArchiveNavigation } from "./src/foundation/archiveNavigation";
+import { remoteDeviceNoun } from "./src/foundation/browser/page";
 import { applyAppearance, rememberPlace, resumedPlace } from "./src/foundation/colorScheme";
 import { ActiveHostContext, HostMenuContext } from "./src/foundation/hostContext";
 import { colors } from "./src/foundation/theme";
@@ -91,7 +92,7 @@ export default function App() {
       <View style={styles.center}>
         <AddHostModal
           computerName={computerName}
-          deviceNoun="browser"
+          deviceNoun={remoteDeviceNoun}
           isRequired
           onPair={(code, deviceName) =>
             pair(code, deviceName).then((host) => {
@@ -243,7 +244,7 @@ export default function App() {
         {isAddingHost && (
           <AddHostModal
             computerName={computerName}
-            deviceNoun={isBrowser ? "browser" : "computer"}
+            deviceNoun={isBrowser ? remoteDeviceNoun : "computer"}
             onCancel={() => setIsAddingHost(false)}
             onPair={(code, deviceName) =>
               pair(code, deviceName).then((host) => {

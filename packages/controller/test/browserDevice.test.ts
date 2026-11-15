@@ -130,10 +130,16 @@ const makeWorld = () =>
     const newCode = () =>
       host({ _tag: "CreatePairingCode" }).pipe(Effect.map((made) => (made as { code: string }).code));
     /** One browser: its own storage, and the settings of the page it runs on. */
-    const browser = (settings: { release?: string; storage?: ReturnType<typeof memoryStorage> } = {}) => {
+    const browser = (
+      settings: { deviceKind?: "desktop" | "phone"; release?: string; storage?: ReturnType<typeof memoryStorage> } = {},
+    ) => {
       const storage = settings.storage ?? memoryStorage();
       const hosts = createPairedHosts(storage);
-      const page = { allowLocalRelay: true, release: settings.release ?? hostRelease };
+      const page = {
+        allowLocalRelay: true,
+        ...(settings.deviceKind === undefined ? {} : { deviceKind: settings.deviceKind }),
+        release: settings.release ?? hostRelease,
+      };
       return {
         hosts,
         link: (hostId: string) => driven(openBrowserTransport(hosts, hostId, page)),
@@ -187,6 +193,31 @@ describe("a browser pairing with a running host and using it", () => {
         });
         expect(missions).toMatchObject({ missions: [{ title: "Started from a browser" }] });
         link.close();
+      }),
+    ),
+  );
+
+  it.live("lists the mobile app as a phone and a browser as a desktop", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const w = yield* world;
+        yield* w.allowPairing;
+        for (const [deviceKind, name] of [
+          ["phone", "Pixel"],
+          [undefined, "Firefox"],
+        ] as const) {
+          const device = w.browser({ ...(deviceKind === undefined ? {} : { deviceKind }) });
+          yield* Effect.promise(async () => device.pair(await Effect.runPromise(w.newCode()), name));
+        }
+        const access = (yield* w.host({ _tag: "ReadRemoteAccess" })) as {
+          devices: Array<{ kind: string; name: string }>;
+        };
+        expect(access.devices.map(({ kind, name }) => [name, kind])).toEqual(
+          expect.arrayContaining([
+            ["Pixel", "phone"],
+            ["Firefox", "desktop"],
+          ]),
+        );
       }),
     ),
   );

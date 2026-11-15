@@ -115,6 +115,7 @@ Manual builds are also available from the **Artifacts** section of the [desktop 
 
 | Platform | Build | Installer |
 | --- | --- | --- |
+| Android | Phones with a 64-bit ARM processor (arm64-v8a) | `.apk` |
 | macOS | Apple Silicon (arm64) or Intel (x64) | `.dmg` |
 | Windows | x64 | `.exe` (NSIS) |
 | Linux | x64 | `.AppImage` |
@@ -278,8 +279,9 @@ It bundles the interface and service, so the installed app needs no development 
 Pushes to `main` and pull requests targeting it run lint, typechecking, and tests through the [desktop workflow](.github/workflows/package.yml).
 Push a version tag such as `0.1.0-Prototype` (no `v` prefix) to build macOS arm64 and x64, Windows x64, and Linux x64 installers and publish them on [GitHub Releases](https://github.com/Dyrits/OUTLORE/releases).
 The tag sets the packaged app version (a leading `v`, if present, is dropped); tags containing a hyphen produce prereleases.
-The release is published only after all four builds and uploads succeed.
+The release is published only after all four installers and the Android app are built and uploaded.
 Installers download directly as `.dmg`, `.exe`, and `.AppImage` files without an extra ZIP wrapper.
+The same tag builds the Android app, the one Expo app built natively (`apps/app`): an `android` job stamps the tag into the app's release, makes the `android/` project with `expo prebuild` (it is generated, not committed), builds the APK with Gradle, and attaches `Outlore-<version>-android.apk`, listed in `SHA512SUMS.txt`, to the release. The app has no local service: it pairs with a running host from a pairing code and keeps the pairing in the phone's secure store. It needs four repository secrets, since an update installs over the previous app only when both carry the same key and a release is never signed with a throwaway one: `ANDROID_KEYSTORE_BASE64` (the keystore file, base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. A tag without them fails the `android` job and so the release. Make the keystore once and keep a copy: `keytool -genkeypair -v -keystore outlore-release.jks -alias outlore -keyalg RSA -keysize 2048 -validity 10000`, then `base64 -i outlore-release.jks | pbcopy` for the first secret. A manual run (**Run workflow**) without the secrets builds an APK signed with the debug key, named `...-android-debug-signed.apk`, to check the build. The Android app is a prerelease like the rest and is installed from the file (Android asks to allow installing from the browser or file manager).
 A release also carries `SHA512SUMS.txt` (what the macOS app checks its download against) and the `latest*.yml` files that `electron-updater` reads on Windows and Linux; the release is not published without them.
 Each macOS installer is also published under its former name, `Iskios-<version>-mac-<arch>.dmg`, as the same file: an installed Iskios 0.1.x looks for that name, so this lets it update itself into Outlore (the app then stays at its old path, such as `/Applications/Iskios.app`, until it is moved). Only the first Outlore release, `0.1.4-Prototype`, does this (the workflow checks the tag); later releases carry the Outlore names only.
 After the release is published, the same tag also puts the relay Worker and the web app online: a `relay` job stamps the tag into the web app's release, builds the site, deploys `packages/relay` with Wrangler, and checks the live address (`https://outlore.dyrits.workers.dev`). It needs the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; `bun run deploy` in `packages/relay` does the same by hand.
