@@ -54,4 +54,4 @@ Latest handoffs:
 
 - To resume the mobile navigation (full-screen menu, Chronicler as the whole screen and Back to the parent, committed as CHG-0292; open: starting a quest on a phone, other screens at phone widths, a real phone look), read the [current handoff](.agents/handoffs/2026-11-15-1913-mobile-navigation.md). Handoffs are shared and committed.
 
-- To resume the Dock icon bounce on summons (committed on `worktree/dock-bounce`; open: the owner's choice of a repeated or single bounce, a real Mac check, and the merge into `main`), read the [current handoff](.agents/handoffs/2026-11-15-1908-dock-bounce.md). Handoffs are shared and committed.
+- To resume the Dock icon bounce on summons (rebased on `origin/main`; the repeated bounce is chosen; open: a real Mac check and the push to `main`), read the [current handoff](.agents/handoffs/2026-11-15-1916-dock-bounce-rebased.md). Handoffs are shared and committed.
