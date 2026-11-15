@@ -1,0 +1,162 @@
+import { Effect } from "effect";
+import { invalid, readStartChoices } from "../core/index.ts";
+import { admitOwnerText, admitRunnerChange, runnerOfOpened, runnerOfStarted } from "./admission.ts";
+import { setThreadBackups } from "./backups.ts";
+import { changed } from "./commands.ts";
+import { listMissions } from "./dashboard.ts";
+import { deleteThread, previewDeletion } from "./deleting.ts";
+import { dismissPrompt, endMission, previewEnding, reopenMission } from "./ending.ts";
+import { readGuildHallRecap, visitGuildHall } from "./guildHall.ts";
+import { readGuildmaster } from "./guildmaster.ts";
+import { markThreadDone } from "./lifecycle.ts";
+import { readMission, readThreadTree } from "./missionDetail.ts";
+import { insertMission, insertQuest } from "./missions.ts";
+import { moveQuest } from "./questMoves.ts";
+import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
+import { readStartingContext } from "./startingContext.ts";
+import { readThreadPanel } from "./threadPanel.ts";
+import { newQuestTitle, renameMission } from "./titles.ts";
+import { openThreadByOwner } from "./tree.ts";
+/** Requests for quests share the service request context. */
+export const questsHandlers = ({
+  commands,
+  change,
+  threads,
+}: Pick<HandlerDependencies, "commands" | "change" | "threads">) =>
+  ({
+    ChangeThreadRunner: (change) => commands.run(admitRunnerChange(change)),
+    DeleteThread: (given) => deleteThread(given.threadId, given.confirmation),
+    DismissMissionPrompt: (given) => commands.run(dismissPrompt(given.missionId, given.prompt)),
+    EndMission: (given) => commands.run(endMission(given.missionId, given.ending, given.snapshot)),
+    InterruptThread: (given) =>
+      threads
+        .interrupt(given.threadId)
+        .pipe(
+          Effect.flatMap((isInterrupted) =>
+            isInterrupted ? Effect.succeed(null) : invalid("This thread is not running."),
+          ),
+        ),
+    ListMissions: (filters) => listMissions(filters),
+    MarkThreadDone: (given) => commands.run(markThreadDone(given.threadId)),
+    MoveQuest: (move) => commands.run(moveQuest(move.missionId, move.realmId)),
+    OpenThread: (open) =>
+      Effect.gen(function* () {
+        const attachmentIds = open.attachmentIds ?? [];
+        const text = yield* admitOwnerText(
+          open.text,
+          attachmentIds,
+          runnerOfOpened(open.parentThreadId, {
+            accountId: open.accountId,
+            harness: open.harness,
+            model: open.model,
+          }),
+        );
+        return yield* commands.run(
+          commands.once(
+            open.requestId,
+            open._tag,
+            openThreadByOwner(
+              open.parentThreadId,
+              text,
+              { accountId: open.accountId, effort: open.effort, harness: open.harness, model: open.model },
+              open.shouldStartAnyway,
+              attachmentIds,
+              open.backups ?? null,
+            ),
+          ),
+        );
+      }),
+    PreviewDeletion: (given) => previewDeletion(given.threadId),
+    PreviewEnding: (given) => previewEnding(given.missionId, given.ending),
+    PreviewStartingContext: (given) =>
+      readStartingContext(given.parentThreadId, { harness: given.harness ?? null, model: given.model }, given.text),
+    ReadGuildHallRecap: (read) => readGuildHallRecap(read.since),
+    ReadGuildmaster: () => commands.run(readGuildmaster),
+    ReadMission: (read) => readMission(read.missionId, read.threadId),
+    ReadThreadPanel: (read) => readThreadPanel(read.threadId),
+    ReadThreadTree: (read) => readThreadTree(read.missionId),
+    RenameMission: (rename) => change(renameMission(rename.missionId, rename.title)),
+    ReopenMission: (reopen) => commands.run(reopenMission(reopen.missionId)),
+    ResumeThread: (resume) => threads.resume(resume.threadId).pipe(Effect.as(null)),
+    RetryThread: (retry) => threads.retry(retry.threadId).pipe(Effect.as(null)),
+    SetThreadBackups: (given) => commands.run(setThreadBackups(given.threadId, given.backups)),
+    StartEmptyQuest: (start) =>
+      commands.run(
+        commands.once(
+          start.requestId,
+          start._tag,
+          Effect.gen(function* () {
+            const choices = yield* readStartChoices;
+            const started = yield* insertQuest(
+              {
+                firstMessage: null,
+                realm: null,
+                realmId: start.realmId,
+                shouldRememberChoices: false,
+                title: newQuestTitle,
+              },
+              {
+                accountId: choices.accountId,
+                effort: choices.effort,
+                harness: choices.harness,
+                model: choices.model,
+              },
+              null,
+            );
+            return changed({ missionId: started.missionId, threadId: started.threadId });
+          }),
+        ),
+      ),
+    StartMission: (start) =>
+      Effect.gen(function* () {
+        const attachmentIds = start.attachmentIds ?? [];
+        const text = yield* admitOwnerText(
+          start.text,
+          attachmentIds,
+          runnerOfStarted({ accountId: start.accountId, harness: start.harness, model: start.model }),
+        );
+        return yield* commands.run(
+          commands.once(
+            start.requestId,
+            start._tag,
+            insertMission(
+              text,
+              { accountId: start.accountId, effort: start.effort, harness: start.harness, model: start.model },
+              start.workspacePath,
+              true,
+              start.realm ?? null,
+              attachmentIds,
+            ).pipe(Effect.map((started) => changed(started, { threadsToWake: [started.threadId] }))),
+          ),
+        );
+      }),
+    StopThread: (stop) => threads.stop(stop.threadId).pipe(Effect.as(null)),
+    VisitGuildHall: () => commands.run(visitGuildHall),
+  }) satisfies OwnerHandlers<
+    | "ChangeThreadRunner"
+    | "DeleteThread"
+    | "DismissMissionPrompt"
+    | "EndMission"
+    | "InterruptThread"
+    | "ListMissions"
+    | "MarkThreadDone"
+    | "MoveQuest"
+    | "OpenThread"
+    | "PreviewDeletion"
+    | "PreviewEnding"
+    | "PreviewStartingContext"
+    | "ReadGuildHallRecap"
+    | "ReadGuildmaster"
+    | "ReadMission"
+    | "ReadThreadPanel"
+    | "ReadThreadTree"
+    | "RenameMission"
+    | "ReopenMission"
+    | "ResumeThread"
+    | "RetryThread"
+    | "SetThreadBackups"
+    | "StartEmptyQuest"
+    | "StartMission"
+    | "StopThread"
+    | "VisitGuildHall"
+  >;

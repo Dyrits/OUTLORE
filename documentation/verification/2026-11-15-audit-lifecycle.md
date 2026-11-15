@@ -51,3 +51,14 @@ Final candidate 9 checks:
 - `git diff --check`: passes.
 
 As for candidate 8, the local commit uses the checks run inside the sandbox, with a per-command empty hooks path so escalating the protected Git index write does not run tests outside the sandbox.
+
+## Candidate 10, CHG-0307
+
+- `CI=1 bun run test --maxWorkers=4`: 163 files passed, one skipped; 1,630 tests passed, 50 skipped.
+- `CI=1 bun run test packages/service/test/work/commandOutcomes.test.ts packages/service/test/work/journal.test.ts packages/service/test/work/attachments.test.ts packages/service/test/accountBudgets.test.ts`: 48 passed, four files.
+- `bun run typecheck`: all seven workspaces pass.
+- `bun run check`: 686 files pass.
+- `git diff --check`: passes.
+- service.ts falls from 678 to 265 lines. Every new module is below 256 lines. Its only remaining provideService call prepares the startup attachment sweep; request handlers receive one shared context at the router boundary.
+
+No new acceptance or product choice: existing tests exercise the same requests after extraction. The runner-change image check now shares the runner-change transaction. No app UI was changed or driven. Local commit uses the recorded sandbox checks, as explained under candidate 8.

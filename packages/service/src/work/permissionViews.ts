@@ -1,0 +1,15 @@
+import { Effect } from "effect";
+import { readSettings, sandboxProblem } from "../core/index.ts";
+import { listPermissions, listQuestionHistory } from "../policy/index.ts";
+
+/** The owner's permission page, including the host's available sandbox. */
+export const readPermissionsView = (missionId: string | null) =>
+  Effect.gen(function* () {
+    const settings = yield* readSettings;
+    return {
+      history: yield* listQuestionHistory(missionId),
+      level: settings.approvalLevel,
+      permissions: yield* listPermissions,
+      sandboxProblem: yield* sandboxProblem,
+    };
+  });
