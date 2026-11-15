@@ -5,6 +5,7 @@ import { SqlClient } from "effect/sql";
 import { invalid, notFound, removeScratch, ServiceFailure } from "../core/index.ts";
 import { eraseThreadsLore } from "../lore/index.ts";
 import { eraseAttachmentsOf } from "./attachments.ts";
+import { forgetOutcomesOf } from "./commandOutcomes.ts";
 import { Commands, changed } from "./commands.ts";
 import { refuseGuildmaster } from "./guildmaster.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
@@ -59,8 +60,7 @@ const eraseSubtree = Effect.fn("eraseSubtree")(function* (rows: Subtree, root: S
   const ids = rows.map((row) => row.id);
   // A received message belongs to its receiver's history, even after its sender is deleted.
   yield* sql`UPDATE messages SET sender_thread_id = NULL WHERE sender_thread_id IN ${sql.in(ids)}`;
-  yield* sql`DELETE FROM command_outcomes WHERE json_extract(outcome, '$.threadId') IN ${sql.in(ids)}
-  OR json_extract(outcome, '$.messageId') IN (SELECT id FROM messages WHERE thread_id IN ${sql.in(ids)})`;
+  yield* forgetOutcomesOf(ids);
   yield* sql`DELETE FROM messages WHERE thread_id IN ${sql.in(ids)}`;
   yield* sql`DELETE FROM chatter WHERE first_id IN ${sql.in(ids)} OR second_id IN ${sql.in(ids)}`;
   yield* releaseResolvedChatter;

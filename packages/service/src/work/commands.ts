@@ -3,6 +3,7 @@ import { Context, Effect, Layer } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { Changes, removeScratch } from "../core/index.ts";
 import { Approvals } from "./approvals.ts";
+import { recordOnce } from "./commandOutcomes.ts";
 import { Suggestions } from "./suggestions.ts";
 import { Threads } from "./threads.ts";
 import { ScratchRoot } from "./workspaces.ts";
@@ -64,6 +65,8 @@ export interface CommandRunner {
    * in the same order as `run`.
    */
   readonly apply: (followUps: FollowUps) => Effect.Effect<void>;
+  /** Records one request outcome and its replay wakes inside the command transaction. */
+  readonly once: typeof recordOnce;
   /**
    * Runs the operation in one transaction and returns its value. Only once it commits: announces the
    * change, cancels the turns, then wakes the threads and the missions. A failed transaction does none.
@@ -97,7 +100,7 @@ export const makeCommands = (dependencies: {
       Effect.tap((done) => apply(done.followUps)),
       Effect.map((done) => done.value),
     );
-  return { apply, run };
+  return { apply, once: recordOnce, run };
 };
 
 /** The runner every owner request and thread tool goes through. */

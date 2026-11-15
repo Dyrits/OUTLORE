@@ -93,7 +93,7 @@ import { budgetPeriodsLayer } from "./work/budgetPeriods.ts";
 import { applyGlobalBudget, setMissionBudget, stopAtBudget, switchAtBudget } from "./work/budgets.ts";
 import { readBudgetWindow } from "./work/budgetViews.ts";
 import { resolveChatter } from "./work/chatter.ts";
-import { Commands, changed, commandsLayer, type FollowUps, noFollowUps, type WithFollowUps } from "./work/commands.ts";
+import { Commands, changed, commandsLayer } from "./work/commands.ts";
 import { listMissions } from "./work/dashboard.ts";
 import { deleteThread, previewDeletion } from "./work/deleting.ts";
 import { autoArchiveLayer, dismissPrompt, endMission, previewEnding, reopenMission } from "./work/ending.ts";
@@ -214,33 +214,6 @@ const make = Effect.gen(function* () {
   const chatterDecisions = yield* Semaphore.make(1);
 
   /**
-   * Runs an operation once per request identifier, in the command's transaction; a repeat returns the
-   * stored outcome, announces nothing, and applies only `replayed`'s follow-ups.
-   */
-  const once = <A>(
-    requestId: string,
-    tag: string,
-    work: Effect.Effect<WithFollowUps<A>, ServiceFailure | SqlError.SqlError, SqlClient.SqlClient>,
-    replayed: (stored: A) => FollowUps = () => noFollowUps,
-  ) =>
-    Effect.gen(function* () {
-      const [stored] = yield* sql<{ requestTag: string; outcome: string }>`
-        SELECT request_tag AS requestTag, outcome FROM command_outcomes WHERE request_id = ${requestId}`;
-      if (stored !== undefined) {
-        if (stored.requestTag !== tag) return yield* invalid("This request identifier was used for another command.");
-        const value = JSON.parse(stored.outcome) as A;
-        return { followUps: replayed(value), value } satisfies WithFollowUps<A>;
-      }
-      const done = yield* work;
-      yield* sql`INSERT INTO command_outcomes (request_id, request_tag, outcome)
-        VALUES (${requestId}, ${tag}, ${JSON.stringify(done.value)})`;
-      return { ...done, followUps: { ...done.followUps, isChanged: true } } satisfies WithFollowUps<A>;
-    });
-
-  /** A request's follow-ups that only wake one thread, as a repeated request still does. */
-  const wakingOnly = (threadId: string): FollowUps => ({ ...noFollowUps, threadsToWake: [threadId] });
-
-  /**
    * Answers one request. A paired device's folder requests reach only the browsable roots; the host's own window,
    * the default, reaches any folder (device-pairing, CHG-0253).
    */
@@ -263,7 +236,7 @@ const make = Effect.gen(function* () {
           nonBlank(add.text).pipe(
             Effect.andThen((text) =>
               commands.run(
-                once(
+                commands.once(
                   add.requestId,
                   add._tag,
                   updateJournal(add.missionId, { kind: "user" }, text, null).pipe(
@@ -304,7 +277,7 @@ const make = Effect.gen(function* () {
         ...realmHandlers(commands),
         CreateRitual: (create) =>
           commands.run(
-            once(
+            commands.once(
               create.requestId,
               create._tag,
               Effect.flatMap(validateScope(create.scope ?? []), (scope) =>
@@ -381,7 +354,7 @@ const make = Effect.gen(function* () {
               }),
             );
             return yield* commands.run(
-              once(
+              commands.once(
                 open.requestId,
                 open._tag,
                 openThreadByOwner(
@@ -392,7 +365,6 @@ const make = Effect.gen(function* () {
                   attachmentIds,
                   open.backups ?? null,
                 ).pipe(Effect.provideService(ScratchRoot, scratchRoot)),
-                (opened) => wakingOnly(opened.threadId),
               ),
             );
           }),
@@ -464,7 +436,7 @@ const make = Effect.gen(function* () {
         RewriteBriefing: (rewrite) => {
           const entry = rewrite.entry === null || rewrite.entry.trim() === "" ? "Rewrote the briefing" : rewrite.entry;
           return commands.run(
-            once(
+            commands.once(
               rewrite.requestId,
               rewrite._tag,
               updateJournal(rewrite.missionId, { kind: "user" }, entry, {
@@ -486,7 +458,7 @@ const make = Effect.gen(function* () {
             const delivery = send.delivery ?? (yield* readSettings).defaultDelivery;
             const viewing = yield* viewingLineOf(send.threadId, send.viewing);
             return yield* commands.run(
-              once(
+              commands.once(
                 send.requestId,
                 send._tag,
                 insertUserMessage(
@@ -500,7 +472,6 @@ const make = Effect.gen(function* () {
                   Effect.tap(() => nameNewQuest(send.threadId, text)),
                   Effect.map((sent) => changed(sent, { threadsToWake: [send.threadId] })),
                 ),
-                () => wakingOnly(send.threadId),
               ),
             );
           }),
@@ -524,7 +495,7 @@ const make = Effect.gen(function* () {
           ),
         StartEmptyQuest: (start) =>
           commands.run(
-            once(
+            commands.once(
               start.requestId,
               start._tag,
               Effect.gen(function* () {
@@ -558,7 +529,7 @@ const make = Effect.gen(function* () {
               runnerOfStarted({ accountId: start.accountId, harness: start.harness, model: start.model }),
             );
             return yield* commands.run(
-              once(
+              commands.once(
                 start.requestId,
                 start._tag,
                 insertMission(
@@ -569,7 +540,6 @@ const make = Effect.gen(function* () {
                   start.realm ?? null,
                   attachmentIds,
                 ).pipe(Effect.map((started) => changed(started, { threadsToWake: [started.threadId] }))),
-                (started) => wakingOnly(started.threadId),
               ),
             );
           }),
