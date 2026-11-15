@@ -1,11 +1,9 @@
-import type { AttachmentId, GuildHallRecap, GuildmasterPlace, MissionId, Viewing } from "@outlore/contracts";
+import type { GuildHallRecap, GuildmasterPlace, MissionId, Viewing } from "@outlore/contracts";
 import { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { imageRefusalOf } from "../attachments/attachmentRules";
 import { BudgetScreen, BudgetStopCard } from "../editors/budgets";
-import { RunnerPickers, useHarnesses } from "../editors/runners";
-import { useThreadPresets } from "../editors/useThreadPresets";
-import { actWith } from "../foundation/acting";
+import { useHarnesses } from "../editors/runners";
 import { newRequestId, type ServiceClient } from "../foundation/client";
 import { companionLabelOf, harnessLabels } from "../foundation/formatting";
 import { allMissions } from "../foundation/queries";
@@ -13,13 +11,13 @@ import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { useSkills } from "../foundation/useSkills";
-import { useTerminal } from "../terminal/useTerminal";
 import { Composer, StateIndicator } from "../ui/controls";
-import { useDraft, useFollowNewest } from "./conversation";
-import { AgentReply, EntryView, WorkingIndicator } from "./conversationEntries";
-import { type Entry, entriesOf, workingLabelOf } from "./entries";
+import { EntryView } from "./conversationEntries";
+import { ConversationFooter } from "./conversationFooter";
+import { ConversationRunner } from "./conversationRunner";
+import type { Entry } from "./entries";
 import { GuildHallHub } from "./guildHallHub";
-import { ThreadBackups } from "./threadBackups";
+import { useThreadConversation } from "./useThreadConversation";
 
 /** The realm chosen for the next message, shown over the message box and cleared with its ×. */
 function RealmNote({ name, onClear }: { name: string; onClear: () => void }) {
@@ -154,7 +152,6 @@ function ChroniclerChat({
   viewing: Viewing;
 }) {
   const { data: known } = useServiceQuery(client, allMissions.request, allMissions.key);
-  const { data: harnesses } = useHarnesses(client);
   const realms = known?.workspaces ?? [];
   // A realm tied to no folder has a null path too, so no path chosen matches none of them (CHG-0161).
   const realm = realmPath === null ? null : (realms.find((candidate) => candidate.path === realmPath) ?? null);
@@ -163,12 +160,12 @@ function ChroniclerChat({
     { _tag: "ReadMission", missionId: place.missionId, threadId: null },
     `guildmaster:${place.missionId}`,
   );
-  const draft = useDraft(client, place.threadId);
-  const followNewest = useFollowNewest();
-  const skills = useSkills(client, realm?.path ?? null);
-  const terminal = useTerminal(place.threadId, realmPath);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const presetChoice = useThreadPresets(client, place.threadId, setActionError);
+  const conversation = useThreadConversation(client, detail, place.threadId, realmPath, {
+    isChronicler: true,
+    realmPath,
+    viewing,
+  });
+  const { draft, followNewest, skills, terminal, actionError, entries, act } = conversation;
   // The Guildmaster can have a budget of its own, set on its own screen like a quest's (budget-control).
   const [isBudgetOpen, setIsBudgetOpen] = useState(false);
   if (detail === null) {
@@ -189,24 +186,7 @@ function ChroniclerChat({
     );
   }
   const { thread } = detail;
-  const entries = entriesOf(detail, detail.thread.actions.isInTurn);
-  const send = async (text: string, attachmentIds: ReadonlyArray<AttachmentId>) => {
-    const prepared = await terminal.prepare(text);
-    followNewest.follow();
-    await client.request({
-      _tag: "SendMessage",
-      attachmentIds,
-      delivery: null,
-      realmPath,
-      requestId: newRequestId(),
-      text: prepared,
-      threadId: thread.id,
-      viewing,
-    });
-    terminal.sent();
-  };
   const { canResume, canStop, isInTurn } = thread.actions;
-  const act = actWith(setActionError);
   return (
     <View style={local.page}>
       <View style={styles.header}>
@@ -240,6 +220,14 @@ function ChroniclerChat({
         <View style={styles.failure}>
           <Text style={styles.error}>The last turn failed: {thread.failure}</Text>
           <Text style={styles.muted}>Your next message retries it.</Text>
+          {!isInTurn && thread.state !== "Stopped" && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => act(client.request({ _tag: "RetryThread", threadId: thread.id }))}
+            >
+              <Text style={local.link}>Retry</Text>
+            </Pressable>
+          )}
         </View>
       )}
       <Text numberOfLines={1} style={local.sub}>
@@ -259,26 +247,7 @@ function ChroniclerChat({
           contentContainerStyle={styles.feed}
           data={entries}
           keyExtractor={(entry) => entry.key}
-          ListFooterComponent={
-            <View>
-              {draft === "" ? (
-                thread.actions.isInTurn ? (
-                  <WorkingIndicator harness={thread.harness} label={workingLabelOf(entries)} />
-                ) : (
-                  void 0
-                )
-              ) : (
-                <AgentReply
-                  harness={thread.harness}
-                  isDraft
-                  label={`${companionLabelOf(thread.harness, null, thread.model)} · writing…`}
-                  text={draft}
-                  time={null}
-                />
-              )}
-              {terminal.panel}
-            </View>
-          }
+          ListFooterComponent={<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />}
           renderItem={({ item }) => (
             <EntryView
               client={client}
@@ -298,31 +267,15 @@ function ChroniclerChat({
         draftKey="chronicler"
         hasContent={terminal.hasContent}
         {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
-        accessory={
-          <RunnerPickers
-            client={client}
-            dockRank={1}
-            extra={<ThreadBackups client={client} key={thread.id} threadId={thread.id} />}
-            harnesses={harnesses}
-            isChronicler={true}
-            isCompact={true}
-            onChange={(next) => act(client.request({ _tag: "ChangeThreadRunner", ...next, threadId: thread.id }))}
-            presetChoice={presetChoice}
-            value={{
-              accountId: thread.accountId,
-              effort: thread.effort,
-              harness: thread.harness,
-              model: thread.model,
-            }}
-          />
-        }
-        attachments={{ client, refusal: imageRefusalOf(harnesses, thread.harness, thread.model) }}
+        accessory={<ConversationRunner client={client} conversation={conversation} isChronicler thread={thread} />}
+        attachments={{ client, refusal: conversation.refusal }}
         mentions={{ client, workspacePath: realm?.path ?? null }}
-        onSend={send}
-        {...(canStop ? { onStop: () => client.request({ _tag: "StopThread", threadId: thread.id }) } : {})}
-        placeholder={isInTurn ? "Chronicler is working; Send joins its turn…" : "Ask Chronicler for anything…"}
+        onSend={conversation.send}
+        {...(canStop ? { onStop: conversation.stop } : {})}
+        placeholder={conversation.placeholder}
+        {...(isInTurn ? { alternative: conversation.alternative } : {})}
         skills={skills}
-        {...(isInTurn ? { onInterrupt: () => client.request({ _tag: "InterruptThread", threadId: thread.id }) } : {})}
+        {...(isInTurn ? { onInterrupt: conversation.interrupt } : {})}
       />
     </View>
   );
@@ -332,17 +285,37 @@ function ChroniclerChat({
  * The message at the foot of a realm's page: it goes to the Guildmaster with the realm attached, and the screen then
  * shows the Guildmaster's conversation. No quest starts from here directly.
  */
-export function GuildmasterHandoff({
+export function GuildmasterHandoff(props: {
+  client: ServiceClient;
+  onSent: () => void;
+  realm: { readonly name: string; readonly path: string };
+}) {
+  const { data: place, error } = useServiceQuery(props.client, { _tag: "ReadGuildmaster" }, "guildmaster");
+  return place === null ? (
+    <Text style={styles.muted}>{error ?? "Calling Chronicler…"}</Text>
+  ) : (
+    <GuildmasterHandoffReady {...props} place={place} />
+  );
+}
+
+function GuildmasterHandoffReady({
+  place,
   client,
   onSent,
   realm,
 }: {
   client: ServiceClient;
+  place: GuildmasterPlace;
   /** Goes to the Guildmaster once the message is sent. */
   onSent: () => void;
   realm: { readonly name: string; readonly path: string };
 }) {
   const { data: harnesses } = useHarnesses(client);
+  const { data: detail } = useServiceQuery(
+    client,
+    { _tag: "ReadMission", missionId: place.missionId, threadId: null },
+    `handoff-runner:${place?.missionId ?? "loading"}`,
+  );
   const skills = useSkills(client, realm.path);
   return (
     <View style={local.handoff}>
@@ -351,7 +324,13 @@ export function GuildmasterHandoff({
         fits.
       </Text>
       <Composer
-        attachments={{ client, refusal: imageRefusalOf(harnesses, "claude", "default") }}
+        attachments={{
+          client,
+          refusal:
+            detail === null
+              ? "Reading Chronicler’s Companion…"
+              : imageRefusalOf(harnesses, detail.thread.harness, detail.thread.model),
+        }}
         draftKey={`handoff:${realm.path}`}
         mentions={{ client, workspacePath: realm.path }}
         onSend={async (text, attachmentIds) => {

@@ -37,11 +37,16 @@ export const RealmArchivePreview = Schema.Struct({
 });
 export type RealmArchivePreview = typeof RealmArchivePreview.Type;
 
-/** Makes a realm, asking before a duplicate active name is accepted. */
+/**
+ * Makes a realm, asking before a duplicate active name is accepted. With `shouldAnswerOutcome`, the host checks and
+ * makes it in one transaction and answers a `RealmCreation`; without it (an earlier app), it answers null and refuses
+ * a duplicate name with an error, as before (CHG-0317).
+ */
 export const CreateRealm = Schema.TaggedStruct("CreateRealm", {
   ...RealmAppearance.fields,
   allowDuplicateName: Schema.optional(Schema.Boolean),
   path: Schema.NullOr(Schema.String),
+  shouldAnswerOutcome: Schema.optional(Schema.Boolean),
 });
 /** Renames a realm without treating its name as its identity. */
 export const RenameRealm = Schema.TaggedStruct("RenameRealm", {
@@ -78,6 +83,18 @@ export const RestoreRealm = Schema.TaggedStruct("RestoreRealm", {
   workspaceId: WorkspaceId,
 });
 
+/**
+ * What one realm creation came to (CHG-0317): made (or the folder's active realm, left as it is); the folder's archived
+ * realm, offered for recovery and never made a second time; or a name another active realm carries, made only once
+ * the owner confirms it with `allowDuplicateName`.
+ */
+export const RealmCreation = Schema.Union([
+  Schema.TaggedStruct("Created", {}),
+  Schema.TaggedStruct("ArchivedMatch", { archived: RealmArchivePreview }),
+  Schema.TaggedStruct("NameTaken", { name: Schema.String }),
+]);
+export type RealmCreation = typeof RealmCreation.Type;
+
 /** Realm lifecycle requests kept together at the transport boundary. */
 export const realmRequests = [
   CreateRealm,
@@ -92,7 +109,8 @@ export const realmRequests = [
 /** The wire result of each realm lifecycle request. */
 export const realmResults = {
   ArchiveRealm: Schema.Null,
-  CreateRealm: Schema.Null,
+  // Null for an earlier app's request, which does not ask for the outcome, and from an earlier host, which ignores the ask.
+  CreateRealm: Schema.NullOr(RealmCreation),
   FindArchivedRealm: Schema.NullOr(RealmArchivePreview),
   ListArchivedRealms: Schema.Array(RealmArchivePreview),
   PreviewRealmArchive: RealmArchivePreview,

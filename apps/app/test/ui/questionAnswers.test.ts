@@ -43,24 +43,24 @@ const several: Choice = { ...single, header: "Targets", multiple: true, question
 describe("choosing answers to a choice question", () => {
   it("answers a single choice with the one option last picked", () => {
     const picked = pickOption(single, pickOption(single, emptyDraft, "A"), "B");
-    expect(answerOf(single, picked)).toEqual(["B"]);
+    expect(answerOf(picked)).toEqual(["B"]);
   });
 
   it("toggles the options of a multiple choice, keeping the options' order of picking", () => {
     let draft = pickOption(several, emptyDraft, "B");
     draft = pickOption(several, draft, "A");
-    expect(answerOf(several, draft)).toEqual(["B", "A"]);
-    expect(answerOf(several, pickOption(several, draft, "B"))).toEqual(["A"]);
+    expect(answerOf(draft)).toEqual(["B", "A"]);
+    expect(answerOf(pickOption(several, draft, "B"))).toEqual(["A"]);
   });
 
   it("answers with the typed text when Other is chosen, replacing the option of a single choice", () => {
     const typed = typeOther(pickOther(single, pickOption(single, emptyDraft, "A")), "  Neither  ");
-    expect(answerOf(single, typed)).toEqual(["Neither"]);
+    expect(answerOf(typed)).toEqual(["Neither"]);
   });
 
   it("adds the typed text to the options of a multiple choice", () => {
     const typed = typeOther(pickOther(several, pickOption(several, emptyDraft, "A")), "Watch");
-    expect(answerOf(several, typed)).toEqual(["A", "Watch"]);
+    expect(answerOf(typed)).toEqual(["A", "Watch"]);
   });
 
   it("is not ready to send until every choice has an answer, and Other has text", () => {

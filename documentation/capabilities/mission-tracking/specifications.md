@@ -82,6 +82,11 @@ Sidebar drag-and-drop and confirmation were agreed on 2026-11-10 (CHG-0133) and 
 - Archiving a mission adds an entry to its journal (see [mission-journal](../mission-journal/specifications.md#when-a-mission-ends)), and `find_missions` still matches archived missions.
 - After the owner's quest-archive action succeeds, the interface returns to that quest's realm overview, or the Borderlands for a quest with no realm. Cancel and failure leave the current view unchanged.
 
+### Creating a realm
+
+- Creating checks and writes in one host transaction (CHG-0317). The result is Created, ArchivedMatch for the chosen folder, or NameTaken for an active name requiring acknowledgement. Recovery takes precedence; no realm is created or restored before the owner chooses.
+- Earlier apps receive null and retain error-based duplicate-name handling. The new app accepts null from an earlier host; recovery on that host still requires its existing flow or an upgrade.
+
 ### Archiving and restoring a realm
 
 Agreed on 2026-11-13 (CHG-0271), built; the quest and Ritual choices below were agreed on 2026-11-14 (CHG-0270). This replaces the older Hide and Delete permanently proposal for realm removal in [workspace attachment](../workspace-attachment/specifications.md#hiding-and-deleting-a-workspace).

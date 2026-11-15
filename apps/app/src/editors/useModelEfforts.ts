@@ -2,9 +2,9 @@ import type { AccountId, EffortChoice, HarnessInfo, HarnessName, ModelChoice } f
 import { useEffect, useState } from "react";
 import type { ServiceClient } from "../foundation/client";
 
-/** The effort levels a harness's model list gives for a model; undefined when the list does not say (OpenCode). */
-const listedEffortsOf = (harness: HarnessInfo | undefined, model: ModelChoice) =>
-  harness?.models.find((option) => option.id === model)?.efforts;
+import { listedEffortsOf } from "./runnerChoices";
+
+export { effortFor } from "./runnerChoices";
 
 /** How many times, and how long apart, a failed ask for a model's effort levels is repeated. */
 const effortRetries = 3;
@@ -61,10 +61,3 @@ export const effortsOf = (levels: ReadonlyArray<EffortChoice>, effort: EffortCho
   const offered = ["default", ...levels];
   return offered.includes(effort) ? offered : [...offered, effort];
 };
-
-/**
- * The effort kept when the model changes: the same when the new model's list offers it, else the model's own
- * default, also when its levels are only known once asked (OpenCode).
- */
-export const effortFor = (harness: HarnessInfo | undefined, model: ModelChoice, effort: EffortChoice): EffortChoice =>
-  listedEffortsOf(harness, model)?.includes(effort) === true ? effort : "default";

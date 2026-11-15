@@ -7,7 +7,7 @@ import {
   type ThreadSummary,
 } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
-import { entriesOf, workingLabelOf } from "../../src/conversation/entries";
+import { entriesOf, workingLabel } from "../../src/conversation/entries";
 
 const summary = (id: string, parentId: string | null, openedAt: number, isAside = false) =>
   ({
@@ -246,7 +246,8 @@ describe("a turn's actions, folded as steps while messages stay visible", () => 
       { askedAt: 2000, id: "install", outcome: "Allowed", summary: "May I install the project dependencies?" },
     ];
     const entries = entriesOf({ ...detail, questions } as unknown as MissionDetail, true);
-    expect(workingLabelOf(entries)).toBe("Working…");
+    expect(entries.find((entry) => entry._tag === "Steps")).toMatchObject({ isCurrent: true });
+    expect(workingLabel).toBe("Working…");
   });
 
   it("leaves a lone reply of a finished turn as it is", () => {

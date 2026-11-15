@@ -1,91 +1,30 @@
-import type {
-  AttachmentId,
-  BudgetScope,
-  MessageDelivery,
-  MissionDetail,
-  MissionId,
-  ThreadId,
-} from "@outlore/contracts";
-import { useEffect, useRef, useState } from "react";
-import {
-  FlatList,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  Pressable,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import { imageRefusalOf } from "../attachments/attachmentRules";
+import type { BudgetScope, MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
+import { useState } from "react";
+import { FlatList, Pressable, Text, useWindowDimensions, View } from "react-native";
 import { BudgetScreen, BudgetStopCard } from "../editors/budgets";
-import { RunnerPickers, useHarnesses } from "../editors/runners";
-import { useThreadPresets } from "../editors/useThreadPresets";
-import { actWith } from "../foundation/acting";
-import { newRequestId, type ServiceClient } from "../foundation/client";
-import { companionLabelOf, effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
+import type { ServiceClient } from "../foundation/client";
+import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
 import { countedOf } from "../foundation/labels";
 import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { useSkills } from "../foundation/useSkills";
 import { JournalScreen } from "../lore/journal";
 import { LoreScreen } from "../lore/lore";
 import { EndingConfirmation } from "../quests/missionActions";
 import { MissingFolderNotice } from "../realms/workspaces";
-import { useTerminal } from "../terminal/useTerminal";
 import { ArchiveButton } from "../ui/archiveButton";
 import { Composer, StateIndicator } from "../ui/controls";
-import { messageWithComments } from "./comments";
 import { CommentTray } from "./commentViews";
-import { AgentReply, EntryView, WorkingIndicator } from "./conversationEntries";
-import { type Entry, entriesOf, workingLabelOf } from "./entries";
+import { EntryView } from "./conversationEntries";
+import { ConversationFooter } from "./conversationFooter";
+import { ConversationRunner } from "./conversationRunner";
+import type { Entry } from "./entries";
 import { ChatterNotices } from "./threadActions";
-import { ThreadBackups } from "./threadBackups";
 import { ThreadPanel } from "./threadPanel";
 import { OpenThreadForm, ThreadTree } from "./threadTree";
-import { CommentsProvider, useThreadComments } from "./useComments";
-
-/** The reply a thread is writing, while the service streams it. */
-export function useDraft(client: ServiceClient, threadId: string | null) {
-  const [draft, setDraft] = useState("");
-  useEffect(() => {
-    setDraft("");
-    const unsubscribe = client.subscribeDrafts((id, text) => {
-      if (id === threadId) setDraft(text);
-    });
-    return () => {
-      unsubscribe();
-    };
-  }, [client, threadId]);
-  return draft;
-}
-
-/**
- * Keeps the newest entry in view, so a reply or a question is seen as it arrives,
- * unless the owner has scrolled up to read earlier entries. Sending follows again.
- */
-export function useFollowNewest() {
-  const list = useRef<FlatList<Entry>>(null);
-  const isAtEnd = useRef(true);
-  return {
-    follow: () => {
-      isAtEnd.current = true;
-    },
-    listProps: {
-      onContentSizeChange: (_width: number, height: number) => {
-        // scrollToEnd relies on item measurements the list may not have yet; the content height is known here.
-        if (isAtEnd.current) list.current?.scrollToOffset({ animated: false, offset: height });
-      },
-      onScroll: ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
-        const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
-        isAtEnd.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - 48;
-      },
-      ref: list,
-      scrollEventThrottle: 100,
-    },
-  };
-}
+import { CommentsProvider } from "./useComments";
+import { useThreadConversation } from "./useThreadConversation";
 
 /** A thread title cut for a one-line label. */
 /** The selected thread: its settings, notices, conversation, and composer. */
@@ -110,40 +49,15 @@ function ThreadPane({
   const { thread } = detail;
   const ending = useEnding(client, detail.mission);
   const work = thread.parentId === null ? "quest" : "side-quest";
-  const draft = useDraft(client, thread.id);
-  const skills = useSkills(client, thread.workspace?.path ?? null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const presetChoice = useThreadPresets(client, thread.id, setActionError);
+  const conversation = useThreadConversation(client, detail, thread.id, thread.workspace?.path ?? null, {
+    isChronicler: false,
+    realmPath: null,
+    viewing: null,
+  });
+  const { draft, skills, actionError, terminal, followNewest, comments, entries, act } = conversation;
   const [isOpening, setIsOpening] = useState(false);
-  const terminal = useTerminal(thread.id, thread.workspace?.path ?? null);
-  const followNewest = useFollowNewest();
-  const comments = useThreadComments(thread.id);
-  const { data: harnesses } = useHarnesses(client);
-  const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const { canOpenBeneath, canResume, canStop, isInTurn } = thread.actions;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
-  const defaultDelivery = settings?.defaultDelivery ?? "Steer";
-  const other = ({ Queue: "Steer", Steer: "Queue" } as const satisfies Record<MessageDelivery, MessageDelivery>)[
-    defaultDelivery
-  ];
-  const sendAs =
-    (delivery: MessageDelivery | null) => async (text: string, attachmentIds: ReadonlyArray<AttachmentId>) => {
-      const prepared = messageWithComments(await terminal.prepare(text), comments.items);
-      followNewest.follow();
-      await client.request({
-        _tag: "SendMessage",
-        attachmentIds,
-        delivery,
-        requestId: newRequestId(),
-        text: prepared,
-        threadId: thread.id,
-      });
-      // Kept until the service has taken the message, so a refused send loses none of them.
-      comments.clear();
-      terminal.sent();
-    };
-  const entries = entriesOf(detail, isInTurn);
-  const act = actWith(setActionError);
   return (
     <CommentsProvider value={comments}>
       <View style={[styles.flex, styles.pane]}>
@@ -221,26 +135,7 @@ function ThreadPane({
           contentContainerStyle={styles.feed}
           data={entries}
           keyExtractor={(entry) => entry.key}
-          ListFooterComponent={
-            <View>
-              {draft === "" ? (
-                thread.actions.isInTurn ? (
-                  <WorkingIndicator harness={thread.harness} label={workingLabelOf(entries)} />
-                ) : (
-                  void 0
-                )
-              ) : (
-                <AgentReply
-                  harness={thread.harness}
-                  isDraft
-                  label={`${companionLabelOf(thread.harness, null, thread.model)} · writing…`}
-                  text={draft}
-                  time={null}
-                />
-              )}
-              {terminal.panel}
-            </View>
-          }
+          ListFooterComponent={<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />}
           renderItem={({ item }) => (
             <EntryView
               client={client}
@@ -275,40 +170,19 @@ function ThreadPane({
               // The harness, account, Companion, and effort can change at any time, in a turn too: a handover
               // (thread-handover). It starts no turn: the running turn finishes as it was, and the next message, or Retry
               // after a failed turn, runs on it.
-              accessory={
-                <RunnerPickers
-                  client={client}
-                  extra={<ThreadBackups client={client} key={thread.id} threadId={thread.id} />}
-                  harnesses={harnesses}
-                  isCompact={true}
-                  onChange={(next) => act(client.request({ _tag: "ChangeThreadRunner", ...next, threadId: thread.id }))}
-                  presetChoice={presetChoice}
-                  value={{
-                    accountId: thread.accountId,
-                    effort: thread.effort,
-                    harness: thread.harness,
-                    model: thread.model,
-                  }}
-                />
-              }
-              attachments={{ client, refusal: imageRefusalOf(harnesses, thread.harness, thread.model) }}
+              accessory={<ConversationRunner client={client} conversation={conversation} thread={thread} />}
+              attachments={{ client, refusal: conversation.refusal }}
               mentions={{ client, workspacePath: thread.workspace?.path ?? null }}
               skills={skills}
               {...(isInTurn
                 ? {
-                    alternative: { label: other, onSend: sendAs(other) },
-                    onInterrupt: () => client.request({ _tag: "InterruptThread", threadId: thread.id }),
+                    alternative: conversation.alternative,
+                    onInterrupt: conversation.interrupt,
                   }
                 : {})}
-              {...(canStop ? { onStop: () => client.request({ _tag: "StopThread", threadId: thread.id }) } : {})}
-              onSend={sendAs(isInTurn ? defaultDelivery : null)}
-              placeholder={
-                thread.state === "Stopped"
-                  ? `Write to this ${work}; it waits until you resume it…`
-                  : isInTurn
-                    ? `Write to this ${work}; Send ${defaultDelivery === "Steer" ? "joins its current turn" : "waits for its next turn"}…`
-                    : `Write to this ${work}…`
-              }
+              {...(canStop ? { onStop: conversation.stop } : {})}
+              onSend={conversation.send}
+              placeholder={conversation.placeholder}
             />
           </>
         )}
