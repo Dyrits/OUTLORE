@@ -161,7 +161,7 @@ export const threadsLayer = Layer.effect(
           yield* fail(threadId, turn, removed);
           return yield* wakeWaiting(turn.missionId, threadId);
         }
-        const { approvalLevel, shouldStreamReplies } = yield* local(readSettings);
+        const { approvalLevel, shouldAllowOutsideSandbox, shouldStreamReplies } = yield* local(readSettings);
         const permissions = yield* local(listThreadPermissions(threadId));
         const { context, cwd, isInWorkspace, note } = yield* local(prepareStartingContext(threadId));
         // A session that starts with no memory of the thread, after a handover, is given its conversation.
@@ -187,6 +187,7 @@ export const threadsLayer = Layer.effect(
           .runTurn({
             access: {
               approvalLevel,
+              canWorkOutsideSandbox: shouldAllowOutsideSandbox,
               isInWorkspace,
               mcpUrl,
               permissions: permissions.map((permission) => permission.sentence),

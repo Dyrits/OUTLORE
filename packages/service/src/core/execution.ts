@@ -50,6 +50,8 @@ export interface SteeredMessage {
 /** What a thread may use in a turn, and how its actions are approved (CHG-0031). */
 export interface ThreadAccess {
   readonly approvalLevel: ApprovalLevel;
+  /** Whether the owner allowed commands to leave the sandbox without a question (CHG-0295). */
+  readonly canWorkOutsideSandbox: boolean;
   /** Whether the thread works in a workspace, whose sandbox may fetch dependencies (CHG-0034). */
   readonly isInWorkspace: boolean;
   /** The thread's own MCP endpoint serving the thread tools, and Claude Code's permission prompt tool (ADR 0005). */

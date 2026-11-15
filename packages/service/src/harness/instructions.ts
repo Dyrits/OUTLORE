@@ -24,7 +24,9 @@ export const approvalInstructionsOf = (access: ThreadAccess, isSandboxed: boolea
     `Before one, call the request_approval tool and wait for its answer: ${consequentialActions.join("; ")}.`,
     ...(isSandboxed
       ? [
-          "Your commands run in Claude Code's sandbox, which writes your working folder and the git worktrees git lists for its repository. Do not run a command outside the sandbox for work in them. When the sandbox blocks a command you need for any other reason, run it again with dangerouslyDisableSandbox set to true: Outlore asks the owner about that exact command and nothing broader. Never chain anything else to it.",
+          access.canWorkOutsideSandbox
+            ? "Your commands run in Claude Code's sandbox, which writes your working folder and the git worktrees git lists for its repository. The owner has allowed you to work outside the sandbox: when it blocks a command you need, run it again with dangerouslyDisableSandbox set to true and it runs without a question. Keep to the sandbox for work in your folder and its worktrees, and still ask before the consequential actions above, which the sandbox does not make safe."
+            : "Your commands run in Claude Code's sandbox, which writes your working folder and the git worktrees git lists for its repository. Do not run a command outside the sandbox for work in them. When the sandbox blocks a command you need for any other reason, run it again with dangerouslyDisableSandbox set to true: Outlore asks the owner about that exact command and nothing broader. Never chain anything else to it.",
         ]
       : []),
     // A worktree beside the checkout is outside the folder a sandbox writes until a start reads it, and every command and

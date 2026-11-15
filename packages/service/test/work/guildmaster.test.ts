@@ -1069,7 +1069,7 @@ describe("settings at the owner's request", () => {
     }).pipe(Effect.provide(setup().layer)),
   );
 
-  it.live("keeps the approval level, the budgets, and price fetching to the owner", () =>
+  it.live("keeps the approval level, working outside the sandbox, the budgets, and price fetching to the owner", () =>
     Effect.gen(function* () {
       const place = yield* guildmaster;
       const before = yield* settings;
@@ -1079,6 +1079,7 @@ describe("settings at the owner's request", () => {
         ["defaultMissionBudget", '{"cost":1,"tokens":null}'],
         ["globalBudgetPeriod", '"Day"'],
         ["shouldFetchPrices", "false"],
+        ["shouldAllowOutsideSandbox", "true"],
       ] as const) {
         const refused = yield* manage(place, "change_setting", { setting, value });
         expect(refused).toContain("the owner's alone");

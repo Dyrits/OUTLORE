@@ -9,6 +9,8 @@ import { type Capability, capabilities, changedFilesOf, isFileWriting } from "./
  * a file change must lie in. Nothing here is a verdict.
  */
 export interface ActionFacts {
+  /** Whether the owner allowed commands to leave the sandbox without a question (CHG-0295). */
+  readonly canWorkOutsideSandbox: boolean;
   /** Whether the harness's tools run inside an enforced sandbox at the thread's approval level. */
   readonly containment: Containment;
   /**
@@ -28,7 +30,8 @@ export interface ActionFacts {
  * What a harness action needs beyond its sandbox, or null when it is contained (CHG-0208): the one place that
  * decides it, from level, sandbox, action, and folders. A file change inside the thread's folder or one of its
  * workspace's worktrees is contained by its exact path; any other change by the harness's own tool is not. For any other action, a harness with no enforced
- * sandbox needs the owner for everything, and inside one, only leaving it or widening it does.
+ * sandbox needs the owner for everything, and inside one, only leaving it (unless the owner allowed that, CHG-0295) or
+ * widening it does.
  */
 export const needsOf = (facts: ActionFacts) =>
   Effect.gen(function* () {
@@ -46,7 +49,7 @@ export const needsOf = (facts: ActionFacts) =>
     }
     if (facts.containment === "Unprotected" || facts.isUnsandboxed) return capabilities.unsandboxed;
     if (facts.toolName === "Permissions") return capabilities.widenSandbox;
-    return facts.isEscape ? capabilities.outsideSandbox : null;
+    return facts.isEscape && !facts.canWorkOutsideSandbox ? capabilities.outsideSandbox : null;
   });
 
 /** Whether an action runs without asking: only at the default level, and only when nothing beyond the sandbox is needed. */

@@ -1,4 +1,4 @@
-# Proof: fewer questions to leave the sandbox (CHG-0294)
+# Proof: fewer questions to leave the sandbox (CHG-0294, CHG-0295)
 
 - **Verdict:** the full suite now runs inside a Claude Code thread's sandbox and fails nothing there; before, 31 tests failed there, so every run, and every commit whose hook ran related tests, was run outside it. Not yet shown: the skipped tests running where their capability exists (the owner's machine, outside the sandbox), and the drop in questions in a live thread.
 - **Environment:** macOS 26 (Darwin 25.6.0), Electron 45.3.1 from the repository's `node_modules` as the test runtime, a Claude Code thread's sandbox (`SANDBOX_RUNTIME=1`), worktree `.worktrees/fewer-approval-prompts` on `worktree/fewer-approval-prompts` from `3269091`. Runs on 2026-11-15.
@@ -36,3 +36,10 @@ Red then green: with `CLAUDE_CONFIG_DIR=/nonexistent/leak` and `vitest.setup.ts`
 - The guarded tests on a machine where their capability exists: the probes might read false there. Run the suite outside the sandbox once and compare the skipped count (18 before this change, 54 inside the sandbox after it).
 - A live thread's number of questions after this lands.
 - Codex's sandbox and Linux.
+
+## Working outside the sandbox (CHG-0295)
+
+- Full suite inside the sandbox after the setting: 1,569 passed, 0 failed, 54 skipped. `bun run check` and `bun run typecheck` pass.
+- Red then green: with the one condition in `needsOf` (`facts.isEscape && !facts.canWorkOutsideSandbox`) reverted to `facts.isEscape`, 2 tests fail ("needs nothing for an escape once the owner allowed working outside the sandbox", "runs an escape without a question, naming the command in its line"); restored, all 55 in those two files pass. The tests were written before the code.
+- Covered: off by default; an escape and a Codex-style escape run unasked with `AllowedAutomatically` lines; an unprotected harness, an unsandboxed thread, a widening request, a file outside the folder, and a thread's own `request_approval` still ask; the instructions change with the setting; `change_setting` refuses it.
+- Not checked: the Permissions page in a window (the toggle's look, its refresh after a click); a live Claude Code or Codex thread running an escape; OpenCode's unconfirmed-containment prompt under the setting (by the same condition, not exercised); the installed Outlore app, which has none of this until rebuilt.

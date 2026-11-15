@@ -154,7 +154,14 @@ describe("previewing a new thread's starting context", () => {
       const received = yield* prepareStartingContext(child.threadId);
       const { approvalLevel } = yield* call({ _tag: "ReadSettings" });
       const isSandboxed = approvalLevel === "RiskyOnly" && (yield* sandboxProblem) === null;
-      const access = { approvalLevel, isInWorkspace: false, mcpUrl: "", permissions: [], unaskedTools: [] };
+      const access = {
+        approvalLevel,
+        canWorkOutsideSandbox: false,
+        isInWorkspace: false,
+        mcpUrl: "",
+        permissions: [],
+        unaskedTools: [],
+      };
       const approval = approvalInstructionsOf(access, isSandboxed, "claude");
       const tokens = tokensOf(received.context) + tokensOf(approval) + tokensOf(received.note) + tokensOf(request);
       // Each part is rounded up and the separators between parts are left out.

@@ -10,6 +10,7 @@ import { messageOf, type ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { ToggleRow } from "../settings/settingsParts";
 import { Choice } from "../ui/pickers";
 import { QuestionLine } from "../ui/questions";
 
@@ -75,6 +76,23 @@ export function PermissionsScreen({ client, onBack }: { client: ServiceClient; o
                 {view.sandboxProblem} Commands run without it; only sensitive actions ask.
               </Text>
             )}
+          </View>
+          <View style={styles.section}>
+            <Text style={styles.label}>Working outside the sandbox</Text>
+            <ToggleRow
+              label="Let threads run commands outside the sandbox without asking"
+              onChange={(shouldAllowOutsideSandbox) =>
+                act(client.request({ _tag: "ChangeSettings", change: { shouldAllowOutsideSandbox } }))
+              }
+              value={settings.shouldAllowOutsideSandbox}
+            />
+            <Text style={styles.muted}>
+              Off by default. When on, a command that needs to leave its sandbox runs with your full access to this
+              computer and leaves a line in the history. Threads still ask before what they judge consequential, such as
+              pushing code, publishing, deleting, or paying, and a thread's file changes outside its folder, a thread
+              running with no sandbox at all, and widening a sandbox still ask. Only you can change this; a thread
+              cannot.
+            </Text>
           </View>
           <View style={styles.section}>
             <Text style={styles.label}>Standing permissions</Text>

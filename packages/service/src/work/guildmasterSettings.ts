@@ -19,6 +19,7 @@ export const settingsKeptFromChronicler = [
   "defaultMissionBudget",
   "globalBudget",
   "globalBudgetPeriod",
+  "shouldAllowOutsideSandbox",
   "shouldFetchPrices",
 ] as const satisfies ReadonlyArray<keyof Settings>;
 

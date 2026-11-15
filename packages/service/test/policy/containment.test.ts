@@ -19,6 +19,7 @@ const folder = () => {
 
 const command = { command: "ls" };
 const factsOf = (containment: Containment, fields: Partial<ActionFacts> = {}): ActionFacts => ({
+  canWorkOutsideSandbox: false,
   containment,
   editFolders: [],
   input: command,
@@ -38,6 +39,22 @@ describe("what a harness action needs beyond its sandbox", () => {
   it.effect("needs leaving the sandbox for a command that leaves it", () =>
     Effect.gen(function* () {
       expect(yield* needsOf(factsOf("Sandboxed", { isEscape: true }))).toBe(capabilities.outsideSandbox);
+    }),
+  );
+
+  it.effect("needs nothing for an escape once the owner allowed working outside the sandbox", () =>
+    Effect.gen(function* () {
+      const allowed = { canWorkOutsideSandbox: true, isEscape: true };
+      expect(yield* needsOf(factsOf("Sandboxed", allowed))).toBeNull();
+      // Allowing escapes does not allow what no sandbox protects, a wider sandbox, or a file outside the folder.
+      expect(yield* needsOf(factsOf("Unprotected", allowed))).toBe(capabilities.unsandboxed);
+      expect(yield* needsOf(factsOf("Sandboxed", { ...allowed, isUnsandboxed: true }))).toBe(capabilities.unsandboxed);
+      expect(yield* needsOf(factsOf("Sandboxed", { ...allowed, toolName: "Permissions" }))).toBe(
+        capabilities.widenSandbox,
+      );
+      expect(
+        yield* needsOf(factsOf("Sandboxed", { ...allowed, input: { file_path: "/etc/hosts" }, toolName: "Write" })),
+      ).toBe(capabilities.fileOutsideWorkspace);
     }),
   );
 

@@ -155,13 +155,20 @@ export const prepareStartingContext = (threadId: string) =>
 /** The approval rules the harness appends to the system part (instructions.ts), as a thread there gets them. */
 const readApprovalInstructions = (threadId: string, isInWorkspace: boolean, harness: HarnessName) =>
   Effect.gen(function* () {
-    const { approvalLevel } = yield* readSettings;
+    const { approvalLevel, shouldAllowOutsideSandbox } = yield* readSettings;
     const permissions = yield* listThreadPermissions(threadId);
     // Only Claude Code sandboxes commands, at the default level, where its sandbox can run (claude.ts).
     const isSandboxed = harness === "claude" && approvalLevel === "RiskyOnly" && (yield* sandboxProblem) === null;
     const sentences = permissions.map((permission) => permission.sentence);
     return approvalInstructionsOf(
-      { approvalLevel, isInWorkspace, mcpUrl: "", permissions: sentences, unaskedTools: [] },
+      {
+        approvalLevel,
+        canWorkOutsideSandbox: shouldAllowOutsideSandbox,
+        isInWorkspace,
+        mcpUrl: "",
+        permissions: sentences,
+        unaskedTools: [],
+      },
       isSandboxed,
       harness,
     );

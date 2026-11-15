@@ -297,6 +297,7 @@ export const approvalsLayer = Layer.effect(
     const capabilityOf = (
       threadId: string,
       level: ApprovalLevel,
+      canWorkOutsideSandbox: boolean,
       toolName: string,
       input: unknown,
       isEscape: boolean,
@@ -306,6 +307,7 @@ export const approvalsLayer = Layer.effect(
         const stored = yield* threadFolderOf(threadId).pipe(Effect.provideService(ScratchRoot, scratchRoot));
         const authority = yield* readAuthorityHarness(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
         return yield* needsOf({
+          canWorkOutsideSandbox,
           containment:
             authority === null ? "Unprotected" : (harness.containmentOf?.(authority, level) ?? "Unprotected"),
           editFolders: stored === null ? [] : editFoldersOf(threadId, stored),
@@ -333,8 +335,16 @@ export const approvalsLayer = Layer.effect(
         if (yield* takeAllowance(threadId, target, isEscape)) return { isAllowed: true, text: "" } satisfies Decision;
         const missionId = yield* missionOf(threadId);
         if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
-        const { approvalLevel } = yield* readSettings;
-        const capability = yield* capabilityOf(threadId, approvalLevel, toolName, input, isEscape, isUnsandboxed);
+        const { approvalLevel, shouldAllowOutsideSandbox } = yield* readSettings;
+        const capability = yield* capabilityOf(
+          threadId,
+          approvalLevel,
+          shouldAllowOutsideSandbox,
+          toolName,
+          input,
+          isEscape,
+          isUnsandboxed,
+        );
         const reason = reasonOf(input);
         const plain = plainActionOf(toolName);
         // At the default level a contained action runs and leaves a line, whatever it does: the sandbox holds the

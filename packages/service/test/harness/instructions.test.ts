@@ -3,6 +3,7 @@ import { approvalInstructionsOf } from "../../src/harness/index.ts";
 
 const access = {
   approvalLevel: "RiskyOnly",
+  canWorkOutsideSandbox: false,
   isInWorkspace: true,
   mcpUrl: "",
   permissions: [],
@@ -26,5 +27,15 @@ describe("telling a thread where it may work unasked", () => {
   it("gives the same advice to a thread whose harness has no sandbox here", () => {
     const text = approvalInstructionsOf(access, false, "claude");
     expect(text).toContain(".worktrees/<name>");
+  });
+
+  it("tells a thread it may leave the sandbox without asking once the owner allowed it, and still to ask before consequential actions", () => {
+    const text = approvalInstructionsOf({ ...access, canWorkOutsideSandbox: true }, true, "claude");
+    expect(text).toContain("The owner has allowed you to work outside the sandbox");
+    expect(text).not.toContain("asks the owner about that exact command");
+    expect(text).toContain("Before one, call the request_approval tool");
+    const normal = approvalInstructionsOf(access, true, "claude");
+    expect(normal).toContain("asks the owner about that exact command");
+    expect(normal).not.toContain("The owner has allowed you to work outside the sandbox");
   });
 });

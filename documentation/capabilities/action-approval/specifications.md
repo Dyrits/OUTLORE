@@ -43,6 +43,13 @@ Version 1 serves the installation's owner. In future hosted missions, only the h
 - A standing permission applies in the thread's workspace, or in its mission when the thread has no workspace, to every thread there. The user can widen it to everywhere from the Permissions page.
 - Every thread knows the standing permissions that apply to it and does not ask for an action they cover.
 
+### Working outside the sandbox
+
+- **The owner may let commands leave the sandbox without a question** (CHG-0295). One setting on the Permissions page, **Let threads run commands outside the sandbox without asking**, off by default and global (every realm and quest). It exists because exact-command permissions almost never repeat: in three days about 120 escapes were asked and 6 were answered by a saved permission (CHG-0292).
+- **What it changes, at the default level.** An escape from the sandbox (Claude Code's `dangerouslyDisableSandbox`, any escalation Codex asks for, and OpenCode's prompt when its containment cannot be confirmed) runs without a question and leaves a line in the thread and in the Permissions history, like a sandboxed command. The sandbox then holds nothing for such a command, which runs with the owner's full access to the computer and its network.
+- **What it does not change.** A thread still asks, through `request_approval`, before what it judges consequential (pushing code, publishing, deploying, posting, sending, paying, deleting outside its folder, anything that cannot be undone); its instructions say so, and that judgment is the thread's own, not enforced by Iskios, as at the default level. A harness with no sandbox at all here still asks for every command ("Run without a sandbox"); a request to widen a sandbox, and a file change made by the harness's own tool outside the thread's folder and its worktrees, still ask; the one-time confirmation for a thread folder that is a link still asks. At **Also commands and edits** every prompt still asks, as that level is for.
+- **Only the owner sets it.** A thread cannot change it, including Iskios (`change_setting` refuses it, as it refuses the approval level). A thread that Iskios started reads the setting at each turn, and Claude Code's process restarts when it changes, since its instructions change.
+
 ### Approval level
 
 - One approval setting has two levels: **Sensitive actions only** (the default; since CHG-0208 it means escapes from the sandbox and unprotected actions) and **Also commands and edits**, which turns the harnesses' own permission prompts back on, each one answered with the same buttons.
@@ -87,6 +94,7 @@ A withdrawn question gets no answer, since its turn has ended.
   - the notification carrying no content;
   - at **Also commands and edits**, harness permission prompts shown with the same buttons, and the harness's own allow and deny rules followed;
   - every answer recorded in its thread and in the Permissions page history.
+  - with working outside the sandbox allowed: an escape run without a question and recorded as run automatically; a thread's own `request_approval` for a push, a harness with no sandbox, a widening request and a file outside the folder still asked; and a thread's `change_setting` of it refused.
 - **Human acceptance**: on the phone web app, the user gets a notification, reads a question in plain language, opens its details, and allows it; chooses Always allow for a push, then sees a later push in the same workspace run without asking and removes that permission from the Permissions page.
 
 ## Requirements

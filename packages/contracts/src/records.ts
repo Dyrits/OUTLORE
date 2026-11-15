@@ -77,6 +77,11 @@ export const Settings = Schema.Struct({
     temporary: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
   }),
   intelWarningPercent: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100)),
+  /**
+   * Whether a command may leave its harness's sandbox without a question, off by default (action-approval, Working
+   * outside the sandbox; CHG-0295). A thread still asks about the consequential actions it judges itself.
+   */
+  shouldAllowOutsideSandbox: Schema.Boolean,
   /** Whether Done missions are archived automatically, off by default (mission-tracking, Ending a mission). */
   shouldAutoArchive: Schema.Boolean,
   /** Whether Outlore reads the public model price table; off leaves the snapshot shipped with it (budget-control, The price table). */

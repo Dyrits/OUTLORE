@@ -240,6 +240,52 @@ describe("harness prompts inside and outside the sandbox", () => {
     }).pipe(Effect.provide(live())),
   );
 
+  describe("once the owner allowed working outside the sandbox", () => {
+    const allowEscapes = Effect.gen(function* () {
+      const settings = yield* call({ _tag: "ReadSettings" });
+      yield* call({ _tag: "UpdateSettings", settings: { ...settings, shouldAllowOutsideSandbox: true } });
+    });
+
+    it.live("is off until the owner turns it on", () =>
+      Effect.gen(function* () {
+        expect((yield* call({ _tag: "ReadSettings" })).shouldAllowOutsideSandbox).toBe(false);
+      }).pipe(Effect.provide(live())),
+    );
+
+    it.live("runs an escape without a question, naming the command in its line", () =>
+      Effect.gen(function* () {
+        yield* allowEscapes;
+        const started = yield* start(
+          `${prompt("git push origin main", true)}\nescape Bash ${JSON.stringify({ command: "ls" })}`,
+        );
+        const detail = yield* settle(started.missionId, isReplied);
+        expect(lastReply(detail)).toBe("Echo: prompt allowed | prompt allowed");
+        expect(detail.questions.map((question) => [question.details, question.outcome])).toEqual([
+          ["git push origin main", "AllowedAutomatically"],
+          ["ls", "AllowedAutomatically"],
+        ]);
+      }).pipe(Effect.provide(live())),
+    );
+
+    it.live("still asks for every prompt where no sandbox protects the harness", () =>
+      Effect.gen(function* () {
+        yield* allowEscapes;
+        const started = yield* start(prompt("ls", true));
+        expect(openQuestion(yield* settle(started.missionId, isAsking))).toMatchObject({
+          permission: "Run without a sandbox",
+        });
+      }).pipe(Effect.provide(unprotected())),
+    );
+
+    it.live("still asks when the thread itself asks about a consequential action", () =>
+      Effect.gen(function* () {
+        yield* allowEscapes;
+        const started = yield* start(ask(push));
+        expect(openQuestion(yield* settle(started.missionId, isAsking))).toMatchObject({ source: "Thread" });
+      }).pipe(Effect.provide(live())),
+    );
+  });
+
   it.live("asks about every escape a harness flags, such as Codex's escalations", () =>
     Effect.gen(function* () {
       const started = yield* start(`escape Bash ${JSON.stringify({ command: "ls" })}`);
