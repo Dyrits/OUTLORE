@@ -119,6 +119,76 @@ Review this list when starting a capability, and every few weeks: read each prod
 - **License**: Apache 2.0 according to its site; not checked in the repository. Code may be reused with its notice where a decision record allows it, once checked.
 - **Check on**: its [docs](https://github.com/makecindy/cindy/tree/main/docs) and [releases](https://github.com/makecindy/cindy/releases), especially its Pi harness, how it moves a task between devices, and how the review step is wired; as the open-source product closest to Outlore's multi-harness tree.
 
+### Watch list from an agent directory (2026-11-15)
+
+Nine products added on 2026-11-15 from a directory of personal and team agents, to watch how each runs its agents, not only what it offers. Each claim is cited in [research/agent-directory-2026-11-15.md](research/agent-directory-2026-11-15.md). MausBot, OpenBot (nightly-labs) and Rakazo, also in that directory, are already above.
+
+#### Hermes Agent ([source](https://github.com/NousResearch/hermes-agent))
+
+- **What it is**: a self-improving agent from Nous Research, MIT, running on a laptop or cloud VM, reached through one gateway from Telegram, Discord, Slack, WhatsApp, and Signal.
+- **Good ideas**: skills written by the agent after complex tasks; memory the agent curates, with user modelling across sessions; subagents for parallel work, each with its own provider, model, and limits.
+- **Taken**: none yet.
+- **Check on**: its subagent and memory design against Outlore's lore scopes; Codync runs it as a harness, so it may appear in more places.
+
+#### Grok Bot (xAI)
+
+- **What it is**: always-on AI teammates that work across apps, inboxes and websites, including ones with no API; beta since 2026-08-11; on desktop and iOS with SuperGrok and Cursor plans; no public source found.
+- **Good ideas**: a workflow the user demonstrates saved as a routine; bots messaging each other and working in group chats; interrupting the user only when an approval is needed.
+- **Taken**: none yet.
+- **Conflict**: the launch post says both "own computer" and "share a computer"; xAI's docs page returned 404 on 2026-11-15, so the shared-computer claim from secondary coverage is unverified.
+- **Check on**: the docs page, to settle whether Bots share one machine; prices and the enterprise waitlist once out of beta.
+
+#### agentes.chat ([site](https://agentes.chat))
+
+- **What it is**: a team chat where people and AI agents share channels, in open beta; each agent has a role, tools, a budget, and a named person accountable for it; agents on iPhone and Android and on the web.
+- **Good ideas**: a named accountable person for each agent; approvals for merges, deploys, rollbacks and connected-app actions; agents picked for a message without an @mention.
+- **Taken**: none yet.
+- **License**: the site says AGPL; the repository was not opened to confirm it.
+- **Check on**: the GitHub organisation, for the license and repository; how its cloud computer per agent compares with Outlore's local-first stance.
+
+#### Codync ([source](https://github.com/leepokai/Codync))
+
+- **What it is**: runs coding agents on the user's own computer as persistent bots, with an iPhone app; Apache 2.0 from version 2.11.0 (MIT before); Claude Code, Codex, Hermes Agent and about 40 more.
+- **Good ideas**: pairing by QR code with no account on the same network or Tailscale; the relay optional and end-to-end encrypted, with an account alone never unlocking a computer; push text sealed to the phone's key; approval cards on the phone.
+- **Taken**: none yet.
+- **Check on**: its relay and push design against the per-user relay in [0003](architecture-decision-record/0003-per-user-relay-carrying-all-traffic.md); remote screen on Windows; the iOS version the README gives (26 in the install section, 18 in the badge).
+
+#### Bloks ([source](https://github.com/hamedgitty/bloks))
+
+- **What it is**: a desktop app of personal agents that live on the user's machine, as chat contacts with Markdown memory, and rooms where agents take turns under a lead agent; version 3.0; FSL-1.1-MIT.
+- **Good ideas**: a lead agent who speaks last in a room; memory kept as plain Markdown files the user can open; separate workspaces, each with its own agents, keys, rooms and folder; a phone app that holds nothing and only shows the computer's agents.
+- **Taken**: none yet.
+- **License**: FSL converts to MIT two years after each release; ideas only until a decision record allows code.
+- **Check on**: how Bloks Cloud relays email and WhatsApp (readable there, unlike other traffic); the Android app; a Stork listing says macOS only, which the README contradicts.
+
+#### Muse Bot (not identified)
+
+- **What it is**: a U.S. personal agent card in the directory with no product link; no product named Muse Bot was found. Meta's Muse, launched 2026-09-08, is a possible match but unconfirmed.
+- **Taken**: none yet.
+- **Check on**: the card's link first; then look at what it does for its users.
+
+#### OpenFuse ([repository](https://github.com/CopilotKit/OpenMuse))
+
+- **What it is**: a self-hosted personal agent with its own Chromium browser, an optional Linux terminal in a container, and files; MIT; labelled alpha. The repository is named OpenMuse, but its README calls the product OpenFuse.
+- **Good ideas**: a container with no host-directory mounts or credentials; terminal networking off, with web access only through the browser worker; saved command receipts; PDFs moved between the computer and the app.
+- **Taken**: none yet.
+- **Check on**: whether the repository is renamed; the separate Intelligence service it needs; its statement that the shared access key is not multi-tenant authentication.
+
+#### Noodle ([source](https://github.com/pdparchitect/noodle))
+
+- **What it is**: personal agents on the Mac, with Noodle Hub for sharing from an always-on Mac and Noodle Mobile in TestFlight beta; Apache 2.0, except an Enterprise folder under PolyForm Small Business; macOS 26.
+- **Good ideas**: restricted by default, with per-bot folder sharing; each agent keeping its own workspace, backstory and history; Hub bots that run on the Hub without the Mac's tools.
+- **Taken**: none yet.
+- **Check on**: how its per-bot sandbox works, which its page does not say (a secondary review claims separate macOS users, unverified); the Hub's status.
+
+#### OpenBot (CopilotKit)
+
+- **What it is**: open-source AI coworkers that each get a computer of their own; an MIT application template with a desktop app for Mac and Windows and a Helm chart; 12.4k stars; site at open.bot. A different project from the nightly-labs OpenBot above.
+- **Good ideas**: tool access set per bot, per role and per person, with allow, approval or block; approvals in chat; spend and token limits per bot, role or person; an audit trail that exports to a SIEM.
+- **Taken**: none yet.
+- **Stated status**: the local Intelligence install is "a preview ... not a production installation"; the iOS, Android, Slack and Teams apps are early access.
+- **Check on**: how each coworker is isolated (the site does not say; a secondary review claims a container per coworker, unverified); the separately licensed Intelligence service.
+
 ## Interface and design
 
 ### Crest ([crestbrowser.com](https://crestbrowser.com), [source](https://github.com/pauljoda/Crest))
