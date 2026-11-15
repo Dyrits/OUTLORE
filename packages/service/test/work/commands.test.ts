@@ -53,6 +53,7 @@ const recordingRunner = Effect.gen(function* () {
       wake: (id) => note(`wake ${id}`),
       wakeMission: (id) => note(`wake mission ${id}`),
     },
+    withdrawQuestions: (id) => note(`withdraw ${id}`),
   });
   return { calls, commands, sql };
 });
@@ -73,6 +74,7 @@ describe("running a command", () => {
               missionsToRemoveScratch: ["deleted"],
               missionsToWake: ["m1", "m1"],
               threadsToWake: ["t1", "t2"],
+              threadsToWithdraw: ["ended"],
               turnsToCancel: ["a", "b"],
             }),
           ),
@@ -82,6 +84,7 @@ describe("running a command", () => {
       expect(calls).toEqual([
         "publish: after the transaction, 1 row(s)",
         "cancel a b: after the transaction, 1 row(s)",
+        "withdraw ended: after the transaction, 1 row(s)",
         "remove scratch deleted: after the transaction, 1 row(s)",
         "wake t1: after the transaction, 1 row(s)",
         "wake t2: after the transaction, 1 row(s)",

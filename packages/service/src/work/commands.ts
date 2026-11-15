@@ -2,6 +2,8 @@ import { join } from "node:path";
 import { Context, Effect, Layer } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { Changes, removeScratch } from "../core/index.ts";
+import { Approvals } from "./approvals.ts";
+import { Suggestions } from "./suggestions.ts";
 import { Threads } from "./threads.ts";
 import { ScratchRoot } from "./workspaces.ts";
 
@@ -19,6 +21,8 @@ export interface FollowUps {
   readonly missionsToWake: ReadonlyArray<string>;
   /** Threads with messages to deliver. */
   readonly threadsToWake: ReadonlyArray<string>;
+  /** Threads whose pending owner questions must be withdrawn before any wake. */
+  readonly threadsToWithdraw: ReadonlyArray<string>;
   /** Threads whose turns the operation invalidated and that must now end. */
   readonly turnsToCancel: ReadonlyArray<string>;
 }
@@ -35,6 +39,7 @@ export const noFollowUps: FollowUps = {
   missionsToRemoveScratch: [],
   missionsToWake: [],
   threadsToWake: [],
+  threadsToWithdraw: [],
   turnsToCancel: [],
 };
 
@@ -70,6 +75,7 @@ export interface CommandRunner {
 
 /** A runner over the store, the change feed, and the threads' turns. */
 export const makeCommands = (dependencies: {
+  readonly withdrawQuestions: (threadId: string) => Effect.Effect<void>;
   readonly removeScratch: (missionId: string) => Effect.Effect<void>;
   readonly sql: SqlClient.SqlClient;
   readonly publish: Effect.Effect<void>;
@@ -80,6 +86,7 @@ export const makeCommands = (dependencies: {
     if (followUps.isChanged) yield* publish;
     // Cancelled before any wake, so a woken thread never races a turn that is still ending.
     if (followUps.turnsToCancel.length > 0) yield* threads.cancel(followUps.turnsToCancel);
+    for (const id of followUps.threadsToWithdraw) yield* dependencies.withdrawQuestions(id);
     for (const id of followUps.missionsToRemoveScratch) yield* dependencies.removeScratch(id);
     for (const id of followUps.threadsToWake) yield* threads.wake(id);
     for (const id of new Set(followUps.missionsToWake)) yield* threads.wakeMission(id);
@@ -104,12 +111,15 @@ export const commandsLayer = Layer.effect(
     const changes = yield* Changes;
     const threads = yield* Threads;
     const scratchRoot = yield* ScratchRoot;
+    const approvals = yield* Approvals;
+    const suggestions = yield* Suggestions;
     return makeCommands({
       publish: changes.publish,
       removeScratch: (id) =>
         removeScratch(join(scratchRoot, id)).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie),
       sql,
       threads,
+      withdrawQuestions: (id) => approvals.withdraw(id).pipe(Effect.andThen(suggestions.withdraw(id))),
     });
   }),
 );
