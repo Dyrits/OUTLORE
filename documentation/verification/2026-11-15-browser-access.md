@@ -58,6 +58,10 @@ The relay Worker serves the build as static assets (`packages/relay/wrangler.jso
 
 Not yet seen: a browser on another network pairing with the owner's real Mac through the deployed relay.
 
+## Found by the owner, fixed
+
+The owner ran `bun dev` and pasted a code into the deployed page: it refused with "This web app is release 0.1.3-Prototype, but the host runs 45.3.1". A development run starts Electron on `dist/main.js`, so `app.getVersion()` reports Electron's own version, and the desktop told that to the browser as the host's release. `apps/desktop/src/appVersion.ts` now gives the release (the installed app's version when packaged, the desktop package's version in a development run); the updater used a private copy of the same logic and now shares it. Test: `apps/desktop/test/appVersion.test.ts` (seen failing before the module). The path from `dist/main.js` to `package.json` was checked by reading it, not by launching a development window; the owner's rerun of `bun dev` is the check.
+
 ## Not checked
 
 - Chrome, Firefox and Safari (Chromium inside Electron only), a phone browser, a browser on another computer or network, a real pairing through the deployed relay, and a packaged desktop host. The 24-check drive ran against a relay and a page on this computer; only plain requests were made to the deployed address.

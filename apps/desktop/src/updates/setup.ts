@@ -1,8 +1,8 @@
 import { readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { app, type BrowserWindow, ipcMain, shell } from "electron";
 import type { UpdateState } from "../../../app/src/foundation/updateState.ts";
+import { appVersionOf } from "../appVersion.ts";
 import { UpdateController } from "./controller.ts";
 import { createLibraryUpdater } from "./libraryUpdater.ts";
 import { createMacUpdater } from "./macUpdater.ts";
@@ -12,21 +12,6 @@ import type { Updater } from "./updater.ts";
 /** Only this repository's pages open from an update notice. */
 const isReleasePage = (url: unknown): url is string =>
   typeof url === "string" && url.startsWith("https://github.com/Dyrits/OUTLORE/");
-
-/**
- * The version of Outlore. A development run starts Electron on `dist/main.js`, where it finds no `package.json` and
- * reports its own version (45.x), so that run reads the desktop app's file instead.
- */
-const appVersionOf = (): string => {
-  if (app.isPackaged) return app.getVersion();
-  try {
-    const file = join(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
-    const version: unknown = JSON.parse(readFileSync(file, "utf8")).version;
-    return typeof version === "string" ? version : app.getVersion();
-  } catch {
-    return app.getVersion();
-  }
-};
 
 /** The updater of this platform, or why there is none. */
 const updaterOf = async (): Promise<{ reason: string | null; updater: Updater | null }> => {

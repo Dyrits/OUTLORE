@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell, utilityProcess } from "electron";
 import { appFileOf } from "./appFiles.ts";
 import { iconFileOf } from "./appIcon.ts";
+import { appVersionOf } from "./appVersion.ts";
 import { moveFormerData } from "./formerData.ts";
 import { instanceOf } from "./instance.ts";
 import { mergedPathOf, readLoginPath } from "./shellPath.ts";
@@ -52,7 +53,7 @@ const startService = (token: string) => {
     env: {
       ...process.env,
       OUTLORE_DATA_DIR: dataDirectory(),
-      OUTLORE_RELEASE: app.getVersion(),
+      OUTLORE_RELEASE: appVersionOf(),
       OUTLORE_TOKEN: token,
     },
     serviceName: "Outlore service",
