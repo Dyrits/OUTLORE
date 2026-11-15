@@ -29,6 +29,7 @@ Version 1 serves the installation's owner. In future hosted missions, only the h
 ### Waiting
 
 - A thread with an open question is in the **Attention** state, shown prominently and sent as a phone notification with no content.
+- On the Mac desktop app, a new question also bounces the Dock icon until the user returns to the app; with the window in front it does not bounce.
 - A question waits with no time limit while the rest of the mission keeps running.
 - A question is withdrawn when the user interrupts or stops its thread.
 

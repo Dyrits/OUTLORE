@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("outlore", {
   endpoint: (): Promise<string> => ipcRenderer.invoke("outlore:endpoint"),
   /** Whether the window has no system title bar on macOS, so the app draws its own beside the traffic lights. */
   hasOwnTitleBar: process.platform === "darwin",
+  requestAttention: (): Promise<void> => ipcRenderer.invoke("outlore:requestAttention"),
   setTheme: (theme: Theme): Promise<void> => ipcRenderer.invoke("outlore:setTheme", theme),
   terminalClose: (id: string): Promise<void> => ipcRenderer.invoke("outlore:terminalClose", id),
   terminalListen: (data: (id: string, text: string, sequence: number) => void, exit: (id: string) => void) => {

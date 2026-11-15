@@ -13,6 +13,8 @@ export interface TerminalSession {
 export interface DesktopBridge {
   endpoint(): Promise<string>;
   readonly hasOwnTitleBar: boolean;
+  /** Bounces the Dock icon until the owner returns to the app; the desktop app does nothing while its window is in front. */
+  requestAttention(): Promise<void>;
   /** Gives the Dock and the window the icon of the theme in use. */
   setTheme(theme: Theme): Promise<void>;
   terminalClose(id: string): Promise<void>;

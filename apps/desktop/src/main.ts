@@ -197,6 +197,22 @@ app
       app.dock?.setIcon(iconPathOf(theme));
       window.setIcon(iconPathOf(theme));
     });
+    // A summons bounces the Dock icon until the owner comes back; with the window in front there is nothing to call them to.
+    let bounce: number | null = null;
+    const stopBounce = () => {
+      if (bounce !== null) app.dock?.cancelBounce(bounce);
+      bounce = null;
+    };
+    window.on("focus", stopBounce);
+    ipcMain.handle("outlore:requestAttention", (event) => {
+      if (
+        event.sender !== window.webContents ||
+        new URL(event.senderFrame?.url ?? "").origin !== new URL(appUrl).origin
+      )
+        throw new Error("The Dock is only called from Outlore's desktop window.");
+      if (window.isDestroyed() || window.isFocused() || bounce !== null) return;
+      bounce = app.dock?.bounce("critical") ?? null;
+    });
     // The installed app looks for a newer release once its window is up; the owner decides when it installs.
     const updates = await setUpUpdates(
       window,

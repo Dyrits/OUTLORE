@@ -1,15 +1,17 @@
 import { useEffect, useRef } from "react";
 import type { ServiceClient } from "../foundation/client";
+import { bounceDesktopDock } from "../foundation/desktopAttention";
 
 /**
- * Shows a desktop notification when a new question opens. It carries no content,
- * so nothing about the mission or the action leaves the app (action-approval, Waiting).
+ * Shows a desktop notification, and bounces the desktop app's Dock icon, when a new question opens. Neither carries
+ * content, so nothing about the mission or the action leaves the app (action-approval, Waiting).
  */
 export function useAttentionNotice(client: ServiceClient | null) {
   const known = useRef<Set<string> | null>(null);
   useEffect(() => {
-    if (client === null || typeof Notification === "undefined") return;
-    if (Notification.permission === "default") Notification.requestPermission().catch(() => void 0);
+    if (client === null) return;
+    if (typeof Notification !== "undefined" && Notification.permission === "default")
+      Notification.requestPermission().catch(() => void 0);
     let isCurrent = true;
     const check = () =>
       client.request({ _tag: "ListOpenQuestions" }).then(
@@ -19,7 +21,9 @@ export function useAttentionNotice(client: ServiceClient | null) {
           // The first load only learns what is already open.
           const isNew = known.current !== null && [...ids].some((id) => !known.current?.has(id));
           known.current = ids;
-          if (isNew && Notification.permission === "granted") {
+          if (!isNew) return;
+          void bounceDesktopDock(window.outlore);
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
             new Notification("Outlore", { body: "A quest needs you." });
           }
         },
