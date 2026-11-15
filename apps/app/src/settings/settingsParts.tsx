@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, outline, radii, round } from "../foundation/theme";
 import { Toggle } from "../ui/controls";
@@ -86,11 +86,7 @@ export function SettingsMenu({
     );
   });
   if (isCompact) {
-    return (
-      <ScrollView contentContainerStyle={local.menuRow} horizontal style={local.menuRowScroll}>
-        {entries}
-      </ScrollView>
-    );
+    return <View style={local.menuRow}>{entries}</View>;
   }
   return (
     <View style={local.menu}>
@@ -156,8 +152,7 @@ const local = StyleSheet.create({
   },
   headLeft: { alignItems: "center", flexDirection: "row", flexGrow: 1, flexShrink: 1, gap: 12 },
   menu: { ...outline, ...round, backgroundColor: colors.canvas, gap: 4, padding: 12, width: 210 },
-  menuRow: { gap: 6 },
-  menuRowScroll: { flexGrow: 0 },
+  menuRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   menuTitle: {
     color: colors.text,
     fontFamily: fonts.sans,
