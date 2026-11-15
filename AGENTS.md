@@ -54,4 +54,4 @@ Latest handoffs:
 
 - To resume the mobile navigation (full-screen menu, Chronicler as the whole screen and Back to the parent, committed as CHG-0292; open: starting a quest on a phone, other screens at phone widths, a real phone look), read the [current handoff](.agents/handoffs/2026-11-15-1913-mobile-navigation.md). Handoffs are shared and committed.
 
-- To resume the relay rename to `outlore`, the web address shown in the app, and the release pipeline deploying both (committed; open: the first tag runs the `relay` job and creates the new Worker), read the [current handoff](.agents/handoffs/2026-11-15-1747-relay-deploy-in-release.md). Handoffs are shared and committed.
+- To resume the Dock icon bounce on summons (committed on `worktree/dock-bounce`; open: the owner's choice of a repeated or single bounce, a real Mac check, and the merge into `main`), read the [current handoff](.agents/handoffs/2026-11-15-1908-dock-bounce.md). Handoffs are shared and committed.
