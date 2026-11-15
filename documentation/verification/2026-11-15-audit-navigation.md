@@ -17,3 +17,7 @@ Mutation checks (all mutations reverted before final checks): replacing the redu
 First full run: `CI=1 bun run test --maxWorkers=4` completed with 165 files passed, 1 file skipped; 1,643 tests passed, 50 skipped (117.40 seconds). This predates two extra lifecycle tests and final snapshot-notification hardening; targeted checks for those pass. A final full run follows.
 
 Navigation limitation: individual screens still own Back visibility, and ArchiveNavigation still carries parent navigation. The location reducer owns the state and the reset defects are covered, but the audit's proposed replacement of every screen callback with dispatch is not complete. No changes to `settings.tsx` or `runners.tsx`.
+
+Final checks: `CI=1 bun run test --maxWorkers=4`: 165 files passed, 1 skipped; **1,645 tests passed, 50 skipped**, 95.43 seconds. Log: `/tmp/audit-app-final-tests.log` (temporary, not committed). `bun run typecheck`: seven workspaces pass. `bun run check`: 688 files checked, no fixes or errors. The final local commit hook also ran typecheck and affected tests: 4 files, 17 tests passed.
+
+Commits: `5e782d2` (navigation), `ea73b10` (rail, host link, Companion registry). No push. Parent quest integrates and owns work-in-progress/handoff updates.
