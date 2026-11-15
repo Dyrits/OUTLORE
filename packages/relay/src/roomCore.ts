@@ -68,7 +68,7 @@ export const closeCodes = {
   malformedFrame: 1002,
   normal: 1000,
   replaced: 1012,
-  roomFull: 1013,
+  roomFull: 4004,
   textNotSupported: 1003,
 } as const;
 

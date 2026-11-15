@@ -31,12 +31,4 @@ export class RemoteConfig extends Context.Service<RemoteConfig, RemoteSettings>(
 /** The computer's name without its network suffix: `Studio.local` and `Studio.lan` read as `Studio`. */
 export const computerNameOf = (raw: string = hostname()) => raw.split(".")[0]?.trim() || "This computer";
 
-/** Whether a relay address is on this computer: only a test or a development run names one. */
-export const isLocalOrigin = (origin: string) => {
-  try {
-    const { hostname } = new URL(origin);
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
-  } catch {
-    return false;
-  }
-};
+export { isLocalOrigin } from "@outlore/controller";

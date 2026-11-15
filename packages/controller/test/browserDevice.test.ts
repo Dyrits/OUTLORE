@@ -161,6 +161,7 @@ describe("a browser pairing with a running host and using it", () => {
         const browser = w.browser();
         const host = yield* Effect.promise(async () => browser.pair(await Effect.runPromise(w.newCode())));
         expect(host).toMatchObject({ name: "Host Mac" });
+        expect(yield* w.host({ _tag: "ReadRemoteAccess" })).toMatchObject({ devices: [{ kind: "browser" }] });
         expect(browser.hosts.known()).toMatchObject([{ id: host.id, name: "Host Mac" }]);
 
         // A reload: a new page over the same storage still knows the host and resumes without a new code.

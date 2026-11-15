@@ -7,7 +7,7 @@ const maxNameLength = 200;
 const maxReleaseLength = 60;
 const pairingSecretLength = 16;
 
-export type DeviceKind = "desktop" | "phone";
+export type DeviceKind = "desktop" | "phone" | "browser";
 export type RefusalReason =
   | "code-invalid"
   | "code-expired"
@@ -52,7 +52,7 @@ const refusalReasons = {
 } satisfies Record<RefusalReason, true>;
 
 function isDeviceKind(value: unknown): value is DeviceKind {
-  return value === "desktop" || value === "phone";
+  return value === "desktop" || value === "phone" || value === "browser";
 }
 
 function isRefusalReason(value: unknown): value is RefusalReason {

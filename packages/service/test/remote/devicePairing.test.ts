@@ -4,12 +4,15 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { decodePairingCode } from "@outlore/channel";
 import { type Request, type ServerFrame, ServerFrameJson } from "@outlore/contracts";
+import { type PairedHostStore, resumeHost } from "@outlore/controller";
 import { startNodeRelay } from "@outlore/relay";
 import { Effect, Layer, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, Service, serveLoopback, serviceLayer } from "../../src/index.ts";
+import { openHostChannel } from "../../src/remote/controller.ts";
 import { redeemPairingSecret } from "../../src/remote/hostAccess.ts";
+import { readHostLink } from "../../src/remote/knownHosts.ts";
 
 // Two whole services, each over its own database, joined by a real local relay: the host accepts paired devices and
 // the controller pairs with it and steers it through its own loopback socket (device-pairing).
@@ -136,7 +139,8 @@ const makeWorld = (options: { controllerRelay?: string } = {}) =>
         const sql = yield* SqlClient.SqlClient;
         return yield* work(sql);
       }).pipe(Effect.provideContext(controllerContext));
-    return { accessOf, allowPairing, ask, bridge, controller, controllerSql, host, hostSql, newCode, pair };
+    const open = (id: string) => openHostChannel(id).pipe(Effect.provideContext(controllerContext));
+    return { accessOf, allowPairing, ask, bridge, controller, controllerSql, host, hostSql, newCode, open, pair };
   });
 
 const world = makeWorld();
@@ -151,6 +155,90 @@ const claimedMission = (text: string) => ({
 });
 
 describe("controlling one installation from another through the relay", () => {
+  it.live("buffers while storage is delayed and closes when storage fails", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const w = yield* world;
+        yield* w.allowPairing;
+        const host = yield* w.pair(yield* w.newCode());
+        const record = yield* w.controllerSql((sql) =>
+          readHostLink(host.id).pipe(Effect.provideService(SqlClient.SqlClient, sql)),
+        );
+        let release: () => void = () => {};
+        let entered: () => void = () => {};
+        const ready = new Promise<void>((resolve) => {
+          entered = resolve;
+        });
+        const held = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        const store: PairedHostStore = {
+          link: async () => record,
+          save: async () => {
+            throw new Error("not used");
+          },
+          touch: async () => {
+            entered();
+            await held;
+          },
+        };
+        const opening = resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" });
+        yield* Effect.promise(() => ready);
+        yield* Effect.sleep("100 millis");
+        release();
+        const link = yield* Effect.promise(() => opening);
+        const frames: string[] = [];
+        link.listen((text) => frames.push(text));
+        expect(frames.some((text) => JSON.parse(text)._tag === "Changed")).toBe(true);
+        link.channel.close();
+        const cancellation = new AbortController();
+        const canceled = resumeHost(
+          {
+            ...store,
+            touch: async () => {
+              cancellation.abort();
+            },
+          },
+          host.id,
+          { allowLocalRelay: true, kind: "desktop", release: "development", signal: cancellation.signal },
+        );
+        yield* Effect.promise(() => expect(canceled).rejects.toThrow());
+        const failed = resumeHost(
+          {
+            ...store,
+            touch: async () => {
+              throw new Error("store failed");
+            },
+          },
+          host.id,
+          { allowLocalRelay: true, kind: "desktop", release: "development" },
+        );
+        yield* Effect.promise(() => expect(failed).rejects.toThrow("store failed"));
+        yield* until(() =>
+          Effect.runPromise(w.accessOf()).then((view) =>
+            view.devices.every((device) => !device.isConnected) ? true : undefined,
+          ),
+        );
+      }),
+    ),
+  );
+
+  it.live("keeps the host announcement until the bridge starts listening", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const w = yield* world;
+        yield* w.allowPairing;
+        const host = yield* w.pair(yield* w.newCode());
+        const channel = yield* w.open(host.id);
+        yield* Effect.sleep("100 millis");
+        const frames: string[] = [];
+        channel.onText((text) => frames.push(text));
+        expect(frames.some((text) => JSON.parse(text)._tag === "Changed")).toBe(true);
+        channel.close();
+      }),
+    ),
+  );
+
   it.live("pairs with a code, then steers the host and sees its changes", () =>
     Effect.scoped(
       Effect.gen(function* () {
