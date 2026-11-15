@@ -1,8 +1,9 @@
 import { readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { app, type BrowserWindow, ipcMain, shell } from "electron";
+import { app, type BrowserWindow, shell } from "electron";
 import type { UpdateState } from "../../../app/src/foundation/updateState.ts";
 import { appVersionOf } from "../appVersion.ts";
+import type { createWindowHandlers } from "../windowCalls.ts";
 import { UpdateController } from "./controller.ts";
 import { createLibraryUpdater } from "./libraryUpdater.ts";
 import { createMacUpdater } from "./macUpdater.ts";
@@ -49,12 +50,12 @@ const updaterOf = async (): Promise<{ reason: string | null; updater: Updater | 
 };
 
 /**
- * Starts the updates of the installed app and answers the window's requests about them. `isOwnWindow` says whether an
- * IPC call came from Outlore's own screens, so an embedded frame cannot install anything.
+ * Starts the updates of the installed app and answers the window's requests about them. `handleWindow` registers every IPC call
+ * through the desktop window's shared sender guard.
  */
 export const setUpUpdates = async (
   window: BrowserWindow,
-  isOwnWindow: (event: Electron.IpcMainInvokeEvent) => boolean,
+  handleWindow: ReturnType<typeof createWindowHandlers>,
 ): Promise<UpdateController> => {
   // Whatever goes wrong while choosing an updater must not stop Outlore from starting: updates are then unavailable.
   const { reason, updater } = await updaterOf().catch((error: unknown) => ({
@@ -82,28 +83,20 @@ export const setUpUpdates = async (
     unsupportedReason: reason,
     updater,
   });
-  const guard = (event: Electron.IpcMainInvokeEvent) => {
-    if (!isOwnWindow(event)) throw new Error("Updates are only available in Outlore's desktop window.");
-  };
-  ipcMain.handle("outlore:updateState", (event) => {
-    guard(event);
+  handleWindow("outlore:updateState", () => {
     return controller.state();
   });
-  ipcMain.handle("outlore:updateCheck", (event) => {
-    guard(event);
+  handleWindow("outlore:updateCheck", () => {
     return controller.check();
   });
-  ipcMain.handle("outlore:updateSetEnabled", (event, isEnabled: unknown) => {
-    guard(event);
+  handleWindow("outlore:updateSetEnabled", (isEnabled: unknown) => {
     if (typeof isEnabled !== "boolean") throw new Error("The switch is on or off.");
     return controller.setEnabled(isEnabled);
   });
-  ipcMain.handle("outlore:updateInstall", (event) => {
-    guard(event);
+  handleWindow("outlore:updateInstall", () => {
     return controller.install();
   });
-  ipcMain.handle("outlore:updateOpenReleasePage", (event, url: unknown) => {
-    guard(event);
+  handleWindow("outlore:updateOpenReleasePage", (url: unknown) => {
     return shell.openExternal(isReleasePage(url) ? url : releasesPageUrl);
   });
   controller.subscribe((state: UpdateState) => {

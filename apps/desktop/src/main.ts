@@ -11,6 +11,7 @@ import { instanceOf } from "./instance.ts";
 import { mergedPathOf, readLoginPath } from "./shellPath.ts";
 import { Terminals } from "./terminals.ts";
 import { setUpUpdates } from "./updates/setup.ts";
+import { createWindowHandlers } from "./windowCalls.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** The app's icons, beside `dist` in the desktop app's own `assets`: Outlore's, and Gild's hooded figure. */
@@ -135,15 +136,8 @@ app
     });
     mainWindow = window;
     // The owner token travels in the endpoint: only the app's own main frame may read it (audit SA-12).
-    ipcMain.handle("outlore:endpoint", (event) => {
-      if (
-        event.sender !== window.webContents ||
-        event.senderFrame !== window.webContents.mainFrame ||
-        new URL(event.senderFrame.url).origin !== new URL(appUrl).origin
-      )
-        throw new Error("The endpoint is only given to Outlore's desktop window.");
-      return endpoint;
-    });
+    const handleWindow = createWindowHandlers(ipcMain, window.webContents, appUrl);
+    handleWindow("outlore:endpoint", () => endpoint);
     // A link in a reply opens in the system's browser, never in a window of its own that could receive the bridge, and
     // the app's window never navigates away from the app.
     window.webContents.setWindowOpenHandler(({ url }) => {
@@ -162,38 +156,21 @@ app
       },
     );
     // Terminal execution is a desktop capability; embedded frames cannot call it.
-    const checkTerminalSender = (event: Electron.IpcMainInvokeEvent) => {
-      if (
-        event.sender !== window.webContents ||
-        event.senderFrame !== window.webContents.mainFrame ||
-        new URL(event.senderFrame.url).origin !== new URL(appUrl).origin
-      )
-        throw new Error("Terminal access is only available in Outlore's desktop window.");
-    };
-    ipcMain.handle("outlore:terminalOpen", (event, id: string, cwd: string | null) => {
-      checkTerminalSender(event);
+    handleWindow("outlore:terminalOpen", (id: string, cwd: string | null) => {
       return terminals.open(id, cwd);
     });
-    ipcMain.handle("outlore:terminalWrite", (event, id: string, data: string) => {
-      checkTerminalSender(event);
+    handleWindow("outlore:terminalWrite", (id: string, data: string) => {
       terminals.write(id, data);
     });
-    ipcMain.handle("outlore:terminalResize", (event, id: string, cols: number, rows: number) => {
-      checkTerminalSender(event);
+    handleWindow("outlore:terminalResize", (id: string, cols: number, rows: number) => {
       terminals.resize(id, cols, rows);
     });
-    ipcMain.handle("outlore:terminalClose", (event, id: string) => {
-      checkTerminalSender(event);
+    handleWindow("outlore:terminalClose", (id: string) => {
       terminals.close(id);
     });
     window.on("closed", () => terminals.dispose());
     // The theme chosen in the app sets the Dock's and the window's icon; the installed file's own icon stays Outlore's.
-    ipcMain.handle("outlore:setTheme", (event, theme: unknown) => {
-      if (
-        event.sender !== window.webContents ||
-        new URL(event.senderFrame?.url ?? "").origin !== new URL(appUrl).origin
-      )
-        throw new Error("The theme is only set from Outlore's desktop window.");
+    handleWindow("outlore:setTheme", (theme: unknown) => {
       app.dock?.setIcon(iconPathOf(theme));
       window.setIcon(iconPathOf(theme));
     });
@@ -204,23 +181,12 @@ app
       bounce = null;
     };
     window.on("focus", stopBounce);
-    ipcMain.handle("outlore:requestAttention", (event) => {
-      if (
-        event.sender !== window.webContents ||
-        new URL(event.senderFrame?.url ?? "").origin !== new URL(appUrl).origin
-      )
-        throw new Error("The Dock is only called from Outlore's desktop window.");
+    handleWindow("outlore:requestAttention", () => {
       if (window.isDestroyed() || window.isFocused() || bounce !== null) return;
       bounce = app.dock?.bounce("critical") ?? null;
     });
     // The installed app looks for a newer release once its window is up; the owner decides when it installs.
-    const updates = await setUpUpdates(
-      window,
-      (event) =>
-        event.sender === window.webContents &&
-        event.senderFrame === window.webContents.mainFrame &&
-        new URL(event.senderFrame.url).origin === new URL(appUrl).origin,
-    );
+    const updates = await setUpUpdates(window, handleWindow);
     if (!(await load(window))) quitWith(`Could not load ${appUrl}`);
     else updates.start();
   })

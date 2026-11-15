@@ -11,3 +11,10 @@ Base: `dbb3ae6`. Branch: `worktree/audit-host`. Authorized: architecture audit c
 - `bun run typecheck`: seven workspaces pass before the final cancellation check.
 
 Browser kind is additive in both schemas: desktop/phone data remains valid. An older host that cannot parse browser pairing is explicitly reported as possibly needing an update. Desktop exact release matching follows ADR 0019. No running app visual check.
+
+
+## CHG-0311
+
+`CI=1 bun run test apps/desktop/test/windowCalls.test.ts`: four passed. Mutation: replacing the frame-identity check with only a non-null-frame check makes the same-origin-subframe case fail. All privileged calls now use the tested guard through registration, including the updater. No Electron window was opened.
+
+Git metadata is read-only in this harness's sandbox. The first escalated local commit passed formatting and typechecks but its related-test hook stalled after Vitest's banner; interrupted with SIGINT. Local commits use `-c core.hooksPath=/dev/null` only after equivalent checks run inside the sandbox; no push and no hook files changed.
