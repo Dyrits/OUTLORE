@@ -2,6 +2,16 @@
 
 Technical design: [proposed blueprint](blueprint.md), including the first slice's staged acceptance.
 
+## Implementation status · 2026-11-15
+
+The agreed behavior below includes unfinished work. This source review is not a fresh live-provider or device test.
+
+- App-owned side-quests are built: the owner or `open_thread` creates a persisted thread, with its own harness, account, model, effort, and backups. Children currently inherit the parent's workspace; an independent workspace, agent definition, and Own copy are not implemented options ([tree.ts](../../../packages/service/src/work/tree.ts#L15-L70), [threadTools.ts](../../../packages/service/src/work/threadTools.ts#L147-L171)).
+- Thread messaging, results, stopping, deletion, and the shared journal are implemented. Whole-quest moves and the nested main sidebar are built, although their older agreement notes below originally said implementation was pending ([questMoves.ts](../../../packages/service/src/work/questMoves.ts#L13-L60), [sidebar.tsx](../../../apps/app/src/shell/sidebar.tsx), [working state](../../work-in-progress.md#quest-moves--2026-11-11--built-and-checked-owner-review-pending)).
+- Native subagent tools are disabled in the current adapters in favor of `open_thread`. Mirroring a harness-native subagent into an independently steerable Outlore thread is not built ([Claude Code](../../../packages/service/src/harness/claudeArgs.ts#L34-L44), [Codex](../../../packages/service/src/harness/codex.ts#L72-L86), [OpenCode](../../../packages/service/src/harness/opencode.ts#L146-L165)).
+- Starting-context measurement and the owner's size warning are built; automatic summarization is not. Skills have only the partial implementation described in [tool and skill loading](../tool-and-skill-loading/specifications.md#implementation-status--2026-11-15).
+- The concurrency limit is currently a constant, not a setting ([treeLimits.ts](../../../packages/service/src/work/treeLimits.ts#L5-L6)). Phone notifications and the phone web app remain unbuilt; their acceptance criteria below are targets, not completed checks.
+
 ## Problem and outcome
 
 Work with AI agents spreads across disconnected chats, and subagents run out of sight. A mission's work forms one tree of threads that the user and agents grow, so the user can see, follow, and steer every piece of work, whichever harness, agent, model, and effort carries it.
@@ -22,7 +32,7 @@ Work with AI agents spreads across disconnected chats, and subagents run out of 
 - Creating the first side-quest or deleting the last changes the nested sidebar tree without adding or removing another column.
 - The main quest remains accessible from the sidebar when viewing a side-quest.
 - Thread navigation stays accessible when the sidebar is collapsed or hidden on a narrow screen, and the Back to quests link remains available.
-- The right details panel keeps its existing behavior without new tabs.
+- The original no-new-tabs rule was superseded by the Companions tab and the [panel ownership agreement](../thread-panel/specifications.md#panel-ownership-across-navigation); the quest tree remains in the main left sidebar.
 - Agent validation covers quests with no children, creating and deleting children, folded children, selecting a child and returning to its quest, collapsed navigation, the narrow-screen back link, and the absence of a duplicate left tree column.
 - Human acceptance checks the appearance and conversation space in the running app.
 

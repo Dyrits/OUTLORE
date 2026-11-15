@@ -58,6 +58,33 @@ describe("the app guide", () => {
     expect(idsFor("write me a poem")).toEqual([]);
   });
 
+  describe("current-state claims", () => {
+    const body = (id: string) => guideTopics.find((topic) => topic.id === id)?.body ?? "";
+
+    it("does not promise the unbuilt own copy or one-button merge as available", () => {
+      const text = body("realms");
+      expect(text).toMatch(/own copy/i);
+      expect(text).toMatch(/not built/i);
+      expect(text).not.toMatch(/merged back with one button/i);
+    });
+
+    it("describes updates as checked and downloaded, with an explicit restart", () => {
+      for (const id of ["install", "limits"]) expect(body(id)).not.toMatch(/there is no automatic update/i);
+      expect(body("install")).toMatch(/Restart and update/);
+    });
+
+    it("lists the host folder picker as built and only the terminal as unbuilt", () => {
+      const text = body("pairing");
+      expect(text).not.toMatch(/Not built yet:[^.]*folder picker/i);
+      expect(text).toMatch(/folder picker/i);
+      expect(text).toMatch(/Not built yet:[^.]*terminal/i);
+    });
+
+    it("lets one owner pair several installations", () => {
+      expect(body("limits")).not.toMatch(/one user on one computer/i);
+    });
+  });
+
   it("returns at most two topics", () => {
     expect(topicsFor("quest realm ritual budget lore approval").length).toBeLessThanOrEqual(2);
   });

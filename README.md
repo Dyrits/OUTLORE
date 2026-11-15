@@ -85,7 +85,7 @@ It finds the quest that already covers the request and offers to continue there,
 - Change a thread's harness, account, model, or effort between turns without discarding its conversation.
 - Pick a Companion by its provider account (two subscriptions of one harness appear as two options), or apply a Light, Balanced, or Heavy preset, which sets a Companion and its backups together.
 - Choose folders with one folder picker, on this computer or on a paired host.
-- Attach a local folder or repository, or give a thread its own Git worktree.
+- Attach a local folder or repository to a realm. Cloning a repository from a link and giving a thread its own Git worktree with a merge button are agreed but not built yet.
 - Keep a shared briefing and journal for each quest, and save lore at thread, workspace, or global scope.
 - Paste, drop, or choose images for a message, and use `!` to open a shell in the desktop composer and send its output as context.
 - Use skills from existing skill folders by typing `/` in a message. Managing MCP servers from Chronicler is not available yet.

@@ -61,7 +61,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "A realm groups quests that share lore. A realm may be tied to one folder or repository on the computer (the realm's workspace, where its threads work) or tied to none. The sidebar lists realms tied to a folder first, then those tied to none.",
       "The Borderlands hold quests with no realm: no folder and no shared lore. A quest there has only its own lore and global lore. Every quest belongs to a realm or to the Borderlands, and a whole quest tree can be moved between them, after a confirmation, while no thread of it is running.",
       "A quest with no folder works in a scratch folder Outlore keeps for it.",
-      "For a git repository, a thread can have its own copy: its own git worktree on its own branch, shared by the threads beneath it and merged back with one button.",
+      "Own copy is agreed but not built: a thread cannot yet be given its own git worktree, and there is no merge button. Threads beneath a thread work in the same folder as it, and an agent can still use git or worktrees itself when asked.",
       "Add a realm from the sidebar, or ask Chronicler to make or rename one. Chronicler never deletes a realm or a quest; the most it does to a quest is archive it, when asked.",
     ].join("\n"),
     id: "realms",
@@ -326,9 +326,9 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Pairing lets the owner control one Outlore from another, such as another computer's app, on any internet connection, with no account. It is early work. The computer being controlled is the host; it shows a one-time pairing code, valid for 10 minutes and usable once, and the other app adds it with Add a host. The connection is end-to-end encrypted through a shared relay, and a paired device has the owner's full authority over the host.",
+      "Pairing lets the owner control one Outlore from another, such as another computer's app, on any internet connection, with no account. It is early work. The computer being controlled is the host; it shows a one-time pairing code, valid for 10 minutes and usable once, and the other app adds it with Add a host. The folder picker works on a paired host, limited to the folders the host allows. The connection is end-to-end encrypted through a shared relay, and a paired device has the owner's full authority over the host.",
       "Paired devices are listed in the Workshop's Remote access card, where each can be disconnected. A host menu is at the top left of the app, and the host can rename itself.",
-      "Not built yet: the phone web app, a QR code for the pairing code, notifications, the folder picker and the terminal on a host, and the direct connection that skips the relay. Pairing has not been tried on two physical computers yet.",
+      "Not built yet: the phone web app, a QR code for the pairing code, notifications, the terminal on a host, and the direct connection that skips the relay. Pairing has not been tried on two physical computers yet.",
     ].join("\n"),
     id: "pairing",
     keywords: [
@@ -350,7 +350,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Download the installer for the platform from GitHub Releases: a .dmg for macOS (Apple Silicon or Intel), an .exe for Windows, an .AppImage for Linux. There is no automatic update.",
+      "Download the installer for the platform from GitHub Releases: a .dmg for macOS (Apple Silicon or Intel), an .exe for Windows, an .AppImage for Linux. The installed app checks for new releases at start and every few hours, downloads one in the background, and installs it only when the owner presses Restart and update; it never updates unasked, and checking can be switched off in the Workshop.",
       "macOS and Windows builds are not signed by a trusted developer yet, so the first launch may be blocked: on macOS Control-click the app and choose Open, or use Open Anyway in System Settings → Privacy & Security; on Windows choose More info → Run anyway. On Linux make the AppImage executable and run it.",
       "First launch: open the Workshop to see which harnesses are installed and signed in (install a missing one there, or install it yourself), add a realm if agents should work in a folder, then tell Chronicler what to do or start a quest from the sidebar.",
       "Rituals run only while Outlore is running.",
@@ -377,7 +377,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Alpha limits to tell the owner plainly: one user on one computer; Craft (workflows) is not available; the Library is not settled; Outlore has no screen for managing MCP servers yet; the phone web app and parts of pairing are not built; there is no automatic update; macOS and Windows builds are unsigned; Windows and Linux builds have had little testing on real machines.",
+      "Alpha limits to tell the owner plainly: one owner, who can use several installations by pairing them; Craft (workflows) is not available; the Library is not settled; Outlore has no screen for managing MCP servers yet; the phone web app and parts of pairing are not built; updates are checked and downloaded but installed only on the owner's Restart and update (unverified on Windows and Linux); macOS and Windows builds are unsigned; Windows and Linux builds have had little testing on real machines.",
       "Bugs and requests go to GitHub Issues, with the operating system, Outlore version, harness, steps to reproduce, and logs with private information removed.",
     ].join("\n"),
     id: "limits",

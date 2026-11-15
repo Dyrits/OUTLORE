@@ -2,6 +2,8 @@
 
 Outlore (called Iskios until CHG-0285) organizes a person's work with AI agents as missions carried out in trees of threads, where any thread can open further threads on any harness, model, and effort, and threads talk to each other in both directions.
 
+Definitions include agreed future concepts. A definition is not an implementation claim; check the [capability specifications](capabilities/) and [architecture's current state](architecture.md) for what exists.
+
 ## Guild interface vocabulary
 
 The owner selected the Guild art direction on 2026-11-09, including its display names.

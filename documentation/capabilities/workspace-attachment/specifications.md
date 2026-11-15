@@ -1,5 +1,9 @@
 # Workspace attachment
 
+## Implementation status · 2026-11-15
+
+Partly built, from source inspection (no live run). Built: attaching a folder as a realm's workspace, the folder picker on this computer and on a paired host under its browsable roots, the scratch folder for a quest with no workspace, the check that the folder exists before a turn, and whole-quest moves. Not built: cloning from a repository link (`clone_repository`), `list_workspaces`, **Own copy** and its one-button merge, `open_thread` options for an independent workspace or Own copy (children inherit the parent's workspace; see [thread tree](../thread-tree/specifications.md#implementation-status--2026-11-15)), and the phone-web acceptance. The behavior and acceptance below are the full agreed target, not a record of passing checks.
+
 ## Problem and outcome
 
 Agents work on files: a repository to fix, a folder of documents to sort.

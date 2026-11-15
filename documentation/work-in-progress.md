@@ -1,5 +1,13 @@
 # Work in progress
 
+## T3Code comparison and documentation accuracy · 2026-11-15 · built and checked, owner's review and commit pending
+
+The owner asked to compare Outlore with T3Code, then authorized correcting documentation to distinguish implemented behavior from plans (CHG-0288). Starting revision `1d664b370ae350aabbcd34aec6209a89b43e6a2c`. Changed: [upstream notes](research/t3code.md) (pinned `pingdotgg/t3code` at `0de6ddb8235debee8c7119343e1a4da9cd8b5de8`, 0.1.9), the [comparison](research/outlore-t3code-comparison.md), implementation-status sections in five specifications, notes in the outline, glossary, architecture and inspirations, the README, `apps/app/AGENTS.md`, and Chronicler's guide topics with a test. No planned capability was implemented, removed or reduced, and nothing authorizes a fork, migration, release or push.
+
+Result: T3Code already ships much of what the host and browser batch plans; its managed access does not meet Outlore's no-account, relay-cannot-read requirement, though its LAN, Tailscale and SSH routes were not compared. The batch's checks are in the changelog entry; no upstream app or live provider was run.
+
+Open: the owner's decision whether to evaluate extending or borrowing from T3Code before building the host and browser batch (the comparison recommends doing so); the owner's review; commit. The T3Code reading was bounded: worktree/merge logic, the update flow, scheduled-task rules, and budgets or multiple accounts per harness remain unread. Older dated entries below and the handoffs keep their original claims.
+
 ## Browser access · 2026-11-15 · first batch built, committed and deployed; owner acceptance and a real pairing pending
 
 The owner approved the first batch and the trust boundary on 2026-11-15 ([CHG-0286](changelog/0.1.4-Prototype.md), [0019](architecture-decision-record/0019-browsers-use-the-relay-served-web-app.md)). Starting revision `1d664b3`; committed and pushed as `8cee410`. Published (CHG-0287): the relay Worker serves the web build at `https://outlore-relay.dyrits.workers.dev` (deployed 2026-11-15, version `08b135fa`; `bun run deploy` in `packages/relay`); checked locally with `wrangler dev` and live with requests; the owner's Mac has not been paired through it. Behavior: [device-pairing specifications](capabilities/device-pairing/specifications.md) (A browser as a paired device; Releases). Evidence and limits: [verification](verification/2026-11-15-browser-access.md).

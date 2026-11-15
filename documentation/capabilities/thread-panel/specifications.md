@@ -6,6 +6,10 @@ A thread's header shows its state and a few links, but not what it runs with, wh
 
 Status: agreed by the owner's instruction to build the backlog entry "Thread panel and context gauge" unattended (2026-11-09). Everything below that the owner did not decide is **provisional** until the owner reviews it (changelog CHG-0079).
 
+## Current layout · 2026-11-15
+
+The original panel and backup-editor layout described below was superseded by CHG-0220 through CHG-0245. The current right column has a Quest/details tab when applicable and a Companions tab, not a tabless panel ([shell.tsx](../../../apps/app/src/shell/shell.tsx#L150-L206)). The thread's Companion and folded backup editors live in the Companions tab ([threadBackups.tsx](../../../apps/app/src/conversation/threadBackups.tsx#L11-L36)). The [panel ownership agreement](#panel-ownership-across-navigation) below governs navigation. See the [recorded picker work and its remaining acceptance](../../work-in-progress.md#companions-tab--2026-11-12-to-2026-11-13--built-and-checked-in-the-window-owner-review-pending); this documentation pass did not repeat the window drive.
+
 ## Agreed behavior
 
 ### The panel

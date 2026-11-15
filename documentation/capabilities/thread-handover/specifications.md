@@ -23,13 +23,18 @@ A quest runs on one harness and model for its whole life. When a limit is reache
 - **Account**: an account that does not exist or belongs to another harness is refused with the reason.
 - **Deleting** a thread erases its handover lines.
 
+### Current replay boundary · 2026-11-15
+
+"Whole conversation" currently means stored owner, thread, and agent text messages, not a transfer of the harness's private session state. Earlier images are named but their bytes are not replayed, and tool calls and results are not replayed. Oldest messages are omitted beyond half the selected model's context window, with an omission notice; automatic summarization remains unbuilt ([handover.ts](../../../packages/service/src/work/handover.ts#L168-L219)). This is narrower than ADR 0006's full-history target.
+
+Chronicler's composer does support the same handover request ([guildmaster.tsx](../../../apps/app/src/conversation/guildmaster.tsx#L297-L316)), and Ritual fallback uses `changeThreadRunner` ([rituals.ts](../../../packages/service/src/work/rituals.ts#L13-L20)). These are implemented paths, not fresh proof of a live-provider handover.
+
 ## Not built
 
 - A thread's own handover through a thread tool (the architecture lets a thread change a thread's runner).
-- Resolving skills and tools again for the new harness (tool-and-skill-loading is not built).
+- The full per-harness skill and external MCP selection/loading policy ([partial implementation](../tool-and-skill-loading/specifications.md#implementation-status--2026-11-15)).
 - Summarizing the oldest part of a long conversation.
-- Replaying what the earlier harness did in its turns (its tool calls and results): only messages are stored, so only messages are replayed.
-- Handing over the Guildmaster or a routine's thread.
+- Replaying what the earlier harness did in its turns (its tool calls and results), or resending earlier image bytes.
 
 ## Acceptance
 

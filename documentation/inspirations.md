@@ -33,6 +33,16 @@ Review this list when starting a capability, and every few weeks: read each prod
 - **License**: Apache 2.0 (checked in its repository, 2026-11-12).
 - **Check on**: relay and encryption changes; why its Cloudflare relay was retired.
 
+### T3Code
+
+- **Source review** (2026-11-15): [primary-source notes](research/t3code.md) pin `pingdotgg/t3code` at `0de6ddb8235debee8c7119343e1a4da9cd8b5de8`, whose server and desktop packages say 0.1.9. The current project includes an independent host, OS-managed background services, app-owned delegated threads with independent model choices and messaging, portable conversation handoffs, scheduled tasks, and beta guest and peer-machine features. It is not accurately described as only a Codex chat interface.
+- **Potential reuse**: compare its implemented host lifecycle, service updates, host-owned terminals, Git/worktree tools, and delegation with the corresponding Outlore plans before building them independently. Shared TypeScript/Effect choices make it worth inspecting, not automatically interchangeable.
+- **Constraints**: managed T3 Connect uses a trusted broker and account authentication; the inspected path is not Outlore's account-free, application-layer end-to-end encrypted relay. Its portable handoff also has a bounded message history, not complete tool/session-state transfer. See the [comparison](research/outlore-t3code-comparison.md) before treating a similar feature name as equivalent behavior.
+- **Taken**: no code or architecture change. This is research, not approval to fork, migrate, or add a service.
+- **License**: MIT at the inspected commit; preserve its copyright and permission notice if code is later reused. Any reuse still needs the project's architectural decision and dependency/license checks.
+- **Also found**: threads without a project (per-thread scratch folder, promotable to a project), comparable to the Borderlands' scratch folder; no per-project or per-thread memory was found, so scoped lore stays a real difference.
+- **Check on**: how a local/self-hosted installation can meet Outlore's access and cost requirements, the stability of guest/peer features, and whether its app-owned delegation can carry Outlore's quest, lore, and budget rules without maintaining a second orchestration system.
+
 ### Delta and Zed's DeltaDB
 
 - **Good ideas**: a handover that replays the full history to the new harness; version control for agent edits and conversations (DeltaDB).

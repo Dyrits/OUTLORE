@@ -1,4 +1,4 @@
-This is Outlore's one Expo/React Native app (ADR 0009). Its web build (`react-native-web`) runs in the Electron desktop window and as the phone web app; native phone builds come later. Make changes work on web first and keep them portable to native.
+This is Outlore's one Expo/React Native app (ADR 0009). Its web build (`react-native-web`) currently runs in the Electron desktop window. A browser with no desktop bridge can pair with a running host (CHG-0286, checked against a local relay); the shared relay serves the build (CHG-0287; a real pairing from another network is not yet seen), and phone layouts and native phone builds are not built; see the [architecture](../../documentation/architecture.md). Make changes work on web first and keep them portable to native.
 
 ## Expo has changed — do not trust your training data
 
