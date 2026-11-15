@@ -47,6 +47,21 @@ describe("the service client's reconnection", () => {
     vi.unstubAllGlobals();
   });
 
+  it("retries a failed first connection and exposes its status before recovery", async () => {
+    const connecting = ServiceClient.connect();
+    await vi.waitFor(() => expect(FakeSocket.all).toHaveLength(1));
+    FakeSocket.all[0]?.fail();
+    const client = await connecting;
+    expect(client.failure).toBe("Could not reach this computer's service.");
+    expect(client.hasConnected).toBe(false);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(FakeSocket.all).toHaveLength(2);
+    FakeSocket.all[1]?.open();
+    expect(client.hasConnected).toBe(true);
+    expect(client.failure).toBeNull();
+    client.close();
+  });
+
   it("keeps retrying when a reconnection fails before it opens", async () => {
     const client = await connect();
     FakeSocket.all[0]?.fail();

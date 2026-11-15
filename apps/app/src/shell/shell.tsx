@@ -153,7 +153,6 @@ export function Shell(
     isCompanionShown,
     otherPillId,
     pillId,
-    pills,
   } = useCompanionDock(rightPanel, isChroniclerFull, isChroniclerOpen);
   const hasQuestPanel = !isChroniclerFull && details !== null && questPanel !== null;
   const activeTab = rightPanel.content?.tab ?? "quest";
@@ -216,15 +215,7 @@ export function Shell(
         (companionPicker === null ? (
           <Text style={local.noCompanion}>There is no Companion to choose here.</Text>
         ) : (
-          <CompanionPanel
-            key={pillId}
-            {...companionPicker}
-            // The button's latest handlers, whatever the tab last drew.
-            onEffort={(effort) => pills.current.get(pillId ?? "")?.picker?.onEffort(effort)}
-            onModel={(harness, accountId, model) =>
-              pills.current.get(pillId ?? "")?.picker?.onModel(harness, accountId, model)
-            }
-          />
+          <CompanionPanel key={pillId} {...companionPicker} />
         ))}
     </QuestColumn>
   );

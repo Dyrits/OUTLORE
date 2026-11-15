@@ -25,16 +25,15 @@ export default function App() {
     pair,
     hostId,
     setHostId,
-    hostClient,
     hosts,
     computerName,
     isAddingHost,
     setIsAddingHost,
-    linkFailure,
     client,
-    failure,
     setFailure,
     activeHost,
+    status,
+    retry,
   } = useHostConnection();
   const [location, dispatch] = useReducer(navigate, resumedPlace, initialLocation);
   const {
@@ -77,7 +76,7 @@ export default function App() {
     [computerName, hostId, hosts, isBrowser, setFailure, setHostId, setIsAddingHost],
   );
   // A browser with no host has nothing to show: it pairs first.
-  if (isBrowser && hosts.length === 0) {
+  if (status.kind === "pairing" || (status.canPair && isAddingHost)) {
     return (
       <View style={styles.center}>
         <AddHostModal
@@ -86,7 +85,9 @@ export default function App() {
           isRequired
           onPair={(code, deviceName) =>
             pair(code, deviceName).then((host) => {
+              setIsAddingHost(false);
               hostMenu.onChoose(host.id);
+              retry();
               return host;
             })
           }
@@ -94,13 +95,33 @@ export default function App() {
       </View>
     );
   }
-  if (client === null) {
+  if (status.kind === "connecting" || client === null) {
     return (
       <View style={styles.center}>
-        <Text style={styles.connecting}>
-          {failure ?? (hostId === null ? "Connecting to the local service…" : `Connecting to ${activeHost.name}…`)}
-        </Text>
-        {hostId !== null && !isBrowser && (
+        <Text style={styles.connecting}>{status.message}</Text>
+        {status.canRetry && (
+          <Pressable accessibilityRole="button" onPress={retry} style={styles.backButton}>
+            <Text style={styles.backText}>Retry</Text>
+          </Pressable>
+        )}
+        {status.canPair && (
+          <Pressable accessibilityRole="button" onPress={() => setIsAddingHost(true)} style={styles.backButton}>
+            <Text style={styles.backText}>Pair again</Text>
+          </Pressable>
+        )}
+        {hosts
+          .filter((host) => host.id !== hostId)
+          .map((host) => (
+            <Pressable
+              accessibilityRole="button"
+              key={host.id}
+              onPress={() => hostMenu.onChoose(host.id)}
+              style={styles.backButton}
+            >
+              <Text style={styles.backText}>Connect to {host.name}</Text>
+            </Pressable>
+          ))}
+        {status.canUseComputer && (
           <Pressable accessibilityRole="button" onPress={() => hostMenu.onChoose(null)} style={styles.backButton}>
             <Text style={styles.backText}>Back to this computer</Text>
           </Pressable>
@@ -176,14 +197,19 @@ export default function App() {
     <ActiveHostContext.Provider value={activeHost}>
       <HostMenuContext.Provider value={hostMenu}>
         <View style={styles.root}>
-          {hostId !== null && linkFailure !== null && (
+          {status.failure !== null && (
             <View accessibilityRole="alert" style={styles.banner}>
               <Text numberOfLines={2} style={styles.bannerText}>
-                {activeHost.name}: {linkFailure}
-                {hostClient?.hasGivenUp === true ? "" : " Trying again…"}
+                {activeHost.name}: {status.failure}
+                {status.isRetrying ? " Trying again…" : ""}
               </Text>
+              {status.canRetry && (
+                <Pressable accessibilityRole="button" onPress={retry}>
+                  <Text style={styles.bannerLink}>Retry</Text>
+                </Pressable>
+              )}
               {isBrowser ? (
-                hostClient?.needsPairing === true && (
+                status.canPair && (
                   <Pressable accessibilityRole="button" onPress={() => setIsAddingHost(true)}>
                     <Text style={styles.bannerLink}>Pair again</Text>
                   </Pressable>
