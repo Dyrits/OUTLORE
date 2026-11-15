@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the mobile navigation (full-screen menu, Chronicler as the whole screen and Back to the parent, committed as CHG-0292; open: starting a quest on a phone, other screens at phone widths, a real phone look), read the [current handoff](.agents/handoffs/2026-11-15-1913-mobile-navigation.md). Handoffs are shared and committed.
+- To resume the release 0.1.5-Prototype (published as a prerelease with the Outlore installers only; note rewritten; open: a real update from an installed 0.1.4, the web app check), read the [current handoff](.agents/handoffs/2026-11-15-2050-release-0.1.5.md). Handoffs are shared and committed.
 
 - To resume the fewer sandbox approval prompts (the suite runs inside the sandbox, CHG-0294; an owner-only setting to leave it without a question, CHG-0295; rebased onto `origin/main`; open: the push, a live check), read the [current handoff](.agents/handoffs/2026-11-15-1920-fewer-approval-prompts.md). Handoffs are shared and committed.
 
