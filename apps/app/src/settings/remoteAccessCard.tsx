@@ -12,8 +12,10 @@ import {
   codeLifeOf,
   deviceLineOf,
   ownRelayNoticeOf,
+  pairingHelpOf,
   relayLineOf,
   relayStatusTextOf,
+  webAppLineOf,
 } from "./remoteAccess";
 import { SettingsCard, SettingsRule, ToggleRow } from "./settingsParts";
 
@@ -104,7 +106,7 @@ function RemoteAccessOnHost({ client }: { client: ServiceClient }) {
             {pairing.code}
           </Text>
           <Text style={styles.muted}>
-            {codeLifeOf(pairing.expiresAt, now)} Paste it in the other Outlore, under Add a host.
+            {codeLifeOf(pairing.expiresAt, now)} {pairingHelpOf(view.webAppUrl)}
           </Text>
           <Button isPrimary={false} label={isCopied ? "Copied" : "Copy the code"} onPress={copy} />
         </View>
@@ -181,6 +183,9 @@ function RelayChoice({
       <Text style={local.label}>Relay</Text>
       <Text accessibilityLabel="Relay in use" style={styles.body}>
         {relayLineOf(view)}
+      </Text>
+      <Text accessibilityLabel="Web app address" selectable style={styles.muted}>
+        {webAppLineOf(view)}
       </Text>
       {!isOpen && (
         <View style={local.row}>

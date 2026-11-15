@@ -19,7 +19,7 @@ import {
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid } from "../core/index.ts";
-import { computerNameOf, RemoteConfig } from "./config.ts";
+import { computerNameOf, RemoteConfig, webAppOrigin } from "./config.ts";
 
 // This installation as a host: its identity, its pairing codes and its paired devices (device-pairing). Everything
 // here is storage; the connections are in the host runtime.
@@ -250,5 +250,6 @@ export const remoteAccessView = (status: RemoteAccessView["status"], connected: 
       isOwnRelay: record?.relayOrigin != null,
       relayOrigin: yield* relayOriginOf(record),
       status,
+      webAppUrl: webAppOrigin,
     } satisfies RemoteAccessView;
   });

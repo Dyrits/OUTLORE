@@ -191,6 +191,16 @@ describe("controlling one installation from another through the relay", () => {
     ),
   );
 
+  it.live("tells where the web app opens, the same whichever relay the host uses", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const w = yield* world;
+        const view = (yield* w.accessOf()) as unknown as { webAppUrl: string };
+        expect(view.webAppUrl).toBe("https://outlore.dyrits.workers.dev");
+      }),
+    ),
+  );
+
   it.live("accepts a pairing code once, and refuses an expired or garbled one", () =>
     Effect.scoped(
       Effect.gen(function* () {

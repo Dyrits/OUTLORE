@@ -52,6 +52,8 @@ export const RemoteAccessView = Schema.Struct({
   isOwnRelay: Schema.Boolean,
   relayOrigin: Schema.String,
   status: RelayStatus,
+  /** Where the web app opens in a browser; the shared relay serves it, whichever relay this host uses. */
+  webAppUrl: Schema.String,
 });
 export type RemoteAccessView = typeof RemoteAccessView.Type;
 

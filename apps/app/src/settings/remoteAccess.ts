@@ -54,6 +54,16 @@ export const relayLineOf = (view: Pick<RemoteAccessView, "isOwnRelay" | "relayOr
   return `Your own relay, on your Cloudflare account: ${host}`;
 };
 
+/** Where the web app opens, said in Charter's relay section; an own relay does not serve it. */
+export const webAppLineOf = (view: Pick<RemoteAccessView, "isOwnRelay" | "webAppUrl">) =>
+  `Web app: ${view.webAppUrl}. Open it in any browser and paste a pairing code.${
+    view.isOwnRelay ? " It is served by the shared relay, not by your own." : ""
+  }`;
+
+/** What to do with a pairing code just made: paste it in another Outlore, or in the web app. */
+export const pairingHelpOf = (webAppUrl: string) =>
+  `Paste it in the other Outlore, under Add a host, or open ${webAppUrl} in any browser and paste it there.`;
+
 /** What deploying the owner's own relay does and leaves behind, said before the token is used. */
 export const ownRelayNoticeOf = (pairedDevices: number) => {
   const devices =

@@ -6,8 +6,10 @@ import {
   codeLifeOf,
   deviceLineOf,
   ownRelayNoticeOf,
+  pairingHelpOf,
   relayLineOf,
   relayStatusTextOf,
+  webAppLineOf,
 } from "../../src/settings/remoteAccess";
 
 const device = (change: Partial<PairedDevice>) =>
@@ -58,6 +60,22 @@ describe("Charter's relay wording", () => {
     );
     expect(relayLineOf({ isOwnRelay: true, relayOrigin: "https://outlore-relay.me.workers.dev" })).toBe(
       "Your own relay, on your Cloudflare account: outlore-relay.me.workers.dev",
+    );
+  });
+
+  it("says where the web app opens, and that an own relay does not serve it", () => {
+    const webAppUrl = "https://outlore.dyrits.workers.dev";
+    expect(webAppLineOf({ isOwnRelay: false, webAppUrl })).toBe(
+      "Web app: https://outlore.dyrits.workers.dev. Open it in any browser and paste a pairing code.",
+    );
+    expect(webAppLineOf({ isOwnRelay: true, webAppUrl })).toBe(
+      "Web app: https://outlore.dyrits.workers.dev. Open it in any browser and paste a pairing code. It is served by the shared relay, not by your own.",
+    );
+  });
+
+  it("points the pairing code at the other Outlore and at the web app", () => {
+    expect(pairingHelpOf("https://outlore.dyrits.workers.dev")).toBe(
+      "Paste it in the other Outlore, under Add a host, or open https://outlore.dyrits.workers.dev in any browser and paste it there.",
     );
   });
 

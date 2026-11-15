@@ -6,7 +6,13 @@ import type { DeployResult } from "./ownRelay.ts";
  * The shared relay on the owner's free Cloudflare account (decision record 0016). One place names it, so the address
  * can change in a release; a pairing code carries the address it was made with.
  */
-export const defaultRelayOrigin = "https://outlore-relay.dyrits.workers.dev";
+export const defaultRelayOrigin = "https://outlore.dyrits.workers.dev";
+
+/**
+ * Where the web app opens: the shared relay serves it (CHG-0287), whichever relay a host uses; an own relay carries
+ * the Worker alone.
+ */
+export const webAppOrigin = defaultRelayOrigin;
 
 /** What device pairing needs from outside the database. */
 export interface RemoteSettings {
