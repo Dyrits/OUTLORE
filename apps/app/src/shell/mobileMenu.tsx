@@ -1,41 +1,16 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
-import { NavIcon, type NavIconName } from "./navIcons";
-import type { Place } from "./sidebar";
+import { NavIcon } from "./navIcons";
+import { type Place, placeGroups } from "./placeCatalog";
 
 // The menu of a narrow window, a phone's: the whole screen under the top bar, one large row per place. Quests are not
 // listed here; the Realms and Borderlands rows open the pages that list them.
-
-type Entry = { icon: NavIconName; label: string; note: string; place: Place };
-
-/** The menu's rows in groups, set apart by a line, in the sidebar's order. */
-const groups: ReadonlyArray<ReadonlyArray<Entry>> = [
-  [
-    { icon: "guild-hall", label: "Guild Hall", note: "What waits for you and what happened", place: "Guildmaster" },
-    { icon: "realms", label: "Realms", note: "Quests sharing lore, by realm", place: "Realms" },
-    { icon: "borderlands", label: "Borderlands", note: "Quests with no realm", place: "Borderlands" },
-  ],
-  [
-    { icon: "rituals", label: "Rituals", note: "Orders that run by themselves", place: "Rituals" },
-    { icon: "craft", label: "Craft", note: "Reusable procedures", place: "Craft" },
-  ],
-  [
-    { icon: "library", label: "Library", note: "Artifacts your quests made", place: "Library" },
-    { icon: "lore", label: "Lore", note: "What quests remember", place: "Lore" },
-    { icon: "archive", label: "Archive", note: "Archived quests", place: "Archived" },
-  ],
-  [
-    { icon: "reserves", label: "Reserves", note: "Usage and budgets", place: "Reserves" },
-    { icon: "charter", label: "Charter", note: "Devices and relays", place: "Charter" },
-    { icon: "workshop", label: "Workshop", note: "Accounts, Companions, and looks", place: "Settings" },
-  ],
-];
 
 /** The places as large rows; `place` is the one the owner is on, highlighted, and a choice goes to `onPlace`. */
 export function MobileMenu({ onPlace, place }: { onPlace: (place: Place) => void; place: Place | null }) {
   return (
     <ScrollView accessibilityLabel="Menu" contentContainerStyle={local.list} style={local.menu}>
-      {groups.map((group, index) => (
+      {placeGroups.map((group, index) => (
         <View key={group[0]?.place} style={[local.group, index > 0 && local.groupSplit]}>
           {group.map((entry) => {
             const isHere = place === entry.place;

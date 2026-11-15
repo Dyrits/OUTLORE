@@ -1,11 +1,4 @@
-import type {
-  AttachmentId,
-  BudgetScope,
-  MessageDelivery,
-  MissionDetail,
-  MissionId,
-  ThreadId,
-} from "@outlore/contracts";
+import type { AttachmentId, MessageDelivery, MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
 import { useEffect, useRef, useState } from "react";
 import {
   FlatList,
@@ -24,6 +17,7 @@ import { actWith } from "../foundation/acting";
 import { newRequestId, type ServiceClient } from "../foundation/client";
 import { companionLabelOf, effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
 import { countedOf } from "../foundation/labels";
+import { usePageNavigation } from "../foundation/pageNavigation";
 import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { useEnding } from "../foundation/useEnding";
@@ -345,12 +339,18 @@ export function Conversation({
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const selectedId = selectedThreadId;
   const setSelectedId = onSelectThread;
-  const [isJournalOpen, setIsJournalOpen] = useState(false);
+  const { page, onPage } = usePageNavigation();
+  const isJournalOpen = page?.kind === "journal";
+  const setIsJournalOpen = (isOpen: boolean) => onPage(isOpen ? { kind: "journal" } : null);
   const hasTopBar = useHasTopBar();
   const hasSidebar = useHasSidebar();
   const goBack = () => onBack(data?.mission ?? null);
-  const [loreThread, setLoreThread] = useState<{ id: ThreadId; title: string } | null>(null);
-  const [budgetScope, setBudgetScope] = useState<BudgetScope | null>(null);
+  const loreThread = page?.kind === "lore" ? page : null;
+  const setLoreThread = (thread: { id: ThreadId; title: string } | null) =>
+    onPage(thread === null ? null : { kind: "lore", ...thread });
+  const budgetScope = page?.kind === "budget" ? page.scope : null;
+  const setBudgetScope = (scope: import("@outlore/contracts").BudgetScope | null) =>
+    onPage(scope === null ? null : { kind: "budget", scope });
   const { data, error } = useServiceQuery(
     client,
     { _tag: "ReadMission", missionId, threadId: selectedId },

@@ -1,18 +1,6 @@
 import type { Place } from "./sidebar";
 
-/** Destinations a look reload can resume without a selected quest or realm. */
-export const resumablePlaces: readonly Place[] = [
-  "Archived",
-  "Craft",
-  "Guildmaster",
-  "Library",
-  "Lore",
-  "Quests",
-  "Realms",
-  "Reserves",
-  "Rituals",
-  "Settings",
-];
+export { resumablePlaces } from "./placeCatalog";
 
 /** Returns to the archived quest's actual parent, not the screen it happened to be opened from. */
 export const archiveParentOf = <Id extends string>(quest: { workspaceId: Id | null; workspaceName: string | null }) =>

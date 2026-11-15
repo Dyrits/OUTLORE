@@ -30,21 +30,9 @@ import {
 } from "./questTree";
 import { expandedWidth } from "./railStorage";
 
-/** The places the sidebar leads to; a quest is opened from its own row instead, a realm's quests from its own list. */
-export type Place =
-  | "Guildmaster"
-  | "Quests"
-  | "Realms"
-  | "Borderlands"
-  | "RealmQuests"
-  | "Rituals"
-  | "Craft"
-  | "Library"
-  | "Lore"
-  | "Archived"
-  | "Reserves"
-  | "Charter"
-  | "Settings";
+export type { Place } from "./placeCatalog";
+
+import type { Place } from "./placeCatalog";
 
 /** How far each level of side-quests steps in, and the width of the chevron's place at the start of a row. */
 const indentStep = 14;

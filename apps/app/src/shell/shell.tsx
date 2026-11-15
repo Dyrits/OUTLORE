@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { Dispatch, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
@@ -14,6 +14,7 @@ import { colors, radii } from "../foundation/theme";
 import type { RightPanel } from "../foundation/useRightPanel";
 import { ChroniclerColumn, chroniclerColumnWidth } from "./chroniclerDock";
 import { EdgeResizer } from "./edgeResizer";
+import type { Location, NavigationEvent } from "./location";
 import { MobileMenu } from "./mobileMenu";
 import type { RealmListing } from "./questTree";
 import {
@@ -49,6 +50,8 @@ const handleSize = 26;
 export function Shell(
   props: Omit<Parameters<typeof Sidebar>[0], "width"> & {
     children: ReactNode;
+    location: Location;
+    dispatch: Dispatch<NavigationEvent>;
     details: DetailsToggle | null;
     rightPanel: RightPanel;
     /** The realm whose quest list is open, named in the top bar. */
@@ -71,18 +74,10 @@ export function Shell(
   const chroniclerWidth = clampPaneWidth(storedChroniclerWidth, width, chroniclerColumnWidth);
   // Chronicler's panel: folded to a pill or open, remembered; a realm chosen for its next message opens it.
   const [isChroniclerOpen, setIsChroniclerOpen] = useState(readChroniclerOpen);
-  // Opened to the whole content area until restored or the owner navigates from the sidebar; not remembered.
-  const [isChroniclerFull, setIsChroniclerFull] = useState(false);
-  // On a narrow window the menu and Chronicler each take the whole content area in turn, not remembered; any choice in
-  // the menu closes it.
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isNarrowChroniclerOpen, setIsNarrowChroniclerOpen] = useState(false);
-  const navigate = (open: () => void) => {
-    setIsChroniclerFull(false);
-    setIsMenuOpen(false);
-    setIsNarrowChroniclerOpen(false);
-    open();
-  };
+  const { isChroniclerFull, isMenuOpen, isNarrowChroniclerOpen } = props.location;
+  const setIsChroniclerFull = (isOpen: boolean) => props.dispatch({ isOpen, type: "full" });
+  const setIsMenuOpen = (isOpen: boolean) => props.dispatch({ isOpen, type: "menu" });
+  const setIsNarrowChroniclerOpen = (isOpen: boolean) => props.dispatch({ isOpen, type: "narrowChronicler" });
   const setChroniclerOpen = (isOpen: boolean) => {
     rememberChroniclerOpen(isOpen);
     setIsChroniclerOpen(isOpen);
@@ -92,7 +87,6 @@ export function Shell(
   const narrowChroniclerToggle = {
     isOpen: isNarrowChroniclerOpen,
     onToggle: () => {
-      setIsMenuOpen(false);
       setIsNarrowChroniclerOpen(!isNarrowChroniclerOpen);
     },
   };
@@ -101,8 +95,6 @@ export function Shell(
     if (chroniclerRealmPath !== null) {
       rememberChroniclerOpen(true);
       setIsChroniclerOpen(true);
-      setIsNarrowChroniclerOpen(true);
-      setIsMenuOpen(false);
     }
   }, [chroniclerRealmPath]);
   const [questPanel, setQuestPanel] = useState<ReactNode>(null);
@@ -270,17 +262,13 @@ export function Shell(
               menu={{
                 isOpen: isMenuOpen,
                 onToggle: () => {
-                  setIsNarrowChroniclerOpen(false);
                   setIsMenuOpen(!isMenuOpen);
                 },
               }}
             />
             <View style={[local.narrowContent, isNarrowCovered && local.hidden]}>{props.children}</View>
             {isMenuOpen && (
-              <MobileMenu
-                onPlace={(next) => navigate(() => props.onPlace(next))}
-                place={props.openMission === null ? props.place : null}
-              />
+              <MobileMenu onPlace={props.onPlace} place={props.openMission === null ? props.place : null} />
             )}
             {isNarrowChroniclerOpen && !isMenuOpen && <View style={local.narrowContent}>{chroniclerChat}</View>}
             {!isMenuOpen && !isNarrowChroniclerOpen && panelColumn}
@@ -302,10 +290,10 @@ export function Shell(
                     {!isHidden && (
                       <Sidebar
                         {...props}
-                        onOpenMission={(id) => navigate(() => props.onOpenMission(id))}
-                        onOpenRealmQuests={(listing) => navigate(() => props.onOpenRealmQuests(listing))}
-                        onOpenThread={(missionId, threadId) => navigate(() => props.onOpenThread(missionId, threadId))}
-                        onPlace={(place) => navigate(() => props.onPlace(place))}
+                        onOpenMission={props.onOpenMission}
+                        onOpenRealmQuests={props.onOpenRealmQuests}
+                        onOpenThread={props.onOpenThread}
+                        onPlace={props.onPlace}
                         openMission={isChroniclerFull ? null : props.openMission}
                         openThread={isChroniclerFull ? null : props.openThread}
                         place={isChroniclerFull ? null : props.place}
