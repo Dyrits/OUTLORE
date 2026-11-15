@@ -50,9 +50,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the agent directory watch list (nine products added to the inspirations, with a research note; committed on local `main` as `a8982fc`; the push to `origin/main` needs the owner's approval for `--no-verify`), read the [current handoff](.agents/handoffs/2026-11-15-1910-agent-directory-watch-landed.md). Handoffs are shared and committed.
+
 - To resume the T3Code comparison and documentation accuracy (comparison, upstream notes and status corrections written and checked; the owner's decision whether to evaluate T3Code before the host and browser batch is open), read the [current handoff](.agents/handoffs/2026-11-15-1603-t3code-comparison.md). Handoffs are shared and committed.
 
 - To resume the relay rename to `outlore`, the web address shown in the app, and the release pipeline deploying both (committed; open: the first tag runs the `relay` job and creates the new Worker), read the [current handoff](.agents/handoffs/2026-11-15-1747-relay-deploy-in-release.md). Handoffs are shared and committed.
-
-- To resume the Outlore rename and publishing 0.1.4-Prototype (renamed, committed and pushed to `main`; the owner's look, the tag with the owner's approval, and a real update from Iskios are open), read the [current handoff](.agents/handoffs/2026-11-15-1458-outlore-rename.md). Handoffs are shared and committed.
-
