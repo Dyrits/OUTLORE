@@ -52,4 +52,10 @@ export const recentStoreMigrations = {
     yield* sql`UPDATE threads SET title = 'Chronicler'
       WHERE title = 'Iskios' AND mission_id IN (SELECT id FROM missions WHERE is_guildmaster = 1)`;
   }),
+  // Choice questions (CHG-0299): the questions a thread asks the owner to choose answers to, and the answers, both JSON.
+  "0051_choice_questions": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE questions ADD COLUMN choices TEXT`;
+    yield* sql`ALTER TABLE questions ADD COLUMN answers TEXT`;
+  }),
 };

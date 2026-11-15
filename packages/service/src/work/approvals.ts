@@ -1,11 +1,13 @@
 import { dirname, resolve as resolvePath } from "node:path";
-import type { Answer, ApprovalLevel, Question, QuestionOutcome, QuestionSource } from "@outlore/contracts";
+import type { Answer, ApprovalLevel, Choice, Question, QuestionOutcome, QuestionSource } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { Changes, fieldOf, Harness, invalid, notFound, readSettings, type ServiceFailure } from "../core/index.ts";
 import { folderEscapeOf, resolvedFolderOf, workspaceWorktreesOf } from "../harness/index.ts";
 import {
+  answersProblemOf,
   capabilities,
+  choicesOfPrompt,
   consequences,
   findCoveringPermission,
   insertPermission,
@@ -44,12 +46,15 @@ export interface FolderQuestion {
 
 /** The answer a thread or the harness receives. */
 export interface Decision {
+  /** What the owner chose for a choice question, one list per choice; only on an answered one (CHG-0299). */
+  readonly answers?: ReadonlyArray<ReadonlyArray<string>>;
   readonly isAllowed: boolean;
   /** Told to the thread: the refusal, the owner's message, or how to proceed. */
   readonly text: string;
 }
 
 interface Resolution {
+  readonly answers?: ReadonlyArray<ReadonlyArray<string>> | null;
   readonly message: string | null;
   readonly outcome: QuestionOutcome;
 }
@@ -62,6 +67,12 @@ export class Approvals extends Context.Service<
       questionId: string,
       answer: Answer,
       message: string | null,
+      device: string,
+    ) => Effect.Effect<Question, ServiceFailure | SqlError.SqlError>;
+    /** Answers a choice question with the owner's choices, or skips it with null (CHG-0299). */
+    readonly answerChoices: (
+      questionId: string,
+      answers: ReadonlyArray<ReadonlyArray<string>> | null,
       device: string,
     ) => Effect.Effect<Question, ServiceFailure | SqlError.SqlError>;
     /**
@@ -124,16 +135,21 @@ const allowedText =
   "Allowed. Do exactly this action now, with nothing chained before or after it; run any other step separately. " +
   "Keep the command's sandbox protection; this answer does not grant an escape.";
 
+const skippedText =
+  "The owner skipped this question and chose not to answer. Carry on without an answer, or ask again in plain text if you still need one.";
+
 const textOf = (resolution: Resolution, outsideSandbox = false) =>
-  allowingOutcomes.includes(resolution.outcome)
-    ? outsideSandbox
-      ? "Allowed. Run exactly this command outside the sandbox once, with nothing added."
-      : allowedText
-    : resolution.outcome === "Withdrawn"
-      ? "Withdrawn: the owner stopped this thread."
-      : resolution.message !== null
-        ? `Denied by the owner: ${resolution.message}`
-        : "Not approved by the owner. Do not do this action; carry on without it.";
+  resolution.outcome === "Skipped"
+    ? skippedText
+    : allowingOutcomes.includes(resolution.outcome)
+      ? outsideSandbox
+        ? "Allowed. Run exactly this command outside the sandbox once, with nothing added."
+        : allowedText
+      : resolution.outcome === "Withdrawn"
+        ? "Withdrawn: the owner stopped this thread."
+        : resolution.message !== null
+          ? `Denied by the owner: ${resolution.message}`
+          : "Not approved by the owner. Do not do this action; carry on without it.";
 
 /** Approvals over the store, holding the open questions and one-time allowances in memory. */
 export const approvalsLayer = Layer.effect(
@@ -189,6 +205,8 @@ export const approvalsLayer = Layer.effect(
       });
 
     interface Asked {
+      /** The questions to choose answers to; null for an approval question. */
+      readonly choices?: ReadonlyArray<Choice>;
       readonly details: string;
       readonly missionId: string;
       readonly pattern: string | null;
@@ -224,9 +242,10 @@ export const approvalsLayer = Layer.effect(
           missionId: asked.missionId,
           record: (id, now) =>
             sql`INSERT INTO questions (id, mission_id, thread_id, source, summary, details, pattern, permission,
-                asked_at)
+                asked_at, choices)
               VALUES (${id}, ${asked.missionId}, ${asked.threadId}, ${asked.source}, ${asked.summary},
-                ${asked.details}, ${asked.pattern}, ${asked.permission}, ${now})`.pipe(Effect.asVoid),
+                ${asked.details}, ${asked.pattern}, ${asked.permission}, ${now},
+                ${asked.choices === undefined ? null : JSON.stringify(asked.choices)})`.pipe(Effect.asVoid),
           threadId: asked.threadId,
         })
         .pipe(Effect.map((resolution) => resolution ?? withdrawn));
@@ -237,6 +256,7 @@ export const approvalsLayer = Layer.effect(
         Effect.gen(function* () {
           const now = yield* Clock.currentTimeMillis;
           yield* sql`UPDATE questions SET outcome = ${resolution.outcome}, message = ${resolution.message},
+              answers = ${resolution.answers === undefined || resolution.answers === null ? null : JSON.stringify(resolution.answers)},
               device = ${device}, resolved_at = ${now}
             WHERE id = ${questionId} AND outcome IS NULL`;
           yield* resumeInTurn(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
@@ -318,6 +338,26 @@ export const approvalsLayer = Layer.effect(
         });
       });
 
+    /** Holds the turn on the owner's choices, then tells the thread what was chosen, or that it was skipped. */
+    const askChoices = (threadId: string, choices: ReadonlyArray<Choice>) =>
+      Effect.gen(function* () {
+        const missionId = yield* missionOf(threadId);
+        if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
+        const resolution = yield* ask({
+          choices,
+          details: choices.map((choice) => choice.question).join("\n"),
+          missionId,
+          pattern: null,
+          permission: null,
+          source: "Harness",
+          summary: `Asks: ${choices.map((choice) => choice.header || choice.question).join(", ")}.`,
+          threadId,
+        });
+        return resolution.outcome === "Answered" && resolution.answers != null
+          ? ({ answers: resolution.answers, isAllowed: true, text: "" } satisfies Decision)
+          : ({ isAllowed: false, text: textOf(resolution) } satisfies Decision);
+      });
+
     const answerPrompt = (
       threadId: string,
       toolName: string,
@@ -329,6 +369,9 @@ export const approvalsLayer = Layer.effect(
         // A prompt from a harness still exiting after Stop runs nothing and asks nobody.
         if ((yield* readTurnId(threadId)) === null)
           return { isAllowed: false, text: "This thread is not at work, so nothing runs." } satisfies Decision;
+        // A prompt that asks the owner to choose is a question, not an action: it always waits for the owner's answer.
+        const choices = choicesOfPrompt(toolName, input);
+        if (choices !== null) return yield* askChoices(threadId, choices);
         const target = targetOf(toolName, input);
         const isEscape =
           isOutsideSandbox || (toolName === "Bash" && fieldOf(input, "dangerouslyDisableSandbox") === true);
@@ -391,6 +434,7 @@ export const approvalsLayer = Layer.effect(
         if (question === null) return yield* notFound("No such question.");
         if (question.outcome !== null) return yield* invalid("This question was already answered.");
         if (!waits.isWaiting(questionId)) return yield* invalid("This question is no longer waiting.");
+        if (question.choices !== null) return yield* invalid("This question asks you to choose: answer its choices.");
         const note = given === "Deny" && message !== null && message.trim() !== "" ? message.trim() : null;
         const resolution: Resolution = { message: note, outcome: outcomeOfAnswer[given] };
         if (given === "AlwaysAllow") {
@@ -402,6 +446,22 @@ export const approvalsLayer = Layer.effect(
         yield* waits.settle(questionId, resolution);
         const answered = yield* readQuestion(questionId);
         return answered ?? question;
+      }).pipe(Effect.provideService(SqlClient.SqlClient, sql));
+
+    const answerChoices = (questionId: string, given: ReadonlyArray<ReadonlyArray<string>> | null, device: string) =>
+      Effect.gen(function* () {
+        const question = yield* readQuestion(questionId);
+        if (question === null) return yield* notFound("No such question.");
+        if (question.outcome !== null) return yield* invalid("This question was already answered.");
+        if (!waits.isWaiting(questionId)) return yield* invalid("This question is no longer waiting.");
+        if (question.choices === null) return yield* invalid("This question asks for Allow or Deny, not choices.");
+        const problem = given === null ? null : answersProblemOf(question.choices, given);
+        if (problem !== null) return yield* invalid(problem);
+        const answers = given === null ? null : given.map((texts) => texts.map((text) => text.trim()));
+        const resolution: Resolution = { answers, message: null, outcome: answers === null ? "Skipped" : "Answered" };
+        yield* resolve(questionId, question.threadId, resolution, device);
+        yield* waits.settle(questionId, resolution);
+        return (yield* readQuestion(questionId)) ?? question;
       }).pipe(Effect.provideService(SqlClient.SqlClient, sql));
 
     const withdraw = (threadId: string) =>
@@ -438,6 +498,7 @@ export const approvalsLayer = Layer.effect(
 
     return {
       answer,
+      answerChoices,
       answerPrompt: (threadId, toolName, input, isOutsideSandbox = false, isUnsandboxed = false, toolUseId = null) =>
         (toolUseId === null
           ? Effect.void

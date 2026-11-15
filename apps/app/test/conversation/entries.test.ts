@@ -25,7 +25,9 @@ const summary = (id: string, parentId: string | null, openedAt: number, isAside 
 const message = (id: string, sentAt: number) => ({ id, sender: "user", sentAt, text: id });
 
 const recordedQuestionOf = (id: string, askedAt: number): Question => ({
+  answers: null,
   askedAt,
+  choices: null,
   details: id,
   device: null,
   id: QuestionId.make(id),

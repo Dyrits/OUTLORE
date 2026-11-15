@@ -22,12 +22,39 @@ export const QuestionOutcome = Schema.Literals([
   "AllowedByPermission",
   /** A harness prompt that is not a sensitive action, run without a question (CHG-0035). */
   "AllowedAutomatically",
+  /** A choice question the owner answered (CHG-0299). */
+  "Answered",
+  /** A choice question the owner chose not to answer (CHG-0299). */
+  "Skipped",
 ]);
 export type QuestionOutcome = typeof QuestionOutcome.Type;
 
-/** One approval question about one action, open or recorded. */
+/** One option a choice question offers. */
+export const ChoiceOption = Schema.Struct({ description: Schema.String, label: Schema.String });
+export type ChoiceOption = typeof ChoiceOption.Type;
+
+/**
+ * One question a thread asks the owner to answer by choosing (CHG-0299), in the shape Claude Code's AskUserQuestion,
+ * Codex's request_user_input and OpenCode's question tool share: a short header, the question, and its options.
+ */
+export const Choice = Schema.Struct({
+  /** Whether the owner may type an answer of their own instead of an option (Claude Code always allows it). */
+  allowsOther: Schema.Boolean,
+  header: Schema.String,
+  /** Whether several options may be chosen. */
+  multiple: Schema.Boolean,
+  options: Schema.Array(ChoiceOption),
+  question: Schema.String,
+});
+export type Choice = typeof Choice.Type;
+
+/** One approval question about one action, or one set of choices, open or recorded. */
 export const Question = Schema.Struct({
+  /** What the owner answered to each choice, in order (the options' labels or typed text); null until answered, and when skipped. */
+  answers: Schema.NullOr(Schema.Array(Schema.Array(Schema.String))),
   askedAt: Schema.Number,
+  /** The questions to choose answers to; null for an approval question (Allow, Always allow, Deny). */
+  choices: Schema.NullOr(Schema.Array(Choice)),
   /** The exact command, file, or target. */
   details: Schema.String,
   /** Where it was answered, such as "desktop"; null while open or when no person answered. */

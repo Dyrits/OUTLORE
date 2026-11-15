@@ -1,7 +1,14 @@
 import type { SuggestionOutcome } from "@outlore/contracts";
 import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
-import { HarnessFailure, type HarnessPrompt, type PromptAnswer, type ToolAnswer, textFieldOf } from "../core/index.ts";
+import {
+  fieldOf,
+  HarnessFailure,
+  type HarnessPrompt,
+  type PromptAnswer,
+  type ToolAnswer,
+  textFieldOf,
+} from "../core/index.ts";
 import type { Approvals } from "./approvals.ts";
 import { countChatter } from "./chatter.ts";
 import { type CommandRunner, changed, unchanged, type WithFollowUps } from "./commands.ts";
@@ -41,6 +48,22 @@ export const callerRefusalOf = (threadId: string, name: string) =>
   });
 
 /**
+ * Claude Code's AskUserQuestion takes its answers back in `updatedInput.answers`: each question's text mapped to the
+ * chosen labels or typed text, joined by ", " for a multiple choice (CHG-0299).
+ */
+const withAnswers = (input: unknown, answers: ReadonlyArray<ReadonlyArray<string>> | undefined) => {
+  if (answers === undefined) return input;
+  const questions = fieldOf(input, "questions");
+  if (!Array.isArray(questions)) return input;
+  return {
+    ...(input as object),
+    answers: Object.fromEntries(
+      questions.map((entry, index) => [textFieldOf(entry, "question") ?? "", (answers[index] ?? []).join(", ")]),
+    ),
+  };
+};
+
+/**
  * A thread's ask-the-owner capability for its turn request: the answer `answer_prompt` gives Claude Code,
  * without MCP. A store that cannot answer fails the turn rather than leave the harness waiting.
  */
@@ -66,7 +89,11 @@ export const askOwnerFor =
         prompt.isOutsideSandbox ?? false,
         prompt.isUnsandboxed ?? false,
       );
-      return { isAllowed: decision.isAllowed, text: decision.text } satisfies PromptAnswer;
+      return {
+        isAllowed: decision.isAllowed,
+        text: decision.text,
+        ...(decision.answers === undefined ? {} : { answers: decision.answers }),
+      } satisfies PromptAnswer;
     }).pipe(
       Effect.provideService(SqlClient.SqlClient, sql),
       Effect.orDie,
@@ -185,7 +212,7 @@ export const makeToolHandlers = (dependencies: {
             answer(
               JSON.stringify(
                 decision.isAllowed
-                  ? { behavior: "allow", updatedInput: input }
+                  ? { behavior: "allow", updatedInput: withAnswers(input, decision.answers) }
                   : { behavior: "deny", message: decision.text },
               ),
             ),

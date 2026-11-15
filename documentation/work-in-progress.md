@@ -1,5 +1,9 @@
 # Work in progress
 
+## Choice dialog for AskUserQuestion · 2026-11-15 · built and tested, window look and a live Claude Code run pending
+
+The owner reported that Claude Code's `AskUserQuestion` showed no dialog: it ran unasked and came back with no answers. CHG-0299 (in `changelog/0.1.6-Prototype.md`; starting revision `d0896ad`, committed on `main`) makes it a choice question: one dialog with the call's choices (single or multiple, an own answer, Send, Skip), the turn held in Attention, the answers returned in `updatedInput.answers`; Stop withdraws, Skip is recorded as Skipped. Agreed with the owner: multiple choices and an own answer supported, Skip distinct from a withdrawal, Claude Code only wired, contract shaped for Codex and OpenCode. [Specification](capabilities/action-approval/specifications.md#choice-questions), [verification](verification/2026-11-15-choice-dialog.md). Open: the owner's look at the dialog (no window drive was possible in the sandbox), a live Claude Code run, Codex and OpenCode adapters (backlog), merging the changelog file with `worktree/android-apk`'s (CHG-0298).
+
 ## Mobile navigation · 2026-11-15 · built and checked in a 390 px window, owner's look pending
 
 CHG-0292 (in `changelog/0.1.5-Prototype.md`; starting commit `3ba47a7`, uncommitted): below 820 px a top bar with a menu button opens a full-screen menu of the places; Chronicler is the whole content area; a quest's Back goes to its realm's quests or the Borderlands; the Workshop, archive, and All lore lose their Back to the Guild Hall. [Verification](verification/2026-11-15-mobile-navigation.md). Open: the owner's look on a real phone; starting a quest on a phone (the quest lists have no new-quest button on a narrow window); other screens at phone widths (the Workshop's cards are cramped, see the backlog's narrow-windows item); safe areas, light and Gild looks.

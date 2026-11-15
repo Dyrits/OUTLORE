@@ -102,7 +102,15 @@ const scriptedCall = (request: TurnRequest, line: string, turn: FakeTurn) => {
         isOutsideSandbox: prompt[1] === "escape",
         toolName: prompt[2] ?? "",
       })
-      .pipe(Effect.map((answer) => (answer.isAllowed ? "prompt allowed" : `prompt denied: ${answer.text}`)));
+      .pipe(
+        Effect.map((answer) =>
+          answer.answers !== undefined
+            ? `prompt answered: ${JSON.stringify(answer.answers)}`
+            : answer.isAllowed
+              ? "prompt allowed"
+              : `prompt denied: ${answer.text}`,
+        ),
+      );
   }
   // `folder <tool> <json>` asks the one-time question a harness asks before starting in a linked thread folder.
   const folder = /^folder (\S+) (.*)$/.exec(line);

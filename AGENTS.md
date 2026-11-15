@@ -54,8 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the real choice dialog for Claude Code's AskUserQuestion (contract, service, app and tests done and committed on `main`; open: the owner's look in a window, a live Claude Code run, Codex and OpenCode adapters), read the [current handoff](.agents/handoffs/2026-11-15-2145-choice-dialog.md). Handoffs are shared and committed.
+
 - To resume the release 0.1.5-Prototype (published as a prerelease with the Outlore installers only; note rewritten; open: a real update from an installed 0.1.4, the web app check), read the [current handoff](.agents/handoffs/2026-11-15-2050-release-0.1.5.md). Handoffs are shared and committed.
 
 - To resume the fewer sandbox approval prompts (the suite runs inside the sandbox, CHG-0294; an owner-only setting to leave it without a question, CHG-0295; rebased onto `origin/main`; open: the push, a live check), read the [current handoff](.agents/handoffs/2026-11-15-1920-fewer-approval-prompts.md). Handoffs are shared and committed.
 
-- To resume the Dock icon bounce on summons (rebased on `origin/main`; the repeated bounce is chosen; open: a real Mac check and the push to `main`), read the [current handoff](.agents/handoffs/2026-11-15-1916-dock-bounce-rebased.md). Handoffs are shared and committed.

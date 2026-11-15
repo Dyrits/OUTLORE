@@ -1,10 +1,19 @@
-import type { Answer, Question, QuestionOutcome } from "@outlore/contracts";
+import type { Answer, Choice, Question, QuestionOutcome } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { clockOf } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
-import { answersOf } from "./questionAnswers";
+import {
+  answeredLineOf,
+  answersOf,
+  answersOfDrafts,
+  type ChoiceDraft,
+  emptyDraft,
+  pickOption,
+  pickOther,
+  typeOther,
+} from "./questionAnswers";
 
 const outcomeLabels = {
   Allowed: "Allowed",
@@ -12,8 +21,10 @@ const outcomeLabels = {
   AllowedByMessage: "Allowed by your message",
   AllowedByPermission: "Allowed by a standing permission",
   AlwaysAllowed: "Always allowed",
+  Answered: "Answered",
   Denied: "Denied",
   Discarded: "Discarded",
+  Skipped: "Skipped",
   Withdrawn: "Withdrawn",
 } as const satisfies Record<QuestionOutcome, string>;
 
@@ -25,12 +36,22 @@ const shortDetailOf = (details: string) => {
   return first.length > lineLength || first !== details.trim() ? `${first.slice(0, lineLength).trimEnd()}…` : first;
 };
 
+/** What a line says of a question: an action in plain words, a choice with its answers, or the command. */
+const lineTextOf = (question: Question) => {
+  // An action run without a question is told in plain words; its command stays in the history.
+  if (question.outcome === "AllowedAutomatically") return question.summary.replace(/\.$/, "");
+  if (question.choices !== null)
+    return question.answers === null
+      ? shortDetailOf(question.details)
+      : shortDetailOf(answeredLineOf(question.choices, question.answers));
+  return shortDetailOf(question.details);
+};
+
 /** The short line an answered or withdrawn question, or an action run without one, leaves in its thread. */
 export function QuestionLine({ question }: { question: Question }) {
   const parts = [
     question.outcome === null ? "Open" : outcomeLabels[question.outcome],
-    // An action run without a question is told in plain words; its command stays in the history.
-    question.outcome === "AllowedAutomatically" ? question.summary.replace(/\.$/, "") : shortDetailOf(question.details),
+    lineTextOf(question),
     question.resolvedAt === null ? null : clockOf(question.resolvedAt),
     question.device,
   ].filter((part) => part !== null);
@@ -58,8 +79,134 @@ function AnswerButton({
   );
 }
 
-/** An open question with its buttons; outside its thread it also names its mission. */
+/** One choice of a choice question: its options to pick, and a field to type an answer of the owner's own. */
+function ChoiceInput({
+  choice,
+  draft,
+  onChange,
+}: {
+  choice: Choice;
+  draft: ChoiceDraft;
+  onChange: (draft: ChoiceDraft) => void;
+}) {
+  return (
+    <View style={styles.details}>
+      {choice.header !== "" && <Text style={styles.muted}>{choice.header}</Text>}
+      <Text style={styles.questionText}>{choice.question}</Text>
+      {choice.multiple && <Text style={styles.muted}>Choose any number.</Text>}
+      <View style={styles.chips}>
+        {choice.options.map((option) => (
+          <Pressable
+            accessibilityLabel={option.label}
+            accessibilityRole={choice.multiple ? "checkbox" : "radio"}
+            accessibilityState={{ selected: draft.selected.includes(option.label) }}
+            key={option.label}
+            onPress={() => onChange(pickOption(choice, draft, option.label))}
+            style={[styles.answer, draft.selected.includes(option.label) && styles.answerPrimary]}
+          >
+            <Text style={[styles.answerText, draft.selected.includes(option.label) && styles.answerTextPrimary]}>
+              {option.label}
+            </Text>
+            {option.description !== "" && <Text style={styles.muted}>{option.description}</Text>}
+          </Pressable>
+        ))}
+        {choice.allowsOther && (
+          <Pressable
+            accessibilityLabel="Other"
+            accessibilityRole={choice.multiple ? "checkbox" : "radio"}
+            accessibilityState={{ selected: draft.isOtherChosen }}
+            onPress={() => onChange(pickOther(choice, draft))}
+            style={[styles.answer, draft.isOtherChosen && styles.answerPrimary]}
+          >
+            <Text style={[styles.answerText, draft.isOtherChosen && styles.answerTextPrimary]}>Other</Text>
+          </Pressable>
+        )}
+      </View>
+      {draft.isOtherChosen && (
+        <TextInput
+          accessibilityLabel={`Your own answer to ${choice.question}`}
+          onChangeText={(text) => onChange(typeOther(draft, text))}
+          placeholder="Your own answer"
+          style={styles.input}
+          value={draft.other}
+        />
+      )}
+    </View>
+  );
+}
+
+/** An open choice question: every choice to answer, then Send, or Skip to leave it unanswered (CHG-0299). */
+function ChoiceCard({
+  choices,
+  client,
+  question,
+  onOpenMission,
+}: {
+  choices: ReadonlyArray<Choice>;
+  client: ServiceClient;
+  question: Question;
+  onOpenMission?: () => void;
+}) {
+  const [drafts, setDrafts] = useState<ReadonlyArray<ChoiceDraft>>(() => choices.map(() => emptyDraft));
+  const [error, setError] = useState<string | null>(null);
+  const answers = answersOfDrafts(choices, drafts);
+  const send = (given: ReadonlyArray<ReadonlyArray<string>> | null) =>
+    client.request({ _tag: "AnswerChoices", answers: given, questionId: question.id }).then(
+      () => setError(null),
+      (reason) => setError(messageOf(reason)),
+    );
+  return (
+    <View style={styles.question}>
+      {onOpenMission !== void 0 && (
+        <Pressable onPress={onOpenMission}>
+          <Text numberOfLines={1} style={styles.link}>
+            {question.missionTitle}
+          </Text>
+        </Pressable>
+      )}
+      {choices.map((choice, index) => (
+        <ChoiceInput
+          choice={choice}
+          draft={drafts[index] ?? emptyDraft}
+          key={choice.question}
+          onChange={(draft) => setDrafts(drafts.map((current, at) => (at === index ? draft : current)))}
+        />
+      ))}
+      <View style={styles.chips}>
+        <Pressable
+          accessibilityState={{ disabled: answers === null }}
+          disabled={answers === null}
+          onPress={() => answers !== null && send(answers)}
+          style={[styles.answer, styles.answerPrimary, answers === null && { opacity: 0.4 }]}
+        >
+          <Text style={[styles.answerText, styles.answerTextPrimary]}>Send</Text>
+        </Pressable>
+        <AnswerButton label="Skip" onPress={() => send(null)} />
+      </View>
+      {error !== null && <Text style={styles.error}>{error}</Text>}
+    </View>
+  );
+}
+
+/** An open question: its choices to answer, or an action with its buttons; outside its thread it also names its mission. */
 export function QuestionCard({
+  client,
+  question,
+  onOpenMission,
+}: {
+  client: ServiceClient;
+  question: Question;
+  onOpenMission?: () => void;
+}) {
+  return question.choices === null ? (
+    <ActionCard client={client} onOpenMission={onOpenMission} question={question} />
+  ) : (
+    <ChoiceCard choices={question.choices} client={client} onOpenMission={onOpenMission} question={question} />
+  );
+}
+
+/** An open approval question with its buttons. */
+function ActionCard({
   client,
   question,
   onOpenMission,

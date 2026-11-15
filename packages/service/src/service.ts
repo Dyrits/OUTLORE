@@ -274,6 +274,7 @@ const make = Effect.gen(function* () {
               ),
             ),
           ),
+        AnswerChoices: (given) => approvals.answerChoices(given.questionId, given.answers, "desktop"),
         AnswerQuestion: (given) => approvals.answer(given.questionId, given.answer, given.message, "desktop"),
         AnswerSuggestion: (given) =>
           suggestions.answer(given.suggestionId, given.answer).pipe(

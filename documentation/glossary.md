@@ -187,6 +187,10 @@ _Avoid_: Switch, transfer
 The user's permission for one risky action in one thread.
 _Avoid_: Consent, confirmation
 
+**Choice question**:
+A question a thread asks the owner to answer by choosing from options, with an own answer when allowed, instead of approving an action. One dialog carries up to four choices; the owner sends the answers or skips it. It never saves a standing permission.
+_Avoid_: Poll, form, prompt
+
 **Standing permission**:
 The user's permission for one kind of risky action, in a workspace, a mission, or everywhere, granted with Always allow and removable from the Permissions page.
 _Avoid_: Rule, always-allow, grant

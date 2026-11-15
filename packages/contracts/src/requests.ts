@@ -329,6 +329,14 @@ export const AnswerQuestion = Schema.TaggedStruct("AnswerQuestion", {
   message: Schema.NullOr(Schema.String),
   questionId: QuestionId,
 });
+/**
+ * The owner's answers to a choice question (CHG-0299): one list per choice, in order, of the options' labels or the
+ * owner's own text; exactly one entry unless the choice allows several. null skips the question.
+ */
+export const AnswerChoices = Schema.TaggedStruct("AnswerChoices", {
+  answers: Schema.NullOr(Schema.Array(Schema.Array(Schema.String))),
+  questionId: QuestionId,
+});
 /** Lists the open approval questions of every mission. */
 export const ListOpenQuestions = Schema.TaggedStruct("ListOpenQuestions", {});
 /** The owner sets, changes, or removes a mission's budget; raising past the spending resumes stopped threads. */
@@ -525,6 +533,7 @@ export const Request = Schema.Union([
   ResolveLoreProposal,
   ReadLoreHistory,
   UndoLoreChange,
+  AnswerChoices,
   AnswerQuestion,
   AnswerSuggestion,
   SetMissionBudget,
@@ -606,6 +615,7 @@ export const Results = {
   AddCredit: Schema.Null,
   AddHost: KnownHost,
   AddJournalEntry: JournalView,
+  AnswerChoices: Question,
   AnswerQuestion: Question,
   AnswerSuggestion: Suggestion,
   BrowseFolders: FolderListing,

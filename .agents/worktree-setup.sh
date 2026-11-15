@@ -14,7 +14,8 @@ source=${1:-$(cd "$(git rev-parse --git-common-dir)/.." && pwd -P)}
 [ "$source" != "$here" ] || { echo "Run this from a linked worktree, not from the checkout that holds the packages." >&2; exit 1; }
 [ -d "$source/node_modules" ] || { echo "No node_modules in $source: run \`bun install\` there first." >&2; exit 1; }
 
-for folder in node_modules apps/*/node_modules packages/*/node_modules; do
+# The workspaces' folders are looked up in the source: a fresh worktree has none yet, so a glob here would match nothing.
+for folder in node_modules $(cd "$source" && ls -d apps/*/node_modules packages/*/node_modules 2>/dev/null); do
   [ -d "$source/$folder" ] || continue
   rm -rf "${here:?}/$folder"
   mkdir -p "$here/$folder"
