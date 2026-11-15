@@ -1,9 +1,24 @@
 {
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/r/*"]
+  },
   "compatibility_date": "2026-11-01",
   "durable_objects": {
-    "bindings": [{ "class_name": "Room", "name": "ROOM" }]
+    "bindings": [
+      {
+        "class_name": "Room",
+        "name": "ROOM"
+      }
+    ]
   },
   "main": "src/worker.ts",
-  "migrations": [{ "new_sqlite_classes": ["Room"], "tag": "v1" }],
+  "migrations": [
+    {
+      "new_sqlite_classes": ["Room"],
+      "tag": "v1"
+    }
+  ],
   "name": "outlore-relay"
 }

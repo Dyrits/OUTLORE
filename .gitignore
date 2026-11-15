@@ -11,3 +11,6 @@ release/
 .wrangler/
 # A thread's own git worktrees, made inside its folder so its sandbox writes them (CHG-0273)
 .worktrees/
+
+# The web build the relay Worker serves, exported by `bun run site` in packages/relay
+packages/relay/public/

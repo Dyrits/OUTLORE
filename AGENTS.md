@@ -52,7 +52,7 @@ Latest handoffs:
 
 - To resume the Outlore rename and publishing 0.1.4-Prototype (renamed, committed and pushed to `main`; the owner's look, the tag with the owner's approval, and a real update from Iskios are open), read the [current handoff](.agents/handoffs/2026-11-15-1458-outlore-rename.md). Handoffs are shared and committed.
 
-- To resume browser access (built and checked locally, uncommitted on `main`; next: commit, push, serve the web build from the relay Worker and publish it online, then pair from a browser to the owner's Mac), read the [current handoff](.agents/handoffs/2026-11-15-1556-browser-access-publish.md). Handoffs are shared and committed.
+- To resume browser access (committed, and the web page deployed online on the relay at `outlore-relay.dyrits.workers.dev`; open: a real pairing from another network to the owner's Mac), read the [current handoff](.agents/handoffs/2026-11-15-1607-browser-access-online.md). Handoffs are shared and committed.
 
 - To resume publishing 0.1.3-Prototype (the review and CHG-0280 fixes are done, verified and uncommitted on `main`; next: commit, version bump CHG-0281, push and the `0.1.3-Prototype` tag, each push with the owner's approval), read the [current handoff](.agents/handoffs/2026-11-14-1540-release-0-1-3-publish.md). Handoffs are shared and committed.
 

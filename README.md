@@ -261,7 +261,7 @@ Commits run Biome on staged files and then the workspace typecheck.
 | [`packages/service`](packages/service/) | Local Node service, SQLite storage, harness adapters, scheduling, and MCP thread tools, built with Effect |
 | [`packages/contracts`](packages/contracts/) | Shared records and requests defined with Effect Schema |
 | [`packages/channel`](packages/channel/) | The end-to-end encrypted channel and pairing code used between paired devices |
-| [`packages/relay`](packages/relay/) | The Cloudflare Worker that forwards paired devices' encrypted traffic |
+| [`packages/relay`](packages/relay/) | The Cloudflare Worker that forwards paired devices' encrypted traffic and serves the web app (`bun run deploy` builds the site and deploys it) |
 | [`packages/controller`](packages/controller/) | A browser as a paired device: its pairings in browser storage, pairing with a code, and the encrypted link to a host |
 | [`documentation`](documentation/) | Product specifications, architecture, decisions, and verification evidence |
 

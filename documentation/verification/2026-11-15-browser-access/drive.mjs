@@ -10,7 +10,10 @@ const [webBuild, out] = process.argv.slice(2);
 mkdirSync(out, { recursive: true });
 const here = import.meta.dirname;
 const electron = resolve(here, "../../../node_modules/electron/dist/Electron.app/Contents/MacOS/Electron");
-const ports = { debug: 9333, host: 18788, relay: 18787, web: 18790 };
+// DRIVE_WORKER_PORT=<port> uses one running `wrangler dev` (packages/relay) as the relay and the page both, in place of
+// relay.mjs and serve.mjs.
+const worker = process.env.DRIVE_WORKER_PORT;
+const ports = { debug: 9333, host: 18788, relay: Number(worker ?? 18787), web: Number(worker ?? 18790) };
 const relayOrigin = `http://127.0.0.1:${ports.relay}`;
 const dataDirectory = "/tmp/outlore-drive-data";
 rmSync(dataDirectory, { force: true, recursive: true });
@@ -33,8 +36,10 @@ const check = (name, ok, detail = "") => {
 const stop = () => children.forEach((c) => c.kill());
 process.on("exit", stop);
 
-await start("node", ["/tmp/outlore-drive/relay.js", String(ports.relay)]);
-await start("node", [resolve(here, "serve.mjs"), webBuild, String(ports.web)]);
+if (worker === undefined) {
+  await start("node", ["/tmp/outlore-drive/relay.js", String(ports.relay)]);
+  await start("node", [resolve(here, "serve.mjs"), webBuild, String(ports.web)]);
+}
 let host = await start("node", ["/tmp/outlore-drive/host.js", dataDirectory, relayOrigin, String(ports.host), "0.1.3-Prototype"]);
 
 // The owner's own loopback socket on the host: pairing switch, codes, disconnecting a device, reading quests.

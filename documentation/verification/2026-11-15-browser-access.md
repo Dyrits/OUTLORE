@@ -52,9 +52,15 @@ node documentation/verification/2026-11-15-browser-access/drive.mjs /tmp/outlore
 
 Screens in [`2026-11-15-browser-access/screens`](2026-11-15-browser-access/screens/): the dialog, the paired page, after reload, steering, the folder search and chosen folder, the banners.
 
+## The page online (CHG-0287)
+
+The relay Worker serves the build as static assets (`packages/relay/wrangler.jsonc`: `/r/*` to the Worker, every other path to `public/`, the page for a path the build lacks; `test/siteConfig.test.ts`, seen failing before the config). With `bun run site` and `wrangler dev` on port 18795, `DRIVE_WORKER_PORT=18795 node drive.mjs` ran the same 24 checks with that one Worker as page and relay: 24 of 24 pass. Deployed to the owner's account on 2026-11-15 (`wrangler deploy`, version `08b135fa`; the single account `Dylan Gerrits -EI-`). Live checks with `curl` and a WebSocket: `/` and a deep path return the page (200, `text/html`, title Outlore), the script bundle returns 200 (3.2 MB), `/r/<room>?role=client` without an upgrade returns 426, `/r/x` returns 404, and a host connection to a random room answers `ping` with `pong`. The Worker bundle hash was regenerated (`bun run bundle`); an owner's own relay still gets the Worker without the page.
+
+Not yet seen: a browser on another network pairing with the owner's real Mac through the deployed relay.
+
 ## Not checked
 
-- Chrome, Firefox and Safari (Chromium inside Electron only), a phone browser, a browser on another computer or network, the deployed shared relay, and a packaged desktop host. The relay does not serve the web build, so none of this ran from a published address; the build was served from this computer.
+- Chrome, Firefox and Safari (Chromium inside Electron only), a phone browser, a browser on another computer or network, a real pairing through the deployed relay, and a packaged desktop host. The 24-check drive ran against a relay and a page on this computer; only plain requests were made to the deployed address.
 - The owner's look: the dialog (light look only seen), the banners, the host menu with no "This computer", narrow windows.
 - A real provider turn from a browser (the fake harness answered), approvals, terminals (off in a browser by design), Windows and Linux.
 - An independent review of the diff; only my own read.
