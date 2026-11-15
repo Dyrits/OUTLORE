@@ -55,7 +55,7 @@ describe("finding missions for an off-topic request", () => {
       const trip = yield* startIdle("Plan the Lisbon trip");
       const hotel = yield* startIdle("Compare options");
       yield* brief(hotel.missionId, "Comparing hotels in Lisbon for the trip.");
-      const archived = yield* startIdle("Lisbon flights");
+      const archived = yield* startIdle("Lisbon flights\nusage 5 5 0 0");
       const preview = yield* call({ _tag: "PreviewEnding", ending: "Archived", missionId: archived.missionId });
       yield* call({
         _tag: "EndMission",

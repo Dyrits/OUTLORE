@@ -50,6 +50,20 @@ export const previewEnding = (missionId: string, ending: MissionEnding) =>
     ),
   );
 
+/**
+ * Whether archiving this mission should delete it instead: it used no tokens, holds no message, and is not a
+ * Ritual's, so it carries nothing worth keeping (mission-tracking, Ending a mission).
+ */
+export const isEmptyQuest = Effect.fn("isEmptyQuest")(function* (missionId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ isEmpty: number }>`SELECT
+    NOT EXISTS(SELECT 1 FROM rituals WHERE mission_id = ${missionId})
+    AND NOT EXISTS(SELECT 1 FROM messages WHERE thread_id IN (SELECT id FROM threads WHERE mission_id = ${missionId}))
+    AND COALESCE((SELECT SUM(input + output + cache_read + cache_creation) FROM usage WHERE mission_id = ${missionId}), 0) = 0
+    AS isEmpty`;
+  return row?.isEmpty === 1;
+});
+
 /** Records the ending and its journal entry. Callers run it in a transaction. */
 const recordEnding = (missionId: string, ending: MissionEnding, entry: string) =>
   Effect.gen(function* () {

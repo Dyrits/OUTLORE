@@ -73,6 +73,7 @@ Sidebar drag-and-drop and confirmation were agreed on 2026-11-10 (CHG-0133) and 
 - After 14 days without activity, the dashboard asks whether to archive the quest; it no longer offers Mark as done.
   The question is not sent as a phone notification.
 - Activity is any turn or message in any of the mission's threads, by the user or by an agent. A dismissed question comes back after another 14 days without activity.
+- Archiving a quest that used no tokens, holds no message, and is not a Ritual's, deletes it instead (as [deleting a mission](../thread-tree/specifications.md#deleting) does): it carries nothing, so it does not appear in the Archived view. Archiving a realm still archives its empty quests, so Restore brings them back.
 - Archiving a mission with running threads asks one confirmation that names them, for example "2 threads are still running. Stop them and archive?", then stops them.
 - The previous auto-archive rule based on time since Done no longer applies; no replacement automatic archiving rule is agreed.
 - The inactivity duration is adjustable in settings.

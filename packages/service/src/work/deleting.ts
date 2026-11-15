@@ -1,11 +1,12 @@
 import { join } from "node:path";
-import type { DeletionPreview } from "@outlore/contracts";
+import type { DeletionPreview, MissionEnding, QuestPlacement } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound, removeScratch, ServiceFailure } from "../core/index.ts";
 import { eraseThreadsLore } from "../lore/index.ts";
 import { eraseAttachmentsOf } from "./attachments.ts";
 import { Commands, changed } from "./commands.ts";
+import { endMission, isEmptyQuest, readWorkingIds } from "./ending.ts";
 import { refuseGuildmaster } from "./guildmaster.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
 import { ScratchRoot } from "./workspaces.ts";
@@ -99,4 +100,35 @@ export const deleteThread = Effect.fn("deleteThread")(function* (threadId: strin
   if (root.parentId === null) yield* removeScratch(join(scratchRoot, root.missionId));
   yield* commands.run(eraseSubtree(rows, root));
   return null;
+});
+
+/**
+ * Archives a quest, or deletes it when it used no tokens: it carries nothing, so the Archived view would only hold
+ * clutter. The owner's preview of the threads at work still guards both (mission-tracking, Ending a mission).
+ */
+export const archiveOrDeleteEmpty = Effect.fn("archiveOrDeleteEmpty")(function* (
+  missionId: string,
+  ending: MissionEnding,
+  snapshot: string,
+) {
+  const commands = yield* Commands;
+  const sql = yield* SqlClient.SqlClient;
+  if (ending !== "Archived" || !(yield* isEmptyQuest(missionId))) {
+    return yield* commands.run(endMission(missionId, ending, snapshot));
+  }
+  const [parent] = yield* sql<QuestPlacement & { topThreadId: string }>`SELECT top.workspace_id AS workspaceId,
+    w.name AS workspaceName, m.top_thread_id AS topThreadId
+    FROM missions m JOIN threads top ON top.id = m.top_thread_id LEFT JOIN workspaces w ON w.id = top.workspace_id
+    WHERE m.id = ${missionId}`;
+  if (parent === undefined) return yield* notFound("No such quest.");
+  yield* refuseGuildmaster(missionId, "ended or archived");
+  if (JSON.stringify(yield* readWorkingIds(missionId)) !== snapshot) {
+    return yield* new ServiceFailure({
+      kind: "StaleVersion",
+      message: "The threads at work changed. Review them again before ending the quest.",
+    });
+  }
+  const { confirmation } = yield* previewDeletion(parent.topThreadId);
+  yield* deleteThread(parent.topThreadId, confirmation);
+  return { workspaceId: parent.workspaceId, workspaceName: parent.workspaceName };
 });

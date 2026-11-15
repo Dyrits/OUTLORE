@@ -47,7 +47,7 @@ const updateSettings = (change: Partial<Settings>) =>
     yield* call({ _tag: "UpdateSettings", settings: { ...settings, ...change } });
   });
 /** A mission whose top thread has finished its first turn. */
-const idle = (text = "Hello") =>
+const idle = (text = "usage 5 5 0 0") =>
   Effect.gen(function* () {
     const started = yield* start(text);
     yield* settleTurns;
@@ -224,6 +224,26 @@ describe("ending a mission", () => {
       expect(summaryOf(yield* list(), missionId)).toBeUndefined();
       expect(summaryOf(yield* list({ isArchived: true }), missionId)?.state).toBe("Archived");
       expect(yield* entriesOf(missionId)).toEqual(["Archived by the user"]);
+    }).pipe(Effect.provide(live())),
+  );
+
+  it.effect("deletes a quest that used no tokens when it is archived", () =>
+    Effect.gen(function* () {
+      const empty = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: "empty" });
+      yield* end(empty.missionId, "Archived");
+      expect(summaryOf(yield* list(), empty.missionId)).toBeUndefined();
+      expect(summaryOf(yield* list({ isArchived: true }), empty.missionId)).toBeUndefined();
+      expect((yield* Effect.flip(read(empty.missionId))).kind).toBe("NotFound");
+    }).pipe(Effect.provide(live())),
+  );
+
+  it.effect("keeps a quest with a message but no tokens when it is archived", () =>
+    Effect.gen(function* () {
+      const started = yield* start("wait 100000");
+      yield* send(started.threadId, "Still here");
+      const preview = yield* call({ _tag: "PreviewEnding", ending: "Archived", missionId: started.missionId });
+      yield* call({ _tag: "EndMission", ending: "Archived", missionId: started.missionId, snapshot: preview.snapshot });
+      expect(summaryOf(yield* list({ isArchived: true }), started.missionId)?.state).toBe("Archived");
     }).pipe(Effect.provide(live())),
   );
 });

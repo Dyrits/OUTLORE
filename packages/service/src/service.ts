@@ -95,8 +95,8 @@ import { readBudgetWindow } from "./work/budgetViews.ts";
 import { resolveChatter } from "./work/chatter.ts";
 import { Commands, changed, commandsLayer, type FollowUps, noFollowUps, type WithFollowUps } from "./work/commands.ts";
 import { listMissions } from "./work/dashboard.ts";
-import { deleteThread, previewDeletion } from "./work/deleting.ts";
-import { autoArchiveLayer, dismissPrompt, endMission, previewEnding, reopenMission } from "./work/ending.ts";
+import { archiveOrDeleteEmpty, deleteThread, previewDeletion } from "./work/deleting.ts";
+import { autoArchiveLayer, dismissPrompt, previewEnding, reopenMission } from "./work/ending.ts";
 import { readGuildHallRecap, visitGuildHall } from "./work/guildHall.ts";
 import { readGuildmaster, viewingLineOf } from "./work/guildmaster.ts";
 import { guildmasterReportsLayer } from "./work/guildmasterReports.ts";
@@ -333,7 +333,12 @@ const make = Effect.gen(function* () {
         DisconnectDevice: (given) => hostControl.disconnectDevice(given.deviceId),
         DismissMissionPrompt: (given) => commands.run(dismissPrompt(given.missionId, given.prompt)),
         EditIntel: (given) => change(editLoreEntryByOwner(given.loreEntryId, given.text)),
-        EndMission: (given) => commands.run(endMission(given.missionId, given.ending, given.snapshot)),
+        EndMission: (given) =>
+          archiveOrDeleteEmpty(given.missionId, given.ending, given.snapshot).pipe(
+            Effect.provideService(ScratchRoot, scratchRoot),
+            Effect.provideService(AttachmentsRoot, attachmentsRoot),
+            Effect.provideService(Commands, commands),
+          ),
         InstallHarness: (given) =>
           installHarness(given.harness).pipe(
             Effect.andThen(listHarnesses),
