@@ -1,4 +1,4 @@
-import { encodePairingCode } from "@iskios/channel";
+import { encodePairingCode } from "@outlore/channel";
 import { Effect } from "effect";
 import type { SqlClient, SqlError } from "effect/sql";
 import { invalid, ServiceFailure } from "../core/index.ts";

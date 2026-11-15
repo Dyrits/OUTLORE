@@ -1,4 +1,4 @@
-import type { UsageFilter, UsagePeriod } from "@iskios/contracts";
+import type { UsageFilter, UsagePeriod } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { call, settle, start } from "./service.ts";

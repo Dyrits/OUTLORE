@@ -18,7 +18,7 @@ export function UpdateNotice() {
   return (
     <>
       <Pressable
-        accessibilityLabel={`Iskios ${status.version} is ready to install`}
+        accessibilityLabel={`Outlore ${status.version} is ready to install`}
         accessibilityRole="button"
         onPress={() => setIsAsking(true)}
         style={({ pressed }) => [local.notice, pressed && local.pressed]}

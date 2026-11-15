@@ -1,4 +1,4 @@
-import type { AccountId, EffortChoice, HarnessInfo, HarnessName, ModelChoice } from "@iskios/contracts";
+import type { AccountId, EffortChoice, HarnessInfo, HarnessName, ModelChoice } from "@outlore/contracts";
 import { useEffect, useState } from "react";
 import type { ServiceClient } from "../foundation/client";
 

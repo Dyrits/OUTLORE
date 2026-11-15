@@ -1,4 +1,4 @@
-import { maxUsageDays, type UsageFilter, type UsagePeriod } from "@iskios/contracts";
+import { maxUsageDays, type UsageFilter, type UsagePeriod } from "@outlore/contracts";
 
 // The page's choices and the graph's scale (budget-control, Reserves usage page): the periods the owner can pick, a typed
 // custom range, the rows chosen to narrow the page, and where the graph's value axis runs.

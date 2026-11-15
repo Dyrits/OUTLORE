@@ -8,9 +8,9 @@ import { swapScript } from "../../src/updates/swap.ts";
 
 /** An Applications folder holding a fake installed app and a staged new one, and the files the script uses. */
 const applications = () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "iskios-swap-")));
-  const bundle = join(root, "Iskios.app");
-  const staged = join(root, ".Iskios-update.app");
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "outlore-swap-")));
+  const bundle = join(root, "Outlore.app");
+  const staged = join(root, ".Outlore-update.app");
   mkdirSync(join(bundle, "Contents"), { recursive: true });
   writeFileSync(join(bundle, "Contents", "version"), "old");
   mkdirSync(join(staged, "Contents"), { recursive: true });
@@ -20,7 +20,15 @@ const applications = () => {
   // The "opener" records what it was asked to open instead of launching anything.
   const opener = join(root, "opener.sh");
   writeFileSync(opener, `#!/bin/sh\necho "$1" >> "${join(root, "opened")}"\n`, { mode: 0o700 });
-  return { backup: join(root, "Iskios.old.app"), bundle, log: join(root, "failure.log"), opener, root, script, staged };
+  return {
+    backup: join(root, "Outlore.old.app"),
+    bundle,
+    log: join(root, "failure.log"),
+    opener,
+    root,
+    script,
+    staged,
+  };
 };
 
 /** Runs the script after a process that has already finished, so there is nothing to wait for. */
@@ -77,9 +85,9 @@ describe("swapping the installed app", () => {
 
   it("keeps paths with spaces and quotes intact", () => {
     const folder = applications();
-    const odd = join(folder.root, `Iskios's "Apps"`);
+    const odd = join(folder.root, `Outlore's "Apps"`);
     mkdirSync(odd);
-    const bundle = join(odd, "Iskios.app");
+    const bundle = join(odd, "Outlore.app");
     const staged = join(odd, "new.app");
     mkdirSync(bundle);
     mkdirSync(staged);
@@ -101,37 +109,37 @@ describe("swapping the installed app", () => {
 describe.runIf(process.platform === "darwin")("staging the app from a disk image", () => {
   /** A minimal app bundle with an ad hoc seal, packed into a disk image. */
   const imageOfApp = () => {
-    const root = realpathSync(mkdtempSync(join(tmpdir(), "iskios-stage-")));
+    const root = realpathSync(mkdtempSync(join(tmpdir(), "outlore-stage-")));
     const source = join(root, "source");
-    const app = join(source, "Iskios.app");
+    const app = join(source, "Outlore.app");
     mkdirSync(join(app, "Contents", "MacOS"), { recursive: true });
-    writeFileSync(join(app, "Contents", "MacOS", "Iskios"), "#!/bin/sh\n", { mode: 0o755 });
+    writeFileSync(join(app, "Contents", "MacOS", "Outlore"), "#!/bin/sh\n", { mode: 0o755 });
     writeFileSync(
       join(app, "Contents", "Info.plist"),
-      `<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>Iskios</string><key>CFBundleIdentifier</key><string>app.iskios.test</string></dict></plist>`,
+      `<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>Outlore</string><key>CFBundleIdentifier</key><string>app.outlore.test</string></dict></plist>`,
     );
     expect(spawnSync("codesign", ["--force", "--sign", "-", app]).status).toBe(0);
-    const image = join(root, "Iskios.dmg");
+    const image = join(root, "Outlore.dmg");
     expect(spawnSync("hdiutil", ["create", "-srcfolder", source, "-format", "UDZO", "-quiet", image]).status).toBe(0);
     return { image, root };
   };
 
   it("copies a sealed app out of the image and leaves nothing mounted", async () => {
     const { image, root } = imageOfApp();
-    const destination = join(root, ".Iskios-update.app");
+    const destination = join(root, ".Outlore-update.app");
     await stageApp(image, destination);
-    expect(existsSync(join(destination, "Contents", "MacOS", "Iskios"))).toBe(true);
+    expect(existsSync(join(destination, "Contents", "MacOS", "Outlore"))).toBe(true);
     expect(spawnSync("codesign", ["--verify", "--deep", "--strict", destination]).status).toBe(0);
     expect(spawnSync("hdiutil", ["info"]).stdout.toString()).not.toContain(image);
   }, 60_000);
 
   it("refuses an app whose seal is missing and leaves no copy behind", async () => {
-    const root = realpathSync(mkdtempSync(join(tmpdir(), "iskios-stage-")));
+    const root = realpathSync(mkdtempSync(join(tmpdir(), "outlore-stage-")));
     const source = join(root, "source");
-    mkdirSync(join(source, "Iskios.app", "Contents"), { recursive: true });
-    const image = join(root, "Iskios.dmg");
+    mkdirSync(join(source, "Outlore.app", "Contents"), { recursive: true });
+    const image = join(root, "Outlore.dmg");
     expect(spawnSync("hdiutil", ["create", "-srcfolder", source, "-format", "UDZO", "-quiet", image]).status).toBe(0);
-    const destination = join(root, ".Iskios-update.app");
+    const destination = join(root, ".Outlore-update.app");
     await expect(stageApp(image, destination)).rejects.toThrow();
     expect(existsSync(destination)).toBe(false);
   }, 60_000);

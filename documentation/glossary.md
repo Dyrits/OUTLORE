@@ -1,6 +1,6 @@
-# Iskios
+# Outlore
 
-Iskios organizes a person's work with AI agents as missions carried out in trees of threads, where any thread can open further threads on any harness, model, and effort, and threads talk to each other in both directions.
+Outlore (called Iskios until CHG-0285) organizes a person's work with AI agents as missions carried out in trees of threads, where any thread can open further threads on any harness, model, and effort, and threads talk to each other in both directions.
 
 ## Guild interface vocabulary
 
@@ -17,7 +17,7 @@ User-authored text and historical service messages are not rewritten.
 | Grouping of missions with shared lore, tied or not to a workspace | Realm |
 | Home of autonomous missions, with no workspace and no shared lore | Borderlands |
 | Control conversation | Guild Hall |
-| Entity the user talks with in Control | Iskios (formerly Guildmaster, CHG-0173) |
+| Entity the user talks with in Control | Chronicler (formerly Guildmaster, CHG-0173) |
 | Workflow | Craft |
 | Workflow run | Craft run |
 | Routine | Ritual |
@@ -61,7 +61,7 @@ A note the owner writes on a message of a quest or side-quest, on the whole mess
 _Avoid_: Annotation, review note, reply (a reply is a message)
 
 **Attachment**:
-A file the owner adds to a message, kept by Iskios and given to the thread's harness with the message's text. Only images are supported so far.
+A file the owner adds to a message, kept by Outlore and given to the thread's harness with the message's text. Only images are supported so far.
 _Avoid_: Upload, media, file (alone)
 
 **Steer**:
@@ -81,9 +81,9 @@ The one overview of all missions with their state, threads, spending, and the st
 _Avoid_: Mission dashboard, index, mission list, board, kanban
 
 **Guild Hall** (technical term: Control conversation):
-The place where the user talks with Iskios, containing the one permanent thread outside every quest.
+The place where the user talks with Chronicler, containing the one permanent thread outside every quest.
 
-**Iskios** (the assistant; formerly **Guildmaster**, CHG-0173):
+**Chronicler** (the assistant; formerly **Guildmaster**, CHG-0173):
 The app-wide assistant the user talks with in the Guild Hall to learn how the app works and to manage realms and quests. It proposes quests and never opens one without the user's confirmation.
 _Avoid_: Coordinator, dispatcher, orchestrator, main thread, Mission control
 
@@ -96,18 +96,21 @@ Whom a thread may message and whose journal it may read beyond its own tree: wha
 _Avoid_: Permission, access, scope
 
 **Theme**:
-The app's look in colors and icons: Iskios, Gild, or One. The owner chooses it in the Workshop, and each theme comes in a dark and a light **Look**.
+The app's look in colors and icons: One, Iskios, or Gild. One is the default. The owner chooses it in the Workshop, and each theme comes in a dark and a light **Look**.
 _Avoid_: Skin, style
 
 **Look**:
 A theme's dark or light variant; the owner may follow the system's. Called the color scheme in code.
 _Avoid_: Mode, appearance
 
+**Iskios**:
+The theme the app had as its own look before the rename to Outlore: a flat dark navy look, and the original application icon as the Dock icon.
+
 **Gild**:
 The theme beside Iskios: brown, gilt, and parchment colors, and a hooded figure as the Dock icon.
 
 **One**:
-The neutral theme based on Zed's One Light and One Dark colors. It keeps Iskios's application icon and the shared sidebar drawings.
+The neutral theme based on Zed's One Light and One Dark colors. It is the default theme. It keeps the original application icon and the shared sidebar drawings.
 
 **The Keep**:
 The navigation group containing Library, Lore, and Archive.
@@ -123,7 +126,7 @@ The page of application settings, accounts, permissions, and defaults, shown one
 The usage summary and destination for detailed consumption, budgets, remaining allowances, and reported plan limits.
 
 **Workspace**:
-A folder or repository on the user's computer, chosen by the user or cloned by Iskios, where a thread works.
+A folder or repository on the user's computer, chosen by the user or cloned by Outlore, where a thread works.
 _Avoid_: Project, repo, directory
 
 **Realm**:
@@ -138,7 +141,7 @@ A folder set in the Workshop (Settings) under which the user and threads can bro
 _Avoid_: Allowed folder, sandbox
 
 **Scratch folder**:
-The folder Iskios keeps for each mission, where its threads with no workspace work.
+The folder Outlore keeps for each mission, where its threads with no workspace work.
 _Avoid_: Temp folder, default workspace
 
 **Own copy**:
@@ -167,12 +170,12 @@ The account that bills model use, such as an Anthropic subscription or an OpenAI
 _Avoid_: Vendor
 
 **Provider account**:
-One sign-in a harness runs with: the computer's own, named after the computer's name, or one added in Iskios with its own folder, such as a second Claude account named "Work".
+One sign-in a harness runs with: the computer's own, named after the computer's name, or one added in Outlore with its own folder, such as a second Claude account named "Work".
 _Avoid_: Profile, login, credential
 
 **Companion preset**:
 A name for a complete stack of one primary Companion (harness, provider account, model, effort) and its ordered backup Companions, which the owner picks instead of choosing each part by hand. An empty backup list is part of the stack too. The interface says preset. Light, Balanced, and Heavy are presets; see [companion presets](capabilities/companion-presets/specifications.md).
-_Avoid_: Profile, template, tier (a tier is one of the three presets Iskios picks among)
+_Avoid_: Profile, template, tier (a tier is one of the three presets Chronicler picks among)
 
 **Handover**:
 A change of harness, agent, model, or effort in the middle of a thread, giving the new one the thread's full history.
@@ -199,7 +202,7 @@ The budget on all spending, across every mission and Control, over a day, week, 
 _Avoid_: Total budget, monthly cap
 
 **Account budget**:
-A limit, or a credit, on one provider account, counted from Iskios's own turns on it, over a day, week, month, or no period.
+A limit, or a credit, on one provider account, counted from Outlore's own turns on it, over a day, week, month, or no period.
 _Avoid_: Credit limit, account cap
 
 **Billing kind**:
@@ -207,11 +210,11 @@ Whether a turn ran on a subscription, on an API key, or on an unknown sign-in; i
 _Avoid_: Billing type, plan type
 
 **Estimated cost**:
-A turn's cost in dollars worked out by Iskios from its tokens and the price table, shown with `≈`, never counting toward a limit except for an API-key turn the harness reported no cost for.
+A turn's cost in dollars worked out by Outlore from its tokens and the price table, shown with `≈`, never counting toward a limit except for an API-key turn the harness reported no cost for.
 _Avoid_: Price, bill, fake cost
 
 **Plan limit**:
-A limit a harness reports for a subscription, such as a 5-hour or weekly window, shown and never enforced by Iskios.
+A limit a harness reports for a subscription, such as a 5-hour or weekly window, shown and never enforced by Outlore.
 _Avoid_: Quota, rate limit
 
 ## Automation
@@ -266,14 +269,14 @@ Stored records, request tags, and thread tool names keep the earlier word `intel
 ## Devices
 
 **Desktop app**:
-Iskios installed on a computer, in its own window. It uses this computer as its host, or a host it is paired with.
+Outlore installed on a computer, in its own window. It uses this computer as its host, or a host it is paired with.
 
 **Web app**:
-Iskios opened in a browser, on a phone or a computer, with nothing installed. It always uses a host it is paired with.
+Outlore opened in a browser, on a phone or a computer, with nothing installed. It always uses a host it is paired with.
 _Avoid_: Phone web app, web client
 
 **Mobile app**:
-Iskios installed on a phone from a store (later).
+Outlore installed on a phone from a store (later).
 _Avoid_: Native app
 
 **Paired device**:
@@ -281,7 +284,7 @@ A desktop app, web app, or mobile app connected to a host by a pairing code. It 
 _Avoid_: Remote, client
 
 **Host**:
-The computer whose Iskios runs the threads, terminals, and folder work that the apps show. It keeps its own name, which the owner can change from the host or from a paired device. With **Keep running after quitting** on, it stays up after its desktop app quits.
+The computer whose Outlore runs the threads, terminals, and folder work that the apps show. It keeps its own name, which the owner can change from the host or from a paired device. With **Keep running after quitting** on, it stays up after its desktop app quits.
 _Avoid_: Server, remote, daemon
 
 **Pairing code**:

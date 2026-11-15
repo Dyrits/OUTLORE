@@ -10,7 +10,7 @@ export const isSamePicker = (previous: CompanionPickerProps | null, next: Compan
   previous.harnesses === next.harnesses &&
   previous.isAccountShown === next.isAccountShown &&
   previous.model === next.model &&
-  previous.isIskios === next.isIskios &&
+  previous.isChronicler === next.isChronicler &&
   isSameBackups(previous.presetChoice?.backups, next.presetChoice?.backups) &&
   isSamePresets(previous.presetChoice?.presets, next.presetChoice?.presets) &&
   previous.extra?.key === next.extra?.key &&

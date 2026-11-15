@@ -30,7 +30,7 @@ const standIn = (answers: (() => Promise<CheckResult>)[]) => {
 };
 
 const controllerOf = (updater: Updater | null, options: { earlierFailure?: string; settings?: object } = {}) => {
-  const folder = mkdtempSync(join(tmpdir(), "iskios-updates-"));
+  const folder = mkdtempSync(join(tmpdir(), "outlore-updates-"));
   const settingsFile = join(folder, "updates.json");
   if (options.settings !== undefined) writeFileSync(settingsFile, JSON.stringify(options.settings));
   const timers: { run: () => void; milliseconds: number; stopped: boolean }[] = [];

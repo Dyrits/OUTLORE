@@ -1,4 +1,4 @@
-import type { UsageFilter } from "@iskios/contracts";
+import type { UsageFilter } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import {
   chartScaleOf,

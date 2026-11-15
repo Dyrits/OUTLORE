@@ -1,4 +1,4 @@
-import { type BackupCompanion, type HarnessList, maxBackups } from "@iskios/contracts";
+import { type BackupCompanion, type HarnessList, maxBackups } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { runnerSummaryOf } from "../foundation/formatting";

@@ -1,4 +1,4 @@
-import type { Mentionable } from "@iskios/contracts";
+import type { Mentionable } from "@outlore/contracts";
 import { useEffect, useState } from "react";
 import type { ServiceClient } from "./client";
 

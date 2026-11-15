@@ -1,4 +1,6 @@
-# Iskios
+# Outlore
+
+The app was called Iskios until CHG-0285; Iskios is now a theme. Dated records, ADRs, and the older handoffs keep the name they were written with, and the assistant was renamed Chronicler (`guildmaster` remains in code identifiers).
 
 ## Start here
 
@@ -48,8 +50,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the independent host, browser access, or future Outlore rename, read the [current handoff](.agents/handoffs/2026-11-14-1953-host-browser-architecture.md). Handoffs are shared and committed.
+- To resume the Outlore rename and publishing 0.1.4-Prototype (renamed, committed and pushed to `main`; the owner's look, the tag with the owner's approval, and a real update from Iskios are open), read the [current handoff](.agents/handoffs/2026-11-15-1458-outlore-rename.md). Handoffs are shared and committed.
+
+- To resume the independent host or browser access, read the [current handoff](.agents/handoffs/2026-11-14-1953-host-browser-architecture.md). Handoffs are shared and committed.
 
 - To resume publishing 0.1.3-Prototype (the review and CHG-0280 fixes are done, verified and uncommitted on `main`; next: commit, version bump CHG-0281, push and the `0.1.3-Prototype` tag, each push with the owner's approval), read the [current handoff](.agents/handoffs/2026-11-14-1540-release-0-1-3-publish.md). Handoffs are shared and committed.
 
-- To resume One theme acceptance or publication (CHG-0279: One light/dark/System built, appearance changes stay in Look and feel, checks and window drive pass; the owner's look and publication confirmation remain), read the [current handoff](.agents/handoffs/2026-11-14-1304-one-theme.md). Handoffs are shared and committed.

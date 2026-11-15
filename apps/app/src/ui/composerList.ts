@@ -1,4 +1,4 @@
-import type { Mentionable, Skill, WorkspaceEntry } from "@iskios/contracts";
+import type { Mentionable, Skill, WorkspaceEntry } from "@outlore/contracts";
 import type { Chip, Trigger } from "./chipEditorTypes";
 import {
   type MentionCategory,

@@ -1,6 +1,6 @@
-# The installed Iskios, built for the host platform by `bun run package` (see ADR 0013).
-appId: app.iskios.desktop
-productName: Iskios
+# The installed Outlore, built for the host platform by `bun run package` (see ADR 0013).
+appId: app.outlore.desktop
+productName: Outlore
 artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
 # Reuses the Electron the repository already installed, so packaging downloads no second copy.
 electronDist: node_modules/electron/dist
@@ -9,7 +9,7 @@ electronVersion: 45.2.3
 publish:
   provider: github
   owner: Dyrits
-  repo: ISKIOS
+  repo: OUTLORE
 # Linux has no node-pty prebuild; rebuild native dependencies for the packaged Electron.
 npmRebuild: true
 directories:
@@ -33,7 +33,7 @@ mac:
   target:
     - dmg
 dmg:
-  title: Iskios
+  title: Outlore
 win:
   icon: assets/icon.png
   target:

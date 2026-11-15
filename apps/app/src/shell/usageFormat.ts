@@ -1,4 +1,4 @@
-import type { TokenUsage, UsageAmounts, UsageRow } from "@iskios/contracts";
+import type { TokenUsage, UsageAmounts, UsageRow } from "@outlore/contracts";
 
 // How the usage page writes its numbers (budget-control, Reserves usage page): amounts shortened for reading, costs marked as
 // reported, estimated, or unavailable, and shares among the known amounts of a breakdown.

@@ -1,4 +1,4 @@
-import type { ChatterNotice, DeletionPreview, ThreadId } from "@iskios/contracts";
+import type { ChatterNotice, DeletionPreview, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";

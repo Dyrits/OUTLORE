@@ -1,4 +1,4 @@
-import type { BackupCompanion, EffortChoice, HarnessName, ModelChoice, Settings, TierName } from "@iskios/contracts";
+import type { BackupCompanion, EffortChoice, HarnessName, ModelChoice, Settings, TierName } from "@outlore/contracts";
 import { type Runner, runnerOf } from "../harness/index.ts";
 
 /**
@@ -26,7 +26,7 @@ export const tierPresetOf = (settings: Settings, tier: TierName | undefined) =>
 export const backupsOf = (settings: Settings, tier: TierName | undefined): ReadonlyArray<BackupCompanion> =>
   tierPresetOf(settings, tier)?.backups ?? [];
 
-/** What a Ritual Iskios creates starts with: its Companion, and its tier's backups as fallbacks unless Iskios named a Companion of its own. */
+/** What a Ritual Chronicler creates starts with: its Companion, and its tier's backups as fallbacks unless Chronicler named a Companion of its own. */
 export const ritualStartOf = (
   settings: Settings,
   choice: {

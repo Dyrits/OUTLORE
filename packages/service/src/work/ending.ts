@@ -1,4 +1,4 @@
-import type { EndingPreview, MissionEnding, MissionPrompt, QuestPlacement } from "@iskios/contracts";
+import type { EndingPreview, MissionEnding, MissionPrompt, QuestPlacement } from "@outlore/contracts";
 import { Clock, Effect, Layer, Schedule } from "effect";
 import { SqlClient } from "effect/sql";
 import { dayMillis, invalid, notFound, readSettings, ServiceFailure } from "../core/index.ts";

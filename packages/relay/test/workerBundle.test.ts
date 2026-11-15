@@ -22,7 +22,7 @@ describe("the Worker bundle the app deploys", () => {
   });
 
   it("exports the Room object the migration names, and a handler that answers like the relay", async () => {
-    const folder = mkdtempSync(join(tmpdir(), "iskios-bundle-"));
+    const folder = mkdtempSync(join(tmpdir(), "outlore-bundle-"));
     try {
       // Stands in for the Workers runtime, which is not there to run the bundle.
       const stub = `export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }`;

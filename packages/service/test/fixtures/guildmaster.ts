@@ -1,4 +1,4 @@
-import type { MissionDetail, MissionId, ThreadId } from "@iskios/contracts";
+import type { MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { call, settle, start } from "./service.ts";
 

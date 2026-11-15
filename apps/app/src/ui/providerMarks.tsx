@@ -1,4 +1,4 @@
-import type { HarnessName } from "@iskios/contracts";
+import type { HarnessName } from "@outlore/contracts";
 import Svg, { Path } from "react-native-svg";
 import { colors } from "../foundation/theme";
 

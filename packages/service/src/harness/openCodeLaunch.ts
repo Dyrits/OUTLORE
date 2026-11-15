@@ -83,7 +83,7 @@ export const makeOpenCodeLauncher = (options: OpenCodeLaunchOptions) => {
       const sandbox = isUnsandboxed ? null : (options.sandbox ?? null);
       const marker = sandbox === null ? null : ownerMarkerOf(sandbox);
       // Every sandboxed process carries the service's marker and its thread, so one it loses is found again.
-      const marks = marker === null ? {} : { [marker.name]: marker.value, ISKIOS_SANDBOX_THREAD: request.threadId };
+      const marks = marker === null ? {} : { [marker.name]: marker.value, OUTLORE_SANDBOX_THREAD: request.threadId };
       if (sandbox !== null && marker !== null) {
         yield* Effect.promise(() => sweepOrphans(marker));
         yield* Effect.tryPromise({

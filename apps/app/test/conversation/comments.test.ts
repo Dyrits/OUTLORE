@@ -103,12 +103,12 @@ describe("comments kept for a thread until they are sent", () => {
     const storage = fakeStorage();
     rememberComments(storage, "t1", [comment()]);
     rememberComments(storage, "t1", []);
-    expect(storage.getItem("iskios:comments:t1")).toBeNull();
+    expect(storage.getItem("outlore:comments:t1")).toBeNull();
   });
 
   it("starts empty from damaged or foreign storage content", () => {
-    expect(readComments(fakeStorage({ "iskios:comments:t1": "{not json" }), "t1")).toEqual([]);
-    expect(readComments(fakeStorage({ "iskios:comments:t1": '[{"id":1}]' }), "t1")).toEqual([]);
+    expect(readComments(fakeStorage({ "outlore:comments:t1": "{not json" }), "t1")).toEqual([]);
+    expect(readComments(fakeStorage({ "outlore:comments:t1": '[{"id":1}]' }), "t1")).toEqual([]);
     expect(readComments(null, "t1")).toEqual([]);
   });
 

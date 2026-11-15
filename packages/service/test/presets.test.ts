@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { type BackupCompanion, ChangeSettings, type Tier } from "@iskios/contracts";
+import { type BackupCompanion, ChangeSettings, type Tier } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { call, withService } from "./fixtures/service.ts";

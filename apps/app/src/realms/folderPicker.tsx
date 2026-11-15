@@ -1,4 +1,4 @@
-import type { Folder, FolderListing } from "@iskios/contracts";
+import type { Folder, FolderListing } from "@outlore/contracts";
 import { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";

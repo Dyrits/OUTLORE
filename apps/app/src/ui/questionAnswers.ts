@@ -1,4 +1,4 @@
-import type { Answer, Question } from "@iskios/contracts";
+import type { Answer, Question } from "@outlore/contracts";
 
 /**
  * The answers a question card offers. Always allow saves the question's permission and pattern, so a question with

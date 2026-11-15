@@ -23,7 +23,7 @@ import type {
   RequestTag,
   ResultOf,
   ThreadId,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { type Duration, Effect, Layer } from "effect";
 import { afterEach } from "vitest";
 import { HarnessFailure } from "../../src/core/index.ts";
@@ -65,7 +65,7 @@ afterEach(() => {
 
 /** Folders standing for the computer's own OpenCode configuration and data, outside every writable folder. */
 const realHomes = () => {
-  const directory = realpathSync(mkdtempSync(join(tmpdir(), "iskios-real-")));
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-real-")));
   directories.push(directory);
   return directory;
 };
@@ -114,7 +114,7 @@ const withHarnesses = (
   idleTimeout: Duration.Input = "10 minutes",
   openCodeSandbox: (directory: string) => OpenCodeSandbox | null = () => null,
 ) => {
-  const directory = realpathSync(mkdtempSync(join(tmpdir(), "iskios-harnesses-")));
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-harnesses-")));
   directories.push(directory);
   const log = join(directory, "log.jsonl");
   process.env.STAND_IN_LOG = log;
@@ -150,7 +150,7 @@ const withHarnesses = (
   );
   const layer = serviceLayer({
     accountsRoot,
-    filename: join(directory, "iskios.sqlite"),
+    filename: join(directory, "outlore.sqlite"),
     harness,
     harnessTools: fakeHarnessToolsLayer(signIns, updates, missing),
     homeFolder: directory,
@@ -309,7 +309,7 @@ describe("handing images to a harness", () => {
 });
 
 describe("running Codex threads", () => {
-  it.live("runs a thread through the app server with its model, effort, tools, and no Iskios secrets", () => {
+  it.live("runs a thread through the app server with its model, effort, tools, and no Outlore secrets", () => {
     const { layer, logged, requests } = withHarnesses();
     return Effect.gen(function* () {
       const started = yield* start({ effort: "high", harness: "codex", model: "gpt-x", text: "Hello" });
@@ -333,8 +333,10 @@ describe("running Codex threads", () => {
         sandbox: "workspace-write",
       });
       expect(JSON.stringify(logged())).not.toContain("danger-full-access");
-      expect(JSON.stringify(thread?.params?.config)).toMatch(/"mcp_servers\.iskios\.url":"http:\/\/127\.0\.0\.1:\d+\//);
-      expect(String(thread?.params?.developerInstructions)).toContain("# Approvals in Iskios");
+      expect(JSON.stringify(thread?.params?.config)).toMatch(
+        /"mcp_servers\.outlore\.url":"http:\/\/127\.0\.0\.1:\d+\//,
+      );
+      expect(String(thread?.params?.developerInstructions)).toContain("# Approvals in Outlore");
       expect(String(thread?.params?.developerInstructions)).not.toContain("dangerouslyDisableSandbox");
       expect(requests("turn/start")[0]?.params).toMatchObject({ effort: "high", model: "gpt-x" });
       expect(logged().find((entry) => entry.pid !== undefined)?.env).toEqual([]);
@@ -498,13 +500,13 @@ describe("running Codex threads", () => {
       const failure = yield* harness
         .runTurn(
           turnRequestOf({
-            askOwner: () => Effect.fail(new HarnessFailure({ reason: "Iskios could not ask about Bash." })),
+            askOwner: () => Effect.fail(new HarnessFailure({ reason: "Outlore could not ask about Bash." })),
             harness: "codex",
             text: "run git push origin main",
           }),
         )
         .pipe(Effect.flip);
-      expect(failure.reason).toBe("Iskios could not ask about Bash.");
+      expect(failure.reason).toBe("Outlore could not ask about Bash.");
     }).pipe(Effect.scoped),
   );
 
@@ -653,7 +655,7 @@ describe("running Codex threads", () => {
 });
 
 describe("running OpenCode threads", () => {
-  it.live("runs a thread over ACP with Iskios's tools, permissions, context, and model", () => {
+  it.live("runs a thread over ACP with Outlore's tools, permissions, context, and model", () => {
     const { layer, logged, requests } = withHarnesses();
     return Effect.gen(function* () {
       const started = yield* start({ harness: "opencode", model: "provider/model-a", text: "Hello" });
@@ -673,8 +675,8 @@ describe("running OpenCode threads", () => {
         { action: "edit", effect: "ask", resource: "*" },
         { action: "subagent", effect: "deny", resource: "*" },
       ]);
-      expect(config.mcp.servers.iskios?.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\//);
-      expect(readFileSync(config.instructions[0] ?? "", "utf8")).toContain("# Threads in Iskios");
+      expect(config.mcp.servers.outlore?.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\//);
+      expect(readFileSync(config.instructions[0] ?? "", "utf8")).toContain("# Threads in Outlore");
       expect(requests("session/set_config_option")[0]?.params).toMatchObject({
         configId: "model",
         value: "provider/model-a",
@@ -712,7 +714,7 @@ describe("running OpenCode threads", () => {
   );
 
   it.live("reads OpenCode's effort levels ahead when it lists its models, so a pick starts no session", () => {
-    const directory = realpathSync(mkdtempSync(join(tmpdir(), "iskios-warm-")));
+    const directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-warm-")));
     directories.push(directory);
     const log = join(directory, "log.jsonl");
     process.env.STAND_IN_LOG = log;
@@ -747,7 +749,7 @@ describe("running OpenCode threads", () => {
       yield* answerOpen("Deny");
       const detail = yield* settle(started.missionId, idleWith(1));
       expect(replies(detail)).toEqual([
-        "Echo: Iskios refused the command `git push origin main`. Not approved by the owner. Do not do this action; carry on without it. ",
+        "Echo: Outlore refused the command `git push origin main`. Not approved by the owner. Do not do this action; carry on without it. ",
       ]);
       expect(requests("session/prompt")).toHaveLength(2);
       expect(detail.mission.usage).toEqual({ cacheCreation: 0, cacheRead: 80, input: 180, output: 16 });
@@ -762,7 +764,7 @@ describe("running OpenCode threads", () => {
       yield* answerOpen("Deny", "Write it in the notes folder instead.");
       const detail = yield* settle(started.missionId, idleWith(1));
       expect(replies(detail)).toEqual([
-        `Echo: Iskios refused the change to \`${outside}\`. Denied by the owner: Write it in the notes folder instead. `,
+        `Echo: Outlore refused the change to \`${outside}\`. Denied by the owner: Write it in the notes folder instead. `,
       ]);
     }).pipe(Effect.provide(layer));
   });
@@ -822,7 +824,7 @@ describe("running OpenCode threads", () => {
       expect(answered.details).toBe(`Edit ${outside}\n${JSON.stringify({ file_path: outside }, null, 2)}`);
       const detail = yield* settle(started.missionId, idleWith(1));
       expect(replies(detail)).toEqual([
-        `Echo: Iskios refused the change to \`${outside}\`. Not approved by the owner. Do not do this action; carry on without it. `,
+        `Echo: Outlore refused the change to \`${outside}\`. Not approved by the owner. Do not do this action; carry on without it. `,
       ]);
     }).pipe(Effect.provide(layer));
   });
@@ -852,7 +854,7 @@ describe("running OpenCode threads", () => {
     () => {
       const real = realHomes();
       const { directory, layer, logged } = withHarnesses("10 minutes", seatbeltIn(real));
-      const elsewhere = realpathSync(mkdtempSync(join(tmpdir(), "iskios-elsewhere-")));
+      const elsewhere = realpathSync(mkdtempSync(join(tmpdir(), "outlore-elsewhere-")));
       directories.push(elsewhere);
       return Effect.gen(function* () {
         const started = yield* start({ harness: "opencode", text: "run ls" });
@@ -1152,7 +1154,7 @@ describe("running OpenCode threads", () => {
 
   /** A workspace folder in its own temporary folder, and a folder outside it, both real paths. */
   const linkedFolders = () => {
-    const base = realpathSync(mkdtempSync(join(tmpdir(), "iskios-linked-")));
+    const base = realpathSync(mkdtempSync(join(tmpdir(), "outlore-linked-")));
     directories.push(base);
     const workspace = join(base, "workspace");
     const elsewhere = join(base, "elsewhere");
@@ -1299,7 +1301,7 @@ const startedFolderOf = (harness: "claude" | "codex", logged: () => Array<Logged
 describe.each(["claude", "codex"] as const)("checking a %s thread's folder before it starts", (harness) => {
   /** A workspace folder in its own temporary folder, and a folder outside it, both real paths. */
   const linkedFolders = () => {
-    const base = realpathSync(mkdtempSync(join(tmpdir(), "iskios-linked-")));
+    const base = realpathSync(mkdtempSync(join(tmpdir(), "outlore-linked-")));
     directories.push(base);
     const workspace = join(base, "workspace");
     const elsewhere = join(base, "elsewhere");

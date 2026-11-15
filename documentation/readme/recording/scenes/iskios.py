@@ -1,4 +1,4 @@
-pg.get_by_text('Iskios', exact=True).first.click(); pg.wait_for_timeout(1300)
+pg.get_by_text('Outlore', exact=True).first.click(); pg.wait_for_timeout(1300)
 box().click(); pg.wait_for_timeout(300)
 typed('Ship the checkout fix and tell me what is left for 2.4.'); pg.wait_for_timeout(400)
 pg.keyboard.press('Enter'); pg.wait_for_timeout(3800)

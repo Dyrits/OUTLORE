@@ -9,7 +9,7 @@ import {
   crestFinishes,
   crestPlates,
   crestTrims,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { emblemPaths } from "../foundation/emblems";

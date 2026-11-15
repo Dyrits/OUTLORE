@@ -1,4 +1,4 @@
-import type { MissionState, ThreadState } from "@iskios/contracts";
+import type { MissionState, ThreadState } from "@outlore/contracts";
 import { Platform } from "react-native";
 import { colorScheme, theme } from "./colorScheme";
 import { type Palette, palettes } from "./palettes";

@@ -1,4 +1,4 @@
-import type { Mentionable, Skill, WorkspaceEntry } from "@iskios/contracts";
+import type { Mentionable, Skill, WorkspaceEntry } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import {
   composerListOf,
@@ -15,8 +15,8 @@ const skills: ReadonlyArray<Skill> = [
   { description: "Architecture audit", name: "architecture" } as Skill,
 ];
 const mentionables: ReadonlyArray<Mentionable> = [
-  { detail: "Iskios", id: "q1", kind: "quest", trail: ["Fix login"] },
-  { detail: "/code/iskios", id: "r1", kind: "realm", trail: ["Iskios"] },
+  { detail: "Outlore", id: "q1", kind: "quest", trail: ["Fix login"] },
+  { detail: "/code/iskios", id: "r1", kind: "realm", trail: ["Outlore"] },
 ];
 const entries: ReadonlyArray<WorkspaceEntry> = [{ kind: "folder", path: "src/" }];
 
@@ -72,7 +72,7 @@ describe("the @ list across keystrokes", () => {
   it("chooses an item with Tab and hands back its chip", () => {
     const state: ListState = { category: "realms", chosen: 0 };
     const chosen = press(state, composerListOf(source(typed("@")), state), "Tab");
-    expect(chosen.chip).toEqual({ kind: "realm", label: "Iskios", token: "@realm:r1" });
+    expect(chosen.chip).toEqual({ kind: "realm", label: "Outlore", token: "@realm:r1" });
     expect(chosen.handled).toBe(true);
   });
 

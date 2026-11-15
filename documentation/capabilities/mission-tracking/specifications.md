@@ -31,7 +31,7 @@ Agreed on 2026-11-10 (CHG-0130). On 2026-11-11 (CHG-0161) the placements were re
 - Lore access follows [lore scopes](../scoped-intel/specifications.md#scopes).
 - The owner can move an existing quest between any of these placements, including correcting a quest started in the wrong workspace.
 - The sidebar supports dragging a quest from its current Realm or the Borderlands onto another placement.
-- Before changing placement, Iskios asks for confirmation naming the source and destination and explaining that the available realm lore will change.
+- Before changing placement, Outlore asks for confirmation naming the source and destination and explaining that the available realm lore will change.
   Confirm applies the move; Cancel leaves the quest and its tree in their original placement.
   This confirmation applies to every placement-changing move, including moving a quest into the Borderlands, whichever interface initiates it.
 - A move includes the quest and every side-quest at every depth, including threads explicitly attached to another workspace; no branch stays behind.

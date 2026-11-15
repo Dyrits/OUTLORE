@@ -1,4 +1,4 @@
-import type { AttachmentCard } from "@iskios/contracts";
+import type { AttachmentCard } from "@outlore/contracts";
 import { useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";

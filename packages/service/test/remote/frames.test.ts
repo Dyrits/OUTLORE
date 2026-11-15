@@ -1,5 +1,5 @@
-import type { ServerFrame } from "@iskios/contracts";
-import { hostOnlyRequestTags } from "@iskios/contracts";
+import type { ServerFrame } from "@outlore/contracts";
+import { hostOnlyRequestTags } from "@outlore/contracts";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { answerText } from "../../src/remote/frames.ts";
@@ -7,7 +7,7 @@ import { answerText } from "../../src/remote/frames.ts";
 /** A well-formed request of each kind this test sends. */
 const requests = {
   AddBrowsableRoot: { path: "/tmp" },
-  AddHost: { code: "iskios1-x", deviceName: "Laptop" },
+  AddHost: { code: "outlore1-x", deviceName: "Laptop" },
   CreatePairingCode: {},
   DisconnectDevice: { deviceId: "d" },
   ListHosts: {},

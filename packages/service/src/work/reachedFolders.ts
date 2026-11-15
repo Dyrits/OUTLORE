@@ -1,6 +1,6 @@
 // The folders a request names, and whether a paired device may name them (device-pairing, audit SA-08). A paired device
 // reaches only the browsable roots, or a folder the owner already attached as a realm; the host's own window any folder.
-import type { Request } from "@iskios/contracts";
+import type { Request } from "@outlore/contracts";
 import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
 import { type FolderAccess, invalid, listBrowsableRoots, realFolderOf, rootOf } from "../core/index.ts";

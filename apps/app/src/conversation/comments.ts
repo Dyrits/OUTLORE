@@ -1,4 +1,4 @@
-import type { Message } from "@iskios/contracts";
+import type { Message } from "@outlore/contracts";
 
 // Comments on messages of a quest or side-quest. The owner writes them while reading; they wait, per thread, and go with
 // the next message the owner sends. They travel inside that message's text, as terminal output does
@@ -94,7 +94,7 @@ export const commentsOf = (text: string): { body: string; items: ReadonlyArray<S
 /** The part of the browser's storage the comments use. */
 export type CommentStorage = Pick<Storage, "getItem" | "removeItem" | "setItem">;
 
-const storageKeyOf = (threadId: string) => `iskios:comments:${threadId}`;
+const storageKeyOf = (threadId: string) => `outlore:comments:${threadId}`;
 
 const isComment = (value: unknown): value is Comment => {
   if (typeof value !== "object" || value === null) return false;

@@ -1,6 +1,6 @@
-# Iskios
+# Outlore
 
-People who work with several AI agents lose goals, context, and spending across separate chats and tools. Iskios gives a single user one place where every piece of work is a mission carried out in a tree of threads: the user or any thread opens further threads on whichever harness, agent, model, and effort fits, hands a thread over to another harness without losing its history, and threads talk to each other in both directions. Success is a mission finished through delegated work the user can see, steer, and pay for knowingly, from the computer or a paired phone.
+People who work with several AI agents lose goals, context, and spending across separate chats and tools. Outlore gives a single user one place where every piece of work is a mission carried out in a tree of threads: the user or any thread opens further threads on whichever harness, agent, model, and effort fits, hands a thread over to another harness without losing its history, and threads talk to each other in both directions. Success is a mission finished through delegated work the user can see, steer, and pay for knowingly, from the computer or a paired phone.
 
 ## Actors
 
@@ -11,16 +11,16 @@ The first build serves one user. The [architecture](architecture.md#future-multi
 - **Provider**: the user's own model account or API key that a harness bills.
 - **Trigger source**: a clock, webhook, or external event that starts a routine or workflow run.
 - **Connected service**: an outside service (mail, code host, chat) a thread acts on.
-- **Paired device**: the user's phone, or the Iskios app on another computer, used to follow and steer threads on a host away from it.
+- **Paired device**: the user's phone, or the Outlore app on another computer, used to follow and steer threads on a host away from it.
 
 ## Capabilities
 
-- **[mission-tracking](capabilities/mission-tracking/specifications.md)**: creating quests directly in realms or through Iskios, keeping them in realms or the Borderlands, moving whole quest trees with confirmation, and following their state, threads, and spending.
-- **[mission-coordination](capabilities/mission-coordination/specifications.md)**: talking with Iskios, the app's assistant, in the Guild Hall to find information across Iskios, manage the app, and coordinate quests and their messages.
+- **[mission-tracking](capabilities/mission-tracking/specifications.md)**: creating quests directly in realms or through Outlore, keeping them in realms or the Borderlands, moving whole quest trees with confirmation, and following their state, threads, and spending.
+- **[mission-coordination](capabilities/mission-coordination/specifications.md)**: talking with Chronicler, the app's assistant, in the Guild Hall to find information across Outlore, manage the app, and coordinate quests and their messages.
 - **[mission-journal](capabilities/mission-journal/specifications.md)**: keeping each mission's briefing and change log, read by every thread in the mission and updated as it works.
 - **[thread-tree](capabilities/thread-tree/specifications.md)**: opening threads beneath a thread, by the user or by a thread, each with its own harness, agent, model, and effort; every subagent a harness starts shows up as a thread beneath the one that started it, so the user can follow it.
 - **[thread-messaging](capabilities/thread-messaging/specifications.md)**: thread messages in both directions along the tree, with replies and interruptions; the user can write in any open thread, including a subagent's.
-- **[message-attachments](capabilities/message-attachments/specifications.md)**: attaching images to the owner's messages by pasting, dropping, or choosing files, stored by Iskios and read by the thread's harness.
+- **[message-attachments](capabilities/message-attachments/specifications.md)**: attaching images to the owner's messages by pasting, dropping, or choosing files, stored by Outlore and read by the thread's harness.
 - **[conversation-terminal](capabilities/conversation-terminal/specifications.md)**: opening the owner's shell inside a desktop message with `!` and sending its visible output as context.
 - **[thread-handover](capabilities/thread-handover/specifications.md)**: changing a thread's harness, agent, model, or effort mid-thread, with the full history given to the new one.
 - **[thread-panel](capabilities/thread-panel/specifications.md)**: showing beside a thread's conversation what it runs with, what it costs, and how full its context window is, and which side panel (details or Companions) is open.
@@ -32,8 +32,8 @@ The first build serves one user. The [architecture](architecture.md#future-multi
 - **[tool-and-skill-loading](capabilities/tool-and-skill-loading/specifications.md)**: giving every thread its selected global and workspace MCP servers, required thread tools, and skill names and descriptions, with full instructions loaded when used and harness-specific skill preference.
 - **[scoped-intel](capabilities/scoped-intel/specifications.md)**: gathering and recalling lore at thread, realm, or global scope.
 - **[action-approval](capabilities/action-approval/specifications.md)**: asking the user in plain language before a risky action, one approval per action and thread, with standing permissions for what the user always allows.
-- **[budget-control](capabilities/budget-control/specifications.md)**: budgets on each mission, on Iskios, and on all spending over a period, stopping new spending at the limit and shown as rings that fill as they are used.
-- **[device-pairing](capabilities/device-pairing/specifications.md)**: pairing a phone or another Iskios with one pairing code and using a host's Iskios from it on any internet connection, with no account for the user (another Iskios is built; the phone is not).
+- **[budget-control](capabilities/budget-control/specifications.md)**: budgets on each mission, on Outlore, and on all spending over a period, stopping new spending at the limit and shown as rings that fill as they are used.
+- **[device-pairing](capabilities/device-pairing/specifications.md)**: pairing a phone or another Outlore with one pairing code and using a host's Outlore from it on any internet connection, with no account for the user (another Outlore is built; the phone is not).
 - **[app-updates](capabilities/app-updates/specifications.md)**: the installed desktop app finds a newer release, downloads it, and replaces itself when the owner says so, with a switch to turn checking off.
 
 See also the [requirements](requirements.md) and the [glossary](glossary.md).

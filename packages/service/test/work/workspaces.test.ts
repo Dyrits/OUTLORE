@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionDetail, MissionId, Request, RequestTag, ResultOf } from "@iskios/contracts";
+import type { MissionDetail, MissionId, Request, RequestTag, ResultOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { isInsideFolder } from "../../src/core/index.ts";
@@ -16,7 +16,7 @@ afterEach(() => {
 
 /** A service with folders to choose as workspaces, and its data beside them. */
 const setUp = () => {
-  const base = realpathSync(mkdtempSync(join(tmpdir(), "iskios-workspaces-")));
+  const base = realpathSync(mkdtempSync(join(tmpdir(), "outlore-workspaces-")));
   directories.push(base);
   const home = join(base, "home");
   const outside = join(base, "outside");
@@ -24,7 +24,7 @@ const setUp = () => {
     mkdirSync(folder, { recursive: true });
   }
   const layer = serviceLayer({
-    filename: join(base, "iskios.sqlite"),
+    filename: join(base, "outlore.sqlite"),
     harness: fakeHarnessLayer("10 millis"),
     homeFolder: home,
     scratchRoot: join(base, "data", "missions"),

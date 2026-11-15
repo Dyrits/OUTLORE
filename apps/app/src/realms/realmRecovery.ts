@@ -1,4 +1,4 @@
-import type { Crest, RealmAppearance } from "@iskios/contracts";
+import type { Crest, RealmAppearance } from "@outlore/contracts";
 import { folderNameOf } from "./realmLabels";
 
 /** A form's real proposed values: an empty name resolves to its chosen folder's name. */

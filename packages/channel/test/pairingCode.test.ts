@@ -24,7 +24,7 @@ const forgeCode = (origin: string) => {
   const forged = new Uint8Array(body.length + 4);
   forged.set(body);
   forged.set(sha256(body).subarray(0, 4), body.length);
-  return `iskios1-${encodeBase64Url(forged)}`;
+  return `outlore1-${encodeBase64Url(forged)}`;
 };
 
 describe("pairing code", () => {
@@ -37,7 +37,7 @@ describe("pairing code", () => {
   it("round trips a code", () => {
     const code = sample();
     const text = encodePairingCode(code);
-    expect(text).toMatch(/^iskios1-[A-Za-z0-9_-]+$/);
+    expect(text).toMatch(/^outlore1-[A-Za-z0-9_-]+$/);
     expect(decodePairingCode(text)).toEqual({ ok: true, value: code });
   });
 
@@ -71,20 +71,23 @@ describe("pairing code", () => {
       expect(decodePairingCode(text.slice(0, -cut)).ok, `cut ${cut}`).toBe(false);
     }
     expect(decodePairingCode(`${text}AAAA`).ok).toBe(false);
-    expect(decodePairingCode("iskios1-").ok).toBe(false);
+    expect(decodePairingCode("outlore1-").ok).toBe(false);
   });
 
   it("rejects an unsupported version", () => {
     const text = encodePairingCode(sample());
-    expect(decodePairingCode(text.replace("iskios1-", "iskios2-"))).toEqual({ kind: "unsupported-version", ok: false });
-    expect(decodePairingCode(text.replace("iskios1-", "iskios10-"))).toEqual({
+    expect(decodePairingCode(text.replace("outlore1-", "outlore2-"))).toEqual({
+      kind: "unsupported-version",
+      ok: false,
+    });
+    expect(decodePairingCode(text.replace("outlore1-", "outlore10-"))).toEqual({
       kind: "unsupported-version",
       ok: false,
     });
   });
 
   it("rejects text that is not a pairing code", () => {
-    for (const text of ["", "hello", "iskios-abc", "ISKIOS1-abc", "iskios1 abc", "iskios1-@@@@"]) {
+    for (const text of ["", "hello", "outlore-abc", "OUTLORE1-abc", "outlore1 abc", "outlore1-@@@@"]) {
       expect(decodePairingCode(text), text).toEqual({ kind: "malformed", ok: false });
     }
   });

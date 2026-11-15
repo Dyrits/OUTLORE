@@ -1,6 +1,6 @@
 // Draws a crest (see crestShapes.ts for its parts); the system follows Crest Studio (github.com/pauljoda/Crest, MPL-2.0).
 
-import type { Crest, MissionState } from "@iskios/contracts";
+import type { Crest, MissionState } from "@outlore/contracts";
 import { Match } from "effect";
 import { type ReactNode, useId } from "react";
 import { StyleSheet, View } from "react-native";

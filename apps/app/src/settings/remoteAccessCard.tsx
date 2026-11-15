@@ -1,4 +1,4 @@
-import type { PairingCode, RemoteAccessView } from "@iskios/contracts";
+import type { PairingCode, RemoteAccessView } from "@outlore/contracts";
 import { useEffect, useState } from "react";
 import { Linking, StyleSheet, Text, TextInput, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
@@ -19,7 +19,7 @@ import { SettingsCard, SettingsRule, ToggleRow } from "./settingsParts";
 
 /**
  * Charter's remote access section: whether other devices may pair with this computer, a pairing
- * code to give to another Iskios, and the devices already paired, each with a Disconnect (device-pairing).
+ * code to give to another Outlore, and the devices already paired, each with a Disconnect (device-pairing).
  */
 export function RemoteAccessCard({ client }: { client: ServiceClient }) {
   const host = useActiveHost();
@@ -70,7 +70,7 @@ function RemoteAccessOnHost({ client }: { client: ServiceClient }) {
   return (
     <SettingsCard
       icon="monitor"
-      summary="Control this computer from another Iskios"
+      summary="Control this computer from another Outlore"
       title="Remote access · paired devices"
     >
       <ToggleRow
@@ -104,7 +104,7 @@ function RemoteAccessOnHost({ client }: { client: ServiceClient }) {
             {pairing.code}
           </Text>
           <Text style={styles.muted}>
-            {codeLifeOf(pairing.expiresAt, now)} Paste it in the other Iskios, under Add a host.
+            {codeLifeOf(pairing.expiresAt, now)} Paste it in the other Outlore, under Add a host.
           </Text>
           <Button isPrimary={false} label={isCopied ? "Copied" : "Copy the code"} onPress={copy} />
         </View>

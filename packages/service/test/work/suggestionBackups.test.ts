@@ -6,7 +6,7 @@ import {
   type Suggestion,
   type SuggestionAnswer,
   type ThreadId,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Effect, Schema } from "effect";
 import { call, read, send, settle, start, withService } from "../fixtures/service.ts";
 

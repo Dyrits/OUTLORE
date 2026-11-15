@@ -3,8 +3,8 @@ import { type ColorScheme, type ColorSchemePreference, preferenceOf, schemeOf } 
 import { syncDesktopTheme } from "./desktopTheme";
 import { type Theme, themeOf } from "./themeRules";
 
-const storageKey = "iskios.colorScheme";
-const themeKey = "iskios.theme";
+const storageKey = "outlore.colorScheme";
+const themeKey = "outlore.theme";
 
 /** The preference is kept in the browser's storage, so only the web build can keep one until native builds exist. */
 export const canChooseColorScheme = Platform.OS === "web" && typeof localStorage !== "undefined";
@@ -23,11 +23,11 @@ export const colorPreference: ColorSchemePreference = canChooseColorScheme
  */
 export const colorScheme: ColorScheme = schemeOf(colorPreference, systemSchemeOf());
 
-/** The owner's theme, read once at load; Iskios until another is chosen. */
-export const theme: Theme = canChooseColorScheme ? themeOf(localStorage.getItem(themeKey)) : "iskios";
+/** The owner's theme, read once at load; One until another is chosen. */
+export const theme: Theme = canChooseColorScheme ? themeOf(localStorage.getItem(themeKey)) : "one";
 
-const placeKey = "iskios.place";
-const resumeKey = "iskios.resume";
+const placeKey = "outlore.place";
+const resumeKey = "outlore.resume";
 
 /** Notes the page the owner is on, so the reload a change of look causes can return to it. */
 export function rememberPlace(place: string): void {
@@ -73,7 +73,7 @@ export function chooseTheme(chosen: Theme): void {
  */
 export function applyAppearance(ground: string): () => void {
   if (!canChooseColorScheme) return () => {};
-  void syncDesktopTheme(window.iskios, theme);
+  void syncDesktopTheme(window.outlore, theme);
   document.documentElement.style.colorScheme = colorScheme;
   document.documentElement.style.backgroundColor = ground;
   const style = document.createElement("style");

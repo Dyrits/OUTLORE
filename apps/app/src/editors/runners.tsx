@@ -1,4 +1,4 @@
-import type { AccountId, EffortChoice, HarnessList, HarnessName, ModelChoice } from "@iskios/contracts";
+import type { AccountId, EffortChoice, HarnessList, HarnessName, ModelChoice } from "@outlore/contracts";
 import { type ComponentProps, type ReactElement, useCallback, useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
@@ -105,7 +105,7 @@ export function RunnerPickers({
   harnesses,
   isAccountShown = true,
   isCompact,
-  isIskios = false,
+  isChronicler = false,
   isPanel = false,
   onChange,
   panel,
@@ -124,8 +124,8 @@ export function RunnerPickers({
   isAccountShown?: boolean;
   /** Compact underlined words, as in a composer; named fields otherwise. */
   isCompact: boolean;
-  /** Iskios's own Companion: the Companions tab marks it with ✦. */
-  isIskios?: boolean;
+  /** Chronicler's own Companion: the Companions tab marks it with ✦. */
+  isChronicler?: boolean;
   /** The picker's own content, as drawn in a fold of the Companions tab; `isCompact` is then ignored. */
   isPanel?: boolean;
   onChange: (runner: Runner) => void;
@@ -205,7 +205,7 @@ export function RunnerPickers({
         {...(dockRank === undefined ? {} : { rank: dockRank })}
         {...(extra === undefined ? {} : { extra })}
         {...(panel === undefined ? {} : { panel })}
-        {...(isIskios ? { isIskios } : {})}
+        {...(isChronicler ? { isChronicler } : {})}
         {...(trigger === undefined ? {} : { trigger })}
         {...picker}
       />

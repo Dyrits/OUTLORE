@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { IskiosConversation } from "../conversation/guildmaster";
+import { ChroniclerConversation } from "../conversation/guildmaster";
 import { CompanionPanel } from "../editors/companionPicker";
 import {
   CompanionDockActions,
@@ -12,21 +12,21 @@ import {
 } from "../foundation/shellContext";
 import { colors, radii } from "../foundation/theme";
 import type { RightPanel } from "../foundation/useRightPanel";
+import { ChroniclerColumn, ChroniclerFloating, ChroniclerLauncher, chroniclerColumnWidth } from "./chroniclerDock";
 import { EdgeResizer } from "./edgeResizer";
-import { IskiosColumn, IskiosFloating, IskiosLauncher, iskiosColumnWidth } from "./iskiosDock";
 import type { RealmListing } from "./questTree";
 import {
+  chroniclerWidthKey,
   clampPaneWidth,
   clampRailWidth,
-  iskiosWidthKey,
   minRailWidth,
   questPanelWidthKey,
+  readChroniclerOpen,
   readHidden,
-  readIskiosOpen,
   readPaneWidth,
   readRailWidth,
+  rememberChroniclerOpen,
   rememberHidden,
-  rememberIskiosOpen,
   rememberPaneWidth,
   rememberRailWidth,
 } from "./railStorage";
@@ -52,8 +52,8 @@ export function Shell(
     rightPanel: RightPanel;
     /** The realm whose quest list is open, named in the top bar. */
     listedRealm: RealmListing | null;
-    /** The realm chosen for Iskios's next message, from a realm's page, and how to clear it. */
-    iskios: { onRealm: (path: string | null) => void; realmPath: string | null };
+    /** The realm chosen for Chronicler's next message, from a realm's page, and how to clear it. */
+    chronicler: { onRealm: (path: string | null) => void; realmPath: string | null };
   },
 ) {
   const { width } = useWindowDimensions();
@@ -61,32 +61,34 @@ export function Shell(
   const [storedRailWidth, setRailWidth] = useState(readRailWidth);
   // Held to a quarter of the window again whenever the window changes size; the remembered width stays as dragged.
   const railWidth = clampRailWidth(storedRailWidth, width);
-  // The quest panel's and Iskios's columns, each dragged between its own width and a quarter of the window, as the rail.
+  // The quest panel's and Chronicler's columns, each dragged between its own width and a quarter of the window, as the rail.
   const [storedQuestWidth, setQuestWidth] = useState(() => readPaneWidth(questPanelWidthKey, questColumnWidth));
   const questWidth = clampPaneWidth(storedQuestWidth, width, questColumnWidth);
-  const [storedIskiosWidth, setIskiosWidth] = useState(() => readPaneWidth(iskiosWidthKey, iskiosColumnWidth));
-  const iskiosWidth = clampPaneWidth(storedIskiosWidth, width, iskiosColumnWidth);
-  // Iskios's panel: folded to a pill or open, remembered; a realm chosen for its next message opens it.
-  const [isIskiosOpen, setIsIskiosOpen] = useState(readIskiosOpen);
+  const [storedChroniclerWidth, setChroniclerWidth] = useState(() =>
+    readPaneWidth(chroniclerWidthKey, chroniclerColumnWidth),
+  );
+  const chroniclerWidth = clampPaneWidth(storedChroniclerWidth, width, chroniclerColumnWidth);
+  // Chronicler's panel: folded to a pill or open, remembered; a realm chosen for its next message opens it.
+  const [isChroniclerOpen, setIsChroniclerOpen] = useState(readChroniclerOpen);
   // Opened to the whole content area until restored or the owner navigates from the sidebar; not remembered.
-  const [isIskiosFull, setIsIskiosFull] = useState(false);
+  const [isChroniclerFull, setIsChroniclerFull] = useState(false);
   const navigate = (open: () => void) => {
-    setIsIskiosFull(false);
+    setIsChroniclerFull(false);
     open();
   };
-  const setIskiosOpen = (isOpen: boolean) => {
-    rememberIskiosOpen(isOpen);
-    setIsIskiosOpen(isOpen);
-    if (!isOpen) setIsIskiosFull(false);
+  const setChroniclerOpen = (isOpen: boolean) => {
+    rememberChroniclerOpen(isOpen);
+    setIsChroniclerOpen(isOpen);
+    if (!isOpen) setIsChroniclerFull(false);
   };
-  const iskiosToggle = { isOpen: isIskiosOpen, onToggle: () => setIskiosOpen(!isIskiosOpen) };
-  const { realmPath: iskiosRealmPath } = props.iskios;
+  const chroniclerToggle = { isOpen: isChroniclerOpen, onToggle: () => setChroniclerOpen(!isChroniclerOpen) };
+  const { realmPath: chroniclerRealmPath } = props.chronicler;
   useEffect(() => {
-    if (iskiosRealmPath !== null) {
-      rememberIskiosOpen(true);
-      setIsIskiosOpen(true);
+    if (chroniclerRealmPath !== null) {
+      rememberChroniclerOpen(true);
+      setIsChroniclerOpen(true);
     }
-  }, [iskiosRealmPath]);
+  }, [chroniclerRealmPath]);
   const [questPanel, setQuestPanel] = useState<ReactNode>(null);
   const [panelTitle, setPanelTitle] = useState("Quest");
   const setPanel = useCallback((panel: ReactNode, title: string) => {
@@ -113,7 +115,7 @@ export function Shell(
     return () => document.removeEventListener("keydown", onKey);
   }, [hasRail]);
   const { details } = props;
-  const isPanelShown = !isIskiosFull && details?.isOpen === true && questPanel !== null;
+  const isPanelShown = !isChroniclerFull && details?.isOpen === true && questPanel !== null;
   const panelColumn = isPanelShown && details !== null && (
     <QuestColumn
       edge={
@@ -144,8 +146,8 @@ export function Shell(
     otherPillId,
     pillId,
     pills,
-  } = useCompanionDock(rightPanel, isIskiosFull, isIskiosOpen);
-  const hasQuestPanel = !isIskiosFull && details !== null && questPanel !== null;
+  } = useCompanionDock(rightPanel, isChroniclerFull, isChroniclerOpen);
+  const hasQuestPanel = !isChroniclerFull && details !== null && questPanel !== null;
   const activeTab = rightPanel.content?.tab ?? "quest";
   const isColumnOpen = isCompanionShown || (hasQuestPanel && details.isOpen);
   const toggleColumn = () => {
@@ -169,14 +171,14 @@ export function Shell(
         accessibilityRole="tab"
         accessibilityState={{ selected: activeTab === "companion" }}
         onPress={() => {
-          // Chosen already, the tab goes to the other Companion in the window: Iskios's from a quest's, and back.
+          // Chosen already, the tab goes to the other Companion in the window: Chronicler's from a quest's, and back.
           const next = activeTab === "companion" ? otherPillId : pillId;
           if (next !== null) companionDock.choose(next);
         }}
         style={[local.tab, activeTab === "companion" && local.tabActive]}
       >
         <Text style={[local.tabText, activeTab === "companion" && local.tabTextActive]}>
-          {companionPicker?.isIskios === true && <Text style={local.iskiosMark}>✦ </Text>}
+          {companionPicker?.isChronicler === true && <Text style={local.chroniclerMark}>✦ </Text>}
           Companions
         </Text>
       </Pressable>
@@ -218,32 +220,32 @@ export function Shell(
         ))}
     </QuestColumn>
   );
-  // Beside every screen, the Guild Hall's hub included, Iskios is a column; only a narrow window floats it as a card (CHG-0193).
-  const isIskiosFloating = !hasRail;
-  // Iskios's column stands at the window's far right, past the quest panel, which its handle then clears.
-  const isIskiosColumn = isIskiosOpen && !isIskiosFloating && !isIskiosFull;
-  const iskiosOffset = isIskiosColumn ? iskiosWidth : 0;
-  const iskiosChat = (
-    <IskiosConversation
+  // Beside every screen, the Guild Hall's hub included, Chronicler is a column; only a narrow window floats it as a card (CHG-0193).
+  const isChroniclerFloating = !hasRail;
+  // Chronicler's column stands at the window's far right, past the quest panel, which its handle then clears.
+  const isChroniclerColumn = isChroniclerOpen && !isChroniclerFloating && !isChroniclerFull;
+  const chroniclerOffset = isChroniclerColumn ? chroniclerWidth : 0;
+  const chroniclerChat = (
+    <ChroniclerConversation
       client={props.client}
-      isFull={isIskiosFull}
-      onFold={hasRail || hasOwnTitleBar ? null : () => setIskiosOpen(false)}
+      isFull={isChroniclerFull}
+      onFold={hasRail || hasOwnTitleBar ? null : () => setChroniclerOpen(false)}
       onOpenMission={props.onOpenMission}
-      onRealm={props.iskios.onRealm}
-      onToggleFull={() => setIsIskiosFull(!isIskiosFull)}
-      realmPath={props.iskios.realmPath}
-      viewing={viewingOf(props.place, props.openMission, props.listedRealm?.name ?? null, isIskiosFull)}
+      onRealm={props.chronicler.onRealm}
+      onToggleFull={() => setIsChroniclerFull(!isChroniclerFull)}
+      realmPath={props.chronicler.realmPath}
+      viewing={viewingOf(props.place, props.openMission, props.listedRealm?.name ?? null, isChroniclerFull)}
     />
   );
   // The top bar's button opens it; a window with no top bar (narrow, not macOS) has a pill in its stead.
   const hasLauncherPill = !hasRail && !hasOwnTitleBar;
-  const iskiosFull = isIskiosOpen && isIskiosFull && <View style={local.fill}>{iskiosChat}</View>;
-  const iskiosDock = isIskiosOpen ? (
-    isIskiosFloating && !isIskiosFull ? (
-      <IskiosFloating>{iskiosChat}</IskiosFloating>
+  const chroniclerFull = isChroniclerOpen && isChroniclerFull && <View style={local.fill}>{chroniclerChat}</View>;
+  const chroniclerDock = isChroniclerOpen ? (
+    isChroniclerFloating && !isChroniclerFull ? (
+      <ChroniclerFloating>{chroniclerChat}</ChroniclerFloating>
     ) : null
   ) : hasLauncherPill ? (
-    <IskiosLauncher onPress={() => setIskiosOpen(true)} />
+    <ChroniclerLauncher onPress={() => setChroniclerOpen(true)} />
   ) : null;
   // Narrow windows keep the screens' own links; as the macOS title bar the top bar stays, over the content alone. An
   // open quest panel takes the content's place; the content stays mounted, so the open thread is kept.
@@ -252,10 +254,10 @@ export function Shell(
       <QuestPanelSetter.Provider value={setPanel}>
         <TopBarShown.Provider value={hasOwnTitleBar}>
           <View style={local.narrow}>
-            {hasOwnTitleBar && <TopBar client={props.client} details={details} iskios={iskiosToggle} />}
+            {hasOwnTitleBar && <TopBar chronicler={chroniclerToggle} client={props.client} details={details} />}
             <View style={[local.narrowContent, isPanelShown && local.hidden]}>{props.children}</View>
-            {!isPanelShown && iskiosDock}
-            {!isPanelShown && iskiosFull}
+            {!isPanelShown && chroniclerDock}
+            {!isPanelShown && chroniclerFull}
             {panelColumn}
           </View>
         </TopBarShown.Provider>
@@ -269,7 +271,7 @@ export function Shell(
           <CompanionTabOf.Provider value={isCompanionShown ? pillId : null}>
             <TopBarShown.Provider value={true}>
               <View style={local.window}>
-                <TopBar client={props.client} details={null} iskios={iskiosToggle} />
+                <TopBar chronicler={chroniclerToggle} client={props.client} details={null} />
                 <View style={local.body}>
                   <View style={local.frame}>
                     {!isHidden && (
@@ -279,9 +281,9 @@ export function Shell(
                         onOpenRealmQuests={(listing) => navigate(() => props.onOpenRealmQuests(listing))}
                         onOpenThread={(missionId, threadId) => navigate(() => props.onOpenThread(missionId, threadId))}
                         onPlace={(place) => navigate(() => props.onPlace(place))}
-                        openMission={isIskiosFull ? null : props.openMission}
-                        openThread={isIskiosFull ? null : props.openThread}
-                        place={isIskiosFull ? null : props.place}
+                        openMission={isChroniclerFull ? null : props.openMission}
+                        openThread={isChroniclerFull ? null : props.openThread}
+                        place={isChroniclerFull ? null : props.place}
                         width={railWidth}
                       />
                     )}
@@ -310,28 +312,28 @@ export function Shell(
                     </Pressable>
                     <View style={local.panel}>
                       {props.children}
-                      {iskiosFull}
+                      {chroniclerFull}
                     </View>
-                    {iskiosDock}
+                    {chroniclerDock}
                   </View>
                   {wideColumn}
-                  {isIskiosColumn && (
-                    <IskiosColumn
+                  {isChroniclerColumn && (
+                    <ChroniclerColumn
                       edge={
                         <EdgeResizer
-                          label="Resize Iskios"
-                          leastWidth={iskiosColumnWidth}
-                          onChange={setIskiosWidth}
-                          onRelease={(next) => rememberPaneWidth(iskiosWidthKey, next)}
+                          label="Resize Chronicler"
+                          leastWidth={chroniclerColumnWidth}
+                          onChange={setChroniclerWidth}
+                          onRelease={(next) => rememberPaneWidth(chroniclerWidthKey, next)}
                           side="start"
-                          width={iskiosWidth}
+                          width={chroniclerWidth}
                           windowWidth={width}
                         />
                       }
-                      width={iskiosWidth}
+                      width={chroniclerWidth}
                     >
-                      {iskiosChat}
-                    </IskiosColumn>
+                      {chroniclerChat}
+                    </ChroniclerColumn>
                   )}
                   {(hasQuestPanel ? details.isPinned !== true : hasCompanion) && (
                     <Pressable
@@ -341,8 +343,8 @@ export function Shell(
                       style={({ pressed }) => [
                         local.handle,
                         isColumnOpen
-                          ? { right: questWidth - handleSize / 2 + iskiosOffset }
-                          : [local.endHandleTab, { right: iskiosOffset }],
+                          ? { right: questWidth - handleSize / 2 + chroniclerOffset }
+                          : [local.endHandleTab, { right: chroniclerOffset }],
                         pressed && local.handlePressed,
                       ]}
                     >
@@ -360,9 +362,11 @@ export function Shell(
 }
 
 const local = StyleSheet.create({
-  // The window below the top bar: the frame, then the quest panel and Iskios's column, which the quest panel's handle
+  // The window below the top bar: the frame, then the quest panel and Chronicler's column, which the quest panel's handle
   // straddles; the handle is centered on this body.
   body: { flex: 1, flexDirection: "row" },
+  // Chronicler's own mark, as on its button in the top bar.
+  chroniclerMark: { color: colors.accentText },
   // Closed, the handle is the half of a circle against the window's right edge.
   endHandleTab: {
     borderBottomRightRadius: 0,
@@ -374,7 +378,7 @@ const local = StyleSheet.create({
     right: 0,
     width: handleSize * 0.75,
   },
-  // Iskios restored to the whole content area: over the screen, which stays mounted beneath, and the sidebar stays.
+  // Chronicler restored to the whole content area: over the screen, which stays mounted beneath, and the sidebar stays.
   fill: { backgroundColor: colors.page, bottom: 0, left: 0, position: "absolute", right: 0, top: 0, zIndex: 7 },
   frame: { backgroundColor: colors.ground, flex: 1, flexDirection: "row", overflow: "hidden" },
   handle: {
@@ -405,8 +409,6 @@ const local = StyleSheet.create({
     width: handleSize * 0.75,
   },
   hidden: { display: "none" },
-  // Iskios's own mark, as on its button in the top bar.
-  iskiosMark: { color: colors.accentText },
   narrow: { backgroundColor: colors.page, flex: 1 },
   narrowContent: { flex: 1 },
   noCompanion: { color: colors.textMuted, padding: 16 },

@@ -1,4 +1,4 @@
-import type { Question } from "@iskios/contracts";
+import type { Question } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 

@@ -4,7 +4,7 @@ import { isGuildmasterThread } from "./guildmaster.ts";
 import { readTurnReach } from "./mentions.ts";
 
 // Who a thread may message and whose journal it may read (thread-messaging, Who can message whom; CHG-0181): the tree's
-// own rules, Iskios's, and what the owner's mentions and the messages delivered to the thread's current turn open. The
+// own rules, Chronicler's, and what the owner's mentions and the messages delivered to the thread's current turn open. The
 // tools ask here, so the rule, its grants, and the note that tells the thread of them (`mentionNoteOf`) read the same
 // resolution of a mention.
 
@@ -40,7 +40,7 @@ export const mayMessage = (fromId: string, toId: string) =>
   });
 
 /**
- * Whether a thread may read another quest's journal: Iskios reads any; another thread only one the owner mentioned,
+ * Whether a thread may read another quest's journal: Chronicler reads any; another thread only one the owner mentioned,
  * or one of whose side-quests the owner mentioned, in a message its current turn received.
  */
 export const mayReadJournal = (threadId: string, missionId: string) =>

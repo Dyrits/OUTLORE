@@ -6,7 +6,7 @@ import type {
   RenameRealm,
   RestoreRealm,
   SetRealmCrest,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Effect } from "effect";
 import { type CommandRunner, changed } from "./commands.ts";
 import {

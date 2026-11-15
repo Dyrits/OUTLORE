@@ -1,4 +1,4 @@
-import type { RitualScope, RitualScopeEntry } from "@iskios/contracts";
+import type { RitualScope, RitualScopeEntry } from "@outlore/contracts";
 import { Effect } from "effect";
 import { invalid } from "../core/index.ts";
 import { changeableSettings } from "./guildmasterSettings.ts";
@@ -15,7 +15,7 @@ const jsonTextOf = (text: string) => {
   }
 };
 
-/** Refuses a scope entry that is not exact: a missing or stray new value, or a setting Iskios may not change. */
+/** Refuses a scope entry that is not exact: a missing or stray new value, or a setting Chronicler may not change. */
 export const validateScope = (scope: RitualScope) =>
   Effect.gen(function* () {
     for (const entry of scope) {

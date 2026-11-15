@@ -1,5 +1,5 @@
-import type { Carrier } from "@iskios/channel";
-import type { HostConnection } from "@iskios/relay";
+import type { Carrier } from "@outlore/channel";
+import type { HostConnection } from "@outlore/relay";
 
 /** One client's connection through the relay, as the secure channel's carrier, with the two ends the runtime feeds. */
 export interface ClientLink {

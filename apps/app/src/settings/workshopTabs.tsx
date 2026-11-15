@@ -1,4 +1,4 @@
-import type { TierName } from "@iskios/contracts";
+import type { TierName } from "@outlore/contracts";
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef, useState } from "react";
 
 /** What the Workshop's Companions tab shows: the default Companion, or one of the presets. */

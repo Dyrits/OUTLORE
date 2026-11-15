@@ -9,7 +9,7 @@ import type {
   Settings,
   StartChoices,
   StartMissionResult,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient, type Statement } from "effect/sql";
 import {

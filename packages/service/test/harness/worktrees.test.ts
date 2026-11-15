@@ -12,7 +12,7 @@ afterEach(() => {
 
 /** A real folder holding one repository with one commit, and the real path of the folder around it. */
 const makeRepositoryFixture = (name = "workspace") => {
-  const base = realpathSync(mkdtempSync(join(tmpdir(), "iskios-worktrees-")));
+  const base = realpathSync(mkdtempSync(join(tmpdir(), "outlore-worktrees-")));
   directories.push(base);
   const folder = createRepository(base, name);
   return { base, folder };
@@ -29,7 +29,7 @@ describe("using a workspace's git worktrees", () => {
   });
 
   it("lists none for a folder that is not a git repository", () => {
-    const base = realpathSync(mkdtempSync(join(tmpdir(), "iskios-worktrees-")));
+    const base = realpathSync(mkdtempSync(join(tmpdir(), "outlore-worktrees-")));
     directories.push(base);
     expect(workspaceWorktreesOf(base)).toEqual([]);
   });

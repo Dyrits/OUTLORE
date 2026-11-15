@@ -1,5 +1,5 @@
 /**
- * Adapted from Paseo (https://github.com/getpaseo/paseo), Apache-2.0, Copyright (c) Mohamed Boudra; modified for Iskios.
+ * Adapted from Paseo (https://github.com/getpaseo/paseo), Apache-2.0, Copyright (c) Mohamed Boudra; modified for Outlore.
  *
  * Noise_NK_25519_ChaChaPoly_SHA256 test vectors from noise-c (cacophony.txt and noise-c-basic.txt), as Paseo keeps them.
  */

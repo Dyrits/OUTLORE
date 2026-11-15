@@ -1,4 +1,11 @@
-import type { AccountId, GuildmasterPlace, HarnessName, MissionSummary, ModelChoice, Viewing } from "@iskios/contracts";
+import type {
+  AccountId,
+  GuildmasterPlace,
+  HarnessName,
+  MissionSummary,
+  ModelChoice,
+  Viewing,
+} from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, readSettings, type ToolAnswer } from "../core/index.ts";
@@ -14,18 +21,18 @@ import { createRitual } from "./rituals.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 import { renameMission, titleOf } from "./titles.ts";
 
-// Iskios, once the Guildmaster (quest coordination): one permanent thread the owner talks to, which looks for a quest
+// Chronicler, once the Guildmaster (quest coordination): one permanent thread the owner talks to, which looks for a quest
 // that fits a request and offers to continue it, or proposes a new one for the owner to open. It is stored as a hidden
 // quest so its turns, messages, usage, and cards are the quests' own; every list, search, and ending leaves it out.
 
-/** Iskios's title, in its thread tree and its usage; data made as Guildmaster is renamed by migration 0041. */
-export const guildmasterTitle = "Iskios";
+/** Chronicler's title, in its thread tree and its usage; data made as Guildmaster is renamed by migrations 0041 and 0050. */
+export const guildmasterTitle = "Chronicler";
 
 /** How many quests the Guildmaster's dashboard text lists at most; the latest ones. */
 const maxListedQuests = 60;
 
 /**
- * The cheapest model Iskios knows for a harness, which the Guildmaster starts on: it only routes. Codex and OpenCode list
+ * The cheapest model Outlore knows for a harness, which the Guildmaster starts on: it only routes. Codex and OpenCode list
  * their models only by running, so they start on their own default; the owner can hand it over at any time.
  */
 const cheapestModelOf = (harness: HarnessName): ModelChoice => (harness === "claude" ? claudeCheapestModel : "default");
@@ -75,7 +82,7 @@ export const isGuildmasterQuest = (missionId: string) =>
   });
 
 /**
- * The line Iskios reads with a message, saying where the owner had Iskios open from: the quest when the screen is one
+ * The line Chronicler reads with a message, saying where the owner had Chronicler open from: the quest when the screen is one
  * (named from the stored title, not the app's), else the screen's name. Null for a message to any other thread.
  */
 export const viewingLineOf = (threadId: string, viewing: Viewing | null | undefined) =>
@@ -102,7 +109,7 @@ export const viewingLineOf = (threadId: string, viewing: Viewing | null | undefi
 /** Refuses to end, delete, or rename the Guildmaster's quest: it is permanent (quest coordination, Place). */
 export const refuseGuildmaster = (missionId: string, action: string) =>
   Effect.gen(function* () {
-    if (yield* isGuildmasterQuest(missionId)) return yield* invalid(`Iskios is permanent: it cannot be ${action}.`);
+    if (yield* isGuildmasterQuest(missionId)) return yield* invalid(`Chronicler is permanent: it cannot be ${action}.`);
   });
 
 /** A realm the owner or the Guildmaster named, by its folder or its name; null when none matches. */
@@ -322,12 +329,13 @@ export const refusedAction = (text: string) => unchanged<ActedOnQuest>({ _tag: "
 /**
  * `act_on_mission`: renames a quest, ends it, or stops its threads at work, once its exact action was authorized by
  * provenance (guildmasterProvenance.ts): the owner's own words of this turn, a Ritual's reviewed scope in one of its
- * runs, or the owner's Allow. Iskios calls it, and a Ritual's own thread within its scope; never on its own initiative.
+ * runs, or the owner's Allow. Chronicler calls it, and a Ritual's own thread within its scope; never on its own initiative.
  */
 export const actOnMission = (callerId: string, args: ArgumentsOf<"act_on_mission">) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
-    if (!(yield* isStructuralCaller(callerId, "act_on_mission"))) return refusedAction("Only Iskios acts on quests.");
+    if (!(yield* isStructuralCaller(callerId, "act_on_mission")))
+      return refusedAction("Only Chronicler acts on quests.");
     const [quest] = yield* sql<{ title: string }>`
       SELECT m.title FROM missions m JOIN threads top ON top.id = m.top_thread_id
       WHERE m.id = ${args.mission} AND m.is_guildmaster = 0 AND top.is_deleting = 0`;
@@ -368,7 +376,7 @@ export const readControlHistory = (callerId: string, args: ArgumentsOf<"read_con
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     if (!(yield* isGuildmasterThread(callerId)))
-      return { isError: true, text: "Only Iskios reads this." } satisfies ToolAnswer;
+      return { isError: true, text: "Only Chronicler reads this." } satisfies ToolAnswer;
     const count = Math.min(Math.max(args.count ?? 10, 1), 40);
     const query = (args.query ?? "").trim().toLowerCase();
     const rows = yield* sql<{ sequence: number; sender: string; text: string }>`
@@ -404,7 +412,7 @@ export const refusedRitual = (reason: string) => unchanged<RitualCreatedByGuildm
  */
 export const createRitualByGuildmaster = (callerId: string, args: ArgumentsOf<"create_ritual">) =>
   Effect.gen(function* () {
-    if (!(yield* isGuildmasterThread(callerId))) return refusedRitual("Only Iskios creates Rituals.");
+    if (!(yield* isGuildmasterThread(callerId))) return refusedRitual("Only Chronicler creates Rituals.");
     if (args.instruction.trim() === "" || titleOf(args.title) === "")
       return refusedRitual("Give an instruction and a title.");
     const realm = args.realm === undefined || args.realm.trim() === "" ? null : yield* findRealm(args.realm);

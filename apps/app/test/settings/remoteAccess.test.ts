@@ -1,4 +1,4 @@
-import type { PairedDevice } from "@iskios/contracts";
+import type { PairedDevice } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import {
   agoOf,
@@ -53,11 +53,11 @@ describe("Charter's remote access wording", () => {
 
 describe("Charter's relay wording", () => {
   it("names the shared relay by default, and the owner's own address once chosen", () => {
-    expect(relayLineOf({ isOwnRelay: false, relayOrigin: "https://iskios-relay.dyrits.workers.dev" })).toMatch(
+    expect(relayLineOf({ isOwnRelay: false, relayOrigin: "https://outlore-relay.dyrits.workers.dev" })).toMatch(
       /^Shared relay/,
     );
-    expect(relayLineOf({ isOwnRelay: true, relayOrigin: "https://iskios-relay.me.workers.dev" })).toBe(
-      "Your own relay, on your Cloudflare account: iskios-relay.me.workers.dev",
+    expect(relayLineOf({ isOwnRelay: true, relayOrigin: "https://outlore-relay.me.workers.dev" })).toBe(
+      "Your own relay, on your Cloudflare account: outlore-relay.me.workers.dev",
     );
   });
 

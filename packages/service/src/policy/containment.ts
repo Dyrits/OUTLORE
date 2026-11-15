@@ -1,4 +1,4 @@
-import type { ApprovalLevel } from "@iskios/contracts";
+import type { ApprovalLevel } from "@outlore/contracts";
 import { Effect } from "effect";
 import { type Containment, isInsideFolder } from "../core/index.ts";
 import { type Capability, capabilities, changedFilesOf, isFileWriting } from "./patterns.ts";

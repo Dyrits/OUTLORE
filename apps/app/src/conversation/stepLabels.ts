@@ -1,4 +1,4 @@
-import type { Activity } from "@iskios/contracts";
+import type { Activity } from "@outlore/contracts";
 import { clockOf } from "../foundation/formatting";
 
 /** A reported call's line, omitting empty fields without changing the target or time. */

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import { ServerFrameJson } from "@iskios/contracts";
+import { ServerFrameJson } from "@outlore/contracts";
 import { Effect, Schema } from "effect";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, serveLoopback, serviceLayer } from "../src/index.ts";
@@ -19,10 +19,10 @@ const running = serveLoopback({ port: 0, token: TOKEN }).pipe(Effect.map(({ port
 
 /** A service over its own database, kept open for the whole test. */
 const fresh = () => {
-  const directory = mkdtempSync(join(tmpdir(), "iskios-test-"));
+  const directory = mkdtempSync(join(tmpdir(), "outlore-test-"));
   directories.push(directory);
   return serviceLayer({
-    filename: join(directory, "iskios.sqlite"),
+    filename: join(directory, "outlore.sqlite"),
     harness: fakeHarnessLayer("10 millis"),
     homeFolder: directory,
     scratchRoot: join(directory, "missions"),

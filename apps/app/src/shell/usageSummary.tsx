@@ -1,4 +1,4 @@
-import type { UsageFilter, UsageReport } from "@iskios/contracts";
+import type { UsageFilter, UsageReport } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { countedOf } from "../foundation/labels";

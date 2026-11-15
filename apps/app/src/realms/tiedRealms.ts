@@ -1,4 +1,4 @@
-import type { WorkspaceChoice } from "@iskios/contracts";
+import type { WorkspaceChoice } from "@outlore/contracts";
 
 /**
  * The realms tied to a folder, by name. A quest is placed by its realm's folder, so a realm tied to no folder is not

@@ -2,7 +2,7 @@
 import sys, os, base64, time, shutil
 from playwright.sync_api import sync_playwright
 scene, name = sys.argv[1], sys.argv[2]
-out = f"/tmp/iskios-demo/frames/{name}"; shutil.rmtree(out, ignore_errors=True); os.makedirs(out)
+out = f"/tmp/outlore-demo/frames/{name}"; shutil.rmtree(out, ignore_errors=True); os.makedirs(out)
 W, H = 1280, 800
 with sync_playwright() as p:
     b = p.chromium.connect_over_cdp("http://127.0.0.1:9377"); pg = b.contexts[0].pages[0]

@@ -8,14 +8,14 @@ import {
   newDeviceToken,
   newPairingSecret,
   newRoomName,
-} from "@iskios/channel";
+} from "@outlore/channel";
 import {
   type DeviceId,
   type DeviceKind,
   maxNameLength,
   type PairedDevice,
   type RemoteAccessView,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid } from "../core/index.ts";

@@ -1,4 +1,4 @@
-import { WorkspaceId } from "@iskios/contracts";
+import { WorkspaceId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import { shuffledCrest } from "../../src/crest/crestShapes";
 import { realmLabelOf } from "../../src/realms/realmLabels";

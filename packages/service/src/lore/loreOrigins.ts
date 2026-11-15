@@ -1,4 +1,4 @@
-import type { LoreOrigin } from "@iskios/contracts";
+import type { LoreOrigin } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { summaryOf } from "./loreFading.ts";

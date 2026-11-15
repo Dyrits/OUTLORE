@@ -1,12 +1,12 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { BackupCompanion, MissionId, ThreadId } from "@iskios/contracts";
+import type { BackupCompanion, MissionId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { guildmaster, isIdle, say } from "../fixtures/guildmaster.ts";
 import { call, settle, withService } from "../fixtures/service.ts";
 
 type Place = { missionId: MissionId; threadId: ThreadId };
 
-/** Waits until Iskios is idle or asks the owner a question, and returns its detail. */
+/** Waits until Chronicler is idle or asks the owner a question, and returns its detail. */
 const waitOn = (place: Place) =>
   settle(
     place.missionId,
@@ -93,7 +93,7 @@ describe("proposing quests and creating Rituals on presets", () => {
     ),
   );
 
-  it.live("gives a Ritual no fallbacks when Iskios names a Companion of its own", () =>
+  it.live("gives a Ritual no fallbacks when Chronicler names a Companion of its own", () =>
     withService(
       Effect.gen(function* () {
         yield* setHeavy({ effort: "high", harness: "claude", model: "claude-opus-5-5" });

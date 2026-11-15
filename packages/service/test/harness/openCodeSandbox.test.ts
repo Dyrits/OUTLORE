@@ -31,7 +31,7 @@ import { hasExecutorBelow, killProcessTree, markedProcessesOf, sweepOrphans } fr
 
 const directories: string[] = [];
 const temporary = () => {
-  const directory = realpathSync(mkdtempSync(join(tmpdir(), "iskios-sandbox-")));
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-sandbox-")));
   directories.push(directory);
   return directory;
 };
@@ -145,7 +145,7 @@ describe("wrapping OpenCode in the host's sandbox", () => {
       const marker = `stand-in-token-${process.pid}-${Date.now()}`;
       // A stand-in for the service, holding a token in its environment, and for a harness, holding one in its arguments.
       const outside = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60_000)", `mcp-url=/mcp/${marker}`], {
-        env: { ...process.env, ISKIOS_TOKEN: marker },
+        env: { ...process.env, OUTLORE_TOKEN: marker },
         stdio: "ignore",
       });
       try {
@@ -160,7 +160,7 @@ describe("wrapping OpenCode in the host's sandbox", () => {
         // Its own child stays readable: OpenCode may still look at what it started.
         const own = wrappedCommandOf(seatbelt, [], "/bin/sh", [
           "-c",
-          `ISKIOS_TOKEN=own-${marker} "${process.execPath}" -e 'setTimeout(() => {}, 5000)' & sleep 1; /usr/bin/python3 -I -c "$0" $! own-${marker}`,
+          `OUTLORE_TOKEN=own-${marker} "${process.execPath}" -e 'setTimeout(() => {}, 5000)' & sleep 1; /usr/bin/python3 -I -c "$0" $! own-${marker}`,
           reader,
         ]);
         expect(read(own.command, own.args)).toBe("seen");
@@ -639,7 +639,7 @@ describe("ending the OpenCode processes the service lost", () => {
   };
 
   it("finds an executor that outlived its `acp` by its marker, and ends it, never an unmarked or living one", async () => {
-    const marker = { name: "ISKIOS_SANDBOX_OWNER", value: crypto.randomUUID() };
+    const marker = { name: "OUTLORE_SANDBOX_OWNER", value: crypto.randomUUID() };
     const markedEnv = { [marker.name]: marker.value };
     const started: Array<number> = [];
     try {
@@ -666,7 +666,7 @@ describe("ending the OpenCode processes the service lost", () => {
   });
 
   it("reads the marker from the environment only, never from a command's arguments", async () => {
-    const marker = { name: "ISKIOS_SANDBOX_OWNER", value: crypto.randomUUID() };
+    const marker = { name: "OUTLORE_SANDBOX_OWNER", value: crypto.randomUUID() };
     const posing = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)", `${marker.name}=${marker.value}`], {
       stdio: "ignore",
     });
@@ -682,7 +682,7 @@ describe("ending the OpenCode processes the service lost", () => {
     const root = temporary();
     const sandbox: OpenCodeSandbox = { ...seatbelt, caches: [], root: join(root, "opencode-sandbox") };
     const marker = ownerMarkerOf(sandbox);
-    expect(marker.name).toBe("ISKIOS_SANDBOX_OWNER");
+    expect(marker.name).toBe("OUTLORE_SANDBOX_OWNER");
     expect(marker.value).toMatch(/^[0-9a-f-]{36}$/);
     expect(ownerMarkerOf(sandbox)).toEqual(marker);
     expect(ownerMarkerOf({ ...sandbox, root: join(root, "other") }).value).not.toBe(marker.value);

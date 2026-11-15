@@ -1,4 +1,4 @@
-import type { WorkspaceChoice } from "@iskios/contracts";
+import type { WorkspaceChoice } from "@outlore/contracts";
 
 /** A folder's final segment, accepting both desktop path separators. */
 export const folderNameOf = (path: string) =>

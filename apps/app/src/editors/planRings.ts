@@ -1,4 +1,4 @@
-import type { PlanLimitWindow } from "@iskios/contracts";
+import type { PlanLimitWindow } from "@outlore/contracts";
 import { meterLevelOf } from "../foundation/labels";
 
 /** One window of a plan's limit drawn as a ring: where it sits, how much of it is filled, and how full it is. */

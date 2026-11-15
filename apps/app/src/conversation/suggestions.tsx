@@ -1,4 +1,4 @@
-import type { MissionId, Suggestion, SuggestionAnswer, ThreadId, Tier } from "@iskios/contracts";
+import type { MissionId, Suggestion, SuggestionAnswer, ThreadId, Tier } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { type Runner, RunnerPickers, useHarnesses } from "../editors/runners";
@@ -120,7 +120,7 @@ const suggestionRunnerOf = (suggestion: Suggestion): Runner => ({
   model: suggestion.model,
 });
 
-/** An open suggestion: Iskios's proposal of a new quest, or where a thread's off-topic message should go. */
+/** An open suggestion: Chronicler's proposal of a new quest, or where a thread's off-topic message should go. */
 export function SuggestionCard({ client, suggestion }: { client: ServiceClient; suggestion: Suggestion }) {
   return suggestion.isFromGuildmaster ? (
     <ProposalCard client={client} suggestion={suggestion} />
@@ -130,7 +130,7 @@ export function SuggestionCard({ client, suggestion }: { client: ServiceClient; 
 }
 
 /**
- * Iskios's proposal: the realm and the Companion as rows of chips, the Companion offered by the tiers the owner set in
+ * Chronicler's proposal: the realm and the Companion as rows of chips, the Companion offered by the tiers the owner set in
  * the Workshop (or only the default, stated), and the pickers behind "Customize the Companion" (CHG-0179).
  */
 function ProposalCard({ client, suggestion }: { client: ServiceClient; suggestion: Suggestion }) {
@@ -161,7 +161,7 @@ function ProposalCard({ client, suggestion }: { client: ServiceClient; suggestio
       <Text style={styles.questionText}>
         {hasMatches
           ? "A quest may already cover this. Continue it, or open a new quest?"
-          : "Iskios proposes a new quest. Pick its realm, then open it."}
+          : "Chronicler proposes a new quest. Pick its realm, then open it."}
       </Text>
       <Text style={styles.body}>{suggestion.text}</Text>
       <MatchButtons onContinue={(missionId) => send({ _tag: "Continue", missionId })} suggestion={suggestion} />

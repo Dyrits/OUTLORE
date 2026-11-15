@@ -1,4 +1,4 @@
-import type { BudgetLimits, BudgetPeriod, HarnessName, Spending } from "@iskios/contracts";
+import type { BudgetLimits, BudgetPeriod, HarnessName, Spending } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import {
@@ -246,7 +246,7 @@ export const budgetLineOf = (missionId: string, account: AccountRef | null = nul
             accountRow.period === null ? "the credit's" : periodWords[accountRow.period],
           );
     const accountName = accountParts.length === 0 || account === null ? "" : yield* accountNameOf(account);
-    return `Budget: ${mission}${globalParts.length === 0 ? "" : `; global: ${globalParts.join(", ")}`}${accountParts.length === 0 ? "" : `; account ${accountName}: ${accountParts.join(", ")}`}. At a limit, Iskios stops the work under it and asks the owner.`;
+    return `Budget: ${mission}${globalParts.length === 0 ? "" : `; global: ${globalParts.join(", ")}`}${accountParts.length === 0 ? "" : `; account ${accountName}: ${accountParts.join(", ")}`}. At a limit, Outlore stops the work under it and asks the owner.`;
   });
 
 /** The words for an account budget's limits, for the account's row. */

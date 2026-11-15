@@ -1,5 +1,5 @@
 /**
- * Adapted from Paseo (https://github.com/getpaseo/paseo), Apache-2.0, Copyright (c) Mohamed Boudra; modified for Iskios.
+ * Adapted from Paseo (https://github.com/getpaseo/paseo), Apache-2.0, Copyright (c) Mohamed Boudra; modified for Outlore.
  *
  * Noise spec section 5.1 CipherState for ChaChaPoly: the nonce is 4 zero bytes then the 64-bit little-endian counter.
  */

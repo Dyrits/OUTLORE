@@ -1,4 +1,4 @@
-import type { Consumption, GuildHallRecap, MissionSummary } from "@iskios/contracts";
+import type { Consumption, GuildHallRecap, MissionSummary } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import { heroOf, hubOf, nowOf, recapOf } from "../../src/conversation/guildHall";
 

@@ -1,4 +1,4 @@
-import type { WorkspaceChoice } from "@iskios/contracts";
+import type { WorkspaceChoice } from "@outlore/contracts";
 import { useRef, useState } from "react";
 import { Pressable, type StyleProp, Text, TextInput, type TextStyle, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";

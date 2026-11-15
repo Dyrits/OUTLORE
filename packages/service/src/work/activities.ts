@@ -1,4 +1,4 @@
-import type { Activity } from "@iskios/contracts";
+import type { Activity } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { textFieldOf } from "../core/index.ts";
@@ -15,11 +15,11 @@ const shortOf = (text: string) => {
   return first.length > detailLength || first !== text.trim() ? `${first.slice(0, detailLength).trimEnd()}…` : first;
 };
 
-/** Iskios's own tools, which the thread calls through its tool server, as the harness lists them. */
-const iskiosPrefix = "mcp__iskios__";
+/** Outlore's own tools, which the thread calls through its tool server, as the harness lists them. */
+const chroniclerPrefix = "mcp__outlore__";
 
 /** Calls that already have a line of their own, or are the harness's own machinery. */
-const leftOut = new Set([`${iskiosPrefix}request_approval`, `${iskiosPrefix}answer_prompt`]);
+const leftOut = new Set([`${chroniclerPrefix}request_approval`, `${chroniclerPrefix}answer_prompt`]);
 
 const kinds: Record<string, string> = {
   Glob: "List files",
@@ -47,8 +47,8 @@ const detailOf = (toolName: string, input: unknown) => {
  */
 export const callDescriptionOf = (toolName: string, input: unknown): Pick<Activity, "detail" | "summary"> | null => {
   if (leftOut.has(toolName)) return null;
-  if (toolName.startsWith(iskiosPrefix))
-    return { detail: toolName.slice(iskiosPrefix.length).replaceAll("_", " "), summary: "Use an Iskios tool" };
+  if (toolName.startsWith(chroniclerPrefix))
+    return { detail: toolName.slice(chroniclerPrefix.length).replaceAll("_", " "), summary: "Use an Outlore tool" };
   const kind = Object.hasOwn(kinds, toolName) ? kinds[toolName] : null;
   const summary = toolName === "Bash" ? (reasonOf(input) ?? "Run a command") : (kind ?? plainActionOf(toolName));
   return { detail: detailOf(toolName, input), summary };

@@ -6,7 +6,7 @@ import type {
   RitualCompanion,
   RitualSchedule,
   RitualScopeEntry,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { TestClock } from "effect/testing";
@@ -182,14 +182,18 @@ describe("a Ritual's reviewed scope", () => {
     Effect.gen(function* () {
       const quest = yield* restingQuest("Old notes");
       const created = yield* withScope("Hello", [{ operation: "Archive", payload: null, target: quest.missionId }]);
-      expect(yield* tool(created.threadId, "create_realm", { name: "Ideas" })).toContain("Only Iskios makes realms");
+      expect(yield* tool(created.threadId, "create_realm", { name: "Ideas" })).toContain(
+        "Only Chronicler makes realms",
+      );
       expect(yield* tool(created.threadId, "rename_realm", { name: "Ideas", realm: "Borderlands" })).toContain(
-        "Only Iskios renames realms",
+        "Only Chronicler renames realms",
       );
       const settingArgs = { setting: "shouldShowFinishedQuests", value: "true" };
-      expect(yield* tool(quest.threadId, "change_setting", settingArgs)).toContain("Only Iskios changes the settings");
+      expect(yield* tool(quest.threadId, "change_setting", settingArgs)).toContain(
+        "Only Chronicler changes the settings",
+      );
       expect(yield* tool(quest.threadId, "act_on_mission", { action: "Archive", mission: quest.missionId })).toContain(
-        "Only Iskios acts on quests",
+        "Only Chronicler acts on quests",
       );
       expect((yield* call({ _tag: "ReadSettings" })).shouldShowFinishedQuests).toBe(false);
       expect((yield* read(quest.missionId)).mission.state).not.toBe("Archived");

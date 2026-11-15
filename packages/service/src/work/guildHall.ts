@@ -1,4 +1,4 @@
-import type { GuildHallRecap, MissionId } from "@iskios/contracts";
+import type { GuildHallRecap, MissionId } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { consumptionColumns, dayMillis } from "../core/index.ts";

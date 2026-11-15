@@ -36,7 +36,7 @@ describe("asking for the release list", () => {
     expect(github.seen).toHaveLength(1);
     const [request] = github.seen;
     expect(request?.url).toBe("/releases?per_page=30");
-    expect(request?.headers["user-agent"]).toBe("Iskios/0.1.1-Prototype");
+    expect(request?.headers["user-agent"]).toBe("Outlore/0.1.1-Prototype");
     // Only transport headers and the two the updater sets: no cookie, no authorization, no identifier.
     const names = Object.keys(request?.headers ?? {});
     expect(names).not.toContain("cookie");
@@ -60,7 +60,7 @@ describe("downloading a file", () => {
   it("writes the file and returns its SHA-512 while reporting progress", async () => {
     const content = Buffer.from("x".repeat(100_000));
     const github = await standIn(() => ({ status: 200, text: content }));
-    const destination = join(mkdtempSync(join(tmpdir(), "iskios-download-")), "file.dmg");
+    const destination = join(mkdtempSync(join(tmpdir(), "outlore-download-")), "file.dmg");
     const percents: number[] = [];
     const hash = await downloadFile(fetch, `${github.base}/file.dmg`, destination, {
       appVersion: "1.0.0",
@@ -73,7 +73,7 @@ describe("downloading a file", () => {
 
   it("refuses a missing file", async () => {
     const github = await standIn(() => ({ status: 404, text: "" }));
-    const destination = join(mkdtempSync(join(tmpdir(), "iskios-download-")), "file.dmg");
+    const destination = join(mkdtempSync(join(tmpdir(), "outlore-download-")), "file.dmg");
     await expect(
       downloadFile(fetch, `${github.base}/none`, destination, { appVersion: "1.0.0", onProgress: () => void 0 }),
     ).rejects.toThrow("GitHub answered 404");

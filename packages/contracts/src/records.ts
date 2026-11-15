@@ -79,7 +79,7 @@ export const Settings = Schema.Struct({
   intelWarningPercent: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100)),
   /** Whether Done missions are archived automatically, off by default (mission-tracking, Ending a mission). */
   shouldAutoArchive: Schema.Boolean,
-  /** Whether Iskios reads the public model price table; off leaves the snapshot shipped with it (budget-control, The price table). */
+  /** Whether Outlore reads the public model price table; off leaves the snapshot shipped with it (budget-control, The price table). */
   shouldFetchPrices: Schema.Boolean,
   /** Whether an off-topic request opens a new mission without asking when no mission matches (thread-tree). */
   shouldOpenOffTopicMissions: Schema.Boolean,
@@ -307,7 +307,7 @@ export const Suggestion = Schema.Struct({
   /** The suggesting thread's model, prefilled for Open as new mission. */
   model: ModelChoice,
   outcome: Schema.NullOr(SuggestionOutcome),
-  /** The folder of the realm Iskios proposed for a new quest, or null for none (the owner may change it on the card). */
+  /** The folder of the realm Chronicler proposed for a new quest, or null for none (the owner may change it on the card). */
   realmPath: Schema.NullOr(Schema.String),
   resolvedAt: Schema.NullOr(Schema.Number),
   targetMissionId: Schema.NullOr(MissionId),
@@ -324,8 +324,8 @@ export type Suggestion = typeof Suggestion.Type;
 
 /** Where the Guildmaster's conversation is: its hidden quest and the thread the owner writes in. */
 /**
- * Where the owner has Iskios open from (quest coordination, Context): the screen's name as the app shows it, and the
- * quest the screen is about when it is one. Iskios reads it with each message, to know what "this quest" means.
+ * Where the owner has Chronicler open from (quest coordination, Context): the screen's name as the app shows it, and the
+ * quest the screen is about when it is one. Chronicler reads it with each message, to know what "this quest" means.
  */
 export const Viewing = Schema.Struct({
   missionId: Schema.optionalKey(Schema.NullOr(MissionId)),

@@ -1,8 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
-const startMark = "__ISKIOS_PATH_START__";
-const endMark = "__ISKIOS_PATH_END__";
+const startMark = "__OUTLORE_PATH_START__";
+const endMark = "__OUTLORE_PATH_END__";
 
 /** The path a login shell prints between the marks, so whatever its start-up files print around it is ignored; null when it printed none. */
 export const pathFromShellOutput = (output: string): string | null => {

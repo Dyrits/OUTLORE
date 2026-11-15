@@ -1,4 +1,4 @@
-import type { Settings, SettingsChange } from "@iskios/contracts";
+import type { Settings, SettingsChange } from "@outlore/contracts";
 import { useState } from "react";
 import { Text } from "react-native";
 import type { ServiceClient } from "../foundation/client";
@@ -9,7 +9,7 @@ import { Button } from "../ui/button";
 import { SettingsCard, ToggleRow } from "./settingsParts";
 
 /**
- * The model price table behind estimated costs: whether Iskios reads the public table, where the prices in use came
+ * The model price table behind estimated costs: whether Outlore reads the public table, where the prices in use came
  * from, and a button to read it now (budget-control, The price table).
  */
 export function PricesCard({

@@ -1,4 +1,4 @@
-import type { HarnessName } from "@iskios/contracts";
+import type { HarnessName } from "@outlore/contracts";
 import { colors } from "../foundation/theme";
 
 /** Each harness's color in the graph, the list beside it, and the breakdowns. */

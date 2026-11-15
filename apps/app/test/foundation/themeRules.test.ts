@@ -8,12 +8,12 @@ describe("themeOf", () => {
     expect(themeOf("one")).toBe("one");
   });
 
-  it("is Iskios when nothing or something unknown is stored", () => {
-    expect(themeOf(null)).toBe("iskios");
-    expect(themeOf("sepia")).toBe("iskios");
+  it("is One when nothing or something unknown is stored", () => {
+    expect(themeOf(null)).toBe("one");
+    expect(themeOf("sepia")).toBe("one");
   });
 
-  it("offers Iskios, Gild, and One", () => {
-    expect(themes).toEqual(["iskios", "gild", "one"]);
+  it("offers One, Iskios, and Gild", () => {
+    expect(themes).toEqual(["one", "iskios", "gild"]);
   });
 });

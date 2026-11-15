@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import { decodePairingCode } from "@iskios/channel";
-import { type Request, type ServerFrame, ServerFrameJson } from "@iskios/contracts";
-import { startNodeRelay } from "@iskios/relay";
+import { decodePairingCode } from "@outlore/channel";
+import { type Request, type ServerFrame, ServerFrameJson } from "@outlore/contracts";
+import { startNodeRelay } from "@outlore/relay";
 import { Effect, Layer, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
@@ -23,11 +23,11 @@ afterEach(() => {
 });
 
 const machine = (computerName: string, relayOrigin: string) => {
-  const directory = mkdtempSync(join(tmpdir(), "iskios-remote-"));
+  const directory = mkdtempSync(join(tmpdir(), "outlore-remote-"));
   directories.push(directory);
   return serviceLayer({
     computerName,
-    filename: join(directory, "iskios.sqlite"),
+    filename: join(directory, "outlore.sqlite"),
     harness: fakeHarnessLayer("10 millis"),
     homeFolder: directory,
     relayOrigin,
@@ -247,7 +247,7 @@ describe("controlling one installation from another through the relay", () => {
           const host = yield* w.pair(yield* w.newCode());
           const link = yield* w.bridge(host.id);
           // Another folder on the host's computer, outside its only root (its home folder).
-          const outside = mkdtempSync(join(tmpdir(), "iskios-outside-"));
+          const outside = mkdtempSync(join(tmpdir(), "outlore-outside-"));
           directories.push(outside);
           mkdirSync(join(outside, "secrets"));
           const search = (id: string, query: string) => w.ask(link, id, { _tag: "SearchFolders", query });
@@ -365,7 +365,7 @@ describe("controlling one installation from another through the relay", () => {
         const [stored] = yield* w.controllerSql(
           (sql) => sql<{ token: string }>`SELECT device_token AS token FROM remote_hosts`,
         );
-        const secret = Buffer.from(code.slice("iskios1-".length), "base64url").subarray(48, 64);
+        const secret = Buffer.from(code.slice("outlore1-".length), "base64url").subarray(48, 64);
         expect(seen.length).toBeGreaterThan(8);
         for (const marker of [
           "A very private quest title",

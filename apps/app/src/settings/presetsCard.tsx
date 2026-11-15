@@ -1,4 +1,4 @@
-import type { Settings, SettingsChange, Tier, TierName } from "@iskios/contracts";
+import type { Settings, SettingsChange, Tier, TierName } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useHarnesses } from "../editors/runners";
 import type { ServiceClient } from "../foundation/client";
@@ -97,7 +97,7 @@ function PresetRow({
 }
 
 /**
- * The presets: the up to three Companions Iskios picks from by how demanding a request is (quest coordination). With
+ * The presets: the up to three Companions Chronicler picks from by how demanding a request is (quest coordination). With
  * none set, quests start on the default Companion.
  */
 export function PresetsCard({
@@ -110,7 +110,7 @@ export function PresetsCard({
   settings: Settings;
 }) {
   return (
-    <SettingsCard icon="layers" summary="Iskios picks one by how demanding a request is" title="Presets">
+    <SettingsCard icon="layers" summary="Chronicler picks one by how demanding a request is" title="Presets">
       <Text style={styles.body}>Set only the presets you want; any left out use the default Companion.</Text>
       {tierNames.map(({ hint, name }, index) => (
         <PresetRow

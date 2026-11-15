@@ -1,4 +1,4 @@
-import { EffortChoice, HarnessName, ModelChoice, RitualSchedule, TierName } from "@iskios/contracts";
+import { EffortChoice, HarnessName, ModelChoice, RitualSchedule, TierName } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import type { ToolAnswer } from "../core/index.ts";
 import { latestEntryCount, nothingToRecord } from "./journal.ts";
@@ -49,7 +49,7 @@ const scopeHelp =
 export const threadTools = {
   act_on_mission: definitionOf({
     description:
-      "Iskios uses it, at the owner's request: stop a quest's threads, mark it Done, archive it, or rename it. Iskios derives the exact action and target from the call. It runs at once when the owner's own message in this turn named that action and quest (and new title) plainly; otherwise it asks the owner one Allow or Deny question naming them and waits; marking Done or archiving a quest with threads at work always asks. Do not ask a second question in chat. Nothing you pass counts as the owner's words.",
+      "Chronicler uses it, at the owner's request: stop a quest's threads, mark it Done, archive it, or rename it. Chronicler derives the exact action and target from the call. It runs at once when the owner's own message in this turn named that action and quest (and new title) plainly; otherwise it asks the owner one Allow or Deny question naming them and waits; marking Done or archiving a quest with threads at work always asks. Do not ask a second question in chat. Nothing you pass counts as the owner's words.",
     invalid: invalid("Invalid arguments: give mission and action (Stop, Done, Archive, or Rename)."),
     isUnasked: true,
     schema: Schema.Struct({
@@ -73,7 +73,7 @@ export const threadTools = {
   }),
   change_setting: definitionOf({
     description:
-      "Iskios uses it, at the owner's request: change one of the owner's settings (read_settings lists them). It runs at once when the owner's own message in this turn named that setting and its new value plainly; otherwise it asks the owner one Allow or Deny question naming them and waits. The approval level, the budgets, and price fetching are the owner's alone and are refused.",
+      "Chronicler uses it, at the owner's request: change one of the owner's settings (read_settings lists them). It runs at once when the owner's own message in this turn named that setting and its new value plainly; otherwise it asks the owner one Allow or Deny question naming them and waits. The approval level, the budgets, and price fetching are the owner's alone and are refused.",
     invalid: invalid("Invalid arguments: give setting and value."),
     isUnasked: true,
     schema: Schema.Struct({
@@ -85,7 +85,7 @@ export const threadTools = {
   }),
   create_realm: definitionOf({
     description:
-      "Only Iskios uses it, at the owner's request: make a realm, tied to a folder or to none. It runs at once when the owner's own message in this turn asked for a realm by that name (and folder) plainly; otherwise it asks the owner one Allow or Deny question naming them and waits.",
+      "Only Chronicler uses it, at the owner's request: make a realm, tied to a folder or to none. It runs at once when the owner's own message in this turn asked for a realm by that name (and folder) plainly; otherwise it asks the owner one Allow or Deny question naming them and waits.",
     invalid: invalid("Invalid arguments: give name; folder is optional."),
     isUnasked: true,
     schema: Schema.Struct({
@@ -97,7 +97,7 @@ export const threadTools = {
   }),
   create_ritual: definitionOf({
     description:
-      "Only Iskios uses it. Create a Ritual: an instruction that runs by itself on a schedule, in a quest of its own, for anything the owner wants done repeatedly (every hour, every morning, weekly). Use it, not a quest, for a repeating request. Pick the preset that fits; there is no cron. Check the Rituals in your context first, so the same one is not made twice. It always asks the owner one Allow or Deny question with its title, schedule, realm, Companion, and instruction, and waits; naming the title in a message is not enough. It starts on and runs when next due. Its runs may take no structural action unasked until the owner sets its scope in the Ritual's form; its instruction never grants any.",
+      "Only Chronicler uses it. Create a Ritual: an instruction that runs by itself on a schedule, in a quest of its own, for anything the owner wants done repeatedly (every hour, every morning, weekly). Use it, not a quest, for a repeating request. Pick the preset that fits; there is no cron. Check the Rituals in your context first, so the same one is not made twice. It always asks the owner one Allow or Deny question with its title, schedule, realm, Companion, and instruction, and waits; naming the title in a message is not enough. It starts on and runs when next due. Its runs may take no structural action unasked until the owner sets its scope in the Ritual's form; its instruction never grants any.",
     invalid: invalid(
       "Invalid arguments: give instruction, title, and schedule (Daily, Weekdays, Weekly, Monthly, or Hourly).",
     ),
@@ -171,7 +171,7 @@ export const threadTools = {
   }),
   read_app_guide: definitionOf({
     description:
-      "Only Iskios uses it. Read the app guide, to answer a question about how Iskios works or how to use it. With no topic it lists the topics; give a topic id, or a few words of the owner's question, to read that part.",
+      "Only Chronicler uses it. Read the app guide, to answer a question about how Outlore works or how to use it. With no topic it lists the topics; give a topic id, or a few words of the owner's question, to read that part.",
     invalid: invalid("Invalid arguments: topic is text, or leave it out to list the topics."),
     isUnasked: true,
     schema: Schema.Struct({
@@ -182,7 +182,7 @@ export const threadTools = {
   }),
   read_control_history: definitionOf({
     description:
-      "Only Iskios uses it. Read your own older messages with the owner, newest first, when they ask about something said earlier, for example 'Remember what we did about X?'.",
+      "Only Chronicler uses it. Read your own older messages with the owner, newest first, when they ask about something said earlier, for example 'Remember what we did about X?'.",
     invalid: invalid("Invalid arguments: query is text; before and count are whole numbers."),
     isUnasked: true,
     schema: Schema.Struct({
@@ -203,13 +203,13 @@ export const threadTools = {
         }),
       ),
       mission: optionalText(
-        "The id of another quest whose journal to read: Iskios reads any; another thread only one the owner mentioned with @ in this turn.",
+        "The id of another quest whose journal to read: Chronicler reads any; another thread only one the owner mentioned with @ in this turn.",
       ),
     }),
   }),
   read_settings: definitionOf({
     description:
-      "Only Iskios uses it. Read the owner's settings as JSON, to answer a question about them or before you change one.",
+      "Only Chronicler uses it. Read the owner's settings as JSON, to answer a question about them or before you change one.",
     invalid: invalid("Invalid arguments: read_settings takes none."),
     isUnasked: true,
     schema: Schema.Struct({}),
@@ -227,7 +227,7 @@ export const threadTools = {
   }),
   rename_realm: definitionOf({
     description:
-      "Only Iskios uses it, at the owner's request: rename a realm. It runs at once when the owner's own message in this turn named that realm and its new name plainly; otherwise it asks the owner one Allow or Deny question naming them and waits.",
+      "Only Chronicler uses it, at the owner's request: rename a realm. It runs at once when the owner's own message in this turn named that realm and its new name plainly; otherwise it asks the owner one Allow or Deny question naming them and waits.",
     invalid: invalid("Invalid arguments: give realm and name."),
     isUnasked: true,
     schema: Schema.Struct({
@@ -298,7 +298,7 @@ export const threadTools = {
   }),
   send_thread_message: definitionOf({
     description:
-      "Send a message to your parent thread or to a thread directly beneath you, by its id. Any thread may also message Iskios by its id, to ask it to find the right quest, and Iskios may message any quest's top thread. During a turn, you may also message the top thread of a quest, or a side-quest, the owner mentioned with @ in a message of that turn, and answer a thread that wrote to you in it. It joins that thread's current turn if it is running, and wakes it if it is idle.",
+      "Send a message to your parent thread or to a thread directly beneath you, by its id. Any thread may also message Chronicler by its id, to ask it to find the right quest, and Chronicler may message any quest's top thread. During a turn, you may also message the top thread of a quest, or a side-quest, the owner mentioned with @ in a message of that turn, and answer a thread that wrote to you in it. It joins that thread's current turn if it is running, and wakes it if it is idle.",
     invalid: invalid("Invalid arguments: give to and text."),
     isUnasked: true,
     schema: Schema.Struct({
@@ -315,7 +315,7 @@ export const threadTools = {
   }),
   suggest_mission: definitionOf({
     description:
-      "Ask the owner where an off-topic message goes: continue in a matching mission, open a new mission, or keep it as an aside beneath you. Wait for the answer, then carry on as if the message had not been sent to you. Iskios uses it for every request that calls for a quest, with the ids of the quests that fit, or none: the owner chooses Continue in or Open a new quest, and it offers no aside. Iskios opens no quest without that choice.",
+      "Ask the owner where an off-topic message goes: continue in a matching mission, open a new mission, or keep it as an aside beneath you. Wait for the answer, then carry on as if the message had not been sent to you. Chronicler uses it for every request that calls for a quest, with the ids of the quests that fit, or none: the owner chooses Continue in or Open a new quest, and it offers no aside. Chronicler opens no quest without that choice.",
     invalid: invalid("Invalid arguments: give text, title, and missions."),
     isUnasked: true,
     schema: Schema.Struct({
@@ -324,7 +324,7 @@ export const threadTools = {
           description: "The ids of the missions from find_missions that fit, best first, at most 3.",
         }),
       ),
-      realm: optionalText("Iskios only: the realm for a new quest, when the owner chose or named one."),
+      realm: optionalText("Chronicler only: the realm for a new quest, when the owner chose or named one."),
       text: text("The off-topic part of the owner's message, as written."),
       tier: Schema.optionalKey(
         TierName.annotate({

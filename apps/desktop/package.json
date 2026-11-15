@@ -2,7 +2,7 @@
   "name": "desktop",
   "version": "0.1.3-Prototype",
   "private": true,
-  "description": "Iskios desktop app",
+  "description": "Outlore desktop app",
   "author": "Dylan J. Gerrits",
   "type": "module",
   "main": "dist/main.js",

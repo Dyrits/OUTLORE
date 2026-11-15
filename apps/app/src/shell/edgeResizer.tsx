@@ -7,7 +7,7 @@ const resizeCursor = { cursor: "col-resize" } as object;
 
 /**
  * A thin strip on a pane's edge that the owner drags to widen or narrow it, between its least width and a quarter of the
- * window (the sidebar, the quest panel, and Iskios's column all work this way); the width is remembered on release.
+ * window (the sidebar, the quest panel, and Chronicler's column all work this way); the width is remembered on release.
  * `side` is the edge the strip is on: the sidebar's right edge ("end", dragging right widens it), or the left edge of
  * a pane at the window's right ("start", dragging left widens it).
  */

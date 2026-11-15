@@ -1,4 +1,4 @@
-import type { MissionId, RealmArchivePreview } from "@iskios/contracts";
+import type { MissionId, RealmArchivePreview } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { styles } from "../foundation/styles";
 import { colors, outline, radii } from "../foundation/theme";

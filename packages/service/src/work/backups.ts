@@ -1,4 +1,4 @@
-import { BackupCompanion } from "@iskios/contracts";
+import { BackupCompanion } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { notFound, readSettings } from "../core/index.ts";

@@ -1,1 +1,1 @@
-cd /tmp/iskios-demo && cp demo.base.json demo.json && rm -rf /tmp/storefront && cp -R realm/storefront /tmp/storefront && bash scripts/launch.sh && python3 scripts/seed.py >/dev/null && python3 scripts/ids.py
+cd /tmp/outlore-demo && cp demo.base.json demo.json && rm -rf /tmp/storefront && cp -R realm/storefront /tmp/storefront && bash scripts/launch.sh && python3 scripts/seed.py >/dev/null && python3 scripts/ids.py

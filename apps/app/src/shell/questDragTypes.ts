@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 // drag; other builds draw the children as they are.
 
 /** What a dragged quest carries: its mission id, under this type. */
-export const questDragType = "application/x-iskios-quest";
+export const questDragType = "application/x-outlore-quest";
 
 /** A quest row that can be picked up. */
 export interface DragSourceProps {

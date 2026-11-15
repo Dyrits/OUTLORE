@@ -371,7 +371,7 @@ export const migrations = {
     )`;
   }),
   // Each thread's harness and provider account (provider-accounts); earlier threads ran on Claude Code with
-  // the computer's own sign-in. Accounts added in Iskios keep their folders beside the database.
+  // the computer's own sign-in. Accounts added in Outlore keep their folders beside the database.
   "0021_harnesses_and_accounts": Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`ALTER TABLE threads ADD COLUMN harness TEXT NOT NULL DEFAULT 'claude'`;

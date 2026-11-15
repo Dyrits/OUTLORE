@@ -1,4 +1,4 @@
-import type { KnownHost } from "@iskios/contracts";
+import type { KnownHost } from "@outlore/contracts";
 import { useEffect, useMemo, useState } from "react";
 import { ServiceClient } from "./client";
 

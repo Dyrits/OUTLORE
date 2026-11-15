@@ -1,5 +1,5 @@
 // Proves a packaged macOS app updates itself from a local stand-in for GitHub, on throwaway data:
-//   bun apps/desktop/scripts/check-update.ts /path/to/older/Iskios.app /path/to/Iskios-<newer version>-mac-<arch>.dmg
+//   bun apps/desktop/scripts/check-update.ts /path/to/older/Outlore.app /path/to/Outlore-<newer version>-mac-<arch>.dmg
 // It copies the older app to a temporary Applications folder, serves the newer disk image as a release, lets the app
 // find and download it, installs it, and checks that the app on disk and the one that starts afterwards are the newer.
 import { spawn, spawnSync } from "node:child_process";
@@ -56,7 +56,7 @@ const pageOf = async (data: string, deadline: number) => {
       const pages: unknown = response?.ok ? await response.json() : null;
       if (Array.isArray(pages))
         for (const page of pages)
-          if (isRecord(page) && page.url === "iskios-app://app/" && typeof page.webSocketDebuggerUrl === "string")
+          if (isRecord(page) && page.url === "outlore-app://app/" && typeof page.webSocketDebuggerUrl === "string")
             return page.webSocketDebuggerUrl;
     }
     await pause(250);
@@ -78,11 +78,11 @@ const check = async () => {
   if (olderArgument === undefined || imageArgument === undefined)
     throw new Error("Pass the older app and the newer disk image.");
   const image = resolve(imageArgument);
-  const tag = /^Iskios-(.+)-mac-[a-z0-9]+\.dmg$/.exec(basename(image))?.[1];
-  if (tag === undefined) throw new Error("The disk image must be named Iskios-<version>-mac-<arch>.dmg.");
-  const root = await mkdtemp(join(tmpdir(), "iskios-update-check-"));
+  const tag = /^Outlore-(.+)-mac-[a-z0-9]+\.dmg$/.exec(basename(image))?.[1];
+  if (tag === undefined) throw new Error("The disk image must be named Outlore-<version>-mac-<arch>.dmg.");
+  const root = await mkdtemp(join(tmpdir(), "outlore-update-check-"));
   const applications = join(root, "Applications");
-  const bundle = join(applications, "Iskios.app");
+  const bundle = join(applications, "Outlore.app");
   const data = join(root, "data");
   spawnSync("mkdir", ["-p", applications]);
   spawnSync("ditto", [resolve(olderArgument), bundle]);
@@ -107,7 +107,7 @@ const check = async () => {
             ],
             body: "## Breaking changes\n- Saved data from earlier releases is not carried over.",
             draft: false,
-            html_url: `https://github.com/Dyrits/ISKIOS/releases/tag/${tag}`,
+            html_url: `https://github.com/Dyrits/OUTLORE/releases/tag/${tag}`,
             prerelease: true,
             tag_name: tag,
           },
@@ -125,22 +125,22 @@ const check = async () => {
   const port = (server.address() as { port: number }).port;
   // Stands in for `open`: records what it was asked to open, and starts that app with the same throwaway data.
   const opener = join(root, "open.sh");
-  // With ISKIOS_CHECK_LAUNCH_SERVICES=1 the stand-in starts the new app through the real `open`, so macOS's own checks
+  // With OUTLORE_CHECK_LAUNCH_SERVICES=1 the stand-in starts the new app through the real `open`, so macOS's own checks
   // of a replaced app run too; `--env` gives it the throwaway data so no real profile opens.
   const start =
-    process.env.ISKIOS_CHECK_LAUNCH_SERVICES === "1"
-      ? `/usr/bin/open -n --env ISKIOS_DATA_DIR="${data}" --env ISKIOS_HARNESS=fake "$1" --args --remote-debugging-port=0`
-      : `"$1/Contents/MacOS/Iskios" --remote-debugging-port=0 >/dev/null 2>&1 &`;
+    process.env.OUTLORE_CHECK_LAUNCH_SERVICES === "1"
+      ? `/usr/bin/open -n --env OUTLORE_DATA_DIR="${data}" --env OUTLORE_HARNESS=fake "$1" --args --remote-debugging-port=0`
+      : `"$1/Contents/MacOS/Outlore" --remote-debugging-port=0 >/dev/null 2>&1 &`;
   await writeFile(opener, `#!/bin/sh\necho "$1" > "${join(root, "opened")}"\n${start}\n`);
   await chmod(opener, 0o755);
   const env = {
     ...process.env,
-    ISKIOS_DATA_DIR: data,
-    ISKIOS_HARNESS: "fake",
-    ISKIOS_UPDATE_OPENER: opener,
-    ISKIOS_UPDATE_URL: `http://127.0.0.1:${port}/releases`,
+    OUTLORE_DATA_DIR: data,
+    OUTLORE_HARNESS: "fake",
+    OUTLORE_UPDATE_OPENER: opener,
+    OUTLORE_UPDATE_URL: `http://127.0.0.1:${port}/releases`,
   };
-  const older = spawn(join(bundle, "Contents", "MacOS", "Iskios"), ["--remote-debugging-port=0"], {
+  const older = spawn(join(bundle, "Contents", "MacOS", "Outlore"), ["--remote-debugging-port=0"], {
     env,
     stdio: "ignore",
   });
@@ -152,7 +152,7 @@ const check = async () => {
     let ready: Record<string, unknown> | null = null;
     for (const deadline = Date.now() + 90000; ready === null && Date.now() < deadline; await pause(500)) {
       // The window may exist a moment before its bridge does.
-      const state = await evaluate(page, "window.iskios?.updates?.state() ?? null").catch(() => null);
+      const state = await evaluate(page, "window.outlore?.updates?.state() ?? null").catch(() => null);
       if (state === null) continue;
       if (!isRecord(state) || !isRecord(state.status)) throw new Error("The update state has no status.");
       const name = String(state.status._tag);
@@ -164,13 +164,13 @@ const check = async () => {
     const status = ready.status as Record<string, unknown>;
     if (status.version !== tag) throw new Error(`Found ${String(status.version)}, expected ${tag}.`);
     if (!String(status.notes).includes("Breaking changes")) throw new Error("The release notes did not arrive.");
-    if (!userAgents.every((agent) => agent === `Iskios/${olderVersion}`))
+    if (!userAgents.every((agent) => agent === `Outlore/${olderVersion}`))
       throw new Error(`The check sent unexpected user agents: ${userAgents.join(", ")}`);
     console.log(
-      `PASS: ${olderVersion} found ${tag} (${states.join(" > ")}) and sent only user agent Iskios/${olderVersion}.`,
+      `PASS: ${olderVersion} found ${tag} (${states.join(" > ")}) and sent only user agent Outlore/${olderVersion}.`,
     );
     await rm(join(data, "profile", "DevToolsActivePort"), { force: true });
-    await evaluate(page, "window.iskios.updates.install()", false).catch(() => null);
+    await evaluate(page, "window.outlore.updates.install()", false).catch(() => null);
     await Promise.race([olderExited, pause(20000)]);
     if (older.exitCode === null && older.signalCode === null) throw new Error("The older app did not quit to update.");
     for (
@@ -181,7 +181,7 @@ const check = async () => {
     if (!existsSync(join(root, "opened"))) throw new Error("The swap never opened the new app.");
     const installed = versionOf(bundle);
     if (installed !== tag) throw new Error(`The app on disk is ${installed}, expected ${tag}.`);
-    for (const leftover of [".Iskios-update.app", ".Iskios-previous.app"])
+    for (const leftover of [".Outlore-update.app", ".Outlore-previous.app"])
       if (existsSync(join(applications, leftover))) throw new Error(`${leftover} was left behind.`);
     const seal = spawnSync("codesign", ["--verify", "--deep", "--strict", bundle]);
     if (seal.status !== 0) throw new Error(`The new app's seal is broken: ${seal.stderr.toString()}`);
@@ -192,12 +192,12 @@ const check = async () => {
     let after: unknown = null;
     for (const deadline = Date.now() + 40000; Date.now() < deadline && after === null; await pause(500)) {
       const url = await pageOf(data, deadline).catch(() => null);
-      if (url !== null) after = await evaluate(url, "window.iskios?.updates?.state() ?? null").catch(() => null);
+      if (url !== null) after = await evaluate(url, "window.outlore?.updates?.state() ?? null").catch(() => null);
     }
     if (!isRecord(after) || after.currentVersion !== tag)
       throw new Error(`The new app reports ${JSON.stringify(after)}.`);
     newer =
-      spawnSync("pgrep", ["-f", `${bundle}/Contents/MacOS/Iskios`])
+      spawnSync("pgrep", ["-f", `${bundle}/Contents/MacOS/Outlore`])
         .stdout.toString()
         .trim()
         .split("\n")
@@ -206,9 +206,9 @@ const check = async () => {
   } finally {
     server.close();
     for (const pid of [older.pid ?? null, newer]) if (pid !== null) spawnSync("kill", [String(pid)]);
-    spawnSync("pkill", ["-f", `${bundle}/Contents/MacOS/Iskios`]);
+    spawnSync("pkill", ["-f", `${bundle}/Contents/MacOS/Outlore`]);
     await pause(1500);
-    // Keeps the temporary app out of Finder's and the Dock's future choices of which Iskios to open.
+    // Keeps the temporary app out of Finder's and the Dock's future choices of which Outlore to open.
     spawnSync(
       "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
       ["-u", bundle],

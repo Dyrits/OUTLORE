@@ -1,8 +1,8 @@
 # Adds the id-dependent demo entries once the quests exist.
 import json, sys
-ids = json.load(open('/tmp/iskios-demo/ids.json'))
+ids = json.load(open('/tmp/outlore-demo/ids.json'))
 A, B = ids["q1"], ids["q2"]
-E = json.load(open('/tmp/iskios-demo/demo.base.json'))
+E = json.load(open('/tmp/outlore-demo/demo.base.json'))
 def add(match, reply, lines=None, delay=None):
     e = {"match": match, "reply": reply}
     if lines: e["lines"] = lines
@@ -45,5 +45,5 @@ add("Ship the checkout fix today",
 Left for 2.4: tag the release once **Release 2.4** finishes its notes.""")
 first = ('6 regression cases added', 'Release 2.4 waits on your fix', 'Fix merged as a3f9c21', 'Ship the checkout fix today')
 E = [e for e in E if e['match'] in first] + [e for e in E if e['match'] not in first]
-json.dump(E, open('/tmp/iskios-demo/demo.json', 'w'), indent=1)
+json.dump(E, open('/tmp/outlore-demo/demo.json', 'w'), indent=1)
 print(len(E), "entries")

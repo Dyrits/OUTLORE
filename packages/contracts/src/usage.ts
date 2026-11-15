@@ -2,14 +2,14 @@ import { Schema } from "effect";
 import { BillingKind, Consumption, TokenUsage } from "./budgets.ts";
 import { HarnessName } from "./harnesses.ts";
 
-// The Reserves usage page (budget-control, Reserves usage page): what Iskios's turns used, shown by harness, model, realm,
+// The Reserves usage page (budget-control, Reserves usage page): what Outlore's turns used, shown by harness, model, realm,
 // and quest over a period of local calendar days, with the gaps in what is known.
 
 /** The longest range of days a usage read covers: the graph shows a bar for each. */
 export const maxUsageDays = 366;
 
-/** The realm key of Iskios's own quest, which is in no realm. */
-export const iskiosRealmKey = "~iskios";
+/** The realm key of Chronicler's own quest, which is in no realm. */
+export const chroniclerRealmKey = "~chronicler";
 
 /** The realm key of quests deleted after they spent. */
 export const deletedRealmKey = "~deleted";
@@ -32,7 +32,7 @@ export type UsageDimension = typeof UsageDimension.Type;
 /**
  * One selected row of a breakdown, by its key: the harness name, the model identifier, the realm's id, the quest's id,
  * `harness/accountId`, or the day. An empty key is what was not recorded (or, for a realm, the Borderlands); a realm
- * can also be `iskiosRealmKey` or `deletedRealmKey`.
+ * can also be `chroniclerRealmKey` or `deletedRealmKey`.
  */
 export const UsageFilter = Schema.Struct({ dimension: UsageDimension, key: Schema.String });
 export type UsageFilter = typeof UsageFilter.Type;

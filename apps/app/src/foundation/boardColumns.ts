@@ -1,4 +1,4 @@
-import type { MissionState } from "@iskios/contracts";
+import type { MissionState } from "@outlore/contracts";
 
 /** The dashboard board's columns, left to right: what needs the owner first (art direction of 2026-11-08). */
 export type BoardColumn = "Attention" | "Running" | "Idle" | "Done";

@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import type { Request, Settings } from "@iskios/contracts";
+import type { Request, Settings } from "@outlore/contracts";
 import { Effect, Layer, Match, Semaphore } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import {
@@ -619,7 +619,7 @@ const make = Effect.gen(function* () {
 
 /** Where the service keeps its data and how it reaches the harnesses. */
 export interface ServiceOptions {
-  /** Where provider accounts added in Iskios keep their folders; beside the database when left out. */
+  /** Where provider accounts added in Outlore keep their folders; beside the database when left out. */
   readonly accountsRoot?: string;
   /** Where attached files are kept; beside the database when left out (message-attachments). */
   readonly attachmentsRoot?: string;
@@ -633,7 +633,7 @@ export interface ServiceOptions {
   readonly harnessTools?: Layer.Layer<HarnessTools>;
   /** The owner's home folder, the first browsable root (workspace-attachment). */
   readonly homeFolder: string;
-  /** The Worker's name on the owner's Cloudflare account; "iskios-relay" when left out. */
+  /** The Worker's name on the owner's Cloudflare account; "outlore-relay" when left out. */
   readonly ownRelayWorkerName?: string;
   /** Where the model price table is read from; none, so the snapshot alone, when left out (decision record 0014). */
   readonly priceSource?: Layer.Layer<PriceSource>;

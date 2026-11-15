@@ -1,4 +1,4 @@
-import { type Mentionable, mentionLabelOf, type WorkspaceEntry } from "@iskios/contracts";
+import { type Mentionable, mentionLabelOf, type WorkspaceEntry } from "@outlore/contracts";
 import type { Chip } from "./chipEditorTypes";
 import { chipOfMentionable } from "./chipPlaces";
 import type { ChipKind } from "./chips";

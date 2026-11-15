@@ -1,4 +1,4 @@
-import { closeCodes, connectHost, type HostConnection } from "@iskios/relay";
+import { closeCodes, connectHost, type HostConnection } from "@outlore/relay";
 import { Effect, Layer } from "effect";
 import { SqlClient } from "effect/sql";
 import { Changes, Sessions } from "../core/index.ts";

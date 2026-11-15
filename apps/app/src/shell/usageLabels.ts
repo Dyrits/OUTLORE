@@ -10,7 +10,7 @@ import {
   type UsageGaps,
   type UsageRecord,
   type UsageRow,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { harnessLabels, modelLabelOf } from "../foundation/formatting";
 import {
   accountBudgetTextOf,
@@ -57,7 +57,7 @@ const accountLabelOf = (row: UsageRow) => {
   return `${harnessLabels[harness]} · ${row.name ?? (account === "" ? "This computer" : "Account")}`;
 };
 
-/** A realm row's name: the Borderlands for the empty key; Iskios's own quests carry their name from the service. */
+/** A realm row's name: the Borderlands for the empty key; Chronicler's own quests carry their name from the service. */
 const realmLabelOf = (row: UsageRow) => {
   if (row.key === "") return "Borderlands";
   if (row.key === deletedRealmKey) return "Deleted quests";

@@ -1,4 +1,4 @@
-import { type Tier, type WorkspaceChoice, WorkspaceId } from "@iskios/contracts";
+import { type Tier, type WorkspaceChoice, WorkspaceId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import {
   companionChoicesOf,

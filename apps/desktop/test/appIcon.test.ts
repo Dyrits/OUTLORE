@@ -16,7 +16,7 @@ describe("iconFileOf", () => {
     expect(iconFileOf("one")).toBe("icon.png");
   });
 
-  it("gives Iskios's icon for Iskios and for anything unknown", () => {
+  it("gives the same icon for Iskios and for anything unknown, which is the default theme's", () => {
     expect(iconFileOf("iskios")).toBe("icon.png");
     expect(iconFileOf("sepia")).toBe("icon.png");
     expect(iconFileOf(undefined)).toBe("icon.png");

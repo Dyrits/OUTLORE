@@ -11,10 +11,10 @@ import type { Updater } from "./updater.ts";
 
 /** Only this repository's pages open from an update notice. */
 const isReleasePage = (url: unknown): url is string =>
-  typeof url === "string" && url.startsWith("https://github.com/Dyrits/ISKIOS/");
+  typeof url === "string" && url.startsWith("https://github.com/Dyrits/OUTLORE/");
 
 /**
- * The version of Iskios. A development run starts Electron on `dist/main.js`, where it finds no `package.json` and
+ * The version of Outlore. A development run starts Electron on `dist/main.js`, where it finds no `package.json` and
  * reports its own version (45.x), so that run reads the desktop app's file instead.
  */
 const appVersionOf = (): string => {
@@ -35,11 +35,11 @@ const updaterOf = async (): Promise<{ reason: string | null; updater: Updater | 
   if (process.platform === "darwin") {
     // The executable sits in `<name>.app/Contents/MacOS`.
     const bundle = resolve(dirname(app.getPath("exe")), "..", "..");
-    if (!bundle.endsWith(".app")) return { reason: "Iskios is not running from an app bundle.", updater: null };
+    if (!bundle.endsWith(".app")) return { reason: "Outlore is not running from an app bundle.", updater: null };
     // A throwaway run (checks, tests) may name its own release list and opener; the installed app always asks GitHub.
-    const isThrowaway = process.env.ISKIOS_DATA_DIR !== undefined;
-    const releasesUrl = (isThrowaway ? process.env.ISKIOS_UPDATE_URL : undefined) ?? defaultReleasesUrl;
-    const opener = isThrowaway ? process.env.ISKIOS_UPDATE_OPENER : undefined;
+    const isThrowaway = process.env.OUTLORE_DATA_DIR !== undefined;
+    const releasesUrl = (isThrowaway ? process.env.OUTLORE_UPDATE_URL : undefined) ?? defaultReleasesUrl;
+    const opener = isThrowaway ? process.env.OUTLORE_UPDATE_OPENER : undefined;
     return {
       reason: null,
       updater: createMacUpdater({
@@ -57,7 +57,7 @@ const updaterOf = async (): Promise<{ reason: string | null; updater: Updater | 
   }
   if (process.platform === "linux" && process.env.APPIMAGE === undefined)
     return {
-      reason: "Updating needs Iskios's AppImage; download the new version from the release page.",
+      reason: "Updating needs Outlore's AppImage; download the new version from the release page.",
       updater: null,
     };
   return { reason: null, updater: await createLibraryUpdater() };
@@ -65,13 +65,13 @@ const updaterOf = async (): Promise<{ reason: string | null; updater: Updater | 
 
 /**
  * Starts the updates of the installed app and answers the window's requests about them. `isOwnWindow` says whether an
- * IPC call came from Iskios's own screens, so an embedded frame cannot install anything.
+ * IPC call came from Outlore's own screens, so an embedded frame cannot install anything.
  */
 export const setUpUpdates = async (
   window: BrowserWindow,
   isOwnWindow: (event: Electron.IpcMainInvokeEvent) => boolean,
 ): Promise<UpdateController> => {
-  // Whatever goes wrong while choosing an updater must not stop Iskios from starting: updates are then unavailable.
+  // Whatever goes wrong while choosing an updater must not stop Outlore from starting: updates are then unavailable.
   const { reason, updater } = await updaterOf().catch((error: unknown) => ({
     reason: `Updates could not start: ${error instanceof Error ? error.message : String(error)}`,
     updater: null,
@@ -98,31 +98,31 @@ export const setUpUpdates = async (
     updater,
   });
   const guard = (event: Electron.IpcMainInvokeEvent) => {
-    if (!isOwnWindow(event)) throw new Error("Updates are only available in Iskios's desktop window.");
+    if (!isOwnWindow(event)) throw new Error("Updates are only available in Outlore's desktop window.");
   };
-  ipcMain.handle("iskios:updateState", (event) => {
+  ipcMain.handle("outlore:updateState", (event) => {
     guard(event);
     return controller.state();
   });
-  ipcMain.handle("iskios:updateCheck", (event) => {
+  ipcMain.handle("outlore:updateCheck", (event) => {
     guard(event);
     return controller.check();
   });
-  ipcMain.handle("iskios:updateSetEnabled", (event, isEnabled: unknown) => {
+  ipcMain.handle("outlore:updateSetEnabled", (event, isEnabled: unknown) => {
     guard(event);
     if (typeof isEnabled !== "boolean") throw new Error("The switch is on or off.");
     return controller.setEnabled(isEnabled);
   });
-  ipcMain.handle("iskios:updateInstall", (event) => {
+  ipcMain.handle("outlore:updateInstall", (event) => {
     guard(event);
     return controller.install();
   });
-  ipcMain.handle("iskios:updateOpenReleasePage", (event, url: unknown) => {
+  ipcMain.handle("outlore:updateOpenReleasePage", (event, url: unknown) => {
     guard(event);
     return shell.openExternal(isReleasePage(url) ? url : releasesPageUrl);
   });
   controller.subscribe((state: UpdateState) => {
-    if (!window.isDestroyed()) window.webContents.send("iskios:updateChanged", state);
+    if (!window.isDestroyed()) window.webContents.send("outlore:updateChanged", state);
   });
   return controller;
 };

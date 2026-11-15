@@ -1,4 +1,4 @@
-import type { ThreadId, WorkspaceChoice } from "@iskios/contracts";
+import type { ThreadId, WorkspaceChoice } from "@outlore/contracts";
 import { type ReactNode, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { CrestBadge } from "../crest/crest";

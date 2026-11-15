@@ -10,7 +10,7 @@ import { Button } from "../ui/button";
 import { SettingsCard, ToggleRow } from "./settingsParts";
 
 /**
- * The installed app's updates: the version, whether Iskios looks for new releases, what the last look found, and,
+ * The installed app's updates: the version, whether Outlore looks for new releases, what the last look found, and,
  * once one has downloaded, its notes and the button that installs it (app-updates). Only the desktop window of this
  * computer can update; elsewhere the card says so.
  */
@@ -22,8 +22,8 @@ export function UpdatesCard() {
     return (
       <SettingsCard icon="gear" title="Updates">
         <Text style={styles.muted}>
-          Iskios updates itself in its desktop app, on the computer it runs on. Open the desktop app on this computer to
-          see its updates.
+          Outlore updates itself in its desktop app, on the computer it runs on. Open the desktop app on this computer
+          to see its updates.
         </Text>
       </SettingsCard>
     );

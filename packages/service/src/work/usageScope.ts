@@ -1,12 +1,12 @@
 import {
+  chroniclerRealmKey,
   type DayText,
   deletedRealmKey,
-  iskiosRealmKey,
   maxUsageDays,
   type UsageDimension,
   type UsageFilter,
   type UsagePeriod,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 
 // What the usage page reads from (budget-control, Reserves usage page): the local calendar days of a period, and the
 // SQL that selects the rows of a breakdown. Dates are local to the computer the service runs on, as the owner reads them.
@@ -88,8 +88,8 @@ export const keyOf = (dimension: UsageDimension, columns: KeyColumns) => {
     Harness: "COALESCE(u.harness, '')",
     Model: "COALESCE(u.model, '')",
     Quest: columns.mission,
-    // Iskios's own quest and quests deleted since they spent are no realm's; a quest in none is in the Borderlands (key empty).
-    Realm: `CASE WHEN mi.id IS NULL THEN '${deletedRealmKey}' WHEN mi.is_guildmaster = 1 THEN '${iskiosRealmKey}' ELSE COALESCE(qt.workspace_id, '') END`,
+    // Chronicler's own quest and quests deleted since they spent are no realm's; a quest in none is in the Borderlands (key empty).
+    Realm: `CASE WHEN mi.id IS NULL THEN '${deletedRealmKey}' WHEN mi.is_guildmaster = 1 THEN '${chroniclerRealmKey}' ELSE COALESCE(qt.workspace_id, '') END`,
   } satisfies Record<UsageDimension, string>;
   return keys[dimension];
 };

@@ -6,7 +6,7 @@ import type {
   ModelChoice,
   ModelOption,
   TokenUsage,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 
 /** Each harness by the name the owner reads. */
 export const harnessLabels = {

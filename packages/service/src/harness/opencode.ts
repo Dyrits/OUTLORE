@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { EffortChoice, TokenUsage } from "@iskios/contracts";
+import type { EffortChoice, TokenUsage } from "@outlore/contracts";
 import { Deferred, type Duration, Effect, Option, Queue, Result } from "effect";
 import {
   type Containment,
@@ -36,7 +36,7 @@ import { sweepOrphans } from "./processTree.ts";
 import { toolServerName } from "./toolNames.ts";
 
 // OpenCode through the Agent Client Protocol (ADR 0008; `opencode acp` of OpenCode 2.2.0, probed 2026-11-07):
-// one process per thread, one ACP session per Iskios thread.
+// one process per thread, one ACP session per Outlore thread.
 
 /**
  * The session option holding the model's effort levels (ACP category `thought_level`, id `effort` in OpenCode 2.2.0),
@@ -138,7 +138,7 @@ interface OpenCodeConnection extends HarnessConnection {
 const noTimeLimit = 2147483647;
 
 /**
- * OpenCode's permissions (CHG-0031, CHG-0208). Every command and edit asks Iskios. Wrapped in the host's sandbox, a
+ * OpenCode's permissions (CHG-0031, CHG-0208). Every command and edit asks Outlore. Wrapped in the host's sandbox, a
  * command runs unasked at the default level; with no sandbox, it asks the owner. An edit inside the thread's folder runs
  * unasked unless the level is "Also commands and edits" (`isUnaskedEdit`). Its own subagents stay off: threads open
  * threads with open_thread (ADR 0007).
@@ -149,7 +149,7 @@ const permissions = [
   { action: "subagent", effect: "deny", resource: "*" },
 ];
 
-/** The configuration OpenCode adds to the owner's own: Iskios's tools, permissions, and starting context. */
+/** The configuration OpenCode adds to the owner's own: Outlore's tools, permissions, and starting context. */
 const configOf = (access: ThreadAccess, instructionsPath: string) => ({
   instructions: [instructionsPath],
   mcp: {
@@ -202,7 +202,7 @@ const answerRequest = (
 ) =>
   Effect.gen(function* () {
     if (incoming.method !== "session/request_permission")
-      return connection.rpc.respondError(incoming.id, `Iskios does not answer ${incoming.method}.`);
+      return connection.rpc.respondError(incoming.id, `Outlore does not answer ${incoming.method}.`);
     const toolCall = fieldOf(incoming.params, "toolCall");
     // Nothing runs unasked on an assumption: the executor must be seen below the wrapped process, or it asks.
     const isUnconfirmed = connection.isContainmentUnconfirmed();
@@ -332,12 +332,12 @@ const readPrompt = (
 /** The line a thread shows when OpenCode, now in its sandbox, could not pick up the thread's earlier session. */
 const lostSessionNote =
   "OpenCode could not pick up this thread's earlier conversation: it was saved in OpenCode's own folder, which " +
-  "OpenCode cannot read now that it runs in Iskios's sandbox. The thread carries on in a new OpenCode conversation, " +
+  "OpenCode cannot read now that it runs in Outlore's sandbox. The thread carries on in a new OpenCode conversation, " +
   "which was given the thread's handover notes: its conversation so far, as when a thread changes harness.";
 
-/** OpenCode's ACP protocol: one ACP session per Iskios thread, one prompt per turn. */
+/** OpenCode's ACP protocol: one ACP session per Outlore thread, one prompt per turn. */
 const openCodeProtocolOf = (options: OpenCodeOptions): HarnessProtocol<OpenCodeConnection> => {
-  const instructionsFolder = options.instructionsFolder ?? join(tmpdir(), "iskios-opencode");
+  const instructionsFolder = options.instructionsFolder ?? join(tmpdir(), "outlore-opencode");
   const launch = makeOpenCodeLauncher(options);
 
   /** The starting context and approval rules, as the file OpenCode reads them from. */
@@ -484,7 +484,7 @@ export const openCodePlanLimitsOf = (body: unknown): PlanLimitsReport | null => 
 /**
  * Asks OpenCode for the limits of the Go plan behind an account: a short `opencode serve` on a free local port, in the
  * account's own data folder and behind a password made for this one run, answers its `usage/limits` route with the
- * Console workspace OpenCode itself is signed in to, and is closed again. Iskios reads no token (requirements, Comply
+ * Console workspace OpenCode itself is signed in to, and is closed again. Outlore reads no token (requirements, Comply
  * with provider terms). Null when OpenCode reports no Go plan; a failure when it could not answer.
  */
 const readOpenCodePlanLimits = (options: OpenCodeOptions, configDirectory: string | null) =>

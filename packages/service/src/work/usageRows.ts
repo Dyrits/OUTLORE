@@ -1,4 +1,4 @@
-import { HarnessName, type UsageAmounts, type UsageDimension, type UsageRow } from "@iskios/contracts";
+import { HarnessName, type UsageAmounts, type UsageDimension, type UsageRow } from "@outlore/contracts";
 import { Schema } from "effect";
 import { consumptionColumns, pricedTurnsColumn } from "../core/index.ts";
 import { type ConsumptionRow, consumptionOf } from "./consumption.ts";
@@ -60,8 +60,8 @@ const ownTokensOf = (amounts: UsageAmounts) =>
 /** The known cost of a row, or null when none of its turns has a price: no price is not a price of zero. */
 const costOf = (amounts: UsageAmounts) => (amounts.pricedTurns === 0 ? null : amounts.reported + amounts.estimated);
 
-/** Iskios's own quest, in the owner's words. */
-const iskiosName = "Iskios (assistant)";
+/** Chronicler's own quest, in the owner's words. */
+const chroniclerName = "Chronicler (assistant)";
 
 /** The names a breakdown row gets from the owner's own words. */
 export const names = {
@@ -69,8 +69,8 @@ export const names = {
   Day: "NULL",
   Harness: "NULL",
   Model: "NULL",
-  Quest: `CASE WHEN mi.is_guildmaster = 1 THEN '${iskiosName}' ELSE mi.title END`,
-  Realm: `CASE WHEN mi.id IS NULL THEN NULL WHEN mi.is_guildmaster = 1 THEN '${iskiosName}' ELSE w.name END`,
+  Quest: `CASE WHEN mi.is_guildmaster = 1 THEN '${chroniclerName}' ELSE mi.title END`,
+  Realm: `CASE WHEN mi.id IS NULL THEN NULL WHEN mi.is_guildmaster = 1 THEN '${chroniclerName}' ELSE w.name END`,
 } satisfies Record<UsageDimension, string>;
 
 /** Biggest first: rows with a price by cost, then rows with none by tokens; days newest first. */

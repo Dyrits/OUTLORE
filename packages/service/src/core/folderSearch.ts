@@ -4,7 +4,7 @@
 import { execFile } from "node:child_process";
 import { readdir, realpath, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
-import type { Folder } from "@iskios/contracts";
+import type { Folder } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { type FolderAccess, isWithin, listBrowsableRoots, rootOf } from "./folders.ts";

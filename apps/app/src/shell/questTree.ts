@@ -1,4 +1,4 @@
-import type { MissionSummary, ThreadId, ThreadSummary, WorkspaceChoice } from "@iskios/contracts";
+import type { MissionSummary, ThreadId, ThreadSummary, WorkspaceChoice } from "@outlore/contracts";
 import { foldThreads } from "../conversation/folding";
 
 /** The sidebar's two placements of quests (CHG-0161): each realm with its quests, and the Borderlands' quests. */

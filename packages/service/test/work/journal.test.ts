@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionId, ThreadId } from "@iskios/contracts";
+import type { MissionId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";

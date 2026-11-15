@@ -1,4 +1,4 @@
-import type { HarnessList } from "@iskios/contracts";
+import type { HarnessList } from "@outlore/contracts";
 import { type ReactNode, useEffect } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { type Runner, RunnerPickers } from "../editors/runners";

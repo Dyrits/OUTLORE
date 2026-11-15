@@ -5,5 +5,5 @@
   },
   "main": "src/worker.ts",
   "migrations": [{ "new_sqlite_classes": ["Room"], "tag": "v1" }],
-  "name": "iskios-relay"
+  "name": "outlore-relay"
 }

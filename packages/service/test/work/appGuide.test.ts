@@ -37,14 +37,14 @@ describe("the app guide", () => {
     ["can you schedule a weekly check for me", "rituals"],
     ["What does the ! do in the message box?", "messages"],
     ["how do I attach an image to a message", "messages"],
-    ["How do I pair my phone with Iskios?", "pairing"],
+    ["How do I pair my phone with Outlore?", "pairing"],
     ["what is a realm", "realms"],
     ["What is the Borderlands?", "realms"],
     ["how much will this cost me, can I set a budget", "budgets"],
     ["Why did it ask me to Allow a command", "approvals"],
     ["how do I switch a thread from Claude to Codex", "companions"],
     ["where are the settings", "workshop"],
-    ["what can you do for me", "iskios"],
+    ["what can you do for me", "chronicler"],
     ["my mac says the app is blocked", "install"],
     ["what does lore do and why did it fade", "lore"],
     ["what is a side-quest", "quests"],
@@ -62,7 +62,7 @@ describe("the app guide", () => {
     expect(topicsFor("quest realm ritual budget lore approval").length).toBeLessThanOrEqual(2);
   });
 
-  it("is in Iskios's instructions, with the rule to say so when it does not know", () => {
+  it("is in Chronicler's instructions, with the rule to say so when it does not know", () => {
     const text = guildmasterInstructionsOf("thread-1");
     expect(text).toContain("read_app_guide");
     expect(text).toContain("say you do not know");

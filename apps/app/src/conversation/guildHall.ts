@@ -1,4 +1,4 @@
-import type { GuildHallRecap, MissionSummary } from "@iskios/contracts";
+import type { GuildHallRecap, MissionSummary } from "@outlore/contracts";
 import { costTextOf, countedOf, tokenCountOf, totalTokensOf } from "../foundation/labels";
 
 // The Guild Hall hub (quest coordination, Guild Hall as a hub): what waits for the owner, the quests touched last, and

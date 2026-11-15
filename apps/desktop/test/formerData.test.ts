@@ -7,8 +7,8 @@ import { moveFormerData } from "../src/formerData.ts";
 const projectNameOf = (folder: string) => folder.replace(/[^a-zA-Z0-9]/g, "-");
 
 /** A former install with a database, one account, and Claude Code sessions for a scratch folder. */
-const formerInstall = (formerName: "Gild" | "Canopy" | "OpenMission" = "Canopy") => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "iskios-former-data-")));
+const formerInstall = (formerName: "Iskios" | "Gild" | "Canopy" | "OpenMission" = "Canopy") => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "outlore-former-data-")));
   const applicationData = join(root, "Application Support");
   const former = join(applicationData, formerName);
   const database = `${formerName.toLowerCase()}.sqlite`;
@@ -21,23 +21,23 @@ const formerInstall = (formerName: "Gild" | "Canopy" | "OpenMission" = "Canopy")
   writeFileSync(join(former, `${database}-wal`), "wal");
   mkdirSync(join(claudeFolder, "projects", `${projectNameOf(join(former, "missions"))}-m1`), { recursive: true });
   mkdirSync(join(claudeFolder, "projects", "-elsewhere"), { recursive: true });
-  return { applicationData, claudeFolder, database, folder: join(applicationData, "Iskios"), former };
+  return { applicationData, claudeFolder, database, folder: join(applicationData, "Outlore"), former };
 };
 
 describe("moving the former data", () => {
-  it.each(["Gild", "Canopy", "OpenMission"] as const)(
+  it.each(["Iskios", "Gild", "Canopy", "OpenMission"] as const)(
     "moves a %s install and renames its database with the write-ahead file",
     (name) => {
       const install = formerInstall(name);
       moveFormerData(install.applicationData, install.folder, install.claudeFolder);
       expect(existsSync(install.former)).toBe(false);
-      expect(readFileSync(join(install.folder, "iskios.sqlite"), "utf8")).toBe("database");
-      expect(readFileSync(join(install.folder, "iskios.sqlite-wal"), "utf8")).toBe("wal");
+      expect(readFileSync(join(install.folder, "outlore.sqlite"), "utf8")).toBe("database");
+      expect(readFileSync(join(install.folder, "outlore.sqlite-wal"), "utf8")).toBe("wal");
       expect(existsSync(join(install.folder, "missions", "m1"))).toBe(true);
     },
   );
 
-  it.each(["Gild", "Canopy", "OpenMission"] as const)(
+  it.each(["Iskios", "Gild", "Canopy", "OpenMission"] as const)(
     "renames Claude Code sessions of scratch folders for a %s install, for the computer's sign-in and each account",
     (name) => {
       const install = formerInstall(name);
@@ -62,7 +62,7 @@ describe("moving the former data", () => {
     mkdirSync(install.folder);
     writeFileSync(join(install.folder, "Local State"), "profile");
     moveFormerData(install.applicationData, install.folder, install.claudeFolder);
-    expect(readFileSync(join(install.folder, "iskios.sqlite"), "utf8")).toBe("database");
+    expect(readFileSync(join(install.folder, "outlore.sqlite"), "utf8")).toBe("database");
     expect(existsSync(join(install.folder, "missions", "m1"))).toBe(true);
     expect(readFileSync(join(install.folder, "Local State"), "utf8")).toBe("profile");
   });
@@ -70,9 +70,9 @@ describe("moving the former data", () => {
   it("leaves both folders alone once the new database exists", () => {
     const install = formerInstall();
     mkdirSync(install.folder);
-    writeFileSync(join(install.folder, "iskios.sqlite"), "the owner's data");
+    writeFileSync(join(install.folder, "outlore.sqlite"), "the owner's data");
     moveFormerData(install.applicationData, install.folder, install.claudeFolder);
     expect(existsSync(join(install.former, install.database))).toBe(true);
-    expect(readFileSync(join(install.folder, "iskios.sqlite"), "utf8")).toBe("the owner's data");
+    expect(readFileSync(join(install.folder, "outlore.sqlite"), "utf8")).toBe("the owner's data");
   });
 });

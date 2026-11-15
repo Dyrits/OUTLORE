@@ -1,4 +1,4 @@
-import { type EffortChoice, type HarnessName, type ModelChoice, maxBackups } from "@iskios/contracts";
+import { type EffortChoice, type HarnessName, type ModelChoice, maxBackups } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid } from "../core/index.ts";

@@ -24,7 +24,7 @@ const option = (name) => {
 const sessionId = option("--session-id") ?? option("--resume");
 const mode = process.env.STAND_IN_MODE ?? "ok";
 if (process.env.STAND_IN_LOG) {
-  const env = Object.keys(process.env).filter((key) => key.startsWith("ISKIOS_"));
+  const env = Object.keys(process.env).filter((key) => key.startsWith("OUTLORE_"));
   const home = process.env.CLAUDE_CONFIG_DIR ?? null;
   appendFileSync(
     process.env.STAND_IN_LOG,
@@ -139,7 +139,7 @@ const startTurn = (input) => {
     });
     return;
   }
-  // A turn that reads a file, runs a read-only command, and calls an Iskios tool before it replies.
+  // A turn that reads a file, runs a read-only command, and calls an Outlore tool before it replies.
   if (/(?:^|\n---\n\n)use-tools$/.test(text)) {
     emit({
       message: {
@@ -151,8 +151,8 @@ const startTurn = (input) => {
             name: "Bash",
             type: "tool_use",
           },
-          { id: `toolu_note_${turn}`, input: {}, name: "mcp__iskios__update_journal", type: "tool_use" },
-          { id: `toolu_ask_${turn}`, input: {}, name: "mcp__iskios__request_approval", type: "tool_use" },
+          { id: `toolu_note_${turn}`, input: {}, name: "mcp__outlore__update_journal", type: "tool_use" },
+          { id: `toolu_ask_${turn}`, input: {}, name: "mcp__outlore__request_approval", type: "tool_use" },
         ],
         role: "assistant",
       },

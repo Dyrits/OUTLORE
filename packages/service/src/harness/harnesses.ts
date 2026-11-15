@@ -1,6 +1,6 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { EffortChoice, HarnessName, ModelOption } from "@iskios/contracts";
+import type { EffortChoice, HarnessName, ModelOption } from "@outlore/contracts";
 import { type Duration, Effect, Queue, type Scope } from "effect";
 import { fieldOf, type HarnessAdapter, routeHarnesses, type ServiceFailure, textFieldOf } from "../core/index.ts";
 import { makeClaudeHarness } from "./claude.ts";
@@ -12,7 +12,7 @@ import { detectOpenCodeSandbox } from "./openCodeSandbox.ts";
 import { listOpenCodeEfforts, makeOpenCodeHarness } from "./opencode.ts";
 
 // The harness registry (provider-accounts): each harness defined once, by its facts, its turn adapter, and
-// what Iskios asks its own tool about sign-in and models. Adding a harness adds one entry here.
+// what Outlore asks its own tool about sign-in and models. Adding a harness adds one entry here.
 
 /** What every harness's turn adapter is started with in the app. */
 export interface AdapterOptions {
@@ -73,7 +73,7 @@ const listCodexModels = (command: string, configDirectory: string | null) =>
     const listed = yield* Effect.gen(function* () {
       yield* rpc.request("initialize", {
         capabilities: { experimentalApi: true, requestAttestation: false },
-        clientInfo: { name: "iskios", title: "Iskios", version: "0.0.0" },
+        clientInfo: { name: "outlore", title: "Outlore", version: "0.0.0" },
       });
       rpc.notify("initialized", {});
       return yield* rpc.request("model/list", {});

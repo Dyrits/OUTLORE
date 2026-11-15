@@ -58,6 +58,6 @@ export type LoreHistoryEntryId = typeof LoreHistoryEntryId.Type;
 export const LoreProposalId = Schema.String.pipe(Schema.brand("LoreProposalId"));
 export type LoreProposalId = typeof LoreProposalId.Type;
 
-/** Identifies a provider account added in Iskios: a harness signed in with its own folder (provider-accounts). */
+/** Identifies a provider account added in Outlore: a harness signed in with its own folder (provider-accounts). */
 export const AccountId = Schema.String.pipe(Schema.brand("AccountId"));
 export type AccountId = typeof AccountId.Type;

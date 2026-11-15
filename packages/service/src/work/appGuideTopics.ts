@@ -1,5 +1,5 @@
-// The user guide Iskios reads to explain the app (quest coordination, "Iskios explains how the app works"): one topic
-// per question an owner asks. Iskios reads a topic with `read_app_guide` only when a question needs it, so the guide
+// The user guide Chronicler reads to explain the app (quest coordination, "Chronicler explains how the app works"): one topic
+// per question an owner asks. Chronicler reads a topic with `read_app_guide` only when a question needs it, so the guide
 // costs nothing until asked. It says what the app does today, in the words the screens use (quest, realm, Ritual, the
 // Workshop), and says plainly what is not built; keep it in step with the README and the glossary when they change.
 
@@ -18,20 +18,20 @@ export interface GuideTopic {
 export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
-      "Iskios is a local-first desktop app for working with AI agents. It runs Claude Code, Codex, and OpenCode, the owner's own command-line tools and accounts, in one place. Iskios does not resell model access: the owner pays each provider directly.",
+      "Outlore is a local-first desktop app for working with AI agents. It runs Claude Code, Codex, and OpenCode, the owner's own command-line tools and accounts, in one place. Outlore does not resell model access: the owner pays each provider directly.",
       "A piece of work is a quest. Inside it, the owner or a thread opens side-quests, each of which can use its own harness, model, and effort, and the threads of a quest talk to each other. The quest keeps a briefing and a journal that every thread in it reads.",
       "Everything is stored on the owner's computer, in a database in the app's data folder. Work happens in realms (folders or repositories) the owner chooses.",
-      "Iskios is in alpha and serves one user on one computer.",
+      "Outlore is in alpha and serves one user on one computer.",
     ].join("\n"),
     id: "overview",
-    keywords: ["what is iskios", "alpha", "local", "data", "privacy", "providers", "accounts"],
-    summary: "What Iskios is, and what it keeps where",
-    title: "What Iskios is",
+    keywords: ["what is outlore", "alpha", "local", "data", "privacy", "providers", "accounts"],
+    summary: "What Outlore is, and what it keeps where",
+    title: "What Outlore is",
   },
   {
     body: [
       "A quest is a piece of work and its tree of threads. The first thread is the quest's main thread; a side-quest is a thread opened beneath another thread, and may have side-quests of its own.",
-      "To start a quest: press the new-quest button on a realm or on the Borderlands in the sidebar, or tell Iskios what you want and choose on the card it shows (Continue in a quest that fits, or Open as new quest). Iskios never opens a quest on its own.",
+      "To start a quest: press the new-quest button on a realm or on the Borderlands in the sidebar, or tell Chronicler what you want and choose on the card it shows (Continue in a quest that fits, or Open as new quest). Chronicler never opens a quest on its own.",
       "States a quest or thread shows: Underway (running), Resting (idle), Awaiting word (waiting for an answer), and Summons (needs the owner: an approval, an answer, a budget reached, a missing folder, or a tool problem). A quest stays open until it is archived; archived quests are in the Archive, under The Keep.",
       "Each quest has a briefing (where it stands, rewritten as it changes) and a journal (a dated log only ever added to). Every thread in the quest reads them before it starts.",
       "Threads message each other along the tree, and any thread can reach a quest or realm the owner names with @. A side-quest opened by a thread tells its parent when it reports a result.",
@@ -60,9 +60,9 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
     body: [
       "A realm groups quests that share lore. A realm may be tied to one folder or repository on the computer (the realm's workspace, where its threads work) or tied to none. The sidebar lists realms tied to a folder first, then those tied to none.",
       "The Borderlands hold quests with no realm: no folder and no shared lore. A quest there has only its own lore and global lore. Every quest belongs to a realm or to the Borderlands, and a whole quest tree can be moved between them, after a confirmation, while no thread of it is running.",
-      "A quest with no folder works in a scratch folder Iskios keeps for it.",
+      "A quest with no folder works in a scratch folder Outlore keeps for it.",
       "For a git repository, a thread can have its own copy: its own git worktree on its own branch, shared by the threads beneath it and merged back with one button.",
-      "Add a realm from the sidebar, or ask Iskios to make or rename one. Iskios never deletes a realm or a quest; the most it does to a quest is archive it, when asked.",
+      "Add a realm from the sidebar, or ask Chronicler to make or rename one. Chronicler never deletes a realm or a quest; the most it does to a quest is archive it, when asked.",
     ].join("\n"),
     id: "realms",
     keywords: [
@@ -84,12 +84,12 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "The Guild Hall is the first entry of the sidebar. It is a hub: a line saying how many quests wait for the owner, the waiting quests as cards, recent quests, and the finished quests of the period.",
-      'Iskios, the app\'s assistant, is a permanent conversation, a panel the top bar\'s Iskios button opens or folds on every screen. It knows which quest or screen the owner has open, so "this quest" or "this page" means it.',
-      "Iskios can: answer questions about the owner's quests and about using the app; propose a quest on a card (it never opens one itself); create a Ritual; create or rename a realm; stop a quest's threads, mark it Done, archive it, or rename it; read the settings and change most of them. It cannot change the approval level, the budgets, or price fetching: those are set in the Workshop.",
-      "Iskios does not do the work itself, no editing files or running commands. Anything else goes to a quest. An action on the app runs at once when the owner's message in that turn plainly named the action, its target, and its new value; otherwise Iskios asks one Allow or Deny question.",
-      "Iskios runs on a harness and model like any thread; the owner chooses them and may hand it over at any time.",
+      'Chronicler, the app\'s assistant, is a permanent conversation, a panel the top bar\'s Chronicler button opens or folds on every screen. It knows which quest or screen the owner has open, so "this quest" or "this page" means it.',
+      "Chronicler can: answer questions about the owner's quests and about using the app; propose a quest on a card (it never opens one itself); create a Ritual; create or rename a realm; stop a quest's threads, mark it Done, archive it, or rename it; read the settings and change most of them. It cannot change the approval level, the budgets, or price fetching: those are set in the Workshop.",
+      "Chronicler does not do the work itself, no editing files or running commands. Anything else goes to a quest. An action on the app runs at once when the owner's message in that turn plainly named the action, its target, and its new value; otherwise Chronicler asks one Allow or Deny question.",
+      "Chronicler runs on a harness and model like any thread; the owner chooses them and may hand it over at any time.",
     ].join("\n"),
-    id: "iskios",
+    id: "chronicler",
     keywords: [
       "guild hall",
       "guildmaster",
@@ -102,15 +102,15 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "card",
       "top bar",
     ],
-    summary: "The Guild Hall, and what Iskios can and cannot do",
-    title: "The Guild Hall and Iskios",
+    summary: "The Guild Hall, and what Chronicler can and cannot do",
+    title: "The Guild Hall and Chronicler",
   },
   {
     body: [
       "The sidebar, in order: Guild Hall; Realms, each with its quests and side-quests; Borderlands; Rituals; Craft (planned workflows, not available yet); The Keep (Library, Lore, Archive); Reserves (usage and budgets); Charter (a placeholder page for now); and Workshop (the settings).",
       "Headings and realms fold and unfold. Each realm and the Borderlands show their three newest quests, with a Show all link to the full list.",
-      "The top bar shows where the owner is and has the Iskios button. A quest has its own side panel with its details.",
-      "Themes: Iskios or Gild, each in a dark and a light look, or following the system. The owner chooses them in the Workshop.",
+      "The top bar shows where the owner is and has the Chronicler button. A quest has its own side panel with its details.",
+      "Themes: One, Iskios or Gild, each in a dark and a light look, or following the system. The owner chooses them in the Workshop.",
     ].join("\n"),
     id: "navigation",
     keywords: [
@@ -134,7 +134,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "Settings are in the Workshop, in the sidebar. It holds: Harnesses (what is installed, with an Install button for a missing one), Accounts, Permissions, Theme and appearance, the default harness, model, and effort for a first quest, Backup companions, Quest upkeep, the default budget for new quests, the global budget, how a message sent while work is underway behaves (steer or wait), the chatter guard, the briefing limit, lore settings, model prices, and Remote access with paired devices.",
-      "Ask Iskios to read or change a setting. It cannot change the approval level, the budgets, or price fetching.",
+      "Ask Chronicler to read or change a setting. It cannot change the approval level, the budgets, or price fetching.",
       "The sidebar's Charter row is a placeholder page for now; the settings are not there.",
     ].join("\n"),
     id: "workshop",
@@ -189,8 +189,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "A thread has a harness (Claude Code, Codex, or OpenCode), a model (called its Companion), and an effort level. The owner chooses them when starting a thread and may change any of them between turns without losing the conversation: the new one is given the thread's full history (a handover).",
-      "Iskios looks for the claude, codex, and opencode commands on the computer's PATH, and only the ones the owner means to use are needed. The Workshop's Harnesses card shows what is available and can install a missing one (this needs Node.js and npm with a writable global install folder); each harness handles its own sign-in.",
-      "Accounts: each harness can have the computer's own sign-in plus accounts added in Iskios, each with its own folder, such as a second Claude account called Work. A thread runs on the account chosen for it.",
+      "Outlore looks for the claude, codex, and opencode commands on the computer's PATH, and only the ones the owner means to use are needed. The Workshop's Harnesses card shows what is available and can install a missing one (this needs Node.js and npm with a writable global install folder); each harness handles its own sign-in.",
+      "Accounts: each harness can have the computer's own sign-in plus accounts added in Outlore, each with its own folder, such as a second Claude account called Work. A thread runs on the account chosen for it.",
       "Backup companions: when a turn fails (usage limit, overload, model unavailable, signed out), the thread can be handed over to the next backup Companion, which may be on another harness; the switch is a visible line in the conversation.",
     ].join("\n"),
     id: "companions",
@@ -236,7 +236,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "always allow",
       "security",
     ],
-    summary: "How Iskios asks before risky actions, and standing permissions",
+    summary: "How Outlore asks before risky actions, and standing permissions",
     title: "Approvals and permissions",
   },
   {
@@ -244,7 +244,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "A budget is a spending limit, in cost, tokens, or both, that every thread of a quest draws on. A global budget limits all spending over a day, week, or month. An account budget limits, or gives a credit for, one provider account. At a limit, new spending stops and the quest asks for attention.",
       "Budgets are set in the Workshop (the default for new quests, and the global budget). Reserves, in the sidebar, shows usage, budgets, and what each limit leaves; the rail shows rings that fill as a budget is used.",
       "A turn's estimated cost is worked out from its tokens and a model price table, shown with ≈. It counts toward a limit only for an API-key turn the harness reported no cost for. Prices are read from the public models.dev table at startup and daily; the Workshop has a switch to stop that, and a snapshot shipped with the app is the fallback.",
-      "Plan limits (a subscription's 5-hour or weekly window) are shown when the harness reports them, and never enforced by Iskios.",
+      "Plan limits (a subscription's 5-hour or weekly window) are shown when the harness reports them, and never enforced by Outlore.",
     ].join("\n"),
     id: "budgets",
     keywords: [
@@ -269,8 +269,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
     body: [
       "A Ritual is a request with a schedule: a morning digest, a weekly dependency check. It has a title, an instruction, a schedule, a harness and Companion, backup Companions, an optional realm, and an on/off switch.",
       "Schedules are presets, with no cron: every day at a time, weekdays at a time, every week on a day, every month on a day, or every N hours, in the computer's local time.",
-      "Each Ritual has its own quest; every run is a turn in its main thread, so the quest holds the whole history. Run now on the Ritual's card starts a run at any moment. Rituals live in the sidebar's Rituals place. Iskios can create one on request.",
-      "Rituals run through the local service, so Iskios must be running. A run missed while the app was closed or the computer asleep is skipped, not caught up. A run's commands follow the thread's approval level; a Ritual takes no action on quests or settings unless its scope, set in its form, allows it.",
+      "Each Ritual has its own quest; every run is a turn in its main thread, so the quest holds the whole history. Run now on the Ritual's card starts a run at any moment. Rituals live in the sidebar's Rituals place. Outlore can create one on request.",
+      "Rituals run through the local service, so Outlore must be running. A run missed while the app was closed or the computer asleep is skipped, not caught up. A run's commands follow the thread's approval level; a Ritual takes no action on quests or settings unless its scope, set in its form, allows it.",
     ].join("\n"),
     id: "rituals",
     keywords: [
@@ -326,7 +326,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Pairing lets the owner control one Iskios from another, such as another computer's app, on any internet connection, with no account. It is early work. The computer being controlled is the host; it shows a one-time pairing code, valid for 10 minutes and usable once, and the other app adds it with Add a host. The connection is end-to-end encrypted through a shared relay, and a paired device has the owner's full authority over the host.",
+      "Pairing lets the owner control one Outlore from another, such as another computer's app, on any internet connection, with no account. It is early work. The computer being controlled is the host; it shows a one-time pairing code, valid for 10 minutes and usable once, and the other app adds it with Add a host. The connection is end-to-end encrypted through a shared relay, and a paired device has the owner's full authority over the host.",
       "Paired devices are listed in the Workshop's Remote access card, where each can be disconnected. A host menu is at the top left of the app, and the host can rename itself.",
       "Not built yet: the phone web app, a QR code for the pairing code, notifications, the folder picker and the terminal on a host, and the direct connection that skips the relay. Pairing has not been tried on two physical computers yet.",
     ].join("\n"),
@@ -352,8 +352,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
     body: [
       "Download the installer for the platform from GitHub Releases: a .dmg for macOS (Apple Silicon or Intel), an .exe for Windows, an .AppImage for Linux. There is no automatic update.",
       "macOS and Windows builds are not signed by a trusted developer yet, so the first launch may be blocked: on macOS Control-click the app and choose Open, or use Open Anyway in System Settings → Privacy & Security; on Windows choose More info → Run anyway. On Linux make the AppImage executable and run it.",
-      "First launch: open the Workshop to see which harnesses are installed and signed in (install a missing one there, or install it yourself), add a realm if agents should work in a folder, then tell Iskios what to do or start a quest from the sidebar.",
-      "Rituals run only while Iskios is running.",
+      "First launch: open the Workshop to see which harnesses are installed and signed in (install a missing one there, or install it yourself), add a realm if agents should work in a folder, then tell Chronicler what to do or start a quest from the sidebar.",
+      "Rituals run only while Outlore is running.",
     ].join("\n"),
     id: "install",
     keywords: [
@@ -377,8 +377,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Alpha limits to tell the owner plainly: one user on one computer; Craft (workflows) is not available; the Library is not settled; Iskios has no screen for managing MCP servers yet; the phone web app and parts of pairing are not built; there is no automatic update; macOS and Windows builds are unsigned; Windows and Linux builds have had little testing on real machines.",
-      "Bugs and requests go to GitHub Issues, with the operating system, Iskios version, harness, steps to reproduce, and logs with private information removed.",
+      "Alpha limits to tell the owner plainly: one user on one computer; Craft (workflows) is not available; the Library is not settled; Outlore has no screen for managing MCP servers yet; the phone web app and parts of pairing are not built; there is no automatic update; macOS and Windows builds are unsigned; Windows and Linux builds have had little testing on real machines.",
+      "Bugs and requests go to GitHub Issues, with the operating system, Outlore version, harness, steps to reproduce, and logs with private information removed.",
     ].join("\n"),
     id: "limits",
     keywords: [

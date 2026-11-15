@@ -1,4 +1,4 @@
-import type { ChatterNotice } from "@iskios/contracts";
+import type { ChatterNotice } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, readSettings } from "../core/index.ts";

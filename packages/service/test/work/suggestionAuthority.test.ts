@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionDetail, MissionId, Question, RitualCompanion } from "@iskios/contracts";
+import type { MissionDetail, MissionId, Question, RitualCompanion } from "@outlore/contracts";
 import { Effect } from "effect";
 import { guildmaster, isIdle, listed } from "../fixtures/guildmaster.ts";
 import { call, read, send, settle, start, withService } from "../fixtures/service.ts";
@@ -119,7 +119,7 @@ describe("keeping a continued suggestion's words from authorizing a Ritual's str
     ),
   );
 
-  it.live("asks before Iskios creates a realm on a suggestion continued into it", () =>
+  it.live("asks before Chronicler creates a realm on a suggestion continued into it", () =>
     withService(
       Effect.gen(function* () {
         const place = yield* guildmaster;

@@ -1,4 +1,4 @@
-import type { LoreChangeKind, LoreChangeStatus, LoreKind, LoreOrigin } from "@iskios/contracts";
+import type { LoreChangeKind, LoreChangeStatus, LoreKind, LoreOrigin } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound } from "../core/index.ts";

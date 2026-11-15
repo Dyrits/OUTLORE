@@ -8,7 +8,7 @@ import { type MenuPlacement, menuPlacementOf } from "../ui/menuPlacement";
 const listWidth = 280;
 
 /**
- * The top bar's host menu, as OpenBot's: it names the computer whose Iskios the window shows and lists this computer
+ * The top bar's host menu, as OpenBot's: it names the computer whose Outlore the window shows and lists this computer
  * and every paired host, with a way to pair another (device-pairing, Behavior).
  */
 export function HostMenu({ activeId, computerName, hosts, onAdd, onChoose }: HostMenuProps) {

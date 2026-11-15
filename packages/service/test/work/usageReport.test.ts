@@ -108,27 +108,27 @@ describe("reading the usage page", () => {
     ),
   );
 
-  it.live("divides it by realm and by quest, with the Borderlands, Iskios, and deleted quests told apart", () =>
+  it.live("divides it by realm and by quest, with the Borderlands, Chronicler, and deleted quests told apart", () =>
     withService(
       Effect.gen(function* () {
         const { a, b, c } = yield* standard;
         const sql = yield* SqlClient.SqlClient;
-        // A quest of Iskios's own, and a quest deleted since it spent.
+        // A quest of Chronicler's own, and a quest deleted since it spent.
         yield* sql`UPDATE missions SET is_guildmaster = 1 WHERE id = ${c.mission}`;
         yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, billing, harness, model, estimate)
           VALUES ('turn-gone', 'mission-gone', 'thread-gone', ${dayAt(1)}, 1, 1, 0, 0, 'Subscription', 'claude', 'claude-sonnet-5-5', 0.25)`;
         const { breakdowns } = yield* usage();
         const realms = breakdowns.find((breakdown) => breakdown.dimension === "Realm")?.rows ?? [];
         expect(Object.fromEntries(realms.map((row) => [row.key, row.name]))).toEqual({
+          "~chronicler": "Chronicler (assistant)",
           "~deleted": null,
-          "~iskios": "Iskios (assistant)",
           "realm-atlas": "Atlas",
           "realm-borealis": "Borealis",
         });
         const questRows = breakdowns.find((breakdown) => breakdown.dimension === "Quest")?.rows ?? [];
         expect(questRows.find((row) => row.key === a.mission)?.name).toBe("Quest A");
         expect(questRows.find((row) => row.key === b.mission)?.name).toBe("Quest B");
-        expect(questRows.find((row) => row.key === c.mission)?.name).toBe("Iskios (assistant)");
+        expect(questRows.find((row) => row.key === c.mission)?.name).toBe("Chronicler (assistant)");
         expect(questRows.find((row) => row.key === "mission-gone")?.name).toBeNull();
       }),
     ),

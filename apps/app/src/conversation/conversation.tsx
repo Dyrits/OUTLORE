@@ -1,4 +1,11 @@
-import type { AttachmentId, BudgetScope, MessageDelivery, MissionDetail, MissionId, ThreadId } from "@iskios/contracts";
+import type {
+  AttachmentId,
+  BudgetScope,
+  MessageDelivery,
+  MissionDetail,
+  MissionId,
+  ThreadId,
+} from "@outlore/contracts";
 import { useEffect, useRef, useState } from "react";
 import {
   FlatList,

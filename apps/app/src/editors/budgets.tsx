@@ -5,7 +5,7 @@ import {
   type BudgetStop,
   type BudgetUse,
   type MissionId,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
@@ -71,7 +71,7 @@ const reserveKinds = {
 
 /**
  * The rail's reserves: one row per set limit, its name and what is left above a bar that drains as the budget is
- * spent, turning orange from 80% spent and red when spent. Only what Iskios counts is shown, not the harnesses' plans.
+ * spent, turning orange from 80% spent and red when spent. Only what Outlore counts is shown, not the harnesses' plans.
  */
 export function ReserveRows({ use }: { use: BudgetUse }) {
   return (

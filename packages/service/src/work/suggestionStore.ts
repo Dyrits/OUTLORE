@@ -1,4 +1,4 @@
-import type { MissionSummary, Suggestion, SuggestionMatch } from "@iskios/contracts";
+import type { MissionSummary, Suggestion, SuggestionMatch } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { readSettings } from "../core/index.ts";

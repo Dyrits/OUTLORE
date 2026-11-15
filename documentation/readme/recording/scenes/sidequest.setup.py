@@ -1,1 +1,1 @@
-exec(open("/tmp/iskios-demo/scenes/common.py").read()); go('Fix checkout rounding'); bottom()
+exec(open("/tmp/outlore-demo/scenes/common.py").read()); go('Fix checkout rounding'); bottom()

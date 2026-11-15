@@ -1,4 +1,4 @@
-import type { PairedDevice, RelayStatus, RemoteAccessView } from "@iskios/contracts";
+import type { PairedDevice, RelayStatus, RemoteAccessView } from "@outlore/contracts";
 
 // The words of Charter's remote access section (device-pairing, Behavior).
 
@@ -48,7 +48,7 @@ export const cloudflareTokensUrl = "https://dash.cloudflare.com/profile/api-toke
 /** Which relay the host uses: the shared one, or the owner's own on their Cloudflare account. */
 export const relayLineOf = (view: Pick<RemoteAccessView, "isOwnRelay" | "relayOrigin">) => {
   if (!view.isOwnRelay) {
-    return "Shared relay, run by the Iskios project. It carries only encrypted traffic and cannot read it.";
+    return "Shared relay, run by the Outlore project. It carries only encrypted traffic and cannot read it.";
   }
   const host = URL.canParse(view.relayOrigin) ? new URL(view.relayOrigin).host : view.relayOrigin;
   return `Your own relay, on your Cloudflare account: ${host}`;
@@ -60,5 +60,5 @@ export const ownRelayNoticeOf = (pairedDevices: number) => {
     pairedDevices === 0
       ? ""
       : ` ${pairedDevices} paired ${pairedDevices === 1 ? "device" : "devices"} will have to pair again, because ${pairedDevices === 1 ? "it" : "they"} reach this computer through the shared relay.`;
-  return `Iskios uses the token once, to put a Worker named iskios-relay on your account (and a workers.dev address, if you have none), and does not keep it.${devices}`;
+  return `Outlore uses the token once, to put a Worker named outlore-relay on your account (and a workers.dev address, if you have none), and does not keep it.${devices}`;
 };

@@ -1,4 +1,4 @@
-import type { BillingKind, HarnessName, TokenUsage } from "@iskios/contracts";
+import type { BillingKind, HarnessName, TokenUsage } from "@outlore/contracts";
 import { Deferred, type Duration, Effect, Layer } from "effect";
 import {
   type Containment,

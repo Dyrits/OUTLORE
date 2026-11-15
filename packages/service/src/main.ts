@@ -17,18 +17,18 @@ const parentPort = (process as unknown as { parentPort?: ParentPort }).parentPor
 // A missing variable fails the program through Config instead of throwing at import.
 const liveLayer = Layer.unwrap(
   Effect.gen(function* () {
-    const dataDirectory = yield* Config.NonEmptyString("ISKIOS_DATA_DIR");
-    // ISKIOS_HARNESS=fake selects the echo harness for checks.
-    const harnessName = yield* Config.String("ISKIOS_HARNESS").pipe(Config.withDefault("claude"));
+    const dataDirectory = yield* Config.NonEmptyString("OUTLORE_DATA_DIR");
+    // OUTLORE_HARNESS=fake selects the echo harness for checks.
+    const harnessName = yield* Config.String("OUTLORE_HARNESS").pipe(Config.withDefault("claude"));
     const commands = {
-      claude: yield* Config.String("ISKIOS_CLAUDE_PATH").pipe(Config.withDefault("claude")),
-      codex: yield* Config.String("ISKIOS_CODEX_PATH").pipe(Config.withDefault("codex")),
-      opencode: yield* Config.String("ISKIOS_OPENCODE_PATH").pipe(Config.withDefault("opencode")),
+      claude: yield* Config.String("OUTLORE_CLAUDE_PATH").pipe(Config.withDefault("claude")),
+      codex: yield* Config.String("OUTLORE_CODEX_PATH").pipe(Config.withDefault("codex")),
+      opencode: yield* Config.String("OUTLORE_OPENCODE_PATH").pipe(Config.withDefault("opencode")),
     };
-    // ISKIOS_RELAY_ORIGIN points pairing at another relay, such as one run locally for checks (device-pairing).
-    const relayOrigin = yield* Config.String("ISKIOS_RELAY_ORIGIN").pipe(Config.withDefault(defaultRelayOrigin));
+    // OUTLORE_RELAY_ORIGIN points pairing at another relay, such as one run locally for checks (device-pairing).
+    const relayOrigin = yield* Config.String("OUTLORE_RELAY_ORIGIN").pipe(Config.withDefault(defaultRelayOrigin));
     // The Worker's name on the owner's own Cloudflare account, for a check that must not touch a Worker already there.
-    const ownRelayWorkerName = yield* Config.String("ISKIOS_OWN_RELAY_NAME").pipe(Config.withDefault(""));
+    const ownRelayWorkerName = yield* Config.String("OUTLORE_OWN_RELAY_NAME").pipe(Config.withDefault(""));
     const problem = yield* sandboxProblem;
     const idleTimeout = "10 minutes";
     // Every thread's harness has its own adapter; turns go to the one their thread runs on (provider-accounts).
@@ -39,7 +39,7 @@ const liveLayer = Layer.unwrap(
     return Layer.fresh(
       serviceLayer({
         accountsRoot: join(dataDirectory, "accounts"),
-        filename: join(dataDirectory, "iskios.sqlite"),
+        filename: join(dataDirectory, "outlore.sqlite"),
         harness,
         harnessTools: harnessName === "fake" ? fakeHarnessToolsLayer() : liveHarnessToolsLayer(commands),
         homeFolder: homedir(),
@@ -53,7 +53,7 @@ const liveLayer = Layer.unwrap(
 );
 
 const program = Effect.gen(function* () {
-  const token = yield* Config.NonEmptyString("ISKIOS_TOKEN");
+  const token = yield* Config.NonEmptyString("OUTLORE_TOKEN");
   const { port } = yield* serveLoopback({ port: 0, token });
   parentPort?.postMessage({ port, type: "ready" });
   return yield* Effect.never;
@@ -61,6 +61,6 @@ const program = Effect.gen(function* () {
 
 Effect.runFork(program).addObserver((exit) => {
   // The cause in full, so a startup failure says why in the desktop app's log.
-  console.error("Iskios service stopped", Exit.isFailure(exit) ? Cause.pretty(exit.cause) : exit);
+  console.error("Outlore service stopped", Exit.isFailure(exit) ? Cause.pretty(exit.cause) : exit);
   process.exit(1);
 });

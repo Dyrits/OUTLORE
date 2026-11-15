@@ -17,12 +17,12 @@ export const statusTextOf = (state: UpdateState): string => {
   const { status } = state;
   if (status._tag === "Unsupported") return status.reason;
   // An update already downloaded stays ready to install whether or not looking is still on.
-  if (status._tag === "Ready") return `Iskios ${status.version} is downloaded and ready to install.`;
-  if (!state.isEnabled) return "Looking for new releases is off. Iskios asks no one.";
+  if (status._tag === "Ready") return `Outlore ${status.version} is downloaded and ready to install.`;
+  if (!state.isEnabled) return "Looking for new releases is off. Outlore asks no one.";
   if (status._tag === "Checking") return "Looking for a newer release…";
   if (status._tag === "Downloading") return `Downloading ${status.version}: ${status.percent}%.`;
   if (status._tag === "Failed") return status.message;
-  return status.note ?? "Iskios is up to date.";
+  return status.note ?? "Outlore is up to date.";
 };
 
 /** Whether Check now does anything: checking is on and nothing is under way or waiting. */
@@ -31,4 +31,4 @@ export const canCheckNow = (state: UpdateState): boolean =>
 
 /** What the confirmation before restarting says, so the owner knows what the restart costs. */
 export const restartWarningOf = (version: string): string =>
-  `Iskios quits and starts again as ${version}. Turns still running stop when it quits. A release can make what an earlier one saved unreadable, so read the notes above first.`;
+  `Outlore quits and starts again as ${version}. Turns still running stop when it quits. A release can make what an earlier one saved unreadable, so read the notes above first.`;

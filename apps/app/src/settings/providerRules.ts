@@ -1,4 +1,4 @@
-import type { HarnessInfo } from "@iskios/contracts";
+import type { HarnessInfo } from "@outlore/contracts";
 
 /** A harness-reported version reduced to its number, retaining unknown reports and absence. */
 export const versionOf = (harness: Pick<HarnessInfo, "version">) =>

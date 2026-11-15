@@ -1,4 +1,4 @@
-import type { Crest, MissionId, MissionSummary, ThreadId, WorkspaceId } from "@iskios/contracts";
+import type { Crest, MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { type ReactNode, useEffect, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";

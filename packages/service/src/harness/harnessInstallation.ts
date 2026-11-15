@@ -1,4 +1,4 @@
-import type { HarnessName } from "@iskios/contracts";
+import type { HarnessName } from "@outlore/contracts";
 import { Effect } from "effect";
 import { invalid } from "../core/index.ts";
 import { harnessFacts } from "./harnessCatalog.ts";

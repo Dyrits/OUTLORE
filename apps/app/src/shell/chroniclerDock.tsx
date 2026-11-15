@@ -2,38 +2,38 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 
-// Where Iskios's conversation lives (quest coordination, Iskios everywhere): a pill at the window's corner opens it, as a
+// Where Chronicler's conversation lives (quest coordination, Chronicler everywhere): a pill at the window's corner opens it, as a
 // card floating over the Guild Hall's hub or in a column beside any other screen, and the owner folds it back.
 
 /** How wide the column beside a screen is as it opens, and the least the owner can drag it to. */
-export const iskiosColumnWidth = 380;
+export const chroniclerColumnWidth = 380;
 
 /** The floating card's size, held within the window. */
 const floatingWidth = 420;
 const floatingHeight = 620;
 const edge = 20;
 
-/** The pill that opens Iskios, at the content's lower right corner while the panel is folded. */
-export function IskiosLauncher({ onPress }: { onPress: () => void }) {
+/** The pill that opens Chronicler, at the content's lower right corner while the panel is folded. */
+export function ChroniclerLauncher({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
-      accessibilityLabel="Ask Iskios"
+      accessibilityLabel="Ask Chronicler"
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [local.pill, pressed && local.pillPressed]}
     >
       <Text style={local.pillMark}>✦</Text>
-      <Text style={local.pillText}>Ask Iskios</Text>
+      <Text style={local.pillText}>Ask Chronicler</Text>
     </Pressable>
   );
 }
 
-/** Iskios as a card floating at the lower right over the screen, which stays whole beneath it. */
-export function IskiosFloating({ children }: { children: ReactNode }) {
+/** Chronicler as a card floating at the lower right over the screen, which stays whole beneath it. */
+export function ChroniclerFloating({ children }: { children: ReactNode }) {
   const { height, width } = useWindowDimensions();
   return (
     <View
-      accessibilityLabel="Iskios"
+      accessibilityLabel="Chronicler"
       style={[
         local.card,
         { height: Math.min(floatingHeight, height - 120), width: Math.min(floatingWidth, width - edge * 2) },
@@ -45,12 +45,12 @@ export function IskiosFloating({ children }: { children: ReactNode }) {
 }
 
 /**
- * Iskios as a column at the window's far right, beyond the quest panel and below the top bar, which spans the window:
+ * Chronicler as a column at the window's far right, beyond the quest panel and below the top bar, which spans the window:
  * `edge` is the strip on its left edge that the owner drags to widen it.
  */
-export function IskiosColumn({ children, edge, width }: { children: ReactNode; edge: ReactNode; width: number }) {
+export function ChroniclerColumn({ children, edge, width }: { children: ReactNode; edge: ReactNode; width: number }) {
   return (
-    <View accessibilityLabel="Iskios" style={[local.column, { width }]}>
+    <View accessibilityLabel="Chronicler" style={[local.column, { width }]}>
       {edge}
       {children}
     </View>

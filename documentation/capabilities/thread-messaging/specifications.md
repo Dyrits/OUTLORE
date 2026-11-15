@@ -12,7 +12,7 @@ Subagents in today's harnesses report once at the end and cannot be asked or red
 
 - A thread can message its parent and the threads directly beneath it. Siblings reach each other through their parent.
 - When the owner mentions a quest or side-quest with `@` in a message, the thread that receives it may, for the turn that message reaches, read that quest's journal (`read_journal` with `mission`) and message the quest's top thread, or the side-quest itself (CHG-0181). The receiving thread decides from the owner's words whether to do either. The quest that receives such a message may answer its sender in the turn the message reaches, so the reply comes straight back (see [mission-coordination](../mission-coordination/specifications.md#references-between-quests)).
-- Without a mention, a thread reaches another quest only through Iskios (formerly Guildmaster). A thread cannot widen its own reach by writing an `@` reference: only the owner's messages count.
+- Without a mention, a thread reaches another quest only through Chronicler (formerly Guildmaster). A thread cannot widen its own reach by writing an `@` reference: only the owner's messages count.
 - The user can write to any open thread, including a subagent's (for mirrored subagents, see [thread-tree](../thread-tree/specifications.md#subagents)).
 - Every message shows its sender: the user, or the sending thread.
 - A message can ask for a reply.
@@ -21,10 +21,10 @@ Subagents in today's harnesses report once at the end and cannot be asked or red
 
 Agreed 2026-11-11 (CHG-0181); built in CHG-0182.
 
-- In any message box (a quest's, a side-quest's, Iskios's), a bare `@` lists three categories with their icons: Quests, Realms, and Files & Directories, the last only when the message box has a linked folder. Arrow keys and Enter open a category; Backspace right after the `@` returns to the categories. As soon as text follows the `@`, the list mixes the matches of every category, each under its heading. The `/` skills list is unchanged.
-- Quests lists every quest not archived and, beneath each, its side-quests shown as `Quest › Side-quest`; Iskios's own conversation is never offered. Realms lists every realm, tied to a folder or not. Archived quests and their side-quests are left out entirely.
+- In any message box (a quest's, a side-quest's, Outlore's), a bare `@` lists three categories with their icons: Quests, Realms, and Files & Directories, the last only when the message box has a linked folder. Arrow keys and Enter open a category; Backspace right after the `@` returns to the categories. As soon as text follows the `@`, the list mixes the matches of every category, each under its heading. The `/` skills list is unchanged.
+- Quests lists every quest not archived and, beneath each, its side-quests shown as `Quest › Side-quest`; Chronicler's own conversation is never offered. Realms lists every realm, tied to a folder or not. Archived quests and their side-quests are left out entirely.
 - A chosen quest, side-quest, or realm becomes a chip with its icon (a pennant for a quest or side-quest, a keep for a realm) and its name, in the message box and in the sent message. The message holds a one-word token with the id: `@quest:<quest id>`, `@side-quest:<thread id>`, or `@realm:<realm id>`. File and folder paths keep their `@path` form. A token naming a quest since archived or deleted shows as "quest no longer open".
-- A mention is context only. The owner's text reaches the thread unchanged, followed by a block the service adds as it delivers the message, one line per mention with its ids, for example `Quest "Fix login" (id …, state Running, realm Iskios, top thread id …)` and `Realm "Iskios" (id …, folder …)`. The receiving thread decides from the owner's words whether to read the quest's journal, write to it, or neither.
+- A mention is context only. The owner's text reaches the thread unchanged, followed by a block the service adds as it delivers the message, one line per mention with its ids, for example `Quest "Fix login" (id …, state Running, realm Outlore, top thread id …)` and `Realm "Outlore" (id …, folder …)`. The receiving thread decides from the owner's words whether to read the quest's journal, write to it, or neither.
 - The widened reach (above) holds only for quests and side-quests the owner named, only in the turn the message reaches, and never for an archived quest. A realm mention opens nothing: it only says which realm is meant.
 - On the phone and other builds that cannot draw chips inside the text, the chosen token is written into the text as typed; the categories still show.
 
@@ -32,7 +32,7 @@ Agreed 2026-11-11 (CHG-0181); built in CHG-0182.
 
 Agreed 2026-11-11 (CHG-0195); built in CHG-0196.
 
-- In a quest's or side-quest's conversation (not Iskios's), the owner can comment on any message, theirs, the Companion's, or another quest's. A small Comment button shows on the message's card while the pointer is on it or it has focus; selecting text inside one message shows a Comment on selection button beside it. Either opens a field under the card: Enter saves, Shift+Enter breaks the line, Escape cancels.
+- In a quest's or side-quest's conversation (not Outlore's), the owner can comment on any message, theirs, the Companion's, or another quest's. A small Comment button shows on the message's card while the pointer is on it or it has focus; selecting text inside one message shows a Comment on selection button beside it. Either opens a field under the card: Enter saves, Shift+Enter breaks the line, Escape cancels.
 - A comment waits. Each thread keeps its own in the browser's storage until they are sent or removed, so a reload or leaving the thread loses none. They show in a tray above the message box ("2 comments · sent with your next message"), each with the passage it is about, and can be edited or removed there; a message with comments waiting says so under its card. A thread with comments can be sent with no typed text.
 - Sending carries every waiting comment in the same message: after what the owner typed, a `<comments>` block with one `<comment on=… part=…>` per comment holding its quote (the selected passage, or the first 300 characters of the whole message) and the owner's note. The harness reads it as part of the message; the conversation draws it back as quoted passages under the typed text. Comments leave the tray only once the service has taken the message.
 - A comment is a note in the next message: it is context, not a command, and it opens no reach beyond what the message's words and mentions already do.
@@ -62,7 +62,7 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 
 | Tool | Purpose | Arguments | Answer |
 | --- | --- | --- | --- |
-| `send_thread_message` | Send a message | Receiving thread (a parent, a thread directly beneath, Iskios, the top thread of a quest or a side-quest the owner mentioned in this turn, or a thread that wrote to the caller in this turn), text, whether a reply is wanted | The message's identifier, queued until explicit resume when the receiver is Stopped; or a refusal and its reason when the target is outside its reach |
+| `send_thread_message` | Send a message | Receiving thread (a parent, a thread directly beneath, Chronicler, the top thread of a quest or a side-quest the owner mentioned in this turn, or a thread that wrote to the caller in this turn), text, whether a reply is wanted | The message's identifier, queued until explicit resume when the receiver is Stopped; or a refusal and its reason when the target is outside its reach |
 | `report_result` | Report the thread's result to its parent | The result | — |
 | `interrupt_thread` | Interrupt a thread directly beneath the caller | The thread | Done, or a refusal and its reason when the thread is not directly beneath the caller or is not running |
 
@@ -90,7 +90,7 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 
 ## Exclusions
 
-- Messages between threads in different missions without the owner's mention or Iskios.
+- Messages between threads in different missions without the owner's mention or Outlore.
 - A thread's own `@` reference in a message to another thread: it opens nothing (CHG-0181).
 - Attachments other than text between threads. The owner's images are in [message-attachments](../message-attachments/specifications.md).
 - Editing or deleting a sent message.

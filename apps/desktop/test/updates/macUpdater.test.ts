@@ -29,7 +29,7 @@ const github = async (options: { sums?: string; tag?: string } = {}) => {
         JSON.stringify([
           {
             assets: [
-              { browser_download_url: `${base}/file.dmg`, name: `Iskios-${tag}-mac-arm64.dmg`, size: disk.length },
+              { browser_download_url: `${base}/file.dmg`, name: `Outlore-${tag}-mac-arm64.dmg`, size: disk.length },
               { browser_download_url: `${base}/sums`, name: "SHA512SUMS.txt", size: 100 },
             ],
             body: "<h2>Breaking</h2><p>Reset your data</p>",
@@ -42,7 +42,7 @@ const github = async (options: { sums?: string; tag?: string } = {}) => {
       );
     } else if (request.url === "/file.dmg") send(disk, "application/octet-stream");
     else if (request.url === "/sums")
-      send(options.sums ?? `${hashOf(disk)}  Iskios-${tag}-mac-arm64.dmg\n`, "text/plain");
+      send(options.sums ?? `${hashOf(disk)}  Outlore-${tag}-mac-arm64.dmg\n`, "text/plain");
     else {
       response.writeHead(404);
       response.end();
@@ -56,9 +56,9 @@ const github = async (options: { sums?: string; tag?: string } = {}) => {
 };
 
 const installation = () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "iskios-mac-updater-")));
-  mkdirSync(join(root, "Applications", "Iskios.app"), { recursive: true });
-  return { bundle: join(root, "Applications", "Iskios.app"), folder: join(root, "updates"), root };
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "outlore-mac-updater-")));
+  mkdirSync(join(root, "Applications", "Outlore.app"), { recursive: true });
+  return { bundle: join(root, "Applications", "Outlore.app"), folder: join(root, "updates"), root };
 };
 
 const updaterOf = async (options: { sums?: string; version?: string; tag?: string } = {}, place = installation()) => {
@@ -75,7 +75,7 @@ const updaterOf = async (options: { sums?: string; version?: string; tag?: strin
     quit: () => events.push("quit"),
     releasesUrl: `${base}/releases`,
     stage: async (image, destination) => {
-      events.push(`stage ${image === join(place.folder, "Iskios-0.1.2-Prototype-mac-arm64.dmg")} ${destination}`);
+      events.push(`stage ${image === join(place.folder, "Outlore-0.1.2-Prototype-mac-arm64.dmg")} ${destination}`);
     },
     swap: async (plan) => {
       events.push("swap");
@@ -98,7 +98,7 @@ describe("checking on a Mac", () => {
         version: "0.1.2-Prototype",
       },
     });
-    expect(readdirSync(place.folder)).toEqual(["Iskios-0.1.2-Prototype-mac-arm64.dmg"]);
+    expect(readdirSync(place.folder)).toEqual(["Outlore-0.1.2-Prototype-mac-arm64.dmg"]);
     expect(percents.at(-1)).toBe(100);
   });
 
@@ -108,7 +108,7 @@ describe("checking on a Mac", () => {
   });
 
   it("discards a download whose hash differs from the release's checksums", async () => {
-    const { place, updater } = await updaterOf({ sums: `${"0".repeat(128)}  Iskios-0.1.2-Prototype-mac-arm64.dmg\n` });
+    const { place, updater } = await updaterOf({ sums: `${"0".repeat(128)}  Outlore-0.1.2-Prototype-mac-arm64.dmg\n` });
     await expect(updater.check(() => void 0)).rejects.toThrow("did not match its checksum");
     expect(readdirSync(place.folder)).toEqual([]);
   });
@@ -133,12 +133,12 @@ describe("installing on a Mac", () => {
     await updater.check(() => void 0);
     await updater.install();
     const parent = join(place.root, "Applications");
-    expect(events).toEqual([`stage true ${join(parent, ".Iskios-update.app")}`, "swap", "quit"]);
+    expect(events).toEqual([`stage true ${join(parent, ".Outlore-update.app")}`, "swap", "quit"]);
     expect(plans[0]).toMatchObject({
-      backup: join(parent, ".Iskios-previous.app"),
+      backup: join(parent, ".Outlore-previous.app"),
       bundle: place.bundle,
       pid: 4242,
-      staged: join(parent, ".Iskios-update.app"),
+      staged: join(parent, ".Outlore-update.app"),
     });
   });
 

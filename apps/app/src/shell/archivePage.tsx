@@ -1,4 +1,4 @@
-import type { MissionId, RealmArchivePreview } from "@iskios/contracts";
+import type { MissionId, RealmArchivePreview } from "@outlore/contracts";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { CrestBadge } from "../crest/crest";

@@ -5,7 +5,7 @@ import {
   Results,
   type ServerFrame,
   ServerFrameJson,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import type { ServiceFailure } from "../core/index.ts";
 

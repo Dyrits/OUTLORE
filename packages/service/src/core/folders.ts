@@ -2,13 +2,13 @@
 // lies under the browsable roots the host set in the Workshop; the host's own window reaches any folder.
 import { lstatSync, mkdirSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
-import type { Folder, FolderListing } from "@iskios/contracts";
+import type { Folder, FolderListing } from "@outlore/contracts";
 import { Clock, Context, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid } from "./errors.ts";
 
 /** The owner's home folder: what `~` means in a typed path, and the first browsable root. */
-export class HomeFolder extends Context.Service<HomeFolder, string>()("iskios/HomeFolder") {}
+export class HomeFolder extends Context.Service<HomeFolder, string>()("outlore/HomeFolder") {}
 
 /** The folder's real path with symbolic links resolved, or null when it is not an existing folder. */
 export const realFolderOf = (path: string) =>

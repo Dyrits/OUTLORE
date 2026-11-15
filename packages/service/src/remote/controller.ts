@@ -8,9 +8,9 @@ import {
   type RefusalReason,
   roomPrologue,
   type SecureChannel,
-} from "@iskios/channel";
-import { type KnownHost, maxNameLength } from "@iskios/contracts";
-import { closeCodes, connectClient } from "@iskios/relay";
+} from "@outlore/channel";
+import { type KnownHost, maxNameLength } from "@outlore/contracts";
+import { closeCodes, connectClient } from "@outlore/relay";
 import { Effect } from "effect";
 import { invalid, ServiceFailure } from "../core/index.ts";
 import { isLocalOrigin, RemoteConfig } from "./config.ts";
@@ -34,7 +34,7 @@ const refusalText = {
 const failures = {
   hostOffline: new ServiceFailure({
     kind: "ExecutionFailure",
-    message: "The host is not connected right now. Check that its Iskios is open and Allow paired devices is on.",
+    message: "The host is not connected right now. Check that its Outlore is open and Allow paired devices is on.",
   }),
   timedOut: new ServiceFailure({ kind: "ExecutionFailure", message: "The host did not answer in time." }),
   unreachable: new ServiceFailure({
@@ -113,7 +113,7 @@ export const pairWithHost = (code: string, deviceName: string) =>
     if (!decoded.ok) {
       return yield* invalid(
         decoded.kind === "unsupported-version"
-          ? "This pairing code is from a newer Iskios. Update this app and try again."
+          ? "This pairing code is from a newer Outlore. Update this app and try again."
           : refusalText["code-invalid"],
       );
     }

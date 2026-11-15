@@ -1,4 +1,4 @@
-import type { BackupCompanion, HarnessName, OpenThreadResult, ThreadId } from "@iskios/contracts";
+import type { BackupCompanion, HarnessName, OpenThreadResult, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound } from "../core/index.ts";

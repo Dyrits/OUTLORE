@@ -1,5 +1,5 @@
-import { newRoomName } from "@iskios/channel";
-import { closeCodes, connectClient, relayWorkerBundle, relayWorkerCompatibilityDate } from "@iskios/relay";
+import { newRoomName } from "@outlore/channel";
+import { closeCodes, connectClient, relayWorkerBundle, relayWorkerCompatibilityDate } from "@outlore/relay";
 
 // A user who does not want to share the project's relay deploys the same Worker to their own Cloudflare account with
 // one API token (device-pairing, own relay). The token is used for this one deployment: it is never stored, never
@@ -9,10 +9,10 @@ import { closeCodes, connectClient, relayWorkerBundle, relayWorkerCompatibilityD
 export const cloudflareApiBase = "https://api.cloudflare.com/client/v4";
 
 /** What marks a Worker as made by this feature, so a Worker of the same name that someone else made is left alone. */
-export const ownRelayTag = "iskios-relay";
+export const ownRelayTag = "outlore-relay";
 
 /** The Worker's name on the user's account, and so the first part of its address. */
-export const defaultWorkerName = "iskios-relay";
+export const defaultWorkerName = "outlore-relay";
 
 /** One call to Cloudflare's API; `form` is a multipart upload, `body` a JSON one. */
 export interface CloudflareCall {
@@ -98,7 +98,7 @@ const messages = {
   "no-account": "That token does not give access to any Cloudflare account.",
   "no-permission": `That token is not allowed to deploy Workers. ${tokenWords}`,
   "not-ready":
-    "The relay was deployed to your account but does not answer yet. Wait a minute and try again; Iskios still uses its previous relay.",
+    "The relay was deployed to your account but does not answer yet. Wait a minute and try again; Outlore still uses its previous relay.",
   "token-rejected": `Cloudflare did not accept that token. ${tokenWords}`,
   unreachable: "Could not reach Cloudflare. Check your internet connection.",
 } as const;
@@ -150,7 +150,7 @@ export const relayAnswers = async (origin: string): Promise<boolean> => {
 
 /**
  * Deploys the relay Worker to the account the token reaches, and returns its workers.dev address once it answers.
- * Nothing in Iskios changes here: the caller switches to the new address only after a success.
+ * Nothing in Outlore changes here: the caller switches to the new address only after a success.
  */
 export const deployRelayToCloudflare = async (options: DeployOptions): Promise<DeployResult> => {
   const { api, token } = options;
@@ -200,7 +200,7 @@ export const deployRelayToCloudflare = async (options: DeployOptions): Promise<D
     let subdomain = typeof existing === "string" && subdomainAnswer.status === 200 ? existing : null;
     let createdSubdomain = false;
     for (let attempt = 0; subdomain === null && attempt < 3; attempt += 1) {
-      const wanted = `iskios-${hexOf(4)}`;
+      const wanted = `outlore-${hexOf(4)}`;
       const made = await api.call({ body: { subdomain: wanted }, method: "PUT", path: `${base}/subdomain` });
       if (made.status === 401) throw stop("token-rejected", messages["token-rejected"]);
       if (made.status === 403) throw stop("no-permission", messages["no-permission"]);
@@ -228,7 +228,7 @@ export const deployRelayToCloudflare = async (options: DeployOptions): Promise<D
       if (!Array.isArray(tags) || !tags.includes(ownRelayTag))
         throw stop(
           "name-taken",
-          `Your account already has a Worker named “${workerName}” that Iskios did not create, so it was left as it is. Rename or delete it in Cloudflare, then try again.`,
+          `Your account already has a Worker named “${workerName}” that Outlore did not create, so it was left as it is. Rename or delete it in Cloudflare, then try again.`,
         );
     }
 

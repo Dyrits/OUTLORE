@@ -10,7 +10,7 @@ import {
   type Skill,
   skillTokensOf,
   type WorkspaceEntry,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import type { Chip } from "./chipEditorTypes";
 import type { ChipKind } from "./chips";
 

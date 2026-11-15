@@ -1,4 +1,4 @@
-import type { MissionId, RealmArchivePreview, WorkspaceId } from "@iskios/contracts";
+import type { MissionId, RealmArchivePreview, WorkspaceId } from "@outlore/contracts";
 import { useContext, useState } from "react";
 import { Text, View } from "react-native";
 import { ArchiveNavigation } from "../foundation/archiveNavigation";

@@ -1,4 +1,4 @@
-import type { MissionId, RealmArchiveQuest } from "@iskios/contracts";
+import type { MissionId, RealmArchiveQuest } from "@outlore/contracts";
 
 /** Keeps only choices the refreshed archive preview still offers and allows to move. */
 export const retainedArchiveChoicesOf = (

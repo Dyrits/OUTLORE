@@ -1,4 +1,4 @@
-import type { Suggestion, SuggestionAnswer, SuggestionOutcome } from "@iskios/contracts";
+import type { Suggestion, SuggestionAnswer, SuggestionOutcome } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer, Match } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { Changes, invalid, notFound, readSettings, type ServiceFailure } from "../core/index.ts";
@@ -28,7 +28,7 @@ const withdrawn: Resolution = { outcome: "Withdrawn", targetMissionId: null, tar
 /** What a thread's off-topic suggestion came to; what the thread is told is the tool's concern. */
 export type Suggested =
   | { readonly _tag: "UnknownThread" }
-  /** Iskios named a realm that no folder is tied to: no card is made (the owner would see the Borderlands). */
+  /** Chronicler named a realm that no folder is tied to: no card is made (the owner would see the Borderlands). */
   | { readonly _tag: "UnknownRealm"; readonly given: string }
   /** The thread is not at work in a turn, so the owner was not asked. */
   | { readonly _tag: "NotAsked" }
@@ -59,7 +59,7 @@ export class Suggestions extends Context.Service<
     ) => Effect.Effect<WithFollowUps<Suggested>>;
     readonly withdraw: (threadId: string) => Effect.Effect<void>;
   }
->()("iskios/Suggestions") {}
+>()("outlore/Suggestions") {}
 
 /** Owns off-topic suggestions; a restart withdraws those left open. */
 export const suggestionsLayer = Layer.effect(
@@ -122,7 +122,7 @@ export const suggestionsLayer = Layer.effect(
         Aside: () =>
           Effect.gen(function* () {
             if (suggestion.isFromGuildmaster)
-              return yield* invalid("Iskios keeps no asides: continue in a quest or open a new one.");
+              return yield* invalid("Chronicler keeps no asides: continue in a quest or open a new one.");
             const { value: opened } = yield* openAside(suggestion.threadId, suggestion.text, suggestion.title);
             const [row] = yield* sql<{ title: string }>`SELECT title FROM threads WHERE id = ${opened.threadId}`;
             return {

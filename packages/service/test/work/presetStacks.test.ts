@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { AccountId, type BackupCompanion, type Tier } from "@iskios/contracts";
+import { AccountId, type BackupCompanion, type Tier } from "@outlore/contracts";
 import { Effect, Schema } from "effect";
 import { call, read, send, settle, start, withService } from "../fixtures/service.ts";
 

@@ -1,4 +1,4 @@
-import type { ContextGauge, ContextPartKind, MissionDetail, ThreadId } from "@iskios/contracts";
+import type { ContextGauge, ContextPartKind, MissionDetail, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";

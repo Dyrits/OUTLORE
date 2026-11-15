@@ -3,7 +3,7 @@ import {
   MessageDelivery as MessageDeliveries,
   type MessageDelivery,
   type SettingsChange,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { type ReactNode, useRef, useState } from "react";
 import { Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from "react-native";
 import { BudgetEditor } from "../editors/budgets";
@@ -43,7 +43,7 @@ function Section({ active, children, id }: { active: SettingsSectionId; children
   return id === active ? <View style={local.section}>{children}</View> : null;
 }
 
-/** The Charter (Settings), where the owner chooses how Iskios runs their threads. */
+/** The Charter (Settings), where the owner chooses how Outlore runs their threads. */
 export function SettingsScreen({
   active,
   client,

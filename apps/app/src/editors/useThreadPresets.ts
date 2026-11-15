@@ -1,4 +1,4 @@
-import type { ThreadId } from "@iskios/contracts";
+import type { ThreadId } from "@outlore/contracts";
 import { actWith } from "../foundation/acting";
 import type { ServiceClient } from "../foundation/client";
 import { useServiceQuery } from "../foundation/useServiceQuery";

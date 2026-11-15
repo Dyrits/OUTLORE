@@ -1,4 +1,4 @@
-import type { Crest, RealmArchivePreview } from "@iskios/contracts";
+import type { Crest, RealmArchivePreview } from "@outlore/contracts";
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { CrestBadge } from "../crest/crest";
@@ -22,7 +22,7 @@ export type NewRealm = { crest: Crest | null; name: string; path: string };
  * The menu that makes a realm: its folder, its name, and its crest. It opens with a folder chosen, or with none and a
  * button to choose one; the realm is made once a name is given, and a folder where one is required
  * (workspace-attachment; CHG-0035). Where the folder is optional, a realm made without one is tied to no folder (CHG-0161).
- * The folder is chosen in the folder picker, which shows the folders of the computer whose Iskios the window shows.
+ * The folder is chosen in the folder picker, which shows the folders of the computer whose Outlore the window shows.
  */
 export function NewRealmModal({
   client,

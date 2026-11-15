@@ -1,4 +1,4 @@
-import type { Skill } from "@iskios/contracts";
+import type { Skill } from "@outlore/contracts";
 import { useState } from "react";
 import type { ServiceClient } from "../foundation/client";
 import { useMentionables } from "../foundation/useMentionables";

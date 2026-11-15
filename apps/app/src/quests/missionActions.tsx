@@ -1,4 +1,4 @@
-import type { MissionEnding, MissionSummary } from "@iskios/contracts";
+import type { MissionEnding, MissionSummary } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, type StyleProp, Text, TextInput, type TextStyle, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";

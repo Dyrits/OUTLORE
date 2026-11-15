@@ -12,7 +12,7 @@ export const minRailWidth = 284;
 const maxRailShare = 0.25;
 
 /** The key under which the browser remembers whether the sidebar is hidden. */
-const hiddenKey = "iskios:sidebar-hidden";
+const hiddenKey = "outlore:sidebar-hidden";
 
 /** Reads whether the sidebar is hidden; a platform without browser storage starts with it shown. */
 export const readHidden = (): boolean => {
@@ -31,12 +31,12 @@ export const rememberHidden = (isHidden: boolean) => {
 };
 
 /** The key under which the browser remembers how wide the open rail is. */
-const widthKey = "iskios:sidebar-width";
+const widthKey = "outlore:sidebar-width";
 
 /**
  * A width held between a pane's least and the most it can have in a window this wide: at most a quarter of the window,
  * never less than the least width, which wins on a window too narrow for its quarter to reach it. The sidebar, the quest
- * panel, and Iskios's column each have their own least; none goes past a quarter, so four panes can stand together.
+ * panel, and Chronicler's column each have their own least; none goes past a quarter, so four panes can stand together.
  */
 export const clampPaneWidth = (width: number, windowWidth: number, leastWidth: number) =>
   Math.max(leastWidth, Math.min(Math.floor(windowWidth * maxRailShare), Math.round(width)));
@@ -44,9 +44,9 @@ export const clampPaneWidth = (width: number, windowWidth: number, leastWidth: n
 /** The rail's own bounds: the least width that keeps its longest heading whole, and a quarter of the window. */
 export const clampRailWidth = (width: number, windowWidth: number) => clampPaneWidth(width, windowWidth, minRailWidth);
 
-/** The keys under which the browser remembers how wide the quest panel and Iskios's column are. */
-export const questPanelWidthKey = "iskios:quest-panel-width";
-export const iskiosWidthKey = "iskios:assistant-width";
+/** The keys under which the browser remembers how wide the quest panel and Chronicler's column are. */
+export const questPanelWidthKey = "outlore:quest-panel-width";
+export const chroniclerWidthKey = "outlore:assistant-width";
 
 /** Reads a remembered pane width, or `fallback` (the pane's default, and its least) with none stored or no storage. */
 export const readPaneWidth = (key: string, fallback: number): number => {
@@ -84,21 +84,21 @@ export const rememberRailWidth = (width: number) => {
   } catch {}
 };
 
-/** The key under which the browser remembers whether Iskios's panel is open. */
-const iskiosKey = "iskios:assistant-open";
+/** The key under which the browser remembers whether Chronicler's panel is open. */
+const chroniclerKey = "outlore:assistant-open";
 
-/** Reads whether Iskios's panel is open; a platform without browser storage starts with it folded. */
-export const readIskiosOpen = (): boolean => {
+/** Reads whether Chronicler's panel is open; a platform without browser storage starts with it folded. */
+export const readChroniclerOpen = (): boolean => {
   try {
-    return globalThis.localStorage?.getItem(iskiosKey) === "1";
+    return globalThis.localStorage?.getItem(chroniclerKey) === "1";
   } catch {
     return false;
   }
 };
 
-/** Remembers whether Iskios's panel is open where the platform allows; a refusal only loses the memory. */
-export const rememberIskiosOpen = (isOpen: boolean) => {
+/** Remembers whether Chronicler's panel is open where the platform allows; a refusal only loses the memory. */
+export const rememberChroniclerOpen = (isOpen: boolean) => {
   try {
-    globalThis.localStorage?.setItem(iskiosKey, isOpen ? "1" : "0");
+    globalThis.localStorage?.setItem(chroniclerKey, isOpen ? "1" : "0");
   } catch {}
 };

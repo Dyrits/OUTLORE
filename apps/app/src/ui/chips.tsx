@@ -1,4 +1,4 @@
-import { mentionTokensOf, referenceOf, type Skill, type WorkspaceEntry } from "@iskios/contracts";
+import { mentionTokensOf, referenceOf, type Skill, type WorkspaceEntry } from "@outlore/contracts";
 import { type ReactNode, useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";

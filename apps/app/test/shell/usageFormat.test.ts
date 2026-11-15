@@ -1,4 +1,4 @@
-import type { UsageAmounts } from "@iskios/contracts";
+import type { UsageAmounts } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import {
   axisTextOf,

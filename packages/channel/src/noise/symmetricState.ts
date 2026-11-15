@@ -1,5 +1,5 @@
 /**
- * Adapted from Paseo (https://github.com/getpaseo/paseo), Apache-2.0, Copyright (c) Mohamed Boudra; modified for Iskios.
+ * Adapted from Paseo (https://github.com/getpaseo/paseo), Apache-2.0, Copyright (c) Mohamed Boudra; modified for Outlore.
  *
  * Noise spec section 5.2 SymmetricState for SHA256 (HASHLEN 32).
  */

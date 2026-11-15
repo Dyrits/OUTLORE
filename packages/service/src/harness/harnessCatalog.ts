@@ -1,6 +1,6 @@
-import type { EffortChoice, HarnessName, ModelOption } from "@iskios/contracts";
+import type { EffortChoice, HarnessName, ModelOption } from "@outlore/contracts";
 
-// What Iskios knows of each harness without running it (provider-accounts). The registry (harnesses.ts)
+// What Outlore knows of each harness without running it (provider-accounts). The registry (harnesses.ts)
 // adds how each one runs; these facts stay apart so the modules a harness's adapter needs can read them.
 
 /**
@@ -20,10 +20,10 @@ export const claudeModels: ReadonlyArray<ModelOption> = [
   { efforts: claudeEfforts, id: "claude-haiku-5-5", label: "Haiku 5.5" },
 ];
 
-/** The cheapest model Iskios knows for Claude Code, where the Guildmaster, which only routes, starts. */
+/** The cheapest model Outlore knows for Claude Code, where the Guildmaster, which only routes, starts. */
 export const claudeCheapestModel = "claude-haiku-5-5";
 
-/** What Iskios knows of one harness without running it. */
+/** What Outlore knows of one harness without running it. */
 export interface HarnessFacts {
   /** What a command approved through `request_approval` needs on this harness, appended to that rule. */
   readonly approvedCommandAdvice: string;

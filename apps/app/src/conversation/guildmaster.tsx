@@ -1,4 +1,4 @@
-import type { AttachmentId, GuildHallRecap, GuildmasterPlace, MissionId, Viewing } from "@iskios/contracts";
+import type { AttachmentId, GuildHallRecap, GuildmasterPlace, MissionId, Viewing } from "@outlore/contracts";
 import { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { imageRefusalOf } from "../attachments/attachmentRules";
@@ -37,7 +37,7 @@ function RealmNote({ name, onClear }: { name: string; onClear: () => void }) {
 
 /**
  * The Guild Hall page: the hub, with what waits for the owner, the quests touched last, and the recap of the period.
- * Iskios's conversation is not here but in the panel every screen offers (`shell/iskiosDock.tsx`).
+ * Chronicler's conversation is not here but in the panel every screen offers (`shell/chroniclerDock.tsx`).
  */
 export function GuildmasterScreen({
   client,
@@ -83,11 +83,11 @@ function useVisitRecap(client: ServiceClient): GuildHallRecap | null {
 }
 
 /**
- * Iskios: one permanent conversation that takes any request, looks for a quest that already fits, offers to continue
+ * Chronicler: one permanent conversation that takes any request, looks for a quest that already fits, offers to continue
  * it or proposes a new one as a card for the owner to open, and shows each action as a card (quest coordination). A
  * realm chosen on a realm's page is attached to the next message. It sits in a panel the owner folds (`onFold`).
  */
-export function IskiosConversation({
+export function ChroniclerConversation({
   client,
   isFull,
   onFold,
@@ -107,18 +107,18 @@ export function IskiosConversation({
   onOpenMission: (id: MissionId) => void;
   onRealm: (path: string | null) => void;
   realmPath: string | null;
-  /** The screen the panel is open beside, which Iskios reads with each message. */
+  /** The screen the panel is open beside, which Chronicler reads with each message. */
   viewing: Viewing;
 }) {
   const { data: place, error } = useServiceQuery(client, { _tag: "ReadGuildmaster" }, "guildmaster");
   if (place === null)
     return (
       <View style={local.page}>
-        <Text style={styles.muted}>{error ?? "Calling Iskios…"}</Text>
+        <Text style={styles.muted}>{error ?? "Calling Chronicler…"}</Text>
       </View>
     );
   return (
-    <IskiosChat
+    <ChroniclerChat
       client={client}
       isFull={isFull}
       onFold={onFold}
@@ -132,7 +132,7 @@ export function IskiosConversation({
   );
 }
 
-function IskiosChat({
+function ChroniclerChat({
   client,
   isFull,
   onFold,
@@ -174,7 +174,7 @@ function IskiosChat({
   if (detail === null) {
     return (
       <View style={local.page}>
-        <Text style={styles.muted}>Calling Iskios…</Text>
+        <Text style={styles.muted}>Calling Chronicler…</Text>
       </View>
     );
   }
@@ -184,7 +184,7 @@ function IskiosChat({
         client={client}
         missionId={place.missionId}
         onBack={() => setIsBudgetOpen(false)}
-        title="Budget · Iskios"
+        title="Budget · Chronicler"
       />
     );
   }
@@ -211,18 +211,18 @@ function IskiosChat({
     <View style={local.page}>
       <View style={styles.header}>
         <Text numberOfLines={1} style={[local.title, styles.flex]}>
-          Iskios
+          Chronicler
         </Text>
         <StateIndicator state={thread.state} />
         <Pressable
-          accessibilityLabel={isFull ? "Restore Iskios" : "Expand Iskios"}
+          accessibilityLabel={isFull ? "Restore Chronicler" : "Expand Chronicler"}
           accessibilityRole="button"
           onPress={onToggleFull}
         >
           <Text style={local.link}>{isFull ? "⤡" : "⤢"}</Text>
         </Pressable>
         {onFold !== null && (
-          <Pressable accessibilityLabel="Fold Iskios" accessibilityRole="button" onPress={onFold}>
+          <Pressable accessibilityLabel="Fold Chronicler" accessibilityRole="button" onPress={onFold}>
             <Text style={local.link}>✕</Text>
           </Pressable>
         )}
@@ -247,7 +247,7 @@ function IskiosChat({
       </Text>
       {entries.length === 0 && draft === "" && terminal.panel === null ? (
         <View style={local.empty}>
-          <Text style={local.emptyTitle}>Tell Iskios what you need.</Text>
+          <Text style={local.emptyTitle}>Tell Chronicler what you need.</Text>
           <Text style={local.emptyText}>
             It looks for a quest that already covers it and offers to continue that one, or proposes a new quest for you
             to open.
@@ -295,7 +295,7 @@ function IskiosChat({
       )}
       {realm !== null && <RealmNote name={realm.name} onClear={() => onRealm(null)} />}
       <Composer
-        draftKey="iskios"
+        draftKey="chronicler"
         hasContent={terminal.hasContent}
         {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
         accessory={
@@ -304,8 +304,8 @@ function IskiosChat({
             dockRank={1}
             extra={<ThreadBackups client={client} key={thread.id} threadId={thread.id} />}
             harnesses={harnesses}
+            isChronicler={true}
             isCompact={true}
-            isIskios={true}
             onChange={(next) => act(client.request({ _tag: "ChangeThreadRunner", ...next, threadId: thread.id }))}
             presetChoice={presetChoice}
             value={{
@@ -320,7 +320,7 @@ function IskiosChat({
         mentions={{ client, workspacePath: realm?.path ?? null }}
         onSend={send}
         {...(canStop ? { onStop: () => client.request({ _tag: "StopThread", threadId: thread.id }) } : {})}
-        placeholder={isInTurn ? "Iskios is working; Send joins its turn…" : "Ask Iskios for anything…"}
+        placeholder={isInTurn ? "Chronicler is working; Send joins its turn…" : "Ask Chronicler for anything…"}
         skills={skills}
         {...(isInTurn ? { onInterrupt: () => client.request({ _tag: "InterruptThread", threadId: thread.id }) } : {})}
       />
@@ -347,7 +347,8 @@ export function GuildmasterHandoff({
   return (
     <View style={local.handoff}>
       <Text style={styles.muted}>
-        Goes to Iskios, who proposes a quest in <Text style={styles.code}>{realm.name}</Text> unless one already fits.
+        Goes to Chronicler, who proposes a quest in <Text style={styles.code}>{realm.name}</Text> unless one already
+        fits.
       </Text>
       <Composer
         attachments={{ client, refusal: imageRefusalOf(harnesses, "claude", "default") }}
@@ -366,7 +367,7 @@ export function GuildmasterHandoff({
           });
           onSent();
         }}
-        placeholder={`Ask Iskios for something in ${realm.name}…`}
+        placeholder={`Ask Chronicler for something in ${realm.name}…`}
         skills={skills}
       />
     </View>

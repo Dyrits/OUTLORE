@@ -1,4 +1,4 @@
-import { type AttachmentMediaType, maxImageSide } from "@iskios/contracts";
+import { type AttachmentMediaType, maxImageSide } from "@outlore/contracts";
 import { fittedSizeOf } from "./attachmentRules";
 
 /** The quality a JPEG or WebP is saved at when it is scaled down; PNG ignores it. */

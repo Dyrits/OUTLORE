@@ -8,7 +8,7 @@ import { Button } from "../ui/button";
 import { SettingsCard } from "./settingsParts";
 
 /**
- * The name of the computer this Iskios runs on: its sign-ins and spending carry it, the host menu lists it, and paired
+ * The name of the computer this Outlore runs on: its sign-ins and spending carry it, the host menu lists it, and paired
  * devices see it. It starts as the machine's name; a blank name returns to that. From a paired device it names the host.
  */
 export function ComputerNameCard({ client, onRenamed }: { client: ServiceClient; onRenamed: () => void }) {

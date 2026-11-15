@@ -1,4 +1,4 @@
-import type { Request } from "@iskios/contracts";
+import type { Request } from "@outlore/contracts";
 import { Context, type Effect } from "effect";
 import type { ServiceFailure } from "./core/index.ts";
 
@@ -12,4 +12,4 @@ export class Service extends Context.Service<
       source?: { readonly isPairedDevice: boolean },
     ) => Effect.Effect<unknown, ServiceFailure>;
   }
->()("iskios/Service") {}
+>()("outlore/Service") {}

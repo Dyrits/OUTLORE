@@ -12,7 +12,7 @@ const listing = (tag: string, options: Partial<ReleaseListing> & { arch?: string
   const { arch = "arm64", hasSums = true, ...rest } = options;
   return {
     assets: [
-      { name: `Iskios-${tag}-mac-${arch}.dmg`, size: 100, url: `https://example.test/${tag}.dmg` },
+      { name: `Outlore-${tag}-mac-${arch}.dmg`, size: 100, url: `https://example.test/${tag}.dmg` },
       ...(hasSums ? [{ name: sumsFileName, size: 10, url: `https://example.test/${tag}-sums` }] : []),
     ],
     isDraft: false,
@@ -112,9 +112,9 @@ describe("reading checksums", () => {
   it("maps each file name to its SHA-512, with either separator style", () => {
     const hash = "a".repeat(128);
     const other = "B".repeat(128);
-    const sums = checksumsOf(`${hash}  Iskios-1-mac-arm64.dmg\n${other} *Iskios-1-mac-x64.dmg\nnot a line\n`);
-    expect(sums.get("Iskios-1-mac-arm64.dmg")).toBe(hash);
-    expect(sums.get("Iskios-1-mac-x64.dmg")).toBe("b".repeat(128));
+    const sums = checksumsOf(`${hash}  Outlore-1-mac-arm64.dmg\n${other} *Outlore-1-mac-x64.dmg\nnot a line\n`);
+    expect(sums.get("Outlore-1-mac-arm64.dmg")).toBe(hash);
+    expect(sums.get("Outlore-1-mac-x64.dmg")).toBe("b".repeat(128));
     expect(sums.size).toBe(2);
   });
 });

@@ -1,4 +1,4 @@
-import type { SuggestionOutcome } from "@iskios/contracts";
+import type { SuggestionOutcome } from "@outlore/contracts";
 import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
 import { HarnessFailure, type HarnessPrompt, type PromptAnswer, type ToolAnswer, textFieldOf } from "../core/index.ts";
@@ -73,7 +73,7 @@ export const askOwnerFor =
       Effect.catchDefect((defect) =>
         Effect.fail(
           new HarnessFailure({
-            reason: `Iskios could not ask about ${prompt.toolName}: ${defect instanceof Error ? defect.message : String(defect)}`,
+            reason: `Outlore could not ask about ${prompt.toolName}: ${defect instanceof Error ? defect.message : String(defect)}`,
           }),
         ),
       ),
@@ -101,7 +101,7 @@ const suggestedAnswerOf = (suggested: Suggested): ToolAnswer =>
     }),
     OpenedWithoutAsking: ({ resolution }) => ({
       isError: false,
-      text: `No mission fits, so Iskios opened it as a new mission "${resolution.targetTitle}" (id ${resolution.targetMissionId}), as the owner's settings ask. ${carryOn}`,
+      text: `No mission fits, so Outlore opened it as a new mission "${resolution.targetTitle}" (id ${resolution.targetMissionId}), as the owner's settings ask. ${carryOn}`,
     }),
     Resolved: ({ resolution }) => ({
       isError: resolution.outcome === "Withdrawn",
@@ -230,7 +230,7 @@ export const makeToolHandlers = (dependencies: {
           isGuildmaster
             ? Effect.succeed(
                 answer(
-                  "Not opened: Iskios opens no threads. Propose a quest, or continue one, with suggest_mission.",
+                  "Not opened: Chronicler opens no threads. Propose a quest, or continue one, with suggest_mission.",
                   true,
                 ),
               )
@@ -276,7 +276,7 @@ export const makeToolHandlers = (dependencies: {
           isSent
             ? answer("Sent.")
             : answer(
-                "Not sent: you can only message your parent, a thread directly beneath you, Iskios, a quest or side-quest the owner mentioned with @ in this turn, or a thread that wrote to you in this turn, by its id.",
+                "Not sent: you can only message your parent, a thread directly beneath you, Chronicler, a quest or side-quest the owner mentioned with @ in this turn, or a thread that wrote to you in this turn, by its id.",
                 true,
               ),
         ),

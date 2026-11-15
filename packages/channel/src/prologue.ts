@@ -3,5 +3,5 @@
  * cannot be replayed into another. The host and the paired device must agree on them.
  */
 export function roomPrologue(room: string): Uint8Array {
-  return new TextEncoder().encode(`iskios/1 ${room}`);
+  return new TextEncoder().encode(`outlore/1 ${room}`);
 }

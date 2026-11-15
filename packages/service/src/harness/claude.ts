@@ -1,5 +1,5 @@
 import { tmpdir } from "node:os";
-import type { ApprovalLevel, BillingKind } from "@iskios/contracts";
+import type { ApprovalLevel, BillingKind } from "@outlore/contracts";
 import { type Duration, Effect, Layer, Queue } from "effect";
 import {
   type Containment,

@@ -10,7 +10,7 @@ import { type CheckResult, UpdateFailure, type Updater } from "./updater.ts";
 export type MacUpdaterOptions = {
   readonly appVersion: string;
   readonly arch: string;
-  /** The installed app, such as `/Applications/Iskios.app`. */
+  /** The installed app, such as `/Applications/Outlore.app`. */
   readonly bundle: string;
   readonly fetchFn: Fetch;
   /** A folder of the app's own for downloads. */
@@ -38,7 +38,7 @@ export const createMacUpdater = (options: MacUpdaterOptions): Updater => {
     const folder = dirname(options.bundle);
     await access(folder, constants.W_OK).catch(() => {
       throw new UpdateFailure(
-        `Iskios cannot replace itself in ${folder}: that folder is not writable.`,
+        `Outlore cannot replace itself in ${folder}: that folder is not writable.`,
         releasesPageUrl,
       );
     });

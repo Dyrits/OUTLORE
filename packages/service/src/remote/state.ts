@@ -1,4 +1,4 @@
-import type { RelayStatus } from "@iskios/contracts";
+import type { RelayStatus } from "@outlore/contracts";
 import { Context, Effect, Layer, Ref } from "effect";
 import { Changes } from "../core/index.ts";
 
@@ -24,7 +24,7 @@ export class RemoteState extends Context.Service<
     readonly setStatus: (status: RelayStatus) => Effect.Effect<void>;
     readonly status: Effect.Effect<RelayStatus>;
   }
->()("iskios/RemoteState") {}
+>()("outlore/RemoteState") {}
 
 export const remoteStateLayer = Layer.effect(
   RemoteState,

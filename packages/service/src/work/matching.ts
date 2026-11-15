@@ -1,4 +1,4 @@
-import type { MissionSummary } from "@iskios/contracts";
+import type { MissionSummary } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { wordsOf } from "../core/index.ts";

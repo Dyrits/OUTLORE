@@ -1,4 +1,4 @@
-import type { UsageDimension, UsageFilter, UsagePeriod } from "@iskios/contracts";
+import type { UsageDimension, UsageFilter, UsagePeriod } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
@@ -23,7 +23,7 @@ import { HarnessList, UsageAllowances, UsageHeadline, UsageTotals } from "./usag
 const metrics: ReadonlyArray<UsageMetric> = ["Cost", "Tokens"];
 
 /**
- * The Reserves usage page (budget-control, Reserves usage page): what Iskios's turns used, divided by harness,
+ * The Reserves usage page (budget-control, Reserves usage page): what Outlore's turns used, divided by harness,
  * Companion (model), realm, and quest, over the last 7 or 30 days or a range, as cost or tokens. Choosing a row, a
  * harness, or a day narrows the totals and the turn records to it, and leaves the other rows in view to choose instead.
  */

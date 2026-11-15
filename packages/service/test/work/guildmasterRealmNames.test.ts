@@ -6,7 +6,7 @@ import { Effect } from "effect";
 import { approvedCall, guildmaster, isIdle, listed, say } from "../fixtures/guildmaster.ts";
 import { call, settle, withService } from "../fixtures/service.ts";
 
-describe("confirming duplicate realm names through Iskios", () => {
+describe("confirming duplicate realm names through Chronicler", () => {
   it.live("asks even for an exactly named owner action and leaves both realms unchanged on Deny", () =>
     withService(
       Effect.gen(function* () {
@@ -53,7 +53,7 @@ describe("taking a realm's folder from the owner's words only when they name tha
   it.live(
     "asks when the owner named a longer or sibling path, and runs at once when they named the folder itself",
     () => {
-      const folder = realpathSync(mkdtempSync(join(tmpdir(), "iskios-realm-folder-")));
+      const folder = realpathSync(mkdtempSync(join(tmpdir(), "outlore-realm-folder-")));
       return withService(
         Effect.gen(function* () {
           const place = yield* guildmaster;

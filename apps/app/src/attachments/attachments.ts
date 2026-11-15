@@ -1,4 +1,4 @@
-import type { AttachmentMediaType } from "@iskios/contracts";
+import type { AttachmentMediaType } from "@outlore/contracts";
 import { isAcceptedSignature, signatureOf, sizeRefusalOf, typeRefusalOf } from "./attachmentRules";
 import { reduceImage } from "./imageReduction";
 

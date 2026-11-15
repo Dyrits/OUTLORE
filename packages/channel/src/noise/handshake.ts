@@ -1,5 +1,5 @@
 /**
- * Adapted from Paseo (https://github.com/getpaseo/paseo), Apache-2.0, Copyright (c) Mohamed Boudra; modified for Iskios.
+ * Adapted from Paseo (https://github.com/getpaseo/paseo), Apache-2.0, Copyright (c) Mohamed Boudra; modified for Outlore.
  *
  * Conforming Noise_NK_25519_ChaChaPoly_SHA256 (Noise Protocol Framework revision 34).
  *

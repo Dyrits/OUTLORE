@@ -1,4 +1,4 @@
-import { MissionId } from "@iskios/contracts";
+import { MissionId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import { archiveLabelOf, matchingArchivedRealmsOf, retainedArchiveChoicesOf } from "../../src/realms/realmArchive";
 

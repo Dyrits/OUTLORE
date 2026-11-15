@@ -8,9 +8,9 @@ import {
   type RefusalReason,
   roomPrologue,
   type SecureChannel,
-} from "@iskios/channel";
-import type { ServerFrame } from "@iskios/contracts";
-import type { HostConnection } from "@iskios/relay";
+} from "@outlore/channel";
+import type { ServerFrame } from "@outlore/contracts";
+import type { HostConnection } from "@outlore/relay";
 import type { Effect } from "effect";
 import type { SqlClient } from "effect/sql";
 import type { RemoteConfig } from "./config.ts";
@@ -210,5 +210,5 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
 
 /** A failure of background storage work has no screen to show it on: it goes to the service's log. */
 export const reportFailure = (reason: unknown) => {
-  console.error("Iskios device pairing:", reason);
+  console.error("Outlore device pairing:", reason);
 };

@@ -1,4 +1,4 @@
-import { relayWorkerBundle } from "@iskios/relay";
+import { relayWorkerBundle } from "@outlore/relay";
 import { describe, expect, it } from "vitest";
 import { cloudflareApiFor, deployRelayToCloudflare, ownRelayTag } from "../../src/remote/ownRelay.ts";
 import { fakeCloudflareApi, newFakeAccount } from "./fakeCloudflare.ts";
@@ -17,8 +17,8 @@ describe("deploying the relay to the user's own Cloudflare account", () => {
   it("uploads the bundled Worker as a SQLite-backed Durable Object, turns on its workers.dev address, and names it", async () => {
     const account = newFakeAccount(token);
     const result = await deploy(account);
-    expect(result).toMatchObject({ ok: true, origin: "https://iskios-relay.owner.workers.dev" });
-    const script = account.scripts.get("iskios-relay");
+    expect(result).toMatchObject({ ok: true, origin: "https://outlore-relay.owner.workers.dev" });
+    const script = account.scripts.get("outlore-relay");
     expect(script?.bundle).toBe(relayWorkerBundle);
     expect(script?.hasMigration).toBe(true);
     expect(script?.tags).toEqual([ownRelayTag]);
@@ -40,11 +40,11 @@ describe("deploying the relay to the user's own Cloudflare account", () => {
     const account = newFakeAccount(token);
     account.subdomain = null;
     const result = await deploy(account);
-    expect(account.subdomain).toMatch(/^iskios-[0-9a-f]{8}$/);
+    expect(account.subdomain).toMatch(/^outlore-[0-9a-f]{8}$/);
     expect(result).toMatchObject({
       createdSubdomain: true,
       ok: true,
-      origin: `https://iskios-relay.${account.subdomain}.workers.dev`,
+      origin: `https://outlore-relay.${account.subdomain}.workers.dev`,
     });
   });
 
@@ -75,12 +75,12 @@ describe("deploying the relay to the user's own Cloudflare account", () => {
     await deploy(account);
     const again = await deploy(account);
     expect(again).toMatchObject({ ok: true, wasUpdated: true });
-    expect(account.scripts.get("iskios-relay")?.migrationTag).toBe("v1");
+    expect(account.scripts.get("outlore-relay")?.migrationTag).toBe("v1");
   });
 
-  it("refuses to overwrite a Worker of the same name that Iskios did not make, and uploads nothing", async () => {
+  it("refuses to overwrite a Worker of the same name that Outlore did not make, and uploads nothing", async () => {
     const account = newFakeAccount(token);
-    account.scripts.set("iskios-relay", {
+    account.scripts.set("outlore-relay", {
       bundle: "someone else's",
       enabled: true,
       hasMigration: true,
@@ -89,15 +89,15 @@ describe("deploying the relay to the user's own Cloudflare account", () => {
     });
     const result = await deploy(account);
     expect(result).toMatchObject({ failure: "name-taken", ok: false });
-    expect(account.scripts.get("iskios-relay")?.bundle).toBe("someone else's");
+    expect(account.scripts.get("outlore-relay")?.bundle).toBe("someone else's");
     expect(account.calls.some((call) => call.startsWith("PUT /accounts/acc1/workers/scripts"))).toBe(false);
   });
 
   it("deploys under the name it is given", async () => {
     const account = newFakeAccount(token);
-    const result = await deploy(account, { workerName: "my-iskios-relay" });
-    expect(result).toMatchObject({ ok: true, origin: "https://my-iskios-relay.owner.workers.dev" });
-    expect([...account.scripts.keys()]).toEqual(["my-iskios-relay"]);
+    const result = await deploy(account, { workerName: "my-outlore-relay" });
+    expect(result).toMatchObject({ ok: true, origin: "https://my-outlore-relay.owner.workers.dev" });
+    expect([...account.scripts.keys()]).toEqual(["my-outlore-relay"]);
   });
 
   it("says when Cloudflare does not accept the token, and does nothing else", async () => {
@@ -115,7 +115,7 @@ describe("deploying the relay to the user's own Cloudflare account", () => {
 
   it("says when the token is not allowed to deploy Workers", async () => {
     const account = newFakeAccount(token);
-    account.failNext.set("/accounts/acc1/workers/scripts/iskios-relay", {
+    account.failNext.set("/accounts/acc1/workers/scripts/outlore-relay", {
       message: "Authentication error",
       status: 403,
     });
@@ -143,7 +143,7 @@ describe("deploying the relay to the user's own Cloudflare account", () => {
 
   it("reports the step and Cloudflare's words when a step is refused, without ever echoing the token", async () => {
     const account = newFakeAccount(token);
-    account.failNext.set("/accounts/acc1/workers/scripts/iskios-relay", {
+    account.failNext.set("/accounts/acc1/workers/scripts/outlore-relay", {
       message: `Bad request for ${token}`,
       status: 400,
     });

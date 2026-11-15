@@ -20,7 +20,7 @@ describe("the width the open sidebar can be dragged to", () => {
   });
 });
 
-describe("the width the quest panel and Iskios's column can be dragged to", () => {
+describe("the width the quest panel and Chronicler's column can be dragged to", () => {
   it("goes from the pane's own least width up to a quarter of the window", () => {
     expect(clampPaneWidth(900, 2400, 360)).toBe(600);
     expect(clampPaneWidth(450, 2400, 360)).toBe(450);

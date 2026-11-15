@@ -1,4 +1,4 @@
-import type { Message } from "@iskios/contracts";
+import type { Message } from "@outlore/contracts";
 import type { ReactNode } from "react";
 
 /** What a card needs to be commented on. */

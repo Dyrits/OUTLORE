@@ -1,4 +1,4 @@
-import type { UsageDay } from "@iskios/contracts";
+import type { UsageDay } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { handCursor, tooltipOf } from "../ui/pointer";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { HarnessName, MissionDetail, ThreadId } from "@iskios/contracts";
+import type { HarnessName, MissionDetail, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { fakeHarnessLayer } from "../../src/index.ts";

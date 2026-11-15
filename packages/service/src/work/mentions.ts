@@ -1,4 +1,4 @@
-import { type Mentionable, type MentionReference, mentionReferencesOf, mentionTokenOf } from "@iskios/contracts";
+import { type Mentionable, type MentionReference, mentionReferencesOf, mentionTokenOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { workedOutStateOf } from "./missionStates.ts";
@@ -15,7 +15,7 @@ interface ThreadRow {
 }
 
 /**
- * The quests a mention may name: not archived, and not Iskios's own. One fragment for the menu and for what a turn may
+ * The quests a mention may name: not archived, and not Chronicler's own. One fragment for the menu and for what a turn may
  * read or message, so what is offered and what is reachable cannot drift apart. `m` is the quest's row.
  */
 const isOpenQuestOf = (sql: SqlClient.SqlClient) =>
@@ -35,7 +35,7 @@ const trailOf = (thread: ThreadRow, byId: ReadonlyMap<string, ThreadRow>, questT
 };
 
 /**
- * Every quest not archived with its side-quests beneath it, latest activity first, then every realm by name. Iskios's own
+ * Every quest not archived with its side-quests beneath it, latest activity first, then every realm by name. Chronicler's own
  * quest and threads being deleted are never offered.
  */
 export const listMentionables = Effect.gen(function* () {
@@ -83,7 +83,7 @@ const readSideQuest = (threadId: string) =>
     return row ?? null;
   });
 
-/** A quest not archived, nor Iskios's own, with its state and realm; empty when there is none. */
+/** A quest not archived, nor Chronicler's own, with its state and realm; empty when there is none. */
 const readQuest = (missionId: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;

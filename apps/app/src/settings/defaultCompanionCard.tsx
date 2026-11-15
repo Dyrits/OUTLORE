@@ -1,4 +1,4 @@
-import type { BackupCompanion, HarnessList, Settings, SettingsChange } from "@iskios/contracts";
+import type { BackupCompanion, HarnessList, Settings, SettingsChange } from "@outlore/contracts";
 import type { ServiceClient } from "../foundation/client";
 import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
 import { Row } from "../quests/questPanel";

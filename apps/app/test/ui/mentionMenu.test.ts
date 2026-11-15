@@ -1,13 +1,13 @@
-import type { Mentionable, WorkspaceEntry } from "@iskios/contracts";
+import type { Mentionable, WorkspaceEntry } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import { chipsOf } from "../../src/ui/chipPlaces";
 import { type MenuRow, mentionMenuOf, menuKeyActionOf, selectableRowsOf } from "../../src/ui/mentionMenu";
 
 const mentionables: ReadonlyArray<Mentionable> = [
-  { detail: "Iskios", id: "q1", kind: "quest", trail: ["Fix login"] },
-  { detail: "Iskios", id: "t1", kind: "side-quest", trail: ["Fix login", "Write tests"] },
+  { detail: "Outlore", id: "q1", kind: "quest", trail: ["Fix login"] },
+  { detail: "Outlore", id: "t1", kind: "side-quest", trail: ["Fix login", "Write tests"] },
   { detail: null, id: "q2", kind: "quest", trail: ["Read my emails"] },
-  { detail: "/code/iskios", id: "r1", kind: "realm", trail: ["Iskios"] },
+  { detail: "/code/iskios", id: "r1", kind: "realm", trail: ["Outlore"] },
 ];
 const entries: ReadonlyArray<WorkspaceEntry> = [
   { kind: "folder", path: "src/" },
@@ -59,9 +59,9 @@ describe("offering what an @ names", () => {
   });
 
   it("writes a quest, side-quest, or realm as a one-word token with its id and shows its name", () => {
-    const rows = mentionMenuOf({ category: null, entries: [], hasFolder: false, mentionables, query: "is" });
+    const rows = mentionMenuOf({ category: null, entries: [], hasFolder: false, mentionables, query: "ou" });
     const chips = rows.flatMap((row) => (row.type === "option" ? [row.chip] : []));
-    expect(chips).toContainEqual({ kind: "realm", label: "Iskios", token: "@realm:r1" });
+    expect(chips).toContainEqual({ kind: "realm", label: "Outlore", token: "@realm:r1" });
     const side = mentionMenuOf({ category: "quests", entries: [], hasFolder: false, mentionables, query: "" })[1];
     expect(side?.type === "option" ? side.chip : null).toEqual({
       kind: "quest",
@@ -97,7 +97,7 @@ describe("drawing the references of a sent message as chips", () => {
     expect(chips.map((chip) => [chip.kind, chip.label])).toEqual([
       ["quest", "Fix login"],
       ["quest", "Fix login › Write tests"],
-      ["realm", "Iskios"],
+      ["realm", "Outlore"],
       ["folder", "src/"],
     ]);
     expect(text.slice(chips[0]?.start, chips[0]?.end)).toBe("@quest:q1");

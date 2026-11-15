@@ -27,9 +27,9 @@ export interface LineProcessOptions {
   readonly onEnded?: () => Promise<ReadonlyArray<number>>;
 }
 
-/** The environment of a harness's process: Iskios's own variables, such as the owner token, left out. */
+/** The environment of a harness's process: Outlore's own variables, such as the owner token, left out. */
 export const harnessEnvironmentOf = (extra: Record<string, string>) => ({
-  ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("ISKIOS_"))),
+  ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("OUTLORE_"))),
   ...extra,
 });
 

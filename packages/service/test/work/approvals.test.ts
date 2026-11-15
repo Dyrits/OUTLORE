@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionDetail, MissionId, Question, Request, RequestTag, ResultOf } from "@iskios/contracts";
+import type { MissionDetail, MissionId, Question, Request, RequestTag, ResultOf } from "@outlore/contracts";
 import { Effect, Fiber, Layer, Option } from "effect";
 import { afterEach } from "vitest";
 import type { Containment } from "../../src/core/index.ts";
@@ -13,9 +13,9 @@ import { createRepository, runGit } from "../fixtures/repositories.ts";
 
 const directories: string[] = [];
 const databaseFile = () => {
-  const directory = mkdtempSync(join(tmpdir(), "iskios-approvals-"));
+  const directory = mkdtempSync(join(tmpdir(), "outlore-approvals-"));
   directories.push(directory);
-  return join(directory, "iskios.sqlite");
+  return join(directory, "outlore.sqlite");
 };
 afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { force: true, recursive: true });

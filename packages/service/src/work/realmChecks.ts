@@ -2,7 +2,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { realFolderOf } from "../core/index.ts";
 
-// The checks Iskios's realm tools make before they act. The provenance module (guildmasterProvenance.ts) runs the
+// The checks Chronicler's realm tools make before they act. The provenance module (guildmasterProvenance.ts) runs the
 // same ones to decide whether there is anything to ask the owner about, so an action a tool would refuse is never
 // put to them as a question.
 
@@ -27,7 +27,7 @@ export interface RealmFound {
   readonly path: string | null;
 }
 
-/** What a realm tool found before acting: a refusal with the words that tell Iskios why, or what it would act on. */
+/** What a realm tool found before acting: a refusal with the words that tell Chronicler why, or what it would act on. */
 export type RealmCheck<Clear> =
   | { readonly _tag: "Refused"; readonly text: string }
   | ({ readonly _tag: "Clear" } & Clear);

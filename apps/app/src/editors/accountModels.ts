@@ -1,4 +1,4 @@
-import type { AccountId, HarnessInfo, HarnessList, HarnessName, ModelOption } from "@iskios/contracts";
+import type { AccountId, HarnessInfo, HarnessList, HarnessName, ModelOption } from "@outlore/contracts";
 
 /** The harnesses in the order the pickers list them. */
 export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode"];

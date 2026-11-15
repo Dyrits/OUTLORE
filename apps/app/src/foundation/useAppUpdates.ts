@@ -16,7 +16,7 @@ export type AppUpdates = {
  */
 export function useAppUpdates(): AppUpdates | null {
   const isRemote = useIsRemoteHost();
-  const bridge = typeof window === "undefined" || isRemote ? null : (window.iskios?.updates ?? null);
+  const bridge = typeof window === "undefined" || isRemote ? null : (window.outlore?.updates ?? null);
   const [state, setState] = useState<UpdateState | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {

@@ -5,10 +5,10 @@ import type { ReleaseListing } from "./releases.ts";
 import { listingsOf } from "./releases.ts";
 
 /** The repository's public release list, the one address a check asks; a development run may name another. */
-export const defaultReleasesUrl = "https://api.github.com/repos/Dyrits/ISKIOS/releases?per_page=30";
+export const defaultReleasesUrl = "https://api.github.com/repos/Dyrits/OUTLORE/releases?per_page=30";
 
 /** The page owners can open when an update cannot install itself. */
-export const releasesPageUrl = "https://github.com/Dyrits/ISKIOS/releases";
+export const releasesPageUrl = "https://github.com/Dyrits/OUTLORE/releases";
 
 /** Platform `fetch`, replaceable so tests answer from a local server. */
 export type Fetch = typeof fetch;
@@ -27,7 +27,7 @@ const failWith = (url: string, reason: unknown): never => {
  */
 export const fetchListings = async (fetchFn: Fetch, url: string, appVersion: string): Promise<ReleaseListing[]> => {
   const response = await fetchFn(url, {
-    headers: { Accept: "application/vnd.github+json", "User-Agent": `Iskios/${appVersion}` },
+    headers: { Accept: "application/vnd.github+json", "User-Agent": `Outlore/${appVersion}` },
   }).catch((reason: unknown) => failWith(url, reason));
   if (!response.ok) throw new UpdateRequestError(`GitHub answered ${response.status} to the release list.`);
   return listingsOf(await response.json());
@@ -35,7 +35,7 @@ export const fetchListings = async (fetchFn: Fetch, url: string, appVersion: str
 
 /** Reads a small text file of a release, such as its checksums. */
 export const fetchText = async (fetchFn: Fetch, url: string, appVersion: string): Promise<string> => {
-  const response = await fetchFn(url, { headers: { "User-Agent": `Iskios/${appVersion}` } }).catch((reason: unknown) =>
+  const response = await fetchFn(url, { headers: { "User-Agent": `Outlore/${appVersion}` } }).catch((reason: unknown) =>
     failWith(url, reason),
   );
   if (!response.ok) throw new UpdateRequestError(`GitHub answered ${response.status} for ${new URL(url).pathname}.`);
@@ -49,7 +49,7 @@ export const downloadFile = async (
   destination: string,
   options: { appVersion: string; onProgress: (percent: number) => void },
 ): Promise<string> => {
-  const response = await fetchFn(url, { headers: { "User-Agent": `Iskios/${options.appVersion}` } }).catch(
+  const response = await fetchFn(url, { headers: { "User-Agent": `Outlore/${options.appVersion}` } }).catch(
     (reason: unknown) => failWith(url, reason),
   );
   if (!response.ok || response.body === null)

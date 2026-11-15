@@ -12,7 +12,7 @@ describe("syncDesktopTheme", () => {
   it("keeps the theme and shows nothing when the desktop app cannot set the icon", async () => {
     await expect(
       syncDesktopTheme(
-        { setTheme: () => Promise.reject(new Error("The theme is only set from Iskios's desktop window.")) },
+        { setTheme: () => Promise.reject(new Error("The theme is only set from Outlore's desktop window.")) },
         "gild",
       ),
     ).resolves.toBeUndefined();

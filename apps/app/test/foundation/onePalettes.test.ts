@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { palettes } from "../../src/foundation/palettes";
 
 describe("drawing with One", () => {
-  // Expected colors come from Zed's pinned One theme, not Iskios's palette implementation.
+  // Expected colors come from Zed's pinned One theme, not Outlore's palette implementation.
   // See documentation/research/zed-one-themes.md.
   it.each([
     ["dark", "#282c33", "#2f343e", "#dce0e5", "#a9afbc"],

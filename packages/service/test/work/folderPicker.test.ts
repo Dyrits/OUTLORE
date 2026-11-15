@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { Request, RequestTag, ResultOf } from "@iskios/contracts";
+import type { Request, RequestTag, ResultOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
@@ -21,7 +21,7 @@ const owner = { isPairedDevice: false };
 
 /** A home folder (the first root) with folders to find and to leave out, and a folder outside every root. */
 const setUp = () => {
-  const base = realpathSync(mkdtempSync(join(tmpdir(), "iskios-picker-")));
+  const base = realpathSync(mkdtempSync(join(tmpdir(), "outlore-picker-")));
   directories.push(base);
   const home = join(base, "home");
   const outside = join(base, "outside");
@@ -29,7 +29,7 @@ const setUp = () => {
     join(home, "app", "lib"),
     join(home, "app", "dist"),
     join(home, "apple"),
-    join(home, "Projects", "iskios-app"),
+    join(home, "Projects", "outlore-app"),
     join(home, ".hidden", "secret"),
     join(home, "node_modules", "pkg"),
     join(home, "repo", "cache"),
@@ -43,7 +43,7 @@ const setUp = () => {
   symlinkSync(outside, join(home, "escape"));
   symlinkSync(join(home, "app"), join(home, "inside-link"));
   const layer = serviceLayer({
-    filename: join(base, "iskios.sqlite"),
+    filename: join(base, "outlore.sqlite"),
     harness: fakeHarnessLayer("10 millis"),
     homeFolder: home,
     scratchRoot: join(base, "data", "missions"),
@@ -84,9 +84,9 @@ describe("searching folders", () => {
     const { home, layer } = setUp();
     return Effect.gen(function* () {
       const found = yield* pairedDevice.call({ _tag: "SearchFolders", query: "app" });
-      expect(pathsOf(found)).toEqual([join(home, "app"), join(home, "apple"), join(home, "Projects", "iskios-app")]);
-      const loose = yield* pairedDevice.call({ _tag: "SearchFolders", query: "isap" });
-      expect(pathsOf(loose)).toEqual([join(home, "Projects", "iskios-app")]);
+      expect(pathsOf(found)).toEqual([join(home, "app"), join(home, "apple"), join(home, "Projects", "outlore-app")]);
+      const loose = yield* pairedDevice.call({ _tag: "SearchFolders", query: "orap" });
+      expect(pathsOf(loose)).toEqual([join(home, "Projects", "outlore-app")]);
     }).pipe(Effect.provide(layer));
   });
 

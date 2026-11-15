@@ -6,7 +6,7 @@ import type {
   RestoreRealm,
   RitualId,
   WorkspaceId,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound, realFolderOf, ServiceFailure } from "../core/index.ts";

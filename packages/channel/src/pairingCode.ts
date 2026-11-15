@@ -3,7 +3,7 @@ import { bytesToHex, hexToBytes, randomBytes } from "@noble/hashes/utils.js";
 import { decodeBase64Url, encodeBase64Url } from "./base64url.ts";
 import { fail, type Result, succeed } from "./result.ts";
 
-export const pairingCodePrefix = "iskios1-";
+export const pairingCodePrefix = "outlore1-";
 export const publicKeyBytes = 32;
 export const roomBytes = 16;
 export const pairingSecretBytes = 16;
@@ -11,7 +11,7 @@ const checksumBytes = 4;
 const maxOriginBytes = 255;
 const fixedBytes = publicKeyBytes + roomBytes + pairingSecretBytes;
 const roomPattern = /^[0-9a-f]{32}$/;
-const versionPattern = /^iskios(\d+)-/;
+const versionPattern = /^outlore(\d+)-/;
 
 /** What a host puts in a pairing code and a device reads out of it. */
 export interface PairingCode {
@@ -73,7 +73,7 @@ export function decodePairingCode(text: string): Result<PairingCode, PairingCode
   const trimmed = text.trim();
   const version = versionPattern.exec(trimmed);
   if (version === null) return fail("malformed");
-  if (`iskios${version[1]}-` !== pairingCodePrefix) return fail("unsupported-version");
+  if (`outlore${version[1]}-` !== pairingCodePrefix) return fail("unsupported-version");
   const bytes = decodeBase64Url(trimmed.slice(pairingCodePrefix.length));
   if (bytes === null || bytes.byteLength <= fixedBytes + checksumBytes) return fail("malformed");
   const body = bytes.subarray(0, bytes.length - checksumBytes);

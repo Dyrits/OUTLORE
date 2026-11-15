@@ -1,4 +1,4 @@
-import type { MissionId, ThreadId } from "@iskios/contracts";
+import type { MissionId, ThreadId } from "@outlore/contracts";
 import type { ReactNode } from "react";
 import { Conversation } from "../conversation/conversation";
 import { GuildmasterScreen } from "../conversation/guildmaster";

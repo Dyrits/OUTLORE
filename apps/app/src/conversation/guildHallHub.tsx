@@ -1,4 +1,4 @@
-import type { GuildHallRecap, MissionId, MissionSummary } from "@iskios/contracts";
+import type { GuildHallRecap, MissionId, MissionSummary } from "@outlore/contracts";
 import { type ReactNode, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
@@ -275,7 +275,7 @@ function Finished({ onOpenMission, recap }: { onOpenMission: (id: MissionId) => 
  * The Guild Hall's page (quest coordination, Guild Hall as a hub): a line saying how many quests wait for the owner, a
  * band of figures (what is going on now, and the recap since the last visit), the quests that wait as cards that read
  * first, the quests touched last as a dense list, and the quests finished in the period. On a wide window the finished
- * quests stand beside the rest. Iskios's conversation is a panel the shell offers, not part of the page.
+ * quests stand beside the rest. Chronicler's conversation is a panel the shell offers, not part of the page.
  */
 export function GuildHallHub({
   missions,
@@ -311,7 +311,7 @@ export function GuildHallHub({
         {missions === null ? (
           <Text style={styles.muted}>Loading…</Text>
         ) : recent.length === 0 ? (
-          <Text style={styles.muted}>No quest yet. Ask Iskios for one.</Text>
+          <Text style={styles.muted}>No quest yet. Ask Chronicler for one.</Text>
         ) : (
           <View style={[local.card, local.list]}>
             {recent.map((mission, index) => (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionDetail, Question } from "@iskios/contracts";
+import type { MissionDetail, Question } from "@outlore/contracts";
 import { Effect } from "effect";
 import { call, send, settle, start, withService } from "../fixtures/service.ts";
 
@@ -7,10 +7,10 @@ import { call, send, settle, start, withService } from "../fixtures/service.ts";
 // another file; the owner is asked again (CHG-0274, audit SA-09).
 
 const editLineOf = (input: object) => `prompt Edit ${JSON.stringify(input)}`;
-const fileA = "/outside/iskios-a.txt";
+const fileA = "/outside/outlore-a.txt";
 const singleEdit = { file_path: fileA };
-const pairEdit = { file_path: fileA, file_paths: [fileA, "/outside/iskios-b.txt"] };
-const otherPairEdit = { file_path: fileA, file_paths: [fileA, "/outside/iskios-c.txt"] };
+const pairEdit = { file_path: fileA, file_paths: [fileA, "/outside/outlore-b.txt"] };
+const otherPairEdit = { file_path: fileA, file_paths: [fileA, "/outside/outlore-c.txt"] };
 
 const findOpenQuestion = (detail: MissionDetail) => detail.questions.find((question) => question.outcome === null);
 const isAsking = (detail: MissionDetail) => findOpenQuestion(detail) !== undefined;

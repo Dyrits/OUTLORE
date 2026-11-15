@@ -1,4 +1,4 @@
-import type { HarnessName, MissionDetail, MissionId, MissionSummary, WorkspaceChoice } from "@iskios/contracts";
+import type { HarnessName, MissionDetail, MissionId, MissionSummary, WorkspaceChoice } from "@outlore/contracts";
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { CrestBadge } from "../crest/crest";

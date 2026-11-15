@@ -1,7 +1,7 @@
 import { mkdirSync, realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionId, Request } from "@iskios/contracts";
+import type { MissionId, Request } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { Service } from "../../src/index.ts";

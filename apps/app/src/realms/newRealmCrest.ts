@@ -1,4 +1,4 @@
-import type { Crest } from "@iskios/contracts";
+import type { Crest } from "@outlore/contracts";
 import { crestOf } from "../crest/crestShapes";
 
 /** The id the new-realm menu draws an undesigned crest from: the folder's path, or a fixed id while none is chosen. */

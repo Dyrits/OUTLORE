@@ -1,4 +1,4 @@
-import type { Answer, Question, QuestionOutcome } from "@iskios/contracts";
+import type { Answer, Question, QuestionOutcome } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";

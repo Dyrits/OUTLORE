@@ -12,7 +12,7 @@ waited=0
 while kill -0 "$pid" 2>/dev/null; do
   waited=$((waited + 1))
   if [ "$waited" -gt 300 ]; then
-    echo "Iskios did not quit in time to be replaced." > "$log"
+    echo "Outlore did not quit in time to be replaced." > "$log"
     "$opener" "$bundle"
     exit 1
   fi

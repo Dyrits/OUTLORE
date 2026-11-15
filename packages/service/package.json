@@ -1,5 +1,5 @@
 {
-  "name": "@iskios/service",
+  "name": "@outlore/service",
   "private": true,
   "type": "module",
   "exports": {
@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@effect/sql-sqlite-node": "4.1.4",
-    "@iskios/channel": "workspace:*",
-    "@iskios/contracts": "workspace:*",
-    "@iskios/relay": "workspace:*",
+    "@outlore/channel": "workspace:*",
+    "@outlore/contracts": "workspace:*",
+    "@outlore/relay": "workspace:*",
     "effect": "4.1.4",
     "ws": "8.23.0"
   },

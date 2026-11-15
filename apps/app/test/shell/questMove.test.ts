@@ -1,4 +1,4 @@
-import type { MissionSummary, WorkspaceId } from "@iskios/contracts";
+import type { MissionSummary, WorkspaceId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import { borderlandsDestination, moveConfirmationOf, sourceNameOf } from "../../src/shell/questMove";
 

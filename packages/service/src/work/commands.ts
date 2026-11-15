@@ -82,7 +82,7 @@ export const makeCommands = (dependencies: {
 };
 
 /** The runner every owner request and thread tool goes through. */
-export class Commands extends Context.Service<Commands, CommandRunner>()("iskios/Commands") {}
+export class Commands extends Context.Service<Commands, CommandRunner>()("outlore/Commands") {}
 
 /** The runner over the service's store, change feed, and threads. */
 export const commandsLayer = Layer.effect(

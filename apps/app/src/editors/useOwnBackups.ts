@@ -1,4 +1,4 @@
-import type { BackupCompanion } from "@iskios/contracts";
+import type { BackupCompanion } from "@outlore/contracts";
 import { useState } from "react";
 import { isSameBackups } from "./presets";
 

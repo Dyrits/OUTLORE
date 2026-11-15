@@ -1,4 +1,4 @@
-import { type RitualRunState, RitualSchedule } from "@iskios/contracts";
+import { type RitualRunState, RitualSchedule } from "@outlore/contracts";
 import { Schema } from "effect";
 
 // When a Ritual is next due (rituals). Schedules are read in the computer's local time.

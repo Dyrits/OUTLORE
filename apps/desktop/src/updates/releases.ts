@@ -75,7 +75,7 @@ export const chooseRelease = (
     .sort((left, right) => compareVersions(right.version, left.version));
   let reason: string | null = null;
   for (const { listing, number } of newer) {
-    const installerName = `Iskios-${number}-mac-${running.arch}.dmg`;
+    const installerName = `Outlore-${number}-mac-${running.arch}.dmg`;
     const installer = listing.assets.find((asset) => asset.name === installerName);
     const sums = listing.assets.find((asset) => asset.name === sumsFileName);
     if (installer !== undefined && sums !== undefined)

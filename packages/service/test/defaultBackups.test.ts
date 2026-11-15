@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { BackupCompanion } from "@iskios/contracts";
+import type { BackupCompanion } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";

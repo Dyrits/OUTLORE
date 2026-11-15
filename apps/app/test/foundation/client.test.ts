@@ -40,7 +40,7 @@ describe("the service client's reconnection", () => {
     FakeSocket.all = [];
     vi.useFakeTimers();
     vi.stubGlobal("WebSocket", FakeSocket);
-    vi.stubGlobal("window", { iskios: { endpoint: async () => "ws://service" } });
+    vi.stubGlobal("window", { outlore: { endpoint: async () => "ws://service" } });
   });
   afterEach(() => {
     vi.useRealTimers();

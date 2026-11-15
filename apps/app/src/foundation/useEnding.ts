@@ -1,4 +1,4 @@
-import type { EndingPreview, MissionEnding, MissionSummary } from "@iskios/contracts";
+import type { EndingPreview, MissionEnding, MissionSummary } from "@outlore/contracts";
 import { useContext, useState } from "react";
 import { ArchiveNavigation } from "./archiveNavigation";
 import type { ServiceClient } from "./client";

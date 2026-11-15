@@ -1,4 +1,4 @@
-import type { KnownHost } from "@iskios/contracts";
+import type { KnownHost } from "@outlore/contracts";
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { messageOf } from "../foundation/client";
@@ -54,7 +54,7 @@ export function AddHostModal({
             autoFocus
             multiline
             onChangeText={setCode}
-            placeholder="iskios1-…"
+            placeholder="outlore1-…"
             placeholderTextColor={colors.placeholder}
             style={[local.input, local.codeInput]}
             value={code}

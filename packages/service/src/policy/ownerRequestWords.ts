@@ -1,6 +1,6 @@
-import type { RitualScopeOperation } from "@iskios/contracts";
+import type { RitualScopeOperation } from "@outlore/contracts";
 
-/** The structural actions the service derives from Iskios's tool calls. */
+/** The structural actions the service derives from Chronicler's tool calls. */
 export type StructuralOperation = RitualScopeOperation | "CreateRealm" | "RenameRealm" | "CreateRitual";
 
 /** One structural action as the owner would name it: what, on which target, and to what new value. */

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { ApprovalLevel } from "@iskios/contracts";
+import type { ApprovalLevel } from "@outlore/contracts";
 import { Exit, Schema } from "effect";
 import { fieldOf, type ThreadAccess, textFieldOf } from "../core/index.ts";
 import { approvalInstructionsOf } from "./instructions.ts";
@@ -18,7 +18,7 @@ export interface AccessOptions {
 }
 
 // Tools behind approval (CHG-0031): built-in tools only, none of the owner's MCP
-// servers, skills, or settings; every permission prompt goes to Iskios.
+// servers, skills, or settings; every permission prompt goes to Outlore.
 /** The arguments every Claude Code process starts with, the thread tools it runs without asking being those the thread's access names. */
 export const baseArgsOf = (unaskedTools: ReadonlyArray<string>) => [
   "-p",

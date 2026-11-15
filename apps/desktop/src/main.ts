@@ -12,18 +12,18 @@ import { Terminals } from "./terminals.ts";
 import { setUpUpdates } from "./updates/setup.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-/** The app's icons, beside `dist` in the desktop app's own `assets`: Iskios's, and Gild's hooded figure. */
+/** The app's icons, beside `dist` in the desktop app's own `assets`: Outlore's, and Gild's hooded figure. */
 const iconPathOf = (theme: unknown) => join(here, "..", "assets", iconFileOf(theme));
-const iconPath = iconPathOf("iskios");
+const iconPath = iconPathOf("one");
 /** The installed app carries its screens and loads them from its own scheme; a development run loads the dev server. */
-const appScheme = "iskios-app";
-const appUrl = app.isPackaged ? `${appScheme}://app/` : (process.env.ISKIOS_APP_URL ?? "http://localhost:8081");
+const appScheme = "outlore-app";
+const appUrl = app.isPackaged ? `${appScheme}://app/` : (process.env.OUTLORE_APP_URL ?? "http://localhost:8081");
 // Lets checks run against a throwaway folder instead of the owner's data.
-const dataDirectory = () => process.env.ISKIOS_DATA_DIR ?? app.getPath("userData");
-// Only the installed app is plain "Iskios" on the default profile and data folder; dev and checks run as "Iskios Dev".
+const dataDirectory = () => process.env.OUTLORE_DATA_DIR ?? app.getPath("userData");
+// Only the installed app is plain "Outlore" on the default profile and data folder; dev and checks run as "Outlore Dev".
 const instance = instanceOf({
   appData: app.getPath("appData"),
-  dataDirectory: process.env.ISKIOS_DATA_DIR,
+  dataDirectory: process.env.OUTLORE_DATA_DIR,
   hasProfileSwitch: app.commandLine.hasSwitch("user-data-dir"),
   isPackaged: app.isPackaged,
 });
@@ -41,7 +41,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) process.on(signal, () => ap
 
 // Runs before Electron creates the new user-data folder at ready, so an install from before the rename keeps its data.
 const formerDataMoved = Promise.resolve().then(() => {
-  if (!isFirstInstance || !app.isPackaged || process.env.ISKIOS_DATA_DIR !== undefined) return;
+  if (!isFirstInstance || !app.isPackaged || process.env.OUTLORE_DATA_DIR !== undefined) return;
   const claudeFolder = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
   moveFormerData(app.getPath("appData"), app.getPath("userData"), claudeFolder);
 });
@@ -51,10 +51,10 @@ const startService = (token: string) => {
   const service = utilityProcess.fork(join(here, "service.js"), [], {
     env: {
       ...process.env,
-      ISKIOS_DATA_DIR: dataDirectory(),
-      ISKIOS_TOKEN: token,
+      OUTLORE_DATA_DIR: dataDirectory(),
+      OUTLORE_TOKEN: token,
     },
-    serviceName: "Iskios service",
+    serviceName: "Outlore service",
     stdio: "inherit",
   });
   app.on("will-quit", () => service.kill());
@@ -88,7 +88,7 @@ const load = async (window: BrowserWindow) => {
 
 /** Startup failures end here: the owner sees why, and the app quits instead of leaving an empty window. */
 const quitWith = (reason: string) => {
-  dialog.showErrorBox("Iskios could not start", reason);
+  dialog.showErrorBox("Outlore could not start", reason);
   app.quit();
 };
 
@@ -133,13 +133,13 @@ app
     });
     mainWindow = window;
     // The owner token travels in the endpoint: only the app's own main frame may read it (audit SA-12).
-    ipcMain.handle("iskios:endpoint", (event) => {
+    ipcMain.handle("outlore:endpoint", (event) => {
       if (
         event.sender !== window.webContents ||
         event.senderFrame !== window.webContents.mainFrame ||
         new URL(event.senderFrame.url).origin !== new URL(appUrl).origin
       )
-        throw new Error("The endpoint is only given to Iskios's desktop window.");
+        throw new Error("The endpoint is only given to Outlore's desktop window.");
       return endpoint;
     });
     // A link in a reply opens in the system's browser, never in a window of its own that could receive the bridge, and
@@ -153,10 +153,10 @@ app
     });
     const terminals = new Terminals(
       (id, data, sequence) => {
-        if (!window.isDestroyed()) window.webContents.send("iskios:terminalData", id, data, sequence);
+        if (!window.isDestroyed()) window.webContents.send("outlore:terminalData", id, data, sequence);
       },
       (id) => {
-        if (!window.isDestroyed()) window.webContents.send("iskios:terminalExit", id);
+        if (!window.isDestroyed()) window.webContents.send("outlore:terminalExit", id);
       },
     );
     // Terminal execution is a desktop capability; embedded frames cannot call it.
@@ -166,32 +166,32 @@ app
         event.senderFrame !== window.webContents.mainFrame ||
         new URL(event.senderFrame.url).origin !== new URL(appUrl).origin
       )
-        throw new Error("Terminal access is only available in Iskios's desktop window.");
+        throw new Error("Terminal access is only available in Outlore's desktop window.");
     };
-    ipcMain.handle("iskios:terminalOpen", (event, id: string, cwd: string | null) => {
+    ipcMain.handle("outlore:terminalOpen", (event, id: string, cwd: string | null) => {
       checkTerminalSender(event);
       return terminals.open(id, cwd);
     });
-    ipcMain.handle("iskios:terminalWrite", (event, id: string, data: string) => {
+    ipcMain.handle("outlore:terminalWrite", (event, id: string, data: string) => {
       checkTerminalSender(event);
       terminals.write(id, data);
     });
-    ipcMain.handle("iskios:terminalResize", (event, id: string, cols: number, rows: number) => {
+    ipcMain.handle("outlore:terminalResize", (event, id: string, cols: number, rows: number) => {
       checkTerminalSender(event);
       terminals.resize(id, cols, rows);
     });
-    ipcMain.handle("iskios:terminalClose", (event, id: string) => {
+    ipcMain.handle("outlore:terminalClose", (event, id: string) => {
       checkTerminalSender(event);
       terminals.close(id);
     });
     window.on("closed", () => terminals.dispose());
-    // The theme chosen in the app sets the Dock's and the window's icon; the installed file's own icon stays Iskios's.
-    ipcMain.handle("iskios:setTheme", (event, theme: unknown) => {
+    // The theme chosen in the app sets the Dock's and the window's icon; the installed file's own icon stays Outlore's.
+    ipcMain.handle("outlore:setTheme", (event, theme: unknown) => {
       if (
         event.sender !== window.webContents ||
         new URL(event.senderFrame?.url ?? "").origin !== new URL(appUrl).origin
       )
-        throw new Error("The theme is only set from Iskios's desktop window.");
+        throw new Error("The theme is only set from Outlore's desktop window.");
       app.dock?.setIcon(iconPathOf(theme));
       window.setIcon(iconPathOf(theme));
     });

@@ -6,7 +6,7 @@ import {
   type RitualSchedule,
   type RitualScope,
   RitualScope as RitualScopeSchema,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Clock, Effect, Exit, Layer, PubSub, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { Changes, invalid, notFound } from "../core/index.ts";

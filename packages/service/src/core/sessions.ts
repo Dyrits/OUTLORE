@@ -1,4 +1,4 @@
-import type { ServerFrame, ThreadId } from "@iskios/contracts";
+import type { ServerFrame, ThreadId } from "@outlore/contracts";
 import { Context, Effect, Layer, PubSub } from "effect";
 import { Changes } from "./changes.ts";
 
@@ -15,7 +15,7 @@ export class Sessions extends Context.Service<
     /** Registers a screen; the returned function removes it. */
     readonly add: (send: SessionSend) => () => void;
   }
->()("iskios/Sessions") {}
+>()("outlore/Sessions") {}
 
 /** The registry, and the two fibers that carry changes and drafts to it. */
 export const sessionsLayer = Layer.effect(

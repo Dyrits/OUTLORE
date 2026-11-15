@@ -27,7 +27,7 @@ describe("saying when the last check ended", () => {
 
 describe("saying where an update stands", () => {
   it("reports each status in a line", () => {
-    expect(statusTextOf(stateOf({ _tag: "Idle", note: null }))).toBe("Iskios is up to date.");
+    expect(statusTextOf(stateOf({ _tag: "Idle", note: null }))).toBe("Outlore is up to date.");
     expect(statusTextOf(stateOf({ _tag: "Idle", note: "Release 0.1.2 has no installer." }))).toBe(
       "Release 0.1.2 has no installer.",
     );
@@ -36,7 +36,7 @@ describe("saying where an update stands", () => {
       "Downloading 0.1.2: 40%.",
     );
     expect(statusTextOf(stateOf({ _tag: "Ready", notes: "", pageUrl: "", version: "0.1.2" }))).toBe(
-      "Iskios 0.1.2 is downloaded and ready to install.",
+      "Outlore 0.1.2 is downloaded and ready to install.",
     );
     expect(statusTextOf(stateOf({ _tag: "Failed", message: "Could not reach github.com.", pageUrl: null }))).toBe(
       "Could not reach github.com.",
@@ -49,7 +49,7 @@ describe("saying where an update stands", () => {
 
   it("keeps saying a downloaded update is ready after looking is switched off", () => {
     const ready = stateOf({ _tag: "Ready", notes: "", pageUrl: "", version: "0.1.2" }, { isEnabled: false });
-    expect(statusTextOf(ready)).toBe("Iskios 0.1.2 is downloaded and ready to install.");
+    expect(statusTextOf(ready)).toBe("Outlore 0.1.2 is downloaded and ready to install.");
   });
 
   it("gives the reason an installed-app-only feature is unavailable", () => {

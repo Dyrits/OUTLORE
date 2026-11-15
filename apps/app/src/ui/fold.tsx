@@ -1,4 +1,4 @@
-import type { HarnessName } from "@iskios/contracts";
+import type { HarnessName } from "@outlore/contracts";
 import { createContext, type ReactNode, useContext, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fontSizes, fonts, outline, round } from "../foundation/theme";

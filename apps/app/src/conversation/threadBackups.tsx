@@ -1,4 +1,4 @@
-import type { BackupCompanion, ThreadId } from "@iskios/contracts";
+import type { BackupCompanion, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { BackupsEditor } from "../editors/backupsEditor";

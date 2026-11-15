@@ -7,7 +7,7 @@ index a61891f..f178547 100644
      private readonly onData: (id: string, data: string, sequence: number) => void,
      private readonly onExit: (id: string) => void,
 -    private readonly options = { home: homedir(), shell: userInfo().shell || process.env.SHELL || "/bin/sh" },
-+    private readonly options = { home: homedir(), shell: process.env.ISKIOS_DEMO_SHELL || userInfo().shell || process.env.SHELL || "/bin/sh" },
++    private readonly options = { home: homedir(), shell: process.env.OUTLORE_DEMO_SHELL || userInfo().shell || process.env.SHELL || "/bin/sh" },
    ) {}
  
    /** Starts a shell or returns its retained output without restarting its process. */
@@ -20,7 +20,7 @@ index f16cc2f..9b06eb5 100644
              return results.length === 0 ? text : results.join(" | ");
            });
 +        // DEMO-ONLY (README recording, not committed): canned replies keyed by message text.
-+        const demoPath = process.env.ISKIOS_DEMO_SCRIPT;
++        const demoPath = process.env.OUTLORE_DEMO_SCRIPT;
 +        if (demoPath !== undefined) {
 +          const { readFileSync } = yield* Effect.promise(() => import("node:fs"));
 +          const entries = JSON.parse(readFileSync(demoPath, "utf8")) as Array<{ match: string; lines?: Array<string>; reply: string; delay?: number }>;
@@ -51,7 +51,7 @@ index dd8dd1a..9e0baa7 100644
        Effect.succeed(
 -        harnessFacts[harness].fixedModels ?? [{ id: `${harness}-fake-model`, label: `${harness} fake model` }],
 +        harnessFacts[harness].fixedModels ??
-+          (process.env.ISKIOS_DEMO_SCRIPT !== undefined
++          (process.env.OUTLORE_DEMO_SCRIPT !== undefined
 +            ? harness === "codex"
 +              ? [{ id: "gpt-5.5", label: "GPT-5.5" }, { id: "gpt-5.5-codex", label: "GPT-5.5 Codex" }]
 +              : [{ id: "kimi-k2.5", label: "Kimi K2.5" }, { id: "glm-5", label: "GLM-5" }]

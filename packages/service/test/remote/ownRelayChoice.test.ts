@@ -2,9 +2,9 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import { decodePairingCode } from "@iskios/channel";
-import { type Request, type ServerFrame, ServerFrameJson } from "@iskios/contracts";
-import { startNodeRelay } from "@iskios/relay";
+import { decodePairingCode } from "@outlore/channel";
+import { type Request, type ServerFrame, ServerFrameJson } from "@outlore/contracts";
+import { startNodeRelay } from "@outlore/relay";
 import { Effect, Layer, Schema } from "effect";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, Service, serveLoopback, serviceLayer } from "../../src/index.ts";
@@ -75,7 +75,7 @@ const deployed = (origin: string): DeployResult => ({
   ok: true,
   origin,
   wasUpdated: false,
-  workerName: "iskios-relay",
+  workerName: "outlore-relay",
 });
 
 const makeWorld = Effect.gen(function* () {
@@ -90,8 +90,8 @@ const makeWorld = Effect.gen(function* () {
   const sharedOrigin = `http://127.0.0.1:${shared.port}`;
   const ownOrigin = `http://127.0.0.1:${own.port}`;
   const deployment: Deployment = { answer: deployed(ownOrigin), tokens: [] };
-  const hostDirectory = mkdtempSync(join(tmpdir(), "iskios-own-relay-host-"));
-  const controllerDirectory = mkdtempSync(join(tmpdir(), "iskios-own-relay-controller-"));
+  const hostDirectory = mkdtempSync(join(tmpdir(), "outlore-own-relay-host-"));
+  const controllerDirectory = mkdtempSync(join(tmpdir(), "outlore-own-relay-controller-"));
   directories.push(hostDirectory, controllerDirectory);
   const machine = (computerName: string, directory: string) =>
     serviceLayer({
@@ -100,7 +100,7 @@ const makeWorld = Effect.gen(function* () {
         deployment.tokens.push(token);
         return Promise.resolve(deployment.answer);
       },
-      filename: join(directory, "iskios.sqlite"),
+      filename: join(directory, "outlore.sqlite"),
       harness: fakeHarnessLayer("10 millis"),
       homeFolder: directory,
       relayOrigin: sharedOrigin,
@@ -144,7 +144,7 @@ const makeWorld = Effect.gen(function* () {
   /** Everything the host's data folder holds, as text, to look for what must not be kept. */
   const hostFilesAsText = () =>
     readdirSync(hostDirectory)
-      .filter((name) => name.startsWith("iskios.sqlite"))
+      .filter((name) => name.startsWith("outlore.sqlite"))
       .map((name) => readFileSync(join(hostDirectory, name)).toString("latin1"))
       .join("\n");
   return {

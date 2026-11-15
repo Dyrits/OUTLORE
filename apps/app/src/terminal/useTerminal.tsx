@@ -18,7 +18,7 @@ export function useTerminal(id: string, cwd: string | null) {
   // The shell runs on the computer the window runs on: while a paired host is shown, `!` stays ordinary text until the
   // terminal can run on the host (device-pairing, draft).
   const isRemote = useIsRemoteHost();
-  const isAvailable = typeof window !== "undefined" && window.iskios !== undefined && !isRemote;
+  const isAvailable = typeof window !== "undefined" && window.outlore !== undefined && !isRemote;
   const sessionId = `${id}:${cwd ?? "home"}`;
   const open = () => {
     setHasTerminal(true);
@@ -26,7 +26,7 @@ export function useTerminal(id: string, cwd: string | null) {
     requestAnimationFrame(() => panel.current?.focus());
   };
   const close = () => {
-    void window.iskios
+    void window.outlore
       ?.terminalClose(sessionId)
       .then(() => {
         setHasTerminal(false);

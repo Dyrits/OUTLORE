@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "iskios",
+      "name": "outlore",
       "devDependencies": {
         "@biomejs/biome": "2.6.7",
         "@effect/vitest": "4.1.4",
@@ -18,7 +18,7 @@
       "dependencies": {
         "@expo-google-fonts/caveat": "^0.4.2",
         "@expo/metro-runtime": "~58.0.17",
-        "@iskios/contracts": "workspace:*",
+        "@outlore/contracts": "workspace:*",
         "@xterm/addon-fit": "^0.11.0",
         "@xterm/xterm": "^6.0.0",
         "effect": "4.1.4",
@@ -52,7 +52,7 @@
       },
     },
     "packages/channel": {
-      "name": "@iskios/channel",
+      "name": "@outlore/channel",
       "dependencies": {
         "@noble/ciphers": "^2.4.0",
         "@noble/curves": "^2.4.0",
@@ -63,13 +63,13 @@
       },
     },
     "packages/contracts": {
-      "name": "@iskios/contracts",
+      "name": "@outlore/contracts",
       "dependencies": {
         "effect": "4.1.4",
       },
     },
     "packages/relay": {
-      "name": "@iskios/relay",
+      "name": "@outlore/relay",
       "dependencies": {
         "ws": "8.23.0",
       },
@@ -80,12 +80,12 @@
       },
     },
     "packages/service": {
-      "name": "@iskios/service",
+      "name": "@outlore/service",
       "dependencies": {
         "@effect/sql-sqlite-node": "4.1.4",
-        "@iskios/channel": "workspace:*",
-        "@iskios/contracts": "workspace:*",
-        "@iskios/relay": "workspace:*",
+        "@outlore/channel": "workspace:*",
+        "@outlore/contracts": "workspace:*",
+        "@outlore/relay": "workspace:*",
         "effect": "4.1.4",
         "ws": "8.23.0",
       },
@@ -356,14 +356,6 @@
 
     "@isaacs/ttlcache": ["@isaacs/ttlcache@1.4.1", "", {}, "sha512-RQgQ4uQ+pLbqXfOmieB91ejmLwvSgv9nLx6sT6sD83s7umBypgg+OIBOBbEUiJXrfpnp9j0mRhYYdzp9uqq3lA=="],
 
-    "@iskios/channel": ["@iskios/channel@workspace:packages/channel"],
-
-    "@iskios/contracts": ["@iskios/contracts@workspace:packages/contracts"],
-
-    "@iskios/relay": ["@iskios/relay@workspace:packages/relay"],
-
-    "@iskios/service": ["@iskios/service@workspace:packages/service"],
-
     "@jest/schemas": ["@jest/schemas@29.6.3", "", { "dependencies": { "@sinclair/typebox": "^0.27.8" } }, "sha512-mo5j5X+jIZmJQveBKeS/clAueipV7KgiX1vMgCxam1RNYiqE1w62n0/tJJnHtjW8ZHcQco5gY85jA3mi0L+nSA=="],
 
     "@jest/types": ["@jest/types@29.6.3", "", { "dependencies": { "@jest/schemas": "^29.6.3", "@types/istanbul-lib-coverage": "^2.0.0", "@types/istanbul-reports": "^3.0.0", "@types/node": "*", "@types/yargs": "^17.0.8", "chalk": "^4.0.0" } }, "sha512-u3UPsIilWKOM3F9CXtrG8LEJmNxwoCQC/XVj4IKYXvvpx7QIi/Kg1LI5uDmDpKlac62NUtX7eLjRh+jVZcLOzw=="],
@@ -405,6 +397,14 @@
     "@noxcturnal/noxcturnal-win32-arm64-msvc": ["@noxcturnal/noxcturnal-win32-arm64-msvc@0.1.11", "", { "os": "win32", "cpu": "arm64" }, "sha512-Q0Q0ll/qPzakp/GBmVDB/XthqyCkfM2CE5gZ78t9Ix/bkZDe5O0G7OyNkXRsGu49VcorxoGbBgSyF6CK+OaYlQ=="],
 
     "@noxcturnal/noxcturnal-win32-x64-msvc": ["@noxcturnal/noxcturnal-win32-x64-msvc@0.1.11", "", { "os": "win32", "cpu": "x64" }, "sha512-as4HUwZkQegCcGoFzaLzlZbBqdx8BGgFhAoQsTsdJCUbNTxVH0f3R/AcRLOUJ6odfko0E2SSuJc70FI0zQ/IDg=="],
+
+    "@outlore/channel": ["@outlore/channel@workspace:packages/channel"],
+
+    "@outlore/contracts": ["@outlore/contracts@workspace:packages/contracts"],
+
+    "@outlore/relay": ["@outlore/relay@workspace:packages/relay"],
+
+    "@outlore/service": ["@outlore/service@workspace:packages/service"],
 
     "@oxc-project/types": ["@oxc-project/types@0.156.0", "", {}, "sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw=="],
 

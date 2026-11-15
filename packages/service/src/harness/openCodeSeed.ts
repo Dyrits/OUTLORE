@@ -87,7 +87,7 @@ const exportedOf = (stdout: string, where: string): Array<ExportedSignIn> => {
   try {
     entries = JSON.parse(stdout);
   } catch {
-    throw new Error(`OpenCode listed the sign-ins of ${where} in a form Iskios does not read.`);
+    throw new Error(`OpenCode listed the sign-ins of ${where} in a form Outlore does not read.`);
   }
   if (!Array.isArray(entries)) throw new Error(`OpenCode listed no sign-ins of ${where}.`);
   return entries.flatMap((entry: unknown) => {

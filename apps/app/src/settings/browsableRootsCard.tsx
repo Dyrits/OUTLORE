@@ -9,7 +9,7 @@ import { Button } from "../ui/button";
 import { SettingsCard, SettingsRule } from "./settingsParts";
 
 /**
- * The folders open to Iskios (device-pairing, CHG-0253): the host's browsable roots, where the folder picker searches
+ * The folders open to Outlore (device-pairing, CHG-0253): the host's browsable roots, where the folder picker searches
  * by name. A paired device searches, browses, and makes folders only under them; the host's own window may also type
  * any full path. They start with the home folder, and only the host itself adds or removes one, so a paired device
  * cannot widen its own reach.
@@ -30,9 +30,9 @@ export function BrowsableRootsCard({ client }: { client: ServiceClient }) {
       (reason) => setError(messageOf(reason)),
     );
   return (
-    <SettingsCard icon="monitor" summary="Where Iskios looks for folders" title="Folders open to Iskios">
+    <SettingsCard icon="monitor" summary="Where Outlore looks for folders" title="Folders open to Outlore">
       <Text style={styles.muted}>
-        Iskios searches these when you choose a folder. A paired device can search, browse, and make folders only under
+        Outlore searches these when you choose a folder. A paired device can search, browse, and make folders only under
         them. In this computer's own window, a full path typed in the folder picker works anywhere.
       </Text>
       {readError !== null && <Text style={styles.error}>{readError}</Text>}
@@ -58,7 +58,7 @@ export function BrowsableRootsCard({ client }: { client: ServiceClient }) {
           <SettingsRule />
           <View style={local.root}>
             <TextInput
-              accessibilityLabel="Folder to open to Iskios"
+              accessibilityLabel="Folder to open to Outlore"
               autoCapitalize="none"
               autoCorrect={false}
               onChangeText={setPath}

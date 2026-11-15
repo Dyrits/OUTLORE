@@ -1,4 +1,4 @@
-import type { AttachmentCard, AttachmentId } from "@iskios/contracts";
+import type { AttachmentCard, AttachmentId } from "@outlore/contracts";
 import { useEffect, useRef, useState } from "react";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { limitRefusalOf, roomLeftOf } from "./attachmentRules";

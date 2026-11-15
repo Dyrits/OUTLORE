@@ -45,4 +45,11 @@ export const recentStoreMigrations = {
     // message, whatever becomes of the suggestion or the thread that wrote it.
     yield* sql`CREATE TABLE suggested_messages (message_id TEXT PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE)`;
   }),
+  // The assistant was renamed Chronicler when the app became Outlore: its stored quest and thread titles follow, once.
+  "0050_assistant_renamed_chronicler": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`UPDATE missions SET title = 'Chronicler' WHERE is_guildmaster = 1 AND title = 'Iskios'`;
+    yield* sql`UPDATE threads SET title = 'Chronicler'
+      WHERE title = 'Iskios' AND mission_id IN (SELECT id FROM missions WHERE is_guildmaster = 1)`;
+  }),
 };

@@ -3,7 +3,7 @@ import {
   ApprovalLevel as ApprovalLevels,
   type MissionId,
   type StandingPermission,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";

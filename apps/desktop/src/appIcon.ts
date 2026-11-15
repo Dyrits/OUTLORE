@@ -9,5 +9,5 @@ export const iconFiles = {
 
 const isTheme = (name: unknown): name is Theme => typeof name === "string" && Object.hasOwn(iconFiles, name);
 
-/** The icon file of a theme, as named by the window; anything that is not a theme's name is Iskios's. */
-export const iconFileOf = (theme: unknown): string => iconFiles[isTheme(theme) ? theme : "iskios"];
+/** The icon file of a theme, as named by the window; anything that is not a theme's name is the default theme's. */
+export const iconFileOf = (theme: unknown): string => iconFiles[isTheme(theme) ? theme : "one"];

@@ -1,4 +1,4 @@
-import type { MissionId, ThreadId, WorkspaceId } from "@iskios/contracts";
+import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { CrestStudio } from "../crest/crestStudio";

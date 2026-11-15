@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionId, Request, RequestTag, ResultOf } from "@iskios/contracts";
+import type { MissionId, Request, RequestTag, ResultOf } from "@outlore/contracts";
 import { Effect, Layer } from "effect";
 import { TestClock } from "effect/testing";
 import { afterEach } from "vitest";
@@ -12,9 +12,9 @@ const REPLY_DELAY = "2 seconds";
 
 const directories: string[] = [];
 const databaseFile = () => {
-  const directory = mkdtempSync(join(tmpdir(), "iskios-test-"));
+  const directory = mkdtempSync(join(tmpdir(), "outlore-test-"));
   directories.push(directory);
-  return join(directory, "iskios.sqlite");
+  return join(directory, "outlore.sqlite");
 };
 afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { force: true, recursive: true });
@@ -161,7 +161,7 @@ describe("starting a mission", () => {
 describe("starting an empty quest in a realm", () => {
   it.effect("is called New quest and sits idle in the realm until its first message names it", () =>
     Effect.gen(function* () {
-      const folder = mkdtempSync(join(tmpdir(), "iskios-realm-"));
+      const folder = mkdtempSync(join(tmpdir(), "outlore-realm-"));
       directories.push(folder);
       yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: folder });
       const [realm] = (yield* realmList()).workspaces;

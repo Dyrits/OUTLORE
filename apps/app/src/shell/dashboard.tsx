@@ -1,4 +1,4 @@
-import type { MissionId, WorkspaceId } from "@iskios/contracts";
+import type { MissionId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { GuildmasterHandoff } from "../conversation/guildmaster";
@@ -74,7 +74,7 @@ export function Dashboard({
   const asking = isArchived ? [] : (all?.missions.filter((mission) => mission.prompt !== null) ?? []);
   // The realm whose board shows, and whether its crest studio is open.
   const realm = (data?.workspaces ?? []).find((w) => w.id === workspaceId) ?? null;
-  // Iskios places a quest by its realm's folder, so a realm tied to no folder offers no message to it yet (CHG-0161).
+  // Chronicler places a quest by its realm's folder, so a realm tied to no folder offers no message to it yet (CHG-0161).
   const handoffRealm = realm?.path == null ? null : { name: realm.name, path: realm.path };
   // The realm whose crest studio or lore is open; showing another realm closes them.
   // The realm's figures count all its quests, whatever the search shows.
@@ -269,7 +269,7 @@ export function Dashboard({
       </ScrollView>
       {!isArchived && handoffRealm !== null && (
         // On a realm's board the message at the foot goes to the Guildmaster with the realm attached, and no quest starts
-        // from here. The board of every quest has none: Iskios is where quests are proposed.
+        // from here. The board of every quest has none: Chronicler is where quests are proposed.
         <View style={local.footer}>
           <GuildmasterHandoff
             client={client}

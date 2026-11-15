@@ -1,5 +1,5 @@
-import type { BackupCompanion, Settings, Tier } from "@iskios/contracts";
-import { TierName } from "@iskios/contracts";
+import type { BackupCompanion, Settings, Tier } from "@outlore/contracts";
+import { TierName } from "@outlore/contracts";
 import type { Runner } from "./runners";
 
 /**

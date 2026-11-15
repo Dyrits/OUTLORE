@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { RitualCompanion } from "@iskios/contracts";
+import type { RitualCompanion } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { call, fixture, read, settle } from "../fixtures/service.ts";

@@ -1,4 +1,4 @@
-// Exercises a packaged desktop app on isolated data: bun apps/desktop/scripts/check-package.ts /path/to/Iskios.app.
+// Exercises a packaged desktop app on isolated data: bun apps/desktop/scripts/check-package.ts /path/to/Outlore.app.
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -47,10 +47,10 @@ const evaluate = (url: string, expression: string) =>
 // The endpoint itself contains an owner token, so only the success verdict leaves the renderer.
 const expression = `(async () => {
   const text = document.body?.innerText ?? "";
-  if (!(text.includes("Guild Hall") && text.includes("Realms")) || typeof window.iskios?.endpoint !== "function") return "waiting";
-  await window.iskios.endpoint();
-  const session = await window.iskios.terminalOpen("package-check", null);
-  await window.iskios.terminalClose("package-check");
+  if (!(text.includes("Guild Hall") && text.includes("Realms")) || typeof window.outlore?.endpoint !== "function") return "waiting";
+  await window.outlore.endpoint();
+  const session = await window.outlore.terminalOpen("package-check", null);
+  await window.outlore.terminalClose("package-check");
   return session.isRunning ? "ready" : "terminal-failed";
 })()`;
 
@@ -58,10 +58,10 @@ const check = async () => {
   const argument = process.argv[2];
   if (argument === undefined) throw new Error("Pass the packaged app bundle or executable path.");
   const target = resolve(argument);
-  const executable = target.endsWith(".app") ? join(target, "Contents", "MacOS", "Iskios") : target;
-  const folder = await mkdtemp(join(tmpdir(), "iskios-package-check-"));
+  const executable = target.endsWith(".app") ? join(target, "Contents", "MacOS", "Outlore") : target;
+  const folder = await mkdtemp(join(tmpdir(), "outlore-package-check-"));
   const child = spawn(executable, ["--remote-debugging-port=0"], {
-    env: { ...process.env, ISKIOS_DATA_DIR: folder, ISKIOS_HARNESS: "fake" },
+    env: { ...process.env, OUTLORE_DATA_DIR: folder, OUTLORE_HARNESS: "fake" },
     stdio: "ignore",
   });
   let failure: Error | null = null;
@@ -82,7 +82,7 @@ const check = async () => {
         const pages: unknown = response?.ok ? await response.json() : null;
         if (Array.isArray(pages)) {
           for (const page of pages) {
-            if (!isRecord(page) || page.url !== "iskios-app://app/" || typeof page.webSocketDebuggerUrl !== "string")
+            if (!isRecord(page) || page.url !== "outlore-app://app/" || typeof page.webSocketDebuggerUrl !== "string")
               continue;
             const result = await evaluate(page.webSocketDebuggerUrl, expression);
             if (result === "ready") {

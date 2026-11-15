@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 
-// Device pairing: a host is the computer whose Iskios a paired device controls (device-pairing).
+// Device pairing: a host is the computer whose Outlore a paired device controls (device-pairing).
 
 /** Identifies a paired device on its host. */
 export const DeviceId = Schema.String.pipe(Schema.brand("DeviceId"));
@@ -22,7 +22,7 @@ export const hostLinkCodes = { couldNotOpen: 4000, ended: 4001, refused: 4002 } 
 /** The path of the loopback server that joins the app to a paired host. */
 export const hostBridgePath = (hostId: string) => `/host/${hostId}`;
 
-/** What a paired device is: another computer's Iskios, or a phone. */
+/** What a paired device is: another computer's Outlore, or a phone. */
 export const DeviceKind = Schema.Literals(["desktop", "phone"]);
 export type DeviceKind = typeof DeviceKind.Type;
 
@@ -55,7 +55,7 @@ export const RemoteAccessView = Schema.Struct({
 });
 export type RemoteAccessView = typeof RemoteAccessView.Type;
 
-/** A pairing code to give to another Iskios; it works once and expires at `expiresAt` (epoch milliseconds). */
+/** A pairing code to give to another Outlore; it works once and expires at `expiresAt` (epoch milliseconds). */
 export const PairingCode = Schema.Struct({ code: Schema.String, expiresAt: Schema.Number });
 export type PairingCode = typeof PairingCode.Type;
 

@@ -1,4 +1,4 @@
-import type { AccountId, AccountStatus, HarnessInfo, HarnessList, HarnessName } from "@iskios/contracts";
+import type { AccountId, AccountStatus, HarnessInfo, HarnessList, HarnessName } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
@@ -198,7 +198,7 @@ function HarnessState({ harness, isUpdating }: { harness: HarnessInfo; isUpdatin
 /**
  * One harness and its accounts in one card: its logo, name, version, whether it can run, and Update (or Install when it
  * is missing); then the computer's own sign-in and the accounts added here, each signed in through the harness's own
- * sign-in in a Terminal window, so Iskios never sees the credentials (provider-accounts).
+ * sign-in in a Terminal window, so Outlore never sees the credentials (provider-accounts).
  */
 function HarnessCard({
   client,

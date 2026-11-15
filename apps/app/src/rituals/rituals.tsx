@@ -7,7 +7,7 @@ import {
   type RitualScopeEntry,
   RitualScopeOperation,
   startingModel,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { type ReactNode, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { type Runner, RunnerPickers, useHarnesses } from "../editors/runners";

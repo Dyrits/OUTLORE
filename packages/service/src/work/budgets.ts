@@ -1,4 +1,4 @@
-import type { BudgetLimits } from "@iskios/contracts";
+import type { BudgetLimits } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import {

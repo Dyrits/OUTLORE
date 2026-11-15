@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionDetail, MissionId, Request, RequestTag, ResultOf } from "@iskios/contracts";
+import type { MissionDetail, MissionId, Request, RequestTag, ResultOf } from "@outlore/contracts";
 import { type Duration, Effect, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
@@ -21,7 +21,7 @@ const withoutNote = (text: string | undefined) => text?.replace(/ to: [\s\S]*?\n
 
 const directories: string[] = [];
 const temporary = () => {
-  const directory = mkdtempSync(join(tmpdir(), "iskios-claude-"));
+  const directory = mkdtempSync(join(tmpdir(), "outlore-claude-"));
   directories.push(directory);
   return directory;
 };
@@ -40,7 +40,7 @@ const withClaude = (options: { idleTimeout?: Duration.Input; sandboxProblem?: st
   const log = join(directory, "starts.jsonl");
   process.env.STAND_IN_LOG = log;
   const layer = serviceLayer({
-    filename: join(directory, "iskios.sqlite"),
+    filename: join(directory, "outlore.sqlite"),
     harness: claudeHarnessLayer({
       command: process.execPath,
       idleTimeout: options.idleTimeout ?? "10 minutes",
@@ -86,7 +86,7 @@ const idleWith = (count: number) => (detail: MissionDetail) =>
   detail.thread.state === "Idle" && detail.messages.filter((m) => m.sender === "agent").length === count;
 
 describe("running Claude Code threads", () => {
-  it.live("runs the thread's model and effort sandboxed, prompts sent to Iskios, and no Iskios secrets", () => {
+  it.live("runs the thread's model and effort sandboxed, prompts sent to Outlore, and no Outlore secrets", () => {
     const { layer, starts } = withClaude();
     return Effect.gen(function* () {
       const started = yield* call({
@@ -109,9 +109,11 @@ describe("running Claude Code threads", () => {
       expect(args).toContain("--input-format stream-json --output-format stream-json");
       expect(args).toContain("--model opus");
       expect(args).toContain("--effort high");
-      expect(args).toContain("--permission-prompts host --permission-prompt-tool mcp__iskios__answer_prompt");
-      expect(args).toContain("--allowedTools mcp__iskios__request_approval");
-      expect(args).toContain(`--allowedTools mcp__iskios__request_approval ${unaskedToolNamesOf("iskios").join(" ")}`);
+      expect(args).toContain("--permission-prompts host --permission-prompt-tool mcp__outlore__answer_prompt");
+      expect(args).toContain("--allowedTools mcp__outlore__request_approval");
+      expect(args).toContain(
+        `--allowedTools mcp__outlore__request_approval ${unaskedToolNamesOf("outlore").join(" ")}`,
+      );
       expect(args).toContain("--strict-mcp-config");
       expect(args).toContain("--permission-mode acceptEdits");
       expect(start?.args[start.args.indexOf("--tools") + 1]).toBe("default");
@@ -123,9 +125,9 @@ describe("running Claude Code threads", () => {
         failIfUnavailable: true,
       });
       const mcp = JSON.parse(start?.args[start.args.indexOf("--mcp-config") + 1] ?? "{}");
-      expect(mcp.mcpServers.iskios.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp\/[0-9a-f]{48}$/);
+      expect(mcp.mcpServers.outlore.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp\/[0-9a-f]{48}$/);
       // Claude Code aborts a silent call after 300 seconds unless the server sets its own timeout.
-      expect(mcp.mcpServers.iskios.timeout).toBe(2147483647);
+      expect(mcp.mcpServers.outlore.timeout).toBe(2147483647);
       expect(args).toMatch(/--session-id [0-9a-f-]{36}/);
       expect(start?.env).toEqual([]);
     }).pipe(Effect.provide(layer));
@@ -147,14 +149,14 @@ describe("running Claude Code threads", () => {
       expect(detail.activities.map(({ detail: target, summary }) => [summary, target])).toEqual([
         ["Read a file", "/work/entries.ts"],
         ["List the folder", "ls -la…"],
-        ["Use an Iskios tool", "update journal"],
+        ["Use an Outlore tool", "update journal"],
       ]);
       // A call that was also asked about shows once, as its action; a prompt that came first leaves a hidden mark.
       const threadId = detail.thread.id;
       yield* markPrompted(threadId, "toolu_read_1", 1);
       yield* markPrompted(threadId, "toolu_not_reported_yet", 2);
       const after = yield* read(started.missionId);
-      expect(after.activities.map((activity) => activity.summary)).toEqual(["List the folder", "Use an Iskios tool"]);
+      expect(after.activities.map((activity) => activity.summary)).toEqual(["List the folder", "Use an Outlore tool"]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -178,7 +180,7 @@ describe("running Claude Code threads", () => {
       const prompt = start?.args[start.args.indexOf("--append-system-prompt") + 1] ?? "";
       expect(prompt).toContain(`You work in the workspace "app" at ${app}.`);
       expect(prompt).toContain("## AGENTS.md\nUse Bun, never pnpm.");
-      expect(prompt).toContain("# Approvals in Iskios");
+      expect(prompt).toContain("# Approvals in Outlore");
     }).pipe(Effect.provide(layer));
   });
 
@@ -898,7 +900,7 @@ describe("reading and saving settings", () => {
   it.live("starts from defaults and persists updates", () => {
     const directory = temporary();
     const options = {
-      filename: join(directory, "iskios.sqlite"),
+      filename: join(directory, "outlore.sqlite"),
       harness: claudeHarnessLayer({
         command: process.execPath,
         idleTimeout: "1 minute",
@@ -997,7 +999,7 @@ describe("reading and saving settings", () => {
   });
 });
 
-describe.runIf(process.env.ISKIOS_LIVE_CLAUDE === "1")("live Claude Code (uses a few tokens)", () => {
+describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses a few tokens)", () => {
   it.live(
     "answers through the installed claude",
     () => {
@@ -1018,9 +1020,9 @@ describe.runIf(process.env.ISKIOS_LIVE_CLAUDE === "1")("live Claude Code (uses a
       }).pipe(
         Effect.provide(
           serviceLayer({
-            filename: join(directory, "iskios.sqlite"),
+            filename: join(directory, "outlore.sqlite"),
             harness: claudeHarnessLayer({
-              command: process.env.ISKIOS_CLAUDE_PATH ?? "claude",
+              command: process.env.OUTLORE_CLAUDE_PATH ?? "claude",
               idleTimeout: "1 minute",
               sandboxProblem: null,
             }),
@@ -1079,9 +1081,9 @@ describe.runIf(process.env.ISKIOS_LIVE_CLAUDE === "1")("live Claude Code (uses a
       }).pipe(
         Effect.provide(
           serviceLayer({
-            filename: join(directory, "iskios.sqlite"),
+            filename: join(directory, "outlore.sqlite"),
             harness: claudeHarnessLayer({
-              command: process.env.ISKIOS_CLAUDE_PATH ?? "claude",
+              command: process.env.OUTLORE_CLAUDE_PATH ?? "claude",
               idleTimeout: "1 minute",
               sandboxProblem: null,
             }),
@@ -1123,9 +1125,9 @@ describe.runIf(process.env.ISKIOS_LIVE_CLAUDE === "1")("live Claude Code (uses a
       }).pipe(
         Effect.provide(
           serviceLayer({
-            filename: join(directory, "iskios.sqlite"),
+            filename: join(directory, "outlore.sqlite"),
             harness: claudeHarnessLayer({
-              command: process.env.ISKIOS_CLAUDE_PATH ?? "claude",
+              command: process.env.OUTLORE_CLAUDE_PATH ?? "claude",
               idleTimeout: "1 minute",
               sandboxProblem: null,
             }),
@@ -1140,9 +1142,9 @@ describe.runIf(process.env.ISKIOS_LIVE_CLAUDE === "1")("live Claude Code (uses a
 
   const liveLayer = (directory: string) =>
     serviceLayer({
-      filename: join(directory, "iskios.sqlite"),
+      filename: join(directory, "outlore.sqlite"),
       harness: claudeHarnessLayer({
-        command: process.env.ISKIOS_CLAUDE_PATH ?? "claude",
+        command: process.env.OUTLORE_CLAUDE_PATH ?? "claude",
         idleTimeout: "1 minute",
         sandboxProblem: null,
       }),

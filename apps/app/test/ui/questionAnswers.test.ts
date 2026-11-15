@@ -1,4 +1,4 @@
-import type { Question } from "@iskios/contracts";
+import type { Question } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import { answersOf } from "../../src/ui/questionAnswers";
 

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { decodeBase64Url, encodeBase64Url } from "@iskios/channel";
-import type { HostId, KnownHost } from "@iskios/contracts";
+import { decodeBase64Url, encodeBase64Url } from "@outlore/channel";
+import type { HostId, KnownHost } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid } from "../core/index.ts";

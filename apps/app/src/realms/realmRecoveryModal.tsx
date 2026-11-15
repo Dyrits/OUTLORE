@@ -1,4 +1,4 @@
-import type { RealmAppearance, RealmArchivePreview } from "@iskios/contracts";
+import type { RealmAppearance, RealmArchivePreview } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { CrestBadge } from "../crest/crest";

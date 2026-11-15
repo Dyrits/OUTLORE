@@ -77,4 +77,4 @@ const refusedActionOf = (prompt: HarnessPrompt) => {
 
 /** What the next prompt tells OpenCode about one refused action: what was refused and the owner's answer. */
 export const refusalOf = (prompt: HarnessPrompt, answer: PromptAnswer) =>
-  `Iskios refused ${refusedActionOf(prompt)}. ${answer.text}`;
+  `Outlore refused ${refusedActionOf(prompt)}. ${answer.text}`;

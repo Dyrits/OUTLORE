@@ -1,4 +1,4 @@
-import type { ThreadId, ThreadSummary } from "@iskios/contracts";
+import type { ThreadId, ThreadSummary } from "@outlore/contracts";
 
 /** One visible tree row, with the hidden descendants folded into it. */
 export interface FoldedThread {

@@ -1,5 +1,5 @@
 import { tmpdir } from "node:os";
-import type { BillingKind, EffortChoice, HarnessName, TokenUsage } from "@iskios/contracts";
+import type { BillingKind, EffortChoice, HarnessName, TokenUsage } from "@outlore/contracts";
 import { type Duration, Effect, Queue } from "effect";
 import {
   type Containment,
@@ -26,7 +26,7 @@ import { resolvedFolderOf, startFolderOf } from "./threadFolder.ts";
 import { toolServerName } from "./toolNames.ts";
 
 // Codex through its app server (ADR 0008; protocol of codex-cli 0.160.1, probed 2026-11-07): one
-// `codex app-server` process per thread, one Codex thread per Iskios thread.
+// `codex app-server` process per thread, one Codex thread per Outlore thread.
 
 /** How the Codex adapter starts its harness. */
 export interface CodexOptions {
@@ -49,7 +49,7 @@ interface CodexConnection extends HarnessConnection {
 /** The longest wait Codex accepts for a thread tool, in seconds: a question waits with no time limit. */
 const noTimeLimitSeconds = 2_147_483;
 
-/** Codex's own effort names; Iskios's match them, and default leaves the model's own. */
+/** Codex's own effort names; Outlore's match them, and default leaves the model's own. */
 const effortOf = (effort: EffortChoice) => (effort === "default" ? null : effort);
 
 /**
@@ -62,7 +62,7 @@ const policyOf = (access: ThreadAccess) => ({
   sandbox: "workspace-write",
 });
 
-/** The thread's settings: its tools at its own endpoint, no native subagents, and Iskios's context. */
+/** The thread's settings: its tools at its own endpoint, no native subagents, and Outlore's context. */
 /** A turn's input: the text, then one `localImage` item per image, by the stored path (message-attachments). */
 const inputOf = (text: string, images: ReadonlyArray<ImageAttachment>) => [
   { text, text_elements: [], type: "text" },
@@ -149,7 +149,7 @@ const readCodexPlanLimits = (options: CodexOptions, configDirectory: string | nu
     return yield* Effect.gen(function* () {
       yield* rpc.request("initialize", {
         capabilities: { experimentalApi: true, requestAttestation: false },
-        clientInfo: { name: "iskios", title: "Iskios", version: "0.0.0" },
+        clientInfo: { name: "outlore", title: "Outlore", version: "0.0.0" },
       });
       rpc.notify("initialized", {});
       const billing = yield* billingOf(rpc);
@@ -211,13 +211,13 @@ const answerRequest = (
       });
       return rpc.respond(id, { permissions: isAllowed ? (fieldOf(params, "permissions") ?? {}) : {}, scope: "turn" });
     }
-    // Iskios's own tools need no confirmation; another server's question is declined.
+    // Outlore's own tools need no confirmation; another server's question is declined.
     if (method === "mcpServer/elicitation/request") {
       const isOwn = textFieldOf(params, "serverName") === toolServerName;
       return rpc.respond(id, { _meta: null, action: isOwn ? "accept" : "decline", content: null });
     }
     if (method === "item/tool/requestUserInput") return rpc.respond(id, { answers: {} });
-    return rpc.respondError(id, `Iskios does not answer ${method}.`);
+    return rpc.respondError(id, `Outlore does not answer ${method}.`);
   });
 
 /** Reads Codex's notifications for one turn until its completion. */
@@ -277,7 +277,7 @@ const askToInterrupt = (connection: CodexConnection, turnId: string) =>
     connection.rpc.request("turn/interrupt", { threadId: connection.sessionId, turnId }).pipe(Effect.ignore),
   );
 
-/** Codex's app-server protocol: one Codex thread per Iskios thread, one Codex turn per turn. */
+/** Codex's app-server protocol: one Codex thread per Outlore thread, one Codex turn per turn. */
 const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection> => ({
   interrupt: (connection) =>
     Effect.gen(function* () {
@@ -329,7 +329,7 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
       const started = yield* Effect.gen(function* () {
         yield* rpc.request("initialize", {
           capabilities: { experimentalApi: true, requestAttestation: false },
-          clientInfo: { name: "iskios", title: "Iskios", version: "0.0.0" },
+          clientInfo: { name: "outlore", title: "Outlore", version: "0.0.0" },
         });
         rpc.notify("initialized", {});
         const settings = threadSettingsOf(request, cwd);

@@ -1,4 +1,4 @@
-import type { AccountId, EffortChoice, HarnessList, HarnessName, ModelChoice } from "@iskios/contracts";
+import type { AccountId, EffortChoice, HarnessList, HarnessName, ModelChoice } from "@outlore/contracts";
 import { type ReactElement, useContext, useEffect, useId, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { modelLabelOf, runnerSummaryOf } from "../foundation/formatting";
@@ -25,8 +25,8 @@ export type CompanionPickerProps = {
   harnesses: HarnessList | null;
   /** Whether each harness has a tab for every account; the Workshop's default Companion has its own sign-in only. */
   isAccountShown: boolean;
-  /** Whether this is Iskios's own Companion, which the Companions tab marks with Iskios's ✦. */
-  isIskios?: boolean;
+  /** Whether this is Chronicler's own Companion, which the Companions tab marks with Chronicler's ✦. */
+  isChronicler?: boolean;
   model: ModelChoice;
   onEffort: (effort: EffortChoice) => void;
   onModel: (harness: HarnessName, accountId: AccountId | null, model: ModelChoice) => void;

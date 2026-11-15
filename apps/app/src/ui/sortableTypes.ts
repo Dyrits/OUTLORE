@@ -11,7 +11,7 @@ export type SortableItemProps = {
 };
 
 /** The data type a row being dragged carries, so only these rows are dropped on these rows. */
-export const sortableDragType = "application/x-iskios-sortable";
+export const sortableDragType = "application/x-outlore-sortable";
 
 /** Where a row moved from `from` lands when dropped before (`isBefore`) or after the row at `over`, or null when it stays. */
 export const moveTargetOf = (from: number, over: number, isBefore: boolean): number | null => {

@@ -1,4 +1,4 @@
-import type { MissionSummary, WorkspaceId } from "@iskios/contracts";
+import type { MissionSummary, WorkspaceId } from "@outlore/contracts";
 
 // Moving a quest by dragging it in the sidebar (mission-tracking, Quest placement and moves): what a drop means and what
 // the owner is asked to confirm. Nothing here moves a quest; the service does, once the owner confirms.

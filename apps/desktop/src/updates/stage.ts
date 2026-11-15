@@ -11,7 +11,7 @@ const run = promisify(execFile);
  * download leaves, so the swap that follows only renames. A copy made here has no quarantine mark of its own.
  */
 export const stageApp = async (image: string, destination: string): Promise<void> => {
-  const mount = await mkdtemp(join(tmpdir(), "iskios-update-image-"));
+  const mount = await mkdtemp(join(tmpdir(), "outlore-update-image-"));
   try {
     await run("hdiutil", ["attach", "-nobrowse", "-readonly", "-noverify", "-mountpoint", mount, image]);
     try {

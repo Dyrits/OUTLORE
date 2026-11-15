@@ -1,4 +1,4 @@
-import type { UsageFilter } from "@iskios/contracts";
+import type { UsageFilter } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { arePlaceFilters, messageColumns, questJoinsOf, turnColumns, type UsageBounds, whereOf } from "./usageScope.ts";

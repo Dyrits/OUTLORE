@@ -1,7 +1,13 @@
 import { mkdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import { type MissionId, mentionReferencesOf, mentionTokenOf, mentionTokensOf, type ThreadId } from "@iskios/contracts";
+import {
+  type MissionId,
+  mentionReferencesOf,
+  mentionTokenOf,
+  mentionTokensOf,
+  type ThreadId,
+} from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { call, fixture, open, read, send, settle, start, tool } from "../fixtures/service.ts";
@@ -89,7 +95,7 @@ describe("offering quests, side-quests, and realms to the @ menu", () => {
         expect(sideQuest?.trail).toHaveLength(2);
         expect(listed.find((each) => each.kind === "realm")).toMatchObject({ detail: folder, trail: ["Garden"] });
         expect(listed.some((each) => each.id === old.missionId)).toBe(false);
-        expect(listed.some((each) => each.trail[0] === "Iskios")).toBe(false);
+        expect(listed.some((each) => each.trail[0] === "Chronicler")).toBe(false);
       }),
     ),
   );
@@ -147,7 +153,7 @@ describe("reaching a quest the owner mentioned", () => {
         yield* say(here.missionId, here.threadId, "Ask the other quest");
 
         const journal = yield* tool(here.threadId, "read_journal", { mission: login.missionId });
-        expect(journal).toContain("Only Iskios reads another quest's journal");
+        expect(journal).toContain("Only Chronicler reads another quest's journal");
         const sent = yield* tool(here.threadId, "send_thread_message", { text: "Hi", to: login.threadId });
         expect(sent).toContain("Not sent");
       }),
@@ -167,8 +173,8 @@ describe("reaching a quest the owner mentioned", () => {
         );
 
         const journal = yield* tool(here.threadId, "read_journal", { mission: login.missionId });
-        expect(journal).not.toContain("Only Iskios");
-        expect(yield* tool(here.threadId, "read_journal", { mission: other.missionId })).toContain("Only Iskios");
+        expect(journal).not.toContain("Only Chronicler");
+        expect(yield* tool(here.threadId, "read_journal", { mission: other.missionId })).toContain("Only Chronicler");
         expect(yield* tool(here.threadId, "send_thread_message", { text: "How did it go?", to: login.threadId })).toBe(
           "Sent.",
         );
@@ -186,7 +192,7 @@ describe("reaching a quest the owner mentioned", () => {
 
         // The next turn, with no mention, is back to the tree's rules.
         yield* say(here.missionId, here.threadId, "Thanks");
-        expect(yield* tool(here.threadId, "read_journal", { mission: login.missionId })).toContain("Only Iskios");
+        expect(yield* tool(here.threadId, "read_journal", { mission: login.missionId })).toContain("Only Chronicler");
         expect(yield* tool(here.threadId, "send_thread_message", { text: "Again", to: login.threadId })).toContain(
           "Not sent",
         );
@@ -228,7 +234,9 @@ describe("reaching a quest the owner mentioned", () => {
         );
         expect(reply).toContain(`(thread id ${side.threadId}`);
 
-        expect(yield* tool(here.threadId, "read_journal", { mission: login.missionId })).not.toContain("Only Iskios");
+        expect(yield* tool(here.threadId, "read_journal", { mission: login.missionId })).not.toContain(
+          "Only Chronicler",
+        );
         expect(yield* tool(here.threadId, "send_thread_message", { text: "Done yet?", to: side.threadId })).toBe(
           "Sent.",
         );
@@ -246,7 +254,7 @@ describe("reaching a quest the owner mentioned", () => {
         yield* archive(old.missionId);
         const here = yield* startQuest("Release notes");
         yield* say(here.missionId, here.threadId, `See ${mentionTokenOf({ id: old.missionId, kind: "quest" })}`);
-        expect(yield* tool(here.threadId, "read_journal", { mission: old.missionId })).toContain("Only Iskios");
+        expect(yield* tool(here.threadId, "read_journal", { mission: old.missionId })).toContain("Only Chronicler");
         expect(yield* tool(here.threadId, "send_thread_message", { text: "Hi", to: old.threadId })).toContain(
           "Not sent",
         );
@@ -268,7 +276,7 @@ describe("reaching a quest the owner mentioned", () => {
         );
         expect(reply).toContain(`Realm "Garden"`);
 
-        expect(yield* tool(here.threadId, "read_journal", { mission: login.missionId })).toContain("Only Iskios");
+        expect(yield* tool(here.threadId, "read_journal", { mission: login.missionId })).toContain("Only Chronicler");
         expect(yield* tool(here.threadId, "send_thread_message", { text: "Hi", to: login.threadId })).toContain(
           "Not sent",
         );
@@ -290,7 +298,7 @@ describe("reaching a quest the owner mentioned", () => {
           (detail) => detail.messages.some((message) => message.text === text) && isIdle(detail),
         );
 
-        expect(yield* tool(login.threadId, "read_journal", { mission: other.missionId })).toContain("Only Iskios");
+        expect(yield* tool(login.threadId, "read_journal", { mission: other.missionId })).toContain("Only Chronicler");
         expect(yield* tool(login.threadId, "send_thread_message", { text: "Hi", to: other.threadId })).toContain(
           "Not sent",
         );

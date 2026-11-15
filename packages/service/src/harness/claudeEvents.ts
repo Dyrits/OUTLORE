@@ -1,4 +1,4 @@
-import type { BillingKind, TokenUsage } from "@iskios/contracts";
+import type { BillingKind, TokenUsage } from "@outlore/contracts";
 import { Option, Schema } from "effect";
 import { fieldOf, numberFieldOf, textFieldOf } from "../core/index.ts";
 

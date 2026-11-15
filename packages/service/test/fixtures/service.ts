@@ -9,7 +9,7 @@ import type {
   RequestTag,
   ResultOf,
   ThreadId,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Effect, type Layer } from "effect";
 import { afterEach } from "vitest";
 import { Endpoints, type Harness, type PriceSource } from "../../src/core/index.ts";
@@ -22,7 +22,7 @@ export const fixture = (
   priceSource?: Layer.Layer<PriceSource>,
   harness: Layer.Layer<Harness> = fakeHarnessLayer("10 millis"),
 ) => {
-  const directory = mkdtempSync(join(tmpdir(), "iskios-service-"));
+  const directory = mkdtempSync(join(tmpdir(), "outlore-service-"));
   return {
     directory,
     layer: serviceLayer({

@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { Crest, type Workspace, type WorkspaceId } from "@iskios/contracts";
+import { Crest, type Workspace, type WorkspaceId } from "@outlore/contracts";
 import { Clock, Context, Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, realFolderOf } from "../core/index.ts";
@@ -69,7 +69,7 @@ export const setRealmCrest = (workspaceId: WorkspaceId, crest: Crest | null) =>
   });
 
 /** Where each mission's threads with no workspace run, one scratch folder per mission. */
-export class ScratchRoot extends Context.Service<ScratchRoot, string>()("iskios/ScratchRoot") {}
+export class ScratchRoot extends Context.Service<ScratchRoot, string>()("outlore/ScratchRoot") {}
 
 /** The existing folder at the path, with links resolved; refused otherwise. */
 const requireFolder = (path: string) =>

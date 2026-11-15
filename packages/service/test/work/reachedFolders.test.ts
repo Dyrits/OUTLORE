@@ -1,4 +1,4 @@
-import { MissionId, SuggestionId } from "@iskios/contracts";
+import { MissionId, SuggestionId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import { folderOfRequest } from "../../src/work/reachedFolders.ts";
 

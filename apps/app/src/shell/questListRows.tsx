@@ -1,4 +1,4 @@
-import type { MissionId, MissionSummary, ThreadId, ThreadSummary } from "@iskios/contracts";
+import type { MissionId, MissionSummary, ThreadId, ThreadSummary } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { harnessLabels, modelLabelOf } from "../foundation/formatting";

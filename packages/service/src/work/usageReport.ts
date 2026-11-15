@@ -9,7 +9,7 @@ import {
   type UsageRecord,
   type UsageReport,
   type UsageRow,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Clock, Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, isReportedColumn, knownCostColumn } from "../core/index.ts";

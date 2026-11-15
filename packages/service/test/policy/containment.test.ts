@@ -12,7 +12,7 @@ afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { force: true, recursive: true });
 });
 const folder = () => {
-  const directory = mkdtempSync(join(tmpdir(), "iskios-containment-"));
+  const directory = mkdtempSync(join(tmpdir(), "outlore-containment-"));
   directories.push(directory);
   return directory;
 };

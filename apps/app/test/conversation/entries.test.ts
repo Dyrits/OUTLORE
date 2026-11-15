@@ -5,7 +5,7 @@ import {
   QuestionId,
   ThreadId,
   type ThreadSummary,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import { entriesOf, workingLabelOf } from "../../src/conversation/entries";
 

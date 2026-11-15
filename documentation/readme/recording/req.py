@@ -7,7 +7,7 @@ with sync_playwright() as p:
     for attempt in range(5):
       try:
         pg.wait_for_load_state(); out = pg.evaluate("""async (request) => {
-      const endpoint = await window.iskios.endpoint();
+      const endpoint = await window.outlore.endpoint();
       return await new Promise((resolve) => {
         const ws = new WebSocket(endpoint);
         ws.onopen = () => ws.send(JSON.stringify({ id: "demo1", request }));

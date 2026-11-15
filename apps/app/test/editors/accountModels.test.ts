@@ -1,4 +1,4 @@
-import { AccountId, type HarnessInfo, type HarnessList } from "@iskios/contracts";
+import { AccountId, type HarnessInfo, type HarnessList } from "@outlore/contracts";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import { harnessOfAccount, modelsOf, tabsOf } from "../../src/editors/accountModels";

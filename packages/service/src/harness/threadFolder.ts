@@ -6,7 +6,7 @@ import { HarnessFailure, type TurnRequest } from "../core/index.ts";
 // The check every harness runs on a thread's folder before it starts there (CHG-0208). A sandbox writes the folder's
 // real path, so a folder that is a link, or resolves outside its root, would let it write elsewhere than the thread's
 // workspace. Each start that finds one asks the owner a one-time question (Allow or Deny, never a standing permission).
-// OpenCode, sandboxed by Iskios, then runs unwrapped and asks per action (opencode.ts); Claude Code and Codex, which
+// OpenCode, sandboxed by Outlore, then runs unwrapped and asks per action (opencode.ts); Claude Code and Codex, which
 // keep their own sandbox, start in the folder's real path, so what the sandbox writes is where the folder points.
 
 /** A folder that would widen what a harness's sandbox writes, and where it really points. */
@@ -55,8 +55,8 @@ export const folderProblemOf = (found: FolderEscape, request: TurnRequest) =>
   found.folder === request.cwd
     ? request.access.isInWorkspace
       ? `This thread's workspace folder ${found.folder} points to ${found.pointsTo}, not to the folder added as the workspace`
-      : `This thread's folder ${found.folder} points to ${found.pointsTo}, outside Iskios's scratch folder ${request.folderRoot}`
-    : `Iskios's scratch folder ${found.folder} points to ${found.pointsTo}`;
+      : `This thread's folder ${found.folder} points to ${found.pointsTo}, outside Outlore's scratch folder ${request.folderRoot}`
+    : `Outlore's scratch folder ${found.folder} points to ${found.pointsTo}`;
 
 /**
  * The folder Claude Code or Codex starts in: the thread's own when nothing is wrong with it. Otherwise the owner is

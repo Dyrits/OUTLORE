@@ -4,12 +4,12 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, w
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-// OpenCode has no sandbox of its own, so Iskios starts `opencode acp` inside the host's (CHG-0208): Seatbelt through
+// OpenCode has no sandbox of its own, so Outlore starts `opencode acp` inside the host's (CHG-0208): Seatbelt through
 // `sandbox-exec` on macOS, bubblewrap on Linux. Writes are allowed only to the thread's folder, the package caches, and
 // the service's own folders for OpenCode's state, configuration, cache, temporary files and data; the network stays
 // open. Every process OpenCode starts, its `serve` child and the commands it runs, inherits the sandbox. Its data folder
 // (sign-ins, sessions) is a copy per account, seeded from the account's real one at each start (openCodeSeed.ts) and
-// read by no OpenCode run outside the sandbox: the real data folder, which the owner's own OpenCode and Iskios's probes
+// read by no OpenCode run outside the sandbox: the real data folder, which the owner's own OpenCode and Outlore's probes
 // read, is never writable from inside, so nothing planted there runs outside the sandbox.
 
 /** How OpenCode is wrapped on this host. */
@@ -161,7 +161,7 @@ export const ownerMarkerOf = (sandbox: OpenCodeSandbox) => {
       // Made meanwhile by another start.
     }
   }
-  return { name: "ISKIOS_SANDBOX_OWNER", value: readFileSync(path, "utf8").trim() };
+  return { name: "OUTLORE_SANDBOX_OWNER", value: readFileSync(path, "utf8").trim() };
 };
 
 /**

@@ -1,4 +1,4 @@
-import { type HarnessName, MessageId, type SendMessageResult } from "@iskios/contracts";
+import { type HarnessName, MessageId, type SendMessageResult } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { notFound, touchMission } from "../core/index.ts";
@@ -26,7 +26,7 @@ const appendMessage = (message: {
   readonly model?: string | null;
   /** The realm's folder the owner attached to the message, for the Guildmaster; null otherwise. */
   readonly realmPath?: string | null;
-  /** Where the owner had Iskios open from, as the line Iskios reads with the message; null otherwise. */
+  /** Where the owner had Chronicler open from, as the line Chronicler reads with the message; null otherwise. */
   readonly viewing?: string | null;
   readonly text: string;
   readonly now: number;
@@ -158,7 +158,7 @@ interface NewMessage {
   readonly realmPath?: string | null;
   readonly text: string;
   readonly threadId: string;
-  /** Where the owner had Iskios open from, as the line Iskios reads with the message. */
+  /** Where the owner had Chronicler open from, as the line Chronicler reads with the message. */
   readonly viewing?: string | null;
 }
 

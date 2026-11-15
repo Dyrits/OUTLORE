@@ -1,5 +1,5 @@
 import { dirname, resolve as resolvePath } from "node:path";
-import type { Answer, ApprovalLevel, Question, QuestionOutcome, QuestionSource } from "@iskios/contracts";
+import type { Answer, ApprovalLevel, Question, QuestionOutcome, QuestionSource } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { Changes, fieldOf, Harness, invalid, notFound, readSettings, type ServiceFailure } from "../core/index.ts";
@@ -102,7 +102,7 @@ export class Approvals extends Context.Service<
     readonly endTurn: (threadId: string) => Effect.Effect<void>;
     readonly withdraw: (threadId: string) => Effect.Effect<void>;
   }
->()("iskios/Approvals") {}
+>()("outlore/Approvals") {}
 
 const outcomeOfAnswer = {
   Allow: "Allowed",

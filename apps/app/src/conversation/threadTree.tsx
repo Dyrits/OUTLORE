@@ -5,7 +5,7 @@ import type {
   ThreadId,
   ThreadSummary,
   ThreadView,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { imageRefusalOf } from "../attachments/attachmentRules";

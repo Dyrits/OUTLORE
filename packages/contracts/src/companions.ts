@@ -27,7 +27,7 @@ export const maxBackups = 5;
 export const BackupCompanions = Schema.Array(BackupCompanion).check(Schema.isMaxLength(maxBackups));
 
 /**
- * A Companion preset, the Workshop's tier that Iskios picks by how demanding a request is: a Companion (harness, account, model, and effort) and the backup Companions that go with it (companion-presets, quest coordination).
+ * A Companion preset, the Workshop's tier that Chronicler picks by how demanding a request is: a Companion (harness, account, model, and effort) and the backup Companions that go with it (companion-presets, quest coordination).
  */
 export const Tier = Schema.Struct({
   accountId: Schema.NullOr(AccountId),

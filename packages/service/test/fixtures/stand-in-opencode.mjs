@@ -5,7 +5,7 @@
 // file change first and says which option was chosen; "slow <millis>" keeps the turn running; anything else
 // is echoed. "fragile run <command>" asks the same way, then hangs on the next prompt and exits when cancelled,
 // as a process that dies during an interrupt. "write <path>" asks to run a command, then writes the file as that
-// command would, and says whether the write went through (as inside Iskios's sandbox). STAND_IN_OPENCODE_CHILD starts
+// command would, and says whether the write went through (as inside Outlore's sandbox). STAND_IN_OPENCODE_CHILD starts
 // a child in its own process group, as OpenCode's `serve` does, and logs its pid as { grandchild }. `acp` starts its own
 // `serve --stdio --port 0` child as the executor of OpenCode 2.2.0 does (probed 2026-11-12), and logs its pid as
 // { executor }, unless STAND_IN_OPENCODE_EXECUTOR is "none" (an `acp` that served from a process outside its own tree).
@@ -72,7 +72,7 @@ log({
   args: process.argv.slice(2),
   config: JSON.parse(process.env.OPENCODE_CONFIG_CONTENT ?? "null"),
   cwd: process.cwd(),
-  env: Object.keys(process.env).filter((key) => key.startsWith("ISKIOS_")),
+  env: Object.keys(process.env).filter((key) => key.startsWith("OUTLORE_")),
   home: process.env.XDG_DATA_HOME ?? null,
   pid: process.pid,
   xdg: {

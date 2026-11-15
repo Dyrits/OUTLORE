@@ -1,4 +1,4 @@
-import type { AccountId, EffortChoice, HarnessList, HarnessName, ModelChoice } from "@iskios/contracts";
+import type { AccountId, EffortChoice, HarnessList, HarnessName, ModelChoice } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { runnerSummaryOf } from "../foundation/formatting";
 import { countedOf } from "../foundation/labels";

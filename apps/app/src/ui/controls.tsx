@@ -1,4 +1,4 @@
-import type { AttachmentId, MissionState, Skill, ThreadState } from "@iskios/contracts";
+import type { AttachmentId, MissionState, Skill, ThreadState } from "@outlore/contracts";
 import { type ReactNode, useRef, useState } from "react";
 import { Pressable, Switch, Text, View } from "react-native";
 import { AttachButton } from "../attachments/attachButton";

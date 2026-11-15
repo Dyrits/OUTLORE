@@ -1,4 +1,4 @@
-import type { HarnessName, PlanLimitWindow } from "@iskios/contracts";
+import type { HarnessName, PlanLimitWindow } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";

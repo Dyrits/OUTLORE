@@ -1,4 +1,4 @@
-import type { BackupCompanion, EffortChoice, HarnessName, ModelChoice } from "@iskios/contracts";
+import type { BackupCompanion, EffortChoice, HarnessName, ModelChoice } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { notFound, tokensOf } from "../core/index.ts";

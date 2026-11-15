@@ -10,7 +10,7 @@ import type {
   RequestTag,
   ResultOf,
   ThreadId,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, Service, serviceLayer } from "../src/index.ts";
@@ -21,10 +21,10 @@ afterEach(() => {
 });
 
 const live = () => {
-  const directory = mkdtempSync(join(tmpdir(), "iskios-steering-"));
+  const directory = mkdtempSync(join(tmpdir(), "outlore-steering-"));
   directories.push(directory);
   return serviceLayer({
-    filename: join(directory, "iskios.sqlite"),
+    filename: join(directory, "outlore.sqlite"),
     harness: fakeHarnessLayer("10 millis"),
     homeFolder: directory,
     scratchRoot: join(directory, "missions"),

@@ -1,4 +1,4 @@
-import type { UsageBreakdown, UsageDimension, UsageFilter, UsageRecord } from "@iskios/contracts";
+import type { UsageBreakdown, UsageDimension, UsageFilter, UsageRecord } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { Count } from "../ui/count";

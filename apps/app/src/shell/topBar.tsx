@@ -12,7 +12,7 @@ import { UpdateNotice } from "./updateNotice";
 // holds the quest panel.
 
 /** Whether the desktop window has no system title bar, so the top bar takes its place. */
-export const hasOwnTitleBar = typeof window !== "undefined" && window.iskios?.hasOwnTitleBar === true;
+export const hasOwnTitleBar = typeof window !== "undefined" && window.outlore?.hasOwnTitleBar === true;
 
 // Electron drags the window by a region marked this way; react-native-web passes the property to the page.
 /** Marks a region that drags the window. */
@@ -40,18 +40,18 @@ export function PanelIcon({ side = "left" }: { side?: "left" | "right" }) {
 
 /**
  * The top bar: the host menu at its start and, at the end, the spending, which the collapsed rail no longer shows,
- * and Iskios's button. It names no place: the rail and the screens say where the owner is.
+ * and Chronicler's button. It names no place: the rail and the screens say where the owner is.
  */
 export function TopBar({
   client,
   details,
-  iskios,
+  chronicler,
 }: {
   client: ServiceClient;
   /** The icon that shows or hides the quest's side panel; none outside a quest. */
   details: DetailsToggle | null;
-  /** The button that opens or folds Iskios's panel (quest coordination, Iskios everywhere). */
-  iskios: { isOpen: boolean; onToggle: () => void };
+  /** The button that opens or folds Chronicler's panel (quest coordination, Chronicler everywhere). */
+  chronicler: { isOpen: boolean; onToggle: () => void };
 }) {
   const hostMenu = useContext(HostMenuContext);
   return (
@@ -68,14 +68,18 @@ export function TopBar({
       </View>
       <SpendingLine client={client} />
       <Pressable
-        accessibilityLabel={iskios.isOpen ? "Fold Iskios" : "Ask Iskios"}
+        accessibilityLabel={chronicler.isOpen ? "Fold Chronicler" : "Ask Chronicler"}
         accessibilityRole="button"
-        accessibilityState={{ expanded: iskios.isOpen }}
-        onPress={iskios.onToggle}
-        style={({ pressed }) => [local.iskiosButton, (pressed || iskios.isOpen) && local.topIconActive, noDragRegion]}
+        accessibilityState={{ expanded: chronicler.isOpen }}
+        onPress={chronicler.onToggle}
+        style={({ pressed }) => [
+          local.chroniclerButton,
+          (pressed || chronicler.isOpen) && local.topIconActive,
+          noDragRegion,
+        ]}
       >
-        <Text style={local.iskiosMark}>✦</Text>
-        <Text style={local.iskiosText}>Iskios</Text>
+        <Text style={local.chroniclerMark}>✦</Text>
+        <Text style={local.chroniclerText}>Chronicler</Text>
       </Pressable>
       {details !== null && details.isPinned !== true && (
         <Pressable
@@ -156,10 +160,7 @@ export function QuestColumn({
 }
 
 const local = StyleSheet.create({
-  crumbCurrent: { color: colors.onGround },
-  crumbPinned: { paddingLeft: 6 },
-  crumbText: { fontFamily: fonts.sans, fontSize: fontSizes.lg },
-  iskiosButton: {
+  chroniclerButton: {
     alignItems: "center",
     borderRadius: radii.sm,
     flexDirection: "row",
@@ -167,8 +168,11 @@ const local = StyleSheet.create({
     height: 28,
     paddingHorizontal: 9,
   },
-  iskiosMark: { color: colors.accentText, fontSize: fontSizes.md },
-  iskiosText: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
+  chroniclerMark: { color: colors.accentText, fontSize: fontSizes.md },
+  chroniclerText: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
+  crumbCurrent: { color: colors.onGround },
+  crumbPinned: { paddingLeft: 6 },
+  crumbText: { fontFamily: fonts.sans, fontSize: fontSizes.lg },
   panelIcon: {
     borderColor: colors.onGround,
     borderRadius: 3,

@@ -1,4 +1,4 @@
-import { AccountId, type Tier } from "@iskios/contracts";
+import { AccountId, type Tier } from "@outlore/contracts";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import { isSameBackups, isSamePresets, presetChangeOf, presetOf, presetsOf } from "../../src/editors/presets";

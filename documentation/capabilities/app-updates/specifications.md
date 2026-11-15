@@ -4,7 +4,7 @@ Status: **agreed and built (CHG-0266), released in 0.1.2-Prototype. The look, an
 
 ## Problem and outcome
 
-The installed Iskios never learns that a newer release exists; the owner downloads each installer by hand. The installed app detects a new release, downloads it, and replaces itself when the owner says so.
+The installed Outlore never learns that a newer release exists; the owner downloads each installer by hand. The installed app detects a new release, downloads it, and replaces itself when the owner says so.
 
 ## Agreed behavior
 

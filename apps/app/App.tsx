@@ -1,4 +1,4 @@
-import type { MissionId, ThreadId } from "@iskios/contracts";
+import type { MissionId, ThreadId } from "@outlore/contracts";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { ArchiveNavigation } from "./src/foundation/archiveNavigation";
@@ -141,9 +141,9 @@ export default function App() {
       : null;
   const shell = (
     <Shell
+      chronicler={{ onRealm: setGuildmasterRealm, realmPath: guildmasterRealm }}
       client={client}
       details={details}
-      iskios={{ onRealm: setGuildmasterRealm, realmPath: guildmasterRealm }}
       listedRealm={listedRealm}
       onOpenMission={openMissionFromAnywhere}
       onOpenRealmQuests={openRealm}

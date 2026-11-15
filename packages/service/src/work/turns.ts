@@ -1,4 +1,4 @@
-import type { BillingKind, TokenUsage } from "@iskios/contracts";
+import type { BillingKind, TokenUsage } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { Changes, PriceTable, type TurnOutcome, touchMission } from "../core/index.ts";

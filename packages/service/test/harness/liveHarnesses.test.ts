@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { HarnessName, MissionDetail, MissionId, Request, RequestTag, ResultOf } from "@iskios/contracts";
+import type { HarnessName, MissionDetail, MissionId, Request, RequestTag, ResultOf } from "@outlore/contracts";
 import { Effect, Layer } from "effect";
 import { afterEach } from "vitest";
 import {
@@ -18,7 +18,7 @@ import {
 } from "../../src/index.ts";
 
 // Opt-in checks against the installed Codex and OpenCode (provider-accounts). Each uses a few tokens of the
-// owner's own sign-in: ISKIOS_LIVE_HARNESSES=1, and ISKIOS_LIVE_OPENCODE_MODEL for OpenCode's model.
+// owner's own sign-in: OUTLORE_LIVE_HARNESSES=1, and OUTLORE_LIVE_OPENCODE_MODEL for OpenCode's model.
 
 const directories: string[] = [];
 afterEach(() => {
@@ -26,12 +26,12 @@ afterEach(() => {
 });
 
 const commands = {
-  claude: process.env.ISKIOS_CLAUDE_PATH ?? "claude",
-  codex: process.env.ISKIOS_CODEX_PATH ?? "codex",
-  opencode: process.env.ISKIOS_OPENCODE_PATH ?? "opencode",
+  claude: process.env.OUTLORE_CLAUDE_PATH ?? "claude",
+  codex: process.env.OUTLORE_CODEX_PATH ?? "codex",
+  opencode: process.env.OUTLORE_OPENCODE_PATH ?? "opencode",
 };
 
-const live = (directory = realpathSync(mkdtempSync(join(tmpdir(), "iskios-live-")))) => {
+const live = (directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-live-")))) => {
   directories.push(directory);
   const harness = Layer.effect(
     Harness,
@@ -44,7 +44,7 @@ const live = (directory = realpathSync(mkdtempSync(join(tmpdir(), "iskios-live-"
     }),
   );
   return serviceLayer({
-    filename: join(directory, "iskios.sqlite"),
+    filename: join(directory, "outlore.sqlite"),
     harness,
     harnessTools: liveHarnessToolsLayer(commands),
     homeFolder: directory,
@@ -90,7 +90,7 @@ const titledTurn = (harness: HarnessName, model: string) =>
     return detail;
   });
 
-describe.runIf(process.env.ISKIOS_LIVE_HARNESSES === "1")("live harnesses (use a few tokens)", () => {
+describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use a few tokens)", () => {
   it.live(
     "lists the installed harnesses, their sign-ins, and their models",
     () =>
@@ -118,7 +118,7 @@ describe.runIf(process.env.ISKIOS_LIVE_HARNESSES === "1")("live harnesses (use a
   it.live(
     "lets OpenCode write inside its workspace unasked, asks before it writes outside, and carries on after a refusal",
     () => {
-      const directory = realpathSync(mkdtempSync(join(tmpdir(), "iskios-live-")));
+      const directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-live-")));
       const workspace = join(directory, "project");
       mkdirSync(workspace);
       const outside = join(directory, "outside.txt");
@@ -128,7 +128,7 @@ describe.runIf(process.env.ISKIOS_LIVE_HARNESSES === "1")("live harnesses (use a
           _tag: "StartMission",
           effort: "default",
           harness: "opencode",
-          model: process.env.ISKIOS_LIVE_OPENCODE_MODEL ?? "default",
+          model: process.env.OUTLORE_LIVE_OPENCODE_MODEL ?? "default",
           requestId: crypto.randomUUID(),
           text: `Use your write tool to create notes.txt in the current folder containing "hi". Then use your write tool to create ${outside} containing "hi". Use no shell command. Then reply with exactly: done`,
           workspacePath: workspace,
@@ -163,7 +163,7 @@ describe.runIf(process.env.ISKIOS_LIVE_HARNESSES === "1")("live harnesses (use a
   it.live(
     "recognizes a git push from a Codex thread as Push code and runs it once allowed",
     () => {
-      const directory = realpathSync(mkdtempSync(join(tmpdir(), "iskios-live-")));
+      const directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-live-")));
       const workspace = join(directory, "project");
       const remote = join(directory, "remote.git");
       const git = (cwd: string, ...args: Array<string>) => execFileSync("git", args, { cwd, encoding: "utf8" });
@@ -173,9 +173,9 @@ describe.runIf(process.env.ISKIOS_LIVE_HARNESSES === "1")("live harnesses (use a
       git(
         workspace,
         "-c",
-        "user.name=Iskios",
+        "user.name=Outlore",
         "-c",
-        "user.email=iskios@example.invalid",
+        "user.email=outlore@example.invalid",
         "commit",
         "--allow-empty",
         "-m",
@@ -220,7 +220,7 @@ describe.runIf(process.env.ISKIOS_LIVE_HARNESSES === "1")("live harnesses (use a
 
   it.live(
     "runs an OpenCode turn that uses its thread tools",
-    () => titledTurn("opencode", process.env.ISKIOS_LIVE_OPENCODE_MODEL ?? "default").pipe(Effect.provide(live())),
+    () => titledTurn("opencode", process.env.OUTLORE_LIVE_OPENCODE_MODEL ?? "default").pipe(Effect.provide(live())),
     300_000,
   );
 });

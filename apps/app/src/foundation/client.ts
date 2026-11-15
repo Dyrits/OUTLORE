@@ -5,14 +5,14 @@ import {
   Results,
   ServerFrameJson,
   type ServiceError,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { Schema } from "effect";
 import type { DesktopBridge } from "./desktopBridge";
 import { hostEndpointOf, isFinalLinkClose, linkFailureOf, retryDelayOf } from "./hosts";
 
 declare global {
   interface Window {
-    iskios?: DesktopBridge;
+    outlore?: DesktopBridge;
   }
 }
 
@@ -50,8 +50,8 @@ export class ServiceClient {
 
   /** Connects to the local service, or to a paired host's service through it. */
   static async connect(hostId: string | null = null): Promise<ServiceClient> {
-    if (window.iskios === undefined) return Promise.reject(new Error("Open Iskios through the desktop app."));
-    const endpoint = await window.iskios.endpoint();
+    if (window.outlore === undefined) return Promise.reject(new Error("Open Outlore through the desktop app."));
+    const endpoint = await window.outlore.endpoint();
     const client = new ServiceClient(hostId === null ? endpoint : hostEndpointOf(endpoint, hostId), hostId);
     await client.open();
     return client;

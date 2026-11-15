@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { approvedCall, guildmaster, isIdle, lastAgentText, listed, say, startIdle } from "../fixtures/guildmaster.ts";
 import { call, read, settle, withService } from "../fixtures/service.ts";
 
-describe("choosing tiers and budgets for Iskios", () => {
+describe("choosing tiers and budgets for Chronicler", () => {
   const withTiers = Effect.gen(function* () {
     const settings = yield* call({ _tag: "ReadSettings" });
     yield* call({
@@ -21,7 +21,7 @@ describe("choosing tiers and budgets for Iskios", () => {
     });
   });
 
-  it.live("starts on the cheapest model Iskios knows and with no budget of the quests' default", () =>
+  it.live("starts on the cheapest model Chronicler knows and with no budget of the quests' default", () =>
     withService(
       Effect.gen(function* () {
         const settings = yield* call({ _tag: "ReadSettings" });

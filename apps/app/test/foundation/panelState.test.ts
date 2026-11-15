@@ -6,10 +6,14 @@ describe("navigating with the right-hand panel", () => {
     expect(panelAt(null, "quest")).toEqual({ content: null, hostId: null, scope: "quest" });
   });
 
-  it("closes page-owned pickers rather than falling back to Iskios", () => {
+  it("closes page-owned pickers rather than falling back to Chronicler", () => {
     expect(
       panelAt(
-        { content: { id: "default", isIskios: false, tab: "companion" }, hostId: null, scope: "workshop:companions" },
+        {
+          content: { id: "default", isChronicler: false, tab: "companion" },
+          hostId: null,
+          scope: "workshop:companions",
+        },
         "workshop:permissions",
       ),
     ).toEqual({ content: null, hostId: null, scope: "workshop:permissions" });
@@ -20,8 +24,8 @@ describe("navigating with the right-hand panel", () => {
     expect(panelAt({ content: { tab: "quest" }, hostId: null, scope: "realm:one" }, "realm:two").content).toBeNull();
   });
 
-  it("carries Iskios's own picker without changing its selection", () => {
-    const content = { id: "iskios", isIskios: true, tab: "companion" } as const;
+  it("carries Chronicler's own picker without changing its selection", () => {
+    const content = { id: "iskios", isChronicler: true, tab: "companion" } as const;
     expect(panelAt({ content, hostId: null, scope: "quest" }, "workshop")).toEqual({
       content,
       hostId: null,
@@ -34,9 +38,9 @@ describe("navigating with the right-hand panel", () => {
     expect(panelAt(state, "quest")).toBe(state);
   });
 
-  it("does not carry an Iskios picker to another host's conversation", () => {
+  it("does not carry an Chronicler picker to another host's conversation", () => {
     const state = {
-      content: { id: "iskios", isIskios: true, tab: "companion" },
+      content: { id: "iskios", isChronicler: true, tab: "companion" },
       hostId: null,
       scope: "quest",
     } as const;
@@ -46,7 +50,7 @@ describe("navigating with the right-hand panel", () => {
   it("does not reopen a page-owned picker on returning", () => {
     const left = panelAt(
       {
-        content: { id: "quest", isIskios: false, tab: "companion" },
+        content: { id: "quest", isChronicler: false, tab: "companion" },
         hostId: null,
         scope: "quest",
       },

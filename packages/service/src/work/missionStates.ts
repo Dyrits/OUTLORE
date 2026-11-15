@@ -1,4 +1,4 @@
-import type { ThreadState } from "@iskios/contracts";
+import type { ThreadState } from "@outlore/contracts";
 
 // Ordered from most to least urgent (mission-tracking specification). Done and
 // Stopped add no urgency; Idle is the provisional fallback until it is settled.

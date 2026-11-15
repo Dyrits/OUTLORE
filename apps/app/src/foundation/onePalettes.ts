@@ -2,7 +2,7 @@ import type { ColorScheme } from "./colorSchemeRules";
 import type { Palette } from "./palettes";
 
 /**
- * Zed's One palettes adapted to Iskios's tokens; see documentation/research/zed-one-themes.md for the pinned source
+ * Zed's One palettes adapted to Outlore's tokens; see documentation/research/zed-one-themes.md for the pinned source
  * and apps/desktop/assets/one.LICENSE for the upstream MIT notice (Copyright © 2014 GitHub Inc.).
  */
 export const onePalettes = {

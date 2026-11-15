@@ -1,4 +1,4 @@
-import { type Settings, type Tier, TierName, type WorkspaceChoice } from "@iskios/contracts";
+import { type Settings, type Tier, TierName, type WorkspaceChoice } from "@outlore/contracts";
 import { isSameStack } from "../editors/presets";
 import type { Runner } from "../editors/runners";
 import { realmLabelOf } from "../realms/realmLabels";
@@ -11,7 +11,7 @@ export type CompanionChoice = {
 };
 
 /**
- * The Companions Iskios's proposal card offers, in order: the default, then each tier set in the Workshop, labelled by
+ * The Companions Chronicler's proposal card offers, in order: the default, then each tier set in the Workshop, labelled by
  * the name the tier's model has (quest coordination, CHG-0179). A tier left unset is not offered.
  */
 export const companionChoicesOf = (

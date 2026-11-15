@@ -1,4 +1,4 @@
-import type { HarnessName, Message, MissionId, ReplyUsage, Skill, ThreadId } from "@iskios/contracts";
+import type { HarnessName, Message, MissionId, ReplyUsage, Skill, ThreadId } from "@outlore/contracts";
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { MessageImages } from "../attachments/attachmentViews";

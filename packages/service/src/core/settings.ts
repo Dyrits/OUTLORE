@@ -1,4 +1,4 @@
-import { SavedTier, Settings, type SettingsChange, StartChoices, startingModel } from "@iskios/contracts";
+import { SavedTier, Settings, type SettingsChange, StartChoices, startingModel } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid } from "./errors.ts";

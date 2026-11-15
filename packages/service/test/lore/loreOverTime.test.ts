@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { LoreEntryId, LoreStateFilter, MissionId, Settings, ThreadId } from "@iskios/contracts";
+import type { LoreEntryId, LoreStateFilter, MissionId, Settings, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { afterEach } from "vitest";

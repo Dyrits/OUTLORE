@@ -1,4 +1,4 @@
-import type { BackupCompanion, SettingsChange, TierName } from "@iskios/contracts";
+import type { BackupCompanion, SettingsChange, TierName } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BackupsEditor } from "../editors/backupsEditor";
@@ -150,7 +150,7 @@ export function WorkshopCompanions({
       ) : (
         <View key={tierName} style={local.tier}>
           <Text style={local.note}>
-            {tierNames.find(({ name }) => name === tierName)?.hint} Iskios picks it for work of this weight.
+            {tierNames.find(({ name }) => name === tierName)?.hint} Chronicler picks it for work of this weight.
           </Text>
           {tier === null ? (
             <>

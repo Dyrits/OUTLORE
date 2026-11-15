@@ -8,13 +8,14 @@ import { isCompanionOffered } from "./companionScope";
 type Entry = { picker: CompanionPickerProps | null; rank: number; seq: number };
 
 /** Registers mounted pickers, but never substitutes another owner for an open page-owned picker. */
-export function useCompanionDock(panel: RightPanel, isIskiosFull: boolean, isIskiosOpen: boolean) {
+export function useCompanionDock(panel: RightPanel, isChroniclerFull: boolean, isChroniclerOpen: boolean) {
   const pills = useRef(new Map<string, Entry>());
   const sequence = useRef(0);
   const [, redraw] = useReducer((count: number) => count + 1, 0);
   const offered = [...pills.current].filter(
     ([, entry]) =>
-      entry.picker !== null && isCompanionOffered(entry.picker.isIskios === true, isIskiosFull, isIskiosOpen),
+      entry.picker !== null &&
+      isCompanionOffered(entry.picker.isChronicler === true, isChroniclerFull, isChroniclerOpen),
   );
   offered.sort((current, next) => current[1].rank - next[1].rank || next[1].seq - current[1].seq);
   const content = panel.content;
@@ -23,13 +24,14 @@ export function useCompanionDock(panel: RightPanel, isIskiosFull: boolean, isIsk
     selected === null
       ? (offered[0]?.[0] ?? null)
       : (offered.find(([id]) => id === selected.id)?.[0] ??
-        // Expanding/restoring Iskios remounts its conversation and therefore its button.
-        (selected.isIskios ? offered.find(([, entry]) => entry.picker?.isIskios === true)?.[0] : null) ??
+        // Expanding/restoring Chronicler remounts its conversation and therefore its button.
+        (selected.isChronicler ? offered.find(([, entry]) => entry.picker?.isChronicler === true)?.[0] : null) ??
         null);
   const companionPicker = pillId === null ? null : (pills.current.get(pillId)?.picker ?? null);
   const otherPillId =
-    offered.find(([, entry]) => (entry.picker?.isIskios === true) !== (companionPicker?.isIskios === true))?.[0] ??
-    null;
+    offered.find(
+      ([, entry]) => (entry.picker?.isChronicler === true) !== (companionPicker?.isChronicler === true),
+    )?.[0] ?? null;
   const isCompanionShown = selected !== null && companionPicker !== null;
   const latest = useRef({ isCompanionShown, panel, pillId });
   latest.current = { isCompanionShown, panel, pillId };
@@ -37,7 +39,7 @@ export function useCompanionDock(panel: RightPanel, isIskiosFull: boolean, isIsk
     const choose = (id: string) => {
       const picker = pills.current.get(id)?.picker;
       if (picker == null) return;
-      latest.current.panel.show({ id, isIskios: picker.isIskios === true, tab: "companion" });
+      latest.current.panel.show({ id, isChronicler: picker.isChronicler === true, tab: "companion" });
     };
     return {
       choose,
@@ -64,14 +66,14 @@ export function useCompanionDock(panel: RightPanel, isIskiosFull: boolean, isIsk
       unregister: (id: string) => {
         pills.current.delete(id);
         const selection = latest.current.panel.content;
-        if (selection?.tab === "companion" && selection.id === id && !selection.isIskios)
+        if (selection?.tab === "companion" && selection.id === id && !selection.isChronicler)
           latest.current.panel.show(null);
         redraw();
       },
     } satisfies CompanionDock & { choose: (id: string) => void };
   }, []);
   useEffect(() => {
-    if (!isIskiosOpen && selected?.isIskios) panel.show(null);
-  }, [isIskiosOpen, selected, panel.show]);
+    if (!isChroniclerOpen && selected?.isChronicler) panel.show(null);
+  }, [isChroniclerOpen, selected, panel.show]);
   return { companionPicker, dock, hasCompanion: offered.length > 0, isCompanionShown, otherPillId, pillId, pills };
 }

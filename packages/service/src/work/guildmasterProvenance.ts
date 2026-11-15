@@ -1,4 +1,4 @@
-import { RitualScope as RitualScopeSchema, Settings } from "@iskios/contracts";
+import { RitualScope as RitualScopeSchema, Settings } from "@outlore/contracts";
 import { Context, Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { readSettings, type ToolAnswer } from "../core/index.ts";
@@ -49,7 +49,7 @@ const ritualOfThread = (threadId: string) =>
   });
 
 /**
- * Whether the thread may take a structural action at all: Iskios always; a Ritual's own thread only for acting on a
+ * Whether the thread may take a structural action at all: Chronicler always; a Ritual's own thread only for acting on a
  * quest or changing a setting, which its scope can cover. Any other thread is refused by the tool itself.
  */
 export const isStructuralCaller = (threadId: string, tool: StructuralTool) =>
@@ -229,7 +229,7 @@ type Receipt = {
 };
 
 // Only the fiber that ran the authorization holds it; tool arguments cannot make one.
-const receiptReference = Context.Reference<Receipt | null>("iskios/StructuralReceipt", { defaultValue: () => null });
+const receiptReference = Context.Reference<Receipt | null>("outlore/StructuralReceipt", { defaultValue: () => null });
 const keyOf = (callerId: string, tool: StructuralTool, args: object) => JSON.stringify([callerId, tool, args]);
 
 /**

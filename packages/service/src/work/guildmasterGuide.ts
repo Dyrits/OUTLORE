@@ -5,13 +5,13 @@ import { unchanged, type WithFollowUps } from "./commands.ts";
 import { isGuildmasterThread } from "./guildmaster.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 
-// Iskios's app guide tool (quest coordination, "Iskios explains how the app works"): it reads one topic of the user
+// Chronicler's app guide tool (quest coordination, "Chronicler explains how the app works"): it reads one topic of the user
 // guide (appGuideTopics.ts) when a question about the app needs it, as `read_journal` reads a quest's journal, so the
-// guide is never part of every turn. Only Iskios reads it.
+// guide is never part of every turn. Only Chronicler reads it.
 
 const answer = (value: ToolAnswer): WithFollowUps<ToolAnswer> => unchanged(value);
 
-/** What every answer ends with: Iskios answers from the guide, and says so when the guide does not cover the question. */
+/** What every answer ends with: Chronicler answers from the guide, and says so when the guide does not cover the question. */
 const reminder =
   "Answer only from this guide. If it does not cover the question, say you do not know and, when it helps, point the owner to the README or GitHub Issues; do not guess how the app works.";
 
@@ -27,7 +27,8 @@ const fillers = new Set([
   "get",
   "have",
   "how",
-  "iskios",
+  "outlore",
+  "chronicler",
   "make",
   "need",
   "please",
@@ -109,11 +110,11 @@ export const topicsFor = (question: string): ReadonlyArray<GuideTopic> => {
     .map((entry) => entry.topic);
 };
 
-/** `read_app_guide`: the index with no topic, else the topic or topics that fit; a refusal for any thread but Iskios. */
+/** `read_app_guide`: the index with no topic, else the topic or topics that fit; a refusal for any thread but Chronicler. */
 export const readAppGuideByGuildmaster = (callerId: string, args: ArgumentsOf<"read_app_guide">) =>
   Effect.gen(function* () {
     if (!(yield* isGuildmasterThread(callerId)))
-      return answer({ isError: true, text: "Only Iskios reads the app guide here." });
+      return answer({ isError: true, text: "Only Chronicler reads the app guide here." });
     const question = args.topic?.trim() ?? "";
     if (question === "") return answer({ isError: false, text: `${indexOf()}\n\n${reminder}` });
     const topics = topicsFor(question);

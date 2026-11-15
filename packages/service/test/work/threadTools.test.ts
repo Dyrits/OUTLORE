@@ -34,10 +34,10 @@ describe("listing the thread tools", () => {
   });
 
   it("runs every tool unasked except the approval tools themselves", () => {
-    const names = unaskedToolNamesOf("iskios");
-    expect(names).toContain("mcp__iskios__open_thread");
-    expect(names).not.toContain("mcp__iskios__request_approval");
-    expect(names).not.toContain("mcp__iskios__answer_prompt");
+    const names = unaskedToolNamesOf("outlore");
+    expect(names).toContain("mcp__outlore__open_thread");
+    expect(names).not.toContain("mcp__outlore__request_approval");
+    expect(names).not.toContain("mcp__outlore__answer_prompt");
     expect(names).toHaveLength(Object.keys(threadTools).length - 2);
   });
 

@@ -9,7 +9,7 @@ import type {
   Question,
   Suggestion,
   ThreadSummary,
-} from "@iskios/contracts";
+} from "@outlore/contracts";
 import { suggestionLabels } from "../foundation/labels";
 
 /** A quest or Ritual the Guildmaster opened, created, or continued, which the conversation draws as a card of its own. */
