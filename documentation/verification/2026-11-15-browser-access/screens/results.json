@@ -1,0 +1,122 @@
+[
+  {
+    "name": "no bridge",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "pairing dialog shown first",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "dialog cannot be cancelled",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "paired host shown by name",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no dialog after pairing",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "host lists this browser as a paired device",
+    "ok": true,
+    "detail": "[\"This browser\"]"
+  },
+  {
+    "name": "pairing kept in the browser's storage",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a quest made on the host appears in the browser",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "reload resumes without a new code",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "reloaded page still lists the quest",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a message typed in the browser is answered by the host",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the host's folder is found by search in the browser",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the chosen folder is the host's",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a realm made from the host's folder appears",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the browser says when the host goes away",
+    "ok": true,
+    "detail": "Drive Host: The host disconnected. Trying again…"
+  },
+  {
+    "name": "the browser reconnects by itself when the host returns",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a disconnected browser is told to pair again",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "it stops trying",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "it offers Pair again",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "pairing again restores it",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "one pairing kept, not two",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "another release is refused and named",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "it does not keep trying",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "it does not offer Pair again, which would not help",
+    "ok": true,
+    "detail": ""
+  }
+]

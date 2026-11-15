@@ -639,6 +639,8 @@ export interface ServiceOptions {
   readonly priceSource?: Layer.Layer<PriceSource>;
   /** The relay a new pairing code names; the shared relay of decision record 0016 when left out. */
   readonly relayOrigin?: string;
+  /** The release this host runs, told to paired devices; "development" when left out. */
+  readonly release?: string;
   /** The folder holding each mission's scratch folder. */
   readonly scratchRoot: string;
 }
@@ -684,6 +686,7 @@ export const serviceLayer = (options: ServiceOptions) => {
                 ...(options.ownRelayWorkerName === undefined ? {} : { workerName: options.ownRelayWorkerName }),
               })),
           relayOrigin: options.relayOrigin ?? defaultRelayOrigin,
+          release: options.release ?? "development",
         }),
         remoteStateLayer,
         autoArchiveLayer,

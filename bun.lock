@@ -19,6 +19,7 @@
         "@expo-google-fonts/caveat": "^0.4.2",
         "@expo/metro-runtime": "~58.0.17",
         "@outlore/contracts": "workspace:*",
+        "@outlore/controller": "workspace:*",
         "@xterm/addon-fit": "^0.11.0",
         "@xterm/xterm": "^6.0.0",
         "effect": "4.1.4",
@@ -65,6 +66,19 @@
     "packages/contracts": {
       "name": "@outlore/contracts",
       "dependencies": {
+        "effect": "4.1.4",
+      },
+    },
+    "packages/controller": {
+      "name": "@outlore/controller",
+      "dependencies": {
+        "@outlore/channel": "workspace:*",
+        "@outlore/contracts": "workspace:*",
+        "@outlore/relay": "workspace:*",
+      },
+      "devDependencies": {
+        "@outlore/service": "workspace:*",
+        "@types/node": "^24",
         "effect": "4.1.4",
       },
     },
@@ -401,6 +415,8 @@
     "@outlore/channel": ["@outlore/channel@workspace:packages/channel"],
 
     "@outlore/contracts": ["@outlore/contracts@workspace:packages/contracts"],
+
+    "@outlore/controller": ["@outlore/controller@workspace:packages/controller"],
 
     "@outlore/relay": ["@outlore/relay@workspace:packages/relay"],
 

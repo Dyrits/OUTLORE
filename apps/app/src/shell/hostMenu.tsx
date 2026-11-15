@@ -11,7 +11,7 @@ const listWidth = 280;
  * The top bar's host menu, as OpenBot's: it names the computer whose Outlore the window shows and lists this computer
  * and every paired host, with a way to pair another (device-pairing, Behavior).
  */
-export function HostMenu({ activeId, computerName, hosts, onAdd, onChoose }: HostMenuProps) {
+export function HostMenu({ activeId, computerName, hasLocalComputer, hosts, onAdd, onChoose }: HostMenuProps) {
   const [placement, setPlacement] = useState<MenuPlacement | null>(null);
   const button = useRef<ComponentRef<typeof View>>(null);
   const window = useWindowDimensions();
@@ -48,12 +48,14 @@ export function HostMenu({ activeId, computerName, hosts, onAdd, onChoose }: Hos
         {placement !== null && (
           <View style={[styles.menuList, local.list, placement]}>
             <Text style={local.heading}>Hosts</Text>
-            <HostRow
-              isActive={activeId === null}
-              label={computerName}
-              note="This computer"
-              onPress={() => choose(null)}
-            />
+            {hasLocalComputer && (
+              <HostRow
+                isActive={activeId === null}
+                label={computerName}
+                note="This computer"
+                onPress={() => choose(null)}
+              />
+            )}
             {hosts.map((host) => (
               <HostRow
                 isActive={host.id === activeId}

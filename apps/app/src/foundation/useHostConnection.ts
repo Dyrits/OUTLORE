@@ -1,21 +1,38 @@
 import type { KnownHost } from "@outlore/contracts";
-import { useEffect, useMemo, useState } from "react";
+import { createPairedHosts, openBrowserTransport, pairFromBrowser } from "@outlore/controller";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { isBrowserPage, pageSettings } from "./browser/page";
 import { ServiceClient } from "./client";
 
-/** Owns the window's local service and its selected host connection. */
+/**
+ * Owns the window's local service and its selected host connection. In a plain browser there is no local service: the
+ * browser keeps its own pairings and opens the encrypted link to a host itself (browser access, 0019).
+ */
 export function useHostConnection() {
+  const isBrowser = useMemo(isBrowserPage, []);
+  const pairedHosts = useMemo(() => (isBrowser ? createPairedHosts(window.localStorage) : null), [isBrowser]);
   // The local service always stays connected: it lists the hosts and pairs with them. The window shows either its own
   // data or, through it, a paired host's (device-pairing).
   const [localClient, setLocalClient] = useState<ServiceClient | null>(null);
-  const [hostId, setHostId] = useState<string | null>(null);
+  const [hostId, setHostIdState] = useState<string | null>(
+    () => pairedHosts?.activeId() ?? pairedHosts?.known()[0]?.id ?? null,
+  );
   const [hostClient, setHostClient] = useState<ServiceClient | null>(null);
-  const [hosts, setHosts] = useState<readonly KnownHost[]>([]);
-  const [computerName, setComputerName] = useState("This computer");
+  const [hosts, setHosts] = useState<readonly KnownHost[]>(() => pairedHosts?.known() ?? []);
+  const [computerName, setComputerName] = useState(isBrowser ? "This browser" : "This computer");
+  const setHostId = useCallback(
+    (next: string | null) => {
+      pairedHosts?.setActive(next);
+      setHostIdState(next);
+    },
+    [pairedHosts],
+  );
   const [isAddingHost, setIsAddingHost] = useState(false);
   const [linkFailure, setLinkFailure] = useState<string | null>(null);
   const client = hostId === null ? localClient : hostClient;
   const [failure, setFailure] = useState<string | null>(null);
   useEffect(() => {
+    if (isBrowser) return;
     let isCurrent = true;
     let opened: ServiceClient | null = null;
     ServiceClient.connect().then(
@@ -32,7 +49,7 @@ export function useHostConnection() {
       isCurrent = false;
       opened?.close();
     };
-  }, []);
+  }, [isBrowser]);
   // The hosts this installation is paired with, and its own computer's name, read from the local service.
   useEffect(() => {
     if (localClient === null) return;
@@ -49,7 +66,11 @@ export function useHostConnection() {
     if (hostId === null) return;
     let isCurrent = true;
     let opened: ServiceClient | null = null;
-    ServiceClient.connect(hostId).then(
+    const connecting =
+      pairedHosts === null
+        ? ServiceClient.connect(hostId)
+        : ServiceClient.connectThrough(openBrowserTransport(pairedHosts, hostId, pageSettings()), hostId);
+    connecting.then(
       (connected) => {
         if (!isCurrent) return connected.close();
         opened = connected;
@@ -64,7 +85,20 @@ export function useHostConnection() {
       opened?.close();
       setHostClient(null);
     };
-  }, [hostId]);
+  }, [hostId, pairedHosts]);
+  // A browser pairs on its own and keeps the host; a desktop window asks its local service to.
+  const pair = useCallback(
+    async (code: string, deviceName: string): Promise<KnownHost> => {
+      if (pairedHosts !== null) {
+        const host = await pairFromBrowser(code, deviceName, pairedHosts, pageSettings());
+        setHosts(pairedHosts.known());
+        return host;
+      }
+      if (localClient === null) throw new Error("Connecting to the local service…");
+      return localClient.request({ _tag: "AddHost", code, deviceName });
+    },
+    [localClient, pairedHosts],
+  );
   // Why the link to a host is down, when it is, for the banner over the window.
   useEffect(() => {
     if (hostClient === null) {
@@ -91,8 +125,10 @@ export function useHostConnection() {
     hostId,
     hosts,
     isAddingHost,
+    isBrowser,
     linkFailure,
     localClient,
+    pair,
     setFailure,
     setHostId,
     setIsAddingHost,

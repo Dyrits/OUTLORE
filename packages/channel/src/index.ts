@@ -19,6 +19,7 @@ export {
   maxDeviceNameLength,
   parseClientHello,
   parseHostReply,
+  refusalText,
 } from "./protocol.ts";
 export type { Result } from "./result.ts";
 export type { SecureChannel } from "./secureChannel.ts";

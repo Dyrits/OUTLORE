@@ -83,6 +83,12 @@ export const ensureHostRecord = Effect.gen(function* () {
   return inserted;
 });
 
+/** The release this host runs. */
+export const hostReleaseOf = Effect.gen(function* () {
+  const config = yield* RemoteConfig;
+  return config.release;
+});
+
 /** The name the host shows: the owner's choice, else the computer's. */
 export const hostNameOf = (record: HostRecord | null) =>
   Effect.gen(function* () {

@@ -16,6 +16,8 @@ export interface RemoteSettings {
   readonly deployOwnRelay: (token: string) => Promise<DeployResult>;
   /** The relay a new pairing code names, unless the owner's host record names another. */
   readonly relayOrigin: string;
+  /** The release this host runs, told to every device that connects so a browser can refuse a host of another release. */
+  readonly release: string;
 }
 
 export class RemoteConfig extends Context.Service<RemoteConfig, RemoteSettings>()("outlore/RemoteConfig") {}

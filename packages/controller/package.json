@@ -1,0 +1,21 @@
+{
+  "name": "@outlore/controller",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@outlore/channel": "workspace:*",
+    "@outlore/contracts": "workspace:*",
+    "@outlore/relay": "workspace:*"
+  },
+  "devDependencies": {
+    "@outlore/service": "workspace:*",
+    "@types/node": "^24",
+    "effect": "4.1.4"
+  }
+}

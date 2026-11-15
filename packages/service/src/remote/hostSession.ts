@@ -18,6 +18,7 @@ import { encodeServerFrame } from "./frames.ts";
 import {
   type HostRecord,
   hostNameOf,
+  hostReleaseOf,
   isDevicePaired,
   readHostRecord,
   redeemPairingSecret,
@@ -125,10 +126,11 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
       return null;
     }
     const hostName = await parts.run(hostNameOf(current));
+    const release = await parts.run(hostReleaseOf);
     reply(
       newToken === null
-        ? { hostName, t: "resumed" }
-        : { deviceId, hostName, t: "paired", token: encodeBase64Url(newToken) },
+        ? { hostName, release, t: "resumed" }
+        : { deviceId, hostName, release, t: "paired", token: encodeBase64Url(newToken) },
     );
 
     const send = (frame: ServerFrame) => channel.sendText(encodeServerFrame(frame));

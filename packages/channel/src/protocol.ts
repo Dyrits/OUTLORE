@@ -4,6 +4,7 @@ import { deviceTokenBytes } from "./tokens.ts";
 
 export const maxDeviceNameLength = 60;
 const maxNameLength = 200;
+const maxReleaseLength = 60;
 const pairingSecretLength = 16;
 
 export type DeviceKind = "desktop" | "phone";
@@ -15,15 +16,28 @@ export type RefusalReason =
   | "disabled"
   | "disconnected";
 
+/** What the owner reads for each refusal, the same on every kind of device. */
+export const refusalText = {
+  "code-expired": "That pairing code has expired. Ask the host for a new one.",
+  "code-invalid": "That pairing code is not valid. Check that you copied all of it, or ask the host for a new one.",
+  "code-used": "That pairing code was already used. Ask the host for a new one.",
+  disabled: "The host is not accepting paired devices. Turn on Allow paired devices on the host.",
+  disconnected: "The host disconnected this computer. Pair with it again.",
+  "unknown-device": "The host no longer knows this computer. Pair with it again.",
+} as const satisfies Record<RefusalReason, string>;
+
 /** The first message a paired device sends inside the secure channel. `secret` and `token` are base64url. */
 export type ClientHello =
   | { t: "pair"; secret: string; deviceName: string; deviceKind: DeviceKind }
   | { t: "resume"; deviceId: string; token: string };
 
-/** The host's answer to a ClientHello. `token` is base64url of 32 random bytes. */
+/**
+ * The host's answer to a ClientHello. `token` is base64url of 32 random bytes. `release` is the release the host runs,
+ * so a browser can refuse a host of another release; a host that says none is an older one.
+ */
 export type HostReply =
-  | { t: "paired"; deviceId: string; token: string; hostName: string }
-  | { t: "resumed"; hostName: string }
+  | { t: "paired"; deviceId: string; token: string; hostName: string; release?: string }
+  | { t: "resumed"; hostName: string; release?: string }
   | { t: "refused"; reason: RefusalReason };
 
 export type ProtocolErrorKind = "malformed";
@@ -73,19 +87,22 @@ export function parseClientHello(text: string): Result<ClientHello, ProtocolErro
 export function parseHostReply(text: string): Result<HostReply, ProtocolErrorKind> {
   const value = parseObject(text);
   if (value === null) return fail("malformed");
-  if (value.t === "paired" && hasExactKeys(value, ["deviceId", "hostName", "t", "token"])) {
-    const { deviceId, hostName, token } = value;
+  if (value.t === "paired" && hasKeys(value, ["deviceId", "hostName", "t", "token"], ["release"])) {
+    const { deviceId, hostName, release, token } = value;
     if (
       isText(deviceId, maxNameLength) &&
       isText(hostName, maxNameLength) &&
-      isBase64UrlOfLength(token, deviceTokenBytes)
+      isBase64UrlOfLength(token, deviceTokenBytes) &&
+      isOptionalRelease(release)
     ) {
-      return succeed({ deviceId, hostName, t: "paired", token });
+      return succeed({ deviceId, hostName, t: "paired", token, ...releaseOf(release) });
     }
   }
-  if (value.t === "resumed" && hasExactKeys(value, ["hostName", "t"])) {
-    const { hostName } = value;
-    if (isText(hostName, maxNameLength)) return succeed({ hostName, t: "resumed" });
+  if (value.t === "resumed" && hasKeys(value, ["hostName", "t"], ["release"])) {
+    const { hostName, release } = value;
+    if (isText(hostName, maxNameLength) && isOptionalRelease(release)) {
+      return succeed({ hostName, t: "resumed", ...releaseOf(release) });
+    }
   }
   if (value.t === "refused" && hasExactKeys(value, ["reason", "t"])) {
     const { reason } = value;
@@ -117,6 +134,20 @@ function parseObject(text: string): Record<string, unknown> | null {
     ? (value as Record<string, unknown>)
     : null;
 }
+
+/** Whether an object has every required key, optionally the optional ones, and no other. */
+function hasKeys(value: Record<string, unknown>, required: readonly string[], optional: readonly string[]): boolean {
+  const keys = Object.keys(value);
+  return (
+    required.every((key) => keys.includes(key)) && keys.every((key) => required.includes(key) || optional.includes(key))
+  );
+}
+
+function isOptionalRelease(value: unknown): value is string | undefined {
+  return value === undefined || isText(value, maxReleaseLength);
+}
+
+const releaseOf = (release: string | undefined) => (release === undefined ? {} : { release });
 
 function hasExactKeys(value: Record<string, unknown>, sortedKeys: readonly string[]): boolean {
   const keys = Object.keys(value).sort();

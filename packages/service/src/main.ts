@@ -27,6 +27,8 @@ const liveLayer = Layer.unwrap(
     };
     // OUTLORE_RELAY_ORIGIN points pairing at another relay, such as one run locally for checks (device-pairing).
     const relayOrigin = yield* Config.String("OUTLORE_RELAY_ORIGIN").pipe(Config.withDefault(defaultRelayOrigin));
+    // OUTLORE_RELEASE is the release the desktop app runs; a host tells it to the browsers that connect.
+    const release = yield* Config.String("OUTLORE_RELEASE").pipe(Config.withDefault("development"));
     // The Worker's name on the owner's own Cloudflare account, for a check that must not touch a Worker already there.
     const ownRelayWorkerName = yield* Config.String("OUTLORE_OWN_RELAY_NAME").pipe(Config.withDefault(""));
     const problem = yield* sandboxProblem;
@@ -46,6 +48,7 @@ const liveLayer = Layer.unwrap(
         priceSource: harnessName === "fake" ? noPriceSourceLayer : modelsDevSourceLayer(),
         ...(ownRelayWorkerName === "" ? {} : { ownRelayWorkerName }),
         relayOrigin,
+        release,
         scratchRoot: join(dataDirectory, "missions"),
       }),
     );

@@ -19,7 +19,8 @@ import type { Place } from "./src/shell/sidebar";
 
 export default function App() {
   const {
-    localClient,
+    isBrowser,
+    pair,
     hostId,
     setHostId,
     hostClient,
@@ -68,6 +69,7 @@ export default function App() {
     () => ({
       activeId: hostId,
       computerName,
+      hasLocalComputer: !isBrowser,
       hosts,
       onAdd: () => setIsAddingHost(true),
       onChoose: (next: string | null) => {
@@ -81,15 +83,33 @@ export default function App() {
         setHostId(next);
       },
     }),
-    [computerName, hostId, hosts, setFailure, setHostId, setIsAddingHost],
+    [computerName, hostId, hosts, isBrowser, setFailure, setHostId, setIsAddingHost],
   );
+  // A browser with no host has nothing to show: it pairs first.
+  if (isBrowser && hosts.length === 0) {
+    return (
+      <View style={styles.center}>
+        <AddHostModal
+          computerName={computerName}
+          deviceNoun="browser"
+          isRequired
+          onPair={(code, deviceName) =>
+            pair(code, deviceName).then((host) => {
+              hostMenu.onChoose(host.id);
+              return host;
+            })
+          }
+        />
+      </View>
+    );
+  }
   if (client === null) {
     return (
       <View style={styles.center}>
         <Text style={styles.connecting}>
           {failure ?? (hostId === null ? "Connecting to the local service…" : `Connecting to ${activeHost.name}…`)}
         </Text>
-        {hostId !== null && (
+        {hostId !== null && !isBrowser && (
           <Pressable accessibilityRole="button" onPress={() => hostMenu.onChoose(null)} style={styles.backButton}>
             <Text style={styles.backText}>Back to this computer</Text>
           </Pressable>
@@ -184,7 +204,7 @@ export default function App() {
   );
   return (
     <ActiveHostContext.Provider value={activeHost}>
-      <HostMenuContext.Provider value={localClient === null ? null : hostMenu}>
+      <HostMenuContext.Provider value={hostMenu}>
         <View style={styles.root}>
           {hostId !== null && linkFailure !== null && (
             <View accessibilityRole="alert" style={styles.banner}>
@@ -192,9 +212,17 @@ export default function App() {
                 {activeHost.name}: {linkFailure}
                 {hostClient?.hasGivenUp === true ? "" : " Trying again…"}
               </Text>
-              <Pressable accessibilityRole="button" onPress={() => hostMenu.onChoose(null)}>
-                <Text style={styles.bannerLink}>Use this computer</Text>
-              </Pressable>
+              {isBrowser ? (
+                hostClient?.needsPairing === true && (
+                  <Pressable accessibilityRole="button" onPress={() => setIsAddingHost(true)}>
+                    <Text style={styles.bannerLink}>Pair again</Text>
+                  </Pressable>
+                )
+              ) : (
+                <Pressable accessibilityRole="button" onPress={() => hostMenu.onChoose(null)}>
+                  <Text style={styles.bannerLink}>Use this computer</Text>
+                </Pressable>
+              )}
             </View>
           )}
           <ArchiveNavigation.Provider
@@ -210,12 +238,13 @@ export default function App() {
             <View style={styles.root}>{shell}</View>
           </ArchiveNavigation.Provider>
         </View>
-        {isAddingHost && localClient !== null && (
+        {isAddingHost && (
           <AddHostModal
             computerName={computerName}
+            deviceNoun={isBrowser ? "browser" : "computer"}
             onCancel={() => setIsAddingHost(false)}
             onPair={(code, deviceName) =>
-              localClient.request({ _tag: "AddHost", code, deviceName }).then((host) => {
+              pair(code, deviceName).then((host) => {
                 setIsAddingHost(false);
                 hostMenu.onChoose(host.id);
                 return host;

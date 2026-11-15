@@ -12,6 +12,7 @@
     "@expo-google-fonts/caveat": "^0.4.2",
     "@expo/metro-runtime": "~58.0.17",
     "@outlore/contracts": "workspace:*",
+    "@outlore/controller": "workspace:*",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "effect": "4.1.4",

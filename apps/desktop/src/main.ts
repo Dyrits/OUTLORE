@@ -52,6 +52,7 @@ const startService = (token: string) => {
     env: {
       ...process.env,
       OUTLORE_DATA_DIR: dataDirectory(),
+      OUTLORE_RELEASE: app.getVersion(),
       OUTLORE_TOKEN: token,
     },
     serviceName: "Outlore service",

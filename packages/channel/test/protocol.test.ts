@@ -105,6 +105,23 @@ describe("host reply", () => {
     expect(parseHostReply(asText({ hostName: "Studio", t: "resumed", token })).ok).toBe(false);
   });
 
+  it("carries the host's release in a paired or resumed reply, and reads a reply without one", () => {
+    const withRelease = { ...paired, release: "0.1.4-Prototype" };
+    expect(parseHostReply(encodeHostReply(withRelease))).toEqual({ ok: true, value: withRelease });
+    const resumed = { hostName: "Studio", release: "0.1.4-Prototype", t: "resumed" } as const;
+    expect(parseHostReply(encodeHostReply(resumed))).toEqual({ ok: true, value: resumed });
+    expect(parseHostReply(asText({ hostName: "Studio", t: "resumed" }))).toEqual({
+      ok: true,
+      value: { hostName: "Studio", t: "resumed" },
+    });
+  });
+
+  it("rejects a release that is not text, is empty, or rides on a refusal", () => {
+    expect(parseHostReply(asText({ ...paired, release: 3 })).ok).toBe(false);
+    expect(parseHostReply(asText({ hostName: "Studio", release: "", t: "resumed" })).ok).toBe(false);
+    expect(parseHostReply(asText({ reason: "disabled", release: "0.1.4-Prototype", t: "refused" })).ok).toBe(false);
+  });
+
   it("rejects text that is not a JSON object", () => {
     for (const text of ["", "x", "[]", "null"]) {
       expect(parseHostReply(text), text).toEqual({ kind: "malformed", ok: false });

@@ -5,7 +5,7 @@ import {
   type HostReply,
   openInitiator,
   parseHostReply,
-  type RefusalReason,
+  refusalText,
   roomPrologue,
   type SecureChannel,
 } from "@outlore/channel";
@@ -21,15 +21,6 @@ import { type HostLink, readHostLink, saveHost, touchHost } from "./knownHosts.t
 
 /** How long pairing or opening a link may take in all. */
 const linkMillis = 20_000;
-
-const refusalText = {
-  "code-expired": "That pairing code has expired. Ask the host for a new one.",
-  "code-invalid": "That pairing code is not valid. Check that you copied all of it, or ask the host for a new one.",
-  "code-used": "That pairing code was already used. Ask the host for a new one.",
-  disabled: "The host is not accepting paired devices. Turn on Allow paired devices on the host.",
-  disconnected: "The host disconnected this computer. Pair with it again.",
-  "unknown-device": "The host no longer knows this computer. Pair with it again.",
-} as const satisfies Record<RefusalReason, string>;
 
 const failures = {
   hostOffline: new ServiceFailure({

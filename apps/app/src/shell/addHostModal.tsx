@@ -11,12 +11,18 @@ import { Button } from "../ui/button";
  */
 export function AddHostModal({
   computerName,
+  deviceNoun = "computer",
+  isRequired = false,
   onCancel,
   onPair,
 }: {
   /** The name offered for this computer. */
   computerName: string;
-  onCancel: () => void;
+  /** What this device is called in the dialog: a browser is not a computer. */
+  deviceNoun?: "browser" | "computer";
+  /** A browser with no host has nothing else to show, so the dialog cannot be dismissed. */
+  isRequired?: boolean;
+  onCancel?: () => void;
   /** Pairs with the host and resolves with it; rejects with the reason the owner reads. */
   onPair: (code: string, deviceName: string) => Promise<KnownHost>;
 }) {
@@ -39,7 +45,7 @@ export function AddHostModal({
   return (
     <Modal animationType="fade" onRequestClose={onCancel} transparent visible>
       <View style={local.backdrop}>
-        <Pressable accessibilityLabel="Close" onPress={onCancel} style={StyleSheet.absoluteFill} />
+        {!isRequired && <Pressable accessibilityLabel="Close" onPress={onCancel} style={StyleSheet.absoluteFill} />}
         <View style={local.panel}>
           <Text style={local.title}>Add a host</Text>
           <Text style={local.help}>
@@ -59,9 +65,9 @@ export function AddHostModal({
             style={[local.input, local.codeInput]}
             value={code}
           />
-          <Text style={local.label}>Name this computer</Text>
+          <Text style={local.label}>Name this {deviceNoun}</Text>
           <TextInput
-            accessibilityLabel="Name of this computer"
+            accessibilityLabel={`Name of this ${deviceNoun}`}
             maxLength={60}
             onChangeText={setName}
             style={local.input}
@@ -69,7 +75,7 @@ export function AddHostModal({
           />
           {error !== null && <Text style={local.error}>{error}</Text>}
           <View style={local.footer}>
-            <Button isPrimary={false} label="Cancel" onPress={onCancel} />
+            {!isRequired && <Button isPrimary={false} label="Cancel" onPress={() => onCancel?.()} />}
             <Button isDisabled={!isReady} label={isBusy ? "Pairing…" : "Pair"} onPress={pair} />
           </View>
         </View>

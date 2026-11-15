@@ -3,6 +3,7 @@ import {
   hostEndpointOf,
   hostLinkCodes,
   isFinalLinkClose,
+  isRefusedLinkClose,
   linkFailureOf,
   retryDelayOf,
 } from "../../src/foundation/hosts";
@@ -29,6 +30,15 @@ describe("the link to a paired host", () => {
     );
     expect([4000, 4001, 1006].map(isFinalLinkClose)).toEqual([false, false, false]);
     expect(isFinalLinkClose(hostLinkCodes.refused)).toBe(true);
+  });
+
+  it("stops trying, too, when the host runs another release, which pairing again cannot mend", () => {
+    expect(linkFailureOf(hostLinkCodes.otherRelease, "This web app is release 1, but the host runs 2.")).toBe(
+      "This web app is release 1, but the host runs 2.",
+    );
+    expect(isFinalLinkClose(hostLinkCodes.otherRelease)).toBe(true);
+    expect(isRefusedLinkClose(hostLinkCodes.otherRelease)).toBe(false);
+    expect([hostLinkCodes.refused, 4000, 4001].map(isRefusedLinkClose)).toEqual([true, false, false]);
   });
 
   it("retries the local service every second but backs off from a host, to half a minute", () => {

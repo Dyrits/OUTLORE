@@ -22,10 +22,12 @@ export interface HostMenuProps {
   readonly activeId: string | null;
   /** This computer's own name. */
   readonly computerName: string;
+  /** Whether the window has a computer of its own to show; a browser has only the hosts it paired with. */
+  readonly hasLocalComputer: boolean;
   readonly hosts: readonly KnownHost[];
   readonly onAdd: () => void;
   readonly onChoose: (hostId: string | null) => void;
 }
 
-/** The host menu the window offers; null where the window cannot pair (outside the desktop app). */
+/** The host menu the window offers; null where the window cannot pair. */
 export const HostMenuContext = createContext<HostMenuProps | null>(null);
