@@ -19,7 +19,6 @@ import {
   type HostRecord,
   hostNameOf,
   hostReleaseOf,
-  isDevicePaired,
   readHostRecord,
   redeemPairingSecret,
   resumeDevice,
@@ -41,12 +40,13 @@ export type RunWork = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient | R
 export interface DeviceServerParts {
   /** Registers a screen for committed changes and drafts; the returned function removes it. */
   readonly addSession: (send: (frame: ServerFrame) => void) => () => void;
+  /** Registers a connected device so Disconnect can reach it; the returned function removes it. */
+  readonly admitDevice: (deviceId: string, close: () => void) => Promise<(() => void) | null>;
   /** Tells the screens that something they show changed, such as a device connecting. */
   readonly announce: () => void;
   /** Answers a request frame from a paired device through the service. */
   readonly answer: (message: string, send: (frame: ServerFrame) => void) => void;
-  /** Registers a connected device so Disconnect can reach it; the returned function removes it. */
-  readonly deviceConnected: (deviceId: string, close: () => void) => () => void;
+  readonly isAccepting: () => boolean;
   readonly run: RunWork;
   /** Runs work in one transaction, as redeeming a pairing code must. */
   readonly runInTransaction: RunWork;
@@ -90,8 +90,7 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
     }
     const hello = parsed.value;
     // The switch may have gone off after this connection was made: nobody pairs or resumes while it is off.
-    const record = await parts.run(readHostRecord);
-    if (record === null || !record.isEnabled) return refuse("disabled");
+    if (!parts.isAccepting()) return refuse("disabled");
 
     const now = Date.now();
     let deviceId: string;
@@ -114,13 +113,11 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
 
     // Registered before the answer, then checked: a Disconnect that came in between would otherwise leave this device
     // connected with the authority of an owner it no longer has.
-    const removeConnection = parts.deviceConnected(deviceId, () => channel.close());
-    if (!(await parts.run(isDevicePaired(deviceId)))) {
-      removeConnection();
-      return refuse("disconnected");
-    }
+    const removeConnection = await parts.admitDevice(deviceId, () => channel.close());
+    if (removeConnection === null) return refuse(parts.isAccepting() ? "disconnected" : "disabled");
+    channel.onClose(removeConnection);
     const current = await parts.run(readHostRecord);
-    if (isClosed || current === null || !current.isEnabled) {
+    if (isClosed || !parts.isAccepting()) {
       removeConnection();
       channel.close();
       return null;
