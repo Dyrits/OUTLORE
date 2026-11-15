@@ -270,6 +270,18 @@ describe("archiving done missions automatically", () => {
       expect(yield* entriesOf(missionId)).toEqual(["Marked done by the user", "Archived automatically"]);
     }).pipe(Effect.provide(live())),
   );
+
+  it.effect("deletes a Done quest that used no tokens instead of archiving it", () =>
+    Effect.gen(function* () {
+      yield* updateSettings({ autoArchiveDays: 30, shouldAutoArchive: true });
+      const empty = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: "empty" });
+      yield* end(empty.missionId, "Done");
+      yield* advance(31 * day);
+      expect(summaryOf(yield* list(), empty.missionId)).toBeUndefined();
+      expect(summaryOf(yield* list({ isArchived: true }), empty.missionId)).toBeUndefined();
+      expect((yield* Effect.flip(read(empty.missionId))).kind).toBe("NotFound");
+    }).pipe(Effect.provide(live())),
+  );
 });
 
 describe("continuing an ended mission", () => {

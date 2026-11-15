@@ -10,6 +10,7 @@ import {
   invalid,
   PriceTable,
   readSettings,
+  removeScratch,
   type ServiceFailure,
 } from "../core/index.ts";
 import { removedAccountReasonOf, toolServerName } from "../harness/index.ts";
@@ -267,7 +268,12 @@ export const threadsLayer = Layer.effect(
     });
     const wakeMission = (missionId: string) => wakeWaiting(missionId, "");
     // Commands on a single thread; the service's own runner (commands.ts) is built over this layer.
-    const commands = makeCommands({ publish: changes.publish, sql, threads: { cancel, wake, wakeMission } });
+    const commands = makeCommands({
+      publish: changes.publish,
+      removeScratch: (id) => local(removeScratch(join(scratchRoot, id))).pipe(Effect.orDie),
+      sql,
+      threads: { cancel, wake, wakeMission },
+    });
 
     const stop = (threadId: string) => commands.run(stopThread(threadId)).pipe(Effect.orDie);
 

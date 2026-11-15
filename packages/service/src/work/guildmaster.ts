@@ -364,10 +364,16 @@ export const actOnMission = (callerId: string, args: ArgumentsOf<"act_on_mission
     const ending = args.action === "Done" ? "Done" : "Archived";
     // The receipt matched the threads at work the question named, so the snapshot taken now is that one.
     const preview = yield* previewEnding(args.mission, ending);
-    const done = yield* endMission(args.mission, ending, preview.snapshot);
+    const done = yield* endMission(args.mission, ending, preview.snapshot, "Chronicler");
     return changed<ActedOnQuest>(
-      { _tag: "Done", text: `Marked "${quest.title}" ${ending === "Done" ? "Done" : "Archived"}.` },
-      { turnsToCancel: done.followUps.turnsToCancel },
+      {
+        _tag: "Done",
+        text:
+          done.followUps.missionsToRemoveScratch.length > 0
+            ? `Deleted "${quest.title}".`
+            : `Marked "${quest.title}" ${ending === "Done" ? "Done" : "Archived"}.`,
+      },
+      done.followUps,
     );
   });
 
