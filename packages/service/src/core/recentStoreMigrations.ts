@@ -58,7 +58,7 @@ export const recentStoreMigrations = {
     yield* sql`ALTER TABLE questions ADD COLUMN choices TEXT`;
     yield* sql`ALTER TABLE questions ADD COLUMN answers TEXT`;
   }),
-  "0052_command_outcome_wakes": Effect.gen(function* () {
+  "0053_command_outcome_wakes": Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     // Null marks older value-only rows, decoded on replay without rewriting the saved value.
     yield* sql`ALTER TABLE command_outcomes ADD COLUMN wakes TEXT`;

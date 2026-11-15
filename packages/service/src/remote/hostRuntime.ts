@@ -38,8 +38,10 @@ export const remoteHostLayer = Layer.effectDiscard(
     const devices = createDeviceServer({
       addSession: (send) => sessions.add(send),
       announce: () => void runPlain(changes.publish).catch(reportFailure),
-      answer: (message, send) =>
-        void runPlain(answerText(service.handle, message, send, { isPairedDevice: true })).catch(reportFailure),
+      answer: (message, send, deviceId) =>
+        void runPlain(answerText(service.handle, message, send, { deviceId, isPairedDevice: true })).catch(
+          reportFailure,
+        ),
       deviceConnected: state.deviceConnected,
       run,
       runInTransaction,

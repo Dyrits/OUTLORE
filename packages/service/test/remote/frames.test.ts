@@ -21,10 +21,11 @@ const requests = {
   UseSharedRelay: {},
 } as const;
 
-const frameFor = (tag: keyof typeof requests) => JSON.stringify({ id: "1", request: { _tag: tag, ...requests[tag] } });
+const frameFor = (tag: string) =>
+  JSON.stringify({ id: "1", request: { _tag: tag, ...new Map<string, object>(Object.entries(requests)).get(tag) } });
 
 /** Runs a text frame from a source and returns what was sent back and whether the service was asked. */
-const run = async (tag: keyof typeof requests, isPairedDevice: boolean) => {
+const run = async (tag: string, isPairedDevice: boolean) => {
   const sent: ServerFrame[] = [];
   let isAsked = false;
   const handle = () => {

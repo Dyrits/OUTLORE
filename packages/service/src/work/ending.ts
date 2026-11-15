@@ -111,13 +111,15 @@ export const endMission = Effect.fn("endMission")(function* (
     const deleted = yield* eraseEmptyQuest(parent.topThreadId);
     return changed(placement, deleted.followUps);
   }
-  yield* haltThreads(ids, "Stopped");
+  // Auto-archive never stops work: it only files a Done quest away, as before CHG-0304.
+  const stopped = source === "auto-archive" ? [] : ids;
+  yield* haltThreads(stopped, "Stopped");
   yield* recordEnding(
     missionId,
     ending,
     source === "auto-archive" ? journalEntries.AutoArchived : journalEntries[ending],
   );
-  return changed(placement, { turnsToCancel: ids });
+  return changed(placement, { turnsToCancel: stopped });
 });
 
 /** Returns an ended mission to the state worked out from its threads. */

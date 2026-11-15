@@ -30,6 +30,7 @@ export {
 } from "./realmRequests.ts";
 export * from "./records.ts";
 export * from "./remote.ts";
+export { type RequestSource, requestSourceRules, sourceRulesOf } from "./requestSources.ts";
 export * from "./requests.ts";
 export * from "./ritualSchedules.ts";
 export * from "./rituals.ts";

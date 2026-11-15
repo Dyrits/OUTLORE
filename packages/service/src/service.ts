@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import type { Request } from "@outlore/contracts";
+import type { Request, RequestSource } from "@outlore/contracts";
 import { Effect, Layer, Match, Semaphore } from "effect";
 import type { SqlError } from "effect/sql";
 import {
@@ -60,9 +60,9 @@ import { readPermissionsView } from "./work/permissionViews.ts";
 import { planLimitsLayer } from "./work/planLimits.ts";
 import { priceRefreshLayer } from "./work/priceRefresh.ts";
 import { questsHandlers } from "./work/questsHandlers.ts";
-import { requireReachableFolder } from "./work/reachedFolders.ts";
 import { realmHandlers } from "./work/realmHandlers.ts";
 import { remoteHandlers } from "./work/remoteHandlers.ts";
+import { admitRequestSource } from "./work/requestAuthority.ts";
 import type { RequestServices } from "./work/requestContext.ts";
 import { ritualsLayer } from "./work/rituals.ts";
 import { ritualsHandlers } from "./work/ritualsHandlers.ts";
@@ -104,73 +104,73 @@ const make = Effect.gen(function* () {
    */
   const handle = (
     request: Request,
-    source: { readonly isPairedDevice: boolean } = { isPairedDevice: false },
-  ): Effect.Effect<unknown, ServiceFailure> => {
-    const folderAccess = source.isPairedDevice ? "roots" : "anywhere";
-    // One handler per request tag; Match.valueTags fails to compile when a tag has none.
-    const run: Effect.Effect<unknown, ServiceFailure | SqlError.SqlError, RequestServices> = Match.valueTags(request, {
-      ...loreHandlers(dependencies),
-      ...accountsHandlers(dependencies),
-      ...remoteHandlers(dependencies),
-      ...messagesHandlers(dependencies),
-      ...questsHandlers(dependencies),
-      ...ritualsHandlers(dependencies),
-      AddBrowsableRoot: (add) => change(addBrowsableRoot(add.path)),
-      AddCredit: (given) =>
-        commands.run(addCredit({ accountId: given.accountId, harness: given.harness }, given.amount)),
-      AnswerChoices: (given) => approvals.answerChoices(given.questionId, given.answers, "desktop"),
-      AnswerQuestion: (given) => approvals.answer(given.questionId, given.answer, given.message, "desktop"),
-      AnswerSuggestion: (given) =>
-        suggestions.answer(given.suggestionId, given.answer).pipe(
-          Effect.tap(({ followUps }) => commands.apply(followUps)),
-          Effect.map(({ value }) => value),
-        ),
-      BrowseFolders: (browse) => browseFolders(browse.path, browse.shouldIncludeHidden, folderAccess),
-      ChangeSettings: (given) => saveSettings((saved) => mergedSettings(saved, given.change)),
-      CreateFolder: (create) => createFolder(create.parent, create.name, folderAccess),
-      ...realmHandlers(commands),
-      ListMentionables: () => listMentionables,
-      ListOpenQuestions: () => listOpenQuestions,
-      ListSkills: (given) => listSkills(given.workspacePath),
-      ListWorkspaceEntries: (given) => listWorkspaceEntries(given.workspacePath, given.query),
-      ReadAccountBudgets: () => readAccountBudgets,
-      ReadBudget: (read) => readBudgetWindow(read.missionId),
-      ReadPermissions: (read) => readPermissionsView(read.missionId),
-      ReadPriceStatus: () => prices.status,
-      ReadSettings: () => readSettings,
-      ReadStartChoices: () => readStartChoices,
-      ReadUsage: (read) => readUsage(read.period, read.filters),
-      RefreshPrices: () =>
-        prices.refresh.pipe(
-          Effect.catchTag("PriceReadFailed", (failure) =>
-            Effect.fail(new ServiceFailure({ kind: "ExecutionFailure", message: failure.reason })),
-          ),
-        ),
-      RemoveBrowsableRoot: (remove) => change(removeBrowsableRoot(remove.path)),
-      RemovePermission: (remove) => change(removePermission(remove.permissionId)),
-      ResolveChatter: (given) => resolveChatter(given.id, given.choice).pipe(chatterDecisions.withPermit),
-      SearchFolders: (search) => searchFolders(search.query, folderAccess, homeFolder),
-      SetAccountBudget: (given) =>
-        commands.run(
-          setAccountBudget(
-            { accountId: given.accountId, harness: given.harness },
-            given.limits,
-            given.period,
-            given.since,
-          ),
-        ),
-      SetMissionBudget: (given) => commands.run(setMissionBudget(given.missionId, given.limits)),
-      StopAtBudget: (given) => commands.run(stopAtBudget(given.stopId)),
-      SwitchAtBudget: (given) => commands.run(switchAtBudget(given.stopId)),
-      UpdateSettings: (update) => saveSettings(() => update.settings),
-      WidenPermission: (widen) => change(widenPermission(widen.permissionId)),
-    });
-    return requireReachableFolder(request, folderAccess).pipe(
-      Effect.andThen(run),
-      Effect.provideContext(context),
-      Effect.catchTag("SqlError", (error) => storageFailure(error)),
-    );
-  };
+    source: RequestSource = { isPairedDevice: false },
+  ): Effect.Effect<unknown, ServiceFailure> =>
+    Effect.gen(function* () {
+      const { folderAccess, deviceLabel } = yield* admitRequestSource(source, request);
+      // One handler per request tag; Match.valueTags fails to compile when a tag has none.
+      const run: Effect.Effect<unknown, ServiceFailure | SqlError.SqlError, RequestServices> = Match.valueTags(
+        request,
+        {
+          ...loreHandlers(dependencies),
+          ...accountsHandlers(dependencies),
+          ...remoteHandlers(dependencies),
+          ...messagesHandlers(dependencies),
+          ...questsHandlers(dependencies),
+          ...ritualsHandlers(dependencies),
+          AddBrowsableRoot: (add) => change(addBrowsableRoot(add.path)),
+          AddCredit: (given) =>
+            commands.run(addCredit({ accountId: given.accountId, harness: given.harness }, given.amount)),
+          AnswerChoices: (given) => approvals.answerChoices(given.questionId, given.answers, deviceLabel),
+          AnswerQuestion: (given) => approvals.answer(given.questionId, given.answer, given.message, deviceLabel),
+          AnswerSuggestion: (given) =>
+            suggestions.answer(given.suggestionId, given.answer).pipe(
+              Effect.tap(({ followUps }) => commands.apply(followUps)),
+              Effect.map(({ value }) => value),
+            ),
+          BrowseFolders: (browse) => browseFolders(browse.path, browse.shouldIncludeHidden, folderAccess),
+          ChangeSettings: (given) => saveSettings((saved) => mergedSettings(saved, given.change)),
+          CreateFolder: (create) => createFolder(create.parent, create.name, folderAccess),
+          ...realmHandlers(commands),
+          ListMentionables: () => listMentionables,
+          ListOpenQuestions: () => listOpenQuestions,
+          ListSkills: (given) => listSkills(given.workspacePath),
+          ListWorkspaceEntries: (given) => listWorkspaceEntries(given.workspacePath, given.query),
+          ReadAccountBudgets: () => readAccountBudgets,
+          ReadBudget: (read) => readBudgetWindow(read.missionId),
+          ReadPermissions: (read) => readPermissionsView(read.missionId),
+          ReadPriceStatus: () => prices.status,
+          ReadSettings: () => readSettings,
+          ReadStartChoices: () => readStartChoices,
+          ReadUsage: (read) => readUsage(read.period, read.filters),
+          RefreshPrices: () =>
+            prices.refresh.pipe(
+              Effect.catchTag("PriceReadFailed", (failure) =>
+                Effect.fail(new ServiceFailure({ kind: "ExecutionFailure", message: failure.reason })),
+              ),
+            ),
+          RemoveBrowsableRoot: (remove) => change(removeBrowsableRoot(remove.path)),
+          RemovePermission: (remove) => change(removePermission(remove.permissionId)),
+          ResolveChatter: (given) => resolveChatter(given.id, given.choice).pipe(chatterDecisions.withPermit),
+          SearchFolders: (search) => searchFolders(search.query, folderAccess, homeFolder),
+          SetAccountBudget: (given) =>
+            commands.run(
+              setAccountBudget(
+                { accountId: given.accountId, harness: given.harness },
+                given.limits,
+                given.period,
+                given.since,
+              ),
+            ),
+          SetMissionBudget: (given) => commands.run(setMissionBudget(given.missionId, given.limits)),
+          StopAtBudget: (given) => commands.run(stopAtBudget(given.stopId)),
+          SwitchAtBudget: (given) => commands.run(switchAtBudget(given.stopId)),
+          UpdateSettings: (update) => saveSettings(() => update.settings),
+          WidenPermission: (widen) => change(widenPermission(widen.permissionId)),
+        },
+      );
+      return yield* run;
+    }).pipe(Effect.provideContext(context), Effect.catchTag("SqlError", storageFailure));
 
   return { handle };
 });

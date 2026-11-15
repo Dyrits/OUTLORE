@@ -40,7 +40,7 @@ Candidate 8 commit note: the normal commit hook passed staged Biome and seven ty
 - The replay test records both actual wake calls through a fake runner and proves domain work is not repeated.
 - A saved-before row with no wakes or thread owner is read through the compatibility path; a reused request id with another tag is refused.
 - Empty quest deletion removes the new indexed outcome and a seeded value-only legacy outcome.
-- Migration 0052 adds nullable wakes and thread ownership, plus an index; existing result values are not rewritten.
+- Migration 0053 (first written as 0052, renamed to follow the approvals branch's 0052_question_kind) adds nullable wakes and thread ownership, plus an index; existing result values are not rewritten.
 
 Full-suite and final static-check results follow below.
 
@@ -62,3 +62,12 @@ As for candidate 8, the local commit uses the checks run inside the sandbox, wit
 - service.ts falls from 678 to 265 lines. Every new module is below 256 lines. Its only remaining provideService call prepares the startup attachment sweep; request handlers receive one shared context at the router boundary.
 
 No new acceptance or product choice: existing tests exercise the same requests after extraction. The runner-change image check now shares the runner-change transaction. No app UI was changed or driven. Local commit uses the recorded sandbox checks, as explained under candidate 8.
+
+## Candidate 11, CHG-0308, and the auto-archive follow-up to CHG-0304
+
+- Red: `CI=1 bun run test packages/service/test/work/requestAuthority.test.ts packages/service/test/remote/frames.test.ts`: three failures before the module existed: a paired source reached a host-only request through a direct service call; host-window and phone answers were both recorded "desktop".
+- Green: `CI=1 bun run test packages/service/test/work/approvals.test.ts packages/service/test/work/requestAuthority.test.ts packages/service/test/remote packages/service/test/work/reachedFolders.test.ts`: 104 passed, eight files. `approvals.test.ts` now expects "host window" for an answer from the host's own window.
+- Auto-archive follow-up (parent's review): CHG-0304 had made auto-archive stop threads still at work in a Done quest; the original only recorded the ending. Restored. New test in `tracking.test.ts` ("files a Done quest away without stopping a thread still at work"). Mutation: restoring the halt fails it with `expected 'Stopped' to be 'Running'`; `CI=1 bun run test packages/service/test/tracking.test.ts`: 26 passed after the fix.
+- Empty-quest deletion skips `eraseAttachmentsOf` by design: attachments belong to a message (`message_id`) or are unassigned drafts (`message_id IS NULL`, owned by no quest); an empty quest holds no message, so it owns no attachment.
+- `CI=1 bun run test --maxWorkers=4`: 164 files passed, one skipped; 1,630 tests passed, 54 skipped. The skips are the environment-dependent ones (palette contrast, terminals, disk image, live and OpenCode/Seatbelt harness tests); this batch adds none.
+- `bun run typecheck`: seven workspaces pass. `bun run check`: 689 files pass.

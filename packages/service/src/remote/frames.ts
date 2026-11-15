@@ -1,10 +1,11 @@
 import {
   type ClientFrame,
   ClientFrameJson,
-  hostOnlyRequestTags,
+  type RequestSource,
   Results,
   type ServerFrame,
   ServerFrameJson,
+  sourceRulesOf,
 } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import type { ServiceFailure } from "../core/index.ts";
@@ -23,9 +24,7 @@ const frameIdOf = (raw: string) => {
 };
 
 /** Where a client text frame came from; a paired device is the owner, except for what only the host may do. */
-export interface FrameSource {
-  readonly isPairedDevice: boolean;
-}
+export type FrameSource = RequestSource;
 
 /** What serves requests: the service's `handle`, told whether a paired device asks. */
 export type Handle = (request: ClientFrame["request"], source: FrameSource) => Effect.Effect<unknown, ServiceFailure>;
@@ -69,7 +68,7 @@ export const answerText = (
   const decoded = decodeClientFrame(raw);
   if (Exit.isSuccess(decoded)) {
     const frame = decoded.value;
-    if (source.isPairedDevice && (hostOnlyRequestTags as ReadonlyArray<string>).includes(frame.request._tag)) {
+    if (source.isPairedDevice && sourceRulesOf(frame.request).isHostOnly) {
       return Effect.sync(() =>
         send({
           _tag: "Failure",

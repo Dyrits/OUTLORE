@@ -1,4 +1,4 @@
-import type { Request } from "@outlore/contracts";
+import type { Request, RequestSource } from "@outlore/contracts";
 import { Context, type Effect } from "effect";
 import type { ServiceFailure } from "./core/index.ts";
 
@@ -7,9 +7,6 @@ export class Service extends Context.Service<
   Service,
   {
     /** Answers a request; a paired device's folder requests are limited to the browsable roots (CHG-0253). */
-    readonly handle: (
-      request: Request,
-      source?: { readonly isPairedDevice: boolean },
-    ) => Effect.Effect<unknown, ServiceFailure>;
+    readonly handle: (request: Request, source?: RequestSource) => Effect.Effect<unknown, ServiceFailure>;
   }
 >()("outlore/Service") {}

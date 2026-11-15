@@ -140,7 +140,7 @@ describe("asking before an action the thread judges consequential", () => {
       const started = yield* start(ask(push));
       const asking = yield* settle(started.missionId, isAsking);
       const answered = yield* answer(openQuestion(asking), "Allow");
-      expect(answered).toMatchObject({ device: "desktop", outcome: "Allowed" });
+      expect(answered).toMatchObject({ device: "host window", outcome: "Allowed" });
 
       const detail = yield* settle(started.missionId, isReplied);
       expect(lastReply(detail)).toContain("Allowed.");
