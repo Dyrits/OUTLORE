@@ -2,9 +2,8 @@ import { join } from "node:path";
 import type { HarnessName, ModelChoice, ModelOption, StartingContext } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { notFound, readSettings, sandboxProblem, tokensOf } from "../core/index.ts";
+import { notFound, tokensOf } from "../core/index.ts";
 import {
-  approvalInstructionsOf,
   claudeModels,
   guildmasterInstructionsOf,
   positionLineOf,
@@ -12,7 +11,7 @@ import {
   threadInstructionsOf,
 } from "../harness/index.ts";
 import { contextWindowOf, loreContextOf, loreInstructions } from "../lore/index.ts";
-import { listThreadPermissions } from "../policy/index.ts";
+import { readApprovalInstructions } from "./approvalTerms.ts";
 import { accountOfThread, budgetLineOf } from "./budgetScopes.ts";
 import { guildmasterContextOf } from "./guildmaster.ts";
 import { journalContextOf, journalInstructions, openerContextOf, openerMessagesOf } from "./journal.ts";
@@ -152,28 +151,6 @@ export const prepareStartingContext = (threadId: string) =>
     } satisfies TurnContext;
   });
 
-/** The approval rules the harness appends to the system part (instructions.ts), as a thread there gets them. */
-const readApprovalInstructions = (threadId: string, isInWorkspace: boolean, harness: HarnessName) =>
-  Effect.gen(function* () {
-    const { approvalLevel, shouldAllowOutsideSandbox } = yield* readSettings;
-    const permissions = yield* listThreadPermissions(threadId);
-    // Only Claude Code sandboxes commands, at the default level, where its sandbox can run (claude.ts).
-    const isSandboxed = harness === "claude" && approvalLevel === "RiskyOnly" && (yield* sandboxProblem) === null;
-    const sentences = permissions.map((permission) => permission.sentence);
-    return approvalInstructionsOf(
-      {
-        approvalLevel,
-        canWorkOutsideSandbox: shouldAllowOutsideSandbox,
-        isInWorkspace,
-        mcpUrl: "",
-        permissions: sentences,
-        unaskedTools: [],
-      },
-      isSandboxed,
-      harness,
-    );
-  });
-
 /**
  * What a thread the owner opens beneath `parentId` with this request would start with, on the chosen harness
  * (the parent's when null) and model. It has the parent's workspace, the parent's messages since the latest
@@ -203,7 +180,7 @@ export const readStartingContext = (
     const openerMessages = yield* openerMessagesOf(parentId);
     const subject = { loreThreadId: parentId, missionId: parent.missionId, openerMessages, position };
     const sections = yield* readSections(subject, folder.context);
-    const approvals = yield* readApprovalInstructions(parentId, workspace !== null, harness);
+    const approvals = yield* readApprovalInstructions(parentId, harness);
     const parts = {
       budget: sections.budget === null ? 0 : tokensOf(sections.budget),
       instructions: tokensOf(sections.instructions) + tokensOf(approvals),
@@ -247,7 +224,7 @@ export const readSentContextSize = (threadId: string) =>
     const { harness, subject, workspace } = yield* readThreadSubject(threadId);
     const folder = yield* workingFolderOf(workspace, join(scratchRoot, subject.missionId));
     const sections = yield* readSections(subject, folder.context);
-    const approvals = yield* readApprovalInstructions(threadId, workspace !== null, harness);
+    const approvals = yield* readApprovalInstructions(threadId, harness);
     return {
       instructions:
         tokensOf(sections.instructions) +

@@ -118,3 +118,30 @@ describe("the assistant renamed Chronicler (CHG-0285)", () => {
     }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
   });
 });
+
+describe("migrating saved questions to explicit kinds", () => {
+  it.live("preserves past answers and classifies choices, grants and confirmations", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
+    directories.push(directory);
+    return Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* migrateUntil("0051_choice_questions");
+      yield* sql`INSERT INTO missions (id, top_thread_id, title, created_at, last_activity_at) VALUES ('m', 't', 'Quest', 1, 1)`;
+      yield* sql`INSERT INTO threads (id, mission_id, state) VALUES ('t', 'm', 'Idle')`;
+      for (const [id, pattern, permission, choices] of [
+        ["action", "git push", "Run this exact command", null],
+        ["choice", null, null, "[]"],
+        ["confirmation", null, null, null],
+      ]) {
+        yield* sql`INSERT INTO questions (id, mission_id, thread_id, source, summary, details, pattern, permission, choices, asked_at, outcome)
+          VALUES (${id}, 'm', 't', 'Thread', 'Question', 'Details', ${pattern}, ${permission}, ${choices}, 1, 'Withdrawn')`;
+      }
+      yield* migrateUntil("0052_question_kind");
+      expect(yield* sql`SELECT id, kind, outcome FROM questions ORDER BY id`).toEqual([
+        { id: "action", kind: "Approval", outcome: "Withdrawn" },
+        { id: "choice", kind: "Choice", outcome: "Withdrawn" },
+        { id: "confirmation", kind: "Confirmation", outcome: "Withdrawn" },
+      ]);
+    }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
+  });
+});

@@ -1,4 +1,4 @@
-export { answersProblemOf, choicesOfPrompt } from "./choices.ts";
+export { answersProblemOf } from "./choices.ts";
 export { type ActionFacts, isUnaskedAt, needsOf } from "./containment.ts";
 export { isNamedByOwner, type NamedAction } from "./ownerRequests.ts";
 export {

@@ -13,8 +13,8 @@ import {
   type ServiceFailure,
 } from "../core/index.ts";
 import { removedAccountReasonOf, toolServerName } from "../harness/index.ts";
-import { listThreadPermissions } from "../policy/index.ts";
 import { Approvals } from "./approvals.ts";
+import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
 import { fallBackToBackup, resetBackupStep } from "./backups.ts";
 import { requireChatterDecision } from "./chatter.ts";
@@ -161,8 +161,10 @@ export const threadsLayer = Layer.effect(
           yield* fail(threadId, turn, removed);
           return yield* wakeWaiting(turn.missionId, threadId);
         }
-        const { approvalLevel, shouldAllowOutsideSandbox, shouldStreamReplies } = yield* local(readSettings);
-        const permissions = yield* local(listThreadPermissions(threadId));
+        const { shouldStreamReplies } = yield* local(readSettings);
+        const terms = yield* local(
+          readApprovalTerms(threadId, turn.harness).pipe(Effect.provideService(Harness, harness)),
+        );
         const { context, cwd, isInWorkspace, note } = yield* local(prepareStartingContext(threadId));
         // A session that starts with no memory of the thread, after a handover, is given its conversation.
         const history =
@@ -185,14 +187,7 @@ export const threadsLayer = Layer.effect(
         active.set(threadId, { turnId: turn.turnId, written: new Set() });
         const outcome = yield* harness
           .runTurn({
-            access: {
-              approvalLevel,
-              canWorkOutsideSandbox: shouldAllowOutsideSandbox,
-              isInWorkspace,
-              mcpUrl,
-              permissions: permissions.map((permission) => permission.sentence),
-              unaskedTools: unaskedToolNamesOf(toolServerName),
-            },
+            access: { ...terms, isInWorkspace, mcpUrl, unaskedTools: unaskedToolNamesOf(toolServerName) },
             askOwner: askOwnerFor(approvals, sql, threadId),
             configDirectory: turn.accountId === null ? null : join(accountsRoot, turn.accountId),
             context,

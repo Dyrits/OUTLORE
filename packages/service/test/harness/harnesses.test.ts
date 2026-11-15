@@ -491,6 +491,23 @@ describe("running Codex threads", () => {
     },
   );
 
+  it.live("holds Codex on neutral choices and returns answers by its question id", () => {
+    const { layer } = withHarnesses();
+    return Effect.gen(function* () {
+      const started = yield* start({ harness: "codex", text: "choose" });
+      const detail = yield* settle(started.missionId, (detail) =>
+        detail.questions.some((question) => question.outcome === null),
+      );
+      const question = detail.questions.find((question) => question.outcome === null);
+      if (question === undefined) return yield* Effect.die("No choice question");
+      expect(question.choices?.[0]).toMatchObject({ allowsOther: true, multiple: false, question: "Which build?" });
+      yield* call({ _tag: "AnswerChoices", answers: [["Use C"]], questionId: question.id });
+      expect(replies(yield* settle(started.missionId, idleWith(1)))).toEqual([
+        '{"answers":{"build":{"answers":["Use C"]}}}',
+      ]);
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("fails the turn, rather than leave Codex waiting, when the owner cannot be asked", () =>
     Effect.gen(function* () {
       const harness = yield* makeCodexHarness({

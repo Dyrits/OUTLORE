@@ -165,7 +165,7 @@ const claudeProtocolOf = (
           // damage, and egress is open. Only that one ask is answered; every other ask, such as a Bash call outside
           // the sandbox, is left to the permission prompt tool, and none is answered without a sandbox.
           const askedRequest = fieldOf(event, "request");
-          const host = isSandboxedOf(request.access.approvalLevel, options) ? networkHostOf(askedRequest) : null;
+          const host = request.access.containment === "Sandboxed" ? networkHostOf(askedRequest) : null;
           const requestId = textFieldOf(event, "request_id");
           if (host !== null && requestId !== null)
             connection.process.write({

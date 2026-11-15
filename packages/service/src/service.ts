@@ -9,7 +9,7 @@ import {
   changesLayer,
   createFolder,
   endpointsLayer,
-  type Harness,
+  Harness,
   HomeFolder,
   invalid,
   mergedSettings,
@@ -170,6 +170,7 @@ const make = Effect.gen(function* () {
   const suggestions = yield* Suggestions;
   const problem = yield* sandboxProblem;
   const harnessTools = yield* HarnessTools;
+  const harness = yield* Harness;
   const prices = yield* PriceTable;
   const planLimits = yield* PlanLimits;
   const accountsRoot = yield* AccountsRoot;
@@ -396,7 +397,7 @@ const make = Effect.gen(function* () {
                   open.shouldStartAnyway,
                   attachmentIds,
                   open.backups ?? null,
-                ).pipe(Effect.provideService(ScratchRoot, scratchRoot)),
+                ).pipe(Effect.provideService(ScratchRoot, scratchRoot), Effect.provideService(Harness, harness)),
                 (opened) => wakingOnly(opened.threadId),
               ),
             );
@@ -409,7 +410,7 @@ const make = Effect.gen(function* () {
             given.parentThreadId,
             { harness: given.harness ?? null, model: given.model },
             given.text,
-          ).pipe(Effect.provideService(ScratchRoot, scratchRoot)),
+          ).pipe(Effect.provideService(ScratchRoot, scratchRoot), Effect.provideService(Harness, harness)),
         ReadAccountBudgets: () => readAccountBudgets.pipe(Effect.provideService(PlanLimits, planLimits)),
         ReadAttachment: (read) => withFiles(readAttachment(read.attachmentId)),
         ReadBudget: (read) => readBudgetWindow(read.missionId),
@@ -437,6 +438,8 @@ const make = Effect.gen(function* () {
         ReadThreadPanel: (read) =>
           readThreadPanel(read.threadId).pipe(
             Effect.provideService(ScratchRoot, scratchRoot),
+            // Its context gauge counts the approval rules from the thread's terms, as its turn reads them.
+            Effect.provideService(Harness, harness),
             Effect.provideService(PlanLimits, planLimits),
           ),
         ReadThreadTree: (read) => readThreadTree(read.missionId),

@@ -200,23 +200,24 @@ export const accessArgsOf = (
   // A question waits with no time limit (action-approval, Waiting); without its own
   // timeout, Claude Code aborts a call silent for 300 seconds (verified 2026-11-05).
   const mcpConfig = { mcpServers: { [toolServerName]: { timeout: noTimeLimit, type: "http", url: access.mcpUrl } } };
-  const isSandboxed = isSandboxedOf(access.approvalLevel, options);
-  const levelArgs = isSandboxed
-    ? ["--permission-mode", "acceptEdits", "--settings", JSON.stringify(sandboxSettingsOf(worktrees))]
-    : [
-        "--permission-mode",
-        "default",
-        "--settings",
-        JSON.stringify({
-          permissions: ownerRulesOf(options.userSettingsPath ?? join(homedir(), ".claude", "settings.json")),
-        }),
-      ];
+  // The adapter decided the containment once, through `containmentOf` (claude.ts), when the turn's terms were read.
+  const levelArgs =
+    access.containment === "Sandboxed"
+      ? ["--permission-mode", "acceptEdits", "--settings", JSON.stringify(sandboxSettingsOf(worktrees))]
+      : [
+          "--permission-mode",
+          "default",
+          "--settings",
+          JSON.stringify({
+            permissions: ownerRulesOf(options.userSettingsPath ?? join(homedir(), ".claude", "settings.json")),
+          }),
+        ];
   return [
     "--mcp-config",
     JSON.stringify(mcpConfig),
     "--append-system-prompt",
     // Claude Code runs without setting sources, so it reads no CLAUDE.md itself (workspaces.ts).
-    `${context}\n\n${approvalInstructionsOf(access, isSandboxed, "claude")}`,
+    `${context}\n\n${approvalInstructionsOf(access, "claude")}`,
     ...levelArgs,
   ];
 };

@@ -13,6 +13,7 @@ import {
   textFieldOf,
   turnMessageOf,
 } from "../core/index.ts";
+import { codexAnswersOf, codexChoicesOf } from "./codexChoices.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
   type HarnessConnection,
@@ -83,7 +84,7 @@ const threadSettingsOf = (request: TurnRequest, cwd: string) => ({
     "sandbox_workspace_write.network_access": true,
   },
   cwd,
-  developerInstructions: `${request.context}\n\n${approvalInstructionsOf(request.access, false, "codex")}`,
+  developerInstructions: `${request.context}\n\n${approvalInstructionsOf(request.access, "codex")}`,
   ...(request.model === "default" ? {} : { model: request.model }),
 });
 
@@ -216,7 +217,16 @@ const answerRequest = (
       const isOwn = textFieldOf(params, "serverName") === toolServerName;
       return rpc.respond(id, { _meta: null, action: isOwn ? "accept" : "decline", content: null });
     }
-    if (method === "item/tool/requestUserInput") return rpc.respond(id, { answers: {} });
+    if (method === "item/tool/requestUserInput") {
+      const questions = codexChoicesOf(params);
+      if (questions === null) return rpc.respond(id, { answers: {} });
+      const answer = yield* request.askOwner({
+        choices: questions.map((question) => question.choice),
+        input: params,
+        toolName: "request_user_input",
+      });
+      return rpc.respond(id, codexAnswersOf(questions, answer.isAllowed ? (answer.answers ?? null) : null));
+    }
     return rpc.respondError(id, `Outlore does not answer ${method}.`);
   });
 

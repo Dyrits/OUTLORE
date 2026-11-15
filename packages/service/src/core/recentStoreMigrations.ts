@@ -58,4 +58,10 @@ export const recentStoreMigrations = {
     yield* sql`ALTER TABLE questions ADD COLUMN choices TEXT`;
     yield* sql`ALTER TABLE questions ADD COLUMN answers TEXT`;
   }),
+  "0052_question_kind": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE questions ADD COLUMN kind TEXT NOT NULL DEFAULT 'Confirmation'`;
+    yield* sql`UPDATE questions SET kind = CASE WHEN choices IS NOT NULL THEN 'Choice'
+      WHEN pattern IS NOT NULL AND permission IS NOT NULL THEN 'Approval' ELSE 'Confirmation' END`;
+  }),
 };

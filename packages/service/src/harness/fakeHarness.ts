@@ -9,6 +9,7 @@ import {
   type TurnRequest,
   textFieldOf,
 } from "../core/index.ts";
+import { claudeChoicesOf } from "./claudeChoices.ts";
 
 /** Calls one tool on a thread's MCP endpoint and returns its text, as a harness would; for the fake and checks. */
 export const callThreadTool = (mcpUrl: string, name: string, args: unknown) =>
@@ -96,9 +97,12 @@ const scriptedCall = (request: TurnRequest, line: string, turn: FakeTurn) => {
   if (line.startsWith("ask ")) return callThreadTool(access.mcpUrl, "request_approval", JSON.parse(line.slice(4)));
   const prompt = /^(prompt|escape) (\S+) (.*)$/.exec(line);
   if (prompt !== null) {
+    const input: unknown = JSON.parse(prompt[3] ?? "{}");
+    const choices = claudeChoicesOf(prompt[2] ?? "", input);
     return request
       .askOwner({
-        input: JSON.parse(prompt[3] ?? "{}"),
+        input,
+        ...(choices === null ? {} : { choices }),
         isOutsideSandbox: prompt[1] === "escape",
         toolName: prompt[2] ?? "",
       })

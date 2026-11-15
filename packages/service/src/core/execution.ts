@@ -3,6 +3,7 @@ import type {
   ApprovalLevel,
   AttachmentMediaType,
   BillingKind,
+  Choice,
   EffortChoice,
   HarnessName,
   ModelChoice,
@@ -47,23 +48,37 @@ export interface SteeredMessage {
   readonly text: string;
 }
 
-/** What a thread may use in a turn, and how its actions are approved (CHG-0031). */
-export interface ThreadAccess {
+/**
+ * How a thread's actions are approved on its harness, as its turn runs and as the preview counts it (CHG-0301):
+ * built once by work/approvalTerms.ts and rendered for the thread by harness/instructions.ts.
+ */
+export type ApprovalTerms = {
   readonly approvalLevel: ApprovalLevel;
   /** Whether the owner allowed commands to leave the sandbox without a question (CHG-0295). */
   readonly canWorkOutsideSandbox: boolean;
+  /** Whether the thread's harness runs it inside a sandbox it enforces here, as its adapter reports (`containmentOf`). */
+  readonly containment: Containment;
+  /**
+   * Each kind of standing permission that applies to the thread, once and sorted, such as "Run outside the sandbox":
+   * never their targets, so a grant changes what the thread is told only when its kind is new.
+   */
+  readonly permissionKinds: ReadonlyArray<string>;
+};
+
+/** What a thread may use in a turn, and how its actions are approved (CHG-0031). */
+export interface ThreadAccess extends ApprovalTerms {
   /** Whether the thread works in a workspace, whose sandbox may fetch dependencies (CHG-0034). */
   readonly isInWorkspace: boolean;
   /** The thread's own MCP endpoint serving the thread tools, and Claude Code's permission prompt tool (ADR 0005). */
   readonly mcpUrl: string;
-  /** The sentences of the standing permissions that apply to the thread. */
-  readonly permissions: ReadonlyArray<string>;
   /** The thread tools the thread uses without asking, named as Claude Code lists them (`mcp__outlore__…`). */
   readonly unaskedTools: ReadonlyArray<string>;
 }
 
 /** One action a harness asks permission for, named as Claude Code names its tools (`Bash`, `Edit`, …). */
 export interface HarnessPrompt {
+  /** Choices decoded by the adapter; never passed through action-approval policy. */
+  readonly choices?: ReadonlyArray<Choice>;
   /**
    * Set on the question a harness asks before starting in a thread folder that is a link or resolves outside its root
    * (harness/threadFolder.ts): a one-time Allow or Deny for that start, which offers no standing permission and which

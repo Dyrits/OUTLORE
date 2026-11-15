@@ -657,7 +657,7 @@ describe("withdrawing questions", () => {
       const approvals = yield* Approvals;
       for (const input of [escapeInput, { command: "ls" }]) {
         const late = yield* approvals
-          .answerPrompt(started.threadId, "Bash", input)
+          .answerPrompt(started.threadId, { input, toolName: "Bash" })
           .pipe(Effect.timeoutOption("1 second"));
         expect(Option.getOrThrow(late).isAllowed).toBe(false);
       }
@@ -671,7 +671,9 @@ describe("withdrawing questions", () => {
       const started = yield* start(ask(push));
       yield* settle(started.missionId, isAsking);
       const approvals = yield* Approvals;
-      const call = yield* approvals.answerPrompt(started.threadId, "Bash", escapeInput).pipe(Effect.forkChild);
+      const call = yield* approvals
+        .answerPrompt(started.threadId, { input: escapeInput, toolName: "Bash" })
+        .pipe(Effect.forkChild);
       yield* settle(started.missionId, (detail) => detail.questions.length === 2);
       yield* Fiber.interrupt(call);
       const detail = yield* read(started.missionId);

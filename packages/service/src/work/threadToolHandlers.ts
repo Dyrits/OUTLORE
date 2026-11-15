@@ -1,14 +1,8 @@
 import type { SuggestionOutcome } from "@outlore/contracts";
 import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
-import {
-  fieldOf,
-  HarnessFailure,
-  type HarnessPrompt,
-  type PromptAnswer,
-  type ToolAnswer,
-  textFieldOf,
-} from "../core/index.ts";
+import { HarnessFailure, type HarnessPrompt, type PromptAnswer, type ToolAnswer, textFieldOf } from "../core/index.ts";
+import { claudeChoicesOf, claudePromptAnswerOf } from "../harness/index.ts";
 import type { Approvals } from "./approvals.ts";
 import { countChatter } from "./chatter.ts";
 import { type CommandRunner, changed, unchanged, type WithFollowUps } from "./commands.ts";
@@ -48,22 +42,6 @@ export const callerRefusalOf = (threadId: string, name: string) =>
   });
 
 /**
- * Claude Code's AskUserQuestion takes its answers back in `updatedInput.answers`: each question's text mapped to the
- * chosen labels or typed text, joined by ", " for a multiple choice (CHG-0299).
- */
-const withAnswers = (input: unknown, answers: ReadonlyArray<ReadonlyArray<string>> | undefined) => {
-  if (answers === undefined) return input;
-  const questions = fieldOf(input, "questions");
-  if (!Array.isArray(questions)) return input;
-  return {
-    ...(input as object),
-    answers: Object.fromEntries(
-      questions.map((entry, index) => [textFieldOf(entry, "question") ?? "", (answers[index] ?? []).join(", ")]),
-    ),
-  };
-};
-
-/**
  * A thread's ask-the-owner capability for its turn request: the answer `answer_prompt` gives Claude Code,
  * without MCP. A store that cannot answer fails the turn rather than leave the harness waiting.
  */
@@ -82,17 +60,16 @@ export const askOwnerFor =
         });
         return { isAllowed: answered.isAllowed, text: answered.text } satisfies PromptAnswer;
       }
-      const decision = yield* approvals.answerPrompt(
-        threadId,
-        prompt.toolName,
-        prompt.input,
-        prompt.isOutsideSandbox ?? false,
-        prompt.isUnsandboxed ?? false,
-      );
+      if (prompt.choices !== undefined) {
+        const chosen = yield* approvals.askChoices(threadId, prompt.choices);
+        return chosen._tag === "Answered"
+          ? { answers: chosen.answers, isAllowed: true, text: "" }
+          : { isAllowed: false, text: chosen.text };
+      }
+      const decision = yield* approvals.answerPrompt(threadId, prompt);
       return {
         isAllowed: decision.isAllowed,
         text: decision.text,
-        ...(decision.answers === undefined ? {} : { answers: decision.answers }),
       } satisfies PromptAnswer;
     }).pipe(
       Effect.provideService(SqlClient.SqlClient, sql),
@@ -204,20 +181,23 @@ export const makeToolHandlers = (dependencies: {
           ),
         ),
       ),
-    answer_prompt: (threadId, { input, tool_name, tool_use_id }) =>
-      approvals
-        .answerPrompt(threadId, tool_name, input, false, false, tool_use_id ?? null)
-        .pipe(
-          Effect.map((decision) =>
-            answer(
-              JSON.stringify(
-                decision.isAllowed
-                  ? { behavior: "allow", updatedInput: withAnswers(input, decision.answers) }
-                  : { behavior: "deny", message: decision.text },
-              ),
-            ),
-          ),
-        ),
+    answer_prompt: (threadId, { input, tool_name, tool_use_id }) => {
+      const choices = claudeChoicesOf(tool_name, input);
+      const decision =
+        choices === null
+          ? approvals.answerPrompt(threadId, { input, toolName: tool_name }, tool_use_id ?? null)
+          : approvals
+              .askChoices(threadId, choices)
+              .pipe(
+                Effect.map(
+                  (chosen): PromptAnswer =>
+                    chosen._tag === "Answered"
+                      ? { answers: chosen.answers, isAllowed: true, text: "" }
+                      : { isAllowed: false, text: chosen.text },
+                ),
+              );
+      return decision.pipe(Effect.map((decision) => answer(claudePromptAnswerOf(input, decision))));
+    },
     change_setting: (threadId, args) =>
       withProvenance(approvals, commit, threadId, "change_setting", args, (authorize) =>
         runTool(authorize(changeSettingByGuildmaster(threadId, args))),

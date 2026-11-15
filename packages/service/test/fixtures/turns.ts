@@ -7,9 +7,10 @@ export const turnRequestOf = (fields: Partial<TurnRequest> = {}): TurnRequest =>
   access: {
     approvalLevel: "RiskyOnly",
     canWorkOutsideSandbox: false,
+    containment: "Sandboxed",
     isInWorkspace: false,
     mcpUrl: "http://127.0.0.1:9/mcp/none",
-    permissions: [],
+    permissionKinds: [],
     unaskedTools: [],
   },
   askOwner: () => Effect.succeed({ isAllowed: true, text: "" }),

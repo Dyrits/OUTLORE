@@ -76,6 +76,29 @@ const callTool = async (name, args) => {
 const runTurn = async (turn, text) => {
   const tool = /^call (\S+) (.*)$/.exec(text);
   if (tool !== null) return finish("completed", await callTool(tool[1], JSON.parse(tool[2])));
+  if (text === "choose") {
+    const response = await ask("item/tool/requestUserInput", {
+      autoResolutionMs: null,
+      isBlocking: true,
+      itemId: "question-1",
+      questions: [
+        {
+          header: "Build",
+          id: "build",
+          isOther: true,
+          isSecret: false,
+          options: [
+            { description: "First", label: "A" },
+            { description: "Second", label: "B" },
+          ],
+          question: "Which build?",
+        },
+      ],
+      threadId,
+      turnId: turn.id,
+    });
+    return finish("completed", JSON.stringify(response));
+  }
   const run = /^run (.+)$/.exec(text);
   if (run !== null) {
     const answer = await ask("item/commandExecution/requestApproval", {

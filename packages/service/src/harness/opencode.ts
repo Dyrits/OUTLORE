@@ -345,7 +345,7 @@ const openCodeProtocolOf = (options: OpenCodeOptions): HarnessProtocol<OpenCodeC
     Effect.sync(() => {
       mkdirSync(instructionsFolder, { recursive: true });
       const path = join(instructionsFolder, `${request.threadId}.md`);
-      writeFileSync(path, `${request.context}\n\n${approvalInstructionsOf(request.access, false, "opencode")}\n`);
+      writeFileSync(path, `${request.context}\n\n${approvalInstructionsOf(request.access, "opencode")}\n`);
       return path;
     });
 
