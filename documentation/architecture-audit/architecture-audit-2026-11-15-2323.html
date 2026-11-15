@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture review for Outlore, 2026-11-15</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+      mermaid.initialize({ securityLevel: "loose", startOnLoad: true, theme: "neutral" });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 4 4; }
+      .leak { stroke: #dc2626; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; }
+      .mermaid { display: flex; justify-content: center; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-6xl mx-auto px-6 py-12 space-y-12">
+      <header class="space-y-4">
+        <h1 class="font-serif text-4xl">Architecture review: Outlore</h1>
+        <p class="text-sm text-slate-500">
+          2026-11-15 · scope: hot spots since the 2026-11-12 audit (CHG-0220 to CHG-0300) · 17 candidates in three areas · read-only exploration, nothing run
+        </p>
+        <div class="flex flex-wrap gap-4 text-xs text-slate-600">
+          <span class="flex items-center gap-2"><span class="inline-block w-5 h-3 border border-slate-400 bg-white"></span>module</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-5 border-t-2 border-dashed border-slate-500"></span>seam</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-5 border-t-2 border-red-600"></span>leakage</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-5 h-3 deep"></span>deep module</span>
+          <span class="flex items-center gap-2"><span class="inline-block px-1 rounded bg-red-100 text-red-800">defect</span>defect found by reading the code</span>
+        </div>
+        <div class="rounded border border-slate-300 bg-white text-slate-700 text-sm px-4 py-3 space-y-1">
+          <p>Read first: <span class="font-mono">documentation/glossary.md</span>, <span class="font-mono">conventions.md</span>, decision records 0005, 0009, 0018 to 0020, and the 2026-11-06 to 2026-11-12 audits. Hot spots by commits since 2026-11-12: <span class="font-mono">service.ts</span> (713 lines), <span class="font-mono">shell/sidebar.tsx</span> (1037), <span class="font-mono">work/approvals.ts</span> (544), <span class="font-mono">conversation/*</span>, <span class="font-mono">shell/shell.tsx</span>.</p>
+          <p>Defects marked <span class="px-1 rounded bg-red-100 text-red-800 text-xs">confirmed</span> were traced through the code and spot-checked; <span class="px-1 rounded bg-orange-100 text-orange-800 text-xs">likely</span> ones are inferred and need a test to settle.</p>
+          <p>Answered on the way: the handoff question "should the realm archive delete empty quests too" is already settled by the mission-tracking specification, line 76 (a realm archive keeps them so Restore brings them back).</p>
+        </div>
+        <nav class="text-sm grid md:grid-cols-3 gap-2">
+          <div><p class="label text-slate-500 mb-1">Service</p>
+            <a class="block hover:underline" href="#c1">1 · Approval terms built once</a>
+            <a class="block hover:underline" href="#c2">2 · One quest-ending module</a>
+            <a class="block hover:underline" href="#c6">6 · Choice questions at the harness seam</a>
+            <a class="block hover:underline" href="#c7">7 · One question module, kind as data</a>
+            <a class="block hover:underline" href="#c8">8 · A turn's end is one command</a>
+            <a class="block hover:underline" href="#c9">9 · Run-once inside the command runner</a>
+            <a class="block hover:underline" href="#c10">10 · service.ts as a router</a>
+          </div>
+          <div><p class="label text-slate-500 mb-1">App</p>
+            <a class="block hover:underline" href="#c3">3 · One navigation module (reopened)</a>
+            <a class="block hover:underline" href="#c4">4 · One thread-conversation module</a>
+            <a class="block hover:underline" href="#c13">13 · One host-link status</a>
+            <a class="block hover:underline" href="#c14">14 · Companion dock registry</a>
+            <a class="block hover:underline" href="#c15">15 · One rail outline</a>
+            <a class="block hover:underline" href="#c16">16 · Create a realm in one request</a>
+          </div>
+          <div><p class="label text-slate-500 mb-1">Contracts, host, desktop</p>
+            <a class="block hover:underline" href="#c5">5 · One controller-side host link</a>
+            <a class="block hover:underline" href="#c11">11 · What a request's source may do</a>
+            <a class="block hover:underline" href="#c12">12 · One Host presence module</a>
+            <a class="block hover:underline" href="#c17">17 · One trusted-sender guard</a>
+          </div>
+        </nav>
+      </header>
+
+      <section class="space-y-12" id="candidates">
+
+        <!-- 1 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c1">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">1 · Build a thread's approval terms once, for the turn and the preview</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">Strong</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">in-process</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">defect · confirmed</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">work/threads.ts:188-195 · work/startingContext.ts:156-170 · harness/instructions.ts:41 · harness/claudeArgs.ts:173 · harness/claude.ts:346 · work/approvals.ts:410-443 · core/execution.ts (ThreadAccess)</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4 space-y-3">
+              <p class="label text-slate-500">Before: what every thread is told</p>
+              <div class="rounded bg-stone-100 p-3 text-xs font-mono text-slate-700 h-40 overflow-hidden relative">
+                Standing permissions the owner granted, for these exact actions only: Run outside the sandbox; Run outside the sandbox; Change a file outside the workspace; Run outside the sandbox; Run outside the sandbox; Run this exact command; Run outside the sandbox; Run outside the sandbox; Run outside the sandbox; Change a file outside the workspace; Run outside the sandbox; Run outside the sandbox; Run outside the sandbox; Run outside the sandbox; Run outside the sandbox; Run outside the sandbox; Run outside the sandbox; Run outside the sandbox …
+                <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-stone-100"></div>
+              </div>
+              <div class="flex gap-2 text-xs">
+                <div class="flex-1 border border-red-300 rounded p-2 text-red-800">~170 kind names, no target: <span class="font-mono">permissions.map(p =&gt; p.sentence)</span></div>
+                <div class="flex-1 border border-slate-300 rounded p-2">"is sandboxed" decided 3×: claudeArgs, claude, startingContext</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart TB
+  T["threads.ts · turn"] --> AT
+  P["startingContext · preview"] --> AT
+  AT["Approval terms<br/>level · sandboxed · escape · permissions with targets · rendering"]
+  AT --> S[("permissions + settings")]
+  AT -.seam.-> H["harness adapter · containmentOf"]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a;
+  class AT deep
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>The permission record loses its target at the seam, so every thread's system prompt lists bare kind names it calls "exact actions", and each new grant changes the prompt (process restart, prompt cache lost). This audit's own prompt shows it.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>One module turns a thread and its harness into its approval terms and their rendering; both the turn and the preview call it; only the adapter decides sandboxing.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Locality: next CHG-0295-like setting, one file</li><li>Preview equals turn by construction</li><li>Test with real stored permissions</li><li>Prompt stops growing per grant</li></ul></div>
+          </div>
+          <p class="text-xs text-slate-500">Owner decision inside: list the exact targets grouped by kind, or only say how many of each kind exist. Renderer is tested today only with <span class="font-mono">permissions: []</span>.</p>
+        </article>
+
+        <!-- 2 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c2">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">2 · One quest-ending module decides archive or delete</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">Strong</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">local-substitutable</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">defect · confirmed</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">work/ending.ts (153) · work/deleting.ts (134) · work/guildmaster.ts:367 · work/realmLifecycle.ts:132 · service.ts:337 · work/commands.ts</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before: four ways in, the CHG-0300 rule on one</p>
+              <pre class="mermaid">
+flowchart LR
+  O["owner · EndMission"] --> AD["archiveOrDeleteEmpty<br/>copied guards + SQL"]
+  AD --> EM["endMission"]
+  AD --> DEL["markDeleting · removeScratch · eraseSubtree<br/>2 commands, not atomic"]
+  C["Chronicler · act_on_mission"] --> EM
+  R["realm archive"] --> EM
+  A["auto-archive"] --> RE["recordEnding"]
+  EM --> RE
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#991b1b;
+  class C,A leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart LR
+  O["owner"] --> QE
+  C["Chronicler"] --> QE
+  A["auto-archive"] --> QE
+  R["realm archive · keeps empty"] --> QE
+  QE["Quest ending<br/>end(quest, ending, askedBy)<br/>preview · guards · archive or delete · journal"]
+  QE --> F["follow-up after commit: remove scratch folder"]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a;
+  class QE deep
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>An empty quest archived by Chronicler or by auto-archive stays in Archived, contrary to the mission-tracking specification line 76; the delete path re-reads emptiness outside a transaction, so a message sent in that window is erased with it.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>Callers name the ending and who asked; one module owns the guards, the empty-quest rule, and the journal, and runs as one command with the scratch removal as a follow-up.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Locality: rule and guards live once</li><li>Leverage: four callers, one interface</li><li>Table test: asker × empty × working</li><li>Archive becomes atomic</li></ul></div>
+          </div>
+        </article>
+
+        <!-- 3 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c3">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">3 · One navigation module owns where the owner is, including Chronicler's layers</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">Strong</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">in-process</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">defect · confirmed</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">App.tsx (260) · shell/shell.tsx (461) · shell/appScreen.tsx · shell/navigation.ts · shell/viewing.ts · shell/mobileMenu.tsx · shell/sidebar.tsx (Place type) · foundation/useRightPanel.ts · foundation/archiveNavigation.ts · conversation/conversation.tsx · conversation/guildmaster.tsx</p>
+          <div class="rounded border border-amber-300 bg-amber-50 text-amber-900 text-sm px-4 py-2">Re-proposed from the 2026-11-09 audit, candidate 1, still open. Reopened because CHG-0292 (full-screen menu, full-screen Chronicler, parent Back) added a second layer of location state and the bugs that audit predicted now exist.</div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4 space-y-2">
+              <p class="label text-slate-500">Before: location state by owner</p>
+              <div class="space-y-1 text-xs">
+                <div class="border-l-4 border-slate-400 pl-2 py-1 bg-stone-50">App · 9 useState · 4 hand-picked resets</div>
+                <div class="border-l-4 border-slate-400 pl-2 py-1 bg-stone-50">Shell · 3 layer flags · <span class="font-mono">navigate()</span> wraps 2 of N callers</div>
+                <div class="border-l-4 border-red-500 pl-2 py-1 bg-red-50 text-red-900">Chronicler gets unwrapped <span class="font-mono">onOpenMission</span> (shell.tsx:249): quest opens hidden beneath it</div>
+                <div class="border-l-4 border-red-500 pl-2 py-1 bg-red-50 text-red-900">Conversation · Journal, Lore, Budget sub-screens survive a side-quest switch</div>
+                <div class="border-l-4 border-slate-400 pl-2 py-1 bg-stone-50">Back decided per screen from 2 contexts; Workshop's Back can never show</div>
+                <div class="border-l-4 border-slate-400 pl-2 py-1 bg-stone-50">Place catalog written 6 times · panel scope is a JSON copy</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart TB
+  N["Navigation<br/>location · transitions · back target<br/>panel scope · viewing · place catalog"]
+  SB["Sidebar"] -- dispatch --> N
+  MM["Mobile menu"] -- dispatch --> N
+  CH["Chronicler"] -- dispatch --> N
+  AS["App screens"] -- dispatch --> N
+  N -- location --> SH["Shell draws"]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a;
+  class N deep
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>"What closes when I go somewhere" is decided in a dozen places across App, Shell, and each screen, so every new entry point forgets one reset.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>One location value and one transition function own every move, Back, the right panel's scope, and Chronicler's view; screens send events.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Locality: one transition function</li><li>Interface: 12 setters become dispatch</li><li>Pure reducer tests in Node</li><li>New place is one catalog entry</li></ul></div>
+          </div>
+        </article>
+
+        <!-- 4 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c4">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">4 · One thread-conversation module for a quest's thread and Chronicler</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">Strong</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">in-process</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">defect · confirmed</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">conversation/conversation.tsx (447) · conversation/guildmaster.tsx (397) · conversation/conversationEntries.tsx (300) · editors/runners.tsx (265) · ui/controls.tsx (282)</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4 space-y-2">
+              <p class="label text-slate-500">Before: two copies, drifted</p>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="border border-slate-400 rounded p-2 space-y-1"><p class="font-semibold">ThreadPane</p><p>10 hooks wired by hand</p><p>comments ✓ · Retry ✓ · Steer/Queue ✓</p></div>
+                <div class="border border-slate-400 rounded p-2 space-y-1"><p class="font-semibold">ChroniclerChat</p><p>same 10 hooks</p><p class="text-red-700">comments ✗ · Retry ✗ · Steer ✗</p></div>
+                <div class="col-span-2 border border-red-400 rounded p-2 text-red-800">Guild Hall handoff checks images against a fixed <span class="font-mono">"claude", "default"</span> runner (guildmaster.tsx:354)</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 space-y-2">
+              <p class="label text-slate-500">After</p>
+              <div class="deep text-white rounded p-3 text-xs space-y-1"><p class="font-semibold">Thread conversation (thread, options)</p><p class="text-slate-300">entries · footer · send order · delivery choice · stop · interrupt · runner · image refusal</p></div>
+              <div class="grid grid-cols-3 gap-2 text-xs text-center">
+                <div class="border border-slate-300 rounded p-2">quest thread lays out</div>
+                <div class="border border-slate-300 rounded p-2">Chronicler lays out</div>
+                <div class="border border-slate-300 rounded p-2">handoff lays out</div>
+              </div>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>Each pane must know the send order (terminal, comments, follow newest, send, clear) and has diverged on it; the handoff refuses or allows images for the wrong runner.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>One module turns a thread into everything a conversation pane draws; Chronicler differs only by a small options value; decisions go in a plain <span class="font-mono">.ts</span> module.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Leverage: three panes, one module</li><li>Composer change lands once</li><li>Send order tested in Node</li></ul></div>
+          </div>
+        </article>
+
+        <!-- 5 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c5">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">5 · One controller-side host link for the desktop app and the web app</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">Strong</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">ports &amp; adapters</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">defect · confirmed (room full)</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">defect · likely (lost frame)</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">service/src/remote/controller.ts (171) · controller/src/hostLink.ts (254) · remote/knownHosts.ts (80) · controller/src/pairedHosts.ts (100) · remote/config.ts · server.ts:60-98 · relay/src/roomCore.ts:67-71</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before: the pairing and resume protocol twice</p>
+              <pre class="mermaid">
+flowchart LR
+  D["desktop app"] --> SC["service controller.ts<br/>openToHost · firstText · failures"]
+  B["web app"] --> HL["hostLink.ts<br/>openToHost · tapChannel · failures · release check"]
+  SC --> R[("relay")]
+  HL --> R
+  SC -.drift.-> HL
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#991b1b;
+  class SC leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart LR
+  D["desktop app"] --> L
+  B["web app"] --> L
+  L["@outlore/controller host link<br/>pair · resume · hold · refusals · release check"]
+  L --> R[("relay")]
+  L -.store seam.-> K["SQLite · knownHosts"]
+  L -.store seam.-> P["localStorage · pairedHosts"]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a;
+  class L deep
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>The copies drifted: a full room (close code 1013, same as host offline) reads as "host not connected"; only the browser checks the host's release and buffers the first frame; the browser calls itself a desktop.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>The controller package holds the one host link; stored pairings sit behind a store seam with its two real adapters.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Two adapters: a real seam</li><li>Protocol fix lands once</li><li>Desktop gains buffering, release check</li><li>Drop duplicate pairing tests</li></ul></div>
+          </div>
+          <p class="text-xs text-slate-500">Check first that the controller's WebSocket client runs on the host's Node 24 (global WebSocket); decision record 0019 already keeps the controller free of Node-only modules.</p>
+        </article>
+
+        <!-- 6 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c6">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">6 · Choice questions are harness-neutral at the harness seam</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">Strong</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">ports &amp; adapters</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">policy/choices.ts (47) · work/threadToolHandlers.ts:54-64, 207-220 · work/approvals.ts:342-374 · core/execution.ts:66-101 · harness/codex.ts:219</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before: Claude Code's format on both sides of the seam</p>
+              <pre class="mermaid">
+flowchart LR
+  CC["Claude Code"] --> AP["answer_prompt · work/"]
+  AP --> AQ["Approvals.answerPrompt"]
+  AQ --> CH["policy/choices.ts<br/>decodes AskUserQuestion fields"]
+  AQ -- "isAllowed: true, text: ''" --> AP
+  AP --> WA["withAnswers · encodes Claude format"]
+  CX["Codex requestUserInput"] --> E["answers: {}"]
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#991b1b;
+  class CH,WA leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart LR
+  CC["Claude Code adapter<br/>AskUserQuestion ⇄ Choice[]"] -.seam.-> Q
+  CX["Codex adapter<br/>requestUserInput ⇄ Choice[]"] -.seam.-> Q
+  Q["Approvals.askToChoose<br/>→ answers | skipped"]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a;
+  class Q deep
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>The new choice question (CHG-0299) is decoded in <span class="font-mono">policy/</span> and encoded in <span class="font-mono">work/</span>, squeezed into the allow/deny shape; the next Codex and OpenCode adapters would have to dress up as Claude Code.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>Each adapter maps its harness's question to the neutral choice list and back; Approvals gets its own "ask the owner to choose" entry.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Two adapters justify the seam</li><li>Codex support: one small mapping</li><li>Round trip tested in harness tests</li></ul></div>
+          </div>
+          <p class="text-xs text-slate-500">Keeps decision record 0005: <span class="font-mono">answer_prompt</span> stays an MCP tool; only the format moves beside Claude Code's adapter.</p>
+        </article>
+
+        <!-- 7 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c7">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">7 · One question module where the kind of question is data</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">Worth exploring</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">in-process</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">work/approvals.ts (544, over the hard limit) · policy/questions.ts (59) · work/attention.ts (65)</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before: interface vs implementation</p>
+              <div class="flex items-end gap-6 h-44">
+                <div class="flex flex-col items-center gap-1"><div class="w-20 h-36 border-2 border-slate-500 bg-stone-100 flex items-center justify-center text-[10px] text-center p-1">9 methods · 6 positional params · null means "no Always allow"</div><span class="label text-slate-500">interface</span></div>
+                <div class="flex flex-col items-center gap-1"><div class="w-20 h-40 border-2 border-slate-500 bg-white flex items-center justify-center text-[10px] text-center p-1">2 answers refuse each other's kind · 5× "Unknown thread"</div><span class="label text-slate-500">implementation</span></div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <div class="flex items-end gap-6 h-44">
+                <div class="flex flex-col items-center gap-1"><div class="w-20 h-12 border-2 border-slate-900 bg-stone-100 flex items-center justify-center text-[10px] text-center p-1">ask(kind) · answer(id)</div><span class="label text-slate-500">interface</span></div>
+                <div class="flex flex-col items-center gap-1"><div class="w-20 h-40 deep text-white flex items-center justify-center text-[10px] text-center p-1">kind decides: accepted answers · standing permission · thread's text</div><span class="label text-slate-500">implementation</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>Each question source (thread request, harness prompt, folder, structural confirmation, choice) added its own ask and answer variants, so callers learn which one applies.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>A stored question carries its kind; one ask, one answer; per-source policy stays in thin callers; the harness-prompt policy moves to its own file.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>New kind: one edit</li><li>One table test of answers per kind</li><li>approvals.ts back under 512</li></ul></div>
+          </div>
+          <p class="text-xs text-slate-500">Builds on candidate 6. Not the 2026-11-06 Attention candidate, which was built as <span class="font-mono">attention.ts</span>.</p>
+        </article>
+
+        <!-- 8 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c8">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">8 · A turn's end is one command with follow-ups</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">Worth exploring</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">local-substitutable</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">defect · likely</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">work/turns.ts (236) · work/threads.ts:121-122, 156-239 · work/backups.ts · work/rituals.ts · work/turnAdmission.ts:75 · work/messaging.ts:134</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before: a failed turn in four commits</p>
+              <pre class="mermaid">
+sequenceDiagram
+  participant T as threads.run
+  participant S as store
+  participant W as sibling's turn end
+  T->>S: recordTurnFailure (Failed, messages undelivered)
+  W-->>T: wakeWaiting admits the Failed thread
+  Note over T: FiberMap.run interrupts the old fiber
+  T->>S: withdrawAll
+  T->>S: fallBackAfterFailure
+  T->>S: fallBackToBackup
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+sequenceDiagram
+  participant T as threads.run
+  participant C as commands.run(endTurn)
+  T->>C: outcome (usage or failure)
+  Note over C: record · fallback · backup step · in one transaction
+  C-->>T: follow-ups: cancel, wake
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p><span class="font-mono">turns.ts</span> reimplements the command runner; between the four failure commits a sibling's turn end can restart the Failed thread before its backup Companion takes over, and a Failed thread with no backup reruns whenever a sibling ends.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>The end of a turn is one domain operation run by the command runner, returning which turns to cancel and which threads to wake.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Order lives in one transaction</li><li>Test with a fake outcome, no harness</li><li>Delete transacting, publishOnCommit</li></ul></div>
+          </div>
+          <p class="text-xs text-slate-500">Settle first: a test with two threads in one quest, one failing with a backup Companion.</p>
+        </article>
+
+        <!-- 9 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c9">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">9 · Owner requests run once, inside the command runner</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">Worth exploring</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">local-substitutable</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">service.ts:216-241 and 7 callers · work/commands.ts (96) · work/deleting.ts:64-65</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before</p>
+              <pre class="mermaid">
+flowchart LR
+  H["7 handlers"] --> ON["once(id, tag, work, replayed)<br/>SQL in service.ts"]
+  ON --> CR["commands.run"]
+  H -. "replayed rebuilds wakes by hand" .-> ON
+  DL["deleting.ts"] -- "json_extract($.threadId)" --> CO[("command_outcomes")]
+  ON --> CO
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#991b1b;
+  class DL leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart LR
+  H["7 handlers"] --> CR["Command runner<br/>runOnce(request, work)<br/>stores value + wakes · forgetOutcomesOf(threads)"]
+  DL["deleting.ts"] --> CR
+  CR --> CO[("command_outcomes")]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a;
+  class CR deep
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>Each run-once caller must rebuild its wakes on replay, or a retried message is silently never delivered; deleting leaks into the outcome table by JSON field names.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>The command runner owns request outcomes: stores the value and the wakes, replays both, and forgets them by stored thread id.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>One call per handler</li><li>Replay tested once at the runner</li><li>Delete <span class="font-mono">replayed</span> callbacks</li></ul></div>
+          </div>
+        </article>
+
+        <!-- 10 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c10">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">10 · <span class="font-mono">service.ts</span> becomes a router: context provided once, domain rules moved out</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">Worth exploring</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">in-process</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">service.ts (713, over the hard limit) · work/admission.ts (57) · work/realmHandlers.ts (39, the precedent) · work/budgets.ts</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4 space-y-1 text-xs">
+              <p class="label text-slate-500 mb-2">Before: cross-section of one request</p>
+              <div class="border-l-4 border-slate-400 pl-2 py-1 bg-stone-50">service.handle · ~90 inline arms</div>
+              <div class="border-l-4 border-slate-400 pl-2 py-1 bg-stone-50">32 × Effect.provideService · HarnessTools + AccountsRoot repeated 8×</div>
+              <div class="border-l-4 border-slate-400 pl-2 py-1 bg-stone-50">withFiles · withRemote · thenListHarnesses · admit (pass-throughs)</div>
+              <div class="border-l-4 border-red-500 pl-2 py-1 bg-red-50 text-red-900">inline rules: waiting-image SQL · global budget on save · ReadPermissions · ownerOutcomeOf</div>
+              <div class="border-l-4 border-slate-400 pl-2 py-1 bg-stone-50">domain functions</div>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 space-y-1 text-xs">
+              <p class="label text-slate-500 mb-2">After</p>
+              <div class="border-l-4 border-slate-400 pl-2 py-1 bg-stone-50">service.handle · one line per tag · one provided context</div>
+              <div class="grid grid-cols-3 gap-1">
+                <div class="border border-slate-300 rounded p-1 text-center">lore</div><div class="border border-slate-300 rounded p-1 text-center">accounts</div><div class="border border-slate-300 rounded p-1 text-center">remote</div>
+                <div class="border border-slate-300 rounded p-1 text-center">quests</div><div class="border border-slate-300 rounded p-1 text-center">messages</div><div class="border border-slate-300 rounded p-1 text-center">realms ✓</div>
+              </div>
+              <div class="deep text-white rounded pl-2 py-2">domain modules absorb admission, budgets, permissions views</div>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>The composition root holds domain rules and provide-wrappers, so a change to message admission or budgets edits the router.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>Provide the request context once, group handlers by area as <span class="font-mono">realmHandlers.ts</span> does, and move the inline rules to their domain modules.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Delete 4 pass-through wrappers</li><li>Locality: rules leave the root</li><li>File well under 512</li></ul></div>
+          </div>
+          <p class="text-xs text-slate-500">Overlaps the remaining part of the 2026-11-12 candidate 5 (derive the message's runner once) and candidate 9 above.</p>
+        </article>
+
+        <!-- 11 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c11">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">11 · One module decides what a request's source may do</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">Worth exploring</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">in-process</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">defect · confirmed (label)</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">contracts/src/remote.ts:105-117 · service/src/remote/frames.ts:72 · service.ts:244-252, 277-278 · work/reachedFolders.ts · contracts/src/requests.ts:490-713</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before: four checks, four guarantees</p>
+              <pre class="mermaid">
+flowchart TB
+  R["request from a paired device"] --> F["frames.ts · hostOnlyRequestTags<br/>hand-kept list + test that repeats it"]
+  F --> FA["service.ts · folderAccess"]
+  FA --> RF["reachedFolders · orElse → unfenced"]
+  RF --> H["handler · answeredBy: 'desktop'"]
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#991b1b;
+  class RF,H leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart TB
+  R["request + source"] --> SA["Source authority<br/>rules beside each request's definition<br/>host-only · folder named · exhaustive"]
+  SA -- "reach + device label" --> H["handler"]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a;
+  class SA deep
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>A new request that names a folder is unfenced unless someone remembers the table; an approval answered from a phone or a browser is recorded as answered from "desktop".</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>Each request's source rules sit beside its definition and are checked by the compiler; one module admits or refuses and hands the handler its reach and label.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Compiler, not a repeated list</li><li>Decision record 0020 fence joins it</li><li>One place to audit paired devices</li></ul></div>
+          </div>
+        </article>
+
+        <!-- 12 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c12">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">12 · One Host presence module owns accepting devices, the relay in use, and status</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">Worth exploring</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">local-substitutable</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">remote/state.ts (62) · remote/hostControl.ts (105) · remote/hostRuntime.ts (158) · remote/hostSession.ts (216) · remote/hostAccess.ts (255)</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before</p>
+              <pre class="mermaid">
+flowchart LR
+  HC["hostControl"] -- poke --> RS["RemoteState<br/>8 pass-through members"]
+  RS -- onPoke --> HR["hostRuntime"]
+  HC -- setStatus --> RS
+  HR -- setStatus --> RS
+  HS["hostSession"] -. "re-reads Allow paired devices" .-> DB[("host record")]
+  HR -.-> DB
+  HC -.-> DB
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#991b1b;
+  class RS leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart LR
+  A["host actions"] --> HP["Host presence<br/>live record · relay loop · device registry<br/>only writer of status · status stream"]
+  HP --> HS["hostSession · handshake"]
+  HP --> DB[("hostAccess storage")]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a;
+  class HP deep
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>The host switch is re-read from SQL in about eight places, each guarding its own race; status has two writers; tests poll every 20 ms.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>One module holds the host's live state, runs the relay loop, admits authenticated devices in one call, and publishes status.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Delete RemoteState</li><li>Races settle in one place</li><li>Tests read a status stream</li></ul></div>
+          </div>
+          <p class="text-xs text-slate-500">Goes further than the 2026-11-12 Host access module. Decision records 0018 and 0020 add more host switches that would join it.</p>
+        </article>
+
+        <!-- 13 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c13">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">13 · One host-link status the window reads</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">Worth exploring</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">ports &amp; adapters</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">defect · likely</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">foundation/useHostConnection.ts (136) · foundation/client.ts (204) · foundation/hosts.ts · foundation/transport.ts · foundation/hostContext.tsx · App.tsx:72-119, 215-232</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before</p>
+              <pre class="mermaid">
+flowchart LR
+  T["OpenTransport<br/>socket | browser relay"] --> C["ServiceClient<br/>failure · hasGivenUp · needsPairing"]
+  C --> U["useHostConnection<br/>15 fields"]
+  U --> A["App combines 7 flags<br/>pairing gate · connecting · banner"]
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#991b1b;
+  class A leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart LR
+  T["OpenTransport<br/>socket | browser relay"] -.seam.-> HL["Host link<br/>status + allowed actions<br/>pure state machine"]
+  HL --> A["App draws one screen per status"]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a;
+  class HL deep
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>A first connection that fails is never retried, and a web app has no way out but reloading the page; errors say "local service" for relayed hosts.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>One module owns which host the window shows and the link's life, returning one status with the actions it allows.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>App sheds ~60 lines of branching</li><li>Status machine tested with fake transport</li></ul></div>
+          </div>
+          <p class="text-xs text-slate-500">The app-side half of candidate 5; the host-switch reset couples it to candidate 3.</p>
+        </article>
+
+        <!-- 14 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c14">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">14 · Give the Companion dock its own registry module</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">Worth exploring</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">in-process</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">shell/useCompanionDock.ts (79) · shell/companionScope.ts (10) · foundation/shellContext.tsx · editors/companionPicker.tsx:112 · shell/shell.tsx:157-237 · editors/runners.tsx:22-89, 140-185</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before</p>
+              <pre class="mermaid">
+flowchart LR
+  P["Companion picker"] -- "publish every render" --> D["useCompanionDock<br/>Map ref · inline selection"]
+  S["Shell"] -- "pills.current.get(id).picker.onEffort" --> D
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#991b1b;
+  class S leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart LR
+  P["Companion picker"] --> D["Companion dock<br/>register · publish · choose · selected"]
+  S["Shell"] -- "selected" --> D
+  RP["RunnerPickers"] --> RC["Runner choice .ts"]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a;
+  class D deep
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>Shell reaches through the seam into the raw ref because published handlers go stale; which pill is chosen and what changing a harness does to a runner are untested, inline rules.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>A plain registry module behind a thin React binding; the runner-change rules move to a <span class="font-mono">.ts</span> module.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Shell forgets the ref</li><li>Selection rule tested in Node</li><li>Fold companionScope.ts in</li></ul></div>
+          </div>
+        </article>
+
+        <!-- 15 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c15">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">15 · One rail outline: the sidebar's rows from placements, location, and folds</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">Worth exploring</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">in-process</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">shell/sidebar.tsx (1037, twice the hard limit) · shell/questTree.ts (192) · shell/questMove.ts · shell/moveQuestModal.tsx</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before: sidebar.tsx by mass</p>
+              <div class="flex h-40 text-[10px] text-center">
+                <div class="bg-slate-300 flex items-center justify-center" style="width:22%">drawing</div>
+                <div class="bg-red-200 text-red-900 flex items-center justify-center" style="width:18%">4 toggle sets</div>
+                <div class="bg-red-200 text-red-900 flex items-center justify-center border-l border-white" style="width:14%">2 reveal effects</div>
+                <div class="bg-red-200 text-red-900 flex items-center justify-center border-l border-white" style="width:12%">limits · shownOf</div>
+                <div class="bg-slate-200 flex items-center justify-center border-l border-white" style="width:20%">hand-written place rows</div>
+                <div class="bg-slate-300 flex items-center justify-center border-l border-white" style="width:14%">drag, modals</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <div class="flex h-40 text-[10px] text-center gap-2">
+                <div class="deep text-white flex items-center justify-center rounded p-2" style="width:45%">Rail outline (.ts): placements · location · folds · trees → rows</div>
+                <div class="bg-slate-300 flex items-center justify-center rounded" style="width:35%">sidebar.tsx: draws rows, drag, modals</div>
+                <div class="bg-slate-200 flex items-center justify-center rounded" style="width:20%">place catalog (from 3)</div>
+              </div>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>The helpers were extracted and tested, but "the rail always shows where the owner is" lives in two effects in two modules, beside fold sets and limits.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>One outline module turns placements, location, folds, and thread trees into rows; the reveal rule moves inside it.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Visibility rules tested in Node</li><li>sidebar.tsx under 512</li></ul></div>
+          </div>
+        </article>
+
+        <!-- 16 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c16">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">16 · Create a realm in one request: created, archived match, or name taken</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-200 text-slate-700">Speculative</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">local-substitutable</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">realms/newRealmModal.tsx:51-88 · realms/realmRecoveryFlow.ts · realms/realmLabels.ts</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">Before</p>
+              <pre class="mermaid">
+sequenceDiagram
+  participant M as New realm modal
+  participant S as host
+  M->>S: FindArchivedRealm
+  M->>S: ListMissions
+  Note over M: name check in the app
+  M->>S: CreateRealm
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="label text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+sequenceDiagram
+  participant M as New realm modal
+  participant S as host
+  M->>S: CreateRealm
+  S-->>M: Created | ArchivedMatch | NameTaken
+              </pre>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>Check-then-act across three requests; the app and the host both decide duplicate names.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>The host answers one request with the outcome; the modal draws it.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>Name rule lives once</li><li>Three outcomes, one service test</li></ul></div>
+          </div>
+          <p class="text-xs text-slate-500">The app-facing half of 2026-11-09 candidate 2 and 2026-11-12 candidate 2; may fall out of those.</p>
+        </article>
+
+        <!-- 17 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="c17">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-serif text-2xl mr-2">17 · One trusted-sender guard for the desktop window's calls</h2>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-200 text-slate-700">Speculative</span>
+            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">in-process</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">apps/desktop/src/main.ts:140-221 · apps/desktop/src/updates/setup.ts · apps/desktop/src/preload.ts</p>
+          <div class="grid md:grid-cols-2 gap-4 text-xs">
+            <div class="rounded-lg border border-slate-200 p-4 space-y-1">
+              <p class="label text-slate-500 mb-2">Before</p>
+              <div class="border border-slate-300 rounded p-1">endpoint · sender + mainFrame</div>
+              <div class="border border-slate-300 rounded p-1">terminals · sender + mainFrame</div>
+              <div class="border border-red-400 text-red-800 rounded p-1">setTheme · sender only</div>
+              <div class="border border-red-400 text-red-800 rounded p-1">requestAttention · sender only</div>
+              <div class="border border-slate-300 rounded p-1">updates · sender + mainFrame</div>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 space-y-1">
+              <p class="label text-slate-500 mb-2">After</p>
+              <div class="deep text-white rounded p-2">windowOnly(handler)</div>
+              <div class="text-slate-500">each handler registered through it</div>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div><p class="label text-slate-500">Problem</p><p>Five hand-copied sender checks have drifted; two skip the main-frame check. Low impact.</p></div>
+            <div><p class="label text-slate-500">Solution</p><p>One guard, applied where handlers are registered.</p></div>
+            <div><p class="label text-slate-500">Wins</p><ul class="list-disc ml-4"><li>One check to audit</li></ul></div>
+          </div>
+          <p class="text-xs text-slate-500">Do when decision records 0018 and 0020 move terminals and updates into the host; those become host requests, not new window calls.</p>
+        </article>
+      </section>
+
+      <section class="rounded-xl border border-slate-200 bg-white p-6 space-y-3 text-sm">
+        <h2 class="font-serif text-xl">Checked, not proposed</h2>
+        <ul class="list-disc ml-5 space-y-1 text-slate-700">
+          <li><span class="font-mono">work/admission.ts</span>, <span class="font-mono">work/guildmasterProvenance.ts</span>: their remaining parts are already listed by the 2026-11-12 audit.</li>
+          <li><span class="font-mono">work/missionDetail.ts</span>, <span class="font-mono">core/execution.ts</span>: a read-model aggregator and a real seam with three adapters; deep enough.</li>
+          <li><span class="font-mono">ui/questionAnswers.ts</span> and <span class="font-mono">ui/questions.tsx</span> (the choice dialog): rules pure and tested, the card only draws. Nit: <span class="font-mono">answerOf</span> ignores its choice parameter.</li>
+          <li><span class="font-mono">conversation/entries.ts</span> (steps): deep and tested. Nit: <span class="font-mono">workingLabelOf</span> ignores its input, a pass-through to delete.</li>
+          <li><span class="font-mono">relay/roomCore.ts</span>, <span class="font-mono">remote/ownRelay.ts</span>, <span class="font-mono">remote/hostCarrier.ts</span>, <span class="font-mono">policy/containment.ts</span>: deep, with real adapters or fakes. Only the shared close code 1013 is worth fixing (candidate 5).</li>
+          <li><span class="font-mono">contracts/requests.ts</span> (728) and <span class="font-mono">records.ts</span> (470) by size alone: splitting only moves code; the family-per-file precedent is in candidate 11.</li>
+          <li><span class="font-mono">rituals/rituals.tsx</span> (767), <span class="font-mono">crest/crestStudio.tsx</span> (523): over the limits but untouched since 2026-11-12, outside this audit's direction.</li>
+          <li><span class="font-mono">settings/settings.tsx</span>: a declarative layout. Its doc comment still says "The Charter (Settings)".</li>
+        </ul>
+      </section>
+
+      <section class="rounded-xl deep text-white p-8 space-y-3" id="top-recommendation">
+        <p class="label text-slate-300">Top recommendation</p>
+        <h2 class="font-serif text-3xl"><a class="underline decoration-slate-500 hover:decoration-white" href="#c1">1 · Build a thread's approval terms once</a></h2>
+        <p class="text-slate-200">It is the only defect every thread pays for on every turn: each one's starting context carries ~170 bare kind names it is told are exact actions, and each new grant restarts the harness and loses the prompt cache; one in-process module fixes it and makes the preview equal the turn. Then candidate 2: same day, small, and the CHG-0300 rule is already broken for Chronicler and auto-archive.</p>
+      </section>
+    </main>
+  </body>
+</html>
