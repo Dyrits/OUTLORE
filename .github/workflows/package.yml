@@ -186,3 +186,49 @@ jobs:
           fi
           gh release upload "$RELEASE_TAG" "${files[@]}" "${legacy[@]}" "${updates[@]}" installers/SHA512SUMS.txt --clobber
           gh release edit "$RELEASE_TAG" --draft=false --prerelease="$isPrerelease"
+
+  relay:
+    name: Deploy relay and web app
+    needs: release
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # The shared relay serves the web app (CHG-0287): the page and the installed app must come from one tag, so a browser
+    # and the host it pairs with report the same release.
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+      WEB_APP_URL: https://outlore.dyrits.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.4"
+      - run: bun install --frozen-lockfile
+      - name: Stamp the tag into the web app's release
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const file = "apps/app/package.json";
+            const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+            manifest.version = process.env.RELEASE_TAG.replace(/^v/, "");
+            fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + "\n");
+          '
+          grep '"version"' apps/app/package.json
+      - name: Build the web app
+        working-directory: packages/relay
+        run: bun run site
+      - name: Deploy the Worker with the web app
+        working-directory: packages/relay
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bunx wrangler@4.162.0 deploy
+      - name: Check the live address
+        run: |
+          # The page opens at any path, a room path without an upgrade is the relay's own answer, and a bad one is not found.
+          curl -fsS --retry 5 --retry-delay 3 "$WEB_APP_URL/" | grep -q '<title>Outlore</title>'
+          curl -fsS --retry 5 --retry-delay 3 "$WEB_APP_URL/some/path" | grep -q '<title>Outlore</title>'
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$WEB_APP_URL/r/abcdefghijklmnopqrstuvwxyz012345?role=client")" = 426
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$WEB_APP_URL/r/x")" = 404
