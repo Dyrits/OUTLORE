@@ -10,7 +10,7 @@ import { BudgetEditor } from "../editors/budgets";
 import { levelLabels } from "../editors/permissions";
 import { useHarnesses } from "../editors/runners";
 import { messageOf, type ServiceClient } from "../foundation/client";
-import { useHasSidebar } from "../foundation/shellContext";
+import { useHasSidebar, useHasTopBar } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -58,6 +58,8 @@ export function SettingsScreen({
   onPermissions: () => void;
 }) {
   const hasSidebar = useHasSidebar();
+  // With a top bar, the sidebar or the narrow window's menu leads away; the page keeps no Back to the Guild Hall.
+  const hasTopBar = useHasTopBar();
   const { data: settings, error } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const [saveError, setSaveError] = useState<string | null>(null);
   const harnesses = useHarnesses(client);
@@ -78,7 +80,7 @@ export function SettingsScreen({
     <View style={[local.page, hasSidebar && local.pageWide]}>
       {hasSidebar && <View style={local.menuColumn}>{menu}</View>}
       <ScrollView contentContainerStyle={local.content} ref={scroll} style={styles.flex}>
-        {!hasSidebar && (
+        {!hasSidebar && !hasTopBar && (
           <Pressable onPress={onBack}>
             <Text style={[styles.link, local.back]}>← Back</Text>
           </Pressable>

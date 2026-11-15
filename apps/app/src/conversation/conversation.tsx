@@ -335,7 +335,8 @@ export function Conversation({
   selectedThreadId: ThreadId | null;
   /** Opens or closes the quest's side panel. */
   onSetDetails: (isOpen: boolean) => void;
-  onBack: () => void;
+  /** Goes to the quest's parent view: its realm's quests, or the Borderlands; null while the quest has not loaded. */
+  onBack: (quest: { workspaceId: string | null; workspaceName: string | null } | null) => void;
   /** Opens another mission, such as where an off-topic request went. */
   onOpenMission: (missionId: MissionId) => void;
 }) {
@@ -347,6 +348,7 @@ export function Conversation({
   const [isJournalOpen, setIsJournalOpen] = useState(false);
   const hasTopBar = useHasTopBar();
   const hasSidebar = useHasSidebar();
+  const goBack = () => onBack(data?.mission ?? null);
   const [loreThread, setLoreThread] = useState<{ id: ThreadId; title: string } | null>(null);
   const [budgetScope, setBudgetScope] = useState<BudgetScope | null>(null);
   const { data, error } = useServiceQuery(
@@ -407,7 +409,7 @@ export function Conversation({
       {hasSideQuests && !hasSidebar && (
         // With the sidebar showing, it is the quest's one tree; this one serves the narrow window, which has none.
         <View style={[styles.questSide, isCompact && styles.questSideCompact]}>
-          <Pressable onPress={onBack}>
+          <Pressable onPress={goBack}>
             <Text style={styles.link}>← Back</Text>
           </Pressable>
           {data && (
@@ -422,7 +424,7 @@ export function Conversation({
       )}
       <View style={styles.questMain}>
         {!hasSidebar && !hasSideQuests && (
-          <Pressable onPress={onBack}>
+          <Pressable onPress={goBack}>
             <Text style={styles.link}>← Back</Text>
           </Pressable>
         )}

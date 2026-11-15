@@ -22,7 +22,7 @@ import {
   loreProposalLineOf,
   scopeNameOf,
 } from "../foundation/labels";
-import { useHasSidebar } from "../foundation/shellContext";
+import { useHasSidebar, useHasTopBar } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Choice } from "../ui/pickers";
@@ -246,6 +246,7 @@ export function LoreScreen({
   workspaceId?: WorkspaceId | null;
 }) {
   const hasSidebar = useHasSidebar();
+  const hasTopBar = useHasTopBar();
   const [scope, setScope] = useState<LoreScope | null>(null);
   const [state, setState] = useState<LoreStateFilter | null>(null);
   const [historyOf, setHistoryOf] = useState<LoreEntryId | null>(null);
@@ -260,13 +261,13 @@ export function LoreScreen({
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        {/* All lore is a place of the sidebar; a thread's lore goes back to its thread. */}
-        {!(hasSidebar && threadId === null && workspaceId === null) && (
+        {/* All lore is a place of the sidebar or the narrow window's menu; a thread's lore goes back to its thread. */}
+        {!((hasSidebar || hasTopBar) && threadId === null && workspaceId === null) && (
           <Pressable onPress={onBack}>
             <Text style={styles.link}>← Back</Text>
           </Pressable>
         )}
-        {!(hasSidebar && threadId === null && workspaceId === null) && (
+        {!((hasSidebar || hasTopBar) && threadId === null && workspaceId === null) && (
           <Text numberOfLines={1} style={[styles.heading, styles.flex]}>
             {title}
           </Text>

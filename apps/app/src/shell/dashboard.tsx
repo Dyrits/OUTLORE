@@ -6,7 +6,7 @@ import { CrestStudio } from "../crest/crestStudio";
 import { BudgetMeters, BudgetScreen, BudgetStopCard } from "../editors/budgets";
 import type { ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
-import { useHasSidebar, useQuestPanel } from "../foundation/shellContext";
+import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { colors, fonts } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -55,6 +55,7 @@ export function Dashboard({
   workspaceId: WorkspaceId | null;
 }) {
   const hasSidebar = useHasSidebar();
+  const hasTopBar = useHasTopBar();
   const [search, setSearch] = useState("");
   const [width, setWidth] = useState(0);
   // The Archived view keeps every workspace; the board shows the one chosen in the sidebar or the breadcrumb.
@@ -170,7 +171,7 @@ export function Dashboard({
         style={styles.flex}
       >
         <View style={styles.header}>
-          {isArchived && !hasSidebar && (
+          {isArchived && !hasSidebar && !hasTopBar && (
             <Pressable onPress={onBack}>
               <Text style={[styles.link, { color: colors.highlight }]}>← Back</Text>
             </Pressable>

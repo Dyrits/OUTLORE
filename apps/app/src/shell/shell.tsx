@@ -12,8 +12,9 @@ import {
 } from "../foundation/shellContext";
 import { colors, radii } from "../foundation/theme";
 import type { RightPanel } from "../foundation/useRightPanel";
-import { ChroniclerColumn, ChroniclerFloating, ChroniclerLauncher, chroniclerColumnWidth } from "./chroniclerDock";
+import { ChroniclerColumn, chroniclerColumnWidth } from "./chroniclerDock";
 import { EdgeResizer } from "./edgeResizer";
+import { MobileMenu } from "./mobileMenu";
 import type { RealmListing } from "./questTree";
 import {
   chroniclerWidthKey,
@@ -31,7 +32,7 @@ import {
   rememberRailWidth,
 } from "./railStorage";
 import { Sidebar } from "./sidebar";
-import { type DetailsToggle, hasOwnTitleBar, PanelIcon, QuestColumn, questColumnWidth, TopBar } from "./topBar";
+import { type DetailsToggle, PanelIcon, QuestColumn, questColumnWidth, TopBar } from "./topBar";
 import { useCompanionDock } from "./useCompanionDock";
 import { viewingOf } from "./viewing";
 
@@ -72,8 +73,14 @@ export function Shell(
   const [isChroniclerOpen, setIsChroniclerOpen] = useState(readChroniclerOpen);
   // Opened to the whole content area until restored or the owner navigates from the sidebar; not remembered.
   const [isChroniclerFull, setIsChroniclerFull] = useState(false);
+  // On a narrow window the menu and Chronicler each take the whole content area in turn, not remembered; any choice in
+  // the menu closes it.
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isNarrowChroniclerOpen, setIsNarrowChroniclerOpen] = useState(false);
   const navigate = (open: () => void) => {
     setIsChroniclerFull(false);
+    setIsMenuOpen(false);
+    setIsNarrowChroniclerOpen(false);
     open();
   };
   const setChroniclerOpen = (isOpen: boolean) => {
@@ -82,11 +89,20 @@ export function Shell(
     if (!isOpen) setIsChroniclerFull(false);
   };
   const chroniclerToggle = { isOpen: isChroniclerOpen, onToggle: () => setChroniclerOpen(!isChroniclerOpen) };
+  const narrowChroniclerToggle = {
+    isOpen: isNarrowChroniclerOpen,
+    onToggle: () => {
+      setIsMenuOpen(false);
+      setIsNarrowChroniclerOpen(!isNarrowChroniclerOpen);
+    },
+  };
   const { realmPath: chroniclerRealmPath } = props.chronicler;
   useEffect(() => {
     if (chroniclerRealmPath !== null) {
       rememberChroniclerOpen(true);
       setIsChroniclerOpen(true);
+      setIsNarrowChroniclerOpen(true);
+      setIsMenuOpen(false);
     }
   }, [chroniclerRealmPath]);
   const [questPanel, setQuestPanel] = useState<ReactNode>(null);
@@ -220,45 +236,54 @@ export function Shell(
         ))}
     </QuestColumn>
   );
-  // Beside every screen, the Guild Hall's hub included, Chronicler is a column; only a narrow window floats it as a card (CHG-0193).
-  const isChroniclerFloating = !hasRail;
+  // Beside every screen, the Guild Hall's hub included, Chronicler is a column; a narrow window gives it the whole content
+  // area instead, and its restore button closes it.
   // Chronicler's column stands at the window's far right, past the quest panel, which its handle then clears.
-  const isChroniclerColumn = isChroniclerOpen && !isChroniclerFloating && !isChroniclerFull;
+  const isChroniclerColumn = isChroniclerOpen && hasRail && !isChroniclerFull;
   const chroniclerOffset = isChroniclerColumn ? chroniclerWidth : 0;
   const chroniclerChat = (
     <ChroniclerConversation
       client={props.client}
-      isFull={isChroniclerFull}
-      onFold={hasRail || hasOwnTitleBar ? null : () => setChroniclerOpen(false)}
+      isFull={isChroniclerFull || !hasRail}
+      onFold={null}
       onOpenMission={props.onOpenMission}
       onRealm={props.chronicler.onRealm}
-      onToggleFull={() => setIsChroniclerFull(!isChroniclerFull)}
+      onToggleFull={() => (hasRail ? setIsChroniclerFull(!isChroniclerFull) : setIsNarrowChroniclerOpen(false))}
       realmPath={props.chronicler.realmPath}
       viewing={viewingOf(props.place, props.openMission, props.listedRealm?.name ?? null, isChroniclerFull)}
     />
   );
-  // The top bar's button opens it; a window with no top bar (narrow, not macOS) has a pill in its stead.
-  const hasLauncherPill = !hasRail && !hasOwnTitleBar;
   const chroniclerFull = isChroniclerOpen && isChroniclerFull && <View style={local.fill}>{chroniclerChat}</View>;
-  const chroniclerDock = isChroniclerOpen ? (
-    isChroniclerFloating && !isChroniclerFull ? (
-      <ChroniclerFloating>{chroniclerChat}</ChroniclerFloating>
-    ) : null
-  ) : hasLauncherPill ? (
-    <ChroniclerLauncher onPress={() => setChroniclerOpen(true)} />
-  ) : null;
-  // Narrow windows keep the screens' own links; as the macOS title bar the top bar stays, over the content alone. An
-  // open quest panel takes the content's place; the content stays mounted, so the open thread is kept.
+  // A narrow window has the top bar over the content alone; its menu button opens a full-screen menu of the places. An
+  // open quest panel, the menu, or Chronicler takes the content's place; the content stays mounted, so the open thread
+  // is kept.
+  const isNarrowCovered = isPanelShown || isMenuOpen || isNarrowChroniclerOpen;
   if (!hasRail) {
     return (
       <QuestPanelSetter.Provider value={setPanel}>
-        <TopBarShown.Provider value={hasOwnTitleBar}>
+        <TopBarShown.Provider value={true}>
           <View style={local.narrow}>
-            {hasOwnTitleBar && <TopBar chronicler={chroniclerToggle} client={props.client} details={details} />}
-            <View style={[local.narrowContent, isPanelShown && local.hidden]}>{props.children}</View>
-            {!isPanelShown && chroniclerDock}
-            {!isPanelShown && chroniclerFull}
-            {panelColumn}
+            <TopBar
+              chronicler={narrowChroniclerToggle}
+              client={props.client}
+              details={details}
+              menu={{
+                isOpen: isMenuOpen,
+                onToggle: () => {
+                  setIsNarrowChroniclerOpen(false);
+                  setIsMenuOpen(!isMenuOpen);
+                },
+              }}
+            />
+            <View style={[local.narrowContent, isNarrowCovered && local.hidden]}>{props.children}</View>
+            {isMenuOpen && (
+              <MobileMenu
+                onPlace={(next) => navigate(() => props.onPlace(next))}
+                place={props.openMission === null ? props.place : null}
+              />
+            )}
+            {isNarrowChroniclerOpen && !isMenuOpen && <View style={local.narrowContent}>{chroniclerChat}</View>}
+            {!isMenuOpen && !isNarrowChroniclerOpen && panelColumn}
           </View>
         </TopBarShown.Provider>
       </QuestPanelSetter.Provider>
@@ -314,7 +339,6 @@ export function Shell(
                       {props.children}
                       {chroniclerFull}
                     </View>
-                    {chroniclerDock}
                   </View>
                   {wideColumn}
                   {isChroniclerColumn && (

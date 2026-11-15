@@ -34,6 +34,8 @@ interface Navigation {
   closeMission: () => void;
   goTo: (place: Place) => void;
   openMission: (id: MissionId) => void;
+  /** Goes to a quest's parent view: its realm's quests, or the Borderlands. */
+  openParent: (quest: { workspaceId: string | null; workspaceName: string | null }) => void;
   openRealm: (realm: RealmListing) => void;
   openThread: (missionId: MissionId, threadId: ThreadId) => void;
   selectMission: (id: MissionId | null) => void;
@@ -60,7 +62,7 @@ export function AppScreen({
         client={client}
         key={`${view.openMission}:${view.openCount}`}
         missionId={view.openMission}
-        onBack={navigation.closeMission}
+        onBack={(quest) => (quest === null ? navigation.closeMission() : navigation.openParent(quest))}
         onOpenMission={navigation.openMission}
         onSelectThread={navigation.selectThread}
         onSetDetails={navigation.showDetails}

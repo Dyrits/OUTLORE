@@ -151,6 +151,11 @@ export default function App() {
     setListedRealm(listing);
     goTo("RealmQuests");
   };
+  const openParent = (quest: { workspaceId: string | null; workspaceName: string | null }) => {
+    const parent = archiveParentOf(quest);
+    setListedRealm(parent.listing);
+    goTo(parent.place);
+  };
   const detailsMode = detailsModeOf({ hasListedRealm: listedRealm !== null, openMission, place, selectedMission });
   const details =
     detailsMode === "toggle"
@@ -180,6 +185,7 @@ export default function App() {
           closeMission: () => setOpenMission(null),
           goTo,
           openMission: openMissionFromAnywhere,
+          openParent,
           openRealm,
           openThread: openSideQuest,
           selectMission,
@@ -227,11 +233,7 @@ export default function App() {
           )}
           <ArchiveNavigation.Provider
             value={{
-              quest: (mission) => {
-                const parent = archiveParentOf(mission);
-                setListedRealm(parent.listing);
-                goTo(parent.place);
-              },
+              quest: openParent,
               realm: () => goTo("Realms"),
             }}
           >

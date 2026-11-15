@@ -1,5 +1,9 @@
 # Work in progress
 
+## Mobile navigation · 2026-11-15 · built and checked in a 390 px window, owner's look pending
+
+CHG-0292 (in `changelog/0.1.5-Prototype.md`; starting commit `3ba47a7`, uncommitted): below 820 px a top bar with a menu button opens a full-screen menu of the places; Chronicler is the whole content area; a quest's Back goes to its realm's quests or the Borderlands; the Workshop, archive, and All lore lose their Back to the Guild Hall. [Verification](verification/2026-11-15-mobile-navigation.md). Open: the owner's look on a real phone; starting a quest on a phone (the quest lists have no new-quest button on a narrow window); other screens at phone widths (the Workshop's cards are cramped, see the backlog's narrow-windows item); safe areas, light and Gild looks.
+
 ## T3Code comparison and documentation accuracy · 2026-11-15 · built and checked, owner's review and commit pending
 
 The owner asked to compare Outlore with T3Code, then authorized correcting documentation to distinguish implemented behavior from plans (CHG-0288). Starting revision `1d664b370ae350aabbcd34aec6209a89b43e6a2c`. Changed: [upstream notes](research/t3code.md) (pinned `pingdotgg/t3code` at `0de6ddb8235debee8c7119343e1a4da9cd8b5de8`, 0.1.9), the [comparison](research/outlore-t3code-comparison.md), implementation-status sections in five specifications, notes in the outline, glossary, architecture and inspirations, the README, `apps/app/AGENTS.md`, and Chronicler's guide topics with a test. No planned capability was implemented, removed or reduced, and nothing authorizes a fork, migration, release or push.
