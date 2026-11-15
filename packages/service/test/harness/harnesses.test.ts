@@ -47,6 +47,7 @@ import {
 import { computerNameOf } from "../../src/remote/config.ts";
 import { callTool, listToolNames } from "../fixtures/mcp.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
+import { canApplySeatbelt, canReadProcessTable } from "../support/environment.ts";
 
 const fixtures = join(import.meta.dirname, "..", "fixtures");
 
@@ -849,7 +850,7 @@ describe("running OpenCode threads", () => {
     }).pipe(Effect.provide(layer));
   });
 
-  it.live.skipIf(process.platform !== "darwin")(
+  it.live.skipIf(!canApplySeatbelt)(
     "runs OpenCode inside Seatbelt: commands go unasked, and writes land only in its folders",
     () => {
       const real = realHomes();
@@ -897,7 +898,7 @@ describe("running OpenCode threads", () => {
     },
   );
 
-  it.live.skipIf(process.platform !== "darwin")(
+  it.live.skipIf(!canApplySeatbelt)(
     "asks, as for an escape, when no executor descends from the wrapped OpenCode",
     () => {
       // An `acp` that serves from a process outside its own tree (an existing daemon) is not contained by the wrapper.
@@ -912,7 +913,7 @@ describe("running OpenCode threads", () => {
     },
   );
 
-  it.live.skipIf(process.platform !== "darwin")(
+  it.live.skipIf(!canApplySeatbelt)(
     "asks before an edit inside the folder too when containment cannot be confirmed",
     () => {
       process.env.STAND_IN_OPENCODE_EXECUTOR = "none";
@@ -926,7 +927,7 @@ describe("running OpenCode threads", () => {
     },
   );
 
-  it.live.skipIf(process.platform !== "darwin")(
+  it.live.skipIf(!canApplySeatbelt)(
     "seeds its data copy from the real folder at each start, while the probes keep reading the real folder",
     () => {
       const real = realHomes();
@@ -966,30 +967,27 @@ describe("running OpenCode threads", () => {
     },
   );
 
-  it.live.skipIf(process.platform !== "darwin")(
-    "ends an executor that outlived its `acp`, found by the service's marker",
-    () => {
-      process.env.STAND_IN_OPENCODE_EXECUTOR = "survivor";
-      const { layer, logged } = withHarnesses("10 minutes", seatbeltIn(realHomes()));
-      let executor = -1;
-      return Effect.gen(function* () {
-        const started = yield* start({ harness: "opencode", text: "Hello" });
-        yield* settle(started.missionId, idleWith(1));
-        executor = logged().find((entry) => entry.executor !== undefined)?.executor ?? -1;
-        const acp = logged().find((entry) => entry.pid !== undefined && entry.args?.includes("acp"))?.pid ?? -1;
-        expect(isAlive(executor)).toBe(true);
-        // `acp` dies alone, before anything reads its tree: its executor is an orphan in a group of its own.
-        process.kill(acp, "SIGKILL");
-        for (let i = 0; i < 200 && isAlive(executor); i++) yield* Effect.sleep("25 millis");
-        expect(isAlive(executor)).toBe(false);
-      }).pipe(
-        Effect.ensuring(Effect.sync(() => executor > 0 && isAlive(executor) && process.kill(executor, "SIGKILL"))),
-        Effect.provide(layer),
-      );
-    },
-  );
+  it.live.skipIf(!canApplySeatbelt)("ends an executor that outlived its `acp`, found by the service's marker", () => {
+    process.env.STAND_IN_OPENCODE_EXECUTOR = "survivor";
+    const { layer, logged } = withHarnesses("10 minutes", seatbeltIn(realHomes()));
+    let executor = -1;
+    return Effect.gen(function* () {
+      const started = yield* start({ harness: "opencode", text: "Hello" });
+      yield* settle(started.missionId, idleWith(1));
+      executor = logged().find((entry) => entry.executor !== undefined)?.executor ?? -1;
+      const acp = logged().find((entry) => entry.pid !== undefined && entry.args?.includes("acp"))?.pid ?? -1;
+      expect(isAlive(executor)).toBe(true);
+      // `acp` dies alone, before anything reads its tree: its executor is an orphan in a group of its own.
+      process.kill(acp, "SIGKILL");
+      for (let i = 0; i < 200 && isAlive(executor); i++) yield* Effect.sleep("25 millis");
+      expect(isAlive(executor)).toBe(false);
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => executor > 0 && isAlive(executor) && process.kill(executor, "SIGKILL"))),
+      Effect.provide(layer),
+    );
+  });
 
-  it.live.skipIf(process.platform !== "darwin")("leaves no marked OpenCode process after a normal close", () => {
+  it.live.skipIf(!canApplySeatbelt)("leaves no marked OpenCode process after a normal close", () => {
     const real = realHomes();
     const { directory, layer, logged } = withHarnesses("100 millis", seatbeltIn(real));
     return Effect.gen(function* () {
@@ -1004,50 +1002,50 @@ describe("running OpenCode threads", () => {
     }).pipe(Effect.provide(layer));
   });
 
-  it.live.skipIf(process.platform !== "darwin")(
-    "ends, when the service starts, the OpenCode processes an earlier run lost",
-    () => {
-      const real = realHomes();
-      const { directory, layer } = withHarnesses("10 minutes", seatbeltIn(real));
-      const marker = ownerMarkerOf(seatbeltIn(real)(directory));
-      const pidFile = join(directory, "lost");
-      // A parent that leaves a marked executor behind, as a service that stopped would.
-      spawn(
-        process.execPath,
-        [
-          "-e",
-          `const child = require("node:child_process").spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)", "serve", "--stdio"], { detached: true, stdio: "ignore" });
+  it.live.skipIf(!canApplySeatbelt)("ends, when the service starts, the OpenCode processes an earlier run lost", () => {
+    const real = realHomes();
+    const { directory, layer } = withHarnesses("10 minutes", seatbeltIn(real));
+    const marker = ownerMarkerOf(seatbeltIn(real)(directory));
+    const pidFile = join(directory, "lost");
+    // A parent that leaves a marked executor behind, as a service that stopped would.
+    spawn(
+      process.execPath,
+      [
+        "-e",
+        `const child = require("node:child_process").spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)", "serve", "--stdio"], { detached: true, stdio: "ignore" });
            require("node:fs").writeFileSync(${JSON.stringify(pidFile)}, String(child.pid));
            process.exit(0);`,
-        ],
-        { env: { ...process.env, [marker.name]: marker.value }, stdio: "ignore" },
-      );
-      let lost = -1;
+      ],
+      { env: { ...process.env, [marker.name]: marker.value }, stdio: "ignore" },
+    );
+    let lost = -1;
+    return Effect.gen(function* () {
+      for (let i = 0; i < 200 && !existsSync(pidFile); i++) yield* Effect.sleep("25 millis");
+      lost = Number(readFileSync(pidFile, "utf8"));
+      yield* Effect.sleep("200 millis");
+      expect(isAlive(lost)).toBe(true);
+      // The OpenCode adapter is made with the service: it ends the lost process before any thread starts.
+      yield* Effect.provide(call({ _tag: "ListHarnesses" }), layer);
+      for (let i = 0; i < 200 && isAlive(lost); i++) yield* Effect.sleep("25 millis");
+      expect(isAlive(lost)).toBe(false);
+    }).pipe(Effect.ensuring(Effect.sync(() => lost > 0 && isAlive(lost) && process.kill(lost, "SIGKILL"))));
+  });
+
+  it.live.runIf(canReadProcessTable)(
+    "ends OpenCode's whole process tree when it closes, a child in its own process group included",
+    () => {
+      const { layer, logged } = withHarnesses("100 millis");
+      process.env.STAND_IN_OPENCODE_CHILD = "1";
       return Effect.gen(function* () {
-        for (let i = 0; i < 200 && !existsSync(pidFile); i++) yield* Effect.sleep("25 millis");
-        lost = Number(readFileSync(pidFile, "utf8"));
-        yield* Effect.sleep("200 millis");
-        expect(isAlive(lost)).toBe(true);
-        // The OpenCode adapter is made with the service: it ends the lost process before any thread starts.
-        yield* Effect.provide(call({ _tag: "ListHarnesses" }), layer);
-        for (let i = 0; i < 200 && isAlive(lost); i++) yield* Effect.sleep("25 millis");
-        expect(isAlive(lost)).toBe(false);
-      }).pipe(Effect.ensuring(Effect.sync(() => lost > 0 && isAlive(lost) && process.kill(lost, "SIGKILL"))));
+        const started = yield* start({ harness: "opencode", text: "Hello" });
+        yield* settle(started.missionId, idleWith(1));
+        const grandchild = logged().find((entry) => entry.grandchild !== undefined)?.grandchild ?? -1;
+        expect(grandchild).toBeGreaterThan(0);
+        for (let i = 0; i < 200 && isAlive(grandchild); i++) yield* Effect.sleep("25 millis");
+        expect(isAlive(grandchild)).toBe(false);
+      }).pipe(Effect.provide(layer));
     },
   );
-
-  it.live("ends OpenCode's whole process tree when it closes, a child in its own process group included", () => {
-    const { layer, logged } = withHarnesses("100 millis");
-    process.env.STAND_IN_OPENCODE_CHILD = "1";
-    return Effect.gen(function* () {
-      const started = yield* start({ harness: "opencode", text: "Hello" });
-      yield* settle(started.missionId, idleWith(1));
-      const grandchild = logged().find((entry) => entry.grandchild !== undefined)?.grandchild ?? -1;
-      expect(grandchild).toBeGreaterThan(0);
-      for (let i = 0; i < 200 && isAlive(grandchild); i++) yield* Effect.sleep("25 millis");
-      expect(isAlive(grandchild)).toBe(false);
-    }).pipe(Effect.provide(layer));
-  });
 
   it.live("loads its session again after an idle close, without saving the replayed conversation", () => {
     const { layer, requests } = withHarnesses("50 millis");
@@ -1075,7 +1073,7 @@ describe("running OpenCode threads", () => {
     }).pipe(Effect.provide(layer));
   });
 
-  it.live.skipIf(process.platform !== "darwin")(
+  it.live.skipIf(!canApplySeatbelt)(
     "starts a new session, and says so in the thread, when a sandboxed OpenCode cannot load the earlier one",
     () => {
       const { layer, logged, requests } = withHarnesses("50 millis", seatbeltIn(realHomes()));
@@ -1169,7 +1167,7 @@ describe("running OpenCode threads", () => {
     symlinkSync(target, folder);
   };
 
-  it.live.skipIf(process.platform !== "darwin")(
+  it.live.skipIf(!canApplySeatbelt)(
     "asks before running a thread whose workspace folder became a link, then runs it unsandboxed, asking per action",
     () => {
       const { layer, logged } = withHarnesses("50 millis", seatbeltIn(realHomes()));
@@ -1203,30 +1201,27 @@ describe("running OpenCode threads", () => {
     },
   );
 
-  it.live.skipIf(process.platform !== "darwin")(
-    "asks before an edit inside the linked folder once running unsandboxed",
-    () => {
-      const { layer } = withHarnesses("50 millis", seatbeltIn(realHomes()));
-      const { elsewhere, workspace } = linkedFolders();
-      return Effect.gen(function* () {
-        const started = yield* start({ harness: "opencode", text: "one", workspacePath: workspace });
-        yield* settle(started.missionId, idleWith(1));
-        yield* Effect.sleep("200 millis");
-        linkInPlace(workspace, elsewhere);
-        yield* sendTo(started.threadId, "edit notes/plan.md");
-        yield* answerOpen("Allow");
-        const edit = yield* answerOpen("Deny");
-        expect(edit.permission).toBe("Change a file outside the workspace");
-        yield* settle(started.missionId, idleWith(2));
-      }).pipe(Effect.provide(layer));
-    },
-  );
+  it.live.skipIf(!canApplySeatbelt)("asks before an edit inside the linked folder once running unsandboxed", () => {
+    const { layer } = withHarnesses("50 millis", seatbeltIn(realHomes()));
+    const { elsewhere, workspace } = linkedFolders();
+    return Effect.gen(function* () {
+      const started = yield* start({ harness: "opencode", text: "one", workspacePath: workspace });
+      yield* settle(started.missionId, idleWith(1));
+      yield* Effect.sleep("200 millis");
+      linkInPlace(workspace, elsewhere);
+      yield* sendTo(started.threadId, "edit notes/plan.md");
+      yield* answerOpen("Allow");
+      const edit = yield* answerOpen("Deny");
+      expect(edit.permission).toBe("Change a file outside the workspace");
+      yield* settle(started.missionId, idleWith(2));
+    }).pipe(Effect.provide(layer));
+  });
 
   for (const [label, target] of [
     ["the whole disk", () => "/"],
     ["a folder outside the scratch root", () => linkedFolders().elsewhere],
   ] as const)
-    it.live.skipIf(process.platform !== "darwin")(
+    it.live.skipIf(!canApplySeatbelt)(
       `fails the turn with the reason when the owner refuses a scratch folder linked to ${label}`,
       () => {
         const { directory, layer, logged } = withHarnesses("50 millis", seatbeltIn(realHomes()));
@@ -1250,7 +1245,7 @@ describe("running OpenCode threads", () => {
       },
     );
 
-  it.live.skipIf(process.platform !== "darwin")("asks when the scratch root itself became a link", () => {
+  it.live.skipIf(!canApplySeatbelt)("asks when the scratch root itself became a link", () => {
     const { directory, layer, logged } = withHarnesses("50 millis", seatbeltIn(realHomes()));
     const { elsewhere } = linkedFolders();
     return Effect.gen(function* () {
@@ -1269,21 +1264,18 @@ describe("running OpenCode threads", () => {
     }).pipe(Effect.provide(layer));
   });
 
-  it.live.skipIf(process.platform !== "darwin")(
-    "runs a thread in a plain workspace folder sandboxed, asking nothing",
-    () => {
-      const { layer, logged } = withHarnesses("10 minutes", seatbeltIn(realHomes()));
-      const { workspace } = linkedFolders();
-      return Effect.gen(function* () {
-        const started = yield* start({ harness: "opencode", text: "run ls", workspacePath: workspace });
-        const detail = yield* settle(started.missionId, idleWith(1));
-        expect(detail.questions.map((question) => question.outcome)).toEqual(["AllowedAutomatically"]);
-        const wrapped = logged().find((entry) => entry.pid !== undefined && entry.args?.includes("acp"));
-        expect(wrapped?.cwd).toBe(workspace);
-        expect(wrapped?.xdg?.data).not.toBe(process.env.XDG_DATA_HOME ?? null);
-      }).pipe(Effect.provide(layer));
-    },
-  );
+  it.live.skipIf(!canApplySeatbelt)("runs a thread in a plain workspace folder sandboxed, asking nothing", () => {
+    const { layer, logged } = withHarnesses("10 minutes", seatbeltIn(realHomes()));
+    const { workspace } = linkedFolders();
+    return Effect.gen(function* () {
+      const started = yield* start({ harness: "opencode", text: "run ls", workspacePath: workspace });
+      const detail = yield* settle(started.missionId, idleWith(1));
+      expect(detail.questions.map((question) => question.outcome)).toEqual(["AllowedAutomatically"]);
+      const wrapped = logged().find((entry) => entry.pid !== undefined && entry.args?.includes("acp"));
+      expect(wrapped?.cwd).toBe(workspace);
+      expect(wrapped?.xdg?.data).not.toBe(process.env.XDG_DATA_HOME ?? null);
+    }).pipe(Effect.provide(layer));
+  });
 });
 
 /** The process starts of a Claude Code or Codex stand-in, in order. */

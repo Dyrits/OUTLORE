@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { Terminals, unpackedPathOf } from "../src/terminals.ts";
+import { canOpenTerminal } from "./support/environment.ts";
 
 const folders: string[] = [];
 const managers: Terminals[] = [];
@@ -25,7 +26,7 @@ afterEach(() => {
   for (const path of folders.splice(0)) rmSync(path, { force: true, recursive: true });
 });
 
-describe("using interactive terminals", () => {
+describe.runIf(canOpenTerminal)("using interactive terminals", () => {
   it("starts in the home folder without a realm and keeps shell state when reopened", async () => {
     const home = folder();
     const terminals = manager(home);

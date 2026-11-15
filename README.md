@@ -241,6 +241,7 @@ bun run test
 
 Biome checks formatting and lint rules; TypeScript checks all workspaces.
 Tests run on Electron's bundled Node runtime and use fakes and stand-in executables by default.
+A test that needs what the environment withholds, such as a thread's sandbox refusing a Seatbelt profile of its own, a terminal, a disk image, or the process table, is skipped there and named as skipped; run the suite outside such a sandbox to run them.
 Live checks are opt-in, require installed and signed-in harnesses, and consume model usage:
 
 ```sh

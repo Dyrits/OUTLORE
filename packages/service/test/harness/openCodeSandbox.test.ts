@@ -28,6 +28,7 @@ import {
 } from "../../src/harness/openCodeSandbox.ts";
 import { copyOpenCodeConfig, seedOpenCodeSignIn } from "../../src/harness/openCodeSeed.ts";
 import { hasExecutorBelow, killProcessTree, markedProcessesOf, sweepOrphans } from "../../src/harness/processTree.ts";
+import { canApplySeatbelt, canReadProcessTable } from "../support/environment.ts";
 
 const directories: string[] = [];
 const temporary = () => {
@@ -97,7 +98,7 @@ describe("wrapping OpenCode in the host's sandbox", () => {
     expect(profile.indexOf("(deny signal)")).toBeGreaterThan(profile.indexOf("(allow default)"));
   });
 
-  it.runIf(process.platform === "darwin" && existsSync("/usr/bin/sandbox-exec"))(
+  it.runIf(canApplySeatbelt)(
     "stops a Seatbelt-wrapped process from killing one outside, and lets it kill its own child",
     async () => {
       const outside = spawn("sleep", ["60"], { stdio: "ignore" });
@@ -128,7 +129,7 @@ describe("wrapping OpenCode in the host's sandbox", () => {
     );
   });
 
-  it.runIf(process.platform === "darwin" && existsSync("/usr/bin/sandbox-exec") && existsSync("/usr/bin/python3"))(
+  it.runIf(canApplySeatbelt && existsSync("/usr/bin/python3"))(
     "stops a Seatbelt-wrapped process from reading the arguments and environment of one outside, not of its own child",
     async () => {
       // Reads a process's arguments and environment as `ps -E` does, and says only whether the marker is there.
@@ -301,27 +302,24 @@ describe("wrapping OpenCode in the host's sandbox", () => {
     ).toBeNull();
   });
 
-  it.skipIf(process.platform !== "darwin")(
-    "confines writes on this Mac: inside the roots only, never through a link out",
-    () => {
-      const root = temporary();
-      const inside = join(root, "inside");
-      const outside = join(root, "outside");
-      mkdirSync(inside);
-      mkdirSync(outside);
-      symlinkSync(outside, join(inside, "escape"));
-      const wrapped = wrappedCommandOf({ ...seatbelt, caches: [] }, [inside], process.execPath, [
-        "-e",
-        `const fs = require("node:fs");
+  it.skipIf(!canApplySeatbelt)("confines writes on this Mac: inside the roots only, never through a link out", () => {
+    const root = temporary();
+    const inside = join(root, "inside");
+    const outside = join(root, "outside");
+    mkdirSync(inside);
+    mkdirSync(outside);
+    symlinkSync(outside, join(inside, "escape"));
+    const wrapped = wrappedCommandOf({ ...seatbelt, caches: [] }, [inside], process.execPath, [
+      "-e",
+      `const fs = require("node:fs");
        const tryWrite = (path) => { try { fs.writeFileSync(path, "x"); return "ok"; } catch (e) { return e.code; } };
        process.stdout.write(JSON.stringify([tryWrite(${JSON.stringify(join(inside, "a"))}),
          tryWrite(${JSON.stringify(join(outside, "b"))}), tryWrite(${JSON.stringify(join(inside, "escape", "c"))})]));`,
-      ]);
-      const run = spawnSync(wrapped.command, wrapped.args, { encoding: "utf8" });
-      expect(JSON.parse(run.stdout)).toEqual(["ok", "EPERM", "EPERM"]);
-      expect(existsSync(join(outside, "b"))).toBe(false);
-    },
-  );
+    ]);
+    const run = spawnSync(wrapped.command, wrapped.args, { encoding: "utf8" });
+    expect(JSON.parse(run.stdout)).toEqual(["ok", "EPERM", "EPERM"]);
+    expect(existsSync(join(outside, "b"))).toBe(false);
+  });
 });
 
 describe("checking a thread's folder before sandboxing it there", () => {
@@ -396,7 +394,7 @@ describe("checking a thread's folder before sandboxing it there", () => {
   });
 });
 
-describe("ending a harness's whole process tree", () => {
+describe.runIf(canReadProcessTable)("ending a harness's whole process tree", () => {
   it("kills a child that left its process group, and reports none left", async () => {
     const directory = temporary();
     const pidFile = join(directory, "grandchild");
@@ -423,7 +421,7 @@ describe("ending a harness's whole process tree", () => {
   });
 });
 
-describe("confirming that OpenCode's executor runs below the wrapped process", () => {
+describe.runIf(canReadProcessTable)("confirming that OpenCode's executor runs below the wrapped process", () => {
   const withChild = async (args: Array<string>, check: (parent: number) => void) => {
     const pidFile = join(temporary(), "child");
     const parent = spawn(process.execPath, [
@@ -488,7 +486,7 @@ const filesOf = (folder: string): Array<string> =>
         .sort()
     : [];
 
-describe.skipIf(process.platform !== "darwin")("seeding a sandboxed OpenCode's own data copy on this Mac", () => {
+describe.skipIf(!canApplySeatbelt)("seeding a sandboxed OpenCode's own data copy on this Mac", () => {
   const setup = () => {
     const root = temporary();
     const sandbox: OpenCodeSandbox = {
@@ -619,7 +617,7 @@ describe.skipIf(process.platform !== "darwin")("seeding a sandboxed OpenCode's o
   });
 });
 
-describe("ending the OpenCode processes the service lost", () => {
+describe.runIf(canReadProcessTable)("ending the OpenCode processes the service lost", () => {
   /** Starts a parent that starts a child of its own, in its own group, then ends: the child is an orphan. */
   const orphanOf = async (env: Record<string, string>, childArgs: Array<string>) => {
     const pidFile = join(temporary(), "orphan");

@@ -34,6 +34,10 @@ Read the documents that apply to the task before making changes:
 Read [.agents/ai-tooling.md](.agents/ai-tooling.md) before reinstalling or measuring AI tools, or recovering a session.
 Use the root `package.json` for current commands and the README for setup.
 
+Make a task's git worktree in `.worktrees/<name>` (git-ignored, on a `worktree/<name>` branch), never beside the checkout: a thread's sandbox writes its own folder, so a worktree beside it makes every command there ask the owner.
+Then run `.agents/worktree-setup.sh` in it, which copies the installed packages without the files a sandbox cannot write (`bun install` fails there on `.gitmodules`).
+Tests run inside a thread's sandbox with no `env -u` and no escape from it; the few that need what a sandbox withholds (Seatbelt, a terminal, a disk image, the process table) are skipped there and run on the owner's machine and in CI.
+
 The [pre-commit hook](.githooks/pre-commit) runs Biome on staged files and runs the workspace typecheck when code or configuration is staged.
 Fix reported issues and stage the corrected files again.
 

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { stageApp } from "../../src/updates/stage.ts";
 import { swapScript } from "../../src/updates/swap.ts";
+import { canMakeDiskImage } from "../support/environment.ts";
 
 /** An Applications folder holding a fake installed app and a staged new one, and the files the script uses. */
 const applications = () => {
@@ -106,7 +107,7 @@ describe("swapping the installed app", () => {
   });
 });
 
-describe.runIf(process.platform === "darwin")("staging the app from a disk image", () => {
+describe.runIf(canMakeDiskImage)("staging the app from a disk image", () => {
   /** A minimal app bundle with an ad hoc seal, packed into a disk image. */
   const imageOfApp = () => {
     const root = realpathSync(mkdtempSync(join(tmpdir(), "outlore-stage-")));
