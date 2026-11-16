@@ -83,7 +83,9 @@ export const listWorkspaceEntries = (workspacePath: string, query: string) =>
   Effect.gen(function* () {
     const folder = yield* realFolderOf(workspacePath);
     if (folder === null) return yield* invalid(`No folder at ${workspacePath}.`);
-    const entries = entriesOf(gitFilesOf(folder) ?? walkedFilesOf(folder));
+    // Both reads are synchronous platform calls, so they are suspended rather than run while the Effect is built.
+    const files = yield* Effect.sync(() => gitFilesOf(folder) ?? walkedFilesOf(folder));
+    const entries = entriesOf(files);
     const needle = query.trim().toLowerCase();
     if (needle === "") {
       return entries

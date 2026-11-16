@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 // Entry point when Electron starts the service as a utilityProcess.
 import { join } from "node:path";
-import { Cause, Config, Effect, Exit, Layer } from "effect";
+import { Cause, Config, Effect, Exit, Layer, Predicate } from "effect";
 import { Harness, modelsDevSourceLayer, noPriceSourceLayer, sandboxProblem } from "./core/index.ts";
 import { fakeHarnessLayer, fakeHarnessToolsLayer, liveHarnessToolsLayer, makeHarnessRouter } from "./harness/index.ts";
 import { defaultRelayOrigin } from "./remote/index.ts";
@@ -12,7 +12,17 @@ interface ParentPort {
   postMessage(message: unknown): void;
 }
 
-const parentPort = (process as unknown as { parentPort?: ParentPort }).parentPort;
+/** Electron's utility process gives `process` a `parentPort`; any other host has none. */
+const parentPortOf = (host: unknown): ParentPort | null => {
+  if (!Predicate.hasProperty(host, "parentPort")) return null;
+  const port = host.parentPort;
+  if (!Predicate.hasProperty(port, "postMessage")) return null;
+  const postMessage = port.postMessage;
+  if (!Predicate.isFunction(postMessage)) return null;
+  return { postMessage: (message) => postMessage.call(port, message) };
+};
+
+const parentPort = parentPortOf(process);
 
 // A missing variable fails the program through Config instead of throwing at import.
 const liveLayer = Layer.unwrap(

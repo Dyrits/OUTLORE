@@ -11,6 +11,19 @@ import { type ConsumptionRow, consumptionOf } from "./consumption.ts";
 /** The settings-table key holding when the owner last visited the Guild Hall, in milliseconds. */
 const visitKey = "guildHallVisitedAt";
 
+/** What an empty period used: the read never returns no row, but the type does not say so. */
+const noConsumption: ConsumptionRow = {
+  cacheCreation: 0,
+  cacheRead: 0,
+  earlierTurns: 0,
+  estimated: 0,
+  input: 0,
+  output: 0,
+  reported: 0,
+  turns: 0,
+  unpricedTurns: 0,
+};
+
 /** How many finished quests the recap names; it counts them all. */
 const maxFinishedListed = 5;
 
@@ -36,14 +49,14 @@ export const readGuildHallRecap = (given: number | null) =>
     const finished = yield* sql<{ missionId: MissionId; title: string }>`
       SELECT id AS missionId, title FROM missions
       WHERE is_guildmaster = 0 AND ending = 'Done' AND done_at >= ${since} ORDER BY done_at DESC`;
-    const [used] = yield* sql<ConsumptionRow>`
+    const [counted] = yield* sql<ConsumptionRow>`
       SELECT ${sql.literal(consumptionColumns)} FROM usage u WHERE u.ended_at >= ${since}`;
     // Each run sends its Ritual's quest a message that starts with "Ritual · " (see `beginRun`).
     const [runs] = yield* sql<{ count: number }>`
       SELECT COUNT(*) AS count FROM messages m JOIN rituals r ON r.mission_id = m.mission_id
       WHERE m.sent_at >= ${since} AND m.sender_kind = 'user' AND instr(m.text, 'Ritual · ') = 1`;
     return {
-      consumption: consumptionOf(used as ConsumptionRow),
+      consumption: consumptionOf(counted ?? noConsumption),
       finished: finished.slice(0, maxFinishedListed),
       finishedCount: finished.length,
       isFirstVisit: given === null ? lastVisit === null : false,
