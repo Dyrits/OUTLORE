@@ -69,7 +69,7 @@ function SentImageTile({ card, client }: { card: AttachmentCard; client: Service
     };
   }, [client, card, attempt]);
   return (
-    <View style={local.sent}>
+    <View style={[local.sent, image?.status === "failed" && local.sentFailed]}>
       {image?.status === "ready" ? (
         <Image accessibilityLabel={card.name} resizeMode="cover" source={{ uri: image.uri }} style={local.sentImage} />
       ) : (
@@ -79,7 +79,7 @@ function SentImageTile({ card, client }: { card: AttachmentCard; client: Service
       )}
       {image?.status === "failed" && (
         <View style={local.failure}>
-          <Text accessibilityRole="alert" numberOfLines={3} style={local.failureText}>
+          <Text accessibilityRole="alert" style={local.failureText}>
             {image.message}
           </Text>
           <Pressable
@@ -132,6 +132,7 @@ const local = StyleSheet.create({
     overflow: "hidden",
     width: 96,
   },
+  sentFailed: { height: "auto", minHeight: 96, overflow: "visible" },
   sentImage: { height: 96, width: 96 },
   strip: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingTop: 6 },
   tile: {
