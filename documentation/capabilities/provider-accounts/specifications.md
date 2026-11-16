@@ -32,8 +32,8 @@ The owner works with several harnesses and, for some, several subscriptions: two
 
 ### Approvals on every harness
 
-- The approval level applies to every harness (action-approval). Claude Code keeps its own sandbox (CHG-0031).
-- **Codex** runs in its workspace-write sandbox. At **Risky actions only** it asks only to leave the sandbox, and Outlore answers that as a Claude Code prompt: unasked unless sensitive. At **Also commands and edits** every command Codex does not trust asks.
+- The approval level applies to every harness (action-approval). **Claude Code** keeps its own sandbox at **Risky actions only** (CHG-0031, CHG-0208); at **Also commands and edits** it runs without one and every command asks as "Run without a sandbox". A sandbox that fails to start stops Claude Code rather than running it unsandboxed.
+- **Codex** runs in its workspace-write sandbox at both levels (CHG-0031, CHG-0208). At **Risky actions only** it asks only to leave the sandbox, with the exact command. At **Also commands and edits** every command Codex does not trust asks.
 - **OpenCode** runs inside the host's sandbox (Seatbelt on macOS, bubblewrap on Linux), started by Outlore (CHG-0208). At **Risky actions only** its actions inside the sandbox run without a question and leave a line; a file change outside the thread's folder asks with the exact files, and so does every action when its executor cannot be confirmed below the wrapped process or its sandbox tool is missing, which then runs without a sandbox. At **Also commands and edits** every permission request asks.
 - Native subagents stay off on every harness; threads open threads with `open_thread` (ADR 0007).
 
