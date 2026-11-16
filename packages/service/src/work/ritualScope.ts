@@ -35,12 +35,12 @@ export const validateScope = (scope: RitualScope) =>
   });
 
 /** One structural action as the service derived it, in the terms a scope entry uses. */
-export interface ScopedAction {
+export type ScopedAction = {
   readonly operation: RitualScopeEntry["operation"];
   readonly payload: string | null;
   /** The names the target goes by: a quest's id and title, or a setting's name. */
   readonly targets: ReadonlyArray<string>;
-}
+};
 
 /** Whether a scope entry covers the action exactly: same operation, same target, same new value. */
 const covers = (entry: RitualScopeEntry, action: ScopedAction) => {
