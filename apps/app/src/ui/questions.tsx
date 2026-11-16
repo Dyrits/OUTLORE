@@ -4,10 +4,10 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { clockOf } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
+import { choiceActions } from "./choiceCard";
 import {
   answeredLineOf,
   answersOf,
-  answersOfDrafts,
   type ChoiceDraft,
   emptyDraft,
   pickOption,
@@ -149,12 +149,12 @@ function ChoiceCard({
 }) {
   const [drafts, setDrafts] = useState<ReadonlyArray<ChoiceDraft>>(() => choices.map(() => emptyDraft));
   const [error, setError] = useState<string | null>(null);
-  const answers = answersOfDrafts(choices, drafts);
-  const send = (given: ReadonlyArray<ReadonlyArray<string>> | null) =>
-    client.request({ _tag: "AnswerChoices", answers: given, questionId: question.id }).then(
-      () => setError(null),
-      (reason) => setError(messageOf(reason)),
-    );
+  const actions = choiceActions(
+    choices,
+    drafts,
+    (answers) => client.request({ _tag: "AnswerChoices", answers, questionId: question.id }),
+    setError,
+  );
   return (
     <View style={styles.question}>
       {onOpenMission !== void 0 && (
@@ -174,14 +174,14 @@ function ChoiceCard({
       ))}
       <View style={styles.chips}>
         <Pressable
-          accessibilityState={{ disabled: answers === null }}
-          disabled={answers === null}
-          onPress={() => answers !== null && send(answers)}
-          style={[styles.answer, styles.answerPrimary, answers === null && { opacity: 0.4 }]}
+          accessibilityState={{ disabled: actions.isSendDisabled }}
+          disabled={actions.isSendDisabled}
+          onPress={actions.send}
+          style={[styles.answer, styles.answerPrimary, actions.isSendDisabled && { opacity: 0.4 }]}
         >
           <Text style={[styles.answerText, styles.answerTextPrimary]}>Send</Text>
         </Pressable>
-        <AnswerButton label="Skip" onPress={() => send(null)} />
+        <AnswerButton label="Skip" onPress={actions.skip} />
       </View>
       {error !== null && <Text style={styles.error}>{error}</Text>}
     </View>
