@@ -8,7 +8,7 @@
   },
   "scripts": {
     "bundle": "bun scripts/bundleWorker.ts",
-    "deploy": "bun run site && bunx wrangler deploy",
+    "deploy": "bun run site && bunx wrangler@4.162.0 deploy",
     "site": "cd ../../apps/app && CI=1 bunx expo export --platform web --output-dir ../../packages/relay/public",
     "typecheck": "tsc -p . && tsc -p tsconfig.worker.json"
   },
