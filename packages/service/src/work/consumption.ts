@@ -30,17 +30,15 @@ export const consumptionOf = (row: ConsumptionRow): Consumption => ({
 });
 
 /** What the usage rows `where` selects used; an aggregate always returns a row, so none is a defect. */
-export const readConsumptionWhere = (where: Statement.Fragment) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<ConsumptionRow>`SELECT ${sql.literal(consumptionColumns)} FROM usage u WHERE ${where}`;
-    if (row === undefined) return yield* Effect.die(new Error("An aggregate read returned no row."));
-    return consumptionOf(row);
-  });
+export const readConsumptionWhere = Effect.fnUntraced(function* (where: Statement.Fragment) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<ConsumptionRow>`SELECT ${sql.literal(consumptionColumns)} FROM usage u WHERE ${where}`;
+  if (row === undefined) return yield* Effect.die(new Error("An aggregate read returned no row."));
+  return consumptionOf(row);
+});
 
 /** What the turns of one thread used. */
-export const readThreadConsumption = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    return yield* readConsumptionWhere(sql`u.thread_id = ${threadId}`);
-  });
+export const readThreadConsumption = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  return yield* readConsumptionWhere(sql`u.thread_id = ${threadId}`);
+});

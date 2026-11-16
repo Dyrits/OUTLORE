@@ -10,28 +10,27 @@ import { summaryOf } from "./loreFading.ts";
  * What a thread's save rests on: the journal entry it names in its mission, or else the latest message
  * delivered to it, the one its turn answers. Null when there is neither; a string when the entry does not exist.
  */
-export const readOrigin = (threadId: string, journalEntry: number | null) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    if (journalEntry !== null) {
-      const [entry] = yield* sql<{ text: string }>`
+export const readOrigin = Effect.fnUntraced(function* (threadId: string, journalEntry: number | null) {
+  const sql = yield* SqlClient.SqlClient;
+  if (journalEntry !== null) {
+    const [entry] = yield* sql<{ text: string }>`
         SELECT e.text FROM journal_entries e JOIN threads t ON t.mission_id = e.mission_id
         WHERE t.id = ${threadId} AND e.number = ${journalEntry}`;
-      if (entry === undefined) return `there is no journal entry ${journalEntry} in this mission`;
-      return { entryNumber: journalEntry, excerpt: summaryOf(entry.text), from: null, kind: "JournalEntry" } as const;
-    }
-    const [message] = yield* sql<{ fromTitle: string | null; senderKind: string; text: string }>`
+    if (entry === undefined) return `there is no journal entry ${journalEntry} in this mission`;
+    return { entryNumber: journalEntry, excerpt: summaryOf(entry.text), from: null, kind: "JournalEntry" } as const;
+  }
+  const [message] = yield* sql<{ fromTitle: string | null; senderKind: string; text: string }>`
       SELECT sender_kind AS senderKind, sender_title AS fromTitle, text FROM messages
       WHERE thread_id = ${threadId} AND sender_kind IN ('user', 'thread') AND delivered_turn_id IS NOT NULL
       ORDER BY sequence DESC LIMIT 1`;
-    if (message === undefined) return null;
-    return {
-      entryNumber: null,
-      excerpt: summaryOf(message.text),
-      from: message.senderKind === "user" ? null : (message.fromTitle ?? "a thread"),
-      kind: "Message",
-    } satisfies LoreOrigin;
-  });
+  if (message === undefined) return null;
+  return {
+    entryNumber: null,
+    excerpt: summaryOf(message.text),
+    from: message.senderKind === "user" ? null : (message.fromTitle ?? "a thread"),
+    kind: "Message",
+  } satisfies LoreOrigin;
+});
 
 /** The origin columns' values, in the order `origin_kind, origin_entry, origin_from, origin_excerpt`. */
 export const originColumnsOf = (origin: LoreOrigin | null) => ({

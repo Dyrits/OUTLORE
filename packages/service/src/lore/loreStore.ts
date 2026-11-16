@@ -142,81 +142,82 @@ export const insertLoreEntry = Effect.fnUntraced(function* (loreEntry: NewLoreEn
 });
 
 /** Corrects a lore entry's text where it is: Edited by the owner, Corrected by a thread. */
-export const correctLoreEntry = (loreEntryId: string, text: string, actor: Actor, approvedAt: number | null = null) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const now = yield* Clock.currentTimeMillis;
-    const kind = actor.kind === "Owner" ? "Edited" : "Corrected";
-    yield* trackChange(
-      loreEntryId,
-      kind,
-      actor,
-      approvedAt,
-      sql`UPDATE intels SET text = ${text.trim()}, updated_at = ${now} WHERE id = ${loreEntryId}`,
-    );
-  });
+export const correctLoreEntry = Effect.fnUntraced(function* (
+  loreEntryId: string,
+  text: string,
+  actor: Actor,
+  approvedAt: number | null = null,
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const now = yield* Clock.currentTimeMillis;
+  const kind = actor.kind === "Owner" ? "Edited" : "Corrected";
+  yield* trackChange(
+    loreEntryId,
+    kind,
+    actor,
+    approvedAt,
+    sql`UPDATE intels SET text = ${text.trim()}, updated_at = ${now} WHERE id = ${loreEntryId}`,
+  );
+});
 
 /** Moves a lore entry to a wider or narrower scope, with new text when given. */
-export const moveLoreEntry = (
+export const moveLoreEntry = Effect.fnUntraced(function* (
   loreEntryId: string,
   placement: Placement,
   text: string | null,
   kind: "Widened" | "Narrowed",
   actor: Actor,
   approvedAt: number | null = null,
-) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const now = yield* Clock.currentTimeMillis;
-    yield* trackChange(
-      loreEntryId,
-      kind,
-      actor,
-      approvedAt,
-      sql`UPDATE intels SET scope = ${placement.scope}, thread_id = ${placement.threadId},
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const now = yield* Clock.currentTimeMillis;
+  yield* trackChange(
+    loreEntryId,
+    kind,
+    actor,
+    approvedAt,
+    sql`UPDATE intels SET scope = ${placement.scope}, thread_id = ${placement.threadId},
         workspace_id = ${placement.workspaceId}, text = COALESCE(${text?.trim() ?? null}, text), updated_at = ${now}
         WHERE id = ${loreEntryId}`,
-    );
-  });
+  );
+});
 
 /**
  * Gives a lore entry a replacement's text, kind, and origin; it keeps its identifier, scope, and uses. Restating
  * it makes it active again at full strength (provisional, work-in-progress Batch 14).
  */
-export const replaceLoreEntry = (
+export const replaceLoreEntry = Effect.fnUntraced(function* (
   loreEntryId: string,
   replacement: { readonly kind: LoreKind; readonly origin: LoreOrigin | null; readonly text: string },
   actor: Actor,
   approvedAt: number | null = null,
-) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const now = yield* Clock.currentTimeMillis;
-    const origin = originColumnsOf(replacement.origin);
-    yield* trackChange(
-      loreEntryId,
-      "Replaced",
-      actor,
-      approvedAt,
-      sql`UPDATE intels SET kind = ${replacement.kind}, text = ${replacement.text.trim()}, updated_at = ${now},
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const now = yield* Clock.currentTimeMillis;
+  const origin = originColumnsOf(replacement.origin);
+  yield* trackChange(
+    loreEntryId,
+    "Replaced",
+    actor,
+    approvedAt,
+    sql`UPDATE intels SET kind = ${replacement.kind}, text = ${replacement.text.trim()}, updated_at = ${now},
         last_used_at = ${now}, origin_kind = ${origin.originKind}, origin_entry = ${origin.originEntry},
         origin_from = ${origin.originFrom}, origin_excerpt = ${origin.originExcerpt}
         WHERE id = ${loreEntryId}`,
-    );
-  });
+  );
+});
 
 /** The owner pins a lore entry so it never fades, or unpins it. */
-export const pinLoreEntry = (loreEntryId: string, isPinned: boolean) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* trackChange(
-      loreEntryId,
-      isPinned ? "Pinned" : "Unpinned",
-      owner,
-      null,
-      sql`UPDATE intels SET is_pinned = ${isPinned ? 1 : 0} WHERE id = ${loreEntryId}`,
-    );
-  });
+export const pinLoreEntry = Effect.fnUntraced(function* (loreEntryId: string, isPinned: boolean) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* trackChange(
+    loreEntryId,
+    isPinned ? "Pinned" : "Unpinned",
+    owner,
+    null,
+    sql`UPDATE intels SET is_pinned = ${isPinned ? 1 : 0} WHERE id = ${loreEntryId}`,
+  );
+});
 
 /** Deletes a lore entry; the owner's deletion declines the changes awaiting approval on it. */
 export const deleteLoreEntry = (loreEntryId: string, actor: Actor, approvedAt: number | null = null) =>
@@ -226,18 +227,17 @@ export const deleteLoreEntry = (loreEntryId: string, actor: Actor, approvedAt: n
  * The owner makes a dormant or archived lore active again: its last use becomes now, at full strength,
  * without counting a use (work-in-progress, Batch 13).
  */
-export const restoreLoreEntry = (loreEntryId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const now = yield* Clock.currentTimeMillis;
-    yield* trackChange(
-      loreEntryId,
-      "Restored",
-      owner,
-      null,
-      sql`UPDATE intels SET last_used_at = ${now} WHERE id = ${loreEntryId}`,
-    );
-  });
+export const restoreLoreEntry = Effect.fnUntraced(function* (loreEntryId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const now = yield* Clock.currentTimeMillis;
+  yield* trackChange(
+    loreEntryId,
+    "Restored",
+    owner,
+    null,
+    sql`UPDATE intels SET last_used_at = ${now} WHERE id = ${loreEntryId}`,
+  );
+});
 
 /**
  * The owner merges lore entries into one global lore entry: each merged lore entry is deleted and its uses become the kept
