@@ -15,7 +15,6 @@ Subagents in today's harnesses report once at the end and cannot be asked or red
 - Without a mention, a thread reaches another quest only through Chronicler (formerly Guildmaster). A thread cannot widen its own reach by writing an `@` reference: only the owner's messages count.
 - The user can write to any open thread, including a subagent's (for mirrored subagents, see [thread-tree](../thread-tree/specifications.md#subagents)).
 - Every message shows its sender: the user, or the sending thread.
-- A message can ask for a reply.
 
 ### Mentions with @
 
@@ -63,7 +62,7 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 
 | Tool | Purpose | Arguments | Answer |
 | --- | --- | --- | --- |
-| `send_thread_message` | Send a message | Receiving thread (a parent, a thread directly beneath, Chronicler, the top thread of a quest or a side-quest the owner mentioned in this turn, or a thread that wrote to the caller in this turn), text, whether a reply is wanted | The message's identifier, queued until explicit resume when the receiver is Stopped; or a refusal and its reason when the target is outside its reach |
+| `send_thread_message` | Send a message | Receiving thread (a parent, a thread directly beneath, Chronicler, the top thread of a quest or a side-quest the owner mentioned in this turn, or a thread that wrote to the caller in this turn), text | Sent, or a refusal and its reason when the target is outside its reach |
 | `report_result` | Report the thread's result to its parent | The result | — |
 | `interrupt_thread` | Interrupt a thread directly beneath the caller | The thread | Done, or a refusal and its reason when the thread is not directly beneath the caller or is not running |
 
