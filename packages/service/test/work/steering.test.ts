@@ -13,7 +13,7 @@ import type {
 } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
-import { fakeHarnessLayer, Service, serviceLayer } from "../src/index.ts";
+import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
 
 const directories: string[] = [];
 afterEach(() => {
