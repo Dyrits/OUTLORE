@@ -39,6 +39,21 @@ describe("discovering skills", () => {
       ]);
     }),
   );
+
+  it.effect("reads a folded description and a literal one that continue on the lines below", () =>
+    Effect.gen(function* () {
+      const home = folderWith({
+        ".agents/skills/folded/SKILL.md":
+          "---\nname: folded\ndescription: >\n  Builds a thing\n  across two lines.\nlicense: MIT\n---\nBody",
+        ".agents/skills/kept/SKILL.md": "---\nname: kept\ndescription: |-\n  First line\n  Second line\n---\n",
+      });
+      const skills = yield* listSkills(null, home);
+      expect(skills.map((skill) => [skill.name, skill.description])).toEqual([
+        ["folded", "Builds a thing across two lines."],
+        ["kept", "First line\nSecond line"],
+      ]);
+    }),
+  );
 });
 
 describe("reading slash-names in messages", () => {
