@@ -1,3 +1,4 @@
+import { constantTimeEqual } from "@outlore/channel/constantTimeEqual";
 import type { Role } from "./route.ts";
 
 /** What the core needs from one connection, whatever carries it (a `ws` socket, a Durable Object WebSocket, a fake). */
@@ -76,13 +77,6 @@ const claimMismatch = { code: closeCodes.claimMismatch, reason: "claim mismatch"
 
 const sha256 = async (bytes: Uint8Array): Promise<Uint8Array> =>
   new Uint8Array(await crypto.subtle.digest("SHA-256", Uint8Array.from(bytes)));
-
-// Compares every byte whatever the first difference, so the time taken says nothing about how much matched.
-const sameBytes = (a: Uint8Array, b: Uint8Array): boolean => {
-  let difference = a.length ^ b.length;
-  for (let index = 0; index < a.length; index += 1) difference |= (a[index] ?? 0) ^ (b[index] ?? 0);
-  return difference === 0;
-};
 
 const withPrefix = (type: number, id: Uint8Array, payload: Uint8Array | null): Uint8Array => {
   const frame = new Uint8Array(prefixBytes + (payload?.length ?? 0));
@@ -206,7 +200,7 @@ export class RoomCore<P extends RoomPeer> {
       await this.#ports.writeClaim(hash);
       return null;
     }
-    return sameBytes(stored, hash) ? null : claimMismatch;
+    return constantTimeEqual(stored, hash) ? null : claimMismatch;
   }
 
   #hostOf(): (Member<P> & { role: "host" }) | null {
@@ -240,7 +234,7 @@ export class RoomCore<P extends RoomPeer> {
     }
     const id = crypto.getRandomValues(new Uint8Array(clientIdBytes));
     // An id that is already taken is vanishingly rare, but a duplicate would cross two clients' traffic.
-    if (clients.some((client) => sameBytes(client.id, id))) {
+    if (clients.some((client) => constantTimeEqual(client.id, id))) {
       this.#openClient(peer);
       return;
     }
@@ -290,7 +284,7 @@ export class RoomCore<P extends RoomPeer> {
       return;
     }
     const id = data.subarray(1, prefixBytes);
-    const client = this.#clients().find((candidate) => sameBytes(candidate.id, id));
+    const client = this.#clients().find((candidate) => constantTimeEqual(candidate.id, id));
     // An unknown id is a client that has just left; the host cannot know yet.
     if (client === void 0) return;
     if (type === hostFrame.forward) {

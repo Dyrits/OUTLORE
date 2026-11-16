@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./base64url": "./src/base64url.ts",
+    "./constantTimeEqual": "./src/constantTimeEqual.ts"
   },
   "scripts": {
     "typecheck": "tsc -p ."

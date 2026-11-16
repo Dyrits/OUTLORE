@@ -1,4 +1,4 @@
-import { decodeBase64Url } from "./base64url.ts";
+import { decodeBase64Url } from "@outlore/channel/base64url";
 
 /** Which side of a room a connection plays. */
 export type Role = "client" | "host";

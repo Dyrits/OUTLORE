@@ -3,6 +3,7 @@ import {
   encodeBase64Url,
   encodeClientHello,
   type HostReply,
+  isLocalOrigin,
   maxDeviceNameLength,
   openInitiator,
   parseHostReply,
@@ -41,14 +42,7 @@ export interface HostLink {
 const linkMillis = 20_000;
 
 /** Whether a relay address is on this computer: only a test, a development run or a page served locally names one. */
-export const isLocalOrigin = (origin: string) => {
-  try {
-    const { hostname } = new URL(origin);
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
-  } catch {
-    return false;
-  }
-};
+export { isLocalOrigin } from "@outlore/channel";
 
 type FirstText = { readonly text: string } | "closed" | "timedOut";
 

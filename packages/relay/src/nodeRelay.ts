@@ -1,5 +1,4 @@
 import { createServer, type IncomingMessage } from "node:http";
-import type { AddressInfo } from "node:net";
 import type { Duplex } from "node:stream";
 import { type WebSocket, WebSocketServer } from "ws";
 import { closeWithReason, defaultRoomLimits, type Member, RoomCore, type RoomLimits } from "./roomCore.ts";
@@ -98,6 +97,8 @@ export const startNodeRelay = async (options: NodeRelayOptions = {}): Promise<No
     server.once("error", reject);
     server.listen(options.port ?? 0, options.host ?? "127.0.0.1", resolve);
   });
+  const address = server.address();
+  if (typeof address !== "object" || address === null) throw new Error("The relay did not report its port.");
 
   return {
     close: () =>
@@ -107,6 +108,6 @@ export const startNodeRelay = async (options: NodeRelayOptions = {}): Promise<No
         server.close(() => resolve());
         server.closeAllConnections();
       }),
-    port: (server.address() as AddressInfo).port,
+    port: address.port,
   };
 };

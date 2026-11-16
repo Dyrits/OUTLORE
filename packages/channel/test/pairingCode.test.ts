@@ -5,6 +5,7 @@ import {
   encodeBase64Url,
   encodePairingCode,
   generateKeyPair,
+  isLocalOrigin,
   newPairingSecret,
   newRoomName,
 } from "../src/index.ts";
@@ -123,5 +124,22 @@ describe("pairing code", () => {
 
   it("keeps the code short enough to paste in one line", () => {
     expect(encodePairingCode(sample()).length).toBeLessThan(200);
+  });
+
+  it("names a relay on this computer by localhost, 127.0.0.1 or [::1] only", () => {
+    for (const origin of ["http://localhost:8787", "http://127.0.0.1:8787", "http://[::1]:8787"]) {
+      expect(isLocalOrigin(origin), origin).toBe(true);
+    }
+    for (const origin of [
+      "https://relay.example.com",
+      "http://localhost.evil.example",
+      "http://127.0.0.2",
+      "nonsense",
+    ]) {
+      expect(isLocalOrigin(origin), origin).toBe(false);
+    }
+    const code = { ...sample(), relayOrigin: "http://[::1]:8787" };
+    const decoded = decodePairingCode(encodePairingCode(code));
+    expect(decoded.ok && decoded.value.relayOrigin).toBe("http://[::1]:8787");
   });
 });

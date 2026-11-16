@@ -29,10 +29,12 @@ const hostsKey = "outlore.browserHosts";
 const activeKey = "outlore.browserHost";
 
 const isText = (value: unknown): value is string => typeof value === "string" && value !== "";
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
 
 const isStoredHost = (value: unknown): value is StoredHost => {
-  if (typeof value !== "object" || value === null) return false;
-  const host = value as Record<string, unknown>;
+  if (!isRecord(value)) return false;
+  const host = value;
   return (
     isText(host.deviceId) &&
     isText(host.deviceToken) &&

@@ -1,20 +1,16 @@
-import { encodeBase64Url } from "./base64url.ts";
+import type { Carrier, Result } from "@outlore/channel";
+import { encodeBase64Url } from "@outlore/channel/base64url";
 import { clientIdBytes, hostFrame, readClosingFrame, relayFrame } from "./roomCore.ts";
 
 // The relay as its users see it: a host keeps one connection and hears from its clients by their identifiers; a client
 // (a paired device) has one connection that carries its own frames only. Isomorphic: the standard WebSocket only.
 
 /** Whole messages between two peers, in order; the shape the secure channel asks of any carrier. */
-export interface RelayCarrier {
-  close(): void;
-  onClose(listener: () => void): void;
-  onMessage(listener: (data: Uint8Array) => void): void;
-  send(data: Uint8Array): void;
-}
+export type RelayCarrier = Carrier;
 
 export type ConnectFailure = "unreachable";
 
-export type ConnectResult<Value> = { ok: true; value: Value } | { kind: ConnectFailure; ok: false };
+export type ConnectResult<Value> = Result<Value, ConnectFailure>;
 
 /** A text frame the relay answers without waking its room: it keeps a path through a mobile network or a NAT open. */
 const keepAliveMillis = 25_000;
@@ -41,7 +37,11 @@ const open = (url: string) =>
   });
 
 const bytesOf = (data: unknown): Uint8Array | null =>
-  data instanceof ArrayBuffer ? new Uint8Array(data) : ArrayBuffer.isView(data) ? new Uint8Array(data.buffer) : null;
+  data instanceof ArrayBuffer
+    ? new Uint8Array(data)
+    : ArrayBuffer.isView(data)
+      ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+      : null;
 
 const hex = (bytes: Uint8Array) => Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 const unhex = (text: string) => Uint8Array.from(text.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16));
