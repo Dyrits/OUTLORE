@@ -24,26 +24,28 @@ const panel = (threadId: ThreadId | null = null, scope: LoreScope | null = null)
 const idle = (workspacePath: string | null = null, text = "Hello") =>
   Effect.gen(function* () {
     const started = yield* start(text, workspacePath);
-    yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+    yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
     return started;
   });
 /** The context a thread's next turn receives, as the fake harness echoes it. */
 const contextOf = (missionId: MissionId, threadId: ThreadId) =>
   Effect.gen(function* () {
-    const before = (yield* read(missionId, threadId)).messages.filter((m) => m.sender === "agent").length;
+    const before = (yield* read(missionId, threadId)).messages.filter((message) => message.sender === "agent").length;
     yield* send(threadId, "context");
     const detail = yield* settle(
       missionId,
-      (d) => d.thread.state === "Idle" && d.messages.filter((m) => m.sender === "agent").length > before,
+      (detail) =>
+        detail.thread.state === "Idle" &&
+        detail.messages.filter((message) => message.sender === "agent").length > before,
       threadId,
     );
-    return detail.messages.findLast((m) => m.sender === "agent")?.text ?? "";
+    return detail.messages.findLast((message) => message.sender === "agent")?.text ?? "";
   });
 /** A thread opened beneath `parentId` that has finished its first turn. */
 const child = (missionId: MissionId, parentId: ThreadId) =>
   Effect.gen(function* () {
     const opened = yield* open(parentId, "Hello");
-    yield* settle(missionId, (d) => d.thread.state === "Idle", opened.threadId);
+    yield* settle(missionId, (detail) => detail.thread.state === "Idle", opened.threadId);
     return opened.threadId;
   });
 const approveAll = (isApproved = true) =>
@@ -179,7 +181,7 @@ describe("recalling lore", () => {
         Effect.gen(function* () {
           const started = yield* call({ _tag: "StartEmptyQuest", realmId, requestId: crypto.randomUUID() });
           yield* send(started.threadId);
-          yield* settle(started.missionId, (d) => d.thread.state === "Idle" && d.messages.length > 1);
+          yield* settle(started.missionId, (detail) => detail.thread.state === "Idle" && detail.messages.length > 1);
           return started;
         });
       const first = yield* inRealm();
@@ -221,7 +223,7 @@ describe("recalling lore", () => {
       const order = ["local machine", "preview server", "staging server", "global default"];
       const positions = order.map((part) => found.indexOf(part));
       expect(positions.every((position) => position >= 0)).toBe(true);
-      expect(positions).toEqual([...positions].sort((a, b) => a - b));
+      expect(positions).toEqual([...positions].sort((first, second) => first - second));
       expect(yield* tool(beneath, "search_intel", { query: "deploy", scope: "workspace" })).not.toContain("preview");
       expect(yield* tool(beneath, "search_intel", { query: "unrelated words" })).toContain("No lore");
       const context = yield* contextOf(missionId, beneath);

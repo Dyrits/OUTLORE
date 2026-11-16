@@ -130,7 +130,7 @@ const rankByWords = (rows: ReadonlyArray<LoreEntryRow>, query: string) => {
       return { row, score };
     })
     .filter(({ score }) => score > 0)
-    .toSorted((a, b) => b.score - a.score)
+    .toSorted((first, second) => second.score - first.score)
     .map(({ row }) => row);
 };
 

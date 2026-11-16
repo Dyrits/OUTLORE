@@ -80,12 +80,12 @@ export const recordFadingSteps = (loreEntryIds: ReadonlyArray<string>) =>
   );
 
 /** Runs a change to one lore entry and records it with the state before and after, fading steps up to now first. */
-const trackChange = <E, R>(
+const trackChange = <Failure, Requirements>(
   loreEntryId: string,
   kind: LoreHistoryKind,
   actor: Actor,
   approvedAt: number | null,
-  change: Effect.Effect<unknown, E, R>,
+  change: Effect.Effect<unknown, Failure, Requirements>,
 ) =>
   Effect.gen(function* () {
     const before = yield* readSnapshot(loreEntryId);

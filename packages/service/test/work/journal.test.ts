@@ -21,15 +21,19 @@ const record = (threadId: ThreadId, args: object) => tool(threadId, "update_jour
 const idle = (text = "Hello") =>
   Effect.gen(function* () {
     const started = yield* start(text);
-    yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+    yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
     return started;
   });
 /** The starting context a new thread beneath `parentId` receives, as the fake harness echoes it. */
 const contextOfChild = (missionId: MissionId, parentId: ThreadId) =>
   Effect.gen(function* () {
     const child = yield* open(parentId, "context");
-    const detail = yield* settle(missionId, (d) => d.messages.some((m) => m.sender === "agent"), child.threadId);
-    return detail.messages.find((m) => m.sender === "agent")?.text ?? "";
+    const detail = yield* settle(
+      missionId,
+      (detail) => detail.messages.some((message) => message.sender === "agent"),
+      child.threadId,
+    );
+    return detail.messages.find((message) => message.sender === "agent")?.text ?? "";
   });
 
 describe("keeping a mission's journal", () => {
@@ -68,7 +72,7 @@ describe("keeping a mission's journal", () => {
       expect(answer).toContain("version 1");
       const view = yield* journal(missionId);
       expect(view).toMatchObject({ briefing: "Storage is SQLite.", briefingTokens: 5, version: 1 });
-      expect(view.entries.map((e) => e.text)).toEqual(["Settled storage."]);
+      expect(view.entries.map((entry) => entry.text)).toEqual(["Settled storage."]);
     }).pipe(Effect.provide(live())),
   );
 
@@ -100,7 +104,7 @@ describe("keeping a mission's journal", () => {
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       const child = yield* open(threadId, "Hello");
-      yield* settle(missionId, (d) => d.thread.state === "Idle", child.threadId);
+      yield* settle(missionId, (detail) => detail.thread.state === "Idle", child.threadId);
       yield* record(threadId, { basedOn: 0, briefing: "Storage is SQLite.", entry: "Settled storage." });
       const refused = yield* record(child.threadId, { basedOn: 0, briefing: "The UI is React.", entry: "UI." });
       expect(refused).toContain("version 1");
@@ -122,7 +126,7 @@ describe("keeping a mission's journal", () => {
   it.live("reads the latest entries, and older ones from a starting point", () =>
     Effect.gen(function* () {
       const { threadId } = yield* idle();
-      for (let i = 1; i <= 25; i++) yield* record(threadId, { entry: `Entry ${i}` });
+      for (let index = 1; index <= 25; index++) yield* record(threadId, { entry: `Entry ${index}` });
       const latest = yield* tool(threadId, "read_journal", {});
       expect(latest).toContain("Entry 25");
       expect(latest).toContain("Entry 6");
@@ -140,15 +144,15 @@ describe("keeping a mission's journal", () => {
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       const child = yield* open(threadId, "Hello");
-      yield* settle(missionId, (d) => d.thread.state === "Idle", child.threadId);
+      yield* settle(missionId, (detail) => detail.thread.state === "Idle", child.threadId);
       const refused = yield* tool(child.threadId, "report_result", { result: "Done." });
       expect(refused).toContain("journal");
-      expect((yield* read(missionId)).messages.some((m) => m.isResult)).toBe(false);
+      expect((yield* read(missionId)).messages.some((message) => message.isResult)).toBe(false);
       yield* tool(child.threadId, "report_result", { journal: "Counted 42 files.", result: "42 files." });
       const view = yield* journal(missionId);
-      expect(view.entries.map((e) => [e.authorTitle, e.text])).toEqual([["Hello", "Counted 42 files."]]);
+      expect(view.entries.map((entry) => [entry.authorTitle, entry.text])).toEqual([["Hello", "Counted 42 files."]]);
       const other = yield* open(threadId, "Hello");
-      yield* settle(missionId, (d) => d.thread.state === "Idle", other.threadId);
+      yield* settle(missionId, (detail) => detail.thread.state === "Idle", other.threadId);
       yield* tool(other.threadId, "report_result", { journal: "Nothing to record.", result: "Nothing found." });
       expect((yield* journal(missionId)).entries).toHaveLength(1);
     }).pipe(Effect.provide(live())),
@@ -158,7 +162,7 @@ describe("keeping a mission's journal", () => {
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       yield* record(threadId, { basedOn: 0, briefing: "We ship on Friday.", entry: "Entry 1" });
-      for (let i = 2; i <= 21; i++) yield* record(threadId, { entry: `Entry ${i}` });
+      for (let index = 2; index <= 21; index++) yield* record(threadId, { entry: `Entry ${index}` });
       const context = yield* contextOfChild(missionId, threadId);
       expect(context).toContain("We ship on Friday.");
       expect(context).toContain("Entry 21");
@@ -173,7 +177,7 @@ describe("keeping a mission's journal", () => {
       const { missionId, threadId } = yield* idle("Before the entry");
       yield* record(threadId, { entry: "Decided the plan." });
       yield* send(threadId, "After the entry");
-      yield* settle(missionId, (d) => d.thread.state === "Idle" && d.messages.length === 4);
+      yield* settle(missionId, (detail) => detail.thread.state === "Idle" && detail.messages.length === 4);
       // The opener's title is the mission's first message, so only the opener's section is read.
       const section = (yield* contextOfChild(missionId, threadId)).split("# Your opener's messages")[1] ?? "";
       expect(section).toContain("Owner:\nAfter the entry");
@@ -185,9 +189,12 @@ describe("keeping a mission's journal", () => {
   it.live("keeps the opener's 40 latest messages and counts those left out", () =>
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle("Message 0");
-      for (let i = 1; i <= 21; i++) {
-        yield* send(threadId, `Message ${i}`);
-        yield* settle(missionId, (d) => d.thread.state === "Idle" && d.messages.length === 2 * (i + 1));
+      for (let index = 1; index <= 21; index++) {
+        yield* send(threadId, `Message ${index}`);
+        yield* settle(
+          missionId,
+          (detail) => detail.thread.state === "Idle" && detail.messages.length === 2 * (index + 1),
+        );
       }
       const section = (yield* contextOfChild(missionId, threadId)).split("# Your opener's messages")[1] ?? "";
       expect(section).toContain("(4 earlier messages left out.)");
@@ -199,8 +206,10 @@ describe("keeping a mission's journal", () => {
   it.live("starts a top thread with no opener's messages", () =>
     Effect.gen(function* () {
       const started = yield* start("context");
-      const detail = yield* settle(started.missionId, (d) => d.messages.some((m) => m.sender === "agent"));
-      const context = detail.messages.find((m) => m.sender === "agent")?.text ?? "";
+      const detail = yield* settle(started.missionId, (detail) =>
+        detail.messages.some((message) => message.sender === "agent"),
+      );
+      const context = detail.messages.find((message) => message.sender === "agent")?.text ?? "";
       expect(context).toContain("# Quest journal");
       expect(context).not.toContain("opener's messages");
     }).pipe(Effect.provide(live())),
@@ -224,7 +233,7 @@ describe("keeping a mission's journal", () => {
         requestId: crypto.randomUUID(),
         text: "Budget doubled.",
       });
-      expect(added.entries.map((e) => [e.authorKind, e.authorTitle, e.text])).toEqual([
+      expect(added.entries.map((entry) => [entry.authorKind, entry.authorTitle, entry.text])).toEqual([
         ["user", null, "Budget doubled."],
         ["user", null, "Rewrote the briefing"],
       ]);
@@ -254,7 +263,7 @@ describe("keeping a mission's journal", () => {
       const sql = yield* SqlClient.SqlClient;
       expect((yield* Effect.exit(sql`UPDATE journal_entries SET text = 'Changed'`))._tag).toBe("Failure");
       expect((yield* Effect.exit(sql`DELETE FROM journal_entries`))._tag).toBe("Failure");
-      expect((yield* journal(missionId)).entries.map((e) => e.text)).toEqual(["Permanent."]);
+      expect((yield* journal(missionId)).entries.map((entry) => entry.text)).toEqual(["Permanent."]);
     }).pipe(Effect.provide(live())),
   );
 
@@ -276,7 +285,7 @@ describe("keeping a mission's journal", () => {
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       const child = yield* open(threadId, "Child");
-      yield* settle(missionId, (d) => d.thread.state === "Idle", child.threadId);
+      yield* settle(missionId, (detail) => detail.thread.state === "Idle", child.threadId);
       yield* record(child.threadId, { entry: "Child's decision." });
       const preview = yield* call({ _tag: "PreviewDeletion", threadId: child.threadId });
       yield* call({ _tag: "DeleteThread", confirmation: preview.confirmation, threadId: child.threadId });

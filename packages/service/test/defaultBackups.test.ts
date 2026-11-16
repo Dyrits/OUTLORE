@@ -49,7 +49,7 @@ describe("the Charter's default backup Companions", () => {
         const settings = yield* call({ _tag: "ReadSettings" });
         yield* call({ _tag: "UpdateSettings", settings: { ...settings, backups: [codex] } });
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (d) => d.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
         expect((yield* call({ _tag: "ReadThreadPanel", threadId })).backups).toEqual([codex]);
         // A later change to the Charter leaves a quest that began already as it was.
         yield* call({ _tag: "UpdateSettings", settings: { ...settings, backups: [opencode] } });

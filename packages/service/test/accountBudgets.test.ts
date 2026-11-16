@@ -152,7 +152,7 @@ describe("an account's budget", () => {
         yield* send(started.threadId, "context");
         const detail = yield* settle(
           started.missionId,
-          (d) => d.messages.filter((m) => m.sender === "agent").length === 2,
+          (detail) => detail.messages.filter((message) => message.sender === "agent").length === 2,
         );
         expect(detail.messages.at(-1)?.text).toContain("account Work: 20% of this month's tokens");
       }),

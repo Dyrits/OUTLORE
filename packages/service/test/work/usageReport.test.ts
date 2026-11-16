@@ -111,10 +111,10 @@ describe("reading the usage page", () => {
   it.live("divides it by realm and by quest, with the Borderlands, Chronicler, and deleted quests told apart", () =>
     withService(
       Effect.gen(function* () {
-        const { a, b, c } = yield* standard;
+        const { atlas, borealis, borderlands } = yield* standard;
         const sql = yield* SqlClient.SqlClient;
         // A quest of Chronicler's own, and a quest deleted since it spent.
-        yield* sql`UPDATE missions SET is_guildmaster = 1 WHERE id = ${c.mission}`;
+        yield* sql`UPDATE missions SET is_guildmaster = 1 WHERE id = ${borderlands.mission}`;
         yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, billing, harness, model, estimate)
           VALUES ('turn-gone', 'mission-gone', 'thread-gone', ${dayAt(1)}, 1, 1, 0, 0, 'Subscription', 'claude', 'claude-sonnet-5-5', 0.25)`;
         const { breakdowns } = yield* usage();
@@ -126,9 +126,9 @@ describe("reading the usage page", () => {
           "realm-borealis": "Borealis",
         });
         const questRows = breakdowns.find((breakdown) => breakdown.dimension === "Quest")?.rows ?? [];
-        expect(questRows.find((row) => row.key === a.mission)?.name).toBe("Quest A");
-        expect(questRows.find((row) => row.key === b.mission)?.name).toBe("Quest B");
-        expect(questRows.find((row) => row.key === c.mission)?.name).toBe("Chronicler (assistant)");
+        expect(questRows.find((row) => row.key === atlas.mission)?.name).toBe("Quest A");
+        expect(questRows.find((row) => row.key === borealis.mission)?.name).toBe("Quest B");
+        expect(questRows.find((row) => row.key === borderlands.mission)?.name).toBe("Chronicler (assistant)");
         expect(questRows.find((row) => row.key === "mission-gone")?.name).toBeNull();
       }),
     ),
@@ -188,16 +188,16 @@ describe("reading the usage page", () => {
   it.live("puts a turn on the local day it ended, also just after midnight and just before it", () =>
     withService(
       Effect.gen(function* () {
-        const { a } = yield* quests;
+        const { atlas } = yield* quests;
         const row = (endedAt: number) =>
           ({
             billing: "Subscription",
             endedAt,
             estimate: 1,
             harness: "claude",
-            mission: a.mission,
+            mission: atlas.mission,
             model: "m",
-            thread: a.thread,
+            thread: atlas.thread,
           }) as const;
         yield* seed([row(dayAt(2, 0, 30)), row(dayAt(2, 23, 30)), row(dayAt(1, 0, 30))]);
         const { breakdowns, days } = yield* usage({ _tag: "Days", days: 7 });
@@ -238,16 +238,16 @@ describe("reading the usage page", () => {
   it.live("lists at most 100 turns and counts the older ones left out", () =>
     withService(
       Effect.gen(function* () {
-        const { a } = yield* quests;
+        const { atlas } = yield* quests;
         yield* seed(
           Array.from({ length: 105 }, (_, index) => ({
             billing: "Subscription" as const,
             endedAt: dayAt(1) + index,
             estimate: 1,
             harness: "claude" as const,
-            mission: a.mission,
+            mission: atlas.mission,
             model: "m",
-            thread: a.thread,
+            thread: atlas.thread,
           })),
         );
         const report = yield* usage();
@@ -275,16 +275,16 @@ describe("reading the usage page", () => {
   it.live("counts the days at the edge of each preset: today and the 29 before it, not the 30th", () =>
     withService(
       Effect.gen(function* () {
-        const { a } = yield* quests;
+        const { atlas } = yield* quests;
         const row = (endedAt: number) =>
           ({
             billing: "Subscription",
             endedAt,
             estimate: 1,
             harness: "claude",
-            mission: a.mission,
+            mission: atlas.mission,
             model: "m",
-            thread: a.thread,
+            thread: atlas.thread,
           }) as const;
         yield* seed([row(dayAt(29)), row(dayAt(30)), row(dayAt(6)), row(dayAt(7))]);
         // Days 29, 6, and 7 are in the last 30 days; day 30 is not.
@@ -312,7 +312,7 @@ describe("reading the usage page", () => {
   it.live("keeps at most 100 rows of a breakdown, with the total of all of them for the shares", () =>
     withService(
       Effect.gen(function* () {
-        const { a } = yield* quests;
+        const { atlas } = yield* quests;
         // 105 quests deleted since they spent: each a row of its own in the Quest breakdown.
         yield* seed(
           Array.from({ length: 105 }, (_, index) => ({
@@ -322,7 +322,7 @@ describe("reading the usage page", () => {
             harness: "claude" as const,
             mission: `mission-gone-${index}`,
             model: "m",
-            thread: a.thread,
+            thread: atlas.thread,
           })),
         );
         const { breakdowns } = yield* usage();

@@ -12,7 +12,7 @@ import { writeUndo } from "./loreStore.ts";
  * never taken back; its last use goes back only when no use came after the change (work-in-progress, Batch 15).
  */
 const revertedOf = (current: Snapshot, before: Snapshot, after: Snapshot, now: number): Snapshot => {
-  const back = <K extends keyof Snapshot>(field: K) =>
+  const back = <Field extends keyof Snapshot>(field: Field) =>
     before[field] !== after[field] ? before[field] : current[field];
   return {
     ...current,

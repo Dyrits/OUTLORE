@@ -71,7 +71,7 @@ const readHarness = Effect.fnUntraced(function* (harness: HarnessName, rows: Rea
   );
   const update = installation.problem === null ? yield* tools.findUpdate(harness, installation.version) : null;
   return {
-    accounts: accounts.map(({ configDirectory: _, ...account }, index) => {
+    accounts: accounts.map(({ configDirectory: omitted, ...account }, index) => {
       const own = accountModels[index] ?? null;
       return own === null ? account : { ...account, models: own };
     }),

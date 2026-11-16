@@ -21,8 +21,10 @@ describe("recording a reply's model", () => {
         text: "Hello",
         workspacePath: null,
       });
-      const detail = yield* settle(started.missionId, (d) => d.thread.state === "Idle");
-      expect(detail.messages.filter((m) => m.sender === "agent").map((m) => m.model)).toEqual(["sonnet"]);
+      const detail = yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+      expect(detail.messages.filter((message) => message.sender === "agent").map((message) => message.model)).toEqual([
+        "sonnet",
+      ]);
     }).pipe(Effect.provide(value.layer));
   });
 
@@ -38,8 +40,10 @@ describe("recording a reply's model", () => {
         text: "Hello",
         workspacePath: null,
       });
-      const detail = yield* settle(started.missionId, (d) => d.thread.state === "Idle");
-      expect(detail.messages.filter((m) => m.sender === "agent").map((m) => m.model)).toEqual([null]);
+      const detail = yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+      expect(detail.messages.filter((message) => message.sender === "agent").map((message) => message.model)).toEqual([
+        null,
+      ]);
     }).pipe(Effect.provide(value.layer));
   });
 });

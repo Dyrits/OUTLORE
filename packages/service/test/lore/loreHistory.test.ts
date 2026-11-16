@@ -23,10 +23,10 @@ const day = 24 * 60 * 60 * 1000;
 const advance = (millis: number) =>
   Effect.gen(function* () {
     yield* TestClock.adjust(millis);
-    for (let i = 0; i < 40; i++) yield* Effect.yieldNow;
+    for (let index = 0; index < 40; index++) yield* Effect.yieldNow;
   });
 const settleTurns = Effect.gen(function* () {
-  for (let i = 0; i < 5; i++) yield* advance(20);
+  for (let index = 0; index < 5; index++) yield* advance(20);
 });
 const idle = (text = "Hello", workspacePath: string | null = null) =>
   Effect.gen(function* () {

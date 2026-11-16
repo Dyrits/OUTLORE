@@ -24,11 +24,11 @@ const day = 24 * 60 * 60 * 1000;
 const advance = (millis: number) =>
   Effect.gen(function* () {
     yield* TestClock.adjust(millis);
-    for (let i = 0; i < 40; i++) yield* Effect.yieldNow;
+    for (let index = 0; index < 40; index++) yield* Effect.yieldNow;
   });
 /** Lets a fake turn (10 millis) and its tool calls finish. */
 const settleTurns = Effect.gen(function* () {
-  for (let i = 0; i < 5; i++) yield* advance(20);
+  for (let index = 0; index < 5; index++) yield* advance(20);
 });
 const idle = (workspacePath: string | null = null) =>
   Effect.gen(function* () {
@@ -42,7 +42,7 @@ const contextOf = (missionId: MissionId, threadId: ThreadId) =>
     yield* send(threadId, "context");
     yield* settleTurns;
     const detail = yield* read(missionId, threadId);
-    return detail.messages.findLast((m) => m.sender === "agent")?.text ?? "";
+    return detail.messages.findLast((message) => message.sender === "agent")?.text ?? "";
   });
 const save = (threadId: ThreadId, text: string, scope: string, kind: string) =>
   tool(threadId, "save_intel", { kind, scope, text });
@@ -252,7 +252,7 @@ describe("ranking lore in searches", () => {
       const found = yield* tool(threadId, "search_intel", { query: "staging server linux" });
       const order = ["runs Linux", "Deploys go", "builds run"].map((part) => found.indexOf(part));
       expect(order.every((position) => position >= 0)).toBe(true);
-      expect(order).toEqual([...order].sort((a, b) => a - b));
+      expect(order).toEqual([...order].sort((first, second) => first - second));
     }).pipe(Effect.provide(live().layer)),
   );
 

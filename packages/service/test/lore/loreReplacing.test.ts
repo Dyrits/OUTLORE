@@ -23,10 +23,10 @@ const day = 24 * 60 * 60 * 1000;
 const advance = (millis: number) =>
   Effect.gen(function* () {
     yield* TestClock.adjust(millis);
-    for (let i = 0; i < 40; i++) yield* Effect.yieldNow;
+    for (let index = 0; index < 40; index++) yield* Effect.yieldNow;
   });
 const settleTurns = Effect.gen(function* () {
-  for (let i = 0; i < 5; i++) yield* advance(20);
+  for (let index = 0; index < 5; index++) yield* advance(20);
 });
 const idle = (text = "Hello", workspacePath: string | null = null) =>
   Effect.gen(function* () {
@@ -233,7 +233,7 @@ describe("relying on a lore entry", () => {
       yield* send(threadId, "context");
       yield* settleTurns;
       const detail = yield* read(missionId, threadId);
-      const context = detail.messages.findLast((m) => m.sender === "agent")?.text ?? "";
+      const context = detail.messages.findLast((message) => message.sender === "agent")?.text ?? "";
       expect(context).toContain("relied_on_intel");
       expect(context).toMatch(/replaces it/);
       expect(context).toContain("journalEntry");

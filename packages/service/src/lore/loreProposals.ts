@@ -55,7 +55,9 @@ const widenings = (rows: ReadonlyArray<LoreEntryRow>): ReadonlyArray<Evidence> =
   const globals = rows.filter((row) => row.scope === "Global");
   return groupsOf(rows.filter((row) => row.scope === "Workspace"))
     .filter((group) => new Set(group.map((row) => row.workspaceId)).size >= 2)
-    .map((group) => group.toSorted((a, b) => b.updatedAt - a.updatedAt || b.savedAt - a.savedAt))
+    .map((group) =>
+      group.toSorted((first, second) => second.updatedAt - first.updatedAt || second.savedAt - first.savedAt),
+    )
     .flatMap((group) => {
       const [newest] = group;
       if (newest === undefined || globals.some((row) => isSameOf(row.text, newest.text))) return [];

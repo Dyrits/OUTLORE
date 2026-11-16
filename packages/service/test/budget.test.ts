@@ -24,7 +24,8 @@ const none: BudgetLimits = { cost: null, tokens: null };
 const isIdle = (detail: MissionDetail) => detail.thread.state === "Idle";
 const isHeldByBudget = (detail: MissionDetail) =>
   detail.thread.state === "Attention" && detail.thread.blocker === "Budget";
-const lastAgentText = (detail: MissionDetail) => detail.messages.filter((m) => m.sender === "agent").at(-1)?.text ?? "";
+const lastAgentText = (detail: MissionDetail) =>
+  detail.messages.filter((message) => message.sender === "agent").at(-1)?.text ?? "";
 
 const updateSettings = (change: Partial<Settings>) =>
   Effect.gen(function* () {
@@ -47,7 +48,7 @@ const startWithBudget = (limits: BudgetLimits, text = "Hello") =>
 const openRunning = (missionId: MissionId, parentId: ThreadId) =>
   Effect.gen(function* () {
     const child = yield* open(parentId, "wait 60000");
-    yield* settle(missionId, (d) => d.thread.state === "Running", child.threadId);
+    yield* settle(missionId, (detail) => detail.thread.state === "Running", child.threadId);
     return child;
   });
 
@@ -56,7 +57,7 @@ describe("counting spending against budgets", () => {
     Effect.gen(function* () {
       const started = yield* startWithBudget({ cost: 1, tokens: null });
       yield* send(started.threadId, "spend 1000000");
-      yield* settle(started.missionId, (d) => isIdle(d) && d.mission.budget.spent.tokens >= 1_000_000);
+      yield* settle(started.missionId, (detail) => isIdle(detail) && detail.mission.budget.spent.tokens >= 1_000_000);
       const detail = yield* read(started.missionId);
       expect(detail.mission.budget.spent).toEqual({ cost: 0, tokens: 1_000_000 });
       yield* send(started.threadId, "spend 500 1.5");
@@ -70,7 +71,10 @@ describe("counting spending against budgets", () => {
     Effect.gen(function* () {
       const started = yield* startWithBudget({ cost: 1, tokens: 1000 });
       yield* send(started.threadId, "billing Subscription\nspend 500 1.5");
-      const detail = yield* settle(started.missionId, (d) => isIdle(d) && d.mission.budget.spent.tokens >= 500);
+      const detail = yield* settle(
+        started.missionId,
+        (detail) => isIdle(detail) && detail.mission.budget.spent.tokens >= 500,
+      );
       expect(detail.mission.budget.spent).toEqual({ cost: 0, tokens: 500 });
     }).pipe(Effect.provide(setup().layer)),
   );
@@ -79,9 +83,12 @@ describe("counting spending against budgets", () => {
     Effect.gen(function* () {
       const started = yield* startWithBudget({ cost: 10, tokens: 10_000 });
       yield* send(started.threadId, "billing Unknown\nspend 300 2");
-      yield* settle(started.missionId, (d) => isIdle(d) && d.mission.budget.spent.tokens >= 300);
+      yield* settle(started.missionId, (detail) => isIdle(detail) && detail.mission.budget.spent.tokens >= 300);
       yield* send(started.threadId, "billing ApiKey\nspend 700 4");
-      const detail = yield* settle(started.missionId, (d) => isIdle(d) && d.mission.budget.spent.cost >= 4);
+      const detail = yield* settle(
+        started.missionId,
+        (detail) => isIdle(detail) && detail.mission.budget.spent.cost >= 4,
+      );
       expect(detail.mission.budget.spent).toEqual({ cost: 4, tokens: 300 });
     }).pipe(Effect.provide(setup().layer)),
   );
@@ -89,7 +96,10 @@ describe("counting spending against budgets", () => {
   it.live("never stops on an empty budget", () =>
     Effect.gen(function* () {
       const started = yield* start("spend 5000000 100");
-      const detail = yield* settle(started.missionId, (d) => isIdle(d) && d.mission.budget.spent.cost === 100);
+      const detail = yield* settle(
+        started.missionId,
+        (detail) => isIdle(detail) && detail.mission.budget.spent.cost === 100,
+      );
       expect(detail.mission.budget.limits).toEqual(none);
       expect(detail.budgetStop).toBeNull();
     }).pipe(Effect.provide(setup().layer)),
@@ -99,12 +109,12 @@ describe("counting spending against budgets", () => {
     Effect.gen(function* () {
       const started = yield* startWithBudget({ cost: null, tokens: 1000 });
       yield* send(started.threadId, "spend 60");
-      yield* settle(started.missionId, (d) => isIdle(d) && d.mission.budget.spent.tokens === 60);
+      yield* settle(started.missionId, (detail) => isIdle(detail) && detail.mission.budget.spent.tokens === 60);
       const child = yield* open(started.threadId, "spend 50");
-      yield* settle(started.missionId, (d) => isIdle(d), child.threadId);
+      yield* settle(started.missionId, (detail) => isIdle(detail), child.threadId);
       const window = yield* call({ _tag: "ReadBudget", missionId: started.missionId });
       expect(window.spent.tokens).toBe(110);
-      expect(window.parts.map((p) => p.spent.tokens).sort()).toEqual([50, 60]);
+      expect(window.parts.map((part) => part.spent.tokens).sort()).toEqual([50, 60]);
       const global = yield* call({ _tag: "ReadBudget", missionId: null });
       expect(global.spent.tokens).toBe(110);
       expect(global.period).toBe("Month");
@@ -122,7 +132,7 @@ describe("counting spending against budgets", () => {
       yield* setBudget(started.missionId, { cost: null, tokens: 900 });
       yield* setBudget(started.missionId, { cost: null, tokens: 700 });
       yield* setBudget(started.missionId, none);
-      const lines = (yield* read(started.missionId)).budgetEvents.map((e) => e.text);
+      const lines = (yield* read(started.missionId)).budgetEvents.map((event) => event.text);
       expect(lines).toEqual([
         "Budget set: 500 tokens",
         "Budget raised to 900 tokens",
@@ -156,8 +166,8 @@ describe("reaching a limit", () => {
       expect(top.budgetEvents.at(-1)?.text).toBe("Stopped at the budget limit: 100 of 100 tokens");
       yield* setBudget(started.missionId, { cost: null, tokens: 150 });
       // The interrupted message runs again: the child is back at work.
-      yield* settle(started.missionId, (d) => d.thread.state === "Running", child.threadId);
-      const released = yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Running", child.threadId);
+      const released = yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
       expect(released.budgetStop).toBeNull();
     }).pipe(Effect.provide(setup().layer)),
   );
@@ -171,8 +181,8 @@ describe("reaching a limit", () => {
       const stopId = top.budgetStop?.id;
       if (stopId === undefined) return yield* Effect.die("Missing stop");
       yield* call({ _tag: "StopAtBudget", stopId });
-      yield* settle(started.missionId, (d) => d.thread.state === "Stopped");
-      yield* settle(started.missionId, (d) => d.thread.state === "Stopped", child.threadId);
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Stopped");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Stopped", child.threadId);
       yield* call({ _tag: "ResumeThread", threadId: started.threadId });
       yield* send(started.threadId, "Still there?");
       const held = yield* settle(started.missionId, isHeldByBudget);
@@ -185,7 +195,7 @@ describe("reaching a limit", () => {
     Effect.gen(function* () {
       yield* updateSettings({ globalBudget: { cost: null, tokens: 100 } });
       const other = yield* start("wait 60000");
-      yield* settle(other.missionId, (d) => d.thread.state === "Running");
+      yield* settle(other.missionId, (detail) => detail.thread.state === "Running");
       const spender = yield* start("spend 100");
       yield* settle(spender.missionId, isHeldByBudget);
       yield* settle(other.missionId, isHeldByBudget);
@@ -196,7 +206,7 @@ describe("reaching a limit", () => {
       expect(refused.kind).toBe("InvalidInput");
       expect(refused.message).toContain("global budget");
       yield* updateSettings({ globalBudget: { cost: null, tokens: 1000 } });
-      yield* settle(other.missionId, (d) => d.thread.state === "Running");
+      yield* settle(other.missionId, (detail) => detail.thread.state === "Running");
       expect((yield* call({ _tag: "ReadBudget", missionId: null })).stop).toBeNull();
     }).pipe(Effect.provide(setup().layer)),
   );
@@ -204,7 +214,8 @@ describe("reaching a limit", () => {
   it.live("records each change of the global budget and each stop at it as a line in the Guildmaster", () =>
     Effect.gen(function* () {
       const guildmaster = yield* call({ _tag: "ReadGuildmaster" });
-      const lines = () => read(guildmaster.missionId).pipe(Effect.map((d) => d.budgetEvents.map((e) => e.text)));
+      const lines = () =>
+        read(guildmaster.missionId).pipe(Effect.map((detail) => detail.budgetEvents.map((event) => event.text)));
       yield* updateSettings({ globalBudget: { cost: null, tokens: 100 } });
       expect(yield* lines()).toEqual(["Global budget set: 100 tokens"]);
       const spender = yield* start("spend 100");
@@ -236,7 +247,7 @@ describe("reaching a limit", () => {
   it.live("stops running threads when the owner lowers the budget below the spending", () =>
     Effect.gen(function* () {
       const started = yield* start("spend 100");
-      yield* settle(started.missionId, (d) => isIdle(d) && d.mission.budget.spent.tokens === 100);
+      yield* settle(started.missionId, (detail) => isIdle(detail) && detail.mission.budget.spent.tokens === 100);
       const child = yield* openRunning(started.missionId, started.threadId);
       yield* setBudget(started.missionId, { cost: null, tokens: 50 });
       yield* settle(started.missionId, isHeldByBudget, child.threadId);
@@ -250,13 +261,16 @@ describe("telling threads their budget", () => {
   it.live("carries a budget line in each turn's context, and none without a budget", () =>
     Effect.gen(function* () {
       const bare = yield* start("context");
-      const plain = yield* settle(bare.missionId, (d) => isIdle(d) && lastAgentText(d) !== "");
+      const plain = yield* settle(bare.missionId, (detail) => isIdle(detail) && lastAgentText(detail) !== "");
       expect(lastAgentText(plain)).not.toContain("Budget:");
       const started = yield* startWithBudget({ cost: null, tokens: 1000 });
       yield* send(started.threadId, "spend 200");
-      yield* settle(started.missionId, (d) => isIdle(d) && d.mission.budget.spent.tokens === 200);
+      yield* settle(started.missionId, (detail) => isIdle(detail) && detail.mission.budget.spent.tokens === 200);
       yield* send(started.threadId, "context");
-      const detail = yield* settle(started.missionId, (d) => isIdle(d) && lastAgentText(d).includes("Budget:"));
+      const detail = yield* settle(
+        started.missionId,
+        (detail) => isIdle(detail) && lastAgentText(detail).includes("Budget:"),
+      );
       expect(lastAgentText(detail)).toContain("Budget: 200 of 1,000 tokens used (20%)");
       expect(lastAgentText(detail)).toContain("At a limit, Outlore stops the work under it and asks the owner.");
     }).pipe(Effect.provide(setup().layer)),
@@ -267,14 +281,16 @@ describe("answering Stop at a reached budget", () => {
   it.live("returns a parent left Waiting to Idle once nothing beneath it is at work", () =>
     Effect.gen(function* () {
       const started = yield* start(openLine("wait 60000"));
-      yield* settle(started.missionId, (d) => d.thread.state === "Waiting");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Waiting");
       yield* setBudget(started.missionId, { cost: null, tokens: 100 });
       const spender = yield* open(started.threadId, "spend 100");
       const held = yield* settle(started.missionId, isHeldByBudget, spender.threadId);
       const stopId = held.budgetStop?.id;
       if (stopId === undefined) return yield* Effect.die("Missing stop");
       yield* call({ _tag: "StopAtBudget", stopId });
-      const after = yield* settle(started.missionId, (d) => d.threads.slice(1).every((t) => t.state === "Stopped"));
+      const after = yield* settle(started.missionId, (detail) =>
+        detail.threads.slice(1).every((thread) => thread.state === "Stopped"),
+      );
       expect(after.thread.state).toBe("Idle");
     }).pipe(Effect.provide(setup().layer)),
   );
@@ -285,12 +301,12 @@ describe("keeping spending when threads are deleted", () => {
     Effect.gen(function* () {
       const started = yield* startWithBudget({ cost: null, tokens: 1000 });
       const child = yield* open(started.threadId, "spend 300");
-      yield* settle(started.missionId, (d) => d.mission.budget.spent.tokens === 300);
+      yield* settle(started.missionId, (detail) => detail.mission.budget.spent.tokens === 300);
       const preview = yield* call({ _tag: "PreviewDeletion", threadId: child.threadId });
       yield* call({ _tag: "DeleteThread", confirmation: preview.confirmation, threadId: child.threadId });
       const window = yield* call({ _tag: "ReadBudget", missionId: started.missionId });
       expect(window.spent.tokens).toBe(300);
-      expect(window.parts.map((p) => p.spent.tokens)).toEqual([300]);
+      expect(window.parts.map((part) => part.spent.tokens)).toEqual([300]);
       expect((yield* call({ _tag: "ReadBudget", missionId: null })).spent.tokens).toBe(300);
     }).pipe(Effect.provide(setup().layer)),
   );
@@ -298,7 +314,7 @@ describe("keeping spending when threads are deleted", () => {
   it.live("keeps a deleted mission's spending on the global budget", () =>
     Effect.gen(function* () {
       const started = yield* start("spend 400");
-      yield* settle(started.missionId, (d) => isIdle(d) && d.mission.budget.spent.tokens === 400);
+      yield* settle(started.missionId, (detail) => isIdle(detail) && detail.mission.budget.spent.tokens === 400);
       const preview = yield* call({ _tag: "PreviewDeletion", threadId: started.threadId });
       yield* call({ _tag: "DeleteThread", confirmation: preview.confirmation, threadId: started.threadId });
       expect((yield* call({ _tag: "ReadBudget", missionId: null })).spent.tokens).toBe(400);
@@ -310,14 +326,14 @@ describe("starting a new global period", () => {
   const advance = (millis: number) =>
     Effect.gen(function* () {
       yield* TestClock.adjust(millis);
-      for (let i = 0; i < 40; i++) yield* Effect.yieldNow;
+      for (let index = 0; index < 40; index++) yield* Effect.yieldNow;
     });
 
   it.effect("releases threads held at the global limit when the period starts over", () =>
     Effect.gen(function* () {
       yield* updateSettings({ globalBudget: { cost: null, tokens: 100 }, globalBudgetPeriod: "Day" });
       const started = yield* start("spend 100");
-      for (let i = 0; i < 5; i++) yield* advance(20);
+      for (let index = 0; index < 5; index++) yield* advance(20);
       expect(isHeldByBudget(yield* read(started.missionId))).toBe(true);
       yield* advance(25 * 60 * 60 * 1000);
       const released = yield* read(started.missionId);
@@ -334,11 +350,11 @@ describe("holding at a lowered budget", () => {
     mkdirSync(folder);
     return Effect.gen(function* () {
       const started = yield* start("spend 100", folder);
-      yield* settle(started.missionId, (d) => isIdle(d) && d.mission.budget.spent.tokens === 100);
+      yield* settle(started.missionId, (detail) => isIdle(detail) && detail.mission.budget.spent.tokens === 100);
       const child = yield* openRunning(started.missionId, started.threadId);
       rmSync(folder, { recursive: true });
       yield* send(started.threadId, "Again");
-      yield* settle(started.missionId, (d) => d.thread.blocker === "MissingWorkspace");
+      yield* settle(started.missionId, (detail) => detail.thread.blocker === "MissingWorkspace");
       yield* setBudget(started.missionId, { cost: null, tokens: 50 });
       yield* settle(started.missionId, isHeldByBudget, child.threadId);
       expect((yield* read(started.missionId)).thread.blocker).toBe("MissingWorkspace");

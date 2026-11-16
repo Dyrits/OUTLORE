@@ -34,10 +34,13 @@ describe("a thread's backup Companions", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (d) => d.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
         yield* call({ _tag: "SetThreadBackups", backups: [codex], threadId });
         yield* send(threadId, "fail claude Usage limit reached\nrunner");
-        const detail = yield* settle(missionId, (d) => replies(d).length === 2 && d.thread.state === "Idle");
+        const detail = yield* settle(
+          missionId,
+          (detail) => replies(detail).length === 2 && detail.thread.state === "Idle",
+        );
         expect(replies(detail)[1]).toContain("codex/gpt-5");
         expect(detail.handovers.map((handover) => handover.text)).toEqual([
           expect.stringMatching(/^Fell back to Codex · gpt-5 · default effort · Usage limit reached/),
@@ -74,7 +77,7 @@ describe("a thread's backup Companions", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("fail claude no");
-        yield* settle(missionId, (d) => d.thread.state === "Failed");
+        yield* settle(missionId, (detail) => detail.thread.state === "Failed");
         expect((yield* read(missionId, threadId)).handovers).toEqual([]);
       }),
     ),
@@ -86,7 +89,7 @@ describe("marking a side-quest done", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (d) => d.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
         const opened = yield* open(threadId, "wait 2000");
         yield* call({ _tag: "MarkThreadDone", threadId: opened.threadId });
         const detail = yield* read(missionId, opened.threadId);

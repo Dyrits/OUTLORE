@@ -171,7 +171,7 @@ export const listInScope = Effect.fnUntraced(function* (chain: ScopeChain) {
   const rankOf = (row: LoreEntryRow) =>
     row.scope === "Thread" ? chain.threads.indexOf(row.threadId ?? "") : row.scope === "Workspace" ? 1e6 : 2e6;
   // Stable sort: within one scope the newest stays first.
-  return rows.toSorted((a, b) => rankOf(a) - rankOf(b));
+  return rows.toSorted((first, second) => rankOf(first) - rankOf(second));
 });
 
 /** One stored lore entry, or null when it no longer exists. */
@@ -195,7 +195,7 @@ const recallOf = (rows: ReadonlyArray<LoreEntryRow>, fading: Fading): Recall => 
   const active = rows.filter((row) => stateOfLoreEntry(row, fading) === "Active");
   return {
     dormantCount: rows.filter((row) => stateOfLoreEntry(row, fading) === "Dormant").length,
-    index: active.filter((row) => row.scope === "Global").toSorted((a, b) => a.savedAt - b.savedAt),
+    index: active.filter((row) => row.scope === "Global").toSorted((first, second) => first.savedAt - second.savedAt),
     inFull: active.filter((row) => row.scope !== "Global"),
   };
 };

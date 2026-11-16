@@ -65,7 +65,7 @@ export const readLoreHistory = Effect.fnUntraced(function* (loreEntryId: string)
   // Stored in the order made; a fading step is stored later than it happened, so order by time, then by
   // the order stored.
   const ordered = [...rows.map((row, order) => ({ order, row })), ...pending.map((row) => ({ order: -1, row }))]
-    .toSorted((a, b) => b.row.at - a.row.at || b.order - a.order)
+    .toSorted((first, second) => second.row.at - first.row.at || second.order - first.order)
     .map(({ row }) => row);
   const entries: Array<LoreHistoryEntry> = [];
   for (const row of ordered) {
