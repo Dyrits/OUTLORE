@@ -13,15 +13,6 @@ export type HostId = typeof HostId.Type;
 /** The longest name of a host or of a paired device, in characters. */
 export const maxNameLength = 60;
 
-/**
- * The close codes of the link the local service opens to a paired host for the app: it could not open (try again
- * later), the host ended it, and the host refused this installation (trying again cannot help).
- */
-export const hostLinkCodes = { couldNotOpen: 4000, ended: 4001, refused: 4002 } as const;
-
-/** The path of the loopback server that joins the app to a paired host. */
-export const hostBridgePath = (hostId: string) => `/host/${hostId}`;
-
 /** What a paired device is: another computer's Outlore, or a phone. */
 export const DeviceKind = Schema.Literals(["desktop", "phone", "browser"]);
 export type DeviceKind = typeof DeviceKind.Type;

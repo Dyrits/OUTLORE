@@ -1,4 +1,11 @@
-import { isLocalOrigin, LinkFailure, type PairedHostStore, pairWithCode, resumeHost } from "@outlore/controller";
+import {
+  hostLinkCodes,
+  isLocalOrigin,
+  LinkFailure,
+  type PairedHostStore,
+  pairWithCode,
+  resumeHost,
+} from "@outlore/controller";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { ServiceFailure } from "../core/index.ts";
@@ -44,12 +51,13 @@ class ControllerFailure extends ServiceFailure {
           : "ExecutionFailure",
       message: cause instanceof Error ? cause.message : "Could not reach the relay. Check your internet connection.",
     });
+    // The transport's close codes (linkCodeOf in @outlore/controller maps each LinkFailure kind to one of these).
     this.closeCode =
       cause instanceof LinkFailure && cause.kind === "otherRelease"
-        ? 4003
+        ? hostLinkCodes.otherRelease
         : cause instanceof LinkFailure && (cause.kind === "noSuchHost" || cause.kind === "refused")
-          ? 4002
-          : 4000;
+          ? hostLinkCodes.refused
+          : hostLinkCodes.couldNotOpen;
   }
 }
 const failureOf = (cause: unknown) => new ControllerFailure(cause);
