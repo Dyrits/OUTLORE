@@ -16,7 +16,7 @@ import { placementsOf, type RealmListing, realmGroupsOf, toggledFold } from "./q
 import { railOutlineOf } from "./railOutline";
 import { Quest, RealmHeader } from "./railQuests";
 import { Count, Divider, Heading, Row, ShowAll } from "./railRows";
-import { borderlandsShown, chevronWidth, local, realmIndent, realmShown } from "./railStyles";
+import { borderlandsShown, chevronWidth, local, realmShown } from "./railStyles";
 
 export type { Place } from "./placeCatalog";
 
@@ -129,7 +129,7 @@ export function Sidebar({
     const isClosed = closedRealms.set.has(realm.id);
     return (
       <DropTarget key={realm.id} onDropQuest={dropOn({ id: realm.id, name: realm.name })}>
-        <View style={{ paddingLeft: realmIndent }}>
+        <View>
           <RealmHeader
             crest={realm.crest}
             id={realm.id}

@@ -4,8 +4,6 @@ import { expandedWidth } from "./railStorage";
 /** How far each level of side-quests steps in, and the width of the chevron's place at the start of a row. */
 export const indentStep = 14;
 export const chevronWidth = 16;
-/** A realm and its quests stand this far in from the "Realms" title above, so the title reads as their parent. */
-export const realmIndent = 20;
 /** How many quests the sidebar lists under the Borderlands, and under each realm; the quest list page lists them all. */
 export const borderlandsShown = 3;
 export const realmShown = 3;
@@ -103,7 +101,7 @@ export const local = StyleSheet.create({
   realmSplit: {
     backgroundColor: colors.border,
     height: 1,
-    marginLeft: realmIndent + 6,
+    marginLeft: 6,
     marginRight: 8,
     marginVertical: 4,
   },
