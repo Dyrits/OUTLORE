@@ -19,15 +19,15 @@ import { type FolderEscape, folderEscapeOf, folderProblemOf } from "./threadFold
 // The caller keeps the protocol (sessions, models, prompts) and learns only what the launch reports.
 
 /** What the launch needs from the harness's options. */
-export interface OpenCodeLaunchOptions {
+export type OpenCodeLaunchOptions = {
   readonly command: string;
   readonly prefixArgs?: ReadonlyArray<string>;
   /** The host's sandbox, or null when none can run here: then every action asks the owner. */
-  readonly sandbox?: OpenCodeSandbox | null;
-}
+  readonly sandbox: OpenCodeSandbox | null;
+};
 
 /** A started OpenCode process and the facts about how it is contained, which Containment judges (policy/containment.ts). */
-export interface LaunchedOpenCode {
+export type LaunchedOpenCode = {
   /** Whether a wrapped OpenCode's executor is NOT confirmed to descend from the wrapped process; read at each request. */
   readonly isContainmentUnconfirmed: () => boolean;
   /** Whether the process is wrapped in the sandbox. */
@@ -35,7 +35,7 @@ export interface LaunchedOpenCode {
   /** Whether the thread runs without the sandbox it otherwise runs in, as the owner allowed for a folder that points out. */
   readonly isUnsandboxed: boolean;
   readonly rpc: RpcProcess;
-}
+};
 
 /** The question asked before running OpenCode without its sandbox for a folder that points elsewhere. */
 const escapeQuestionOf = (found: FolderEscape, request: TurnRequest) =>
@@ -60,84 +60,83 @@ export const makeOpenCodeLauncher = (options: OpenCodeLaunchOptions) => {
     return next;
   };
 
-  return (request: TurnRequest, config: string): Effect.Effect<LaunchedOpenCode, HarnessFailure> =>
-    Effect.gen(function* () {
-      const args = [...(options.prefixArgs ?? []), "acp"];
-      // A folder that would widen what the sandbox writes is never sandboxed: the owner decides whether the thread
-      // runs there without the sandbox, every action asking, or the turn fails. Without a sandbox tool nothing is
-      // widened and every action asks anyway, but the folder still counts as outside its workspace, so even an edit
-      // in it asks (the folder check no sandbox skipped).
-      const found = yield* Effect.sync(() =>
-        folderEscapeOf(request.cwd, request.folderRoot, request.access.isInWorkspace),
-      );
-      if (found !== null && options.sandbox != null) {
-        // A one-time question: it offers no standing permission, and none answers it.
-        const answer = yield* request.askOwner({
-          folderCheck: { pointsTo: found.pointsTo, startsIn: null },
-          input: { description: escapeQuestionOf(found, request), file_path: found.folder },
-          toolName: "OpenCode",
-        });
-        if (!answer.isAllowed) return yield* new HarnessFailure({ reason: escapeRefusalOf(found) });
-      }
-      const isUnsandboxed = found !== null;
-      const sandbox = isUnsandboxed ? null : (options.sandbox ?? null);
-      const marker = sandbox === null ? null : ownerMarkerOf(sandbox);
-      // Every sandboxed process carries the service's marker and its thread, so one it loses is found again.
-      const marks = marker === null ? {} : { [marker.name]: marker.value, OUTLORE_SANDBOX_THREAD: request.threadId };
-      if (sandbox !== null && marker !== null) {
-        yield* Effect.promise(() => sweepOrphans(marker));
-        yield* Effect.tryPromise({
-          catch: (error) =>
-            new HarnessFailure({
-              reason: `OpenCode's sign-in or settings could not be copied into its sandbox. ${error instanceof Error ? error.message : String(error)}`,
-            }),
-          try: () =>
-            exclusive(() =>
-              prepareOpenCodeSandbox({
-                accountDataHome: request.configDirectory,
-                command: options.command,
-                environment: marks,
-                prefixArgs: options.prefixArgs ?? [],
-                sandbox,
-              }),
-            ),
-        });
-      }
-      const env = {
-        ...accountEnvironmentOf("opencode", request.configDirectory),
-        ...(sandbox === null ? {} : openCodeEnvironmentOf(sandbox, request.configDirectory)),
-        ...marks,
-        OPENCODE_CONFIG_CONTENT: config,
-      };
-      // Wrapped, OpenCode and every process it starts write only where the sandbox lets them; never attached to a
-      // running OpenCode server, so no process outside the sandbox serves the thread.
-      const started =
-        sandbox === null
-          ? { args, command: options.command }
-          : wrappedCommandOf(
-              sandbox,
-              yield* Effect.sync(() => writableRootsOf(sandbox, request.cwd, request.configDirectory)),
-              options.command,
-              args,
-            );
-      const rpc = yield* startRpcProcess({
-        args: started.args,
-        command: started.command,
-        cwd: request.cwd,
-        env: harnessEnvironmentOf(env),
-        isJsonRpc2: true,
-        // `acp` starts its own `serve`, whose children leave its process group: closing ends the group and the whole
-        // tree, and once `acp` has ended, however it ended, any marked OpenCode process it left is ended too.
-        isTreeKilled: true,
-        label: "OpenCode",
-        ...(marker === null ? {} : { onEnded: () => sweepOrphans(marker) }),
+  return Effect.fnUntraced(function* (request: TurnRequest, config: string) {
+    const args = [...(options.prefixArgs ?? []), "acp"];
+    // A folder that would widen what the sandbox writes is never sandboxed: the owner decides whether the thread
+    // runs there without the sandbox, every action asking, or the turn fails. Without a sandbox tool nothing is
+    // widened and every action asks anyway, but the folder still counts as outside its workspace, so even an edit
+    // in it asks (the folder check no sandbox skipped).
+    const found = yield* Effect.sync(() =>
+      folderEscapeOf(request.cwd, request.folderRoot, request.access.isInWorkspace),
+    );
+    if (found !== null && options.sandbox !== null) {
+      // A one-time question: it offers no standing permission, and none answers it.
+      const answer = yield* request.askOwner({
+        folderCheck: { pointsTo: found.pointsTo, startsIn: null },
+        input: { description: escapeQuestionOf(found, request), file_path: found.folder },
+        toolName: "OpenCode",
       });
-      const rootPid = rpc.pid;
-      return {
-        isContainmentUnconfirmed: () => sandbox !== null && !(rootPid !== null && hasExecutorBelow(rootPid)),
-        isSandboxed: sandbox !== null,
-        isUnsandboxed,
-        rpc,
-      } satisfies LaunchedOpenCode;
+      if (!answer.isAllowed) return yield* new HarnessFailure({ reason: escapeRefusalOf(found) });
+    }
+    const isUnsandboxed = found !== null;
+    const sandbox = isUnsandboxed ? null : options.sandbox;
+    const marker = sandbox === null ? null : ownerMarkerOf(sandbox);
+    // Every sandboxed process carries the service's marker and its thread, so one it loses is found again.
+    const marks = marker === null ? {} : { [marker.name]: marker.value, OUTLORE_SANDBOX_THREAD: request.threadId };
+    if (sandbox !== null && marker !== null) {
+      yield* Effect.promise(() => sweepOrphans(marker));
+      yield* Effect.tryPromise({
+        catch: (error) =>
+          new HarnessFailure({
+            reason: `OpenCode's sign-in or settings could not be copied into its sandbox. ${error instanceof Error ? error.message : String(error)}`,
+          }),
+        try: () =>
+          exclusive(() =>
+            prepareOpenCodeSandbox({
+              accountDataHome: request.configDirectory,
+              command: options.command,
+              environment: marks,
+              prefixArgs: options.prefixArgs ?? [],
+              sandbox,
+            }),
+          ),
+      });
+    }
+    const env = {
+      ...accountEnvironmentOf("opencode", request.configDirectory),
+      ...(sandbox === null ? {} : openCodeEnvironmentOf(sandbox, request.configDirectory)),
+      ...marks,
+      OPENCODE_CONFIG_CONTENT: config,
+    };
+    // Wrapped, OpenCode and every process it starts write only where the sandbox lets them; never attached to a
+    // running OpenCode server, so no process outside the sandbox serves the thread.
+    const started =
+      sandbox === null
+        ? { args, command: options.command }
+        : wrappedCommandOf(
+            sandbox,
+            yield* Effect.sync(() => writableRootsOf(sandbox, request.cwd, request.configDirectory)),
+            options.command,
+            args,
+          );
+    const rpc = yield* startRpcProcess({
+      args: started.args,
+      command: started.command,
+      cwd: request.cwd,
+      env: harnessEnvironmentOf(env),
+      isJsonRpc2: true,
+      // `acp` starts its own `serve`, whose children leave its process group: closing ends the group and the whole
+      // tree, and once `acp` has ended, however it ended, any marked OpenCode process it left is ended too.
+      isTreeKilled: true,
+      label: "OpenCode",
+      ...(marker === null ? {} : { onEnded: () => sweepOrphans(marker) }),
     });
+    const rootPid = rpc.pid;
+    return {
+      isContainmentUnconfirmed: () => sandbox !== null && !(rootPid !== null && hasExecutorBelow(rootPid)),
+      isSandboxed: sandbox !== null,
+      isUnsandboxed,
+      rpc,
+    } satisfies LaunchedOpenCode;
+  });
 };

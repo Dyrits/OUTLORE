@@ -35,7 +35,7 @@ export interface PooledTurn {
 }
 
 /** How a turn ended, as the harness reported it. */
-export interface TurnEnd {
+export type TurnEnd = {
   /** How the turn was billed, when the harness reports its sign-in; absent counts as Unknown. */
   readonly billing?: BillingKind;
   /** What the thread's context held after the turn's latest model call; absent or null when unreported. */
@@ -44,7 +44,7 @@ export interface TurnEnd {
   readonly cost?: number | null;
   readonly isInterrupted: boolean;
   readonly usage: TokenUsage | null;
-}
+};
 
 /** What one harness's protocol does with a process the pool keeps. */
 export interface HarnessProtocol<Connection extends HarnessConnection> {
@@ -69,14 +69,14 @@ export interface HarnessProtocol<Connection extends HarnessConnection> {
 }
 
 /** How long the pool keeps processes. */
-export interface PoolOptions {
+export type PoolOptions = {
   /** How long an idle thread keeps its process. */
   readonly idleTimeout: Duration.Input;
   /** How long a harness has to end an interrupted turn; `interruptGraceMillis` by default. */
   readonly interruptGrace?: Duration.Input;
-}
+};
 
-interface RunningTurn {
+type RunningTurn = {
   readonly failed: Deferred.Deferred<never, HarnessFailure>;
   readonly interrupted: Deferred.Deferred<void>;
   isInterrupting: boolean;
@@ -84,169 +84,164 @@ interface RunningTurn {
   /** Messages steered into the turn that the harness has not taken in yet. */
   readonly untaken: Set<string>;
   usage: TokenUsage | null;
-}
+};
 
-interface Entry<Connection> {
+type Entry<Connection> = {
   readonly connection: Connection;
   idleTimer: ReturnType<typeof setTimeout> | null;
   readonly key: string;
   turn: RunningTurn | null;
-}
+};
 
 /** An adapter that runs each thread's turns on one kept process of the harness; its processes close with its scope. */
-export const makeHarnessProcesses = <Connection extends HarnessConnection>(
+export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection extends HarnessConnection>(
   protocol: HarnessProtocol<Connection>,
   options: PoolOptions,
-) =>
-  Effect.gen(function* () {
-    const entries = new Map<string, Entry<Connection>>();
-    /** Threads whose turn has begun but whose process is not yet running it, with whether an interrupt came meanwhile. */
-    const starting = new Map<string, { isInterrupted: boolean }>();
-    const idleMillis = Duration.toMillis(Duration.fromInputUnsafe(options.idleTimeout));
-    const grace = options.interruptGrace ?? interruptGraceMillis;
+) {
+  const entries = new Map<string, Entry<Connection>>();
+  /** Threads whose turn has begun but whose process is not yet running it, with whether an interrupt came meanwhile. */
+  const starting = new Map<string, { isInterrupted: boolean }>();
+  const idleMillis = Duration.toMillis(Duration.fromInputUnsafe(options.idleTimeout));
+  const grace = options.interruptGrace ?? interruptGraceMillis;
 
-    const close = (threadId: string) => {
-      const entry = entries.get(threadId);
-      if (entry === undefined) return;
-      entries.delete(threadId);
-      if (entry.idleTimer !== null) clearTimeout(entry.idleTimer);
-      entry.connection.close();
+  const close = (threadId: string) => {
+    const entry = entries.get(threadId);
+    if (entry === undefined) return;
+    entries.delete(threadId);
+    if (entry.idleTimer !== null) clearTimeout(entry.idleTimer);
+    entry.connection.close();
+  };
+  yield* Effect.addFinalizer(() => Effect.sync(() => [...entries.keys()].forEach(close)));
+
+  const acquire = Effect.fnUntraced(function* (request: TurnRequest) {
+    const key = protocol.restartKeyOf(request);
+    const existing = entries.get(request.threadId);
+    if (existing !== undefined && (existing.key !== key || existing.connection.hasExited())) close(request.threadId);
+    const kept = entries.get(request.threadId);
+    if (kept !== undefined) {
+      if (kept.idleTimer !== null) clearTimeout(kept.idleTimer);
+      kept.idleTimer = null;
+      return kept;
+    }
+    const entry: Entry<Connection> = {
+      connection: yield* protocol.start(request),
+      idleTimer: null,
+      key,
+      turn: null,
     };
-    yield* Effect.addFinalizer(() => Effect.sync(() => [...entries.keys()].forEach(close)));
-
-    const acquire = (request: TurnRequest) =>
-      Effect.gen(function* () {
-        const key = protocol.restartKeyOf(request);
-        const existing = entries.get(request.threadId);
-        if (existing !== undefined && (existing.key !== key || existing.connection.hasExited()))
-          close(request.threadId);
-        const kept = entries.get(request.threadId);
-        if (kept !== undefined) {
-          if (kept.idleTimer !== null) clearTimeout(kept.idleTimer);
-          kept.idleTimer = null;
-          return kept;
-        }
-        const entry: Entry<Connection> = {
-          connection: yield* protocol.start(request),
-          idleTimer: null,
-          key,
-          turn: null,
-        };
-        entries.set(request.threadId, entry);
-        return entry;
-      });
-
-    const controlOf = (turn: RunningTurn): PooledTurn => ({
-      deliver: (messageId) =>
-        Effect.suspend(() =>
-          turn.untaken.delete(messageId) ? turn.onEvent({ _tag: "Delivered", messageId }) : Effect.void,
-        ),
-      fork: (work) =>
-        Effect.forkChild(work.pipe(Effect.catch((failure) => Deferred.fail(turn.failed, failure)))).pipe(Effect.asVoid),
-      isInterrupting: () => turn.isInterrupting,
-      reportUsage: (usage) => {
-        turn.usage = usage;
-      },
-    });
-
-    const runTurn = (request: TurnRequest) =>
-      Effect.gen(function* () {
-        const beginning = { isInterrupted: false };
-        starting.set(request.threadId, beginning);
-        const entry = yield* acquire(request).pipe(
-          Effect.ensuring(Effect.sync(() => starting.delete(request.threadId))),
-        );
-        const { sessionId } = entry.connection;
-        // An interrupt that came while the process started cancels the turn before its prompt is sent, which the
-        // harness could not cancel yet; the process stays for the next turn.
-        if (beginning.isInterrupted) {
-          entry.idleTimer = setTimeout(() => close(request.threadId), idleMillis);
-          return interruptedOutcomeOf(sessionId);
-        }
-        const turn: RunningTurn = {
-          failed: yield* Deferred.make<never, HarnessFailure>(),
-          interrupted: yield* Deferred.make<void>(),
-          isInterrupting: false,
-          onEvent: request.onEvent,
-          untaken: new Set(),
-          usage: null,
-        };
-        entry.turn = turn;
-        // An interrupt the harness has not confirmed within the grace period ends the turn regardless.
-        const unconfirmed = Deferred.await(turn.interrupted).pipe(
-          Effect.andThen(Effect.sleep(grace)),
-          Effect.as({ _tag: "Unconfirmed" } as const),
-        );
-        const ended = yield* Effect.raceFirst(
-          protocol
-            .runTurn(entry.connection, request, controlOf(turn))
-            .pipe(Effect.map((end) => ({ _tag: "Ended", end }) as const)),
-          Effect.raceFirst(unconfirmed, Deferred.await(turn.failed)),
-        ).pipe(Effect.result, Effect.ensuring(Effect.sync(() => (entry.turn = null))));
-        if (ended._tag === "Failure") {
-          close(request.threadId);
-          // A process that dies while interrupted still spent what its earlier prompts reported.
-          if (turn.isInterrupting) return interruptedOutcomeOf(sessionId, turn.usage);
-          return yield* ended.failure;
-        }
-        if (ended.success._tag === "Unconfirmed") {
-          close(request.threadId);
-          return interruptedOutcomeOf(sessionId, turn.usage);
-        }
-        // A steered message not yet taken in would start a turn of its own in this process, which nothing
-        // reads: the process closes instead, and the message, still undelivered, starts the next turn
-        // (CHG-0039, provisional).
-        if (turn.untaken.size > 0) close(request.threadId);
-        else entry.idleTimer = setTimeout(() => close(request.threadId), idleMillis);
-        const { billing, context, cost, isInterrupted, usage } = ended.success.end;
-        return {
-          billing: billing ?? "Unknown",
-          context: context ?? null,
-          cost: cost ?? null,
-          isInterrupted: isInterrupted || turn.isInterrupting,
-          sessionId,
-          usage,
-        } satisfies TurnOutcome;
-      }).pipe(Effect.onInterrupt(() => Effect.sync(() => close(request.threadId))));
-
-    /** The thread's entry while a turn runs on a live process, or null. */
-    const runningOf = (threadId: string) => {
-      const entry = entries.get(threadId);
-      return entry === undefined || entry.connection.hasExited() || entry.turn === null
-        ? null
-        : { connection: entry.connection, turn: entry.turn };
-    };
-
-    const steer = (threadId: string, message: SteeredMessage) =>
-      Effect.gen(function* () {
-        const running = runningOf(threadId);
-        if (running === null || running.turn.isInterrupting) return false;
-        running.turn.untaken.add(message.id);
-        const isTaken = yield* protocol.steer(running.connection, message);
-        if (!isTaken) running.turn.untaken.delete(message.id);
-        return isTaken;
-      });
-
-    const interrupt = (threadId: string) =>
-      Effect.gen(function* () {
-        const running = runningOf(threadId);
-        if (running === null) {
-          const beginning = starting.get(threadId);
-          if (beginning === undefined) return false;
-          beginning.isInterrupted = true;
-          return true;
-        }
-        if (running.turn.isInterrupting) return true;
-        // Set first: the harness may confirm before the request's own effect returns.
-        running.turn.isInterrupting = true;
-        if (!(yield* protocol.interrupt(running.connection))) {
-          running.turn.isInterrupting = false;
-          return false;
-        }
-        yield* Deferred.succeed(running.turn.interrupted, void 0);
-        return true;
-      });
-
-    // A harness reports no plan limits unless its adapter says how to ask (codex.ts).
-    return { interrupt, readPlanLimits: () => Effect.succeed(null), runTurn, steer } satisfies HarnessAdapter;
+    entries.set(request.threadId, entry);
+    return entry;
   });
+
+  const controlOf = (turn: RunningTurn): PooledTurn => ({
+    deliver: (messageId) =>
+      Effect.suspend(() =>
+        turn.untaken.delete(messageId) ? turn.onEvent({ _tag: "Delivered", messageId }) : Effect.void,
+      ),
+    fork: (work) =>
+      Effect.forkChild(work.pipe(Effect.catch((failure) => Deferred.fail(turn.failed, failure)))).pipe(Effect.asVoid),
+    isInterrupting: () => turn.isInterrupting,
+    reportUsage: (usage) => {
+      turn.usage = usage;
+    },
+  });
+
+  const runTurn = Effect.fnUntraced(
+    function* (request: TurnRequest) {
+      const startingEntry = { isInterrupted: false };
+      starting.set(request.threadId, startingEntry);
+      const entry = yield* acquire(request).pipe(Effect.ensuring(Effect.sync(() => starting.delete(request.threadId))));
+      const { sessionId } = entry.connection;
+      // An interrupt that came while the process started cancels the turn before its prompt is sent, which the
+      // harness could not cancel yet; the process stays for the next turn.
+      if (startingEntry.isInterrupted) {
+        entry.idleTimer = setTimeout(() => close(request.threadId), idleMillis);
+        return interruptedOutcomeOf(sessionId);
+      }
+      const turn: RunningTurn = {
+        failed: yield* Deferred.make<never, HarnessFailure>(),
+        interrupted: yield* Deferred.make<void>(),
+        isInterrupting: false,
+        onEvent: request.onEvent,
+        untaken: new Set(),
+        usage: null,
+      };
+      entry.turn = turn;
+      // An interrupt the harness has not confirmed within the grace period ends the turn regardless.
+      const unconfirmed = Deferred.await(turn.interrupted).pipe(
+        Effect.andThen(Effect.sleep(grace)),
+        Effect.as({ _tag: "Unconfirmed" } as const),
+      );
+      const ended = yield* Effect.raceFirst(
+        protocol
+          .runTurn(entry.connection, request, controlOf(turn))
+          .pipe(Effect.map((end) => ({ _tag: "Ended", end }) as const)),
+        Effect.raceFirst(unconfirmed, Deferred.await(turn.failed)),
+      ).pipe(Effect.result, Effect.ensuring(Effect.sync(() => (entry.turn = null))));
+      if (ended._tag === "Failure") {
+        close(request.threadId);
+        // A process that dies while interrupted still spent what its earlier prompts reported.
+        if (turn.isInterrupting) return interruptedOutcomeOf(sessionId, turn.usage);
+        return yield* ended.failure;
+      }
+      if (ended.success._tag === "Unconfirmed") {
+        close(request.threadId);
+        return interruptedOutcomeOf(sessionId, turn.usage);
+      }
+      // A steered message not yet taken in would start a turn of its own in this process, which nothing
+      // reads: the process closes instead, and the message, still undelivered, starts the next turn
+      // (CHG-0039, provisional).
+      if (turn.untaken.size > 0) close(request.threadId);
+      else entry.idleTimer = setTimeout(() => close(request.threadId), idleMillis);
+      const { billing, context, cost, isInterrupted, usage } = ended.success.end;
+      return {
+        billing: billing ?? "Unknown",
+        context: context ?? null,
+        cost: cost ?? null,
+        isInterrupted: isInterrupted || turn.isInterrupting,
+        sessionId,
+        usage,
+      } satisfies TurnOutcome;
+    },
+    (effect, request) => effect.pipe(Effect.onInterrupt(() => Effect.sync(() => close(request.threadId)))),
+  );
+
+  /** The thread's entry while a turn runs on a live process, or null. */
+  const runningOf = (threadId: string) => {
+    const entry = entries.get(threadId);
+    return entry === undefined || entry.connection.hasExited() || entry.turn === null
+      ? null
+      : { connection: entry.connection, turn: entry.turn };
+  };
+
+  const steer = Effect.fnUntraced(function* (threadId: string, message: SteeredMessage) {
+    const running = runningOf(threadId);
+    if (running === null || running.turn.isInterrupting) return false;
+    running.turn.untaken.add(message.id);
+    const isTaken = yield* protocol.steer(running.connection, message);
+    if (!isTaken) running.turn.untaken.delete(message.id);
+    return isTaken;
+  });
+
+  const interrupt = Effect.fnUntraced(function* (threadId: string) {
+    const running = runningOf(threadId);
+    if (running === null) {
+      const startingEntry = starting.get(threadId);
+      if (startingEntry === undefined) return false;
+      startingEntry.isInterrupted = true;
+      return true;
+    }
+    if (running.turn.isInterrupting) return true;
+    // Set first: the harness may confirm before the request's own effect returns.
+    running.turn.isInterrupting = true;
+    if (!(yield* protocol.interrupt(running.connection))) {
+      running.turn.isInterrupting = false;
+      return false;
+    }
+    yield* Deferred.succeed(running.turn.interrupted, void 0);
+    return true;
+  });
+
+  // A harness reports no plan limits unless its adapter says how to ask (codex.ts).
+  return { interrupt, readPlanLimits: () => Effect.succeed(null), runTurn, steer } satisfies HarnessAdapter;
+});

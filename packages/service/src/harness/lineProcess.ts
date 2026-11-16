@@ -8,7 +8,7 @@ import { killProcessTree } from "./processTree.ts";
 // framings: Claude Code's stream-json, and JSON-RPC for Codex's app server and the Agent Client Protocol.
 
 /** How to start a harness process. */
-export interface LineProcessOptions {
+export type LineProcessOptions = {
   readonly args: ReadonlyArray<string>;
   readonly command: string;
   readonly cwd: string;
@@ -25,7 +25,7 @@ export interface LineProcessOptions {
    * so lost its link to the tree (sweepOrphans).
    */
   readonly onEnded?: () => Promise<ReadonlyArray<number>>;
-}
+};
 
 /** The environment of a harness's process: Outlore's own variables, such as the owner token, left out. */
 export const harnessEnvironmentOf = (extra: Record<string, string>) => ({
@@ -34,13 +34,13 @@ export const harnessEnvironmentOf = (extra: Record<string, string>) => ({
 });
 
 /** What a short command of a harness's tool printed. */
-export interface CommandRun {
+export type CommandRun = {
   /** The exit code; null when the tool is missing or timed out. */
   readonly code: number | null;
   /** What the command printed on both streams; Codex prints its login status on standard error. */
   readonly output: string;
   readonly stdout: string;
-}
+};
 
 /** Runs a command of a harness's tool, by default a short one; a missing tool or a timeout reads as exit code null. */
 export const runHarnessCommand = (
@@ -141,34 +141,33 @@ export interface StreamJsonProcess {
 }
 
 /** Starts a stream-json process. It lives until `close`, or until it exits on its own. */
-export const startStreamJsonProcess = (options: LineProcessOptions) =>
-  Effect.gen(function* () {
-    const incoming = yield* Queue.unbounded<StreamItem>();
-    const child = spawnLineProcess(options, {
-      onExit: (reason) => Queue.offerUnsafe(incoming, { _tag: "Exit", reason }),
-      onMessage: (message) => Queue.offerUnsafe(incoming, { _tag: "Message", message }),
-    });
-    return { ...child, incoming } satisfies StreamJsonProcess;
+export const startStreamJsonProcess = Effect.fnUntraced(function* (options: LineProcessOptions) {
+  const incoming = yield* Queue.unbounded<StreamItem>();
+  const child = spawnLineProcess(options, {
+    onExit: (reason) => Queue.offerUnsafe(incoming, { _tag: "Exit", reason }),
+    onMessage: (message) => Queue.offerUnsafe(incoming, { _tag: "Message", message }),
   });
+  return { ...child, incoming } satisfies StreamJsonProcess;
+});
 
 /** What a JSON-RPC process sends that is not an answer to one of ours: a notification, a request, or its end. */
-export type Incoming =
+export type RpcIncoming =
   | { readonly _tag: "Notification"; readonly method: string; readonly params: unknown }
   | { readonly _tag: "Request"; readonly id: number | string; readonly method: string; readonly params: unknown }
   | { readonly _tag: "Exit"; readonly reason: string };
 
 /** How to start a harness that speaks JSON-RPC over its standard streams. */
-export interface RpcOptions extends LineProcessOptions {
+export type RpcOptions = LineProcessOptions & {
   /** Whether messages carry `"jsonrpc": "2.0"`, which ACP requires and Codex's app server leaves out. */
   readonly isJsonRpc2: boolean;
-}
+};
 
 /** One running harness process and its JSON-RPC exchange. */
 export interface RpcProcess {
   /** Ends the process; its pending requests fail. */
   readonly close: () => void;
   readonly hasExited: () => boolean;
-  readonly incoming: Queue.Queue<Incoming>;
+  readonly incoming: Queue.Queue<RpcIncoming>;
   readonly notify: (method: string, params: unknown) => void;
   /** The process's id, or null when it did not start: the root of the tree whose containment is checked. */
   readonly pid: number | null;
@@ -179,63 +178,61 @@ export interface RpcProcess {
 }
 
 /** Starts a JSON-RPC process. It lives until `close`, or until it exits on its own. */
-export const startRpcProcess = (options: RpcOptions) =>
-  Effect.gen(function* () {
-    const incoming = yield* Queue.unbounded<Incoming>();
-    const pending = new Map<number | string, Deferred.Deferred<unknown, HarnessFailure>>();
-    let nextId = 1;
+export const startRpcProcess = Effect.fnUntraced(function* (options: RpcOptions) {
+  const incoming = yield* Queue.unbounded<RpcIncoming>();
+  const pending = new Map<number | string, Deferred.Deferred<unknown, HarnessFailure>>();
+  let nextId = 1;
 
-    const answer = (id: number | string, message: unknown) => {
-      const deferred = pending.get(id);
-      pending.delete(id);
-      if (deferred === undefined) return;
-      const error = fieldOf(message, "error");
-      Deferred.doneUnsafe(
-        deferred,
-        error === undefined
-          ? Effect.succeed(fieldOf(message, "result") ?? null)
-          : Effect.fail(
-              new HarnessFailure({ reason: textFieldOf(error, "message") ?? `${options.label} refused a request.` }),
-            ),
-      );
-    };
-    const child = spawnLineProcess(options, {
-      onExit: (reason) => {
-        for (const deferred of pending.values())
-          Deferred.doneUnsafe(deferred, Effect.fail(new HarnessFailure({ reason })));
-        pending.clear();
-        Queue.offerUnsafe(incoming, { _tag: "Exit", reason });
-      },
-      onMessage: (message) => {
-        const id = fieldOf(message, "id");
-        const method = textFieldOf(message, "method");
-        const params = fieldOf(message, "params");
-        const isId = typeof id === "number" || typeof id === "string";
-        if (method !== null && isId) Queue.offerUnsafe(incoming, { _tag: "Request", id, method, params });
-        else if (method !== null) Queue.offerUnsafe(incoming, { _tag: "Notification", method, params });
-        else if (isId) answer(id, message);
-      },
-    });
-    const write = (message: object) => child.write(options.isJsonRpc2 ? { jsonrpc: "2.0", ...message } : message);
-
-    const request = (method: string, params: unknown) =>
-      Effect.gen(function* () {
-        if (child.hasExited()) return yield* new HarnessFailure({ reason: `${options.label} is not running.` });
-        const id = nextId++;
-        const deferred = yield* Deferred.make<unknown, HarnessFailure>();
-        pending.set(id, deferred);
-        write({ id, method, params });
-        return yield* Deferred.await(deferred);
-      });
-
-    return {
-      close: child.close,
-      hasExited: child.hasExited,
-      incoming,
-      notify: (method, params) => write({ method, params }),
-      pid: child.pid,
-      request,
-      respond: (id, result) => write({ id, result }),
-      respondError: (id, message) => write({ error: { code: -32601, message }, id }),
-    } satisfies RpcProcess;
+  const answer = (id: number | string, message: unknown) => {
+    const deferred = pending.get(id);
+    pending.delete(id);
+    if (deferred === undefined) return;
+    const error = fieldOf(message, "error");
+    Deferred.doneUnsafe(
+      deferred,
+      error === undefined
+        ? Effect.succeed(fieldOf(message, "result") ?? null)
+        : Effect.fail(
+            new HarnessFailure({ reason: textFieldOf(error, "message") ?? `${options.label} refused a request.` }),
+          ),
+    );
+  };
+  const child = spawnLineProcess(options, {
+    onExit: (reason) => {
+      for (const deferred of pending.values())
+        Deferred.doneUnsafe(deferred, Effect.fail(new HarnessFailure({ reason })));
+      pending.clear();
+      Queue.offerUnsafe(incoming, { _tag: "Exit", reason });
+    },
+    onMessage: (message) => {
+      const id = fieldOf(message, "id");
+      const method = textFieldOf(message, "method");
+      const params = fieldOf(message, "params");
+      const isId = typeof id === "number" || typeof id === "string";
+      if (method !== null && isId) Queue.offerUnsafe(incoming, { _tag: "Request", id, method, params });
+      else if (method !== null) Queue.offerUnsafe(incoming, { _tag: "Notification", method, params });
+      else if (isId) answer(id, message);
+    },
   });
+  const write = (message: object) => child.write(options.isJsonRpc2 ? { jsonrpc: "2.0", ...message } : message);
+
+  const request = Effect.fnUntraced(function* (method: string, params: unknown) {
+    if (child.hasExited()) return yield* new HarnessFailure({ reason: `${options.label} is not running.` });
+    const id = nextId++;
+    const deferred = yield* Deferred.make<unknown, HarnessFailure>();
+    pending.set(id, deferred);
+    write({ id, method, params });
+    return yield* Deferred.await(deferred);
+  });
+
+  return {
+    close: child.close,
+    hasExited: child.hasExited,
+    incoming,
+    notify: (method, params) => write({ method, params }),
+    pid: child.pid,
+    request,
+    respond: (id, result) => write({ id, result }),
+    respondError: (id, message) => write({ error: { code: -32601, message }, id }),
+  } satisfies RpcProcess;
+});

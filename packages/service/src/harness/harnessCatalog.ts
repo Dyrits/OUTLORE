@@ -9,6 +9,9 @@ import type { EffortChoice, HarnessName, ModelOption } from "@outlore/contracts"
  */
 const claudeEfforts: ReadonlyArray<EffortChoice> = ["low", "medium", "high", "xhigh", "max"];
 
+/** The cheapest model Outlore knows for Claude Code, where Chronicler, which only routes, starts. */
+export const claudeCheapestModel = "claude-haiku-5-5";
+
 /**
  * Claude Code's models, each by its full identifier so the owner picks a version, newest family first. The
  * aliases (`opus`, `sonnet`) stay valid for threads that already use them but are no longer offered.
@@ -17,14 +20,11 @@ export const claudeModels: ReadonlyArray<ModelOption> = [
   { efforts: claudeEfforts, id: "claude-fable-5-2", label: "Fable 5.2" },
   { efforts: claudeEfforts, id: "claude-opus-5-5", label: "Opus 5.5" },
   { efforts: claudeEfforts, id: "claude-sonnet-5-5", label: "Sonnet 5.5" },
-  { efforts: claudeEfforts, id: "claude-haiku-5-5", label: "Haiku 5.5" },
+  { efforts: claudeEfforts, id: claudeCheapestModel, label: "Haiku 5.5" },
 ];
 
-/** The cheapest model Outlore knows for Claude Code, where the Guildmaster, which only routes, starts. */
-export const claudeCheapestModel = "claude-haiku-5-5";
-
 /** What Outlore knows of one harness without running it. */
-export interface HarnessFacts {
+export type HarnessFacts = {
   /** What a command approved through `request_approval` needs on this harness, appended to that rule. */
   readonly approvedCommandAdvice: string;
   /** Where the harness keeps its sign-in and sessions, set to an account's own folder for an added account. */
@@ -41,7 +41,7 @@ export interface HarnessFacts {
   readonly signInArgs: ReadonlyArray<string>;
   /** The arguments of the harness's own command that updates it, which knows how it was installed. */
   readonly updateArgs: ReadonlyArray<string>;
-}
+};
 
 /** Each harness's facts, by name. */
 export const harnessFacts = {

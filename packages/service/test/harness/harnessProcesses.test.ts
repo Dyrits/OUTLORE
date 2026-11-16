@@ -10,9 +10,9 @@ import {
 } from "../../src/harness/harnessProcesses.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
-interface FakeConnection extends HarnessConnection {
+type FakeConnection = HarnessConnection & {
   isClosed: boolean;
-}
+};
 
 /** A fake protocol in-process: each turn runs `behavior`, and every started process is kept for checks. */
 const fakeProtocolOf = (

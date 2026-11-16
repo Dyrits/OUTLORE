@@ -20,6 +20,7 @@ import {
   textFieldOf,
   turnMessageOf,
 } from "../core/index.ts";
+import { noTimeLimit } from "./claudeArgs.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
   type HarnessConnection,
@@ -28,7 +29,7 @@ import {
   type PooledTurn,
 } from "./harnessProcesses.ts";
 import { approvalInstructionsOf } from "./instructions.ts";
-import { harnessEnvironmentOf, type Incoming, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
+import { harnessEnvironmentOf, type RpcIncoming, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
 import { makeOpenCodeLauncher } from "./openCodeLaunch.ts";
 import { editedPathsOf, firstOutsideOf, isUnaskedEdit, promptOf, refusalOf } from "./openCodePrompts.ts";
 import { type OpenCodeSandbox, ownerMarkerOf } from "./openCodeSandbox.ts";
@@ -62,13 +63,8 @@ const effortOptionOf = (configOptions: unknown): { id: string; levels: Array<Eff
  * ACP session is opened, given the model, and asked, once more when that fails. Empty when OpenCode says the model has
  * none; a failure, which is not an empty answer, when OpenCode could not be asked (timeout, no session).
  */
-export const listOpenCodeEfforts = (
-  command: string,
-  configDirectory: string | null,
-  model: string,
-  prefixArgs: ReadonlyArray<string> = [],
-) =>
-  Effect.gen(function* () {
+export const listOpenCodeEfforts = Effect.fnUntraced(
+  function* (command: string, configDirectory: string | null, model: string, prefixArgs: ReadonlyArray<string> = []) {
     const rpc = yield* startRpcProcess({
       args: [...prefixArgs, "acp"],
       command,
@@ -91,13 +87,13 @@ export const listOpenCodeEfforts = (
           : yield* rpc.request("session/set_config_option", { configId: "model", sessionId, value: model });
       return effortOptionOf(fieldOf(chosen, "configOptions"))?.levels ?? [];
     }).pipe(Effect.timeout("30 seconds"), Effect.ensuring(Effect.sync(() => rpc.close())));
-  }).pipe(
-    Effect.retry({ times: 1 }),
-    Effect.catch(() => Effect.fail(invalid("OpenCode did not give this model's effort levels. Try again."))),
-  );
+  },
+  Effect.retry({ times: 1 }),
+  Effect.catch(() => Effect.fail(invalid("OpenCode did not give this model's effort levels. Try again."))),
+);
 
 /** How the OpenCode adapter starts its harness. */
-export interface OpenCodeOptions {
+export type OpenCodeOptions = {
   /** The executable; `opencode` on the PATH by default. */
   readonly command: string;
   /** How long an idle thread keeps its process. */
@@ -110,8 +106,8 @@ export interface OpenCodeOptions {
    * The host's sandbox each thread's `opencode acp` runs in (openCodeSandbox.ts), or null when none can run here:
    * then every action OpenCode asks about asks the owner.
    */
-  readonly sandbox?: OpenCodeSandbox | null;
-}
+  readonly sandbox: OpenCodeSandbox | null;
+};
 
 interface OpenCodeConnection extends HarnessConnection {
   /**
@@ -133,9 +129,6 @@ interface OpenCodeConnection extends HarnessConnection {
   readonly isUnsandboxed: boolean;
   readonly rpc: RpcProcess;
 }
-
-/** The longest timer Node allows, in milliseconds: a question waits with no time limit. */
-const noTimeLimit = 2147483647;
 
 /**
  * OpenCode's permissions (CHG-0031, CHG-0208). Every command and edit asks Outlore. Wrapped in the host's sandbox, a
@@ -194,42 +187,41 @@ const addUsage = (total: TokenUsage | null, usage: TokenUsage | null): TokenUsag
  * Answers one of OpenCode's permission requests, asking the owner unless it may run; it may wait without a time
  * limit. A refusal is added to `refusals` before OpenCode hears it.
  */
-const answerRequest = (
+const answerRequest = Effect.fnUntraced(function* (
   connection: OpenCodeConnection,
   request: TurnRequest,
-  incoming: Extract<Incoming, { _tag: "Request" }>,
+  incoming: Extract<RpcIncoming, { _tag: "Request" }>,
   refusals: Array<string>,
-) =>
-  Effect.gen(function* () {
-    if (incoming.method !== "session/request_permission")
-      return connection.rpc.respondError(incoming.id, `Outlore does not answer ${incoming.method}.`);
-    const toolCall = fieldOf(incoming.params, "toolCall");
-    // Nothing runs unasked on an assumption: the executor must be seen below the wrapped process, or it asks.
-    const isUnconfirmed = connection.isContainmentUnconfirmed();
-    let isAllowed = !isUnconfirmed && !connection.isUnsandboxed && (yield* isUnaskedEdit(request, toolCall));
-    if (!isAllowed) {
-      // An edit naming no file is judged as leaving the folder: its title is no path to trust.
-      const isPathless = textFieldOf(toolCall, "kind") === "edit" && editedPathsOf(toolCall).length === 0;
-      const prompt = {
-        ...promptOf(toolCall, yield* firstOutsideOf(request, toolCall)),
-        ...(isUnconfirmed || isPathless ? { isOutsideSandbox: true } : {}),
-        ...(connection.isUnsandboxed ? { isUnsandboxed: true } : {}),
-      };
-      const answer = yield* request.askOwner(prompt);
-      isAllowed = answer.isAllowed;
-      if (!isAllowed) refusals.push(refusalOf(prompt, answer));
-    }
-    const wanted = isAllowed ? "allow_once" : "reject_once";
-    const offered = fieldOf(incoming.params, "options");
-    const option = Array.isArray(offered)
-      ? offered.find((candidate) => textFieldOf(candidate, "kind") === wanted)
-      : undefined;
-    const optionId = textFieldOf(option, "optionId");
-    connection.rpc.respond(
-      incoming.id,
-      optionId === null ? { outcome: { outcome: "cancelled" } } : { outcome: { optionId, outcome: "selected" } },
-    );
-  });
+) {
+  if (incoming.method !== "session/request_permission")
+    return connection.rpc.respondError(incoming.id, `Outlore does not answer ${incoming.method}.`);
+  const toolCall = fieldOf(incoming.params, "toolCall");
+  // Nothing runs unasked on an assumption: the executor must be seen below the wrapped process, or it asks.
+  const isUnconfirmed = connection.isContainmentUnconfirmed();
+  let isAllowed = !isUnconfirmed && !connection.isUnsandboxed && (yield* isUnaskedEdit(request, toolCall));
+  if (!isAllowed) {
+    // An edit naming no file is judged as leaving the folder: its title is no path to trust.
+    const isPathless = textFieldOf(toolCall, "kind") === "edit" && editedPathsOf(toolCall).length === 0;
+    const prompt = {
+      ...promptOf(toolCall, yield* firstOutsideOf(request, toolCall)),
+      ...(isUnconfirmed || isPathless ? { isOutsideSandbox: true } : {}),
+      ...(connection.isUnsandboxed ? { isUnsandboxed: true } : {}),
+    };
+    const answer = yield* request.askOwner(prompt);
+    isAllowed = answer.isAllowed;
+    if (!isAllowed) refusals.push(refusalOf(prompt, answer));
+  }
+  const wanted = isAllowed ? "allow_once" : "reject_once";
+  const offered = fieldOf(incoming.params, "options");
+  const option = Array.isArray(offered)
+    ? (offered.find((candidate) => textFieldOf(candidate, "kind") === wanted) ?? null)
+    : null;
+  const optionId = textFieldOf(option, "optionId");
+  connection.rpc.respond(
+    incoming.id,
+    optionId === null ? { outcome: { outcome: "cancelled" } } : { outcome: { optionId, outcome: "selected" } },
+  );
+});
 
 /**
  * Runs one turn as OpenCode prompts. OpenCode 2.2.0 cancels its whole prompt when a permission is rejected, and
@@ -237,103 +229,112 @@ const answerRequest = (
  * refusals then start another prompt, so the thread carries on without the action as on the other harnesses
  * (action-approval, Asking). An interrupt ends the turn instead.
  */
-const runPrompts = (connection: OpenCodeConnection, request: TurnRequest, turn: PooledTurn) =>
-  Effect.gen(function* () {
-    const refusals: Array<string> = [];
-    // A session that replaced one OpenCode could not load is first given the thread's conversation so far.
-    const notes = connection.handoverNotes;
-    connection.handoverNotes = null;
-    let text = notes === null ? turnMessageOf(request) : `${notes}\n\n${turnMessageOf(request)}`;
-    let isFirst = true;
-    let usage: TokenUsage | null = null;
-    for (;;) {
-      const end = yield* readPrompt(connection, request, turn, text, isFirst, refusals);
-      isFirst = false;
-      usage = addUsage(usage, end.usage);
-      turn.reportUsage(usage);
-      if (!end.isCancelled || refusals.length === 0 || turn.isInterrupting())
-        // The latest prompt's own usage stands for the context: the sum covers every prompt of the turn.
-        return { context: contextOf(end.usage), isInterrupted: end.isCancelled, usage };
-      text = refusals.splice(0).join("\n");
-    }
-  });
+const runPrompts = Effect.fnUntraced(function* (
+  connection: OpenCodeConnection,
+  request: TurnRequest,
+  turn: PooledTurn,
+) {
+  const refusals: Array<string> = [];
+  // A session that replaced one OpenCode could not load is first given the thread's conversation so far.
+  const notes = connection.handoverNotes;
+  connection.handoverNotes = null;
+  let text = notes === null ? turnMessageOf(request) : `${notes}\n\n${turnMessageOf(request)}`;
+  let isFirst = true;
+  let usage: TokenUsage | null = null;
+  for (;;) {
+    const end = yield* readPrompt(connection, request, turn, text, isFirst, refusals);
+    isFirst = false;
+    usage = addUsage(usage, end.usage);
+    turn.reportUsage(usage);
+    if (!end.isCancelled || refusals.length === 0 || turn.isInterrupting())
+      // The latest prompt's own usage stands for the context: the sum covers every prompt of the turn.
+      return { context: contextOf(end.usage), isInterrupted: end.isCancelled, usage };
+    text = refusals.splice(0).join("\n");
+  }
+});
 
 /** Reads one prompt's updates until its answer, saying whether OpenCode cancelled it. */
-const readPrompt = (
+const readPrompt = Effect.fnUntraced(function* (
   connection: OpenCodeConnection,
   request: TurnRequest,
   turn: PooledTurn,
   text: string,
   isFirst: boolean,
   refusals: Array<string>,
-) =>
-  Effect.gen(function* () {
-    const answer = yield* Deferred.make<Result.Result<unknown, HarnessFailure>>();
-    // The turn's images go with its first prompt only: a later prompt carries the refusals as text.
-    const images = isFirst ? yield* readImages(request.images) : [];
-    yield* Effect.forkChild(
-      connection.rpc
-        .request("session/prompt", {
-          prompt: [
-            { text, type: "text" },
-            ...images.map((image) => ({ data: image.data, mimeType: image.mediaType, type: "image" })),
-          ],
-          sessionId: connection.sessionId,
-        })
-        .pipe(
-          Effect.result,
-          Effect.flatMap((result) => Deferred.succeed(answer, result)),
-        ),
-    );
+) {
+  const answer = yield* Deferred.make<Result.Result<unknown, HarnessFailure>>();
+  // The turn's images go with its first prompt only: a later prompt carries the refusals as text.
+  const images = isFirst ? yield* readImages(request.images) : [];
+  yield* Effect.forkChild(
+    connection.rpc
+      .request("session/prompt", {
+        prompt: [
+          { text, type: "text" },
+          ...images.map((image) => ({ data: image.data, mimeType: image.mediaType, type: "image" })),
+        ],
+        sessionId: connection.sessionId,
+      })
+      .pipe(
+        Effect.result,
+        Effect.flatMap((result) => Deferred.succeed(answer, result)),
+      ),
+  );
 
-    let draft = "";
-    /** A reply is complete once OpenCode moves on from writing it, such as to a tool call. */
-    const finishDraft = Effect.suspend(() => {
-      const text = draft;
-      draft = "";
-      return text.trim() === "" ? Effect.void : request.onEvent({ _tag: "Reply", text });
-    });
-    const read = (incoming: Incoming) =>
-      Effect.gen(function* () {
-        if (incoming._tag === "Exit") return yield* new HarnessFailure({ reason: incoming.reason });
-        if (incoming._tag === "Request")
-          return yield* turn.fork(answerRequest(connection, request, incoming, refusals));
-        if (incoming.method !== "session/update") return;
-        if (textFieldOf(incoming.params, "sessionId") !== connection.sessionId) return;
-        const update = fieldOf(incoming.params, "update");
-        const kind = textFieldOf(update, "sessionUpdate");
-        if (kind === "agent_message_chunk") {
-          draft += textFieldOf(fieldOf(update, "content"), "text") ?? "";
-          yield* request.onEvent({ _tag: "Draft", text: draft });
-        } else if (kind === "tool_call") {
-          yield* finishDraft;
-        }
-      });
-
-    for (;;) {
-      const next = yield* Effect.raceFirst(
-        Queue.take(connection.rpc.incoming).pipe(Effect.map(Option.some)),
-        Deferred.await(answer).pipe(Effect.as(Option.none<Incoming>())),
-      );
-      if (Option.isSome(next)) {
-        yield* read(next.value);
-        continue;
-      }
-      // The answer arrives after the updates sent before it, which are read first.
-      for (const incoming of yield* Queue.clear(connection.rpc.incoming)) yield* read(incoming);
+  let draft = "";
+  /** A reply is complete once OpenCode moves on from writing it, such as to a tool call. */
+  const finishDraft = Effect.suspend(() => {
+    const text = draft;
+    draft = "";
+    return text.trim() === "" ? Effect.void : request.onEvent({ _tag: "Reply", text });
+  });
+  const read = Effect.fnUntraced(function* (incoming: RpcIncoming) {
+    if (incoming._tag === "Exit") return yield* new HarnessFailure({ reason: incoming.reason });
+    if (incoming._tag === "Request") return yield* turn.fork(answerRequest(connection, request, incoming, refusals));
+    if (incoming.method !== "session/update") return;
+    if (textFieldOf(incoming.params, "sessionId") !== connection.sessionId) return;
+    const update = fieldOf(incoming.params, "update");
+    const kind = textFieldOf(update, "sessionUpdate");
+    if (kind === "agent_message_chunk") {
+      draft += textFieldOf(fieldOf(update, "content"), "text") ?? "";
+      yield* request.onEvent({ _tag: "Draft", text: draft });
+    } else if (kind === "tool_call") {
       yield* finishDraft;
-      const result = yield* Deferred.await(answer);
-      if (Result.isFailure(result)) return yield* result.failure;
-      const stopReason = textFieldOf(result.success, "stopReason");
-      return { isCancelled: stopReason === "cancelled", usage: usageOf(fieldOf(result.success, "usage")) };
     }
   });
+
+  for (;;) {
+    const next = yield* Effect.raceFirst(
+      Queue.take(connection.rpc.incoming).pipe(Effect.map(Option.some)),
+      Deferred.await(answer).pipe(Effect.as(Option.none<RpcIncoming>())),
+    );
+    if (Option.isSome(next)) {
+      yield* read(next.value);
+      continue;
+    }
+    // The answer arrives after the updates sent before it, which are read first.
+    for (const incoming of yield* Queue.clear(connection.rpc.incoming)) yield* read(incoming);
+    yield* finishDraft;
+    const result = yield* Deferred.await(answer);
+    if (Result.isFailure(result)) return yield* result.failure;
+    const stopReason = textFieldOf(result.success, "stopReason");
+    return { isCancelled: stopReason === "cancelled", usage: usageOf(fieldOf(result.success, "usage")) };
+  }
+});
 
 /** The line a thread shows when OpenCode, now in its sandbox, could not pick up the thread's earlier session. */
 const lostSessionNote =
   "OpenCode could not pick up this thread's earlier conversation: it was saved in OpenCode's own folder, which " +
   "OpenCode cannot read now that it runs in Outlore's sandbox. The thread carries on in a new OpenCode conversation, " +
   "which was given the thread's handover notes: its conversation so far, as when a thread changes harness.";
+
+/** Sets one of the session's config options, closing the process and naming the refusal if OpenCode will not. */
+const setSessionOption = (rpc: RpcProcess, sessionId: string, configId: string, value: string) =>
+  rpc.request("session/set_config_option", { configId, sessionId, value }).pipe(
+    Effect.tapError(() => Effect.sync(() => rpc.close())),
+    Effect.mapError(
+      (failure) => new HarnessFailure({ reason: `OpenCode refused the ${configId} ${value}: ${failure.reason}` }),
+    ),
+  );
 
 /** OpenCode's ACP protocol: one ACP session per Outlore thread, one prompt per turn. */
 const openCodeProtocolOf = (options: OpenCodeOptions): HarnessProtocol<OpenCodeConnection> => {
@@ -356,29 +357,28 @@ const openCodeProtocolOf = (options: OpenCodeOptions): HarnessProtocol<OpenCodeC
    * new session is given the thread's conversation so far with its first prompt, as after a handover. Unsandboxed, a
    * session that cannot load fails the turn as before.
    */
-  const openSession = (rpc: RpcProcess, request: TurnRequest, isSandboxed: boolean) =>
-    Effect.gen(function* () {
-      yield* rpc.request("initialize", {
-        clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
-        protocolVersion: 1,
-      });
-      if (request.sessionId !== null) {
-        const loaded = yield* rpc
-          .request("session/load", { cwd: request.cwd, mcpServers: [], sessionId: request.sessionId })
-          .pipe(Effect.result);
-        // Loading replays the conversation as updates, which are not this turn's: they are dropped.
-        yield* Queue.clear(rpc.incoming);
-        if (Result.isSuccess(loaded)) return { handoverNotes: null, sessionId: request.sessionId };
-        if (!isSandboxed || rpc.hasExited()) return yield* loaded.failure;
-        const created = yield* rpc.request("session/new", { cwd: request.cwd, mcpServers: [] });
-        const sessionId = textFieldOf(created, "sessionId");
-        if (sessionId === null) return { handoverNotes: null, sessionId };
-        yield* request.onEvent({ _tag: "Notice", text: lostSessionNote });
-        return { handoverNotes: yield* request.conversationSoFar, sessionId };
-      }
-      const created = yield* rpc.request("session/new", { cwd: request.cwd, mcpServers: [] });
-      return { handoverNotes: null, sessionId: textFieldOf(created, "sessionId") };
+  const openSession = Effect.fnUntraced(function* (rpc: RpcProcess, request: TurnRequest, isSandboxed: boolean) {
+    yield* rpc.request("initialize", {
+      clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
+      protocolVersion: 1,
     });
+    if (request.sessionId !== null) {
+      const loaded = yield* rpc
+        .request("session/load", { cwd: request.cwd, mcpServers: [], sessionId: request.sessionId })
+        .pipe(Effect.result);
+      // Loading replays the conversation as updates, which are not this turn's: they are dropped.
+      yield* Queue.clear(rpc.incoming);
+      if (Result.isSuccess(loaded)) return { handoverNotes: null, sessionId: request.sessionId };
+      if (!isSandboxed || rpc.hasExited()) return yield* loaded.failure;
+      const created = yield* rpc.request("session/new", { cwd: request.cwd, mcpServers: [] });
+      const sessionId = textFieldOf(created, "sessionId");
+      if (sessionId === null) return { handoverNotes: null, sessionId };
+      yield* request.onEvent({ _tag: "Notice", text: lostSessionNote });
+      return { handoverNotes: yield* request.conversationSoFar, sessionId };
+    }
+    const created = yield* rpc.request("session/new", { cwd: request.cwd, mcpServers: [] });
+    return { handoverNotes: null, sessionId: textFieldOf(created, "sessionId") };
+  });
 
   return {
     interrupt: (connection) =>
@@ -401,51 +401,32 @@ const openCodeProtocolOf = (options: OpenCodeOptions): HarnessProtocol<OpenCodeC
 
     runTurn: runPrompts,
 
-    start: (request) =>
-      Effect.gen(function* () {
-        const instructionsPath = yield* writeInstructions(request);
-        const { isContainmentUnconfirmed, isSandboxed, isUnsandboxed, rpc } = yield* launch(
-          request,
-          JSON.stringify(configOf(request.access, instructionsPath)),
-        );
-        const { handoverNotes, sessionId } = yield* openSession(rpc, request, isSandboxed).pipe(
-          Effect.tapError(() => Effect.sync(() => rpc.close())),
-        );
-        if (sessionId === null) {
-          rpc.close();
-          return yield* new HarnessFailure({ reason: "OpenCode started no session." });
-        }
-        if (request.model !== "default") {
-          yield* rpc.request("session/set_config_option", { configId: "model", sessionId, value: request.model }).pipe(
-            Effect.tapError(() => Effect.sync(() => rpc.close())),
-            Effect.mapError(
-              (failure) =>
-                new HarnessFailure({ reason: `OpenCode refused the model ${request.model}: ${failure.reason}` }),
-            ),
-          );
-        }
-        // The effort is an option of the session's model, chosen after it (its variant).
-        if (request.effort !== "default") {
-          yield* rpc
-            .request("session/set_config_option", { configId: "effort", sessionId, value: request.effort })
-            .pipe(
-              Effect.tapError(() => Effect.sync(() => rpc.close())),
-              Effect.mapError(
-                (failure) =>
-                  new HarnessFailure({ reason: `OpenCode refused the effort ${request.effort}: ${failure.reason}` }),
-              ),
-            );
-        }
-        return {
-          close: rpc.close,
-          handoverNotes,
-          hasExited: rpc.hasExited,
-          isContainmentUnconfirmed,
-          isUnsandboxed,
-          rpc,
-          sessionId,
-        } satisfies OpenCodeConnection;
-      }),
+    start: Effect.fnUntraced(function* (request: TurnRequest) {
+      const instructionsPath = yield* writeInstructions(request);
+      const { isContainmentUnconfirmed, isSandboxed, isUnsandboxed, rpc } = yield* launch(
+        request,
+        JSON.stringify(configOf(request.access, instructionsPath)),
+      );
+      const { handoverNotes, sessionId } = yield* openSession(rpc, request, isSandboxed).pipe(
+        Effect.tapError(() => Effect.sync(() => rpc.close())),
+      );
+      if (sessionId === null) {
+        rpc.close();
+        return yield* new HarnessFailure({ reason: "OpenCode started no session." });
+      }
+      if (request.model !== "default") yield* setSessionOption(rpc, sessionId, "model", request.model);
+      // The effort is an option of the session's model, chosen after it (its variant).
+      if (request.effort !== "default") yield* setSessionOption(rpc, sessionId, "effort", request.effort);
+      return {
+        close: rpc.close,
+        handoverNotes,
+        hasExited: rpc.hasExited,
+        isContainmentUnconfirmed,
+        isUnsandboxed,
+        rpc,
+        sessionId,
+      } satisfies OpenCodeConnection;
+    }),
 
     /** ACP takes no message into a running prompt: a steered message waits for the next turn. */
     steer: () => Effect.succeed(false),
@@ -538,7 +519,7 @@ export const makeOpenCodeHarness = (options: OpenCodeOptions) =>
   Effect.map(
     Effect.andThen(
       Effect.promise(async () => {
-        const sandbox = options.sandbox ?? null;
+        const sandbox = options.sandbox;
         if (sandbox === null) return;
         const left = await sweepOrphans(ownerMarkerOf(sandbox));
         if (left.length > 0) console.error(`OpenCode: lost processes still running: ${left.join(", ")}`);
@@ -548,7 +529,7 @@ export const makeOpenCodeHarness = (options: OpenCodeOptions) =>
     (adapter) =>
       ({
         ...adapter,
-        containmentOf: (): Containment => ((options.sandbox ?? null) === null ? "Unprotected" : "Sandboxed"),
+        containmentOf: (): Containment => (options.sandbox === null ? "Unprotected" : "Sandboxed"),
         readPlanLimits: (_harness, configDirectory) => readOpenCodePlanLimits(options, configDirectory),
       }) satisfies HarnessAdapter,
   );

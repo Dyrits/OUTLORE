@@ -4,8 +4,8 @@ import { decodeBase64Url, encodeBase64Url } from "./base64url.ts";
 import { fail, type Result, succeed } from "./result.ts";
 
 export const pairingCodePrefix = "outlore1-";
-export const publicKeyBytes = 32;
-export const roomBytes = 16;
+const publicKeyBytes = 32;
+const roomBytes = 16;
 export const pairingSecretBytes = 16;
 const checksumBytes = 4;
 const maxOriginBytes = 255;
@@ -14,14 +14,14 @@ const roomPattern = /^[0-9a-f]{32}$/;
 const versionPattern = /^outlore(\d+)-/;
 
 /** What a host puts in a pairing code and a device reads out of it. */
-export interface PairingCode {
+export type PairingCode = {
   hostPublicKey: Uint8Array;
   relayOrigin: string;
   /** Lowercase hex of 16 random bytes, chosen by the host. */
   room: string;
   /** One-time secret, 16 random bytes, that proves the device saw the code. */
   secret: Uint8Array;
-}
+};
 
 export type PairingCodeErrorKind = "malformed" | "unsupported-version" | "bad-checksum";
 

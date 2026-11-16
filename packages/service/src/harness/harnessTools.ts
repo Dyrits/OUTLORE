@@ -6,7 +6,7 @@ import { Clock, Context, Effect, Layer } from "effect";
 import { invalid, type ServiceFailure, textFieldOf } from "../core/index.ts";
 import { accountEnvironmentOf, harnessFacts } from "./harnessCatalog.ts";
 import { harnesses } from "./harnesses.ts";
-import { installHarnessPackage } from "./harnessInstallation.ts";
+import { installHarnessPackage, updateTimeoutMillis } from "./harnessInstallation.ts";
 import { updateOf } from "./harnessVersions.ts";
 import { runHarnessCommand } from "./lineProcess.ts";
 
@@ -15,16 +15,16 @@ import { runHarnessCommand } from "./lineProcess.ts";
 // with provider terms). Outlore never reads or stores the credentials.
 
 /** Who a harness says is signed in to one account's folder. */
-export interface SignInStatus {
+export type SignInStatus = {
   readonly detail: string | null;
   readonly signIn: SignInState;
-}
+};
 
 /** A harness's installed version, or why it cannot run. */
-export interface Installation {
+export type Installation = {
   readonly problem: string | null;
   readonly version: string | null;
-}
+};
 
 /** The seam to the harnesses' own tools for everything but turns. */
 export class HarnessTools extends Context.Service<
@@ -71,9 +71,6 @@ const effortWarmingConcurrency = 2;
 /** How long the newest release is reused before the registry is asked again. */
 const latestLifetimeMillis = 30 * 60 * 1000;
 
-/** How long a harness's own update command may run. */
-const updateTimeoutMillis = 5 * 60 * 1000;
-
 /** Reads each tool's own status command; nothing here sees a credential. */
 export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
   Layer.sync(HarnessTools, () => {
@@ -104,33 +101,31 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
         return response.ok ? textFieldOf(body, "version") : null;
       }).pipe(Effect.catch(() => Effect.succeed(null)));
 
-    const findUpdate = (harness: HarnessName, installed: string | null) =>
-      Effect.gen(function* () {
-        const now = yield* Clock.currentTimeMillis;
-        const cached = latest.get(harness);
-        if (cached !== undefined && now - cached.at < latestLifetimeMillis) return updateOf(installed, cached.version);
-        const version = yield* readLatest(harness);
-        // A failed read is not kept, so the next listing asks again.
-        if (version !== null) latest.set(harness, { at: now, version });
-        return updateOf(installed, version);
-      });
+    const findUpdate = Effect.fnUntraced(function* (harness: HarnessName, installed: string | null) {
+      const now = yield* Clock.currentTimeMillis;
+      const cached = latest.get(harness);
+      if (cached !== undefined && now - cached.at < latestLifetimeMillis) return updateOf(installed, cached.version);
+      const version = yield* readLatest(harness);
+      // A failed read is not kept, so the next listing asks again.
+      if (version !== null) latest.set(harness, { at: now, version });
+      return updateOf(installed, version);
+    });
 
-    const update = (harness: HarnessName) =>
-      Effect.gen(function* () {
-        const label = harnessFacts[harness].label;
-        const run = yield* runHarnessCommand(
-          commands[harness],
-          harnessFacts[harness].updateArgs,
-          {},
-          updateTimeoutMillis,
+    const update = Effect.fnUntraced(function* (harness: HarnessName) {
+      const label = harnessFacts[harness].label;
+      const run = yield* runHarnessCommand(
+        commands[harness],
+        harnessFacts[harness].updateArgs,
+        {},
+        updateTimeoutMillis,
+      );
+      if (run.code !== 0) {
+        const reason = run.output.trim().split("\n").slice(-3).join(" ");
+        return yield* invalid(
+          `${label} did not update${run.code === null ? " (it timed out or could not run)" : ""}. ${reason}`.trim(),
         );
-        if (run.code !== 0) {
-          const reason = run.output.trim().split("\n").slice(-3).join(" ");
-          return yield* invalid(
-            `${label} did not update${run.code === null ? " (it timed out or could not run)" : ""}. ${reason}`.trim(),
-          );
-        }
-      });
+      }
+    });
 
     const readSignIn = (harness: HarnessName, configDirectory: string | null) =>
       harnesses[harness].readSignIn(commands[harness], accountEnvironmentOf(harness, configDirectory));
@@ -205,34 +200,33 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
         ).pipe(Effect.ensuring(Effect.sync(() => warming.delete(prefix))));
       });
 
-    const openSignIn = (harness: HarnessName, configDirectory: string | null) =>
-      Effect.gen(function* () {
-        const command = [quoted(commands[harness]), ...harnessFacts[harness].signInArgs].join(" ");
-        const variable = harnessFacts[harness].configVariable;
-        const line = configDirectory === null ? command : `${variable}=${quoted(configDirectory)} ${command}`;
-        if (process.platform !== "darwin") return yield* invalid(`Open a terminal on this computer and run: ${line}`);
-        // A .command file opens in Terminal, which runs the harness's own sign-in where the owner answers it.
-        const folder = join(tmpdir(), "outlore-sign-in");
-        const script = join(folder, `${harness}-${crypto.randomUUID()}.command`);
-        yield* Effect.sync(() => {
-          mkdirSync(folder, { recursive: true });
-          const exports = configDirectory === null ? [] : [`export ${variable}=${quoted(configDirectory)}`];
-          writeFileSync(
-            script,
-            [
-              "#!/bin/sh",
-              `echo ${quoted(`Signing in to ${harnessFacts[harness].label} for Outlore. Close this window when done.`)}`,
-              ...exports,
-              command,
-              `rm -f ${quoted(script)}`,
-              "",
-            ].join("\n"),
-          );
-          chmodSync(script, 0o755);
-        });
-        const opened = yield* runHarnessCommand("open", [script], {});
-        if (opened.code !== 0) return yield* invalid(`Could not open a terminal. Run this yourself: ${line}`);
+    const openSignIn = Effect.fnUntraced(function* (harness: HarnessName, configDirectory: string | null) {
+      const command = [quoted(commands[harness]), ...harnessFacts[harness].signInArgs].join(" ");
+      const variable = harnessFacts[harness].configVariable;
+      const line = configDirectory === null ? command : `${variable}=${quoted(configDirectory)} ${command}`;
+      if (process.platform !== "darwin") return yield* invalid(`Open a terminal on this computer and run: ${line}`);
+      // A .command file opens in Terminal, which runs the harness's own sign-in where the owner answers it.
+      const folder = join(tmpdir(), "outlore-sign-in");
+      const script = join(folder, `${harness}-${crypto.randomUUID()}.command`);
+      yield* Effect.sync(() => {
+        mkdirSync(folder, { recursive: true });
+        const exports = configDirectory === null ? [] : [`export ${variable}=${quoted(configDirectory)}`];
+        writeFileSync(
+          script,
+          [
+            "#!/bin/sh",
+            `echo ${quoted(`Signing in to ${harnessFacts[harness].label} for Outlore. Close this window when done.`)}`,
+            ...exports,
+            command,
+            `rm -f ${quoted(script)}`,
+            "",
+          ].join("\n"),
+        );
+        chmodSync(script, 0o755);
       });
+      const opened = yield* runHarnessCommand("open", [script], {});
+      if (opened.code !== 0) return yield* invalid(`Could not open a terminal. Run this yourself: ${line}`);
+    });
 
     return {
       findUpdate,
@@ -247,10 +241,10 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
   });
 
 /** Which harnesses the fake offers an update to, by newer version, and the harnesses it has updated since. */
-export interface FakeUpdates {
+export type FakeUpdates = {
   readonly available: Partial<Record<HarnessName, string>>;
   readonly updated: Array<HarnessName>;
-}
+};
 
 /** Every harness installed and signed in, with fixed models and no update; sign-ins and updates are recorded, for checks. */
 export const fakeHarnessToolsLayer = (

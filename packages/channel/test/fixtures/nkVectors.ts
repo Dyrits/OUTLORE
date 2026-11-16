@@ -3,7 +3,7 @@
  *
  * Noise_NK_25519_ChaChaPoly_SHA256 test vectors from noise-c (cacophony.txt and noise-c-basic.txt), as Paseo keeps them.
  */
-export interface NkVector {
+export type NkVector = {
   handshakeHash: string | null;
   initiatorEphemeral: string;
   initiatorPrologue: string;
@@ -13,7 +13,7 @@ export interface NkVector {
   responderStatic: string;
   responderStaticPublic: string;
   source: string;
-}
+};
 
 const payloads = [
   "4c756477696720766f6e204d69736573",

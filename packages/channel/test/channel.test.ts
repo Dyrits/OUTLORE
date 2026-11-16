@@ -1,16 +1,9 @@
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  type Carrier,
-  defaultHandshakeTimeoutMs,
-  fragmentBytes,
-  generateKeyPair,
-  maxMessageBytes,
-  openInitiator,
-  openResponder,
-  type SecureChannel,
-} from "../src/index.ts";
+import { defaultHandshakeTimeoutMs } from "../src/channel.ts";
+import { type Carrier, generateKeyPair, openInitiator, openResponder, type SecureChannel } from "../src/index.ts";
 import { createNoiseInitiator, type TransportKeys } from "../src/noise/index.ts";
+import { fragmentBytes, maxMessageBytes } from "../src/secureChannel.ts";
 import { fakeCarrierPair, type Interference, settle, silentCarrier } from "./fixtures/fakeCarrier.ts";
 
 const prologue = new TextEncoder().encode("room-1");
@@ -30,7 +23,11 @@ const connect = async (interference: { fromFirst?: Interference; fromSecond?: In
 
 /** Records what a channel delivers and whether it closed. */
 const watch = (channel: SecureChannel) => {
-  const seen = { closes: 0, messages: [] as Uint8Array[], texts: [] as string[] };
+  const seen: { closes: number; messages: Array<Uint8Array>; texts: Array<string> } = {
+    closes: 0,
+    messages: [],
+    texts: [],
+  };
   channel.onMessage((data) => seen.messages.push(data));
   channel.onClose(() => {
     seen.closes += 1;
@@ -39,7 +36,7 @@ const watch = (channel: SecureChannel) => {
 };
 
 const watchText = (channel: SecureChannel) => {
-  const seen = { closes: 0, texts: [] as string[] };
+  const seen: { closes: number; texts: Array<string> } = { closes: 0, texts: [] };
   channel.onText((text) => seen.texts.push(text));
   channel.onClose(() => {
     seen.closes += 1;

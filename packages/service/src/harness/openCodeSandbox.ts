@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { packageCacheFolders } from "./claudeArgs.ts";
 
 // OpenCode has no sandbox of its own, so Outlore starts `opencode acp` inside the host's (CHG-0208): Seatbelt through
 // `sandbox-exec` on macOS, bubblewrap on Linux. Writes are allowed only to the thread's folder, the package caches, and
@@ -13,7 +14,7 @@ import { join } from "node:path";
 // read, is never writable from inside, so nothing planted there runs outside the sandbox.
 
 /** How OpenCode is wrapped on this host. */
-export interface OpenCodeSandbox {
+export type OpenCodeSandbox = {
   /** Folders commands may also write, such as package caches. */
   readonly caches: ReadonlyArray<string>;
   /** The sandbox tool: `/usr/bin/sandbox-exec` or `bwrap`. */
@@ -28,15 +29,10 @@ export interface OpenCodeSandbox {
    * of its own; the folder itself, holding the process marker, is not writable from inside.
    */
   readonly root: string;
-}
+};
 
 /** The package caches a wrapped OpenCode's commands may write, as the Claude Code sandbox allows them (claudeArgs.ts). */
-export const packageCachesOf = (home: string) => [
-  join(home, ".bun", "install", "cache"),
-  join(home, ".npm"),
-  join(home, "Library", "Caches", "electron"),
-  join(home, ".cache", "electron"),
-];
+export const packageCachesOf = (home: string) => packageCacheFolders.map((folder) => join(home, folder));
 
 const whichOf = (name: string) => {
   try {

@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
+import { Predicate } from "effect";
 
 // Ending a harness's whole process tree (CHG-0208). OpenCode's `acp` starts its own `serve` child, which moves its
 // children into other process groups: a signal to the root or its group can leave an orphan running (probe of
@@ -68,7 +69,7 @@ const isAlive = (pid: number) => {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM";
+    return Predicate.hasProperty(error, "code") && error.code === "EPERM";
   }
 };
 
@@ -120,17 +121,17 @@ export const killProcessTree = async (root: number, graceMillis = 2000, isGroupL
 };
 
 /** The environment variable that marks every sandboxed process the service starts, and its value (sweepOrphans). */
-export interface ProcessMarker {
+export type ProcessMarker = {
   readonly name: string;
   readonly value: string;
-}
+};
 
 /** A running process carrying a marker: its id, its parent, and its command line without the environment. */
-export interface MarkedProcess {
+export type MarkedProcess = {
   readonly command: string;
   readonly pid: number;
   readonly ppid: number;
-}
+};
 
 /** The token a process's environment holds when it carries the marker, matched whole. */
 const tokenOf = (marker: ProcessMarker) => `${marker.name}=${marker.value}`;

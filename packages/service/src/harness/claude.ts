@@ -11,6 +11,7 @@ import {
   type PlanLimitReport,
   type PlanLimitsReport,
   readImages,
+  type TurnRequest,
   textFieldOf,
   turnMessageOf,
 } from "../core/index.ts";
@@ -32,7 +33,12 @@ import {
   usageOf,
 } from "./claudeEvents.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
-import { type HarnessConnection, type HarnessProtocol, makeHarnessProcesses } from "./harnessProcesses.ts";
+import {
+  type HarnessConnection,
+  type HarnessProtocol,
+  makeHarnessProcesses,
+  type PooledTurn,
+} from "./harnessProcesses.ts";
 import {
   harnessEnvironmentOf,
   runHarnessCommand,
@@ -45,14 +51,14 @@ import { threadWorktreesOf } from "./worktrees.ts";
 // Claude Code through `claude -p` in stream-json mode (ADR 0008; CHG-0027): one process per thread.
 
 /** How the Claude Code adapter starts its harness. */
-export interface ClaudeOptions extends AccessOptions {
+export type ClaudeOptions = AccessOptions & {
   /** The executable; `claude` on the PATH by default. */
   readonly command: string;
   /** How long an idle thread keeps its process. */
   readonly idleTimeout: Duration.Input;
   /** Arguments placed before Claude Code's own, used to run a stand-in script in checks. */
   readonly prefixArgs?: ReadonlyArray<string>;
-}
+};
 
 interface ClaudeConnection extends HarnessConnection {
   /** How the process was signed in, from the init event; Unknown until it reports (budget-control, Billing kind). */
@@ -63,7 +69,10 @@ interface ClaudeConnection extends HarnessConnection {
 }
 
 /** The plan windows Claude Code reports in a `rate_limit_event`, by name, with their length in minutes. */
-const planWindowMinutes = { five_hour: 300, seven_day: 10_080 } as const;
+const planWindows = [
+  { minutes: 300, name: "five_hour" },
+  { minutes: 10_080, name: "seven_day" },
+] as const;
 
 /**
  * The plan limits a `rate_limit_event` carries (probe of 2026-11-12, Claude Code 2.1.322): `unifiedWindows` holds the
@@ -72,22 +81,20 @@ const planWindowMinutes = { five_hour: 300, seven_day: 10_080 } as const;
 export const planLimitsOf = (event: unknown, billing: BillingKind): PlanLimitsReport | null => {
   const windows = fieldOf(fieldOf(event, "rate_limit_info"), "unifiedWindows");
   if (typeof windows !== "object" || windows === null) return null;
-  const reported = (Object.keys(planWindowMinutes) as Array<keyof typeof planWindowMinutes>).flatMap(
-    (name): Array<PlanLimitReport> => {
-      const window = fieldOf(windows, name);
-      const utilization = fieldOf(window, "utilization");
-      const resetsAt = fieldOf(window, "resetsAt");
-      return typeof utilization === "number" && typeof resetsAt === "number"
-        ? [
-            {
-              resetsAtSeconds: resetsAt,
-              usedPercent: Math.round(utilization * 1000) / 10,
-              windowMinutes: planWindowMinutes[name],
-            },
-          ]
-        : [];
-    },
-  );
+  const reported = planWindows.flatMap(({ minutes, name }): Array<PlanLimitReport> => {
+    const window = fieldOf(windows, name);
+    const utilization = fieldOf(window, "utilization");
+    const resetsAt = fieldOf(window, "resetsAt");
+    return typeof utilization === "number" && typeof resetsAt === "number"
+      ? [
+          {
+            resetsAtSeconds: resetsAt,
+            usedPercent: Math.round(utilization * 1000) / 10,
+            windowMinutes: minutes,
+          },
+        ]
+      : [];
+  });
   return reported.length === 0 ? null : { billing, windows: reported };
 };
 
@@ -104,18 +111,17 @@ const childEnvironment = (configDirectory: string | null) =>
   harnessEnvironmentOf({ ...accountEnvironmentOf("claude", configDirectory), MCP_TOOL_TIMEOUT: String(noTimeLimit) });
 
 /** A user message's content: the text alone, or the text then one base64 image block per image (message-attachments). */
-const contentOf = (text: string, images: ReadonlyArray<ImageAttachment>) =>
-  Effect.gen(function* () {
-    if (images.length === 0) return text;
-    const read = yield* readImages(images);
-    return [
-      { text, type: "text" },
-      ...read.map((image) => ({
-        source: { data: image.data, media_type: image.mediaType, type: "base64" },
-        type: "image",
-      })),
-    ];
-  });
+const contentOf = Effect.fnUntraced(function* (text: string, images: ReadonlyArray<ImageAttachment>) {
+  if (images.length === 0) return text;
+  const read = yield* readImages(images);
+  return [
+    { text, type: "text" },
+    ...read.map((image) => ({
+      source: { data: image.data, media_type: image.mediaType, type: "base64" },
+      type: "image",
+    })),
+  ];
+});
 
 /** Claude Code's protocol: a user message per turn, read until its result. */
 const claudeProtocolOf = (
@@ -145,117 +151,116 @@ const claudeProtocolOf = (
       request.model,
     ]),
 
-  runTurn: (connection, request, turn) =>
-    Effect.gen(function* () {
-      const content = yield* contentOf(turnMessageOf(request), request.images);
-      connection.process.write({ message: { content, role: "user" }, type: "user" });
-      let draft = "";
-      let reportedError: string | null = null;
-      // The latest call's own usage is the context then; the result's usage sums every call of the turn.
-      let context: number | null = null;
-      for (;;) {
-        const item = yield* Queue.take(connection.process.incoming);
-        if (item._tag === "Exit") return yield* new HarnessFailure({ reason: item.reason });
-        const event = item.message;
-        const type = textFieldOf(event, "type");
-        if (type === "system" && textFieldOf(event, "subtype") === "init") {
-          connection.billing = billingOf(event, connection.billing);
-        } else if (type === "control_request") {
-          // Inside the enforced sandbox a blocked host is allowed (CHG-0208): the sandbox contains file and process
-          // damage, and egress is open. Only that one ask is answered; every other ask, such as a Bash call outside
-          // the sandbox, is left to the permission prompt tool, and none is answered without a sandbox.
-          const askedRequest = fieldOf(event, "request");
-          const host = request.access.containment === "Sandboxed" ? networkHostOf(askedRequest) : null;
-          const requestId = textFieldOf(event, "request_id");
-          if (host !== null && requestId !== null)
-            connection.process.write({
-              response: {
-                request_id: requestId,
-                response: { behavior: "allow", updatedInput: fieldOf(askedRequest, "input") },
-                subtype: "success",
-              },
-              type: "control_response",
-            });
-        } else if (type === "rate_limit_event") {
-          // Kept for the plan's limits, which then cost no read of their own.
-          const report = planLimitsOf(event, connection.billing);
-          if (report !== null) reports.set(request.configDirectory ?? "", report);
-        } else if (type === "user") {
-          // Only steered messages are tracked; the turn's own message and tool results are not.
-          const uuid = textFieldOf(event, "uuid");
-          if (uuid !== null) yield* turn.deliver(uuid);
-        } else if (type === "stream_event") {
-          const inner = fieldOf(event, "event");
-          const innerType = textFieldOf(inner, "type");
-          const delta = fieldOf(inner, "delta");
-          if (innerType === "message_start") draft = "";
-          if (innerType === "content_block_delta" && textFieldOf(delta, "type") === "text_delta") {
-            draft += textFieldOf(delta, "text") ?? "";
-            yield* request.onEvent({ _tag: "Draft", text: draft });
-          }
-        } else if (type === "assistant") {
-          const text = textOf(fieldOf(fieldOf(event, "message"), "content"));
-          const error = fieldOf(event, "error");
-          const callUsage = usageOf(fieldOf(fieldOf(event, "message"), "usage"));
-          const call = contextOf(callUsage);
-          // A synthetic message reports zeros, which are no measure.
-          if (call !== null && call > 0) context = call;
-          draft = "";
-          // Each tool call is a step of the turn, shown as it starts (action-approval).
-          for (const call of toolCallsOf(fieldOf(fieldOf(event, "message"), "content")))
-            yield* request.onEvent({ _tag: "ToolCall", ...call });
-          // A synthetic assistant message carrying `error` reports a failure, not a reply.
-          if (error !== undefined && error !== null) reportedError = text || String(error);
-          else if (text.trim() !== "")
-            yield* request.onEvent({
-              _tag: "Reply",
-              model: reportedModelOf(fieldOf(event, "message")),
-              text,
-              usage: callUsage !== null && call !== null && call > 0 ? callUsage : null,
-            });
-        } else if (type === "result") {
-          // An interrupted turn ends with an error result, which is no failure (probe of 2026-11-06).
-          const usage = usageOf(fieldOf(event, "usage"));
-          const cost = turnCostOf(connection, fieldOf(event, "total_cost_usd"));
-          if (turn.isInterrupting()) return { billing: connection.billing, context, cost, isInterrupted: true, usage };
-          if (fieldOf(event, "is_error") === true || reportedError !== null)
-            return yield* new HarnessFailure({ reason: failureReasonOf(event, reportedError) });
-          return { billing: connection.billing, context, cost, isInterrupted: false, usage };
+  runTurn: Effect.fnUntraced(function* (connection: ClaudeConnection, request: TurnRequest, turn: PooledTurn) {
+    const content = yield* contentOf(turnMessageOf(request), request.images);
+    connection.process.write({ message: { content, role: "user" }, type: "user" });
+    let draft = "";
+    let reportedError: string | null = null;
+    // The latest call's own usage is the context then; the result's usage sums every call of the turn.
+    let context: number | null = null;
+    for (;;) {
+      const item = yield* Queue.take(connection.process.incoming);
+      if (item._tag === "Exit") return yield* new HarnessFailure({ reason: item.reason });
+      const event = item.message;
+      const type = textFieldOf(event, "type");
+      if (type === "system" && textFieldOf(event, "subtype") === "init") {
+        connection.billing = billingOf(event, connection.billing);
+      } else if (type === "control_request") {
+        // Inside the enforced sandbox a blocked host is allowed (CHG-0208): the sandbox contains file and process
+        // damage, and egress is open. Only that one ask is answered; every other ask, such as a Bash call outside
+        // the sandbox, is left to the permission prompt tool, and none is answered without a sandbox.
+        const askedRequest = fieldOf(event, "request");
+        const host = request.access.containment === "Sandboxed" ? networkHostOf(askedRequest) : null;
+        const requestId = textFieldOf(event, "request_id");
+        if (host !== null && requestId !== null)
+          connection.process.write({
+            response: {
+              request_id: requestId,
+              response: { behavior: "allow", updatedInput: fieldOf(askedRequest, "input") },
+              subtype: "success",
+            },
+            type: "control_response",
+          });
+      } else if (type === "rate_limit_event") {
+        // Kept for the plan's limits, which then cost no read of their own.
+        const report = planLimitsOf(event, connection.billing);
+        if (report !== null) reports.set(request.configDirectory ?? "", report);
+      } else if (type === "user") {
+        // Only steered messages are tracked; the turn's own message and tool results are not.
+        const uuid = textFieldOf(event, "uuid");
+        if (uuid !== null) yield* turn.deliver(uuid);
+      } else if (type === "stream_event") {
+        const inner = fieldOf(event, "event");
+        const innerType = textFieldOf(inner, "type");
+        const delta = fieldOf(inner, "delta");
+        if (innerType === "message_start") draft = "";
+        if (innerType === "content_block_delta" && textFieldOf(delta, "type") === "text_delta") {
+          draft += textFieldOf(delta, "text") ?? "";
+          yield* request.onEvent({ _tag: "Draft", text: draft });
         }
+      } else if (type === "assistant") {
+        const message = fieldOf(event, "message");
+        const text = textOf(fieldOf(message, "content"));
+        const error = fieldOf(event, "error");
+        const callUsage = usageOf(fieldOf(message, "usage"));
+        const callContext = contextOf(callUsage);
+        // A synthetic message reports zeros, which are no measure.
+        if (callContext !== null && callContext > 0) context = callContext;
+        draft = "";
+        // Each tool call is a step of the turn, shown as it starts (action-approval).
+        for (const call of toolCallsOf(fieldOf(message, "content")))
+          yield* request.onEvent({ _tag: "ToolCall", ...call });
+        // A synthetic assistant message carrying `error` reports a failure, not a reply.
+        if (error !== undefined && error !== null) reportedError = text || String(error);
+        else if (text.trim() !== "")
+          yield* request.onEvent({
+            _tag: "Reply",
+            model: reportedModelOf(message),
+            text,
+            usage: callUsage !== null && callContext !== null && callContext > 0 ? callUsage : null,
+          });
+      } else if (type === "result") {
+        // An interrupted turn ends with an error result, which is no failure (probe of 2026-11-06).
+        const usage = usageOf(fieldOf(event, "usage"));
+        const cost = turnCostOf(connection, fieldOf(event, "total_cost_usd"));
+        if (turn.isInterrupting()) return { billing: connection.billing, context, cost, isInterrupted: true, usage };
+        if (fieldOf(event, "is_error") === true || reportedError !== null)
+          return yield* new HarnessFailure({ reason: failureReasonOf(event, reportedError) });
+        return { billing: connection.billing, context, cost, isInterrupted: false, usage };
       }
-    }),
+    }
+  }),
 
-  start: (request) =>
-    Effect.gen(function* () {
-      // A thread folder that is a link asks the owner; allowed, Claude Code starts where it really points, under its
-      // own sandbox, which then writes there (threadFolder.ts).
-      const cwd = yield* startFolderOf(request, "Claude Code");
-      const isResuming = request.sessionId !== null;
-      const sessionId = request.sessionId ?? crypto.randomUUID();
-      const process = yield* startStreamJsonProcess({
-        args: [
-          ...(options.prefixArgs ?? []),
-          ...baseArgsOf(request.access.unaskedTools),
-          ...accessArgsOf(request.access, request.context, options, threadWorktreesOf(request)),
-          ...(isResuming ? ["--resume", sessionId] : ["--session-id", sessionId]),
-          ...(request.model === "default" ? [] : ["--model", request.model]),
-          ...(request.effort === "default" ? [] : ["--effort", request.effort]),
-        ],
-        command: options.command,
-        cwd,
-        // The folder it was started in, as a shell it starts takes it.
-        env: { ...childEnvironment(request.configDirectory), PWD: cwd },
-        label: "Claude Code",
-      });
-      return {
-        billing: "Unknown",
-        close: process.close,
-        hasExited: process.hasExited,
-        lastTotalCost: 0,
-        process,
-        sessionId,
-      } satisfies ClaudeConnection;
-    }),
+  start: Effect.fnUntraced(function* (request: TurnRequest) {
+    // A thread folder that is a link asks the owner; allowed, Claude Code starts where it really points, under its
+    // own sandbox, which then writes there (threadFolder.ts).
+    const cwd = yield* startFolderOf(request, "Claude Code");
+    const isResuming = request.sessionId !== null;
+    const sessionId = request.sessionId ?? crypto.randomUUID();
+    const process = yield* startStreamJsonProcess({
+      args: [
+        ...(options.prefixArgs ?? []),
+        ...baseArgsOf(request.access.unaskedTools),
+        ...accessArgsOf(request.access, request.context, options, threadWorktreesOf(request)),
+        ...(isResuming ? ["--resume", sessionId] : ["--session-id", sessionId]),
+        ...(request.model === "default" ? [] : ["--model", request.model]),
+        ...(request.effort === "default" ? [] : ["--effort", request.effort]),
+      ],
+      command: options.command,
+      cwd,
+      // The folder it was started in, as a shell it starts takes it.
+      env: { ...childEnvironment(request.configDirectory), PWD: cwd },
+      label: "Claude Code",
+    });
+    return {
+      billing: "Unknown",
+      close: process.close,
+      hasExited: process.hasExited,
+      lastTotalCost: 0,
+      process,
+      sessionId,
+    } satisfies ClaudeConnection;
+  }),
 
   // A user message written mid-turn joins it after the current tool call; its uuid comes back in the echo
   // once taken in (probe of 2026-11-06, Claude Code 2.1.302).
@@ -293,60 +298,58 @@ const probeArgs = [
  * Asks Claude Code for an account's plan limits with one minimal turn, in an empty folder: the stream's
  * `rate_limit_event` answers. Null when it reports none. No token or credential is read here.
  */
-const probeClaudePlanLimits = (options: ClaudeOptions, configDirectory: string | null) =>
-  Effect.gen(function* () {
-    const run = yield* runHarnessCommand(
-      options.command,
-      [...(options.prefixArgs ?? []), ...probeArgs],
-      accountEnvironmentOf("claude", configDirectory),
-      60_000,
-      tmpdir(),
-    );
-    let billing: BillingKind = "Unknown";
-    let report: PlanLimitsReport | null = null;
-    for (const line of run.stdout.split("\n")) {
-      let event: unknown;
-      try {
-        event = JSON.parse(line);
-      } catch {
-        continue;
-      }
-      if (textFieldOf(event, "type") === "system" && textFieldOf(event, "subtype") === "init")
-        billing = billingOf(event, billing);
-      else if (textFieldOf(event, "type") === "rate_limit_event") report = planLimitsOf(event, billing) ?? report;
+const probeClaudePlanLimits = Effect.fnUntraced(function* (options: ClaudeOptions, configDirectory: string | null) {
+  const run = yield* runHarnessCommand(
+    options.command,
+    [...(options.prefixArgs ?? []), ...probeArgs],
+    accountEnvironmentOf("claude", configDirectory),
+    60_000,
+    tmpdir(),
+  );
+  let billing: BillingKind = "Unknown";
+  let report: PlanLimitsReport | null = null;
+  for (const line of run.stdout.split("\n")) {
+    let event: unknown;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
     }
-    if (report === null && run.code !== 0)
-      return yield* new HarnessFailure({ reason: "Claude Code gave no plan limits." });
-    return billing === "ApiKey" ? ({ billing, windows: [] } satisfies PlanLimitsReport) : report;
-  });
+    if (textFieldOf(event, "type") === "system" && textFieldOf(event, "subtype") === "init")
+      billing = billingOf(event, billing);
+    else if (textFieldOf(event, "type") === "rate_limit_event") report = planLimitsOf(event, billing) ?? report;
+  }
+  if (report === null && run.code !== 0)
+    return yield* new HarnessFailure({ reason: "Claude Code gave no plan limits." });
+  return billing === "ApiKey" ? ({ billing, windows: [] } satisfies PlanLimitsReport) : report;
+});
 
 /**
  * The Claude Code adapter, whose processes close with the scope that made it. Its plan limits come from the
  * `rate_limit_event` of the account's latest turn; an account with none yet is probed once per run.
  */
-export const makeClaudeHarness = (options: ClaudeOptions) =>
-  Effect.gen(function* () {
-    const reports = new Map<string, PlanLimitsReport>();
-    const probed = new Set<string>();
-    const adapter = yield* makeHarnessProcesses(claudeProtocolOf(options, reports), options);
-    const readPlanLimits = (_harness: unknown, configDirectory: string | null) => {
-      const key = configDirectory ?? "";
-      const known = reports.get(key);
-      if (known !== undefined) return Effect.succeed<PlanLimitsReport | null>(known);
-      if (probed.has(key)) return Effect.succeed<PlanLimitsReport | null>(null);
-      probed.add(key);
-      return probeClaudePlanLimits(options, configDirectory).pipe(
-        Effect.tap((report) => Effect.sync(() => report !== null && reports.set(key, report))),
-        // A failed probe is tried again after the caller's wait.
-        Effect.tapError(() => Effect.sync(() => probed.delete(key))),
-      );
-    };
-    // Claude Code runs its commands in its own sandbox at the default level, unless the host cannot start one
-    // (core/sandbox.ts); at "Also commands and edits" it runs without it, and every prompt asks as for an unprotected harness.
-    const containmentOf = (_harness: unknown, level: ApprovalLevel): Containment =>
-      isSandboxedOf(level, options) ? "Sandboxed" : "Unprotected";
-    return { ...adapter, containmentOf, readPlanLimits } satisfies HarnessAdapter;
-  });
+export const makeClaudeHarness = Effect.fnUntraced(function* (options: ClaudeOptions) {
+  const reports = new Map<string, PlanLimitsReport>();
+  const probed = new Set<string>();
+  const adapter = yield* makeHarnessProcesses(claudeProtocolOf(options, reports), options);
+  const readPlanLimits = (_harness: unknown, configDirectory: string | null) => {
+    const key = configDirectory ?? "";
+    const known = reports.get(key);
+    if (known !== undefined) return Effect.succeed<PlanLimitsReport | null>(known);
+    if (probed.has(key)) return Effect.succeed<PlanLimitsReport | null>(null);
+    probed.add(key);
+    return probeClaudePlanLimits(options, configDirectory).pipe(
+      Effect.tap((report) => Effect.sync(() => report !== null && reports.set(key, report))),
+      // A failed probe is tried again after the caller's wait.
+      Effect.tapError(() => Effect.sync(() => probed.delete(key))),
+    );
+  };
+  // Claude Code runs its commands in its own sandbox at the default level, unless the host cannot start one
+  // (core/sandbox.ts); at "Also commands and edits" it runs without it, and every prompt asks as for an unprotected harness.
+  const containmentOf = (_harness: unknown, level: ApprovalLevel): Containment =>
+    isSandboxedOf(level, options) ? "Sandboxed" : "Unprotected";
+  return { ...adapter, containmentOf, readPlanLimits } satisfies HarnessAdapter;
+});
 
 /** Runs each thread in one long-lived `claude -p` stream-json process (CHG-0027). */
 export const claudeHarnessLayer = (options: ClaudeOptions) => Layer.effect(Harness, makeClaudeHarness(options));

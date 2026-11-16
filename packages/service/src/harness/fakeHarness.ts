@@ -29,6 +29,21 @@ export const callThreadTool = (mcpUrl: string, name: string, args: unknown) =>
     return Array.isArray(content) ? content.map((block) => String(fieldOf(block, "text") ?? "")).join("") : "";
   });
 
+// The billing kinds the script's `billing` line names, narrowed from the line's capture.
+const billingKinds: Readonly<Record<string, BillingKind>> = {
+  ApiKey: "ApiKey",
+  Subscription: "Subscription",
+  Unknown: "Unknown",
+};
+
+// The four token counts a `usage` or `callusage` line carries, read in the same order.
+const tokenUsageOf = (match: RegExpExecArray): TokenUsage => ({
+  cacheCreation: Number(match[4]),
+  cacheRead: Number(match[3]),
+  input: Number(match[1]),
+  output: Number(match[2]),
+});
+
 // The fake's script: a line `ask <json>` calls request_approval, `prompt <tool> <json input>` asks the
 // owner about a harness action, `escape <tool> <json input>` asks about one the harness would run outside its
 // sandbox (as Codex's escalations do), `folder <tool> <json>` asks the one-time question about a linked thread folder, and `call <tool> <json>` calls any thread tool, each answered before
@@ -49,24 +64,14 @@ const scriptedCall = (request: TurnRequest, line: string, turn: FakeTurn) => {
   const call = /^callusage (\d+) (\d+) (\d+) (\d+)$/.exec(line);
   if (call !== null) {
     return Effect.sync(() => {
-      turn.spent.callUsage = {
-        cacheCreation: Number(call[4]),
-        cacheRead: Number(call[3]),
-        input: Number(call[1]),
-        output: Number(call[2]),
-      };
+      turn.spent.callUsage = tokenUsageOf(call);
       return "call used tokens";
     });
   }
   const kinds = /^usage (\d+) (\d+) (\d+) (\d+)$/.exec(line);
   if (kinds !== null) {
     return Effect.sync(() => {
-      turn.spent.kinds = {
-        cacheCreation: Number(kinds[4]),
-        cacheRead: Number(kinds[3]),
-        input: Number(kinds[1]),
-        output: Number(kinds[2]),
-      };
+      turn.spent.kinds = tokenUsageOf(kinds);
       turn.spent.isReported = true;
       return "used tokens";
     });
@@ -74,7 +79,7 @@ const scriptedCall = (request: TurnRequest, line: string, turn: FakeTurn) => {
   const billing = /^billing (Subscription|ApiKey|Unknown)$/.exec(line);
   if (billing !== null) {
     return Effect.sync(() => {
-      turn.spent.billing = billing[1] as BillingKind;
+      turn.spent.billing = billingKinds[billing[1] ?? ""] ?? "Unknown";
       return `billed ${billing[1]}`;
     });
   }
@@ -136,7 +141,7 @@ const imagesNoteOf = (images: ReadonlyArray<ImageAttachment>) =>
   images.length === 0 ? "" : ` [images: ${images.map((image) => image.name).join(", ")}]`;
 
 /** A fake turn in progress: the messages steered into it, and its interrupt signal. */
-interface FakeTurn {
+type FakeTurn = {
   readonly interrupted: Deferred.Deferred<void>;
   readonly onEvent: TurnRequest["onEvent"];
   /** What the turn's `spend` lines reported. */
@@ -149,7 +154,7 @@ interface FakeTurn {
     callUsage: TokenUsage | null;
   };
   readonly steered: Array<string>;
-}
+};
 
 /**
  * A deterministic harness for checks: it runs scripted tool calls, then echoes after a delay. Messages
@@ -162,27 +167,25 @@ export const fakeHarnessLayer = (
 ) =>
   Layer.sync(Harness, () => {
     const running = new Map<string, FakeTurn>();
-    const script = (request: TurnRequest, turn: FakeTurn) =>
-      Effect.gen(function* () {
-        yield* Effect.sleep(replyDelay);
-        const echoOf = (text: string) =>
-          Effect.gen(function* () {
-            const results: Array<string> = [];
-            for (const line of text.split("\n")) {
-              const call = scriptedCall(request, line.trim(), turn);
-              if (call !== null) results.push(yield* call);
-            }
-            return results.length === 0 ? text : results.join(" | ");
-          });
-        let echo = (yield* echoOf(request.text)) + imagesNoteOf(request.images);
-        // Steered messages are acted on too, including those steered in while one is acted on.
-        for (let index = 0; index < turn.steered.length; index++) {
-          echo += ` + ${yield* echoOf(turn.steered[index] ?? "")}`;
+    const script = Effect.fnUntraced(function* (request: TurnRequest, turn: FakeTurn) {
+      yield* Effect.sleep(replyDelay);
+      const echoOf = Effect.fnUntraced(function* (text: string) {
+        const results: Array<string> = [];
+        for (const line of text.split("\n")) {
+          const call = scriptedCall(request, line.trim(), turn);
+          if (call !== null) results.push(yield* call);
         }
-        running.delete(request.threadId);
-        yield* request.onEvent({ _tag: "Reply", text: `Echo: ${echo}`, usage: turn.spent.callUsage });
-        return false;
+        return results.length === 0 ? text : results.join(" | ");
       });
+      let echo = (yield* echoOf(request.text)) + imagesNoteOf(request.images);
+      // Steered messages are acted on too, including those steered in while one is acted on.
+      for (let index = 0; index < turn.steered.length; index++) {
+        echo += ` + ${yield* echoOf(turn.steered[index] ?? "")}`;
+      }
+      running.delete(request.threadId);
+      yield* request.onEvent({ _tag: "Reply", text: `Echo: ${echo}`, usage: turn.spent.callUsage });
+      return false;
+    });
     return {
       containmentOf: (harness) =>
         typeof containment === "string" ? containment : (containment[harness] ?? "Sandboxed"),
@@ -192,34 +195,33 @@ export const fakeHarnessLayer = (
           return turn === undefined ? Effect.succeed(false) : Deferred.succeed(turn.interrupted, void 0);
         }),
       readPlanLimits: () => Effect.succeed(null),
-      runTurn: (request) =>
-        Effect.gen(function* () {
-          const turn: FakeTurn = {
-            interrupted: yield* Deferred.make<void>(),
-            onEvent: request.onEvent,
-            spent: { billing: null, callUsage: null, cost: null, isReported: false, kinds: null, tokens: 0 },
-            steered: [],
-          };
-          running.set(request.threadId, turn);
-          const isInterrupted = yield* Effect.raceFirst(
-            script(request, turn),
-            Deferred.await(turn.interrupted).pipe(Effect.as(true)),
-          ).pipe(Effect.ensuring(Effect.sync(() => running.delete(request.threadId))));
-          const { billing, cost, isReported, kinds, tokens } = turn.spent;
-          return {
-            billing: billing ?? (cost === null ? "Subscription" : "ApiKey"),
-            // The fake's context is what it was told to spend: its latest call's whole prompt.
-            context: isReported
-              ? kinds === null
-                ? tokens
-                : kinds.input + kinds.cacheRead + kinds.cacheCreation + kinds.output
-              : null,
-            cost: isReported ? cost : null,
-            isInterrupted,
-            sessionId: request.sessionId ?? `fake-${request.threadId}`,
-            usage: isReported ? (kinds ?? { cacheCreation: 0, cacheRead: 0, input: tokens, output: 0 }) : null,
-          };
-        }),
+      runTurn: Effect.fnUntraced(function* (request: TurnRequest) {
+        const turn: FakeTurn = {
+          interrupted: yield* Deferred.make<void>(),
+          onEvent: request.onEvent,
+          spent: { billing: null, callUsage: null, cost: null, isReported: false, kinds: null, tokens: 0 },
+          steered: [],
+        };
+        running.set(request.threadId, turn);
+        const isInterrupted = yield* Effect.raceFirst(
+          script(request, turn),
+          Deferred.await(turn.interrupted).pipe(Effect.as(true)),
+        ).pipe(Effect.ensuring(Effect.sync(() => running.delete(request.threadId))));
+        const { billing, cost, isReported, kinds, tokens } = turn.spent;
+        return {
+          billing: billing ?? (cost === null ? "Subscription" : "ApiKey"),
+          // The fake's context is what it was told to spend: its latest call's whole prompt.
+          context: isReported
+            ? kinds === null
+              ? tokens
+              : kinds.input + kinds.cacheRead + kinds.cacheCreation + kinds.output
+            : null,
+          cost: isReported ? cost : null,
+          isInterrupted,
+          sessionId: request.sessionId ?? `fake-${request.threadId}`,
+          usage: isReported ? (kinds ?? { cacheCreation: 0, cacheRead: 0, input: tokens, output: 0 }) : null,
+        };
+      }),
       steer: (threadId, message) =>
         Effect.suspend(() => {
           const turn = running.get(threadId);

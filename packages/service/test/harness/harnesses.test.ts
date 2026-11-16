@@ -93,7 +93,7 @@ const isAlive = (pid: number) => {
   }
 };
 
-interface Logged {
+type Logged = {
   readonly args?: ReadonlyArray<string>;
   readonly auth?: string;
   readonly config?: Record<string, unknown>;
@@ -108,7 +108,7 @@ interface Logged {
   readonly pid?: number;
   readonly pwd?: string | null;
   readonly xdg?: Record<string, string | null>;
-}
+};
 
 /** A service whose three adapters run stand-ins, all logging to one file; OpenCode wrapped when a sandbox is given. */
 const withHarnesses = (

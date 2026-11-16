@@ -16,10 +16,10 @@ export type ChannelErrorKind = "handshake-failed" | "handshake-timeout" | "carri
 
 export type SecureChannelResult = Result<SecureChannel, ChannelErrorKind>;
 
-export interface ChannelOptions {
+export type ChannelOptions = {
   /** How long the handshake may take before it gives up; defaults to 15 seconds. */
   handshakeTimeoutMs?: number;
-}
+};
 
 export const defaultHandshakeTimeoutMs = 15_000;
 const emptyPayload = new Uint8Array(0);

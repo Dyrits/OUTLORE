@@ -65,15 +65,15 @@ export const approvalInstructionsOf = (terms: ApprovalTerms, harness: HarnessNam
 };
 
 /** A thread's place in its mission's tree, as its starting context names it. */
-export interface ThreadPosition {
-  /** The Guildmaster's thread, which any thread may message to find the right quest; absent before it exists. */
+export type ThreadPosition = {
+  /** Chronicler's thread, which any thread may message to find the right quest; absent before it exists. */
   readonly guildmasterId?: string | null;
   /** Whether the thread holds an off-topic request the owner kept as an aside. */
   readonly isAside: boolean;
   readonly parent: { readonly id: string; readonly title: string } | null;
   readonly threadId: string;
   readonly title: string;
-}
+};
 
 /** How a thread works with the threads around it (thread-tree and thread-messaging; CHG-0037). */
 export const threadInstructionsOf = (position: ThreadPosition) =>
@@ -115,7 +115,7 @@ const asideInstructions = [
 ];
 
 /**
- * The Guildmaster's instructions in place of a quest thread's (quest coordination): it proposes quests and never does the work.
+ * Chronicler's instructions in place of a quest thread's (quest coordination): it proposes quests and never does the work.
  * Tool names and ids keep `mission`, as the contracts do; everything said to the owner says quest.
  */
 export const guildmasterInstructionsOf = (threadId: string) =>

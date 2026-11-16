@@ -1,20 +1,14 @@
 import { decodeBase64Url } from "./base64url.ts";
+import { pairingSecretBytes } from "./pairingCode.ts";
 import { fail, type Result, succeed } from "./result.ts";
 import { deviceTokenBytes } from "./tokens.ts";
 
 export const maxDeviceNameLength = 60;
 const maxNameLength = 200;
 const maxReleaseLength = 60;
-const pairingSecretLength = 16;
 
-export type DeviceKind = "desktop" | "phone" | "browser";
-export type RefusalReason =
-  | "code-invalid"
-  | "code-expired"
-  | "code-used"
-  | "unknown-device"
-  | "disabled"
-  | "disconnected";
+const deviceKinds = ["desktop", "phone", "browser"] as const;
+export type DeviceKind = (typeof deviceKinds)[number];
 
 /** What the owner reads for each refusal, the same on every kind of device. */
 export const refusalText = {
@@ -24,7 +18,9 @@ export const refusalText = {
   disabled: "The host is not accepting paired devices. Turn on Allow paired devices on the host.",
   disconnected: "The host disconnected this computer. Pair with it again.",
   "unknown-device": "The host no longer knows this computer. Pair with it again.",
-} as const satisfies Record<RefusalReason, string>;
+} as const;
+
+export type RefusalReason = keyof typeof refusalText;
 
 /** The first message a paired device sends inside the secure channel. `secret` and `token` are base64url. */
 export type ClientHello =
@@ -42,21 +38,12 @@ export type HostReply =
 
 export type ProtocolErrorKind = "malformed";
 
-const refusalReasons = {
-  "code-expired": true,
-  "code-invalid": true,
-  "code-used": true,
-  disabled: true,
-  disconnected: true,
-  "unknown-device": true,
-} satisfies Record<RefusalReason, true>;
-
 function isDeviceKind(value: unknown): value is DeviceKind {
-  return value === "desktop" || value === "phone" || value === "browser";
+  return deviceKinds.some((kind) => kind === value);
 }
 
 function isRefusalReason(value: unknown): value is RefusalReason {
-  return typeof value === "string" && Object.hasOwn(refusalReasons, value);
+  return typeof value === "string" && Object.hasOwn(refusalText, value);
 }
 
 /** Reads the text of a first message from a device; anything off-shape, including an unknown field, is "malformed". */
@@ -68,7 +55,7 @@ export function parseClientHello(text: string): Result<ClientHello, ProtocolErro
     if (
       isDeviceKind(deviceKind) &&
       isText(deviceName, maxDeviceNameLength) &&
-      isBase64UrlOfLength(secret, pairingSecretLength)
+      isBase64UrlOfLength(secret, pairingSecretBytes)
     ) {
       return succeed({ deviceKind, deviceName, secret, t: "pair" });
     }
@@ -130,9 +117,11 @@ function parseObject(text: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
+  return isRecord(value) ? value : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** Whether an object has every required key, optionally the optional ones, and no other. */

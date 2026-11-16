@@ -21,31 +21,31 @@ export const NOISE_NK_PROTOCOL_NAME = "Noise_NK_25519_ChaChaPoly_SHA256";
 export const DH_BYTES = 32;
 
 /** An X25519 key pair, 32 bytes each. */
-export interface NoiseKeyPair {
+export type NoiseKeyPair = {
   publicKey: Uint8Array;
   secretKey: Uint8Array;
-}
+};
 
-export interface NoiseInitiatorOptions {
+export type NoiseInitiatorOptions = {
   /** Test injection only; production generates a fresh ephemeral. */
   ephemeral?: NoiseKeyPair;
   prologue: Uint8Array;
   /** Responder's static public key, trusted out of band. */
   remoteStatic: Uint8Array;
-}
+};
 
-export interface NoiseResponderOptions {
+export type NoiseResponderOptions = {
   /** Test injection only; production generates a fresh ephemeral. */
   ephemeral?: NoiseKeyPair;
   localStatic: NoiseKeyPair;
   prologue: Uint8Array;
-}
+};
 
 /** The two transport ciphers, oriented for the side that holds them. */
-export interface TransportKeys {
+export type TransportKeys = {
   receive: CipherState;
   send: CipherState;
-}
+};
 
 /** One side of a handshake in progress. Protocol violations throw NoiseProtocolError. */
 export interface NoiseHandshake {

@@ -8,11 +8,13 @@ import {
   type ImageAttachment,
   numberFieldOf,
   type PlanLimitsReport,
+  type SteeredMessage,
   type ThreadAccess,
   type TurnRequest,
   textFieldOf,
   turnMessageOf,
 } from "../core/index.ts";
+import { noTimeLimit } from "./claudeArgs.ts";
 import { codexAnswersOf, codexChoicesOf } from "./codexChoices.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
@@ -22,7 +24,7 @@ import {
   type PooledTurn,
 } from "./harnessProcesses.ts";
 import { approvalInstructionsOf } from "./instructions.ts";
-import { harnessEnvironmentOf, type Incoming, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
+import { harnessEnvironmentOf, type RpcIncoming, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
 import { resolvedFolderOf, startFolderOf } from "./threadFolder.ts";
 import { toolServerName } from "./toolNames.ts";
 
@@ -30,14 +32,14 @@ import { toolServerName } from "./toolNames.ts";
 // `codex app-server` process per thread, one Codex thread per Outlore thread.
 
 /** How the Codex adapter starts its harness. */
-export interface CodexOptions {
+export type CodexOptions = {
   /** The executable; `codex` on the PATH by default. */
   readonly command: string;
   /** How long an idle thread keeps its process. */
   readonly idleTimeout: Duration.Input;
   /** Arguments placed before the app server's own, used to run a stand-in script in checks. */
   readonly prefixArgs?: ReadonlyArray<string>;
-}
+};
 
 interface CodexConnection extends HarnessConnection {
   /** How the account is billed, from Codex's own `account/read` at start; Unknown when it did not say. */
@@ -48,7 +50,7 @@ interface CodexConnection extends HarnessConnection {
 }
 
 /** The longest wait Codex accepts for a thread tool, in seconds: a question waits with no time limit. */
-const noTimeLimitSeconds = 2_147_483;
+const noTimeLimitSeconds = Math.floor(noTimeLimit / 1000);
 
 /** Codex's own effort names; Outlore's match them, and default leaves the model's own. */
 const effortOf = (effort: EffortChoice) => (effort === "default" ? null : effort);
@@ -63,13 +65,13 @@ const policyOf = (access: ThreadAccess) => ({
   sandbox: "workspace-write",
 });
 
-/** The thread's settings: its tools at its own endpoint, no native subagents, and Outlore's context. */
 /** A turn's input: the text, then one `localImage` item per image, by the stored path (message-attachments). */
 const inputOf = (text: string, images: ReadonlyArray<ImageAttachment>) => [
   { text, text_elements: [], type: "text" },
   ...images.map((image) => ({ path: image.path, type: "localImage" })),
 ];
 
+/** The thread's settings: its tools at its own endpoint, no native subagents, and Outlore's context. */
 const threadSettingsOf = (request: TurnRequest, cwd: string) => ({
   ...policyOf(request.access),
   config: {
@@ -137,35 +139,34 @@ const windowOf = (window: unknown) =>
  * `account/rateLimits/read` answers with the plan's windows (probe of 2026-11-11). An API key has no plan limits. Null
  * when Codex cannot answer. The server's own sign-in is used; no token is read here.
  */
-const readCodexPlanLimits = (options: CodexOptions, configDirectory: string | null) =>
-  Effect.gen(function* () {
-    const rpc = yield* startRpcProcess({
-      args: [...(options.prefixArgs ?? []), "app-server"],
-      command: options.command,
-      cwd: tmpdir(),
-      env: harnessEnvironmentOf(accountEnvironmentOf("codex", configDirectory)),
-      isJsonRpc2: false,
-      label: "Codex",
-    });
-    return yield* Effect.gen(function* () {
-      yield* rpc.request("initialize", {
-        capabilities: { experimentalApi: true, requestAttestation: false },
-        clientInfo: { name: "outlore", title: "Outlore", version: "0.0.0" },
-      });
-      rpc.notify("initialized", {});
-      const billing = yield* billingOf(rpc);
-      if (billing === "ApiKey") return { billing, windows: [] } satisfies PlanLimitsReport;
-      const limits = fieldOf(yield* rpc.request("account/rateLimits/read", {}), "rateLimits");
-      return {
-        billing,
-        windows: [...windowOf(fieldOf(limits, "primary")), ...windowOf(fieldOf(limits, "secondary"))],
-      } satisfies PlanLimitsReport;
-    }).pipe(
-      Effect.timeout("15 seconds"),
-      Effect.mapError((error) => new HarnessFailure({ reason: `Codex gave no plan limits: ${String(error)}` })),
-      Effect.ensuring(Effect.sync(() => rpc.close())),
-    );
+const readCodexPlanLimits = Effect.fnUntraced(function* (options: CodexOptions, configDirectory: string | null) {
+  const rpc = yield* startRpcProcess({
+    args: [...(options.prefixArgs ?? []), "app-server"],
+    command: options.command,
+    cwd: tmpdir(),
+    env: harnessEnvironmentOf(accountEnvironmentOf("codex", configDirectory)),
+    isJsonRpc2: false,
+    label: "Codex",
   });
+  return yield* Effect.gen(function* () {
+    yield* rpc.request("initialize", {
+      capabilities: { experimentalApi: true, requestAttestation: false },
+      clientInfo: { name: "outlore", title: "Outlore", version: "0.0.0" },
+    });
+    rpc.notify("initialized", {});
+    const billing = yield* billingOf(rpc);
+    if (billing === "ApiKey") return { billing, windows: [] } satisfies PlanLimitsReport;
+    const limits = fieldOf(yield* rpc.request("account/rateLimits/read", {}), "rateLimits");
+    return {
+      billing,
+      windows: [...windowOf(fieldOf(limits, "primary")), ...windowOf(fieldOf(limits, "secondary"))],
+    } satisfies PlanLimitsReport;
+  }).pipe(
+    Effect.timeout("15 seconds"),
+    Effect.mapError((error) => new HarnessFailure({ reason: `Codex gave no plan limits: ${String(error)}` })),
+    Effect.ensuring(Effect.sync(() => rpc.close())),
+  );
+});
 
 /** The files of a file change item, for its approval question. */
 const changedPathsOf = (item: unknown) => {
@@ -174,112 +175,115 @@ const changedPathsOf = (item: unknown) => {
 };
 
 /** Answers one of Codex's own requests, which may wait on the owner without a time limit. */
-const answerRequest = (
+const answerRequest = Effect.fnUntraced(function* (
   connection: CodexConnection,
   request: TurnRequest,
-  incoming: Extract<Incoming, { _tag: "Request" }>,
+  incoming: Extract<RpcIncoming, { _tag: "Request" }>,
   fileChanges: Map<string, ReadonlyArray<string>>,
-) =>
-  Effect.gen(function* () {
-    const { id, method, params } = incoming;
-    const { rpc } = connection;
-    // At the default level Codex asks only to go beyond its sandbox, so each of its requests is an escape. At "Also
-    // commands and edits" it asks before commands it does not trust, which run inside the sandbox once allowed.
-    const isEscape = request.access.approvalLevel === "RiskyOnly";
-    const ask = (toolName: string, input: object) =>
-      request
-        .askOwner({ input, ...(isEscape ? { isOutsideSandbox: true } : {}), toolName })
-        .pipe(Effect.map((answer) => answer.isAllowed));
-    if (method === "item/commandExecution/requestApproval") {
-      const isAllowed = yield* ask("Bash", {
-        command: textFieldOf(params, "command") ?? "",
-        description: textFieldOf(params, "reason") ?? "",
-      });
-      return rpc.respond(id, { decision: isAllowed ? "accept" : "decline" });
-    }
-    if (method === "item/fileChange/requestApproval") {
-      const paths = fileChanges.get(textFieldOf(params, "itemId") ?? "") ?? [];
-      const isAllowed = yield* ask("Edit", {
-        description: textFieldOf(params, "reason") ?? "",
-        file_path: paths.join(", ") || (textFieldOf(params, "grantRoot") ?? "a file"),
-      });
-      return rpc.respond(id, { decision: isAllowed ? "accept" : "decline" });
-    }
-    if (method === "item/permissions/requestApproval") {
-      const isAllowed = yield* ask("Permissions", {
-        description: textFieldOf(params, "reason") ?? "Widen the sandbox",
-        query: JSON.stringify(fieldOf(params, "permissions") ?? {}),
-      });
-      return rpc.respond(id, { permissions: isAllowed ? (fieldOf(params, "permissions") ?? {}) : {}, scope: "turn" });
-    }
-    // Outlore's own tools need no confirmation; another server's question is declined.
-    if (method === "mcpServer/elicitation/request") {
-      const isOwn = textFieldOf(params, "serverName") === toolServerName;
-      return rpc.respond(id, { _meta: null, action: isOwn ? "accept" : "decline", content: null });
-    }
-    if (method === "item/tool/requestUserInput") {
-      const questions = codexChoicesOf(params);
-      if (questions === null) return rpc.respond(id, { answers: {} });
-      const answer = yield* request.askOwner({
-        choices: questions.map((question) => question.choice),
-        input: params,
-        toolName: "request_user_input",
-      });
-      return rpc.respond(id, codexAnswersOf(questions, answer.isAllowed ? (answer.answers ?? null) : null));
-    }
-    return rpc.respondError(id, `Outlore does not answer ${method}.`);
-  });
+) {
+  const { id, method, params } = incoming;
+  const { rpc } = connection;
+  // At the default level Codex asks only to go beyond its sandbox, so each of its requests is an escape. At "Also
+  // commands and edits" it asks before commands it does not trust, which run inside the sandbox once allowed.
+  const isEscape = request.access.approvalLevel === "RiskyOnly";
+  const ask = (toolName: string, input: object) =>
+    request
+      .askOwner({ input, ...(isEscape ? { isOutsideSandbox: true } : {}), toolName })
+      .pipe(Effect.map((answer) => answer.isAllowed));
+  if (method === "item/commandExecution/requestApproval") {
+    const isAllowed = yield* ask("Bash", {
+      command: textFieldOf(params, "command") ?? "",
+      description: textFieldOf(params, "reason") ?? "",
+    });
+    return rpc.respond(id, { decision: isAllowed ? "accept" : "decline" });
+  }
+  if (method === "item/fileChange/requestApproval") {
+    const paths = fileChanges.get(textFieldOf(params, "itemId") ?? "") ?? [];
+    const isAllowed = yield* ask("Edit", {
+      description: textFieldOf(params, "reason") ?? "",
+      file_path: paths.join(", ") || (textFieldOf(params, "grantRoot") ?? "a file"),
+    });
+    return rpc.respond(id, { decision: isAllowed ? "accept" : "decline" });
+  }
+  if (method === "item/permissions/requestApproval") {
+    const isAllowed = yield* ask("Permissions", {
+      description: textFieldOf(params, "reason") ?? "Widen the sandbox",
+      query: JSON.stringify(fieldOf(params, "permissions") ?? {}),
+    });
+    return rpc.respond(id, { permissions: isAllowed ? (fieldOf(params, "permissions") ?? {}) : {}, scope: "turn" });
+  }
+  // Outlore's own tools need no confirmation; another server's question is declined.
+  if (method === "mcpServer/elicitation/request") {
+    const isOwn = textFieldOf(params, "serverName") === toolServerName;
+    return rpc.respond(id, { _meta: null, action: isOwn ? "accept" : "decline", content: null });
+  }
+  if (method === "item/tool/requestUserInput") {
+    const questions = codexChoicesOf(params);
+    if (questions === null) return rpc.respond(id, { answers: {} });
+    const answer = yield* request.askOwner({
+      choices: questions.map((question) => question.choice),
+      input: params,
+      toolName: "request_user_input",
+    });
+    return rpc.respond(id, codexAnswersOf(questions, answer.isAllowed ? (answer.answers ?? null) : null));
+  }
+  return rpc.respondError(id, `Outlore does not answer ${method}.`);
+});
 
 /** Reads Codex's notifications for one turn until its completion. */
-const readTurn = (connection: CodexConnection, request: TurnRequest, turn: PooledTurn, codexTurnId: string) =>
-  Effect.gen(function* () {
-    const calls: Array<unknown> = [];
-    const fileChanges = new Map<string, ReadonlyArray<string>>();
-    let draft = "";
-    for (;;) {
-      const incoming = yield* Queue.take(connection.rpc.incoming);
-      if (incoming._tag === "Exit") return yield* new HarnessFailure({ reason: incoming.reason });
-      if (incoming._tag === "Request") {
-        // Answered beside the turn: a question may wait on the owner while events keep coming.
-        yield* turn.fork(answerRequest(connection, request, incoming, fileChanges));
-        continue;
-      }
-      const { method, params } = incoming;
-      if (textFieldOf(params, "threadId") !== connection.sessionId) continue;
-      const item = fieldOf(params, "item");
-      const itemType = textFieldOf(item, "type");
-      if (method === "item/started" && itemType === "userMessage") {
-        const clientId = textFieldOf(item, "clientId");
-        if (clientId !== null) yield* turn.deliver(clientId);
-      } else if (method === "item/started" && itemType === "agentMessage") {
-        draft = "";
-      } else if (method === "item/started" && itemType === "fileChange") {
-        fileChanges.set(textFieldOf(item, "id") ?? "", changedPathsOf(item));
-      } else if (method === "item/agentMessage/delta") {
-        draft += textFieldOf(params, "delta") ?? "";
-        yield* request.onEvent({ _tag: "Draft", text: draft });
-      } else if (method === "item/completed" && itemType === "agentMessage") {
-        const text = textFieldOf(item, "text") ?? "";
-        draft = "";
-        if (text.trim() !== "") yield* request.onEvent({ _tag: "Reply", text });
-      } else if (method === "thread/tokenUsage/updated") {
-        calls.push(fieldOf(fieldOf(params, "tokenUsage"), "last"));
-        turn.reportUsage(usageOf(calls));
-      } else if (method === "turn/completed") {
-        const completed = fieldOf(params, "turn");
-        if (textFieldOf(completed, "id") !== codexTurnId) continue;
-        const status = textFieldOf(completed, "status");
-        if (status === "interrupted" || turn.isInterrupting())
-          return { billing: connection.billing, context: contextOf(calls), isInterrupted: true, usage: usageOf(calls) };
-        if (status === "failed") {
-          return yield* new HarnessFailure({
-            reason: textFieldOf(fieldOf(completed, "error"), "message") ?? "Codex reported a failed turn.",
-          });
-        }
-        return { billing: connection.billing, context: contextOf(calls), isInterrupted: false, usage: usageOf(calls) };
-      }
+const readTurn = Effect.fnUntraced(function* (
+  connection: CodexConnection,
+  request: TurnRequest,
+  turn: PooledTurn,
+  codexTurnId: string,
+) {
+  const calls: Array<unknown> = [];
+  const fileChanges = new Map<string, ReadonlyArray<string>>();
+  let draft = "";
+  for (;;) {
+    const incoming = yield* Queue.take(connection.rpc.incoming);
+    if (incoming._tag === "Exit") return yield* new HarnessFailure({ reason: incoming.reason });
+    if (incoming._tag === "Request") {
+      // Answered beside the turn: a question may wait on the owner while events keep coming.
+      yield* turn.fork(answerRequest(connection, request, incoming, fileChanges));
+      continue;
     }
-  });
+    const { method, params } = incoming;
+    if (textFieldOf(params, "threadId") !== connection.sessionId) continue;
+    const item = fieldOf(params, "item");
+    const itemType = textFieldOf(item, "type");
+    if (method === "item/started" && itemType === "userMessage") {
+      const clientId = textFieldOf(item, "clientId");
+      if (clientId !== null) yield* turn.deliver(clientId);
+    } else if (method === "item/started" && itemType === "agentMessage") {
+      draft = "";
+    } else if (method === "item/started" && itemType === "fileChange") {
+      fileChanges.set(textFieldOf(item, "id") ?? "", changedPathsOf(item));
+    } else if (method === "item/agentMessage/delta") {
+      draft += textFieldOf(params, "delta") ?? "";
+      yield* request.onEvent({ _tag: "Draft", text: draft });
+    } else if (method === "item/completed" && itemType === "agentMessage") {
+      const text = textFieldOf(item, "text") ?? "";
+      draft = "";
+      if (text.trim() !== "") yield* request.onEvent({ _tag: "Reply", text });
+    } else if (method === "thread/tokenUsage/updated") {
+      calls.push(fieldOf(fieldOf(params, "tokenUsage"), "last"));
+      turn.reportUsage(usageOf(calls));
+    } else if (method === "turn/completed") {
+      const completed = fieldOf(params, "turn");
+      if (textFieldOf(completed, "id") !== codexTurnId) continue;
+      const status = textFieldOf(completed, "status");
+      if (status === "interrupted" || turn.isInterrupting())
+        return { billing: connection.billing, context: contextOf(calls), isInterrupted: true, usage: usageOf(calls) };
+      if (status === "failed") {
+        return yield* new HarnessFailure({
+          reason: textFieldOf(fieldOf(completed, "error"), "message") ?? "Codex reported a failed turn.",
+        });
+      }
+      return { billing: connection.billing, context: contextOf(calls), isInterrupted: false, usage: usageOf(calls) };
+    }
+  }
+});
 
 /** Asks Codex to end its turn; the turn's own completion, as interrupted, ends it, so the answer is not awaited. */
 const askToInterrupt = (connection: CodexConnection, turnId: string) =>
@@ -289,13 +293,12 @@ const askToInterrupt = (connection: CodexConnection, turnId: string) =>
 
 /** Codex's app-server protocol: one Codex thread per Outlore thread, one Codex turn per turn. */
 const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection> => ({
-  interrupt: (connection) =>
-    Effect.gen(function* () {
-      // Before Codex answers `turn/start` there is no turn id to name: the turn, which the pool already counts as
-      // interrupting, asks for the interrupt as soon as it has the id.
-      if (connection.turnId !== null) yield* askToInterrupt(connection, connection.turnId);
-      return true;
-    }),
+  interrupt: Effect.fnUntraced(function* (connection: CodexConnection) {
+    // Before Codex answers `turn/start` there is no turn id to name: the turn, which the pool already counts as
+    // interrupting, asks for the interrupt as soon as it has the id.
+    if (connection.turnId !== null) yield* askToInterrupt(connection, connection.turnId);
+    return true;
+  }),
 
   // A changed level, set of permissions, context, model, folder, or account restarts the process, resuming
   // its thread; the effort goes with each turn.
@@ -303,83 +306,80 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
   restartKeyOf: (request) =>
     JSON.stringify([threadSettingsOf(request, request.cwd), request.configDirectory, resolvedFolderOf(request.cwd)]),
 
-  runTurn: (connection, request, turn) =>
-    Effect.gen(function* () {
-      const effort = effortOf(request.effort);
-      connection.turnId = null;
-      const started = yield* connection.rpc.request("turn/start", {
-        input: inputOf(turnMessageOf(request), request.images),
-        threadId: connection.sessionId,
-        ...(effort === null ? {} : { effort }),
-        ...(request.model === "default" ? {} : { model: request.model }),
-      });
-      const codexTurnId = textFieldOf(fieldOf(started, "turn"), "id") ?? "";
-      connection.turnId = codexTurnId;
-      if (turn.isInterrupting()) yield* askToInterrupt(connection, codexTurnId);
-      return yield* readTurn(connection, request, turn, codexTurnId).pipe(
-        Effect.ensuring(Effect.sync(() => (connection.turnId = null))),
-      );
-    }),
+  runTurn: Effect.fnUntraced(function* (connection: CodexConnection, request: TurnRequest, turn: PooledTurn) {
+    const effort = effortOf(request.effort);
+    connection.turnId = null;
+    const started = yield* connection.rpc.request("turn/start", {
+      input: inputOf(turnMessageOf(request), request.images),
+      threadId: connection.sessionId,
+      ...(effort === null ? {} : { effort }),
+      ...(request.model === "default" ? {} : { model: request.model }),
+    });
+    const codexTurnId = textFieldOf(fieldOf(started, "turn"), "id") ?? "";
+    connection.turnId = codexTurnId;
+    if (turn.isInterrupting()) yield* askToInterrupt(connection, codexTurnId);
+    return yield* readTurn(connection, request, turn, codexTurnId).pipe(
+      Effect.ensuring(Effect.sync(() => (connection.turnId = null))),
+    );
+  }),
 
-  start: (request) =>
-    Effect.gen(function* () {
-      // A thread folder that is a link asks the owner; allowed, Codex starts where it really points, as its process
-      // folder and its thread's, so its workspace sandbox writes there (threadFolder.ts). Codex 0.167.2 refuses a
-      // writable root holding a link, and treats its process folder, resolved by the system, as writable (CHG-0208).
-      const cwd = yield* startFolderOf(request, "Codex");
-      const rpc = yield* startRpcProcess({
-        args: [...(options.prefixArgs ?? []), "app-server"],
-        command: options.command,
-        cwd,
-        env: harnessEnvironmentOf({ ...accountEnvironmentOf("codex", request.configDirectory), PWD: cwd }),
-        isJsonRpc2: false,
-        label: "Codex",
+  start: Effect.fnUntraced(function* (request: TurnRequest) {
+    // A thread folder that is a link asks the owner; allowed, Codex starts where it really points, as its process
+    // folder and its thread's, so its workspace sandbox writes there (threadFolder.ts). Codex 0.167.2 refuses a
+    // writable root holding a link, and treats its process folder, resolved by the system, as writable (CHG-0208).
+    const cwd = yield* startFolderOf(request, "Codex");
+    const rpc = yield* startRpcProcess({
+      args: [...(options.prefixArgs ?? []), "app-server"],
+      command: options.command,
+      cwd,
+      env: harnessEnvironmentOf({ ...accountEnvironmentOf("codex", request.configDirectory), PWD: cwd }),
+      isJsonRpc2: false,
+      label: "Codex",
+    });
+    let billing: BillingKind = "Unknown";
+    const started = yield* Effect.gen(function* () {
+      yield* rpc.request("initialize", {
+        capabilities: { experimentalApi: true, requestAttestation: false },
+        clientInfo: { name: "outlore", title: "Outlore", version: "0.0.0" },
       });
-      let billing: BillingKind = "Unknown";
-      const started = yield* Effect.gen(function* () {
-        yield* rpc.request("initialize", {
-          capabilities: { experimentalApi: true, requestAttestation: false },
-          clientInfo: { name: "outlore", title: "Outlore", version: "0.0.0" },
-        });
-        rpc.notify("initialized", {});
-        const settings = threadSettingsOf(request, cwd);
-        billing = yield* billingOf(rpc);
-        return request.sessionId === null
-          ? yield* rpc.request("thread/start", settings)
-          : yield* rpc.request("thread/resume", { ...settings, threadId: request.sessionId });
-      }).pipe(Effect.tapError(() => Effect.sync(() => rpc.close())));
-      const codexThreadId = textFieldOf(fieldOf(started, "thread"), "id");
-      if (codexThreadId === null) {
-        rpc.close();
-        return yield* new HarnessFailure({ reason: "Codex started no thread." });
-      }
-      return {
-        billing,
-        close: rpc.close,
-        hasExited: rpc.hasExited,
-        rpc,
-        sessionId: codexThreadId,
-        turnId: null,
-      } satisfies CodexConnection;
-    }),
+      rpc.notify("initialized", {});
+      const settings = threadSettingsOf(request, cwd);
+      billing = yield* billingOf(rpc);
+      return request.sessionId === null
+        ? yield* rpc.request("thread/start", settings)
+        : yield* rpc.request("thread/resume", { ...settings, threadId: request.sessionId });
+    }).pipe(Effect.tapError(() => Effect.sync(() => rpc.close())));
+    const codexThreadId = textFieldOf(fieldOf(started, "thread"), "id");
+    if (codexThreadId === null) {
+      rpc.close();
+      return yield* new HarnessFailure({ reason: "Codex started no thread." });
+    }
+    return {
+      billing,
+      close: rpc.close,
+      hasExited: rpc.hasExited,
+      rpc,
+      sessionId: codexThreadId,
+      turnId: null,
+    } satisfies CodexConnection;
+  }),
 
   // A message steered mid-turn joins Codex's active turn; its userMessage item, carrying our id as
   // clientId, says it was taken in.
-  steer: (connection, message) =>
-    Effect.gen(function* () {
-      if (connection.turnId === null) return false;
-      return yield* connection.rpc
-        .request("turn/steer", {
-          clientUserMessageId: message.id,
-          expectedTurnId: connection.turnId,
-          input: inputOf(message.text, message.images),
-          threadId: connection.sessionId,
-        })
-        .pipe(
-          Effect.as(true),
-          Effect.catch(() => Effect.succeed(false)),
-        );
-    }),
+  steer: Effect.fnUntraced(function* (connection: CodexConnection, message: SteeredMessage) {
+    if (connection.turnId === null) return false;
+    return yield* connection.rpc
+      .request("turn/steer", {
+        clientUserMessageId: message.id,
+        expectedTurnId: connection.turnId,
+        input: inputOf(message.text, message.images),
+        threadId: connection.sessionId,
+      })
+      .pipe(
+        Effect.as(true),
+        Effect.catch(() => Effect.succeed(false)),
+      );
+  }),
 });
 
 /** Runs each thread in one long-lived `codex app-server` process, closed with the scope that made it. */

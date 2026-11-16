@@ -39,7 +39,7 @@ const live = (directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-live-
       return routeHarnesses({
         claude: yield* makeClaudeHarness({ command: commands.claude, idleTimeout: "1 minute", sandboxProblem: null }),
         codex: yield* makeCodexHarness({ command: commands.codex, idleTimeout: "1 minute" }),
-        opencode: yield* makeOpenCodeHarness({ command: commands.opencode, idleTimeout: "1 minute" }),
+        opencode: yield* makeOpenCodeHarness({ command: commands.opencode, idleTimeout: "1 minute", sandbox: null }),
       });
     }),
   );
