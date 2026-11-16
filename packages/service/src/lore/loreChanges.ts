@@ -64,6 +64,8 @@ type ChangeRecord = {
   /** What a save or replacement rests on; null for other changes. */
   readonly origin: LoreOrigin | null;
   readonly placement: Placement;
+  readonly previousKind: LoreKind | null;
+  readonly previousPlacement: Placement | null;
   readonly previousText: string | null;
   readonly status: LoreChangeStatus;
   readonly text: string;
@@ -76,12 +78,14 @@ const insertChange = Effect.fnUntraced(function* (change: ChangeRecord) {
   const origin = originColumnsOf(change.origin);
   const id = yield* newId;
   yield* sql`INSERT INTO intel_changes (id, thread_id, kind, status, intel_id, intel_kind, scope, scope_thread_id,
-        scope_workspace_id, text, previous_text, at, resolved_at, origin_kind, origin_entry, origin_from, origin_excerpt)
+        scope_workspace_id, text, previous_text, at, resolved_at, origin_kind, origin_entry, origin_from, origin_excerpt,
+        previous_scope, previous_thread_id, previous_workspace_id, previous_kind)
       VALUES (${id}, ${change.threadId}, ${change.kind}, ${change.status}, ${change.loreEntryId},
         ${change.loreKind},
         ${change.placement.scope}, ${change.placement.threadId}, ${change.placement.workspaceId}, ${change.text},
         ${change.previousText}, ${now}, ${change.status === "Done" ? now : null}, ${origin.originKind},
-        ${origin.originEntry}, ${origin.originFrom}, ${origin.originExcerpt})`;
+        ${origin.originEntry}, ${origin.originFrom}, ${origin.originExcerpt}, ${change.previousPlacement?.scope ?? null},
+        ${change.previousPlacement?.threadId ?? null}, ${change.previousPlacement?.workspaceId ?? null}, ${change.previousKind})`;
 });
 
 const awaitingText =
@@ -121,6 +125,8 @@ export const saveLoreEntry = Effect.fnUntraced(function* (
       loreKind,
       origin,
       placement: placementOfRow(replaced),
+      previousKind: replaced.kind,
+      previousPlacement: placementOfRow(replaced),
       previousText: replaced.text,
       text: text.trim(),
       threadId,
@@ -140,6 +146,8 @@ export const saveLoreEntry = Effect.fnUntraced(function* (
     loreKind,
     origin,
     placement,
+    previousKind: null,
+    previousPlacement: null,
     previousText: null,
     text: text.trim(),
     threadId,
@@ -185,6 +193,8 @@ export const updateLoreEntry = Effect.fnUntraced(function* (
     loreKind: row.kind,
     origin: null,
     placement,
+    previousKind: row.kind,
+    previousPlacement: current,
     previousText: row.text,
     text: (text ?? row.text).trim(),
     threadId,
@@ -210,6 +220,8 @@ export const forgetLoreEntry = Effect.fnUntraced(function* (threadId: string, lo
     loreKind: row.kind,
     origin: null,
     placement: placementOfRow(row),
+    previousKind: row.kind,
+    previousPlacement: placementOfRow(row),
     previousText: row.text,
     text: row.text,
     threadId,
