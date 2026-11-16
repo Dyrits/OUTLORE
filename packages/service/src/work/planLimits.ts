@@ -67,8 +67,13 @@ export const planLimitsLayer = Layer.effect(
         const report = yield* harness.readPlanLimits(account.harness, configDirectory);
         const now = yield* Clock.currentTimeMillis;
         if (report === null || report.windows.length === 0) {
-          // A harness that reports nothing has not failed: it is asked again after the reading's time.
+          // A harness that reports nothing has not failed: it is asked again after the reading's time, and an
+          // earlier reading, which no longer holds (the plan changed), is forgotten rather than shown as current.
+          const forgotten = yield* sql`DELETE FROM plan_limits WHERE account_key = ${key} RETURNING account_key`.pipe(
+            Effect.orDie,
+          );
           gates.set(key, afterRead(now));
+          if (forgotten.length > 0) yield* changes.publish;
           return;
         }
         const windows = report.windows.map((window) => ({
