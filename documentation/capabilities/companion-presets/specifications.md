@@ -40,6 +40,17 @@ Checks an agent can perform:
 
 Human acceptance: the owner reviews the look of the Presets card and of the chooser in the Companions tab, and that choosing "Heavy" in a quest feels as quick as the by-hand choice it replaces.
 
+## Skills bound to a preset (proposed, not built)
+
+Proposed by the owner on 2026-11-16 as an idea ("attach each skill to a preset of companions, so that when invoked it uses that preset"). The owner confirmed the semantics the same day: invoking runs the skill in a side-quest (below). The rest is the Companion's reading of it and awaits the owner's review; nothing is built.
+
+- **A skill may name one preset.** The link is kept by Outlore on the host, beside the presets, not in the skill's file, so it holds for every harness and leaves the skill's own format alone. A skill with no link behaves as today.
+- **Invoking runs the skill in a side-quest** (owner, 2026-11-16): it starts with the preset's whole stack (primary and ordered backups); the invoking thread keeps its own Companion and receives the result. No Companion changes inside a conversation. Rejected: a handover of the invoking thread for one turn, and a mere suggestion.
+- **Presets only at first** (owner, 2026-11-16): Light, Balanced, and Heavy, until the owner's own named presets are built (see Not built).
+- **A preset that cannot be used** (unavailable, as above) does not block the skill: the skill runs on the invoking thread's Companion and the conversation says why.
+- **Choosing and clearing the link** is in the Workshop, per skill, with the same chooser as elsewhere; deleting a preset clears the links to it.
+- **Acceptance (once agreed)**: a skill linked to Heavy, invoked from a Light quest, runs on Heavy's stack and its result returns to the quest; an unlinked skill runs as before; a link to an unavailable preset falls back with a line in the conversation; deleting the preset clears the link.
+
 ## Requirements covered
 
 - Provider credentials are never stored, collected, or relayed ([requirements](../../requirements.md#privacy-and-data)): a preset names an account by its identity only.
