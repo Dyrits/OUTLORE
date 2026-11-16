@@ -2,7 +2,7 @@ import type { LoreChangeKind, LoreChangeStatus, LoreKind, LoreOrigin } from "@ou
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound } from "../core/index.ts";
-import { originOf, type Placement, readLoreEntry } from "./lore.ts";
+import { type LoreEntryRow, originOf, type Placement, readLoreEntry } from "./lore.ts";
 import { textProblemOf } from "./loreChanges.ts";
 import { owner, threadActor } from "./loreHistory.ts";
 import {
@@ -58,15 +58,15 @@ export const resolveLoreChange = Effect.fnUntraced(function* (changeId: string, 
   const actor = threadActor(change.threadId);
   // Every change but Save acts on its target lore.
   const applyToTarget = {
-    Forget: (loreEntry: NonNullable<typeof target>) => deleteLoreEntry(loreEntry.id, actor, now),
-    Replace: (loreEntry: NonNullable<typeof target>) =>
+    Forget: (loreEntry: LoreEntryRow) => deleteLoreEntry(loreEntry.id, actor, now),
+    Replace: (loreEntry: LoreEntryRow) =>
       replaceLoreEntry(
         loreEntry.id,
         { kind: change.loreKind, origin: originOf(change), text: change.text },
         actor,
         now,
       ),
-    Update: (loreEntry: NonNullable<typeof target>) => {
+    Update: (loreEntry: LoreEntryRow) => {
       const isWidening = loreEntry.scope !== placement.scope || loreEntry.threadId !== placement.threadId;
       return isWidening
         ? moveLoreEntry(loreEntry.id, placement, change.text, "Widened", actor, now)
