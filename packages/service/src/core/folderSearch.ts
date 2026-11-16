@@ -16,6 +16,10 @@ const MAX_FOLDERS_READ = 4000;
 const DEADLINE_MS = 3000;
 const SKIPPED_NAMES = new Set(["node_modules", "dist", "build", "out", "target", "coverage", "__pycache__"]);
 
+/** Whether a folder named in a listing is offered: no dependency or build folder, and no hidden one unless asked for. */
+const isOfferable = (name: string, showHidden = false) =>
+  !SKIPPED_NAMES.has(name) && (showHidden || !name.startsWith("."));
+
 // Reading a folder on a stuck drive can wait forever, so at most two reads run at once across all searches and a
 // search answers with what it found when its time is up.
 const MAX_AT_ONCE = 2;
@@ -104,7 +108,7 @@ const searchByName = async (query: string, home: string, roots: ReadonlyArray<st
         : item.repositories;
       for (const entry of entries) {
         if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
-        if (entry.name.startsWith(".") || SKIPPED_NAMES.has(entry.name)) continue;
+        if (!isOfferable(entry.name)) continue;
         let path = join(item.path, entry.name);
         if (path === join(home, "Library")) continue;
         if (isIgnored(repositories, path)) continue;
@@ -154,7 +158,7 @@ const completePath = async (
     const names = entries
       .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
       .map((entry) => entry.name)
-      .filter((name) => name.toLowerCase().startsWith(term) && (term.startsWith(".") || !name.startsWith(".")))
+      .filter((name) => name.toLowerCase().startsWith(term) && isOfferable(name, term.startsWith(".")))
       .sort((left, right) => left.localeCompare(right));
     for (const name of names) {
       const real = await realDirectoryOf(join(parent, name));
