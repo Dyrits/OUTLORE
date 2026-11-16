@@ -9,11 +9,28 @@ export type { NamedAction, StructuralOperation };
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// A folder path stands alone: after the start, a space, or opening quotes, brackets or emphasis that follow one; and
-// before an optional trailing separator, closing quotes, brackets or emphasis, sentence punctuation, then a space or
-// the end. Anything else joined to it makes it part of a longer path.
-const pathBefore = "(?<=^|\\s|(?:^|\\s)[\"'`([{<“‘«*]+)";
-const pathAfter = "(?=(?:[/\\\\]?[\"'`)\\]}>»”’]*|\\*+)[.,;:!?]*(?:\\s|$))";
+// A folder path stands alone: after the start, a space, or opening brackets or emphasis that follow one; and before an
+// optional trailing separator, closing quotes, brackets or emphasis, sentence punctuation, then a space or the end.
+// Anything else joined to it makes it part of a longer path. A path opened by a quote or backtick must be closed by the
+// matching one right after it, so "/Users/me/Google Drive" never names /Users/me/Google (SP-A-05). An unquoted path
+// followed by a word that holds a separator may be the start of a path with a space, so it asks.
+const openers = "[(\\[{<*]";
+const quotePairs: ReadonlyArray<readonly [string, string]> = [
+  ['"', '"'],
+  ["'", "'"],
+  ["`", "`"],
+  ["“", "”"],
+  ["‘", "’"],
+  ["«", "»"],
+];
+const quoteOpeners = quotePairs.map(([open]) => open).join("");
+const afterPath = "[.,;:!?]*(?:\\s(?![^\\s]*[/\\\\])|$)";
+const pathPatterns = (escaped: string) => [
+  `(?<=^|\\s|(?:^|\\s)[${quoteOpeners}]*${openers}+)${escaped}(?=(?:[/\\\\]?["'\`)\\]}>»”’]*|\\*+)${afterPath})`,
+  ...quotePairs.map(
+    ([open, close]) => `(?<=(?:^|\\s)${openers}*${open})${escaped}(?=[/\\\\]?${close}[)\\]}>*]*[.,;:!?]*(?:\\s|$))`,
+  ),
+];
 
 /**
  * Where a phrase appears as whole words, ignoring case. A folder path is found only as a whole path (audit SA-02): not
@@ -23,7 +40,7 @@ const pathAfter = "(?=(?:[/\\\\]?[\"'`)\\]}>»”’]*|\\*+)[.,;:!?]*(?:\\s|$))"
 const phraseOf = (phrase: string) => {
   const trimmed = phrase.trim();
   const escaped = escapeRegExp(trimmed);
-  if (/^[/\\]/.test(trimmed)) return new RegExp(`${pathBefore}${escaped}${pathAfter}`, "giu");
+  if (/^[/\\]/.test(trimmed)) return new RegExp(pathPatterns(escaped).join("|"), "giu");
   return new RegExp(`(?<![\\p{L}\\p{N}]|\\S[/\\\\])${escaped}(?![\\p{L}\\p{N}]|[/\\\\]\\S)`, "giu");
 };
 
@@ -33,12 +50,25 @@ const sentencesOf = (text: string) =>
     .split(/(?<=[.!?;])\s+|\n+/)
     .map((part) => part.trim())
     .filter(Boolean);
-// One request per segment: "rename A to B and archive C" names two separate actions.
-const segmentsOf = (sentence: string) =>
-  sentence
-    .split(/,|\s(?:and|then|but|also|et|puis|mais|aussi)\s/i)
-    .map((part) => part.trim())
-    .filter(Boolean);
+// Text between quotes or backticks is one name, whatever it holds.
+const quotedSpansOf = (text: string): Array<Span> =>
+  [...text.matchAll(/"[^"]*"|`[^`]*`|“[^”]*”|«[^»]*»/gu)].map((match) => ({
+    end: match.index + match[0].length,
+    start: match.index,
+  }));
+// One request per segment: "rename A to B and archive C" names two separate actions; a quoted name is never cut.
+const segmentsOf = (sentence: string) => {
+  const quoted = quotedSpansOf(sentence);
+  const parts: string[] = [];
+  let from = 0;
+  for (const match of sentence.matchAll(/,|\s(?:and|then|but|also|et|puis|mais|aussi)\s/gi)) {
+    if (quoted.some((span) => span.start <= match.index && match.index < span.end)) continue;
+    parts.push(sentence.slice(from, match.index));
+    from = match.index + match[0].length;
+  }
+  parts.push(sentence.slice(from));
+  return parts.map((part) => part.trim()).filter(Boolean);
+};
 
 type Span = {
   readonly end: number;

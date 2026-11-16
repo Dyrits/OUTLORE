@@ -162,4 +162,33 @@ describe("the owner naming a structural action", () => {
     for (const phrasing of refused)
       expect(isNamedByOwner(`Create realm Garden at ${phrasing}`, garden), phrasing).toBe(false);
   });
+
+  it("never lets a quoted path stand for its shorter prefix, and needs the closing quote", () => {
+    const garden: NamedAction = { operation: "CreateRealm", targets: ["Garden"], value: "/Users/me/Google" };
+    for (const phrasing of [
+      '"/Users/me/Google Drive/work"',
+      "`/Users/me/Google Drive/work`",
+      "“/Users/me/Google Drive/work”",
+      "'/Users/me/Google Drive/work'",
+      '"/Users/me/Google, Drive/work"',
+      '"/Users/me/Google',
+    ])
+      expect(isNamedByOwner(`Create realm Garden at ${phrasing}.`, garden), phrasing).toBe(false);
+    for (const phrasing of ['"/Users/me/Google"', "`/Users/me/Google/`", "“/Users/me/Google”", "'/Users/me/Google'"])
+      expect(isNamedByOwner(`Create realm Garden at ${phrasing}.`, garden), phrasing).toBe(true);
+  });
+
+  it("asks when an unquoted path is followed by what may be the rest of a path with a space", () => {
+    const garden: NamedAction = { operation: "CreateRealm", targets: ["Garden"], value: "/Users/me/Google" };
+    expect(isNamedByOwner("Create realm Garden at /Users/me/Google Drive/work.", garden)).toBe(false);
+    expect(isNamedByOwner("Create realm Garden at /Users/me/Google now.", garden)).toBe(true);
+    expect(isNamedByOwner("Create realm Garden at /Users/me/Google.", garden)).toBe(true);
+  });
+
+  it("keeps a quoted name whole when splitting a message into requests", () => {
+    expect(isNamedByOwner('Archive "Weekly report draft, Old notes".', archive)).toBe(false);
+    expect(isNamedByOwner('Archive "Weekly report draft and Old notes".', archive)).toBe(false);
+    expect(isNamedByOwner('Archive "Weekly report draft".', archive)).toBe(true);
+    expect(isNamedByOwner('Archive "Weekly report draft", and rename Old notes to "x, y".', archive)).toBe(true);
+  });
 });
