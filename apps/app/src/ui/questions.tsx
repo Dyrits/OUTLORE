@@ -14,6 +14,7 @@ import {
   pickOther,
   typeOther,
 } from "./questionAnswers";
+import { questionOriginOf } from "./questionOrigin";
 
 const outcomeLabels = {
   Allowed: "Allowed",
@@ -160,7 +161,7 @@ function ChoiceCard({
       {onOpenMission !== void 0 && (
         <Pressable onPress={onOpenMission}>
           <Text numberOfLines={1} style={styles.link}>
-            {question.missionTitle}
+            {questionOriginOf(question)}
           </Text>
         </Pressable>
       )}
@@ -228,7 +229,7 @@ function ActionCard({
       {onOpenMission !== void 0 && (
         <Pressable onPress={onOpenMission}>
           <Text numberOfLines={1} style={styles.link}>
-            {question.missionTitle}
+            {questionOriginOf(question)}
           </Text>
         </Pressable>
       )}

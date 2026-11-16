@@ -17,12 +17,12 @@ const toQuestion = (row: QuestionRow): Question => ({
   choices: row.choices === null ? null : decodeChoices(JSON.parse(row.choices)),
 });
 
-// Every read joins the mission title, which a question shows outside its thread.
+// Every read joins the quest and thread titles, which a question shows outside its thread.
 const selectQuestions = (sql: SqlClient.SqlClient) => sql`
-  SELECT q.id, q.mission_id AS missionId, m.title AS missionTitle, q.thread_id AS threadId, q.source,
+  SELECT q.id, q.mission_id AS missionId, m.title AS missionTitle, q.thread_id AS threadId, t.title AS threadTitle, q.source,
     q.summary, q.details, q.pattern, q.permission, q.asked_at AS askedAt, q.outcome, q.message, q.device,
     q.resolved_at AS resolvedAt, q.choices, q.answers
-  FROM questions q JOIN missions m ON m.id = q.mission_id`;
+  FROM questions q JOIN missions m ON m.id = q.mission_id JOIN threads t ON t.id = q.thread_id`;
 
 /** A thread's questions, open and recorded, in the order asked. */
 export const listThreadQuestions = Effect.fnUntraced(function* (threadId: string) {

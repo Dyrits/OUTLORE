@@ -78,6 +78,7 @@ export const Question = Schema.Struct({
   /** One natural-language sentence: what the thread wants to do and why. */
   summary: Schema.String,
   threadId: ThreadId,
+  threadTitle: Schema.String,
 });
 export type Question = typeof Question.Type;
 

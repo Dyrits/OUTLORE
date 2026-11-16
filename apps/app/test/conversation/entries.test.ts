@@ -41,6 +41,7 @@ const recordedQuestionOf = (id: string, askedAt: number): Question => ({
   source: "Harness",
   summary: `Ran ${id}`,
   threadId: ThreadId.make("top"),
+  threadTitle: "Top",
 });
 
 const detailOf = (

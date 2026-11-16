@@ -36,8 +36,8 @@ describe("asking before an action the thread judges consequential", () => {
         summary: push.action,
       });
       const open = yield* call({ _tag: "ListOpenQuestions" });
-      expect(open.map((question) => [question.missionTitle, question.threadId])).toEqual([
-        [detail.mission.title, started.threadId],
+      expect(open.map((question) => [question.missionTitle, question.threadId, question.threadTitle])).toEqual([
+        [detail.mission.title, started.threadId, detail.thread.title],
       ]);
     }).pipe(Effect.provide(live())),
   );
