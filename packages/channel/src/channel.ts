@@ -1,3 +1,4 @@
+import { Effect, Schema } from "effect";
 import type { Carrier } from "./carrier.ts";
 import {
   createNoiseInitiator,
@@ -14,7 +15,11 @@ export type KeyPair = NoiseKeyPair;
 
 export type ChannelErrorKind = "handshake-failed" | "handshake-timeout" | "carrier-closed";
 
-export type SecureChannelResult = Result<SecureChannel, ChannelErrorKind>;
+export class ChannelFailure extends Schema.TaggedError<ChannelFailure>()("ChannelFailure", {
+  kind: Schema.Literals(["handshake-failed", "handshake-timeout", "carrier-closed"]),
+}) {}
+
+type SecureChannelResult = Result<SecureChannel, ChannelErrorKind>;
 
 export type ChannelOptions = {
   /** How long the handshake may take before it gives up; defaults to 15 seconds. */
@@ -33,36 +38,43 @@ export function generateKeyPair(): KeyPair {
  * The paired device's side: opens an end-to-end encrypted channel to the host whose public key it knows from the
  * pairing code. The prologue is arbitrary bytes both sides must agree on, such as the room name.
  */
-export function openInitiator(
+export const openInitiator = Effect.fnUntraced(function* (
   carrier: Carrier,
   hostPublicKey: Uint8Array,
   prologue: Uint8Array,
   options: ChannelOptions = {},
-): Promise<SecureChannelResult> {
-  let handshake: NoiseHandshake;
-  try {
-    handshake = createNoiseInitiator({ prologue, remoteStatic: hostPublicKey });
-  } catch {
-    return Promise.resolve(fail("handshake-failed"));
-  }
-  return runHandshake(carrier, handshake, true, options);
-}
+) {
+  const handshake = yield* Effect.try({
+    catch: () => new ChannelFailure({ kind: "handshake-failed" }),
+    try: () => createNoiseInitiator({ prologue, remoteStatic: hostPublicKey }),
+  });
+  return yield* handshakeResult(carrier, handshake, true, options);
+});
 
 /** The host's side: owns the static key, waits for a device's first message, and answers it. */
-export function openResponder(
+export const openResponder = Effect.fnUntraced(function* (
   carrier: Carrier,
   hostKeyPair: KeyPair,
   prologue: Uint8Array,
   options: ChannelOptions = {},
-): Promise<SecureChannelResult> {
-  let handshake: NoiseHandshake;
-  try {
-    handshake = createNoiseResponder({ localStatic: hostKeyPair, prologue });
-  } catch {
-    return Promise.resolve(fail("handshake-failed"));
-  }
-  return runHandshake(carrier, handshake, false, options);
-}
+) {
+  const handshake = yield* Effect.try({
+    catch: () => new ChannelFailure({ kind: "handshake-failed" }),
+    try: () => createNoiseResponder({ localStatic: hostKeyPair, prologue }),
+  });
+  return yield* handshakeResult(carrier, handshake, false, options);
+});
+
+const handshakeResult = Effect.fnUntraced(function* (
+  carrier: Carrier,
+  handshake: NoiseHandshake,
+  isInitiator: boolean,
+  options: ChannelOptions,
+) {
+  const result = yield* Effect.promise(() => runHandshake(carrier, handshake, isInitiator, options));
+  if (!result.ok) return yield* new ChannelFailure({ kind: result.kind });
+  return result.value;
+});
 
 /**
  * Drives the two NK handshake messages over the carrier and then keeps feeding the same carrier to the session, so a

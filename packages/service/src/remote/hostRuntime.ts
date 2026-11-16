@@ -92,7 +92,14 @@ export const remoteHostLayer = Layer.effectDiscard(
           }
           await runPlain(state.setStatus("Connecting"));
           const relayOrigin = await run(relayOriginOf(record));
-          const connected = await connectHost({ claim: record.claimSecret, relayOrigin, room: record.room });
+          const connected = await Effect.runPromise(
+            connectHost({ claim: record.claimSecret, relayOrigin, room: record.room }).pipe(
+              Effect.match({
+                onFailure: () => ({ ok: false as const }),
+                onSuccess: (value) => ({ ok: true as const, value }),
+              }),
+            ),
+          );
           if (!connected.ok) {
             await runPlain(state.setStatus("Unreachable"));
             await pause(retry, generation);

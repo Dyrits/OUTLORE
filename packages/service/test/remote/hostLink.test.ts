@@ -50,7 +50,9 @@ describe("holding a controller host link", () => {
             await held;
           },
         };
-        const opening = resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" });
+        const opening = Effect.runPromise(
+          resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" }),
+        );
         yield* Effect.promise(() => ready);
         yield* world.host({ _tag: "SetRemoteAccess", isEnabled: false });
         yield* Effect.sleep("100 millis");
@@ -125,7 +127,9 @@ describe("holding a controller host link", () => {
             await held;
           },
         };
-        const opening = resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" });
+        const opening = Effect.runPromise(
+          resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" }),
+        );
         yield* Effect.promise(() => ready);
         yield* Effect.sleep("100 millis");
         release();
@@ -135,26 +139,30 @@ describe("holding a controller host link", () => {
         expect(frames.some((text) => JSON.parse(text)._tag === "Changed")).toBe(true);
         link.channel.close();
         const cancellation = new AbortController();
-        const canceled = resumeHost(
-          {
-            ...store,
-            touch: async () => {
-              cancellation.abort();
+        const canceled = Effect.runPromise(
+          resumeHost(
+            {
+              ...store,
+              touch: async () => {
+                cancellation.abort();
+              },
             },
-          },
-          host.id,
-          { allowLocalRelay: true, kind: "desktop", release: "development", signal: cancellation.signal },
+            host.id,
+            { allowLocalRelay: true, kind: "desktop", release: "development", signal: cancellation.signal },
+          ),
         );
         yield* Effect.promise(() => expect(canceled).rejects.toThrow());
-        const failed = resumeHost(
-          {
-            ...store,
-            touch: async () => {
-              throw new Error("store failed");
+        const failed = Effect.runPromise(
+          resumeHost(
+            {
+              ...store,
+              touch: async () => {
+                throw new Error("store failed");
+              },
             },
-          },
-          host.id,
-          { allowLocalRelay: true, kind: "desktop", release: "development" },
+            host.id,
+            { allowLocalRelay: true, kind: "desktop", release: "development" },
+          ),
         );
         yield* Effect.promise(() => expect(failed).rejects.toThrow("store failed"));
         yield* until(() =>

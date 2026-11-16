@@ -1,8 +1,21 @@
+import { Effect } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import { WebSocketServer } from "ws";
-import { connectClient, connectHost } from "../src/client.ts";
+import { connectClient as clientEffect, connectHost as hostEffect } from "../src/client.ts";
 import { closingFrame } from "../src/roomCore.ts";
 import { room } from "./fixtures/wsClient.ts";
+
+const resultOf = <Value>(effect: Effect.Effect<Value, { readonly kind: "unreachable" }>) =>
+  Effect.runPromise(
+    effect.pipe(
+      Effect.match({
+        onFailure: (error) => ({ kind: error.kind, ok: false as const }),
+        onSuccess: (value) => ({ ok: true as const, value }),
+      }),
+    ),
+  );
+const connectClient = (...args: Parameters<typeof clientEffect>) => resultOf(clientEffect(...args));
+const connectHost = (...args: Parameters<typeof hostEffect>) => resultOf(hostEffect(...args));
 
 // A relay that says why it closes a connection, then keeps the connection open: a client that waits for the close
 // would learn nothing (Node's own WebSocket waits about ten seconds for the connection to end), so it must act on the

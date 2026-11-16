@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import { hostLinkCodes } from "./transport.ts";
 
 // Why a link to a host could not be made, in the words the owner reads, the same in the desktop app and the web app
@@ -14,12 +15,12 @@ export type ControllerKind = "browser" | "desktop";
 export type LinkFailureKind = "couldNotOpen" | "invalid" | "noSuchHost" | "otherRelease" | "refused";
 
 /** A link that could not be made or used, with the words the owner reads. */
-export class LinkFailure extends Error {
-  constructor(
-    readonly kind: LinkFailureKind,
-    message: string,
-  ) {
-    super(message);
+export class LinkFailure extends Schema.TaggedError<LinkFailure>()("LinkFailure", {
+  kind: Schema.Literals(["couldNotOpen", "invalid", "noSuchHost", "otherRelease", "refused"]),
+  message: Schema.String,
+}) {
+  constructor(kind: LinkFailureKind, message: string) {
+    super({ kind, message });
   }
 }
 

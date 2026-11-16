@@ -1,7 +1,7 @@
 export { decodeBase64Url, encodeBase64Url } from "./base64url.ts";
 export type { Carrier } from "./carrier.ts";
 export type { KeyPair } from "./channel.ts";
-export { generateKeyPair, openInitiator, openResponder } from "./channel.ts";
+export { ChannelFailure, generateKeyPair, openInitiator, openResponder } from "./channel.ts";
 export { constantTimeEqual } from "./constantTimeEqual.ts";
 export type { PairingCode } from "./pairingCode.ts";
 export {

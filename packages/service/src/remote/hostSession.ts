@@ -11,7 +11,7 @@ import {
 } from "@outlore/channel";
 import type { ServerFrame } from "@outlore/contracts";
 import type { HostConnection } from "@outlore/relay";
-import type { Effect } from "effect";
+import { Effect } from "effect";
 import type { SqlClient } from "effect/sql";
 import type { RemoteConfig } from "./config.ts";
 import { encodeServerFrame } from "./frames.ts";
@@ -156,18 +156,20 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
     const link = carrierOf(connection, clientId);
     links.set(clientId, link);
     const hello = setTimeout(() => link.carrier.close(), helloMillis);
-    void openResponder(
-      link.carrier,
-      { publicKey: record.publicKey, secretKey: record.secretKey },
-      roomPrologue(record.room),
-      { handshakeTimeoutMs: helloMillis },
+    void Effect.runPromise(
+      openResponder(
+        link.carrier,
+        { publicKey: record.publicKey, secretKey: record.secretKey },
+        roomPrologue(record.room),
+        { handshakeTimeoutMs: helloMillis },
+      ).pipe(Effect.match({ onFailure: () => null, onSuccess: (value) => value })),
     )
       .then((opened) => {
-        if (!opened.ok) {
+        if (opened === null) {
           clearTimeout(hello);
           return;
         }
-        const channel = opened.value;
+        const channel = opened;
         let handle: ((message: string) => void) | null = null;
         let isAuthenticating = false;
         channel.onText((message) => {

@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import type { ServerFrame } from "@outlore/contracts";
+import { linkCodeOf } from "@outlore/controller";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { WebSocket, WebSocketServer } from "ws";
@@ -77,7 +78,7 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
         Effect.catch((failure) =>
           Effect.succeed({
             channel: null,
-            closeCode: failure.closeCode,
+            closeCode: linkCodeOf[failure.kind],
             message: failure.message,
           }),
         ),

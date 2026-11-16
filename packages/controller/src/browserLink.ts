@@ -1,4 +1,5 @@
 import { decodeBase64Url, encodeBase64Url, type SecureChannel } from "@outlore/channel";
+import { Effect } from "effect";
 import { pairWithCode, resumeHost } from "./hostLink.ts";
 import type { PairedHostStore } from "./hostStore.ts";
 import { LinkFailure, linkCodeOf, linkTexts } from "./linkFailure.ts";
@@ -23,7 +24,7 @@ const browserStore = (hosts: PairedHosts): PairedHostStore => ({
 
 /** Pairs a browser and keeps the pairing in its storage. */
 export const pairFromBrowser = (code: string, name: string, hosts: PairedHosts, page: PageSettings) =>
-  pairWithCode(code, name, browserStore(hosts), { ...page, kind: "browser" });
+  Effect.runPromise(pairWithCode(code, name, browserStore(hosts), { ...page, kind: "browser" }));
 
 /**
  * The transport to a paired host for a `ServiceClient`. It reports itself open at once, as the desktop's loopback
@@ -41,7 +42,7 @@ export const openBrowserTransport =
       if (isClosed) return;
       handlers.onOpen();
       try {
-        const opened = await resumeHost(browserStore(hosts), hostId, { ...page, kind: "browser" });
+        const opened = await Effect.runPromise(resumeHost(browserStore(hosts), hostId, { ...page, kind: "browser" }));
         if (isClosed) return opened.channel.close();
         channel = opened.channel;
         opened.listen((text) => handlers.onText(text));

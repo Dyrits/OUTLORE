@@ -1,13 +1,32 @@
 import { bytesToHex } from "@noble/hashes/utils.js";
+import { Effect } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultHandshakeTimeoutMs } from "../src/channel.ts";
-import { type Carrier, generateKeyPair, openInitiator, openResponder, type SecureChannel } from "../src/index.ts";
+import {
+  type Carrier,
+  ChannelFailure,
+  generateKeyPair,
+  openInitiator as initiate,
+  openResponder as respond,
+  type SecureChannel,
+} from "../src/index.ts";
 import { createNoiseInitiator, type TransportKeys } from "../src/noise/index.ts";
 import { fragmentBytes, maxMessageBytes } from "../src/secureChannel.ts";
 import { fakeCarrierPair, type Interference, settle, silentCarrier } from "./fixtures/fakeCarrier.ts";
 
 const prologue = new TextEncoder().encode("room-1");
 const empty = new Uint8Array(0);
+const resultOf = <Value>(effect: Effect.Effect<Value, { readonly kind: string }>) =>
+  Effect.runPromise(
+    effect.pipe(
+      Effect.match({
+        onFailure: (error) => ({ kind: error.kind, ok: false as const }),
+        onSuccess: (value) => ({ ok: true as const, value }),
+      }),
+    ),
+  );
+const openInitiator = (...args: Parameters<typeof initiate>) => resultOf(initiate(...args));
+const openResponder = (...args: Parameters<typeof respond>) => resultOf(respond(...args));
 
 /** Opens both sides over a fake link and fails the test unless both handshakes succeed. */
 const connect = async (interference: { fromFirst?: Interference; fromSecond?: Interference } = {}) => {
@@ -77,6 +96,12 @@ afterEach(() => {
 });
 
 describe("opening a secure channel", () => {
+  it("reports a malformed host key through the typed Effect failure channel", async () => {
+    const failure = await Effect.runPromise(Effect.flip(initiate(silentCarrier(), new Uint8Array(5), prologue)));
+    expect(failure).toBeInstanceOf(ChannelFailure);
+    expect(failure.kind).toBe("handshake-failed");
+  });
+
   it("opens both sides and carries text both ways", async () => {
     const { initiator, responder } = await connect();
     const atResponder = watchText(responder);

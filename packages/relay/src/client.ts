@@ -1,5 +1,6 @@
 import type { Carrier, Result } from "@outlore/channel";
 import { encodeBase64Url } from "@outlore/channel/base64url";
+import { Effect, Schema } from "effect";
 import { clientIdBytes, hostFrame, readClosingFrame, relayFrame } from "./roomCore.ts";
 
 // The relay as its users see it: a host keeps one connection and hears from its clients by their identifiers; a client
@@ -8,9 +9,11 @@ import { clientIdBytes, hostFrame, readClosingFrame, relayFrame } from "./roomCo
 /** Whole messages between two peers, in order; the shape the secure channel asks of any carrier. */
 export type RelayCarrier = Carrier;
 
-export type ConnectFailure = "unreachable";
+export class ConnectFailure extends Schema.TaggedError<ConnectFailure>()("ConnectFailure", {
+  kind: Schema.Literal("unreachable"),
+}) {}
 
-export type ConnectResult<Value> = Result<Value, ConnectFailure>;
+export type ConnectResult<Value> = Result<Value, "unreachable">;
 
 /** A text frame the relay answers without waking its room: it keeps a path through a mobile network or a NAT open. */
 const keepAliveMillis = 25_000;
@@ -71,7 +74,7 @@ export interface HostConnection {
 }
 
 /** Connects as the host of `room`, claiming it with `claim` (the first claim keeps the room). */
-export async function connectHost(options: {
+async function connectHostRaw(options: {
   claim: Uint8Array;
   relayOrigin: string;
   room: string;
@@ -150,7 +153,7 @@ export interface ClientConnection {
 }
 
 /** Connects to the host of `room` as a client; the relay closes it with `closeCodes.hostOffline` if no host is there. */
-export async function connectClient(options: {
+async function connectClientRaw(options: {
   relayOrigin: string;
   room: string;
 }): Promise<ConnectResult<ClientConnection>> {
@@ -207,3 +210,17 @@ export async function connectClient(options: {
     },
   };
 }
+
+/** Opens the host connection, reporting an unreachable relay in the Effect error channel. */
+export const connectHost = Effect.fnUntraced(function* (options: Parameters<typeof connectHostRaw>[0]) {
+  const result = yield* Effect.promise(() => connectHostRaw(options));
+  if (!result.ok) return yield* new ConnectFailure({ kind: result.kind });
+  return result.value;
+});
+
+/** Opens the client connection, reporting an unreachable relay in the Effect error channel. */
+export const connectClient = Effect.fnUntraced(function* (options: Parameters<typeof connectClientRaw>[0]) {
+  const result = yield* Effect.promise(() => connectClientRaw(options));
+  if (!result.ok) return yield* new ConnectFailure({ kind: result.kind });
+  return result.value;
+});

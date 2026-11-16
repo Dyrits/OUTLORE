@@ -13,6 +13,7 @@ import {
 } from "@outlore/channel";
 import type { KnownHost } from "@outlore/contracts";
 import { closeCodes, connectClient } from "@outlore/relay/browser";
+import { Effect } from "effect";
 import type { HostLinkRecord, PairedHostStore } from "./hostStore.ts";
 import { type ControllerKind, controllerWords, LinkFailure, linkTexts, releaseProblemOf } from "./linkFailure.ts";
 
@@ -106,9 +107,16 @@ const openToHost = async (
     abort();
     signal.throwIfAborted();
   }
-  const opened = await openInitiator(connection.carrier, link.hostPublicKey, roomPrologue(link.room), {
-    handshakeTimeoutMs: linkMillis,
-  });
+  const opened = await Effect.runPromise(
+    openInitiator(connection.carrier, link.hostPublicKey, roomPrologue(link.room), {
+      handshakeTimeoutMs: linkMillis,
+    }).pipe(
+      Effect.match({
+        onFailure: () => ({ ok: false as const }),
+        onSuccess: (value) => ({ ok: true as const, value }),
+      }),
+    ),
+  );
   if (!opened.ok) {
     connection.carrier.close();
     throw new LinkFailure("couldNotOpen", relayRefusalOf(connection.closeCode()));
@@ -127,7 +135,7 @@ const openToHost = async (
 };
 
 /** Pairs with the host that made `code`; keeps the host and returns it for the host menu. */
-export const pairWithCode = async (
+const pairWithCodeRaw = async (
   code: string,
   deviceName: string,
   store: PairedHostStore,
@@ -185,7 +193,7 @@ export const pairWithCode = async (
 };
 
 /** Opens a link to a kept host: the secure channel, resumed, or the reason it could not be. */
-export const resumeHost = async (store: PairedHostStore, hostId: string, settings: LinkSettings): Promise<HostLink> => {
+const resumeHostRaw = async (store: PairedHostStore, hostId: string, settings: LinkSettings): Promise<HostLink> => {
   const stored = await store.link(hostId);
   if (stored === null) {
     throw new LinkFailure("noSuchHost", `This ${controllerWords[settings.kind].self} has no such host.`);
@@ -219,3 +227,37 @@ export const resumeHost = async (store: PairedHostStore, hostId: string, setting
   }
   return { channel, hostName: reply.hostName, listen };
 };
+
+const linkFailureOf = (reason: unknown): LinkFailure =>
+  reason instanceof LinkFailure
+    ? reason
+    : new LinkFailure("couldNotOpen", reason instanceof Error ? reason.message : linkTexts.unreachable);
+
+/** Pair with a host, reporting expected refusals in the Effect error channel. */
+export const pairWithCode = Effect.fnUntraced(function* (
+  code: string,
+  deviceName: string,
+  store: PairedHostStore,
+  settings: LinkSettings,
+) {
+  return yield* Effect.tryPromise({
+    catch: linkFailureOf,
+    try: (signal) =>
+      pairWithCodeRaw(code, deviceName, store, {
+        ...settings,
+        signal: settings.signal === undefined ? signal : AbortSignal.any([settings.signal, signal]),
+      }),
+  });
+});
+
+/** Resume a kept host, reporting expected refusals in the Effect error channel. */
+export const resumeHost = Effect.fnUntraced(function* (store: PairedHostStore, hostId: string, settings: LinkSettings) {
+  return yield* Effect.tryPromise({
+    catch: linkFailureOf,
+    try: (signal) =>
+      resumeHostRaw(store, hostId, {
+        ...settings,
+        signal: settings.signal === undefined ? signal : AbortSignal.any([settings.signal, signal]),
+      }),
+  });
+});

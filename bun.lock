@@ -58,6 +58,7 @@
         "@noble/ciphers": "^2.4.0",
         "@noble/curves": "^2.4.0",
         "@noble/hashes": "^2.4.0",
+        "effect": "4.1.4",
       },
       "devDependencies": {
         "@types/node": "^24",
@@ -75,6 +76,7 @@
         "@outlore/channel": "workspace:*",
         "@outlore/contracts": "workspace:*",
         "@outlore/relay": "workspace:*",
+        "effect": "4.1.4",
       },
       "devDependencies": {
         "@types/node": "^24",
@@ -84,6 +86,7 @@
       "name": "@outlore/relay",
       "dependencies": {
         "@outlore/channel": "workspace:*",
+        "effect": "4.1.4",
         "ws": "8.23.0",
       },
       "devDependencies": {
