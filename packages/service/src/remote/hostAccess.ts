@@ -103,7 +103,7 @@ export const hostNameOf = (record: HostRecord | null) =>
 export const ownAccountLabel = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<{ hostName: string | null }>`SELECT host_name AS hostName FROM host_identity WHERE id = 1`;
-  return row?.hostName ?? computerNameOf();
+  return row?.hostName ?? (yield* Effect.sync(computerNameOf));
 });
 
 /** What one harness's own sign-in is called: the owner's name for it, else the host's name ({@link ownAccountLabel}). */
@@ -156,9 +156,10 @@ export const makePairingSecret = (now: number) =>
     const sql = yield* SqlClient.SqlClient;
     const secret = newPairingSecret();
     const expiresAt = now + pairingCodeMillis;
+    const id = yield* Effect.sync(() => randomUUID());
     yield* sql`DELETE FROM pairing_codes WHERE expires_at < ${now} OR used_at IS NOT NULL`;
     yield* sql`INSERT INTO pairing_codes (id, expires_at, secret_hash, used_at)
-      VALUES (${randomUUID()}, ${expiresAt}, ${hashText(secret)}, NULL)`;
+      VALUES (${id}, ${expiresAt}, ${hashText(secret)}, NULL)`;
     return { expiresAt, secret };
   });
 
@@ -183,7 +184,7 @@ export const redeemPairingSecret = (secret: Uint8Array, device: { kind: DeviceKi
     const taken = yield* sql<{ id: string }>`UPDATE pairing_codes SET used_at = ${now}
       WHERE id = ${code.id} AND used_at IS NULL RETURNING id`;
     if (taken.length === 0) return { refusal: "code-used" } as const;
-    const deviceId = randomUUID();
+    const deviceId = yield* Effect.sync(() => randomUUID());
     const token = newDeviceToken();
     yield* sql`INSERT INTO paired_devices (id, kind, last_active_at, name, paired_at, token_hash)
       VALUES (${deviceId}, ${device.kind}, ${now}, ${device.name}, ${now}, ${hashText(token)})`;

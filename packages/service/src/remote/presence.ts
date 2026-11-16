@@ -1,7 +1,7 @@
 import { encodePairingCode } from "@outlore/channel";
 import type { RelayStatus } from "@outlore/contracts";
 import type { HostConnection } from "@outlore/relay";
-import { Context, Effect, Layer, type Stream, SubscriptionRef } from "effect";
+import { Clock, Context, Effect, Layer, type Stream, SubscriptionRef } from "effect";
 import type { SqlClient, SqlError } from "effect/sql";
 import { Changes, invalid, ServiceFailure } from "../core/index.ts";
 import { RemoteConfig } from "./config.ts";
@@ -173,7 +173,7 @@ export const makeHostControl = (dependencies: {
     createPairingCode: withConfig(
       Effect.gen(function* () {
         const record = yield* ensureHostRecord;
-        const { expiresAt, secret } = yield* makePairingSecret(Date.now());
+        const { expiresAt, secret } = yield* makePairingSecret(yield* Clock.currentTimeMillis);
         const code = encodePairingCode({
           hostPublicKey: record.publicKey,
           relayOrigin: yield* relayOriginOf(record),

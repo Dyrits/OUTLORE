@@ -49,8 +49,9 @@ export const insertPermission = (threadId: string, sentence: string, pattern: st
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     const now = yield* Clock.currentTimeMillis;
+    const id = yield* Effect.sync(() => crypto.randomUUID());
     yield* sql`INSERT INTO standing_permissions (id, mission_id, workspace_id, sentence, pattern, created_at)
-      SELECT ${crypto.randomUUID()}, CASE WHEN workspace_id IS NULL THEN mission_id END, workspace_id,
+      SELECT ${id}, CASE WHEN workspace_id IS NULL THEN mission_id END, workspace_id,
         ${sentence}, ${pattern}, ${now}
       FROM threads WHERE id = ${threadId}`;
   });

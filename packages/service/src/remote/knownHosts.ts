@@ -53,7 +53,7 @@ export const readHostLink = (hostId: string) =>
 export const saveHost = (host: Omit<HostLink, "id">, now: number) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
-    const id = randomUUID();
+    const id = yield* Effect.sync(() => randomUUID());
     const publicKey = encodeBase64Url(host.hostPublicKey);
     // Pairing again with a host this installation already has (after it was disconnected) replaces the old entry,
     // which could only be refused, instead of leaving two under one name.
