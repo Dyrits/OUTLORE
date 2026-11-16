@@ -75,3 +75,5 @@ Commands were run from the repository root. Mutations were made only in a throwa
 Reproduction: the commands above were rerun by the agent that wrote them from a fresh shell (`bun run check`, `typecheck`, the full suite, `check-release-copy.sh` for both tags, the relay probe, `gh repo view`); no independent subagent was used. The mutation results were each observed once.
 
 Files: `drive-final.mjs` (window drive), `check-release-copy.sh`, `1-default.png`, `2-iskios-theme.png`, the earlier `drive.mjs`, `rename.py`, and two screens above.
+
+Amended 2026-11-16 (CHG-0370): the `Iskios-<version>` copy step in the release workflow was removed, as the single tag it served (`0.1.4-Prototype`) is long published. Row 7 above describes the workflow as it was then, and `check-release-copy.sh` was deleted with the step; the test `releaseWorkflow.test.ts` now checks that the publish step carries no Iskios name.

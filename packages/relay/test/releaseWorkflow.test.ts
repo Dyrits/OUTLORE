@@ -20,6 +20,16 @@ describe("the release workflow's check job", () => {
   });
 });
 
+describe("the release workflow's publish step", () => {
+  const releaseJob = workflow.slice(workflow.indexOf("\n  release:"), workflow.indexOf("\n  relay:"));
+
+  it("uploads the Outlore installers and update files only, with no copy under the former Iskios name (SP-H-13)", () => {
+    expect(releaseJob).toContain("gh release upload");
+    expect(releaseJob).not.toContain("Iskios");
+    expect(releaseJob).not.toContain("legacy");
+  });
+});
+
 describe("the release workflow's relay job", () => {
   it("exists, and runs only for a pushed tag, after the installers are published", () => {
     expect(workflow).toContain("\n  relay:");
