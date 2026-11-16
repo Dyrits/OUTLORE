@@ -2,6 +2,7 @@ import {
   hostLinkCodes,
   isLocalOrigin,
   LinkFailure,
+  type LinkSettings,
   type PairedHostStore,
   pairWithCode,
   resumeHost,
@@ -9,7 +10,7 @@ import {
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { ServiceFailure } from "../core/index.ts";
-import { RemoteConfig } from "./config.ts";
+import { RemoteConfig, type RemoteSettings } from "./config.ts";
 import { readHostLink, saveHost, touchHost } from "./knownHosts.ts";
 
 /** What an open link to a host offers the loopback bridge. */
@@ -23,13 +24,12 @@ export interface HostChannel {
 
 const storedHosts = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
+  const runStored = <Value, Error>(work: Effect.Effect<Value, Error, SqlClient.SqlClient>) =>
+    Effect.runPromise(work.pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie));
   return {
-    link: (id) =>
-      Effect.runPromise(readHostLink(id).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie)),
-    save: (host, now) =>
-      Effect.runPromise(saveHost(host, now).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie)),
-    touch: (id, name, now) =>
-      Effect.runPromise(touchHost(id, name, now).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie)),
+    link: (id) => runStored(readHostLink(id)),
+    save: (host, now) => runStored(saveHost(host, now)),
+    touch: (id, name, now) => runStored(touchHost(id, name, now)),
   } satisfies PairedHostStore;
 });
 
@@ -62,19 +62,21 @@ class ControllerFailure extends ServiceFailure {
 }
 const failureOf = (cause: unknown) => new ControllerFailure(cause);
 
+/** The link settings both controller calls send: this desktop's release, local relay left to the origin. */
+const linkOptionsOf = (config: RemoteSettings, signal: AbortSignal): LinkSettings => ({
+  allowLocalRelay: isLocalOrigin(config.relayOrigin),
+  kind: "desktop",
+  release: config.release,
+  signal,
+});
+
 /** Pairs this desktop app through the shared controller protocol and the SQLite store. */
 export const pairWithHost = Effect.fn("pairWithHost")(function* (code: string, deviceName: string) {
   const config = yield* RemoteConfig;
   const store = yield* storedHosts;
   return yield* Effect.tryPromise({
     catch: failureOf,
-    try: (signal) =>
-      pairWithCode(code, deviceName, store, {
-        allowLocalRelay: isLocalOrigin(config.relayOrigin),
-        kind: "desktop",
-        release: config.release,
-        signal,
-      }),
+    try: (signal) => pairWithCode(code, deviceName, store, linkOptionsOf(config, signal)),
   });
 });
 
@@ -84,13 +86,7 @@ export const openHostChannel = Effect.fn("openHostChannel")(function* (hostId: s
   const store = yield* storedHosts;
   const opened = yield* Effect.tryPromise({
     catch: failureOf,
-    try: (signal) =>
-      resumeHost(store, hostId, {
-        allowLocalRelay: isLocalOrigin(config.relayOrigin),
-        kind: "desktop",
-        release: config.release,
-        signal,
-      }),
+    try: (signal) => resumeHost(store, hostId, linkOptionsOf(config, signal)),
   });
   return {
     close: () => opened.channel.close(),
