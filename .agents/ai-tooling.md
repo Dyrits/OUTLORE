@@ -1,13 +1,13 @@
 # AI tooling record
 
-Set up 2026-11-05 with the setup skill. Rerun that skill to change or remove anything here.
+Set up 2026-11-05 with the setup skill. Versions, paths, and measurements below record that setup unless a later date is given; they are not a current inventory. Rerun the skill to change or remove tooling.
 
 ## Tools
 
 | Tool | Version | Scope | Wiring | Check |
 | --- | --- | --- | --- | --- |
 | CodeGraph | 1.6.1 | Index in `.codegraph/` (not committed); MCP server global | Claude Code, OpenCode (already wired); Codex, Gemini CLI (added) | `codegraph status` up to date (492 nodes, 1,056 edges); `codegraph explore claudeHarnessLayer` returned `packages/service/src/claude.ts:83`; Codex and Gemini each answered the same through `codegraph_explore` |
-| Context7 | MCP `https://mcp.context7.com/mcp`; `npx ctx7` | Global | Claude Code, OpenCode (already wired); Codex (added, OAuth signed in), Gemini CLI (added, connected) | `npx ctx7 library effect Layer` gave `/effect-ts/effect`; `npx ctx7 docs /effect-ts/effect/effect_4.1.0 Layer.effect` returned v4 docs (the project pins effect 4.1.2) |
+| Context7 | MCP `https://mcp.context7.com/mcp`; `npx ctx7` | Global | Claude Code, OpenCode (already wired); Codex (added, OAuth signed in), Gemini CLI (added, connected) | `npx ctx7 library effect Layer` gave `/effect-ts/effect`; `npx ctx7 docs /effect-ts/effect/effect_4.1.0 Layer.effect` returned v4 docs (the project pinned effect 4.1.2 at setup) |
 | ast-grep | 0.45.3 | Global | None needed | `--pattern 'export const claudeHarnessLayer = $$$'` matched `claude.ts:83`; a non-existent name matched nothing |
 | Playwright CLI | 0.1.23 (`bun add -g @playwright/cli`) | Global binary; skill in `.agents/skills/playwright-cli`, linked from `.claude/skills/` and `.zcode/skills/`; config `.playwright/cli.config.json` | Skill-based, no MCP | `playwright-cli open https://example.com` then `snapshot` returned the page tree |
 | GitHub CLI | signed in as Dyrits | Global | None | `gh auth status` |

@@ -251,7 +251,7 @@ OUTLORE_LIVE_HARNESSES=1 bun run test
 
 Set `OUTLORE_LIVE_OPENCODE_MODEL` if the live OpenCode checks need a specific model identifier.
 Use `bun run format` to apply Biome fixes.
-Commits run Biome on staged files and then the workspace typecheck.
+Commits run Biome on staged files; staged code or configuration also triggers the workspace typecheck, and staged TypeScript triggers related tests.
 
 ### Repository layout
 
