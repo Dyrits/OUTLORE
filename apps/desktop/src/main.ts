@@ -115,8 +115,9 @@ app
         return file === null ? new Response("Not found", { status: 404 }) : net.fetch(pathToFileURL(file).toString());
       });
     }
-    // A Finder or Dock launch gives only the system folders, where the harness tools are not; the service and the shells inherit this path.
-    if (app.isPackaged) {
+    // A Finder or Dock launch on macOS gives only the system folders, where the harness tools are not; the service and
+    // the shells inherit this path. Windows has no login shell to ask, and its launcher already carries its `;`-separated path.
+    if (app.isPackaged && process.platform !== "win32") {
       const loginPath = readLoginPath(userInfo().shell || process.env.SHELL || "/bin/sh");
       process.env.PATH = mergedPathOf({ home: homedir(), launchPath: process.env.PATH, loginPath });
     }
