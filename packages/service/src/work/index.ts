@@ -12,7 +12,7 @@ export { resolveChatter } from "./chatter.ts";
 export { Commands, changed, commandsLayer, makeCommands, noFollowUps, unchanged } from "./commands.ts";
 export { autoArchiveLayer } from "./ending.ts";
 export { guildmasterReportsLayer } from "./guildmasterReports.ts";
-export { stopThread } from "./lifecycle.ts";
+export { readMissionIdOf, stopThread } from "./lifecycle.ts";
 export { loreHandlers } from "./loreHandlers.ts";
 export { toolServerLayer } from "./mcp.ts";
 export { listMentionables } from "./mentions.ts";

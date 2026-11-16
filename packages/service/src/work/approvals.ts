@@ -10,6 +10,7 @@ import {
   type Decision,
   type FolderQuestion,
 } from "./approvalContracts.ts";
+import { readMissionIdOf } from "./lifecycle.ts";
 import { makePromptPolicy } from "./promptPolicy.ts";
 
 export { type ApprovalRequest, Approvals, type Decision, type FolderQuestion } from "./approvalContracts.ts";
@@ -40,9 +41,7 @@ export const approvalsLayer = Layer.effect(
     // The thread lifecycle returns the threads that waited on them to Idle (lifecycle.ts, recoverThreadStates).
 
     const missionOf = (threadId: string) =>
-      sql<{ missionId: string }>`SELECT mission_id AS missionId FROM threads WHERE id = ${threadId}`.pipe(
-        Effect.map(([row]) => row?.missionId ?? null),
-      );
+      readMissionIdOf(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
 
     const readTurnId = (threadId: string) =>
       readRunningTurnId(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));

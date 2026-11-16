@@ -181,19 +181,23 @@ export const haltThreads = Effect.fn("haltThreads")(function* (
   if (state === "Stopped") for (const id of ids) yield* relaxAncestors(id);
 });
 
+/** The mission a thread belongs to, or null for an unknown thread. */
+export const readMissionIdOf = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ missionId: string }>`SELECT mission_id AS missionId FROM threads WHERE id = ${threadId}`;
+  return row?.missionId ?? null;
+});
+
 /**
  * The owner or a harness stops a thread: its turn is invalidated and it becomes Stopped; its turn is then
  * cancelled and the mission's waiting threads may take the freed slot. Nothing follows for an unknown thread.
  */
 export const stopThread = Effect.fn("stopThread")(function* (threadId: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const [thread] = yield* sql<{
-    missionId: string;
-  }>`SELECT mission_id AS missionId FROM threads WHERE id = ${threadId}`;
-  if (thread === undefined) return unchanged(null);
+  const missionId = yield* readMissionIdOf(threadId);
+  if (missionId === null) return unchanged(null);
   yield* haltThreads([threadId], "Stopped");
-  yield* touchMission(thread.missionId, yield* Clock.currentTimeMillis);
-  return changed(null, { missionsToWake: [thread.missionId], turnsToCancel: [threadId] });
+  yield* touchMission(missionId, yield* Clock.currentTimeMillis);
+  return changed(null, { missionsToWake: [missionId], turnsToCancel: [threadId] });
 });
 
 /**
