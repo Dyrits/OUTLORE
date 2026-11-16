@@ -31,7 +31,7 @@ The owner repeats the same request: a morning digest, a weekly dependency check.
 
 - Fallback happens on a failed turn only, not on a slow or poor answer.
 - The Ritual form starts on Sonnet 5.5 (`startingModel`), not on the last quest's Companion.
-- A run's state is Underway, Fulfilled (a turn completed, even after a fallback), Interrupted (a Stopped thread, or a service restart mid-run), or Failed (every Companion failed).
+- A run's state is Underway, Done (a turn completed, even after a fallback), Interrupted (a Stopped thread, or a service restart mid-run), or Failed (every Companion failed).
 - A run is an owner message, so the thread's chatter and ended-quest rules treat it as the owner writing.
 - A run waits behind a running turn only by being skipped (scheduled) or refused (manual).
 

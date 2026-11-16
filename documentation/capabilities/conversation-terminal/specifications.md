@@ -6,6 +6,7 @@ The owner confirmed that shell output belongs in the Companion's context and cla
 ## Behavior
 
 - In a desktop conversation, typing `!` on an empty composer line opens the owner's default login shell as an interactive owner-message bubble in the conversation, without triggering the Companion.
+- On Windows, which has no login shell, `!` opens the command shell named by `ComSpec` (the Windows system shell), and the app keeps the launcher's `;`-separated `PATH` instead of reading a login shell's (CHG-0356).
 - An exclamation mark in ordinary text stays text; paste and input composition do not trigger a shell.
 - With a workspace-backed Realm, the starting folder is that Realm's root, including the Realm selected in the Guild Hall.
 - For a quest in a Realm without a workspace or in the Borderlands, the terminal starts in the owner's home folder.

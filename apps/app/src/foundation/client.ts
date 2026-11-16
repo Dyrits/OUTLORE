@@ -21,7 +21,7 @@ declare global {
 const decodeFrame = Schema.decodeUnknownSync(ServerFrameJson);
 
 /** A request the service refused or failed, carrying its error. */
-export class RequestFailed extends Error {
+class RequestFailed extends Error {
   constructor(readonly error: ServiceError) {
     super(error.message);
   }

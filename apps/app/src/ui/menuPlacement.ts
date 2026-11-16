@@ -1,5 +1,5 @@
 /** A button's frame in window coordinates, as `measureInWindow` reports it. */
-export type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
 
 /** Where a menu's open list stands in the window: below its button, or above it, never past an edge. */
 export type MenuPlacement = {

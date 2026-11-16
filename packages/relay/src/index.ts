@@ -1,10 +1,11 @@
 export {
   type ClientConnection,
-  type ConnectResult,
+  ConnectFailure,
   connectClient,
   connectHost,
   type HostConnection,
 } from "./client.ts";
-export { type NodeRelay, type NodeRelayOptions, startNodeRelay } from "./nodeRelay.ts";
+export { type NodeRelay, NodeRelayFailure, type NodeRelayOptions, startNodeRelay } from "./nodeRelay.ts";
 export { closeCodes, closeWithReason, closingFrame, readClosingFrame } from "./roomCore.ts";
+export { claimProtocolOf, legacyClaimUntil, relayProtocol } from "./route.ts";
 export { relayWorkerBundle, relayWorkerCompatibilityDate, relayWorkerSourceHash } from "./workerBundle.generated.ts";

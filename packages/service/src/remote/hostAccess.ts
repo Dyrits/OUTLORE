@@ -181,7 +181,20 @@ export const redeemPairingSecret = Effect.fnUntraced(function* (
   const token = newDeviceToken();
   yield* sql`INSERT INTO paired_devices (id, kind, last_active_at, name, paired_at, token_hash)
     VALUES (${deviceId}, ${device.kind}, ${now}, ${device.name}, ${now}, ${hashText(token)})`;
-  return { device: { deviceId, token } satisfies NewDevice } as const;
+  return { codeId: code.id, device: { deviceId, token } satisfies NewDevice } as const;
+});
+
+/**
+ * Takes back a pairing that never delivered its token, as when the connection drops mid-handshake: the device row goes,
+ * so the Workshop lists nothing nobody holds, and the code pairs again — but only while pairing is still on, so a code
+ * from before an Off does not come back to life (see setRemoteAccess).
+ */
+export const abandonPairing = Effect.fnUntraced(function* (codeId: string, deviceId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const gone = yield* sql<{ id: string }>`DELETE FROM paired_devices WHERE id = ${deviceId} RETURNING id`;
+  if (gone.length === 0) return;
+  const [host] = yield* sql<{ isEnabled: number }>`SELECT is_enabled AS isEnabled FROM host_identity WHERE id = 1`;
+  if (host?.isEnabled === 1) yield* sql`UPDATE pairing_codes SET used_at = NULL WHERE id = ${codeId}`;
 });
 
 /** A device that proves itself by its token: its name, or null when it is unknown, disconnected, or wrong. */

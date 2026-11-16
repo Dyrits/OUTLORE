@@ -2,11 +2,11 @@ import type { KnownHost } from "@outlore/contracts";
 import { createContext, useContext } from "react";
 
 /** The computer whose Outlore the window shows: this one, or a paired host's (device-pairing). */
-export interface ActiveHost {
+type ActiveHost = {
   /** The paired host's identifier; null while the window shows this computer's own Outlore. */
   readonly hostId: string | null;
   readonly name: string;
-}
+};
 
 export const ActiveHostContext = createContext<ActiveHost>({ hostId: null, name: "This computer" });
 
@@ -17,7 +17,7 @@ export const useActiveHost = () => useContext(ActiveHostContext);
 export const useIsRemoteHost = () => useContext(ActiveHostContext).hostId !== null;
 
 /** What the top bar's host menu needs: the computers it lists, the one the window shows, and what choosing one does. */
-export interface HostMenuProps {
+export type HostMenuProps = {
   /** The paired host the window shows; null for this computer. */
   readonly activeId: string | null;
   /** This computer's own name. */
@@ -27,7 +27,7 @@ export interface HostMenuProps {
   readonly hosts: readonly KnownHost[];
   readonly onAdd: () => void;
   readonly onChoose: (hostId: string | null) => void;
-}
+};
 
 /** The host menu the window offers; null where the window cannot pair. */
 export const HostMenuContext = createContext<HostMenuProps | null>(null);

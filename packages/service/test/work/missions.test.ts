@@ -2,11 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionId, Request, RequestTag, ResultOf } from "@outlore/contracts";
+import type { Request } from "@outlore/contracts";
 import { Effect, Layer } from "effect";
 import { TestClock } from "effect/testing";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
+import { call, read } from "../fixtures/service.ts";
 
 const REPLY_DELAY = "2 seconds";
 
@@ -28,12 +29,6 @@ const live = (filename: string) =>
     scratchRoot: join(filename, "..", "missions"),
   });
 
-const call = <R extends Request>(request: R) =>
-  Effect.gen(function* () {
-    const service = yield* Service;
-    return (yield* service.handle(request)) as ResultOf<R["_tag"] & RequestTag>;
-  });
-
 const failureOf = <R extends Request>(request: R) =>
   Effect.gen(function* () {
     const service = yield* Service;
@@ -47,7 +42,6 @@ const advance = (duration: Parameters<typeof TestClock.adjust>[0]) =>
     for (let i = 0; i < 20; i++) yield* Effect.yieldNow;
   });
 
-const read = (missionId: MissionId) => call({ _tag: "ReadMission", missionId, threadId: null });
 const realmList = () => call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null });
 
 describe("starting a mission", () => {

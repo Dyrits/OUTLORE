@@ -14,28 +14,28 @@ import {
 // typing and keys can be checked without one.
 
 /** What the list remembers: the category opened from a bare `@`, and the line the owner moved to. */
-export interface ListState {
+export type ListState = {
   readonly category: MentionCategory | null;
   readonly chosen: number;
-}
+};
 
 export const initialListState: ListState = { category: null, chosen: 0 };
 
 /** What the list is built from. `mentions` is null where an `@` offers nothing. */
-export interface ListSource {
+export type ListSource = {
   readonly entries: ReadonlyArray<WorkspaceEntry>;
   readonly mentionables: ReadonlyArray<Mentionable>;
   readonly mentions: { readonly hasFolder: boolean } | null;
   readonly skills: ReadonlyArray<Skill>;
   readonly trigger: Trigger | null;
-}
+};
 
 /** The lines shown, the one the owner is on, and whether the list is a category's items under a bare `@`. */
-export interface ComposerList {
+type ComposerList = {
   readonly highlighted: MenuRow | undefined;
   readonly isInCategory: boolean;
   readonly rows: ReadonlyArray<MenuRow>;
-}
+};
 
 const SKILL_LIMIT = 6;
 

@@ -17,7 +17,7 @@ const paired = { deviceId: "device-1", hostName: "Studio", t: "paired", token } 
 
 const asText = (value: unknown) => JSON.stringify(value);
 
-describe("client hello", () => {
+describe("handling a client hello", () => {
   it("accepts a pair hello and a resume hello", () => {
     expect(parseClientHello(asText(pair))).toEqual({ ok: true, value: pair });
     expect(parseClientHello(asText(resume))).toEqual({ ok: true, value: resume });
@@ -67,7 +67,7 @@ describe("client hello", () => {
   });
 });
 
-describe("host reply", () => {
+describe("handling a host reply", () => {
   it("accepts paired, resumed and every refusal reason", () => {
     expect(parseHostReply(asText(paired))).toEqual({ ok: true, value: paired });
     expect(parseHostReply(asText({ hostName: "Studio", t: "resumed" }))).toEqual({

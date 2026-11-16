@@ -7,9 +7,9 @@ export interface TerminalPanelHandle {
 }
 
 /** A desktop terminal, retained while hidden so its next snapshot includes ongoing output. */
-export interface TerminalPanelProps {
+export type TerminalPanelProps = {
   readonly cwd: string | null;
   readonly id: string;
   readonly onReady: () => void;
   readonly ref?: Ref<TerminalPanelHandle>;
-}
+};

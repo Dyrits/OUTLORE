@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { type PairedHostStore, resumeHost } from "@outlore/controller";
 import type { HostConnection } from "@outlore/relay";
-import { Effect } from "effect";
+import { Effect, Fiber } from "effect";
 import { SqlClient } from "effect/sql";
 import { readHostLink } from "../../src/remote/knownHosts.ts";
 
@@ -50,7 +50,9 @@ describe("holding a controller host link", () => {
             await held;
           },
         };
-        const opening = resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" });
+        const opening = Effect.runPromise(
+          resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" }),
+        );
         yield* Effect.promise(() => ready);
         yield* world.host({ _tag: "SetRemoteAccess", isEnabled: false });
         yield* Effect.sleep("100 millis");
@@ -91,6 +93,7 @@ describe("holding a controller host link", () => {
           onClientLeft: () => {},
           onClose: () => {},
           sendToClient: () => {},
+          usesLegacyClaim: false,
         };
         expect(presence.attachRelay(stale, generation)).toBe(false);
         expect(isClosed).toBe(true);
@@ -125,7 +128,9 @@ describe("holding a controller host link", () => {
             await held;
           },
         };
-        const opening = resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" });
+        const opening = Effect.runPromise(
+          resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" }),
+        );
         yield* Effect.promise(() => ready);
         yield* Effect.sleep("100 millis");
         release();
@@ -134,27 +139,37 @@ describe("holding a controller host link", () => {
         link.listen((text) => frames.push(text));
         expect(frames.some((text) => JSON.parse(text)._tag === "Changed")).toBe(true);
         link.channel.close();
-        const cancellation = new AbortController();
-        const canceled = resumeHost(
-          {
-            ...store,
-            touch: async () => {
-              cancellation.abort();
+        // A fiber interrupted while the pairing store updates closes the channel it had opened.
+        let isTouching: () => void = () => {};
+        const touching = new Promise<void>((resolve) => {
+          isTouching = resolve;
+        });
+        const canceled = Effect.runFork(
+          resumeHost(
+            {
+              ...store,
+              touch: () => {
+                isTouching();
+                return new Promise<void>(() => {});
+              },
             },
-          },
-          host.id,
-          { allowLocalRelay: true, kind: "desktop", release: "development", signal: cancellation.signal },
+            host.id,
+            { allowLocalRelay: true, kind: "desktop", release: "development" },
+          ),
         );
-        yield* Effect.promise(() => expect(canceled).rejects.toThrow());
-        const failed = resumeHost(
-          {
-            ...store,
-            touch: async () => {
-              throw new Error("store failed");
+        yield* Effect.promise(() => touching);
+        yield* Fiber.interrupt(canceled);
+        const failed = Effect.runPromise(
+          resumeHost(
+            {
+              ...store,
+              touch: async () => {
+                throw new Error("store failed");
+              },
             },
-          },
-          host.id,
-          { allowLocalRelay: true, kind: "desktop", release: "development" },
+            host.id,
+            { allowLocalRelay: true, kind: "desktop", release: "development" },
+          ),
         );
         yield* Effect.promise(() => expect(failed).rejects.toThrow("store failed"));
         yield* until(() =>

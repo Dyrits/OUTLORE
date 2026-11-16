@@ -24,3 +24,5 @@ Consequences:
 - **A direct connection, Tailscale, or WebRTC with a TURN server**: as in 0003.
 
 Amendment (CHG-0283): the relay serves each release's web app at its own address, for any browser ([0019](0019-browsers-use-the-relay-served-web-app.md)).
+
+Amendment (2026-11-16, CHG-0358): "before the first release" in the consequences above means before the first stable release. The prereleases 0.1.3 to 0.1.5 shipped without the measurement, which the owner accepted; measuring a typical session against Cloudflare's free allowance remains open and is an acceptance item of [device pairing](../capabilities/device-pairing/specifications.md).

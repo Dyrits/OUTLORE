@@ -29,6 +29,12 @@ type ChangeRow = {
   readonly originExcerpt: string | null;
   readonly originFrom: string | null;
   readonly originKind: LoreOrigin["kind"] | null;
+  readonly previousKind: LoreKind | null;
+  readonly previousScope: Placement["scope"] | null;
+  readonly previousThreadId: string | null;
+  readonly previousWorkspaceId: string | null;
+  /** The lore entry's text when the thread proposed the change: what the approval card shows; null for a save. */
+  readonly previousText: string | null;
   readonly scope: Placement["scope"];
   readonly scopeThreadId: string | null;
   readonly scopeWorkspaceId: string | null;
@@ -38,21 +44,40 @@ type ChangeRow = {
 };
 
 /**
- * The owner approves or declines a change awaiting approval. An approved change to a lore entry deleted in the
- * meantime is declined, since there is nothing left to change. Callers run it in a transaction.
+ * The owner approves or declines a change awaiting approval. A stale or unverifiable target cannot be approved;
+ * the owner is told why and can decline the still-readable proposal. Callers run it in a transaction.
  */
 export const resolveLoreChange = Effect.fnUntraced(function* (changeId: string, isApproved: boolean) {
   const sql = yield* SqlClient.SqlClient;
   const [change] = yield* sql<ChangeRow>`
       SELECT kind, intel_kind AS loreKind, status, intel_id AS loreEntryId, scope, scope_thread_id AS scopeThreadId,
         scope_workspace_id AS scopeWorkspaceId, text, thread_id AS threadId, origin_kind AS originKind,
-        origin_entry AS originEntry, origin_from AS originFrom, origin_excerpt AS originExcerpt
+        origin_entry AS originEntry, origin_from AS originFrom, origin_excerpt AS originExcerpt,
+        previous_text AS previousText, previous_kind AS previousKind, previous_scope AS previousScope,
+        previous_thread_id AS previousThreadId, previous_workspace_id AS previousWorkspaceId
       FROM intel_changes WHERE id = ${changeId}`;
   if (change === undefined) return yield* notFound("No such change to lore.");
   if (change.status !== "Awaiting") return yield* invalid("This change was already decided.");
   const placement = { scope: change.scope, threadId: change.scopeThreadId, workspaceId: change.scopeWorkspaceId };
   const target = change.loreEntryId === null ? null : yield* readLoreEntry(change.loreEntryId);
-  const isApplied = isApproved && (change.kind === "Save" || target !== null);
+  const hasSnapshot = change.previousText !== null && change.previousScope !== null && change.previousKind !== null;
+  const isCurrent =
+    change.kind === "Save" ||
+    (target !== null &&
+      hasSnapshot &&
+      target.text === change.previousText &&
+      target.kind === change.previousKind &&
+      target.scope === change.previousScope &&
+      target.threadId === change.previousThreadId &&
+      target.workspaceId === change.previousWorkspaceId);
+  if (isApproved && !isCurrent) {
+    return yield* invalid(
+      hasSnapshot
+        ? "This lore entry changed since the proposal. Decline this request and ask the thread to propose it again."
+        : "This request predates the information needed to check it. Decline it and ask the thread to propose it again.",
+    );
+  }
+  const isApplied = isApproved && isCurrent;
   const now = yield* Clock.currentTimeMillis;
   // An approved change is recorded in the lore entry's history as the thread's, with the owner's approval.
   const actor = threadActor(change.threadId);

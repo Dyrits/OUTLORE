@@ -7,8 +7,10 @@ Output: no output and exit 0 when the command passes. When it is guarded, `text`
 exits 2; `ask-json` prints a PreToolUse "ask" decision to stdout and exits 0. An internal failure counts as guarded.
 Needs: Python 3 standard library; git for the branch checks.
 
-Levels: 1 shared history; 2 adds local work loss; 3 adds history rewrites and every push.
-Limits: git aliases, scripts that run git, and `eval` are not followed.
+Levels: 1 shared history; 2 adds local work loss and skipped gates (`commit --no-verify`, `-c core.hooksPath`);
+3 adds history rewrites and every push.
+Limits: git aliases, scripts that run git, and `eval` are not followed. A push whose ref is a variable or command
+expansion (`$B`, `$(...)`, backticks) cannot be resolved, so it asks; so does a shell that reads its commands from stdin.
 """
 
 import argparse
@@ -92,6 +94,8 @@ def commands(text):
                 if re.fullmatch(r"-[a-z]*c[a-z]*", word) and index + 1 < len(words):
                     yield from commands(words[index + 1])
                     break
+            else:
+                yield words  # no -c: the commands come from stdin or a redirect, where they cannot be read
         elif name == "git":
             yield words
 
@@ -111,12 +115,21 @@ class Checker:
         raise Guarded(reason)
 
     def check(self, words):
+        if words[0].rsplit("/", 1)[-1] in SHELLS:
+            self.check_shell(words)
+            return
         directory, index = self.cwd, 1
         while index < len(words):
             word = words[index]
             if word == "-C" and index + 1 < len(words):
                 directory, index = words[index + 1], index + 2
-            elif word in ("-c", "--namespace", "--git-dir", "--work-tree", "--exec-path") and index + 1 < len(words):
+            elif (word in ("-c", "--config-env") and index + 1 < len(words)) or word.startswith(("-c", "--config-env=")):
+                separate = word in ("-c", "--config-env")
+                setting = words[index + 1] if separate else word.removeprefix("--config-env=").removeprefix("-c")
+                if self.level >= 2 and setting.partition("=")[0].lower() == "core.hookspath":
+                    self.ask("`git -c core.hooksPath` swaps the repository's hooks for others.")
+                index += 2 if separate else 1
+            elif word in ("--namespace", "--git-dir", "--work-tree", "--exec-path") and index + 1 < len(words):
                 index += 2
             elif word.startswith("-"):
                 index += 1
@@ -128,6 +141,13 @@ class Checker:
         handler = getattr(self, "git_" + subcommand.replace("-", "_"), None)
         if handler:
             handler(args, directory)
+
+    def check_shell(self, words):
+        """A shell without -c: it runs a script file, or reads its commands from stdin or a redirect, which cannot be read."""
+        operands = [word for word in words[1:] if not word.startswith("-") and not word.startswith("<")]
+        redirected = any(word.startswith("<") for word in words[1:])
+        if self.level >= 2 and (redirected or not operands):
+            self.ask(f"`{words[0]}` reads its commands from stdin, where the guard cannot check them.")
 
     def is_protected(self, branch, directory):
         default = git_output(directory, "symbolic-ref", "--short", "refs/remotes/origin/HEAD").removeprefix("origin/")
@@ -157,6 +177,8 @@ class Checker:
         for refspec in refspecs or ["HEAD"]:
             if refspec.startswith("+"):
                 forced, refspec = True, refspec[1:]
+            if "$" in refspec or "`" in refspec:
+                self.ask(f"`git push {remote} {refspec}` names its ref by expansion, which the guard cannot resolve.")
             if refspec.startswith(":"):
                 self.ask(f"`git push {remote} {refspec}` deletes a remote ref.")
             destination = refspec.split(":", 1)[-1].removeprefix("refs/heads/")
@@ -186,6 +208,8 @@ class Checker:
         force = "--force" in args or "f" in flags or "D" in flags
         if self.level >= 2 and delete and force:
             self.ask("`git branch -D` deletes a branch even when it is unmerged.")
+        if self.level >= 2 and force and not delete:
+            self.ask("`git branch -f` moves a branch off its commits.")
         if self.level >= 3 and delete:
             self.ask("Level 3 asks before deleting any branch.")
 
@@ -230,8 +254,20 @@ class Checker:
             self.ask("Level 3 asks before every rebase.")
 
     def git_commit(self, args, directory):
+        flags = "".join(arg[1:] for arg in args if re.fullmatch(r"-[a-zA-Z]+", arg))
+        if self.level >= 2 and ("--no-verify" in args or "n" in flags):
+            self.ask("`git commit --no-verify` skips the pre-commit hook, the gate that runs Biome, the typecheck and the tests.")
         if self.level >= 3 and "--amend" in args:
             self.ask("Level 3 asks before amending a commit.")
+
+    def git_rm(self, args, directory):
+        flags = "".join(arg[1:] for arg in args if re.fullmatch(r"-[a-zA-Z]+", arg))
+        if self.level >= 2 and ("--force" in args or "f" in flags):
+            self.ask("`git rm -f` deletes files with uncommitted changes.")
+
+    def git_merge(self, args, directory):
+        if self.level >= 2 and "--abort" in args:
+            self.ask("`git merge --abort` discards the uncommitted state of the merge.")
 
     def git_tag(self, args, directory):
         if self.level >= 3 and any(arg in ("-d", "--delete", "-f", "--force") for arg in args):
@@ -241,7 +277,12 @@ class Checker:
         if self.level >= 3:
             self.ask("Level 3 asks before commands that rewrite history.")
 
-    git_filter_branch = git_filter_repo = git_update_ref = _rewrite
+    def git_update_ref(self, args, directory):
+        if self.level >= 2 and any(arg in ("-d", "--delete") for arg in args):
+            self.ask("`git update-ref -d` deletes a ref, which can drop a branch's commits.")
+        self._rewrite(args, directory)
+
+    git_filter_branch = git_filter_repo = _rewrite
 
 
 def payload(raw):

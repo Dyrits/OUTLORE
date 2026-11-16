@@ -11,11 +11,12 @@ import {
 } from "@outlore/channel";
 import type { ServerFrame } from "@outlore/contracts";
 import type { HostConnection } from "@outlore/relay";
-import type { Effect } from "effect";
+import { Cause, Effect } from "effect";
 import type { SqlClient } from "effect/sql";
 import type { RemoteConfig } from "./config.ts";
 import { encodeServerFrame } from "./frames.ts";
 import {
+  abandonPairing,
   type HostRecord,
   hostNameOf,
   hostReleaseOf,
@@ -62,8 +63,11 @@ export interface DeviceServer {
   readonly endAll: () => void;
   /** A client left the room. */
   readonly left: (clientId: string) => void;
-  /** A client joined the room: runs its handshake and its hello. */
-  readonly serve: (connection: HostConnection, record: HostRecord, clientId: string) => void;
+  /**
+   * A client joined the room: registers its link now and returns what runs its handshake and its hello, which the
+   * caller forks; it never fails, and ends when the device is known, refused or gone.
+   */
+  readonly serve: (connection: HostConnection, record: HostRecord, clientId: string) => Effect.Effect<void>;
 }
 
 /**
@@ -96,6 +100,7 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
 
     const now = Date.now();
     let deviceId: string;
+    let redeemedCodeId: string | null = null;
     let newToken: Uint8Array | null = null;
     if (hello.t === "pair") {
       const secret = decodeBase64Url(hello.secret);
@@ -106,6 +111,7 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
       if ("refusal" in outcome) return refuse(outcome.refusal);
       deviceId = outcome.device.deviceId;
       newToken = outcome.device.token;
+      redeemedCodeId = outcome.codeId;
     } else {
       const token = decodeBase64Url(hello.token);
       const name = token === null ? null : await parts.run(resumeDevice(hello.deviceId, token, now));
@@ -113,19 +119,32 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
       deviceId = hello.deviceId;
     }
 
+    /** A pairing whose token was never delivered is taken back: the device row nobody holds goes, and the code pairs again. */
+    const abandon = async () => {
+      if (redeemedCodeId === null) return;
+      await parts.runInTransaction(abandonPairing(redeemedCodeId, deviceId)).catch(reportFailure);
+    };
+
     // Registered before the answer, then checked: a Disconnect that came in between would otherwise leave this device
     // connected with the authority of an owner it no longer has.
     const removeConnection = await parts.admitDevice(deviceId, () => channel.close());
-    if (removeConnection === null) return refuse(parts.isAccepting() ? "disconnected" : "disabled");
+    if (removeConnection === null) {
+      await abandon();
+      return refuse(parts.isAccepting() ? "disconnected" : "disabled");
+    }
     channel.onClose(removeConnection);
-    const current = await parts.run(readHostRecord);
-    if (isClosed || !parts.isAccepting()) {
+    const leave = async () => {
       removeConnection();
+      await abandon();
       channel.close();
       return null;
-    }
+    };
+    const current = await parts.run(readHostRecord);
+    if (isClosed || !parts.isAccepting()) return leave();
     const hostName = await parts.run(hostNameOf(current));
     const release = await parts.run(hostReleaseOf);
+    // The two reads above yield; a drop in that window is caught here, last, before the answer is sent.
+    if (isClosed || !parts.isAccepting()) return leave();
     reply(
       newToken === null
         ? { hostName, release, t: "resumed" }
@@ -152,47 +171,53 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
     };
   };
 
+  /** Once the handshake is done: hands each text to the authentication, then to the session it opens. */
+  const identify = (channel: SecureChannel) =>
+    Effect.callback<void>((resume) => {
+      let handle: ((message: string) => void) | null = null;
+      let isAuthenticating = false;
+      channel.onText((message) => {
+        if (handle !== null) {
+          handle(message);
+          return;
+        }
+        if (isAuthenticating) {
+          channel.close();
+          return;
+        }
+        isAuthenticating = true;
+        authenticate(channel, message)
+          .then((session) => {
+            handle = session;
+            resume(Effect.void);
+          })
+          .catch((reason) => {
+            reportFailure(reason);
+            channel.close();
+            resume(Effect.void);
+          });
+      });
+      channel.onClose(() => resume(Effect.void));
+    });
+
   const serve = (connection: HostConnection, record: HostRecord, clientId: string) => {
     const link = carrierOf(connection, clientId);
     links.set(clientId, link);
-    const hello = setTimeout(() => link.carrier.close(), helloMillis);
-    void openResponder(
-      link.carrier,
-      { publicKey: record.publicKey, secretKey: record.secretKey },
-      roomPrologue(record.room),
-      { handshakeTimeoutMs: helloMillis },
-    )
-      .then((opened) => {
-        if (!opened.ok) {
-          clearTimeout(hello);
-          return;
-        }
-        const channel = opened.value;
-        let handle: ((message: string) => void) | null = null;
-        let isAuthenticating = false;
-        channel.onText((message) => {
-          if (handle !== null) {
-            handle(message);
-            return;
-          }
-          if (isAuthenticating) {
-            channel.close();
-            return;
-          }
-          isAuthenticating = true;
-          void authenticate(channel, message)
-            .then((session) => {
-              clearTimeout(hello);
-              handle = session;
-            })
-            .catch((reason) => {
-              reportFailure(reason);
-              channel.close();
-            });
-        });
-        channel.onClose(() => clearTimeout(hello));
-      })
-      .catch(reportFailure);
+    // The device has until the deadline to finish the handshake and say who it is, or its connection is closed.
+    return Effect.gen(function* () {
+      const channel = yield* openResponder(
+        link.carrier,
+        { publicKey: record.publicKey, secretKey: record.secretKey },
+        roomPrologue(record.room),
+        { handshakeTimeoutMs: helloMillis },
+      );
+      yield* identify(channel);
+    }).pipe(
+      Effect.timeoutOrElse({ duration: helloMillis, orElse: () => Effect.sync(() => link.carrier.close()) }),
+      // A failed handshake already closed the carrier; the device was never a session.
+      Effect.catchTag("ChannelFailure", () => Effect.void),
+      Effect.catchCause((cause) => Effect.sync(() => reportFailure(Cause.squash(cause)))),
+    );
   };
 
   return {

@@ -13,9 +13,9 @@ export const room = "abcdefghijklmnopqrstuvwxyz012345";
 export const secret = Buffer.from("a-sixteen-plus-byte-secret").toString("base64url");
 
 /** Opens a client; the promise ends when the upgrade is accepted, or with the HTTP status when it is refused. */
-export const open = (port: number, path: string): Promise<Session | { status: number }> =>
+export const open = (port: number, path: string, protocols?: string[]): Promise<Session | { status: number }> =>
   new Promise((resolve) => {
-    const socket = new WebSocket(`ws://127.0.0.1:${port}${path}`);
+    const socket = new WebSocket(`ws://127.0.0.1:${port}${path}`, protocols);
     const messages: Session["messages"] = [];
     const waiting: (() => void)[] = [];
     const closed = new Promise<{ code: number; reason: string }>((done) => {
@@ -44,8 +44,8 @@ export const open = (port: number, path: string): Promise<Session | { status: nu
   });
 
 /** Opens a client and fails the test if the upgrade was refused. */
-export const connect = async (port: number, path: string): Promise<Session> => {
-  const session = await open(port, path);
+export const connect = async (port: number, path: string, protocols?: string[]): Promise<Session> => {
+  const session = await open(port, path, protocols);
   if ("status" in session) throw new Error(`upgrade refused with ${session.status}`);
   return session;
 };

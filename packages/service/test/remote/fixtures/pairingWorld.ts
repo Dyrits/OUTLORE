@@ -81,10 +81,7 @@ const connect = (url: string) =>
 /** `controllerRelay` is the relay address the controller itself is set up with, when it is not the one in use. */
 export const makeWorld = (options: { controllerRelay?: string; controllerRelease?: string } = {}) =>
   Effect.gen(function* () {
-    const relay = yield* Effect.acquireRelease(
-      Effect.promise(() => startNodeRelay()),
-      (running) => Effect.promise(() => running.close()),
-    );
+    const relay = yield* startNodeRelay();
     const relayOrigin = `http://127.0.0.1:${relay.port}`;
     const hostContext = yield* Layer.build(machine("Host Mac", relayOrigin));
     const controllerContext = yield* Layer.build(
@@ -144,6 +141,7 @@ export const makeWorld = (options: { controllerRelay?: string; controllerRelease
       controller,
       controllerSql,
       host,
+      hostContext,
       hostSql,
       newCode,
       open,

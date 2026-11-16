@@ -2,18 +2,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type {
-  MessageDelivery,
-  MissionDetail,
-  MissionId,
-  Request,
-  RequestTag,
-  ResultOf,
-  ThreadId,
-} from "@outlore/contracts";
+import type { MessageDelivery, MissionDetail, Request, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
+import { call, read, settle } from "../fixtures/service.ts";
 
 const directories: string[] = [];
 afterEach(() => {
@@ -30,12 +23,6 @@ const live = () => {
     scratchRoot: join(directory, "missions"),
   });
 };
-
-const call = <R extends Request>(request: R) =>
-  Effect.gen(function* () {
-    const service = yield* Service;
-    return (yield* service.handle(request)) as ResultOf<R["_tag"] & RequestTag>;
-  });
 
 const failureOf = <R extends Request>(request: R) =>
   Effect.gen(function* () {
@@ -56,19 +43,6 @@ const start = (text: string) =>
 const send = (threadId: ThreadId, text: string, delivery: MessageDelivery | null = null) =>
   call({ _tag: "SendMessage", delivery, requestId: `send-${++requestCount}`, text, threadId });
 const interrupt = (threadId: ThreadId) => call({ _tag: "InterruptThread", threadId });
-const read = (missionId: MissionId, threadId: ThreadId | null = null) =>
-  call({ _tag: "ReadMission", missionId, threadId });
-
-/** Polls for at most 4 seconds, shorter than the 5-second turns an interrupt must cut short. */
-const settle = (missionId: MissionId, check: (detail: MissionDetail) => boolean, threadId: ThreadId | null = null) =>
-  Effect.gen(function* () {
-    for (let i = 0; i < 400; i++) {
-      const detail = yield* read(missionId, threadId);
-      if (check(detail)) return detail;
-      yield* Effect.sleep("10 millis");
-    }
-    return yield* Effect.die(new Error(`mission did not settle: ${JSON.stringify(yield* read(missionId, threadId))}`));
-  });
 
 /** A fake-harness line that calls one of the thread tools. */
 const tool = (name: string, args: object) => `call ${name} ${JSON.stringify(args)}`;

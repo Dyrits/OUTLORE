@@ -1,7 +1,6 @@
 import {
-  hostLinkCodes,
   isLocalOrigin,
-  LinkFailure,
+  type LinkFailure,
   type LinkSettings,
   type PairedHostStore,
   pairWithCode,
@@ -33,61 +32,39 @@ const storedHosts = Effect.gen(function* () {
   } satisfies PairedHostStore;
 });
 
-class ControllerFailure extends ServiceFailure {
-  readonly closeCode: number;
-  constructor(cause: unknown) {
-    super({
-      kind:
-        cause instanceof LinkFailure
-          ? (
-              {
-                couldNotOpen: "ExecutionFailure",
-                invalid: "InvalidInput",
-                noSuchHost: "NotFound",
-                otherRelease: "AccessRefused",
-                refused: "AccessRefused",
-              } as const
-            )[cause.kind]
-          : "ExecutionFailure",
-      message: cause instanceof Error ? cause.message : "Could not reach the relay. Check your internet connection.",
-    });
-    // The transport's close codes (linkCodeOf in @outlore/controller maps each LinkFailure kind to one of these).
-    this.closeCode =
-      cause instanceof LinkFailure && cause.kind === "otherRelease"
-        ? hostLinkCodes.otherRelease
-        : cause instanceof LinkFailure && (cause.kind === "noSuchHost" || cause.kind === "refused")
-          ? hostLinkCodes.refused
-          : hostLinkCodes.couldNotOpen;
-  }
-}
-const failureOf = (cause: unknown) => new ControllerFailure(cause);
+const failureOf = (failure: LinkFailure) =>
+  new ServiceFailure({
+    kind: (
+      {
+        couldNotOpen: "ExecutionFailure",
+        invalid: "InvalidInput",
+        noSuchHost: "NotFound",
+        otherRelease: "AccessRefused",
+        refused: "AccessRefused",
+      } as const
+    )[failure.kind],
+    message: failure.message,
+  });
 
 /** The link settings both controller calls send: this desktop's release, local relay left to the origin. */
-const linkOptionsOf = (config: RemoteSettings, signal: AbortSignal): LinkSettings => ({
+const linkOptionsOf = (config: RemoteSettings): LinkSettings => ({
   allowLocalRelay: isLocalOrigin(config.relayOrigin),
   kind: "desktop",
   release: config.release,
-  signal,
 });
 
 /** Pairs this desktop app through the shared controller protocol and the SQLite store. */
 export const pairWithHost = Effect.fn("pairWithHost")(function* (code: string, deviceName: string) {
   const config = yield* RemoteConfig;
   const store = yield* storedHosts;
-  return yield* Effect.tryPromise({
-    catch: failureOf,
-    try: (signal) => pairWithCode(code, deviceName, store, linkOptionsOf(config, signal)),
-  });
+  return yield* pairWithCode(code, deviceName, store, linkOptionsOf(config)).pipe(Effect.mapError(failureOf));
 });
 
 /** Resumes a desktop link, retaining host frames until the loopback bridge listens. */
 export const openHostChannel = Effect.fn("openHostChannel")(function* (hostId: string) {
   const config = yield* RemoteConfig;
   const store = yield* storedHosts;
-  const opened = yield* Effect.tryPromise({
-    catch: failureOf,
-    try: (signal) => resumeHost(store, hostId, linkOptionsOf(config, signal)),
-  });
+  const opened = yield* resumeHost(store, hostId, linkOptionsOf(config));
   return {
     close: () => opened.channel.close(),
     hostName: opened.hostName,

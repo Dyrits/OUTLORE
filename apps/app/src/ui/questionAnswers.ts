@@ -9,13 +9,13 @@ export const answersOf = (question: Pick<Question, "pattern" | "permission">): R
   question.pattern === null || question.permission === null ? ["Allow", "Deny"] : ["Allow", "AlwaysAllow", "Deny"];
 
 /** What the owner has picked so far for one choice of a choice question (CHG-0299). */
-export interface ChoiceDraft {
+export type ChoiceDraft = {
   /** Whether Other is chosen: its typed text then counts as an answer. */
   readonly isOtherChosen: boolean;
   readonly other: string;
   /** The options picked, in the order picked. */
   readonly selected: ReadonlyArray<string>;
-}
+};
 
 export const emptyDraft: ChoiceDraft = { isOtherChosen: false, other: "", selected: [] };
 

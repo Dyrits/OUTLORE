@@ -20,6 +20,35 @@ const migrateUntil = (last: string) =>
     loader: SqliteMigrator.fromRecord(Object.fromEntries(Object.entries(migrations).filter(([id]) => id <= last))),
   });
 
+describe("migrating pending lore changes", () => {
+  it.effect("keeps old proposals and leaves their unknown target state unset", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
+    directories.push(directory);
+    return Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* migrateUntil("0053_command_outcome_wakes");
+      yield* sql`INSERT INTO intel_changes (id, thread_id, kind, status, intel_id, scope, text, previous_text, at)
+        VALUES ('c', 't', 'Update', 'Awaiting', 'l', 'Global', 'New', 'Old', 1)`;
+      yield* migrateUntil("0055_lore_change_previous_placement");
+      expect(
+        yield* sql`SELECT status, text, previous_text AS previousText, previous_scope AS previousScope,
+        previous_thread_id AS previousThreadId, previous_workspace_id AS previousWorkspaceId, previous_kind AS previousKind
+        FROM intel_changes WHERE id = 'c'`,
+      ).toEqual([
+        {
+          previousKind: null,
+          previousScope: null,
+          previousText: "Old",
+          previousThreadId: null,
+          previousWorkspaceId: null,
+          status: "Awaiting",
+          text: "New",
+        },
+      ]);
+    }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
+  });
+});
+
 describe("migrating saved realms to archive support", () => {
   it.effect("reads a realm saved before archive support as active without rewriting it", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));

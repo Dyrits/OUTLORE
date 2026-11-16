@@ -38,6 +38,10 @@ jobs:
         working-directory: apps/desktop
         run: bun x --no-install electron-builder install-app-deps
       - run: bun run test --maxWorkers=4
+      # The web app is deployed after the release is public (the relay job), so a failing export must fail here, before a tag.
+      - name: Build the web app
+        working-directory: packages/relay
+        run: bun run site
 
   package:
     name: Package ${{ matrix.platform }} (${{ matrix.arch }})
@@ -163,17 +167,6 @@ jobs:
           updates=(installers/latest*.yml)
           test "${#updates[@]}" -eq 2
           for file in "${updates[@]}"; do test -s "$file"; done
-          # An installed Iskios (0.1.3 and earlier) looks for Iskios-<version>-mac-<arch>.dmg, so the first Outlore release
-          # (0.1.4-Prototype) also publishes each macOS installer under that name, as the same file: the old app then updates
-          # itself into Outlore. Later releases carry Outlore names only, which the Outlore app looks for.
-          legacy=()
-          if [[ "$RELEASE_TAG" == "0.1.4-Prototype" ]]; then
-            for image in installers/Outlore-*-mac-*.dmg; do
-              cp -- "$image" "installers/Iskios-${image#installers/Outlore-}"
-            done
-            legacy=(installers/Iskios-*-mac-*.dmg)
-            [[ ${#legacy[@]} -eq 2 ]]
-          fi
           (cd installers && sha512sum -- *.dmg *.exe *.AppImage > SHA512SUMS.txt)
           test -s installers/SHA512SUMS.txt
           isPrerelease=false
@@ -184,7 +177,7 @@ jobs:
           else
             gh release create "$RELEASE_TAG" --verify-tag --generate-notes --draft --prerelease="$isPrerelease"
           fi
-          gh release upload "$RELEASE_TAG" "${files[@]}" "${legacy[@]}" "${updates[@]}" installers/SHA512SUMS.txt --clobber
+          gh release upload "$RELEASE_TAG" "${files[@]}" "${updates[@]}" installers/SHA512SUMS.txt --clobber
           gh release edit "$RELEASE_TAG" --draft=false --prerelease="$isPrerelease"
 
   relay:

@@ -4,7 +4,7 @@ productName: Outlore
 artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
 # Reuses the Electron the repository already installed, so packaging downloads no second copy.
 electronDist: node_modules/electron/dist
-electronVersion: 45.2.3
+electronVersion: 45.3.1
 # The installed app looks for its updates in this repository's releases; electron-builder writes the update files that Windows and Linux read (macOS, ad hoc signed, updates through its own updater).
 publish:
   provider: github
@@ -20,9 +20,16 @@ files:
   - assets/icon-gild.png
   - assets/one.LICENSE
   - package.json
+extraResources:
+  - from: ../../LICENSE
+    to: LICENSE
+  - from: ../../packages/channel/NOTICE
+    to: channel-NOTICE
 # node-pty's native binary and its spawn helper must run from disk, not from inside the archive.
 asarUnpack:
   - "**/node_modules/node-pty/**"
+# Turns off the Electron fuses the app does not use, before this build is signed (ST-H-09).
+afterPack: scripts/afterPack.cjs
 mac:
   category: public.app-category.developer-tools
   icon: assets/icon.png

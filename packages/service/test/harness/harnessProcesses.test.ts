@@ -45,25 +45,42 @@ const fakeProtocolOf = (
 const usage = { cacheCreation: 0, cacheRead: 0, input: 5, output: 1 };
 
 describe("keeping a thread's harness process", () => {
-  it.live("reuses the process while the restart key holds, and restarts it when the key changes", () =>
+  it.live("reuses the process while the restart key holds", () =>
     Effect.gen(function* () {
       const { connections, protocol } = fakeProtocolOf();
       const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
       yield* pool.runTurn(turnRequestOf({ model: "haiku" }));
       yield* pool.runTurn(turnRequestOf({ model: "haiku" }));
       expect(connections).toHaveLength(1);
+    }).pipe(Effect.scoped),
+  );
+
+  it.live("restarts the process when the restart key changes", () =>
+    Effect.gen(function* () {
+      const { connections, protocol } = fakeProtocolOf();
+      const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
+      yield* pool.runTurn(turnRequestOf({ model: "haiku" }));
       yield* pool.runTurn(turnRequestOf({ model: "opus" }));
       expect(connections.map((connection) => connection.isClosed)).toEqual([true, false]);
     }).pipe(Effect.scoped),
   );
 
-  it.live("closes an idle process, and starts another for the next turn", () =>
+  it.live("closes an idle process", () =>
     Effect.gen(function* () {
       const { connections, protocol } = fakeProtocolOf();
       const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "20 millis" });
       yield* pool.runTurn(turnRequestOf());
       yield* Effect.sleep("100 millis");
       expect(connections[0]?.isClosed).toBe(true);
+    }).pipe(Effect.scoped),
+  );
+
+  it.live("starts another process for the next turn after an idle close", () =>
+    Effect.gen(function* () {
+      const { connections, protocol } = fakeProtocolOf();
+      const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "20 millis" });
+      yield* pool.runTurn(turnRequestOf());
+      yield* Effect.sleep("100 millis");
       yield* pool.runTurn(turnRequestOf());
       expect(connections).toHaveLength(2);
     }).pipe(Effect.scoped),
@@ -162,7 +179,7 @@ describe("interrupting and steering a pooled turn", () => {
     }).pipe(Effect.scoped),
   );
 
-  it.live("closes the process when a steered message was not taken in by the turn's end", () =>
+  it.live("keeps the process when a steered message is taken in", () =>
     Effect.gen(function* () {
       const running = yield* Deferred.make<void>();
       const release = yield* Deferred.make<void>();
@@ -186,7 +203,11 @@ describe("interrupting and steering a pooled turn", () => {
       yield* Fiber.join(first);
       expect(delivered).toEqual(["taken"]);
       expect(connections[0]?.isClosed).toBe(false);
+    }).pipe(Effect.scoped),
+  );
 
+  it.live("closes the process when a steered message was not taken in by the turn's end", () =>
+    Effect.gen(function* () {
       const again = yield* Deferred.make<void>();
       const { connections: later, protocol: holding } = fakeProtocolOf(() =>
         Deferred.succeed(again, void 0).pipe(

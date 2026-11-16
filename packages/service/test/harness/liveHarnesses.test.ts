@@ -1,11 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { HarnessName, MissionDetail, MissionId, Request, RequestTag, ResultOf } from "@outlore/contracts";
+import type { HarnessName, MissionDetail, MissionId } from "@outlore/contracts";
 import { Effect, Layer } from "effect";
-import { afterEach } from "vitest";
 import {
   Harness,
   liveHarnessToolsLayer,
@@ -13,17 +11,12 @@ import {
   makeCodexHarness,
   makeOpenCodeHarness,
   routeHarnesses,
-  Service,
   serviceLayer,
 } from "../../src/index.ts";
+import { call, temporary } from "../fixtures/service.ts";
 
 // Opt-in checks against the installed Codex and OpenCode (provider-accounts). Each uses a few tokens of the
 // owner's own sign-in: OUTLORE_LIVE_HARNESSES=1, and OUTLORE_LIVE_OPENCODE_MODEL for OpenCode's model.
-
-const directories: string[] = [];
-afterEach(() => {
-  for (const directory of directories.splice(0)) rmSync(directory, { force: true, recursive: true });
-});
 
 const commands = {
   claude: process.env.OUTLORE_CLAUDE_PATH ?? "claude",
@@ -31,8 +24,7 @@ const commands = {
   opencode: process.env.OUTLORE_OPENCODE_PATH ?? "opencode",
 };
 
-const live = (directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-live-")))) => {
-  directories.push(directory);
+const live = (directory = realpathSync(temporary("outlore-live-"))) => {
   const harness = Layer.effect(
     Harness,
     Effect.gen(function* () {
@@ -51,12 +43,6 @@ const live = (directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-live-
     scratchRoot: join(directory, "missions"),
   });
 };
-
-const call = <R extends Request>(request: R) =>
-  Effect.gen(function* () {
-    const service = yield* Service;
-    return (yield* service.handle(request)) as ResultOf<R["_tag"] & RequestTag>;
-  });
 
 const settle = (missionId: MissionId, check: (detail: MissionDetail) => boolean) =>
   Effect.gen(function* () {
@@ -119,7 +105,7 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
   it.live(
     "lets OpenCode write inside its workspace unasked, asks before it writes outside, and carries on after a refusal",
     () => {
-      const directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-live-")));
+      const directory = realpathSync(temporary("outlore-live-"));
       const workspace = join(directory, "project");
       mkdirSync(workspace);
       const outside = join(directory, "outside.txt");
@@ -141,11 +127,12 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
         expect(existsSync(join(workspace, "notes.txt"))).toBe(true);
         const question = asking.questions.find((entry) => entry.outcome === null);
         expect(question?.details).toBe(`Edit ${outside}`);
+        if (question === undefined) throw new Error("No open question");
         yield* call({
           _tag: "AnswerQuestion",
           answer: "Deny",
           message: "Skip that file and reply with exactly: skipped",
-          questionId: question?.id ?? ("" as never),
+          questionId: question.id,
         });
         const detail = yield* settle(
           started.missionId,
@@ -164,7 +151,7 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
   it.live(
     "recognizes a git push from a Codex thread as Push code and runs it once allowed",
     () => {
-      const directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-live-")));
+      const directory = realpathSync(temporary("outlore-live-"));
       const workspace = join(directory, "project");
       const remote = join(directory, "remote.git");
       const git = (cwd: string, ...args: Array<string>) => execFileSync("git", args, { cwd, encoding: "utf8" });

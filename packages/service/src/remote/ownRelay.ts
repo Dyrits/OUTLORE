@@ -1,5 +1,6 @@
 import { newRoomName } from "@outlore/channel";
 import { closeCodes, connectClient, relayWorkerBundle, relayWorkerCompatibilityDate } from "@outlore/relay";
+import { Effect } from "effect";
 
 // A user who does not want to share the project's relay deploys the same Worker to their own Cloudflare account with
 // one API token (device-pairing, own relay). The token is used for this one deployment: it is never stored, never
@@ -136,7 +137,14 @@ const sleep = (millis: number) => new Promise<void>((resolve) => setTimeout(reso
 
 /** Whether a relay answers at `origin`: a device with no host in a fresh room is turned away with "host offline". */
 export const relayAnswers = async (origin: string): Promise<boolean> => {
-  const connected = await connectClient({ relayOrigin: origin, room: newRoomName() });
+  const connected = await Effect.runPromise(
+    connectClient({ relayOrigin: origin, room: newRoomName() }).pipe(
+      Effect.match({
+        onFailure: () => ({ ok: false as const }),
+        onSuccess: (value) => ({ ok: true as const, value }),
+      }),
+    ),
+  );
   if (!connected.ok) return false;
   const { carrier, closeCode } = connected.value;
   const code = await new Promise<number | null>((resolve) => {

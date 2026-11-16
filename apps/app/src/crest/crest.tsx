@@ -62,11 +62,11 @@ const emblemDrawings = {
     ({ cx, color, cy, side }: EmblemPlace) =>
       isEmblemName(name) ? (
         <G transform={`translate(${cx - side / 2} ${cy - side / 2}) scale(${side / 24})`}>
-          {emblemPaths[name].map((d) => (
+          {emblemPaths[name].map((path) => (
             <Path
-              d={d}
+              d={path}
               fill="none"
-              key={d}
+              key={path}
               stroke={color}
               strokeLinecap="round"
               strokeLinejoin="round"

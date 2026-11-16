@@ -48,8 +48,8 @@ function Icon({ name, size, tint }: { name: keyof typeof rowIconPaths; size: num
       viewBox="0 0 24 24"
       width={size}
     >
-      {rowIconPaths[name].map((d) => (
-        <Path d={d} key={d} />
+      {rowIconPaths[name].map((path) => (
+        <Path d={path} key={path} />
       ))}
     </Svg>
   );

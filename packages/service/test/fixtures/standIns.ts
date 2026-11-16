@@ -184,18 +184,6 @@ export const untilRequested = (requests: (method: string) => ReadonlyArray<unkno
     if (requests(method).length < 1) return yield* Effect.die(new Error(`the harness never received ${method}`));
   });
 
-/** Answers the first open question with `answer`, failing the test when none was asked. */
-export const answerOpen = (answer: "Allow" | "Deny", message: string | null = null) =>
-  Effect.gen(function* () {
-    for (let attempt = 0; attempt < 300; attempt++) {
-      const [question] = yield* call({ _tag: "ListOpenQuestions" });
-      if (question !== undefined)
-        return yield* call({ _tag: "AnswerQuestion", answer, message, questionId: question.id });
-      yield* Effect.sleep("20 millis");
-    }
-    return yield* Effect.die(new Error("no question was asked"));
-  });
-
 /** The first open question, once one is asked. */
 export const openQuestionOf = () =>
   Effect.gen(function* () {
@@ -205,6 +193,13 @@ export const openQuestionOf = () =>
       yield* Effect.sleep("20 millis");
     }
     return yield* Effect.die(new Error("no question was asked"));
+  });
+
+/** Answers the first open question with `answer`, failing the test when none was asked. */
+export const answerOpen = (answer: "Allow" | "Deny", message: string | null = null) =>
+  Effect.gen(function* () {
+    const question = yield* openQuestionOf();
+    return yield* call({ _tag: "AnswerQuestion", answer, message, questionId: question.id });
   });
 
 /** The process starts of a Claude Code or Codex stand-in, in order. */

@@ -2,14 +2,14 @@
 // (github.com/pauljoda/Crest, MPL-2.0): a plate cut to a shape, a field with a second color where a division puts it,
 // a band across the field, an edge, a trim around the plate, and an emblem. Everything is drawn on a 100 by 100 grid.
 
-import type { Crest, CrestEmblem } from "@outlore/contracts";
+import type { Crest } from "@outlore/contracts";
 import { crestChargeIds } from "@outlore/contracts";
 
 /** A box on the grid. */
 export type Box = { height: number; width: number; x: number; y: number };
 
 /** The plate's share of the grid, before any scaling. */
-export const plateFraction = 0.78;
+const plateFraction = 0.78;
 
 /** The plate's box on the 100 by 100 grid, centered. */
 export const plateBox: Box = {
@@ -159,7 +159,7 @@ export const divisionPath = (division: Crest["division"], box: Box, count = 4): 
   divisionBuilders[division](box, Math.max(2, count));
 
 /** A band, either a shape to fill or a line to stroke at a width; null for none. The bordure is drawn from the plate. */
-export type BandShape = { d: string; kind: "fill" } | { d: string; kind: "stroke"; width: number };
+type BandShape = { d: string; kind: "fill" } | { d: string; kind: "stroke"; width: number };
 
 /** Draws one band within a box: its thickness, from the box and the owner's width factor, and the factor itself. */
 type BandBuilder = (box: Box, thickness: number, widthFactor: number) => BandShape | null;
@@ -282,7 +282,7 @@ export const palettes: NonEmptyList<Palette> = [
 ];
 
 /** A stable number from text, so a thing's look stays the same between renders and sessions. */
-export const hashOf = (text: string) => {
+const hashOf = (text: string) => {
   let hash = 7;
   for (const char of text) hash = (hash * 33 + char.charCodeAt(0)) % 1_000_003;
   return hash;
@@ -324,9 +324,6 @@ export const defaultCrestOf = (id: string): Crest => {
 
 /** The crest to draw: the one the owner designed, or the one the id gives. */
 export const crestOf = (designed: Crest | null | undefined, id: string): Crest => designed ?? defaultCrestOf(id);
-
-/** The same crest with its emblem replaced. */
-export const withEmblem = (crest: Crest, emblem: CrestEmblem): Crest => ({ ...crest, emblem });
 
 /** A random crest, for Shuffle: any plate, field, band, trim, finish, charge and palette, within reason. */
 export const shuffledCrest = (random: () => number = Math.random): Crest => {

@@ -5,14 +5,14 @@ import { limitRefusalOf, roomLeftOf } from "./attachmentRules";
 import { attachmentNameOf, base64Of, prepareImage } from "./attachments";
 
 /** One file in the message box: shown at once, with its card once the service has stored it. */
-export interface AttachedFile {
+export type AttachedFile = {
   /** Null until the service answered, which is while the file is checked, reduced, and uploaded. */
   readonly card: AttachmentCard | null;
   readonly key: string;
   readonly name: string;
   /** A local address of the file the owner added, for its thumbnail; null until the file is checked. */
   readonly previewUrl: string | null;
-}
+};
 
 /**
  * The files of the message being written, from paste, drop, or the file button: each is checked and uploaded as the

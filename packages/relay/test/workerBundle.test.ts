@@ -43,4 +43,46 @@ describe("the Worker bundle the app deploys", () => {
       rmSync(folder, { force: true, recursive: true });
     }
   });
+
+  it("refuses a source over its attempt limit with 429 before waking a room, and leaves the others alone", async () => {
+    const folder = mkdtempSync(join(tmpdir(), "outlore-bundle-"));
+    try {
+      const stub = `export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }`;
+      writeFileSync(join(folder, "stub.mjs"), stub);
+      const file = join(folder, "worker.mjs");
+      writeFileSync(file, relayWorkerBundle.replace(/from ["']cloudflare:workers["']/, 'from "./stub.mjs"'));
+      const loaded = (await import(pathToFileURL(file).href)) as {
+        default: { fetch(request: Request, env: unknown): Promise<Response> };
+      };
+      let woken = 0;
+      const env = {
+        ROOM: {
+          get: () => ({
+            fetch: () => {
+              woken += 1;
+              return Promise.resolve(new Response("room"));
+            },
+          }),
+          idFromName: (name: string) => name,
+        },
+      };
+      const attempt = (source: string | null) =>
+        loaded.default.fetch(
+          new Request("https://relay.test/r/abcdefghijklmnopqrstuvwxyz012345?role=client", {
+            headers: { Upgrade: "websocket", ...(source === null ? {} : { "CF-Connecting-IP": source }) },
+          }),
+          env,
+        );
+      for (let index = 0; index < 60; index++) expect((await attempt("203.0.113.7")).status).toBe(200);
+      const refused = await attempt("203.0.113.7");
+      expect(refused.status).toBe(429);
+      expect(refused.headers.get("Retry-After")).toBe("60");
+      expect(woken).toBe(60);
+      expect((await attempt("203.0.113.8")).status).toBe(200);
+      // No address to count (never so on Cloudflare): not limited, rather than all sharing one count.
+      expect((await attempt(null)).status).toBe(200);
+    } finally {
+      rmSync(folder, { force: true, recursive: true });
+    }
+  });
 });

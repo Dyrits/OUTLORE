@@ -1,19 +1,13 @@
-import { mkdirSync, mkdtempSync, realpathSync, renameSync, rmSync, symlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, realpathSync, renameSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { workspaceWorktreesOf } from "../../src/harness/index.ts";
 import { createRepository, runGit } from "../fixtures/repositories.ts";
-
-const directories: string[] = [];
-afterEach(() => {
-  for (const directory of directories.splice(0)) rmSync(directory, { force: true, recursive: true });
-});
+import { temporary } from "../fixtures/service.ts";
 
 /** A real folder holding one repository with one commit, and the real path of the folder around it. */
 const makeRepositoryFixture = (name = "workspace") => {
-  const base = realpathSync(mkdtempSync(join(tmpdir(), "outlore-worktrees-")));
-  directories.push(base);
+  const base = realpathSync(temporary("outlore-worktrees-"));
   const folder = createRepository(base, name);
   return { base, folder };
 };
@@ -29,8 +23,7 @@ describe("using a workspace's git worktrees", () => {
   });
 
   it("lists none for a folder that is not a git repository", () => {
-    const base = realpathSync(mkdtempSync(join(tmpdir(), "outlore-worktrees-")));
-    directories.push(base);
+    const base = realpathSync(temporary("outlore-worktrees-"));
     expect(workspaceWorktreesOf(base)).toEqual([]);
   });
 

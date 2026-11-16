@@ -37,4 +37,15 @@ describe("mergedPathOf", () => {
   it("drops empty entries", () => {
     expect(mergedPathOf({ home, launchPath: "/usr/bin::", loginPath: ":/bin" }).split(":")).not.toContain("");
   });
+
+  it("keeps Windows folders whole and adds no Unix install folders there", () => {
+    expect(
+      mergedPathOf({
+        home: "C:\\Users\\owner",
+        launchPath: "C:\\Windows;C:\\Tools",
+        loginPath: "C:\\Windows;C:\\Program Files",
+        platform: "win32",
+      }),
+    ).toBe("C:\\Windows;C:\\Program Files;C:\\Tools");
+  });
 });

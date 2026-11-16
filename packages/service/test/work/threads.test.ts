@@ -2,19 +2,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type {
-  MissionDetail,
-  MissionId,
-  ModelChoice,
-  Request,
-  RequestTag,
-  ResultOf,
-  ThreadId,
-  ThreadSummary,
-} from "@outlore/contracts";
+import type { MissionDetail, ModelChoice, Request, ThreadId, ThreadSummary } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
+import { call, read, settle } from "../fixtures/service.ts";
 
 const directories: string[] = [];
 const databaseFile = () => {
@@ -35,12 +27,6 @@ const live = () => {
     scratchRoot: join(filename, "..", "missions"),
   });
 };
-
-const call = <R extends Request>(request: R) =>
-  Effect.gen(function* () {
-    const service = yield* Service;
-    return (yield* service.handle(request)) as ResultOf<R["_tag"] & RequestTag>;
-  });
 
 const failureOf = <R extends Request>(request: R) =>
   Effect.gen(function* () {
@@ -69,19 +55,6 @@ const open = (parentThreadId: ThreadId, text: string, model: ModelChoice = "defa
     requestId: `open-${++requestCount}`,
     shouldStartAnyway: false,
     text,
-  });
-
-const read = (missionId: MissionId, threadId: ThreadId | null = null) =>
-  call({ _tag: "ReadMission", missionId, threadId });
-
-const settle = (missionId: MissionId, check: (detail: MissionDetail) => boolean, threadId: ThreadId | null = null) =>
-  Effect.gen(function* () {
-    for (let i = 0; i < 400; i++) {
-      const detail = yield* read(missionId, threadId);
-      if (check(detail)) return detail;
-      yield* Effect.sleep("10 millis");
-    }
-    return yield* Effect.die(new Error(`mission did not settle: ${JSON.stringify(yield* read(missionId, threadId))}`));
   });
 
 /** A fake-harness line that calls one of the thread tools. */

@@ -10,12 +10,20 @@ export default defineConfig({
         extends: true,
         test: {
           exclude: timing,
-          include: ["packages/*/test/**/*.test.ts", "apps/app/test/**/*.test.ts", "apps/desktop/test/**/*.test.ts"],
+          include: [
+            ".agents/hooks/*.test.ts",
+            ".agents/vitest/*.test.ts",
+            "packages/*/test/**/*.test.ts",
+            "apps/app/test/**/*.test.ts",
+            "apps/desktop/test/**/*.test.ts",
+          ],
           name: "parallel",
         },
       },
       { extends: true, test: { fileParallelism: false, include: timing, name: "timing" } },
     ],
+    // The default report, plus the tests the retry hid.
+    reporters: ["default", "./.agents/vitest/retriedReporter.ts"],
     // A test that fails under load passes on a second try; one that is really broken fails every time.
     retry: 2,
     // Clears the shell's harness account folders, so no one has to start the run with `env -u`.

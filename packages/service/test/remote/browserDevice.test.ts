@@ -2,18 +2,18 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import { startNodeRelay } from "@outlore/relay";
-import { fakeHarnessLayer, Service, serviceLayer } from "@outlore/service";
-import { Effect, Layer } from "effect";
-import { SqlClient } from "effect/sql";
-import { afterEach } from "vitest";
 import {
   createPairedHosts,
   type KeyValueStorage,
   type OpenTransport,
   openBrowserTransport,
   pairFromBrowser,
-} from "../src/index.ts";
+} from "@outlore/controller";
+import { startNodeRelay } from "@outlore/relay";
+import { fakeHarnessLayer, Service, serviceLayer } from "@outlore/service";
+import { Effect, Layer } from "effect";
+import { SqlClient } from "effect/sql";
+import { afterEach } from "vitest";
 
 // A browser on its own, with nothing but a pairing code: it pairs with a running host through a real local relay,
 // keeps the pairing in its storage, and speaks to the host's service through the transport the app's client uses
@@ -88,10 +88,7 @@ const driven = (openTransport: OpenTransport) => {
 
 const makeWorld = () =>
   Effect.gen(function* () {
-    const relay = yield* Effect.acquireRelease(
-      Effect.promise(() => startNodeRelay()),
-      (running) => Effect.promise(() => running.close()),
-    );
+    const relay = yield* startNodeRelay();
     const relayOrigin = `http://127.0.0.1:${relay.port}`;
     const directory = mkdtempSync(join(tmpdir(), "outlore-browser-"));
     directories.push(directory);

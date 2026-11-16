@@ -14,7 +14,6 @@
     },
     "name": "Outlore",
     "orientation": "portrait",
-    "plugins": ["expo-font"],
     "slug": "outlore",
     "splash": {
       "backgroundColor": "#000216",
