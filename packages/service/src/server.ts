@@ -82,23 +82,29 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
           }),
         ),
       );
-      void run(opening).then((outcome) => {
-        if (outcome.channel === null) {
-          socket.close(outcome.closeCode, outcome.message.slice(0, 120));
-          return;
-        }
-        const channel = outcome.channel;
-        if (isClosed) {
-          channel.close();
-          return;
-        }
-        link = channel;
-        channel.onText((text) => {
-          if (socket.readyState === WebSocket.OPEN) socket.send(text);
+      void run(opening)
+        .then((outcome) => {
+          if (outcome.channel === null) {
+            socket.close(outcome.closeCode, outcome.message.slice(0, 120));
+            return;
+          }
+          const channel = outcome.channel;
+          if (isClosed) {
+            channel.close();
+            return;
+          }
+          link = channel;
+          channel.onText((text) => {
+            if (socket.readyState === WebSocket.OPEN) socket.send(text);
+          });
+          channel.onClose(() => socket.close(4001, "The host disconnected."));
+          for (const text of waiting.splice(0)) channel.sendText(text);
+        })
+        .catch(() => {
+          // A defect while opening the link rejects instead of failing, and would leave the app's socket open for good.
+          link?.close();
+          socket.close(4000, "The host link failed.");
         });
-        channel.onClose(() => socket.close(4001, "The host disconnected."));
-        for (const text of waiting.splice(0)) channel.sendText(text);
-      });
     };
 
     wss.on("connection", (socket, request) => {
