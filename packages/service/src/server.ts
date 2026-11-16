@@ -5,6 +5,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { WebSocket, WebSocketServer } from "ws";
 import { Sessions } from "./core/index.ts";
+import { RemoteConfig } from "./remote/config.ts";
 import { answerText, encodeServerFrame, type HostChannel, openHostChannel } from "./remote/index.ts";
 import { Service } from "./service.ts";
 
@@ -26,6 +27,7 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
     const service = yield* Service;
     const sessions = yield* Sessions;
     const sql = yield* SqlClient.SqlClient;
+    const remote = yield* RemoteConfig;
     const context = yield* Effect.context<never>();
     const run = Effect.runPromiseWith(context);
 
@@ -69,19 +71,20 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
       });
       const opening = openHostChannel(hostId).pipe(
         Effect.provideService(SqlClient.SqlClient, sql),
-        Effect.map((channel) => ({ channel, isFinal: false, message: "" })),
+        Effect.provideService(RemoteConfig, remote),
+        Effect.map((channel) => ({ channel, closeCode: 4000, message: "" })),
         // A host that refuses this installation will keep refusing: say so with a code that ends the app's retries.
         Effect.catch((failure) =>
           Effect.succeed({
             channel: null,
-            isFinal: "kind" in failure && (failure.kind === "AccessRefused" || failure.kind === "NotFound"),
+            closeCode: failure.closeCode,
             message: failure.message,
           }),
         ),
       );
       void run(opening).then((outcome) => {
         if (outcome.channel === null) {
-          socket.close(outcome.isFinal ? 4002 : 4000, outcome.message.slice(0, 120));
+          socket.close(outcome.closeCode, outcome.message.slice(0, 120));
           return;
         }
         const channel = outcome.channel;

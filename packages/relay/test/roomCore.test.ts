@@ -127,7 +127,7 @@ describe("joining a room", () => {
     const clients = [];
     for (let count = 0; count < 9; count += 1) clients.push(await connect("client"));
     expect(clients.slice(0, 8).every((client) => client.closed === null)).toBe(true);
-    expect(clients[8]?.closed).toEqual({ code: 1013, reason: "room full" });
+    expect(clients[8]?.closed).toEqual({ code: 4004, reason: "room full" });
   });
 
   it("holds as many clients as configured", async () => {
@@ -386,7 +386,7 @@ describe("saying why a connection is closed", () => {
     await connect("host", "first");
     const clients: FakePeer[] = [];
     for (let count = 0; count < 9; count += 1) clients.push(await connect("client"));
-    expect(closingsOf(clients[8] as FakePeer)).toEqual([{ code: 1013, reason: "room full" }]);
+    expect(closingsOf(clients[8] as FakePeer)).toEqual([{ code: 4004, reason: "room full" }]);
     expect(clients[0]?.sent).toEqual([]);
   });
 

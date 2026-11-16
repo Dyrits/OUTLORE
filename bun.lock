@@ -99,6 +99,7 @@
         "@effect/sql-sqlite-node": "4.1.4",
         "@outlore/channel": "workspace:*",
         "@outlore/contracts": "workspace:*",
+        "@outlore/controller": "workspace:*",
         "@outlore/relay": "workspace:*",
         "effect": "4.1.4",
         "ws": "8.23.0",

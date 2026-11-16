@@ -5,9 +5,9 @@ import { Changes, Sessions } from "../core/index.ts";
 import { Service } from "../serviceTag.ts";
 import { RemoteConfig } from "./config.ts";
 import { answerText } from "./frames.ts";
-import { type HostRecord, readHostRecord, relayOriginOf } from "./hostAccess.ts";
+import { type HostRecord, relayOriginOf } from "./hostAccess.ts";
 import { createDeviceServer, type RunWork, reportFailure } from "./hostSession.ts";
-import { RemoteState } from "./state.ts";
+import { HostPresence } from "./presence.ts";
 
 const firstRetryMillis = 1_000;
 const longestRetryMillis = 30_000;
@@ -23,7 +23,7 @@ const isOff = (record: HostRecord | null) => record === null || !record.isEnable
 export const remoteHostLayer = Layer.effectDiscard(
   Effect.gen(function* () {
     const service = yield* Service;
-    const state = yield* RemoteState;
+    const state = yield* HostPresence;
     const sessions = yield* Sessions;
     const changes = yield* Changes;
     const sql = yield* SqlClient.SqlClient;
@@ -37,12 +37,14 @@ export const remoteHostLayer = Layer.effectDiscard(
 
     const devices = createDeviceServer({
       addSession: (send) => sessions.add(send),
+      admitDevice: (id, close) =>
+        runPlain(state.admitDevice(id, close).pipe(Effect.provideService(SqlClient.SqlClient, sql))),
       announce: () => void runPlain(changes.publish).catch(reportFailure),
       answer: (message, send, deviceId) =>
         void runPlain(answerText(service.handle, message, send, { deviceId, isPairedDevice: true })).catch(
           reportFailure,
         ),
-      deviceConnected: state.deviceConnected,
+      isAccepting: () => state.record()?.isEnabled ?? false,
       run,
       runInTransaction,
     });
@@ -50,7 +52,7 @@ export const remoteHostLayer = Layer.effectDiscard(
     let isStopped = false;
     let current: HostConnection | null = null;
     let wake: (() => void) | null = null;
-    const pause = (millis: number) =>
+    const pause = (millis: number, generation: number) =>
       new Promise<void>((resolve) => {
         const timer = setTimeout(done, millis);
         function done() {
@@ -59,29 +61,17 @@ export const remoteHostLayer = Layer.effectDiscard(
           resolve();
         }
         wake = done;
+        if (state.generation() !== generation || isStopped) done();
       });
     const stopListening = state.onPoke(() => wake?.());
 
     /** Holds one connection to `relayOrigin` until it ends; the code it ended with. */
-    const hold = (connection: HostConnection, record: HostRecord, relayOrigin: string) =>
+    const hold = (connection: HostConnection, record: HostRecord) =>
       new Promise<number>((resolve) => {
-        const stopWatching = state.onPoke(() => {
-          void run(
-            Effect.flatMap(readHostRecord, (now) => Effect.map(relayOriginOf(now), (origin) => ({ now, origin }))),
-          )
-            .then(({ now, origin }) => {
-              // Switched off, or moved to another relay: this connection has nothing more to serve.
-              if (!isOff(now) && origin === relayOrigin) return;
-              state.closeAll();
-              connection.close();
-            })
-            .catch(reportFailure);
-        });
         connection.onClientJoined((clientId) => devices.serve(connection, record, clientId));
         connection.onClientData(devices.deliver);
         connection.onClientLeft(devices.left);
         connection.onClose((code) => {
-          stopWatching();
           devices.endAll();
           resolve(code);
         });
@@ -91,18 +81,12 @@ export const remoteHostLayer = Layer.effectDiscard(
     const keepConnected = async () => {
       let retry = firstRetryMillis;
       while (!isStopped) {
+        const generation = state.generation();
         try {
-          let record: HostRecord | null;
-          try {
-            record = await run(readHostRecord);
-          } catch (reason) {
-            reportFailure(reason);
-            await pause(longestRetryMillis);
-            continue;
-          }
+          const record = state.record();
           if (record === null || isOff(record)) {
             await runPlain(state.setStatus("Off"));
-            await pause(longestRetryMillis);
+            await pause(longestRetryMillis, generation);
             retry = firstRetryMillis;
             continue;
           }
@@ -111,7 +95,7 @@ export const remoteHostLayer = Layer.effectDiscard(
           const connected = await connectHost({ claim: record.claimSecret, relayOrigin, room: record.room });
           if (!connected.ok) {
             await runPlain(state.setStatus("Unreachable"));
-            await pause(retry);
+            await pause(retry, generation);
             retry = Math.min(retry * 2, longestRetryMillis);
             continue;
           }
@@ -119,20 +103,19 @@ export const remoteHostLayer = Layer.effectDiscard(
           const connection = connected.value;
           current = connection;
           // The switch may have gone off while the relay was answering; a connection made then must not serve anyone.
-          const latest = await run(readHostRecord).catch(() => null);
-          if (isStopped || isOff(latest)) {
+          if (isStopped || !state.attachRelay(connection, generation)) {
             connection.close();
             current = null;
             continue;
           }
-          const code = await hold(connection, record, relayOrigin);
+          const code = await hold(connection, record);
           current = null;
           if (isStopped) break;
           // Claimed by another host: wait longer than for a dropped connection. Switched off: say so at once.
           const isRefused = code === closeCodes.claimMismatch;
-          const isNowOff = isOff(await run(readHostRecord).catch(() => null));
+          const isNowOff = isOff(state.record());
           await runPlain(state.setStatus(isNowOff ? "Off" : isRefused ? "Unreachable" : "Connecting"));
-          await pause(isRefused ? longestRetryMillis : isNowOff ? 0 : firstRetryMillis);
+          await pause(isRefused ? longestRetryMillis : isNowOff ? 0 : firstRetryMillis, generation);
         } catch (reason) {
           current?.close();
           current = null;
@@ -140,7 +123,7 @@ export const remoteHostLayer = Layer.effectDiscard(
           if (isStopped) break;
           reportFailure(reason);
           await runPlain(state.setStatus("Unreachable")).catch(reportFailure);
-          await pause(longestRetryMillis);
+          await pause(longestRetryMillis, generation);
         }
       }
     };

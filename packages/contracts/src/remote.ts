@@ -23,7 +23,7 @@ export const hostLinkCodes = { couldNotOpen: 4000, ended: 4001, refused: 4002 } 
 export const hostBridgePath = (hostId: string) => `/host/${hostId}`;
 
 /** What a paired device is: another computer's Outlore, or a phone. */
-export const DeviceKind = Schema.Literals(["desktop", "phone"]);
+export const DeviceKind = Schema.Literals(["desktop", "phone", "browser"]);
 export type DeviceKind = typeof DeviceKind.Type;
 
 /** A device paired with this host, as Charter lists it. */

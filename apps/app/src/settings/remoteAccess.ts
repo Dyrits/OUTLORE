@@ -28,7 +28,9 @@ export const agoOf = (then: number, now: number) => {
 
 /** A paired device's second line: what it is, and whether it is connected or when it was last active. */
 export const deviceLineOf = (device: PairedDevice, now: number) => {
-  const kind = device.kind === "phone" ? "Phone" : "Desktop";
+  const kind = (
+    { browser: "Browser", desktop: "Desktop", phone: "Phone" } satisfies Record<typeof device.kind, string>
+  )[device.kind];
   if (device.isConnected) return `${kind} · connected now`;
   return device.lastActiveAt === null
     ? `${kind} · never connected`

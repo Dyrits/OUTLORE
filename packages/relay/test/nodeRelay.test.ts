@@ -135,7 +135,7 @@ describe("joining a room", () => {
     for (let count = 0; count < 8; count += 1) await track(relay.port, clientPath());
     await host.messagesAfter(8);
     const ninth = await track(relay.port, clientPath());
-    expect(await ninth.closed).toEqual({ code: 1013, reason: "room full" });
+    expect(await ninth.closed).toEqual({ code: 4004, reason: "room full" });
   });
 
   it("holds as many clients as configured", async () => {
