@@ -34,4 +34,4 @@ Terms: the computer being controlled is the **host**; any other Outlore connecte
 - The relay's stored messages and logs contain no plaintext (checked by reading what the relay received during the run above).
 - The same flow, run once against the deployed relay on the owner's account, from a second network, with the owner's go-ahead before deploying.
 - The own relay, with a real token on a test account: a first deployment, a host that moves to it and pairs a second service through it, an update at the same address, the return to the shared relay, a refused Worker of the same name, and the token found nowhere in the host's database (done on 2026-11-12, CHG-0212).
-- The free-plan limits of the relay are read from Cloudflare's documentation and measured against a typical session before the first release.
+- The free-plan limits of the relay are read from Cloudflare's documentation and measured against a typical session before the first stable release. The prereleases 0.1.3 to 0.1.5 shipped without that measurement (the owner accepted this on 2026-11-16, CHG-0358); it stays an open acceptance item.
