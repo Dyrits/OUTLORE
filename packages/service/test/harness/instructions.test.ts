@@ -121,4 +121,10 @@ describe("Chronicler's own instructions", () => {
   it("uses the quest words in everything it writes to the owner", () => {
     expect(guildmasterInstructionsOf("gm-1")).toContain("Say quest, never mission");
   });
+
+  it("names the owner-only permission to work outside the sandbox among the settings it never changes", () => {
+    expect(guildmasterInstructionsOf("gm-1")).toContain(
+      "Never change the approval level, the budgets, the permission to work outside the sandbox, or price fetching",
+    );
+  });
 });
