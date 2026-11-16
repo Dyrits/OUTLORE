@@ -1,5 +1,5 @@
 import { Effect, Match } from "effect";
-import { readSettings, type ToolAnswer, writeSettings } from "../core/index.ts";
+import { readSettings, type ToolAnswer, toolRefusal, toolText, writeSettings } from "../core/index.ts";
 import { changed, unchanged, type WithFollowUps } from "./commands.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";
 import { readSettingChange } from "./guildmasterPreflight.ts";
@@ -14,16 +14,17 @@ import type { ArgumentsOf } from "./threadTools.ts";
 /** Kept for ritualScope.ts, which is not in this slice and should import it from guildmasterSettingNames.ts. */
 export { changeableSettings } from "./guildmasterSettingNames.ts";
 
-const refused = (text: string): WithFollowUps<ToolAnswer> => unchanged({ isError: true, text });
+const refused = (text: string): WithFollowUps<ToolAnswer> => unchanged(toolRefusal(text));
 
 /** `read_settings`: the owner's settings as JSON, with the names Chronicler may not change. Only Chronicler reads them. */
 export const readSettingsByGuildmaster = Effect.fnUntraced(function* (callerId: string) {
   if (!(yield* isGuildmasterThread(callerId))) return refused("Only Chronicler reads the settings here.");
   const settings = yield* readSettings;
-  return unchanged({
-    isError: false,
-    text: `${JSON.stringify(settings)}\n\nYou may not change: ${settingsKeptFromChronicler.join(", ")}; the owner sets those in the Workshop.`,
-  } satisfies ToolAnswer);
+  return unchanged(
+    toolText(
+      `${JSON.stringify(settings)}\n\nYou may not change: ${settingsKeptFromChronicler.join(", ")}; the owner sets those in the Workshop.`,
+    ),
+  );
 });
 
 /**
@@ -38,10 +39,11 @@ export const changeSettingByGuildmaster = (callerId: string, args: ArgumentsOf<"
       Clear: Effect.fnUntraced(function* ({ after, before, setting, value }) {
         if (!(yield* consumeReceipt(callerId, "change_setting", args))) return refused(notAuthorizedText);
         yield* writeSettings(after);
-        return changed({
-          isError: false,
-          text: `Changed ${setting} from ${JSON.stringify(before)} to ${JSON.stringify(value)}. Tell the owner in a sentence.`,
-        } satisfies ToolAnswer);
+        return changed(
+          toolText(
+            `Changed ${setting} from ${JSON.stringify(before)} to ${JSON.stringify(value)}. Tell the owner in a sentence.`,
+          ),
+        );
       }),
       Refused: ({ text }) => Effect.succeed(refused(text)),
     });

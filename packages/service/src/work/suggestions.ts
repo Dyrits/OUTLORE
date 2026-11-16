@@ -1,7 +1,7 @@
 import type { Suggestion, SuggestionAnswer, SuggestionOutcome } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer, Match } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
-import { Changes, invalid, notFound, readSettings, type ServiceFailure } from "../core/index.ts";
+import { Changes, invalid, notFound, readSettings, type ServiceFailure, toolText } from "../core/index.ts";
 import { makeOwnerWaits } from "./attention.ts";
 import { setCardBackups } from "./backups.ts";
 import { changed, unchanged, type WithFollowUps } from "./commands.ts";
@@ -292,7 +292,7 @@ export const suggestionsLayer = Layer.effect(
 
     const findMissionsAnswer = (threadId: string, args: ArgumentsOf<"find_missions">) =>
       Effect.gen(function* () {
-        return { isError: false, text: findMissionsTextOf(yield* findMissions(threadId, args.request)) };
+        return toolText(findMissionsTextOf(yield* findMissions(threadId, args.request)));
       }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie);
 
     const withdraw = (threadId: string) =>

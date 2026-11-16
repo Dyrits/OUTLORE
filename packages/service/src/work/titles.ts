@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid, notFound } from "../core/index.ts";
+import { invalid, notFound, toolRefusal, toolText } from "../core/index.ts";
 import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import type { ToolHandlers } from "./threadTools.ts";
 
@@ -60,18 +60,17 @@ export const titleToolsOf = (
 ): Pick<ToolHandlers, "set_mission_title"> => ({
   set_mission_title: (threadId, args) => {
     const title = titleOf(args.title);
-    if (title === "") return Effect.succeed({ isError: true, text: "Not named: give a title." });
+    if (title === "") return Effect.succeed(toolRefusal("Not named: give a title."));
     return commit(
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient;
         const [mission] = yield* sql<{ id: string; isTitleByUser: number }>`
           SELECT id, is_title_by_user AS isTitleByUser FROM missions WHERE top_thread_id = ${threadId}`;
-        if (mission === undefined)
-          return { isError: true, text: "Not named: only the mission's top thread names the mission." };
+        if (mission === undefined) return toolRefusal("Not named: only the mission's top thread names the mission.");
         if (mission.isTitleByUser === 1)
-          return { isError: true, text: "Not named: the owner named this mission, so its title stays." };
+          return toolRefusal("Not named: the owner named this mission, so its title stays.");
         yield* writeTitle(mission.id, title, false);
-        return { isError: false, text: `Named the mission "${title}".` };
+        return toolText(`Named the mission "${title}".`);
       }),
     );
   },

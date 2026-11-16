@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import type { ToolAnswer } from "../core/index.ts";
+import { type ToolAnswer, toolRefusal, toolText } from "../core/index.ts";
 import { type GuideTopic, guideTopics } from "./appGuideTopics.ts";
 import { unchanged, type WithFollowUps } from "./commands.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";
@@ -115,18 +115,15 @@ export const readAppGuideByGuildmaster = Effect.fnUntraced(function* (
   callerId: string,
   args: ArgumentsOf<"read_app_guide">,
 ) {
-  if (!(yield* isGuildmasterThread(callerId)))
-    return answer({ isError: true, text: "Only Chronicler reads the app guide here." });
+  if (!(yield* isGuildmasterThread(callerId))) return answer(toolRefusal("Only Chronicler reads the app guide here."));
   const question = args.topic?.trim() ?? "";
-  if (question === "") return answer({ isError: false, text: `${topicIndexText()}\n\n${reminder}` });
+  if (question === "") return answer(toolText(`${topicIndexText()}\n\n${reminder}`));
   const topics = topicsOf(question);
   if (topics.length === 0)
-    return answer({
-      isError: false,
-      text: `The app guide does not cover "${question}".\n\n${topicIndexText()}\n\nIf none of these topics fits, say you do not know. ${reminder}`,
-    });
-  return answer({
-    isError: false,
-    text: `${topics.map(sectionOf).join("\n\n")}\n\n${reminder}`,
-  });
+    return answer(
+      toolText(
+        `The app guide does not cover "${question}".\n\n${topicIndexText()}\n\nIf none of these topics fits, say you do not know. ${reminder}`,
+      ),
+    );
+  return answer(toolText(`${topics.map(sectionOf).join("\n\n")}\n\n${reminder}`));
 });

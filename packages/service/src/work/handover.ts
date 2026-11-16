@@ -1,7 +1,7 @@
 import type { BackupCompanion, EffortChoice, HarnessName, ModelChoice } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { notFound, tokensOf } from "../core/index.ts";
+import { newId, notFound, tokensOf } from "../core/index.ts";
 import { checkAccount, checkBackups, harnessLabels, type Runner } from "../harness/index.ts";
 import { contextWindowOf } from "../lore/index.ts";
 import { readStoredAttachments } from "./attachments.ts";
@@ -124,7 +124,8 @@ const insertHandover = Effect.fnUntraced(function* (
  */
 export const insertThreadLine = Effect.fnUntraced(function* (threadId: string, text: string, at: number) {
   const sql = yield* SqlClient.SqlClient;
-  yield* sql`INSERT INTO handovers (id, thread_id, text, at) VALUES (${crypto.randomUUID()}, ${threadId}, ${text}, ${at})`;
+  const lineId = yield* newId;
+  yield* sql`INSERT INTO handovers (id, thread_id, text, at) VALUES (${lineId}, ${threadId}, ${text}, ${at})`;
 });
 
 /**

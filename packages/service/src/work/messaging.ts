@@ -1,7 +1,7 @@
 import { type HarnessName, MessageId, type SendMessageResult } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { notFound, touchMission } from "../core/index.ts";
+import { newId, notFound, touchMission } from "../core/index.ts";
 import { attachToMessage, readStoredAttachments, type StoredAttachment } from "./attachments.ts";
 import { resetOwnerChatter, resetResultChatter } from "./chatter.ts";
 import { readMentionNote } from "./mentions.ts";
@@ -33,7 +33,7 @@ const appendMessage = (message: {
 }) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
-    const messageId = MessageId.make(crypto.randomUUID());
+    const messageId = MessageId.make(yield* newId);
     const [next] = yield* sql<{ sequence: number }>`
       SELECT COALESCE(MAX(sequence), 0) + 1 AS sequence FROM messages WHERE thread_id = ${message.threadId}`;
     yield* sql`INSERT INTO messages

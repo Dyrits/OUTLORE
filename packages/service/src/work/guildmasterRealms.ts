@@ -1,7 +1,7 @@
 import type { WorkspaceId } from "@outlore/contracts";
 import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
-import type { ToolAnswer } from "../core/index.ts";
+import { type ToolAnswer, toolRefusal, toolText } from "../core/index.ts";
 import { changed, unchanged, type WithFollowUps } from "./commands.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";
 import { consumeReceipt, notAuthorizedText } from "./guildmasterProvenance.ts";
@@ -12,8 +12,8 @@ import { createRealm, renameRealm } from "./workspaces.ts";
 // Chronicler's realm tools (quest coordination, CHG-0174): it makes a realm and renames one once the exact action is
 // authorized by provenance (guildmasterProvenance.ts, CHG-0208). Only Chronicler calls them, and never on its own.
 
-const refused = (text: string): WithFollowUps<ToolAnswer> => unchanged({ isError: true, text });
-const done = (text: string): WithFollowUps<ToolAnswer> => changed({ isError: false, text });
+const refused = (text: string): WithFollowUps<ToolAnswer> => unchanged(toolRefusal(text));
+const done = (text: string): WithFollowUps<ToolAnswer> => changed(toolText(text));
 
 const countRealms = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;

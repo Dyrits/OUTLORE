@@ -1,7 +1,7 @@
 import type { ChatterNotice } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid, readSettings } from "../core/index.ts";
+import { invalid, newId, readSettings } from "../core/index.ts";
 import { Commands, changed, unchanged } from "./commands.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
 
@@ -34,7 +34,8 @@ export const countChatter = Effect.fn("countChatter")(function* (from: string, t
     SELECT count, pause_id AS pauseId FROM chatter WHERE first_id = ${first} AND second_id = ${second}`;
   const { chatterThreshold } = yield* readSettings;
   if (pair === undefined || pair.pauseId !== null || pair.count < chatterThreshold) return [];
-  yield* sql`UPDATE chatter SET pause_id = ${crypto.randomUUID()}, pause_count = ${pair.count}
+  const pauseId = yield* newId;
+  yield* sql`UPDATE chatter SET pause_id = ${pauseId}, pause_count = ${pair.count}
     WHERE first_id = ${first} AND second_id = ${second}`;
   yield* haltThreads([first, second], "Attention");
   return [first, second];

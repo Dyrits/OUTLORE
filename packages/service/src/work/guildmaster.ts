@@ -1,7 +1,7 @@
 import type { SenderKind } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import type { ToolAnswer } from "../core/index.ts";
+import { toolRefusal, toolText } from "../core/index.ts";
 import { changed, unchanged } from "./commands.ts";
 import { endMission, previewEnding } from "./ending.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";
@@ -73,8 +73,7 @@ export const readControlHistory = Effect.fnUntraced(function* (
   args: ArgumentsOf<"read_control_history">,
 ) {
   const sql = yield* SqlClient.SqlClient;
-  if (!(yield* isGuildmasterThread(callerId)))
-    return { isError: true, text: "Only Chronicler reads this." } satisfies ToolAnswer;
+  if (!(yield* isGuildmasterThread(callerId))) return toolRefusal("Only Chronicler reads this.");
   const count = Math.min(Math.max(args.count ?? 10, 1), 40);
   const query = (args.query ?? "").trim().toLowerCase();
   const rows = yield* sql<{ sequence: number; sender: string; text: string }>`
@@ -82,14 +81,13 @@ export const readControlHistory = Effect.fnUntraced(function* (
       WHERE thread_id = ${callerId} AND (${args.before ?? null} IS NULL OR sequence < ${args.before ?? null})
         AND (${query} = '' OR instr(lower(text), ${query}) > 0)
       ORDER BY sequence DESC LIMIT ${count}`;
-  if (rows.length === 0) return { isError: false, text: "No such messages." } satisfies ToolAnswer;
+  if (rows.length === 0) return toolText("No such messages.");
   const who: Readonly<Record<string, string | undefined>> = {
     agent: "You",
     thread: "A quest",
     user: "The owner",
   } satisfies Record<SenderKind, string>;
-  return {
-    isError: false,
-    text: rows.map((row) => `#${row.sequence} ${who[row.sender] ?? row.sender}: ${clip(row.text, 800)}`).join("\n\n"),
-  } satisfies ToolAnswer;
+  return toolText(
+    rows.map((row) => `#${row.sequence} ${who[row.sender] ?? row.sender}: ${clip(row.text, 800)}`).join("\n\n"),
+  );
 });

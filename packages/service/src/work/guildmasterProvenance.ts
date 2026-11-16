@@ -2,7 +2,7 @@ import { RitualScope as RitualScopeSchema } from "@outlore/contracts";
 import { Context, Effect, Match, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import type { SqlError } from "effect/sql/SqlError";
-import { readSettings, type ServiceFailure, type ToolAnswer } from "../core/index.ts";
+import { readSettings, type ServiceFailure, type ToolAnswer, toolRefusal } from "../core/index.ts";
 import { isNamedByOwner, type NamedAction } from "../policy/index.ts";
 import type { Approvals } from "./approvals.ts";
 import { previewEnding, readWorkingIds } from "./ending.ts";
@@ -273,11 +273,7 @@ export const withProvenance = Effect.fnUntraced(function* <Tool extends Structur
     Ask: () =>
       approvals
         .confirmAction(callerId, derived.summary, derived.details)
-        .pipe(
-          Effect.map((decision) =>
-            decision.isAllowed ? null : ({ isError: true, text: decision.text } satisfies ToolAnswer),
-          ),
-        ),
+        .pipe(Effect.map((decision) => (decision.isAllowed ? null : toolRefusal(decision.text)))),
     Owner: () => Effect.succeed(null),
     Scope: () => Effect.succeed(null),
   });
