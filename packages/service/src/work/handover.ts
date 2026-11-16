@@ -15,6 +15,12 @@ import { changed, unchanged } from "./commands.ts";
 /** The share of the new model's context window the replayed conversation may take, in percent (provisional until the owner settles thread-handover, Long conversations). */
 const historyWindowPercent = 50;
 
+/**
+ * The runner as one comparable text, which a thread keeps in `handover_from` while the owner's change waits for a turn
+ * (saved before: the format must not change).
+ */
+const runnerKeyOf = (runner: Runner) => JSON.stringify([runner.harness, runner.accountId, runner.model, runner.effort]);
+
 /** What a handover line says: the new runner in words, as the thread's conversation shows it. */
 const handoverTextOf = (runner: Runner, accountLabel: string | null, fellBackAfter: string | null) =>
   [
@@ -46,7 +52,7 @@ export const changeThreadRunner = (
     const sql = yield* SqlClient.SqlClient;
     const [thread] = yield* sql<{
       accountId: string | null;
-      effort: string;
+      effort: EffortChoice;
       harness: HarnessName;
       missionId: string;
       model: ModelChoice;
@@ -66,7 +72,7 @@ export const changeThreadRunner = (
     // The owner's change leaves no line yet: the runner it leaves is kept (the first one, across several changes), and
     // the line is written when a turn starts on the runner then chosen (`recordPendingHandover`). A fallback runs at
     // once, so its line is written now, and nothing is left pending.
-    const from = JSON.stringify([thread.harness, thread.accountId, thread.model, thread.effort]);
+    const from = runnerKeyOf(thread);
     yield* sql`UPDATE threads SET harness = ${runner.harness}, account_id = ${runner.accountId}, model = ${runner.model},
       effort = ${runner.effort}${isNewSession ? sql`, session_id = NULL` : sql``},
       handover_from = ${fellBackAfter === null ? sql`COALESCE(handover_from, ${from})` : sql`NULL`} WHERE id = ${threadId}`;
@@ -81,13 +87,7 @@ export const isRunnerChangedSince = Effect.fnUntraced(function* (threadId: strin
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<Runner>`
     SELECT harness, account_id AS accountId, model, effort FROM threads WHERE id = ${threadId}`;
-  return (
-    row !== undefined &&
-    (row.harness !== turn.harness ||
-      row.accountId !== turn.accountId ||
-      row.model !== turn.model ||
-      row.effort !== turn.effort)
-  );
+  return row !== undefined && runnerKeyOf(row) !== runnerKeyOf(turn);
 });
 
 /**
@@ -135,26 +135,15 @@ export const recordPendingHandover = (threadId: string, at: number) =>
     const sql = yield* SqlClient.SqlClient;
     const [thread] = yield* sql<{
       accountId: string | null;
-      effort: string;
+      effort: EffortChoice;
       handoverFrom: string | null;
       harness: HarnessName;
       model: ModelChoice;
     }>`SELECT harness, account_id AS accountId, model, effort, handover_from AS handoverFrom FROM threads WHERE id = ${threadId}`;
     if (thread === undefined || thread.handoverFrom === null) return;
     yield* sql`UPDATE threads SET handover_from = NULL WHERE id = ${threadId}`;
-    const current = JSON.stringify([thread.harness, thread.accountId, thread.model, thread.effort]);
-    if (current === thread.handoverFrom) return;
-    yield* insertHandover(
-      threadId,
-      {
-        accountId: thread.accountId,
-        effort: thread.effort as EffortChoice,
-        harness: thread.harness,
-        model: thread.model,
-      },
-      null,
-      at,
-    );
+    if (runnerKeyOf(thread) === thread.handoverFrom) return;
+    yield* insertHandover(threadId, thread, null, at);
   });
 
 /** The thread's handover lines, oldest first. */

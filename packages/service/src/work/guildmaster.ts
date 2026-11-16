@@ -1,11 +1,4 @@
-import type {
-  AccountId,
-  GuildmasterPlace,
-  HarnessName,
-  MissionSummary,
-  ModelChoice,
-  Viewing,
-} from "@outlore/contracts";
+import type { AccountId, GuildmasterPlace, HarnessName, ModelChoice, Viewing } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, readSettings, type ToolAnswer } from "../core/index.ts";
@@ -16,8 +9,9 @@ import { companionLineOf, ritualStartOf } from "./guildmasterCompanions.ts";
 import { consumeReceipt, isStructuralCaller, notAuthorizedText } from "./guildmasterProvenance.ts";
 import { clip, placeOf, threadsLineOf } from "./guildmasterText.ts";
 import { timeOf } from "./journal.ts";
+import { openingRequestOf, readMissionSummaryMap } from "./matching.ts";
 import { insertMessage } from "./messaging.ts";
-import { insertQuest, listMissionSummaries } from "./missions.ts";
+import { insertQuest } from "./missions.ts";
 import { createRitual } from "./rituals.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 import { renameMission, ritualTitleOf, titleOf } from "./titles.ts";
@@ -177,8 +171,7 @@ export const readGuildmasterContext = Effect.gen(function* () {
     title: string;
   }>`
     SELECT m.id, m.title, m.last_activity_at AS lastActivityAt, j.briefing, w.name AS realm,
-      (SELECT x.text FROM messages x WHERE x.thread_id = m.top_thread_id AND x.sender_kind = 'user'
-        ORDER BY x.sequence LIMIT 1) AS opening
+      ${openingRequestOf(sql)} AS opening
     FROM missions m
       JOIN threads top ON top.id = m.top_thread_id
       LEFT JOIN journals j ON j.mission_id = m.id
@@ -187,13 +180,11 @@ export const readGuildmasterContext = Effect.gen(function* () {
       AND NOT EXISTS (SELECT 1 FROM rituals r WHERE r.mission_id = m.id)
     ORDER BY m.last_activity_at DESC LIMIT ${maxListedQuests}`;
   // The state is the one the dashboard shows: Done once ended, else the most urgent state among the quest's threads.
-  const states = new Map<string, string>(
-    (yield* listMissionSummaries(rows.map((row) => row.id))).map((summary) => [summary.id, summary.state]),
-  );
+  const summaries = yield* readMissionSummaryMap(rows.map((row) => row.id));
   const lines = rows.map((row) => {
     const about = firstSentenceOf(row.briefing?.trim() ? row.briefing : (row.opening ?? ""));
     const when = timeOf(row.lastActivityAt);
-    return `- "${row.title}" (id ${row.id}) · ${states.get(row.id) ?? "Idle"} · ${row.realm ?? "no realm"} · last active ${when} UTC${about === "" ? "" : ` · ${about}`}`;
+    return `- "${row.title}" (id ${row.id}) · ${summaries.get(row.id)?.state ?? "Idle"} · ${row.realm ?? "no realm"} · last active ${when} UTC${about === "" ? "" : ` · ${about}`}`;
   });
   const { tiers } = yield* readSettings;
   const setTierLines = (["Light", "Balanced", "Heavy"] as const).flatMap((name) => {
@@ -283,9 +274,7 @@ export const reportToGuildmaster = Effect.gen(function* () {
   const [guildmaster] = yield* sql<{ threadId: string }>`
     SELECT top_thread_id AS threadId FROM missions WHERE is_guildmaster = 1`;
   if (guildmaster === undefined) return unchanged(null);
-  const summaries = new Map<string, MissionSummary>(
-    (yield* listMissionSummaries(opened.map((quest) => quest.id))).map((summary) => [summary.id, summary]),
-  );
+  const summaries = yield* readMissionSummaryMap(opened.map((quest) => quest.id));
   let isTold = false;
   for (const quest of opened) {
     const summary = summaries.get(quest.id);

@@ -51,7 +51,7 @@ type Sections = {
 /** Whom a starting context is for: a thread, or one about to be opened. */
 type Subject = {
   /** Whether it is Chronicler's thread, which starts from the realms and the quest list, not a journal. */
-  readonly isGuildmaster?: boolean;
+  readonly isGuildmaster: boolean;
   /** The thread whose scope the lore comes from: the thread itself, or the opener of one about to be opened. */
   readonly loreThreadId: string;
   readonly missionId: string;
@@ -69,16 +69,18 @@ const catalogModels = {
   opencode: [],
 } as const satisfies Record<HarnessName, ReadonlyArray<ModelOption>>;
 
+/** The tokens of a part that may be absent: none when it is. */
+const tokensOfPart = (part: string | null) => (part === null ? 0 : tokensOf(part));
+
 const readSections = (subject: Subject, workspace: string) =>
   Effect.gen(function* () {
     return {
       budget: yield* budgetLineOf(subject.missionId, yield* accountOfThread(subject.position.threadId)),
-      instructions: (subject.isGuildmaster === true
+      instructions: (subject.isGuildmaster
         ? [guildmasterInstructionsOf(subject.position.threadId), loreInstructions]
         : [threadInstructionsOf(subject.position), journalInstructions, loreInstructions]
       ).join("\n\n"),
-      journal:
-        subject.isGuildmaster === true ? yield* readGuildmasterContext : yield* journalContextOf(subject.missionId),
+      journal: subject.isGuildmaster ? yield* readGuildmasterContext : yield* journalContextOf(subject.missionId),
       lore: yield* loreContextOf(subject.loreThreadId),
       openerMessages: openerContextOf(subject.openerMessages),
       position: positionLineOf(subject.position),
@@ -178,15 +180,21 @@ export const readStartingContext = (
       title: titleOf(request),
     };
     const openerMessages = yield* openerMessagesOf(parentId);
-    const subject = { loreThreadId: parentId, missionId: parent.missionId, openerMessages, position };
+    const subject = {
+      isGuildmaster: false,
+      loreThreadId: parentId,
+      missionId: parent.missionId,
+      openerMessages,
+      position,
+    };
     const sections = yield* readSections(subject, folder.context);
     const approvals = yield* readApprovalInstructions(parentId, harness);
     const parts = {
-      budget: sections.budget === null ? 0 : tokensOf(sections.budget),
+      budget: tokensOfPart(sections.budget),
       instructions: tokensOf(sections.instructions) + tokensOf(approvals),
       journal: tokensOf(sections.journal),
       lore: tokensOf(sections.lore),
-      openerMessages: sections.openerMessages === null ? 0 : tokensOf(sections.openerMessages),
+      openerMessages: tokensOfPart(sections.openerMessages),
       position: tokensOf(sections.position),
       request: tokensOf(request),
       workspace: tokensOf(sections.workspace),
@@ -231,9 +239,9 @@ export const readSentContextSize = (threadId: string) =>
         tokensOf(approvals) +
         tokensOf(sections.workspace) +
         tokensOf(sections.position) +
-        (sections.budget === null ? 0 : tokensOf(sections.budget)),
+        tokensOfPart(sections.budget),
       journal: tokensOf(sections.journal),
       lore: tokensOf(sections.lore),
-      openerMessages: sections.openerMessages === null ? 0 : tokensOf(sections.openerMessages),
+      openerMessages: tokensOfPart(sections.openerMessages),
     };
   });

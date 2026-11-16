@@ -4,6 +4,17 @@ import { SqlClient } from "effect/sql";
 import { wordsOf } from "../core/index.ts";
 import { listMissionSummaries } from "./missions.ts";
 
+/** The dashboard summaries of the missions, by mission id; a mission that no longer stands has none. */
+export const readMissionSummaryMap = (ids: ReadonlyArray<string>) =>
+  Effect.gen(function* () {
+    return new Map<string, MissionSummary>((yield* listMissionSummaries(ids)).map((summary) => [summary.id, summary]));
+  });
+
+/** The text of a quest's first message from the owner, as a column: what the quest was opened to do. `m` is the quest's row. */
+export const openingRequestOf = (sql: SqlClient.SqlClient) =>
+  sql`(SELECT x.text FROM messages x WHERE x.thread_id = m.top_thread_id AND x.sender_kind = 'user'
+    ORDER BY x.sequence LIMIT 1)`;
+
 /** At most this many missions are offered for an off-topic request (thread-tree, Off-topic requests). */
 export const maxMatches = 3;
 
@@ -40,9 +51,7 @@ export const findMissions = (callerId: string, request: string) =>
       lastActivityAt: number;
       opening: string | null;
     }>`
-      SELECT m.id, m.title, j.briefing, m.last_activity_at AS lastActivityAt,
-        (SELECT x.text FROM messages x WHERE x.thread_id = m.top_thread_id AND x.sender_kind = 'user'
-          ORDER BY x.sequence LIMIT 1) AS opening
+      SELECT m.id, m.title, j.briefing, m.last_activity_at AS lastActivityAt, ${openingRequestOf(sql)} AS opening
       FROM missions m JOIN threads top ON top.id = m.top_thread_id LEFT JOIN journals j ON j.mission_id = m.id
       WHERE top.is_deleting = 0 AND m.is_guildmaster = 0 AND m.id <> (SELECT mission_id FROM threads WHERE id = ${callerId})`;
     const scored = rows
@@ -58,9 +67,7 @@ export const findMissions = (callerId: string, request: string) =>
       .filter((row) => row.score > 0)
       .sort((current, next) => next.score - current.score || next.lastActivityAt - current.lastActivityAt)
       .slice(0, maxMatches);
-    const summaries = new Map<string, MissionSummary>(
-      (yield* listMissionSummaries(scored.map((row) => row.id))).map((summary) => [summary.id, summary]),
-    );
+    const summaries = yield* readMissionSummaryMap(scored.map((row) => row.id));
     return scored.map((row) => ({
       briefing: row.briefing ?? "",
       id: row.id,

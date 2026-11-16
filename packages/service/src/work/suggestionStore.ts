@@ -1,9 +1,9 @@
-import type { MissionSummary, Suggestion, SuggestionMatch, TierName } from "@outlore/contracts";
+import type { Suggestion, SuggestionMatch, TierName } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { readSettings } from "../core/index.ts";
 import { companionOf, tierPresetOf } from "./guildmasterCompanions.ts";
-import { listMissionSummaries } from "./missions.ts";
+import { readMissionSummaryMap } from "./matching.ts";
 
 type SuggestionRow = Omit<Suggestion, "backups" | "isAutomatic" | "isFromGuildmaster" | "isRitual" | "matches"> & {
   isAutomatic: number;
@@ -34,9 +34,7 @@ const tierOf = (stored: string | null): TierName | null =>
 const withMatches = (rows: ReadonlyArray<SuggestionRow>) =>
   Effect.gen(function* () {
     const ids = [...new Set(rows.flatMap((row) => matchIdsOf(row.matches)))];
-    const summaries = new Map<string, MissionSummary>(
-      (yield* listMissionSummaries(ids)).map((summary) => [summary.id, summary]),
-    );
+    const summaries = yield* readMissionSummaryMap(ids);
     const settings = yield* readSettings;
     return rows.map(({ isAutomatic, isFromGuildmaster, isRitual, matches, tier, ...row }) => {
       const name = tierOf(tier);

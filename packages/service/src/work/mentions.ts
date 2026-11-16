@@ -115,46 +115,63 @@ type ResolvedMention = {
   readonly readableQuest: string | null;
 };
 
-const resolveMention = (reference: MentionReference) =>
+/** The words for a quest's realm, as the receiving thread reads them. */
+const realmLabelOf = (quest: { readonly workspaceName: string | null }) =>
+  quest.workspaceName === null ? "the Borderlands" : `realm ${quest.workspaceName}`;
+
+const resolveRealmMention = (reference: MentionReference) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     const token = mentionTokenOf(reference);
-    if (reference.kind === "realm") {
-      const [realm] = yield* sql<{ name: string; path: string | null }>`
-        SELECT name, path FROM workspaces WHERE id = ${reference.id}`;
-      const line =
-        realm === undefined
-          ? `${token} = no realm has this id any more.`
-          : `${token} = Realm "${realm.name}" (id ${reference.id}, ${realm.path === null ? "tied to no folder" : `folder ${realm.path}`}).`;
-      // A realm is context only: it opens no quest and no thread.
-      return { line, reachableThread: null, readableQuest: null } satisfies ResolvedMention;
-    }
-    const sideQuest = reference.kind === "side-quest" ? yield* readSideQuest(reference.id) : null;
-    const missionId = reference.kind === "quest" ? reference.id : (sideQuest?.missionId ?? null);
-    const [quest] = missionId === null ? [] : yield* readQuest(missionId);
-    const readableQuest = reference.kind === "quest" ? (quest?.id ?? null) : (sideQuest?.missionId ?? null);
-    const reachableThread =
-      reference.kind === "quest" ? (quest?.topThreadId ?? null) : sideQuest === null ? null : reference.id;
+    const [realm] = yield* sql<{ name: string; path: string | null }>`
+      SELECT name, path FROM workspaces WHERE id = ${reference.id}`;
+    const line =
+      realm === undefined
+        ? `${token} = no realm has this id any more.`
+        : `${token} = Realm "${realm.name}" (id ${reference.id}, ${realm.path === null ? "tied to no folder" : `folder ${realm.path}`}).`;
+    // A realm is context only: it opens no quest and no thread.
+    return { line, reachableThread: null, readableQuest: null } satisfies ResolvedMention;
+  });
+
+const resolveQuestMention = (reference: MentionReference) =>
+  Effect.gen(function* () {
+    const token = mentionTokenOf(reference);
+    const [quest] = yield* readQuest(reference.id);
+    const grants = { reachableThread: quest?.topThreadId ?? null, readableQuest: quest?.id ?? null };
     if (quest === undefined)
-      return {
-        line: `${token} = no open ${reference.kind} has this id: it was archived or deleted.`,
-        reachableThread,
-        readableQuest,
-      } satisfies ResolvedMention;
-    const realm = quest.workspaceName === null ? "the Borderlands" : `realm ${quest.workspaceName}`;
-    if (sideQuest === null)
-      return {
-        line: `${token} = Quest "${quest.title}" (id ${quest.id}, state ${quest.state}, ${realm}, top thread id ${quest.topThreadId}). This turn you may read its journal with read_journal (mission ${quest.id}) and message its top thread with send_thread_message.`,
-        reachableThread,
-        readableQuest,
-      } satisfies ResolvedMention;
-    const [thread] = yield* sql<{ title: string }>`SELECT title FROM threads WHERE id = ${reference.id}`;
+      return { line: `${token} = no open ${reference.kind} has this id: it was archived or deleted.`, ...grants };
     return {
-      line: `${token} = Side-quest "${thread?.title ?? ""}" of quest "${quest.title}" (thread id ${reference.id}, state ${sideQuest.state}, quest id ${quest.id}, ${realm}). This turn you may read its quest's journal with read_journal (mission ${quest.id}) and message it with send_thread_message.`,
-      reachableThread,
-      readableQuest,
+      line: `${token} = Quest "${quest.title}" (id ${quest.id}, state ${quest.state}, ${realmLabelOf(quest)}, top thread id ${quest.topThreadId}). This turn you may read its journal with read_journal (mission ${quest.id}) and message its top thread with send_thread_message.`,
+      ...grants,
     } satisfies ResolvedMention;
   });
+
+const resolveSideQuestMention = (reference: MentionReference) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    const token = mentionTokenOf(reference);
+    const sideQuest = yield* readSideQuest(reference.id);
+    const [quest] = sideQuest === null ? [] : yield* readQuest(sideQuest.missionId);
+    const grants = {
+      reachableThread: sideQuest === null ? null : reference.id,
+      readableQuest: sideQuest?.missionId ?? null,
+    };
+    if (sideQuest === null || quest === undefined)
+      return { line: `${token} = no open ${reference.kind} has this id: it was archived or deleted.`, ...grants };
+    const [thread] = yield* sql<{ title: string }>`SELECT title FROM threads WHERE id = ${reference.id}`;
+    return {
+      line: `${token} = Side-quest "${thread?.title ?? ""}" of quest "${quest.title}" (thread id ${reference.id}, state ${sideQuest.state}, quest id ${quest.id}, ${realmLabelOf(quest)}). This turn you may read its quest's journal with read_journal (mission ${quest.id}) and message it with send_thread_message.`,
+      ...grants,
+    } satisfies ResolvedMention;
+  });
+
+const resolvers = {
+  quest: resolveQuestMention,
+  realm: resolveRealmMention,
+  "side-quest": resolveSideQuestMention,
+} satisfies Record<MentionReference["kind"], (reference: MentionReference) => unknown>;
+
+const resolveMention = (reference: MentionReference) => resolvers[reference.kind](reference);
 
 /**
  * What the owner's message tells its receiving thread about the quests, side-quests, and realms it mentions: a block
