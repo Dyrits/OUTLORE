@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, vi } from "vitest";
 import { WebSocketServer } from "ws";
 import { connectClient as clientEffect, connectHost as hostEffect, keepAlive } from "../src/client.ts";
 import { closingFrame } from "../src/roomCore.ts";
+import { claimProtocolOf, relayProtocol } from "../src/route.ts";
 import { room } from "./fixtures/wsClient.ts";
 
 const resultOf = <Value>(effect: Effect.Effect<Value, { readonly kind: "unreachable" }>) =>
@@ -25,13 +26,16 @@ const connectHost = (...args: Parameters<typeof hostEffect>) => resultOf(hostEff
 let server: WebSocketServer | null = null;
 const sockets: import("ws").WebSocket[] = [];
 
-const serve = async (onConnection: (socket: import("ws").WebSocket) => void) => {
-  const created = new WebSocketServer({ host: "127.0.0.1", port: 0 });
+const serve = async (
+  onConnection: (socket: import("ws").WebSocket, request: import("node:http").IncomingMessage) => void,
+  options: import("ws").ServerOptions = {},
+) => {
+  const created = new WebSocketServer({ host: "127.0.0.1", port: 0, ...options });
   server = created;
-  created.on("connection", (socket) => {
+  created.on("connection", (socket, request) => {
     sockets.push(socket);
     socket.on("error", () => null);
-    onConnection(socket);
+    onConnection(socket, request);
   });
   await new Promise<void>((resolve) => created.once("listening", resolve));
   return `http://127.0.0.1:${(created.address() as { port: number }).port}`;
@@ -208,4 +212,51 @@ describe("keeping a connection alive", () => {
       expect(pings).toEqual([]);
     }),
   );
+});
+
+describe("a host's claim on the wire", () => {
+  const claim = Uint8Array.from({ length: 24 }, (_, index) => index + 1);
+
+  it("travels in the subprotocols and not in the address", async () => {
+    let seen: { protocols: string | undefined; url: string | undefined } | null = null;
+    const relayOrigin = await serve((_socket, request) => {
+      seen = { protocols: request.headers["sec-websocket-protocol"], url: request.url };
+    });
+    const result = await connectHost({ claim, relayOrigin, room });
+    expect(result.ok).toBe(true);
+    await vi.waitFor(() => expect(seen).not.toBeNull());
+    expect(seen).toEqual({
+      protocols: `${relayProtocol}, ${claimProtocolOf(claim)}`,
+      url: `/r/${room}?role=host`,
+    });
+    if (result.ok) expect(result.value.usesLegacyClaim).toBe(false);
+  });
+
+  // A relay of an earlier release: it knows only the address form, so it turns away a connection that offers subprotocols.
+  const earlier = {
+    verifyClient: (info: { req: import("node:http").IncomingMessage }) => !info.req.headers["sec-websocket-protocol"],
+  };
+
+  it("does not fall back to the address by itself: an earlier relay is unreachable", async () => {
+    const relayOrigin = await serve(() => {}, earlier);
+    expect(await connectHost({ claim, relayOrigin, room })).toEqual({ kind: "unreachable", ok: false });
+  });
+
+  it("falls back to the address form for a relay of an earlier release, when told to, and says so", async () => {
+    const urls: (string | undefined)[] = [];
+    const relayOrigin = await serve((_socket, request) => urls.push(request.url), earlier);
+    const result = await connectHost({ claim, legacyFallback: true, relayOrigin, room });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.usesLegacyClaim).toBe(true);
+    await vi.waitFor(() => expect(urls).toHaveLength(1));
+    expect(urls[0]).toMatch(/^\/r\/[^?]+\?claim=[A-Za-z0-9_-]+&role=host$/);
+  });
+
+  it("does not use the address when the subprotocol form worked", async () => {
+    const urls: (string | undefined)[] = [];
+    const relayOrigin = await serve((_socket, request) => urls.push(request.url));
+    await connectHost({ claim, legacyFallback: true, relayOrigin, room });
+    await vi.waitFor(() => expect(urls).toHaveLength(1));
+    expect(urls[0]).not.toContain("claim=");
+  });
 });

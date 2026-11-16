@@ -93,6 +93,7 @@ describe("holding a controller host link", () => {
           onClientLeft: () => {},
           onClose: () => {},
           sendToClient: () => {},
+          usesLegacyClaim: false,
         };
         expect(presence.attachRelay(stale, generation)).toBe(false);
         expect(isClosed).toBe(true);

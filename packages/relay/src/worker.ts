@@ -1,8 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
-import { Effect } from "effect";
+import { Clock, Effect } from "effect";
 import { SourceGate } from "./limits.ts";
 import { closeWithReason, type Member, RoomCore, type RoomPorts } from "./roomCore.ts";
-import { parseConnect } from "./route.ts";
+import { legacyClaimUntil, offersRelayProtocol, parseConnect, relayProtocol } from "./route.ts";
 
 /** The Worker's bindings. */
 export type Env = {
@@ -16,6 +16,14 @@ const claimKey = "claim";
 
 // Counts connection attempts per address in the memory of this isolate, before any Durable Object is woken.
 const gate = new SourceGate();
+
+// What a request asks for, with the legacy claim in the address read only until `legacyClaimUntil`.
+const connectOf = (request: Request) =>
+  Clock.currentTimeMillis.pipe(
+    Effect.map((now) =>
+      parseConnect(request.url, request.headers.get("Sec-WebSocket-Protocol"), now < legacyClaimUntil),
+    ),
+  );
 
 const memberOf = (peer: WebSocket): Member<WebSocket> | null => {
   const attachment: Attachment | null = peer.deserializeAttachment();
@@ -56,13 +64,16 @@ export class Room extends DurableObject<Env> {
 
   // Each event of the object is one Effect run to its end: no fiber or timer outlives it, so the object may hibernate.
   override fetch(request: Request): Promise<Response> {
-    const connect = parseConnect(request.url);
-    if (connect === null || request.headers.get("Upgrade") !== "websocket")
-      return Promise.resolve(new Response(null, { status: 404 }));
     const core = this.#core;
     const ctx = this.ctx;
     return Effect.runPromise(
       Effect.gen(function* () {
+        const connect = yield* connectOf(request);
+        if (connect === null || request.headers.get("Upgrade") !== "websocket")
+          return new Response(null, { status: 404 });
+        // Visible in the Worker's logs for as long as hosts of an earlier release use the address form.
+        if (connect.isLegacyClaim)
+          console.warn("A host sent its claim in the address; the address form ends at legacyClaimUntil.");
         const rejection = yield* core.screen(connect.role, connect.claim);
         const pair = new WebSocketPair();
         const [client, server] = [pair[0], pair[1]];
@@ -73,7 +84,11 @@ export class Room extends DurableObject<Env> {
           ctx.acceptWebSocket(server);
           closeWithReason(server, rejection.code, rejection.reason);
         }
-        return new Response(null, { status: 101, webSocket: client });
+        // A client that offered subprotocols is answered with the relay's own, never with the claim.
+        const headers = new Headers();
+        if (offersRelayProtocol(request.headers.get("Sec-WebSocket-Protocol")))
+          headers.set("Sec-WebSocket-Protocol", relayProtocol);
+        return new Response(null, { headers, status: 101, webSocket: client });
       }),
     );
   }
@@ -99,7 +114,7 @@ export class Room extends DurableObject<Env> {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const connect = parseConnect(request.url);
+    const connect = await Effect.runPromise(connectOf(request));
     if (connect === null || request.method !== "GET") return new Response(null, { status: 404 });
     if (request.headers.get("Upgrade") !== "websocket") return new Response(null, { status: 426 });
     const source = request.headers.get("CF-Connecting-IP");

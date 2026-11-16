@@ -4,7 +4,7 @@ import { Clock, Effect, Schema } from "effect";
 import { type WebSocket, WebSocketServer } from "ws";
 import { SourceGate, type SourceLimits } from "./limits.ts";
 import { closeCodes, closeWithReason, defaultRoomLimits, type Member, RoomCore, type RoomLimits } from "./roomCore.ts";
-import { parseConnect } from "./route.ts";
+import { legacyClaimUntil, parseConnect, relayProtocol } from "./route.ts";
 
 /** What `startNodeRelay` accepts. */
 export type NodeRelayOptions = Partial<RoomLimits> & {
@@ -101,7 +101,13 @@ export const startNodeRelay = (options: NodeRelayOptions = {}) =>
       const gate = new SourceGate(sourceLimits);
       const rooms = new Map<string, Room>();
       const maxPayload = limits.maxFrameBytes ?? defaultRoomLimits.maxFrameBytes;
-      const wss = new WebSocketServer({ maxPayload, noServer: true });
+      // A client that offers subprotocols must be answered with one of them, or a browser drops the connection; the relay
+      // selects its own and never sends a claim back.
+      const wss = new WebSocketServer({
+        handleProtocols: (protocols) => (protocols.has(relayProtocol) ? relayProtocol : false),
+        maxPayload,
+        noServer: true,
+      });
       const server = createServer((_request, response) => {
         response.writeHead(404, { "Content-Length": 0 }).end();
       });
@@ -120,11 +126,15 @@ export const startNodeRelay = (options: NodeRelayOptions = {}) =>
 
       const accept = (request: IncomingMessage, socket: Duplex, head: Buffer) =>
         Effect.gen(function* () {
-          const connect = parseConnect(request.url ?? "");
+          const now = yield* Clock.currentTimeMillis;
+          const connect = parseConnect(
+            request.url ?? "",
+            request.headers["sec-websocket-protocol"] ?? null,
+            now < legacyClaimUntil,
+          );
           if (connect === null) return refuse(socket);
           const source = request.socket.remoteAddress;
           if (source !== void 0 && !(yield* gate.admit(source))) return tooManyAttempts(socket);
-          const now = yield* Clock.currentTimeMillis;
           let room = rooms.get(connect.room);
           if (room === void 0) {
             if (connect.role === "client")

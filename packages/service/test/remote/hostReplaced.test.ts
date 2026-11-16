@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import { closingFrame } from "@outlore/relay";
+import { closingFrame, legacyClaimUntil } from "@outlore/relay";
 import { Effect, Layer } from "effect";
 import { TestClock } from "effect/testing";
 import { WebSocketServer } from "ws";
@@ -19,7 +19,7 @@ const settle = Effect.gen(function* () {
   for (let index = 0; index < 20; index++) yield* turn;
 });
 
-type Answer = "hold" | "limit" | "refuse" | "replace";
+type Answer = "earlier" | "hold" | "limit" | "refuse" | "replace";
 
 /**
  * A relay that counts the hosts that connect and answers each as `answer` says: refuse the upgrade, replace it, or
@@ -28,14 +28,19 @@ type Answer = "hold" | "limit" | "refuse" | "replace";
 const stubRelay = (first: Answer) =>
   Effect.acquireRelease(
     Effect.promise(async () => {
-      const attempts = { count: 0 };
+      const attempts = { count: 0, legacy: 0 };
       const answer = { current: first };
       const sockets = new WebSocketServer({ noServer: true });
       const server = createServer();
       server.on("upgrade", (request, socket, head) => {
-        attempts.count += 1;
+        // A pass of the host is one attempt; the second try of a pass, with the claim in the address for a relay of an
+        // earlier release (until `legacyClaimUntil`), carries no subprotocol and is not counted.
+        const isLegacyTry = request.headers["sec-websocket-protocol"] === void 0;
+        if (isLegacyTry) attempts.legacy += 1;
+        else attempts.count += 1;
         socket.on("error", () => null);
-        if (answer.current === "refuse") {
+        // A relay of an earlier release knows only the claim in the address, and turns a subprotocol away.
+        if (answer.current === "refuse" || (answer.current === "earlier" && !isLegacyTry)) {
           socket.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
           return;
         }
@@ -164,6 +169,7 @@ describe("a host that cannot reach its relay", () => {
         const host = yield* hostAt(relay.origin);
         yield* host.setAccess(true);
         while (relay.attempts.count < 1) yield* turn;
+        yield* settle;
         yield* TestClock.adjust(1_000);
         while (relay.attempts.count < 2) yield* turn;
         yield* settle;
@@ -231,5 +237,34 @@ describe("a host whose connection ended after it had held", () => {
           expect(relay.attempts.count).toBe(attempts + 1);
         }),
       ),
+  );
+});
+
+describe("a host and a relay of an earlier release, while the claim may still go in the address", () => {
+  it.effect("reaches the relay by sending its claim in the address once its first try was turned away", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const relay = yield* stubRelay("earlier");
+        const host = yield* hostAt(relay.origin);
+        yield* host.setAccess(true);
+        while ((yield* host.presence.status) !== "Connected") yield* turn;
+        expect(relay.attempts).toEqual({ count: 1, legacy: 1 });
+      }),
+    ),
+  );
+
+  it.effect("does not send its claim in the address after the transition ended: the relay stays unreachable", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        yield* TestClock.setTime(legacyClaimUntil);
+        const relay = yield* stubRelay("earlier");
+        const host = yield* hostAt(relay.origin);
+        yield* host.setAccess(true);
+        while (relay.attempts.count < 1) yield* turn;
+        yield* settle;
+        expect(yield* host.presence.status).toBe("Unreachable");
+        expect(relay.attempts).toEqual({ count: 1, legacy: 0 });
+      }),
+    ),
   );
 });

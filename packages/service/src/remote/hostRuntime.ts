@@ -1,4 +1,4 @@
-import { closeCodes, connectHost, type HostConnection } from "@outlore/relay";
+import { closeCodes, connectHost, type HostConnection, legacyClaimUntil } from "@outlore/relay";
 import { Clock, Deferred, Effect, Layer, Schedule, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { Changes, Sessions } from "../core/index.ts";
@@ -105,14 +105,21 @@ export const remoteHostLayer = Layer.effectDiscard(
       Effect.gen(function* () {
         yield* state.setStatus("Connecting");
         const relayOrigin = yield* withParts(relayOriginOf(record));
+        // Until the transition ends, a relay of an earlier release (an owner's own, not yet redeployed) still takes
+        // the claim in the address.
+        const legacyFallback = (yield* Clock.currentTimeMillis) < legacyClaimUntil;
         return yield* Effect.acquireUseRelease(
-          connectHost({ claim: record.claimSecret, relayOrigin, room: record.room }).pipe(
+          connectHost({ claim: record.claimSecret, legacyFallback, relayOrigin, room: record.room }).pipe(
             Effect.tapError(() => state.setStatus("Unreachable")),
             Effect.mapError(() => new Disconnected({ reason: "unreachable" })),
           ),
           Effect.fnUntraced(function* (connection) {
             // The switch may have gone off while the relay was answering; a connection made then must not serve anyone.
             if (!state.attachRelay(connection, generation)) return;
+            if (connection.usesLegacyClaim)
+              yield* Effect.logWarning(
+                `The relay at ${relayOrigin} still takes the host claim in the address. Redeploy it before ${new Date(legacyClaimUntil).toISOString().slice(0, 10)}, when this host stops sending it that way.`,
+              );
             const startedAt = yield* Clock.currentTimeMillis;
             const code = yield* hold(connection, record);
             // Claimed by another host, replaced by one, or limited by the relay: wait longer than for a dropped

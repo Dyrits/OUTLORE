@@ -2,6 +2,7 @@ import type { Carrier } from "@outlore/channel";
 import { encodeBase64Url } from "@outlore/channel/base64url";
 import { Effect, Schema } from "effect";
 import { clientIdBytes, hostFrame, readClosingFrame, relayFrame } from "./roomCore.ts";
+import { claimProtocolOf, relayProtocol } from "./route.ts";
 
 // The relay as its users see it: a host keeps one connection and hears from its clients by their identifiers; a client
 // (a paired device) has one connection that carries its own frames only. Isomorphic: the standard WebSocket only.
@@ -24,11 +25,11 @@ const socketUrl = (relayOrigin: string, room: string, query: Record<string, stri
 };
 
 /** Opens the socket; an attempt that is interrupted before it opens is abandoned. */
-const open = (url: string) =>
+const open = (url: string, protocols?: string[]) =>
   Effect.callback<WebSocket, ConnectFailure>((resume) => {
     let socket: WebSocket;
     try {
-      socket = new WebSocket(url);
+      socket = new WebSocket(url, protocols);
     } catch {
       resume(Effect.fail(new ConnectFailure({ kind: "unreachable" })));
       return;
@@ -88,10 +89,12 @@ export interface HostConnection {
   /** Runs once when the connection ends, with the relay's close code (1006 when it dropped without one). */
   onClose(listener: (code: number, reason: string) => void): void;
   sendToClient(clientId: string, data: Uint8Array): void;
+  /** Whether the claim went in the address because the relay is of an earlier release (see `legacyClaimUntil`). */
+  readonly usesLegacyClaim: boolean;
 }
 
 /** The host's side of an open socket. */
-const hostConnectionOf = (socket: WebSocket): HostConnection => {
+const hostConnectionOf = (socket: WebSocket, usesLegacyClaim: boolean): HostConnection => {
   const joined: Array<(clientId: string) => void> = [];
   const left: Array<(clientId: string) => void> = [];
   const data: Array<(clientId: string, data: Uint8Array) => void> = [];
@@ -146,6 +149,7 @@ const hostConnectionOf = (socket: WebSocket): HostConnection => {
       else closed.push(listener);
     },
     sendToClient: (clientId, payload) => send(framed(hostFrame.forward, clientId, payload)),
+    usesLegacyClaim,
   };
 };
 
@@ -207,18 +211,29 @@ const clientConnectionOf = (socket: WebSocket): ClientConnection => {
 
 /**
  * Connects as the host of `room`, claiming it with `claim` (the first claim keeps the room); an unreachable relay is
- * the typed failure. The keep-alive runs until the socket closes.
+ * the typed failure. The claim travels in the WebSocket subprotocols, not in the address. With `legacyFallback`, a
+ * relay that does not take that (one of an earlier release) gets a second try with the claim in the address, as
+ * earlier hosts sent it; this is for the transition only (see `legacyClaimUntil`). The keep-alive runs until the
+ * socket closes.
  */
 export const connectHost = Effect.fnUntraced(function* (options: {
   claim: Uint8Array;
+  legacyFallback?: boolean;
   relayOrigin: string;
   room: string;
 }) {
-  const socket = yield* open(
+  const withSubprotocol = open(socketUrl(options.relayOrigin, options.room, { role: "host" }), [
+    relayProtocol,
+    claimProtocolOf(options.claim),
+  ]).pipe(Effect.map((socket) => ({ socket, usesLegacyClaim: false })));
+  const inAddress = open(
     socketUrl(options.relayOrigin, options.room, { claim: encodeBase64Url(options.claim), role: "host" }),
-  );
+  ).pipe(Effect.map((socket) => ({ socket, usesLegacyClaim: true })));
+  const { socket, usesLegacyClaim } = yield* options.legacyFallback === true
+    ? withSubprotocol.pipe(Effect.catch(() => inAddress))
+    : withSubprotocol;
   yield* Effect.forkDetach(keepAlive(socket));
-  return hostConnectionOf(socket);
+  return hostConnectionOf(socket, usesLegacyClaim);
 });
 
 /**
