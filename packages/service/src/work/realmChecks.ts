@@ -21,11 +21,11 @@ export const findRealmOfAnyKind = (given: string) =>
   });
 
 /** A realm the tool would act on. */
-export interface RealmFound {
+export type RealmFound = {
   readonly id: string;
   readonly name: string;
   readonly path: string | null;
-}
+};
 
 /** What a realm tool found before acting: a refusal with the words that tell Chronicler why, or what it would act on. */
 export type RealmCheck<Clear> =

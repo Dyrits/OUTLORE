@@ -68,10 +68,10 @@ export class Threads extends Context.Service<
 export class AccountsRoot extends Context.Service<AccountsRoot, string>()("outlore/AccountsRoot") {}
 
 /** A turn the harness is running, with the steered messages already written to it. */
-interface ActiveTurn {
+type ActiveTurn = {
   readonly turnId: string;
   readonly written: Set<string>;
-}
+};
 
 /** Threads over the store and the harness adapters. */
 export const threadsLayer = Layer.effect(

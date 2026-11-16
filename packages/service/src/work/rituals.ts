@@ -31,7 +31,7 @@ const decodeCompanion = Schema.decodeUnknownSync(RitualCompanionSchema);
 const decodeFallbacks = Schema.decodeUnknownSync(Schema.Array(RitualCompanionSchema));
 const decodeScope = Schema.decodeUnknownSync(RitualScopeSchema);
 
-interface RitualRow {
+type RitualRow = {
   readonly authority: string;
   readonly createdAt: number;
   readonly fallbackStep: number;
@@ -49,7 +49,7 @@ interface RitualRow {
   readonly threadId: string;
   readonly threadState: string;
   readonly title: string;
-}
+};
 
 /** The Rituals matching a condition, with their quest's top thread. */
 const readRows = (

@@ -4,31 +4,31 @@ import type { SqlError } from "effect/sql";
 import type { HarnessPrompt, ServiceFailure } from "../core/index.ts";
 
 /** What a thread passes to `request_approval`: one action, said in plain language, with its exact target. */
-export interface ApprovalRequest {
+export type ApprovalRequest = {
   /** One sentence: what the thread wants to do and why. */
   readonly action: string;
   /** The exact command, file, or target. */
   readonly command: string;
   /** Whether the owner is explicitly being asked to run this command without the sandbox. */
   readonly outsideSandbox?: boolean;
-}
+};
 
 /** The question a harness asks before starting in a thread folder that is a link (harness/threadFolder.ts). */
-export interface FolderQuestion {
+export type FolderQuestion = {
   /** The folder found to be a link or to resolve outside its root. */
   readonly folder: string;
   readonly pointsTo: string;
   /** The real path the harness starts in when allowed, then counted as the thread's folder; null for none. */
   readonly startsIn: string | null;
   readonly summary: string;
-}
+};
 
 /** The answer a thread or the harness receives. */
-export interface Decision {
+export type Decision = {
   readonly isAllowed: boolean;
   /** Told to the thread: the refusal, the owner's message, or how to proceed. */
   readonly text: string;
-}
+};
 
 /** An owner's choice is an answer, or an explicit absence of an answer, never permission for an action. */
 export type ChoiceDecision =

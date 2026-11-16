@@ -13,7 +13,7 @@ import { ScratchRoot } from "./workspaces.ts";
 // alone commits, announces, and applies them, so no caller can forget a wake or announce a rollback.
 
 /** What a command leaves to do once its storage work has committed. */
-export interface FollowUps {
+export type FollowUps = {
   /** Whether state the owner sees changed, so open screens refetch. */
   readonly isChanged: boolean;
   /** Deleted quests whose service-owned scratch folder can now be removed. */
@@ -26,13 +26,13 @@ export interface FollowUps {
   readonly threadsToWithdraw: ReadonlyArray<string>;
   /** Threads whose turns the operation invalidated and that must now end. */
   readonly turnsToCancel: ReadonlyArray<string>;
-}
+};
 
 /** A domain operation's value with its follow-ups. */
-export interface WithFollowUps<A> {
+export type WithFollowUps<A> = {
   readonly followUps: FollowUps;
   readonly value: A;
-}
+};
 
 /** The follow-ups of an operation that changed nothing the owner sees and leaves nothing to do. */
 export const noFollowUps: FollowUps = {

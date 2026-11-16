@@ -46,12 +46,12 @@ const isHeic = (bytes: Uint8Array) =>
   ["heic", "heix", "hevc", "mif1", "msf1"].some((brand) => startsWith(bytes, 8, asciiOf(brand)));
 
 /** One stored file as the harness reads it: where it is, relative to the root, with its name and type. */
-export interface StoredAttachment {
+export type StoredAttachment = {
   readonly file: string;
   readonly id: string;
   readonly mediaType: AttachmentMediaType;
   readonly name: string;
-}
+};
 
 const failed = (action: string) => (error: unknown) =>
   new ServiceFailure({ kind: "ExecutionFailure", message: `Could not ${action}: ${String(error)}` });

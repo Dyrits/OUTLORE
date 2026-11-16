@@ -10,12 +10,12 @@ import { crestOfRow } from "./workspaces.ts";
 const statesNeedingOwner: ReadonlyArray<MissionState> = ["Attention", "Failed"];
 
 /** The dashboard's filters: the Archived view or not, a state, a workspace, and a search text. */
-export interface MissionFilters {
+export type MissionFilters = {
   readonly isArchived: boolean;
   readonly search: string | null;
   readonly state: MissionState | null;
   readonly workspaceId: string | null;
-}
+};
 
 /** The ids of the missions whose title or briefing contains the search text, ignoring case. */
 const listSearchMatches = (search: string) =>
