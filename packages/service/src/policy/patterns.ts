@@ -9,15 +9,16 @@ export const matchesPattern = (pattern: string, target: string) => {
   return trimmed.length >= 2 && trimmed === target.trim();
 };
 
-const plainActions: Record<string, string> = {
-  Bash: "Run a command",
-  Edit: "Change a file",
-  MultiEdit: "Change a file",
-  NotebookEdit: "Change a notebook",
-  Read: "Read a file",
-  WebFetch: "Open a web page",
-  WebSearch: "Search the web",
-  Write: "Write a file",
+/** Each harness tool's plain action, and whether it changes files with the harness's own tool, outside any command sandbox. */
+const toolFacts: Record<string, { action: string; writesFiles: boolean }> = {
+  Bash: { action: "Run a command", writesFiles: false },
+  Edit: { action: "Change a file", writesFiles: true },
+  MultiEdit: { action: "Change a file", writesFiles: true },
+  NotebookEdit: { action: "Change a notebook", writesFiles: true },
+  Read: { action: "Read a file", writesFiles: false },
+  WebFetch: { action: "Open a web page", writesFiles: false },
+  WebSearch: { action: "Search the web", writesFiles: false },
+  Write: { action: "Write a file", writesFiles: true },
 };
 
 /** Claude Code's own reason for a tool call, without its final period, or null when it gives none. */
@@ -28,7 +29,7 @@ export const reasonOf = (input: unknown) => {
 
 /** The kind of a harness tool call in plain words, such as "Run a command". */
 export const plainActionOf = (toolName: string) =>
-  Object.hasOwn(plainActions, toolName) ? (plainActions[toolName] ?? toolName) : `Use ${toolName}`;
+  Object.hasOwn(toolFacts, toolName) ? (toolFacts[toolName]?.action ?? toolName) : `Use ${toolName}`;
 
 // A whole command that is one shell's `-c` script in one pair of quotes, as Codex escalates it
 // (`/bin/zsh -lc 'git push origin main'`, probed live on 2026-11-08). A quote inside the script does not match,
@@ -104,10 +105,8 @@ const capabilityNames = new Set<string>(Object.values(capabilities));
 export const kindOfPermission = (sentence: string) => (capabilityNames.has(sentence) ? sentence : null);
 
 // The harness tools that change files themselves, outside any command sandbox.
-const fileWritingTools = ["Write", "Edit", "MultiEdit", "NotebookEdit"];
-
 /** Whether a harness tool call changes files with the harness's own tool rather than a command. */
-export const isFileWriting = (toolName: string) => fileWritingTools.includes(toolName);
+export const isFileWriting = (toolName: string) => toolFacts[toolName]?.writesFiles === true;
 
 const pathFieldOf = (input: unknown) =>
   textFieldOf(input, "file_path") ?? textFieldOf(input, "notebook_path") ?? textFieldOf(input, "path");
