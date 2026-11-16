@@ -154,13 +154,14 @@ describe("handling a host reply", () => {
 
 describe("the refusal text the owner reads", () => {
   it("covers every reason a host reply can refuse with, and no other", () => {
+    // Driven by refusalText's own keys, so a reason added later (other-release, CHG-TBD-A) is covered by itself.
     for (const reason of Object.keys(refusalText)) {
       expect(parseHostReply(asText({ reason, t: "refused" })), reason).toEqual({
         ok: true,
         value: { reason, t: "refused" },
       });
     }
-    expect(Object.keys(refusalText)).toHaveLength(7);
+    expect(parseHostReply(asText({ reason: "made-up", t: "refused" })).ok).toBe(false);
   });
 
   it("gives each refusal its own sentence that tells the owner what to do next", () => {
