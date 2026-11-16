@@ -1,25 +1,12 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { LoreScope, MissionId, ThreadId } from "@outlore/contracts";
+import type { MissionId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
-import { afterEach } from "vitest";
-import { call, fixture, open, read, send, settle, start, tool } from "../fixtures/service.ts";
+import { approveAll, idOf, panel, save } from "../fixtures/lore.ts";
+import { call, fixture, open, read, register, send, settle, start, tool } from "../fixtures/service.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...), thread tool names (`save_intel`, ...) and settings keys (`intelHalfLives`, `intelWarningPercent`).
 
-const fixtures: ReturnType<typeof fixture>[] = [];
-const live = () => {
-  const value = fixture();
-  fixtures.push(value);
-  return value;
-};
-afterEach(() => {
-  for (const value of fixtures.splice(0)) value.remove();
-});
-
-const save = (threadId: ThreadId, text: string, scope: string) =>
-  tool(threadId, "save_intel", { kind: "fact", scope, text });
-const panel = (threadId: ThreadId | null = null, scope: LoreScope | null = null) =>
-  call({ _tag: "ListIntel", scope, state: null, threadId });
+const live = () => register(fixture());
 /** A mission whose top thread has finished its first turn, in a workspace or the scratch folder. */
 const idle = (workspacePath: string | null = null, text = "Hello") =>
   Effect.gen(function* () {
@@ -48,14 +35,6 @@ const child = (missionId: MissionId, parentId: ThreadId) =>
     yield* settle(missionId, (detail) => detail.thread.state === "Idle", opened.threadId);
     return opened.threadId;
   });
-const approveAll = (isApproved = true) =>
-  Effect.gen(function* () {
-    for (const change of (yield* panel()).awaiting) {
-      yield* call({ _tag: "ResolveIntelChange", changeId: change.id, isApproved });
-    }
-  });
-const idOf = (answer: string) => /lore entry (\S+?)[ .]/.exec(answer)?.[1] ?? "";
-
 describe("saving lore", () => {
   it.live("saves thread lore without approval and shows the save in the thread", () => {
     const { layer } = live();
@@ -67,7 +46,7 @@ describe("saving lore", () => {
       expect(detail.loreChanges).toMatchObject([
         { kind: "Save", scope: "Thread", status: "Done", text: "The owner prefers short replies." },
       ]);
-      expect((yield* panel(threadId)).loreEntries.map((loreEntry) => loreEntry.text)).toEqual([
+      expect((yield* panel({ threadId })).loreEntries.map((loreEntry) => loreEntry.text)).toEqual([
         "The owner prefers short replies.",
       ]);
     }).pipe(Effect.provide(layer));
@@ -312,7 +291,7 @@ describe("managing lore in the panel", () => {
         scopeLabel: expect.stringContaining("Plan the release"),
       });
       expect(all.loreEntries.every((loreEntry) => loreEntry.savedAt > 0)).toBe(true);
-      expect((yield* panel(null, "Workspace")).loreEntries.map((loreEntry) => loreEntry.text)).toEqual([
+      expect((yield* panel({ scope: "Workspace" })).loreEntries.map((loreEntry) => loreEntry.text)).toEqual([
         "A workspace fact.",
       ]);
     }).pipe(Effect.provide(layer));
@@ -363,7 +342,7 @@ describe("warning about lore size", () => {
       const over = (yield* read(missionId, threadId)).loreGauge;
       expect(over.isOverWarning).toBe(true);
       expect(over.tokens).toBeGreaterThan(2000);
-      expect((yield* panel(threadId)).gauge).toMatchObject({ isOverWarning: true });
+      expect((yield* panel({ threadId })).gauge).toMatchObject({ isOverWarning: true });
     }).pipe(Effect.provide(layer));
   });
 });

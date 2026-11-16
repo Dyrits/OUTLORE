@@ -37,6 +37,18 @@ export interface Seed {
   readonly tokens?: readonly [number, number, number, number];
 }
 
+/** A subscription turn's usage row for one of `quests`' quests, ended at `endedAt`. */
+export const subscriptionRow = (quest: { mission: string; thread: string }, endedAt: number) =>
+  ({
+    billing: "Subscription",
+    endedAt,
+    estimate: 1,
+    harness: "claude",
+    mission: quest.mission,
+    model: "m",
+    thread: quest.thread,
+  }) as const;
+
 /** Replaces the usage the fake harness left with `rows`, which name the quests and threads they belong to. */
 export const seed = (rows: readonly Seed[]) =>
   Effect.gen(function* () {

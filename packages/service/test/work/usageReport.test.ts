@@ -4,7 +4,7 @@ import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
 import { computerNameOf } from "../../src/remote/config.ts";
 import { call, fixture, settle, start } from "../fixtures/service.ts";
-import { dayAt, dayText, isIdle, quests, seed, standard, usage } from "../fixtures/usage.ts";
+import { dayAt, dayText, isIdle, quests, seed, standard, subscriptionRow, usage } from "../fixtures/usage.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 afterEach(() => {
@@ -189,16 +189,7 @@ describe("reading the usage page", () => {
     withService(
       Effect.gen(function* () {
         const { atlas } = yield* quests;
-        const row = (endedAt: number) =>
-          ({
-            billing: "Subscription",
-            endedAt,
-            estimate: 1,
-            harness: "claude",
-            mission: atlas.mission,
-            model: "m",
-            thread: atlas.thread,
-          }) as const;
+        const row = (endedAt: number) => subscriptionRow(atlas, endedAt);
         yield* seed([row(dayAt(2, 0, 30)), row(dayAt(2, 23, 30)), row(dayAt(1, 0, 30))]);
         const { breakdowns, days } = yield* usage({ _tag: "Days", days: 7 });
         const dayRows = breakdowns.find((breakdown) => breakdown.dimension === "Day")?.rows ?? [];
@@ -276,16 +267,7 @@ describe("reading the usage page", () => {
     withService(
       Effect.gen(function* () {
         const { atlas } = yield* quests;
-        const row = (endedAt: number) =>
-          ({
-            billing: "Subscription",
-            endedAt,
-            estimate: 1,
-            harness: "claude",
-            mission: atlas.mission,
-            model: "m",
-            thread: atlas.thread,
-          }) as const;
+        const row = (endedAt: number) => subscriptionRow(atlas, endedAt);
         yield* seed([row(dayAt(29)), row(dayAt(30)), row(dayAt(6)), row(dayAt(7))]);
         // Days 29, 6, and 7 are in the last 30 days; day 30 is not.
         expect((yield* usage({ _tag: "Days", days: 30 })).amounts.turns).toBe(3);

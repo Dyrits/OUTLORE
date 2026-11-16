@@ -1,8 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { BackupCompanion } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
-import { call, fixture, open, read, send, settle, start } from "../fixtures/service.ts";
+import { call, codexBackup, fixture, open, read, send, settle, start } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 afterEach(() => {
@@ -13,8 +12,6 @@ const withService = <A, E, R>(body: Effect.Effect<A, E, R>) => {
   fixtures.push(value);
   return body.pipe(Effect.provide(value.layer));
 };
-
-const codex: BackupCompanion = { accountId: null, effort: "default", harness: "codex", model: "gpt-5" };
 const replies = (detail: { messages: ReadonlyArray<{ sender: string; text: string }> }) =>
   detail.messages.filter((message) => message.sender === "agent").map((message) => message.text);
 
@@ -24,8 +21,8 @@ describe("saving a thread's backup Companions", () => {
       Effect.gen(function* () {
         const { threadId } = yield* start("Hello");
         expect((yield* call({ _tag: "ReadThreadPanel", threadId })).backups).toEqual([]);
-        yield* call({ _tag: "SetThreadBackups", backups: [codex], threadId });
-        expect((yield* call({ _tag: "ReadThreadPanel", threadId })).backups).toEqual([codex]);
+        yield* call({ _tag: "SetThreadBackups", backups: [codexBackup], threadId });
+        expect((yield* call({ _tag: "ReadThreadPanel", threadId })).backups).toEqual([codexBackup]);
       }),
     ),
   );
@@ -35,7 +32,7 @@ describe("saving a thread's backup Companions", () => {
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
         yield* settle(missionId, (detail) => detail.thread.state === "Idle");
-        yield* call({ _tag: "SetThreadBackups", backups: [codex], threadId });
+        yield* call({ _tag: "SetThreadBackups", backups: [codexBackup], threadId });
         yield* send(threadId, "fail claude Usage limit reached\nrunner");
         const detail = yield* settle(
           missionId,
@@ -54,7 +51,7 @@ describe("saving a thread's backup Companions", () => {
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
         yield* settle(missionId, (detail) => detail.thread.state === "Idle");
-        yield* call({ _tag: "SetThreadBackups", backups: [codex], threadId });
+        yield* call({ _tag: "SetThreadBackups", backups: [codexBackup], threadId });
         yield* send(threadId, "wait 300\nfail claude Usage limit reached");
         yield* settle(missionId, (detail) => detail.thread.state === "Running");
         yield* call({

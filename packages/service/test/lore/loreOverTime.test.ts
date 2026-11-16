@@ -1,41 +1,16 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { LoreEntryId, LoreStateFilter, MissionId, Settings, ThreadId } from "@outlore/contracts";
+import type { LoreEntryId, MissionId, Settings, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
-import { TestClock } from "effect/testing";
-import { afterEach } from "vitest";
 import { dayMillis } from "../../src/core/index.ts";
-import { call, fixture, read, send, start, tool } from "../fixtures/service.ts";
+import { advance, approveAll, idle, idOf, loreEntryOf, panel, save, settleTurns } from "../fixtures/lore.ts";
+import { call, fixture, read, register, send, tool } from "../fixtures/service.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...), thread tool names (`save_intel`, ...) and settings keys (`intelHalfLives`, `intelWarningPercent`).
 
 // Lore over time (scoped-intel: Kinds, Recall, Fading, Search), on the test clock.
 
-const fixtures: ReturnType<typeof fixture>[] = [];
-const live = () => {
-  const value = fixture();
-  fixtures.push(value);
-  return value;
-};
-afterEach(() => {
-  for (const value of fixtures.splice(0)) value.remove();
-});
+const live = () => register(fixture());
 
-/** Moves the test clock and lets forked turns and sweeps observe it and commit. */
-const advance = (millis: number) =>
-  Effect.gen(function* () {
-    yield* TestClock.adjust(millis);
-    for (let index = 0; index < 40; index++) yield* Effect.yieldNow;
-  });
-/** Lets a fake turn (10 millis) and its tool calls finish. */
-const settleTurns = Effect.gen(function* () {
-  for (let index = 0; index < 5; index++) yield* advance(20);
-});
-const idle = (workspacePath: string | null = null) =>
-  Effect.gen(function* () {
-    const started = yield* start("Hello", workspacePath);
-    yield* settleTurns;
-    return started;
-  });
 /** The context a thread's next turn receives, as the fake harness echoes it. */
 const contextOf = (missionId: MissionId, threadId: ThreadId) =>
   Effect.gen(function* () {
@@ -44,18 +19,7 @@ const contextOf = (missionId: MissionId, threadId: ThreadId) =>
     const detail = yield* read(missionId, threadId);
     return detail.messages.findLast((message) => message.sender === "agent")?.text ?? "";
   });
-const save = (threadId: ThreadId, text: string, scope: string, kind: string) =>
-  tool(threadId, "save_intel", { kind, scope, text });
-const idOf = (answer: string) => /lore entry (\S+?)[ .]/.exec(answer)?.[1] ?? "";
-const panel = (state: LoreStateFilter | null = null, threadId: ThreadId | null = null) =>
-  call({ _tag: "ListIntel", scope: null, state, threadId });
-const loreEntryOf = (id: string) =>
-  panel().pipe(Effect.map((view) => view.loreEntries.find((loreEntry) => loreEntry.id === id)));
-const approveAll = Effect.gen(function* () {
-  for (const change of (yield* panel()).awaiting) {
-    yield* call({ _tag: "ResolveIntelChange", changeId: change.id, isApproved: true });
-  }
-});
+/** A lore entry's fading on the panel, as its gauge reads it. */
 const updateSettings = (change: Partial<Settings>) =>
   Effect.gen(function* () {
     const settings = yield* call({ _tag: "ReadSettings" });
@@ -80,7 +44,7 @@ describe("saving lore by kind", () => {
     Effect.gen(function* () {
       const { threadId } = yield* idle();
       yield* save(threadId, "Always run the tests before a commit.", "global", "rule");
-      yield* approveAll;
+      yield* approveAll();
       expect((yield* panel()).loreEntries).toMatchObject([{ kind: "Rule", scope: "Global" }]);
     }).pipe(Effect.provide(live().layer)),
   );
@@ -98,10 +62,10 @@ describe("recalling lore over time", () => {
   it.effect("carries scoped lore in full, global lore as an index, and the count of dormant lore entries", () => {
     const { directory, layer } = live();
     return Effect.gen(function* () {
-      const { missionId, threadId } = yield* idle(directory);
+      const { missionId, threadId } = yield* idle("Hello", directory);
       const long = `The owner reviews every pull request on GitHub before it merges, ${"and ".repeat(30)}more.`;
       yield* save(threadId, long, "global", "preference");
-      yield* approveAll;
+      yield* approveAll();
       yield* save(threadId, "The workspace uses Biome.", "workspace", "fact");
       yield* save(threadId, "The thread's draft is in notes.md.", "thread", "fact");
       yield* save(threadId, "The API is flaky this week.", "thread", "temporary");
@@ -123,14 +87,14 @@ describe("recalling lore over time", () => {
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       yield* save(threadId, "The owner writes in British English.", "global", "preference");
-      yield* approveAll;
+      yield* approveAll();
       yield* advance(dayMillis);
       yield* save(threadId, "The owner's time zone is Paris.", "global", "fact");
-      yield* approveAll;
+      yield* approveAll();
       const indexOf = (context: string) => context.split("\n").filter((part) => part.includes("(global, "));
       const before = indexOf(yield* contextOf(missionId, threadId));
       yield* save(threadId, "The owner uses a Mac.", "global", "fact");
-      yield* approveAll;
+      yield* approveAll();
       const after = indexOf(yield* contextOf(missionId, threadId));
       expect(after.slice(0, before.length)).toEqual(before);
       expect(after).toHaveLength(3);
@@ -161,8 +125,8 @@ describe("fading lore", () => {
       yield* advance(17 * dayMillis);
       expect((yield* loreEntryOf(id))?.state).toBe("Archived");
       expect(yield* tool(threadId, "search_intel", { query: "flaky api" })).toContain("No lore");
-      expect((yield* panel("Archived")).loreEntries.map((loreEntry) => loreEntry.id)).toEqual([id]);
-      expect((yield* panel("Active")).loreEntries).toEqual([]);
+      expect((yield* panel({ state: "Archived" })).loreEntries.map((loreEntry) => loreEntry.id)).toEqual([id]);
+      expect((yield* panel({ state: "Active" })).loreEntries).toEqual([]);
     }).pipe(Effect.provide(live().layer)),
   );
 
@@ -180,7 +144,7 @@ describe("fading lore", () => {
         expect((yield* loreEntryOf(rule))?.state).toBe("Active");
         expect(yield* loreEntryOf(pinned)).toMatchObject({ isPinned: true, state: "Active", strength: 1 });
         expect((yield* loreEntryOf(plain))?.state).toBe("Archived");
-        expect((yield* panel("Pinned")).loreEntries.map((loreEntry) => loreEntry.id)).toEqual([pinned]);
+        expect((yield* panel({ state: "Pinned" })).loreEntries.map((loreEntry) => loreEntry.id)).toEqual([pinned]);
         yield* call({ _tag: "PinIntel", isPinned: false, loreEntryId: pinned as LoreEntryId });
         expect((yield* loreEntryOf(pinned))?.state).toBe("Archived");
       }).pipe(Effect.provide(live().layer)),
@@ -259,7 +223,7 @@ describe("ranking lore in searches", () => {
   it.effect("ranks a lore entry matching a rare word higher", () => {
     const { directory, layer } = live();
     return Effect.gen(function* () {
-      const { threadId } = yield* idle(directory);
+      const { threadId } = yield* idle("Hello", directory);
       yield* save(threadId, "Ask Priya before a deploy.", "workspace", "fact");
       for (const text of [
         "Staging uses Linux.",
@@ -291,7 +255,7 @@ describe("counting the lore gauge over time", () => {
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       yield* save(threadId, `The owner wants ${"long ".repeat(150)}answers.`, "global", "preference");
-      yield* approveAll;
+      yield* approveAll();
       yield* save(threadId, "The API is flaky this week.", "thread", "temporary");
       const before = (yield* read(missionId, threadId)).loreGauge;
       expect(before.count).toBe(2);

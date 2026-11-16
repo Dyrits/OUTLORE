@@ -3,71 +3,38 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { LoreEntryId, LoreProposal, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
-import { TestClock } from "effect/testing";
-import { afterEach } from "vitest";
 import { dayMillis } from "../../src/core/index.ts";
-import { call, entryOf, fixture, start, tool } from "../fixtures/service.ts";
+import { advance, approveAll, historyOf, idle, idOf, panel, save } from "../fixtures/lore.ts";
+import { call, entryOf, fixture, register, tool } from "../fixtures/service.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...) and thread tool names (`save_intel`, ...).
 
 // Batch 16 (scoped-intel: Widening and narrowing proposed from evidence), on the test clock.
 
-const fixtures: ReturnType<typeof fixture>[] = [];
-const live = () => {
-  const value = fixture();
-  fixtures.push(value);
-  return value;
-};
-afterEach(() => {
-  for (const value of fixtures.splice(0)) value.remove();
-});
+const live = () => register(fixture());
 
-const advance = (millis: number) =>
-  Effect.gen(function* () {
-    yield* TestClock.adjust(millis);
-    for (let index = 0; index < 40; index++) yield* Effect.yieldNow;
-  });
-const settleTurns = Effect.gen(function* () {
-  for (let index = 0; index < 5; index++) yield* advance(20);
-});
-const idle = (workspacePath: string | null = null) =>
-  Effect.gen(function* () {
-    const started = yield* start("Hello", workspacePath);
-    yield* settleTurns;
-    return started;
-  });
 /** A new folder inside the fixture's directory, to work in as a workspace. */
 const folder = (directory: string, name: string) => {
   const path = join(directory, name);
   mkdirSync(path);
   return path;
 };
-const save = (threadId: ThreadId, text: string, scope: string, kind = "fact") =>
-  tool(threadId, "save_intel", { kind, scope, text });
-const idOf = (answer: string) => (/lore entry (\S+?)[ .:]/.exec(answer)?.[1] ?? "") as LoreEntryId;
-const panel = (state: "Deleted" | null = null) => call({ _tag: "ListIntel", scope: null, state, threadId: null });
 const proposals = panel().pipe(Effect.map((view) => view.proposals));
 const resolve = (proposal: LoreProposal | undefined, isApproved: boolean) =>
   call({ _tag: "ResolveIntelProposal", isApproved, proposalId: proposal?.id ?? ("" as LoreProposal["id"]) });
-const historyOf = (loreEntryId: LoreEntryId) => call({ _tag: "ReadIntelHistory", loreEntryId });
-const approveAll = Effect.gen(function* () {
-  for (const change of (yield* panel()).awaiting) {
-    yield* call({ _tag: "ResolveIntelChange", changeId: change.id, isApproved: true });
-  }
-});
 /** A global lore entry saved by a thread and approved by the owner. */
 const saveGlobal = (threadId: ThreadId, text: string, kind = "fact") =>
   Effect.gen(function* () {
     yield* save(threadId, text, "global", kind);
-    yield* approveAll;
+    yield* approveAll();
     return (yield* panel()).loreEntries.find((loreEntry) => loreEntry.text === text)?.id ?? ("" as LoreEntryId);
   });
 
 /** The same convention saved separately in two workspaces. */
 const twoWorkspaces = (directory: string) =>
   Effect.gen(function* () {
-    const first = yield* idle(folder(directory, "alpha"));
-    const second = yield* idle(folder(directory, "beta"));
+    const first = yield* idle("Hello", folder(directory, "alpha"));
+    const second = yield* idle("Hello", folder(directory, "beta"));
     const older = idOf(yield* save(first.threadId, "Commit messages use the imperative mood.", "workspace"));
     yield* advance(1000);
     const newer = idOf(
@@ -113,8 +80,8 @@ describe("proposing widening from evidence", () => {
     () => {
       const { directory, layer } = live();
       return Effect.gen(function* () {
-        const first = yield* idle(folder(directory, "alpha"));
-        const second = yield* idle(folder(directory, "beta"));
+        const first = yield* idle("Hello", folder(directory, "alpha"));
+        const second = yield* idle("Hello", folder(directory, "beta"));
         yield* save(first.threadId, "Deploys go through the staging server first.", "workspace");
         yield* save(second.threadId, "The owner reviews pull requests on Fridays.", "workspace");
         yield* save(first.threadId, "The staging server runs Ubuntu.", "workspace");
@@ -134,8 +101,8 @@ describe("proposing widening from evidence", () => {
   it.effect("proposes nothing for archived lore", () => {
     const { directory, layer } = live();
     return Effect.gen(function* () {
-      const first = yield* idle(folder(directory, "alpha"));
-      const second = yield* idle(folder(directory, "beta"));
+      const first = yield* idle("Hello", folder(directory, "alpha"));
+      const second = yield* idle("Hello", folder(directory, "beta"));
       yield* save(first.threadId, "The provider's API is flaky this week.", "workspace", "temporary");
       yield* save(second.threadId, "The provider's API is flaky this week.", "workspace", "temporary");
       expect(yield* proposals).toHaveLength(1);
@@ -147,8 +114,8 @@ describe("proposing widening from evidence", () => {
   it.effect("carries the merged lore entries' uses into later evidence", () => {
     const { directory, layer } = live();
     return Effect.gen(function* () {
-      const first = yield* idle(folder(directory, "alpha"));
-      const second = yield* idle(folder(directory, "beta"));
+      const first = yield* idle("Hello", folder(directory, "alpha"));
+      const second = yield* idle("Hello", folder(directory, "beta"));
       yield* save(first.threadId, "The staging database is called orchid.", "workspace");
       yield* advance(1000);
       const newer = idOf(yield* save(second.threadId, "The staging database is called orchid now.", "workspace"));
@@ -174,7 +141,7 @@ describe("proposing widening from evidence", () => {
       expect(view.loreEntries).toMatchObject([
         { id: newer, kind: "Rule", scope: "Global", text: "Commit messages use the imperative mood, always.", uses: 2 },
       ]);
-      expect((yield* panel("Deleted")).deleted.map((loreEntry) => loreEntry.id)).toEqual([older]);
+      expect((yield* panel({ state: "Deleted" })).deleted.map((loreEntry) => loreEntry.id)).toEqual([older]);
       expect(entryOf((yield* historyOf(newer)).entries, "Widened")).toMatchObject({
         actor: "Owner",
         scopeLabel: "Global",
@@ -203,7 +170,7 @@ describe("proposing widening from evidence", () => {
     return Effect.gen(function* () {
       yield* twoWorkspaces(directory);
       yield* resolve((yield* proposals)[0], false);
-      const third = yield* idle(folder(directory, "gamma"));
+      const third = yield* idle("Hello", folder(directory, "gamma"));
       yield* save(third.threadId, "Commit messages use the imperative mood.", "workspace");
       const [proposal] = yield* proposals;
       expect(proposal?.loreEntries).toHaveLength(3);
@@ -242,7 +209,7 @@ describe("proposing narrowing from evidence", () => {
   it.effect("proposes moving a global lore entry used only in one workspace for its whole half-life", () => {
     const { directory, layer } = live();
     return Effect.gen(function* () {
-      const { threadId } = yield* idle(folder(directory, "alpha"));
+      const { threadId } = yield* idle("Hello", folder(directory, "alpha"));
       const id = yield* saveGlobal(threadId, "The staging database is called orchid.");
       yield* advance(20 * dayMillis);
       yield* tool(threadId, "search_intel", { query: "orchid" });
@@ -265,7 +232,7 @@ describe("proposing narrowing from evidence", () => {
   it.effect("proposes nothing for a lore entry used elsewhere, never used, or a rule", () => {
     const { directory, layer } = live();
     return Effect.gen(function* () {
-      const { threadId } = yield* idle(folder(directory, "alpha"));
+      const { threadId } = yield* idle("Hello", folder(directory, "alpha"));
       const scratch = yield* idle();
       yield* saveGlobal(threadId, "The staging database is called orchid.");
       yield* saveGlobal(threadId, "The owner signs off messages with a dash.", "preference");
@@ -280,8 +247,8 @@ describe("proposing narrowing from evidence", () => {
   it.effect("proposes nothing for a lore entry used in two workspaces or by a thread without one", () => {
     const { directory, layer } = live();
     return Effect.gen(function* () {
-      const alpha = yield* idle(folder(directory, "alpha"));
-      const beta = yield* idle(folder(directory, "beta"));
+      const alpha = yield* idle("Hello", folder(directory, "alpha"));
+      const beta = yield* idle("Hello", folder(directory, "beta"));
       const scratch = yield* idle();
       yield* saveGlobal(alpha.threadId, "The staging database is called orchid.");
       yield* saveGlobal(alpha.threadId, "The release train leaves on Tuesdays.");
@@ -296,8 +263,8 @@ describe("proposing narrowing from evidence", () => {
   it.effect("counts only the uses over the last half-life", () => {
     const { directory, layer } = live();
     return Effect.gen(function* () {
-      const alpha = yield* idle(folder(directory, "alpha"));
-      const beta = yield* idle(folder(directory, "beta"));
+      const alpha = yield* idle("Hello", folder(directory, "alpha"));
+      const beta = yield* idle("Hello", folder(directory, "beta"));
       yield* saveGlobal(alpha.threadId, "The staging database is called orchid.");
       yield* advance(10 * dayMillis);
       yield* tool(beta.threadId, "search_intel", { query: "orchid" });
@@ -310,7 +277,7 @@ describe("proposing narrowing from evidence", () => {
   it.effect("moves the lore to the workspace on approval, undoably", () => {
     const { directory, layer } = live();
     return Effect.gen(function* () {
-      const { threadId } = yield* idle(folder(directory, "alpha"));
+      const { threadId } = yield* idle("Hello", folder(directory, "alpha"));
       const id = yield* saveGlobal(threadId, "The staging database is called orchid.");
       yield* advance(46 * dayMillis);
       yield* tool(threadId, "relied_on_intel", { ids: [id] });

@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type {
+  BackupCompanion,
   LoreHistoryEntry,
   MissionDetail,
   MissionId,
@@ -37,6 +38,11 @@ export const fixture = (
   };
 };
 const running: ReturnType<typeof fixture>[] = [];
+/** Registers an isolated service for removal after the current test; the registry behind withService. */
+export const register = (value: ReturnType<typeof fixture>) => {
+  running.push(value);
+  return value;
+};
 afterEach(() => {
   for (const value of running.splice(0)) value.remove();
 });
@@ -104,3 +110,6 @@ export const entryOf = (entries: ReadonlyArray<LoreHistoryEntry>, kind: LoreHist
   if (found === undefined) throw new Error(`no ${kind} entry in ${entries.map((entry) => entry.kind).join(", ")}`);
   return found;
 };
+
+/** A codex BackupCompanion as the tests script it. */
+export const codexBackup: BackupCompanion = { accountId: null, effort: "default", harness: "codex", model: "gpt-5" };

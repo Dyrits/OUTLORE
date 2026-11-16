@@ -1,53 +1,28 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { LoreEntryId, LoreHistoryEntry, ThreadId } from "@outlore/contracts";
+import type { LoreEntryId, LoreHistoryEntry } from "@outlore/contracts";
 import { Effect } from "effect";
-import { TestClock } from "effect/testing";
-import { afterEach } from "vitest";
 import { dayMillis } from "../../src/core/index.ts";
-import { call, entryOf, fixture, open, start, tool } from "../fixtures/service.ts";
+import {
+  advance,
+  approveAll,
+  historyOf,
+  idle,
+  idOf,
+  kindsOf,
+  loreEntryOf,
+  panel,
+  save,
+  settleTurns,
+} from "../fixtures/lore.ts";
+import { call, entryOf, fixture, open, register, tool } from "../fixtures/service.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...) and thread tool names (`save_intel`, ...).
 
 // Batch 15 (scoped-intel: History and undo), on the test clock.
 
-const fixtures: ReturnType<typeof fixture>[] = [];
-const live = () => {
-  const value = fixture();
-  fixtures.push(value);
-  return value;
-};
-afterEach(() => {
-  for (const value of fixtures.splice(0)) value.remove();
-});
+const live = () => register(fixture());
 
-const advance = (millis: number) =>
-  Effect.gen(function* () {
-    yield* TestClock.adjust(millis);
-    for (let index = 0; index < 40; index++) yield* Effect.yieldNow;
-  });
-const settleTurns = Effect.gen(function* () {
-  for (let index = 0; index < 5; index++) yield* advance(20);
-});
-const idle = (text = "Hello", workspacePath: string | null = null) =>
-  Effect.gen(function* () {
-    const started = yield* start(text, workspacePath);
-    yield* settleTurns;
-    return started;
-  });
-const save = (threadId: ThreadId, text: string, scope: string, kind: string) =>
-  tool(threadId, "save_intel", { kind, scope, text });
-const idOf = (answer: string) => (/lore entry (\S+?)[ .:]/.exec(answer)?.[1] ?? "") as LoreEntryId;
-const panel = (state: "Deleted" | null = null) => call({ _tag: "ListIntel", scope: null, state, threadId: null });
-const loreEntryOf = (id: string) =>
-  panel().pipe(Effect.map((view) => view.loreEntries.find((loreEntry) => loreEntry.id === id)));
-const historyOf = (loreEntryId: LoreEntryId) => call({ _tag: "ReadIntelHistory", loreEntryId });
-const kindsOf = (entries: ReadonlyArray<LoreHistoryEntry>) => entries.map((entry) => entry.kind);
 const undo = (entry: LoreHistoryEntry) => call({ _tag: "UndoIntelChange", entryId: entry.id });
-const approveAll = Effect.gen(function* () {
-  for (const change of (yield* panel()).awaiting) {
-    yield* call({ _tag: "ResolveIntelChange", changeId: change.id, isApproved: true });
-  }
-});
 
 describe("recording a lore entry's history", () => {
   it.effect("records each change, newest first, with who made it and when", () =>
@@ -101,12 +76,12 @@ describe("recording a lore entry's history", () => {
       const id = idOf(yield* save(threadId, "Tests run with Vitest here.", "workspace", "fact"));
       yield* tool(threadId, "update_intel", { id, scope: "global" });
       expect(kindsOf((yield* historyOf(id)).entries)).toEqual(["Saved"]);
-      yield* approveAll;
+      yield* approveAll();
       const widened = entryOf((yield* historyOf(id)).entries, "Widened");
       expect(widened).toMatchObject({ actor: "Thread", scopeLabel: "Global" });
       expect(widened.approvedAt).not.toBeNull();
       yield* save(threadId, "The owner writes in British English.", "global", "preference");
-      yield* approveAll;
+      yield* approveAll();
       const global = (yield* panel()).loreEntries.find(
         (loreEntry) => loreEntry.text === "The owner writes in British English.",
       );
@@ -119,7 +94,7 @@ describe("recording a lore entry's history", () => {
     Effect.gen(function* () {
       const { threadId } = yield* idle();
       yield* save(threadId, "The owner writes in British English.", "global", "preference");
-      yield* approveAll;
+      yield* approveAll();
       const [loreEntry] = (yield* panel()).loreEntries;
       yield* tool(threadId, "forget_intel", { id: loreEntry?.id });
       for (const change of (yield* panel()).awaiting) {
@@ -210,7 +185,7 @@ describe("undoing a change", () => {
       const { threadId } = yield* idle("Hello", directory);
       const id = idOf(yield* save(threadId, "Tests run with Vitest here.", "workspace", "fact"));
       yield* tool(threadId, "update_intel", { id, scope: "global" });
-      yield* approveAll;
+      yield* approveAll();
       yield* undo(entryOf((yield* historyOf(id)).entries, "Widened"));
       expect((yield* loreEntryOf(id))?.scope).toBe("Workspace");
     }).pipe(Effect.provide(layer));
@@ -223,7 +198,7 @@ describe("undoing a change", () => {
       yield* tool(threadId, "relied_on_intel", { ids: [id] });
       yield* tool(threadId, "forget_intel", { id });
       expect(yield* loreEntryOf(id)).toBeUndefined();
-      const view = yield* panel("Deleted");
+      const view = yield* panel({ state: "Deleted" });
       expect(view.loreEntries).toEqual([]);
       expect(view.deleted).toMatchObject([{ id, kind: "Rule", text: "The build must stay under a minute." }]);
       const [deleted] = view.deleted;
@@ -234,7 +209,7 @@ describe("undoing a change", () => {
         text: "The build must stay under a minute.",
         uses: 1,
       });
-      expect((yield* panel("Deleted")).deleted).toEqual([]);
+      expect((yield* panel({ state: "Deleted" })).deleted).toEqual([]);
       expect((yield* historyOf(id)).isDeleted).toBe(false);
     }).pipe(Effect.provide(live().layer)),
   );
@@ -246,7 +221,7 @@ describe("undoing a change", () => {
       yield* call({ _tag: "EditIntel", loreEntryId: kept, text: "The staging server runs FreeBSD." });
       const gone = idOf(yield* save(threadId, "Releases ship on Fridays only.", "mission", "decision"));
       yield* call({ _tag: "DeleteIntel", loreEntryId: gone });
-      expect((yield* panel("Deleted")).deleted.map((loreEntry) => loreEntry.id)).toEqual([gone]);
+      expect((yield* panel({ state: "Deleted" })).deleted.map((loreEntry) => loreEntry.id)).toEqual([gone]);
     }).pipe(Effect.provide(live().layer)),
   );
 
@@ -256,7 +231,7 @@ describe("undoing a change", () => {
       const id = idOf(yield* save(threadId, "The staging server runs Linux.", "mission", "fact"));
       yield* undo(entryOf((yield* historyOf(id)).entries, "Saved"));
       expect(yield* loreEntryOf(id)).toBeUndefined();
-      expect((yield* panel("Deleted")).deleted.map((loreEntry) => loreEntry.id)).toEqual([id]);
+      expect((yield* panel({ state: "Deleted" })).deleted.map((loreEntry) => loreEntry.id)).toEqual([id]);
       yield* undo(entryOf((yield* historyOf(id)).entries, "Undone"));
       expect((yield* loreEntryOf(id))?.text).toBe("The staging server runs Linux.");
     }).pipe(Effect.provide(live().layer)),
@@ -303,7 +278,7 @@ describe("deleting a thread", () => {
       for (const id of [kept, forgotten]) {
         expect(yield* historyOf(id).pipe(Effect.flip)).toMatchObject({ kind: "NotFound" });
       }
-      expect((yield* panel("Deleted")).deleted).toEqual([]);
+      expect((yield* panel({ state: "Deleted" })).deleted).toEqual([]);
     }).pipe(Effect.provide(live().layer)),
   );
 });

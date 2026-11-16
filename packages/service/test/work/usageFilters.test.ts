@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
 import { fixture, settle, start } from "../fixtures/service.ts";
-import { dayAt, dayText, isIdle, last30, quests, seed, standard, usage } from "../fixtures/usage.ts";
+import { dayAt, dayText, isIdle, last30, quests, seed, standard, subscriptionRow, usage } from "../fixtures/usage.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 afterEach(() => {
@@ -52,16 +52,7 @@ describe("narrowing the usage page", () => {
     withService(
       Effect.gen(function* () {
         const { atlas } = yield* quests;
-        const row = (endedAt: number) =>
-          ({
-            billing: "Subscription",
-            endedAt,
-            estimate: 1,
-            harness: "claude",
-            mission: atlas.mission,
-            model: "m",
-            thread: atlas.thread,
-          }) as const;
+        const row = (endedAt: number) => subscriptionRow(atlas, endedAt);
         yield* seed([
           row(dayAt(5, 0, 0, 0, 0)),
           row(dayAt(5, 23, 59, 59, 999)),

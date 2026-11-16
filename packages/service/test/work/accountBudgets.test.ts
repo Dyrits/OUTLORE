@@ -1,15 +1,9 @@
 import { describe, expect, it } from "@effect/vitest";
-import {
-  AccountBudget,
-  type AccountId,
-  type BackupCompanion,
-  type BudgetLimits,
-  type MissionDetail,
-} from "@outlore/contracts";
+import { AccountBudget, type AccountId, type BudgetLimits, type MissionDetail } from "@outlore/contracts";
 import { Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
-import { call, fixture, read, send, settle, start } from "../fixtures/service.ts";
+import { call, codexBackup, fixture, read, send, settle, start } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 afterEach(() => {
@@ -230,8 +224,6 @@ describe("adding credits to an account", () => {
 });
 
 describe("switching to a backup Companion at an account's budget", () => {
-  const codex: BackupCompanion = { accountId: null, effort: "default", harness: "codex", model: "gpt-5" };
-
   it.live("hands the held thread to its next backup, which carries on", () =>
     withService(
       Effect.gen(function* () {
@@ -239,7 +231,7 @@ describe("switching to a backup Companion at an account's budget", () => {
         yield* setBudget(work, tokens(1000));
         const started = yield* startOn(work, "Hello");
         yield* settle(started.missionId, isIdle);
-        yield* call({ _tag: "SetThreadBackups", backups: [codex], threadId: started.threadId });
+        yield* call({ _tag: "SetThreadBackups", backups: [codexBackup], threadId: started.threadId });
         yield* send(started.threadId, "spend 2000");
         const held = yield* settle(started.missionId, isHeld);
         const switchStopId = held.budgetStop?.id;

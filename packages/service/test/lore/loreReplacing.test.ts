@@ -1,45 +1,14 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
-import { TestClock } from "effect/testing";
-import { afterEach } from "vitest";
 import { dayMillis } from "../../src/core/index.ts";
-import { call, fixture, open, read, send, start, tool } from "../fixtures/service.ts";
+import { advance, idle, idOf, loreEntryOf, panel, save, settleTurns } from "../fixtures/lore.ts";
+import { call, fixture, open, read, register, send, tool } from "../fixtures/service.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...) and thread tool names (`save_intel`, ...).
 
 // Batch 14 (scoped-intel: Duplicates, Saving's origin, Fading's "relied on"), on the test clock.
 
-const fixtures: ReturnType<typeof fixture>[] = [];
-const live = () => {
-  const value = fixture();
-  fixtures.push(value);
-  return value;
-};
-afterEach(() => {
-  for (const value of fixtures.splice(0)) value.remove();
-});
-
-const advance = (millis: number) =>
-  Effect.gen(function* () {
-    yield* TestClock.adjust(millis);
-    for (let index = 0; index < 40; index++) yield* Effect.yieldNow;
-  });
-const settleTurns = Effect.gen(function* () {
-  for (let index = 0; index < 5; index++) yield* advance(20);
-});
-const idle = (text = "Hello", workspacePath: string | null = null) =>
-  Effect.gen(function* () {
-    const started = yield* start(text, workspacePath);
-    yield* settleTurns;
-    return started;
-  });
-const save = (threadId: ThreadId, text: string, scope: string, kind: string, extra: object = {}) =>
-  tool(threadId, "save_intel", { kind, scope, text, ...extra });
-const idOf = (answer: string) => /lore entry (\S+?)[ .:]/.exec(answer)?.[1] ?? "";
-const panel = () => call({ _tag: "ListIntel", scope: null, state: null, threadId: null });
-const loreEntryOf = (id: string) =>
-  panel().pipe(Effect.map((view) => view.loreEntries.find((loreEntry) => loreEntry.id === id)));
+const live = () => register(fixture());
 
 describe("duplicates saved as replacements", () => {
   it.effect("replaces a lore entry saying an older version of the same thing, keeping its id and uses", () =>
