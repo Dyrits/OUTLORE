@@ -4,6 +4,7 @@ import { Crest, type Workspace, type WorkspaceId } from "@outlore/contracts";
 import { Clock, Context, Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, newId, realFolderOf } from "../core/index.ts";
+import { readMissionIdOf } from "./lifecycle.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 import { validateRealmName } from "./realmNames.ts";
 
@@ -121,11 +122,10 @@ export const readThreadWorkspace = (threadId: string) =>
 /** The folder a thread works in: its workspace's, or its mission's scratch folder; null for an unknown thread. */
 export const threadFolderOf = (threadId: string) =>
   Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<{ missionId: string }>`SELECT mission_id AS missionId FROM threads WHERE id = ${threadId}`;
-    if (row === undefined) return null;
+    const missionId = yield* readMissionIdOf(threadId);
+    if (missionId === null) return null;
     const workspace = yield* readThreadWorkspace(threadId);
-    return workspace?.path ?? join(yield* ScratchRoot, row.missionId);
+    return workspace?.path ?? join(yield* ScratchRoot, missionId);
   });
 
 // Instruction files a harness started without its own settings does not read (probe, 2026-11-06:
