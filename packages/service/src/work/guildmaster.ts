@@ -3,8 +3,9 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import type { ToolAnswer } from "../core/index.ts";
 import { changed, unchanged } from "./commands.ts";
-import { endMission, previewEnding, readWorkingIds } from "./ending.ts";
+import { endMission, previewEnding } from "./ending.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";
+import { readQuestAction } from "./guildmasterPreflight.ts";
 import { consumeReceipt, isStructuralCaller, notAuthorizedText } from "./guildmasterProvenance.ts";
 import { clip, threadsLineOf } from "./guildmasterText.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
@@ -30,17 +31,10 @@ export const refuseAction = (text: string) => unchanged<ActedOnQuest>({ _tag: "R
  * runs, or the owner's Allow. Chronicler calls it, and a Ritual's own thread within its scope; never on its own initiative.
  */
 export const actOnMission = Effect.fnUntraced(function* (callerId: string, args: ArgumentsOf<"act_on_mission">) {
-  const sql = yield* SqlClient.SqlClient;
   if (!(yield* isStructuralCaller(callerId, "act_on_mission"))) return refuseAction("Only Chronicler acts on quests.");
-  const [quest] = yield* sql<{ title: string }>`
-      SELECT m.title FROM missions m JOIN threads top ON top.id = m.top_thread_id
-      WHERE m.id = ${args.mission} AND m.is_guildmaster = 0 AND top.is_deleting = 0`;
-  if (quest === undefined) return refuseAction("Not done: no such quest.");
-  if (args.action === "Rename" && (args.title === undefined || titleOf(args.title) === ""))
-    return refuseAction("Not done: give the new title.");
-  const ids = args.action === "Stop" ? yield* readWorkingIds(args.mission) : [];
-  if (args.action === "Stop" && ids.length === 0)
-    return refuseAction(`"${quest.title}" has no thread at work to stop.`);
+  const checked = yield* readQuestAction(args);
+  if (checked._tag === "Refused") return refuseAction(checked.text);
+  const { ids, quest } = checked;
   if (!(yield* consumeReceipt(callerId, "act_on_mission", args))) return refuseAction(notAuthorizedText);
   if (args.action === "Rename") {
     yield* renameMission(args.mission, args.title ?? "");

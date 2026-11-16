@@ -4,12 +4,12 @@ import { readSettings } from "../core/index.ts";
 import { changed, unchanged } from "./commands.ts";
 import { recordResolvedCard } from "./guildmasterCards.ts";
 import { companionLineOf, ritualStartOf } from "./guildmasterCompanions.ts";
-import { isGuildmasterThread, readOptionalRealm } from "./guildmasterPlace.ts";
+import { isGuildmasterThread } from "./guildmasterPlace.ts";
+import { readRitualPreflight } from "./guildmasterPreflight.ts";
 import { consumeReceipt, notAuthorizedText } from "./guildmasterProvenance.ts";
 import { placeOf } from "./guildmasterText.ts";
 import { createRitual } from "./rituals.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
-import { ritualTitleOf, titleOf } from "./titles.ts";
 
 /** What `create_ritual` came to. */
 export type RitualCreatedByGuildmaster =
@@ -30,16 +30,11 @@ export const createRitualByGuildmaster = Effect.fnUntraced(function* (
   args: ArgumentsOf<"create_ritual">,
 ) {
   if (!(yield* isGuildmasterThread(callerId))) return refuseRitual("Only Chronicler creates Rituals.");
-  if (args.instruction.trim() === "" || titleOf(args.title) === "")
-    return refuseRitual("Give an instruction and a title.");
-  const { isNamed, realm } = yield* readOptionalRealm(args.realm);
-  if (isNamed && realm === null)
-    return refuseRitual(
-      `Not created: no realm "${args.realm}". Name one of the realms in your context, or leave it out.`,
-    );
+  const checked = yield* readRitualPreflight(args);
+  if (checked._tag === "Refused") return refuseRitual(checked.text);
+  const { realm, title } = checked;
   if (!(yield* consumeReceipt(callerId, "create_ritual", args))) return refuseRitual(notAuthorizedText);
   const { companion: runner, fallbacks } = ritualStartOf(yield* readSettings, args);
-  const title = ritualTitleOf(args.title);
   const created = yield* createRitual({
     fallbacks,
     instruction: args.instruction,

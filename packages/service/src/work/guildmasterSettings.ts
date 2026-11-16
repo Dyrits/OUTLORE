@@ -1,11 +1,10 @@
-import { Settings } from "@outlore/contracts";
-import { Effect, Exit, Schema } from "effect";
+import { Effect, Match } from "effect";
 import { readSettings, type ToolAnswer, writeSettings } from "../core/index.ts";
 import { changed, unchanged, type WithFollowUps } from "./commands.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";
+import { readSettingChange } from "./guildmasterPreflight.ts";
 import { consumeReceipt, isStructuralCaller, notAuthorizedText } from "./guildmasterProvenance.ts";
-import { isChangeableSetting, isKeptFromChronicler, settingsKeptFromChronicler } from "./guildmasterSettingNames.ts";
-import { parseJson } from "./guildmasterText.ts";
+import { settingsKeptFromChronicler } from "./guildmasterSettingNames.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 
 // Chronicler's settings tools (quest coordination, CHG-0193): it reads the owner's settings, and changes one once the exact
@@ -35,26 +34,15 @@ export const changeSettingByGuildmaster = (callerId: string, args: ArgumentsOf<"
   Effect.gen(function* () {
     if (!(yield* isStructuralCaller(callerId, "change_setting")))
       return refused("Only Chronicler changes the settings here.");
-    if (isKeptFromChronicler(args.setting))
-      return refused(`Not done: ${args.setting} is the owner's alone to change, in the Workshop. Tell them where.`);
-    const setting = args.setting;
-    if (!isChangeableSetting(setting))
-      return refused(`Not done: no setting "${args.setting}". Read the settings first; use a name from them.`);
-    const parsed = parseJson(args.value);
-    if (Exit.isFailure(parsed))
-      return refused(`Not done: value must be JSON text, such as true, 14, or "Steer"; ${args.value} is not.`);
-    const value = parsed.value;
-    const before = yield* readSettings;
-    // The value must decode as the setting, whole: a wrong shape or range changes nothing.
-    const after = Schema.decodeUnknownExit(Settings)({ ...before, [setting]: value });
-    if (Exit.isFailure(after))
-      return refused(
-        `Not done: ${JSON.stringify(value)} is not a value ${args.setting} accepts. Read the settings for its shape.`,
-      );
-    if (!(yield* consumeReceipt(callerId, "change_setting", args))) return refused(notAuthorizedText);
-    yield* writeSettings(after.value);
-    return changed({
-      isError: false,
-      text: `Changed ${args.setting} from ${JSON.stringify(before[setting])} to ${JSON.stringify(value)}. Tell the owner in a sentence.`,
-    } satisfies ToolAnswer);
+    return yield* Match.valueTags(yield* readSettingChange(args), {
+      Clear: Effect.fnUntraced(function* ({ after, before, setting, value }) {
+        if (!(yield* consumeReceipt(callerId, "change_setting", args))) return refused(notAuthorizedText);
+        yield* writeSettings(after);
+        return changed({
+          isError: false,
+          text: `Changed ${setting} from ${JSON.stringify(before)} to ${JSON.stringify(value)}. Tell the owner in a sentence.`,
+        } satisfies ToolAnswer);
+      }),
+      Refused: ({ text }) => Effect.succeed(refused(text)),
+    });
   }).pipe(Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refused(`Not done: ${failure.message}`))));

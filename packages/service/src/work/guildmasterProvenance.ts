@@ -1,19 +1,20 @@
-import { RitualScope as RitualScopeSchema, Settings } from "@outlore/contracts";
-import { Context, Effect, Exit, Match, Schema } from "effect";
+import { RitualScope as RitualScopeSchema } from "@outlore/contracts";
+import { Context, Effect, Match, Schema } from "effect";
 import { SqlClient } from "effect/sql";
-import { readSettings, type ToolAnswer } from "../core/index.ts";
+import type { SqlError } from "effect/sql/SqlError";
+import { readSettings, type ServiceFailure, type ToolAnswer } from "../core/index.ts";
 import { isNamedByOwner, type NamedAction } from "../policy/index.ts";
 import type { Approvals } from "./approvals.ts";
 import { previewEnding, readWorkingIds } from "./ending.ts";
 import { fallbackNoteOf, ritualStartOf } from "./guildmasterCompanions.ts";
-import { isGuildmasterThread, readOptionalRealm } from "./guildmasterPlace.ts";
-import { isChangeableSetting } from "./guildmasterSettingNames.ts";
-import { clip, parseJson, placeOf, threadsLineOf } from "./guildmasterText.ts";
+import { isGuildmasterThread } from "./guildmasterPlace.ts";
+import { readRitualPreflight, readSettingChange } from "./guildmasterPreflight.ts";
+import { clip, placeOf, threadsLineOf } from "./guildmasterText.ts";
 import { isRitualRunTurn, readOwnerTexts } from "./messageProvenance.ts";
 import { deriveRealmCreation, deriveRealmRename } from "./realmActions.ts";
 import { coveringEntryOf, type ScopedAction } from "./ritualScope.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
-import { ritualTitleOf, titleOf } from "./titles.ts";
+import { titleOf } from "./titles.ts";
 import { readRunningTurnId } from "./turnAdmission.ts";
 
 // Structural actions by provenance (CHG-0208), replacing the quoted-words check and the one-click guards. The service
@@ -54,12 +55,31 @@ const readRitualOfThread = Effect.fnUntraced(function* (threadId: string) {
  */
 export const isStructuralCaller = Effect.fnUntraced(function* (threadId: string, tool: StructuralTool) {
   if (yield* isGuildmasterThread(threadId)) return true;
-  if (tool !== "act_on_mission" && tool !== "change_setting") return false;
+  if (!structuralTools[tool].canRitualCall) return false;
   return (yield* readRitualOfThread(threadId)) !== null;
 });
 
 /** A value as the owner would write it: a text without its JSON quotes, anything else as JSON. */
 const spokenOf = (value: unknown) => (typeof value === "string" ? value : JSON.stringify(value));
+
+/** What a tool's derivation found: the action as the question, the owner's words, and a Ritual's scope would name it. */
+type Found = {
+  readonly named: NamedAction;
+  readonly scoped: ScopedAction | null;
+  readonly state: unknown;
+  readonly summary: string;
+  readonly shouldAsk: boolean;
+  readonly details?: object;
+};
+
+/** How one structural tool is derived from its call, and whether a Ritual's own thread may call it. */
+type StructuralSpec<Tool extends StructuralTool> = {
+  readonly canRitualCall: boolean;
+  /** The structural action the call would take; null when the tool's own checks will refuse it. */
+  readonly derive: (
+    args: ArgumentsOf<Tool>,
+  ) => Effect.Effect<Found | null, ServiceFailure | SqlError, SqlClient.SqlClient>;
+};
 
 /** `act_on_mission` as a structural action: the quest by its id, and what Stop or an ending would stop. */
 const deriveQuestAction = Effect.fnUntraced(function* (args: ArgumentsOf<"act_on_mission">) {
@@ -81,7 +101,7 @@ const deriveQuestAction = Effect.fnUntraced(function* (args: ArgumentsOf<"act_on
       shouldAsk: false,
       state: { quest },
       summary: `Rename the quest "${quest.title}" to "${title}".`,
-    } as const;
+    } satisfies Found;
   }
   if (args.action === "Stop") {
     const ids = yield* readWorkingIds(quest.id).pipe(Effect.catchTag("ServiceFailure", () => Effect.succeed([])));
@@ -92,7 +112,7 @@ const deriveQuestAction = Effect.fnUntraced(function* (args: ArgumentsOf<"act_on
       shouldAsk: false,
       state: { ids, quest },
       summary: `Stop the ${threadsLineOf(ids.length)} at work in the quest "${quest.title}".`,
-    } as const;
+    } satisfies Found;
   }
   const ending = args.action === "Done" ? "Done" : "Archived";
   const preview = yield* previewEnding(quest.id, ending).pipe(
@@ -107,76 +127,74 @@ const deriveQuestAction = Effect.fnUntraced(function* (args: ArgumentsOf<"act_on
     state: { quest, snapshot: preview.snapshot },
     // Stopping threads at work is part of it: always one question, bound to the threads it names.
     summary: preview.question === null ? what : `${what} ${preview.question}`,
-  } as const;
+  } satisfies Found;
 });
 
-/** Derives the structural action a tool call would take; null when the tool's own checks will refuse it. */
-const deriveAction = Effect.fnUntraced(function* (callerId: string, tool: StructuralTool, args: object) {
-  if (!(yield* isStructuralCaller(callerId, tool))) return null;
-  const turnId = yield* readRunningTurnId(callerId);
-  if (turnId === null) return null;
-  const base = { args, callerId, tool, turnId };
-  const finish = (found: {
-    readonly named: NamedAction;
-    readonly scoped: ScopedAction | null;
-    readonly state: unknown;
-    readonly summary: string;
-    readonly shouldAsk: boolean;
-    readonly details?: object;
-  }): DerivedAction => ({
-    details: JSON.stringify({ action: found.named.operation, ...(found.details ?? {}), state: found.state }, null, 2),
-    fingerprint: JSON.stringify({ ...base, state: found.state }),
-    named: found.named,
-    scoped: found.scoped,
-    shouldAsk: found.shouldAsk,
-    summary: found.summary,
+/** `change_setting` as a structural action: one setting, its value as JSON, and what it holds now. */
+const deriveSettingChange = Effect.fnUntraced(function* (args: ArgumentsOf<"change_setting">) {
+  const checked = yield* readSettingChange(args);
+  return Match.valueTags(checked, {
+    Clear: ({ before, setting, value }) =>
+      ({
+        named: { operation: "ChangeSetting", targets: [setting], value: spokenOf(value) },
+        scoped: { operation: "ChangeSetting", payload: JSON.stringify(value), targets: [setting] },
+        shouldAsk: false,
+        state: { before, setting, value },
+        summary: `Change the setting ${setting} from ${JSON.stringify(before)} to ${JSON.stringify(value)}.`,
+      }) satisfies Found,
+    Refused: () => null,
   });
-  if (tool === "act_on_mission") {
-    const found = yield* deriveQuestAction(args as ArgumentsOf<"act_on_mission">);
-    return found === null ? null : finish(found);
-  }
-  if (tool === "change_setting") {
-    const { setting, value: text } = args as ArgumentsOf<"change_setting">;
-    if (!isChangeableSetting(setting)) return null;
-    const parsed = parseJson(text);
-    if (Exit.isFailure(parsed)) return null;
-    const value = parsed.value;
-    const before = yield* readSettings;
-    if (Exit.isFailure(Schema.decodeUnknownExit(Settings)({ ...before, [setting]: value }))) return null;
-    const was = before[setting];
-    return finish({
-      named: { operation: "ChangeSetting", targets: [setting], value: spokenOf(value) },
-      scoped: { operation: "ChangeSetting", payload: JSON.stringify(value), targets: [setting] },
-      shouldAsk: false,
-      state: { before: was, setting, value },
-      summary: `Change the setting ${setting} from ${JSON.stringify(was)} to ${JSON.stringify(value)}.`,
-    });
-  }
-  if (tool === "create_realm") {
-    const found = yield* deriveRealmCreation(args as ArgumentsOf<"create_realm">);
-    return found === null ? null : finish(found);
-  }
-  if (tool === "rename_realm") {
-    const found = yield* deriveRealmRename(args as ArgumentsOf<"rename_realm">);
-    return found === null ? null : finish(found);
-  }
-  const ritual = args as ArgumentsOf<"create_ritual">;
-  const title = ritualTitleOf(ritual.title);
-  if (ritual.instruction.trim() === "" || title === "") return null;
-  const { isNamed, realm } = yield* readOptionalRealm(ritual.realm);
-  if (isNamed && realm === null) return null;
-  const { companion, fallbacks } = ritualStartOf(yield* readSettings, ritual);
-  const where = placeOf(realm);
-  return finish({
-    details: { companion, fallbacks, instruction: ritual.instruction, schedule: ritual.schedule },
+});
+
+/** `create_ritual` as a structural action: the Ritual with its Companion, realm, and schedule, always asked. */
+const deriveRitualCreation = Effect.fnUntraced(function* (args: ArgumentsOf<"create_ritual">) {
+  const checked = yield* readRitualPreflight(args);
+  if (checked._tag === "Refused") return null;
+  const { realm, title } = checked;
+  const { companion, fallbacks } = ritualStartOf(yield* readSettings, args);
+  return {
+    details: { companion, fallbacks, instruction: args.instruction, schedule: args.schedule },
     named: { operation: "CreateRitual", targets: [title], value: null },
     scoped: null,
     // A Ritual runs unattended, so the owner always sees its instruction, schedule, realm, and Companion before it
     // exists: naming the title in a message authorizes none of them (audit SA-01, SA-05).
     shouldAsk: true,
     state: { companion, realm, title },
-    summary: `Create the Ritual "${title}", ${JSON.stringify(ritual.schedule)}, ${where}, on ${companion.harness} ${companion.model}${fallbackNoteOf(fallbacks, ritual.tier ?? null)}.`,
-  });
+    summary: `Create the Ritual "${title}", ${JSON.stringify(args.schedule)}, ${placeOf(realm)}, on ${companion.harness} ${companion.model}${fallbackNoteOf(fallbacks, args.tier ?? null)}.`,
+  } satisfies Found;
+});
+
+/** Every structural tool, derived from its call; a Ritual's own thread may call only those its scope can cover. */
+const structuralTools: { readonly [Tool in StructuralTool]: StructuralSpec<Tool> } = {
+  act_on_mission: { canRitualCall: true, derive: deriveQuestAction },
+  change_setting: { canRitualCall: true, derive: deriveSettingChange },
+  create_realm: { canRitualCall: false, derive: deriveRealmCreation },
+  create_ritual: { canRitualCall: false, derive: deriveRitualCreation },
+  rename_realm: { canRitualCall: false, derive: deriveRealmRename },
+};
+
+/** Derives the structural action a tool call would take; null when the tool's own checks will refuse it. Exported for the test that pins the receipt's fingerprint. */
+export const deriveAction = Effect.fnUntraced(function* <Tool extends StructuralTool>(
+  callerId: string,
+  tool: Tool,
+  args: ArgumentsOf<Tool>,
+) {
+  if (!(yield* isStructuralCaller(callerId, tool))) return null;
+  const turnId = yield* readRunningTurnId(callerId);
+  if (turnId === null) return null;
+  const base = { args, callerId, tool, turnId };
+  const spec: StructuralSpec<Tool> = structuralTools[tool];
+  const found = yield* spec.derive(args);
+  if (found === null) return null;
+  return {
+    details: JSON.stringify({ action: found.named.operation, ...(found.details ?? {}), state: found.state }, null, 2),
+    // The receipt compares this text byte for byte: the call first, then the state, in this order.
+    fingerprint: JSON.stringify({ ...base, state: found.state }),
+    named: found.named,
+    scoped: found.scoped,
+    shouldAsk: found.shouldAsk,
+    summary: found.summary,
+  } satisfies DerivedAction;
 });
 
 /** Where the authority for a derived action comes from, or that the owner must be asked. */
@@ -220,7 +238,11 @@ const keyOf = (callerId: string, tool: StructuralTool, args: object) => JSON.str
  * Spends this invocation's receipt inside the mutation's transaction, after deriving the action again: a changed turn,
  * target, value, or set of threads at work means it no longer matches what was authorized, and nothing runs.
  */
-export const consumeReceipt = Effect.fnUntraced(function* (callerId: string, tool: StructuralTool, args: object) {
+export const consumeReceipt = Effect.fnUntraced(function* <Tool extends StructuralTool>(
+  callerId: string,
+  tool: Tool,
+  args: ArgumentsOf<Tool>,
+) {
   const receipt = yield* receiptReference;
   if (receipt === null || receipt.isUsed || receipt.key !== keyOf(callerId, tool, args)) return false;
   receipt.isUsed = true;
@@ -236,12 +258,12 @@ export const notAuthorizedText =
  * Authorizes one structural tool call by provenance, outside any transaction, then runs it with a one-use receipt.
  * A call whose action cannot be derived runs without one, so the tool's own checks refuse it with their reason.
  */
-export const withProvenance = Effect.fnUntraced(function* (
+export const withProvenance = Effect.fnUntraced(function* <Tool extends StructuralTool>(
   approvals: Approvals["Service"],
   read: <A, E>(work: Effect.Effect<A, E, SqlClient.SqlClient>) => Effect.Effect<A>,
   callerId: string,
-  tool: StructuralTool,
-  args: object,
+  tool: Tool,
+  args: ArgumentsOf<Tool>,
   run: (authorize: <A, E, R>(work: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>) => Effect.Effect<ToolAnswer>,
 ) {
   const derived = yield* read(deriveAction(callerId, tool, args));
