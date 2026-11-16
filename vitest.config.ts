@@ -10,7 +10,12 @@ export default defineConfig({
         extends: true,
         test: {
           exclude: timing,
-          include: ["packages/*/test/**/*.test.ts", "apps/app/test/**/*.test.ts", "apps/desktop/test/**/*.test.ts"],
+          include: [
+            ".agents/hooks/*.test.ts",
+            "packages/*/test/**/*.test.ts",
+            "apps/app/test/**/*.test.ts",
+            "apps/desktop/test/**/*.test.ts",
+          ],
           name: "parallel",
         },
       },
