@@ -1,6 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+
+const require = createRequire(import.meta.url);
 
 // The installer's build configuration names files and a version by hand; nothing else checks them (SP-H-11, SP-H-02).
 // electron-builder.yml is flat, so the lines this reads need no YAML parser.
@@ -29,6 +32,29 @@ describe("the installer's build configuration", () => {
     const webNotices = readFileSync(join(desktop, "../app/public/third-party-notices.txt"), "utf8");
     expect(webNotices).toContain(readFileSync(join(desktop, "../../packages/channel/NOTICE"), "utf8"));
     expect(webNotices).toContain(readFileSync(join(desktop, "assets/one.LICENSE"), "utf8"));
+  });
+
+  it("turns off, after packing, the Electron fuses the app does not need", async () => {
+    expect(settingOf("afterPack")).toBe("scripts/afterPack.cjs");
+    const { fusePolicy } = require("../scripts/fusePolicy.cjs") as { fusePolicy: Record<string, boolean> };
+    expect(fusePolicy).toEqual({
+      EnableNodeCliInspectArguments: false,
+      EnableNodeOptionsEnvironmentVariable: false,
+      RunAsNode: false,
+    });
+    const hook = require("../scripts/afterPack.cjs") as { default?: unknown };
+    expect(typeof hook.default).toBe("function");
+  });
+
+  it("needs none of the disabled fuses on any start path", () => {
+    // RunAsNode: the service is an Electron utility process, not the binary started as Node.
+    expect(readFileSync(join(desktop, "src/main.ts"), "utf8")).toContain("utilityProcess.fork");
+    for (const source of ["src/main.ts", "src/preload.ts"]) {
+      const text = readFileSync(join(desktop, source), "utf8");
+      expect(text).not.toContain("ELECTRON_RUN_AS_NODE");
+      expect(text).not.toContain("NODE_OPTIONS");
+      expect(text).not.toContain("--inspect");
+    }
   });
 
   it("names existing static files for the installer", () => {

@@ -28,6 +28,8 @@ extraResources:
 # node-pty's native binary and its spawn helper must run from disk, not from inside the archive.
 asarUnpack:
   - "**/node_modules/node-pty/**"
+# Turns off the Electron fuses the app does not use, before this build is signed (ST-H-09).
+afterPack: scripts/afterPack.cjs
 mac:
   category: public.app-category.developer-tools
   icon: assets/icon.png

@@ -1,8 +1,19 @@
 // Exercises a packaged desktop app on isolated data: bun apps/desktop/scripts/check-package.ts /path/to/Outlore.app.
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+
+// Bun does not see the named exports of this CommonJS package, so both it and the policy load through `require`;
+// the package does not re-export its state constants, which its `dist/` carries beside the rest.
+const require = createRequire(import.meta.url);
+const { FuseState } = require("@electron/fuses/dist/constants") as { FuseState: { DISABLE: number; ENABLE: number } };
+const { FuseV1Options, getCurrentFuseWire } = require("@electron/fuses") as {
+  FuseV1Options: Record<string, number>;
+  getCurrentFuseWire: (pathToElectron: string) => Promise<Record<number, number>>;
+};
+const { fusePolicy } = require("./fusePolicy.cjs") as { fusePolicy: Record<string, boolean> };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -56,11 +67,25 @@ const expression = `(async () => {
   return session.isRunning ? "ready" : "terminal-failed";
 })()`;
 
+/** Every fuse `scripts/fusePolicy.cjs` turns off must read back off from the built app (ST-H-09). */
+const checkFuses = async (target: string) => {
+  const wire = await getCurrentFuseWire(target);
+  for (const [name, enabled] of Object.entries(fusePolicy)) {
+    const fuse = FuseV1Options[name];
+    if (fuse === undefined)
+      throw new Error(`The fuse policy names ${name}, which this Electron version does not have.`);
+    const state = wire[fuse];
+    if (enabled ? state !== FuseState.ENABLE : state !== FuseState.DISABLE)
+      throw new Error(`The packaged app's ${name} fuse is not ${enabled ? "enabled" : "disabled"}.`);
+  }
+};
+
 const check = async () => {
   const argument = process.argv[2];
   if (argument === undefined) throw new Error("Pass the packaged app bundle or executable path.");
   const target = resolve(argument);
   const executable = target.endsWith(".app") ? join(target, "Contents", "MacOS", "Outlore") : target;
+  await checkFuses(target);
   const folder = await mkdtemp(join(tmpdir(), "outlore-package-check-"));
   const child = spawn(executable, ["--remote-debugging-port=0"], {
     env: { ...process.env, OUTLORE_DATA_DIR: folder, OUTLORE_HARNESS: "fake" },
@@ -89,7 +114,7 @@ const check = async () => {
             const result = await evaluate(page.webSocketDebuggerUrl, expression);
             if (result === "ready") {
               console.log(
-                "PASS: packaged Guild Hall screen, crest credits, service bridge, and native terminal are ready.",
+                "PASS: packaged Guild Hall screen, crest credits, service bridge, native terminal, and fuses are ready.",
               );
               return;
             }
