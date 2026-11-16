@@ -4,12 +4,11 @@ import { describe, expect, it } from "@effect/vitest";
 import type { MissionDetail } from "@outlore/contracts";
 import { Effect } from "effect";
 import { withClaude, withoutNote } from "../fixtures/claude.ts";
-import { call, settle } from "../fixtures/service.ts";
+import { settle, startMission } from "../fixtures/service.ts";
 import { idleWith } from "../fixtures/standIns.ts";
 
 describe("network hosts asked about by a sandboxed Claude Code thread", () => {
-  const ask = (text: string) =>
-    call({ _tag: "StartMission", effort: "low", model: "haiku", requestId: "r1", text, workspacePath: null });
+  const ask = (text: string) => startMission({ effort: "low", model: "haiku", text });
   const lastReply = (detail: MissionDetail) => withoutNote(detail.messages.at(-1)?.text);
   const inputLines = (directory: string): Array<{ type?: string; response?: unknown }> =>
     readFileSync(join(directory, "input.jsonl"), "utf8")

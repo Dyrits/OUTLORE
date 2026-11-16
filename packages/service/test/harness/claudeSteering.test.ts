@@ -4,7 +4,7 @@ import { describe, expect, it } from "@effect/vitest";
 import type { MissionDetail } from "@outlore/contracts";
 import { Effect } from "effect";
 import { withClaude, withoutNote } from "../fixtures/claude.ts";
-import { call, read, settle } from "../fixtures/service.ts";
+import { call, read, sendTo, settle, startMission } from "../fixtures/service.ts";
 import { idleWith } from "../fixtures/standIns.ts";
 
 describe("steering and interrupting Claude Code", () => {
@@ -18,8 +18,7 @@ describe("steering and interrupting Claude Code", () => {
       return [];
     }
   };
-  const startSlow = (text: string) =>
-    call({ _tag: "StartMission", effort: "low", model: "haiku", requestId: "r1", text, workspacePath: null });
+  const startSlow = (text: string) => startMission({ effort: "low", model: "haiku", text });
   const isRunning = (detail: MissionDetail) => detail.thread.state === "Running";
   /**
    * Waits until the stand-in has been given the turn's message. A thread reads Running while Claude Code still starts,
@@ -38,15 +37,7 @@ describe("steering and interrupting Claude Code", () => {
     const bytes = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(20, 1)]);
     return Effect.gen(function* () {
       const card = yield* call({ _tag: "AddAttachment", data: bytes.toString("base64"), name: "shot.png" });
-      const started = yield* call({
-        _tag: "StartMission",
-        attachmentIds: [card.id],
-        effort: "low",
-        model: "haiku",
-        requestId: "r1",
-        text: "See",
-        workspacePath: null,
-      });
+      const started = yield* startMission({ attachmentIds: [card.id], effort: "low", model: "haiku", text: "See" });
       const detail = yield* settle(started.missionId, idleWith(1));
       expect(withoutNote(detail.messages.at(-1)?.text)).toMatch(/to: See$/);
       const message = inputLines(directory)[0]?.message as { content: Array<Record<string, unknown>> };
@@ -65,13 +56,7 @@ describe("steering and interrupting Claude Code", () => {
       const started = yield* startSlow("slow 600");
       yield* settle(started.missionId, isRunning);
       yield* untilTurnWritten(directory);
-      const sent = yield* call({
-        _tag: "SendMessage",
-        delivery: "Steer",
-        requestId: "r2",
-        text: "Also this",
-        threadId: started.threadId,
-      });
+      const sent = yield* sendTo(started.threadId, "Also this", "Steer");
       const detail = yield* settle(started.missionId, idleWith(1));
 
       expect(withoutNote(detail.messages.at(-1)?.text)).toMatch(/^Reply 1 .* to: slow 600 \+ Also this$/);
@@ -95,13 +80,7 @@ describe("steering and interrupting Claude Code", () => {
         const started = yield* startSlow("slow 400");
         yield* settle(started.missionId, isRunning);
         yield* untilTurnWritten(directory);
-        yield* call({
-          _tag: "SendMessage",
-          delivery: "Steer",
-          requestId: "r2",
-          text: "unseen",
-          threadId: started.threadId,
-        });
+        yield* sendTo(started.threadId, "unseen", "Steer");
         const detail = yield* settle(started.missionId, idleWith(2));
         yield* Effect.sleep("400 millis");
 
@@ -132,7 +111,7 @@ describe("steering and interrupting Claude Code", () => {
         request: { subtype: "interrupt" },
       });
 
-      yield* call({ _tag: "SendMessage", delivery: null, requestId: "r2", text: "Again", threadId: started.threadId });
+      yield* sendTo(started.threadId, "Again");
       const detail = yield* settle(started.missionId, idleWith(1));
       expect(withoutNote(detail.messages.at(-1)?.text)).toMatch(/^Reply 2 .* to: Again$/);
       expect(starts()).toHaveLength(1);

@@ -5,7 +5,7 @@ import { Effect } from "effect";
 import { markPrompted } from "../../src/work/activities.ts";
 import { unaskedToolNamesOf } from "../../src/work/threadTools.ts";
 import { withClaude, withoutNote } from "../fixtures/claude.ts";
-import { call, read, settle } from "../fixtures/service.ts";
+import { call, read, sendTo, settle, startMission } from "../fixtures/service.ts";
 import { idleWith } from "../fixtures/standIns.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: settings keys (`intelHalfLives`, `intelWarningPercent`).
@@ -14,14 +14,7 @@ describe("running Claude Code threads", () => {
   it.live("runs the thread's model and effort sandboxed, prompts sent to Outlore, and no Outlore secrets", () => {
     const { layer, starts } = withClaude();
     return Effect.gen(function* () {
-      const started = yield* call({
-        _tag: "StartMission",
-        effort: "high",
-        model: "opus",
-        requestId: "r1",
-        text: "Hello",
-        workspacePath: null,
-      });
+      const started = yield* startMission({ effort: "high", model: "opus", text: "Hello" });
       const detail = yield* settle(started.missionId, idleWith(1));
 
       expect(detail.messages.map((message) => message.sender)).toEqual(["user", "agent"]);
@@ -61,14 +54,7 @@ describe("running Claude Code threads", () => {
   it.live("lists a turn's tool calls as steps, and hides a call that reached the permission prompt", () => {
     const { layer } = withClaude();
     return Effect.gen(function* () {
-      const started = yield* call({
-        _tag: "StartMission",
-        effort: "default",
-        model: "default",
-        requestId: "r-calls",
-        text: "use-tools",
-        workspacePath: null,
-      });
+      const started = yield* startMission({ text: "use-tools" });
       const detail = yield* settle(started.missionId, idleWith(1));
       // The approval tool has its own question line, so it is no step.
       expect(detail.activities.map(({ detail: target, summary }) => [summary, target])).toEqual([
@@ -91,14 +77,7 @@ describe("running Claude Code threads", () => {
     mkdirSync(app);
     writeFileSync(join(app, "AGENTS.md"), "Use Bun, never pnpm.");
     return Effect.gen(function* () {
-      const started = yield* call({
-        _tag: "StartMission",
-        effort: "default",
-        model: "default",
-        requestId: "r1",
-        text: "Hi",
-        workspacePath: app,
-      });
+      const started = yield* startMission({ text: "Hi", workspacePath: app });
       yield* settle(started.missionId, idleWith(1));
       const [start] = starts();
       expect(start?.cwd).toBe(app);
@@ -115,14 +94,7 @@ describe("running Claude Code threads", () => {
     mkdirSync(app);
     return Effect.gen(function* () {
       for (const workspacePath of [app, null]) {
-        const started = yield* call({
-          _tag: "StartMission",
-          effort: "default",
-          model: "default",
-          requestId: crypto.randomUUID(),
-          text: "Hi",
-          workspacePath,
-        });
+        const started = yield* startMission({ text: "Hi", workspacePath });
         yield* settle(started.missionId, idleWith(1));
       }
       for (const start of starts()) {
@@ -166,19 +138,12 @@ describe("telling a Claude Code thread its budget", () => {
   it.live("keeps one process as the budget line changes, and gives the line with the turn", () => {
     const { layer, starts } = withClaude();
     return Effect.gen(function* () {
-      const started = yield* call({
-        _tag: "StartMission",
-        effort: "default",
-        model: "default",
-        requestId: "b1",
-        text: "One",
-        workspacePath: null,
-      });
+      const started = yield* startMission({ text: "One" });
       yield* settle(started.missionId, idleWith(1));
       yield* call({ _tag: "SetMissionBudget", limits: { cost: null, tokens: 100000 }, missionId: started.missionId });
-      yield* call({ _tag: "SendMessage", delivery: null, requestId: "b2", text: "Two", threadId: started.threadId });
+      yield* sendTo(started.threadId, "Two");
       yield* settle(started.missionId, idleWith(2));
-      yield* call({ _tag: "SendMessage", delivery: null, requestId: "b3", text: "Three", threadId: started.threadId });
+      yield* sendTo(started.threadId, "Three");
       const detail = yield* settle(started.missionId, idleWith(3));
       expect(starts()).toHaveLength(1);
       expect(detail.messages.at(-1)?.text).toContain("Budget: ");
@@ -192,29 +157,16 @@ describe("holding a failed thread at a reached budget", () => {
     () => {
       const { layer } = withClaude({ idleTimeout: "50 millis" });
       return Effect.gen(function* () {
-        const started = yield* call({
-          _tag: "StartMission",
-          effort: "default",
-          model: "default",
-          requestId: "f1",
-          text: "One",
-          workspacePath: null,
-        });
+        const started = yield* startMission({ text: "One" });
         yield* settle(started.missionId, idleWith(1));
         // The idle process closes, so the next turn starts one that fails.
         yield* Effect.sleep("200 millis");
         process.env.STAND_IN_MODE = "fail-start";
-        yield* call({ _tag: "SendMessage", delivery: null, requestId: "f2", text: "Two", threadId: started.threadId });
+        yield* sendTo(started.threadId, "Two");
         yield* settle(started.missionId, (current) => current.thread.state === "Failed");
         yield* call({ _tag: "SetMissionBudget", limits: { cost: null, tokens: 100 }, missionId: started.missionId });
         process.env.STAND_IN_MODE = "ok";
-        yield* call({
-          _tag: "SendMessage",
-          delivery: null,
-          requestId: "f3",
-          text: "Three",
-          threadId: started.threadId,
-        });
+        yield* sendTo(started.threadId, "Three");
         yield* settle(
           started.missionId,
           (current) => current.thread.state === "Attention" && current.thread.blocker === "Budget",

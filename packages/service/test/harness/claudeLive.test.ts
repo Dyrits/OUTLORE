@@ -4,7 +4,7 @@ import { describe, expect, it } from "@effect/vitest";
 import type { MissionDetail, MissionId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { claudeHarnessLayer, serviceLayer } from "../../src/index.ts";
-import { call, read, settle, temporary } from "../fixtures/service.ts";
+import { call, read, sendTo, settle, startMission, temporary } from "../fixtures/service.ts";
 
 describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses a few tokens)", () => {
   it.live(
@@ -12,14 +12,7 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
     () => {
       const directory = temporary("outlore-claude-");
       return Effect.gen(function* () {
-        const started = yield* call({
-          _tag: "StartMission",
-          effort: "low",
-          model: "haiku",
-          requestId: "r1",
-          text: "Reply with exactly: ok",
-          workspacePath: null,
-        });
+        const started = yield* startMission({ effort: "low", model: "haiku", text: "Reply with exactly: ok" });
         const detail = yield* settle(started.missionId, (current) => current.thread.state !== "Running");
         expect(detail.thread.failure).toBeNull();
         expect(detail.messages.at(-1)?.text.toLowerCase()).toContain("ok");
@@ -58,13 +51,10 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
         });
       return Effect.gen(function* () {
         mkdirSync(join(directory, "outside"));
-        const started = yield* call({
-          _tag: "StartMission",
+        const started = yield* startMission({
           effort: "low",
           model: "haiku",
-          requestId: "r1",
           text: `Create the file ${outside} with the Bash command: touch ${outside}`,
-          workspacePath: null,
         });
         // The model may ask through request_approval, or go straight to the command, whose escape from the sandbox
         // then asks (CHG-0031, CHG-0208); allow whatever opens until the turn ends.
@@ -116,13 +106,10 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
     () => {
       const directory = temporary("outlore-claude-");
       return Effect.gen(function* () {
-        const started = yield* call({
-          _tag: "StartMission",
+        const started = yield* startMission({
           effort: "low",
           model: "haiku",
-          requestId: "r1",
           text: "Call open_thread once with the request: 'Compute 6 times 7, then call report_result with only the number as result and 'nothing to record' as journal.' Then end your turn. When the result arrives, reply with only that number.",
-          workspacePath: null,
         });
         let detail = yield* read(started.missionId);
         for (let attempt = 0; attempt < 1200; attempt++) {
@@ -181,23 +168,14 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
     () => {
       const directory = temporary("outlore-claude-");
       return Effect.gen(function* () {
-        const started = yield* call({
-          _tag: "StartMission",
+        const started = yield* startMission({
           effort: "low",
           model: "haiku",
-          requestId: "r1",
           text: "Run the bash command `sleep 8` exactly once, then reply with one short sentence.",
-          workspacePath: null,
         });
         yield* settleLive(started.missionId, (detail) => detail.thread.state === "Running");
         yield* Effect.sleep("4 seconds");
-        const steered = yield* call({
-          _tag: "SendMessage",
-          delivery: "Steer",
-          requestId: "r2",
-          text: "Also end your final answer with the word PINEAPPLE.",
-          threadId: started.threadId,
-        });
+        const steered = yield* sendTo(started.threadId, "Also end your final answer with the word PINEAPPLE.", "Steer");
         const detail = yield* settleLive(
           started.missionId,
           (current) => current.thread.state === "Idle" || current.thread.state === "Failed",
@@ -218,13 +196,10 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
     () => {
       const directory = temporary("outlore-claude-");
       return Effect.gen(function* () {
-        const started = yield* call({
-          _tag: "StartMission",
+        const started = yield* startMission({
           effort: "low",
           model: "haiku",
-          requestId: "r1",
           text: "Run this bash command exactly once in the foreground and wait for it: `for i in $(seq 1 60); do echo tick $i; sleep 1; done`. Then reply with: done.",
-          workspacePath: null,
         });
         yield* settleLive(started.missionId, (detail) => detail.thread.state === "Running");
         yield* Effect.sleep("5 seconds");
@@ -234,13 +209,7 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
         expect(Date.now() - before).toBeLessThan(15_000);
         expect(interrupted.thread).toMatchObject({ failure: null, state: "Idle" });
 
-        yield* call({
-          _tag: "SendMessage",
-          delivery: null,
-          requestId: "r2",
-          text: "Reply with exactly: ok",
-          threadId: started.threadId,
-        });
+        yield* sendTo(started.threadId, "Reply with exactly: ok");
         const detail = yield* settleLive(
           started.missionId,
           (current) => current.thread.state === "Idle" && current.messages.at(-1)?.sender === "agent",
