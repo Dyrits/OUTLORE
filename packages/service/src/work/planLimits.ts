@@ -1,8 +1,8 @@
-import { join } from "node:path";
 import type { PlanLimitReading } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { Changes, Harness } from "../core/index.ts";
+import { configDirectoryOf } from "./accounts.ts";
 import { type AccountRef, accountKeyOf } from "./budgetScopes.ts";
 import { AccountsRoot } from "./threads.ts";
 import { afterFailure, afterRead, type GateState, isReadDue, noReadYet } from "./usageReadGate.ts";
@@ -10,17 +10,12 @@ import { afterFailure, afterRead, type GateState, isReadDue, noReadYet } from ".
 // What each subscription's harness reports of its plan's limits (budget-control, Plan limits): the last reading kept in
 // the database, and a read started in the background, never more often than the pacing gate allows.
 
+/** The names of the window lengths that have one. */
+const fixedWindowLabels: Readonly<Record<number, string>> = { 1440: "Daily", 10080: "Weekly", 43200: "Monthly" };
+
 /** A window's name from its length in minutes, for example "5-hour" or "Weekly". */
 export const windowLabelOf = (minutes: number) =>
-  minutes === 10080
-    ? "Weekly"
-    : minutes === 1440
-      ? "Daily"
-      : minutes === 43200
-        ? "Monthly"
-        : minutes % 60 === 0
-          ? `${minutes / 60}-hour`
-          : `${minutes}-minute`;
+  fixedWindowLabels[minutes] ?? (minutes % 60 === 0 ? `${minutes / 60}-hour` : `${minutes}-minute`);
 
 /** The plan limits of provider accounts. */
 export class PlanLimits extends Context.Service<
@@ -68,7 +63,7 @@ export const planLimitsLayer = Layer.effect(
     /** Reads the account's limits now and keeps them; a harness that reports none leaves no reading. */
     const read = (account: AccountRef, key: string) =>
       Effect.gen(function* () {
-        const configDirectory = account.accountId === null ? null : join(accountsRoot, account.accountId);
+        const configDirectory = configDirectoryOf(accountsRoot, account.accountId);
         const report = yield* harness.readPlanLimits(account.harness, configDirectory);
         const now = yield* Clock.currentTimeMillis;
         if (report === null || report.windows.length === 0) {

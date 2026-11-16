@@ -7,6 +7,7 @@ import {
   listInScope,
   loreLimit,
   type Placement,
+  placementOfRow,
   readScopeChain,
   type ScopeChain,
   widthOf,
@@ -41,12 +42,6 @@ const placementOf = (chain: ScopeChain, scope: ToolScope): Placement | string =>
   } as const satisfies Record<ToolScope, Placement | string>;
   return placements[scope];
 };
-
-const placementOfRow = (row: LoreEntryRow): Placement => ({
-  scope: row.scope,
-  threadId: row.threadId,
-  workspaceId: row.workspaceId,
-});
 
 const toolScopeOf = (placement: Placement, chain: ScopeChain) =>
   placement.scope === "Thread"

@@ -1,6 +1,6 @@
 import type { Consumption } from "@outlore/contracts";
 import { Effect } from "effect";
-import { SqlClient } from "effect/sql";
+import { SqlClient, type Statement } from "effect/sql";
 import { consumptionColumns } from "../core/index.ts";
 
 // What turns used, shown rather than counted (budget-control, Estimated cost): the one read model behind the quest card,
@@ -29,11 +29,18 @@ export const consumptionOf = (row: ConsumptionRow): Consumption => ({
   unpricedTurns: row.unpricedTurns,
 });
 
+/** What the usage rows `where` selects used; an aggregate always returns a row, so none is a defect. */
+export const readConsumptionWhere = (where: Statement.Fragment) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    const [row] = yield* sql<ConsumptionRow>`SELECT ${sql.literal(consumptionColumns)} FROM usage u WHERE ${where}`;
+    if (row === undefined) return yield* Effect.die(new Error("An aggregate read returned no row."));
+    return consumptionOf(row);
+  });
+
 /** What the turns of one thread used. */
 export const readThreadConsumption = (threadId: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<ConsumptionRow>`
-      SELECT ${sql.literal(consumptionColumns)} FROM usage u WHERE u.thread_id = ${threadId}`;
-    return consumptionOf(row as ConsumptionRow);
+    return yield* readConsumptionWhere(sql`u.thread_id = ${threadId}`);
   });

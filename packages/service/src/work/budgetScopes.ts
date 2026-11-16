@@ -34,6 +34,10 @@ export type AccountRef = {
   readonly harness: HarnessName;
 };
 
+/** The scope of a provider account's budget. */
+export const accountScopeOf = (ref: AccountRef) =>
+  ({ _tag: "Account", accountId: ref.accountId, harness: ref.harness }) as const;
+
 /** The text an account is stored under in `budget_stops`: its harness and id, the id empty for the computer's own. */
 export const accountKeyOf = (ref: AccountRef) => `${ref.harness}:${ref.accountId ?? ""}`;
 
@@ -139,7 +143,7 @@ export const reachedScopesOf = (missionId: string, account: AccountRef | null) =
   Effect.gen(function* () {
     const scopes: ReadonlyArray<BudgetScope> = [
       { _tag: "Mission", id: missionId },
-      ...(account === null ? [] : [{ _tag: "Account", ...account } as const]),
+      ...(account === null ? [] : [accountScopeOf(account)]),
       { _tag: "Global" },
     ];
     const reached: Array<BudgetScope> = [];
@@ -166,7 +170,7 @@ export const threadsWhere = (sql: SqlClient.SqlClient, scope: BudgetScope) =>
 /** The scope a `budget_stops` row is about. */
 export const scopeOfStop = (row: { accountKey: string | null; missionId: string | null }): BudgetScope =>
   row.accountKey !== null
-    ? { _tag: "Account", ...accountOfKey(row.accountKey) }
+    ? accountScopeOf(accountOfKey(row.accountKey))
     : row.missionId === null
       ? { _tag: "Global" }
       : { _tag: "Mission", id: row.missionId };
@@ -176,7 +180,7 @@ const reachedAccountScopeOf = (account: AccountRef | null) =>
   Effect.gen(function* () {
     const none: ReadonlyArray<BudgetScope> = [];
     if (account === null) return none;
-    const scope: BudgetScope = { _tag: "Account", ...account };
+    const scope: BudgetScope = accountScopeOf(account);
     return (yield* isScopeReached(scope)) ? [scope] : none;
   });
 

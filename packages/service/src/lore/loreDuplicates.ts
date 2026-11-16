@@ -1,5 +1,5 @@
 import { wordsOf } from "../core/index.ts";
-import { type LoreEntryRow, type Placement, type ScopeChain, widthOf } from "./lore.ts";
+import { type LoreEntryRow, type Placement, placementOfRow, type ScopeChain, widthOf } from "./lore.ts";
 import { type Fading, stateOfLoreEntry } from "./loreFading.ts";
 
 // Duplicates (scoped-intel, Duplicates): before a save, the closest lore entries in the same scope and the scopes
@@ -54,9 +54,7 @@ export const duplicatesOf = (
   const words = wordsOf(text);
   const scored = inScope
     .filter(
-      (row) =>
-        widthOf({ scope: row.scope, threadId: row.threadId, workspaceId: row.workspaceId }, chain.topThreadId) >=
-          width && stateOfLoreEntry(row, fading) !== "Archived",
+      (row) => widthOf(placementOfRow(row), chain.topThreadId) >= width && stateOfLoreEntry(row, fading) !== "Archived",
     )
     .map((row) => ({ row, ...closenessOf(words, wordsOf(row.text)) }))
     // Stable: equally close lore entries keep the scope order, most specific first.

@@ -11,7 +11,7 @@ import {
 } from "../core/index.ts";
 import { harnessLabels } from "../harness/index.ts";
 import { accountLabelOf, accountOfKey, type BudgetScope, stopWhere } from "./budgetScopes.ts";
-import { type ConsumptionRow, consumptionOf } from "./consumption.ts";
+import { type ConsumptionRow, consumptionOf, readConsumptionWhere } from "./consumption.ts";
 
 // What the owner reads of budgets: open stops, budget lines, and the budget window (budget-control, Seeing use).
 
@@ -41,7 +41,6 @@ const splitsOf = (where: Statement.Fragment) =>
     const byModel = yield* sql<PartRow>`
       SELECT COALESCE(u.model, '') AS id, '' AS title, ${sql.literal(spendingColumns)}, ${sql.literal(consumptionColumns)}
       FROM usage u WHERE ${where} GROUP BY COALESCE(u.model, '') ORDER BY tokens DESC, cost DESC`;
-    const total = yield* sql<ConsumptionRow>`SELECT ${sql.literal(consumptionColumns)} FROM usage u WHERE ${where}`;
     return {
       byHarness: partsOf(
         byHarness.map((row) => ({
@@ -50,7 +49,7 @@ const splitsOf = (where: Statement.Fragment) =>
         })),
       ),
       byModel: partsOf(byModel.map((row) => ({ ...row, title: row.id === "" ? earlierTurnsTitle : row.id }))),
-      consumption: consumptionOf(total[0] as ConsumptionRow),
+      consumption: yield* readConsumptionWhere(where),
     };
   });
 

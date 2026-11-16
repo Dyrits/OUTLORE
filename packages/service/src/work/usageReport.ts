@@ -168,6 +168,17 @@ const readSpan = Effect.gen(function* () {
   return { startedAt: row?.startedAt ?? null, updatedAt: row?.updatedAt ?? null };
 });
 
+/** The scope of the filters but the one on `dimension`; the same scope when none is on it. */
+const scopeWithout = (
+  scope: Scope,
+  bounds: UsageBounds,
+  filters: ReadonlyArray<UsageFilter>,
+  dimension: UsageDimension,
+) => {
+  const others = filters.filter((filter) => filter.dimension !== dimension);
+  return others.length === filters.length ? scope : scopeOf(bounds, others);
+};
+
 /**
  * The usage page's data for a period and the filters chosen in its breakdowns (budget-control, Reserves usage page).
  * The totals, the turn records, and the counts follow every filter. Each breakdown, and the graph for a day, leaves out
@@ -183,17 +194,13 @@ export const readUsage = (period: UsagePeriod, filters: ReadonlyArray<UsageFilte
     const totals = yield* readTotals(scope);
     const breakdowns: UsageBreakdown[] = [];
     for (const dimension of UsageDimension.literals) {
-      const others = filters.filter((filter) => filter.dimension !== dimension);
-      breakdowns.push(
-        yield* readBreakdown(others.length === filters.length ? scope : scopeOf(bounds, others), dimension),
-      );
+      breakdowns.push(yield* readBreakdown(scopeWithout(scope, bounds, filters, dimension), dimension));
     }
-    const dayFilters = filters.filter((filter) => filter.dimension !== "Day");
     const records = yield* readRecords(scope);
     return {
       amounts: totals.amounts,
       breakdowns,
-      days: yield* readDays(dayFilters.length === filters.length ? scope : scopeOf(bounds, dayFilters), bounds),
+      days: yield* readDays(scopeWithout(scope, bounds, filters, "Day"), bounds),
       gaps: {
         earlierTurns: totals.amounts.earlierTurns,
         emptyTokenTurns: totals.emptyTokenTurns,

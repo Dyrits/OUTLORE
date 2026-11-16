@@ -41,6 +41,13 @@ export type ScopeChain = {
   readonly workspaceId: string | null;
 };
 
+/** Where a stored lore entry sits. */
+export const placementOfRow = (row: Pick<LoreEntryRow, "scope" | "threadId" | "workspaceId">): Placement => ({
+  scope: row.scope,
+  threadId: row.threadId,
+  workspaceId: row.workspaceId,
+});
+
 /** How wide a placement is, from a thread (0) to the whole mission (1), a workspace (2), and everywhere (3). */
 export const widthOf = (placement: Placement, topThreadId: string) =>
   (

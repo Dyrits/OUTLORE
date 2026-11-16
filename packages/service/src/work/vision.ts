@@ -1,7 +1,7 @@
-import { join } from "node:path";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { HarnessTools, harnessLabels, type Runner } from "../harness/index.ts";
+import { configDirectoryOf } from "./accounts.ts";
 import { AccountsRoot } from "./threads.ts";
 
 // Whether a runner reads images (message-attachments): the service refuses a message with images for one that
@@ -17,10 +17,7 @@ export const imageRefusalOf = (runner: Pick<Runner, "accountId" | "harness" | "m
     if (runner.harness !== "codex") return null;
     const tools = yield* HarnessTools;
     const accountsRoot = yield* AccountsRoot;
-    const models = yield* tools.listModels(
-      "codex",
-      runner.accountId === null ? null : join(accountsRoot, runner.accountId),
-    );
+    const models = yield* tools.listModels("codex", configDirectoryOf(accountsRoot, runner.accountId));
     const model = runner.model === "default" ? models[0] : models.find((option) => option.id === runner.model);
     return model?.inputsImages === false
       ? `${harnessLabels.codex} ${model.label} cannot read images. Choose a Companion that can, or send the message without them.`

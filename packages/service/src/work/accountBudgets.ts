@@ -1,26 +1,19 @@
 import type { AccountBudget, BudgetLimits, BudgetPeriod, HarnessName } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import {
-  changeTextOf,
-  consumptionColumns,
-  costText,
-  invalid,
-  isEmpty,
-  notFound,
-  periodStartOf,
-} from "../core/index.ts";
+import { changeTextOf, costText, invalid, isEmpty, notFound, periodStartOf } from "../core/index.ts";
 import { harnessNames } from "../harness/index.ts";
 import { ownAccountLabelOf } from "../remote/index.ts";
 import {
   type AccountRef,
   accountNextStartOf,
+  accountScopeOf,
   accountSpendingOf,
   accountStartOf,
   readAccountBudgetRow,
 } from "./budgetScopes.ts";
 import { applyAccountBudget } from "./budgets.ts";
-import { type ConsumptionRow, consumptionOf } from "./consumption.ts";
+import { readConsumptionWhere } from "./consumption.ts";
 import { PlanLimits } from "./planLimits.ts";
 
 // The owner's limits and credits on provider accounts (budget-control, Account budgets and credits). An account budget
@@ -68,7 +61,7 @@ export const setAccountBudget = (
         ON CONFLICT (harness, account_id) DO UPDATE SET cost = excluded.cost, tokens = excluded.tokens,
           period = excluded.period, since = excluded.since, last_change = excluded.last_change`;
     }
-    return yield* applyAccountBudget({ _tag: "Account", ...ref });
+    return yield* applyAccountBudget(accountScopeOf(ref));
   });
 
 /** Adds credit to an account's cost limit, which must have no period. */
@@ -82,7 +75,7 @@ export const addCredit = (ref: AccountRef, amount: number) =>
     const total = Math.round((row.limits.cost + amount) * 100) / 100;
     yield* sql`UPDATE account_budgets SET cost = ${total}, last_change = ${`Credit added: ${costText(amount)}, ${costText(total)} in all`}
       WHERE harness = ${ref.harness} AND account_id = ${ref.accountId ?? ""}`;
-    return yield* applyAccountBudget({ _tag: "Account", ...ref });
+    return yield* applyAccountBudget(accountScopeOf(ref));
   });
 
 const remainingOf = (limit: number | null, spent: number) => (limit === null ? null : Math.max(0, limit - spent));
@@ -107,13 +100,13 @@ export const readAccountBudgets = Effect.gen(function* () {
       const row = yield* readAccountBudgetRow(ref);
       const since = row === null ? 0 : accountStartOf(row, now);
       const spent = yield* accountSpendingOf(ref, since);
-      const [use] = yield* sql<ConsumptionRow>`
-        SELECT ${sql.literal(consumptionColumns)} FROM usage u
-        WHERE u.harness = ${ref.harness} AND u.account_id IS ${ref.accountId} AND u.ended_at >= ${since}`;
+      const consumption = yield* readConsumptionWhere(
+        sql`u.harness = ${ref.harness} AND u.account_id IS ${ref.accountId} AND u.ended_at >= ${since}`,
+      );
       const limits = row?.limits ?? { cost: null, tokens: null };
       return {
         accountId: account.accountId as AccountBudget["accountId"],
-        consumption: consumptionOf(use as ConsumptionRow),
+        consumption,
         harness: account.harness,
         label: account.label,
         lastChange: row?.lastChange ?? null,

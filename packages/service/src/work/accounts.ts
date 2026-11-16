@@ -20,6 +20,10 @@ type AccountRow = {
 /** An added account's folder. */
 const accountFolderOf = (accountsRoot: string, accountId: string) => join(accountsRoot, accountId);
 
+/** The config directory of an account's sign-in: the added account's folder, or null for the harness's own. */
+export const configDirectoryOf = (accountsRoot: string, accountId: string | null) =>
+  accountId === null ? null : accountFolderOf(accountsRoot, accountId);
+
 /** One harness with its accounts' sign-ins, each account's own models, and the models its first signed-in account offers. */
 const readHarness = (harness: HarnessName, rows: ReadonlyArray<AccountRow>) =>
   Effect.gen(function* () {
@@ -90,11 +94,7 @@ export const listModelEfforts = (harness: HarnessName, accountId: AccountId | nu
       const [account] = yield* sql<{ harness: string }>`SELECT harness FROM accounts WHERE id = ${accountId}`;
       if (account?.harness !== harness) return yield* notFound(`No such ${harnessLabels[harness]} account.`);
     }
-    return yield* tools.listEfforts(
-      harness,
-      accountId === null ? null : accountFolderOf(accountsRoot, accountId),
-      model,
-    );
+    return yield* tools.listEfforts(harness, configDirectoryOf(accountsRoot, accountId), model);
   });
 
 /** Every harness, with its accounts and models (ListHarnesses). */
@@ -204,5 +204,5 @@ export const signInAccount = (harness: HarnessName, accountId: string | null) =>
       if (account.harness !== harness)
         return yield* invalid(`That account is not a ${harnessLabels[harness]} account.`);
     }
-    yield* tools.openSignIn(harness, accountId === null ? null : accountFolderOf(accountsRoot, accountId));
+    yield* tools.openSignIn(harness, configDirectoryOf(accountsRoot, accountId));
   });
