@@ -38,6 +38,7 @@ export {
   rootOf,
   seedBrowsableRoots,
 } from "./folders.ts";
+export { newId } from "./ids.ts";
 export { modelsDevSourceLayer, noPriceSourceLayer, rowsOfModelsDev } from "./priceSources.ts";
 export {
   type Estimate,
@@ -54,6 +55,7 @@ export { removeScratch } from "./scratch.ts";
 export { type SessionSend, Sessions, sessionsLayer } from "./sessions.ts";
 export {
   dayMillis,
+  hourMillis,
   mergedSettings,
   readSettings,
   readStartChoices,
@@ -84,5 +86,5 @@ export {
 } from "./spending.ts";
 export { storeLayer } from "./store.ts";
 export { tokensOf } from "./tokens.ts";
-export type { ToolAnswer } from "./toolAnswer.ts";
+export { type ToolAnswer, toolRefusal, toolText } from "./toolAnswer.ts";
 export { wordsOf } from "./words.ts";

@@ -5,8 +5,11 @@ import { invalid } from "./errors.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: settings keys (`intelHalfLives`, `intelWarningPercent`).
 
+/** An hour in milliseconds. */
+export const hourMillis = 60 * 60 * 1000;
+
 /** A day in milliseconds, the unit of the Settings durations. */
-export const dayMillis = 24 * 60 * 60 * 1000;
+export const dayMillis = 24 * hourMillis;
 
 /** The settings before the owner changes any. */
 export const defaultSettings: Settings = {

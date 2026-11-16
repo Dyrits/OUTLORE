@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import {
   constantTimeEqual,
   decodeBase64Url,
@@ -18,7 +17,7 @@ import {
 } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid } from "../core/index.ts";
+import { invalid, newId } from "../core/index.ts";
 import { computerNameOf, RemoteConfig, webAppOrigin } from "./config.ts";
 
 // This installation as a host: its identity, its pairing codes and its paired devices (device-pairing). Everything
@@ -156,7 +155,7 @@ export const makePairingSecret = (now: number) =>
     const sql = yield* SqlClient.SqlClient;
     const secret = newPairingSecret();
     const expiresAt = now + pairingCodeMillis;
-    const id = yield* Effect.sync(() => randomUUID());
+    const id = yield* newId;
     yield* sql`DELETE FROM pairing_codes WHERE expires_at < ${now} OR used_at IS NOT NULL`;
     yield* sql`INSERT INTO pairing_codes (id, expires_at, secret_hash, used_at)
       VALUES (${id}, ${expiresAt}, ${hashText(secret)}, NULL)`;
@@ -184,7 +183,7 @@ export const redeemPairingSecret = (secret: Uint8Array, device: { kind: DeviceKi
     const taken = yield* sql<{ id: string }>`UPDATE pairing_codes SET used_at = ${now}
       WHERE id = ${code.id} AND used_at IS NULL RETURNING id`;
     if (taken.length === 0) return { refusal: "code-used" } as const;
-    const deviceId = yield* Effect.sync(() => randomUUID());
+    const deviceId = yield* newId;
     const token = newDeviceToken();
     yield* sql`INSERT INTO paired_devices (id, kind, last_active_at, name, paired_at, token_hash)
       VALUES (${deviceId}, ${device.kind}, ${now}, ${device.name}, ${now}, ${hashText(token)})`;

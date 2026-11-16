@@ -1,7 +1,7 @@
 import type { StandingPermission } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { notFound } from "../core/index.ts";
+import { newId, notFound } from "../core/index.ts";
 import { kindOfPermission, matchesPattern } from "./patterns.ts";
 
 const selectPermissions = (sql: SqlClient.SqlClient) => sql`
@@ -49,7 +49,7 @@ export const insertPermission = (threadId: string, sentence: string, pattern: st
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     const now = yield* Clock.currentTimeMillis;
-    const id = yield* Effect.sync(() => crypto.randomUUID());
+    const id = yield* newId;
     yield* sql`INSERT INTO standing_permissions (id, mission_id, workspace_id, sentence, pattern, created_at)
       SELECT ${id}, CASE WHEN workspace_id IS NULL THEN mission_id END, workspace_id,
         ${sentence}, ${pattern}, ${now}

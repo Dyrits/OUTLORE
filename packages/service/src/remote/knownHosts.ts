@@ -1,9 +1,8 @@
-import { randomUUID } from "node:crypto";
 import { decodeBase64Url, encodeBase64Url } from "@outlore/channel";
 import type { HostId, KnownHost } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid } from "../core/index.ts";
+import { invalid, newId } from "../core/index.ts";
 
 // This installation as a controller: the hosts it is paired with (device-pairing). Everything here is storage; the
 // links to the hosts are in the controller.
@@ -53,7 +52,7 @@ export const readHostLink = (hostId: string) =>
 export const saveHost = (host: Omit<HostLink, "id">, now: number) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
-    const id = yield* Effect.sync(() => randomUUID());
+    const id = yield* newId;
     const publicKey = encodeBase64Url(host.hostPublicKey);
     // Pairing again with a host this installation already has (after it was disconnected) replaces the old entry,
     // which could only be refused, instead of leaving two under one name.
