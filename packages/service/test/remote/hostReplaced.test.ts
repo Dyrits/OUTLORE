@@ -19,7 +19,7 @@ const settle = Effect.gen(function* () {
   for (let index = 0; index < 20; index++) yield* turn;
 });
 
-type Answer = "earlier" | "hold" | "limit" | "refuse" | "replace";
+type Answer = "busy" | "earlier" | "hold" | "limit" | "refuse" | "replace";
 
 /**
  * A relay that counts the hosts that connect and answers each as `answer` says: refuse the upgrade, replace it, or
@@ -39,6 +39,12 @@ const stubRelay = (first: Answer) =>
         if (isLegacyTry) attempts.legacy += 1;
         else attempts.count += 1;
         socket.on("error", () => null);
+        if (answer.current === "busy") {
+          socket.end(
+            "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 60\r\nConnection: close\r\nContent-Length: 0\r\n\r\n",
+          );
+          return;
+        }
         // A relay of an earlier release knows only the claim in the address, and turns a subprotocol away.
         if (answer.current === "refuse" || (answer.current === "earlier" && !isLegacyTry)) {
           socket.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
@@ -241,16 +247,26 @@ describe("a host whose connection ended after it had held", () => {
 });
 
 describe("a host and a relay of an earlier release, while the claim may still go in the address", () => {
-  it.effect("reaches the relay by sending its claim in the address once its first try was turned away", () =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const relay = yield* stubRelay("earlier");
-        const host = yield* hostAt(relay.origin);
-        yield* host.setAccess(true);
-        while ((yield* host.presence.status) !== "Connected") yield* turn;
-        expect(relay.attempts).toEqual({ count: 1, legacy: 1 });
-      }),
-    ),
+  it.effect(
+    "tries the address form only after two attempts in a row were turned away, and then reaches the relay",
+    () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const relay = yield* stubRelay("earlier");
+          const host = yield* hostAt(relay.origin);
+          yield* host.setAccess(true);
+          while (relay.attempts.count < 1) yield* turn;
+          yield* settle;
+          expect(relay.attempts).toEqual({ count: 1, legacy: 0 });
+          yield* TestClock.adjust(1_000);
+          while (relay.attempts.count < 2) yield* turn;
+          yield* settle;
+          expect(relay.attempts).toEqual({ count: 2, legacy: 0 });
+          yield* TestClock.adjust(2_000);
+          while ((yield* host.presence.status) !== "Connected") yield* turn;
+          expect(relay.attempts).toEqual({ count: 3, legacy: 1 });
+        }),
+      ),
   );
 
   it.effect("does not send its claim in the address after the transition ended: the relay stays unreachable", () =>
@@ -260,10 +276,57 @@ describe("a host and a relay of an earlier release, while the claim may still go
         const relay = yield* stubRelay("earlier");
         const host = yield* hostAt(relay.origin);
         yield* host.setAccess(true);
+        for (const wait of [1_000, 2_000, 4_000]) {
+          yield* settle;
+          yield* TestClock.adjust(wait);
+        }
+        while (relay.attempts.count < 4) yield* turn;
+        expect(yield* host.presence.status).not.toBe("Connected");
+        expect(relay.attempts.legacy).toBe(0);
+      }),
+    ),
+  );
+});
+
+describe("a host and a relay of this release that fails", () => {
+  /** The relay turns the first try away as `answer`, then works; the claim must never go in the address. */
+  const failsOnce = (answer: "busy" | "refuse") =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const relay = yield* stubRelay(answer);
+        const host = yield* hostAt(relay.origin);
+        yield* host.setAccess(true);
         while (relay.attempts.count < 1) yield* turn;
         yield* settle;
-        expect(yield* host.presence.status).toBe("Unreachable");
-        expect(relay.attempts).toEqual({ count: 1, legacy: 0 });
+        relay.answer.current = "hold";
+        yield* TestClock.adjust(1_000);
+        while ((yield* host.presence.status) !== "Connected") yield* turn;
+        expect(relay.attempts).toEqual({ count: 2, legacy: 0 });
+      }),
+    );
+
+  it.effect("does not put the claim in the address after a blip (a refused upgrade)", () => failsOnce("refuse"));
+
+  it.effect("does not put the claim in the address after a 429", () => failsOnce("busy"));
+
+  it.effect("never does once the relay has taken the claim in a subprotocol, whatever it does later", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const relay = yield* stubRelay("hold");
+        const host = yield* hostAt(relay.origin);
+        yield* host.setAccess(true);
+        while ((yield* host.presence.status) !== "Connected") yield* turn;
+        // It now behaves like a relay of an earlier release, and drops the host.
+        relay.answer.current = "earlier";
+        relay.dropAll();
+        while ((yield* host.presence.status) === "Connected") yield* turn;
+        for (const wait of [1_000, 2_000, 4_000, 8_000]) {
+          yield* settle;
+          yield* TestClock.adjust(wait);
+        }
+        while (relay.attempts.count < 5) yield* turn;
+        yield* settle;
+        expect(relay.attempts.legacy).toBe(0);
       }),
     ),
   );

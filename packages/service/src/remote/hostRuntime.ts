@@ -7,6 +7,7 @@ import { RemoteConfig } from "./config.ts";
 import { answerText } from "./frames.ts";
 import { type HostRecord, relayOriginOf } from "./hostAccess.ts";
 import { createDeviceServer, type RunWork, reportFailure } from "./hostSession.ts";
+import { failuresBeforeFallback, mayFallBackToLegacyClaim, originKey } from "./legacyClaim.ts";
 import { HostPresence } from "./presence.ts";
 
 const firstRetryMillis = 1_000;
@@ -51,6 +52,10 @@ export const remoteHostLayer = Layer.effectDiscard(
     const runFork = Effect.runForkWith(context);
     const withParts = <Value, Error>(effect: Effect.Effect<Value, Error, SqlClient.SqlClient | RemoteConfig>) =>
       effect.pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.provideService(RemoteConfig, config));
+    // What this host has learned about each relay since it started: which took the claim in the new form, and how many
+    // attempts in a row the new form failed on.
+    const acceptedOrigins = new Set<string>();
+    const failures = new Map<string, number>();
     const run: RunWork = (effect) => runPlain(withParts(effect));
     const runInTransaction: RunWork = (effect) => runPlain(withParts(sql.withTransaction(effect)));
 
@@ -105,12 +110,29 @@ export const remoteHostLayer = Layer.effectDiscard(
       Effect.gen(function* () {
         yield* state.setStatus("Connecting");
         const relayOrigin = yield* withParts(relayOriginOf(record));
-        // Until the transition ends, a relay of an earlier release (an owner's own, not yet redeployed) still takes
-        // the claim in the address.
-        const legacyFallback = (yield* Clock.currentTimeMillis) < legacyClaimUntil;
+        // Until the transition ends, a relay of an earlier release (an owner's own, not yet redeployed) still takes the
+        // claim in the address. Only a relay that turned the new form away twice in a row is tried that way.
+        const key = originKey(relayOrigin) ?? relayOrigin;
+        const legacyFallback = mayFallBackToLegacyClaim({
+          acceptedOrigins,
+          failures: failures.get(key) ?? 0,
+          now: yield* Clock.currentTimeMillis,
+          origin: relayOrigin,
+        });
         return yield* Effect.acquireUseRelease(
           connectHost({ claim: record.claimSecret, legacyFallback, relayOrigin, room: record.room }).pipe(
-            Effect.tapError(() => state.setStatus("Unreachable")),
+            Effect.tapError(() =>
+              Effect.sync(() => failures.set(key, (failures.get(key) ?? 0) + 1)).pipe(
+                Effect.andThen(state.setStatus("Unreachable")),
+              ),
+            ),
+            Effect.tap((connection) =>
+              Effect.sync(() => {
+                if (connection.usesLegacyClaim) return;
+                acceptedOrigins.add(key);
+                failures.delete(key);
+              }),
+            ),
             Effect.mapError(() => new Disconnected({ reason: "unreachable" })),
           ),
           Effect.fnUntraced(function* (connection) {
@@ -118,7 +140,7 @@ export const remoteHostLayer = Layer.effectDiscard(
             if (!state.attachRelay(connection, generation)) return;
             if (connection.usesLegacyClaim)
               yield* Effect.logWarning(
-                `The relay at ${relayOrigin} still takes the host claim in the address. Redeploy it before ${new Date(legacyClaimUntil).toISOString().slice(0, 10)}, when this host stops sending it that way.`,
+                `The relay at ${relayOrigin} turned the host claim away in the WebSocket subprotocol ${failuresBeforeFallback} times in a row and took it in the address, so it is probably deployed from an earlier release. Redeploy it before ${new Date(legacyClaimUntil).toISOString().slice(0, 10)}, when this host stops sending it that way.`,
               );
             const startedAt = yield* Clock.currentTimeMillis;
             const code = yield* hold(connection, record);

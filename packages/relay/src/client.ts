@@ -211,9 +211,10 @@ const clientConnectionOf = (socket: WebSocket): ClientConnection => {
 
 /**
  * Connects as the host of `room`, claiming it with `claim` (the first claim keeps the room); an unreachable relay is
- * the typed failure. The claim travels in the WebSocket subprotocols, not in the address. With `legacyFallback`, a
- * relay that does not take that (one of an earlier release) gets a second try with the claim in the address, as
- * earlier hosts sent it; this is for the transition only (see `legacyClaimUntil`). The keep-alive runs until the
+ * the typed failure. The claim travels in the WebSocket subprotocols, not in the address. With `legacyFallback`, any
+ * failure of that first try is followed by a second one with the claim in the address, as earlier hosts sent it; the
+ * caller must therefore set it only when it has reason to think the relay is of an earlier release (the service does,
+ * in `mayFallBackToLegacyClaim`). It is for the transition only (see `legacyClaimUntil`). The keep-alive runs until the
  * socket closes.
  */
 export const connectHost = Effect.fnUntraced(function* (options: {
