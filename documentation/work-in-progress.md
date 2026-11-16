@@ -1,5 +1,9 @@
 # Work in progress
 
+## Architecture audit · 2026-11-16 · all 17 candidates built and integrated, window checks and merge to main pending
+
+The owner authorized every candidate of the [audit](architecture-audit/architecture-audit-2026-11-15-2323.html). Five side-quests built them (CHG-0301 to CHG-0318); the parent merged them on `worktree/audit-integration` (on top of `main` at `12fedf9`; base `dbb3ae6`). Typecheck, Biome and the full suite pass (1,679 passed, 54 skipped). Candidate 3 is partial (per-screen Back and the callback interface remain). No window, phone, live provider or relay deployment was checked; nothing is pushed. [Verification](verification/2026-11-16-audit-integration.md), [handoff](../.agents/handoffs/2026-11-16-0110-architecture-audit.md). Open: the owner's look, the fast-forward of `main`, a push, redeploying the relay for the room-full code.
+
 ## Choice dialog for AskUserQuestion · 2026-11-15 · built and tested, window look and a live Claude Code run pending
 
 The owner reported that Claude Code's `AskUserQuestion` showed no dialog: it ran unasked and came back with no answers. CHG-0299 (in `changelog/0.1.6-Prototype.md`; starting revision `d0896ad`, committed on `main`) makes it a choice question: one dialog with the call's choices (single or multiple, an own answer, Send, Skip), the turn held in Attention, the answers returned in `updatedInput.answers`; Stop withdraws, Skip is recorded as Skipped. Agreed with the owner: multiple choices and an own answer supported, Skip distinct from a withdrawal, Claude Code only wired, contract shaped for Codex and OpenCode. [Specification](capabilities/action-approval/specifications.md#choice-questions), [verification](verification/2026-11-15-choice-dialog.md). Open: the owner's look at the dialog (no window drive was possible in the sandbox), a live Claude Code run, Codex and OpenCode adapters (backlog), merging the changelog file with `worktree/android-apk`'s (CHG-0298).
