@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the whole-codebase review and refactor (phase 1 on `main`; phase 2 integrated on the local branch `worktree/rr-integration`, 52 commits ahead and not merged: tooling, slice H fixes, service behaviour fixes, slice G, slice B finish, Effect lots 0 to 4; open: the migration order with `worktree/context-window`, lot 4 thresholds, the remaining behaviour fixes, the content security policy, fault injection for slice E, the never-reviewed desktop, controller and tooling, and the owner decisions), read the [current handoff](.agents/handoffs/2026-11-16-2205-review-and-refactor-integration.md). Handoffs are shared and committed.
+- To resume the whole-codebase review and refactor (phases 1 and 2 merged into `main` at `48e9e5f`: tooling, desktop and service fixes, slices B and G, Effect lots 0 to 4; open: the migration order with `worktree/context-window`, lot 4 thresholds, the remaining behaviour fixes, the content security policy, fault injection for slice E, the never-reviewed desktop, controller and tooling, and the owner decisions), read the [current handoff](.agents/handoffs/2026-11-16-2230-review-and-refactor-merged.md). Handoffs are shared and committed.
 
 - To resume the sidebar change that removed the indent before realms (CHG-0332; done and committed; open: the owner's look in a window, what "same for borderlands" meant beyond the quests' alignment), read the [current handoff](.agents/handoffs/2026-11-16-1030-sidebar-realm-indent.md). Handoffs are shared and committed.
 
