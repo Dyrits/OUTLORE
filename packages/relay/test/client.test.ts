@@ -1,9 +1,9 @@
 import { it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Fiber } from "effect";
 import { TestClock } from "effect/testing";
 import { afterEach, beforeEach, describe, expect, vi } from "vitest";
 import { WebSocketServer } from "ws";
-import { connectClient as clientEffect, connectHost as hostEffect } from "../src/client.ts";
+import { connectClient as clientEffect, connectHost as hostEffect, keepAlive } from "../src/client.ts";
 import { closingFrame } from "../src/roomCore.ts";
 import { room } from "./fixtures/wsClient.ts";
 
@@ -190,6 +190,22 @@ describe("keeping a connection alive", () => {
       yield* TestClock.adjust(100_000);
       yield* Effect.promise(() => new Promise((resolve) => setImmediate(resolve)));
       expect(pings).toEqual(["ping"]);
+    }),
+  );
+
+  it.effect("ends at once for a socket that is already closed, instead of waiting for a close it missed", () =>
+    Effect.gen(function* () {
+      const pings: string[] = [];
+      const closedSocket = {
+        addEventListener: () => {},
+        readyState: WebSocket.CLOSED,
+        send: (text: string) => void pings.push(text),
+      };
+      const keeping = yield* Effect.forkChild(keepAlive(closedSocket), { startImmediately: true });
+      expect(keeping.pollUnsafe()).toBeDefined();
+      yield* Fiber.join(keeping);
+      yield* TestClock.adjust(100_000);
+      expect(pings).toEqual([]);
     }),
   );
 });

@@ -52,18 +52,25 @@ const bytesOf = (data: unknown): Uint8Array | null =>
 
 const hex = (bytes: Uint8Array) => Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 const unhex = (text: string) => Uint8Array.from(text.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16));
-/** Pings the relay at a fixed interval until the socket closes. */
-const keepAlive = (socket: WebSocket) =>
-  Effect.sync(() => {
-    if (socket.readyState === WebSocket.OPEN) socket.send("ping");
-  }).pipe(
-    Effect.delay(keepAliveMillis),
-    Effect.forever,
-    Effect.raceFirst(
-      Effect.callback<void>((resume) => {
-        socket.addEventListener("close", () => resume(Effect.void), { once: true });
-      }),
-    ),
+/**
+ * Pings the relay at a fixed interval until the socket closes; a socket that is not open when this starts has nothing
+ * to keep alive, so it ends at once instead of waiting for a close it already missed.
+ */
+export const keepAlive = (socket: Pick<WebSocket, "addEventListener" | "readyState" | "send">) =>
+  Effect.suspend(() =>
+    socket.readyState !== WebSocket.OPEN
+      ? Effect.void
+      : Effect.sync(() => {
+          if (socket.readyState === WebSocket.OPEN) socket.send("ping");
+        }).pipe(
+          Effect.delay(keepAliveMillis),
+          Effect.forever,
+          Effect.raceFirst(
+            Effect.callback<void>((resume) => {
+              socket.addEventListener("close", () => resume(Effect.void), { once: true });
+            }),
+          ),
+        ),
   );
 
 /** A host's connection to its room. */
