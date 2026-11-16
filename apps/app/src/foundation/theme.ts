@@ -28,7 +28,7 @@ export const fonts = {
 export const stateLabels = {
   Archived: "Archived",
   Attention: "Summons",
-  Done: "Fulfilled",
+  Done: "Done",
   Failed: "Failed",
   Idle: "Resting",
   Running: "Underway",

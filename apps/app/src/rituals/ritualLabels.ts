@@ -21,9 +21,9 @@ export const scheduleKindLabels = {
 /** A weekday's name, Sunday being 0. */
 export const weekdayLabelOf = (day: number) => weekdayNames[day] ?? "Sunday";
 
-/** A run's state as the owner reads it; Done reads like a fulfilled quest. */
+/** A run's state as the owner reads it. */
 export const runStateLabels = {
-  Done: "Fulfilled",
+  Done: "Done",
   Failed: "Failed",
   Interrupted: "Interrupted",
   Underway: "Underway",

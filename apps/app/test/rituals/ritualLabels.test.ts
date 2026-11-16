@@ -54,7 +54,7 @@ describe("a time of day typed in a form", () => {
 
 describe("a run's state", () => {
   it("reads in the guild's words", () => {
-    expect(runStateLabels.Done).toBe("Fulfilled");
+    expect(runStateLabels.Done).toBe("Done");
     expect(runStateLabels.Underway).toBe("Underway");
   });
 });
