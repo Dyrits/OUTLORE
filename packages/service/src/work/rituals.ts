@@ -12,7 +12,7 @@ import {
 } from "@outlore/contracts";
 import { Clock, Effect, Exit, Layer, PubSub, Schema } from "effect";
 import { SqlClient } from "effect/sql";
-import { Changes, invalid, notFound } from "../core/index.ts";
+import { Changes, hourMillis, invalid, newId, notFound } from "../core/index.ts";
 import { Commands, changed, unchanged, type WithFollowUps } from "./commands.ts";
 import { changeThreadRunner } from "./handover.ts";
 import { insertMessage } from "./messaging.ts";
@@ -23,7 +23,7 @@ import { nextRunAfter, runStateOf, scheduleOf } from "./ritualSchedule.ts";
 // main thread; a failed run falls back to the next Companion of the list, through a handover (thread-handover).
 
 /** The longest the scheduler sleeps, so a Ritual changed behind its back is still found within the hour. */
-const longestSleepMillis = 60 * 60 * 1000;
+const longestSleepMillis = hourMillis;
 /** How late a scheduled run may start: one that is later than this was missed while the service was down, and is skipped. */
 const graceMillis = 5 * 60 * 1000;
 
@@ -140,7 +140,7 @@ export const createRitual = (input: {
       input.workspacePath,
     );
     const now = yield* Clock.currentTimeMillis;
-    const ritualId = crypto.randomUUID();
+    const ritualId = yield* newId;
     yield* sql`INSERT INTO rituals (id, mission_id, instruction, schedule, primary_companion, fallbacks, is_on, next_run_at, created_at, authority)
       VALUES (${ritualId}, ${quest.missionId}, ${input.instruction}, ${JSON.stringify(input.schedule)},
         ${JSON.stringify(input.primary)}, ${JSON.stringify(input.fallbacks)}, 1, ${nextRunAfter(input.schedule, now)}, ${now}, ${JSON.stringify(input.scope ?? [])})`;

@@ -11,7 +11,7 @@ import {
 } from "@outlore/contracts";
 import { Clock, Context, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid, notFound, ServiceFailure } from "../core/index.ts";
+import { invalid, newId, notFound, ServiceFailure } from "../core/index.ts";
 
 // Files the owner attaches to a message (message-attachments): checked by their first bytes, kept in one folder
 // of the data directory outside every thread's working folder, and read by the harness at the turn.
@@ -72,7 +72,7 @@ export const addAttachment = (name: string, data: string) =>
           ? `${name} is a HEIC photo. Export it as JPEG or PNG first.`
           : `${name} is not a PNG, JPEG, GIF, or WebP image.`,
       );
-    const id = AttachmentId.make(crypto.randomUUID());
+    const id = AttachmentId.make(yield* newId);
     const file = `${id}.${extensionOf[mediaType]}`;
     yield* Effect.tryPromise({
       catch: failed("store the file"),

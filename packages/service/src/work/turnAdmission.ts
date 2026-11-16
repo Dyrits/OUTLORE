@@ -1,7 +1,7 @@
 import type { EffortChoice, HarnessName, ModelChoice } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { Changes, touchMission } from "../core/index.ts";
+import { Changes, newId, touchMission } from "../core/index.ts";
 import type { StoredAttachment } from "./attachments.ts";
 import { holdIfReached } from "./budgets.ts";
 import { recordPendingHandover } from "./handover.ts";
@@ -92,7 +92,7 @@ export const admitTurn = (threadId: string) =>
         }
         // A runner change is recorded when it actually runs, not while messages wait for admission.
         yield* recordPendingHandover(threadId, now);
-        const turnId = crypto.randomUUID();
+        const turnId = yield* newId;
         yield* sql`INSERT INTO turns (id, thread_id, status, started_at, harness)
           VALUES (${turnId}, ${threadId}, 'running', ${now}, ${thread.harness})`;
         yield* deliverMessages(

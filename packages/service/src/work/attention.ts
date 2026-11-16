@@ -1,6 +1,6 @@
 import { Clock, Deferred, Effect } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
-import { type Changes, touchMission } from "../core/index.ts";
+import { type Changes, newId, touchMission } from "../core/index.ts";
 import { holdInTurn } from "./lifecycle.ts";
 
 /** What a turn waits on the owner for: its record, written when the wait opens, and what ends it. */
@@ -24,7 +24,7 @@ export const makeOwnerWaits = <Resolution>(sql: SqlClient.SqlClient, changes: Ch
   /** Opens the wait and returns its resolution; null when the thread is not at work in a turn. */
   const ask = (wait: OwnerWait) =>
     Effect.gen(function* () {
-      const id = crypto.randomUUID();
+      const id = yield* newId;
       const deferred = yield* Deferred.make<Resolution>();
       const isAtWork = yield* sql
         .withTransaction(

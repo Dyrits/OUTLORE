@@ -3,7 +3,7 @@ import { basename, join } from "node:path";
 import { Crest, type Workspace, type WorkspaceId } from "@outlore/contracts";
 import { Clock, Context, Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid, realFolderOf } from "../core/index.ts";
+import { invalid, newId, realFolderOf } from "../core/index.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 import { validateRealmName } from "./realmNames.ts";
 
@@ -41,8 +41,9 @@ export const createRealm = Effect.fnUntraced(function* (
   if (folder !== null) return yield* attachWorkspace(folder, { crest, name: trimmed }).pipe(Effect.as(null));
   const now = yield* Clock.currentTimeMillis;
   const text = crest === null ? null : JSON.stringify(Schema.encodeSync(Crest)(crest));
+  const id = yield* newId;
   yield* sql`INSERT INTO workspaces (id, name, path, crest, created_at)
-        VALUES (${crypto.randomUUID()}, ${trimmed}, NULL, ${text}, ${now})`;
+        VALUES (${id}, ${trimmed}, NULL, ${text}, ${now})`;
   return null;
 });
 
@@ -93,7 +94,7 @@ export const attachWorkspace = (path: string, realm: { crest: Crest | null; name
       yield* requireActiveRealm(existing.id);
       return existing.id;
     }
-    const id = crypto.randomUUID();
+    const id = yield* newId;
     const now = yield* Clock.currentTimeMillis;
     const name = realm?.name.trim() || basename(folder) || folder;
     const crest = realm?.crest == null ? null : JSON.stringify(Schema.encodeSync(Crest)(realm.crest));

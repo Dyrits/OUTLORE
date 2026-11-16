@@ -1,7 +1,7 @@
 import type { BackupCompanion, HarnessName, OpenThreadResult, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid, notFound } from "../core/index.ts";
+import { invalid, newId, notFound } from "../core/index.ts";
 import { checkAccount, checkBackups, type Runner, type RunnerChoice, runnerOf } from "../harness/index.ts";
 import { budgetRefusalOf } from "./budgetScopes.ts";
 import { changed, unchanged } from "./commands.ts";
@@ -52,7 +52,7 @@ const insertThread = (opening: Opening) =>
     const runner = yield* checkAccount(runnerOf(parent, opening.choice));
     if (opening.backups !== null) yield* checkBackups(opening.backups);
     const backups = opening.backups === null ? parent.backups : JSON.stringify(opening.backups);
-    const threadId = crypto.randomUUID();
+    const threadId = yield* newId;
     // An aside starts from the off-topic request alone, without its opener's conversation.
     const openerMessages = opening.isAside ? null : yield* openerMessagesOf(opening.parentId);
     yield* sql`INSERT INTO threads (id, mission_id, parent_id, state, harness, account_id, model, effort, workspace_id, title, is_opened_by_agent, opener_messages, is_aside, backups)

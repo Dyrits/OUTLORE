@@ -1,9 +1,9 @@
 import { RitualRunState, RitualSchedule } from "@outlore/contracts";
 import { Option, Schema } from "effect";
+import { hourMillis } from "../core/index.ts";
 
 // When a Ritual is next due (rituals). Schedules are read in the computer's local time.
 
-const hourMillis = 60 * 60 * 1000;
 /** The furthest ahead a day-based schedule looks for its next day: a month's day (28) always occurs within it. */
 const searchDays = 62;
 

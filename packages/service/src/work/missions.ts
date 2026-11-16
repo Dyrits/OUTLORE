@@ -21,6 +21,7 @@ import {
   dayMillis,
   invalid,
   isReached,
+  newId,
   readGlobalBudget,
   readSettings,
   saveStartChoices,
@@ -111,8 +112,8 @@ export const insertQuest = (
     const workspaceId =
       realmId !== null ? realmId : workspacePath === null ? null : yield* attachWorkspace(workspacePath, realm);
     const now = yield* Clock.currentTimeMillis;
-    const missionId = crypto.randomUUID();
-    const threadId = crypto.randomUUID();
+    const missionId = yield* newId;
+    const threadId = yield* newId;
     yield* sql`INSERT INTO missions (id, top_thread_id, title, created_at, last_activity_at, is_title_by_user)
       VALUES (${missionId}, ${threadId}, ${quest.title}, ${now}, ${now}, ${quest.isTitleByOwner === true ? 1 : 0})`;
     // The Charter's backup Companions are the new thread's own from the start (thread-panel, Backup companions).
