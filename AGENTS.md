@@ -54,9 +54,10 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the whole-codebase review and refactor (phase 1 mechanical batches of slices A to E integrated and pushed; reviews of slices F and G done; open: slice B leftovers, the behaviour fixes in red then green, about 35 owner decisions, and the never-reviewed desktop, relay, controller and tooling), read the [current handoff](.agents/handoffs/2026-11-16-1710-review-and-refactor-codebase.md). Handoffs are shared and committed.
+
 - To resume the sidebar change that removed the indent before realms (CHG-0332; done and committed; open: the owner's look in a window, what "same for borderlands" meant beyond the quests' alignment), read the [current handoff](.agents/handoffs/2026-11-16-1030-sidebar-realm-indent.md). Handoffs are shared and committed.
 
 - To resume the connectors blueprint (connector gateway, the Vault and ADR 0022, both proposed and revised after a second opinion, CHG-0328 and CHG-0330; specification agreed in CHG-0321 to CHG-0327; nothing built; open: the owner's review, whether to add the proposed Vault states to the specification, authorizing read-denial probes with a disposable secret), read the [current handoff](.agents/handoffs/2026-11-16-1008-connectors-blueprint.md). Handoffs are shared and committed.
 
-- To resume the architecture audit of 2026-11-15 (all 17 candidates built by five side-quests and merged on `worktree/audit-integration`; typecheck, Biome and the full suite pass; open: the owner's look in a window, fast-forwarding `main`, a push, redeploying the relay, the remainder of candidate 3), read the [current handoff](.agents/handoffs/2026-11-16-0110-architecture-audit.md). Handoffs are shared and committed.
 
