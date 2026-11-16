@@ -77,9 +77,7 @@
         "@outlore/relay": "workspace:*",
       },
       "devDependencies": {
-        "@outlore/service": "workspace:*",
         "@types/node": "^24",
-        "effect": "4.1.4",
       },
     },
     "packages/relay": {
