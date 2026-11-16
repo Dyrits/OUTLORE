@@ -1,7 +1,7 @@
 import type { RitualScope, RitualScopeEntry } from "@outlore/contracts";
 import { Effect } from "effect";
 import { invalid } from "../core/index.ts";
-import { changeableSettings } from "./guildmasterSettings.ts";
+import { isChangeableSetting } from "./guildmasterSettingNames.ts";
 
 // A Ritual's reviewed scope (CHG-0208): the structural actions its later runs may take without asking. The owner sets
 // it in the Ritual's form and can empty it at any time; nothing a run writes widens it.
@@ -24,7 +24,7 @@ export const validateScope = Effect.fnUntraced(function* (scope: RitualScope) {
       return yield* invalid(`${entry.operation} needs its exact new value.`);
     if (!isValued && entry.payload !== null) return yield* invalid(`${entry.operation} takes no new value.`);
     if (entry.operation === "ChangeSetting") {
-      if (!(changeableSettings as ReadonlyArray<string>).includes(entry.target.trim()))
+      if (!isChangeableSetting(entry.target.trim()))
         return yield* invalid(`A Ritual cannot be allowed to change ${entry.target}.`);
       if (jsonTextOf(entry.payload ?? "") === null)
         return yield* invalid("A setting's value must be JSON text, such as true or 14.");

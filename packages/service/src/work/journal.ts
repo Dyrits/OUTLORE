@@ -14,7 +14,7 @@ export const nothingToRecord = "nothing to record";
 export type JournalAuthor = { readonly kind: "thread"; readonly threadId: string } | { readonly kind: "user" };
 
 /** A briefing rewrite and the version it was based on, which a thread may omit and is then refused. */
-type BriefingRewrite = {
+export type BriefingRewrite = {
   readonly basedOn: number | null;
   readonly briefing: string;
 };

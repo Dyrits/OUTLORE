@@ -1,6 +1,7 @@
 import type { UsageFilter } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
+import { scheduledRunPrefix } from "./rituals.ts";
 import { arePlaceFilters, messageColumns, questJoinsOf, turnColumns, type UsageBounds, whereOf } from "./usageScope.ts";
 
 // What the usage page counts beside the turns' usage (budget-control, Reserves usage page): the messages sent and replies
@@ -16,7 +17,7 @@ export const readMessages = Effect.fnUntraced(function* (bounds: UsageBounds, fi
   const sql = yield* SqlClient.SqlClient;
   const where = whereOf(bounds, messageColumns, filters);
   const [row] = yield* sql.unsafe<{ assistant: number; user: number }>(
-    `SELECT COALESCE(SUM(CASE WHEN x.sender_kind = 'user' AND instr(x.text, 'Ritual · scheduled') != 1 THEN 1 ELSE 0 END), 0) AS user,
+    `SELECT COALESCE(SUM(CASE WHEN x.sender_kind = 'user' AND instr(x.text, '${scheduledRunPrefix}') != 1 THEN 1 ELSE 0 END), 0) AS user,
         COALESCE(SUM(CASE WHEN x.sender_kind = 'agent' THEN 1 ELSE 0 END), 0) AS assistant
        FROM messages x ${questJoinsOf(messageColumns.mission)}
        WHERE ${where.text}`,
