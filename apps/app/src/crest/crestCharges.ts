@@ -1,6 +1,7 @@
 // Generated from the heraldic artwork of Crest Studio (github.com/pauljoda/Crest), which takes it from game-icons.net,
-// licensed CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/); credits in `crest-credits.md`. Each figure is one
-// filled path on a 512 by 512 grid, drawn in the emblem color.
+// licensed CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/); credits in `crest-credits.md`, shipped as
+// `public/crest-credits.txt` (a copy a test keeps equal). Each figure is one filled path on a 512 by 512 grid, drawn in
+// the emblem color.
 
 import type { CrestChargeId } from "@outlore/contracts";
 
