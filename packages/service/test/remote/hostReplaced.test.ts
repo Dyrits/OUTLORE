@@ -11,35 +11,51 @@ import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
 import { HostPresence } from "../../src/remote/index.ts";
 
 // How the host keeps its connection to the relay over time, on the test clock: it backs off when the relay cannot be
-// reached, waits the long retry when another host replaced it (device-pairing, SP-H-04), and starts over at once when
-// the owner changes the settings.
+// reached, waits the long retry when another host replaced it (device-pairing, SP-H-04), starts over at once when
+// the owner changes the settings, and starts the backoff over after a connection that held for 30 seconds.
 
 const turn = Effect.promise(() => new Promise<void>((resolve) => setImmediate(resolve)));
 const settle = Effect.gen(function* () {
   for (let index = 0; index < 20; index++) yield* turn;
 });
 
-/** A relay that counts the hosts that connect and answers each as `answer` says: refuse the upgrade, or replace it. */
-const stubRelay = (answer: "refuse" | "replace") =>
+type Answer = "hold" | "refuse" | "replace";
+
+/**
+ * A relay that counts the hosts that connect and answers each as `answer` says: refuse the upgrade, replace it, or
+ * hold it open until the test drops it. `answer.current` may be changed between attempts.
+ */
+const stubRelay = (first: Answer) =>
   Effect.acquireRelease(
     Effect.promise(async () => {
       const attempts = { count: 0 };
+      const answer = { current: first };
       const sockets = new WebSocketServer({ noServer: true });
       const server = createServer();
       server.on("upgrade", (request, socket, head) => {
         attempts.count += 1;
         socket.on("error", () => null);
-        if (answer === "refuse") {
+        if (answer.current === "refuse") {
           socket.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
           return;
         }
         sockets.handleUpgrade(request, socket, head, (opened) => {
           opened.on("error", () => null);
-          opened.send(closingFrame(1012, "replaced"));
+          if (answer.current === "replace") opened.send(closingFrame(1012, "replaced"));
         });
       });
       await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-      return { attempts, origin: `http://127.0.0.1:${(server.address() as { port: number }).port}`, server, sockets };
+      return {
+        answer,
+        attempts,
+        /** Ends every connection the relay holds, as a relay that dropped them. */
+        dropAll: () => {
+          for (const client of sockets.clients) client.terminate();
+        },
+        origin: `http://127.0.0.1:${(server.address() as { port: number }).port}`,
+        server,
+        sockets,
+      };
     }),
     ({ server, sockets }) =>
       Effect.promise(async () => {
@@ -138,5 +154,60 @@ describe("a host that cannot reach its relay", () => {
         expect(relay.attempts.count).toBe(before + 1);
       }),
     ),
+  );
+});
+
+describe("a host whose connection ended after it had held", () => {
+  /** Three refusals, then a held connection: the next wait would be 8 s. `heldMillis` is how long it stays up. */
+  const dropAfter = (heldMillis: number) =>
+    Effect.gen(function* () {
+      const relay = yield* stubRelay("refuse");
+      const host = yield* hostAt(relay.origin);
+      yield* host.setAccess(true);
+      let attempts = 1;
+      for (const wait of [1_000, 2_000, 4_000]) {
+        while (relay.attempts.count < attempts) yield* turn;
+        yield* settle;
+        yield* TestClock.adjust(wait);
+        attempts += 1;
+      }
+      relay.answer.current = "hold";
+      while (relay.attempts.count < attempts) yield* turn;
+      while ((yield* host.presence.status) !== "Connected") yield* turn;
+      yield* TestClock.adjust(heldMillis);
+      relay.dropAll();
+      while ((yield* host.presence.status) === "Connected") yield* turn;
+      yield* settle;
+      return { attempts, relay };
+    });
+
+  it.effect("starts the backoff over when the connection held for 30 seconds: the next try is 1 second away", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { attempts, relay } = yield* dropAfter(30_000);
+        yield* TestClock.adjust(999);
+        yield* settle;
+        expect(relay.attempts.count).toBe(attempts);
+        yield* TestClock.adjust(1);
+        while (relay.attempts.count < attempts + 1) yield* turn;
+        expect(relay.attempts.count).toBe(attempts + 1);
+      }),
+    ),
+  );
+
+  it.effect(
+    "goes on with the backoff when the connection held less than 30 seconds: the next try is 8 seconds away",
+    () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const { attempts, relay } = yield* dropAfter(29_999);
+          yield* TestClock.adjust(7_999);
+          yield* settle;
+          expect(relay.attempts.count).toBe(attempts);
+          yield* TestClock.adjust(1);
+          while (relay.attempts.count < attempts + 1) yield* turn;
+          expect(relay.attempts.count).toBe(attempts + 1);
+        }),
+      ),
   );
 });
