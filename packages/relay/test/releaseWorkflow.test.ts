@@ -11,6 +11,14 @@ const workflow = readFileSync(
   "utf8",
 );
 const job = workflow.slice(workflow.indexOf("\n  relay:"));
+const checkJob = workflow.slice(workflow.indexOf("\n  check:"), workflow.indexOf("\n  package:"));
+
+describe("the release workflow's check job", () => {
+  it("builds the web export, so a broken export fails before a tag, not after the release is public (ST-H-01)", () => {
+    expect(checkJob).toContain("bun run site");
+    expect(checkJob).not.toContain("wrangler");
+  });
+});
 
 describe("the release workflow's relay job", () => {
   it("exists, and runs only for a pushed tag, after the installers are published", () => {

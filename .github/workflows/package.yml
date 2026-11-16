@@ -38,6 +38,10 @@ jobs:
         working-directory: apps/desktop
         run: bun x --no-install electron-builder install-app-deps
       - run: bun run test --maxWorkers=4
+      # The web app is deployed after the release is public (the relay job), so a failing export must fail here, before a tag.
+      - name: Build the web app
+        working-directory: packages/relay
+        run: bun run site
 
   package:
     name: Package ${{ matrix.platform }} (${{ matrix.arch }})
