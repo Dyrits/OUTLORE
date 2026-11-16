@@ -133,15 +133,18 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
       return refuse(parts.isAccepting() ? "disconnected" : "disabled");
     }
     channel.onClose(removeConnection);
-    const current = await parts.run(readHostRecord);
-    if (isClosed || !parts.isAccepting()) {
+    const leave = async () => {
       removeConnection();
       await abandon();
       channel.close();
       return null;
-    }
+    };
+    const current = await parts.run(readHostRecord);
+    if (isClosed || !parts.isAccepting()) return leave();
     const hostName = await parts.run(hostNameOf(current));
     const release = await parts.run(hostReleaseOf);
+    // The two reads above yield; a drop in that window is caught here, last, before the answer is sent.
+    if (isClosed || !parts.isAccepting()) return leave();
     reply(
       newToken === null
         ? { hostName, release, t: "resumed" }
