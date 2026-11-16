@@ -82,8 +82,12 @@ export const addAttachment = Effect.fnUntraced(function* (name: string, data: st
   });
   const now = yield* Clock.currentTimeMillis;
   const sha256 = createHash("sha256").update(bytes).digest("hex");
+  // The file is written first, so a record that cannot be written takes it away again: the sweep at startup only
+  // finds files that have a record.
   yield* sql`INSERT INTO attachments (id, file, name, media_type, size, sha256, created_at)
-      VALUES (${id}, ${file}, ${name}, ${mediaType}, ${bytes.length}, ${sha256}, ${now})`;
+      VALUES (${id}, ${file}, ${name}, ${mediaType}, ${bytes.length}, ${sha256}, ${now})`.pipe(
+    Effect.onError(() => Effect.promise(() => rm(join(root, file), { force: true }))),
+  );
   return { id, mediaType, name, size: bytes.length } satisfies AttachmentCard;
 });
 

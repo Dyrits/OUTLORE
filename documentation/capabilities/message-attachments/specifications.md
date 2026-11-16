@@ -12,7 +12,7 @@ A message is text only, so the owner cannot show a thread a screenshot, an error
 - **Where**: every message the owner sends: a started quest, a message in any quest or side-quest (Control included), and the first message of a side-quest the owner opens. A message may hold images alone, with no text.
 - **What is accepted**: PNG, JPEG, GIF, and WebP, told by the file's first bytes and not by its name; anything else (HEIC included) is refused with the reason. At most 8 images per message and 5 MB each.
 - **Reduced before it leaves the window**: a PNG, JPEG, or WebP longer than 1568 pixels on either side is scaled down to that size in the app, as Cindy and the vision documentation advise. A GIF is never changed, so a GIF over 5 MB is refused.
-- **Upload first** (as OpenBot does): adding a file sends it to the service, which writes it to a draft folder and answers a card (identifier, name, type, size). The message then carries the identifiers. Removing a thumbnail erases the draft; drafts nobody sent are erased when the service starts.
+- **Upload first** (as OpenBot does): adding a file sends it to the service, which writes it to a draft folder and answers a card (identifier, name, type, size). The message then carries the identifiers. Removing a thumbnail erases the draft; drafts nobody sent are erased when the service starts. A file whose record cannot be written is removed again, so none stays without a record (CHG-TBD-E-2).
 - **Stored**: a sent image is kept in the service's data folder, outside every thread's working folder, with its hash. Its card stays on the message; the conversation shows a thumbnail. The bytes are fetched by identifier, never inside a conversation answer, so a refresh does not resend them.
 - **What the harness receives** (probed on 2026-11-10):
   - Claude Code: the message's content is a list, the text then one base64 image block per image.
@@ -36,7 +36,7 @@ A message is text only, so the owner cannot show a thread a screenshot, an error
 
 ## Acceptance
 
-- Added files: signature check, limits, refusal reasons, draft discarded and swept (`attachments.test.ts`).
+- Added files: signature check, limits, refusal reasons, draft discarded and swept (`attachments.test.ts`); a failed record leaves no file (`attachmentStorage.test.ts`, injected failing insert).
 - A message with images reaches each adapter in its own form, on stand-ins (`harnesses.test.ts`).
 - Refusal for a harness or model that cannot read images, and for a handover with images waiting.
 - Deleting a thread erases its files.
