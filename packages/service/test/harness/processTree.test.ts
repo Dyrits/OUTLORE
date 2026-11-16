@@ -26,7 +26,7 @@ describe.runIf(canReadProcessTable)("ending a harness's whole process tree", () 
 describe.runIf(canReadProcessTable)("confirming that OpenCode's executor runs below the wrapped process", () => {
   const withChild = async (args: Array<string>, check: (parent: number) => void) => {
     const pidFile = join(realpathSync(temporary("outlore-sandbox-")), "child");
-    const parent = spawn(process.execPath, [spawnChild, pidFile, "stay", ...args]);
+    const parent = spawn(process.execPath, [spawnChild, pidFile, "attached", ...args]);
     try {
       for (let attempt = 0; attempt < 100 && !existsSync(pidFile); attempt++)
         await new Promise((resolve) => setTimeout(resolve, 20));
