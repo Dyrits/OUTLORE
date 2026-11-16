@@ -2,7 +2,7 @@ import type { ServerFrame } from "@outlore/contracts";
 import { hostOnlyRequestTags } from "@outlore/contracts";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import { answerText } from "../../src/remote/frames.ts";
+import { answerText } from "../../src/remote/index.ts";
 
 /** A well-formed request of each kind this test sends. */
 const requests = {

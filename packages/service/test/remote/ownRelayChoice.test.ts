@@ -8,7 +8,7 @@ import { startNodeRelay } from "@outlore/relay";
 import { Effect, Layer, Schema } from "effect";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, Service, serveLoopback, serviceLayer } from "../../src/index.ts";
-import type { DeployResult } from "../../src/remote/ownRelay.ts";
+import type { DeployResult } from "../../src/remote/index.ts";
 
 // The owner may deploy the relay to their own Cloudflare account with one token and use it in place of the shared one;
 // two local relays stand for the two (device-pairing, own relay).

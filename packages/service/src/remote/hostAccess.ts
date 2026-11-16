@@ -98,7 +98,7 @@ export const hostNameOf = Effect.fnUntraced(function* (record: HostRecord | null
  * What the computer's own sign-ins and spending are called in the app: the host's name as the owner chose it, else the
  * machine's. It reads the database alone, so any screen can ask for it without the pairing settings.
  */
-export const ownAccountLabel = Effect.gen(function* () {
+const ownAccountLabel = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<{ hostName: string | null }>`SELECT host_name AS hostName FROM host_identity WHERE id = 1`;
   return row?.hostName ?? (yield* Effect.sync(computerNameOf));

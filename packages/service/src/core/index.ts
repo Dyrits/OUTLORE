@@ -41,7 +41,6 @@ export {
 export { newId } from "./ids.ts";
 export { modelsDevSourceLayer, noPriceSourceLayer, rowsOfModelsDev } from "./priceSources.ts";
 export {
-  type Estimate,
   PriceReadFailed,
   type PriceRow,
   PriceSource,
@@ -52,7 +51,7 @@ export {
 export { fieldOf, numberFieldOf, textFieldOf } from "./records.ts";
 export { sandboxProblem } from "./sandbox.ts";
 export { removeScratch } from "./scratch.ts";
-export { type SessionSend, Sessions, sessionsLayer } from "./sessions.ts";
+export { Sessions, sessionsLayer } from "./sessions.ts";
 export {
   dayMillis,
   hourMillis,
