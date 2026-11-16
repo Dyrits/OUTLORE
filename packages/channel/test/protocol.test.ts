@@ -7,6 +7,7 @@ import {
   newPairingSecret,
   parseClientHello,
   parseHostReply,
+  refusalText,
 } from "../src/index.ts";
 
 const secret = encodeBase64Url(newPairingSecret());
@@ -148,5 +149,25 @@ describe("handling a host reply", () => {
     for (const text of ["", "x", "[]", "null"]) {
       expect(parseHostReply(text), text).toEqual({ kind: "malformed", ok: false });
     }
+  });
+});
+
+describe("the refusal text the owner reads", () => {
+  it("covers every reason a host reply can refuse with, and no other", () => {
+    for (const reason of Object.keys(refusalText)) {
+      expect(parseHostReply(asText({ reason, t: "refused" })), reason).toEqual({
+        ok: true,
+        value: { reason, t: "refused" },
+      });
+    }
+    expect(Object.keys(refusalText)).toHaveLength(6);
+  });
+
+  it("gives each refusal its own sentence that tells the owner what to do next", () => {
+    const sentences = Object.values(refusalText);
+    for (const text of sentences) {
+      expect(text, text).toMatch(/^(?:That|The) [^.]+\. (?:Ask|Check|Turn on|Pair) [^.]*\.$/);
+    }
+    expect(new Set(sentences).size).toBe(sentences.length);
   });
 });

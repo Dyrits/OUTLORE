@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approvalInstructionsOf } from "../../src/harness/index.ts";
+import { approvalInstructionsOf, guildmasterInstructionsOf, threadInstructionsOf } from "../../src/harness/index.ts";
 
 const access = {
   approvalLevel: "RiskyOnly",
@@ -66,5 +66,59 @@ describe("telling a thread its standing permissions", () => {
     expect(approvalInstructionsOf(unprotected, "claude")).not.toContain("dangerouslyDisableSandbox set to true");
     expect(approvalInstructionsOf(access, "codex")).not.toContain("Claude Code's sandbox");
     expect(approvalInstructionsOf(access, "opencode")).not.toContain("Claude Code's sandbox");
+  });
+});
+
+describe("telling a thread how the threads around it work", () => {
+  const top = { isAside: false, parent: null, threadId: "t-top", title: "Top" } as const;
+  const child = {
+    isAside: false,
+    parent: { id: "t-top", title: "Top" },
+    threadId: "t-child",
+    title: "Side",
+  } as const;
+
+  it("asks the quest's top thread to name the quest, and a side-quest to report its result to its opener", () => {
+    expect(threadInstructionsOf(top)).toContain("You are the quest's top thread");
+    expect(threadInstructionsOf(top)).toContain("call set_mission_title with a short title");
+    expect(threadInstructionsOf(child)).toContain(
+      "Thread t-top opened you. When your work is done, call report_result",
+    );
+    expect(threadInstructionsOf(child)).not.toContain("set_mission_title");
+  });
+
+  it("uses the quest words for everything written to the owner", () => {
+    for (const position of [top, child]) {
+      expect(threadInstructionsOf(position)).toContain('never "mission"');
+    }
+  });
+
+  it("points a thread at Chronicler only while Chronicler's thread exists", () => {
+    expect(threadInstructionsOf(child)).not.toContain("Chronicler");
+    const withGuildmaster = threadInstructionsOf({ ...child, guildmasterId: "gm-1" });
+    expect(withGuildmaster).toContain("send_thread_message to Chronicler, thread gm-1");
+  });
+
+  it("teaches a normal thread the off-topic move, and an aside that it answers beside the quest", () => {
+    const normal = threadInstructionsOf(child);
+    expect(normal).toContain("Call find_missions with the off-topic part");
+    expect(normal).not.toContain("You are an aside");
+    const aside = threadInstructionsOf({ ...child, isAside: true });
+    expect(aside).toContain("You are an aside");
+    expect(aside).toContain("send your parent a thread message");
+    expect(aside).not.toContain("find_missions");
+  });
+});
+
+describe("Chronicler's own instructions", () => {
+  it("keeps Chronicler out of the work and out of opening quests", () => {
+    const text = guildmasterInstructionsOf("gm-1");
+    expect(text).toContain("You never do the work yourself");
+    expect(text).toContain("You never open a quest yourself");
+    expect(text).toContain("You open no threads and keep no journal.");
+  });
+
+  it("uses the quest words in everything it writes to the owner", () => {
+    expect(guildmasterInstructionsOf("gm-1")).toContain("Say quest, never mission");
   });
 });

@@ -33,6 +33,8 @@ describe("running Claude Code threads", () => {
         `--allowedTools mcp__outlore__request_approval ${unaskedToolNamesOf("outlore").join(" ")}`,
       );
       expect(args).toContain("--strict-mcp-config");
+      // Native subagents stay off, and threads open threads with open_thread instead (ADR 0007).
+      expect(args).toContain("--disallowedTools Agent Task");
       expect(args).toContain("--permission-mode acceptEdits");
       expect(start?.args[start.args.indexOf("--tools") + 1]).toBe("default");
       const settings = JSON.parse(start?.args[start.args.indexOf("--settings") + 1] ?? "{}");
