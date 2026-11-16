@@ -75,14 +75,13 @@ export const suggestionsLayer = Layer.effect(
     yield* sql`UPDATE suggestions SET outcome = 'Withdrawn', resolved_at = ${startedAt} WHERE outcome IS NULL`;
 
     /** Records the resolution and returns the thread to Running once nothing else waits on the owner. */
-    const resolve = (suggestionId: string, threadId: string, resolution: Resolution) =>
-      Effect.gen(function* () {
-        const now = yield* Clock.currentTimeMillis;
-        yield* sql`UPDATE suggestions SET outcome = ${resolution.outcome}, target_mission_id = ${resolution.targetMissionId},
+    const resolve = Effect.fnUntraced(function* (suggestionId: string, threadId: string, resolution: Resolution) {
+      const now = yield* Clock.currentTimeMillis;
+      yield* sql`UPDATE suggestions SET outcome = ${resolution.outcome}, target_mission_id = ${resolution.targetMissionId},
             target_thread_id = ${resolution.targetThreadId}, target_title = ${resolution.targetTitle}, resolved_at = ${now}
           WHERE id = ${suggestionId} AND outcome IS NULL`;
-        yield* resumeInTurn(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
-      });
+      yield* resumeInTurn(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
+    });
 
     /**
      * Withdraws a suggestion whose turn ended. Threads withdraws while cancelling a turn, beneath the command
@@ -94,83 +93,78 @@ export const suggestionsLayer = Layer.effect(
       );
 
     /** Opens a mission with only the off-topic part, under the proposed title, with no workspace unless the owner chose a realm. */
-    const openMission = (
+    const openMission = Effect.fnUntraced(function* (
       text: string,
       title: string,
       choice: Parameters<typeof insertMission>[1],
       realmPath: string | null = null,
       isFromGuildmaster = false,
-    ) =>
-      Effect.gen(function* () {
-        const started = yield* insertMission(text, choice, realmPath, false);
-        // Chronicler hears of this quest's result, Summons, and failure from now on (hearing back).
-        if (isFromGuildmaster)
-          yield* sql`UPDATE missions SET opened_by_guildmaster = 1 WHERE id = ${started.missionId}`;
-        if (titleOf(title) !== "") yield* proposeTitle(started.missionId, title);
-        const [mission] = yield* sql<{ title: string }>`SELECT title FROM missions WHERE id = ${started.missionId}`;
-        return {
-          outcome: "MovedToMission",
-          targetMissionId: started.missionId,
-          targetThreadId: started.threadId,
-          targetTitle: mission?.title ?? title,
-        } satisfies Resolution;
-      });
+    ) {
+      const started = yield* insertMission(text, choice, realmPath, false);
+      // Chronicler hears of this quest's result, Summons, and failure from now on (hearing back).
+      if (isFromGuildmaster) yield* sql`UPDATE missions SET opened_by_guildmaster = 1 WHERE id = ${started.missionId}`;
+      if (titleOf(title) !== "") yield* proposeTitle(started.missionId, title);
+      const [mission] = yield* sql<{ title: string }>`SELECT title FROM missions WHERE id = ${started.missionId}`;
+      return {
+        outcome: "MovedToMission",
+        targetMissionId: started.missionId,
+        targetThreadId: started.threadId,
+        targetTitle: mission?.title ?? title,
+      } satisfies Resolution;
+    });
 
     /** Carries out the owner's choice in the answer's transaction; the request's new home is then woken. */
     const carryOut = (suggestion: Suggestion, given: SuggestionAnswer) =>
       Match.valueTags(given, {
-        Aside: () =>
-          Effect.gen(function* () {
-            if (suggestion.isFromGuildmaster)
-              return yield* invalid("Chronicler keeps no asides: continue in a quest or open a new one.");
-            const { value: opened } = yield* openAside(suggestion.threadId, suggestion.text, suggestion.title);
-            const [row] = yield* sql<{ title: string }>`SELECT title FROM threads WHERE id = ${opened.threadId}`;
-            return {
-              outcome: "KeptAsAside",
-              targetMissionId: null,
-              targetThreadId: opened.threadId,
-              targetTitle: row?.title ?? suggestion.title,
-            } satisfies Resolution;
-          }),
-        Continue: ({ missionId }) =>
-          Effect.gen(function* () {
-            if (!suggestion.matches.some((match) => match.missionId === missionId))
-              return yield* invalid("That mission was not offered for this message.");
-            const [mission] = yield* sql<{ title: string; topThreadId: string }>`
+        Aside: Effect.fnUntraced(function* () {
+          if (suggestion.isFromGuildmaster)
+            return yield* invalid("Chronicler keeps no asides: continue in a quest or open a new one.");
+          const { value: opened } = yield* openAside(suggestion.threadId, suggestion.text, suggestion.title);
+          const [row] = yield* sql<{ title: string }>`SELECT title FROM threads WHERE id = ${opened.threadId}`;
+          return {
+            outcome: "KeptAsAside",
+            targetMissionId: null,
+            targetThreadId: opened.threadId,
+            targetTitle: row?.title ?? suggestion.title,
+          } satisfies Resolution;
+        }),
+        Continue: Effect.fnUntraced(function* ({ missionId }) {
+          if (!suggestion.matches.some((match) => match.missionId === missionId))
+            return yield* invalid("That mission was not offered for this message.");
+          const [mission] = yield* sql<{ title: string; topThreadId: string }>`
               SELECT title, top_thread_id AS topThreadId FROM missions WHERE id = ${missionId}`;
-            if (mission === undefined) return yield* notFound("No such mission.");
-            const { defaultDelivery } = yield* readSettings;
-            yield* insertSuggestedMessage(mission.topThreadId, suggestion.text, defaultDelivery === "Queue");
-            return {
-              outcome: "Continued",
-              targetMissionId: missionId,
-              targetThreadId: mission.topThreadId,
-              targetTitle: mission.title,
-            } satisfies Resolution;
-          }),
-        NewMission: (chosen) =>
-          Effect.gen(function* () {
-            // The realm the owner chose on the card (null for the Borderlands) over the one proposed.
-            const chosenPath = chosen.realmPath === undefined ? suggestion.realmPath : chosen.realmPath;
-            if (chosenPath !== null && (yield* sql`SELECT id FROM workspaces WHERE path = ${chosenPath}`).length === 0)
-              return yield* invalid("No realm is tied to that folder.");
-            // Left out, the harness and account are the suggesting thread's, as Open as new mission prefills them.
-            return yield* openMission(
-              suggestion.text,
-              suggestion.title,
-              {
-                accountId:
-                  chosen.harness === undefined && chosen.accountId === undefined
-                    ? suggestion.accountId
-                    : chosen.accountId,
-                effort: chosen.effort,
-                harness: chosen.harness ?? suggestion.harness,
-                model: chosen.model,
-              },
-              chosenPath,
-              suggestion.isFromGuildmaster,
-            ).pipe(Effect.tap((opened) => setCardBackups(opened.targetThreadId, chosen.backups)));
-          }),
+          if (mission === undefined) return yield* notFound("No such mission.");
+          const { defaultDelivery } = yield* readSettings;
+          yield* insertSuggestedMessage(mission.topThreadId, suggestion.text, defaultDelivery === "Queue");
+          return {
+            outcome: "Continued",
+            targetMissionId: missionId,
+            targetThreadId: mission.topThreadId,
+            targetTitle: mission.title,
+          } satisfies Resolution;
+        }),
+        NewMission: Effect.fnUntraced(function* (chosen) {
+          // The realm the owner chose on the card (null for the Borderlands) over the one proposed.
+          const chosenPath = chosen.realmPath === undefined ? suggestion.realmPath : chosen.realmPath;
+          if (chosenPath !== null && (yield* sql`SELECT id FROM workspaces WHERE path = ${chosenPath}`).length === 0)
+            return yield* invalid("No realm is tied to that folder.");
+          // Left out, the harness and account are the suggesting thread's, as Open as new mission prefills them.
+          return yield* openMission(
+            suggestion.text,
+            suggestion.title,
+            {
+              accountId:
+                chosen.harness === undefined && chosen.accountId === undefined
+                  ? suggestion.accountId
+                  : chosen.accountId,
+              effort: chosen.effort,
+              harness: chosen.harness ?? suggestion.harness,
+              model: chosen.model,
+            },
+            chosenPath,
+            suggestion.isFromGuildmaster,
+          ).pipe(Effect.tap((opened) => setCardBackups(opened.targetThreadId, chosen.backups)));
+        }),
       });
 
     const answer = (suggestionId: string, given: SuggestionAnswer) =>
@@ -215,31 +209,30 @@ export const suggestionsLayer = Layer.effect(
       });
 
     /** With the setting on and nothing matching, the new mission opens without asking. */
-    const openWithoutAsking = (threadId: string, text: string, title: string) =>
-      Effect.gen(function* () {
-        const resolution = yield* sql.withTransaction(
-          Effect.gen(function* () {
-            const [thread] = yield* sql<Pick<Suggestion, "model" | "effort" | "harness" | "accountId">>`
+    const openWithoutAsking = Effect.fnUntraced(function* (threadId: string, text: string, title: string) {
+      const resolution = yield* sql.withTransaction(
+        Effect.gen(function* () {
+          const [thread] = yield* sql<Pick<Suggestion, "model" | "effort" | "harness" | "accountId">>`
               SELECT model, effort, harness, account_id AS accountId FROM threads WHERE id = ${threadId}`;
-            const opened = yield* openMission(text, title, {
-              accountId: thread?.accountId ?? null,
-              effort: thread?.effort ?? "default",
-              harness: thread?.harness ?? null,
-              model: thread?.model ?? "default",
-            });
-            yield* recordResolvedCard({
-              callerId: threadId,
-              isRitual: false,
-              realmPath: null,
-              target: { missionId: opened.targetMissionId, threadId: opened.targetThreadId, title: opened.targetTitle },
-              text,
-              title,
-            });
-            return opened;
-          }),
-        );
-        return resolution;
-      });
+          const opened = yield* openMission(text, title, {
+            accountId: thread?.accountId ?? null,
+            effort: thread?.effort ?? "default",
+            harness: thread?.harness ?? null,
+            model: thread?.model ?? "default",
+          });
+          yield* recordResolvedCard({
+            callerId: threadId,
+            isRitual: false,
+            realmPath: null,
+            target: { missionId: opened.targetMissionId, threadId: opened.targetThreadId, title: opened.targetTitle },
+            text,
+            title,
+          });
+          return opened;
+        }),
+      );
+      return resolution;
+    });
 
     const suggest = (threadId: string, args: ArgumentsOf<"suggest_mission">) =>
       Effect.gen(function* () {

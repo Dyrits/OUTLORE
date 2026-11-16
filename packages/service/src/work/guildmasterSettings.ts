@@ -34,15 +34,14 @@ export const changeableSettings = (Object.keys(Settings.fields) as ReadonlyArray
 );
 
 /** `read_settings`: the owner's settings as JSON, with the names Chronicler may not change. Only Chronicler reads them. */
-export const readSettingsByGuildmaster = (callerId: string) =>
-  Effect.gen(function* () {
-    if (!(yield* isGuildmasterThread(callerId))) return refused("Only Chronicler reads the settings here.");
-    const settings = yield* readSettings;
-    return unchanged({
-      isError: false,
-      text: `${JSON.stringify(settings)}\n\nYou may not change: ${settingsKeptFromChronicler.join(", ")}; the owner sets those in the Workshop.`,
-    } satisfies ToolAnswer);
-  });
+export const readSettingsByGuildmaster = Effect.fnUntraced(function* (callerId: string) {
+  if (!(yield* isGuildmasterThread(callerId))) return refused("Only Chronicler reads the settings here.");
+  const settings = yield* readSettings;
+  return unchanged({
+    isError: false,
+    text: `${JSON.stringify(settings)}\n\nYou may not change: ${settingsKeptFromChronicler.join(", ")}; the owner sets those in the Workshop.`,
+  } satisfies ToolAnswer);
+});
 
 /**
  * `change_setting`: sets one setting to a new value, kept whole, as the settings screen would save it; refused for a

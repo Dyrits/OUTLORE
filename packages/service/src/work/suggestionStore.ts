@@ -31,48 +31,43 @@ const tierOf = (stored: string | null): TierName | null =>
   stored === "Light" || stored === "Balanced" || stored === "Heavy" ? stored : null;
 
 /** Suggestions with their offered missions as they stand now; a mission deleted since is no longer offered. */
-const withMatches = (rows: ReadonlyArray<SuggestionRow>) =>
-  Effect.gen(function* () {
-    const ids = [...new Set(rows.flatMap((row) => matchIdsOf(row.matches)))];
-    const summaries = yield* readMissionSummaryMap(ids);
-    const settings = yield* readSettings;
-    return rows.map(({ isAutomatic, isFromGuildmaster, isRitual, matches, tier, ...row }) => {
-      const name = tierOf(tier);
-      const preset = isFromGuildmaster === 1 ? tierPresetOf(settings, name) : null;
-      return {
-        ...row,
-        // Chronicler's own Companion only routes: a new quest it offers starts on the tier chosen, else the default.
-        // The tier's account is named again because a Runner's account is a plain string and the contract's is branded.
-        ...(isFromGuildmaster === 1
-          ? { ...companionOf(settings, name, {}), accountId: preset?.accountId ?? null }
-          : {}),
-        backups: preset?.backups ?? settings.backups,
-        isAutomatic: isAutomatic === 1,
-        isFromGuildmaster: isFromGuildmaster === 1,
-        isRitual: isRitual === 1,
-        matches: matchIdsOf(matches).flatMap((id): Array<SuggestionMatch> => {
-          const summary = summaries.get(id);
-          return summary === undefined ? [] : [{ missionId: summary.id, state: summary.state, title: summary.title }];
-        }),
-      };
-    });
+const withMatches = Effect.fnUntraced(function* (rows: ReadonlyArray<SuggestionRow>) {
+  const ids = [...new Set(rows.flatMap((row) => matchIdsOf(row.matches)))];
+  const summaries = yield* readMissionSummaryMap(ids);
+  const settings = yield* readSettings;
+  return rows.map(({ isAutomatic, isFromGuildmaster, isRitual, matches, tier, ...row }) => {
+    const name = tierOf(tier);
+    const preset = isFromGuildmaster === 1 ? tierPresetOf(settings, name) : null;
+    return {
+      ...row,
+      // Chronicler's own Companion only routes: a new quest it offers starts on the tier chosen, else the default.
+      // The tier's account is named again because a Runner's account is a plain string and the contract's is branded.
+      ...(isFromGuildmaster === 1 ? { ...companionOf(settings, name, {}), accountId: preset?.accountId ?? null } : {}),
+      backups: preset?.backups ?? settings.backups,
+      isAutomatic: isAutomatic === 1,
+      isFromGuildmaster: isFromGuildmaster === 1,
+      isRitual: isRitual === 1,
+      matches: matchIdsOf(matches).flatMap((id): Array<SuggestionMatch> => {
+        const summary = summaries.get(id);
+        return summary === undefined ? [] : [{ missionId: summary.id, state: summary.state, title: summary.title }];
+      }),
+    };
   });
+});
 
 /** A thread's suggestions, open and resolved, in the order made. */
-export const listThreadSuggestions = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    return yield* withMatches(
-      yield* sql<SuggestionRow>`${selectSuggestions(sql)} WHERE s.thread_id = ${threadId} ORDER BY s.asked_at, s.rowid`,
-    );
-  });
+export const listThreadSuggestions = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  return yield* withMatches(
+    yield* sql<SuggestionRow>`${selectSuggestions(sql)} WHERE s.thread_id = ${threadId} ORDER BY s.asked_at, s.rowid`,
+  );
+});
 
 /** One suggestion by its identifier, or null. */
-export const readSuggestion = (suggestionId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [suggestion] = yield* withMatches(
-      yield* sql<SuggestionRow>`${selectSuggestions(sql)} WHERE s.id = ${suggestionId}`,
-    );
-    return suggestion ?? null;
-  });
+export const readSuggestion = Effect.fnUntraced(function* (suggestionId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [suggestion] = yield* withMatches(
+    yield* sql<SuggestionRow>`${selectSuggestions(sql)} WHERE s.id = ${suggestionId}`,
+  );
+  return suggestion ?? null;
+});

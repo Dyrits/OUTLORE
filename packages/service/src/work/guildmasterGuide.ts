@@ -111,20 +111,22 @@ export const topicsOf = (question: string): ReadonlyArray<GuideTopic> => {
 };
 
 /** `read_app_guide`: the index with no topic, else the topic or topics that fit; a refusal for any thread but Chronicler. */
-export const readAppGuideByGuildmaster = (callerId: string, args: ArgumentsOf<"read_app_guide">) =>
-  Effect.gen(function* () {
-    if (!(yield* isGuildmasterThread(callerId)))
-      return answer({ isError: true, text: "Only Chronicler reads the app guide here." });
-    const question = args.topic?.trim() ?? "";
-    if (question === "") return answer({ isError: false, text: `${topicIndexText()}\n\n${reminder}` });
-    const topics = topicsOf(question);
-    if (topics.length === 0)
-      return answer({
-        isError: false,
-        text: `The app guide does not cover "${question}".\n\n${topicIndexText()}\n\nIf none of these topics fits, say you do not know. ${reminder}`,
-      });
+export const readAppGuideByGuildmaster = Effect.fnUntraced(function* (
+  callerId: string,
+  args: ArgumentsOf<"read_app_guide">,
+) {
+  if (!(yield* isGuildmasterThread(callerId)))
+    return answer({ isError: true, text: "Only Chronicler reads the app guide here." });
+  const question = args.topic?.trim() ?? "";
+  if (question === "") return answer({ isError: false, text: `${topicIndexText()}\n\n${reminder}` });
+  const topics = topicsOf(question);
+  if (topics.length === 0)
     return answer({
       isError: false,
-      text: `${topics.map(sectionOf).join("\n\n")}\n\n${reminder}`,
+      text: `The app guide does not cover "${question}".\n\n${topicIndexText()}\n\nIf none of these topics fits, say you do not know. ${reminder}`,
     });
+  return answer({
+    isError: false,
+    text: `${topics.map(sectionOf).join("\n\n")}\n\n${reminder}`,
   });
+});

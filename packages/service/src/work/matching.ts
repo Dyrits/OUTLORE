@@ -5,10 +5,9 @@ import { wordsOf } from "../core/index.ts";
 import { listMissionSummaries } from "./missions.ts";
 
 /** The dashboard summaries of the missions, by mission id; a mission that no longer stands has none. */
-export const readMissionSummaryMap = (ids: ReadonlyArray<string>) =>
-  Effect.gen(function* () {
-    return new Map<string, MissionSummary>((yield* listMissionSummaries(ids)).map((summary) => [summary.id, summary]));
-  });
+export const readMissionSummaryMap = Effect.fnUntraced(function* (ids: ReadonlyArray<string>) {
+  return new Map<string, MissionSummary>((yield* listMissionSummaries(ids)).map((summary) => [summary.id, summary]));
+});
 
 /** The text of a quest's first message from the owner, as a column: what the quest was opened to do. `m` is the quest's row. */
 export const openingRequestOf = (sql: SqlClient.SqlClient) =>
@@ -39,42 +38,41 @@ const identifierScore = 20;
  * ticket key or link counts 20. Every mission not deleted counts, whatever its state; the caller's own mission and the
  * Chronicler's do not.
  */
-export const findMissions = (callerId: string, request: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const wanted = wordsOf(request);
-    const wantedKeys = identifiersOf(request);
-    const rows = yield* sql<{
-      id: string;
-      title: string;
-      briefing: string | null;
-      lastActivityAt: number;
-      opening: string | null;
-    }>`
+export const findMissions = Effect.fnUntraced(function* (callerId: string, request: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const wanted = wordsOf(request);
+  const wantedKeys = identifiersOf(request);
+  const rows = yield* sql<{
+    id: string;
+    title: string;
+    briefing: string | null;
+    lastActivityAt: number;
+    opening: string | null;
+  }>`
       SELECT m.id, m.title, j.briefing, m.last_activity_at AS lastActivityAt, ${openingRequestOf(sql)} AS opening
       FROM missions m JOIN threads top ON top.id = m.top_thread_id LEFT JOIN journals j ON j.mission_id = m.id
       WHERE top.is_deleting = 0 AND m.is_guildmaster = 0 AND m.id <> (SELECT mission_id FROM threads WHERE id = ${callerId})`;
-    const scored = rows
-      .map((row) => {
-        const title = wordsOf(row.title);
-        const briefing = wordsOf(`${row.briefing ?? ""} ${row.opening ?? ""}`);
-        let score = 0;
-        for (const word of wanted) score += (title.has(word) ? 2 : 0) + (briefing.has(word) ? 1 : 0);
-        const keys = identifiersOf(`${row.title} ${row.briefing ?? ""} ${row.opening ?? ""}`);
-        for (const key of wantedKeys) if (keys.has(key)) score += identifierScore;
-        return { ...row, score };
-      })
-      .filter((row) => row.score > 0)
-      .sort((current, next) => next.score - current.score || next.lastActivityAt - current.lastActivityAt)
-      .slice(0, maxMatches);
-    const summaries = yield* readMissionSummaryMap(scored.map((row) => row.id));
-    return scored.map((row) => ({
-      briefing: row.briefing ?? "",
-      id: row.id,
-      state: summaries.get(row.id)?.state ?? "Idle",
-      title: row.title,
-    }));
-  });
+  const scored = rows
+    .map((row) => {
+      const title = wordsOf(row.title);
+      const briefing = wordsOf(`${row.briefing ?? ""} ${row.opening ?? ""}`);
+      let score = 0;
+      for (const word of wanted) score += (title.has(word) ? 2 : 0) + (briefing.has(word) ? 1 : 0);
+      const keys = identifiersOf(`${row.title} ${row.briefing ?? ""} ${row.opening ?? ""}`);
+      for (const key of wantedKeys) if (keys.has(key)) score += identifierScore;
+      return { ...row, score };
+    })
+    .filter((row) => row.score > 0)
+    .sort((current, next) => next.score - current.score || next.lastActivityAt - current.lastActivityAt)
+    .slice(0, maxMatches);
+  const summaries = yield* readMissionSummaryMap(scored.map((row) => row.id));
+  return scored.map((row) => ({
+    briefing: row.briefing ?? "",
+    id: row.id,
+    state: summaries.get(row.id)?.state ?? "Idle",
+    title: row.title,
+  }));
+});
 
 /** `find_missions`'s answer: the matches with their ids, states, and briefings, or that none fits. */
 export const findMissionsTextOf = (

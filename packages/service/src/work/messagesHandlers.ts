@@ -41,30 +41,29 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
       const entry = rewrite.entry === null || rewrite.entry.trim() === "" ? "Rewrote the briefing" : rewrite.entry;
       return writeOwnerJournal(rewrite, entry, { basedOn: rewrite.basedOn, briefing: rewrite.briefing });
     },
-    SendMessage: (send) =>
-      Effect.gen(function* () {
-        const attachmentIds = send.attachmentIds ?? [];
-        const text = yield* admitOwnerText(send.text, attachmentIds, runnerOfThread(send.threadId));
-        const delivery = send.delivery ?? (yield* readSettings).defaultDelivery;
-        const viewing = yield* readViewingLine(send.threadId, send.viewing);
-        return yield* commands.run(
-          commands.once(
-            send.requestId,
-            send._tag,
-            insertUserMessage(
-              send.threadId,
-              text,
-              delivery === "Queue",
-              attachmentIds,
-              send.realmPath ?? null,
-              viewing,
-            ).pipe(
-              Effect.tap(() => nameNewQuest(send.threadId, text)),
-              Effect.map((sent) => changed(sent, { threadsToWake: [send.threadId] })),
-            ),
+    SendMessage: Effect.fnUntraced(function* (send) {
+      const attachmentIds = send.attachmentIds ?? [];
+      const text = yield* admitOwnerText(send.text, attachmentIds, runnerOfThread(send.threadId));
+      const delivery = send.delivery ?? (yield* readSettings).defaultDelivery;
+      const viewing = yield* readViewingLine(send.threadId, send.viewing);
+      return yield* commands.run(
+        commands.once(
+          send.requestId,
+          send._tag,
+          insertUserMessage(
+            send.threadId,
+            text,
+            delivery === "Queue",
+            attachmentIds,
+            send.realmPath ?? null,
+            viewing,
+          ).pipe(
+            Effect.tap(() => nameNewQuest(send.threadId, text)),
+            Effect.map((sent) => changed(sent, { threadsToWake: [send.threadId] })),
           ),
-        );
-      }),
+        ),
+      );
+    }),
   } satisfies OwnerHandlers<
     | "AddAttachment"
     | "AddJournalEntry"

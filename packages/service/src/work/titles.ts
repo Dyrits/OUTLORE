@@ -20,26 +20,24 @@ const maxRitualTitleLength = 80;
 export const ritualTitleOf = (text: string) => titleOf(text).slice(0, maxRitualTitleLength);
 
 /** Sets the mission's title and its top thread's, which follows it. Callers run it in a transaction. */
-const writeTitle = (missionId: string, title: string, isByUser: boolean) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`UPDATE missions SET title = ${title}, is_title_by_user = ${isByUser ? 1 : sql`is_title_by_user`}
+const writeTitle = Effect.fnUntraced(function* (missionId: string, title: string, isByUser: boolean) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE missions SET title = ${title}, is_title_by_user = ${isByUser ? 1 : sql`is_title_by_user`}
       WHERE id = ${missionId}`;
-    yield* sql`UPDATE threads SET title = ${title} WHERE id = (SELECT top_thread_id FROM missions WHERE id = ${missionId})`;
-  });
+  yield* sql`UPDATE threads SET title = ${title} WHERE id = (SELECT top_thread_id FROM missions WHERE id = ${missionId})`;
+});
 
 /**
  * Names a quest still called "New quest" after the first message sent to its top thread, as a quest started with a message
  * is named. Callers run it in a transaction.
  */
-export const nameNewQuest = (threadId: string, text: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [mission] = yield* sql<{ id: string }>`
+export const nameNewQuest = Effect.fnUntraced(function* (threadId: string, text: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [mission] = yield* sql<{ id: string }>`
       SELECT id FROM missions
       WHERE top_thread_id = ${threadId} AND title = ${newQuestTitle} AND is_title_by_user = 0 AND is_guildmaster = 0`;
-    if (mission !== undefined) yield* writeTitle(mission.id, titleOf(text) || attachmentsTitle, false);
-  });
+  if (mission !== undefined) yield* writeTitle(mission.id, titleOf(text) || attachmentsTitle, false);
+});
 
 /** Names a mission with a thread's proposed title, which the top thread may still change. Callers run it in a transaction. */
 export const proposeTitle = (missionId: string, title: string) => writeTitle(missionId, titleOf(title), false);

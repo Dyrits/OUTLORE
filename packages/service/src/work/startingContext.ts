@@ -72,21 +72,20 @@ const catalogModels = {
 /** The tokens of a part that may be absent: none when it is. */
 const tokensOfPart = (part: string | null) => (part === null ? 0 : tokensOf(part));
 
-const readSections = (subject: Subject, workspace: string) =>
-  Effect.gen(function* () {
-    return {
-      budget: yield* budgetLineOf(subject.missionId, yield* accountOfThread(subject.position.threadId)),
-      instructions: (subject.isGuildmaster
-        ? [guildmasterInstructionsOf(subject.position.threadId), loreInstructions]
-        : [threadInstructionsOf(subject.position), journalInstructions, loreInstructions]
-      ).join("\n\n"),
-      journal: subject.isGuildmaster ? yield* readGuildmasterContext : yield* journalContextOf(subject.missionId),
-      lore: yield* loreContextOf(subject.loreThreadId),
-      openerMessages: openerContextOf(subject.openerMessages),
-      position: positionLineOf(subject.position),
-      workspace,
-    } satisfies Sections;
-  });
+const readSections = Effect.fnUntraced(function* (subject: Subject, workspace: string) {
+  return {
+    budget: yield* budgetLineOf(subject.missionId, yield* accountOfThread(subject.position.threadId)),
+    instructions: (subject.isGuildmaster
+      ? [guildmasterInstructionsOf(subject.position.threadId), loreInstructions]
+      : [threadInstructionsOf(subject.position), journalInstructions, loreInstructions]
+    ).join("\n\n"),
+    journal: subject.isGuildmaster ? yield* readGuildmasterContext : yield* journalContextOf(subject.missionId),
+    lore: yield* loreContextOf(subject.loreThreadId),
+    openerMessages: openerContextOf(subject.openerMessages),
+    position: positionLineOf(subject.position),
+    workspace,
+  } satisfies Sections;
+});
 
 // The system part stays the same across a session's turns: rewriting it restarts the process and invalidates
 // the cache and earlier thinking. What changes turn to turn, titles included (CHG-0058), rides on the note.
@@ -98,60 +97,58 @@ const noteOf = (sections: Sections) =>
     .join("\n\n");
 
 /** Who a thread's turn context is for, and where it works. */
-const readThreadSubject = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<{
-      harness: HarnessName;
-      guildmasterId: string | null;
-      isAside: number;
-      isGuildmaster: number;
-      missionId: string;
-      openerMessages: string | null;
-      parentId: string | null;
-      parentTitle: string | null;
-      title: string;
-    }>`
+const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{
+    harness: HarnessName;
+    guildmasterId: string | null;
+    isAside: number;
+    isGuildmaster: number;
+    missionId: string;
+    openerMessages: string | null;
+    parentId: string | null;
+    parentTitle: string | null;
+    title: string;
+  }>`
       SELECT t.mission_id AS missionId, t.harness, t.title, t.parent_id AS parentId, p.title AS parentTitle,
         t.is_aside AS isAside, t.opener_messages AS openerMessages, m.is_guildmaster AS isGuildmaster,
         (SELECT g.top_thread_id FROM missions g WHERE g.is_guildmaster = 1 LIMIT 1) AS guildmasterId
       FROM threads t JOIN missions m ON m.id = t.mission_id LEFT JOIN threads p ON p.id = t.parent_id
       WHERE t.id = ${threadId}`;
-    if (row === undefined) return yield* notFound("No such thread.");
-    const position = {
-      guildmasterId: row.isGuildmaster === 1 ? null : row.guildmasterId,
-      isAside: row.isAside === 1,
-      parent: row.parentId === null ? null : { id: row.parentId, title: row.parentTitle ?? "" },
-      threadId,
-      title: row.title,
-    };
-    return {
-      harness: row.harness,
-      subject: {
-        isGuildmaster: row.isGuildmaster === 1,
-        loreThreadId: threadId,
-        missionId: row.missionId,
-        openerMessages: row.openerMessages,
-        position,
-      },
-      workspace: yield* readThreadWorkspace(threadId),
-    };
-  });
+  if (row === undefined) return yield* notFound("No such thread.");
+  const position = {
+    guildmasterId: row.isGuildmaster === 1 ? null : row.guildmasterId,
+    isAside: row.isAside === 1,
+    parent: row.parentId === null ? null : { id: row.parentId, title: row.parentTitle ?? "" },
+    threadId,
+    title: row.title,
+  };
+  return {
+    harness: row.harness,
+    subject: {
+      isGuildmaster: row.isGuildmaster === 1,
+      loreThreadId: threadId,
+      missionId: row.missionId,
+      openerMessages: row.openerMessages,
+      position,
+    },
+    workspace: yield* readThreadWorkspace(threadId),
+  };
+});
 
 /** The thread's starting context for its next turn, with its scratch folder made when it has no workspace. */
-export const prepareStartingContext = (threadId: string) =>
-  Effect.gen(function* () {
-    const scratchRoot = yield* ScratchRoot;
-    const { subject, workspace } = yield* readThreadSubject(threadId);
-    const folder = yield* prepareWorkingFolder(workspace, join(scratchRoot, subject.missionId));
-    const sections = yield* readSections(subject, folder.context);
-    return {
-      context: systemPartOf(sections),
-      cwd: folder.cwd,
-      isInWorkspace: workspace !== null,
-      note: noteOf(sections),
-    } satisfies TurnContext;
-  });
+export const prepareStartingContext = Effect.fnUntraced(function* (threadId: string) {
+  const scratchRoot = yield* ScratchRoot;
+  const { subject, workspace } = yield* readThreadSubject(threadId);
+  const folder = yield* prepareWorkingFolder(workspace, join(scratchRoot, subject.missionId));
+  const sections = yield* readSections(subject, folder.context);
+  return {
+    context: systemPartOf(sections),
+    cwd: folder.cwd,
+    isInWorkspace: workspace !== null,
+    note: noteOf(sections),
+  } satisfies TurnContext;
+});
 
 /**
  * What a thread the owner opens beneath `parentId` with this request would start with, on the chosen harness
@@ -159,61 +156,60 @@ export const prepareStartingContext = (threadId: string) =>
  * journal entry, and no lore of its own yet, so its lore is the parent's. Skills are not counted until
  * tool-and-skill-loading gives them to threads; the thread tools' own descriptions are not counted either.
  */
-export const readStartingContext = (
+export const readStartingContext = Effect.fnUntraced(function* (
   parentId: string,
   choice: { readonly harness: HarnessName | null; readonly model: ModelChoice },
   request: string,
-) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const scratchRoot = yield* ScratchRoot;
-    const [parent] = yield* sql<{ harness: HarnessName; missionId: string; title: string }>`
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const scratchRoot = yield* ScratchRoot;
+  const [parent] = yield* sql<{ harness: HarnessName; missionId: string; title: string }>`
       SELECT harness, mission_id AS missionId, title FROM threads WHERE id = ${parentId}`;
-    if (parent === undefined) return yield* notFound("No such thread.");
-    const harness = choice.harness ?? parent.harness;
-    const workspace = yield* readThreadWorkspace(parentId);
-    const folder = yield* workingFolderOf(workspace, join(scratchRoot, parent.missionId));
-    const position = {
-      isAside: false,
-      parent: { id: parentId, title: parent.title },
-      threadId: unopenedThreadId,
-      title: titleOf(request),
-    };
-    const openerMessages = yield* openerMessagesOf(parentId);
-    const subject = {
-      isGuildmaster: false,
-      loreThreadId: parentId,
-      missionId: parent.missionId,
-      openerMessages,
-      position,
-    };
-    const sections = yield* readSections(subject, folder.context);
-    const approvals = yield* readApprovalInstructions(parentId, harness);
-    const parts = {
-      budget: tokensOfPart(sections.budget),
-      instructions: tokensOf(sections.instructions) + tokensOf(approvals),
-      journal: tokensOf(sections.journal),
-      lore: tokensOf(sections.lore),
-      openerMessages: tokensOfPart(sections.openerMessages),
-      position: tokensOf(sections.position),
-      request: tokensOf(request),
-      workspace: tokensOf(sections.workspace),
-    };
-    const tokens = Object.values(parts).reduce((sum, part) => sum + part, 0);
-    const windowTokens = contextWindowOf(choice.model);
-    return {
-      isOverWarning: tokens * 100 > windowTokens * startingContextWarningPercent,
-      // Every model counts the same window until each harness reports its own (work-in-progress, Batch 12).
-      largerModels: catalogModels[harness]
-        .map((option) => option.id)
-        .filter((model) => contextWindowOf(model) > windowTokens)
-        .toSorted((current, next) => contextWindowOf(next) - contextWindowOf(current)),
-      parts,
-      tokens,
-      warningPercent: startingContextWarningPercent,
-      windowTokens,
-    } satisfies StartingContext;
-  });
+  if (parent === undefined) return yield* notFound("No such thread.");
+  const harness = choice.harness ?? parent.harness;
+  const workspace = yield* readThreadWorkspace(parentId);
+  const folder = yield* workingFolderOf(workspace, join(scratchRoot, parent.missionId));
+  const position = {
+    isAside: false,
+    parent: { id: parentId, title: parent.title },
+    threadId: unopenedThreadId,
+    title: titleOf(request),
+  };
+  const openerMessages = yield* openerMessagesOf(parentId);
+  const subject = {
+    isGuildmaster: false,
+    loreThreadId: parentId,
+    missionId: parent.missionId,
+    openerMessages,
+    position,
+  };
+  const sections = yield* readSections(subject, folder.context);
+  const approvals = yield* readApprovalInstructions(parentId, harness);
+  const parts = {
+    budget: tokensOfPart(sections.budget),
+    instructions: tokensOf(sections.instructions) + tokensOf(approvals),
+    journal: tokensOf(sections.journal),
+    lore: tokensOf(sections.lore),
+    openerMessages: tokensOfPart(sections.openerMessages),
+    position: tokensOf(sections.position),
+    request: tokensOf(request),
+    workspace: tokensOf(sections.workspace),
+  };
+  const tokens = Object.values(parts).reduce((sum, part) => sum + part, 0);
+  const windowTokens = contextWindowOf(choice.model);
+  return {
+    isOverWarning: tokens * 100 > windowTokens * startingContextWarningPercent,
+    // Every model counts the same window until each harness reports its own (work-in-progress, Batch 12).
+    largerModels: catalogModels[harness]
+      .map((option) => option.id)
+      .filter((model) => contextWindowOf(model) > windowTokens)
+      .toSorted((current, next) => contextWindowOf(next) - contextWindowOf(current)),
+    parts,
+    tokens,
+    warningPercent: startingContextWarningPercent,
+    windowTokens,
+  } satisfies StartingContext;
+});
 
 /** The refusal of a thread whose starting context is over the warning, in words, or null when it may start. */
 export const startingContextRefusalOf = (context: StartingContext) =>
@@ -226,22 +222,21 @@ export const startingContextRefusalOf = (context: StartingContext) =>
  * instructions with the working folder, approval rules, and position; the lore; the journal; and the opener's
  * messages. Counted from the text, so they are estimates. Nothing is made on disk.
  */
-export const readSentContextSize = (threadId: string) =>
-  Effect.gen(function* () {
-    const scratchRoot = yield* ScratchRoot;
-    const { harness, subject, workspace } = yield* readThreadSubject(threadId);
-    const folder = yield* workingFolderOf(workspace, join(scratchRoot, subject.missionId));
-    const sections = yield* readSections(subject, folder.context);
-    const approvals = yield* readApprovalInstructions(threadId, harness);
-    return {
-      instructions:
-        tokensOf(sections.instructions) +
-        tokensOf(approvals) +
-        tokensOf(sections.workspace) +
-        tokensOf(sections.position) +
-        tokensOfPart(sections.budget),
-      journal: tokensOf(sections.journal),
-      lore: tokensOf(sections.lore),
-      openerMessages: tokensOfPart(sections.openerMessages),
-    };
-  });
+export const readSentContextSize = Effect.fnUntraced(function* (threadId: string) {
+  const scratchRoot = yield* ScratchRoot;
+  const { harness, subject, workspace } = yield* readThreadSubject(threadId);
+  const folder = yield* workingFolderOf(workspace, join(scratchRoot, subject.missionId));
+  const sections = yield* readSections(subject, folder.context);
+  const approvals = yield* readApprovalInstructions(threadId, harness);
+  return {
+    instructions:
+      tokensOf(sections.instructions) +
+      tokensOf(approvals) +
+      tokensOf(sections.workspace) +
+      tokensOf(sections.position) +
+      tokensOfPart(sections.budget),
+    journal: tokensOf(sections.journal),
+    lore: tokensOf(sections.lore),
+    openerMessages: tokensOfPart(sections.openerMessages),
+  };
+});

@@ -41,148 +41,143 @@ type DerivedAction = {
 };
 
 /** The Ritual whose quest's top thread this is, with its reviewed scope; null for any other thread. */
-const readRitualOfThread = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<{ authority: string }>`
+const readRitualOfThread = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ authority: string }>`
       SELECT r.authority FROM rituals r JOIN missions m ON m.id = r.mission_id WHERE m.top_thread_id = ${threadId}`;
-    return row === undefined ? null : { scope: Schema.decodeUnknownSync(RitualScopeSchema)(JSON.parse(row.authority)) };
-  });
+  return row === undefined ? null : { scope: Schema.decodeUnknownSync(RitualScopeSchema)(JSON.parse(row.authority)) };
+});
 
 /**
  * Whether the thread may take a structural action at all: Chronicler always; a Ritual's own thread only for acting on a
  * quest or changing a setting, which its scope can cover. Any other thread is refused by the tool itself.
  */
-export const isStructuralCaller = (threadId: string, tool: StructuralTool) =>
-  Effect.gen(function* () {
-    if (yield* isGuildmasterThread(threadId)) return true;
-    if (tool !== "act_on_mission" && tool !== "change_setting") return false;
-    return (yield* readRitualOfThread(threadId)) !== null;
-  });
+export const isStructuralCaller = Effect.fnUntraced(function* (threadId: string, tool: StructuralTool) {
+  if (yield* isGuildmasterThread(threadId)) return true;
+  if (tool !== "act_on_mission" && tool !== "change_setting") return false;
+  return (yield* readRitualOfThread(threadId)) !== null;
+});
 
 /** A value as the owner would write it: a text without its JSON quotes, anything else as JSON. */
 const spokenOf = (value: unknown) => (typeof value === "string" ? value : JSON.stringify(value));
 
 /** `act_on_mission` as a structural action: the quest by its id, and what Stop or an ending would stop. */
-const deriveQuestAction = (args: ArgumentsOf<"act_on_mission">) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [quest] = yield* sql<{ id: string; title: string; ending: string | null }>`
+const deriveQuestAction = Effect.fnUntraced(function* (args: ArgumentsOf<"act_on_mission">) {
+  const sql = yield* SqlClient.SqlClient;
+  const [quest] = yield* sql<{ id: string; title: string; ending: string | null }>`
       SELECT m.id, m.title, m.ending FROM missions m JOIN threads top ON top.id = m.top_thread_id
       WHERE m.id = ${args.mission} AND m.is_guildmaster = 0 AND top.is_deleting = 0`;
-    if (quest === undefined) return null;
-    const rivals = (yield* sql<{ title: string }>`
+  if (quest === undefined) return null;
+  const rivals = (yield* sql<{ title: string }>`
       SELECT title FROM missions WHERE is_guildmaster = 0 AND id <> ${quest.id}`).map((row) => row.title);
-    const targets = [quest.title];
-    const scopeTargets = [quest.id, quest.title];
-    if (args.action === "Rename") {
-      const title = titleOf(args.title ?? "");
-      if (title === "") return null;
-      return {
-        named: { operation: "Rename", rivals, targets, value: title },
-        scoped: { operation: "Rename", payload: title, targets: scopeTargets },
-        shouldAsk: false,
-        state: { quest },
-        summary: `Rename the quest "${quest.title}" to "${title}".`,
-      } as const;
-    }
-    if (args.action === "Stop") {
-      const ids = yield* readWorkingIds(quest.id).pipe(Effect.catchTag("ServiceFailure", () => Effect.succeed([])));
-      if (ids.length === 0) return null;
-      return {
-        named: { operation: "Stop", rivals, targets, value: null },
-        scoped: { operation: "Stop", payload: null, targets: scopeTargets },
-        shouldAsk: false,
-        state: { ids, quest },
-        summary: `Stop the ${threadsLineOf(ids.length)} at work in the quest "${quest.title}".`,
-      } as const;
-    }
-    const ending = args.action === "Done" ? "Done" : "Archived";
-    const preview = yield* previewEnding(quest.id, ending).pipe(
-      Effect.catchTag("ServiceFailure", () => Effect.succeed(null)),
-    );
-    if (preview === null) return null;
-    const what =
-      args.action === "Done" ? `Mark the quest "${quest.title}" Done.` : `Archive the quest "${quest.title}".`;
+  const targets = [quest.title];
+  const scopeTargets = [quest.id, quest.title];
+  if (args.action === "Rename") {
+    const title = titleOf(args.title ?? "");
+    if (title === "") return null;
     return {
-      named: { operation: args.action, rivals, targets, value: null },
-      scoped: { operation: args.action, payload: null, targets: scopeTargets },
-      shouldAsk: preview.question !== null,
-      state: { quest, snapshot: preview.snapshot },
-      // Stopping threads at work is part of it: always one question, bound to the threads it names.
-      summary: preview.question === null ? what : `${what} ${preview.question}`,
+      named: { operation: "Rename", rivals, targets, value: title },
+      scoped: { operation: "Rename", payload: title, targets: scopeTargets },
+      shouldAsk: false,
+      state: { quest },
+      summary: `Rename the quest "${quest.title}" to "${title}".`,
     } as const;
-  });
+  }
+  if (args.action === "Stop") {
+    const ids = yield* readWorkingIds(quest.id).pipe(Effect.catchTag("ServiceFailure", () => Effect.succeed([])));
+    if (ids.length === 0) return null;
+    return {
+      named: { operation: "Stop", rivals, targets, value: null },
+      scoped: { operation: "Stop", payload: null, targets: scopeTargets },
+      shouldAsk: false,
+      state: { ids, quest },
+      summary: `Stop the ${threadsLineOf(ids.length)} at work in the quest "${quest.title}".`,
+    } as const;
+  }
+  const ending = args.action === "Done" ? "Done" : "Archived";
+  const preview = yield* previewEnding(quest.id, ending).pipe(
+    Effect.catchTag("ServiceFailure", () => Effect.succeed(null)),
+  );
+  if (preview === null) return null;
+  const what = args.action === "Done" ? `Mark the quest "${quest.title}" Done.` : `Archive the quest "${quest.title}".`;
+  return {
+    named: { operation: args.action, rivals, targets, value: null },
+    scoped: { operation: args.action, payload: null, targets: scopeTargets },
+    shouldAsk: preview.question !== null,
+    state: { quest, snapshot: preview.snapshot },
+    // Stopping threads at work is part of it: always one question, bound to the threads it names.
+    summary: preview.question === null ? what : `${what} ${preview.question}`,
+  } as const;
+});
 
 /** Derives the structural action a tool call would take; null when the tool's own checks will refuse it. */
-const deriveAction = (callerId: string, tool: StructuralTool, args: object) =>
-  Effect.gen(function* () {
-    if (!(yield* isStructuralCaller(callerId, tool))) return null;
-    const turnId = yield* readRunningTurnId(callerId);
-    if (turnId === null) return null;
-    const base = { args, callerId, tool, turnId };
-    const finish = (found: {
-      readonly named: NamedAction;
-      readonly scoped: ScopedAction | null;
-      readonly state: unknown;
-      readonly summary: string;
-      readonly shouldAsk: boolean;
-      readonly details?: object;
-    }): DerivedAction => ({
-      details: JSON.stringify({ action: found.named.operation, ...(found.details ?? {}), state: found.state }, null, 2),
-      fingerprint: JSON.stringify({ ...base, state: found.state }),
-      named: found.named,
-      scoped: found.scoped,
-      shouldAsk: found.shouldAsk,
-      summary: found.summary,
-    });
-    if (tool === "act_on_mission") {
-      const found = yield* deriveQuestAction(args as ArgumentsOf<"act_on_mission">);
-      return found === null ? null : finish(found);
-    }
-    if (tool === "change_setting") {
-      const { setting, value: text } = args as ArgumentsOf<"change_setting">;
-      if (!(changeableSettings as ReadonlyArray<string>).includes(setting)) return null;
-      const parsed = parseJson(text);
-      if (Exit.isFailure(parsed)) return null;
-      const value = parsed.value;
-      const before = yield* readSettings;
-      if (Exit.isFailure(Schema.decodeUnknownExit(Settings)({ ...before, [setting]: value }))) return null;
-      const was = before[setting as keyof typeof before];
-      return finish({
-        named: { operation: "ChangeSetting", targets: [setting], value: spokenOf(value) },
-        scoped: { operation: "ChangeSetting", payload: JSON.stringify(value), targets: [setting] },
-        shouldAsk: false,
-        state: { before: was, setting, value },
-        summary: `Change the setting ${setting} from ${JSON.stringify(was)} to ${JSON.stringify(value)}.`,
-      });
-    }
-    if (tool === "create_realm") {
-      const found = yield* deriveRealmCreation(args as ArgumentsOf<"create_realm">);
-      return found === null ? null : finish(found);
-    }
-    if (tool === "rename_realm") {
-      const found = yield* deriveRealmRename(args as ArgumentsOf<"rename_realm">);
-      return found === null ? null : finish(found);
-    }
-    const ritual = args as ArgumentsOf<"create_ritual">;
-    const title = ritualTitleOf(ritual.title);
-    if (ritual.instruction.trim() === "" || title === "") return null;
-    const { isNamed, realm } = yield* readOptionalRealm(ritual.realm);
-    if (isNamed && realm === null) return null;
-    const { companion, fallbacks } = ritualStartOf(yield* readSettings, ritual);
-    const where = placeOf(realm);
-    return finish({
-      details: { companion, fallbacks, instruction: ritual.instruction, schedule: ritual.schedule },
-      named: { operation: "CreateRitual", targets: [title], value: null },
-      scoped: null,
-      // A Ritual runs unattended, so the owner always sees its instruction, schedule, realm, and Companion before it
-      // exists: naming the title in a message authorizes none of them (audit SA-01, SA-05).
-      shouldAsk: true,
-      state: { companion, realm, title },
-      summary: `Create the Ritual "${title}", ${JSON.stringify(ritual.schedule)}, ${where}, on ${companion.harness} ${companion.model}${fallbackNoteOf(fallbacks, ritual.tier ?? null)}.`,
-    });
+const deriveAction = Effect.fnUntraced(function* (callerId: string, tool: StructuralTool, args: object) {
+  if (!(yield* isStructuralCaller(callerId, tool))) return null;
+  const turnId = yield* readRunningTurnId(callerId);
+  if (turnId === null) return null;
+  const base = { args, callerId, tool, turnId };
+  const finish = (found: {
+    readonly named: NamedAction;
+    readonly scoped: ScopedAction | null;
+    readonly state: unknown;
+    readonly summary: string;
+    readonly shouldAsk: boolean;
+    readonly details?: object;
+  }): DerivedAction => ({
+    details: JSON.stringify({ action: found.named.operation, ...(found.details ?? {}), state: found.state }, null, 2),
+    fingerprint: JSON.stringify({ ...base, state: found.state }),
+    named: found.named,
+    scoped: found.scoped,
+    shouldAsk: found.shouldAsk,
+    summary: found.summary,
   });
+  if (tool === "act_on_mission") {
+    const found = yield* deriveQuestAction(args as ArgumentsOf<"act_on_mission">);
+    return found === null ? null : finish(found);
+  }
+  if (tool === "change_setting") {
+    const { setting, value: text } = args as ArgumentsOf<"change_setting">;
+    if (!(changeableSettings as ReadonlyArray<string>).includes(setting)) return null;
+    const parsed = parseJson(text);
+    if (Exit.isFailure(parsed)) return null;
+    const value = parsed.value;
+    const before = yield* readSettings;
+    if (Exit.isFailure(Schema.decodeUnknownExit(Settings)({ ...before, [setting]: value }))) return null;
+    const was = before[setting as keyof typeof before];
+    return finish({
+      named: { operation: "ChangeSetting", targets: [setting], value: spokenOf(value) },
+      scoped: { operation: "ChangeSetting", payload: JSON.stringify(value), targets: [setting] },
+      shouldAsk: false,
+      state: { before: was, setting, value },
+      summary: `Change the setting ${setting} from ${JSON.stringify(was)} to ${JSON.stringify(value)}.`,
+    });
+  }
+  if (tool === "create_realm") {
+    const found = yield* deriveRealmCreation(args as ArgumentsOf<"create_realm">);
+    return found === null ? null : finish(found);
+  }
+  if (tool === "rename_realm") {
+    const found = yield* deriveRealmRename(args as ArgumentsOf<"rename_realm">);
+    return found === null ? null : finish(found);
+  }
+  const ritual = args as ArgumentsOf<"create_ritual">;
+  const title = ritualTitleOf(ritual.title);
+  if (ritual.instruction.trim() === "" || title === "") return null;
+  const { isNamed, realm } = yield* readOptionalRealm(ritual.realm);
+  if (isNamed && realm === null) return null;
+  const { companion, fallbacks } = ritualStartOf(yield* readSettings, ritual);
+  const where = placeOf(realm);
+  return finish({
+    details: { companion, fallbacks, instruction: ritual.instruction, schedule: ritual.schedule },
+    named: { operation: "CreateRitual", targets: [title], value: null },
+    scoped: null,
+    // A Ritual runs unattended, so the owner always sees its instruction, schedule, realm, and Companion before it
+    // exists: naming the title in a message authorizes none of them (audit SA-01, SA-05).
+    shouldAsk: true,
+    state: { companion, realm, title },
+    summary: `Create the Ritual "${title}", ${JSON.stringify(ritual.schedule)}, ${where}, on ${companion.harness} ${companion.model}${fallbackNoteOf(fallbacks, ritual.tier ?? null)}.`,
+  });
+});
 
 /** Where the authority for a derived action comes from, or that the owner must be asked. */
 type Authority =
@@ -191,25 +186,24 @@ type Authority =
   | { readonly _tag: "Ask" };
 
 /** The owner's own words of this turn naming the action exactly, or the Ritual's reviewed scope in a run; else ask. */
-const readAuthority = (callerId: string, derived: DerivedAction) =>
-  Effect.gen(function* () {
-    const turnId = yield* readRunningTurnId(callerId);
-    if (turnId === null || derived.shouldAsk) return { _tag: "Ask" } satisfies Authority;
-    const named = (yield* readOwnerTexts(callerId, turnId)).find((text) => isNamedByOwner(text, derived.named));
-    if (named !== undefined) return { _tag: "Owner", evidence: clip(named, 400) } satisfies Authority;
-    if (derived.scoped !== null) {
-      const ritual = yield* readRitualOfThread(callerId);
-      if (ritual !== null && (yield* isRitualRunTurn(callerId, turnId))) {
-        const entry = coveringEntryOf(ritual.scope, derived.scoped);
-        if (entry !== null)
-          return {
-            _tag: "Scope",
-            evidence: `The Ritual's reviewed scope: ${entry.operation} ${entry.target}${entry.payload === null ? "" : ` → ${entry.payload}`}`,
-          } satisfies Authority;
-      }
+const readAuthority = Effect.fnUntraced(function* (callerId: string, derived: DerivedAction) {
+  const turnId = yield* readRunningTurnId(callerId);
+  if (turnId === null || derived.shouldAsk) return { _tag: "Ask" } satisfies Authority;
+  const named = (yield* readOwnerTexts(callerId, turnId)).find((text) => isNamedByOwner(text, derived.named));
+  if (named !== undefined) return { _tag: "Owner", evidence: clip(named, 400) } satisfies Authority;
+  if (derived.scoped !== null) {
+    const ritual = yield* readRitualOfThread(callerId);
+    if (ritual !== null && (yield* isRitualRunTurn(callerId, turnId))) {
+      const entry = coveringEntryOf(ritual.scope, derived.scoped);
+      if (entry !== null)
+        return {
+          _tag: "Scope",
+          evidence: `The Ritual's reviewed scope: ${entry.operation} ${entry.target}${entry.payload === null ? "" : ` → ${entry.payload}`}`,
+        } satisfies Authority;
     }
-    return { _tag: "Ask" } satisfies Authority;
-  });
+  }
+  return { _tag: "Ask" } satisfies Authority;
+});
 
 /** The one-use proof, handed only to this invocation, that its exact action was authorized. */
 type Receipt = {
@@ -226,14 +220,13 @@ const keyOf = (callerId: string, tool: StructuralTool, args: object) => JSON.str
  * Spends this invocation's receipt inside the mutation's transaction, after deriving the action again: a changed turn,
  * target, value, or set of threads at work means it no longer matches what was authorized, and nothing runs.
  */
-export const consumeReceipt = (callerId: string, tool: StructuralTool, args: object) =>
-  Effect.gen(function* () {
-    const receipt = yield* receiptReference;
-    if (receipt === null || receipt.isUsed || receipt.key !== keyOf(callerId, tool, args)) return false;
-    receipt.isUsed = true;
-    const now = yield* deriveAction(callerId, tool, args).pipe(Effect.orDie);
-    return now !== null && now.fingerprint === receipt.fingerprint;
-  });
+export const consumeReceipt = Effect.fnUntraced(function* (callerId: string, tool: StructuralTool, args: object) {
+  const receipt = yield* receiptReference;
+  if (receipt === null || receipt.isUsed || receipt.key !== keyOf(callerId, tool, args)) return false;
+  receipt.isUsed = true;
+  const now = yield* deriveAction(callerId, tool, args).pipe(Effect.orDie);
+  return now !== null && now.fingerprint === receipt.fingerprint;
+});
 
 /** What a structural tool says when its action was not authorized, or changed before it could run. */
 export const notAuthorizedText =
@@ -243,45 +236,44 @@ export const notAuthorizedText =
  * Authorizes one structural tool call by provenance, outside any transaction, then runs it with a one-use receipt.
  * A call whose action cannot be derived runs without one, so the tool's own checks refuse it with their reason.
  */
-export const withProvenance = (
+export const withProvenance = Effect.fnUntraced(function* (
   approvals: Approvals["Service"],
   read: <A, E>(work: Effect.Effect<A, E, SqlClient.SqlClient>) => Effect.Effect<A>,
   callerId: string,
   tool: StructuralTool,
   args: object,
   run: (authorize: <A, E, R>(work: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>) => Effect.Effect<ToolAnswer>,
-) =>
-  Effect.gen(function* () {
-    const derived = yield* read(deriveAction(callerId, tool, args));
-    if (derived === null) return yield* run((work) => work);
-    const authority = yield* read(readAuthority(callerId, derived));
-    const refusal = yield* Match.valueTags(authority, {
-      Ask: () =>
-        approvals
-          .confirmAction(callerId, derived.summary, derived.details)
-          .pipe(
-            Effect.map((decision) =>
-              decision.isAllowed ? null : ({ isError: true, text: decision.text } satisfies ToolAnswer),
-            ),
+) {
+  const derived = yield* read(deriveAction(callerId, tool, args));
+  if (derived === null) return yield* run((work) => work);
+  const authority = yield* read(readAuthority(callerId, derived));
+  const refusal = yield* Match.valueTags(authority, {
+    Ask: () =>
+      approvals
+        .confirmAction(callerId, derived.summary, derived.details)
+        .pipe(
+          Effect.map((decision) =>
+            decision.isAllowed ? null : ({ isError: true, text: decision.text } satisfies ToolAnswer),
           ),
-      Owner: () => Effect.succeed(null),
-      Scope: () => Effect.succeed(null),
-    });
-    if (refusal !== null) return refusal;
-    const receipt: Receipt = { fingerprint: derived.fingerprint, isUsed: false, key: keyOf(callerId, tool, args) };
-    const answer = yield* run((work) => Effect.provideService(work, receiptReference, receipt));
-    // A tool that reports success without spending the receipt changed something its authorization never covered: a
-    // defect in the tool, which no caller can recover from.
-    if (!answer.isError && !receipt.isUsed)
-      return yield* Effect.die(new Error(`${tool} succeeded without spending its authorization receipt.`));
-    if (answer.isError) return answer;
-    // The owner already answered a question that was asked; otherwise the allowance is recorded with its evidence.
-    yield* Match.valueTags(authority, {
-      Ask: () => Effect.void,
-      Owner: ({ evidence }) =>
-        approvals.recordDecision(callerId, derived.summary, derived.details, "AllowedByMessage", evidence),
-      Scope: ({ evidence }) =>
-        approvals.recordDecision(callerId, derived.summary, derived.details, "AllowedByPermission", evidence),
-    });
-    return answer;
+        ),
+    Owner: () => Effect.succeed(null),
+    Scope: () => Effect.succeed(null),
   });
+  if (refusal !== null) return refusal;
+  const receipt: Receipt = { fingerprint: derived.fingerprint, isUsed: false, key: keyOf(callerId, tool, args) };
+  const answer = yield* run((work) => Effect.provideService(work, receiptReference, receipt));
+  // A tool that reports success without spending the receipt changed something its authorization never covered: a
+  // defect in the tool, which no caller can recover from.
+  if (!answer.isError && !receipt.isUsed)
+    return yield* Effect.die(new Error(`${tool} succeeded without spending its authorization receipt.`));
+  if (answer.isError) return answer;
+  // The owner already answered a question that was asked; otherwise the allowance is recorded with its evidence.
+  yield* Match.valueTags(authority, {
+    Ask: () => Effect.void,
+    Owner: ({ evidence }) =>
+      approvals.recordDecision(callerId, derived.summary, derived.details, "AllowedByMessage", evidence),
+    Scope: ({ evidence }) =>
+      approvals.recordDecision(callerId, derived.summary, derived.details, "AllowedByPermission", evidence),
+  });
+  return answer;
+});

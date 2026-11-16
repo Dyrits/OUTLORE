@@ -60,79 +60,73 @@ export const readGuildmaster = ensureGuildmaster.pipe(
 );
 
 /** Whether the thread belongs to Chronicler. */
-export const isGuildmasterThread = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const rows = yield* sql<{ id: string }>`
+export const isGuildmasterThread = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ id: string }>`
       SELECT t.id FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${threadId} AND m.is_guildmaster = 1`;
-    return rows.length > 0;
-  });
+  return rows.length > 0;
+});
 
 /** Whether the quest is Chronicler's. */
-export const isGuildmasterQuest = (missionId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const rows = yield* sql<{ id: string }>`SELECT id FROM missions WHERE id = ${missionId} AND is_guildmaster = 1`;
-    return rows.length > 0;
-  });
+export const isGuildmasterQuest = Effect.fnUntraced(function* (missionId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ id: string }>`SELECT id FROM missions WHERE id = ${missionId} AND is_guildmaster = 1`;
+  return rows.length > 0;
+});
 
 /**
  * The line Chronicler reads with a message, saying where the owner had Chronicler open from: the quest when the screen is one
  * (named from the stored title, not the app's), else the screen's name. Null for a message to any other thread.
  */
-export const readViewingLine = (threadId: string, viewing: Viewing | null | undefined) =>
-  Effect.gen(function* () {
-    if (viewing === null || viewing === undefined || !(yield* isGuildmasterThread(threadId))) return null;
-    const sql = yield* SqlClient.SqlClient;
-    const [quest] =
-      viewing.missionId === null || viewing.missionId === undefined
-        ? []
-        : yield* sql<{ id: string; title: string }>`
+export const readViewingLine = Effect.fnUntraced(function* (threadId: string, viewing: Viewing | null | undefined) {
+  if (viewing === null || viewing === undefined || !(yield* isGuildmasterThread(threadId))) return null;
+  const sql = yield* SqlClient.SqlClient;
+  const [quest] =
+    viewing.missionId === null || viewing.missionId === undefined
+      ? []
+      : yield* sql<{ id: string; title: string }>`
             SELECT id, title FROM missions WHERE id = ${viewing.missionId} AND is_guildmaster = 0`;
-    // The screen's name is the app's words: kept to one plain line, so it cannot pose as an instruction.
-    const screen = viewing.screen
-      .replace(/[[\]"]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    return quest === undefined
-      ? screen === ""
-        ? null
-        : `the ${screen} screen`
-      : `the quest "${quest.title}" (id ${quest.id})`;
-  });
+  // The screen's name is the app's words: kept to one plain line, so it cannot pose as an instruction.
+  const screen = viewing.screen
+    .replace(/[[\]"]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return quest === undefined
+    ? screen === ""
+      ? null
+      : `the ${screen} screen`
+    : `the quest "${quest.title}" (id ${quest.id})`;
+});
 
 /** Refuses to end, delete, or rename Chronicler's quest: it is permanent (quest coordination, Place). */
-export const refuseGuildmaster = (missionId: string, action: string) =>
-  Effect.gen(function* () {
-    if (yield* isGuildmasterQuest(missionId)) return yield* invalid(`Chronicler is permanent: it cannot be ${action}.`);
-  });
+export const refuseGuildmaster = Effect.fnUntraced(function* (missionId: string, action: string) {
+  if (yield* isGuildmasterQuest(missionId)) return yield* invalid(`Chronicler is permanent: it cannot be ${action}.`);
+});
 
 /** A realm the owner or Chronicler named, by its folder or its name; null when none matches. */
-export const findRealm = (given: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const wanted = given.trim();
-    const [byPath] = yield* sql<{
-      name: string;
-      path: string;
-    }>`SELECT name, path FROM workspaces WHERE (path = ${wanted} OR id = ${wanted}) AND archived_at IS NULL AND path IS NOT NULL`;
-    if (byPath !== undefined) return byPath;
-    const byName = yield* sql<{ name: string; path: string }>`
+export const findRealm = Effect.fnUntraced(function* (given: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const wanted = given.trim();
+  const [byPath] = yield* sql<{
+    name: string;
+    path: string;
+  }>`SELECT name, path FROM workspaces WHERE (path = ${wanted} OR id = ${wanted}) AND archived_at IS NULL AND path IS NOT NULL`;
+  if (byPath !== undefined) return byPath;
+  const byName = yield* sql<{ name: string; path: string }>`
       SELECT name, path FROM workspaces WHERE lower(name) = lower(${wanted}) AND path IS NOT NULL AND archived_at IS NULL`;
-    if (byName.length > 1) return yield* invalid("Several active realms have that name. Use the realm's folder or id.");
-    return byName[0] ?? null;
-  });
+  if (byName.length > 1) return yield* invalid("Several active realms have that name. Use the realm's folder or id.");
+  return byName[0] ?? null;
+});
 
 /**
  * The realm a tool call names, for one that may leave it out: `isNamed` tells a realm named but not found (`realm`
  * null) from none named.
  */
-export const readOptionalRealm = (given: string | undefined) =>
-  Effect.gen(function* () {
-    const wanted = given?.trim() ?? "";
-    if (wanted === "") return { isNamed: false, realm: null } as const;
-    return { isNamed: true, realm: yield* findRealm(wanted) } as const;
-  });
+export const readOptionalRealm = Effect.fnUntraced(function* (given: string | undefined) {
+  const wanted = given?.trim() ?? "";
+  if (wanted === "") return { isNamed: false, realm: null } as const;
+  return { isNamed: true, realm: yield* findRealm(wanted) } as const;
+});
 
 /** The realms known, one line each, so Chronicler can name one when it proposes a quest or manages a realm. */
 const readRealmLines = Effect.gen(function* () {
@@ -225,18 +219,17 @@ export type ResolvedCard = {
 };
 
 /** Records, in the caller's conversation, a card for the quest or Ritual it opened for the owner without asking. */
-export const recordResolvedCard = (card: ResolvedCard) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [caller] = yield* sql<{
-      missionId: string;
-    }>`SELECT mission_id AS missionId FROM threads WHERE id = ${card.callerId}`;
-    const now = yield* Clock.currentTimeMillis;
-    yield* sql`INSERT INTO suggestions (id, mission_id, thread_id, text, title, matches, asked_at, outcome, is_automatic,
+export const recordResolvedCard = Effect.fnUntraced(function* (card: ResolvedCard) {
+  const sql = yield* SqlClient.SqlClient;
+  const [caller] = yield* sql<{
+    missionId: string;
+  }>`SELECT mission_id AS missionId FROM threads WHERE id = ${card.callerId}`;
+  const now = yield* Clock.currentTimeMillis;
+  yield* sql`INSERT INTO suggestions (id, mission_id, thread_id, text, title, matches, asked_at, outcome, is_automatic,
         is_ritual, target_mission_id, target_thread_id, target_title, resolved_at, realm_path)
       VALUES (${crypto.randomUUID()}, ${caller?.missionId ?? ""}, ${card.callerId}, ${card.text}, ${card.title}, '[]', ${now},
         'MovedToMission', 1, ${card.isRitual ? 1 : 0}, ${card.target.missionId}, ${card.target.threadId}, ${card.target.title}, ${now}, ${card.realmPath})`;
-  });
+});
 
 // ----- Hearing back: the quests Chronicler opened tell it when they report, need the owner, or fail -----
 
@@ -327,74 +320,74 @@ export const refuseAction = (text: string) => unchanged<ActedOnQuest>({ _tag: "R
  * provenance (guildmasterProvenance.ts): the owner's own words of this turn, a Ritual's reviewed scope in one of its
  * runs, or the owner's Allow. Chronicler calls it, and a Ritual's own thread within its scope; never on its own initiative.
  */
-export const actOnMission = (callerId: string, args: ArgumentsOf<"act_on_mission">) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    if (!(yield* isStructuralCaller(callerId, "act_on_mission")))
-      return refuseAction("Only Chronicler acts on quests.");
-    const [quest] = yield* sql<{ title: string }>`
+export const actOnMission = Effect.fnUntraced(function* (callerId: string, args: ArgumentsOf<"act_on_mission">) {
+  const sql = yield* SqlClient.SqlClient;
+  if (!(yield* isStructuralCaller(callerId, "act_on_mission"))) return refuseAction("Only Chronicler acts on quests.");
+  const [quest] = yield* sql<{ title: string }>`
       SELECT m.title FROM missions m JOIN threads top ON top.id = m.top_thread_id
       WHERE m.id = ${args.mission} AND m.is_guildmaster = 0 AND top.is_deleting = 0`;
-    if (quest === undefined) return refuseAction("Not done: no such quest.");
-    if (args.action === "Rename" && (args.title === undefined || titleOf(args.title) === ""))
-      return refuseAction("Not done: give the new title.");
-    const ids = args.action === "Stop" ? yield* readWorkingIds(args.mission) : [];
-    if (args.action === "Stop" && ids.length === 0)
-      return refuseAction(`"${quest.title}" has no thread at work to stop.`);
-    if (!(yield* consumeReceipt(callerId, "act_on_mission", args))) return refuseAction(notAuthorizedText);
-    if (args.action === "Rename") {
-      yield* renameMission(args.mission, args.title ?? "");
-      return changed<ActedOnQuest>({
-        _tag: "Done",
-        text: `Renamed the quest "${quest.title}" to "${titleOf(args.title ?? "")}".`,
-      });
-    }
-    if (args.action === "Stop") {
-      // Stopping runs outside the transaction, in the tool handler, which ends each turn; the receipt bound this set.
-      return unchanged<ActedOnQuest>({
-        _tag: "ToStop",
-        ids,
-        text: `Stopped ${threadsLineOf(ids.length)} of "${quest.title}".`,
-      });
-    }
-    const ending = args.action === "Done" ? "Done" : "Archived";
-    // The receipt matched the threads at work the question named, so the snapshot taken now is that one.
-    const preview = yield* previewEnding(args.mission, ending);
-    const done = yield* endMission(args.mission, ending, preview.snapshot, "Chronicler");
-    return changed<ActedOnQuest>(
-      {
-        _tag: "Done",
-        text:
-          done.followUps.missionsToRemoveScratch.length > 0
-            ? `Deleted "${quest.title}".`
-            : `Marked "${quest.title}" ${ending === "Done" ? "Done" : "Archived"}.`,
-      },
-      done.followUps,
-    );
-  });
+  if (quest === undefined) return refuseAction("Not done: no such quest.");
+  if (args.action === "Rename" && (args.title === undefined || titleOf(args.title) === ""))
+    return refuseAction("Not done: give the new title.");
+  const ids = args.action === "Stop" ? yield* readWorkingIds(args.mission) : [];
+  if (args.action === "Stop" && ids.length === 0)
+    return refuseAction(`"${quest.title}" has no thread at work to stop.`);
+  if (!(yield* consumeReceipt(callerId, "act_on_mission", args))) return refuseAction(notAuthorizedText);
+  if (args.action === "Rename") {
+    yield* renameMission(args.mission, args.title ?? "");
+    return changed<ActedOnQuest>({
+      _tag: "Done",
+      text: `Renamed the quest "${quest.title}" to "${titleOf(args.title ?? "")}".`,
+    });
+  }
+  if (args.action === "Stop") {
+    // Stopping runs outside the transaction, in the tool handler, which ends each turn; the receipt bound this set.
+    return unchanged<ActedOnQuest>({
+      _tag: "ToStop",
+      ids,
+      text: `Stopped ${threadsLineOf(ids.length)} of "${quest.title}".`,
+    });
+  }
+  const ending = args.action === "Done" ? "Done" : "Archived";
+  // The receipt matched the threads at work the question named, so the snapshot taken now is that one.
+  const preview = yield* previewEnding(args.mission, ending);
+  const done = yield* endMission(args.mission, ending, preview.snapshot, "Chronicler");
+  return changed<ActedOnQuest>(
+    {
+      _tag: "Done",
+      text:
+        done.followUps.missionsToRemoveScratch.length > 0
+          ? `Deleted "${quest.title}".`
+          : `Marked "${quest.title}" ${ending === "Done" ? "Done" : "Archived"}.`,
+    },
+    done.followUps,
+  );
+});
 
 /** What `read_control_history` answers: Chronicler's own older messages, newest first. */
-export const readControlHistory = (callerId: string, args: ArgumentsOf<"read_control_history">) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    if (!(yield* isGuildmasterThread(callerId)))
-      return { isError: true, text: "Only Chronicler reads this." } satisfies ToolAnswer;
-    const count = Math.min(Math.max(args.count ?? 10, 1), 40);
-    const query = (args.query ?? "").trim().toLowerCase();
-    const rows = yield* sql<{ sequence: number; sender: string; text: string }>`
+export const readControlHistory = Effect.fnUntraced(function* (
+  callerId: string,
+  args: ArgumentsOf<"read_control_history">,
+) {
+  const sql = yield* SqlClient.SqlClient;
+  if (!(yield* isGuildmasterThread(callerId)))
+    return { isError: true, text: "Only Chronicler reads this." } satisfies ToolAnswer;
+  const count = Math.min(Math.max(args.count ?? 10, 1), 40);
+  const query = (args.query ?? "").trim().toLowerCase();
+  const rows = yield* sql<{ sequence: number; sender: string; text: string }>`
       SELECT sequence, sender_kind AS sender, text FROM messages
       WHERE thread_id = ${callerId} AND (${args.before ?? null} IS NULL OR sequence < ${args.before ?? null})
         AND (${query} = '' OR instr(lower(text), ${query}) > 0)
       ORDER BY sequence DESC LIMIT ${count}`;
-    if (rows.length === 0) return { isError: false, text: "No such messages." } satisfies ToolAnswer;
-    const who = { agent: "You", thread: "A quest", user: "The owner" } as const;
-    return {
-      isError: false,
-      text: rows
-        .map((row) => `#${row.sequence} ${who[row.sender as keyof typeof who] ?? row.sender}: ${clip(row.text, 800)}`)
-        .join("\n\n"),
-    } satisfies ToolAnswer;
-  });
+  if (rows.length === 0) return { isError: false, text: "No such messages." } satisfies ToolAnswer;
+  const who = { agent: "You", thread: "A quest", user: "The owner" } as const;
+  return {
+    isError: false,
+    text: rows
+      .map((row) => `#${row.sequence} ${who[row.sender as keyof typeof who] ?? row.sender}: ${clip(row.text, 800)}`)
+      .join("\n\n"),
+  } satisfies ToolAnswer;
+});
 
 // ----- Creating Rituals -----
 
@@ -412,39 +405,41 @@ export const refuseRitual = (reason: string) => unchanged<RitualCreatedByGuildma
  * reviewed scope starts empty: only the owner sets it, in the Ritual's form. Nothing runs until it is due. The owner sees
  * it as a card with a link. Only Chronicler calls it.
  */
-export const createRitualByGuildmaster = (callerId: string, args: ArgumentsOf<"create_ritual">) =>
-  Effect.gen(function* () {
-    if (!(yield* isGuildmasterThread(callerId))) return refuseRitual("Only Chronicler creates Rituals.");
-    if (args.instruction.trim() === "" || titleOf(args.title) === "")
-      return refuseRitual("Give an instruction and a title.");
-    const { isNamed, realm } = yield* readOptionalRealm(args.realm);
-    if (isNamed && realm === null)
-      return refuseRitual(
-        `Not created: no realm "${args.realm}". Name one of the realms in your context, or leave it out.`,
-      );
-    if (!(yield* consumeReceipt(callerId, "create_ritual", args))) return refuseRitual(notAuthorizedText);
-    const { companion: runner, fallbacks } = ritualStartOf(yield* readSettings, args);
-    const title = ritualTitleOf(args.title);
-    const created = yield* createRitual({
-      fallbacks,
-      instruction: args.instruction,
-      primary: { ...runner, accountId: runner.accountId as AccountId | null },
-      realm: null,
-      schedule: args.schedule,
-      title,
-      workspacePath: realm?.path ?? null,
-    });
-    yield* recordResolvedCard({
-      callerId,
-      isRitual: true,
-      realmPath: realm?.path ?? null,
-      target: { missionId: created.value.missionId, threadId: created.value.threadId, title },
-      text: args.instruction,
-      title,
-    });
-    const where = placeOf(realm);
-    return changed<RitualCreatedByGuildmaster>({
-      _tag: "Created",
-      text: `Created the Ritual "${title}" ${where}, ${JSON.stringify(args.schedule)}, on ${companionLineOf(args.tier ?? null, runner)}. It runs by itself in its own quest when due and is on. Tell the owner in a sentence what it will do and when; do not repeat the instruction.`,
-    });
+export const createRitualByGuildmaster = Effect.fnUntraced(function* (
+  callerId: string,
+  args: ArgumentsOf<"create_ritual">,
+) {
+  if (!(yield* isGuildmasterThread(callerId))) return refuseRitual("Only Chronicler creates Rituals.");
+  if (args.instruction.trim() === "" || titleOf(args.title) === "")
+    return refuseRitual("Give an instruction and a title.");
+  const { isNamed, realm } = yield* readOptionalRealm(args.realm);
+  if (isNamed && realm === null)
+    return refuseRitual(
+      `Not created: no realm "${args.realm}". Name one of the realms in your context, or leave it out.`,
+    );
+  if (!(yield* consumeReceipt(callerId, "create_ritual", args))) return refuseRitual(notAuthorizedText);
+  const { companion: runner, fallbacks } = ritualStartOf(yield* readSettings, args);
+  const title = ritualTitleOf(args.title);
+  const created = yield* createRitual({
+    fallbacks,
+    instruction: args.instruction,
+    primary: { ...runner, accountId: runner.accountId as AccountId | null },
+    realm: null,
+    schedule: args.schedule,
+    title,
+    workspacePath: realm?.path ?? null,
   });
+  yield* recordResolvedCard({
+    callerId,
+    isRitual: true,
+    realmPath: realm?.path ?? null,
+    target: { missionId: created.value.missionId, threadId: created.value.threadId, title },
+    text: args.instruction,
+    title,
+  });
+  const where = placeOf(realm);
+  return changed<RitualCreatedByGuildmaster>({
+    _tag: "Created",
+    text: `Created the Ritual "${title}" ${where}, ${JSON.stringify(args.schedule)}, on ${companionLineOf(args.tier ?? null, runner)}. It runs by itself in its own quest when due and is on. Tell the owner in a sentence what it will do and when; do not repeat the instruction.`,
+  });
+});

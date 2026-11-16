@@ -30,17 +30,16 @@ import { titleToolsOf } from "./titles.ts";
 import { isBeneath, openThreadByAgent, refusedOf, reportResult } from "./tree.ts";
 
 /** Why a thread may not call a thread tool now, or null: an unknown or deleting thread, or one the chatter guard paused. */
-export const readCallerRefusal = (threadId: string, name: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [caller] = yield* sql<{
-      blocker: string | null;
-    }>`SELECT blocker FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
-    if (caller === undefined) return "Unknown thread.";
-    if (caller.blocker === "Chatter" && name !== "send_thread_message" && name !== "report_result")
-      return "Paused by the chatter guard. Wait for the owner.";
-    return null;
-  });
+export const readCallerRefusal = Effect.fnUntraced(function* (threadId: string, name: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [caller] = yield* sql<{
+    blocker: string | null;
+  }>`SELECT blocker FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+  if (caller === undefined) return "Unknown thread.";
+  if (caller.blocker === "Chatter" && name !== "send_thread_message" && name !== "report_result")
+    return "Paused by the chatter guard. Wait for the owner.";
+  return null;
+});
 
 /**
  * A thread's ask-the-owner capability for its turn request: the answer `answer_prompt` gives Claude Code,
