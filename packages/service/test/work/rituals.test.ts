@@ -330,6 +330,42 @@ describe("running a Ritual by hand", () => {
 });
 
 describe("falling back to another Companion", () => {
+  it.live("passes over the thread's own Companion and hands the run to the next one", () =>
+    withService(
+      Effect.gen(function* () {
+        const created = yield* create("fail claude Usage limit reached\nrunner", { fallbacks: [claude, codex] });
+        yield* run(created);
+        const detail = yield* settle(created.missionId, (d) => replies(d).length === 1 && isIdle(d));
+        expect(replies(detail)).toEqual(["Echo: codex/gpt-5/default/session none"]);
+        expect(detail.handovers.map((handover) => handover.text)).toEqual([
+          expect.stringMatching(/^Fell back to Codex · gpt-5 · default effort · Usage limit reached/),
+        ]);
+        expect((yield* readRitual(created.missionId))?.lastRunState).toBe("Done");
+      }),
+    ),
+  );
+
+  it.live("passes over a fallback on a removed account and hands the run to the next one", () =>
+    withService(
+      Effect.gen(function* () {
+        const accounts = yield* call({ _tag: "AddAccount", harness: "claude", label: "Work" });
+        const accountId = accounts.harnesses.find((harness) => harness.name === "claude")?.accounts[1]?.id;
+        if (accountId === undefined || accountId === null) return yield* Effect.die("Missing added account");
+        const created = yield* create("fail claude Usage limit reached\nrunner", {
+          fallbacks: [{ ...claude, accountId }, codex],
+        });
+        yield* call({ _tag: "RemoveAccount", accountId });
+        yield* run(created);
+        const detail = yield* settle(created.missionId, (d) => replies(d).length === 1 && isIdle(d));
+        expect(replies(detail)).toEqual(["Echo: codex/gpt-5/default/session none"]);
+        expect(detail.handovers.map((handover) => handover.text)).toEqual([
+          expect.stringMatching(/^Fell back to Codex · gpt-5 · default effort · Usage limit reached/),
+        ]);
+        expect((yield* readRitual(created.missionId))?.lastRunState).toBe("Done");
+      }),
+    ),
+  );
+
   it.live("hands the failed run to the next Companion, says so in the quest, and finishes there", () =>
     withService(
       Effect.gen(function* () {
