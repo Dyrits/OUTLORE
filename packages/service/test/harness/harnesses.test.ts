@@ -28,8 +28,8 @@ import { type Duration, Effect, Layer } from "effect";
 import { afterEach } from "vitest";
 import { HarnessFailure } from "../../src/core/index.ts";
 import { runnerOf } from "../../src/harness/index.ts";
-import { type OpenCodeSandbox, ownerMarkerOf } from "../../src/harness/openCodeSandbox.ts";
-import { isOpenCodeCommand, markedProcessesOf } from "../../src/harness/processTree.ts";
+import { type OpenCodeSandbox, writeOwnerMarker } from "../../src/harness/openCodeSandbox.ts";
+import { isOpenCodeCommand, readMarkedProcesses } from "../../src/harness/processTree.ts";
 import {
   type FakeUpdates,
   fakeHarnessToolsLayer,
@@ -181,7 +181,7 @@ const read = (missionId: MissionId) => call({ _tag: "ReadMission", missionId, th
 
 const settle = (missionId: MissionId, check: (detail: MissionDetail) => boolean) =>
   Effect.gen(function* () {
-    for (let i = 0; i < 300; i++) {
+    for (let attempt = 0; attempt < 300; attempt++) {
       const detail = yield* read(missionId);
       if (check(detail)) return detail;
       yield* Effect.sleep("20 millis");
@@ -195,7 +195,7 @@ const settle = (missionId: MissionId, check: (detail: MissionDetail) => boolean)
  */
 const untilRequested = (requests: (method: string) => ReadonlyArray<unknown>, method: string) =>
   Effect.gen(function* () {
-    for (let i = 0; i < 500 && requests(method).length < 1; i++) yield* Effect.sleep("10 millis");
+    for (let attempt = 0; attempt < 500 && requests(method).length < 1; attempt++) yield* Effect.sleep("10 millis");
     if (requests(method).length < 1) return yield* Effect.die(new Error(`the harness never received ${method}`));
   });
 
@@ -217,7 +217,7 @@ const start = (fields: Partial<Extract<Request, { _tag: "StartMission" }>> & { t
 
 const answerOpen = (answer: "Allow" | "Deny", message: string | null = null) =>
   Effect.gen(function* () {
-    for (let i = 0; i < 300; i++) {
+    for (let attempt = 0; attempt < 300; attempt++) {
       const [question] = yield* call({ _tag: "ListOpenQuestions" });
       if (question !== undefined)
         return yield* call({ _tag: "AnswerQuestion", answer, message, questionId: question.id });
@@ -229,7 +229,7 @@ const answerOpen = (answer: "Allow" | "Deny", message: string | null = null) =>
 /** The first open question, once one is asked. */
 const openQuestionOf = () =>
   Effect.gen(function* () {
-    for (let i = 0; i < 300; i++) {
+    for (let attempt = 0; attempt < 300; attempt++) {
       const [question] = yield* call({ _tag: "ListOpenQuestions" });
       if (question !== undefined) return question;
       yield* Effect.sleep("20 millis");
@@ -643,7 +643,7 @@ describe("running Codex threads", () => {
       yield* settle(started.missionId, (detail) => detail.thread.state === "Running");
       yield* untilRequested(requests, "turn/start");
       yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-      const detail = yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
       expect(replies(detail)).toEqual([]);
       expect(requests("turn/interrupt")).toHaveLength(1);
     }).pipe(Effect.provide(layer));
@@ -656,7 +656,7 @@ describe("running Codex threads", () => {
       const started = yield* start({ harness: "codex", text: "slow 5000" });
       yield* untilRequested(requests, "turn/start");
       yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-      const detail = yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
       expect(replies(detail)).toEqual([]);
       expect(requests("turn/interrupt")).toHaveLength(1);
     }).pipe(Effect.provide(layer));
@@ -666,7 +666,7 @@ describe("running Codex threads", () => {
     const { layer } = withHarnesses();
     return Effect.gen(function* () {
       const started = yield* start({ harness: "codex", text: "fail" });
-      const detail = yield* settle(started.missionId, (d) => d.thread.state === "Failed");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Failed");
       expect(detail.thread.failure).toBe("stand-in: the turn failed");
     }).pipe(Effect.provide(layer));
   });
@@ -750,7 +750,7 @@ describe("running OpenCode threads", () => {
       const listed = yield* tools.listModels("opencode", null);
       expect(listed.map((option) => option.id)).toEqual(["provider/model-a", "provider/plain"]);
       // The levels are read in the background; wait for both models' sessions.
-      for (let i = 0; i < 100 && sessions() < 2; i++) yield* Effect.sleep("100 millis");
+      for (let attempt = 0; attempt < 100 && sessions() < 2; attempt++) yield* Effect.sleep("100 millis");
       yield* Effect.sleep("500 millis");
       const before = sessions();
       expect(before).toBe(2);
@@ -804,7 +804,7 @@ describe("running OpenCode threads", () => {
       const started = yield* start({ harness: "opencode", text: "run git push origin main" });
       yield* settle(started.missionId, (detail) => detail.questions.length === 1);
       yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-      const detail = yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
       yield* Effect.sleep("200 millis");
       expect(replies(detail)).toEqual([]);
       expect(requests("session/prompt")).toHaveLength(1);
@@ -816,9 +816,10 @@ describe("running OpenCode threads", () => {
     return Effect.gen(function* () {
       const started = yield* start({ harness: "opencode", text: "fragile run git push origin main" });
       yield* answerOpen("Deny");
-      for (let i = 0; i < 100 && requests("session/prompt").length < 2; i++) yield* Effect.sleep("10 millis");
+      for (let attempt = 0; attempt < 100 && requests("session/prompt").length < 2; attempt++)
+        yield* Effect.sleep("10 millis");
       yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-      const detail = yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
       expect(detail.mission.usage).toEqual({ cacheCreation: 0, cacheRead: 40, input: 90, output: 8 });
     }).pipe(Effect.provide(layer));
   });
@@ -963,7 +964,7 @@ describe("running OpenCode threads", () => {
         expect([exportsFrom(join(real, "share")), exportsFrom(copy)]).toEqual([2, 2]);
 
         // The plan-limit probe runs outside the sandbox on the account's real folder, as the owner's OpenCode does.
-        for (let i = 0; i < 100 && !logged().some((entry) => entry.method === "usage/limits"); i++) {
+        for (let attempt = 0; attempt < 100 && !logged().some((entry) => entry.method === "usage/limits"); attempt++) {
           yield* call({ _tag: "ReadAccountBudgets" });
           yield* Effect.sleep("50 millis");
         }
@@ -996,7 +997,7 @@ describe("running OpenCode threads", () => {
       expect(isAlive(executor)).toBe(true);
       // `acp` dies alone, before anything reads its tree: its executor is an orphan in a group of its own.
       process.kill(acp, "SIGKILL");
-      for (let i = 0; i < 200 && isAlive(executor); i++) yield* Effect.sleep("25 millis");
+      for (let attempt = 0; attempt < 200 && isAlive(executor); attempt++) yield* Effect.sleep("25 millis");
       expect(isAlive(executor)).toBe(false);
     }).pipe(
       Effect.ensuring(Effect.sync(() => executor > 0 && isAlive(executor) && process.kill(executor, "SIGKILL"))),
@@ -1011,18 +1012,18 @@ describe("running OpenCode threads", () => {
       const started = yield* start({ harness: "opencode", text: "Hello" });
       yield* settle(started.missionId, idleWith(1));
       const executor = logged().find((entry) => entry.executor !== undefined)?.executor ?? -1;
-      const marker = ownerMarkerOf(seatbeltIn(real)(directory));
-      expect(markedProcessesOf(marker).map((found) => found.pid)).toContain(executor);
-      for (let i = 0; i < 200 && isAlive(executor); i++) yield* Effect.sleep("25 millis");
+      const marker = writeOwnerMarker(seatbeltIn(real)(directory));
+      expect(readMarkedProcesses(marker).map((found) => found.pid)).toContain(executor);
+      for (let attempt = 0; attempt < 200 && isAlive(executor); attempt++) yield* Effect.sleep("25 millis");
       expect(isAlive(executor)).toBe(false);
-      expect(markedProcessesOf(marker).filter((found) => isOpenCodeCommand(found.command))).toEqual([]);
+      expect(readMarkedProcesses(marker).filter((found) => isOpenCodeCommand(found.command))).toEqual([]);
     }).pipe(Effect.provide(layer));
   });
 
   it.live.skipIf(!canApplySeatbelt)("ends, when the service starts, the OpenCode processes an earlier run lost", () => {
     const real = realHomes();
     const { directory, layer } = withHarnesses("10 minutes", seatbeltIn(real));
-    const marker = ownerMarkerOf(seatbeltIn(real)(directory));
+    const marker = writeOwnerMarker(seatbeltIn(real)(directory));
     const pidFile = join(directory, "lost");
     // A parent that leaves a marked executor behind, as a service that stopped would.
     spawn(
@@ -1037,13 +1038,13 @@ describe("running OpenCode threads", () => {
     );
     let lost = -1;
     return Effect.gen(function* () {
-      for (let i = 0; i < 200 && !existsSync(pidFile); i++) yield* Effect.sleep("25 millis");
+      for (let attempt = 0; attempt < 200 && !existsSync(pidFile); attempt++) yield* Effect.sleep("25 millis");
       lost = Number(readFileSync(pidFile, "utf8"));
       yield* Effect.sleep("200 millis");
       expect(isAlive(lost)).toBe(true);
       // The OpenCode adapter is made with the service: it ends the lost process before any thread starts.
       yield* Effect.provide(call({ _tag: "ListHarnesses" }), layer);
-      for (let i = 0; i < 200 && isAlive(lost); i++) yield* Effect.sleep("25 millis");
+      for (let attempt = 0; attempt < 200 && isAlive(lost); attempt++) yield* Effect.sleep("25 millis");
       expect(isAlive(lost)).toBe(false);
     }).pipe(Effect.ensuring(Effect.sync(() => lost > 0 && isAlive(lost) && process.kill(lost, "SIGKILL"))));
   });
@@ -1058,7 +1059,7 @@ describe("running OpenCode threads", () => {
         yield* settle(started.missionId, idleWith(1));
         const grandchild = logged().find((entry) => entry.grandchild !== undefined)?.grandchild ?? -1;
         expect(grandchild).toBeGreaterThan(0);
-        for (let i = 0; i < 200 && isAlive(grandchild); i++) yield* Effect.sleep("25 millis");
+        for (let attempt = 0; attempt < 200 && isAlive(grandchild); attempt++) yield* Effect.sleep("25 millis");
         expect(isAlive(grandchild)).toBe(false);
       }).pipe(Effect.provide(layer));
     },
@@ -1084,7 +1085,7 @@ describe("running OpenCode threads", () => {
       yield* settle(started.missionId, (detail) => detail.thread.state === "Running");
       yield* untilRequested(requests, "session/prompt");
       yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-      const detail = yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
       expect(replies(detail)).toEqual([]);
       expect(detail.mission.usage).toEqual({ cacheCreation: 0, cacheRead: 40, input: 90, output: 8 });
     }).pipe(Effect.provide(layer));
@@ -1141,7 +1142,7 @@ describe("running OpenCode threads", () => {
       process.env.STAND_IN_OPENCODE_MISSING_SESSIONS = `ses-${acpPidsOf(logged)[0]}`;
       yield* Effect.sleep("200 millis");
       yield* sendTo(started.threadId, "two");
-      const detail = yield* settle(started.missionId, (d) => d.thread.state === "Failed");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Failed");
       expect(detail.thread.failure).toContain("Session not found");
       expect(requests("session/new")).toHaveLength(1);
       expect(detail.handovers).toEqual([]);
@@ -1253,7 +1254,7 @@ describe("running OpenCode threads", () => {
           const asked = yield* answerOpen("Deny");
           expect(asked.summary).toContain(scratch);
           expect(asked.summary).toContain(`points to ${pointed}`);
-          const detail = yield* settle(started.missionId, (d) => d.thread.state === "Failed");
+          const detail = yield* settle(started.missionId, (current) => current.thread.state === "Failed");
           expect(detail.thread.failure).toContain(scratch);
           expect(detail.thread.failure).toContain("outside the workspace");
           // No OpenCode started for the refused turn, sandboxed or not.
@@ -1276,7 +1277,7 @@ describe("running OpenCode threads", () => {
       const asked = yield* answerOpen("Deny");
       expect(asked.summary).toContain(root);
       expect(asked.summary).toContain(join(elsewhere, "missions"));
-      yield* settle(started.missionId, (d) => d.thread.state === "Failed");
+      yield* settle(started.missionId, (current) => current.thread.state === "Failed");
       expect(acpPidsOf(logged)).toHaveLength(1);
     }).pipe(Effect.provide(layer));
   });
@@ -1371,7 +1372,7 @@ describe.each(["claude", "codex"] as const)("checking a %s thread's folder befor
       linkInPlace(workspace, other);
       yield* sendTo(started.threadId, "four");
       expect((yield* answerOpen("Deny")).summary).toContain(other);
-      yield* settle(started.missionId, (d) => d.thread.state === "Failed");
+      yield* settle(started.missionId, (current) => current.thread.state === "Failed");
       expect(startsOf(logged)).toHaveLength(2);
     }).pipe(Effect.provide(layer));
   });
@@ -1392,7 +1393,7 @@ describe.each(["claude", "codex"] as const)("checking a %s thread's folder befor
         const asked = yield* answerOpen("Deny");
         expect(asked.summary).toContain(scratch);
         expect(asked.summary).toContain(`points to ${pointed}`);
-        const detail = yield* settle(started.missionId, (d) => d.thread.state === "Failed");
+        const detail = yield* settle(started.missionId, (current) => current.thread.state === "Failed");
         expect(detail.thread.failure).toContain(scratch);
         expect(detail.thread.failure).toContain(pointed);
         expect(startsOf(logged)).toHaveLength(1);
@@ -1621,7 +1622,7 @@ describe("managing provider accounts", () => {
       const parent = yield* settle(started.missionId, (detail) => detail.threads.length === 2 && idleWith(1)(detail));
       const childId = parent.threads[1]?.id;
       expect(childId).toBeDefined();
-      for (let i = 0; i < 300; i++) {
+      for (let attempt = 0; attempt < 300; attempt++) {
         const child = yield* call({ _tag: "ReadMission", missionId: started.missionId, threadId: childId ?? null });
         if (replies(child).length === 1) {
           // On another harness the thread starts on that harness's own sign-in and default model.

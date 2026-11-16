@@ -430,7 +430,7 @@ describe("fragmenting a large message", () => {
     const seen = watch(responder);
     const fragment = new Uint8Array(fragmentBytes);
     const needed = Math.floor(maxMessageBytes / fragmentBytes) + 1;
-    for (let i = 0; i < needed - 1; i += 1) sendRecord(1, fragment);
+    for (let index = 0; index < needed - 1; index += 1) sendRecord(1, fragment);
     await settle();
     // Still under the cap: the receiver keeps waiting for the last fragment.
     expect(seen.closes).toBe(0);

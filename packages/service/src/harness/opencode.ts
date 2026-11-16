@@ -31,8 +31,8 @@ import {
 import { approvalInstructionsOf } from "./instructions.ts";
 import { harnessEnvironmentOf, type RpcIncoming, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
 import { makeOpenCodeLauncher } from "./openCodeLaunch.ts";
-import { editedPathsOf, firstOutsideOf, isUnaskedEdit, promptOf, refusalOf } from "./openCodePrompts.ts";
-import { type OpenCodeSandbox, ownerMarkerOf } from "./openCodeSandbox.ts";
+import { editedPathsOf, findFirstOutside, isUnaskedEdit, promptOf, refusalOf } from "./openCodePrompts.ts";
+import { type OpenCodeSandbox, writeOwnerMarker } from "./openCodeSandbox.ts";
 import { sweepOrphans } from "./processTree.ts";
 import { toolServerName } from "./toolNames.ts";
 
@@ -203,7 +203,7 @@ const answerRequest = Effect.fnUntraced(function* (
     // An edit naming no file is judged as leaving the folder: its title is no path to trust.
     const isPathless = textFieldOf(toolCall, "kind") === "edit" && editedPathsOf(toolCall).length === 0;
     const prompt = {
-      ...promptOf(toolCall, yield* firstOutsideOf(request, toolCall)),
+      ...promptOf(toolCall, yield* findFirstOutside(request, toolCall)),
       ...(isUnconfirmed || isPathless ? { isOutsideSandbox: true } : {}),
       ...(connection.isUnsandboxed ? { isUnsandboxed: true } : {}),
     };
@@ -521,7 +521,7 @@ export const makeOpenCodeHarness = (options: OpenCodeOptions) =>
       Effect.promise(async () => {
         const sandbox = options.sandbox;
         if (sandbox === null) return;
-        const left = await sweepOrphans(ownerMarkerOf(sandbox));
+        const left = await sweepOrphans(writeOwnerMarker(sandbox));
         if (left.length > 0) console.error(`OpenCode: lost processes still running: ${left.join(", ")}`);
       }),
       makeHarnessProcesses(openCodeProtocolOf(options), options),

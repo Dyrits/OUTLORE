@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { markedProcessesOf } from "../../src/harness/processTree.ts";
+import { readMarkedProcesses } from "../../src/harness/processTree.ts";
 
 // What this environment lets a test do. A test that needs the real thing runs when it is there and is skipped, named
 // as skipped, when it is not, so it never fails for want of a capability the environment withholds on purpose. Inside
@@ -26,7 +26,7 @@ export const canReadProcessTable = (() => {
     const isListed = listed
       .split("\n")
       .some((line) => line.trim().split(/\s+/).join(" ") === `${child.pid} ${process.pid}`);
-    return isListed && markedProcessesOf(marker).some((found) => found.pid === child.pid);
+    return isListed && readMarkedProcesses(marker).some((found) => found.pid === child.pid);
   } finally {
     child.kill("SIGKILL");
   }

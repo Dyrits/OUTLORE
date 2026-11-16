@@ -60,7 +60,7 @@ const call = <R extends Request>(request: R) =>
 
 const settle = (missionId: MissionId, check: (detail: MissionDetail) => boolean) =>
   Effect.gen(function* () {
-    for (let i = 0; i < 1800; i++) {
+    for (let attempt = 0; attempt < 1800; attempt++) {
       const detail = yield* call({ _tag: "ReadMission", missionId, threadId: null });
       if (check(detail)) return detail;
       yield* Effect.sleep("100 millis");
@@ -82,7 +82,8 @@ const titledTurn = (harness: HarnessName, model: string) =>
     });
     const detail = yield* settle(
       started.missionId,
-      (d) => d.thread.state === "Idle" || d.thread.state === "Failed" || d.thread.state === "Attention",
+      (current) =>
+        current.thread.state === "Idle" || current.thread.state === "Failed" || current.thread.state === "Attention",
     );
     expect(detail.thread.failure).toBeNull();
     expect(detail.mission.title).toBe("Live check");
@@ -122,7 +123,7 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
       const workspace = join(directory, "project");
       mkdirSync(workspace);
       const outside = join(directory, "outside.txt");
-      const isPaused = (d: MissionDetail) => d.thread.state !== "Running";
+      const isPaused = (current: MissionDetail) => current.thread.state !== "Running";
       return Effect.gen(function* () {
         const started = yield* call({
           _tag: "StartMission",
@@ -135,10 +136,10 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
         });
         const asking = yield* settle(
           started.missionId,
-          (d) => isPaused(d) || d.questions.some((q) => q.outcome === null),
+          (current) => isPaused(current) || current.questions.some((entry) => entry.outcome === null),
         );
         expect(existsSync(join(workspace, "notes.txt"))).toBe(true);
-        const question = asking.questions.find((q) => q.outcome === null);
+        const question = asking.questions.find((entry) => entry.outcome === null);
         expect(question?.details).toBe(`Edit ${outside}`);
         yield* call({
           _tag: "AnswerQuestion",
@@ -148,9 +149,9 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
         });
         const detail = yield* settle(
           started.missionId,
-          (d) => d.thread.state === "Idle" || d.thread.state === "Failed",
+          (current) => current.thread.state === "Idle" || current.thread.state === "Failed",
         );
-        expect(detail.questions.map((q) => q.outcome)).toEqual(["Denied"]);
+        expect(detail.questions.map((entry) => entry.outcome)).toEqual(["Denied"]);
         expect(existsSync(outside)).toBe(false);
         // OpenCode cancels its prompt on a refusal; the thread hears the owner's message and replies in the same turn.
         expect(detail.thread.failure).toBeNull();
@@ -193,14 +194,20 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
           workspacePath: workspace,
         });
         // Every question is allowed as it opens, so the turn runs to its end.
-        const isDone = (d: MissionDetail) => d.thread.state === "Idle" || d.thread.state === "Failed";
-        let detail = yield* settle(started.missionId, (d) => isDone(d) || d.questions.some((q) => q.outcome === null));
+        const isDone = (current: MissionDetail) => current.thread.state === "Idle" || current.thread.state === "Failed";
+        let detail = yield* settle(
+          started.missionId,
+          (current) => isDone(current) || current.questions.some((entry) => entry.outcome === null),
+        );
         while (!isDone(detail)) {
-          const open = detail.questions.find((q) => q.outcome === null);
+          const open = detail.questions.find((entry) => entry.outcome === null);
           if (open !== undefined)
             yield* call({ _tag: "AnswerQuestion", answer: "Allow", message: null, questionId: open.id });
           yield* Effect.sleep("500 millis");
-          detail = yield* settle(started.missionId, (d) => isDone(d) || d.questions.some((q) => q.outcome === null));
+          detail = yield* settle(
+            started.missionId,
+            (current) => isDone(current) || current.questions.some((entry) => entry.outcome === null),
+          );
         }
         // Recorded in the verification proof: what the thread and Codex asked, in order.
         const asked = detail.questions.map(({ details, outcome, permission, source }) => ({
@@ -211,7 +218,7 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
         }));
         console.log("CODEX_ESCALATION", JSON.stringify(asked));
         // One push is decided once: the escalation Codex wraps in `/bin/zsh -lc '…'` uses the allowance just given.
-        expect(asked.filter((q) => q.permission === "Push code")).toHaveLength(1);
+        expect(asked.filter((entry) => entry.permission === "Push code")).toHaveLength(1);
         expect(git(remote, "rev-parse", "main").trim()).toBe(git(workspace, "rev-parse", "main").trim());
       }).pipe(Effect.provide(live(directory)));
     },

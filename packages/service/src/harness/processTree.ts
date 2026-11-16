@@ -8,7 +8,7 @@ import { Predicate } from "effect";
 // an orphan made anyway, when `acp` ends first, is found by the marker its environment inherited (sweepOrphans).
 
 /** Every process's parent, read from `ps`; empty when it cannot be read. */
-const parentsOf = (): Map<number, number> => {
+const readParentPids = (): Map<number, number> => {
   try {
     const table = execFileSync("ps", ["-A", "-o", "pid=,ppid="], { encoding: "utf8" });
     return new Map(
@@ -24,16 +24,16 @@ const parentsOf = (): Map<number, number> => {
 };
 
 /** The root and every process descending from it, the root first. */
-export const processTreeOf = (root: number) => {
+export const readProcessTree = (root: number) => {
   const children = new Map<number, Array<number>>();
-  for (const [pid, ppid] of parentsOf()) children.set(ppid, [...(children.get(ppid) ?? []), pid]);
+  for (const [pid, ppid] of readParentPids()) children.set(ppid, [...(children.get(ppid) ?? []), pid]);
   const tree = [root];
   for (let index = 0; index < tree.length; index++) tree.push(...(children.get(tree[index] ?? -1) ?? []));
   return tree;
 };
 
 /** The command line of each given process, read from `ps`; processes it does not list are left out. */
-const commandsOf = (pids: ReadonlyArray<number>) => {
+const readProcessCommands = (pids: ReadonlyArray<number>) => {
   try {
     const table = execFileSync("ps", ["-A", "-o", "pid=,args="], { encoding: "utf8" });
     const wanted = new Set(pids);
@@ -60,8 +60,8 @@ const isExecutorCommand = (command: string) =>
  * inside it. False when the tree or its command lines cannot be read: containment is then not confirmed.
  */
 export const hasExecutorBelow = (root: number) => {
-  const below = processTreeOf(root).slice(1);
-  return [...commandsOf(below).values()].some(isExecutorCommand);
+  const below = readProcessTree(root).slice(1);
+  return [...readProcessCommands(below).values()].some(isExecutorCommand);
 };
 
 const isAlive = (pid: number) => {
@@ -99,11 +99,11 @@ const waitForEnd = async (pids: ReadonlyArray<number>, millis: number) => {
  * afterwards: none, normally.
  */
 export const killProcessTree = async (root: number, graceMillis = 2000, isGroupLeader = false) => {
-  let tree = processTreeOf(root);
+  let tree = readProcessTree(root);
   // Stopped processes keep their parent links and start nothing more, so the tree read again is complete.
   for (let round = 0; round < 5; round++) {
     for (const pid of tree) signal(pid, "SIGSTOP");
-    const again = processTreeOf(root);
+    const again = readProcessTree(root);
     const grown = [...new Set([...tree, ...again])];
     if (grown.length === tree.length) break;
     tree = grown;
@@ -183,7 +183,7 @@ const markedOnLinux = (token: string): Array<MarkedProcess> => {
 };
 
 /** The running processes whose environment carries exactly this marker; empty when the table cannot be read. */
-export const markedProcessesOf = (marker: ProcessMarker): Array<MarkedProcess> => {
+export const readMarkedProcesses = (marker: ProcessMarker): Array<MarkedProcess> => {
   try {
     if (process.platform === "darwin") return markedOnMac(tokenOf(marker));
     if (process.platform === "linux") return markedOnLinux(tokenOf(marker));
@@ -198,7 +198,7 @@ export const isOpenCodeCommand = (command: string) =>
   /(?:^|[\s/])opencode(?:\s|$)/.test(command) || isExecutorCommand(command);
 
 /** This process and every process descending from it. */
-const ownTree = () => new Set(processTreeOf(process.pid));
+const readOwnTree = () => new Set(readProcessTree(process.pid));
 
 /**
  * Ends OpenCode processes the service started and lost (CHG-0208): those carrying the service's marker in their
@@ -209,12 +209,12 @@ const ownTree = () => new Set(processTreeOf(process.pid));
 export const sweepOrphans = async (marker: ProcessMarker) => {
   const isOrphan = (candidate: MarkedProcess, own: Set<number>) =>
     candidate.pid !== process.pid && !own.has(candidate.pid) && isOpenCodeCommand(candidate.command);
-  const own = ownTree();
-  const orphans = markedProcessesOf(marker).filter((candidate) => isOrphan(candidate, own));
+  const own = readOwnTree();
+  const orphans = readMarkedProcesses(marker).filter((candidate) => isOrphan(candidate, own));
   for (const orphan of orphans) await killProcessTree(orphan.pid, 1000);
   if (orphans.length === 0) return [];
-  const ownAfter = ownTree();
-  return markedProcessesOf(marker)
+  const ownAfter = readOwnTree();
+  return readMarkedProcesses(marker)
     .filter((candidate) => isOrphan(candidate, ownAfter))
     .map((candidate) => candidate.pid);
 };

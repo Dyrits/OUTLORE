@@ -13,56 +13,56 @@ const EMPTY = new Uint8Array(0);
 /** The running hash and chaining key of a handshake, with the cipher that protects handshake payloads. */
 export class SymmetricState {
   readonly cipher = new CipherState();
-  private ck: Uint8Array;
-  private h: Uint8Array;
+  private chainingKey: Uint8Array;
+  private hash: Uint8Array;
 
   constructor(protocolName: string) {
     const name = new TextEncoder().encode(protocolName);
     if (name.byteLength <= HASHLEN) {
-      this.h = new Uint8Array(HASHLEN);
-      this.h.set(name);
+      this.hash = new Uint8Array(HASHLEN);
+      this.hash.set(name);
     } else {
-      this.h = sha256(name);
+      this.hash = sha256(name);
     }
-    this.ck = this.h.slice();
+    this.chainingKey = this.hash.slice();
     this.cipher.initializeKey(null);
   }
 
   mixKey(inputKeyMaterial: Uint8Array): void {
-    const [ck, tempK] = hkdf2(this.ck, inputKeyMaterial);
-    this.ck = ck;
-    this.cipher.initializeKey(tempK);
+    const [chainingKey, tempKey] = hkdf2(this.chainingKey, inputKeyMaterial);
+    this.chainingKey = chainingKey;
+    this.cipher.initializeKey(tempKey);
   }
 
   mixHash(data: Uint8Array): void {
-    this.h = sha256(concat(this.h, data));
+    this.hash = sha256(concat(this.hash, data));
   }
 
   handshakeHash(): Uint8Array {
-    return this.h.slice();
+    return this.hash.slice();
   }
 
   encryptAndHash(plaintext: Uint8Array): Uint8Array {
-    const ciphertext = this.cipher.encryptWithAd(this.h, plaintext);
+    const ciphertext = this.cipher.encryptWithAd(this.hash, plaintext);
     this.mixHash(ciphertext);
     return ciphertext;
   }
 
   decryptAndHash(ciphertext: Uint8Array): Uint8Array {
-    const plaintext = this.cipher.decryptWithAd(this.h, ciphertext);
+    const plaintext = this.cipher.decryptWithAd(this.hash, ciphertext);
     this.mixHash(ciphertext);
     return plaintext;
   }
 
   split(): [CipherState, CipherState] {
-    const [k1, k2] = hkdf2(this.ck, EMPTY);
-    const c1 = new CipherState();
-    const c2 = new CipherState();
-    c1.initializeKey(k1);
-    c2.initializeKey(k2);
-    this.ck.fill(0);
+    const [firstKey, secondKey] = hkdf2(this.chainingKey, EMPTY);
+    const firstCipher = new CipherState();
+    const secondCipher = new CipherState();
+    firstCipher.initializeKey(firstKey);
+    secondCipher.initializeKey(secondKey);
+    this.chainingKey.fill(0);
     this.cipher.clear();
-    return [c1, c2];
+    return [firstCipher, secondCipher];
   }
 }
 

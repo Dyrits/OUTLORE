@@ -74,7 +74,7 @@ const read = (missionId: MissionId) => call({ _tag: "ReadMission", missionId, th
 
 const settle = (missionId: MissionId, check: (detail: MissionDetail) => boolean) =>
   Effect.gen(function* () {
-    for (let i = 0; i < 300; i++) {
+    for (let attempt = 0; attempt < 300; attempt++) {
       const detail = yield* read(missionId);
       if (check(detail)) return detail;
       yield* Effect.sleep("20 millis");
@@ -83,7 +83,7 @@ const settle = (missionId: MissionId, check: (detail: MissionDetail) => boolean)
   });
 
 const idleWith = (count: number) => (detail: MissionDetail) =>
-  detail.thread.state === "Idle" && detail.messages.filter((m) => m.sender === "agent").length === count;
+  detail.thread.state === "Idle" && detail.messages.filter((message) => message.sender === "agent").length === count;
 
 describe("running Claude Code threads", () => {
   it.live("runs the thread's model and effort sandboxed, prompts sent to Outlore, and no Outlore secrets", () => {
@@ -99,8 +99,8 @@ describe("running Claude Code threads", () => {
       });
       const detail = yield* settle(started.missionId, idleWith(1));
 
-      expect(detail.messages.map((m) => m.sender)).toEqual(["user", "agent"]);
-      expect(detail.messages.map((m) => m.model)).toEqual([null, "claude-sonnet-5-5"]);
+      expect(detail.messages.map((message) => message.sender)).toEqual(["user", "agent"]);
+      expect(detail.messages.map((message) => message.model)).toEqual([null, "claude-sonnet-5-5"]);
       expect(withoutNote(detail.messages[1]?.text)).toMatch(/^Reply 1 .* to: Hello$/);
       expect(detail.thread).toMatchObject({ effort: "high", failure: null, model: "opus" });
 
@@ -430,7 +430,7 @@ describe("running Claude Code threads", () => {
         workspacePath: null,
       });
       const detail = yield* settle(started.missionId, idleWith(1));
-      expect(detail.messages.map((m) => m.model)).toEqual([null, null]);
+      expect(detail.messages.map((message) => message.model)).toEqual([null, null]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -614,7 +614,7 @@ describe("running Claude Code threads", () => {
         text: "First",
         workspacePath: null,
       });
-      const failed = yield* settle(started.missionId, (d) => d.thread.state === "Failed");
+      const failed = yield* settle(started.missionId, (current) => current.thread.state === "Failed");
       expect(failed.thread.failure).toContain("stand-in: cannot start");
       expect(failed.mission.state).toBe("Failed");
 
@@ -638,9 +638,9 @@ describe("running Claude Code threads", () => {
         text: "Hi",
         workspacePath: null,
       });
-      const failed = yield* settle(started.missionId, (d) => d.thread.state === "Failed");
+      const failed = yield* settle(started.missionId, (current) => current.thread.state === "Failed");
       expect(failed.thread.failure).toBe("There's an issue with the selected model.");
-      expect(failed.messages.map((m) => m.sender)).toEqual(["user"]);
+      expect(failed.messages.map((message) => message.sender)).toEqual(["user"]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -659,7 +659,7 @@ describe("running Claude Code threads", () => {
         workspacePath: null,
       });
       yield* settle(on.missionId, idleWith(1));
-      const seen = (yield* PubSub.takeAll(drafts)).map((d) => d.text);
+      const seen = (yield* PubSub.takeAll(drafts)).map((current) => current.text);
       expect(seen.some((text) => text.startsWith("Reply 1 "))).toBe(true);
       expect(seen.at(-1)).toBe("");
 
@@ -700,7 +700,7 @@ describe("running Claude Code threads", () => {
         workspacePath: null,
       });
       yield* settle(off.missionId, idleWith(1));
-      expect((yield* PubSub.takeAll(drafts)).filter((d) => d.text !== "")).toEqual([]);
+      expect((yield* PubSub.takeAll(drafts)).filter((current) => current.text !== "")).toEqual([]);
     }).pipe(Effect.provide(layer));
   });
 });
@@ -784,7 +784,7 @@ describe("steering and interrupting Claude Code", () => {
    */
   const untilTurnWritten = (directory: string) =>
     Effect.gen(function* () {
-      for (let i = 0; i < 500 && !inputLines(directory).some((line) => line.type === "user"); i++) {
+      for (let attempt = 0; attempt < 500 && !inputLines(directory).some((line) => line.type === "user"); attempt++) {
         yield* Effect.sleep("10 millis");
       }
     });
@@ -1017,7 +1017,7 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
           text: "Reply with exactly: ok",
           workspacePath: null,
         });
-        const detail = yield* settle(started.missionId, (d) => d.thread.state !== "Running");
+        const detail = yield* settle(started.missionId, (current) => current.thread.state !== "Running");
         expect(detail.thread.failure).toBeNull();
         expect(detail.messages.at(-1)?.text.toLowerCase()).toContain("ok");
         expect(detail.mission.usage.output).toBeGreaterThan(0);
@@ -1046,7 +1046,7 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
       const outside = join(directory, "outside", "approved.txt");
       const settleLong = (missionId: MissionId, check: (detail: MissionDetail) => boolean) =>
         Effect.gen(function* () {
-          for (let i = 0; i < 1200; i++) {
+          for (let attempt = 0; attempt < 1200; attempt++) {
             const detail = yield* read(missionId);
             if (check(detail)) return detail;
             yield* Effect.sleep("100 millis");
@@ -1065,10 +1065,14 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
         });
         // The model may ask through request_approval, or go straight to the command, whose escape from the sandbox
         // then asks (CHG-0031, CHG-0208); allow whatever opens until the turn ends.
-        const isSettled = (d: MissionDetail) => d.thread.state === "Idle" || d.thread.state === "Failed";
-        let detail = yield* settleLong(started.missionId, (d) => isSettled(d) || d.thread.state === "Attention");
+        const isSettled = (current: MissionDetail) =>
+          current.thread.state === "Idle" || current.thread.state === "Failed";
+        let detail = yield* settleLong(
+          started.missionId,
+          (current) => isSettled(current) || current.thread.state === "Attention",
+        );
         for (let round = 0; round < 3 && !isSettled(detail); round++) {
-          const question = detail.questions.find((q) => q.outcome === null);
+          const question = detail.questions.find((entry) => entry.outcome === null);
           expect(question?.details).toContain(outside);
           yield* call({
             _tag: "AnswerQuestion",
@@ -1076,12 +1080,15 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
             message: null,
             questionId: question?.id ?? ("" as never),
           });
-          detail = yield* settleLong(started.missionId, (d) => isSettled(d) || d.thread.state === "Attention");
+          detail = yield* settleLong(
+            started.missionId,
+            (current) => isSettled(current) || current.thread.state === "Attention",
+          );
         }
         expect(detail.thread.failure).toBeNull();
         expect(existsSync(outside)).toBe(true);
         expect(detail.questions.length, JSON.stringify(detail.questions)).toBeGreaterThan(0);
-        expect(detail.questions.every((q) => q.outcome !== null)).toBe(true);
+        expect(detail.questions.every((entry) => entry.outcome !== null)).toBe(true);
       }).pipe(
         Effect.provide(
           serviceLayer({
@@ -1114,7 +1121,7 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
           workspacePath: null,
         });
         let detail = yield* read(started.missionId);
-        for (let i = 0; i < 1200; i++) {
+        for (let attempt = 0; attempt < 1200; attempt++) {
           detail = yield* read(started.missionId);
           const child = detail.threads.find((thread) => thread.parentId === started.threadId);
           const hasResult = detail.messages.some((message) => message.isResult);
@@ -1157,7 +1164,7 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
     });
   const settleLive = (missionId: MissionId, check: (detail: MissionDetail) => boolean) =>
     Effect.gen(function* () {
-      for (let i = 0; i < 1200; i++) {
+      for (let attempt = 0; attempt < 1200; attempt++) {
         const detail = yield* read(missionId);
         if (check(detail)) return detail;
         yield* Effect.sleep("100 millis");
@@ -1189,7 +1196,7 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
         });
         const detail = yield* settleLive(
           started.missionId,
-          (d) => d.thread.state === "Idle" || d.thread.state === "Failed",
+          (current) => current.thread.state === "Idle" || current.thread.state === "Failed",
         );
         expect(detail.thread.failure).toBeNull();
         expect(detail.messages.at(-1)?.text).toContain("PINEAPPLE");
@@ -1232,7 +1239,7 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
         });
         const detail = yield* settleLive(
           started.missionId,
-          (d) => d.thread.state === "Idle" && d.messages.at(-1)?.sender === "agent",
+          (current) => current.thread.state === "Idle" && current.messages.at(-1)?.sender === "agent",
         );
         expect(detail.thread.failure).toBeNull();
         expect(detail.messages.at(-1)?.text.toLowerCase()).toContain("ok");
@@ -1285,7 +1292,7 @@ describe("holding a failed thread at a reached budget", () => {
         yield* Effect.sleep("200 millis");
         process.env.STAND_IN_MODE = "fail-start";
         yield* call({ _tag: "SendMessage", delivery: null, requestId: "f2", text: "Two", threadId: started.threadId });
-        yield* settle(started.missionId, (d) => d.thread.state === "Failed");
+        yield* settle(started.missionId, (current) => current.thread.state === "Failed");
         yield* call({ _tag: "SetMissionBudget", limits: { cost: null, tokens: 100 }, missionId: started.missionId });
         process.env.STAND_IN_MODE = "ok";
         yield* call({
@@ -1295,7 +1302,10 @@ describe("holding a failed thread at a reached budget", () => {
           text: "Three",
           threadId: started.threadId,
         });
-        yield* settle(started.missionId, (d) => d.thread.state === "Attention" && d.thread.blocker === "Budget");
+        yield* settle(
+          started.missionId,
+          (current) => current.thread.state === "Attention" && current.thread.blocker === "Budget",
+        );
         yield* call({ _tag: "SetMissionBudget", limits: { cost: null, tokens: 100000 }, missionId: started.missionId });
         const detail = yield* settle(started.missionId, idleWith(2));
         expect(detail.messages.at(-1)?.text).toContain("Three");

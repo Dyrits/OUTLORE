@@ -63,7 +63,7 @@ export const workspaceWorktreesOf = (folder: string): ReadonlyArray<string> => {
  * for a thread outside a workspace or whose folder is a link or resolves outside its workspace (that start is the
  * owner's one-time question, and the sandbox then writes only where the folder points).
  */
-export const threadWorktreesOf = (request: TurnRequest): ReadonlyArray<string> =>
+export const listThreadWorktrees = (request: TurnRequest): ReadonlyArray<string> =>
   request.access.isInWorkspace && folderEscapeOf(request.cwd, request.folderRoot, true) === null
     ? workspaceWorktreesOf(request.cwd)
     : [];

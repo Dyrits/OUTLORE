@@ -16,7 +16,7 @@ export type FolderEscape = {
 };
 
 /** Where a path really points: its real path, or for a link to nothing, the path it names; null for nothing there. */
-const pointedOf = (path: string) => {
+const readLinkTarget = (path: string) => {
   try {
     return realpathSync(path);
   } catch {
@@ -31,7 +31,7 @@ const isWithin = (root: string, path: string) =>
   path === root || path.startsWith(root.endsWith(sep) ? root : root + sep);
 
 /** The folder's real path, or the folder itself when nothing is there yet. */
-export const resolvedFolderOf = (folder: string) => pointedOf(folder) ?? folder;
+export const resolvedFolderOf = (folder: string) => readLinkTarget(folder) ?? folder;
 
 /**
  * What is wrong with starting a harness in a thread's folder, or null when nothing is (CHG-0208). The root the folder
@@ -41,11 +41,11 @@ export const resolvedFolderOf = (folder: string) => pointedOf(folder) ?? folder;
  * start, which makes or refuses it.
  */
 export const folderEscapeOf = (folder: string, root: string, isWorkspace: boolean): FolderEscape | null => {
-  const realRoot = pointedOf(root);
+  const realRoot = readLinkTarget(root);
   if (realRoot === null) return null;
   if (isLink(root) || (isWorkspace && realRoot !== root)) return { folder: root, pointsTo: realRoot };
   if (folder === root) return null;
-  const real = pointedOf(folder);
+  const real = readLinkTarget(folder);
   if (real === null) return null;
   return isLink(folder) || !isWithin(realRoot, real) ? { folder, pointsTo: real } : null;
 };
@@ -63,7 +63,7 @@ export const folderProblemOf = (found: FolderEscape, request: TurnRequest) =>
  * asked, for this start only; Allow starts the harness in the folder's real path, under its own sandbox, and leaves a
  * line in the thread saying where the folder points; Deny fails the turn with the reason.
  */
-export const startFolderOf = Effect.fnUntraced(function* (request: TurnRequest, label: string) {
+export const resolveStartFolder = Effect.fnUntraced(function* (request: TurnRequest, label: string) {
   const found = yield* Effect.sync(() => folderEscapeOf(request.cwd, request.folderRoot, request.access.isInWorkspace));
   if (found === null) return request.cwd;
   const startsIn = yield* Effect.sync(() => resolvedFolderOf(request.cwd));

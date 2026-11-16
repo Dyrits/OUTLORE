@@ -48,7 +48,7 @@ export const promptOf = (toolCall: unknown, firstOutside: string | null = null) 
 };
 
 /** The first file an edit names that lies outside the thread's folder, or null when every one is inside. */
-export const firstOutsideOf = Effect.fnUntraced(function* (request: TurnRequest, toolCall: unknown) {
+export const findFirstOutside = Effect.fnUntraced(function* (request: TurnRequest, toolCall: unknown) {
   for (const path of editedPathsOf(toolCall)) if (!(yield* isInsideFolder(request.cwd, path))) return path;
   return null;
 });

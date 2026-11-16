@@ -19,62 +19,62 @@ export class NoiseProtocolError extends Error {
 
 /** One direction of the transport: a key and the counter that makes each record's nonce unique. */
 export class CipherState {
-  private k: Uint8Array | null = null;
-  private n = 0n;
+  private key: Uint8Array | null = null;
+  private counter = 0n;
 
   initializeKey(key: Uint8Array | null, nonce = 0n): void {
-    this.k = key;
-    this.n = nonce;
+    this.key = key;
+    this.counter = nonce;
   }
 
   hasKey(): boolean {
-    return this.k !== null;
+    return this.key !== null;
   }
 
   nonce(): bigint {
-    return this.n;
+    return this.counter;
   }
 
   encryptWithAd(ad: Uint8Array, plaintext: Uint8Array): Uint8Array {
-    if (this.k === null) return plaintext;
+    if (this.key === null) return plaintext;
     const nonce = this.takeNonce();
-    return chacha20poly1305(this.k, nonce, ad).encrypt(plaintext);
+    return chacha20poly1305(this.key, nonce, ad).encrypt(plaintext);
   }
 
   decryptWithAd(ad: Uint8Array, ciphertext: Uint8Array): Uint8Array {
-    if (this.k === null) return ciphertext;
-    if (this.n === MAX_NONCE) throw new NoiseProtocolError("nonce exhausted");
+    if (this.key === null) return ciphertext;
+    if (this.counter === MAX_NONCE) throw new NoiseProtocolError("nonce exhausted");
     let plaintext: Uint8Array;
     try {
-      plaintext = chacha20poly1305(this.k, encodeNonce(this.n), ad).decrypt(ciphertext);
+      plaintext = chacha20poly1305(this.key, encodeNonce(this.counter), ad).decrypt(ciphertext);
     } catch {
       throw new NoiseProtocolError("authentication failed");
     }
     // Only a successful authentication advances the receive counter.
-    this.n += 1n;
+    this.counter += 1n;
     return plaintext;
   }
 
   /** Reserves the next nonce synchronously so concurrent senders never share one. */
   private takeNonce(): Uint8Array {
-    if (this.n === MAX_NONCE) throw new NoiseProtocolError("nonce exhausted");
-    const nonce = encodeNonce(this.n);
-    this.n += 1n;
+    if (this.counter === MAX_NONCE) throw new NoiseProtocolError("nonce exhausted");
+    const nonce = encodeNonce(this.counter);
+    this.counter += 1n;
     return nonce;
   }
 
   clear(): void {
-    this.k?.fill(0);
-    this.k = null;
-    this.n = MAX_NONCE;
+    this.key?.fill(0);
+    this.key = null;
+    this.counter = MAX_NONCE;
   }
 }
 
-function encodeNonce(n: bigint): Uint8Array {
+function encodeNonce(counter: bigint): Uint8Array {
   const nonce = new Uint8Array(12);
-  let value = n;
-  for (let i = 4; i < 12; i += 1) {
-    nonce[i] = Number(value & 0xffn);
+  let value = counter;
+  for (let index = 4; index < 12; index += 1) {
+    nonce[index] = Number(value & 0xffn);
     value >>= 8n;
   }
   return nonce;

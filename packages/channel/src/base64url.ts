@@ -4,12 +4,12 @@ const indexOfChar = new Map([...alphabet].map((char, index) => [char, index]));
 /** Encodes bytes as base64url (RFC 4648 section 5) without padding. */
 export function encodeBase64Url(bytes: Uint8Array): string {
   let text = "";
-  for (let i = 0; i < bytes.length; i += 3) {
-    const a = bytes[i] ?? 0;
-    const b = bytes[i + 1] ?? 0;
-    const c = bytes[i + 2] ?? 0;
-    const chunk = (a << 16) | (b << 8) | c;
-    const remaining = bytes.length - i;
+  for (let index = 0; index < bytes.length; index += 3) {
+    const first = bytes[index] ?? 0;
+    const second = bytes[index + 1] ?? 0;
+    const third = bytes[index + 2] ?? 0;
+    const chunk = (first << 16) | (second << 8) | third;
+    const remaining = bytes.length - index;
     text += alphabet[(chunk >> 18) & 63];
     text += alphabet[(chunk >> 12) & 63];
     if (remaining > 1) text += alphabet[(chunk >> 6) & 63];

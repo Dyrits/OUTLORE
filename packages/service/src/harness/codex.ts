@@ -25,7 +25,7 @@ import {
 } from "./harnessProcesses.ts";
 import { approvalInstructionsOf } from "./instructions.ts";
 import { harnessEnvironmentOf, type RpcIncoming, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
-import { resolvedFolderOf, startFolderOf } from "./threadFolder.ts";
+import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
 import { toolServerName } from "./toolNames.ts";
 
 // Codex through its app server (ADR 0008; protocol of codex-cli 0.160.1, probed 2026-11-07): one
@@ -327,7 +327,7 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
     // A thread folder that is a link asks the owner; allowed, Codex starts where it really points, as its process
     // folder and its thread's, so its workspace sandbox writes there (threadFolder.ts). Codex 0.167.2 refuses a
     // writable root holding a link, and treats its process folder, resolved by the system, as writable (CHG-0208).
-    const cwd = yield* startFolderOf(request, "Codex");
+    const cwd = yield* resolveStartFolder(request, "Codex");
     const rpc = yield* startRpcProcess({
       args: [...(options.prefixArgs ?? []), "app-server"],
       command: options.command,

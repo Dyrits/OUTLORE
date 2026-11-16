@@ -5,9 +5,9 @@ import { harnessEnvironmentOf, type RpcProcess, startRpcProcess } from "./linePr
 import {
   type OpenCodeSandbox,
   openCodeEnvironmentOf,
-  ownerMarkerOf,
   wrappedCommandOf,
   writableRootsOf,
+  writeOwnerMarker,
 } from "./openCodeSandbox.ts";
 import { prepareOpenCodeSandbox } from "./openCodeSeed.ts";
 import { hasExecutorBelow, sweepOrphans } from "./processTree.ts";
@@ -80,7 +80,7 @@ export const makeOpenCodeLauncher = (options: OpenCodeLaunchOptions) => {
     }
     const isUnsandboxed = found !== null;
     const sandbox = isUnsandboxed ? null : options.sandbox;
-    const marker = sandbox === null ? null : ownerMarkerOf(sandbox);
+    const marker = sandbox === null ? null : writeOwnerMarker(sandbox);
     // Every sandboxed process carries the service's marker and its thread, so one it loses is found again.
     const marks = marker === null ? {} : { [marker.name]: marker.value, OUTLORE_SANDBOX_THREAD: request.threadId };
     if (sandbox !== null && marker !== null) {

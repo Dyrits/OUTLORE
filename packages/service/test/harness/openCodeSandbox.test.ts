@@ -21,13 +21,13 @@ import {
   detectOpenCodeSandbox,
   type OpenCodeSandbox,
   openCodeEnvironmentOf,
-  ownerMarkerOf,
   sandboxDataHomeOf,
   wrappedCommandOf,
   writableRootsOf,
+  writeOwnerMarker,
 } from "../../src/harness/openCodeSandbox.ts";
 import { copyOpenCodeConfig, seedOpenCodeSignIn } from "../../src/harness/openCodeSeed.ts";
-import { hasExecutorBelow, killProcessTree, markedProcessesOf, sweepOrphans } from "../../src/harness/processTree.ts";
+import { hasExecutorBelow, killProcessTree, readMarkedProcesses, sweepOrphans } from "../../src/harness/processTree.ts";
 import { canApplySeatbelt, canReadProcessTable } from "../support/environment.ts";
 
 const directories: string[] = [];
@@ -405,7 +405,8 @@ describe.runIf(canReadProcessTable)("ending a harness's whole process tree", () 
        require("node:fs").writeFileSync(${JSON.stringify(pidFile)}, String(child.pid));
        setInterval(() => {}, 1000);`,
     ]);
-    for (let i = 0; i < 100 && !existsSync(pidFile); i++) await new Promise((resolve) => setTimeout(resolve, 20));
+    for (let attempt = 0; attempt < 100 && !existsSync(pidFile); attempt++)
+      await new Promise((resolve) => setTimeout(resolve, 20));
     const grandchild = Number(readFileSync(pidFile, "utf8"));
     const isAlive = (pid: number) => {
       try {
@@ -432,7 +433,8 @@ describe.runIf(canReadProcessTable)("confirming that OpenCode's executor runs be
        setInterval(() => {}, 1000);`,
     ]);
     try {
-      for (let i = 0; i < 100 && !existsSync(pidFile); i++) await new Promise((resolve) => setTimeout(resolve, 20));
+      for (let attempt = 0; attempt < 100 && !existsSync(pidFile); attempt++)
+        await new Promise((resolve) => setTimeout(resolve, 20));
       check(parent.pid ?? -1);
     } finally {
       await killProcessTree(parent.pid ?? -1);
@@ -652,7 +654,7 @@ describe.runIf(canReadProcessTable)("ending the OpenCode processes the service l
         stdio: "ignore",
       });
       started.push(living.pid ?? -1);
-      expect(markedProcessesOf(marker).map((found) => found.pid)).toEqual(
+      expect(readMarkedProcesses(marker).map((found) => found.pid)).toEqual(
         expect.arrayContaining([executor, notOpenCode, living.pid]),
       );
       expect(await sweepOrphans(marker)).toEqual([]);
@@ -670,7 +672,7 @@ describe.runIf(canReadProcessTable)("ending the OpenCode processes the service l
     });
     try {
       await waitFor(() => false, 200);
-      expect(markedProcessesOf(marker)).toEqual([]);
+      expect(readMarkedProcesses(marker)).toEqual([]);
     } finally {
       posing.kill("SIGKILL");
     }
@@ -679,11 +681,11 @@ describe.runIf(canReadProcessTable)("ending the OpenCode processes the service l
   it("keeps one marker per service folder, outside what the sandbox may write", () => {
     const root = temporary();
     const sandbox: OpenCodeSandbox = { ...seatbelt, caches: [], root: join(root, "opencode-sandbox") };
-    const marker = ownerMarkerOf(sandbox);
+    const marker = writeOwnerMarker(sandbox);
     expect(marker.name).toBe("OUTLORE_SANDBOX_OWNER");
     expect(marker.value).toMatch(/^[0-9a-f-]{36}$/);
-    expect(ownerMarkerOf(sandbox)).toEqual(marker);
-    expect(ownerMarkerOf({ ...sandbox, root: join(root, "other") }).value).not.toBe(marker.value);
+    expect(writeOwnerMarker(sandbox)).toEqual(marker);
+    expect(writeOwnerMarker({ ...sandbox, root: join(root, "other") }).value).not.toBe(marker.value);
     const roots = writableRootsOf(sandbox, join(root, "work"), null);
     expect(roots.some((path) => join(sandbox.root, "owner").startsWith(`${path}/`))).toBe(false);
   });
