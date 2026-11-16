@@ -17,8 +17,6 @@ import {
 } from "../fixtures/standIns.ts";
 import { canApplySeatbelt } from "../support/environment.ts";
 
-const _standIn = [join(import.meta.dirname, "..", "fixtures", "stand-in-opencode.mjs")];
-const _spawnChild = join(import.meta.dirname, "..", "fixtures", "stand-in-spawn-child.mjs");
 describe("running OpenCode in a folder that is, or became, a link", () => {
   it.live(
     "asks before an edit in a folder that is a link when no sandbox tool exists, without asking about the start",

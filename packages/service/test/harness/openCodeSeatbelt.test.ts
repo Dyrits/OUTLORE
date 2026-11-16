@@ -19,7 +19,6 @@ import {
 } from "../fixtures/standIns.ts";
 import { canApplySeatbelt, canReadProcessTable } from "../support/environment.ts";
 
-const _standIn = [join(import.meta.dirname, "..", "fixtures", "stand-in-opencode.mjs")];
 const spawnChild = join(import.meta.dirname, "..", "fixtures", "stand-in-spawn-child.mjs");
 describe("running OpenCode inside Seatbelt", () => {
   it.live.skipIf(!canApplySeatbelt)(

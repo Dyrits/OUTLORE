@@ -8,7 +8,6 @@ import { call, sendTo, settle, startMission, temporary } from "../fixtures/servi
 import { attachedPng, idleWith, pngBytes, replies, untilRequested, withHarnesses } from "../fixtures/standIns.ts";
 
 const standIn = [join(import.meta.dirname, "..", "fixtures", "stand-in-opencode.mjs")];
-const _spawnChild = join(import.meta.dirname, "..", "fixtures", "stand-in-spawn-child.mjs");
 describe("running OpenCode threads", () => {
   it.live("gives OpenCode one base64 ACP image block per image", () => {
     const { layer, requests } = withHarnesses();

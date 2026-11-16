@@ -4,8 +4,6 @@ import { Effect } from "effect";
 import { call, settle, startMission } from "../fixtures/service.ts";
 import { answerOpen, idleWith, replies, withHarnesses } from "../fixtures/standIns.ts";
 
-const _standIn = [join(import.meta.dirname, "..", "fixtures", "stand-in-opencode.mjs")];
-const _spawnChild = join(import.meta.dirname, "..", "fixtures", "stand-in-spawn-child.mjs");
 describe("asking the owner before OpenCode acts", () => {
   it.live("carries on in the same turn after the owner's refusal cancels OpenCode's prompt", () => {
     const { layer, requests } = withHarnesses();
