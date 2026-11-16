@@ -22,9 +22,9 @@ afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { force: true, recursive: true });
 });
 
-const until = <A>(check: () => A | undefined | Promise<A | undefined>) =>
+const until = <Value>(check: () => Value | undefined | Promise<Value | undefined>) =>
   Effect.gen(function* () {
-    for (let i = 0; i < 400; i++) {
+    for (let index = 0; index < 400; index++) {
       const value = yield* Effect.promise(async () => check());
       if (value !== undefined) return value;
       yield* Effect.sleep("20 millis");
@@ -169,8 +169,8 @@ describe("choosing a relay of one's own", () => {
   it.live("uses the shared relay until the owner chooses another", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* makeWorld;
-        expect(yield* w.accessOf()).toMatchObject({ isOwnRelay: false, relayOrigin: w.sharedOrigin });
+        const world = yield* makeWorld;
+        expect(yield* world.accessOf()).toMatchObject({ isOwnRelay: false, relayOrigin: world.sharedOrigin });
       }),
     ),
   );
@@ -178,16 +178,16 @@ describe("choosing a relay of one's own", () => {
   it.live("deploys with the token given, moves to the new relay, and names it in the next pairing code", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* makeWorld;
-        yield* w.allowPairing;
-        const view = yield* w.useOwnRelay(`  ${CLOUDFLARE_TOKEN}  `);
-        expect(w.deployment.tokens).toEqual([CLOUDFLARE_TOKEN]);
-        expect(view).toMatchObject({ isOwnRelay: true, relayOrigin: w.ownOrigin });
+        const world = yield* makeWorld;
+        yield* world.allowPairing;
+        const view = yield* world.useOwnRelay(`  ${CLOUDFLARE_TOKEN}  `);
+        expect(world.deployment.tokens).toEqual([CLOUDFLARE_TOKEN]);
+        expect(view).toMatchObject({ isOwnRelay: true, relayOrigin: world.ownOrigin });
         // The host reconnects through the new relay by itself.
-        expect((yield* w.waitFor("Connected")).relayOrigin).toBe(w.ownOrigin);
-        const code = yield* w.newCode();
-        expect(decodePairingCode(code)).toMatchObject({ ok: true, value: { relayOrigin: w.ownOrigin } });
-        expect(yield* w.pair(code)).toMatchObject({ name: "Host Mac" });
+        expect((yield* world.waitFor("Connected")).relayOrigin).toBe(world.ownOrigin);
+        const code = yield* world.newCode();
+        expect(decodePairingCode(code)).toMatchObject({ ok: true, value: { relayOrigin: world.ownOrigin } });
+        expect(yield* world.pair(code)).toMatchObject({ name: "Host Mac" });
       }),
     ),
   );
@@ -195,12 +195,12 @@ describe("choosing a relay of one's own", () => {
   it.live("can be chosen before pairing was ever switched on, and is used when it is", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* makeWorld;
-        const view = yield* w.useOwnRelay(CLOUDFLARE_TOKEN);
+        const world = yield* makeWorld;
+        const view = yield* world.useOwnRelay(CLOUDFLARE_TOKEN);
         expect(view).toMatchObject({ isEnabled: false, isOwnRelay: true, status: "Off" });
-        yield* w.allowPairing;
-        expect((yield* w.accessOf()).relayOrigin).toBe(w.ownOrigin);
-        expect(decodePairingCode(yield* w.newCode())).toMatchObject({ value: { relayOrigin: w.ownOrigin } });
+        yield* world.allowPairing;
+        expect((yield* world.accessOf()).relayOrigin).toBe(world.ownOrigin);
+        expect(decodePairingCode(yield* world.newCode())).toMatchObject({ value: { relayOrigin: world.ownOrigin } });
       }),
     ),
   );
@@ -208,26 +208,29 @@ describe("choosing a relay of one's own", () => {
   it.live("ends the paired devices' connections when the relay changes, and serves them again on their own relay", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* makeWorld;
-        yield* w.allowPairing;
-        const host = yield* w.pair(yield* w.newCode());
-        const link = yield* w.bridge(host.id);
-        expect(yield* w.ask(link, "1", { _tag: "ReadHostName" })).toMatchObject({ _tag: "Success", value: "Host Mac" });
+        const world = yield* makeWorld;
+        yield* world.allowPairing;
+        const host = yield* world.pair(yield* world.newCode());
+        const link = yield* world.bridge(host.id);
+        expect(yield* world.ask(link, "1", { _tag: "ReadHostName" })).toMatchObject({
+          _tag: "Success",
+          value: "Host Mac",
+        });
 
-        yield* w.useOwnRelay(CLOUDFLARE_TOKEN);
+        yield* world.useOwnRelay(CLOUDFLARE_TOKEN);
         yield* until(() => link.closed ?? undefined);
-        yield* w.waitFor("Connected");
+        yield* world.waitFor("Connected");
         // The pairing is kept, so the owner can still see and disconnect the device.
-        expect((yield* w.accessOf()).devices).toMatchObject([{ name: "Laptop" }]);
+        expect((yield* world.accessOf()).devices).toMatchObject([{ name: "Laptop" }]);
         // The device paired through the shared relay, so it cannot reach a host that left it.
-        const lost = yield* w.bridge(host.id);
+        const lost = yield* world.bridge(host.id);
         expect((yield* until(() => lost.closed ?? undefined)).code).toBe(4000);
 
-        const back = yield* w.useSharedRelay();
-        expect(back).toMatchObject({ isOwnRelay: false, relayOrigin: w.sharedOrigin });
-        yield* w.waitFor("Connected");
-        const again = yield* w.bridge(host.id);
-        expect(yield* w.ask(again, "2", { _tag: "ReadHostName" })).toMatchObject({
+        const back = yield* world.useSharedRelay();
+        expect(back).toMatchObject({ isOwnRelay: false, relayOrigin: world.sharedOrigin });
+        yield* world.waitFor("Connected");
+        const again = yield* world.bridge(host.id);
+        expect(yield* world.ask(again, "2", { _tag: "ReadHostName" })).toMatchObject({
           _tag: "Success",
           value: "Host Mac",
         });
@@ -241,20 +244,20 @@ describe("choosing a relay of one's own", () => {
     () =>
       Effect.scoped(
         Effect.gen(function* () {
-          const w = yield* makeWorld;
-          yield* w.allowPairing;
-          yield* w.useOwnRelay(CLOUDFLARE_TOKEN);
-          yield* w.waitFor("Connected");
-          const host = yield* w.pair(yield* w.newCode());
-          const link = yield* w.bridge(host.id);
-          expect(yield* w.ask(link, "1", { _tag: "ReadHostName" })).toMatchObject({ _tag: "Success" });
+          const world = yield* makeWorld;
+          yield* world.allowPairing;
+          yield* world.useOwnRelay(CLOUDFLARE_TOKEN);
+          yield* world.waitFor("Connected");
+          const host = yield* world.pair(yield* world.newCode());
+          const link = yield* world.bridge(host.id);
+          expect(yield* world.ask(link, "1", { _tag: "ReadHostName" })).toMatchObject({ _tag: "Success" });
 
           // Same address: the Worker was updated where it stands.
-          const again = yield* w.useOwnRelay(CLOUDFLARE_TOKEN);
-          expect(w.deployment.tokens).toHaveLength(2);
-          expect(again).toMatchObject({ isOwnRelay: true, relayOrigin: w.ownOrigin, status: "Connected" });
+          const again = yield* world.useOwnRelay(CLOUDFLARE_TOKEN);
+          expect(world.deployment.tokens).toHaveLength(2);
+          expect(again).toMatchObject({ isOwnRelay: true, relayOrigin: world.ownOrigin, status: "Connected" });
           expect(link.closed).toBeNull();
-          expect(yield* w.ask(link, "2", { _tag: "ReadHostName" })).toMatchObject({
+          expect(yield* world.ask(link, "2", { _tag: "ReadHostName" })).toMatchObject({
             _tag: "Success",
             value: "Host Mac",
           });
@@ -266,18 +269,18 @@ describe("choosing a relay of one's own", () => {
   it.live("keeps the relay it had when the deployment fails, and says why", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* makeWorld;
-        yield* w.allowPairing;
-        w.deployment.answer = {
+        const world = yield* makeWorld;
+        yield* world.allowPairing;
+        world.deployment.answer = {
           failure: "token-rejected",
           message: "Cloudflare did not accept that token.",
           ok: false,
         };
-        const failed = yield* Effect.flip(w.useOwnRelay(CLOUDFLARE_TOKEN));
+        const failed = yield* Effect.flip(world.useOwnRelay(CLOUDFLARE_TOKEN));
         expect(failed).toMatchObject({ message: "Cloudflare did not accept that token." });
-        expect(yield* w.accessOf()).toMatchObject({
+        expect(yield* world.accessOf()).toMatchObject({
           isOwnRelay: false,
-          relayOrigin: w.sharedOrigin,
+          relayOrigin: world.sharedOrigin,
           status: "Connected",
         });
       }),
@@ -287,10 +290,10 @@ describe("choosing a relay of one's own", () => {
   it.live("asks for a token before it deploys anything", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* makeWorld;
-        const failed = yield* Effect.flip(w.useOwnRelay("   "));
+        const world = yield* makeWorld;
+        const failed = yield* Effect.flip(world.useOwnRelay("   "));
         expect(failed).toMatchObject({ kind: "InvalidInput" });
-        expect(w.deployment.tokens).toEqual([]);
+        expect(world.deployment.tokens).toEqual([]);
       }),
     ),
   );
@@ -298,18 +301,18 @@ describe("choosing a relay of one's own", () => {
   it.live("keeps the token nowhere in the database, whether the deployment worked or not", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* makeWorld;
-        yield* w.allowPairing;
-        w.deployment.answer = { failure: "no-permission", message: "No.", ok: false };
-        yield* Effect.flip(w.useOwnRelay(CLOUDFLARE_TOKEN));
-        w.deployment.answer = deployed(w.ownOrigin);
-        yield* w.useOwnRelay(CLOUDFLARE_TOKEN);
-        yield* w.waitFor("Connected");
-        const files = w.hostFilesAsText();
+        const world = yield* makeWorld;
+        yield* world.allowPairing;
+        world.deployment.answer = { failure: "no-permission", message: "No.", ok: false };
+        yield* Effect.flip(world.useOwnRelay(CLOUDFLARE_TOKEN));
+        world.deployment.answer = deployed(world.ownOrigin);
+        yield* world.useOwnRelay(CLOUDFLARE_TOKEN);
+        yield* world.waitFor("Connected");
+        const files = world.hostFilesAsText();
         expect(files.length).toBeGreaterThan(1_000);
         expect(files).not.toContain(CLOUDFLARE_TOKEN);
         // The relay address it chose is kept: it is not a secret, and the host needs it at the next start.
-        expect(files).toContain(w.ownOrigin);
+        expect(files).toContain(world.ownOrigin);
       }),
     ),
   );
@@ -317,11 +320,11 @@ describe("choosing a relay of one's own", () => {
   it.live("returns to the shared relay on request, and does nothing when it never left", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* makeWorld;
-        expect(yield* w.useSharedRelay()).toMatchObject({ isOwnRelay: false, relayOrigin: w.sharedOrigin });
-        yield* w.useOwnRelay(CLOUDFLARE_TOKEN);
-        expect(yield* w.useSharedRelay()).toMatchObject({ isOwnRelay: false, relayOrigin: w.sharedOrigin });
-        expect(decodePairingCode(yield* w.newCode())).toMatchObject({ value: { relayOrigin: w.sharedOrigin } });
+        const world = yield* makeWorld;
+        expect(yield* world.useSharedRelay()).toMatchObject({ isOwnRelay: false, relayOrigin: world.sharedOrigin });
+        yield* world.useOwnRelay(CLOUDFLARE_TOKEN);
+        expect(yield* world.useSharedRelay()).toMatchObject({ isOwnRelay: false, relayOrigin: world.sharedOrigin });
+        expect(decodePairingCode(yield* world.newCode())).toMatchObject({ value: { relayOrigin: world.sharedOrigin } });
       }),
     ),
   );

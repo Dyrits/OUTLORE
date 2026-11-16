@@ -24,8 +24,8 @@ export const changesLayer = Layer.effect(
     const pubsub = yield* PubSub.unbounded<number>();
     const drafts = yield* PubSub.unbounded<DraftUpdate>();
     const sequence = yield* Ref.make(0);
-    const publish = Ref.updateAndGet(sequence, (n) => n + 1).pipe(
-      Effect.flatMap((n) => PubSub.publish(pubsub, n)),
+    const publish = Ref.updateAndGet(sequence, (current) => current + 1).pipe(
+      Effect.flatMap((next) => PubSub.publish(pubsub, next)),
       Effect.asVoid,
     );
     return { drafts, publish, pubsub };

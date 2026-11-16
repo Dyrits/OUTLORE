@@ -101,7 +101,7 @@ const subfoldersOf = (path: string, shouldIncludeHidden: boolean) =>
           // Hidden folders such as `.git` are offered only on Show hidden (CHG-0034).
           .filter((entry) => entry.isDirectory() && (shouldIncludeHidden || !entry.name.startsWith(".")))
           .map((entry) => ({ name: entry.name, path: join(path, entry.name) }) satisfies Folder)
-          .sort((a, b) => a.name.localeCompare(b.name))
+          .sort((left, right) => left.name.localeCompare(right.name))
       );
     } catch {
       return [];

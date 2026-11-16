@@ -30,7 +30,7 @@ export const remoteHostLayer = Layer.effectDiscard(
     const config = yield* RemoteConfig;
     const context = yield* Effect.context<never>();
     const runPlain = Effect.runPromiseWith(context);
-    const withParts = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient | RemoteConfig>) =>
+    const withParts = <Value, Error>(effect: Effect.Effect<Value, Error, SqlClient.SqlClient | RemoteConfig>) =>
       effect.pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.provideService(RemoteConfig, config));
     const run: RunWork = (effect) => runPlain(withParts(effect));
     const runInTransaction: RunWork = (effect) => runPlain(withParts(sql.withTransaction(effect)));

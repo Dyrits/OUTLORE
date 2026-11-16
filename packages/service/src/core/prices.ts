@@ -69,7 +69,7 @@ export const priceOf = (rows: ReadonlyArray<PriceRow>, model: string): PriceRow 
   for (const candidate of [name, withoutDate(name)]) {
     const matches = rows
       .filter((row) => row.model === candidate && (provider === null || row.provider === provider))
-      .toSorted((a, b) => rankOf(a.provider) - rankOf(b.provider));
+      .toSorted((left, right) => rankOf(left.provider) - rankOf(right.provider));
     if (matches[0] !== undefined) return matches[0];
   }
   return null;

@@ -10,28 +10,30 @@ import { redeemPairingSecret } from "../../src/remote/hostAccess.ts";
 // Two whole services, each over its own database, joined by a real local relay: the host accepts paired devices and
 // the controller pairs with it and steers it through its own loopback socket (device-pairing).
 
-import { claimedMission, directories, makeWorld, until, world } from "./fixtures/pairingWorld.ts";
+import { claimedMission, directories, makeWorld, until } from "./fixtures/pairingWorld.ts";
 
 describe("controlling one installation from another through the relay", () => {
   it.live("pairs with a code, then steers the host and sees its changes", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const host = yield* w.pair(yield* w.newCode());
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const host = yield* world.pair(yield* world.newCode());
         expect(host.name).toBe("Host Mac");
-        expect(yield* w.controller({ _tag: "ListHosts" })).toMatchObject([{ name: "Host Mac" }]);
+        expect(yield* world.controller({ _tag: "ListHosts" })).toMatchObject([{ name: "Host Mac" }]);
         // The short channel that paired it closes by itself.
         yield* until(() =>
-          Effect.runPromise(w.accessOf()).then((view) => (view.devices[0]?.isConnected === false ? view : undefined)),
+          Effect.runPromise(world.accessOf()).then((view) =>
+            view.devices[0]?.isConnected === false ? view : undefined,
+          ),
         );
-        expect((yield* w.accessOf()).devices).toMatchObject([{ isConnected: false, name: "Laptop" }]);
+        expect((yield* world.accessOf()).devices).toMatchObject([{ isConnected: false, name: "Laptop" }]);
 
-        const link = yield* w.bridge(host.id);
-        const started = yield* w.ask(link, "1", claimedMission("Steered from another computer"));
+        const link = yield* world.bridge(host.id);
+        const started = yield* world.ask(link, "1", claimedMission("Steered from another computer"));
         expect(started).toMatchObject({ _tag: "Success", value: { missionId: expect.any(String) } });
         yield* until(() => link.frames.find((frame) => frame._tag === "Changed"));
-        const missions = yield* w.host({
+        const missions = yield* world.host({
           _tag: "ListMissions",
           isArchived: false,
           search: null,
@@ -40,12 +42,12 @@ describe("controlling one installation from another through the relay", () => {
         });
         expect(missions).toMatchObject({ missions: [{ title: "Steered from another computer" }] });
 
-        expect(yield* w.ask(link, "2", { _tag: "RenameHost", name: "Studio" })).toMatchObject({
+        expect(yield* world.ask(link, "2", { _tag: "RenameHost", name: "Studio" })).toMatchObject({
           _tag: "Success",
           value: "Studio",
         });
-        expect(yield* w.host({ _tag: "ReadHostName" })).toBe("Studio");
-        const view = yield* w.accessOf();
+        expect(yield* world.host({ _tag: "ReadHostName" })).toBe("Studio");
+        const view = yield* world.accessOf();
         expect(view.devices).toMatchObject([{ isConnected: true, name: "Laptop" }]);
         expect(view.devices[0]?.lastActiveAt).not.toBeNull();
         link.socket.close();
@@ -56,8 +58,8 @@ describe("controlling one installation from another through the relay", () => {
   it.live("tells where the web app opens, the same whichever relay the host uses", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        const view = (yield* w.accessOf()) as unknown as { webAppUrl: string };
+        const world = yield* makeWorld();
+        const view = (yield* world.accessOf()) as unknown as { webAppUrl: string };
         expect(view.webAppUrl).toBe("https://outlore.dyrits.workers.dev");
       }),
     ),
@@ -66,21 +68,21 @@ describe("controlling one installation from another through the relay", () => {
   it.live("accepts a pairing code once, and refuses an expired or garbled one", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const code = yield* w.newCode();
-        yield* w.pair(code);
-        const again = yield* Effect.flip(w.pair(code));
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const code = yield* world.newCode();
+        yield* world.pair(code);
+        const again = yield* Effect.flip(world.pair(code));
         expect(String((again as { message: string }).message)).toContain("already used");
 
-        const stale = yield* w.newCode();
-        yield* w.hostSql((sql) => sql`UPDATE pairing_codes SET expires_at = 1 WHERE used_at IS NULL`);
-        const expired = yield* Effect.flip(w.pair(stale));
+        const stale = yield* world.newCode();
+        yield* world.hostSql((sql) => sql`UPDATE pairing_codes SET expires_at = 1 WHERE used_at IS NULL`);
+        const expired = yield* Effect.flip(world.pair(stale));
         expect(String((expired as { message: string }).message)).toContain("expired");
 
-        const garbled = yield* Effect.flip(w.pair(`${code.slice(0, -4)}AAAA`));
+        const garbled = yield* Effect.flip(world.pair(`${code.slice(0, -4)}AAAA`));
         expect(String((garbled as { message: string }).message)).toContain("not valid");
-        expect((yield* w.accessOf()).devices).toHaveLength(1);
+        expect((yield* world.accessOf()).devices).toHaveLength(1);
       }),
     ),
   );
@@ -88,10 +90,10 @@ describe("controlling one installation from another through the relay", () => {
   it.live("refuses a paired device what only the host may do", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const host = yield* w.pair(yield* w.newCode());
-        const link = yield* w.bridge(host.id);
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const host = yield* world.pair(yield* world.newCode());
+        const link = yield* world.bridge(host.id);
         for (const [id, request] of [
           ["a", { _tag: "ReadRemoteAccess" }],
           ["b", { _tag: "CreatePairingCode" }],
@@ -101,9 +103,12 @@ describe("controlling one installation from another through the relay", () => {
           ["f", { _tag: "AddBrowsableRoot", path: tmpdir() }],
           ["g", { _tag: "RemoveBrowsableRoot", path: tmpdir() }],
         ] as const) {
-          expect(yield* w.ask(link, id, request)).toMatchObject({ _tag: "Failure", error: { kind: "AccessRefused" } });
+          expect(yield* world.ask(link, id, request)).toMatchObject({
+            _tag: "Failure",
+            error: { kind: "AccessRefused" },
+          });
         }
-        expect((yield* w.accessOf()).isEnabled).toBe(true);
+        expect((yield* world.accessOf()).isEnabled).toBe(true);
         link.socket.close();
       }),
     ),
@@ -114,28 +119,28 @@ describe("controlling one installation from another through the relay", () => {
     () =>
       Effect.scoped(
         Effect.gen(function* () {
-          const w = yield* world;
-          yield* w.allowPairing;
-          const host = yield* w.pair(yield* w.newCode());
-          const link = yield* w.bridge(host.id);
+          const world = yield* makeWorld();
+          yield* world.allowPairing;
+          const host = yield* world.pair(yield* world.newCode());
+          const link = yield* world.bridge(host.id);
           // Another folder on the host's computer, outside its only root (its home folder).
           const outside = mkdtempSync(join(tmpdir(), "outlore-outside-"));
           directories.push(outside);
           mkdirSync(join(outside, "secrets"));
-          const search = (id: string, query: string) => w.ask(link, id, { _tag: "SearchFolders", query });
+          const search = (id: string, query: string) => world.ask(link, id, { _tag: "SearchFolders", query });
           expect(yield* search("typed", join(outside, "secrets"))).toMatchObject({ _tag: "Success", value: [] });
           expect(
-            yield* w.ask(link, "browse", { _tag: "BrowseFolders", path: outside, shouldIncludeHidden: false }),
+            yield* world.ask(link, "browse", { _tag: "BrowseFolders", path: outside, shouldIncludeHidden: false }),
           ).toMatchObject({
             _tag: "Failure",
             error: { kind: "InvalidInput" },
           });
-          expect(yield* w.ask(link, "make", { _tag: "CreateFolder", name: "x", parent: outside })).toMatchObject({
+          expect(yield* world.ask(link, "make", { _tag: "CreateFolder", name: "x", parent: outside })).toMatchObject({
             _tag: "Failure",
             error: { kind: "InvalidInput" },
           });
           // The host sets the root in its Workshop; the paired device then reaches it.
-          yield* w.host({ _tag: "AddBrowsableRoot", path: outside });
+          yield* world.host({ _tag: "AddBrowsableRoot", path: outside });
           const found = yield* search("added", "secrets");
           expect(found).toMatchObject({ _tag: "Success", value: [{ path: join(realpathSync(outside), "secrets") }] });
           link.socket.close();
@@ -146,22 +151,22 @@ describe("controlling one installation from another through the relay", () => {
   it.live("ends a device's connection at once when the host disconnects it, and forgets it", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const host = yield* w.pair(yield* w.newCode());
-        const link = yield* w.bridge(host.id);
-        yield* w.ask(link, "1", { _tag: "ReadHostName" });
-        const [device] = (yield* w.accessOf()).devices as unknown as Array<{ id: string }>;
-        yield* w.host({ _tag: "DisconnectDevice", deviceId: device?.id as never });
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const host = yield* world.pair(yield* world.newCode());
+        const link = yield* world.bridge(host.id);
+        yield* world.ask(link, "1", { _tag: "ReadHostName" });
+        const [device] = (yield* world.accessOf()).devices as unknown as Array<{ id: string }>;
+        yield* world.host({ _tag: "DisconnectDevice", deviceId: device?.id as never });
         yield* until(() => link.closed ?? undefined);
         expect(link.closed?.code).toBe(4001);
 
-        const retry = yield* w.bridge(host.id);
+        const retry = yield* world.bridge(host.id);
         const closed = yield* until(() => retry.closed ?? undefined);
         // A host that forgot this installation refuses it for good, so the app stops trying.
         expect(closed.code).toBe(4002);
         expect(closed.reason).toContain("no longer knows");
-        expect((yield* w.accessOf()).devices).toEqual([]);
+        expect((yield* world.accessOf()).devices).toEqual([]);
       }),
     ),
   );
@@ -171,24 +176,24 @@ describe("controlling one installation from another through the relay", () => {
     () =>
       Effect.scoped(
         Effect.gen(function* () {
-          const w = yield* world;
-          yield* w.allowPairing;
-          const host = yield* w.pair(yield* w.newCode());
-          const link = yield* w.bridge(host.id);
-          yield* w.ask(link, "1", { _tag: "ReadHostName" });
+          const world = yield* makeWorld();
+          yield* world.allowPairing;
+          const host = yield* world.pair(yield* world.newCode());
+          const link = yield* world.bridge(host.id);
+          yield* world.ask(link, "1", { _tag: "ReadHostName" });
 
           // The answer already shows Off, before the runtime has closed its relay connection.
-          const off = yield* w.host({ _tag: "SetRemoteAccess", isEnabled: false });
+          const off = yield* world.host({ _tag: "SetRemoteAccess", isEnabled: false });
           expect(off).toMatchObject({ isEnabled: false, status: "Off" });
           yield* until(() => link.closed ?? undefined);
-          expect((yield* w.accessOf()).status).toBe("Off");
-          const refused = yield* w.bridge(host.id);
+          expect((yield* world.accessOf()).status).toBe("Off");
+          const refused = yield* world.bridge(host.id);
           expect((yield* until(() => refused.closed ?? undefined)).code).toBe(4000);
-          expect((yield* w.accessOf()).devices).toHaveLength(1);
+          expect((yield* world.accessOf()).devices).toHaveLength(1);
 
-          yield* w.allowPairing;
-          const back = yield* w.bridge(host.id);
-          expect(yield* w.ask(back, "2", { _tag: "ReadHostName" })).toMatchObject({
+          yield* world.allowPairing;
+          const back = yield* world.bridge(host.id);
+          expect(yield* world.ask(back, "2", { _tag: "ReadHostName" })).toMatchObject({
             _tag: "Success",
             value: "Host Mac",
           });
@@ -225,16 +230,16 @@ describe("controlling one installation from another through the relay", () => {
           }),
         );
 
-        const w = yield* world;
-        yield* w.allowPairing;
-        const code = yield* w.newCode();
-        const host = yield* w.pair(code, "Secret Laptop Name");
-        const link = yield* w.bridge(host.id);
-        yield* w.ask(link, "1", claimedMission("A very private quest title"));
-        yield* w.ask(link, "2", { _tag: "RenameHost", name: "Private Host Name" });
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const code = yield* world.newCode();
+        const host = yield* world.pair(code, "Secret Laptop Name");
+        const link = yield* world.bridge(host.id);
+        yield* world.ask(link, "1", claimedMission("A very private quest title"));
+        yield* world.ask(link, "2", { _tag: "RenameHost", name: "Private Host Name" });
         link.socket.close();
 
-        const [stored] = yield* w.controllerSql(
+        const [stored] = yield* world.controllerSql(
           (sql) => sql<{ token: string }>`SELECT device_token AS token FROM remote_hosts`,
         );
         const secret = Buffer.from(code.slice("outlore1-".length), "base64url").subarray(48, 64);
@@ -259,18 +264,18 @@ describe("what the owner is told, and what a host refuses, at the edges", () => 
   it.live("refuses an already received secret when access has since been disabled", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const decoded = decodePairingCode(yield* w.newCode());
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const decoded = decodePairingCode(yield* world.newCode());
         if (!decoded.ok) throw new Error("test code did not decode");
-        yield* w.host({ _tag: "SetRemoteAccess", isEnabled: false });
-        const result = yield* w.hostSql((sql) =>
+        yield* world.host({ _tag: "SetRemoteAccess", isEnabled: false });
+        const result = yield* world.hostSql((sql) =>
           redeemPairingSecret(decoded.value.secret, { kind: "desktop", name: "Late laptop" }, Date.now()).pipe(
             Effect.provideService(SqlClient.SqlClient, sql),
           ),
         );
         expect(result).toEqual({ refusal: "disabled" });
-        expect((yield* w.accessOf()).devices).toEqual([]);
+        expect((yield* world.accessOf()).devices).toEqual([]);
       }),
     ),
   );
@@ -278,12 +283,14 @@ describe("what the owner is told, and what a host refuses, at the edges", () => 
   it.live("says when the host is not connected, instead of blaming the relay", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const code = yield* w.newCode();
-        yield* w.host({ _tag: "SetRemoteAccess", isEnabled: false });
-        yield* until(() => Effect.runPromise(w.accessOf()).then((view) => (view.status === "Off" ? view : undefined)));
-        const failure = yield* Effect.flip(w.pair(code));
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const code = yield* world.newCode();
+        yield* world.host({ _tag: "SetRemoteAccess", isEnabled: false });
+        yield* until(() =>
+          Effect.runPromise(world.accessOf()).then((view) => (view.status === "Off" ? view : undefined)),
+        );
+        const failure = yield* Effect.flip(world.pair(code));
         expect(String((failure as { message: string }).message)).toContain("not connected right now");
       }),
     ),
@@ -308,15 +315,15 @@ describe("what the owner is told, and what a host refuses, at the edges", () => 
             target.addEventListener = original;
           }),
         );
-        const w = yield* world;
-        yield* w.host({ _tag: "SetRemoteAccess", isEnabled: true });
+        const world = yield* makeWorld();
+        yield* world.host({ _tag: "SetRemoteAccess", isEnabled: true });
         yield* until(() =>
-          Effect.runPromise(w.accessOf()).then((view) => (view.status === "Connecting" ? view : undefined)),
+          Effect.runPromise(world.accessOf()).then((view) => (view.status === "Connecting" ? view : undefined)),
         );
-        yield* w.host({ _tag: "SetRemoteAccess", isEnabled: false });
+        yield* world.host({ _tag: "SetRemoteAccess", isEnabled: false });
         yield* Effect.sleep("1500 millis");
         // The connection that was being made must not come up and serve devices.
-        expect((yield* w.accessOf()).status).toBe("Off");
+        expect((yield* world.accessOf()).status).toBe("Off");
       }),
     ),
   );
@@ -324,10 +331,10 @@ describe("what the owner is told, and what a host refuses, at the edges", () => 
   it.live("tells a new pairing the host's name as it is now", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        yield* w.host({ _tag: "RenameHost", name: "Studio" });
-        const host = yield* w.pair(yield* w.newCode());
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        yield* world.host({ _tag: "RenameHost", name: "Studio" });
+        const host = yield* world.pair(yield* world.newCode());
         expect(host.name).toBe("Studio");
       }),
     ),
@@ -336,14 +343,14 @@ describe("what the owner is told, and what a host refuses, at the edges", () => 
   it.live("pairs again after a disconnect without leaving the old entry in the menu", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const first = yield* w.pair(yield* w.newCode());
-        const [device] = (yield* w.accessOf()).devices as unknown as Array<{ id: string }>;
-        yield* w.host({ _tag: "DisconnectDevice", deviceId: device?.id as never });
-        const second = yield* w.pair(yield* w.newCode());
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const first = yield* world.pair(yield* world.newCode());
+        const [device] = (yield* world.accessOf()).devices as unknown as Array<{ id: string }>;
+        yield* world.host({ _tag: "DisconnectDevice", deviceId: device?.id as never });
+        const second = yield* world.pair(yield* world.newCode());
         expect(second.id).not.toBe(first.id);
-        expect(yield* w.controller({ _tag: "ListHosts" })).toMatchObject([{ id: second.id }]);
+        expect(yield* world.controller({ _tag: "ListHosts" })).toMatchObject([{ id: second.id }]);
       }),
     ),
   );
@@ -351,12 +358,12 @@ describe("what the owner is told, and what a host refuses, at the edges", () => 
   it.live("does not bring a code back to life when pairing is switched off and on again", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const code = yield* w.newCode();
-        yield* w.host({ _tag: "SetRemoteAccess", isEnabled: false });
-        yield* w.allowPairing;
-        const failure = yield* Effect.flip(w.pair(code));
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const code = yield* world.newCode();
+        yield* world.host({ _tag: "SetRemoteAccess", isEnabled: false });
+        yield* world.allowPairing;
+        const failure = yield* Effect.flip(world.pair(code));
         expect(String((failure as { message: string }).message)).toContain("not valid");
       }),
     ),
@@ -367,9 +374,9 @@ describe("what the owner is told, and what a host refuses, at the edges", () => 
     () =>
       Effect.scoped(
         Effect.gen(function* () {
-          const w = yield* makeWorld({ controllerRelay: "https://relay.example.invalid" });
-          yield* w.allowPairing;
-          const failure = yield* Effect.flip(w.pair(yield* w.newCode()));
+          const world = yield* makeWorld({ controllerRelay: "https://relay.example.invalid" });
+          yield* world.allowPairing;
+          const failure = yield* Effect.flip(world.pair(yield* world.newCode()));
           expect(String((failure as { message: string }).message)).toContain("on this computer");
         }),
       ),
@@ -378,28 +385,28 @@ describe("what the owner is told, and what a host refuses, at the edges", () => 
   it.live("keeps only a hash of a device's token on the host, and a code lives ten minutes", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
         const before = Date.now();
-        const code = yield* w.newCode();
+        const code = yield* world.newCode();
         const after = Date.now();
-        const [row] = yield* w.hostSql(
+        const [row] = yield* world.hostSql(
           (sql) => sql<{ expiresAt: number }>`SELECT expires_at AS expiresAt FROM pairing_codes`,
         );
         expect(row?.expiresAt).toBeGreaterThanOrEqual(before + 10 * 60_000);
         expect(row?.expiresAt).toBeLessThanOrEqual(after + 10 * 60_000);
 
-        yield* w.pair(code);
-        const [kept] = yield* w.controllerSql(
+        yield* world.pair(code);
+        const [kept] = yield* world.controllerSql(
           (sql) => sql<{ token: string }>`SELECT device_token AS token FROM remote_hosts`,
         );
-        const [hashed] = yield* w.hostSql(
+        const [hashed] = yield* world.hostSql(
           (sql) => sql<{ hash: string }>`SELECT token_hash AS hash FROM paired_devices`,
         );
         expect(kept?.token).toBeTruthy();
         expect(hashed?.hash).toBeTruthy();
         expect(hashed?.hash).not.toBe(kept?.token);
-        expect(JSON.stringify(yield* w.hostSql((sql) => sql`SELECT * FROM paired_devices`))).not.toContain(
+        expect(JSON.stringify(yield* world.hostSql((sql) => sql`SELECT * FROM paired_devices`))).not.toContain(
           kept?.token ?? "?",
         );
       }),

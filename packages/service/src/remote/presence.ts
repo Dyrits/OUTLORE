@@ -139,9 +139,9 @@ export const hostPresenceLayer = Layer.effect(
 );
 
 /** Runs storage work as one command, announcing the change; the service's own runner is handed in. */
-export type StoreChange = <A, E, R>(
-  work: Effect.Effect<A, E, R>,
-) => Effect.Effect<A, E | SqlError.SqlError, Exclude<R, SqlClient.SqlClient>>;
+export type StoreChange = <Value, Error, Requirements>(
+  work: Effect.Effect<Value, Error, Requirements>,
+) => Effect.Effect<Value, Error | SqlError.SqlError, Exclude<Requirements, SqlClient.SqlClient>>;
 
 /**
  * Host access: whether paired devices may reach this host, which relay it uses, and which devices it has paired. It
@@ -154,7 +154,7 @@ export const makeHostControl = (dependencies: {
   readonly state: HostPresence["Service"];
 }) => {
   const { change, config, state } = dependencies;
-  const withConfig = <A, E>(work: Effect.Effect<A, E, SqlClient.SqlClient | RemoteConfig>) =>
+  const withConfig = <Value, Error>(work: Effect.Effect<Value, Error, SqlClient.SqlClient | RemoteConfig>) =>
     Effect.provideService(work, RemoteConfig, config);
   /** Charter's remote access section as it stands. */
   const view = Effect.flatMap(state.status, (status) => withConfig(remoteAccessView(status, state.connectedDevices())));

@@ -36,9 +36,9 @@ const machine = (computerName: string, relayOrigin: string, release = "developme
   });
 };
 
-export const until = <A>(check: () => A | undefined | Promise<A | undefined>) =>
+export const until = <Value>(check: () => Value | undefined | Promise<Value | undefined>) =>
   Effect.gen(function* () {
-    for (let i = 0; i < 300; i++) {
+    for (let index = 0; index < 300; index++) {
       const value = yield* Effect.promise(async () => check());
       if (value !== undefined) return value;
       yield* Effect.sleep("20 millis");
@@ -100,7 +100,7 @@ export const makeWorld = (options: { controllerRelay?: string; controllerRelease
       }).pipe(Effect.provideContext(context));
     const host = on(hostContext);
     const controller = on(controllerContext);
-    const hostSql = <A, E>(work: (sql: SqlClient.SqlClient) => Effect.Effect<A, E>) =>
+    const hostSql = <Value, Error>(work: (sql: SqlClient.SqlClient) => Effect.Effect<Value, Error>) =>
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient;
         return yield* work(sql);
@@ -131,7 +131,7 @@ export const makeWorld = (options: { controllerRelay?: string; controllerRelease
         link.socket.send(JSON.stringify({ id, request }));
         return yield* until(() => link.frames.find((frame) => "id" in frame && frame.id === id));
       });
-    const controllerSql = <A, E>(work: (sql: SqlClient.SqlClient) => Effect.Effect<A, E>) =>
+    const controllerSql = <Value, Error>(work: (sql: SqlClient.SqlClient) => Effect.Effect<Value, Error>) =>
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient;
         return yield* work(sql);

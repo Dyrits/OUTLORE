@@ -709,7 +709,7 @@ export const Results = {
   WidenPermission: Schema.Null,
 } as const;
 /** What the service answers to one kind of request. */
-export type ResultOf<T extends RequestTag> = (typeof Results)[T]["Type"];
+export type ResultOf<Tag extends RequestTag> = (typeof Results)[Tag]["Type"];
 
 /** The kinds of failure the app tells apart. */
 export const ErrorKind = Schema.Literals([

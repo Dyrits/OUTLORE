@@ -21,7 +21,7 @@ const SKIPPED_NAMES = new Set(["node_modules", "dist", "build", "out", "target",
 const MAX_AT_ONCE = 2;
 let active = 0;
 const waiting: Array<() => void> = [];
-const limited = async <T>(task: () => Promise<T>): Promise<T> => {
+const limited = async <Value>(task: () => Promise<Value>): Promise<Value> => {
   if (active >= MAX_AT_ONCE) await new Promise<void>((resume) => waiting.push(resume));
   else active++;
   try {
@@ -130,7 +130,7 @@ const searchByName = async (query: string, home: string, roots: ReadonlyArray<st
   ]);
   clearTimeout(timer);
   return found
-    .sort((a, b) => a.tier - b.tier || a.depth - b.depth || a.path.localeCompare(b.path))
+    .sort((left, right) => left.tier - right.tier || left.depth - right.depth || left.path.localeCompare(right.path))
     .slice(0, MAX_RESULTS)
     .map((match) => folderOf(match.path));
 };
@@ -155,7 +155,7 @@ const completePath = async (
       .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
       .map((entry) => entry.name)
       .filter((name) => name.toLowerCase().startsWith(term) && (term.startsWith(".") || !name.startsWith(".")))
-      .sort((a, b) => a.localeCompare(b));
+      .sort((left, right) => left.localeCompare(right));
     for (const name of names) {
       const real = await realDirectoryOf(join(parent, name));
       if (real !== null && isAllowed(roots, real, access) && !found.includes(real)) found.push(real);

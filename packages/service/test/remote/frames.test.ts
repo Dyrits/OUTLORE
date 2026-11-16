@@ -57,7 +57,7 @@ describe("what a paired device may ask of a host", () => {
       answerText(
         (() => Effect.succeed(null)) as never,
         JSON.stringify({ id: "7", request: { _tag: "Nope" } }),
-        (f) => sent.push(f),
+        (frame) => sent.push(frame),
         {
           isPairedDevice: true,
         },

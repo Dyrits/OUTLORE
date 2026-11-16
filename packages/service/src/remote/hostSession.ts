@@ -34,7 +34,9 @@ const touchMillis = 30_000;
 const refusalGraceMillis = 200;
 
 /** Storage and service work as the host runtime runs it: with the database and the settings provided. */
-export type RunWork = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient | RemoteConfig>) => Promise<A>;
+export type RunWork = <Value, Error>(
+  effect: Effect.Effect<Value, Error, SqlClient.SqlClient | RemoteConfig>,
+) => Promise<Value>;
 
 /** What serving paired devices needs from the rest of the service. */
 export interface DeviceServerParts {
