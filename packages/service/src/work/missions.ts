@@ -35,8 +35,6 @@ import { runStateOf, scheduleOf } from "./ritualSchedule.ts";
 import { attachmentsTitle, titleOf } from "./titles.ts";
 import { attachWorkspace, crestOfRow } from "./workspaces.ts";
 
-/** States that put a mission first on the dashboard (provisional: CHG-0045, work-in-progress Batch 9). */
-
 /**
  * Records the mission, its top thread in the chosen workspace or none, and the first message.
  * Callers run it in a transaction.
@@ -217,7 +215,7 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
   } as MissionSummary;
 };
 
-const missionRows = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
+const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
   sql<MissionRow>`
     SELECT m.id, m.title, m.top_thread_id AS topThreadId, top.harness AS harness, top.model AS model, m.last_activity_at AS lastActivityAt,
       (SELECT group_concat(t.state) FROM threads t WHERE t.mission_id = m.id) AS states,
@@ -246,7 +244,7 @@ export const listMissionSummaries = (missionIds: ReadonlyArray<string>) =>
     if (missionIds.length === 0) return [];
     const now = yield* Clock.currentTimeMillis;
     const settings = yield* readSettings;
-    const rows = yield* missionRows(sql, sql`m.id IN ${sql.in(missionIds)}`);
+    const rows = yield* missionRowsOf(sql, sql`m.id IN ${sql.in(missionIds)}`);
     return rows.map((row) => summaryOf(row, now, settings));
   });
 
@@ -257,7 +255,7 @@ export const listViewSummaries = (isArchived: boolean) =>
     const now = yield* Clock.currentTimeMillis;
     const settings = yield* readSettings;
     // A Ritual's quest is listed with the Rituals, not with the quests (rituals); the Guildmaster's is in no list.
-    const rows = yield* missionRows(
+    const rows = yield* missionRowsOf(
       sql,
       isArchived
         ? sql`m.ending = 'Archived' AND r.id IS NULL AND m.is_guildmaster = 0`

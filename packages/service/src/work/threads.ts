@@ -115,7 +115,7 @@ export const threadsLayer = Layer.effect(
     yield* recoverThreadStates;
 
     const isCurrent = (turnId: string) => local(isCurrentTurn(turnId));
-    const draft = (threadId: string, text: string) => PubSub.publish(changes.drafts, { text, threadId });
+    const publishDraft = (threadId: string, text: string) => PubSub.publish(changes.drafts, { text, threadId });
     /**
      * Writes the thread's undelivered messages that are not queued into its running turn, each once.
      * Thread messages always steer; the owner's steer unless sent as Queue (CHG-0039).
@@ -167,12 +167,13 @@ export const threadsLayer = Layer.effect(
         const onEvent = (event: HarnessEvent) =>
           Match.valueTags(event, {
             Delivered: (delivered) => commands.run(local(deliverSteered(turn, delivered.messageId))).pipe(Effect.orDie),
-            Draft: (written) => (shouldStreamReplies ? draft(threadId, written.text).pipe(Effect.asVoid) : Effect.void),
+            Draft: (written) =>
+              shouldStreamReplies ? publishDraft(threadId, written.text).pipe(Effect.asVoid) : Effect.void,
             Notice: (notice) => commands.run(local(saveTurnNotice(threadId, turn, notice.text))).pipe(Effect.orDie),
             Reply: (reply) =>
               commands
                 .run(local(saveTurnReply(threadId, turn, reply.text, reply.model ?? null, reply.usage ?? null)))
-                .pipe(Effect.andThen(draft(threadId, "")), Effect.orDie),
+                .pipe(Effect.andThen(publishDraft(threadId, "")), Effect.orDie),
             ToolCall: (call) =>
               commands
                 .run(local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input)))
@@ -206,7 +207,7 @@ export const threadsLayer = Layer.effect(
               Effect.sync(() => active.delete(threadId)).pipe(Effect.andThen(approvals.endTurn(threadId))),
             ),
           );
-        yield* draft(threadId, "");
+        yield* publishDraft(threadId, "");
         if (outcome._tag === "Failure") {
           return yield* commands
             .run(local(recordTurnFailure(threadId, turn, outcome.failure.reason)))
@@ -243,7 +244,7 @@ export const threadsLayer = Layer.effect(
 
     const { cancel } = makeLifecycle({
       cancelTurn: (id) => FiberMap.remove(turns, id),
-      clearDraft: (id) => draft(id, "").pipe(Effect.asVoid),
+      clearDraft: (id) => publishDraft(id, "").pipe(Effect.asVoid),
       withdraw: withdrawAll,
     });
     const wakeMission = (missionId: string) => wakeWaiting(missionId, "");

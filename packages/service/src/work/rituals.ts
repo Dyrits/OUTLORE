@@ -101,7 +101,7 @@ export const readRitual = (missionId: string) =>
 /** Every Ritual, the latest first. */
 export const listRituals = Effect.gen(function* () {
   const rows = yield* readRows("all");
-  return rows.toSorted((a, b) => b.createdAt - a.createdAt).map(ritualOf);
+  return rows.toSorted((current, next) => next.createdAt - current.createdAt).map(ritualOf);
 });
 
 /** What a Ritual's quest and thread are named. */

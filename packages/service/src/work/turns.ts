@@ -146,7 +146,7 @@ const modelOfTurn = (threadId: string, turn: Admitted) =>
  * A turn's estimated cost, stamped with where it came from: the price table, or the harness's own figure for a
  * model the table lacks (budget-control, Estimated cost). Null leaves the turn unpriced.
  */
-const estimateOf = (
+const estimateCost = (
   prices: PriceTable["Service"],
   model: string | null,
   usage: TokenUsage,
@@ -174,7 +174,7 @@ export const completeTurn = (threadId: string, turn: Admitted, outcome: TurnOutc
     if (usage !== null) {
       const endedAt = yield* Clock.currentTimeMillis;
       const model = yield* modelOfTurn(threadId, turn);
-      const estimate = yield* estimateOf(prices, model, usage, billing, cost, endedAt);
+      const estimate = yield* estimateCost(prices, model, usage, billing, cost, endedAt);
       yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, cost, context, billing,
             harness, model, account_id, estimate, estimate_source, priced_at)
           VALUES (${turn.turnId}, ${turn.missionId}, ${threadId}, ${endedAt}, ${usage.input}, ${usage.output},

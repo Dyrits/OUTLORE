@@ -24,7 +24,7 @@ export const questsHandlers = ({
   threads,
 }: Pick<HandlerDependencies, "commands" | "change" | "threads">) =>
   ({
-    ChangeThreadRunner: (change) => commands.run(admitRunnerChange(change)),
+    ChangeThreadRunner: (given) => commands.run(admitRunnerChange(given)),
     DeleteThread: (given) => deleteThread(given.threadId, given.confirmation),
     DismissMissionPrompt: (given) => commands.run(dismissPrompt(given.missionId, given.prompt)),
     EndMission: (given) => commands.run(endMission(given.missionId, given.ending, given.snapshot)),

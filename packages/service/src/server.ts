@@ -11,9 +11,9 @@ import { Service } from "./service.ts";
 
 const sameToken = (given: string | null, expected: string) => {
   if (given === null) return false;
-  const a = Buffer.from(given);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  const givenBytes = Buffer.from(given);
+  const expectedBytes = Buffer.from(expected);
+  return givenBytes.length === expectedBytes.length && timingSafeEqual(givenBytes, expectedBytes);
 };
 
 const tokenOf = (request: IncomingMessage) => new URL(request.url ?? "/", "http://127.0.0.1").searchParams.get("token");
