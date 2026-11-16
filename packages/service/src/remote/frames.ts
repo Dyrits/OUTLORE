@@ -8,7 +8,7 @@ import {
   sourceRulesOf,
 } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
-import type { ServiceFailure } from "../core/index.ts";
+import { type ServiceFailure, textFieldOf } from "../core/index.ts";
 
 const decodeClientFrame = Schema.decodeUnknownExit(ClientFrameJson);
 export const encodeServerFrame = Schema.encodeSync(ServerFrameJson);
@@ -16,8 +16,7 @@ export const encodeServerFrame = Schema.encodeSync(ServerFrameJson);
 /** Best effort: answers a malformed frame on its identifier when one can be read. */
 const frameIdOf = (raw: string) => {
   try {
-    const id = (JSON.parse(raw) as { id?: unknown }).id;
-    return typeof id === "string" ? id : null;
+    return textFieldOf(JSON.parse(raw), "id");
   } catch {
     return null;
   }

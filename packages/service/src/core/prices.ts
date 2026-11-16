@@ -38,7 +38,7 @@ export type Estimate = {
  * The providers whose models the table keeps, which are those the harnesses offer and OpenCode lists, in the order
  * tried when a model names no provider.
  */
-export const priceProviders = [
+export const priceProviders: ReadonlyArray<string> = [
   "anthropic",
   "openai",
   "google",
@@ -48,10 +48,10 @@ export const priceProviders = [
   "moonshotai",
   "zai",
   "opencode",
-] as const;
+];
 
 const rankOf = (provider: string) => {
-  const index = (priceProviders as ReadonlyArray<string>).indexOf(provider);
+  const index = priceProviders.indexOf(provider);
   return index === -1 ? priceProviders.length : index;
 };
 
@@ -116,7 +116,10 @@ export const priceTableLayer = Layer.effect(
     const stored = yield* sql<StoredRow>`
       SELECT provider, model, input, output, cache_read AS cacheRead, cache_write AS cacheWrite, fetched_at AS fetchedAt
       FROM prices`.pipe(Effect.orDie);
-    const fetched = yield* Ref.make({ at: stored[0]?.fetchedAt ?? 0, rows: stored as ReadonlyArray<PriceRow> });
+    const fetched = yield* Ref.make<{ at: number; rows: ReadonlyArray<PriceRow> }>({
+      at: stored[0]?.fetchedAt ?? 0,
+      rows: stored,
+    });
 
     /** The rows estimates use now: the fetched table first with the snapshot behind it, or the snapshot alone. */
     const activeOf = Effect.gen(function* () {

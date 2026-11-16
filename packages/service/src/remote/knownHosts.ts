@@ -1,11 +1,13 @@
 import { decodeBase64Url, encodeBase64Url } from "@outlore/channel";
-import type { HostId, KnownHost } from "@outlore/contracts";
-import { Effect } from "effect";
+import { HostId, type KnownHost } from "@outlore/contracts";
+import { Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, newId } from "../core/index.ts";
 
 // This installation as a controller: the hosts it is paired with (device-pairing). Everything here is storage; the
 // links to the hosts are in the controller.
+
+const hostIdOf = Schema.decodeSync(HostId);
 
 /** A host this installation can connect to, with what it needs to find it and prove itself. */
 export type HostLink = {
@@ -33,7 +35,7 @@ export const listKnownHosts = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql<{ id: string; lastSeenAt: number | null; name: string; pairedAt: number }>`
     SELECT id, last_seen_at AS lastSeenAt, host_name AS name, paired_at AS pairedAt FROM remote_hosts ORDER BY paired_at`;
-  return rows.map((row): KnownHost => ({ ...row, id: row.id as HostId }));
+  return rows.map((row): KnownHost => ({ ...row, id: hostIdOf(row.id) }));
 });
 
 /** What is needed to connect to one host, or null when this installation has no such host. */
@@ -58,7 +60,7 @@ export const saveHost = Effect.fnUntraced(function* (host: Omit<HostLink, "id">,
   yield* sql`INSERT INTO remote_hosts (id, device_id, device_token, host_name, host_public_key, last_seen_at, paired_at,
     relay_origin, room) VALUES (${id}, ${host.deviceId}, ${host.deviceToken}, ${host.hostName},
     ${publicKey}, ${now}, ${now}, ${host.relayOrigin}, ${host.room})`;
-  return { id: id as HostId, lastSeenAt: now, name: host.hostName, pairedAt: now } satisfies KnownHost;
+  return { id: hostIdOf(id), lastSeenAt: now, name: host.hostName, pairedAt: now } satisfies KnownHost;
 });
 
 /** Notes that a host answered and what it is called now. */
