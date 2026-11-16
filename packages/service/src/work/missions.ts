@@ -1,14 +1,17 @@
-import type {
-  Crest,
-  EffortChoice,
-  HarnessName,
-  MissionEnding,
-  MissionPrompt,
-  MissionSummary,
-  ModelChoice,
-  Settings,
-  StartChoices,
-  StartMissionResult,
+import {
+  type Crest,
+  type EffortChoice,
+  type HarnessName,
+  type MissionEnding,
+  MissionId,
+  type MissionPrompt,
+  type MissionSummary,
+  type ModelChoice,
+  RitualId,
+  type Settings,
+  type StartChoices,
+  ThreadId,
+  WorkspaceId,
 } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient, type Statement } from "effect/sql";
@@ -47,11 +50,19 @@ export const insertMission = (
   realm: { crest: Crest | null; name: string } | null = null,
   attachmentIds: ReadonlyArray<string> = [],
 ) =>
-  insertQuest(
-    { attachmentIds, firstMessage: text, realm, shouldRememberChoices, title: titleOf(text) || attachmentsTitle },
-    choice,
-    workspacePath,
-  ).pipe(Effect.map((started) => started as StartMissionResult));
+  Effect.gen(function* () {
+    const started = yield* insertQuest(
+      { attachmentIds, firstMessage: text, realm, shouldRememberChoices, title: titleOf(text) || attachmentsTitle },
+      choice,
+      workspacePath,
+    );
+    if (started.messageId === null) return yield* Effect.die("A mission started with text recorded no first message.");
+    return {
+      messageId: started.messageId,
+      missionId: MissionId.make(started.missionId),
+      threadId: ThreadId.make(started.threadId),
+    };
+  });
 
 /**
  * Records a quest, its top thread, and its first message when it has one; a Ritual's quest has none until its first run
@@ -187,7 +198,7 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
     },
     consumption: consumptionOf(row),
     harness: row.harness,
-    id: row.id,
+    id: MissionId.make(row.id),
     isTitleByUser: row.isTitleByUser === 1,
     lastActivityAt: row.lastActivityAt,
     model: row.model,
@@ -196,7 +207,7 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
       row.ritualId === null || row.ritualSchedule === null
         ? null
         : {
-            id: row.ritualId,
+            id: RitualId.make(row.ritualId),
             isOn: row.ritualIsOn === 1,
             lastRunAt: row.ritualLastRunAt,
             lastRunState: runStateOf(row.ritualLastRunState, row.topState),
@@ -207,12 +218,12 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
     state: row.ending ?? workedOutStateOf(states),
     threadCount: row.threadCount,
     title: row.title,
-    topThreadId: row.topThreadId,
+    topThreadId: ThreadId.make(row.topThreadId),
     usage: { cacheCreation: row.cacheCreation, cacheRead: row.cacheRead, input: row.input, output: row.output },
     workspaceCrest: crestOfRow(row.workspaceCrest),
-    workspaceId: row.workspaceId,
+    workspaceId: row.workspaceId === null ? null : WorkspaceId.make(row.workspaceId),
     workspaceName: row.workspaceName,
-  } as MissionSummary;
+  };
 };
 
 const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>

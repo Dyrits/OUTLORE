@@ -40,10 +40,11 @@ const listThreads = (missionId: string, topThreadId: string) =>
       FROM tree JOIN threads t ON t.id = tree.id
       WHERE t.mission_id = ${missionId}
       ORDER BY tree.path`;
-    return rows.map(
-      ({ path: _path, ...row }) =>
-        ({ ...row, isAside: row.isAside === 1, isOpenedByAgent: row.isOpenedByAgent === 1 }) as ThreadSummary,
-    );
+    return rows.map(({ path: _path, ...row }) => ({
+      ...row,
+      isAside: row.isAside === 1,
+      isOpenedByAgent: row.isOpenedByAgent === 1,
+    }));
   });
 
 /** An account's label: the computer's own sign-in reads as the computer's name, and an account removed since says so. */
@@ -151,5 +152,5 @@ export const readMission = (missionId: string, threadId: string | null) =>
         workspace,
       },
       threads,
-    } as MissionDetail;
+    };
   });

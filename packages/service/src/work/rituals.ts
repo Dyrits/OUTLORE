@@ -1,11 +1,14 @@
 import {
   type Crest,
+  MissionId,
   type Ritual,
   type RitualCompanion,
   RitualCompanion as RitualCompanionSchema,
+  RitualId,
   type RitualSchedule,
   type RitualScope,
   RitualScope as RitualScopeSchema,
+  ThreadId,
 } from "@outlore/contracts";
 import { Clock, Effect, Exit, Layer, PubSub, Schema } from "effect";
 import { SqlClient } from "effect/sql";
@@ -72,24 +75,23 @@ const readRows = (
       WHERE ${where}`;
   });
 
-const ritualOf = (row: RitualRow): Ritual =>
-  ({
-    fallbacks: decodeFallbacks(JSON.parse(row.fallbacks)),
-    id: row.id,
-    instruction: row.instruction,
-    isOn: row.isOn === 1,
-    isRealmArchived: row.isRealmArchived === 1,
-    lastRunAt: row.lastRunAt,
-    lastRunState: runStateOf(row.lastRunState, row.threadState),
-    missionId: row.missionId,
-    nextRunAt: row.nextRunAt,
-    primary: decodeCompanion(JSON.parse(row.primaryCompanion)),
-    schedule: scheduleOf(row.schedule),
-    // Stored as `authority` (migration 0044): the owner's reviewed scope, empty by default.
-    scope: decodeScope(JSON.parse(row.authority)),
-    threadId: row.threadId,
-    title: row.title,
-  }) as Ritual;
+const ritualOf = (row: RitualRow): Ritual => ({
+  fallbacks: decodeFallbacks(JSON.parse(row.fallbacks)),
+  id: RitualId.make(row.id),
+  instruction: row.instruction,
+  isOn: row.isOn === 1,
+  isRealmArchived: row.isRealmArchived === 1,
+  lastRunAt: row.lastRunAt,
+  lastRunState: runStateOf(row.lastRunState, row.threadState),
+  missionId: MissionId.make(row.missionId),
+  nextRunAt: row.nextRunAt,
+  primary: decodeCompanion(JSON.parse(row.primaryCompanion)),
+  schedule: scheduleOf(row.schedule),
+  // Stored as `authority` (migration 0044): the owner's reviewed scope, empty by default.
+  scope: decodeScope(JSON.parse(row.authority)),
+  threadId: ThreadId.make(row.threadId),
+  title: row.title,
+});
 
 /** The quest's Ritual, or null when the quest is not a Ritual's. */
 export const readRitual = (missionId: string) =>
