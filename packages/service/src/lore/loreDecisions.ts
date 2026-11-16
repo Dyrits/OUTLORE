@@ -29,6 +29,8 @@ type ChangeRow = {
   readonly originExcerpt: string | null;
   readonly originFrom: string | null;
   readonly originKind: LoreOrigin["kind"] | null;
+  /** The lore entry's text when the thread proposed the change: what the approval card shows; null for a save. */
+  readonly previousText: string | null;
   readonly scope: Placement["scope"];
   readonly scopeThreadId: string | null;
   readonly scopeWorkspaceId: string | null;
@@ -39,20 +41,23 @@ type ChangeRow = {
 
 /**
  * The owner approves or declines a change awaiting approval. An approved change to a lore entry deleted in the
- * meantime is declined, since there is nothing left to change. Callers run it in a transaction.
+ * meantime is declined, since there is nothing left to change; so is one to a lore entry whose text changed since the
+ * card showed it, since approving would act on text the owner never saw. Callers run it in a transaction.
  */
 export const resolveLoreChange = Effect.fnUntraced(function* (changeId: string, isApproved: boolean) {
   const sql = yield* SqlClient.SqlClient;
   const [change] = yield* sql<ChangeRow>`
       SELECT kind, intel_kind AS loreKind, status, intel_id AS loreEntryId, scope, scope_thread_id AS scopeThreadId,
         scope_workspace_id AS scopeWorkspaceId, text, thread_id AS threadId, origin_kind AS originKind,
-        origin_entry AS originEntry, origin_from AS originFrom, origin_excerpt AS originExcerpt
+        origin_entry AS originEntry, origin_from AS originFrom, origin_excerpt AS originExcerpt,
+        previous_text AS previousText
       FROM intel_changes WHERE id = ${changeId}`;
   if (change === undefined) return yield* notFound("No such change to lore.");
   if (change.status !== "Awaiting") return yield* invalid("This change was already decided.");
   const placement = { scope: change.scope, threadId: change.scopeThreadId, workspaceId: change.scopeWorkspaceId };
   const target = change.loreEntryId === null ? null : yield* readLoreEntry(change.loreEntryId);
-  const isApplied = isApproved && (change.kind === "Save" || target !== null);
+  const isCurrent = change.kind === "Save" || (target !== null && target.text === change.previousText);
+  const isApplied = isApproved && isCurrent;
   const now = yield* Clock.currentTimeMillis;
   // An approved change is recorded in the lore entry's history as the thread's, with the owner's approval.
   const actor = threadActor(change.threadId);
