@@ -16,7 +16,6 @@
       "name": "app",
       "version": "0.1.5-Prototype",
       "dependencies": {
-        "@expo-google-fonts/caveat": "^0.4.2",
         "@expo/metro-runtime": "~58.0.17",
         "@outlore/contracts": "workspace:*",
         "@outlore/controller": "workspace:*",
@@ -25,7 +24,6 @@
         "effect": "4.1.4",
         "expo": "~58.0.25",
         "expo-font": "~58.0.12",
-        "expo-status-bar": "~58.0.5",
         "marked": "^18.2.0",
         "react": "19.3.0",
         "react-dom": "19.3.0",
@@ -294,8 +292,6 @@
     "@electron/universal": ["@electron/universal@2.0.3", "", { "dependencies": { "@electron/asar": "^3.3.1", "@malept/cross-spawn-promise": "^2.0.0", "debug": "^4.3.1", "dir-compare": "^4.2.0", "fs-extra": "^11.1.1", "minimatch": "^9.0.3", "plist": "^3.1.0" } }, "sha512-Wn9sPYIVFRFl5HmwMJkARCCf7rqK/EurkfQ/rJZ14mHP3iYTjZSIOSVonEAnhWeAXwtw7zOekGRlc6yTtZ0t+g=="],
 
     "@electron/windows-sign": ["@electron/windows-sign@1.2.2", "", { "dependencies": { "cross-dirname": "^0.1.0", "debug": "^4.3.4", "fs-extra": "^11.1.1", "minimist": "^1.2.8", "postject": "^1.0.0-alpha.6" }, "bin": { "electron-windows-sign": "bin/electron-windows-sign.js" } }, "sha512-dfZeox66AvdPtb2lD8OsIIQh12Tp0GNCRUDfBHIKGpbmopZto2/A8nSpYYLoedPIHpqkeblZ/k8OV0Gy7PYuyQ=="],
-
-    "@expo-google-fonts/caveat": ["@expo-google-fonts/caveat@0.4.2", "", {}, "sha512-kCG35tRUX8Wi+u0Jh5ck3K1u7vZkdLnwRTuKMrEnlVmikvxQFXN1KjF5cL2vqRG7Hwm7648Zl8xe1BWAoIsPCA=="],
 
     "@expo/cli": ["@expo/cli@58.1.20", "", { "dependencies": { "2g": "^1.0.1", "@expo/code-signing-certificates": "^0.0.7", "@expo/config": "~58.0.12", "@expo/config-plugins": "~58.0.13", "@expo/devcert": "^1.2.2", "@expo/env": "~2.6.0", "@expo/image-utils": "^0.12.7", "@expo/inline-modules": "^0.2.10", "@expo/json-file": "^11.2.1", "@expo/log-box": "^58.0.15", "@expo/log-box-utils": "^58.0.2", "@expo/metro": "~58.0.0", "@expo/metro-config": "58.0.22", "@expo/metro-file-map": "^58.0.6", "@expo/osascript": "^2.8.1", "@expo/package-manager": "^1.14.2", "@expo/platforms": "^58.0.1", "@expo/plist": "^0.10.2", "@expo/prebuild-config": "^58.0.20", "@expo/require-utils": "^58.0.6", "@expo/router-server": "^58.0.22", "@expo/schema-utils": "^58.0.3", "@expo/spawn-async": "^1.8.0", "@expo/ws-tunnel": "^2.0.1", "@expo/xcpretty": "^4.4.6", "@react-native/asset-utils": "0.88.1", "@react-native/dev-middleware": "0.88.1", "@react-native/js-polyfills": "0.88.1", "accepts": "^1.3.8", "agent-cli-detector": "0.1.7", "arg": "^5.0.2", "bplist-creator": "0.1.0", "bplist-parser": "^0.3.1", "chalk": "^4.0.0", "ci-info": "^3.3.0", "compression": "^1.7.4", "connect": "^3.7.0", "dnssd-advertise": "^1.1.6", "expo-server": "^58.1.0", "fetch-nodeshim": "^0.4.10", "lan-network": "^0.2.1", "multitars": "^1.0.2", "node-forge": "^1.4.0", "npm-package-arg": "^11.0.0", "ora": "^3.4.0", "picomatch": "^4.0.4", "pretty-format": "^29.7.0", "progress": "^2.0.3", "prompts": "^2.3.2", "resolve-from": "^5.0.0", "sandbox-cli-detector": "^0.2.0", "semver": "^7.7.4", "send": "^0.19.0", "slugify": "^1.3.4", "stacktrace-parser": "^0.1.10", "structured-headers": "^0.4.1", "terminal-link": "^2.1.1", "tinyglobby": "^0.2.15", "toqr": "^0.1.1", "wrap-ansi": "^7.0.0", "ws": "^8.12.1" }, "peerDependencies": { "expo": "*", "expo-mcp": "*", "expo-router": "*", "react-native": "*" }, "optionalPeers": ["expo-mcp", "expo-router", "react-native"], "bin": { "expo-internal": "bin/cli.js" } }, "sha512-VXXcqGuXBngzItcP97ERWON3aHJOeAwDxuRlkxgbYfW9m9DpGHM6umGgjOPWWy14xSArUvwGZpg+D5Ms+hnnkg=="],
 
@@ -846,8 +842,6 @@
     "expo-modules-macros": ["expo-modules-macros@0.33.0", "", { "optionalDependencies": { "@expo/modules-macros-linux-arm64": "0.33.0", "@expo/modules-macros-linux-x64": "0.33.0", "@expo/modules-macros-win32-arm64": "0.33.0", "@expo/modules-macros-win32-x64": "0.33.0" } }, "sha512-ddrT2jbYPYmiHmzcYOixRemFUUK9qQEb5pOBWgoFoW0gj3sGld1CZX0GwblUXeZMyEX65S9vc1bEhIAGVDRA9w=="],
 
     "expo-server": ["expo-server@58.1.0", "", {}, "sha512-jo7I6uHnP5OQYKx3+7lbpdVVnOEwFj2ryDkQdauUQSwgh2HuMUkiFXWUIVe01ts6DLRoff5U0Tv+uNb3CMq/kw=="],
-
-    "expo-status-bar": ["expo-status-bar@58.0.5", "", { "peerDependencies": { "expo": "*", "react": "*", "react-native": "*" } }, "sha512-Lq1h7QpNY2FY7+Dyrn15atrFZs1Yd4IfMfhwyyWb3TqWc+vwtYZH54W9VhhjqXtgitXe+RVAX7YZoCekjbLmug=="],
 
     "exponential-backoff": ["exponential-backoff@3.1.3", "", {}, "sha512-ZgEeZXj30q+I0EN+CbSSpIyPaJ5HVQD18Z1m+u1FXbAeT94mr1zw50q4q6jiiC447Nl/YTcIYSAftiGqetwXCA=="],
 
