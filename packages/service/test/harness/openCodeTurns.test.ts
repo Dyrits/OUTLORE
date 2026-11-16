@@ -43,7 +43,7 @@ describe("running OpenCode threads", () => {
       expect(process?.env).toEqual([]);
       const config = process?.config as {
         instructions: Array<string>;
-        mcp: { servers: Record<string, { url: string }> };
+        mcp: { servers: Record<string, { timeout: { execution: number }; url: string }> };
         permissions: Array<{ action: string; effect: string }>;
       };
       expect(config.permissions).toEqual([
@@ -52,6 +52,8 @@ describe("running OpenCode threads", () => {
         { action: "subagent", effect: "deny", resource: "*" },
       ]);
       expect(config.mcp.servers.outlore?.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\//);
+      // The longest tool-call wait OpenCode accepts, about 24.8 days in milliseconds: no wait in practice (action-approval).
+      expect(config.mcp.servers.outlore?.timeout.execution).toBe(2_147_483_647);
       expect(readFileSync(config.instructions[0] ?? "", "utf8")).toContain("# Threads in Outlore");
       expect(requests("session/set_config_option")[0]?.params).toMatchObject({
         configId: "model",

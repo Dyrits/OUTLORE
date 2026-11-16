@@ -39,7 +39,7 @@ Version 1 serves the installation's owner. In future hosted missions, only the h
 
 - A thread with an open question is in the **Attention** state, shown prominently and sent as a phone notification with no content.
 - On the Mac desktop app, a new question also bounces the Dock icon until the user returns to the app; with the window in front it does not bounce.
-- A question waits with no time limit while the rest of the mission keeps running.
+- A question waits with no time limit while the rest of the mission keeps running. In practice the limit is the longest wait each harness accepts for a tool call, 2,147,483,647 milliseconds (about 24.8 days; Codex takes seconds, 2,147,483), set for Claude Code, Codex and OpenCode, and pinned by a test for each (CHG-TBD-B-2).
 - A question is withdrawn when the user interrupts or stops its thread.
 
 ### Where to answer

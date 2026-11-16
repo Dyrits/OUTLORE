@@ -58,6 +58,8 @@ describe("running Codex threads", () => {
       expect(JSON.stringify(thread?.params?.config)).toMatch(
         /"mcp_servers\.outlore\.url":"http:\/\/127\.0\.0\.1:\d+\//,
       );
+      // The longest tool-call wait Codex accepts, about 24.8 days in seconds: no wait in practice (action-approval).
+      expect(thread?.params?.config).toMatchObject({ "mcp_servers.outlore.tool_timeout_sec": 2_147_483 });
       expect(String(thread?.params?.developerInstructions)).toContain("# Approvals in Outlore");
       expect(String(thread?.params?.developerInstructions)).not.toContain("dangerouslyDisableSandbox");
       expect(requests("turn/start")[0]?.params).toMatchObject({ effort: "high", model: "gpt-x" });
