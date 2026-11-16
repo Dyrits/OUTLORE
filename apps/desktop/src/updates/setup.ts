@@ -46,7 +46,7 @@ const updaterOf = async (): Promise<{ reason: string | null; updater: Updater | 
       reason: "Updating needs Outlore's AppImage; download the new version from the release page.",
       updater: null,
     };
-  return { reason: null, updater: await createLibraryUpdater() };
+  return { reason: null, updater: await createLibraryUpdater(appVersionOf()) };
 };
 
 /**

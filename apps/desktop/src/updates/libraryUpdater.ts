@@ -4,6 +4,22 @@ import { type CheckResult, UpdateFailure, type Updater } from "./updater.ts";
 
 /** The notes electron-updater hands over: HTML text, a list of per-version notes, or none. */
 type Notes = string | readonly { readonly note: string | null }[] | null | undefined;
+interface Library {
+  autoDownload: boolean;
+  autoInstallOnAppQuit: boolean;
+  autoRunAppAfterInstall: boolean;
+  checkForUpdates(): Promise<unknown>;
+  on(event: "update-available", listener: (info: { version: string }) => void): unknown;
+  on(event: "update-not-available", listener: () => void): unknown;
+  on(event: "download-progress", listener: (progress: { percent: number }) => void): unknown;
+  on(event: "update-downloaded", listener: (info: { version: string; releaseNotes?: Notes }) => void): unknown;
+  on(event: "error", listener: (error: Error) => void): unknown;
+  quitAndInstall(silent?: boolean, runAfter?: boolean): void;
+  removeAllListeners(
+    event: "update-available" | "update-not-available" | "download-progress" | "update-downloaded" | "error",
+  ): unknown;
+  requestHeaders: import("node:http").OutgoingHttpHeaders | null;
+}
 
 const notesTextOf = (notes: Notes) =>
   typeof notes === "string" ? notes : Array.isArray(notes) ? notes.map((entry) => entry.note ?? "").join("\n") : "";
@@ -13,9 +29,11 @@ const notesTextOf = (notes: Notes) =>
  * release workflow publishes beside the installers. Cannot be run on a Mac, so it is unverified until it is run
  * on Windows and Linux (app-updates, Windows and Linux).
  */
-export const createLibraryUpdater = async (): Promise<Updater> => {
-  const loaded = await import("electron-updater");
-  const { autoUpdater } = loaded.default ?? loaded;
+export const createLibraryUpdater = async (appVersion: string, supplied?: Library): Promise<Updater> => {
+  const loaded = supplied === undefined ? await import("electron-updater") : null;
+  const autoUpdater: Library | undefined = supplied ?? (loaded?.default ?? loaded)?.autoUpdater;
+  if (autoUpdater === undefined) throw new Error("The update library is unavailable.");
+  autoUpdater.requestHeaders = { "User-Agent": `Outlore/${appVersion}` };
   // Nothing installs unasked: the owner presses Restart and update.
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = false;
