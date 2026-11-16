@@ -33,6 +33,7 @@ function ThreadPane({
   canOpenDetails,
   client,
   detail,
+  isCompact,
   onSelect,
   onOpenMission,
   onOpenBudget,
@@ -41,6 +42,8 @@ function ThreadPane({
   /** Whether this thread's header offers the link to the quest's side panel, where no top bar has the icon. */
   canOpenDetails: boolean;
   client: ServiceClient;
+  /** A narrow window leaves out the line of settings, which the message box and the quest panel show. */
+  isCompact: boolean;
   onOpenDetails: () => void;
   onOpenBudget: () => void;
   onOpenMission: (missionId: MissionId) => void;
@@ -95,15 +98,17 @@ function ThreadPane({
           <BudgetStopCard client={client} onRaise={onOpenBudget} stop={detail.budgetStop} />
         )}
         {actionError !== null && <Text style={styles.error}>{actionError}</Text>}
-        <Text numberOfLines={1} style={styles.muted}>
-          {harnessLabels[thread.harness]}
-          {thread.accountId === null ? "" : ` (${thread.accountLabel})`} · {modelLabelOf(thread.model)} ·{" "}
-          {effortLabel(thread.effort)} ·{" "}
-          {thread.workspace === null
-            ? "No realm: the quest's scratch folder"
-            : `Realm ${thread.workspace.name} · ${thread.workspace.path}`}
-          {thread.workspace?.isMissing === true && " · folder missing"}
-        </Text>
+        {!isCompact && (
+          <Text numberOfLines={1} style={styles.muted}>
+            {harnessLabels[thread.harness]}
+            {thread.accountId === null ? "" : ` (${thread.accountLabel})`} · {modelLabelOf(thread.model)} ·{" "}
+            {effortLabel(thread.effort)} ·{" "}
+            {thread.workspace === null
+              ? "No realm: the quest's scratch folder"
+              : `Realm ${thread.workspace.name} · ${thread.workspace.path}`}
+            {thread.workspace?.isMissing === true && " · folder missing"}
+          </Text>
+        )}
         {thread.state === "Stopped" && thread.waitingCount > 0 && (
           <Text style={styles.muted}>
             {countedOf(thread.waitingCount, "message")} {thread.waitingCount === 1 ? "waits" : "wait"} until you resume
@@ -217,6 +222,8 @@ export function Conversation({
 }) {
   const { width } = useWindowDimensions();
   const isCompact = width < 820;
+  // On a narrow window the side-quests list is folded to one line until it is wanted, so the conversation keeps the room.
+  const [isTreeOpen, setIsTreeOpen] = useState(false);
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const selectedId = selectedThreadId;
   const setSelectedId = onSelectThread;
@@ -289,12 +296,26 @@ export function Conversation({
       {hasSideQuests && !hasSidebar && (
         // With the sidebar showing, it is the quest's one tree; this one serves the narrow window, which has none.
         <View style={[styles.questSide, isCompact && styles.questSideCompact]}>
-          <Pressable onPress={goBack}>
-            <Text style={styles.link}>← Back</Text>
-          </Pressable>
-          {data && (
+          <View style={styles.questSideBar}>
+            <Pressable onPress={goBack}>
+              <Text style={styles.link}>← Back</Text>
+            </Pressable>
+            {isCompact && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: isTreeOpen }}
+                onPress={() => setIsTreeOpen(!isTreeOpen)}
+              >
+                <Text style={styles.link}>Side-quests {isTreeOpen ? "▴" : "▾"}</Text>
+              </Pressable>
+            )}
+          </View>
+          {data && (!isCompact || isTreeOpen) && (
             <ThreadTree
-              onSelect={setSelectedId}
+              onSelect={(threadId) => {
+                setIsTreeOpen(false);
+                setSelectedId(threadId);
+              }}
               selectedId={data.thread.id}
               shouldShowAgentThreads={settings?.shouldShowAgentThreads ?? true}
               threads={data.threads}
@@ -302,7 +323,7 @@ export function Conversation({
           )}
         </View>
       )}
-      <View style={styles.questMain}>
+      <View style={[styles.questMain, isCompact && styles.questMainCompact]}>
         {!hasSidebar && !hasSideQuests && (
           <Pressable onPress={goBack}>
             <Text style={styles.link}>← Back</Text>
@@ -314,6 +335,7 @@ export function Conversation({
             canOpenDetails={!hasTopBar}
             client={client}
             detail={detail}
+            isCompact={isCompact}
             key={detail.thread.id}
             onOpenBudget={() => setBudgetScope(detail.budgetStop?.scope ?? "Mission")}
             onOpenDetails={() => onSetDetails(true)}
