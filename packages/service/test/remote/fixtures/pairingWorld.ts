@@ -144,6 +144,7 @@ export const makeWorld = (options: { controllerRelay?: string; controllerRelease
       controller,
       controllerSql,
       host,
+      hostContext,
       hostSql,
       newCode,
       open,

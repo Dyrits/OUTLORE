@@ -16,6 +16,7 @@ import type { SqlClient } from "effect/sql";
 import type { RemoteConfig } from "./config.ts";
 import { encodeServerFrame } from "./frames.ts";
 import {
+  abandonPairing,
   type HostRecord,
   hostNameOf,
   hostReleaseOf,
@@ -96,6 +97,7 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
 
     const now = Date.now();
     let deviceId: string;
+    let redeemedCodeId: string | null = null;
     let newToken: Uint8Array | null = null;
     if (hello.t === "pair") {
       const secret = decodeBase64Url(hello.secret);
@@ -106,6 +108,7 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
       if ("refusal" in outcome) return refuse(outcome.refusal);
       deviceId = outcome.device.deviceId;
       newToken = outcome.device.token;
+      redeemedCodeId = outcome.codeId;
     } else {
       const token = decodeBase64Url(hello.token);
       const name = token === null ? null : await parts.run(resumeDevice(hello.deviceId, token, now));
@@ -113,14 +116,24 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
       deviceId = hello.deviceId;
     }
 
+    /** A pairing whose token was never delivered is taken back: the device row nobody holds goes, and the code pairs again. */
+    const abandon = async () => {
+      if (redeemedCodeId === null) return;
+      await parts.runInTransaction(abandonPairing(redeemedCodeId, deviceId)).catch(reportFailure);
+    };
+
     // Registered before the answer, then checked: a Disconnect that came in between would otherwise leave this device
     // connected with the authority of an owner it no longer has.
     const removeConnection = await parts.admitDevice(deviceId, () => channel.close());
-    if (removeConnection === null) return refuse(parts.isAccepting() ? "disconnected" : "disabled");
+    if (removeConnection === null) {
+      await abandon();
+      return refuse(parts.isAccepting() ? "disconnected" : "disabled");
+    }
     channel.onClose(removeConnection);
     const current = await parts.run(readHostRecord);
     if (isClosed || !parts.isAccepting()) {
       removeConnection();
+      await abandon();
       channel.close();
       return null;
     }
