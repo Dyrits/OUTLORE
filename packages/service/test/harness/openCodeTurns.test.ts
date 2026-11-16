@@ -31,6 +31,40 @@ describe("running OpenCode threads", () => {
     }).pipe(Effect.provide(layer));
   });
 
+  it.live("sends no image to an OpenCode agent that advertises it takes none, and fails the turn saying so", () => {
+    process.env.STAND_IN_OPENCODE_IMAGES = "false";
+    const { layer, requests } = withHarnesses();
+    return Effect.gen(function* () {
+      const card = yield* attachedPng();
+      const started = yield* startMission({
+        attachmentIds: [card.id],
+        harness: "opencode",
+        model: "provider/model-a",
+        text: "See",
+      });
+      const failed = yield* settle(started.missionId, (current) => current.thread.state === "Failed");
+      expect(failed.thread.failure).toContain("does not take images");
+      expect(requests("session/prompt")).toHaveLength(0);
+    }).pipe(Effect.provide(layer));
+  });
+
+  it.live("still sends images when the agent says it takes them", () => {
+    process.env.STAND_IN_OPENCODE_IMAGES = "true";
+    const { layer, requests } = withHarnesses();
+    return Effect.gen(function* () {
+      const card = yield* attachedPng();
+      const started = yield* startMission({
+        attachmentIds: [card.id],
+        harness: "opencode",
+        model: "provider/model-a",
+        text: "See",
+      });
+      yield* settle(started.missionId, idleWith(1));
+      const params = requests("session/prompt")[0]?.params as { prompt: Array<Record<string, unknown>> } | undefined;
+      expect(params?.prompt[1]).toMatchObject({ type: "image" });
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("runs a thread over ACP with Outlore's tools, permissions, context, and model", () => {
     const { layer, logged, requests } = withHarnesses();
     return Effect.gen(function* () {

@@ -9,6 +9,8 @@
 // a child in its own process group, as OpenCode's `serve` does, and logs its pid as { grandchild }. `acp` starts its own
 // `serve --stdio --port 0` child as the executor of OpenCode 2.2.0 does (probed 2026-11-12), and logs its pid as
 // { executor }, unless STAND_IN_OPENCODE_EXECUTOR is "none" (an `acp` that served from a process outside its own tree).
+// STAND_IN_OPENCODE_IMAGES: "false" advertises `promptCapabilities.image: false` in the initialize answer (ACP's
+// agentCapabilities); unset advertises nothing about images.
 // That executor ends when its parent does; STAND_IN_OPENCODE_EXECUTOR "survivor" makes it outlive its parent, in a
 // process group of its own, as an orphan `serve` did on 2026-11-12 (a check using it must end it itself).
 // `auth export`, `auth import` and `auth logout <integration> <id>` act on a `credential` table in
@@ -269,7 +271,18 @@ createInterface({ input: process.stdin }).on("line", (line) => {
   log({ method: message.method, params: message.params });
   const { id, method, params } = message;
   if (method === "initialize")
-    return send({ id, result: { agentCapabilities: { loadSession: true }, protocolVersion: 1 } });
+    return send({
+      id,
+      result: {
+        agentCapabilities: {
+          loadSession: true,
+          ...(process.env.STAND_IN_OPENCODE_IMAGES === undefined
+            ? {}
+            : { promptCapabilities: { image: process.env.STAND_IN_OPENCODE_IMAGES === "true" } }),
+        },
+        protocolVersion: 1,
+      },
+    });
   if (method === "session/new") return send({ id, result: { sessionId: `ses-${process.pid}` } });
   if (method === "session/load") {
     // A session listed in STAND_IN_OPENCODE_MISSING_SESSIONS (comma-separated ids) is not in this data folder, as an

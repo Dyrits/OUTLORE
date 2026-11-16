@@ -128,6 +128,11 @@ interface OpenCodeConnection extends HarnessConnection {
    */
   readonly isUnsandboxed: boolean;
   readonly rpc: RpcProcess;
+  /**
+   * Whether the agent advertised that it takes images (ACP `agentCapabilities.promptCapabilities.image`): false when it
+   * said it does not, and null when it said nothing, which message-attachments allows. Only false refuses images.
+   */
+  readonly takesImages: boolean | null;
 }
 
 /**
@@ -265,6 +270,12 @@ const readPrompt = Effect.fnUntraced(function* (
   const answer = yield* Deferred.make<Result.Result<unknown, HarnessFailure>>();
   // The turn's images go with its first prompt only: a later prompt carries the refusals as text.
   const images = isFirst ? yield* readImages(request.images) : [];
+  // An agent that said it takes no images is not sent any (message-attachments): the turn says why it cannot run.
+  if (images.length > 0 && connection.takesImages === false)
+    return yield* new HarnessFailure({
+      reason:
+        "OpenCode's agent does not take images. Send the message without them, or hand the thread to a runner that does.",
+    });
   yield* Effect.forkChild(
     connection.rpc
       .request("session/prompt", {
@@ -358,26 +369,28 @@ const openCodeProtocolOf = (options: OpenCodeOptions): HarnessProtocol<OpenCodeC
    * session that cannot load fails the turn as before.
    */
   const openSession = Effect.fnUntraced(function* (rpc: RpcProcess, request: TurnRequest, isSandboxed: boolean) {
-    yield* rpc.request("initialize", {
+    const initialized = yield* rpc.request("initialize", {
       clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
       protocolVersion: 1,
     });
+    const advertisesImages = fieldOf(fieldOf(fieldOf(initialized, "agentCapabilities"), "promptCapabilities"), "image");
+    const takesImages = typeof advertisesImages === "boolean" ? advertisesImages : null;
     if (request.sessionId !== null) {
       const loaded = yield* rpc
         .request("session/load", { cwd: request.cwd, mcpServers: [], sessionId: request.sessionId })
         .pipe(Effect.result);
       // Loading replays the conversation as updates, which are not this turn's: they are dropped.
       yield* Queue.clear(rpc.incoming);
-      if (Result.isSuccess(loaded)) return { handoverNotes: null, sessionId: request.sessionId };
+      if (Result.isSuccess(loaded)) return { handoverNotes: null, sessionId: request.sessionId, takesImages };
       if (!isSandboxed || rpc.hasExited()) return yield* loaded.failure;
       const created = yield* rpc.request("session/new", { cwd: request.cwd, mcpServers: [] });
       const sessionId = textFieldOf(created, "sessionId");
-      if (sessionId === null) return { handoverNotes: null, sessionId };
+      if (sessionId === null) return { handoverNotes: null, sessionId, takesImages };
       yield* request.onEvent({ _tag: "Notice", text: lostSessionNote });
-      return { handoverNotes: yield* request.conversationSoFar, sessionId };
+      return { handoverNotes: yield* request.conversationSoFar, sessionId, takesImages };
     }
     const created = yield* rpc.request("session/new", { cwd: request.cwd, mcpServers: [] });
-    return { handoverNotes: null, sessionId: textFieldOf(created, "sessionId") };
+    return { handoverNotes: null, sessionId: textFieldOf(created, "sessionId"), takesImages };
   });
 
   return {
@@ -407,7 +420,7 @@ const openCodeProtocolOf = (options: OpenCodeOptions): HarnessProtocol<OpenCodeC
         request,
         JSON.stringify(configOf(request.access, instructionsPath)),
       );
-      const { handoverNotes, sessionId } = yield* openSession(rpc, request, isSandboxed).pipe(
+      const { handoverNotes, sessionId, takesImages } = yield* openSession(rpc, request, isSandboxed).pipe(
         Effect.tapError(() => Effect.sync(() => rpc.close())),
       );
       if (sessionId === null) {
@@ -425,6 +438,7 @@ const openCodeProtocolOf = (options: OpenCodeOptions): HarnessProtocol<OpenCodeC
         isUnsandboxed,
         rpc,
         sessionId,
+        takesImages,
       } satisfies OpenCodeConnection;
     }),
 
