@@ -205,7 +205,7 @@ export const stopAtBudget = Effect.fnUntraced(function* (stopId: string) {
 
 /**
  * The owner answers Switch to a backup Companion at an account's budget: the thread that holds the question carries on
- * with its next backup, on another account or harness, and the threads still held by the account stay held under
+ * with its next backup on another account or harness (a backup on the same account is passed over), and the threads still held by the account stay held under
  * the same question. Refused when the stop is not an account's or the thread has no backup to take.
  */
 export const switchAtBudget = Effect.fnUntraced(function* (stopId: string) {
@@ -217,7 +217,7 @@ export const switchAtBudget = Effect.fnUntraced(function* (stopId: string) {
   // undone when it has no backup to take.
   yield* releaseThread(stop.threadId);
   const reason = `Account ${yield* accountLabelOf(scope)} reached its budget`;
-  const switched = yield* fallBackToBackup(stop.threadId, reason);
+  const switched = yield* fallBackToBackup(stop.threadId, reason, { isOtherAccountRequired: true });
   if (!switched.followUps.isChanged) return yield* invalid("This thread has no backup Companion to switch to.");
   const others = (yield* heldThreadsOf(scope)).filter((thread) => thread.id !== stop.threadId);
   const now = yield* Clock.currentTimeMillis;

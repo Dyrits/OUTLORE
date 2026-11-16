@@ -245,6 +245,46 @@ describe("switching to a backup Companion at an account's budget", () => {
     ),
   );
 
+  it.live("passes over a backup on the same account, which would be held again, and takes the next one", () =>
+    withService(
+      Effect.gen(function* () {
+        const work = yield* addWork;
+        yield* setBudget(work, tokens(1000));
+        const started = yield* startOn(work, "Hello");
+        yield* settle(started.missionId, isIdle);
+        // The first backup differs from the thread's runner by its model only: same harness, same exhausted account.
+        const sameAccount = { accountId: work, effort: "default", harness: "claude", model: "haiku" } as const;
+        yield* call({ _tag: "SetThreadBackups", backups: [sameAccount, codexBackup], threadId: started.threadId });
+        yield* send(started.threadId, "spend 2000");
+        const held = yield* settle(started.missionId, isHeld);
+        const switchStopId = held.budgetStop?.id;
+        if (switchStopId === undefined) return yield* Effect.die("budget stop");
+        yield* call({ _tag: "SwitchAtBudget", stopId: switchStopId });
+        const after = yield* settle(started.missionId, isIdle);
+        expect(after.thread.harness).toBe("codex");
+      }),
+    ),
+  );
+
+  it.live("refuses when the only backup is on the same account", () =>
+    withService(
+      Effect.gen(function* () {
+        const work = yield* addWork;
+        yield* setBudget(work, tokens(1000));
+        const started = yield* startOn(work, "Hello");
+        yield* settle(started.missionId, isIdle);
+        const sameAccount = { accountId: work, effort: "default", harness: "claude", model: "haiku" } as const;
+        yield* call({ _tag: "SetThreadBackups", backups: [sameAccount], threadId: started.threadId });
+        yield* send(started.threadId, "spend 2000");
+        const held = yield* settle(started.missionId, isHeld);
+        const switchStopId = held.budgetStop?.id;
+        if (switchStopId === undefined) return yield* Effect.die("budget stop");
+        const refusal = yield* call({ _tag: "SwitchAtBudget", stopId: switchStopId }).pipe(Effect.flip);
+        expect(refusal.message).toContain("backup");
+      }),
+    ),
+  );
+
   it.live("refuses when the thread has no backup to switch to", () =>
     withService(
       Effect.gen(function* () {

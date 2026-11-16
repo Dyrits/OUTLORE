@@ -42,17 +42,25 @@ export const resetBackupStep = Effect.fnUntraced(function* (threadId: string) {
 /**
  * A turn of the thread failed: the thread carries on with the next backup that differs from its current runner, the
  * conversation handed over to it (the line says why). Nothing happens when the list is used up. A backup that cannot be
- * taken, such as one on a removed account, is passed over.
+ * taken, such as one on a removed account, is passed over. With `isOtherAccountRequired`, a backup that runs on the
+ * thread's own harness and account is passed over too (budget-control, Switching at an account's budget): it would
+ * be held by the same budget again.
  */
-export const fallBackToBackup = Effect.fnUntraced(function* (threadId: string, reason: string) {
+export const fallBackToBackup = Effect.fnUntraced(function* (
+  threadId: string,
+  reason: string,
+  { isOtherAccountRequired = false }: { isOtherAccountRequired?: boolean } = {},
+) {
   const sql = yield* SqlClient.SqlClient;
-  const [row] = yield* sql<{ backups: string; step: number }>`
-      SELECT backups, backup_step AS step FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+  const [row] = yield* sql<{ accountId: string | null; backups: string; harness: string; step: number }>`
+      SELECT backups, backup_step AS step, harness, account_id AS accountId
+      FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
   if (row === undefined) return unchanged(null);
   const backups = decodeBackups(JSON.parse(row.backups));
   for (let index = row.step; index < backups.length; index++) {
     const candidate = backups[index];
     if (candidate === undefined) continue;
+    if (isOtherAccountRequired && candidate.harness === row.harness && candidate.accountId === row.accountId) continue;
     const outcome = yield* Effect.exit(changeThreadRunner(threadId, candidate, { fellBackAfter: reason }));
     if (!Exit.isSuccess(outcome) || !outcome.value.followUps.isChanged) continue;
     yield* sql`UPDATE threads SET backup_step = ${index + 1} WHERE id = ${threadId}`;
