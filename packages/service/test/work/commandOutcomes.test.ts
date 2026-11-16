@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { Commands, changed, makeCommands } from "../../src/work/commands.ts";
+import { Commands, changed, makeCommands } from "../../src/work/index.ts";
 import { call, start, withService } from "../fixtures/service.ts";
 
 describe("replaying owner commands", () => {

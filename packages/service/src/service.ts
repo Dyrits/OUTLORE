@@ -40,38 +40,51 @@ import {
   remoteStateLayer,
 } from "./remote/index.ts";
 import { Service } from "./serviceTag.ts";
-import { addCredit, readAccountBudgets, setAccountBudget } from "./work/accountBudgets.ts";
-import { accountsHandlers } from "./work/accountsHandlers.ts";
-import { Approvals, approvalsLayer } from "./work/approvals.ts";
-import { AttachmentsRoot, sweepDrafts } from "./work/attachments.ts";
-import { budgetPeriodsLayer } from "./work/budgetPeriods.ts";
-import { saveSettings } from "./work/budgetSettings.ts";
-import { setMissionBudget, stopAtBudget, switchAtBudget } from "./work/budgets.ts";
-import { readBudgetWindow } from "./work/budgetViews.ts";
-import { resolveChatter } from "./work/chatter.ts";
-import { Commands, changed, commandsLayer } from "./work/commands.ts";
-import { autoArchiveLayer } from "./work/ending.ts";
-import { guildmasterReportsLayer } from "./work/guildmasterReports.ts";
-import { loreHandlers } from "./work/loreHandlers.ts";
-import { toolServerLayer } from "./work/mcp.ts";
-import { listMentionables } from "./work/mentions.ts";
-import { messagesHandlers } from "./work/messagesHandlers.ts";
-import { readPermissionsView } from "./work/permissionViews.ts";
-import { planLimitsLayer } from "./work/planLimits.ts";
-import { priceRefreshLayer } from "./work/priceRefresh.ts";
-import { questsHandlers } from "./work/questsHandlers.ts";
-import { realmHandlers } from "./work/realmHandlers.ts";
-import { remoteHandlers } from "./work/remoteHandlers.ts";
-import { admitRequestSource } from "./work/requestAuthority.ts";
-import type { RequestServices } from "./work/requestContext.ts";
-import { ritualsLayer } from "./work/rituals.ts";
-import { ritualsHandlers } from "./work/ritualsHandlers.ts";
-import { listSkills } from "./work/skills.ts";
-import { Suggestions, suggestionsLayer } from "./work/suggestions.ts";
-import { AccountsRoot, Threads, threadsLayer } from "./work/threads.ts";
-import { readUsage } from "./work/usageReport.ts";
-import { listWorkspaceEntries } from "./work/workspaceEntries.ts";
-import { ScratchRoot } from "./work/workspaces.ts";
+import {
+  AccountsRoot,
+  Approvals,
+  AttachmentsRoot,
+  accountsHandlers,
+  addCredit,
+  admitRequestSource,
+  approvalsLayer,
+  autoArchiveLayer,
+  budgetPeriodsLayer,
+  Commands,
+  changed,
+  commandsLayer,
+  guildmasterReportsLayer,
+  listMentionables,
+  listSkills,
+  listWorkspaceEntries,
+  loreHandlers,
+  messagesHandlers,
+  planLimitsLayer,
+  priceRefreshLayer,
+  questsHandlers,
+  type RequestServices,
+  readAccountBudgets,
+  readBudgetWindow,
+  readPermissionsView,
+  readUsage,
+  realmHandlers,
+  remoteHandlers,
+  resolveChatter,
+  ritualsHandlers,
+  ritualsLayer,
+  ScratchRoot,
+  Suggestions,
+  saveSettings,
+  setAccountBudget,
+  setMissionBudget,
+  stopAtBudget,
+  suggestionsLayer,
+  sweepDrafts,
+  switchAtBudget,
+  Threads,
+  threadsLayer,
+  toolServerLayer,
+} from "./work/index.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...).
 

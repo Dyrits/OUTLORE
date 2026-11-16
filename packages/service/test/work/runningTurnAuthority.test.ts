@@ -3,7 +3,7 @@ import type { HarnessName, MissionDetail, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { fakeHarnessLayer } from "../../src/index.ts";
-import { readAuthorityHarness } from "../../src/work/turnAdmission.ts";
+import { readAuthorityHarness } from "../../src/work/index.ts";
 import { isIdle, lastAgentText } from "../fixtures/guildmaster.ts";
 import { callTool, listToolNames } from "../fixtures/mcp.ts";
 import { call, send, settle, start, withService } from "../fixtures/service.ts";

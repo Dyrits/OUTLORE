@@ -1,6 +1,6 @@
 import { MissionId, SuggestionId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
-import { folderOfRequest } from "../../src/work/reachedFolders.ts";
+import { folderOfRequest } from "../../src/work/index.ts";
 
 describe("identifying folders named in requests", () => {
   it("extracts the named folder from every folder-bearing request tag", () => {

@@ -7,10 +7,16 @@ import { Effect, Exit, Option } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
 import { storeLayer } from "../../src/core/index.ts";
-import { setMissionBudget } from "../../src/work/budgets.ts";
-import { changed, makeCommands, noFollowUps, unchanged } from "../../src/work/commands.ts";
-import { stopThread } from "../../src/work/lifecycle.ts";
-import { openThreadByAgent, reportResult } from "../../src/work/tree.ts";
+import {
+  changed,
+  makeCommands,
+  noFollowUps,
+  openThreadByAgent,
+  reportResult,
+  setMissionBudget,
+  stopThread,
+  unchanged,
+} from "../../src/work/index.ts";
 import { fixture, open, send, settle, start } from "../fixtures/service.ts";
 
 const directories: Array<string> = [];
