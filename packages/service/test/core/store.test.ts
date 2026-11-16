@@ -21,7 +21,7 @@ const migrateUntil = (last: string) =>
   });
 
 describe("migrating saved realms to archive support", () => {
-  it.live("reads a realm saved before archive support as active without rewriting it", () => {
+  it.effect("reads a realm saved before archive support as active without rewriting it", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
     directories.push(directory);
     return Effect.gen(function* () {
@@ -37,7 +37,7 @@ describe("migrating saved realms to archive support", () => {
 });
 
 describe("only Realms and Borderlands (CHG-0161)", () => {
-  it.live("keeps realms and their threads, lets a realm have no folder, and drops Free Realms", () => {
+  it.effect("keeps realms and their threads, lets a realm have no folder, and drops Free Realms", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
     directories.push(directory);
     return Effect.gen(function* () {
@@ -68,7 +68,7 @@ describe("only Realms and Borderlands (CHG-0161)", () => {
 });
 
 describe("the assistant renamed Iskios (CHG-0177)", () => {
-  it.live("renames the stored titles of the assistant's quest and thread, and no other", () => {
+  it.effect("renames the stored titles of the assistant's quest and thread, and no other", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
     directories.push(directory);
     return Effect.gen(function* () {
@@ -94,7 +94,7 @@ describe("the assistant renamed Iskios (CHG-0177)", () => {
 });
 
 describe("the assistant renamed Chronicler (CHG-0285)", () => {
-  it.live("renames the stored titles of the assistant's quest and thread, and no other", () => {
+  it.effect("renames the stored titles of the assistant's quest and thread, and no other", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
     directories.push(directory);
     return Effect.gen(function* () {
@@ -120,7 +120,7 @@ describe("the assistant renamed Chronicler (CHG-0285)", () => {
 });
 
 describe("migrating saved questions to explicit kinds", () => {
-  it.live("preserves past answers and classifies choices, grants and confirmations", () => {
+  it.effect("preserves past answers and classifies choices, grants and confirmations", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
     directories.push(directory);
     return Effect.gen(function* () {
