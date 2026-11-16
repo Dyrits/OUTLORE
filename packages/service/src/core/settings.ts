@@ -5,6 +5,9 @@ import { invalid } from "./errors.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: settings keys (`intelHalfLives`, `intelWarningPercent`).
 
+/** A minute in milliseconds. */
+export const minuteMillis = 60 * 1000;
+
 /** An hour in milliseconds. */
 export const hourMillis = 60 * 60 * 1000;
 

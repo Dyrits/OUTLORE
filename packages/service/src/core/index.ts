@@ -56,6 +56,7 @@ export {
   dayMillis,
   hourMillis,
   mergedSettings,
+  minuteMillis,
   readSettings,
   readStartChoices,
   saveStartChoices,
