@@ -11,7 +11,7 @@ import {
 
 const secret = encodeBase64Url(newPairingSecret());
 const token = encodeBase64Url(newDeviceToken());
-const pair = { deviceKind: "phone", deviceName: "Ada's phone", secret, t: "pair" } as const;
+const pair = { deviceKind: "phone", deviceName: "Ada's phone", release: "0.1.4-Prototype", secret, t: "pair" } as const;
 const resume = { deviceId: "device-1", t: "resume", token } as const;
 const paired = { deviceId: "device-1", hostName: "Studio", t: "paired", token } as const;
 
@@ -61,6 +61,14 @@ describe("handling a client hello", () => {
     expect(parseClientHello(asText({ t: "resume", token })).ok).toBe(false);
   });
 
+  it("needs the release in a pair hello, so a host can refuse another release before it keeps anything", () => {
+    const { release: _release, ...withoutRelease } = pair;
+    expect(parseClientHello(asText(withoutRelease)).ok).toBe(false);
+    expect(parseClientHello(asText({ ...pair, release: "" })).ok).toBe(false);
+    expect(parseClientHello(asText({ ...pair, release: 3 })).ok).toBe(false);
+    expect(parseClientHello(asText({ ...resume, release: "0.1.4-Prototype" })).ok).toBe(false);
+  });
+
   it("rejects fields that do not belong to the type", () => {
     expect(parseClientHello(asText({ ...pair, extra: true })).ok).toBe(false);
     expect(parseClientHello(asText({ ...resume, deviceName: "x" })).ok).toBe(false);
@@ -74,7 +82,15 @@ describe("handling a host reply", () => {
       ok: true,
       value: { hostName: "Studio", t: "resumed" },
     });
-    for (const reason of ["code-invalid", "code-expired", "code-used", "unknown-device", "disabled", "disconnected"]) {
+    for (const reason of [
+      "code-invalid",
+      "code-expired",
+      "code-used",
+      "unknown-device",
+      "disabled",
+      "disconnected",
+      "other-release",
+    ]) {
       expect(parseHostReply(asText({ reason, t: "refused" })), reason).toEqual({
         ok: true,
         value: { reason, t: "refused" },
@@ -116,10 +132,16 @@ describe("handling a host reply", () => {
     });
   });
 
+  it("carries the host's release on a refusal for another release", () => {
+    const refused = { reason: "other-release", release: "0.1.5-Prototype", t: "refused" } as const;
+    expect(parseHostReply(encodeHostReply(refused))).toEqual({ ok: true, value: refused });
+  });
+
   it("rejects a release that is not text, is empty, or rides on a refusal", () => {
     expect(parseHostReply(asText({ ...paired, release: 3 })).ok).toBe(false);
     expect(parseHostReply(asText({ hostName: "Studio", release: "", t: "resumed" })).ok).toBe(false);
-    expect(parseHostReply(asText({ reason: "disabled", release: "0.1.4-Prototype", t: "refused" })).ok).toBe(false);
+    expect(parseHostReply(asText({ reason: "other-release", release: "", t: "refused" })).ok).toBe(false);
+    expect(parseHostReply(asText({ reason: "other-release", release: 3, t: "refused" })).ok).toBe(false);
   });
 
   it("rejects text that is not a JSON object", () => {

@@ -153,14 +153,21 @@ export const pairWithCode = Effect.fnUntraced(function* (
   const { channel, reply } = yield* openToHost(pairing, {
     deviceKind: settings.kind,
     deviceName: name,
+    release: settings.release,
     secret: encodeBase64Url(pairing.secret),
     t: "pair",
   });
   // The host is told everything it needs; the channel closes once the answer is read.
   channel.close();
+  if (reply.t === "refused" && reply.reason === "other-release") {
+    // The host turned the pairing away before keeping the device or spending the code.
+    const mismatch = releaseProblemOf(reply.release, settings.release, settings.kind);
+    return yield* new LinkFailure("otherRelease", mismatch ?? refusalText["other-release"]);
+  }
   if (reply.t === "refused") return yield* new LinkFailure("invalid", refusalText[reply.reason]);
   if (reply.t !== "paired") return yield* new LinkFailure("couldNotOpen", linkTexts.timedOut);
-  // The host has already counted this device; the owner can disconnect it there. Nothing is kept for a host this
+  // A host of another release turns a pairing away before it keeps anything; one that answered anyway (an earlier
+  // release) has counted this device, and the owner can disconnect it there. Nothing is kept for a host this
   // controller cannot use.
   const mismatch = releaseProblemOf(reply.release, settings.release, settings.kind);
   if (mismatch !== null) return yield* new LinkFailure("otherRelease", mismatch);

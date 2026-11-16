@@ -17,24 +17,31 @@ export const refusalText = {
   "code-used": "That pairing code was already used. Ask the host for a new one.",
   disabled: "The host is not accepting paired devices. Turn on Allow paired devices on the host.",
   disconnected: "The host disconnected this computer. Pair with it again.",
+  "other-release":
+    "This app and the host run different releases. Update the app or the host so that both run the same one.",
   "unknown-device": "The host no longer knows this computer. Pair with it again.",
 } as const;
 
 export type RefusalReason = keyof typeof refusalText;
 
-/** The first message a paired device sends inside the secure channel. `secret` and `token` are base64url. */
+/**
+ * The first message a paired device sends inside the secure channel. `secret` and `token` are base64url. A pairing
+ * says the release the device runs, so the host can refuse a device of another release before it spends the code or
+ * keeps the device (device-pairing, Releases); a hello without it, or with an unknown field, is "malformed".
+ */
 export type ClientHello =
-  | { t: "pair"; secret: string; deviceName: string; deviceKind: DeviceKind }
+  | { t: "pair"; secret: string; deviceName: string; deviceKind: DeviceKind; release: string }
   | { t: "resume"; deviceId: string; token: string };
 
 /**
  * The host's answer to a ClientHello. `token` is base64url of 32 random bytes. `release` is the release the host runs,
- * so a browser can refuse a host of another release; a host that says none is an older one.
+ * so a browser can refuse a host of another release; a host that says none is an older one. A refusal for another
+ * release (`other-release`) carries the host's release too, so the device can name both.
  */
 export type HostReply =
   | { t: "paired"; deviceId: string; token: string; hostName: string; release?: string }
   | { t: "resumed"; hostName: string; release?: string }
-  | { t: "refused"; reason: RefusalReason };
+  | { t: "refused"; reason: RefusalReason; release?: string };
 
 export type ProtocolErrorKind = "malformed";
 
@@ -50,14 +57,15 @@ function isRefusalReason(value: unknown): value is RefusalReason {
 export function parseClientHello(text: string): Result<ClientHello, ProtocolErrorKind> {
   const value = parseObject(text);
   if (value === null) return fail("malformed");
-  if (value.t === "pair" && hasExactKeys(value, ["deviceKind", "deviceName", "secret", "t"])) {
-    const { deviceKind, deviceName, secret } = value;
+  if (value.t === "pair" && hasExactKeys(value, ["deviceKind", "deviceName", "release", "secret", "t"])) {
+    const { deviceKind, deviceName, release, secret } = value;
     if (
       isDeviceKind(deviceKind) &&
       isText(deviceName, maxDeviceNameLength) &&
+      isText(release, maxReleaseLength) &&
       isBase64UrlOfLength(secret, pairingSecretBytes)
     ) {
-      return succeed({ deviceKind, deviceName, secret, t: "pair" });
+      return succeed({ deviceKind, deviceName, release, secret, t: "pair" });
     }
     return fail("malformed");
   }
@@ -91,10 +99,10 @@ export function parseHostReply(text: string): Result<HostReply, ProtocolErrorKin
       return succeed({ hostName, t: "resumed", ...releaseOf(release) });
     }
   }
-  if (value.t === "refused" && hasExactKeys(value, ["reason", "t"])) {
-    const { reason } = value;
-    if (isRefusalReason(reason)) {
-      return succeed({ reason, t: "refused" });
+  if (value.t === "refused" && hasKeys(value, ["reason", "t"], ["release"])) {
+    const { reason, release } = value;
+    if (isRefusalReason(reason) && isOptionalRelease(release)) {
+      return succeed({ reason, t: "refused", ...releaseOf(release) });
     }
   }
   return fail("malformed");

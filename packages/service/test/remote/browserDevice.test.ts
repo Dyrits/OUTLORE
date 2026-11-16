@@ -268,6 +268,8 @@ describe("a browser pairing with a running host and using it", () => {
         expect(String((refused as Error).message)).toContain("0.1.9-Prototype");
         expect(String((refused as Error).message)).toContain(hostRelease);
         expect(mismatched.hosts.known()).toEqual([]);
+        // The host turned it away before keeping a device: nothing is listed there either.
+        expect(((yield* w.host({ _tag: "ReadRemoteAccess" })) as { devices: unknown[] }).devices).toEqual([]);
 
         // A pairing made by a web app of the right release, opened by one of another release.
         const matching = w.browser();

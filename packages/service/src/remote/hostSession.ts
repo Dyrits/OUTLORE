@@ -84,8 +84,8 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
       isClosed = true;
     });
     const reply = (answer: HostReply) => channel.sendText(encodeHostReply(answer));
-    const refuse = (reason: RefusalReason) => {
-      reply({ reason, t: "refused" });
+    const refuse = (reason: RefusalReason, release?: string) => {
+      reply(release === undefined ? { reason, t: "refused" } : { reason, release, t: "refused" });
       setTimeout(() => channel.close(), refusalGraceMillis);
       return null;
     };
@@ -103,6 +103,10 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
     let redeemedCodeId: string | null = null;
     let newToken: Uint8Array | null = null;
     if (hello.t === "pair") {
+      // A device of another release cannot use this host and refuses it after the fact, so it is turned away first:
+      // the code is not spent and no device is kept.
+      const hostRelease = await parts.run(hostReleaseOf);
+      if (hello.release !== hostRelease) return refuse("other-release", hostRelease);
       const secret = decodeBase64Url(hello.secret);
       if (secret === null) return refuse("code-invalid");
       const outcome = await parts.runInTransaction(

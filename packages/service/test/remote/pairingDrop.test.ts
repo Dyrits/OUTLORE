@@ -82,6 +82,7 @@ const droppedPairing = (dropAt: DropPoint) =>
         encodeClientHello({
           deviceKind: "desktop",
           deviceName: "Dropped",
+          release: "development",
           secret: encodeBase64Url(code.value.secret),
           t: "pair",
         }),

@@ -23,6 +23,20 @@ describe("holding a controller host link", () => {
     ),
   );
 
+  it.live("keeps no device on the host and does not spend the code when the controller runs another release", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const world = yield* makeWorld({ controllerRelease: "another-release" });
+        yield* world.allowPairing;
+        yield* Effect.flip(world.pair(yield* world.newCode()));
+        expect((yield* world.accessOf()).devices).toEqual([]);
+        expect(yield* world.hostSql((sql) => sql`SELECT used_at AS usedAt FROM pairing_codes`)).toEqual([
+          { usedAt: null },
+        ]);
+      }),
+    ),
+  );
+
   it.live("reports closure that arrives during a delayed pairing-store update", () =>
     Effect.scoped(
       Effect.gen(function* () {
