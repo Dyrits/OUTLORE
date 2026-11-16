@@ -110,7 +110,7 @@ Tests mirror the folders under `test/`; shared fixtures stay in `test/fixtures/`
 - **Git**: the computer's installed `git`, with its existing sign-in, clones repositories, creates own copies as worktrees, and merges them. Outlore stores no git credentials. *Today only agents use git themselves; the app's clone, own-copy and merge operations are not built.*
 - **Cloudflare**: the owner deploys the shared relay Worker to the owner's account; users sign in to nothing. When the relay is unreachable, or its free daily limits are reached, paired devices on another network wait and reconnect, and webhook triggers are lost unless the sender retries.
 - **Computer backend** (drafted, not built): Cua Driver (MIT, Rust), a separate program the host starts and talks to over stdio MCP, pinned to one tested version; it holds the macOS Accessibility and Screen Recording grants under its own identity. Outlore writes no Rust ([0017](architecture-decision-record/0017-typescript-and-effect-no-rust.md), [0021](architecture-decision-record/0021-computer-use-in-the-host-behind-computer-tools.md)).
-- **Connected services**: reached by threads through MCP servers, never directly by the host service.
+- **Connected services**: reached by threads through MCP servers, never directly by the host service. *Proposed (CHG-0328), replacing this for installed connectors:* the host service's connector gateway serves each connector's tools from the thread's own MCP endpoint, asks the owner through Approvals and calls the connector with a secret from the Vault, which it alone reads ([connectors blueprint](capabilities/connectors/blueprint.md), [0022](architecture-decision-record/0022-the-vault-encrypts-secrets-and-hides-its-folder-from-sandboxes.md)).
 
 ## Deployment
 
@@ -161,3 +161,4 @@ Tests mirror the folders under `test/`; shared fixtures stay in `test/fixtures/`
 - [0019: A browser uses a host through the web app the relay serves](architecture-decision-record/0019-browsers-use-the-relay-served-web-app.md)
 - [0020: Conversation terminals run in the host service, fenced for paired devices](architecture-decision-record/0020-terminals-run-in-the-host.md)
 - [0021: Computer use lives in the host, behind Outlore's own `computer_*` tools, with Cua Driver as a replaceable backend](architecture-decision-record/0021-computer-use-in-the-host-behind-computer-tools.md) (proposed)
+- [0022: The Vault keeps connector secrets in an encrypted file, the key in the operating system's secret store, and hides its folder from the harnesses' sandboxes](architecture-decision-record/0022-the-vault-encrypts-secrets-and-hides-its-folder-from-sandboxes.md) (proposed)

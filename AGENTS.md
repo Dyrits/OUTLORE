@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the connectors specification (Charter, Vault, per-realm, per-quest and per-tool switches, Composio and Apple apps, Code Mode setting; specified in CHG-0321 to CHG-0327, nothing built; open: the blueprint and Vault ADR, thread-panel placement), read the [current handoff](.agents/handoffs/2026-11-16-0835-connectors-specification.md). Handoffs are shared and committed.
+- To resume the connectors blueprint (connector gateway, the Vault and ADR 0022, both proposed and revised after a second opinion, CHG-0328 and CHG-0330; specification agreed in CHG-0321 to CHG-0327; nothing built; open: the owner's review, whether to add the proposed Vault states to the specification, authorizing read-denial probes with a disposable secret), read the [current handoff](.agents/handoffs/2026-11-16-1008-connectors-blueprint.md). Handoffs are shared and committed.
 
 - To resume the architecture audit of 2026-11-15 (all 17 candidates built by five side-quests and merged on `worktree/audit-integration`; typecheck, Biome and the full suite pass; open: the owner's look in a window, fast-forwarding `main`, a push, redeploying the relay, the remainder of candidate 3), read the [current handoff](.agents/handoffs/2026-11-16-0110-architecture-audit.md). Handoffs are shared and committed.
 
