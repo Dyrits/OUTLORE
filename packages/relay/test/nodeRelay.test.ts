@@ -1,10 +1,12 @@
 import { randomBytes } from "node:crypto";
+import { Effect, Exit, Scope } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type NodeRelay, startNodeRelay } from "../src/index.ts";
 import { readClosingFrame } from "../src/roomCore.ts";
 import { clientPath, connect, hostPath, open, room, type Session } from "./fixtures/wsClient.ts";
 
 let relay: NodeRelay;
+let scope: Scope.Closeable;
 const sessions: Session[] = [];
 
 const track = async (port: number, path: string) => {
@@ -14,9 +16,12 @@ const track = async (port: number, path: string) => {
 };
 
 const start = async (options: Parameters<typeof startNodeRelay>[0] = {}) => {
-  relay = await startNodeRelay(options);
+  scope = Scope.makeUnsafe();
+  relay = await Effect.runPromise(startNodeRelay(options).pipe(Effect.provideService(Scope.Scope, scope)));
   return relay;
 };
+
+const stop = () => Effect.runPromise(relay.close);
 
 beforeEach(async () => {
   await start();
@@ -24,7 +29,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   for (const session of sessions.splice(0)) session.socket.terminate();
-  await relay.close();
+  await Effect.runPromise(Scope.close(scope, Exit.void));
 });
 
 const joinedId = (host: Session, index: number) => host.messages[index]?.data.subarray(1, 9) ?? Buffer.alloc(0);
@@ -35,7 +40,7 @@ describe("starting the relay", () => {
   });
 
   it("stops accepting connections after close", async () => {
-    await relay.close();
+    await stop();
     const result = await open(relay.port, hostPath());
     expect(result).toEqual({ status: 0 });
     await start();
@@ -139,7 +144,7 @@ describe("joining a room", () => {
   });
 
   it("holds as many clients as configured", async () => {
-    await relay.close();
+    await stop();
     await start({ maxClients: 1 });
     await track(relay.port, hostPath());
     await track(relay.port, clientPath());
@@ -244,7 +249,7 @@ describe("rules on frames", () => {
   });
 
   it("closes a client sending a frame over the limit with 1009", async () => {
-    await relay.close();
+    await stop();
     await start({ maxFrameBytes: 1000 });
     const host = await track(relay.port, hostPath());
     const client = await track(relay.port, clientPath());
@@ -254,7 +259,7 @@ describe("rules on frames", () => {
   });
 
   it("closes a client whose frame with the prefix goes over the limit with 1009", async () => {
-    await relay.close();
+    await stop();
     await start({ maxFrameBytes: 1000 });
     await track(relay.port, hostPath());
     const client = await track(relay.port, clientPath());

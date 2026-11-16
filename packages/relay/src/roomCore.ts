@@ -1,4 +1,5 @@
 import { constantTimeEqual } from "@outlore/channel/constantTimeEqual";
+import { Effect, Semaphore } from "effect";
 import type { Role } from "./route.ts";
 
 /** What the core needs from one connection, whatever carries it (a `ws` socket, a Durable Object WebSocket, a fake). */
@@ -23,12 +24,12 @@ export type RoomPorts<P> = {
   members(): readonly Member<P>[];
   /** The membership of one connection, or null when it was never accepted or has been removed. */
   memberOf(peer: P): Member<P> | null;
-  /** The SHA-256 of the claim of the host that first took the room, or null when none has. */
-  readClaim(): Promise<Uint8Array | null>;
+  /** The SHA-256 of the claim of the host that first took the room, or null when none has. A storage failure is a defect. */
+  readClaim(): Effect.Effect<Uint8Array | null>;
   /** Removes a connection from the room's members. */
   retire(peer: P): void;
-  /** Stores the SHA-256 of the claim of the host that first took the room. */
-  writeClaim(hash: Uint8Array): Promise<void>;
+  /** Stores the SHA-256 of the claim of the host that first took the room. A storage failure is a defect. */
+  writeClaim(hash: Uint8Array): Effect.Effect<void>;
 };
 
 /** The caps of a room. */
@@ -75,8 +76,8 @@ export const closeCodes = {
 
 const claimMismatch = { code: closeCodes.claimMismatch, reason: "claim mismatch" } as const satisfies Rejection;
 
-const sha256 = async (bytes: Uint8Array): Promise<Uint8Array> =>
-  new Uint8Array(await crypto.subtle.digest("SHA-256", Uint8Array.from(bytes)));
+const sha256 = (bytes: Uint8Array) =>
+  Effect.promise(async () => new Uint8Array(await crypto.subtle.digest("SHA-256", Uint8Array.from(bytes))));
 
 const withPrefix = (type: number, id: Uint8Array, payload: Uint8Array | null): Uint8Array => {
   const frame = new Uint8Array(prefixBytes + (payload?.length ?? 0));
@@ -127,13 +128,15 @@ export const closeWithReason = (peer: RoomPeer, code: number, reason: string): v
 
 /**
  * The rules of one room: who may be its host, who may join, and what is forwarded to whom. A frame is passed on
- * untouched and never read, logged, stored or queued. The core holds no connection state of its own.
+ * untouched and never read, logged, stored or queued. The core holds no connection state of its own. Each operation
+ * is an Effect to run once per call (an event of a connection): the core starts no fiber and no timer, so a room that
+ * hibernates between events loses nothing.
  */
 export class RoomCore<P extends RoomPeer> {
   readonly #limits: RoomLimits;
   readonly #ports: RoomPorts<P>;
   // Serializes claim checks, so two first hosts arriving together cannot both take the room.
-  #claims: Promise<unknown> = Promise.resolve();
+  readonly #claims = Semaphore.makeUnsafe(1);
   #forwarded = 0;
 
   constructor(ports: RoomPorts<P>, limits: Partial<RoomLimits> = {}) {
@@ -150,27 +153,32 @@ export class RoomCore<P extends RoomPeer> {
    * Checks a connection before it is accepted: the first host's claim is stored, and every later host must present
    * the same one. Returns null to accept, or why to close the connection at once.
    */
-  screen(role: Role, claim: Uint8Array | null): Promise<Rejection | null> {
-    if (role === "client") return Promise.resolve(null);
-    const result = this.#claims.then(() => this.#checkClaim(claim));
-    this.#claims = result.then(
-      () => null,
-      () => null,
-    );
-    return result;
+  screen(role: Role, claim: Uint8Array | null): Effect.Effect<Rejection | null> {
+    return role === "client" ? Effect.succeed(null) : this.#claims.withPermits(1)(this.#checkClaim(claim));
   }
 
   /**
    * Takes in a connection that passed `screen` and is now accepted by the transport. A new host replaces the old
    * one and ends its clients; a client is closed at once when there is no host or no room.
    */
-  open(peer: P, role: Role): void {
-    if (role === "host") this.#openHost(peer);
-    else this.#openClient(peer);
+  open(peer: P, role: Role): Effect.Effect<void> {
+    return Effect.sync(() => (role === "host" ? this.#openHost(peer) : this.#openClient(peer)));
   }
 
   /** Handles one frame from a connection. */
-  receive(peer: P, data: string | Uint8Array): void {
+  receive(peer: P, data: string | Uint8Array): Effect.Effect<void> {
+    return Effect.sync(() => this.#receive(peer, data));
+  }
+
+  /** Handles the end of a connection, however it ended. */
+  close(peer: P): Effect.Effect<void> {
+    return Effect.sync(() => {
+      const member = this.#ports.memberOf(peer);
+      if (member !== null) this.#leave(member);
+    });
+  }
+
+  #receive(peer: P, data: string | Uint8Array): void {
     const member = this.#ports.memberOf(peer);
     if (member === null) return;
     if (typeof data === "string") {
@@ -186,21 +194,18 @@ export class RoomCore<P extends RoomPeer> {
     else this.#receiveFromHost(member, data);
   }
 
-  /** Handles the end of a connection, however it ended. */
-  close(peer: P): void {
-    const member = this.#ports.memberOf(peer);
-    if (member !== null) this.#leave(member);
-  }
-
-  async #checkClaim(claim: Uint8Array | null): Promise<Rejection | null> {
-    if (claim === null) return claimMismatch;
-    const hash = await sha256(claim);
-    const stored = await this.#ports.readClaim();
-    if (stored === null) {
-      await this.#ports.writeClaim(hash);
-      return null;
-    }
-    return constantTimeEqual(stored, hash) ? null : claimMismatch;
+  #checkClaim(claim: Uint8Array | null): Effect.Effect<Rejection | null> {
+    if (claim === null) return Effect.succeed(claimMismatch);
+    const ports = this.#ports;
+    return Effect.gen(function* () {
+      const hash = yield* sha256(claim);
+      const stored = yield* ports.readClaim();
+      if (stored === null) {
+        yield* ports.writeClaim(hash);
+        return null;
+      }
+      return constantTimeEqual(stored, hash) ? null : claimMismatch;
+    });
   }
 
   #hostOf(): (Member<P> & { role: "host" }) | null {

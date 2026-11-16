@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { closingFrame, hostFrame, readClosingFrame, relayFrame } from "../src/roomCore.ts";
 import { createFakeRoom, type FakePeer, hostFrameOf, idOf } from "./fixtures/fakeRoom.ts";
@@ -60,7 +61,7 @@ describe("claiming a room", () => {
   it("keeps the claim after its host has left", async () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
-    core.close(host);
+    Effect.runSync(core.close(host));
     const other = await connect("host", "second");
     expect(other.closed?.code).toBe(1008);
     const same = await connect("host", "first");
@@ -97,7 +98,7 @@ describe("joining a room", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.close(client);
+    Effect.runSync(core.close(client));
     const [joined, left] = host.frames();
     expect(left?.[0]).toBe(relayFrame.left);
     expect(idOf(left ?? bytes())).toEqual(idOf(joined ?? bytes()));
@@ -108,7 +109,7 @@ describe("joining a room", () => {
     const host = await connect("host", "first");
     const a = await connect("client");
     const b = await connect("client");
-    core.close(host);
+    Effect.runSync(core.close(host));
     expect(a.closed).toEqual({ code: 1001, reason: "host left" });
     expect(b.closed).toEqual({ code: 1001, reason: "host left" });
   });
@@ -116,7 +117,7 @@ describe("joining a room", () => {
   it("closes a client at once once the host has left", async () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
-    core.close(host);
+    Effect.runSync(core.close(host));
     const client = await connect("client");
     expect(client.closed).toEqual({ code: 1013, reason: "host offline" });
   });
@@ -143,7 +144,7 @@ describe("joining a room", () => {
     const { connect, core } = createFakeRoom({ maxClients: 1 });
     await connect("host", "first");
     const first = await connect("client");
-    core.close(first);
+    Effect.runSync(core.close(first));
     const second = await connect("client");
     expect(second.closed).toBeNull();
   });
@@ -155,7 +156,7 @@ describe("forwarding", () => {
     const host = await connect("host", "first");
     const client = await connect("client");
     const [joined] = host.frames();
-    core.receive(client, bytes(9, 8, 7, 0, 255));
+    Effect.runSync(core.receive(client, bytes(9, 8, 7, 0, 255)));
     const forwarded = host.frames()[1];
     expect(forwarded).toEqual(hostFrameOf(relayFrame.forward, idOf(joined ?? bytes()), [9, 8, 7, 0, 255]));
   });
@@ -166,7 +167,7 @@ describe("forwarding", () => {
     const a = await connect("client");
     const b = await connect("client");
     const [joinedA] = host.frames();
-    core.receive(host, hostFrameOf(hostFrame.forward, idOf(joinedA ?? bytes()), [1, 2, 3]));
+    Effect.runSync(core.receive(host, hostFrameOf(hostFrame.forward, idOf(joinedA ?? bytes()), [1, 2, 3])));
     expect(a.frames()).toEqual([bytes(1, 2, 3)]);
     expect(b.frames()).toEqual([]);
   });
@@ -176,7 +177,7 @@ describe("forwarding", () => {
     await connect("host", "first");
     const a = await connect("client");
     const b = await connect("client");
-    core.receive(a, bytes(1, 2, 3));
+    Effect.runSync(core.receive(a, bytes(1, 2, 3)));
     expect(a.sent).toEqual([]);
     expect(b.sent).toEqual([]);
   });
@@ -186,8 +187,8 @@ describe("forwarding", () => {
     const host = await connect("host", "first");
     const a = await connect("client");
     const b = await connect("client");
-    core.receive(a, bytes(1));
-    core.receive(b, bytes(2));
+    Effect.runSync(core.receive(a, bytes(1)));
+    Effect.runSync(core.receive(b, bytes(2)));
     const [joinedA, joinedB, fromA, fromB] = host.frames();
     expect(idOf(fromA ?? bytes())).toEqual(idOf(joinedA ?? bytes()));
     expect(idOf(fromB ?? bytes())).toEqual(idOf(joinedB ?? bytes()));
@@ -197,7 +198,7 @@ describe("forwarding", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.receive(client, bytes());
+    Effect.runSync(core.receive(client, bytes()));
     expect(host.frames()[1]?.length).toBe(9);
   });
 
@@ -205,7 +206,7 @@ describe("forwarding", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.receive(host, hostFrameOf(hostFrame.forward, new Uint8Array(8), [1]));
+    Effect.runSync(core.receive(host, hostFrameOf(hostFrame.forward, new Uint8Array(8), [1])));
     expect(client.sent).toEqual([]);
     expect(host.closed).toBeNull();
   });
@@ -216,7 +217,7 @@ describe("forwarding", () => {
     const a = await connect("client");
     const b = await connect("client");
     const [joinedA] = host.frames();
-    core.receive(host, hostFrameOf(hostFrame.disconnect, idOf(joinedA ?? bytes())));
+    Effect.runSync(core.receive(host, hostFrameOf(hostFrame.disconnect, idOf(joinedA ?? bytes()))));
     expect(a.closed).toEqual({ code: 1000, reason: "disconnected" });
     expect(b.closed).toBeNull();
   });
@@ -225,7 +226,7 @@ describe("forwarding", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.receive(host, hostFrameOf(hostFrame.disconnect, new Uint8Array(8)));
+    Effect.runSync(core.receive(host, hostFrameOf(hostFrame.disconnect, new Uint8Array(8))));
     expect(client.closed).toBeNull();
   });
 
@@ -233,8 +234,8 @@ describe("forwarding", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.close(client);
-    core.receive(client, bytes(1));
+    Effect.runSync(core.close(client));
+    Effect.runSync(core.receive(client, bytes(1)));
     expect(host.frames().map((frame) => frame[0])).toEqual([relayFrame.joined, relayFrame.left]);
   });
 
@@ -242,8 +243,8 @@ describe("forwarding", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.receive(client, bytes(1));
-    core.receive(host, hostFrameOf(hostFrame.forward, idOf(host.frames()[0] ?? bytes()), [2]));
+    Effect.runSync(core.receive(client, bytes(1)));
+    Effect.runSync(core.receive(host, hostFrameOf(hostFrame.forward, idOf(host.frames()[0] ?? bytes()), [2])));
     expect(core.framesForwarded).toBe(2);
   });
 });
@@ -252,21 +253,21 @@ describe("limits and malformed frames", () => {
   it("closes a host frame that is too short with 1002", async () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
-    core.receive(host, bytes(1, 2, 3));
+    Effect.runSync(core.receive(host, bytes(1, 2, 3)));
     expect(host.closed?.code).toBe(1002);
   });
 
   it("closes an empty host frame with 1002", async () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
-    core.receive(host, bytes());
+    Effect.runSync(core.receive(host, bytes()));
     expect(host.closed?.code).toBe(1002);
   });
 
   it("closes a host frame of an unknown type with 1002", async () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
-    core.receive(host, hostFrameOf(7, new Uint8Array(8)));
+    Effect.runSync(core.receive(host, hostFrameOf(7, new Uint8Array(8))));
     expect(host.closed?.code).toBe(1002);
   });
 
@@ -274,7 +275,7 @@ describe("limits and malformed frames", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.receive(host, bytes(1));
+    Effect.runSync(core.receive(host, bytes(1)));
     expect(client.closed?.reason).toBe("host left");
   });
 
@@ -282,7 +283,7 @@ describe("limits and malformed frames", () => {
     const { connect, core } = createFakeRoom({ maxFrameBytes: 100 });
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.receive(client, new Uint8Array(101));
+    Effect.runSync(core.receive(client, new Uint8Array(101)));
     expect(client.closed?.code).toBe(1009);
     expect(host.frames().map((frame) => frame[0])).toEqual([relayFrame.joined, relayFrame.left]);
   });
@@ -291,7 +292,7 @@ describe("limits and malformed frames", () => {
     const { connect, core } = createFakeRoom({ maxFrameBytes: 100 });
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.receive(client, new Uint8Array(92));
+    Effect.runSync(core.receive(client, new Uint8Array(92)));
     expect(client.closed?.code).toBe(1009);
     expect(host.frames()).toHaveLength(2);
   });
@@ -300,7 +301,7 @@ describe("limits and malformed frames", () => {
     const { connect, core } = createFakeRoom({ maxFrameBytes: 100 });
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.receive(client, new Uint8Array(91));
+    Effect.runSync(core.receive(client, new Uint8Array(91)));
     expect(client.closed).toBeNull();
     expect(host.frames()[1]?.length).toBe(100);
   });
@@ -308,7 +309,7 @@ describe("limits and malformed frames", () => {
   it("closes a host frame over the limit with 1009", async () => {
     const { connect, core } = createFakeRoom({ maxFrameBytes: 100 });
     const host = await connect("host", "first");
-    core.receive(host, new Uint8Array(101));
+    Effect.runSync(core.receive(host, new Uint8Array(101)));
     expect(host.closed?.code).toBe(1009);
   });
 
@@ -316,9 +317,9 @@ describe("limits and malformed frames", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.receive(client, new Uint8Array(1024 * 1024 - 9));
+    Effect.runSync(core.receive(client, new Uint8Array(1024 * 1024 - 9)));
     expect(client.closed).toBeNull();
-    core.receive(host, new Uint8Array(1024 * 1024 + 1));
+    Effect.runSync(core.receive(host, new Uint8Array(1024 * 1024 + 1)));
     expect(host.closed?.code).toBe(1009);
   });
 });
@@ -328,8 +329,8 @@ describe("keepalive", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.receive(host, "ping");
-    core.receive(client, "ping");
+    Effect.runSync(core.receive(host, "ping"));
+    Effect.runSync(core.receive(client, "ping"));
     expect(host.sent.filter((data) => typeof data === "string")).toEqual(["pong"]);
     expect(client.sent).toEqual(["pong"]);
   });
@@ -338,7 +339,7 @@ describe("keepalive", () => {
     const { connect, core } = createFakeRoom();
     await connect("host", "first");
     const client = await connect("client");
-    core.receive(client, "hello");
+    Effect.runSync(core.receive(client, "hello"));
     expect(client.closed?.code).toBe(1003);
   });
 });
@@ -394,7 +395,7 @@ describe("saying why a connection is closed", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const a = await connect("client");
-    core.close(host);
+    Effect.runSync(core.close(host));
     expect(closingsOf(a)).toEqual([{ code: 1001, reason: "host left" }]);
     const next = await connect("host", "first");
     const b = await connect("client");
@@ -414,12 +415,12 @@ describe("saying why a connection is closed", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const text = await connect("client");
-    core.receive(text, "hello");
+    Effect.runSync(core.receive(text, "hello"));
     expect(closingsOf(text)).toEqual([{ code: 1003, reason: "text frames are not supported" }]);
     const big = await connect("client");
-    core.receive(big, new Uint8Array(1024 * 1024 + 1));
+    Effect.runSync(core.receive(big, new Uint8Array(1024 * 1024 + 1)));
     expect(closingsOf(big)).toEqual([{ code: 1009, reason: "frame too large" }]);
-    core.receive(host, new Uint8Array(3));
+    Effect.runSync(core.receive(host, new Uint8Array(3)));
     expect(closingsOf(host)).toEqual([{ code: 1002, reason: "malformed frame" }]);
   });
 
@@ -428,7 +429,7 @@ describe("saying why a connection is closed", () => {
     const host = await connect("host", "first");
     const client = await connect("client");
     const id = idOf(host.frames()[0] ?? bytes());
-    core.receive(host, hostFrameOf(hostFrame.disconnect, id));
+    Effect.runSync(core.receive(host, hostFrameOf(hostFrame.disconnect, id)));
     expect(closingsOf(client)).toEqual([{ code: 1000, reason: "disconnected" }]);
   });
 
@@ -436,7 +437,7 @@ describe("saying why a connection is closed", () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
     const client = await connect("client");
-    core.receive(client, "ping");
+    Effect.runSync(core.receive(client, "ping"));
     expect(client.sent).toEqual(["pong"]);
     expect(host.sent.filter((data) => typeof data === "string")).toEqual([]);
   });

@@ -79,14 +79,8 @@ const deployed = (origin: string): DeployResult => ({
 });
 
 const makeWorld = Effect.gen(function* () {
-  const shared = yield* Effect.acquireRelease(
-    Effect.promise(() => startNodeRelay()),
-    (running) => Effect.promise(() => running.close()),
-  );
-  const own = yield* Effect.acquireRelease(
-    Effect.promise(() => startNodeRelay()),
-    (running) => Effect.promise(() => running.close()),
-  );
+  const shared = yield* startNodeRelay();
+  const own = yield* startNodeRelay();
   const sharedOrigin = `http://127.0.0.1:${shared.port}`;
   const ownOrigin = `http://127.0.0.1:${own.port}`;
   const deployment: Deployment = { answer: deployed(ownOrigin), tokens: [] };

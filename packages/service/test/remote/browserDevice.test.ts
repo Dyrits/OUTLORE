@@ -88,10 +88,7 @@ const driven = (openTransport: OpenTransport) => {
 
 const makeWorld = () =>
   Effect.gen(function* () {
-    const relay = yield* Effect.acquireRelease(
-      Effect.promise(() => startNodeRelay()),
-      (running) => Effect.promise(() => running.close()),
-    );
+    const relay = yield* startNodeRelay();
     const relayOrigin = `http://127.0.0.1:${relay.port}`;
     const directory = mkdtempSync(join(tmpdir(), "outlore-browser-"));
     directories.push(directory);

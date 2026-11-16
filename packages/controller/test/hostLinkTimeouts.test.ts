@@ -34,10 +34,7 @@ const carrierOf = (connection: HostConnection, clientId: string) => {
 /** A relay, a host that handles each joining client as `onClient` says, and a store with one paired host. */
 const world = (onClient: (carrier: Carrier, host: ReturnType<typeof generateKeyPair>) => void) =>
   Effect.gen(function* () {
-    const relay = yield* Effect.acquireRelease(
-      Effect.promise(() => startNodeRelay()),
-      (started) => Effect.promise(() => started.close()),
-    );
+    const relay = yield* startNodeRelay();
     const relayOrigin = `http://127.0.0.1:${relay.port}`;
     const host = generateKeyPair();
     const connection = yield* connectHost({ claim: new Uint8Array(32).fill(7), relayOrigin, room });

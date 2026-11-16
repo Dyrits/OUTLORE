@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { Effect } from "effect";
 import { closeWithReason, type Member, RoomCore, type RoomPorts } from "./roomCore.ts";
 import { parseConnect } from "./route.ts";
 
@@ -38,38 +39,47 @@ export class Room extends DurableObject<Env> {
         ),
       memberOf,
       members: () => ctx.getWebSockets().flatMap((peer) => memberOf(peer) ?? []),
-      readClaim: async () => {
-        const stored = await ctx.storage.get<Uint8Array>(claimKey);
-        return stored === void 0 ? null : new Uint8Array(stored);
-      },
+      readClaim: () =>
+        Effect.promise(async () => {
+          const stored = await ctx.storage.get<Uint8Array>(claimKey);
+          return stored === void 0 ? null : new Uint8Array(stored);
+        }),
       retire: (peer) => peer.serializeAttachment(null),
-      writeClaim: (hash) => ctx.storage.put(claimKey, hash),
+      writeClaim: (hash) => Effect.promise(() => ctx.storage.put(claimKey, hash)),
     };
     this.#core = new RoomCore(ports);
   }
 
-  override async fetch(request: Request): Promise<Response> {
+  // Each event of the object is one Effect run to its end: no fiber or timer outlives it, so the object may hibernate.
+  override fetch(request: Request): Promise<Response> {
     const connect = parseConnect(request.url);
-    if (connect === null || request.headers.get("Upgrade") !== "websocket") return new Response(null, { status: 404 });
-    const rejection = await this.#core.screen(connect.role, connect.claim);
-    const pair = new WebSocketPair();
-    const [client, server] = [pair[0], pair[1]];
-    if (rejection === null) {
-      this.ctx.acceptWebSocket(server, [connect.role]);
-      this.#core.open(server, connect.role);
-    } else {
-      this.ctx.acceptWebSocket(server);
-      closeWithReason(server, rejection.code, rejection.reason);
-    }
-    return new Response(null, { status: 101, webSocket: client });
+    if (connect === null || request.headers.get("Upgrade") !== "websocket")
+      return Promise.resolve(new Response(null, { status: 404 }));
+    const core = this.#core;
+    const ctx = this.ctx;
+    return Effect.runPromise(
+      Effect.gen(function* () {
+        const rejection = yield* core.screen(connect.role, connect.claim);
+        const pair = new WebSocketPair();
+        const [client, server] = [pair[0], pair[1]];
+        if (rejection === null) {
+          ctx.acceptWebSocket(server, [connect.role]);
+          yield* core.open(server, connect.role);
+        } else {
+          ctx.acceptWebSocket(server);
+          closeWithReason(server, rejection.code, rejection.reason);
+        }
+        return new Response(null, { status: 101, webSocket: client });
+      }),
+    );
   }
 
   override webSocketMessage(peer: WebSocket, message: string | ArrayBuffer): void {
-    this.#core.receive(peer, typeof message === "string" ? message : new Uint8Array(message));
+    Effect.runSync(this.#core.receive(peer, typeof message === "string" ? message : new Uint8Array(message)));
   }
 
   override webSocketClose(peer: WebSocket, code: number): void {
-    this.#core.close(peer);
+    Effect.runSync(this.#core.close(peer));
     // Completes the close handshake; 1005 and 1006 only report a missing code and cannot be sent.
     try {
       peer.close(code === 1005 || code === 1006 ? 1000 : code);
@@ -79,7 +89,7 @@ export class Room extends DurableObject<Env> {
   }
 
   override webSocketError(peer: WebSocket): void {
-    this.#core.close(peer);
+    Effect.runSync(this.#core.close(peer));
   }
 }
 
