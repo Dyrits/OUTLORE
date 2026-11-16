@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import type { MissionId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
+import { SqlClient } from "effect/sql";
 import { approveAll, idOf, panel, save } from "../fixtures/lore.ts";
 import { call, fixture, open, read, register, send, settle, start, tool } from "../fixtures/service.ts";
 
@@ -147,6 +148,19 @@ describe("recalling lore", () => {
       expect(yield* contextOf(second.missionId, second.threadId)).toContain("Run the tests before a commit.");
       const elsewhere = yield* idle();
       expect(yield* contextOf(elsewhere.missionId, elsewhere.threadId)).not.toContain("Run the tests");
+    }).pipe(Effect.provide(layer));
+  });
+
+  it.live("takes a side-quest's realm from the quest's top thread, whatever workspace the side-quest row names", () => {
+    const { directory, layer } = live();
+    return Effect.gen(function* () {
+      const { missionId, threadId } = yield* idle(directory);
+      yield* save(threadId, "Run the tests before a commit.", "workspace");
+      const beneath = yield* child(missionId, threadId);
+      // A quest's realm is its top thread's workspace (ADR 0015): the side-quest row's own value never decides it.
+      const sql = yield* SqlClient.SqlClient;
+      yield* sql`UPDATE threads SET workspace_id = NULL WHERE id = ${beneath}`;
+      expect(yield* contextOf(missionId, beneath)).toContain("Run the tests before a commit.");
     }).pipe(Effect.provide(layer));
   });
 
