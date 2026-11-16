@@ -61,7 +61,7 @@ export type Consumption = typeof Consumption.Type;
 export const PriceStatus = Schema.Struct({
   /** When the table was read (or the snapshot made), in milliseconds. */
   at: Schema.Number,
-  /** Whether Outlore reads the public table at all (the Charter switch). */
+  /** Whether Outlore reads the public table at all (the Workshop switch). */
   isFetching: Schema.Boolean,
   /** How many models carry a price. */
   models: Schema.Number,

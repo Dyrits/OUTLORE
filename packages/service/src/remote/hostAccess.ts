@@ -203,7 +203,7 @@ export const isDevicePaired = Effect.fnUntraced(function* (deviceId: string) {
   return rows.length > 0;
 });
 
-/** Records that a device was active, for Charter's "last active". */
+/** Records that a device was active, for Workshop's "last active". */
 export const touchDevice = Effect.fnUntraced(function* (deviceId: string, now: number) {
   const sql = yield* SqlClient.SqlClient;
   yield* sql`UPDATE paired_devices SET last_active_at = ${now} WHERE id = ${deviceId}`;
@@ -230,7 +230,7 @@ export const forgetDevice = Effect.fnUntraced(function* (deviceId: string) {
   if (gone.length === 0) return yield* invalid("That device is not paired with this host.");
 });
 
-/** Charter's remote access section as it stands. */
+/** Workshop's remote access section as it stands. */
 export const remoteAccessView = Effect.fnUntraced(function* (
   status: RemoteAccessView["status"],
   connected: ReadonlySet<string>,

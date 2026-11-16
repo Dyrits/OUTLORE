@@ -127,7 +127,7 @@ export const SendMessage = Schema.TaggedStruct("SendMessage", {
   attachmentIds: AttachmentIds,
   /** Steer or Queue while the thread runs; null uses the owner's default. */
   delivery: Schema.NullOr(MessageDelivery),
-  /** The realm's folder the owner attached, for the Guildmaster: a quest it opens starts there. */
+  /** The realm's folder the owner attached, for the Chronicler: a quest it opens starts there. */
   realmPath: Schema.optionalKey(Schema.NullOr(Schema.String)),
   requestId: RequestId,
   text: OwnerMessageText,
@@ -143,7 +143,7 @@ export const ListMissions = Schema.TaggedStruct("ListMissions", {
   state: Schema.NullOr(MissionState),
   workspaceId: Schema.NullOr(WorkspaceId),
 });
-/** Where the Guildmaster's conversation is; the service makes it on first use. */
+/** Where the Chronicler's conversation is; the service makes it on first use. */
 export const ReadGuildmaster = Schema.TaggedStruct("ReadGuildmaster", {});
 /** The Guild Hall's recap since `since`, or since the last visit when null (24 hours before the first). */
 export const ReadGuildHallRecap = Schema.TaggedStruct("ReadGuildHallRecap", { since: Schema.NullOr(Schema.Number) });
@@ -234,7 +234,6 @@ export const ResolveChatter = Schema.TaggedStruct("ResolveChatter", {
 
 /** Reads the owner's settings. */
 export const ReadSettings = Schema.TaggedStruct("ReadSettings", {});
-/** The model price table in use and where it came from (budget-control, The price table). */
 /** Every provider account's use and budget (budget-control, Account budgets and credits). */
 export const ReadAccountBudgets = Schema.TaggedStruct("ReadAccountBudgets", {});
 /**
@@ -256,8 +255,9 @@ export const AddCredit = Schema.TaggedStruct("AddCredit", {
 });
 /** At an account's budget, hands the held thread to its next backup Companion. */
 export const SwitchAtBudget = Schema.TaggedStruct("SwitchAtBudget", { stopId: BudgetStopId });
+/** The model price table in use and where it came from (budget-control, The price table). */
 export const ReadPriceStatus = Schema.TaggedStruct("ReadPriceStatus", {});
-/** Reads the public price table now, as Refresh now in the Charter does. */
+/** Reads the public price table now, as Refresh now in the Workshop does. */
 export const RefreshPrices = Schema.TaggedStruct("RefreshPrices", {});
 
 /** Reads a mission's journal. */

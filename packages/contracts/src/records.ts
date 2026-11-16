@@ -69,7 +69,6 @@ export const Settings = Schema.Struct({
   globalBudgetPeriod: BudgetPeriod,
   /** Days without activity before the dashboard asks to archive or mark a mission done (mission-tracking). */
   inactivityDays: PositiveInt,
-  /** The share of the chosen model's context window, in percent, past which a thread's lore icon turns red (scoped-intel). */
   /** Days over which an unused lore entry's strength halves, by kind; a rule never fades (scoped-intel, Kinds). */
   intelHalfLives: Schema.Struct({
     decision: PositiveInt,
@@ -77,6 +76,7 @@ export const Settings = Schema.Struct({
     preference: PositiveInt,
     temporary: PositiveInt,
   }),
+  /** The share of the chosen model's context window, in percent, past which a thread's lore icon turns red (scoped-intel). */
   intelWarningPercent: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100)),
   /**
    * Whether a command may leave its harness's sandbox without a question, off by default (action-approval, Working
@@ -93,7 +93,7 @@ export const Settings = Schema.Struct({
   /** Whether the rail lists finished (Done) quests among the quests; off by default, the board still shows them. */
   shouldShowFinishedQuests: Schema.Boolean,
   shouldStreamReplies: Schema.Boolean,
-  /** The Companions the Guildmaster picks from by a request's complexity; none set means the defaults above. */
+  /** The Companions the Chronicler picks from by a request's complexity; none set means the defaults above. */
   tiers: Schema.Struct({ Balanced: Schema.NullOr(Tier), Heavy: Schema.NullOr(Tier), Light: Schema.NullOr(Tier) }),
 });
 export type Settings = typeof Settings.Type;
@@ -178,7 +178,7 @@ export const Message = Schema.Struct({
   attachments: Schema.Array(AttachmentCard),
   /**
    * The quest the sending thread belongs to, for a thread message, so a conversation can link to it; null otherwise and
-   * for a message from the Guildmaster, whose quest has no page of its own.
+   * for a message from the Chronicler, whose quest has no page of its own.
    */
   fromMissionId: Schema.NullOr(MissionId),
   /** The sending thread, for a thread message; null otherwise. */
@@ -304,9 +304,9 @@ export const Suggestion = Schema.Struct({
   id: SuggestionId,
   /** Whether the setting opened a new mission without asking. */
   isAutomatic: Schema.Boolean,
-  /** Whether the Guildmaster asked: it offers no aside, and opens the quest in the realm the owner named. */
+  /** Whether the Chronicler asked: it offers no aside, and opens the quest in the realm the owner named. */
   isFromGuildmaster: Schema.Boolean,
-  /** Whether the card is a Ritual the Guildmaster created, whose link opens the Ritual's quest. */
+  /** Whether the card is a Ritual the Chronicler created, whose link opens the Ritual's quest. */
   isRitual: Schema.Boolean,
   /** Matching missions, best first, at most 3. */
   matches: Schema.Array(SuggestionMatch),
@@ -328,7 +328,6 @@ export const Suggestion = Schema.Struct({
 });
 export type Suggestion = typeof Suggestion.Type;
 
-/** Where the Guildmaster's conversation is: its hidden quest and the thread the owner writes in. */
 /**
  * Where the owner has Chronicler open from (quest coordination, Context): the screen's name as the app shows it, and the
  * quest the screen is about when it is one. Chronicler reads it with each message, to know what "this quest" means.
@@ -339,6 +338,7 @@ export const Viewing = Schema.Struct({
 });
 export type Viewing = typeof Viewing.Type;
 
+/** Where Chronicler's conversation is: its hidden quest and the thread the owner writes in. */
 export const GuildmasterPlace = Schema.Struct({ missionId: MissionId, threadId: ThreadId });
 export type GuildmasterPlace = typeof GuildmasterPlace.Type;
 
