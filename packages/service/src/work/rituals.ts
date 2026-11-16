@@ -10,11 +10,12 @@ import {
   RitualScope as RitualScopeSchema,
   ThreadId,
 } from "@outlore/contracts";
-import { Clock, Effect, Exit, Layer, PubSub, Schema } from "effect";
+import { Cause, Clock, Effect, Exit, Layer, PubSub, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { Changes, hourMillis, invalid, newId, notFound } from "../core/index.ts";
 import { Commands, changed, unchanged, type WithFollowUps } from "./commands.ts";
 import { changeThreadRunner } from "./handover.ts";
+import { failTurn } from "./lifecycle.ts";
 import { insertMessage } from "./messaging.ts";
 import { insertQuest } from "./missions.ts";
 import { nextRunAfter, runStateOf, scheduleOf } from "./ritualSchedule.ts";
@@ -232,6 +233,18 @@ export const runRitual = Effect.fnUntraced(function* (ritualId: string) {
 });
 
 /**
+ * A scheduled run that could not start is not lost silently: the run fails with the reason, on the Ritual's card and on
+ * its quest's thread. The owner runs it again by hand, or the next scheduled run starts as usual.
+ */
+const recordFailedStart = Effect.fnUntraced(function* (row: RitualRow, now: number, cause: Cause.Cause<unknown>) {
+  const sql = yield* SqlClient.SqlClient;
+  const failure = Cause.squash(cause);
+  const reason = failure instanceof Error ? failure.message : String(failure);
+  yield* sql`UPDATE rituals SET last_run_at = ${now}, last_run_state = 'Failed', fallback_step = 0 WHERE id = ${row.id}`;
+  yield* failTurn(row.threadId, `Could not start the scheduled run: ${reason}`);
+});
+
+/**
  * Runs every Ritual that is on and due, and moves each to its next time. A run later than the grace was missed while the
  * service was down: it is skipped, not caught up.
  */
@@ -246,8 +259,11 @@ export const runDueRituals: Effect.Effect<WithFollowUps<null>, never, SqlClient.
     const dueAt = row.nextRunAt ?? now;
     yield* sql`UPDATE rituals SET next_run_at = ${nextRunAfter(scheduleOf(row.schedule), now)} WHERE id = ${row.id}`;
     if (now - dueAt > graceMillis) continue;
-    const started = yield* Effect.exit(beginRun(row, { dueAt, kind: "scheduled" }));
-    if (Exit.isSuccess(started) && started.value) toWake.push(row.threadId);
+    // Its own savepoint, so a start that fails halfway leaves none of its writes behind.
+    const started = yield* Effect.exit(sql.withTransaction(beginRun(row, { dueAt, kind: "scheduled" })));
+    if (Exit.isSuccess(started)) {
+      if (started.value) toWake.push(row.threadId);
+    } else yield* recordFailedStart(row, now, started.cause);
   }
   return rows.length === 0 ? unchanged(null) : changed(null, { threadsToWake: toWake });
 }).pipe(Effect.orDie);
