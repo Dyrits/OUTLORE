@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextRunAfter } from "../../src/work/ritualSchedule.ts";
+import { nextRunAfter, runStateOf } from "../../src/work/ritualSchedule.ts";
 
 // Dates are built from local fields, as a schedule is read in the computer's local time.
 const at = (month: number, day: number, hour = 0, minute = 0) => new Date(2026, month - 1, day, hour, minute).getTime();
@@ -28,5 +28,22 @@ describe("the next run of a Ritual's schedule", () => {
 
   it("runs an hourly Ritual that many hours after the moment given", () => {
     expect(nextRunAfter({ _tag: "Hourly", hours: 6 }, at(11, 10, 6, 15))).toBe(at(11, 10, 12, 15));
+  });
+});
+
+describe("how a Ritual's latest run stands", () => {
+  it("reads a recorded state as it was saved", () => {
+    expect(runStateOf("Done", "Idle")).toBe("Done");
+    expect(runStateOf("Failed", "Idle")).toBe("Failed");
+    expect(runStateOf(null, "Idle")).toBeNull();
+  });
+
+  it("reads an underway run whose thread was stopped as interrupted", () => {
+    expect(runStateOf("Underway", "Stopped")).toBe("Interrupted");
+    expect(runStateOf("Underway", "Running")).toBe("Underway");
+  });
+
+  it("reads a state saved before by an older version, which no run writes now, as none", () => {
+    expect(runStateOf("Skipped", "Idle")).toBeNull();
   });
 });
