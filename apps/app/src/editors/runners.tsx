@@ -9,7 +9,8 @@ import { harnessNames, harnessOfAccount } from "./accountModels";
 import { CompanionBody } from "./companionBody";
 import { CompanionPicker } from "./companionPicker";
 import type { PresetChoice } from "./presets";
-import { effortFor, effortsOf, useModelEfforts } from "./useModelEfforts";
+import { changedHarnessOf, companionOf, keptOptionsOf } from "./runnerChoices";
+import { effortsOf, useModelEfforts } from "./useModelEfforts";
 
 /** What a thread runs on: its harness, provider account (null for the computer's own sign-in), model, and effort. */
 export interface Runner {
@@ -88,12 +89,6 @@ export function useHarnesses(client: ServiceClient) {
   return { data: store.data, error: store.error, refresh, setData };
 }
 
-/** The model list of a harness's account, with the chosen model kept in it when the list no longer holds it. */
-const modelIdsOf = (models: ReadonlyArray<{ id: string }>, model: ModelChoice) => {
-  const ids = models.map((option) => option.id);
-  return ids.includes(model) ? ids : [...ids, model];
-};
-
 /**
  * Pickers for a runner: harness, account when the harness has more than one, model, and effort. Choosing
  * another harness takes its own sign-in and default model, as the service does when they are left out.
@@ -147,28 +142,10 @@ export function RunnerPickers({
     const problem = harnesses?.harnesses.find((candidate) => candidate.name === name)?.problem ?? null;
     return problem === null ? harnessLabels[name] : `${harnessLabels[name]} (not installed)`;
   };
-  const infoOf = (name: HarnessName, accountId: AccountId | null) =>
-    harnessOfAccount(
-      harnesses?.harnesses.find((candidate) => candidate.name === name),
-      accountId,
-    );
-  const chooseHarness = (harnessName: HarnessName) => {
-    if (harnessName === value.harness) return onChange(value);
-    const next = infoOf(harnessName, null);
-    // The harness's first listed model; "default" only while its list is not read yet.
-    const model = next?.models[0]?.id ?? "default";
-    onChange({ accountId: null, effort: effortFor(next, model, value.effort), harness: harnessName, model });
-  };
-  // A model of an account's tab, which may be another harness or account: that harness with that sign-in, the chosen model, and the effort kept when the model offers it.
-  const chooseCompanion = (harnessName: HarnessName, accountId: AccountId | null, model: ModelChoice) =>
-    onChange({
-      accountId,
-      effort: effortFor(infoOf(harnessName, accountId), model, value.effort),
-      harness: harnessName,
-      model,
-    });
-  const chooseModel = (model: ModelChoice) =>
-    onChange({ ...value, effort: effortFor(harness, model, value.effort), model });
+  const chooseHarness = (harness: HarnessName) => onChange(changedHarnessOf(harnesses, value, harness));
+  const chooseCompanion = (harness: HarnessName, accountId: AccountId | null, model: ModelChoice) =>
+    onChange(companionOf(harnesses, value, harness, accountId, model));
+  const chooseModel = (model: ModelChoice) => chooseCompanion(value.harness, value.accountId, model);
   const effortOptions = effortsOf(useModelEfforts(client, harness, value), value.effort);
   // A model that offers no level of effort has nothing to choose.
   const isEffortChosen = effortOptions.length > 1;
@@ -180,9 +157,12 @@ export function RunnerPickers({
         ? `${account.label} (signed out)`
         : account.label;
   };
-  const accountOptions = accountIds.includes(value.accountId) ? accountIds : [...accountIds, value.accountId];
+  const accountOptions = keptOptionsOf(accountIds, value.accountId);
   const isAccountChosen = isAccountShown && accountIds.length > 1;
-  const modelOptions = modelIdsOf(models, value.model);
+  const modelOptions = keptOptionsOf(
+    models.map((model) => model.id),
+    value.model,
+  );
   if (isCompact || isPanel) {
     const picker = {
       accountId: value.accountId,

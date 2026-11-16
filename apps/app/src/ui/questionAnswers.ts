@@ -37,7 +37,7 @@ export const pickOther = (choice: Choice, draft: ChoiceDraft): ChoiceDraft =>
 export const typeOther = (draft: ChoiceDraft, other: string): ChoiceDraft => ({ ...draft, other });
 
 /** The answer a draft gives: the options picked, then the typed text when Other is chosen and not blank. */
-export const answerOf = (_choice: Choice, draft: ChoiceDraft): ReadonlyArray<string> => [
+export const answerOf = (draft: ChoiceDraft): ReadonlyArray<string> => [
   ...draft.selected,
   ...(draft.isOtherChosen && draft.other.trim() !== "" ? [draft.other.trim()] : []),
 ];
@@ -47,7 +47,7 @@ export const answersOfDrafts = (
   choices: ReadonlyArray<Choice>,
   drafts: ReadonlyArray<ChoiceDraft>,
 ): ReadonlyArray<ReadonlyArray<string>> | null => {
-  const answers = choices.map((choice, index) => answerOf(choice, drafts[index] ?? emptyDraft));
+  const answers = choices.map((_, index) => answerOf(drafts[index] ?? emptyDraft));
   return answers.some((answer) => answer.length === 0) ? null : answers;
 };
 

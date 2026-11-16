@@ -87,7 +87,7 @@ const stepGroupsOf = (
 };
 
 /** A settled action does not establish what a working thread is doing now. */
-export const workingLabelOf = (_entries: ReadonlyArray<Entry>) => "Working…";
+export const workingLabel = "Working…";
 
 /**
  * Messages, questions, off-topic suggestions, budget lines, handovers, lore changes, and the threads opened beneath, in the order they happened.

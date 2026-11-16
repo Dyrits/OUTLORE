@@ -24,6 +24,7 @@ export {
   RealmArchivePreview,
   RealmArchiveQuest,
   RealmArchiveRitual,
+  RealmCreation,
   RenameRealm,
   RestoreRealm,
   SetRealmCrest,
