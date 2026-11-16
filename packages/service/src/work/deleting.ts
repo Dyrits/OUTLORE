@@ -1,15 +1,13 @@
-import { join } from "node:path";
 import type { DeletionPreview } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid, notFound, removeScratch, ServiceFailure } from "../core/index.ts";
+import { invalid, notFound, ServiceFailure } from "../core/index.ts";
 import { eraseThreadsLore } from "../lore/index.ts";
-import { eraseAttachmentsOf } from "./attachments.ts";
+import { forgetAttachmentsOf, removeAttachmentFiles } from "./attachments.ts";
 import { forgetOutcomesOf } from "./commandOutcomes.ts";
-import { Commands, changed } from "./commands.ts";
+import { Commands, changed, type WithFollowUps } from "./commands.ts";
 import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
-import { ScratchRoot } from "./workspaces.ts";
 
 const readSubtree = Effect.fn("readSubtree")(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
@@ -88,16 +86,43 @@ const eraseSubtree = Effect.fn("eraseSubtree")(function* (rows: Subtree, root: S
   return changed(null, { missionsToWake: [root.missionId] });
 });
 
-/** Permanently erases the confirmed subtree after invalidating and cancelling all its turns. */
+/** Puts a subtree whose erasing failed back as it was, so the owner sees it and can delete it again. */
+const restoreAfterFailure = Effect.fn("restoreAfterFailure")(function* (ids: ReadonlyArray<string>) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE threads SET is_deleting = 0 WHERE id IN ${sql.in(ids)}`;
+  return changed(null);
+});
+
+/**
+ * Permanently erases the confirmed subtree after invalidating and cancelling all its turns. The records go in one
+ * transaction; the files and the scratch folder go only once it has committed, so a failure leaves records and files
+ * together, and the subtree is no longer marked as deleting.
+ */
 export const deleteThread = Effect.fn("deleteThread")(function* (threadId: string, confirmation: string) {
   const commands = yield* Commands;
-  const scratchRoot = yield* ScratchRoot;
   const rows = yield* commands.run(markDeleting(threadId, confirmation));
   const root = rows[0];
   if (root === undefined) return yield* invalid("No thread to delete.");
-  if (root.parentId === null) yield* removeScratch(join(scratchRoot, root.missionId));
-  yield* commands.run(eraseAttachmentsOf(rows.map((row) => row.id)).pipe(Effect.andThen(eraseSubtree(rows, root))));
+  const ids = rows.map((row) => row.id);
+  const files = yield* commands
+    .run(
+      forgetAttachmentsOf(ids).pipe(
+        Effect.flatMap((files) => eraseSubtree(rows, root).pipe(Effect.map((done) => withFiles(done, files, root)))),
+      ),
+    )
+    .pipe(Effect.onError(() => commands.run(restoreAfterFailure(ids)).pipe(Effect.orDie)));
+  yield* removeAttachmentFiles(files);
   return null;
+});
+
+/** The erasing's result carrying the files to remove, and a quest's scratch folder to remove once it commits. */
+const withFiles = (
+  done: WithFollowUps<null>,
+  files: ReadonlyArray<string>,
+  root: Subtree[number],
+): WithFollowUps<ReadonlyArray<string>> => ({
+  followUps: root.parentId === null ? { ...done.followUps, missionsToRemoveScratch: [root.missionId] } : done.followUps,
+  value: files,
 });
 
 /** Erases a quest already checked empty by the ending policy, in that policy's transaction. */

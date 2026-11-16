@@ -112,6 +112,7 @@ The interface presents idle, running, or Summons; waiting, failure, and stopped 
 
 - Deleting a thread deletes every thread beneath it. One confirmation names the count and the running ones, for example "Delete this thread and 5 threads beneath it (2 running)?". Running threads among them are stopped first.
 - Deleting a mission's top thread deletes the mission.
+- A deletion erases the records in one transaction and removes the attached files and the quest's scratch folder only after it has committed. If erasing fails, the files stay with their records, the threads are no longer marked as deleting (they stay Stopped, visible, and can be deleted again), and the owner sees the failure (CHG-TBD-E-3).
 
 ### Limits
 

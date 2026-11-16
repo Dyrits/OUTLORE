@@ -164,14 +164,23 @@ export const readCards = (messageIds: ReadonlyArray<string>) =>
     ),
   );
 
-/** Erases the files of every message of the threads, from disk and from the records. Callers run it before the messages go. */
-export const eraseAttachmentsOf = Effect.fnUntraced(function* (threadIds: ReadonlyArray<string>) {
+/**
+ * Deletes the records of the files of every message of the threads and answers their file names. The files stay on
+ * disk until `removeAttachmentFiles`, which callers run once their transaction has committed: a transaction that
+ * rolls back must not have taken the files of records it kept. Callers run it before the messages go.
+ */
+export const forgetAttachmentsOf = Effect.fnUntraced(function* (threadIds: ReadonlyArray<string>) {
   const sql = yield* SqlClient.SqlClient;
-  const root = yield* AttachmentsRoot;
   const rows = yield* sql<{ file: string }>`SELECT file FROM attachments
       WHERE message_id IN (SELECT id FROM messages WHERE thread_id IN ${sql.in(threadIds)})`;
   yield* sql`DELETE FROM attachments WHERE message_id IN (SELECT id FROM messages WHERE thread_id IN ${sql.in(threadIds)})`;
-  yield* Effect.promise(() => Promise.all(rows.map((row) => rm(join(root, row.file), { force: true }))));
+  return rows.map((row) => row.file);
+});
+
+/** Removes files from the attachments folder, those of records already deleted. */
+export const removeAttachmentFiles = Effect.fnUntraced(function* (files: ReadonlyArray<string>) {
+  const root = yield* AttachmentsRoot;
+  yield* Effect.promise(() => Promise.all(files.map((file) => rm(join(root, file), { force: true }))));
 });
 
 /** Erases every draft nobody sent, as the service starts: no message box survives a restart. */
