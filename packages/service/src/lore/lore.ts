@@ -82,7 +82,7 @@ export const readScopeChain = Effect.fnUntraced(function* (threadId: string) {
 export type LoreEntryRow = {
   readonly id: string;
   readonly isPinned: number;
-  readonly isTopThread: number;
+  readonly isTopThread: boolean;
   readonly kind: LoreKind;
   readonly lastUsedAt: number;
   readonly missionId: string | null;
@@ -103,6 +103,14 @@ export type LoreEntryRow = {
   readonly workspaceName: string | null;
 };
 
+/** A lore entry row as SQLite returns it: `isTopThread` is its 0/1, or null when no thread is joined. */
+export type LoreEntrySqlRow = Omit<LoreEntryRow, "isTopThread"> & {
+  readonly isTopThread: number | null;
+};
+
+/** Reads a lore entry row's SQLite 0/1 flag as the boolean the rest of the code uses. */
+export const loreEntryRowOf = (row: LoreEntrySqlRow): LoreEntryRow => ({ ...row, isTopThread: row.isTopThread === 1 });
+
 /** Selects lore entries with what their scope labels need; callers add the condition and order. */
 export const selectLoreEntries = (sql: SqlClient.SqlClient) => sql`
   SELECT i.id, i.scope, i.kind, i.is_pinned AS isPinned, i.uses, i.last_used_at AS lastUsedAt, i.text, i.thread_id AS threadId, i.workspace_id AS workspaceId, i.saved_by_title AS savedByTitle,
@@ -115,17 +123,16 @@ export const selectLoreEntries = (sql: SqlClient.SqlClient) => sql`
 /** The scope of a lore entry or a change in words, for the owner and for threads. */
 export const scopeLabelOf = (row: {
   readonly scope: LoreScope;
-  readonly isTopThread: number;
+  readonly isTopThread: boolean;
   readonly missionTitle: string | null;
   readonly threadTitle: string | null;
   readonly workspaceName: string | null;
 }) =>
   ({
     Global: "Global",
-    Thread:
-      row.isTopThread === 1
-        ? `Mission "${row.missionTitle ?? ""}"`
-        : `Thread "${row.threadTitle ?? "a deleted thread"}"`,
+    Thread: row.isTopThread
+      ? `Mission "${row.missionTitle ?? ""}"`
+      : `Thread "${row.threadTitle ?? "a deleted thread"}"`,
     Workspace: `Workspace ${row.workspaceName ?? ""}`,
   })[row.scope];
 
@@ -163,11 +170,11 @@ export const loreEntryOf = (row: LoreEntryRow, fading: Fading): LoreEntry => ({
 /** The lore in a thread's scope, most specific first: the thread, each thread above, the workspace, then global. */
 export const listInScope = Effect.fnUntraced(function* (chain: ScopeChain) {
   const sql = yield* SqlClient.SqlClient;
-  const rows = yield* sql<LoreEntryRow>`${selectLoreEntries(sql)}
+  const rows = (yield* sql<LoreEntrySqlRow>`${selectLoreEntries(sql)}
       WHERE (i.scope = 'Thread' AND i.thread_id IN ${sql.in(chain.threads)})
         OR (i.scope = 'Workspace' AND i.workspace_id = ${chain.workspaceId})
         OR i.scope = 'Global'
-      ORDER BY i.saved_at DESC`;
+      ORDER BY i.saved_at DESC`).map(loreEntryRowOf);
   const rankOf = (row: LoreEntryRow) =>
     row.scope === "Thread" ? chain.threads.indexOf(row.threadId ?? "") : row.scope === "Workspace" ? 1e6 : 2e6;
   // Stable sort: within one scope the newest stays first.
@@ -177,8 +184,8 @@ export const listInScope = Effect.fnUntraced(function* (chain: ScopeChain) {
 /** One stored lore entry, or null when it no longer exists. */
 export const readLoreEntry = Effect.fnUntraced(function* (loreEntryId: string) {
   const sql = yield* SqlClient.SqlClient;
-  const [row] = yield* sql<LoreEntryRow>`${selectLoreEntries(sql)} WHERE i.id = ${loreEntryId}`;
-  return row ?? null;
+  const [row] = yield* sql<LoreEntrySqlRow>`${selectLoreEntries(sql)} WHERE i.id = ${loreEntryId}`;
+  return row === undefined ? null : loreEntryRowOf(row);
 });
 
 /** What a turn's context carries of a thread's lore (scoped-intel, Recall). */
@@ -203,7 +210,7 @@ const recallOf = (rows: ReadonlyArray<LoreEntryRow>, fading: Fading): Recall => 
 const agentLabelOf = (row: LoreEntryRow) =>
   ({
     Global: "global",
-    Thread: row.isTopThread === 1 ? "mission" : `thread "${row.threadTitle ?? ""}"`,
+    Thread: row.isTopThread ? "mission" : `thread "${row.threadTitle ?? ""}"`,
     Workspace: "workspace",
   })[row.scope];
 

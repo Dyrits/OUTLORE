@@ -4,8 +4,10 @@ import { SqlClient } from "effect/sql";
 import { toolRefusal, toolText, wordsOf } from "../core/index.ts";
 import {
   type LoreEntryRow,
+  type LoreEntrySqlRow,
   listInScope,
   loreEntryOf,
+  loreEntryRowOf,
   loreLinesOf,
   readGauge,
   readScopeChain,
@@ -38,7 +40,8 @@ const selectChanges = (sql: SqlClient.SqlClient) => sql`
 type ChangeRow = Omit<LoreChange, "scopeLabel"> & {
   scopeThreadTitle: string | null;
   missionTitle: string | null;
-  isTopThread: number;
+  /** SQLite's 0/1, or null when no thread is joined. */
+  isTopThread: number | null;
   workspaceName: string | null;
 };
 
@@ -46,7 +49,7 @@ const changeOf = ({ scopeThreadTitle, missionTitle, isTopThread, workspaceName, 
   ({
     ...row,
     scopeLabel: scopeLabelOf({
-      isTopThread,
+      isTopThread: isTopThread === 1,
       missionTitle,
       scope: row.scope,
       threadTitle: scopeThreadTitle,
@@ -85,7 +88,7 @@ export const readLoreView = Effect.fnUntraced(function* (
     state === "Deleted"
       ? []
       : chain === null
-        ? yield* sql<LoreEntryRow>`${selectLoreEntries(sql)} ORDER BY i.saved_at DESC`
+        ? (yield* sql<LoreEntrySqlRow>`${selectLoreEntries(sql)} ORDER BY i.saved_at DESC`).map(loreEntryRowOf)
         : yield* listInScope(chain);
   const deleted = state === "Deleted" ? yield* listDeletedLore(chain, workspaceId) : [];
   const isOfState = (row: LoreEntryRow) =>
@@ -109,7 +112,7 @@ export const readLoreView = Effect.fnUntraced(function* (
 const isOfToolScope = (row: LoreEntryRow, scope: ToolScope) =>
   ({
     global: row.scope === "Global",
-    mission: row.scope === "Thread" && row.isTopThread === 1,
+    mission: row.scope === "Thread" && row.isTopThread,
     thread: row.scope === "Thread",
     workspace: row.scope === "Workspace",
   })[scope];

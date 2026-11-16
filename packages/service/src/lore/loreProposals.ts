@@ -2,7 +2,7 @@ import type { LoreProposal, LoreProposalId, ProposedLoreEntry } from "@outlore/c
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { dayMillis, invalid } from "../core/index.ts";
-import { type LoreEntryRow, scopeLabelOf, selectLoreEntries } from "./lore.ts";
+import { type LoreEntryRow, type LoreEntrySqlRow, loreEntryRowOf, scopeLabelOf, selectLoreEntries } from "./lore.ts";
 import { isSameOf } from "./loreDuplicates.ts";
 import { type Fading, halfLifeDaysOf, readFading, stateOfLoreEntry } from "./loreFading.ts";
 import { owner } from "./loreHistory.ts";
@@ -126,10 +126,10 @@ const readEvidence = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const fading = yield* readFading;
   // Archived lore is out of search, so it is out of proposals too.
-  const rows = (yield* sql<LoreEntryRow>`${selectLoreEntries(sql)}
-    WHERE i.scope IN ('Workspace', 'Global') ORDER BY i.saved_at, i.rowid`).filter(
-    (row) => stateOfLoreEntry(row, fading) !== "Archived",
-  );
+  const rows = (yield* sql<LoreEntrySqlRow>`${selectLoreEntries(sql)}
+    WHERE i.scope IN ('Workspace', 'Global') ORDER BY i.saved_at, i.rowid`)
+    .map(loreEntryRowOf)
+    .filter((row) => stateOfLoreEntry(row, fading) !== "Archived");
   const all = [...widenings(rows), ...(yield* narrowings(rows, fading))];
   if (all.length === 0) return [];
   const decided = yield* sql<{ id: string }>`SELECT id FROM intel_proposal_decisions

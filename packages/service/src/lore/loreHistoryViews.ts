@@ -32,7 +32,7 @@ const scopeLabelOfState = Effect.fnUntraced(function* (state: Pick<Snapshot, "sc
       FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${state.threadId}`;
   const [workspace] = yield* sql<{ name: string }>`SELECT name FROM workspaces WHERE id = ${state.workspaceId}`;
   return scopeLabelOf({
-    isTopThread: thread?.isTopThread ?? 0,
+    isTopThread: (thread?.isTopThread ?? 0) === 1,
     missionTitle: thread?.missionTitle ?? null,
     scope: state.scope,
     threadTitle: thread?.threadTitle ?? null,

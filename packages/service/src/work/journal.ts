@@ -174,12 +174,12 @@ export const missionOf = Effect.fnUntraced(function* (threadId: string) {
   return row.missionId;
 });
 
-const senderLabelOf = (row: { sender: string; fromTitle: string | null; isResult: number }) =>
+const senderLabelOf = (row: { sender: string; fromTitle: string | null; isResult: boolean }) =>
   row.sender === "user"
     ? "Owner"
     : row.sender === "agent"
       ? "Opener"
-      : `${row.isResult === 1 ? "Result from" : "Message from"} thread "${row.fromTitle ?? ""}"`;
+      : `${row.isResult ? "Result from" : "Message from"} thread "${row.fromTitle ?? ""}"`;
 
 /**
  * The opener's messages since the journal's latest entry, as a new thread starts with them (thread-tree,
@@ -201,7 +201,9 @@ export const openerMessagesOf = Effect.fnUntraced(function* (openerId: string) {
   // The new thread knows how much of its opener's conversation it misses (thread-tree, Opening a thread).
   const leftOut = (counted?.total ?? rows.length) - rows.length;
   const omitted = leftOut > 0 ? [`(${leftOut} earlier ${leftOut === 1 ? "message" : "messages"} left out.)`] : [];
-  const kept = rows.toReversed().map((row) => `${senderLabelOf(row)}:\n${row.text}`);
+  const kept = rows
+    .toReversed()
+    .map((row) => `${senderLabelOf({ ...row, isResult: row.isResult === 1 })}:\n${row.text}`);
   return [...omitted, ...kept].join("\n\n");
 });
 
