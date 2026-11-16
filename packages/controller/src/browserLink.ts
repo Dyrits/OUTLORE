@@ -2,7 +2,7 @@ import { decodeBase64Url, encodeBase64Url, type SecureChannel } from "@outlore/c
 import { Effect } from "effect";
 import { pairWithCode, resumeHost } from "./hostLink.ts";
 import type { PairedHostStore } from "./hostStore.ts";
-import { LinkFailure, linkCodeOf, linkTexts } from "./linkFailure.ts";
+import { LinkFailure, linkCodeOf } from "./linkFailure.ts";
 import type { PairedHosts } from "./pairedHosts.ts";
 import { hostLinkCodes, type OpenTransport } from "./transport.ts";
 
@@ -38,29 +38,39 @@ export const openBrowserTransport =
     const waiting: string[] = [];
     let channel: SecureChannel | null = null;
     let isClosed = false;
-    void Promise.resolve().then(async () => {
-      if (isClosed) return;
-      handlers.onOpen();
-      try {
-        const opened = await Effect.runPromise(resumeHost(browserStore(hosts), hostId, { ...page, kind: "browser" }));
-        if (isClosed) return opened.channel.close();
-        channel = opened.channel;
-        opened.listen((text) => handlers.onText(text));
-        opened.channel.onClose(() => {
-          if (!isClosed) handlers.onClose(hostLinkCodes.ended, "The host disconnected.");
-        });
-        for (const text of waiting.splice(0)) opened.channel.sendText(text);
-      } catch (reason) {
+    // The link is opened by a fiber of its own, so closing the transport cancels an opening in progress, which closes
+    // whatever it had opened. The first yield lets the caller finish setting the transport up before it hears of it.
+    const opening = Effect.runFork(
+      Effect.gen(function* () {
+        yield* Effect.yieldNow;
         if (isClosed) return;
-        const code = reason instanceof LinkFailure ? linkCodeOf[reason.kind] : hostLinkCodes.couldNotOpen;
-        const message = reason instanceof Error ? reason.message : linkTexts.unreachable;
-        handlers.onClose(code, message.slice(0, 200));
-      }
-    });
+        handlers.onOpen();
+        return yield* resumeHost(browserStore(hosts), hostId, { ...page, kind: "browser" });
+      }).pipe(
+        Effect.match({
+          onFailure: (reason) => {
+            if (isClosed) return;
+            const code = reason instanceof LinkFailure ? linkCodeOf[reason.kind] : hostLinkCodes.couldNotOpen;
+            handlers.onClose(code, reason.message.slice(0, 200));
+          },
+          onSuccess: (opened) => {
+            if (opened === undefined) return;
+            if (isClosed) return opened.channel.close();
+            channel = opened.channel;
+            opened.listen((text) => handlers.onText(text));
+            opened.channel.onClose(() => {
+              if (!isClosed) handlers.onClose(hostLinkCodes.ended, "The host disconnected.");
+            });
+            for (const text of waiting.splice(0)) opened.channel.sendText(text);
+          },
+        }),
+      ),
+    );
     return {
       close: () => {
         isClosed = true;
         channel?.close();
+        opening.interruptUnsafe();
       },
       get isOpen() {
         return !isClosed;

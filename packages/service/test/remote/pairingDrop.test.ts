@@ -66,7 +66,7 @@ describe("pairing interrupted after a code is redeemed", () => {
           onMessage: (listener) => listeners.push(listener),
           send: (data) => queueMicrotask(() => server.deliver("client", data)),
         };
-        server.serve(connection, record, "client");
+        yield* Effect.forkChild(server.serve(connection, record, "client"), { startImmediately: true });
         const opened = yield* openInitiator(carrier, record.publicKey, roomPrologue(record.room));
         opened.sendText(
           encodeClientHello({

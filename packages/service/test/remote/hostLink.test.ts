@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { type PairedHostStore, resumeHost } from "@outlore/controller";
 import type { HostConnection } from "@outlore/relay";
-import { Effect } from "effect";
+import { Effect, Fiber } from "effect";
 import { SqlClient } from "effect/sql";
 import { readHostLink } from "../../src/remote/knownHosts.ts";
 
@@ -138,20 +138,26 @@ describe("holding a controller host link", () => {
         link.listen((text) => frames.push(text));
         expect(frames.some((text) => JSON.parse(text)._tag === "Changed")).toBe(true);
         link.channel.close();
-        const cancellation = new AbortController();
-        const canceled = Effect.runPromise(
+        // A fiber interrupted while the pairing store updates closes the channel it had opened.
+        let isTouching: () => void = () => {};
+        const touching = new Promise<void>((resolve) => {
+          isTouching = resolve;
+        });
+        const canceled = Effect.runFork(
           resumeHost(
             {
               ...store,
-              touch: async () => {
-                cancellation.abort();
+              touch: () => {
+                isTouching();
+                return new Promise<void>(() => {});
               },
             },
             host.id,
-            { allowLocalRelay: true, kind: "desktop", release: "development", signal: cancellation.signal },
+            { allowLocalRelay: true, kind: "desktop", release: "development" },
           ),
         );
-        yield* Effect.promise(() => expect(canceled).rejects.toThrow());
+        yield* Effect.promise(() => touching);
+        yield* Fiber.interrupt(canceled);
         const failed = Effect.runPromise(
           resumeHost(
             {

@@ -11,9 +11,8 @@ import {
   roomPrologue,
   type SecureChannel,
 } from "@outlore/channel";
-import type { KnownHost } from "@outlore/contracts";
 import { closeCodes, connectClient } from "@outlore/relay/browser";
-import { Effect } from "effect";
+import { Clock, Deferred, Effect } from "effect";
 import type { HostLinkRecord, PairedHostStore } from "./hostStore.ts";
 import { type ControllerKind, controllerWords, LinkFailure, linkTexts, releaseProblemOf } from "./linkFailure.ts";
 
@@ -28,8 +27,6 @@ export interface LinkSettings {
   readonly kind: ControllerKind;
   /** The release this controller runs; the host must run the same one (0019, Versions). */
   readonly release: string;
-  /** Cancellation by the owning service fiber closes any channel it opened. */
-  readonly signal?: AbortSignal;
 }
 
 /** An open link to a host, its answer read; what the host sends next waits until `listen` is called. */
@@ -55,14 +52,8 @@ const tapChannel = (channel: SecureChannel) => {
   let isFirstRead = false;
   let forward: ((text: string) => void) | null = null;
   const later: string[] = [];
-  let settleFirst: (first: FirstText) => void = () => {};
-  const first = new Promise<FirstText>((resolve) => {
-    const timer = setTimeout(() => resolve("timedOut"), linkMillis);
-    settleFirst = (outcome) => {
-      clearTimeout(timer);
-      resolve(outcome);
-    };
-  });
+  const first = Deferred.makeUnsafe<FirstText>();
+  const settleFirst = (outcome: FirstText) => Deferred.doneUnsafe(first, Effect.succeed(outcome));
   channel.onText((text) => {
     if (!isFirstRead) {
       isFirstRead = true;
@@ -72,7 +63,9 @@ const tapChannel = (channel: SecureChannel) => {
   });
   channel.onClose(() => settleFirst("closed"));
   return {
-    first,
+    first: Deferred.await(first).pipe(
+      Effect.timeoutOrElse({ duration: linkMillis, orElse: () => Effect.succeed("timedOut" as const) }),
+    ),
     listen: (listener: (text: string) => void) => {
       forward = listener;
       for (const text of later.splice(0)) listener(text);
@@ -90,60 +83,52 @@ const relayRefusalOf = (code: number | null) =>
       ? linkTexts.roomFull
       : linkTexts.timedOut;
 
-/** Opens the secure channel to a host, saying who this controller is with `hello`, and reads its answer. */
-const openToHost = async (
+/**
+ * Opens the secure channel to a host, saying who this controller is with `hello`, and reads its answer. The relay
+ * connection and the channel close when the fiber is interrupted or anything below fails; once the answer is read, the
+ * caller owns the channel.
+ */
+const openToHost = Effect.fnUntraced(function* (
   link: Omit<HostLinkRecord, "deviceId" | "deviceToken" | "hostName">,
   hello: Hello,
-  signal?: AbortSignal,
-) => {
-  signal?.throwIfAborted();
-  const connected = await connectClient({ relayOrigin: link.relayOrigin, room: link.room }).catch(() => null);
-  if (connected === null || !connected.ok) throw new LinkFailure("couldNotOpen", linkTexts.unreachable);
-  const connection = connected.value;
-  const abort = () => connection.carrier.close();
-  signal?.addEventListener("abort", abort, { once: true });
-  connection.carrier.onClose(() => signal?.removeEventListener("abort", abort));
-  if (signal?.aborted) {
-    abort();
-    signal.throwIfAborted();
-  }
-  const opened = await Effect.runPromise(
-    openInitiator(connection.carrier, link.hostPublicKey, roomPrologue(link.room), {
-      handshakeTimeoutMs: linkMillis,
-    }).pipe(
-      Effect.match({
-        onFailure: () => ({ ok: false as const }),
-        onSuccess: (value) => ({ ok: true as const, value }),
-      }),
-    ),
+) {
+  const connection = yield* connectClient({ relayOrigin: link.relayOrigin, room: link.room }).pipe(
+    Effect.mapError(() => new LinkFailure("couldNotOpen", linkTexts.unreachable)),
   );
-  if (!opened.ok) {
-    connection.carrier.close();
-    throw new LinkFailure("couldNotOpen", relayRefusalOf(connection.closeCode()));
-  }
-  const channel = opened.value;
-  const tap = tapChannel(channel);
-  channel.sendText(encodeClientHello(hello));
-  const first = await tap.first;
-  const reply = typeof first === "string" ? null : parseHostReply(first.text);
-  if (reply === null || !reply.ok) {
-    channel.close();
-    const isUnread = first === "closed" && hello.t === "pair";
-    throw new LinkFailure("couldNotOpen", isUnread ? linkTexts.unreadablePairing : linkTexts.timedOut);
-  }
-  return { channel, listen: tap.listen, reply: reply.value satisfies HostReply };
-};
+  const channel = yield* openInitiator(connection.carrier, link.hostPublicKey, roomPrologue(link.room), {
+    handshakeTimeoutMs: linkMillis,
+  }).pipe(
+    Effect.mapError(() => new LinkFailure("couldNotOpen", relayRefusalOf(connection.closeCode()))),
+    Effect.onError(() => Effect.sync(() => connection.carrier.close())),
+  );
+  return yield* Effect.gen(function* () {
+    const tap = tapChannel(channel);
+    channel.sendText(encodeClientHello(hello));
+    const first = yield* tap.first;
+    const reply = typeof first === "string" ? null : parseHostReply(first.text);
+    if (reply === null || !reply.ok) {
+      const isUnread = first === "closed" && hello.t === "pair";
+      return yield* new LinkFailure("couldNotOpen", isUnread ? linkTexts.unreadablePairing : linkTexts.timedOut);
+    }
+    return { channel, listen: tap.listen, reply: reply.value satisfies HostReply };
+  }).pipe(Effect.onError(() => Effect.sync(() => channel.close())));
+});
+
+const linkFailureOf = (reason: unknown): LinkFailure =>
+  reason instanceof LinkFailure
+    ? reason
+    : new LinkFailure("couldNotOpen", reason instanceof Error ? reason.message : linkTexts.unreachable);
 
 /** Pairs with the host that made `code`; keeps the host and returns it for the host menu. */
-const pairWithCodeRaw = async (
+export const pairWithCode = Effect.fnUntraced(function* (
   code: string,
   deviceName: string,
   store: PairedHostStore,
   settings: LinkSettings,
-): Promise<KnownHost> => {
+) {
   const decoded = decodePairingCode(code);
   if (!decoded.ok) {
-    throw new LinkFailure(
+    return yield* new LinkFailure(
       "invalid",
       decoded.kind === "unsupported-version" ? linkTexts.newerCode : refusalText["code-invalid"],
     );
@@ -151,113 +136,70 @@ const pairWithCodeRaw = async (
   const pairing = decoded.value;
   // A pasted code must not point this controller at a relay on this computer, unless it runs from here itself.
   if (isLocalOrigin(pairing.relayOrigin) && !settings.allowLocalRelay) {
-    throw new LinkFailure("invalid", linkTexts.localRelay);
+    return yield* new LinkFailure("invalid", linkTexts.localRelay);
   }
   const name = deviceName.trim();
   if (name === "" || name.length > maxDeviceNameLength) {
-    throw new LinkFailure(
+    return yield* new LinkFailure(
       "invalid",
       `Name this ${controllerWords[settings.kind].self} in 1 to ${maxDeviceNameLength} characters.`,
     );
   }
-  const { channel, reply } = await openToHost(
-    pairing,
-    {
-      deviceKind: settings.kind,
-      deviceName: name,
-      secret: encodeBase64Url(pairing.secret),
-      t: "pair",
-    },
-    settings.signal,
-  );
+  const { channel, reply } = yield* openToHost(pairing, {
+    deviceKind: settings.kind,
+    deviceName: name,
+    secret: encodeBase64Url(pairing.secret),
+    t: "pair",
+  });
   // The host is told everything it needs; the channel closes once the answer is read.
   channel.close();
-  if (reply.t === "refused") throw new LinkFailure("invalid", refusalText[reply.reason]);
-  if (reply.t !== "paired") throw new LinkFailure("couldNotOpen", linkTexts.timedOut);
+  if (reply.t === "refused") return yield* new LinkFailure("invalid", refusalText[reply.reason]);
+  if (reply.t !== "paired") return yield* new LinkFailure("couldNotOpen", linkTexts.timedOut);
   // The host has already counted this device; the owner can disconnect it there. Nothing is kept for a host this
   // controller cannot use.
   const mismatch = releaseProblemOf(reply.release, settings.release, settings.kind);
-  if (mismatch !== null) throw new LinkFailure("otherRelease", mismatch);
-  settings.signal?.throwIfAborted();
-  return store.save(
-    {
-      deviceId: reply.deviceId,
-      deviceToken: reply.token,
-      hostName: reply.hostName,
-      hostPublicKey: pairing.hostPublicKey,
-      relayOrigin: pairing.relayOrigin,
-      room: pairing.room,
-    },
-    Date.now(),
-  );
-};
-
-/** Opens a link to a kept host: the secure channel, resumed, or the reason it could not be. */
-const resumeHostRaw = async (store: PairedHostStore, hostId: string, settings: LinkSettings): Promise<HostLink> => {
-  const stored = await store.link(hostId);
-  if (stored === null) {
-    throw new LinkFailure("noSuchHost", `This ${controllerWords[settings.kind].self} has no such host.`);
-  }
-  const { channel, listen, reply } = await openToHost(
-    stored,
-    {
-      deviceId: stored.deviceId,
-      t: "resume",
-      token: stored.deviceToken,
-    },
-    settings.signal,
-  );
-  if (reply.t !== "resumed") {
-    channel.close();
-    if (reply.t === "refused") throw new LinkFailure("refused", refusalText[reply.reason]);
-    throw new LinkFailure("couldNotOpen", linkTexts.timedOut);
-  }
-  const mismatch = releaseProblemOf(reply.release, settings.release, settings.kind);
-  if (mismatch !== null) {
-    channel.close();
-    throw new LinkFailure("otherRelease", mismatch);
-  }
-  // Noting the answer may take a while (the service writes it to its database); `listen` keeps what arrives meanwhile.
-  try {
-    await store.touch(hostId, reply.hostName, Date.now());
-    settings.signal?.throwIfAborted();
-  } catch (cause) {
-    channel.close();
-    throw cause;
-  }
-  return { channel, hostName: reply.hostName, listen };
-};
-
-const linkFailureOf = (reason: unknown): LinkFailure =>
-  reason instanceof LinkFailure
-    ? reason
-    : new LinkFailure("couldNotOpen", reason instanceof Error ? reason.message : linkTexts.unreachable);
-
-/** Pair with a host, reporting expected refusals in the Effect error channel. */
-export const pairWithCode = Effect.fnUntraced(function* (
-  code: string,
-  deviceName: string,
-  store: PairedHostStore,
-  settings: LinkSettings,
-) {
+  if (mismatch !== null) return yield* new LinkFailure("otherRelease", mismatch);
+  const now = yield* Clock.currentTimeMillis;
   return yield* Effect.tryPromise({
     catch: linkFailureOf,
-    try: (signal) =>
-      pairWithCodeRaw(code, deviceName, store, {
-        ...settings,
-        signal: settings.signal === undefined ? signal : AbortSignal.any([settings.signal, signal]),
-      }),
+    try: () =>
+      store.save(
+        {
+          deviceId: reply.deviceId,
+          deviceToken: reply.token,
+          hostName: reply.hostName,
+          hostPublicKey: pairing.hostPublicKey,
+          relayOrigin: pairing.relayOrigin,
+          room: pairing.room,
+        },
+        now,
+      ),
   });
 });
 
-/** Resume a kept host, reporting expected refusals in the Effect error channel. */
+/** Opens a link to a kept host: the secure channel, resumed, or the reason it could not be. */
 export const resumeHost = Effect.fnUntraced(function* (store: PairedHostStore, hostId: string, settings: LinkSettings) {
-  return yield* Effect.tryPromise({
-    catch: linkFailureOf,
-    try: (signal) =>
-      resumeHostRaw(store, hostId, {
-        ...settings,
-        signal: settings.signal === undefined ? signal : AbortSignal.any([settings.signal, signal]),
-      }),
+  const stored = yield* Effect.tryPromise({ catch: linkFailureOf, try: () => store.link(hostId) });
+  if (stored === null) {
+    return yield* new LinkFailure("noSuchHost", `This ${controllerWords[settings.kind].self} has no such host.`);
+  }
+  const { channel, listen, reply } = yield* openToHost(stored, {
+    deviceId: stored.deviceId,
+    t: "resume",
+    token: stored.deviceToken,
   });
+  // From here the channel closes unless the link is handed over: on a refusal, another release, a failed store, or
+  // an interruption (the owning fiber was canceled).
+  return yield* Effect.gen(function* () {
+    if (reply.t !== "resumed") {
+      if (reply.t === "refused") return yield* new LinkFailure("refused", refusalText[reply.reason]);
+      return yield* new LinkFailure("couldNotOpen", linkTexts.timedOut);
+    }
+    const mismatch = releaseProblemOf(reply.release, settings.release, settings.kind);
+    if (mismatch !== null) return yield* new LinkFailure("otherRelease", mismatch);
+    // Noting the answer may take a while (the service writes it to its database); `listen` keeps what arrives meanwhile.
+    const now = yield* Clock.currentTimeMillis;
+    yield* Effect.tryPromise({ catch: linkFailureOf, try: () => store.touch(hostId, reply.hostName, now) });
+    return { channel, hostName: reply.hostName, listen } satisfies HostLink;
+  }).pipe(Effect.onError(() => Effect.sync(() => channel.close())));
 });

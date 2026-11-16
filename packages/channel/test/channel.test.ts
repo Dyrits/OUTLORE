@@ -1,6 +1,8 @@
+import { it } from "@effect/vitest";
 import { bytesToHex } from "@noble/hashes/utils.js";
-import { Effect } from "effect";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { Effect, Fiber } from "effect";
+import { TestClock } from "effect/testing";
+import { describe, expect } from "vitest";
 import { defaultHandshakeTimeoutMs } from "../src/channel.ts";
 import {
   type Carrier,
@@ -90,10 +92,6 @@ const connectRaw = async () => {
 };
 
 const pattern = (length: number) => new Uint8Array(length).map((_, index) => (index * 31 + (index >> 8)) & 0xff);
-
-afterEach(() => {
-  vi.useRealTimers();
-});
 
 describe("opening a secure channel", () => {
   it("reports a malformed host key through the typed Effect failure channel", async () => {
@@ -201,31 +199,48 @@ describe("opening a secure channel", () => {
     expect(responder2.ok).toBe(true);
   });
 
-  it("gives up with handshake-timeout when the carrier stays silent, and closes it", async () => {
-    const carrier = silentCarrier();
-    const result = await openInitiator(carrier, generateKeyPair().publicKey, prologue, { handshakeTimeoutMs: 20 });
-    expect(result).toEqual({ kind: "handshake-timeout", ok: false });
-    expect(carrier.isClosed()).toBe(true);
+  it.effect("gives up with handshake-timeout when the carrier stays silent, and closes it", () =>
+    Effect.gen(function* () {
+      const carrier = silentCarrier();
+      const initiator = yield* Effect.forkChild(
+        Effect.flip(initiate(carrier, generateKeyPair().publicKey, prologue, { handshakeTimeoutMs: 20 })),
+      );
+      const waiting = silentCarrier();
+      const responder = yield* Effect.forkChild(
+        Effect.flip(respond(waiting, generateKeyPair(), prologue, { handshakeTimeoutMs: 20 })),
+      );
+      yield* TestClock.adjust(20);
+      expect((yield* Fiber.join(initiator)).kind).toBe("handshake-timeout");
+      expect(carrier.isClosed()).toBe(true);
+      expect((yield* Fiber.join(responder)).kind).toBe("handshake-timeout");
+      expect(waiting.isClosed()).toBe(true);
+    }),
+  );
 
-    const waiting = silentCarrier();
-    const responder = await openResponder(waiting, generateKeyPair(), prologue, { handshakeTimeoutMs: 20 });
-    expect(responder).toEqual({ kind: "handshake-timeout", ok: false });
-    expect(waiting.isClosed()).toBe(true);
-  });
+  it.effect("waits 15 seconds by default", () =>
+    Effect.gen(function* () {
+      expect(defaultHandshakeTimeoutMs).toBe(15_000);
+      const carrier = silentCarrier();
+      const pending = yield* Effect.forkChild(Effect.flip(initiate(carrier, generateKeyPair().publicKey, prologue)));
+      yield* TestClock.adjust(14_999);
+      expect(pending.pollUnsafe()).toBeUndefined();
+      expect(carrier.isClosed()).toBe(false);
+      yield* TestClock.adjust(1);
+      expect((yield* Fiber.join(pending)).kind).toBe("handshake-timeout");
+      expect(carrier.isClosed()).toBe(true);
+    }),
+  );
 
-  it("waits 15 seconds by default", async () => {
-    vi.useFakeTimers();
-    expect(defaultHandshakeTimeoutMs).toBe(15_000);
-    let result: Awaited<ReturnType<typeof openInitiator>> | null = null;
-    const pending = openInitiator(silentCarrier(), generateKeyPair().publicKey, prologue).then((value) => {
-      result = value;
-    });
-    await vi.advanceTimersByTimeAsync(14_999);
-    expect(result).toBeNull();
-    await vi.advanceTimersByTimeAsync(1);
-    await pending;
-    expect(result).toEqual({ kind: "handshake-timeout", ok: false });
-  });
+  it.effect("closes the carrier when the fiber running the handshake is interrupted", () =>
+    Effect.gen(function* () {
+      const carrier = silentCarrier();
+      const pending = yield* Effect.forkChild(initiate(carrier, generateKeyPair().publicKey, prologue));
+      yield* Effect.yieldNow;
+      expect(carrier.isClosed()).toBe(false);
+      yield* Fiber.interrupt(pending);
+      expect(carrier.isClosed()).toBe(true);
+    }),
+  );
 
   it("reports carrier-closed when the carrier closes during the handshake", async () => {
     const [first, second] = fakeCarrierPair();

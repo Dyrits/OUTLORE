@@ -1,5 +1,7 @@
+import { it } from "@effect/vitest";
 import { Effect } from "effect";
-import { afterEach, describe, expect, it } from "vitest";
+import { TestClock } from "effect/testing";
+import { afterEach, beforeEach, describe, expect, vi } from "vitest";
 import { WebSocketServer } from "ws";
 import { connectClient as clientEffect, connectHost as hostEffect } from "../src/client.ts";
 import { closingFrame } from "../src/roomCore.ts";
@@ -42,8 +44,30 @@ afterEach(async () => {
   if (closing !== null) await new Promise<void>((resolve) => closing.close(() => resolve()));
 });
 
-const within = <A>(millis: number, work: Promise<A>) =>
-  Promise.race([work, new Promise<"too slow">((resolve) => setTimeout(() => resolve("too slow"), millis))]);
+// The sockets the code under test opened, so a test can listen to one after the code's own listeners: its listener then
+// runs once the code has handled that event, with no waiting by the clock.
+const opened: WebSocket[] = [];
+beforeEach(() => {
+  const Standard = WebSocket;
+  vi.stubGlobal(
+    "WebSocket",
+    class extends Standard {
+      constructor(url: string | URL, protocols?: string | string[]) {
+        super(url, protocols);
+        opened.push(this);
+      }
+    },
+  );
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+  opened.length = 0;
+});
+const closedLocally = (socket: WebSocket | undefined) =>
+  new Promise<void>((resolve) => {
+    if (socket === undefined) throw new Error("no socket was opened");
+    socket.addEventListener("close", () => resolve(), { once: true });
+  });
 
 describe("a client of the relay", () => {
   it("learns why the relay closed it from the frame, while the connection is still open", async () => {
@@ -51,7 +75,7 @@ describe("a client of the relay", () => {
     const connected = await connectClient({ relayOrigin, room });
     if (!connected.ok) throw new Error("not connected");
     const ended = new Promise<void>((resolve) => connected.value.carrier.onClose(resolve));
-    expect(await within(1500, ended)).toBeUndefined();
+    await ended;
     expect(connected.value.closeCode()).toBe(1013);
   });
 
@@ -59,8 +83,7 @@ describe("a client of the relay", () => {
     const relayOrigin = await serve((socket) => socket.send(closingFrame(1001, "host left")));
     const connected = await connectClient({ relayOrigin, room });
     if (!connected.ok) throw new Error("not connected");
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    expect(connected.value.closeCode()).toBe(1001);
+    await vi.waitFor(() => expect(connected.value.closeCode()).toBe(1001));
     let told = 0;
     connected.value.carrier.onClose(() => {
       told += 1;
@@ -71,7 +94,7 @@ describe("a client of the relay", () => {
   it("tells its listeners once when the frame and the close both arrive", async () => {
     const relayOrigin = await serve((socket) => {
       socket.send(closingFrame(1001, "host left"));
-      setTimeout(() => socket.close(1001, "host left"), 200);
+      socket.close(1001, "host left");
     });
     const connected = await connectClient({ relayOrigin, room });
     if (!connected.ok) throw new Error("not connected");
@@ -79,7 +102,7 @@ describe("a client of the relay", () => {
     connected.value.carrier.onClose(() => {
       told += 1;
     });
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    await closedLocally(opened[0]);
     expect(told).toBe(1);
     expect(connected.value.closeCode()).toBe(1001);
   });
@@ -89,6 +112,8 @@ describe("a client of the relay", () => {
       socket.send("pong");
       socket.send("hello");
       socket.send('{"closing":7}');
+      // Frames arrive in order: once this one is read, the three before it were handled.
+      socket.send(new Uint8Array([1]));
     });
     const connected = await connectClient({ relayOrigin, room });
     if (!connected.ok) throw new Error("not connected");
@@ -96,7 +121,7 @@ describe("a client of the relay", () => {
     connected.value.carrier.onClose(() => {
       told += 1;
     });
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await new Promise<void>((resolve) => connected.value.carrier.onMessage(() => resolve()));
     expect(told).toBe(0);
     expect(connected.value.closeCode()).toBeNull();
   });
@@ -110,19 +135,61 @@ describe("a host of the relay", () => {
     const ended = new Promise<{ code: number; reason: string }>((resolve) =>
       connected.value.onClose((code, reason) => resolve({ code, reason })),
     );
-    expect(await within(1500, ended)).toEqual({ code: 1008, reason: "claim mismatch" });
+    expect(await ended).toEqual({ code: 1008, reason: "claim mismatch" });
   });
 
   it("tells its listener once when the frame and the close both arrive", async () => {
     const relayOrigin = await serve((socket) => {
       socket.send(closingFrame(1012, "replaced"));
-      setTimeout(() => socket.close(1012, "replaced"), 200);
+      socket.close(1012, "replaced");
     });
     const connected = await connectHost({ claim: new Uint8Array(32).fill(7), relayOrigin, room });
     if (!connected.ok) throw new Error("not connected");
     const seen: number[] = [];
     connected.value.onClose((code) => seen.push(code));
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    await closedLocally(opened[0]);
     expect(seen).toEqual([1012]);
   });
+});
+
+describe("keeping a connection alive", () => {
+  const claim = new Uint8Array(32).fill(7);
+  const pingsOf = (pings: string[], count: number) =>
+    Effect.promise(() => vi.waitFor(() => expect(pings).toHaveLength(count)));
+
+  it.effect("pings the relay every 25 seconds while the connection is open, as a host", () =>
+    Effect.gen(function* () {
+      const pings: string[] = [];
+      const relayOrigin = yield* Effect.promise(() =>
+        serve((socket) => socket.on("message", (data) => pings.push(data.toString()))),
+      );
+      yield* hostEffect({ claim, relayOrigin, room });
+      yield* TestClock.adjust(24_999);
+      yield* Effect.promise(() => new Promise((resolve) => setImmediate(resolve)));
+      expect(pings).toEqual([]);
+      yield* TestClock.adjust(1);
+      yield* pingsOf(pings, 1);
+      yield* TestClock.adjust(25_000);
+      yield* pingsOf(pings, 2);
+      expect(pings).toEqual(["ping", "ping"]);
+    }),
+  );
+
+  it.effect("pings as a client too, and stops once the connection closed", () =>
+    Effect.gen(function* () {
+      const pings: string[] = [];
+      const relayOrigin = yield* Effect.promise(() =>
+        serve((socket) => socket.on("message", (data) => pings.push(data.toString()))),
+      );
+      const connection = yield* clientEffect({ relayOrigin, room });
+      yield* TestClock.adjust(25_000);
+      yield* pingsOf(pings, 1);
+      const closed = closedLocally(opened[0]);
+      connection.carrier.close();
+      yield* Effect.promise(() => closed);
+      yield* TestClock.adjust(100_000);
+      yield* Effect.promise(() => new Promise((resolve) => setImmediate(resolve)));
+      expect(pings).toEqual(["ping"]);
+    }),
+  );
 });

@@ -1,7 +1,6 @@
 export {
   type ClientConnection,
   ConnectFailure,
-  type ConnectResult,
   connectClient,
   connectHost,
   type HostConnection,

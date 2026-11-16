@@ -30,6 +30,7 @@ export const remoteHostLayer = Layer.effectDiscard(
     const config = yield* RemoteConfig;
     const context = yield* Effect.context<never>();
     const runPlain = Effect.runPromiseWith(context);
+    const runFork = Effect.runForkWith(context);
     const withParts = <Value, Error>(effect: Effect.Effect<Value, Error, SqlClient.SqlClient | RemoteConfig>) =>
       effect.pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.provideService(RemoteConfig, config));
     const run: RunWork = (effect) => runPlain(withParts(effect));
@@ -68,7 +69,7 @@ export const remoteHostLayer = Layer.effectDiscard(
     /** Holds one connection to `relayOrigin` until it ends; the code it ended with. */
     const hold = (connection: HostConnection, record: HostRecord) =>
       new Promise<number>((resolve) => {
-        connection.onClientJoined((clientId) => devices.serve(connection, record, clientId));
+        connection.onClientJoined((clientId) => void runFork(devices.serve(connection, record, clientId)));
         connection.onClientData(devices.deliver);
         connection.onClientLeft(devices.left);
         connection.onClose((code) => {

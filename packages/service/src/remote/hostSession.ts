@@ -11,7 +11,7 @@ import {
 } from "@outlore/channel";
 import type { ServerFrame } from "@outlore/contracts";
 import type { HostConnection } from "@outlore/relay";
-import { Effect } from "effect";
+import { Cause, Effect } from "effect";
 import type { SqlClient } from "effect/sql";
 import type { RemoteConfig } from "./config.ts";
 import { encodeServerFrame } from "./frames.ts";
@@ -63,8 +63,11 @@ export interface DeviceServer {
   readonly endAll: () => void;
   /** A client left the room. */
   readonly left: (clientId: string) => void;
-  /** A client joined the room: runs its handshake and its hello. */
-  readonly serve: (connection: HostConnection, record: HostRecord, clientId: string) => void;
+  /**
+   * A client joined the room: registers its link now and returns what runs its handshake and its hello, which the
+   * caller forks; it never fails, and ends when the device is known, refused or gone.
+   */
+  readonly serve: (connection: HostConnection, record: HostRecord, clientId: string) => Effect.Effect<void>;
 }
 
 /**
@@ -165,49 +168,53 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
     };
   };
 
+  /** Once the handshake is done: hands each text to the authentication, then to the session it opens. */
+  const identify = (channel: SecureChannel) =>
+    Effect.callback<void>((resume) => {
+      let handle: ((message: string) => void) | null = null;
+      let isAuthenticating = false;
+      channel.onText((message) => {
+        if (handle !== null) {
+          handle(message);
+          return;
+        }
+        if (isAuthenticating) {
+          channel.close();
+          return;
+        }
+        isAuthenticating = true;
+        authenticate(channel, message)
+          .then((session) => {
+            handle = session;
+            resume(Effect.void);
+          })
+          .catch((reason) => {
+            reportFailure(reason);
+            channel.close();
+            resume(Effect.void);
+          });
+      });
+      channel.onClose(() => resume(Effect.void));
+    });
+
   const serve = (connection: HostConnection, record: HostRecord, clientId: string) => {
     const link = carrierOf(connection, clientId);
     links.set(clientId, link);
-    const hello = setTimeout(() => link.carrier.close(), helloMillis);
-    void Effect.runPromise(
-      openResponder(
+    // The device has until the deadline to finish the handshake and say who it is, or its connection is closed.
+    return Effect.gen(function* () {
+      const channel = yield* openResponder(
         link.carrier,
         { publicKey: record.publicKey, secretKey: record.secretKey },
         roomPrologue(record.room),
         { handshakeTimeoutMs: helloMillis },
-      ).pipe(Effect.match({ onFailure: () => null, onSuccess: (value) => value })),
-    )
-      .then((opened) => {
-        if (opened === null) {
-          clearTimeout(hello);
-          return;
-        }
-        const channel = opened;
-        let handle: ((message: string) => void) | null = null;
-        let isAuthenticating = false;
-        channel.onText((message) => {
-          if (handle !== null) {
-            handle(message);
-            return;
-          }
-          if (isAuthenticating) {
-            channel.close();
-            return;
-          }
-          isAuthenticating = true;
-          void authenticate(channel, message)
-            .then((session) => {
-              clearTimeout(hello);
-              handle = session;
-            })
-            .catch((reason) => {
-              reportFailure(reason);
-              channel.close();
-            });
-        });
-        channel.onClose(() => clearTimeout(hello));
-      })
-      .catch(reportFailure);
+      );
+      yield* identify(channel);
+    }).pipe(
+      Effect.timeoutOrElse({ duration: helloMillis, orElse: () => Effect.sync(() => link.carrier.close()) }),
+      // A failed handshake already closed the carrier; the device was never a session.
+      Effect.catchTag("ChannelFailure", () => Effect.void),
+      Effect.catchCause((cause) => Effect.sync(() => reportFailure(Cause.squash(cause)))),
+    );
   };
 
   return {

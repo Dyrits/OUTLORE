@@ -7,7 +7,6 @@ import {
   type NoiseHandshake,
   type NoiseKeyPair,
 } from "./noise/index.ts";
-import { fail, type Result, succeed } from "./result.ts";
 import { type SecureChannel, Session } from "./secureChannel.ts";
 
 /** An X25519 key pair, 32 bytes each: the host's long-term identity. */
@@ -18,8 +17,6 @@ export type ChannelErrorKind = "handshake-failed" | "handshake-timeout" | "carri
 export class ChannelFailure extends Schema.TaggedError<ChannelFailure>()("ChannelFailure", {
   kind: Schema.Literals(["handshake-failed", "handshake-timeout", "carrier-closed"]),
 }) {}
-
-type SecureChannelResult = Result<SecureChannel, ChannelErrorKind>;
 
 export type ChannelOptions = {
   /** How long the handshake may take before it gives up; defaults to 15 seconds. */
@@ -65,47 +62,24 @@ export const openResponder = Effect.fnUntraced(function* (
   return yield* handshakeResult(carrier, handshake, false, options);
 });
 
-const handshakeResult = Effect.fnUntraced(function* (
-  carrier: Carrier,
-  handshake: NoiseHandshake,
-  isInitiator: boolean,
-  options: ChannelOptions,
-) {
-  const result = yield* Effect.promise(() => runHandshake(carrier, handshake, isInitiator, options));
-  if (!result.ok) return yield* new ChannelFailure({ kind: result.kind });
-  return result.value;
-});
-
 /**
  * Drives the two NK handshake messages over the carrier and then keeps feeding the same carrier to the session, so a
- * record that arrives right behind the last handshake message is not lost.
+ * record that arrives right behind the last handshake message is not lost. A handshake that is still unfinished when
+ * its time is up, or when the fiber running it is interrupted, closes the carrier.
  */
-function runHandshake(
-  carrier: Carrier,
-  handshake: NoiseHandshake,
-  isInitiator: boolean,
-  options: ChannelOptions,
-): Promise<SecureChannelResult> {
-  return new Promise((resolve) => {
+const handshakeResult = (carrier: Carrier, handshake: NoiseHandshake, isInitiator: boolean, options: ChannelOptions) =>
+  Effect.callback<SecureChannel, ChannelFailure>((resume) => {
     let session: Session | null = null;
     let isSettled = false;
-    const settle = (result: SecureChannelResult) => {
+    const settle = (effect: Effect.Effect<SecureChannel, ChannelFailure>) => {
       if (isSettled) return;
       isSettled = true;
-      clearTimeout(timer);
-      resolve(result);
+      resume(effect);
     };
-    const abandon = (kind: "handshake-failed" | "handshake-timeout") => {
-      settle(fail(kind));
-      carrier.close();
-    };
-    const timer = setTimeout(
-      () => abandon("handshake-timeout"),
-      options.handshakeTimeoutMs ?? defaultHandshakeTimeoutMs,
-    );
+    const fail = (kind: ChannelErrorKind) => settle(Effect.fail(new ChannelFailure({ kind })));
 
     carrier.onClose(() => {
-      if (session === null) settle(fail("carrier-closed"));
+      if (session === null) fail("carrier-closed");
       else session.carrierClosed();
     });
     carrier.onMessage((data) => {
@@ -120,19 +94,28 @@ function runHandshake(
         if (!isInitiator) carrier.send(handshake.writeMessage(emptyPayload));
         session = new Session(carrier, handshake.split());
       } catch {
-        abandon("handshake-failed");
+        fail("handshake-failed");
+        carrier.close();
         return;
       }
-      settle(succeed(session));
+      settle(Effect.succeed(session));
     });
 
     if (isInitiator) {
       try {
         carrier.send(handshake.writeMessage(emptyPayload));
       } catch {
-        settle(fail("carrier-closed"));
+        fail("carrier-closed");
         carrier.close();
       }
     }
-  });
-}
+    return Effect.sync(() => {
+      isSettled = true;
+      if (session === null) carrier.close();
+    });
+  }).pipe(
+    Effect.timeoutOrElse({
+      duration: options.handshakeTimeoutMs ?? defaultHandshakeTimeoutMs,
+      orElse: () => Effect.fail(new ChannelFailure({ kind: "handshake-timeout" })),
+    }),
+  );
