@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { HarnessName, MissionDetail, MissionId, Request, RequestTag, ResultOf } from "@outlore/contracts";
+import type { HarnessName, MissionDetail, MissionId } from "@outlore/contracts";
 import { Effect, Layer } from "effect";
 import { afterEach } from "vitest";
 import {
@@ -13,9 +13,9 @@ import {
   makeCodexHarness,
   makeOpenCodeHarness,
   routeHarnesses,
-  Service,
   serviceLayer,
 } from "../../src/index.ts";
+import { call } from "../fixtures/service.ts";
 
 // Opt-in checks against the installed Codex and OpenCode (provider-accounts). Each uses a few tokens of the
 // owner's own sign-in: OUTLORE_LIVE_HARNESSES=1, and OUTLORE_LIVE_OPENCODE_MODEL for OpenCode's model.
@@ -51,12 +51,6 @@ const live = (directory = realpathSync(mkdtempSync(join(tmpdir(), "outlore-live-
     scratchRoot: join(directory, "missions"),
   });
 };
-
-const call = <R extends Request>(request: R) =>
-  Effect.gen(function* () {
-    const service = yield* Service;
-    return (yield* service.handle(request)) as ResultOf<R["_tag"] & RequestTag>;
-  });
 
 const settle = (missionId: MissionId, check: (detail: MissionDetail) => boolean) =>
   Effect.gen(function* () {
@@ -141,11 +135,12 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
         expect(existsSync(join(workspace, "notes.txt"))).toBe(true);
         const question = asking.questions.find((entry) => entry.outcome === null);
         expect(question?.details).toBe(`Edit ${outside}`);
+        if (question === undefined) throw new Error("No open question");
         yield* call({
           _tag: "AnswerQuestion",
           answer: "Deny",
           message: "Skip that file and reply with exactly: skipped",
-          questionId: question?.id ?? ("" as never),
+          questionId: question.id,
         });
         const detail = yield* settle(
           started.missionId,

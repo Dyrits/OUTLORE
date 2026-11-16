@@ -1,11 +1,12 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { MissionDetail, MissionId, Question, Request, RequestTag, ResultOf } from "@outlore/contracts";
+import type { MissionDetail, Question, Request, ResultOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import type { Containment } from "../../src/core/index.ts";
 import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
+import { call, read, settle } from "./service.ts";
 
 /** An approvals service on its own temporary database, removed after the test. */
 const directories: string[] = [];
@@ -29,28 +30,12 @@ export const live = () => serviceOn(databaseFile());
 /** A service whose harness runs with no enforced sandbox, as on a host where none can start. */
 export const unprotected = () => serviceOn(databaseFile(), "Unprotected");
 
-export const call = <R extends Request>(request: R) =>
-  Effect.gen(function* () {
-    const service = yield* Service;
-    return (yield* service.handle(request)) as ResultOf<R["_tag"] & RequestTag>;
-  });
+export { call, read, settle };
 
 export const failureOf = <R extends Request>(request: R) =>
   Effect.gen(function* () {
     const service = yield* Service;
     return yield* Effect.flip(service.handle(request));
-  });
-
-export const read = (missionId: MissionId) => call({ _tag: "ReadMission", missionId, threadId: null });
-
-export const settle = (missionId: MissionId, check: (detail: MissionDetail) => boolean) =>
-  Effect.gen(function* () {
-    for (let i = 0; i < 300; i++) {
-      const detail = yield* read(missionId);
-      if (check(detail)) return detail;
-      yield* Effect.sleep("10 millis");
-    }
-    return yield* Effect.die(new Error(`mission did not settle: ${JSON.stringify(yield* read(missionId))}`));
   });
 
 export const isAsking = (detail: MissionDetail) => detail.questions.some((question) => question.outcome === null);

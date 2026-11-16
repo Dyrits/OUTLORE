@@ -2,14 +2,16 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionDetail, MissionId, Request, RequestTag, ResultOf } from "@outlore/contracts";
+import type { MissionDetail, MissionId } from "@outlore/contracts";
 import { type Duration, Effect, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
-import { Changes, claudeHarnessLayer, makeClaudeHarness, Service, serviceLayer } from "../../src/index.ts";
+import { Changes, claudeHarnessLayer, makeClaudeHarness, serviceLayer } from "../../src/index.ts";
 import { markPrompted } from "../../src/work/activities.ts";
 import { unaskedToolNamesOf } from "../../src/work/threadTools.ts";
 import { createRepository, runGit } from "../fixtures/repositories.ts";
+import { call, read, settle } from "../fixtures/service.ts";
+import { idleWith } from "../fixtures/standIns.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: settings keys (`intelHalfLives`, `intelWarningPercent`).
@@ -63,27 +65,6 @@ const withClaude = (options: { idleTimeout?: Duration.Input; sandboxProblem?: st
   };
   return { directory, layer, starts };
 };
-
-const call = <R extends Request>(request: R) =>
-  Effect.gen(function* () {
-    const service = yield* Service;
-    return (yield* service.handle(request)) as ResultOf<R["_tag"] & RequestTag>;
-  });
-
-const read = (missionId: MissionId) => call({ _tag: "ReadMission", missionId, threadId: null });
-
-const settle = (missionId: MissionId, check: (detail: MissionDetail) => boolean) =>
-  Effect.gen(function* () {
-    for (let attempt = 0; attempt < 300; attempt++) {
-      const detail = yield* read(missionId);
-      if (check(detail)) return detail;
-      yield* Effect.sleep("20 millis");
-    }
-    return yield* Effect.die(new Error(`mission did not settle: ${JSON.stringify(yield* read(missionId))}`));
-  });
-
-const idleWith = (count: number) => (detail: MissionDetail) =>
-  detail.thread.state === "Idle" && detail.messages.filter((message) => message.sender === "agent").length === count;
 
 describe("running Claude Code threads", () => {
   it.live("runs the thread's model and effort sandboxed, prompts sent to Outlore, and no Outlore secrets", () => {
@@ -1074,11 +1055,12 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
         for (let round = 0; round < 3 && !isSettled(detail); round++) {
           const question = detail.questions.find((entry) => entry.outcome === null);
           expect(question?.details).toContain(outside);
+          if (question === undefined) throw new Error("No open question");
           yield* call({
             _tag: "AnswerQuestion",
             answer: "Allow",
             message: null,
-            questionId: question?.id ?? ("" as never),
+            questionId: question.id,
           });
           detail = yield* settleLong(
             started.missionId,
