@@ -28,7 +28,7 @@
   Check: a test on the request the updater sends, and the Updates switch.
 - **Bring your own provider**: users connect their own provider subscriptions or API keys; Outlore resells no model use.
   Source: the user. Reason: product decision.
-- **Comply with provider terms**: Outlore never offers a provider's sign-in as its own, nor collects, stores, or relays provider credentials or session tokens; each harness signs in through its own unmodified tool and the provider's own flow, and the documentation states each provider's terms plainly.
+- **Comply with provider terms**: Outlore never offers a provider's sign-in as its own, nor collects, stores, or relays provider credentials or session tokens; each harness signs in through its own unmodified tool and the provider's own flow, and the documentation states each provider's terms plainly. One bounded exception (2026-11-16, with the sandboxed OpenCode copy, CHG-0208): the service runs OpenCode's own `auth export` and holds its output in memory for the one `auth import` into the sandbox's per-account copy — never written by Outlore, never sent beyond that local import — and the owner accepted the refresh-token risk that copy carries.
   Source: the providers' terms (for example Anthropic's Claude Code legal and compliance page). Reason: a provider can limit or close accounts that break them.
 - **End-to-end encrypted phone traffic**: any service relaying traffic between the computer and a paired device cannot read it.
   Source: the user. Reason: product decision.
