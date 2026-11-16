@@ -381,6 +381,41 @@ describe("falling back to another Companion", () => {
 });
 
 describe("the schedule", () => {
+  it.effect("holds a scheduled run at a reached budget and runs its waiting message when the budget is raised", () =>
+    withService(
+      Effect.gen(function* () {
+        const created = yield* create("runner", { schedule: { _tag: "Hourly", hours: 1 } });
+        const spender = yield* start("spend 100");
+        for (let index = 0; index < 5; index++) yield* advance(20);
+        expect((yield* read(spender.missionId)).mission.budget.spent.tokens).toBe(100);
+        const settings = yield* call({ _tag: "ReadSettings" });
+        yield* call({
+          _tag: "UpdateSettings",
+          settings: { ...settings, globalBudget: { cost: null, tokens: 100 } },
+        });
+
+        yield* advance(70 * 60 * 1000);
+        for (let index = 0; index < 5; index++) yield* advance(20);
+        const held = yield* read(created.missionId);
+        expect(held.thread).toMatchObject({ blocker: "Budget", state: "Attention" });
+        expect(held.messages).toHaveLength(1);
+        expect(held.messages[0]?.text).toContain("Ritual · scheduled");
+        expect(replies(held)).toEqual([]);
+        expect((yield* readRitual(created.missionId))?.lastRunState).toBe("Underway");
+
+        yield* call({
+          _tag: "UpdateSettings",
+          settings: { ...settings, globalBudget: { cost: null, tokens: 200 } },
+        });
+        for (let index = 0; index < 5; index++) yield* advance(20);
+        const released = yield* read(created.missionId);
+        expect(released.thread.state).toBe("Idle");
+        expect(replies(released)).toEqual(["Echo: claude/claude-sonnet-5-5/default/session none"]);
+        expect((yield* readRitual(created.missionId))?.lastRunState).toBe("Done");
+      }),
+    ),
+  );
+
   it.effect("runs a due Ritual in its quest, and only a Ritual that is on", () =>
     withService(
       Effect.gen(function* () {
