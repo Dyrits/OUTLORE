@@ -74,7 +74,7 @@ export const readScopeChain = Effect.fnUntraced(function* (threadId: string) {
     missionId: own.missionId,
     threads: rows.map((row) => row.id),
     topThreadId: rows.at(-1)?.id ?? own.id,
-    workspaceId: own.workspaceId,
+    workspaceId: rows.at(-1)?.workspaceId ?? null,
   } satisfies ScopeChain;
 });
 
