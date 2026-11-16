@@ -1,7 +1,7 @@
 import type { BudgetLimits, BudgetPeriod, Spending } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { readSettings } from "./settings.ts";
+import { noLimits, readSettings } from "./settings.ts";
 
 // Budget control (budget-control specifications; work-in-progress Batch 11). A turn counts toward one unit, chosen by its
 // billing kind: an API-key turn counts its reported cost, every other turn counts its tokens, cache reads included.
@@ -41,8 +41,8 @@ export const knownCostColumn = `CASE WHEN ${isReportedColumn} THEN u.cost ELSE u
 /** The turns of usage rows `u` that have a price, to tell a known zero from no price at all. */
 export const pricedTurnsColumn = `COALESCE(SUM(CASE WHEN ${knownCostColumn} IS NOT NULL THEN 1 ELSE 0 END), 0) AS pricedTurns`;
 
-/** A budget with neither limit. */
-const noLimits: BudgetLimits = { cost: null, tokens: null };
+/** What no usage rows cost. */
+const nothingSpent: Spending = { cost: 0, tokens: 0 };
 
 const startShifts = {
   Day: () => void 0,
@@ -78,9 +78,14 @@ export const nextStartOf = (now: number, period: BudgetPeriod) => {
 /** Whether a budget has neither limit. */
 export const isEmpty = (limits: BudgetLimits) => limits.cost === null && limits.tokens === null;
 
+const isCostReached = (limits: BudgetLimits, spent: Spending): limits is BudgetLimits & { cost: number } =>
+  limits.cost !== null && spent.cost >= limits.cost;
+const isTokensReached = (limits: BudgetLimits, spent: Spending): limits is BudgetLimits & { tokens: number } =>
+  limits.tokens !== null && spent.tokens >= limits.tokens;
+
 /** Whether spending has reached either limit; an empty limit never is. */
 export const isReached = (limits: BudgetLimits, spent: Spending) =>
-  (limits.cost !== null && spent.cost >= limits.cost) || (limits.tokens !== null && spent.tokens >= limits.tokens);
+  isCostReached(limits, spent) || isTokensReached(limits, spent);
 
 export const tokenCountText = (tokens: number) => Math.round(tokens).toLocaleString("en-US");
 export const tokensText = (tokens: number) => `${tokenCountText(tokens)} tokens`;
@@ -111,10 +116,8 @@ export const changeTextOf = (before: BudgetLimits, after: BudgetLimits) => {
 /** The reached limits in words, for example "100 of 100 tokens". */
 export const reachedTextOf = (limits: BudgetLimits, spent: Spending) =>
   [
-    limits.cost !== null && spent.cost >= limits.cost ? `${costText(spent.cost)} of ${costText(limits.cost)}` : null,
-    limits.tokens !== null && spent.tokens >= limits.tokens
-      ? `${tokenCountText(spent.tokens)} of ${tokensText(limits.tokens)}`
-      : null,
+    isCostReached(limits, spent) ? `${costText(spent.cost)} of ${costText(limits.cost)}` : null,
+    isTokensReached(limits, spent) ? `${tokenCountText(spent.tokens)} of ${tokensText(limits.tokens)}` : null,
   ]
     .filter((part) => part !== null)
     .join(" and ");
@@ -132,7 +135,7 @@ export const missionSpendingOf = Effect.fnUntraced(function* (missionId: string)
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<Spending>`
     SELECT ${sql.literal(spendingColumns)} FROM usage u WHERE u.mission_id = ${missionId}`;
-  return row ?? { cost: 0, tokens: 0 };
+  return row ?? nothingSpent;
 });
 
 /** The global budget, its period, and what all missions spent since the period started. */
@@ -148,6 +151,6 @@ export const readGlobalBudget = Effect.gen(function* () {
     nextStart: nextStartOf(now, settings.globalBudgetPeriod),
     period: settings.globalBudgetPeriod,
     since,
-    spent: row ?? { cost: 0, tokens: 0 },
+    spent: row ?? nothingSpent,
   };
 });

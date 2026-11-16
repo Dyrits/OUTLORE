@@ -1,4 +1,11 @@
-import { SavedTier, Settings, type SettingsChange, StartChoices, startingModel } from "@outlore/contracts";
+import {
+  type BudgetLimits,
+  SavedTier,
+  Settings,
+  type SettingsChange,
+  StartChoices,
+  startingModel,
+} from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid } from "./errors.ts";
@@ -14,6 +21,9 @@ export const hourMillis = 60 * 60 * 1000;
 /** A day in milliseconds, the unit of the Settings durations. */
 export const dayMillis = 24 * hourMillis;
 
+/** A budget with neither limit. */
+export const noLimits: BudgetLimits = { cost: null, tokens: null };
+
 /** The settings before the owner changes any. */
 export const defaultSettings: Settings = {
   approvalLevel: "RiskyOnly",
@@ -24,9 +34,9 @@ export const defaultSettings: Settings = {
   defaultDelivery: "Steer",
   defaultEffort: "default",
   defaultHarness: "claude",
-  defaultMissionBudget: { cost: null, tokens: null },
+  defaultMissionBudget: noLimits,
   defaultModel: startingModel,
-  globalBudget: { cost: null, tokens: null },
+  globalBudget: noLimits,
   globalBudgetPeriod: "Month",
   inactivityDays: 14,
   intelHalfLives: { decision: 45, fact: 45, preference: 90, temporary: 3 },
@@ -72,6 +82,11 @@ export const readSettings = Effect.gen(function* () {
   }
 });
 
+/** Stores one row of the settings table, replacing any value the key held. */
+const putSetting = (sql: SqlClient.SqlClient, key: string, value: string) =>
+  sql`INSERT INTO settings (key, value) VALUES (${key}, ${value})
+    ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
+
 /** Stores the owner's settings, refusing any that do not decode. */
 export const writeSettings = Effect.fnUntraced(function* (settings: Settings) {
   const parsed = yield* Schema.decodeUnknownEffect(Settings)(settings).pipe(
@@ -82,8 +97,7 @@ export const writeSettings = Effect.fnUntraced(function* (settings: Settings) {
     ),
   );
   const sql = yield* SqlClient.SqlClient;
-  yield* sql`INSERT INTO settings (key, value) VALUES ('settings', ${JSON.stringify(parsed)})
-    ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
+  yield* putSetting(sql, "settings", JSON.stringify(parsed));
   return settings;
 });
 
@@ -121,6 +135,5 @@ export const readStartChoices = Effect.gen(function* () {
 /** Remembers a started mission's choices; the next mission takes its folder. Callers run it in a transaction. */
 export const saveStartChoices = Effect.fnUntraced(function* (choices: StartChoices) {
   const sql = yield* SqlClient.SqlClient;
-  yield* sql`INSERT INTO settings (key, value) VALUES ('start_choices', ${JSON.stringify(choices)})
-    ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
+  yield* putSetting(sql, "start_choices", JSON.stringify(choices));
 });
