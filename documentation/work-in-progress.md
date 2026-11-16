@@ -1,5 +1,9 @@
 # Work in progress
 
+## Connectors · 2026-11-16 · specified (CHG-0321 to CHG-0327), nothing built
+
+The owner wants connectors in the Charter (a marketplace-like place), with a switch on each realm and quest, a global switch and a switch per tool, Composio and Apple apps first, a Vault for secrets, and Code Mode as one experimental global setting. [Specification](capabilities/connectors/specifications.md), [draft](capabilities/connectors/draft.md) (open items only), [research](research/code-mode-autonomy-connectors-2026-11-16.md), [handoff](../.agents/handoffs/2026-11-16-0835-connectors-specification.md). Also written: the requirement *Connector secrets stay on the host*, the glossary terms Charter, Connector and The Vault, the outline line, notes in tool-and-skill-loading, mission-tracking and thread-panel, and backlog items. Open: which group of the thread panel holds the tools line, whether The Vault holds other secrets later; next, a blueprint (gateway, Vault, tool classification, sandbox-read protection) and an ADR for the Vault. Not authorized to build.
+
 ## Architecture audit · 2026-11-16 · all 17 candidates built and integrated, window checks and merge to main pending
 
 The owner authorized every candidate of the [audit](architecture-audit/architecture-audit-2026-11-15-2323.html). Five side-quests built them (CHG-0301 to CHG-0318); the parent merged them on `worktree/audit-integration` (on top of `main` at `12fedf9`; base `dbb3ae6`). Typecheck, Biome and the full suite pass (1,679 passed, 54 skipped). Candidate 3 is partial (per-screen Back and the callback interface remain). No window, phone, live provider or relay deployment was checked; nothing is pushed. [Verification](verification/2026-11-16-audit-integration.md), [handoff](../.agents/handoffs/2026-11-16-0110-architecture-audit.md). Open: the owner's look, the fast-forward of `main`, a push, redeploying the relay for the room-full code.

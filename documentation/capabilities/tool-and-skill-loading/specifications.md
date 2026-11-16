@@ -10,6 +10,8 @@ This capability is partially implemented. The agreed management and loading beha
 
 These findings are from source inspection, not a new live-harness check. The acceptance list below still describes the complete target.
 
+**Connectors replace its MCP-server rules (CHG-0321, 2026-11-16).** For the connectors the owner installs, scope is global with a choice per realm, the Borderlands and quest (side-quests follow their quest), not workspace and thread; installation, enabling, approval and secrets are agreed in [connectors](../connectors/specifications.md). The MCP-server rules below (workspace-scoped servers, a per-thread disable inherited by threads beneath, conflicting global and workspace names) now apply only to custom MCP servers the owner would add, which stay deferred. Skills are unchanged. The rule that a failed external server warns and the turn goes on, and the rule that thread tools stay enabled, still hold.
+
 ## Problem and outcome
 
 A thread needs the tools and instructions in scope for its work, even when its harness changes. Outlore gives each harness the selected skills, external MCP servers, and its own thread tools. The user can see what a thread receives and where it came from.

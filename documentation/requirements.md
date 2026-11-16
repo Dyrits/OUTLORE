@@ -15,6 +15,8 @@
 
 ## Privacy and data
 
+- **Connector secrets stay on the host**: the keys and tokens of connectors are stored only on the host, are never shown again after they are entered, and are never given to a model, a harness, a thread, a paired device or the relay, nor written to a conversation, journal, lore or log. A secret typed on a paired device crosses only the encrypted connection. Provider sign-ins stay with each harness (see Comply with provider terms).
+  Source: the user, 2026-11-16 (CHG-0321). Reason: a connector's key gives access to the owner's own accounts.
 - **Local data**: missions, threads, intel, and workspace contents stay on the user's computer; nothing leaves it except what a harness, provider, or connected service needs for the work, and the encrypted traffic to a paired device.
   Source: the user. Reason: product decision.
   Hosted multiplayer exception (CHG-0021): invited guests may receive shared mission conversations and results. The first hosted version keeps mission documents and data on the host. Future guest local copies require a separate design for their scope, synchronization, and retention. Removing access cannot erase information a guest has already saved or copied.

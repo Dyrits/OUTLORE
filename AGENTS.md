@@ -54,8 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the connectors specification (Charter, Vault, per-realm, per-quest and per-tool switches, Composio and Apple apps, Code Mode setting; specified in CHG-0321 to CHG-0327, nothing built; open: the blueprint and Vault ADR, thread-panel placement), read the [current handoff](.agents/handoffs/2026-11-16-0835-connectors-specification.md). Handoffs are shared and committed.
+
 - To resume the architecture audit of 2026-11-15 (all 17 candidates built by five side-quests and merged on `worktree/audit-integration`; typecheck, Biome and the full suite pass; open: the owner's look in a window, fast-forwarding `main`, a push, redeploying the relay, the remainder of candidate 3), read the [current handoff](.agents/handoffs/2026-11-16-0110-architecture-audit.md). Handoffs are shared and committed.
 
 - To resume the deletion of empty quests on archive (no token and no message; service, tests and docs done and committed on `main`; open: the owner's check in a window, whether the realm archive should delete them too), read the [current handoff](.agents/handoffs/2026-11-15-2210-delete-empty-quests.md). Handoffs are shared and committed.
 
-- To resume the real choice dialog for Claude Code's AskUserQuestion (contract, service, app and tests done and committed on `main`; open: the owner's look in a window, a live Claude Code run, Codex and OpenCode adapters), read the [current handoff](.agents/handoffs/2026-11-15-2145-choice-dialog.md). Handoffs are shared and committed.

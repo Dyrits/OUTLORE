@@ -174,10 +174,10 @@ The expanded left sidebar uses this order:
 | 5 | Craft | Workflows |
 | 6 | The Keep | Library, Lore, Archive, in that order |
 | 7 | Reserves | Compact usage summary leading to a detailed usage page |
-| 8 | Charter | Placeholder page |
+| 8 | Charter | The Connectors and The Vault ([connectors](../connectors/specifications.md), CHG-0321); a marketplace-like place for connectors, nothing else; unbuilt placeholder today |
 | 9 | Workshop | Application settings, accounts, permissions, and defaults (the former Charter; CHG-0146) |
 
-The separate Workshop for MCP servers, connectors, and skills (position 8 of CHG-0134) is withdrawn for now; the owner will ask for a dedicated menu for them later.
+The separate Workshop for MCP servers, connectors, and skills (position 8 of CHG-0134) was withdrawn on 2026-11-11. On 2026-11-16 the owner asked for connectors in the Charter, which now holds them and The Vault (CHG-0321); skills and custom MCP servers have no place yet.
 
 - The Realms, Borderlands, and The Keep headings fold and unfold their contents the same way: pressing the heading or its fold arrow; each realm can expand or collapse its quests; each quest and side-quest can expand or collapse its children at every supported depth (CHG-0163).
 - Under the Realms heading, each Realm (crest and name) and its quests stand 20 px in from the heading, so the names of the Realms do not line up with the title (the owner's choice, CHG-0167).
@@ -195,9 +195,8 @@ The separate Workshop for MCP servers, connectors, and skills (position 8 of CHG
   The image does not authorize its other Guild Hall contents, footer, wording, or new actions.
 - Library holds generated and uploaded artifacts, especially artifacts from quests without a workspace; it is not limited to workspace-free quests.
   Artifact collection, supported types, storage, retention, and file actions need a separate Library specification before implementation.
-- A separate future resource-management destination is intended for MCP servers, connectors, and skills.
-  Resource scope, inheritance, loading, and failures remain governed by [tool and skill loading](../tool-and-skill-loading/specifications.md).
-  Additional Workshop categories and connector behavior are not settled by this navigation agreement.
+- The Charter holds the connectors and The Vault; their scope, switches per realm and quest, and loading are in [connectors](../connectors/specifications.md). A separate destination for skills and custom MCP servers remains future; their scope, inheritance, loading, and failures stay governed by [tool and skill loading](../tool-and-skill-loading/specifications.md).
+  The Charter holds nothing else (CHG-0326).
 - Reserves opens the [detailed usage page](../budget-control/specifications.md#reserves-usage-page); its name is retained.
 - Quest placement, direct creation, and confirmed moves follow the existing agreements above.
 
