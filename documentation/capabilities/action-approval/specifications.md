@@ -62,7 +62,7 @@ Version 1 serves the installation's owner. In future hosted missions, only the h
 ### Approval level
 
 - One approval setting has two levels: **Sensitive actions only** (the default; since CHG-0208 it means escapes from the sandbox and unprotected actions) and **Also commands and edits**, which turns the harnesses' own permission prompts back on, each one answered with the same buttons.
-- At **Also commands and edits**, Outlore follows the allow and deny rules the user set in each harness's own settings.
+- At **Also commands and edits**, Outlore follows the allow and deny rules the owner set in the computer's own Claude Code settings (`~/.claude/settings.json`, or the configured path, read at each start; unreadable or invalid rules are ignored). An added account's own settings and a project's settings are never read, and Codex and OpenCode apply no owner rules of their own (amended 2026-11-16).
 
 ### Permissions page
 
