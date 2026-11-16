@@ -30,6 +30,7 @@ import {
   reportedModelOf,
   textOf,
   toolCallsOf,
+  toolServerFailureOf,
   usageOf,
 } from "./claudeEvents.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
@@ -46,6 +47,7 @@ import {
   startStreamJsonProcess,
 } from "./lineProcess.ts";
 import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
+import { toolServerName } from "./toolNames.ts";
 import { listThreadWorktrees } from "./worktrees.ts";
 
 // Claude Code through `claude -p` in stream-json mode (ADR 0008; CHG-0027): one process per thread.
@@ -165,6 +167,9 @@ const claudeProtocolOf = (
       const type = textFieldOf(event, "type");
       if (type === "system" && textFieldOf(event, "subtype") === "init") {
         connection.billing = billingOf(event, connection.billing);
+        // Without its thread tools the turn could not reach Outlore: it fails, with Retry, instead of running blind.
+        const toolFailure = toolServerFailureOf(event, toolServerName);
+        if (toolFailure !== null) return yield* new HarnessFailure({ reason: toolFailure });
       } else if (type === "control_request") {
         // Inside the enforced sandbox a blocked host is allowed (CHG-0208): the sandbox contains file and process
         // damage, and egress is open. Only that one ask is answered; every other ask, such as a Bash call outside

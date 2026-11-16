@@ -28,6 +28,21 @@ export const billingOf = (event: unknown, previous: BillingKind): BillingKind =>
   return source === null ? previous : source === "none" ? "Subscription" : "ApiKey";
 };
 
+/**
+ * Why Claude Code's init event says the thread-tools server did not load, or null when it did or the event says
+ * nothing: `mcp_servers` lists each server with a status, `failed` for one that could not start (live probe of
+ * 2026-11-16, Claude Code 2.1.325: `{ name, status: "failed", source: "dynamic" }`). A `pending` server may still
+ * connect, so only `failed` fails the turn (tool-and-skill-loading).
+ */
+export const toolServerFailureOf = (event: unknown, serverName: string): string | null => {
+  const servers = fieldOf(event, "mcp_servers");
+  if (!Array.isArray(servers)) return null;
+  const own = servers.find((server) => textFieldOf(server, "name") === serverName);
+  return own !== undefined && textFieldOf(own, "status") === "failed"
+    ? `Outlore's thread tools did not load: Claude Code reports its server "${serverName}" as failed. Retry once it can start.`
+    : null;
+};
+
 /** Token usage decoded from a Claude Code stream event or message, or null when absent. */
 export const usageOf = (usage: unknown): TokenUsage | null =>
   usage === undefined || usage === null

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toolCallsOf } from "../../src/harness/claudeEvents.ts";
+import { toolCallsOf, toolServerFailureOf } from "../../src/harness/claudeEvents.ts";
 
 describe("reading Claude tool calls", () => {
   it("keeps valid calls in order and preserves their untrusted input", () => {
@@ -35,5 +35,17 @@ describe("reading Claude tool calls", () => {
     expect(toolCallsOf([{ id: "", input: "untrusted", name: "", type: "tool_use" }])).toEqual([
       { id: "", input: "untrusted", toolName: "" },
     ]);
+  });
+});
+
+describe("reading Claude's thread-tools server status", () => {
+  it("reports only a failed server of that name; a pending or connected one, another server, or no list says nothing", () => {
+    const init = (servers: unknown) => ({ mcp_servers: servers, subtype: "init", type: "system" });
+    expect(toolServerFailureOf(init([{ name: "outlore", status: "failed" }]), "outlore")).toContain("did not load");
+    expect(toolServerFailureOf(init([{ name: "outlore", status: "pending" }]), "outlore")).toBeNull();
+    expect(toolServerFailureOf(init([{ name: "outlore", status: "connected" }]), "outlore")).toBeNull();
+    expect(toolServerFailureOf(init([{ name: "other", status: "failed" }]), "outlore")).toBeNull();
+    expect(toolServerFailureOf(init("failed"), "outlore")).toBeNull();
+    expect(toolServerFailureOf({ subtype: "init", type: "system" }, "outlore")).toBeNull();
   });
 });

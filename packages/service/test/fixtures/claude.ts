@@ -15,6 +15,7 @@ afterEach(() => {
   delete process.env.STAND_IN_MODE;
   delete process.env.STAND_IN_COST;
   delete process.env.STAND_IN_API_KEY_SOURCE;
+  delete process.env.STAND_IN_MCP_STATUS;
   delete process.env.STAND_IN_MODEL;
   delete process.env.STAND_IN_INPUT;
 });

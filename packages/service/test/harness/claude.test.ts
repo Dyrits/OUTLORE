@@ -151,6 +151,23 @@ describe("telling a Claude Code thread its budget", () => {
   });
 });
 
+describe("a thread-tools server that fails to load", () => {
+  it.live("fails the turn with a reason and runs it on Retry once the server loads (tool-and-skill-loading)", () => {
+    const { layer } = withClaude();
+    return Effect.gen(function* () {
+      process.env.STAND_IN_MCP_STATUS = "failed";
+      const started = yield* startMission({ text: "Hello" });
+      const failed = yield* settle(started.missionId, (current) => current.thread.state === "Failed");
+      expect(failed.thread.failure).toContain("thread tools");
+      expect(failed.messages.map((message) => message.sender)).toEqual(["user"]);
+      process.env.STAND_IN_MCP_STATUS = "connected";
+      yield* call({ _tag: "RetryThread", threadId: started.threadId });
+      const detail = yield* settle(started.missionId, idleWith(1));
+      expect(detail.thread.failure).toBeNull();
+    }).pipe(Effect.provide(layer));
+  });
+});
+
 describe("holding a failed thread at a reached budget", () => {
   it.live(
     "holds the message to a Failed thread in Attention and runs it once the budget is raised",

@@ -249,6 +249,19 @@ const readTurn = Effect.fnUntraced(function* (
       continue;
     }
     const { method, params } = incoming;
+    // Without its thread tools the turn could not reach Outlore: it fails, with Retry, instead of running blind.
+    // The status carries a thread id, or none when it speaks for the process.
+    if (
+      method === "mcpServer/startupStatus/updated" &&
+      textFieldOf(params, "name") === toolServerName &&
+      textFieldOf(params, "status") === "failed" &&
+      [connection.sessionId, null].includes(textFieldOf(params, "threadId"))
+    )
+      return yield* new HarnessFailure({
+        reason: `Outlore's thread tools did not load: Codex reports its server "${toolServerName}" as failed${
+          textFieldOf(params, "error") === null ? "" : ` (${textFieldOf(params, "error")})`
+        }. Retry once it can start.`,
+      });
     if (textFieldOf(params, "threadId") !== connection.sessionId) continue;
     const item = fieldOf(params, "item");
     const itemType = textFieldOf(item, "type");

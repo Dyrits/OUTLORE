@@ -5,6 +5,8 @@
 // STAND_IN_INPUT: file that receives each line written to the stand-in's stdin.
 // STAND_IN_COST: set to report a running total_cost_usd of 0.01 per turn.
 // STAND_IN_API_KEY_SOURCE: set to report that `apiKeySource` in the init event ("none" for a subscription sign-in).
+// STAND_IN_MCP_STATUS: set to report that status for the "outlore" server in the init event's `mcp_servers` ("failed", as
+// probed on Claude Code 2.1.325 with a server that cannot start: `[{ name, status: "failed", source: "dynamic" }]`).
 // STAND_IN_MODE: "ok" (default), "fail-start" (exit 1 before answering), "error-result".
 // A message "slow <millis>" keeps its turn running that long. A message written during a turn joins it
 // and is echoed with its uuid (--replay-user-messages), unless its text contains "unseen": that one is
@@ -39,6 +41,9 @@ if (mode === "fail-start") {
 const emit = (event) => process.stdout.write(`${JSON.stringify({ ...event, session_id: sessionId })}\n`);
 emit({
   ...(process.env.STAND_IN_API_KEY_SOURCE === undefined ? {} : { apiKeySource: process.env.STAND_IN_API_KEY_SOURCE }),
+  ...(process.env.STAND_IN_MCP_STATUS === undefined
+    ? {}
+    : { mcp_servers: [{ name: "outlore", source: "dynamic", status: process.env.STAND_IN_MCP_STATUS }] }),
   model: option("--model") ?? "default",
   subtype: "init",
   tools: [],

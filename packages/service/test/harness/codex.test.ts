@@ -298,6 +298,16 @@ describe("running Codex threads", () => {
     }).pipe(Effect.provide(layer));
   });
 
+  it.live("fails the turn when Codex reports that the thread-tools server failed to start", () => {
+    const { layer } = withHarnesses();
+    return Effect.gen(function* () {
+      const started = yield* startMission({ harness: "codex", text: "mcp-failed" });
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Failed");
+      expect(detail.thread.failure).toContain("thread tools");
+      expect(detail.thread.failure).toContain("stand-in: no route");
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("fails the thread with Codex's reason when a turn fails", () => {
     const { layer } = withHarnesses();
     return Effect.gen(function* () {
