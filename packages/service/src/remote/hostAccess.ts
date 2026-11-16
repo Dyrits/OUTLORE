@@ -32,7 +32,7 @@ const bytesOf = (text: string) => decodeBase64Url(text) ?? new Uint8Array(0);
 const hashText = (bytes: Uint8Array) => encodeBase64Url(hashToken(bytes));
 
 /** This installation as a host: its keys, its room on the relay, and its settings. */
-export interface HostRecord {
+export type HostRecord = {
   readonly claimSecret: Uint8Array;
   readonly hostName: string | null;
   readonly isEnabled: boolean;
@@ -40,9 +40,9 @@ export interface HostRecord {
   readonly relayOrigin: string | null;
   readonly room: string;
   readonly secretKey: Uint8Array;
-}
+};
 
-interface HostRow {
+type HostRow = {
   claimSecret: string;
   hostName: string | null;
   isEnabled: number;
@@ -50,7 +50,7 @@ interface HostRow {
   relayOrigin: string | null;
   room: string;
   secretKey: string;
-}
+};
 
 const hostOf = (row: HostRow): HostRecord => ({
   claimSecret: bytesOf(row.claimSecret),
@@ -164,10 +164,10 @@ export const makePairingSecret = (now: number) =>
   });
 
 /** What a device that paired is given: its identity here and the token it proves itself with. */
-interface NewDevice {
+type NewDevice = {
   readonly deviceId: string;
   readonly token: Uint8Array;
-}
+};
 
 /** Accepts a pairing secret once and enrols the device that presented it; the hash of its token is all kept. */
 export const redeemPairingSecret = (secret: Uint8Array, device: { kind: DeviceKind; name: string }, now: number) =>

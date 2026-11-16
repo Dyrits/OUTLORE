@@ -22,10 +22,10 @@ export const Mentionable = Schema.Struct({
 export type Mentionable = typeof Mentionable.Type;
 
 /** A reference to a quest, side-quest, or realm as the message holds it, without its leading `@`. */
-export interface MentionReference {
+export type MentionReference = {
   readonly id: string;
   readonly kind: MentionKind;
-}
+};
 
 /**
  * The token a reference is written as in the message: `@quest:<id>`, `@side-quest:<thread id>`, or `@realm:<id>`. It is

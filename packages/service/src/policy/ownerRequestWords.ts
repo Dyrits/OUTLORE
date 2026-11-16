@@ -4,7 +4,7 @@ import type { RitualScopeOperation } from "@outlore/contracts";
 export type StructuralOperation = RitualScopeOperation | "CreateRealm" | "RenameRealm" | "CreateRitual";
 
 /** One structural action as the owner would name it: what, on which target, and to what new value. */
-export interface NamedAction {
+export type NamedAction = {
   readonly operation: StructuralOperation;
   /** The names of the other targets of the same kind, such as the other quests' titles: naming one is ambiguous. */
   readonly rivals?: ReadonlyArray<string>;
@@ -12,7 +12,7 @@ export interface NamedAction {
   readonly targets: ReadonlyArray<string>;
   /** The new value the owner must name too (a new title or name, a setting's value), or null. */
   readonly value: string | null;
-}
+};
 
 const create = ["create", "make", "add", "new", "crée", "créer", "cree", "creer", "ajoute", "ajouter"];
 const rename = ["rename", "renames", "retitle", "renomme", "renommer"];

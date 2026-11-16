@@ -8,7 +8,7 @@ import { type Capability, capabilities, changedFilesOf, isFileWriting } from "./
  * inside an enforced sandbox at the thread's level, and whether this action leaves it; the store reports the folder
  * a file change must lie in. Nothing here is a verdict.
  */
-export interface ActionFacts {
+export type ActionFacts = {
   /** Whether the owner allowed commands to leave the sandbox without a question (CHG-0295). */
   readonly canWorkOutsideSandbox: boolean;
   /** Whether the harness's tools run inside an enforced sandbox at the thread's approval level. */
@@ -24,7 +24,7 @@ export interface ActionFacts {
   /** Whether the adapter runs this thread without the sandbox it otherwise runs in. */
   readonly isUnsandboxed: boolean;
   readonly toolName: string;
-}
+};
 
 /**
  * What a harness action needs beyond its sandbox, or null when it is contained (CHG-0208): the one place that

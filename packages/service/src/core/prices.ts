@@ -8,14 +8,14 @@ import { readSettings } from "./settings.ts";
 // public table, kept in the service's database, with a snapshot shipped with Outlore as the fallback.
 
 /** A model's price in dollars per million tokens, by token kind; a null cache price is billed as input. */
-export interface PriceRow {
+export type PriceRow = {
   readonly cacheRead: number | null;
   readonly cacheWrite: number | null;
   readonly input: number;
   readonly model: string;
   readonly output: number;
   readonly provider: string;
-}
+};
 
 /** The public table could not be read, with the reason the owner reads. */
 export class PriceReadFailed extends Schema.TaggedError<PriceReadFailed>()("PriceReadFailed", {
@@ -29,10 +29,10 @@ export class PriceSource extends Context.Service<
 >()("outlore/PriceSource") {}
 
 /** What a turn was estimated to cost, with when the table it was priced from was read. */
-export interface Estimate {
+export type Estimate = {
   readonly amount: number;
   readonly pricedAt: number;
-}
+};
 
 /**
  * The providers whose models the table keeps, which are those the harnesses offer and OpenCode lists, in the order
@@ -97,7 +97,7 @@ export class PriceTable extends Context.Service<
   }
 >()("outlore/PriceTable") {}
 
-interface StoredRow {
+type StoredRow = {
   readonly cacheRead: number | null;
   readonly cacheWrite: number | null;
   readonly fetchedAt: number;
@@ -105,7 +105,7 @@ interface StoredRow {
   readonly model: string;
   readonly output: number;
   readonly provider: string;
-}
+};
 
 /** The price table over the service's database and a source for the public table. */
 export const priceTableLayer = Layer.effect(

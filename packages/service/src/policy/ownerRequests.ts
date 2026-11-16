@@ -40,10 +40,10 @@ const segmentsOf = (sentence: string) =>
     .map((part) => part.trim())
     .filter(Boolean);
 
-interface Span {
+type Span = {
   readonly end: number;
   readonly start: number;
-}
+};
 
 /** Every place a name appears in the text as whole words; names shorter than 3 characters never count. */
 const spansOf = (text: string, names: ReadonlyArray<string>): Array<Span> =>

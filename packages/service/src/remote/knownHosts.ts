@@ -9,7 +9,7 @@ import { invalid } from "../core/index.ts";
 // links to the hosts are in the controller.
 
 /** A host this installation can connect to, with what it needs to find it and prove itself. */
-export interface HostLink {
+export type HostLink = {
   readonly deviceId: string;
   readonly deviceToken: string;
   readonly hostName: string;
@@ -17,9 +17,9 @@ export interface HostLink {
   readonly id: string;
   readonly relayOrigin: string;
   readonly room: string;
-}
+};
 
-interface HostLinkRow {
+type HostLinkRow = {
   deviceId: string;
   deviceToken: string;
   hostName: string;
@@ -27,7 +27,7 @@ interface HostLinkRow {
   id: string;
   relayOrigin: string;
   room: string;
-}
+};
 
 /** The hosts, for the host menu. */
 export const listKnownHosts = Effect.gen(function* () {

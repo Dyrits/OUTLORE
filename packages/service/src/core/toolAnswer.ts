@@ -1,5 +1,5 @@
 /** A thread tool's answer before it is wrapped for MCP. */
-export interface ToolAnswer {
+export type ToolAnswer = {
   readonly isError: boolean;
   readonly text: string;
-}
+};

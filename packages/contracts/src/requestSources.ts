@@ -2,10 +2,10 @@ import { Match } from "effect";
 import type { Request, RequestTag } from "./requests.ts";
 
 /** The authenticated transport identity accompanying an owner request. */
-export interface RequestSource {
+export type RequestSource = {
   readonly deviceId?: string | null;
   readonly isPairedDevice: boolean;
-}
+};
 
 const shared = Object.assign(() => null, { isHostOnly: false });
 const hostOnly = Object.assign(() => null, { isHostOnly: true });
