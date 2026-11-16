@@ -32,9 +32,12 @@ const carrierOf = (connection: HostConnection, clientId: string) => {
 };
 
 /** A relay, a host that handles each joining client as `onClient` says, and a store with one paired host. */
-const world = (onClient: (carrier: Carrier, host: ReturnType<typeof generateKeyPair>) => void) =>
+const world = (
+  onClient: (carrier: Carrier, host: ReturnType<typeof generateKeyPair>) => void,
+  relayOptions: Parameters<typeof startNodeRelay>[0] = {},
+) =>
   Effect.gen(function* () {
-    const relay = yield* startNodeRelay();
+    const relay = yield* startNodeRelay(relayOptions);
     const relayOrigin = `http://127.0.0.1:${relay.port}`;
     const host = generateKeyPair();
     const connection = yield* connectHost({ claim: new Uint8Array(32).fill(7), relayOrigin, room });
@@ -106,5 +109,30 @@ describe("the time a host link may take", () => {
         expect(channel).not.toBeNull();
       }),
     ),
+  );
+});
+
+describe("what the owner reads when the relay turns the link away", () => {
+  const refusedWith = (relayOptions: Parameters<typeof startNodeRelay>[0]) =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { store } = yield* world(() => {}, relayOptions);
+        return yield* Effect.flip(resumeHost(store, "host", settings));
+      }),
+    );
+
+  it.effect("says the relay is busy, and that trying again may help, when it limited the connection", () =>
+    Effect.gen(function* () {
+      const failure = yield* refusedWith({ frameBurst: 0 });
+      expect(failure).toMatchObject({ kind: "couldNotOpen", message: linkTexts.busy });
+      expect(linkTexts.busy).toBe("The relay is busy. Try again in a moment.");
+    }),
+  );
+
+  it.effect("says the host has as many devices as the relay allows when the room is full", () =>
+    Effect.gen(function* () {
+      const failure = yield* refusedWith({ maxClients: 0 });
+      expect(failure).toMatchObject({ kind: "couldNotOpen", message: linkTexts.roomFull });
+    }),
   );
 });

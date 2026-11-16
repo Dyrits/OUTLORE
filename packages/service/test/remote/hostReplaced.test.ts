@@ -19,7 +19,7 @@ const settle = Effect.gen(function* () {
   for (let index = 0; index < 20; index++) yield* turn;
 });
 
-type Answer = "hold" | "refuse" | "replace";
+type Answer = "hold" | "limit" | "refuse" | "replace";
 
 /**
  * A relay that counts the hosts that connect and answers each as `answer` says: refuse the upgrade, replace it, or
@@ -42,6 +42,7 @@ const stubRelay = (first: Answer) =>
         sockets.handleUpgrade(request, socket, head, (opened) => {
           opened.on("error", () => null);
           if (answer.current === "replace") opened.send(closingFrame(1012, "replaced"));
+          if (answer.current === "limit") opened.send(closingFrame(4029, "rate limited"));
         });
       });
       await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -95,6 +96,27 @@ describe("a host that another host replaced", () => {
     Effect.scoped(
       Effect.gen(function* () {
         const relay = yield* stubRelay("replace");
+        const host = yield* hostAt(relay.origin);
+        yield* host.setAccess(true);
+        while (relay.attempts.count < 1) yield* turn;
+        yield* settle;
+        expect(yield* host.presence.status).toBe("Unreachable");
+        yield* TestClock.adjust(29_999);
+        yield* settle;
+        expect(relay.attempts.count).toBe(1);
+        yield* TestClock.adjust(1);
+        while (relay.attempts.count < 2) yield* turn;
+        expect(relay.attempts.count).toBe(2);
+      }),
+    ),
+  );
+});
+
+describe("a host that the relay turned away as rate limited", () => {
+  it.effect("waits the long retry, so its own retries cannot feed the limit that refused it", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const relay = yield* stubRelay("limit");
         const host = yield* hostAt(relay.origin);
         yield* host.setAccess(true);
         while (relay.attempts.count < 1) yield* turn;

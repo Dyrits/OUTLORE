@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import { Clock, Effect, Schema } from "effect";
 import { type WebSocket, WebSocketServer } from "ws";
+import { SourceGate, type SourceLimits } from "./limits.ts";
 import { closeCodes, closeWithReason, defaultRoomLimits, type Member, RoomCore, type RoomLimits } from "./roomCore.ts";
 import { parseConnect } from "./route.ts";
 
@@ -11,8 +12,12 @@ export type NodeRelayOptions = Partial<RoomLimits> & {
   readonly host?: string;
   /** How long a room with nobody in it is kept before a new room may take its place; defaults to 7 days. */
   readonly idleRoomMillis?: number;
+  /** How many rooms the relay holds at most; defaults to 10,000. A host that would make another is turned away. */
+  readonly maxRooms?: number;
   /** The port to listen on; 0, the default, picks a free one. */
   readonly port?: number;
+  /** How many connection attempts one address may make; defaults to `defaultSourceLimits`. */
+  readonly sourceLimits?: Partial<SourceLimits>;
 };
 
 /** A running relay. */
@@ -29,6 +34,9 @@ export type NodeRelay = {
 export class NodeRelayFailure extends Schema.TaggedError<NodeRelayFailure>()("NodeRelayFailure", {
   reason: Schema.String,
 }) {}
+
+/** The most rooms the relay holds unless told otherwise. */
+export const defaultMaxRooms = 10_000;
 
 /** How long a room with nobody in it is kept: its claim is held in memory, so dropping it frees the name. */
 export const defaultIdleRoomMillis = 7 * 24 * 60 * 60 * 1000;
@@ -66,6 +74,11 @@ const refuse = (socket: Duplex): void => {
   socket.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
 };
 
+// A source over its limit: told to come back, before the relay does anything for it.
+const tooManyAttempts = (socket: Duplex): void => {
+  socket.end("HTTP/1.1 429 Too Many Requests\r\nRetry-After: 60\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+};
+
 /**
  * Starts the relay on plain Node with `ws`, speaking the same wire protocol as the Worker, and stops it when the scope
  * ends. It holds nothing about a room but its host claim, and passes frames on without reading them. Only a host
@@ -77,13 +90,17 @@ export const startNodeRelay = (options: NodeRelayOptions = {}) =>
       const context = yield* Effect.context<never>();
       const runSync = Effect.runSyncWith(context);
       const runPromise = Effect.runPromiseWith(context);
-      const limits: Partial<RoomLimits> = {
-        ...(options.maxClients === void 0 ? {} : { maxClients: options.maxClients }),
-        ...(options.maxFrameBytes === void 0 ? {} : { maxFrameBytes: options.maxFrameBytes }),
-      };
-      const idleRoomMillis = options.idleRoomMillis ?? defaultIdleRoomMillis;
+      const {
+        host,
+        idleRoomMillis = defaultIdleRoomMillis,
+        maxRooms = defaultMaxRooms,
+        port: wantedPort,
+        sourceLimits,
+        ...limits
+      } = options;
+      const gate = new SourceGate(sourceLimits);
       const rooms = new Map<string, Room>();
-      const maxPayload = options.maxFrameBytes ?? defaultRoomLimits.maxFrameBytes;
+      const maxPayload = limits.maxFrameBytes ?? defaultRoomLimits.maxFrameBytes;
       const wss = new WebSocketServer({ maxPayload, noServer: true });
       const server = createServer((_request, response) => {
         response.writeHead(404, { "Content-Length": 0 }).end();
@@ -105,6 +122,8 @@ export const startNodeRelay = (options: NodeRelayOptions = {}) =>
         Effect.gen(function* () {
           const connect = parseConnect(request.url ?? "");
           if (connect === null) return refuse(socket);
+          const source = request.socket.remoteAddress;
+          if (source !== void 0 && !(yield* gate.admit(source))) return tooManyAttempts(socket);
           const now = yield* Clock.currentTimeMillis;
           let room = rooms.get(connect.room);
           if (room === void 0) {
@@ -113,6 +132,11 @@ export const startNodeRelay = (options: NodeRelayOptions = {}) =>
                 closeWithReason(peer, closeCodes.hostOffline, "host offline"),
               );
             evictIdleRooms(now);
+            // Said in a closing frame the host reads at once, so that it waits and says why, not a silent close.
+            if (rooms.size >= maxRooms)
+              return upgrade(request, socket, head, (peer) =>
+                closeWithReason(peer, closeCodes.rateLimited, "too many rooms"),
+              );
             room = createRoom(limits, now);
             rooms.set(connect.room, room);
           }
@@ -149,7 +173,7 @@ export const startNodeRelay = (options: NodeRelayOptions = {}) =>
 
       const port = yield* Effect.callback<number, NodeRelayFailure>((resume) => {
         server.once("error", (error) => resume(Effect.fail(new NodeRelayFailure({ reason: error.message }))));
-        server.listen(options.port ?? 0, options.host ?? "127.0.0.1", () => {
+        server.listen(wantedPort ?? 0, host ?? "127.0.0.1", () => {
           const address = server.address();
           resume(
             typeof address === "object" && address !== null

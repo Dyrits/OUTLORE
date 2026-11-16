@@ -10,6 +10,7 @@ export const workerSourceFiles = [
   "../channel/package.json",
   "../channel/src/base64url.ts",
   "../channel/src/constantTimeEqual.ts",
+  "src/limits.ts",
   "src/roomCore.ts",
   "src/route.ts",
   "src/worker.ts",

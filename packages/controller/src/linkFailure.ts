@@ -49,6 +49,7 @@ export const controllerWords = {
 
 /** What the owner reads when the host could not be reached or did not answer. */
 export const linkTexts = {
+  busy: "The relay is busy. Try again in a moment.",
   hostOffline: "The host is not connected right now. Check that its Outlore is open and Allow paired devices is on.",
   localRelay: "This pairing code names a relay on this computer, which is not accepted.",
   newerCode: "This pairing code is from a newer Outlore. Update this app and try again.",

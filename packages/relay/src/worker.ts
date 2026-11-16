@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { Effect } from "effect";
+import { SourceGate } from "./limits.ts";
 import { closeWithReason, type Member, RoomCore, type RoomPorts } from "./roomCore.ts";
 import { parseConnect } from "./route.ts";
 
@@ -12,6 +13,9 @@ export type Env = {
 type Attachment = { readonly id: Uint8Array; readonly role: "client" } | { readonly role: "host" };
 
 const claimKey = "claim";
+
+// Counts connection attempts per address in the memory of this isolate, before any Durable Object is woken.
+const gate = new SourceGate();
 
 const memberOf = (peer: WebSocket): Member<WebSocket> | null => {
   const attachment: Attachment | null = peer.deserializeAttachment();
@@ -98,6 +102,9 @@ export default {
     const connect = parseConnect(request.url);
     if (connect === null || request.method !== "GET") return new Response(null, { status: 404 });
     if (request.headers.get("Upgrade") !== "websocket") return new Response(null, { status: 426 });
+    const source = request.headers.get("CF-Connecting-IP");
+    if (source !== null && !(await Effect.runPromise(gate.admit(source))))
+      return new Response(null, { headers: { "Retry-After": "60" }, status: 429 });
     return env.ROOM.get(env.ROOM.idFromName(connect.room)).fetch(request);
   },
 } satisfies ExportedHandler<Env>;

@@ -75,13 +75,18 @@ const tapChannel = (channel: SecureChannel) => {
 
 type Hello = Parameters<typeof encodeClientHello>[0];
 
-/** Why the relay turned the connection away, from its close code: no host, the host left, or the room is full. */
+/**
+ * Why the relay turned the connection away, from its close code: no host, the host left, the room is full, or the
+ * relay limited this connection (trying again later may help).
+ */
 const relayRefusalOf = (code: number | null) =>
   code === closeCodes.hostOffline || code === closeCodes.hostLeft
     ? linkTexts.hostOffline
     : code === closeCodes.roomFull
       ? linkTexts.roomFull
-      : linkTexts.timedOut;
+      : code === closeCodes.rateLimited
+        ? linkTexts.busy
+        : linkTexts.timedOut;
 
 /**
  * Opens the secure channel to a host, saying who this controller is with `hello`, and reads its answer. The relay

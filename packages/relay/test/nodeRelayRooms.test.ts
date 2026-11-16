@@ -3,7 +3,8 @@ import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { describe, expect, vi } from "vitest";
 import { startNodeRelay } from "../src/index.ts";
-import { clientPath, connect, hostPath, secret } from "./fixtures/wsClient.ts";
+import { defaultMaxRooms } from "../src/nodeRelay.ts";
+import { clientPath, connect, hostPath, open, secret } from "./fixtures/wsClient.ts";
 
 // Which rooms the node relay holds (ST-H-12): only a host makes one, and an empty one is dropped after its idle period.
 
@@ -78,6 +79,64 @@ describe("the rooms the node relay holds", () => {
       yield* TestClock.adjust(idleRoomMillis * 10);
       yield* Effect.promise(() => connect(relay.port, hostPath(second)));
       expect(relay.rooms()).toBe(2);
+    }),
+  );
+});
+
+describe("the room cap of the node relay", () => {
+  it.effect("tells a host that would make a room over the cap why it is turned away, and keeps the others", () =>
+    Effect.gen(function* () {
+      const relay = yield* startNodeRelay({ maxRooms: 2 });
+      yield* Effect.promise(() => connect(relay.port, hostPath(first)));
+      yield* Effect.promise(() => connect(relay.port, hostPath(second)));
+      const third = "0123456789abcdefghijklmnopqrstuv";
+      const refused = yield* Effect.promise(async () => (await connect(relay.port, hostPath(third))).closed);
+      expect(refused).toEqual({ code: 4029, reason: "too many rooms" });
+      expect(relay.rooms()).toBe(2);
+      // The host of a room the relay holds is not affected: it reconnects with its claim.
+      const again = yield* Effect.promise(() => connect(relay.port, hostPath(first)));
+      again.socket.send("ping");
+      expect((yield* Effect.promise(() => again.messagesAfter(1)))[0]?.data.toString()).toBe("pong");
+    }),
+  );
+
+  it.effect("takes the room again once an idle room has been dropped", () =>
+    Effect.gen(function* () {
+      const relay = yield* startNodeRelay({ idleRoomMillis, maxRooms: 1 });
+      yield* holdAndLeave(relay.port, first);
+      yield* TestClock.adjust(idleRoomMillis);
+      const accepted = yield* Effect.promise(() => connect(relay.port, hostPath(second)));
+      accepted.socket.send("ping");
+      expect((yield* Effect.promise(() => accepted.messagesAfter(1)))[0]?.data.toString()).toBe("pong");
+      expect(relay.rooms()).toBe(1);
+    }),
+  );
+
+  it("is 10,000 rooms by default", () => {
+    expect(defaultMaxRooms).toBe(10_000);
+  });
+});
+
+describe("the attempts per source of the node relay", () => {
+  it.effect("refuses a source over its limit with 429 and accepts it again when the minute has passed", () =>
+    Effect.gen(function* () {
+      const relay = yield* startNodeRelay({ sourceLimits: { perHour: 100, perMinute: 3 } });
+      for (let index = 0; index < 3; index++) yield* Effect.promise(() => open(relay.port, clientPath(first)));
+      expect(yield* Effect.promise(() => open(relay.port, clientPath(first)))).toEqual({ status: 429 });
+      expect(relay.rooms()).toBe(0);
+      yield* TestClock.adjust(60_000);
+      const again = yield* Effect.promise(() => open(relay.port, hostPath(first)));
+      expect("status" in again).toBe(false);
+    }),
+  );
+
+  it.effect("does not count an address that is not a room against the source", () =>
+    Effect.gen(function* () {
+      const relay = yield* startNodeRelay({ sourceLimits: { perHour: 100, perMinute: 1 } });
+      for (let index = 0; index < 5; index++)
+        expect(yield* Effect.promise(() => open(relay.port, "/status"))).toEqual({ status: 404 });
+      const real = yield* Effect.promise(() => open(relay.port, hostPath(first)));
+      expect("status" in real).toBe(false);
     }),
   );
 });

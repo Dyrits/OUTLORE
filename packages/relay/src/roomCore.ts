@@ -1,5 +1,5 @@
 import { constantTimeEqual } from "@outlore/channel/constantTimeEqual";
-import { Effect, Semaphore } from "effect";
+import { Clock, Effect, Semaphore } from "effect";
 import type { Role } from "./route.ts";
 
 /** What the core needs from one connection, whatever carries it (a `ws` socket, a Durable Object WebSocket, a fake). */
@@ -34,17 +34,29 @@ export type RoomPorts<P> = {
 
 /** The caps of a room. */
 export type RoomLimits = {
-  /** The largest frame in bytes, counting the 9 byte prefix a client's frame gets on its way to the host. */
-  readonly maxFrameBytes: number;
+  /** The most frames a connection may send at once: the budget it starts with and refills up to. */
+  readonly frameBurst: number;
   /** The most clients a room holds. */
   readonly maxClients: number;
+  /** The largest frame in bytes, counting the 9 byte prefix a client's frame gets on its way to the host. */
+  readonly maxFrameBytes: number;
+  /** How many frames a connection may send each second on average, which is how fast its budget refills. */
+  readonly maxFramesPerSecond: number;
 };
 
 /** Why a connection is closed at once. */
 export type Rejection = { readonly code: number; readonly reason: string };
 
-/** The default caps: 8 clients and 1 MiB frames. */
-export const defaultRoomLimits = { maxClients: 8, maxFrameBytes: 1024 * 1024 } as const satisfies RoomLimits;
+/**
+ * The default caps: 8 clients, 1 MiB frames, and a budget of 200 frames a second with a burst of 400 for each
+ * connection (Cloudflare's soft limit for one object is 1,000 requests a second).
+ */
+export const defaultRoomLimits = {
+  frameBurst: 400,
+  maxClients: 8,
+  maxFrameBytes: 1024 * 1024,
+  maxFramesPerSecond: 200,
+} as const satisfies RoomLimits;
 
 /** The first byte of a binary frame the relay sends to a host: a client's frame, a client joined, a client left. */
 export const relayFrame = { forward: 1, joined: 2, left: 3 } as const;
@@ -69,6 +81,7 @@ export const closeCodes = {
   hostOffline: 1013,
   malformedFrame: 1002,
   normal: 1000,
+  rateLimited: 4029,
   replaced: 1012,
   roomFull: 4004,
   textNotSupported: 1003,
@@ -137,6 +150,9 @@ export class RoomCore<P extends RoomPeer> {
   readonly #ports: RoomPorts<P>;
   // Serializes claim checks, so two first hosts arriving together cannot both take the room.
   readonly #claims = Semaphore.makeUnsafe(1);
+  // What each connection has left of its frame budget. In memory only: a flood keeps the object awake, so the budget
+  // lasts exactly while it matters, and a connection that outlives a hibernation starts with a full one.
+  readonly #budgets = new WeakMap<P, { at: number; frames: number }>();
   #forwarded = 0;
 
   constructor(ports: RoomPorts<P>, limits: Partial<RoomLimits> = {}) {
@@ -167,7 +183,7 @@ export class RoomCore<P extends RoomPeer> {
 
   /** Handles one frame from a connection. */
   receive(peer: P, data: string | Uint8Array): Effect.Effect<void> {
-    return Effect.sync(() => this.#receive(peer, data));
+    return Clock.currentTimeMillis.pipe(Effect.map((now) => this.#receive(peer, data, now)));
   }
 
   /** Handles the end of a connection, however it ended. */
@@ -178,9 +194,25 @@ export class RoomCore<P extends RoomPeer> {
     });
   }
 
-  #receive(peer: P, data: string | Uint8Array): void {
+  // Takes one frame from the connection's budget, refilled by the time since its last frame; false when it is spent.
+  #spend(peer: P, now: number): boolean {
+    const { frameBurst, maxFramesPerSecond } = this.#limits;
+    const budget = this.#budgets.get(peer) ?? { at: now, frames: frameBurst };
+    budget.frames = Math.min(frameBurst, budget.frames + ((now - budget.at) * maxFramesPerSecond) / 1000);
+    budget.at = now;
+    this.#budgets.set(peer, budget);
+    if (budget.frames < 1) return false;
+    budget.frames -= 1;
+    return true;
+  }
+
+  #receive(peer: P, data: string | Uint8Array, now: number): void {
     const member = this.#ports.memberOf(peer);
     if (member === null) return;
+    if (!this.#spend(peer, now)) {
+      this.#drop(member, closeCodes.rateLimited, "rate limited");
+      return;
+    }
     if (typeof data === "string") {
       if (data === "ping") attempt(() => peer.send("pong"));
       else this.#drop(member, closeCodes.textNotSupported, "text frames are not supported");

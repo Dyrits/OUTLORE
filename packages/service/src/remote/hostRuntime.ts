@@ -115,9 +115,11 @@ export const remoteHostLayer = Layer.effectDiscard(
             if (!state.attachRelay(connection, generation)) return;
             const startedAt = yield* Clock.currentTimeMillis;
             const code = yield* hold(connection, record);
-            // Claimed by another host, or replaced by one: wait longer than for a dropped connection. Switched off:
-            // say so at once.
-            const isClaimed = code === closeCodes.claimMismatch || code === closeCodes.replaced;
+            // Claimed by another host, replaced by one, or limited by the relay: wait longer than for a dropped
+            // connection (the relay's limits count a minute; its own limit must not be fed by this retry). Switched
+            // off: say so at once.
+            const isClaimed =
+              code === closeCodes.claimMismatch || code === closeCodes.replaced || code === closeCodes.rateLimited;
             const isNowOff = isOff(state.record());
             yield* state.setStatus(isNowOff ? "Off" : isClaimed ? "Unreachable" : "Connecting");
             if (isNowOff) return;
