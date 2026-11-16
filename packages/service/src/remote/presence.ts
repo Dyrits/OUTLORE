@@ -79,26 +79,25 @@ export const hostPresenceLayer = Layer.effect(
         Effect.flatMap((before) => (before === (record?.isEnabled ? next : "Off") ? Effect.void : changes.publish)),
       );
     return {
-      admitDevice: (deviceId: string, close: () => void) =>
-        Effect.gen(function* () {
-          if (!record?.isEnabled) return null;
-          const expected = generation;
-          const remove = connected(deviceId, close);
-          const isPaired = yield* isDevicePaired(deviceId).pipe(
-            Effect.onError(() =>
-              Effect.sync(() => {
-                remove();
-                close();
-              }),
-            ),
-          );
-          if (!isPaired || !record?.isEnabled || generation !== expected) {
-            remove();
-            close();
-            return null;
-          }
-          return remove;
-        }),
+      admitDevice: Effect.fnUntraced(function* (deviceId: string, close: () => void) {
+        if (!record?.isEnabled) return null;
+        const expected = generation;
+        const remove = connected(deviceId, close);
+        const isPaired = yield* isDevicePaired(deviceId).pipe(
+          Effect.onError(() =>
+            Effect.sync(() => {
+              remove();
+              close();
+            }),
+          ),
+        );
+        if (!isPaired || !record?.isEnabled || generation !== expected) {
+          remove();
+          close();
+          return null;
+        }
+        return remove;
+      }),
       attachRelay: (connection: HostConnection, expected: number) => {
         if (!record?.isEnabled || generation !== expected) {
           connection.close();
@@ -116,21 +115,20 @@ export const hostPresenceLayer = Layer.effect(
         return () => void pokes.delete(listener);
       },
       record: () => record,
-      refresh: (defaultRelayOrigin: string) =>
-        Effect.gen(function* () {
-          const next = yield* readHostRecord;
-          const hasChanged =
-            next?.isEnabled !== record?.isEnabled ||
-            (next?.relayOrigin ?? defaultRelayOrigin) !== (record?.relayOrigin ?? defaultRelayOrigin);
-          record = next;
-          if (!hasChanged) return;
-          generation += 1;
-          closeAll();
-          relay?.close();
-          relay = null;
-          yield* setStatus(record?.isEnabled ? "Connecting" : "Off");
-          for (const listener of [...pokes]) listener();
-        }),
+      refresh: Effect.fnUntraced(function* (defaultRelayOrigin: string) {
+        const next = yield* readHostRecord;
+        const hasChanged =
+          next?.isEnabled !== record?.isEnabled ||
+          (next?.relayOrigin ?? defaultRelayOrigin) !== (record?.relayOrigin ?? defaultRelayOrigin);
+        record = next;
+        if (!hasChanged) return;
+        generation += 1;
+        closeAll();
+        relay?.close();
+        relay = null;
+        yield* setStatus(record?.isEnabled ? "Connecting" : "Off");
+        for (const listener of [...pokes]) listener();
+      }),
       setStatus,
       status: SubscriptionRef.get(status),
       statusChanges: SubscriptionRef.changes(status),
@@ -163,11 +161,10 @@ export const makeHostControl = (dependencies: {
    * host reconnects through the new relay if pairing is on; the same address means a relay updated where it stands,
    * which changes nothing.
    */
-  const useRelay = (origin: string | null) =>
-    Effect.gen(function* () {
-      yield* change(setRelayOrigin(origin));
-      yield* state.refresh(config.relayOrigin);
-    });
+  const useRelay = Effect.fnUntraced(function* (origin: string | null) {
+    yield* change(setRelayOrigin(origin));
+    yield* state.refresh(config.relayOrigin);
+  });
   return {
     /** Makes a pairing code that works once, for ten minutes, naming this host's room on the relay. */
     createPairingCode: withConfig(
@@ -196,15 +193,14 @@ export const makeHostControl = (dependencies: {
         Effect.andThen(view),
       ),
     /** Deploys the relay to the user's own Cloudflare account and uses it. The token is used once and kept nowhere. */
-    useOwnRelay: (token: string) =>
-      Effect.gen(function* () {
-        const trimmed = token.trim();
-        if (trimmed === "") return yield* invalid("Paste the Cloudflare API token first.");
-        const result = yield* Effect.promise(() => config.deployOwnRelay(trimmed));
-        if (!result.ok) return yield* new ServiceFailure({ kind: "ExecutionFailure", message: result.message });
-        yield* useRelay(result.origin);
-        return yield* view;
-      }),
+    useOwnRelay: Effect.fnUntraced(function* (token: string) {
+      const trimmed = token.trim();
+      if (trimmed === "") return yield* invalid("Paste the Cloudflare API token first.");
+      const result = yield* Effect.promise(() => config.deployOwnRelay(trimmed));
+      if (!result.ok) return yield* new ServiceFailure({ kind: "ExecutionFailure", message: result.message });
+      yield* useRelay(result.origin);
+      return yield* view;
+    }),
     /** Goes back to the shared relay. */
     useSharedRelay: () => useRelay(null).pipe(Effect.andThen(view)),
     view,

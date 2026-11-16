@@ -139,16 +139,15 @@ export const priceTableLayer = Layer.effect(
       } satisfies PriceStatus;
     });
 
-    const estimate = (model: string, usage: TokenUsage) =>
-      Effect.gen(function* () {
-        const active = yield* activeOf;
-        const fromTable = priceOf(active.rows, model);
-        if (fromTable !== null) return { amount: amountOf(fromTable, usage), pricedAt: active.at } satisfies Estimate;
-        const fromSnapshot = priceOf(snapshotPrices, model);
-        return fromSnapshot === null
-          ? null
-          : ({ amount: amountOf(fromSnapshot, usage), pricedAt: snapshotAt } satisfies Estimate);
-      });
+    const estimate = Effect.fnUntraced(function* (model: string, usage: TokenUsage) {
+      const active = yield* activeOf;
+      const fromTable = priceOf(active.rows, model);
+      if (fromTable !== null) return { amount: amountOf(fromTable, usage), pricedAt: active.at } satisfies Estimate;
+      const fromSnapshot = priceOf(snapshotPrices, model);
+      return fromSnapshot === null
+        ? null
+        : ({ amount: amountOf(fromSnapshot, usage), pricedAt: snapshotAt } satisfies Estimate);
+    });
 
     const refresh = Effect.gen(function* () {
       if (!(yield* activeOf).isFetching) return yield* status;

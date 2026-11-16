@@ -25,13 +25,12 @@ const selectQuestions = (sql: SqlClient.SqlClient) => sql`
   FROM questions q JOIN missions m ON m.id = q.mission_id`;
 
 /** A thread's questions, open and recorded, in the order asked. */
-export const listThreadQuestions = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    return (yield* sql<QuestionRow>`${selectQuestions(sql)} WHERE q.thread_id = ${threadId} ORDER BY q.asked_at, q.rowid`).map(
-      toQuestion,
-    );
-  });
+export const listThreadQuestions = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  return (yield* sql<QuestionRow>`${selectQuestions(sql)} WHERE q.thread_id = ${threadId} ORDER BY q.asked_at, q.rowid`).map(
+    toQuestion,
+  );
+});
 
 /** Every open question across missions, oldest first, for the dashboard's list. */
 export const listOpenQuestions = Effect.gen(function* () {
@@ -42,18 +41,16 @@ export const listOpenQuestions = Effect.gen(function* () {
 });
 
 /** Recorded questions, newest first, optionally for one mission. */
-export const listQuestionHistory = (missionId: string | null) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    return (yield* sql<QuestionRow>`${selectQuestions(sql)}
-      WHERE q.outcome IS NOT NULL AND ${missionId === null ? sql`1 = 1` : sql`q.mission_id = ${missionId}`}
-      ORDER BY q.resolved_at DESC, q.rowid DESC`).map(toQuestion);
-  });
+export const listQuestionHistory = Effect.fnUntraced(function* (missionId: string | null) {
+  const sql = yield* SqlClient.SqlClient;
+  return (yield* sql<QuestionRow>`${selectQuestions(sql)}
+    WHERE q.outcome IS NOT NULL AND ${missionId === null ? sql`1 = 1` : sql`q.mission_id = ${missionId}`}
+    ORDER BY q.resolved_at DESC, q.rowid DESC`).map(toQuestion);
+});
 
 /** One question by its identifier. */
-export const readQuestion = (questionId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [question] = yield* sql<QuestionRow>`${selectQuestions(sql)} WHERE q.id = ${questionId}`;
-    return question === undefined ? null : toQuestion(question);
-  });
+export const readQuestion = Effect.fnUntraced(function* (questionId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [question] = yield* sql<QuestionRow>`${selectQuestions(sql)} WHERE q.id = ${questionId}`;
+  return question === undefined ? null : toQuestion(question);
+});

@@ -120,22 +120,20 @@ export const reachedTextOf = (limits: BudgetLimits, spent: Spending) =>
     .join(" and ");
 
 /** A mission's limits. */
-export const missionLimitsOf = (missionId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<{ cost: number | null; tokens: number | null }>`
-      SELECT budget_cost AS cost, budget_tokens AS tokens FROM missions WHERE id = ${missionId}`;
-    return row === undefined ? noLimits : ({ cost: row.cost, tokens: row.tokens } satisfies BudgetLimits);
-  });
+export const missionLimitsOf = Effect.fnUntraced(function* (missionId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ cost: number | null; tokens: number | null }>`
+    SELECT budget_cost AS cost, budget_tokens AS tokens FROM missions WHERE id = ${missionId}`;
+  return row === undefined ? noLimits : ({ cost: row.cost, tokens: row.tokens } satisfies BudgetLimits);
+});
 
 /** What a mission spent over its whole life. */
-export const missionSpendingOf = (missionId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<Spending>`
-      SELECT ${sql.literal(spendingColumns)} FROM usage u WHERE u.mission_id = ${missionId}`;
-    return row ?? { cost: 0, tokens: 0 };
-  });
+export const missionSpendingOf = Effect.fnUntraced(function* (missionId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<Spending>`
+    SELECT ${sql.literal(spendingColumns)} FROM usage u WHERE u.mission_id = ${missionId}`;
+  return row ?? { cost: 0, tokens: 0 };
+});
 
 /** The global budget, its period, and what all missions spent since the period started. */
 export const readGlobalBudget = Effect.gen(function* () {

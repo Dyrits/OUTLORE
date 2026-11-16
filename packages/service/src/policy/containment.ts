@@ -33,24 +33,23 @@ export type ActionFacts = {
  * sandbox needs the owner for everything, and inside one, only leaving it (unless the owner allowed that, CHG-0295) or
  * widening it does.
  */
-export const needsOf = (facts: ActionFacts) =>
-  Effect.gen(function* () {
-    if (isFileWriting(facts.toolName)) {
-      const files = changedFilesOf(facts.input);
-      // Unsandboxed for a folder that points outside its workspace, the thread's folder itself is outside it.
-      if (facts.isEscape || facts.isUnsandboxed || files.length === 0 || facts.editFolders.length === 0)
-        return capabilities.fileOutsideWorkspace;
-      for (const file of files) {
-        let isInside = false;
-        for (const folder of facts.editFolders) isInside ||= yield* isInsideFolder(folder, file);
-        if (!isInside) return capabilities.fileOutsideWorkspace;
-      }
-      return null;
+export const needsOf = Effect.fnUntraced(function* (facts: ActionFacts) {
+  if (isFileWriting(facts.toolName)) {
+    const files = changedFilesOf(facts.input);
+    // Unsandboxed for a folder that points outside its workspace, the thread's folder itself is outside it.
+    if (facts.isEscape || facts.isUnsandboxed || files.length === 0 || facts.editFolders.length === 0)
+      return capabilities.fileOutsideWorkspace;
+    for (const file of files) {
+      let isInside = false;
+      for (const folder of facts.editFolders) isInside ||= yield* isInsideFolder(folder, file);
+      if (!isInside) return capabilities.fileOutsideWorkspace;
     }
-    if (facts.containment === "Unprotected" || facts.isUnsandboxed) return capabilities.unsandboxed;
-    if (facts.toolName === "Permissions") return capabilities.widenSandbox;
-    return facts.isEscape && !facts.canWorkOutsideSandbox ? capabilities.outsideSandbox : null;
-  });
+    return null;
+  }
+  if (facts.containment === "Unprotected" || facts.isUnsandboxed) return capabilities.unsandboxed;
+  if (facts.toolName === "Permissions") return capabilities.widenSandbox;
+  return facts.isEscape && !facts.canWorkOutsideSandbox ? capabilities.outsideSandbox : null;
+});
 
 /** Whether an action runs without asking: only at the default level, and only when nothing beyond the sandbox is needed. */
 export const isUnaskedAt = (level: ApprovalLevel, need: Capability | null) => level === "RiskyOnly" && need === null;

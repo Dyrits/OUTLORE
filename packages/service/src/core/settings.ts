@@ -70,20 +70,19 @@ export const readSettings = Effect.gen(function* () {
 });
 
 /** Stores the owner's settings, refusing any that do not decode. */
-export const writeSettings = (settings: Settings) =>
-  Effect.gen(function* () {
-    const parsed = yield* Schema.decodeUnknownEffect(Settings)(settings).pipe(
-      Effect.catch(() =>
-        invalid(
-          "Invalid settings: the chatter threshold must be a whole number of at least 2; the briefing limit, the inactivity and auto-archive days, and the lore half-lives at least 1; budget limits above 0, tokens in whole numbers.",
-        ),
+export const writeSettings = Effect.fnUntraced(function* (settings: Settings) {
+  const parsed = yield* Schema.decodeUnknownEffect(Settings)(settings).pipe(
+    Effect.catch(() =>
+      invalid(
+        "Invalid settings: the chatter threshold must be a whole number of at least 2; the briefing limit, the inactivity and auto-archive days, and the lore half-lives at least 1; budget limits above 0, tokens in whole numbers.",
       ),
-    );
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`INSERT INTO settings (key, value) VALUES ('settings', ${JSON.stringify(parsed)})
-      ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
-    return settings;
-  });
+    ),
+  );
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`INSERT INTO settings (key, value) VALUES ('settings', ${JSON.stringify(parsed)})
+    ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
+  return settings;
+});
 
 const decodeChoices = Schema.decodeUnknownExit(StartChoices);
 
@@ -117,9 +116,8 @@ export const readStartChoices = Effect.gen(function* () {
 });
 
 /** Remembers a started mission's choices; the next mission takes its folder. Callers run it in a transaction. */
-export const saveStartChoices = (choices: StartChoices) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`INSERT INTO settings (key, value) VALUES ('start_choices', ${JSON.stringify(choices)})
-      ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
-  });
+export const saveStartChoices = Effect.fnUntraced(function* (choices: StartChoices) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`INSERT INTO settings (key, value) VALUES ('start_choices', ${JSON.stringify(choices)})
+    ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
+});

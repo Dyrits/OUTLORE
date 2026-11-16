@@ -184,19 +184,18 @@ const usedFolders = async (
  * Folders for what was typed: a path (starting with `/`, `~`, or a drive) leads to that folder and its completions; a
  * name is searched under the browsable roots, best match first; nothing typed lists the folders quests already used.
  */
-export const searchFolders = (query: string, access: FolderAccess, home: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const roots = yield* listBrowsableRoots;
-    const typed = query.trim();
-    if (typed === "") {
-      const rows = yield* sql<{
-        path: string;
-      }>`SELECT path FROM workspaces ORDER BY created_at DESC, rowid DESC LIMIT 100`;
-      const paths = rows.map((row) => row.path);
-      return yield* Effect.promise(() => usedFolders(paths, roots, access));
-    }
-    return yield* Effect.promise(() =>
-      isPathQuery(typed) ? completePath(typed, home, roots, access) : searchByName(typed, home, roots),
-    );
-  });
+export const searchFolders = Effect.fnUntraced(function* (query: string, access: FolderAccess, home: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const roots = yield* listBrowsableRoots;
+  const typed = query.trim();
+  if (typed === "") {
+    const rows = yield* sql<{
+      path: string;
+    }>`SELECT path FROM workspaces ORDER BY created_at DESC, rowid DESC LIMIT 100`;
+    const paths = rows.map((row) => row.path);
+    return yield* Effect.promise(() => usedFolders(paths, roots, access));
+  }
+  return yield* Effect.promise(() =>
+    isPathQuery(typed) ? completePath(typed, home, roots, access) : searchByName(typed, home, roots),
+  );
+});
