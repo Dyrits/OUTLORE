@@ -125,7 +125,9 @@ describe("reading the price table", () => {
     return Effect.gen(function* () {
       const detail = yield* startOn("test-model", "spend 1000000");
       expect(detail.mission.consumption.estimated).toBe(3);
-      prices.state.rows = [{ ...testPrices[0], input: 30 }] as typeof testPrices;
+      const first = testPrices[0];
+      if (first === undefined) return yield* Effect.die("test prices");
+      prices.state.rows = [{ ...first, input: 30 }];
       const status = yield* call({ _tag: "RefreshPrices" });
       expect(status.source).toBe("Fetched");
       expect((yield* read(detail.mission.id)).mission.consumption.estimated).toBe(3);

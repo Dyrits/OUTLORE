@@ -9,7 +9,7 @@ import { afterEach } from "vitest";
 import { storeLayer } from "../../src/core/index.ts";
 import { undoLoreChange } from "../../src/lore/index.ts";
 import type { Placement } from "../../src/lore/lore.ts";
-import { owner, readSnapshot, type Snapshot, threadActor } from "../../src/lore/loreHistory.ts";
+import { owner, readSnapshot, type Snapshot, stateOf, threadActor } from "../../src/lore/loreHistory.ts";
 import {
   correctLoreEntry,
   countUses,
@@ -63,7 +63,6 @@ const latestOf = (loreEntryId: string) =>
   historyOf(loreEntryId).pipe(
     Effect.map((entries) => entries.filter((entry) => entry.actor !== "Fading").at(-1) ?? null),
   );
-const stateOf = (json: string | null) => (json === null ? null : (JSON.parse(json) as Snapshot));
 /** A state without its update time, which an undo sets to its own time. */
 const restorable = (state: Snapshot | null) => (state === null ? null : { ...state, updatedAt: 0 });
 

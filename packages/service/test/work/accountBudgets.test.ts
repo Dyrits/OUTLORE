@@ -108,7 +108,9 @@ describe("enforcing an account's budget", () => {
         yield* setBudget(work, tokens(1000));
         const reaching = yield* startOn(work, "spend 2000");
         const held = yield* settle(reaching.missionId, isHeld);
-        yield* call({ _tag: "StopAtBudget", stopId: held.budgetStop?.id as never });
+        const stopId = held.budgetStop?.id;
+        if (stopId === undefined) return yield* Effect.die("budget stop");
+        yield* call({ _tag: "StopAtBudget", stopId });
         yield* settle(reaching.missionId, (detail) => detail.thread.state === "Stopped");
         yield* settle(other.missionId, (detail) => detail.thread.state === "Stopped");
       }),
@@ -240,7 +242,9 @@ describe("switching to a backup Companion at an account's budget", () => {
         yield* call({ _tag: "SetThreadBackups", backups: [codex], threadId: started.threadId });
         yield* send(started.threadId, "spend 2000");
         const held = yield* settle(started.missionId, isHeld);
-        yield* call({ _tag: "SwitchAtBudget", stopId: held.budgetStop?.id as never });
+        const switchStopId = held.budgetStop?.id;
+        if (switchStopId === undefined) return yield* Effect.die("budget stop");
+        yield* call({ _tag: "SwitchAtBudget", stopId: switchStopId });
         const after = yield* settle(started.missionId, (detail) => isIdle(detail) && detail.thread.harness === "codex");
         expect(after.handovers.map((handover) => handover.text)).toEqual([
           expect.stringMatching(/Account Claude Code · Work reached its budget/),
@@ -256,7 +260,9 @@ describe("switching to a backup Companion at an account's budget", () => {
         yield* setBudget(work, tokens(1000));
         const started = yield* startOn(work, "spend 2000");
         const held = yield* settle(started.missionId, isHeld);
-        const refusal = yield* call({ _tag: "SwitchAtBudget", stopId: held.budgetStop?.id as never }).pipe(Effect.flip);
+        const switchStopId = held.budgetStop?.id;
+        if (switchStopId === undefined) return yield* Effect.die("budget stop");
+        const refusal = yield* call({ _tag: "SwitchAtBudget", stopId: switchStopId }).pipe(Effect.flip);
         expect(refusal.message).toContain("backup");
       }),
     ),

@@ -226,7 +226,9 @@ describe("undoing a change", () => {
       const view = yield* panel("Deleted");
       expect(view.loreEntries).toEqual([]);
       expect(view.deleted).toMatchObject([{ id, kind: "Rule", text: "The build must stay under a minute." }]);
-      yield* call({ _tag: "UndoIntelChange", entryId: view.deleted[0]?.entryId ?? ("" as never) });
+      const [deleted] = view.deleted;
+      if (deleted === undefined) return yield* Effect.die("deleted entry");
+      yield* call({ _tag: "UndoIntelChange", entryId: deleted.entryId });
       expect(yield* loreEntryOf(id)).toMatchObject({
         origin: { excerpt: "Keep the build under a minute.", kind: "Message" },
         text: "The build must stay under a minute.",

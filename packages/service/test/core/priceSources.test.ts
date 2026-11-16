@@ -58,10 +58,10 @@ describe("reading the public price table", () => {
   it.effect("sends a plain GET that carries nothing about the owner", () =>
     Effect.gen(function* () {
       const requests: Array<{ url: string; init: RequestInit | undefined }> = [];
-      const fake = (async (url: string | URL | Request, init?: RequestInit) => {
+      const fake: typeof fetch = async (url, init) => {
         requests.push({ init, url: String(url) });
         return Response.json(table);
-      }) as typeof fetch;
+      };
       const rows = yield* Effect.gen(function* () {
         return yield* (yield* PriceSource).read;
       }).pipe(Effect.provide(modelsDevSourceLayer(fake)));
@@ -76,7 +76,7 @@ describe("reading the public price table", () => {
 
   it.effect("fails with a reason when the table answers with an error", () =>
     Effect.gen(function* () {
-      const failing = (async () => new Response("nope", { status: 503 })) as unknown as typeof fetch;
+      const failing: typeof fetch = async () => new Response("nope", { status: 503 });
       const failure = yield* Effect.gen(function* () {
         return yield* (yield* PriceSource).read;
       }).pipe(Effect.provide(modelsDevSourceLayer(failing)), Effect.flip);
