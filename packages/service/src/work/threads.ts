@@ -10,19 +10,18 @@ import {
   invalid,
   PriceTable,
   readSettings,
+  removeScratch,
   type ServiceFailure,
 } from "../core/index.ts";
 import { removedAccountReasonOf, toolServerName } from "../harness/index.ts";
 import { Approvals } from "./approvals.ts";
 import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
-import { fallBackToBackup, resetBackupStep } from "./backups.ts";
 import { requireChatterDecision } from "./chatter.ts";
 import { changed, makeCommands } from "./commands.ts";
-import { isRunnerChangedSince, readConversationSoFar } from "./handover.ts";
+import { readConversationSoFar } from "./handover.ts";
 import { makeLifecycle, recoverThreadStates, releaseThread, resumeStopped, stopThread } from "./lifecycle.ts";
 import { listPending, listThreadsWithPending } from "./messaging.ts";
-import { fallBackAfterFailure } from "./rituals.ts";
 import { prepareStartingContext } from "./startingContext.ts";
 import { Suggestions } from "./suggestions.ts";
 import { askOwnerFor } from "./threadToolHandlers.ts";
@@ -117,10 +116,6 @@ export const threadsLayer = Layer.effect(
 
     const isCurrent = (turnId: string) => local(isCurrentTurn(turnId));
     const draft = (threadId: string, text: string) => PubSub.publish(changes.drafts, { text, threadId });
-    /** The failed turn's messages become undelivered again, so the next message retries them. */
-    const fail = (threadId: string, turn: Admitted, reason: string) =>
-      local(recordTurnFailure(threadId, turn, reason)).pipe(Effect.andThen(withdrawAll(threadId)));
-
     /**
      * Writes the thread's undelivered messages that are not queued into its running turn, each once.
      * Thread messages always steer; the owner's steer unless sent as Queue (CHG-0039).
@@ -158,8 +153,7 @@ export const threadsLayer = Layer.effect(
         if (!(yield* isCurrent(turn.turnId))) return;
         const removed = yield* local(removedAccountReasonOf(turn));
         if (removed !== null) {
-          yield* fail(threadId, turn, removed);
-          return yield* wakeWaiting(turn.missionId, threadId);
+          return yield* commands.run(local(recordTurnFailure(threadId, turn, removed, false))).pipe(Effect.orDie);
         }
         const { shouldStreamReplies } = yield* local(readSettings);
         const terms = yield* local(
@@ -172,16 +166,17 @@ export const threadsLayer = Layer.effect(
         const mcpUrl = yield* endpoints.urlFor(threadId);
         const onEvent = (event: HarnessEvent) =>
           Match.valueTags(event, {
-            Delivered: (delivered) => local(deliverSteered(turn, delivered.messageId)).pipe(Effect.orDie),
+            Delivered: (delivered) => commands.run(local(deliverSteered(turn, delivered.messageId))).pipe(Effect.orDie),
             Draft: (written) => (shouldStreamReplies ? draft(threadId, written.text).pipe(Effect.asVoid) : Effect.void),
-            Notice: (notice) => local(saveTurnNotice(threadId, turn, notice.text)).pipe(Effect.orDie),
+            Notice: (notice) => commands.run(local(saveTurnNotice(threadId, turn, notice.text))).pipe(Effect.orDie),
             Reply: (reply) =>
-              local(saveTurnReply(threadId, turn, reply.text, reply.model ?? null, reply.usage ?? null)).pipe(
-                Effect.andThen(draft(threadId, "")),
-                Effect.orDie,
-              ),
+              commands
+                .run(local(saveTurnReply(threadId, turn, reply.text, reply.model ?? null, reply.usage ?? null)))
+                .pipe(Effect.andThen(draft(threadId, "")), Effect.orDie),
             ToolCall: (call) =>
-              local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input)).pipe(Effect.orDie),
+              commands
+                .run(local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input)))
+                .pipe(Effect.orDie),
           });
         if (!(yield* isCurrent(turn.turnId))) return;
         active.set(threadId, { turnId: turn.turnId, written: new Set() });
@@ -213,20 +208,11 @@ export const threadsLayer = Layer.effect(
           );
         yield* draft(threadId, "");
         if (outcome._tag === "Failure") {
-          yield* fail(threadId, turn, outcome.failure.reason);
-          // The owner chose another runner during the turn: it waits for them, as after any failed turn, and no
-          // fallback replaces their choice (thread-handover).
-          if (yield* local(isRunnerChangedSince(threadId, turn))) return yield* wakeWaiting(turn.missionId, threadId);
-          // A Ritual's run carries on with its next Companion, or fails once they are used up (rituals).
-          yield* commands.run(fallBackAfterFailure(threadId, outcome.failure.reason)).pipe(Effect.orDie);
-          // Any thread carries on with its next backup Companion, if it has one (thread-panel, Backups).
-          yield* commands.run(fallBackToBackup(threadId, outcome.failure.reason)).pipe(Effect.orDie);
-          return yield* wakeWaiting(turn.missionId, threadId);
+          return yield* commands
+            .run(local(recordTurnFailure(threadId, turn, outcome.failure.reason)))
+            .pipe(Effect.orDie);
         }
-        const halted = yield* local(completeTurn(threadId, turn, outcome.success));
-        yield* local(resetBackupStep(threadId));
-        yield* cancel(halted.filter((id) => id !== threadId));
-        yield* wakeWaiting(turn.missionId, threadId);
+        yield* commands.run(local(completeTurn(threadId, turn, outcome.success))).pipe(Effect.orDie);
         // Messages that arrived during the turn start the next one, in this same fiber,
         // so the thread's entry in the fiber map always holds its current turn.
         const next = yield* local(admitTurn(threadId));
@@ -262,7 +248,13 @@ export const threadsLayer = Layer.effect(
     });
     const wakeMission = (missionId: string) => wakeWaiting(missionId, "");
     // Commands on a single thread; the service's own runner (commands.ts) is built over this layer.
-    const commands = makeCommands({ publish: changes.publish, sql, threads: { cancel, wake, wakeMission } });
+    const commands = makeCommands({
+      publish: changes.publish,
+      removeScratch: (id) => local(removeScratch(join(scratchRoot, id))).pipe(Effect.orDie),
+      sql,
+      threads: { cancel, wake, wakeMission },
+      withdrawQuestions: withdrawAll,
+    });
 
     const stop = (threadId: string) => commands.run(stopThread(threadId)).pipe(Effect.orDie);
 

@@ -101,17 +101,4 @@ export const ReadHostName = Schema.TaggedStruct("ReadHostName", {});
 /** Names this host; the name shows on every paired device. */
 export const RenameHost = Schema.TaggedStruct("RenameHost", { name: Schema.String });
 
-/** The request tags a paired device may not send to a host. */
-export const hostOnlyRequestTags = [
-  "AddBrowsableRoot",
-  "AddHost",
-  "CreatePairingCode",
-  "DisconnectDevice",
-  "ListHosts",
-  "ReadRemoteAccess",
-  "RemoveBrowsableRoot",
-  "RemoveHost",
-  "SetRemoteAccess",
-  "UseOwnRelay",
-  "UseSharedRelay",
-] as const satisfies ReadonlyArray<import("./requests.ts").RequestTag>;
+export { hostOnlyRequestTags } from "./requestSources.ts";

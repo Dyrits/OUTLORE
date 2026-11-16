@@ -1,7 +1,7 @@
 import type { JournalEntry, JournalView, MissionId } from "@outlore/contracts";
-import { Clock, Effect } from "effect";
+import { Clock, Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
-import { notFound, readSettings, tokensOf, touchMission } from "../core/index.ts";
+import { notFound, readSettings, ServiceFailure, tokensOf, touchMission } from "../core/index.ts";
 
 /** How many entries a thread's starting context and `read_journal` carry by default (mission-journal, Reading). */
 export const latestEntryCount = 20;
@@ -234,3 +234,19 @@ export const openerContextOf = (openerMessages: string | null) =>
   openerMessages === null
     ? null
     : ["# Your opener's messages since the latest journal entry", openerMessages].join("\n");
+
+/** The owner's journal change as the app sees it: the updated journal, or the refusal as a service failure. */
+export const ownerOutcomeOf = (missionId: string, outcome: JournalOutcome) =>
+  Match.valueTags(outcome, {
+    Recorded: () => readJournalView(missionId),
+    Refused: (refused) =>
+      Effect.fail(
+        new ServiceFailure({
+          kind: refused.reason === "Stale" ? "StaleVersion" : "InvalidInput",
+          message:
+            refused.reason === "Stale"
+              ? "The briefing changed since you started editing. Review the current briefing and try again."
+              : refused.text.replace("Not recorded: ", ""),
+        }),
+      ),
+  });

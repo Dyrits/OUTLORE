@@ -44,7 +44,7 @@ export interface DeviceServerParts {
   /** Tells the screens that something they show changed, such as a device connecting. */
   readonly announce: () => void;
   /** Answers a request frame from a paired device through the service. */
-  readonly answer: (message: string, send: (frame: ServerFrame) => void) => void;
+  readonly answer: (message: string, send: (frame: ServerFrame) => void, deviceId: string) => void;
   /** Registers a connected device so Disconnect can reach it; the returned function removes it. */
   readonly deviceConnected: (deviceId: string, close: () => void) => () => void;
   readonly run: RunWork;
@@ -149,7 +149,7 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
         lastTouch = at;
         void parts.run(touchDevice(deviceId, at)).catch(reportFailure);
       }
-      parts.answer(message, send);
+      parts.answer(message, send, deviceId);
     };
   };
 

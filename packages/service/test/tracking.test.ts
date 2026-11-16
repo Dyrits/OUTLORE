@@ -1,16 +1,18 @@
 import { describe, expect, it } from "@effect/vitest";
 import type { MissionEnding, MissionId, MissionList, Settings } from "@outlore/contracts";
 import { Effect, PubSub } from "effect";
+import { SqlClient } from "effect/sql";
 import { TestClock } from "effect/testing";
 import { afterEach } from "vitest";
-import { Changes } from "../src/core/index.ts";
+import { Changes, storeLayer } from "../src/core/index.ts";
 import { call, fixture, open, read, send, start } from "./fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
-const live = () => {
+const live = () => liveWithFolder().layer;
+const liveWithFolder = () => {
   const value = fixture();
   fixtures.push(value);
-  return value.layer;
+  return value;
 };
 afterEach(() => {
   for (const value of fixtures.splice(0)) value.remove();
@@ -270,6 +272,35 @@ describe("archiving done missions automatically", () => {
       expect(yield* entriesOf(missionId)).toEqual(["Marked done by the user", "Archived automatically"]);
     }).pipe(Effect.provide(live())),
   );
+
+  it.effect("deletes a Done quest that used no tokens instead of archiving it", () =>
+    Effect.gen(function* () {
+      yield* updateSettings({ autoArchiveDays: 30, shouldAutoArchive: true });
+      const empty = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: "empty" });
+      yield* end(empty.missionId, "Done");
+      yield* advance(31 * day);
+      expect(summaryOf(yield* list(), empty.missionId)).toBeUndefined();
+      expect(summaryOf(yield* list({ isArchived: true }), empty.missionId)).toBeUndefined();
+      expect((yield* Effect.flip(read(empty.missionId))).kind).toBe("NotFound");
+    }).pipe(Effect.provide(live())),
+  );
+  it.effect("files a Done quest away without stopping a thread still at work", () => {
+    const value = liveWithFolder();
+    return Effect.gen(function* () {
+      yield* updateSettings({ autoArchiveDays: 30, shouldAutoArchive: true });
+      const started = yield* start("wait 999999999999");
+      yield* advance(20);
+      // A Done quest with a thread at work: the owner's Done stops threads, so the state is written directly.
+      yield* Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`UPDATE missions SET ending = 'Done', done_at = 0 WHERE id = ${started.missionId}`;
+      }).pipe(Effect.provide(storeLayer(`${value.directory}/store.sqlite`)));
+      yield* advance(31 * day);
+      const detail = yield* read(started.missionId);
+      expect(detail.mission.state).toBe("Archived");
+      expect(detail.thread.state).toBe("Running");
+    }).pipe(Effect.provide(value.layer));
+  });
 });
 
 describe("continuing an ended mission", () => {

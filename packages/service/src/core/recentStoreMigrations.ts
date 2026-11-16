@@ -64,4 +64,11 @@ export const recentStoreMigrations = {
     yield* sql`UPDATE questions SET kind = CASE WHEN choices IS NOT NULL THEN 'Choice'
       WHEN pattern IS NOT NULL AND permission IS NOT NULL THEN 'Approval' ELSE 'Confirmation' END`;
   }),
+  "0053_command_outcome_wakes": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    // Null marks older value-only rows, decoded on replay without rewriting the saved value.
+    yield* sql`ALTER TABLE command_outcomes ADD COLUMN wakes TEXT`;
+    yield* sql`ALTER TABLE command_outcomes ADD COLUMN thread_id TEXT`;
+    yield* sql`CREATE INDEX command_outcomes_by_thread ON command_outcomes (thread_id)`;
+  }),
 };

@@ -53,6 +53,17 @@ describe("structural actions by provenance", () => {
     }).pipe(Effect.provide(setup().layer)),
   );
 
+  it.live("deletes a quest that used no tokens and holds no message when it archives it", () =>
+    Effect.gen(function* () {
+      const place = yield* guildmaster;
+      const empty = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: "empty" });
+      yield* say(place.threadId, `Please archive New quest.\n${archive(empty.missionId)}`);
+      const detail = yield* settle(place.missionId, isIdle, place.threadId);
+      expect(lastAgentText(detail)).toContain('Deleted "New quest"');
+      expect((yield* Effect.flip(read(empty.missionId))).kind).toBe("NotFound");
+    }).pipe(Effect.provide(setup().layer)),
+  );
+
   it.live("asks one exact question when the action is the agent's proposal, and acts only on Allow", () =>
     Effect.gen(function* () {
       const place = yield* guildmaster;

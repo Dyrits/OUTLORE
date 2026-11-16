@@ -1,31 +1,26 @@
 import type { BillingKind, TokenUsage } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { Changes, PriceTable, type TurnOutcome, touchMission } from "../core/index.ts";
+import { PriceTable, type TurnOutcome, touchMission } from "../core/index.ts";
 import { callDescriptionOf } from "./activities.ts";
+import { fallBackToBackup, resetBackupStep } from "./backups.ts";
 import { enforceBudgets } from "./budgets.ts";
-import { insertThreadLine, isSessionOfThread } from "./handover.ts";
+import { changed, unchanged } from "./commands.ts";
+import { insertThreadLine, isRunnerChangedSince, isSessionOfThread } from "./handover.ts";
 import { endTurn, failTurn } from "./lifecycle.ts";
-import { deliverMessages, insertReply } from "./messaging.ts";
-import { finishRitualRun } from "./rituals.ts";
+import { deliverMessages, insertReply, listThreadsWithPending } from "./messaging.ts";
+import { fallBackAfterFailure, finishRitualRun } from "./rituals.ts";
 import { type Admitted, isCurrentTurn } from "./turnAdmission.ts";
 
-// A turn's record in the store: admitted with the thread's messages, then completed or failed. Each step runs
-// in its own transaction and publishes a change once committed; a step for a turn no longer running does nothing.
+// Turn operations return follow-ups; the command runner commits and applies them.
 
-/** Runs the step in one transaction. */
-const transacting = <A, E, R>(step: Effect.Effect<A, E, R>) =>
+/** Records a current turn's incremental event in the command's transaction. */
+const recordStep = <A, E, R>(turn: Admitted, step: Effect.Effect<A, E, R>) =>
   Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    return yield* sql.withTransaction(step);
+    if (!(yield* isCurrentTurn(turn.turnId))) return unchanged(null);
+    yield* step;
+    return changed(null);
   });
-
-/** Publishes a change once the transaction commits. */
-const publishOnCommit = Effect.gen(function* () {
-  const sql = yield* SqlClient.SqlClient;
-  const changes = yield* Changes;
-  yield* sql.afterCommit(changes.publish);
-});
 
 /**
  * Saves a reply of the running turn to the thread's conversation. A harness that names no model (Codex, OpenCode) leaves
@@ -38,9 +33,9 @@ export const saveTurnReply = (
   model: string | null,
   usage: TokenUsage | null = null,
 ) =>
-  transacting(
+  recordStep(
+    turn,
     Effect.gen(function* () {
-      if (!(yield* isCurrentTurn(turn.turnId))) return;
       const written = model ?? (turn.model === "default" ? null : turn.model);
       const messageId = yield* insertReply(turn.missionId, threadId, text, { harness: turn.harness, model: written });
       // The call behind the reply, when the harness reports usage per call; the turn's remainder joins it at the turn's end.
@@ -50,15 +45,14 @@ export const saveTurnReply = (
         yield* sql`INSERT INTO reply_usage (message_id, input, output, cache_read, cache_creation, estimate)
           VALUES (${messageId}, ${usage.input}, ${usage.output}, ${usage.cacheRead}, ${usage.cacheCreation}, ${estimate?.amount ?? null})`;
       }
-      yield* publishOnCommit;
     }),
   );
 
 /** Records a tool call the harness reported as it started, a step of the running turn (action-approval). */
 export const saveTurnActivity = (threadId: string, turn: Admitted, id: string, toolName: string, input: unknown) =>
-  transacting(
+  recordStep(
+    turn,
     Effect.gen(function* () {
-      if (!(yield* isCurrentTurn(turn.turnId))) return;
       const described = callDescriptionOf(toolName, input);
       if (described === null) return;
       const sql = yield* SqlClient.SqlClient;
@@ -67,17 +61,15 @@ export const saveTurnActivity = (threadId: string, turn: Admitted, id: string, t
       yield* sql`INSERT INTO thread_activities (id, thread_id, at, summary, detail)
         VALUES (${id}, ${threadId}, ${now}, ${described.summary}, ${described.detail})
         ON CONFLICT (thread_id, id) DO UPDATE SET at = excluded.at, summary = excluded.summary, detail = excluded.detail`;
-      yield* publishOnCommit;
     }),
   );
 
 /** Records a line the harness adapter left in the thread during the turn, such as a session it could not continue. */
 export const saveTurnNotice = (threadId: string, turn: Admitted, text: string) =>
-  transacting(
+  recordStep(
+    turn,
     Effect.gen(function* () {
-      if (!(yield* isCurrentTurn(turn.turnId))) return;
       yield* insertThreadLine(threadId, text, yield* Clock.currentTimeMillis);
-      yield* publishOnCommit;
     }),
   );
 
@@ -170,67 +162,72 @@ const estimateOf = (
   });
 
 /**
- * Ends a turn that completed or was interrupted; an interrupted one ends the same way (CHG-0039). Answers the
- * threads a budget reached by its spending stopped.
+ * Ends a completed or interrupted turn (CHG-0039), with cancellation and wake follow-ups after its usage commits.
  */
 export const completeTurn = (threadId: string, turn: Admitted, outcome: TurnOutcome) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
-    const changes = yield* Changes;
     const prices = yield* PriceTable;
-    return yield* sql.withTransaction(
-      Effect.gen(function* () {
-        if (!(yield* isCurrentTurn(turn.turnId))) return [];
-        const { billing, context, cost, isInterrupted, sessionId, usage } = outcome;
-        const now = yield* Clock.currentTimeMillis;
-        if (usage !== null) {
-          const endedAt = yield* Clock.currentTimeMillis;
-          const model = yield* modelOfTurn(threadId, turn);
-          const estimate = yield* estimateOf(prices, model, usage, billing, cost, endedAt);
-          yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, cost, context, billing,
-              harness, model, account_id, estimate, estimate_source, priced_at)
-            VALUES (${turn.turnId}, ${turn.missionId}, ${threadId}, ${endedAt}, ${usage.input}, ${usage.output},
-              ${usage.cacheRead}, ${usage.cacheCreation}, ${cost}, ${context ?? null}, ${billing},
-              ${turn.harness}, ${model}, ${turn.accountId}, ${estimate?.amount ?? null}, ${estimate?.source ?? null}, ${estimate?.pricedAt ?? null})`;
-          yield* attachTurnRemainder(threadId, turn, usage, {
-            estimate: billing === "ApiKey" && cost !== null ? null : (estimate?.amount ?? null),
-            reported: billing === "ApiKey" ? cost : null,
-          });
-        }
-        const status = isInterrupted ? "interrupted" : "completed";
-        yield* sql`UPDATE turns SET status = ${status}, ended_at = ${now} WHERE id = ${turn.turnId}`;
-        // The owner may have changed the harness or account during the turn: its session is then not the thread's.
-        yield* endTurn(threadId, turn.turnId, (yield* isSessionOfThread(threadId, turn)) ? sessionId : null);
-        yield* finishRitualRun(threadId, isInterrupted ? "Interrupted" : "Done");
-        yield* touchMission(turn.missionId, now);
-        yield* sql.afterCommit(changes.publish);
-        // Spending is known at the turn's end: a reached budget stops the work under it.
-        return usage === null ? [] : yield* enforceBudgets(turn.missionId, threadId);
-      }),
-    );
+    if (!(yield* isCurrentTurn(turn.turnId))) return unchanged(null);
+    const { billing, context, cost, isInterrupted, sessionId, usage } = outcome;
+    const now = yield* Clock.currentTimeMillis;
+    if (usage !== null) {
+      const endedAt = yield* Clock.currentTimeMillis;
+      const model = yield* modelOfTurn(threadId, turn);
+      const estimate = yield* estimateOf(prices, model, usage, billing, cost, endedAt);
+      yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, cost, context, billing,
+            harness, model, account_id, estimate, estimate_source, priced_at)
+          VALUES (${turn.turnId}, ${turn.missionId}, ${threadId}, ${endedAt}, ${usage.input}, ${usage.output},
+            ${usage.cacheRead}, ${usage.cacheCreation}, ${cost}, ${context ?? null}, ${billing},
+            ${turn.harness}, ${model}, ${turn.accountId}, ${estimate?.amount ?? null}, ${estimate?.source ?? null}, ${estimate?.pricedAt ?? null})`;
+      yield* attachTurnRemainder(threadId, turn, usage, {
+        estimate: billing === "ApiKey" && cost !== null ? null : (estimate?.amount ?? null),
+        reported: billing === "ApiKey" ? cost : null,
+      });
+    }
+    const status = isInterrupted ? "interrupted" : "completed";
+    yield* sql`UPDATE turns SET status = ${status}, ended_at = ${now} WHERE id = ${turn.turnId}`;
+    // The owner may have changed the harness or account during the turn: its session is then not the thread's.
+    yield* endTurn(threadId, turn.turnId, (yield* isSessionOfThread(threadId, turn)) ? sessionId : null);
+    yield* finishRitualRun(threadId, isInterrupted ? "Interrupted" : "Done");
+    yield* touchMission(turn.missionId, now);
+    // Spending is known at the turn's end: a reached budget stops the work under it.
+    const halted = usage === null ? [] : yield* enforceBudgets(turn.missionId, threadId);
+    yield* resetBackupStep(threadId);
+    return changed(null, {
+      threadsToWake: yield* listThreadsWithPending(turn.missionId, threadId),
+      turnsToCancel: halted.filter((id) => id !== threadId),
+    });
   });
 
-/** Records a failed turn: its messages become undelivered again, so the next message retries them. */
-export const recordTurnFailure = (threadId: string, turn: Admitted, reason: string) =>
-  transacting(
-    Effect.gen(function* () {
-      const sql = yield* SqlClient.SqlClient;
-      if (!(yield* isCurrentTurn(turn.turnId))) return;
-      const now = yield* Clock.currentTimeMillis;
-      yield* sql`UPDATE turns SET status = 'failed', ended_at = ${now} WHERE id = ${turn.turnId}`;
-      yield* sql`UPDATE messages SET delivered_turn_id = NULL WHERE delivered_turn_id = ${turn.turnId}`;
-      yield* failTurn(threadId, reason);
-      yield* touchMission(turn.missionId, now);
-      yield* publishOnCommit;
-    }),
-  );
+/** Records failure and chooses its fallback atomically, leaving withdrawal and wakes for after commit. */
+export const recordTurnFailure = (threadId: string, turn: Admitted, reason: string, shouldFallBack = true) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    if (!(yield* isCurrentTurn(turn.turnId))) return unchanged(null);
+    const now = yield* Clock.currentTimeMillis;
+    yield* sql`UPDATE turns SET status = 'failed', ended_at = ${now} WHERE id = ${turn.turnId}`;
+    yield* sql`UPDATE messages SET delivered_turn_id = NULL WHERE delivered_turn_id = ${turn.turnId}`;
+    yield* failTurn(threadId, reason);
+    yield* touchMission(turn.missionId, now);
+    const threadsToWake: string[] = [];
+    if (shouldFallBack && !(yield* isRunnerChangedSince(threadId, turn))) {
+      const ritual = yield* fallBackAfterFailure(threadId, reason);
+      threadsToWake.push(...ritual.followUps.threadsToWake);
+      const backup = yield* fallBackToBackup(threadId, reason);
+      threadsToWake.push(...backup.followUps.threadsToWake);
+    }
+    return changed(null, {
+      threadsToWake: [...new Set([...threadsToWake, ...(yield* listThreadsWithPending(turn.missionId, threadId))])],
+      threadsToWithdraw: [threadId],
+    });
+  });
 
 /** A steered message was taken in by the running turn: it now belongs to that turn. */
 export const deliverSteered = (turn: Admitted, messageId: string) =>
-  transacting(
+  recordStep(
+    turn,
     Effect.gen(function* () {
-      if (!(yield* isCurrentTurn(turn.turnId))) return;
       yield* deliverMessages([messageId], turn.turnId);
-      yield* publishOnCommit;
     }),
   );

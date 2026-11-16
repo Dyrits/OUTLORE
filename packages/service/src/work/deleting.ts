@@ -1,12 +1,12 @@
 import { join } from "node:path";
-import type { DeletionPreview, MissionEnding, QuestPlacement } from "@outlore/contracts";
+import type { DeletionPreview } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound, removeScratch, ServiceFailure } from "../core/index.ts";
 import { eraseThreadsLore } from "../lore/index.ts";
 import { eraseAttachmentsOf } from "./attachments.ts";
+import { forgetOutcomesOf } from "./commandOutcomes.ts";
 import { Commands, changed } from "./commands.ts";
-import { endMission, isEmptyQuest, readWorkingIds } from "./ending.ts";
 import { refuseGuildmaster } from "./guildmaster.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
 import { ScratchRoot } from "./workspaces.ts";
@@ -60,9 +60,7 @@ const eraseSubtree = Effect.fn("eraseSubtree")(function* (rows: Subtree, root: S
   const ids = rows.map((row) => row.id);
   // A received message belongs to its receiver's history, even after its sender is deleted.
   yield* sql`UPDATE messages SET sender_thread_id = NULL WHERE sender_thread_id IN ${sql.in(ids)}`;
-  yield* sql`DELETE FROM command_outcomes WHERE json_extract(outcome, '$.threadId') IN ${sql.in(ids)}
-  OR json_extract(outcome, '$.messageId') IN (SELECT id FROM messages WHERE thread_id IN ${sql.in(ids)})`;
-  yield* eraseAttachmentsOf(ids);
+  yield* forgetOutcomesOf(ids);
   yield* sql`DELETE FROM messages WHERE thread_id IN ${sql.in(ids)}`;
   yield* sql`DELETE FROM chatter WHERE first_id IN ${sql.in(ids)} OR second_id IN ${sql.in(ids)}`;
   yield* releaseResolvedChatter;
@@ -98,37 +96,17 @@ export const deleteThread = Effect.fn("deleteThread")(function* (threadId: strin
   const root = rows[0];
   if (root === undefined) return yield* invalid("No thread to delete.");
   if (root.parentId === null) yield* removeScratch(join(scratchRoot, root.missionId));
-  yield* commands.run(eraseSubtree(rows, root));
+  yield* commands.run(eraseAttachmentsOf(rows.map((row) => row.id)).pipe(Effect.andThen(eraseSubtree(rows, root))));
   return null;
 });
 
-/**
- * Archives a quest, or deletes it when it used no tokens: it carries nothing, so the Archived view would only hold
- * clutter. The owner's preview of the threads at work still guards both (mission-tracking, Ending a mission).
- */
-export const archiveOrDeleteEmpty = Effect.fn("archiveOrDeleteEmpty")(function* (
-  missionId: string,
-  ending: MissionEnding,
-  snapshot: string,
-) {
-  const commands = yield* Commands;
-  const sql = yield* SqlClient.SqlClient;
-  if (ending !== "Archived" || !(yield* isEmptyQuest(missionId))) {
-    return yield* commands.run(endMission(missionId, ending, snapshot));
-  }
-  const [parent] = yield* sql<QuestPlacement & { topThreadId: string }>`SELECT top.workspace_id AS workspaceId,
-    w.name AS workspaceName, m.top_thread_id AS topThreadId
-    FROM missions m JOIN threads top ON top.id = m.top_thread_id LEFT JOIN workspaces w ON w.id = top.workspace_id
-    WHERE m.id = ${missionId}`;
-  if (parent === undefined) return yield* notFound("No such quest.");
-  yield* refuseGuildmaster(missionId, "ended or archived");
-  if (JSON.stringify(yield* readWorkingIds(missionId)) !== snapshot) {
-    return yield* new ServiceFailure({
-      kind: "StaleVersion",
-      message: "The threads at work changed. Review them again before ending the quest.",
-    });
-  }
-  const { confirmation } = yield* previewDeletion(parent.topThreadId);
-  yield* deleteThread(parent.topThreadId, confirmation);
-  return { workspaceId: parent.workspaceId, workspaceName: parent.workspaceName };
+/** Erases a quest already checked empty by the ending policy, in that policy's transaction. */
+export const eraseEmptyQuest = Effect.fn("eraseEmptyQuest")(function* (threadId: string) {
+  const rows = yield* readSubtree(threadId);
+  const root = rows[0];
+  if (root === undefined || root.parentId !== null) return yield* invalid("No quest to delete.");
+  const marked = yield* markDeleting(threadId, previewOf(rows).confirmation);
+  // Empty quests have no messages, hence no message-owned attachments; unassigned drafts belong to no quest.
+  yield* eraseSubtree(rows, root);
+  return changed(null, { missionsToRemoveScratch: [root.missionId], turnsToCancel: marked.followUps.turnsToCancel });
 });

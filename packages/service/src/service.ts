@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path";
-import type { Request, Settings } from "@outlore/contracts";
+import type { Request, RequestSource } from "@outlore/contracts";
 import { Effect, Layer, Match, Semaphore } from "effect";
-import { SqlClient, type SqlError } from "effect/sql";
+import type { SqlError } from "effect/sql";
 import {
   addBrowsableRoot,
   browseFolders,
@@ -9,9 +9,8 @@ import {
   changesLayer,
   createFolder,
   endpointsLayer,
-  Harness,
+  type Harness,
   HomeFolder,
-  invalid,
   mergedSettings,
   noPriceSourceLayer,
   type PriceSource,
@@ -21,115 +20,55 @@ import {
   readStartChoices,
   removeBrowsableRoot,
   ServiceFailure,
-  sandboxProblem,
   searchFolders,
   seedBrowsableRoots,
   sessionsLayer,
   storeLayer,
-  writeSettings,
 } from "./core/index.ts";
-import { fakeHarnessToolsLayer, HarnessTools } from "./harness/index.ts";
-import {
-  deleteLoreEntryByOwner,
-  editLoreEntryByOwner,
-  pinLoreEntryByOwner,
-  readLoreHistory,
-  readLoreView,
-  resolveLoreChange,
-  resolveLoreProposal,
-  restoreLoreEntryByOwner,
-  undoLoreChange,
-} from "./lore/index.ts";
-import {
-  listOpenQuestions,
-  listPermissions,
-  listQuestionHistory,
-  removePermission,
-  widenPermission,
-} from "./policy/index.ts";
+import { fakeHarnessToolsLayer, type HarnessTools } from "./harness/index.ts";
+import { listOpenQuestions, removePermission, widenPermission } from "./policy/index.ts";
 import {
   cloudflareApiFor,
   computerNameOf,
   type DeployResult,
   defaultRelayOrigin,
   deployRelayToCloudflare,
-  forgetHost,
-  hostNameOf,
-  listKnownHosts,
   makeHostControl,
-  pairWithHost,
   RemoteConfig,
   RemoteState,
-  readHostRecord,
   remoteHostLayer,
   remoteStateLayer,
-  renameHost,
 } from "./remote/index.ts";
 import { Service } from "./serviceTag.ts";
 import { addCredit, readAccountBudgets, setAccountBudget } from "./work/accountBudgets.ts";
-import {
-  addAccount,
-  installHarness,
-  listHarnesses,
-  listModelEfforts,
-  removeAccount,
-  renameAccount,
-  renameOwnAccount,
-  signInAccount,
-  updateHarness,
-} from "./work/accounts.ts";
-import {
-  admitOwnerText,
-  nonBlank,
-  refuseUnreadableImages,
-  runnerOfOpened,
-  runnerOfStarted,
-  runnerOfThread,
-} from "./work/admission.ts";
+import { accountsHandlers } from "./work/accountsHandlers.ts";
 import { Approvals, approvalsLayer } from "./work/approvals.ts";
-import { AttachmentsRoot, addAttachment, discardAttachment, readAttachment, sweepDrafts } from "./work/attachments.ts";
-import { setThreadBackups } from "./work/backups.ts";
+import { AttachmentsRoot, sweepDrafts } from "./work/attachments.ts";
 import { budgetPeriodsLayer } from "./work/budgetPeriods.ts";
-import { applyGlobalBudget, setMissionBudget, stopAtBudget, switchAtBudget } from "./work/budgets.ts";
+import { saveSettings } from "./work/budgetSettings.ts";
+import { setMissionBudget, stopAtBudget, switchAtBudget } from "./work/budgets.ts";
 import { readBudgetWindow } from "./work/budgetViews.ts";
 import { resolveChatter } from "./work/chatter.ts";
-import { Commands, changed, commandsLayer, type FollowUps, noFollowUps, type WithFollowUps } from "./work/commands.ts";
-import { listMissions } from "./work/dashboard.ts";
-import { archiveOrDeleteEmpty, deleteThread, previewDeletion } from "./work/deleting.ts";
-import { autoArchiveLayer, dismissPrompt, previewEnding, reopenMission } from "./work/ending.ts";
-import { readGuildHallRecap, visitGuildHall } from "./work/guildHall.ts";
-import { readGuildmaster, viewingLineOf } from "./work/guildmaster.ts";
+import { Commands, changed, commandsLayer } from "./work/commands.ts";
+import { autoArchiveLayer } from "./work/ending.ts";
 import { guildmasterReportsLayer } from "./work/guildmasterReports.ts";
-import { chooseThreadRunner } from "./work/handover.ts";
-import { type JournalOutcome, readJournalView, updateJournal } from "./work/journal.ts";
-import { markThreadDone } from "./work/lifecycle.ts";
+import { loreHandlers } from "./work/loreHandlers.ts";
 import { toolServerLayer } from "./work/mcp.ts";
 import { listMentionables } from "./work/mentions.ts";
-import { insertUserMessage } from "./work/messaging.ts";
-import { readMission, readThreadTree } from "./work/missionDetail.ts";
-import { insertMission, insertQuest } from "./work/missions.ts";
-import { PlanLimits, planLimitsLayer } from "./work/planLimits.ts";
+import { messagesHandlers } from "./work/messagesHandlers.ts";
+import { readPermissionsView } from "./work/permissionViews.ts";
+import { planLimitsLayer } from "./work/planLimits.ts";
 import { priceRefreshLayer } from "./work/priceRefresh.ts";
-import { moveQuest } from "./work/questMoves.ts";
-import { requireReachableFolder } from "./work/reachedFolders.ts";
+import { questsHandlers } from "./work/questsHandlers.ts";
 import { realmHandlers } from "./work/realmHandlers.ts";
-import { validateScope } from "./work/ritualScope.ts";
-import {
-  createRitual,
-  deleteRitual,
-  listRituals,
-  readRitual,
-  ritualsLayer,
-  runRitual,
-  updateRitual,
-} from "./work/rituals.ts";
+import { remoteHandlers } from "./work/remoteHandlers.ts";
+import { admitRequestSource } from "./work/requestAuthority.ts";
+import type { RequestServices } from "./work/requestContext.ts";
+import { ritualsLayer } from "./work/rituals.ts";
+import { ritualsHandlers } from "./work/ritualsHandlers.ts";
 import { listSkills } from "./work/skills.ts";
-import { readStartingContext } from "./work/startingContext.ts";
 import { Suggestions, suggestionsLayer } from "./work/suggestions.ts";
-import { readThreadPanel } from "./work/threadPanel.ts";
 import { AccountsRoot, Threads, threadsLayer } from "./work/threads.ts";
-import { nameNewQuest, newQuestTitle, renameMission } from "./work/titles.ts";
-import { openThreadByOwner } from "./work/tree.ts";
 import { readUsage } from "./work/usageReport.ts";
 import { listWorkspaceEntries } from "./work/workspaceEntries.ts";
 import { ScratchRoot } from "./work/workspaces.ts";
@@ -141,105 +80,23 @@ export { Service };
 const storageFailure = (error: SqlError.SqlError) =>
   new ServiceFailure({ kind: "ExecutionFailure", message: `Storage failed: ${error.message}` });
 
-/** The owner's journal change as the app sees it: the updated journal, or the refusal as a service failure. */
-const ownerOutcomeOf = (missionId: string, outcome: JournalOutcome) =>
-  Match.valueTags(outcome, {
-    Recorded: () => readJournalView(missionId),
-    Refused: (refused) =>
-      Effect.fail(
-        new ServiceFailure({
-          kind: refused.reason === "Stale" ? "StaleVersion" : "InvalidInput",
-          message:
-            refused.reason === "Stale"
-              ? "The briefing changed since you started editing. Review the current briefing and try again."
-              : refused.text.replace("Not recorded: ", ""),
-        }),
-      ),
-  });
-
 const make = Effect.gen(function* () {
-  const sql = yield* SqlClient.SqlClient;
   const changes = yield* Changes;
   const remote = yield* RemoteState;
   const remoteConfig = yield* RemoteConfig;
   const threads = yield* Threads;
-  const scratchRoot = yield* ScratchRoot;
   const homeFolder = yield* HomeFolder;
   const commands = yield* Commands;
   const approvals = yield* Approvals;
   const suggestions = yield* Suggestions;
-  const problem = yield* sandboxProblem;
-  const harnessTools = yield* HarnessTools;
-  const harness = yield* Harness;
   const prices = yield* PriceTable;
-  const planLimits = yield* PlanLimits;
-  const accountsRoot = yield* AccountsRoot;
-  const attachmentsRoot = yield* AttachmentsRoot;
-  /** Runs a step that stores or reads attached files. */
-  const withFiles = <A, E>(step: Effect.Effect<A, E, SqlClient.SqlClient | AttachmentsRoot>) =>
-    Effect.provideService(step, AttachmentsRoot, attachmentsRoot);
-  /** Admits an owner's text for the runner its request names: the text, or the refusal (work/admission.ts). */
-  const admit = (...given: Parameters<typeof admitOwnerText>) =>
-    admitOwnerText(...given).pipe(
-      Effect.provideService(HarnessTools, harnessTools),
-      Effect.provideService(AccountsRoot, accountsRoot),
-    );
   /** Runs storage work as a command whose only follow-up is announcing the change. */
   const change = <A, E, R>(work: Effect.Effect<A, E, R>) => commands.run(Effect.map(work, (value) => changed(value)));
-  /** Saves the settings `next` makes from the saved ones, read in the same transaction as the write so no concurrent change is lost. */
-  const saveSettings = (next: (saved: Settings) => Settings) =>
-    Effect.gen(function* () {
-      let before: Settings["globalBudget"] | undefined;
-      const saved = yield* change(
-        Effect.gen(function* () {
-          const current = yield* readSettings;
-          before = current.globalBudget;
-          return yield* writeSettings(next(current));
-        }),
-      );
-      // A changed global budget stops work at its limit or releases the threads it held, and leaves its line in the Guildmaster.
-      if (before !== undefined) yield* commands.run(applyGlobalBudget(before));
-      return saved;
-    });
-  /** Runs an account change, then lists the harnesses as they stand after it. */
-  const thenListHarnesses = <A, R>(work: Effect.Effect<A, ServiceFailure | SqlError.SqlError, R>) =>
-    change(work).pipe(
-      Effect.andThen(listHarnesses),
-      Effect.provideService(HarnessTools, harnessTools),
-      Effect.provideService(AccountsRoot, accountsRoot),
-    );
-  /** Runs device-pairing storage work, which also needs to know the computer's name and the default relay. */
-  const withRemote = <A, E>(work: Effect.Effect<A, E, SqlClient.SqlClient | RemoteConfig>) =>
-    Effect.provideService(work, RemoteConfig, remoteConfig);
   const hostControl = makeHostControl({ change, config: remoteConfig, state: remote });
   const chatterDecisions = yield* Semaphore.make(1);
 
-  /**
-   * Runs an operation once per request identifier, in the command's transaction; a repeat returns the
-   * stored outcome, announces nothing, and applies only `replayed`'s follow-ups.
-   */
-  const once = <A>(
-    requestId: string,
-    tag: string,
-    work: Effect.Effect<WithFollowUps<A>, ServiceFailure | SqlError.SqlError, SqlClient.SqlClient>,
-    replayed: (stored: A) => FollowUps = () => noFollowUps,
-  ) =>
-    Effect.gen(function* () {
-      const [stored] = yield* sql<{ requestTag: string; outcome: string }>`
-        SELECT request_tag AS requestTag, outcome FROM command_outcomes WHERE request_id = ${requestId}`;
-      if (stored !== undefined) {
-        if (stored.requestTag !== tag) return yield* invalid("This request identifier was used for another command.");
-        const value = JSON.parse(stored.outcome) as A;
-        return { followUps: replayed(value), value } satisfies WithFollowUps<A>;
-      }
-      const done = yield* work;
-      yield* sql`INSERT INTO command_outcomes (request_id, request_tag, outcome)
-        VALUES (${requestId}, ${tag}, ${JSON.stringify(done.value)})`;
-      return { ...done, followUps: { ...done.followUps, isChanged: true } } satisfies WithFollowUps<A>;
-    });
-
-  /** A request's follow-ups that only wake one thread, as a repeated request still does. */
-  const wakingOnly = (threadId: string): FollowUps => ({ ...noFollowUps, threadsToWake: [threadId] });
+  const dependencies = { change, changes, commands, hostControl, threads };
+  const context = yield* Effect.context<RequestServices>();
 
   /**
    * Answers one request. A paired device's folder requests reach only the browsable roots; the host's own window,
@@ -247,381 +104,73 @@ const make = Effect.gen(function* () {
    */
   const handle = (
     request: Request,
-    source: { readonly isPairedDevice: boolean } = { isPairedDevice: false },
-  ): Effect.Effect<unknown, ServiceFailure> => {
-    const folderAccess = source.isPairedDevice ? "roots" : "anywhere";
-    // One handler per request tag; Match.valueTags fails to compile when a tag has none.
-    const run: Effect.Effect<unknown, ServiceFailure | SqlError.SqlError, SqlClient.SqlClient> = Match.valueTags(
-      request,
-      {
-        AddAccount: (add) => thenListHarnesses(addAccount(add.harness, add.label)),
-        AddAttachment: (add) => withFiles(addAttachment(add.name, add.data)),
-        AddBrowsableRoot: (add) => change(addBrowsableRoot(add.path)),
-        AddCredit: (given) =>
-          commands.run(addCredit({ accountId: given.accountId, harness: given.harness }, given.amount)),
-        AddHost: (add) => withRemote(pairWithHost(add.code, add.deviceName)).pipe(Effect.tap(() => changes.publish)),
-        AddJournalEntry: (add) =>
-          nonBlank(add.text).pipe(
-            Effect.andThen((text) =>
-              commands.run(
-                once(
-                  add.requestId,
-                  add._tag,
-                  updateJournal(add.missionId, { kind: "user" }, text, null).pipe(
-                    Effect.flatMap((outcome) => ownerOutcomeOf(add.missionId, outcome)),
-                    Effect.map((view) => changed(view)),
-                  ),
-                ),
+    source: RequestSource = { isPairedDevice: false },
+  ): Effect.Effect<unknown, ServiceFailure> =>
+    Effect.gen(function* () {
+      const { folderAccess, deviceLabel } = yield* admitRequestSource(source, request);
+      // One handler per request tag; Match.valueTags fails to compile when a tag has none.
+      const run: Effect.Effect<unknown, ServiceFailure | SqlError.SqlError, RequestServices> = Match.valueTags(
+        request,
+        {
+          ...loreHandlers(dependencies),
+          ...accountsHandlers(dependencies),
+          ...remoteHandlers(dependencies),
+          ...messagesHandlers(dependencies),
+          ...questsHandlers(dependencies),
+          ...ritualsHandlers(dependencies),
+          AddBrowsableRoot: (add) => change(addBrowsableRoot(add.path)),
+          AddCredit: (given) =>
+            commands.run(addCredit({ accountId: given.accountId, harness: given.harness }, given.amount)),
+          AnswerChoices: (given) => approvals.answerChoices(given.questionId, given.answers, deviceLabel),
+          AnswerQuestion: (given) => approvals.answer(given.questionId, given.answer, given.message, deviceLabel),
+          AnswerSuggestion: (given) =>
+            suggestions.answer(given.suggestionId, given.answer).pipe(
+              Effect.tap(({ followUps }) => commands.apply(followUps)),
+              Effect.map(({ value }) => value),
+            ),
+          BrowseFolders: (browse) => browseFolders(browse.path, browse.shouldIncludeHidden, folderAccess),
+          ChangeSettings: (given) => saveSettings((saved) => mergedSettings(saved, given.change)),
+          CreateFolder: (create) => createFolder(create.parent, create.name, folderAccess),
+          ...realmHandlers(commands),
+          ListMentionables: () => listMentionables,
+          ListOpenQuestions: () => listOpenQuestions,
+          ListSkills: (given) => listSkills(given.workspacePath),
+          ListWorkspaceEntries: (given) => listWorkspaceEntries(given.workspacePath, given.query),
+          ReadAccountBudgets: () => readAccountBudgets,
+          ReadBudget: (read) => readBudgetWindow(read.missionId),
+          ReadPermissions: (read) => readPermissionsView(read.missionId),
+          ReadPriceStatus: () => prices.status,
+          ReadSettings: () => readSettings,
+          ReadStartChoices: () => readStartChoices,
+          ReadUsage: (read) => readUsage(read.period, read.filters),
+          RefreshPrices: () =>
+            prices.refresh.pipe(
+              Effect.catchTag("PriceReadFailed", (failure) =>
+                Effect.fail(new ServiceFailure({ kind: "ExecutionFailure", message: failure.reason })),
               ),
             ),
-          ),
-        AnswerChoices: (given) => approvals.answerChoices(given.questionId, given.answers, "desktop"),
-        AnswerQuestion: (given) => approvals.answer(given.questionId, given.answer, given.message, "desktop"),
-        AnswerSuggestion: (given) =>
-          suggestions.answer(given.suggestionId, given.answer).pipe(
-            Effect.tap(({ followUps }) => commands.apply(followUps)),
-            Effect.map(({ value }) => value),
-          ),
-        BrowseFolders: (browse) => browseFolders(browse.path, browse.shouldIncludeHidden, folderAccess),
-        ChangeSettings: (given) => saveSettings((saved) => mergedSettings(saved, given.change)),
-        ChangeThreadRunner: (change) =>
-          Effect.gen(function* () {
-            // Messages still waiting that hold images stay with a runner that cannot read them: refused.
-            const waiting = yield* sql<{
-              id: string;
-            }>`SELECT a.id FROM attachments a JOIN messages m ON m.id = a.message_id
-              WHERE m.thread_id = ${change.threadId} AND m.delivered_turn_id IS NULL AND m.sender_kind != 'agent' LIMIT 1`;
-            yield* refuseUnreadableImages(
-              waiting.map((row) => row.id),
-              Effect.succeed({ accountId: change.accountId, harness: change.harness, model: change.model }),
-            ).pipe(
-              Effect.provideService(HarnessTools, harnessTools),
-              Effect.provideService(AccountsRoot, accountsRoot),
-            );
-            return yield* commands.run(chooseThreadRunner(change));
-          }),
-        CreateFolder: (create) => createFolder(create.parent, create.name, folderAccess),
-        CreatePairingCode: () => hostControl.createPairingCode,
-        ...realmHandlers(commands),
-        CreateRitual: (create) =>
-          commands.run(
-            once(
-              create.requestId,
-              create._tag,
-              Effect.flatMap(validateScope(create.scope ?? []), (scope) =>
-                createRitual({
-                  fallbacks: create.fallbacks,
-                  instruction: create.instruction,
-                  primary: create.primary,
-                  realm: create.realm ?? null,
-                  schedule: create.schedule,
-                  scope,
-                  title: create.title,
-                  workspacePath: create.workspacePath,
-                }),
+          RemoveBrowsableRoot: (remove) => change(removeBrowsableRoot(remove.path)),
+          RemovePermission: (remove) => change(removePermission(remove.permissionId)),
+          ResolveChatter: (given) => resolveChatter(given.id, given.choice).pipe(chatterDecisions.withPermit),
+          SearchFolders: (search) => searchFolders(search.query, folderAccess, homeFolder),
+          SetAccountBudget: (given) =>
+            commands.run(
+              setAccountBudget(
+                { accountId: given.accountId, harness: given.harness },
+                given.limits,
+                given.period,
+                given.since,
               ),
             ),
-          ),
-        DeleteIntel: (given) => change(deleteLoreEntryByOwner(given.loreEntryId)),
-        DeleteRitual: (given) => commands.run(deleteRitual(given.ritualId)),
-        DeleteThread: (given) =>
-          deleteThread(given.threadId, given.confirmation).pipe(
-            Effect.provideService(ScratchRoot, scratchRoot),
-            Effect.provideService(AttachmentsRoot, attachmentsRoot),
-            Effect.provideService(Commands, commands),
-          ),
-        DiscardAttachment: (given) => withFiles(discardAttachment(given.attachmentId)).pipe(Effect.as(null)),
-        DisconnectDevice: (given) => hostControl.disconnectDevice(given.deviceId),
-        DismissMissionPrompt: (given) => commands.run(dismissPrompt(given.missionId, given.prompt)),
-        EditIntel: (given) => change(editLoreEntryByOwner(given.loreEntryId, given.text)),
-        EndMission: (given) =>
-          archiveOrDeleteEmpty(given.missionId, given.ending, given.snapshot).pipe(
-            Effect.provideService(ScratchRoot, scratchRoot),
-            Effect.provideService(AttachmentsRoot, attachmentsRoot),
-            Effect.provideService(Commands, commands),
-          ),
-        InstallHarness: (given) =>
-          installHarness(given.harness).pipe(
-            Effect.andThen(listHarnesses),
-            Effect.provideService(HarnessTools, harnessTools),
-            Effect.provideService(AccountsRoot, accountsRoot),
-          ),
-        InterruptThread: (given) =>
-          threads
-            .interrupt(given.threadId)
-            .pipe(
-              Effect.flatMap((isInterrupted) =>
-                isInterrupted ? Effect.succeed(null) : invalid("This thread is not running."),
-              ),
-            ),
-        ListHarnesses: () =>
-          listHarnesses.pipe(
-            Effect.provideService(HarnessTools, harnessTools),
-            Effect.provideService(AccountsRoot, accountsRoot),
-          ),
-        ListHosts: () => withRemote(listKnownHosts),
-        ListIntel: (list) => readLoreView(list.scope, list.state, list.threadId, list.workspaceId ?? null),
-        ListMentionables: () => listMentionables,
-        ListMissions: (filters) => listMissions(filters),
-        ListModelEfforts: (list) =>
-          listModelEfforts(list.harness, list.accountId, list.model).pipe(
-            Effect.provideService(HarnessTools, harnessTools),
-            Effect.provideService(AccountsRoot, accountsRoot),
-          ),
-        ListOpenQuestions: () => listOpenQuestions,
-        ListRituals: () => listRituals,
-        ListSkills: (given) => listSkills(given.workspacePath),
-        ListWorkspaceEntries: (given) => listWorkspaceEntries(given.workspacePath, given.query),
-        MarkThreadDone: (given) => commands.run(markThreadDone(given.threadId)),
-        MoveQuest: (move) => commands.run(moveQuest(move.missionId, move.realmId)),
-        OpenThread: (open) =>
-          Effect.gen(function* () {
-            const attachmentIds = open.attachmentIds ?? [];
-            const text = yield* admit(
-              open.text,
-              attachmentIds,
-              runnerOfOpened(open.parentThreadId, {
-                accountId: open.accountId,
-                harness: open.harness,
-                model: open.model,
-              }),
-            );
-            return yield* commands.run(
-              once(
-                open.requestId,
-                open._tag,
-                openThreadByOwner(
-                  open.parentThreadId,
-                  text,
-                  { accountId: open.accountId, effort: open.effort, harness: open.harness, model: open.model },
-                  open.shouldStartAnyway,
-                  attachmentIds,
-                  open.backups ?? null,
-                ).pipe(Effect.provideService(ScratchRoot, scratchRoot), Effect.provideService(Harness, harness)),
-                (opened) => wakingOnly(opened.threadId),
-              ),
-            );
-          }),
-        PinIntel: (given) => change(pinLoreEntryByOwner(given.loreEntryId, given.isPinned)),
-        PreviewDeletion: (given) => previewDeletion(given.threadId),
-        PreviewEnding: (given) => previewEnding(given.missionId, given.ending),
-        PreviewStartingContext: (given) =>
-          readStartingContext(
-            given.parentThreadId,
-            { harness: given.harness ?? null, model: given.model },
-            given.text,
-          ).pipe(Effect.provideService(ScratchRoot, scratchRoot), Effect.provideService(Harness, harness)),
-        ReadAccountBudgets: () => readAccountBudgets.pipe(Effect.provideService(PlanLimits, planLimits)),
-        ReadAttachment: (read) => withFiles(readAttachment(read.attachmentId)),
-        ReadBudget: (read) => readBudgetWindow(read.missionId),
-        ReadGuildHallRecap: (read) => readGuildHallRecap(read.since),
-        ReadGuildmaster: () => commands.run(readGuildmaster),
-        ReadHostName: () => withRemote(Effect.flatMap(readHostRecord, hostNameOf)),
-        ReadIntelHistory: (read) => readLoreHistory(read.loreEntryId),
-        ReadJournal: (read) => readJournalView(read.missionId),
-        ReadMission: (read) => readMission(read.missionId, read.threadId),
-        ReadPermissions: (read) =>
-          Effect.gen(function* () {
-            const settings = yield* readSettings;
-            return {
-              history: yield* listQuestionHistory(read.missionId),
-              level: settings.approvalLevel,
-              permissions: yield* listPermissions,
-              sandboxProblem: problem,
-            };
-          }),
-        ReadPriceStatus: () => prices.status,
-        ReadRemoteAccess: () => hostControl.view,
-        ReadRitual: (read) => readRitual(read.missionId),
-        ReadSettings: () => readSettings,
-        ReadStartChoices: () => readStartChoices,
-        ReadThreadPanel: (read) =>
-          readThreadPanel(read.threadId).pipe(
-            Effect.provideService(ScratchRoot, scratchRoot),
-            // Its context gauge counts the approval rules from the thread's terms, as its turn reads them.
-            Effect.provideService(Harness, harness),
-            Effect.provideService(PlanLimits, planLimits),
-          ),
-        ReadThreadTree: (read) => readThreadTree(read.missionId),
-        ReadUsage: (read) => readUsage(read.period, read.filters),
-        RefreshPrices: () =>
-          prices.refresh.pipe(
-            Effect.catchTag("PriceReadFailed", (failure) =>
-              Effect.fail(new ServiceFailure({ kind: "ExecutionFailure", message: failure.reason })),
-            ),
-          ),
-        RemoveAccount: (remove) => thenListHarnesses(removeAccount(remove.accountId)),
-        RemoveBrowsableRoot: (remove) => change(removeBrowsableRoot(remove.path)),
-        RemoveHost: (given) => change(forgetHost(given.hostId)).pipe(Effect.andThen(withRemote(listKnownHosts))),
-        RemovePermission: (remove) => change(removePermission(remove.permissionId)),
-        RenameAccount: (rename) => thenListHarnesses(renameAccount(rename.accountId, rename.label)),
-        RenameHost: (given) => change(withRemote(renameHost(given.name))),
-        RenameMission: (rename) => change(renameMission(rename.missionId, rename.title)),
-        RenameOwnAccount: (rename) => thenListHarnesses(renameOwnAccount(rename.harness, rename.label)),
-        ReopenMission: (reopen) => commands.run(reopenMission(reopen.missionId)),
-        ResolveChatter: (given) =>
-          resolveChatter(given.id, given.choice).pipe(
-            chatterDecisions.withPermit,
-            Effect.provideService(Commands, commands),
-          ),
-        ResolveIntelChange: (given) => change(resolveLoreChange(given.changeId, given.isApproved)),
-        ResolveIntelProposal: (given) => change(resolveLoreProposal(given.proposalId, given.isApproved)),
-        RestoreIntel: (given) => change(restoreLoreEntryByOwner(given.loreEntryId)),
-        ResumeThread: (resume) => threads.resume(resume.threadId).pipe(Effect.as(null)),
-        RetryThread: (retry) => threads.retry(retry.threadId).pipe(Effect.as(null)),
-        RewriteBriefing: (rewrite) => {
-          const entry = rewrite.entry === null || rewrite.entry.trim() === "" ? "Rewrote the briefing" : rewrite.entry;
-          return commands.run(
-            once(
-              rewrite.requestId,
-              rewrite._tag,
-              updateJournal(rewrite.missionId, { kind: "user" }, entry, {
-                basedOn: rewrite.basedOn,
-                briefing: rewrite.briefing,
-              }).pipe(
-                Effect.flatMap((outcome) => ownerOutcomeOf(rewrite.missionId, outcome)),
-                Effect.map((view) => changed(view)),
-              ),
-            ),
-          );
+          SetMissionBudget: (given) => commands.run(setMissionBudget(given.missionId, given.limits)),
+          StopAtBudget: (given) => commands.run(stopAtBudget(given.stopId)),
+          SwitchAtBudget: (given) => commands.run(switchAtBudget(given.stopId)),
+          UpdateSettings: (update) => saveSettings(() => update.settings),
+          WidenPermission: (widen) => change(widenPermission(widen.permissionId)),
         },
-        RunRitual: (given) => commands.run(runRitual(given.ritualId)),
-        SearchFolders: (search) => searchFolders(search.query, folderAccess, homeFolder),
-        SendMessage: (send) =>
-          Effect.gen(function* () {
-            const attachmentIds = send.attachmentIds ?? [];
-            const text = yield* admit(send.text, attachmentIds, runnerOfThread(send.threadId));
-            const delivery = send.delivery ?? (yield* readSettings).defaultDelivery;
-            const viewing = yield* viewingLineOf(send.threadId, send.viewing);
-            return yield* commands.run(
-              once(
-                send.requestId,
-                send._tag,
-                insertUserMessage(
-                  send.threadId,
-                  text,
-                  delivery === "Queue",
-                  attachmentIds,
-                  send.realmPath ?? null,
-                  viewing,
-                ).pipe(
-                  Effect.tap(() => nameNewQuest(send.threadId, text)),
-                  Effect.map((sent) => changed(sent, { threadsToWake: [send.threadId] })),
-                ),
-                () => wakingOnly(send.threadId),
-              ),
-            );
-          }),
-        SetAccountBudget: (given) =>
-          commands.run(
-            setAccountBudget(
-              { accountId: given.accountId, harness: given.harness },
-              given.limits,
-              given.period,
-              given.since,
-            ),
-          ),
-        SetMissionBudget: (given) => commands.run(setMissionBudget(given.missionId, given.limits)),
-        SetRemoteAccess: (given) => hostControl.setAccess(given.isEnabled),
-        SetThreadBackups: (given) => commands.run(setThreadBackups(given.threadId, given.backups)),
-        SignInAccount: (given) =>
-          signInAccount(given.harness, given.accountId).pipe(
-            Effect.provideService(HarnessTools, harnessTools),
-            Effect.provideService(AccountsRoot, accountsRoot),
-            Effect.as(null),
-          ),
-        StartEmptyQuest: (start) =>
-          commands.run(
-            once(
-              start.requestId,
-              start._tag,
-              Effect.gen(function* () {
-                const choices = yield* readStartChoices;
-                const started = yield* insertQuest(
-                  {
-                    firstMessage: null,
-                    realm: null,
-                    realmId: start.realmId,
-                    shouldRememberChoices: false,
-                    title: newQuestTitle,
-                  },
-                  {
-                    accountId: choices.accountId,
-                    effort: choices.effort,
-                    harness: choices.harness,
-                    model: choices.model,
-                  },
-                  null,
-                );
-                return changed({ missionId: started.missionId, threadId: started.threadId });
-              }),
-            ),
-          ),
-        StartMission: (start) =>
-          Effect.gen(function* () {
-            const attachmentIds = start.attachmentIds ?? [];
-            const text = yield* admit(
-              start.text,
-              attachmentIds,
-              runnerOfStarted({ accountId: start.accountId, harness: start.harness, model: start.model }),
-            );
-            return yield* commands.run(
-              once(
-                start.requestId,
-                start._tag,
-                insertMission(
-                  text,
-                  { accountId: start.accountId, effort: start.effort, harness: start.harness, model: start.model },
-                  start.workspacePath,
-                  true,
-                  start.realm ?? null,
-                  attachmentIds,
-                ).pipe(Effect.map((started) => changed(started, { threadsToWake: [started.threadId] }))),
-                (started) => wakingOnly(started.threadId),
-              ),
-            );
-          }),
-        StopAtBudget: (given) => commands.run(stopAtBudget(given.stopId)),
-        StopThread: (stop) => threads.stop(stop.threadId).pipe(Effect.as(null)),
-        SwitchAtBudget: (given) => commands.run(switchAtBudget(given.stopId)),
-        UndoIntelChange: (given) => change(undoLoreChange(given.entryId)),
-        // Not a command: the harness's own update runs for minutes and must not hold the command queue.
-        UpdateHarness: (given) =>
-          updateHarness(given.harness).pipe(
-            Effect.andThen(listHarnesses),
-            Effect.provideService(HarnessTools, harnessTools),
-            Effect.provideService(AccountsRoot, accountsRoot),
-          ),
-        UpdateRitual: (update) =>
-          commands.run(
-            Effect.flatMap(validateScope(update.scope ?? []), (scope) =>
-              updateRitual({
-                fallbacks: update.fallbacks,
-                instruction: update.instruction,
-                isOn: update.isOn,
-                primary: update.primary,
-                ritualId: update.ritualId,
-                schedule: update.schedule,
-                // Left out, the reviewed scope stays; given, it replaces it, and empty revokes it.
-                ...(update.scope === undefined ? {} : { scope }),
-                title: update.title,
-              }),
-            ),
-          ),
-        UpdateSettings: (update) => saveSettings(() => update.settings),
-        // The deployment takes seconds and is not a command: only its result, the new address, is stored.
-        UseOwnRelay: (given) => hostControl.useOwnRelay(given.token),
-        UseSharedRelay: hostControl.useSharedRelay,
-        VisitGuildHall: () => commands.run(visitGuildHall),
-        WidenPermission: (widen) => change(widenPermission(widen.permissionId)),
-      },
-    );
-    return requireReachableFolder(request, folderAccess).pipe(
-      Effect.andThen(run),
-      Effect.provideService(SqlClient.SqlClient, sql),
-      Effect.catchTag("SqlError", (error) => storageFailure(error)),
-    );
-  };
+      );
+      return yield* run;
+    }).pipe(Effect.provideContext(context), Effect.catchTag("SqlError", storageFailure));
 
   return { handle };
 });

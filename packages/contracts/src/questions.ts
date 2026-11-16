@@ -57,7 +57,7 @@ export const Question = Schema.Struct({
   choices: Schema.NullOr(Schema.Array(Choice)),
   /** The exact command, file, or target. */
   details: Schema.String,
-  /** Where it was answered, such as "desktop"; null while open or when no person answered. */
+  /** Where it was answered, such as "host window" or a paired device's name; null while open or when no person answered. */
   device: Schema.NullOr(Schema.String),
   id: QuestionId,
   /** The owner's message on a denial, if any. */
