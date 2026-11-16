@@ -20,6 +20,11 @@ files:
   - assets/icon-gild.png
   - assets/one.LICENSE
   - package.json
+extraResources:
+  - from: ../../LICENSE
+    to: LICENSE
+  - from: ../../packages/channel/NOTICE
+    to: channel-NOTICE
 # node-pty's native binary and its spawn helper must run from disk, not from inside the archive.
 asarUnpack:
   - "**/node_modules/node-pty/**"
