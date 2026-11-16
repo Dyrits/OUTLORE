@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { guildmasterInstructionsOf } from "../../src/harness/instructions.ts";
 import { guideTopics } from "../../src/work/appGuideTopics.ts";
-import { topicsFor } from "../../src/work/guildmasterGuide.ts";
+import { topicsOf } from "../../src/work/guildmasterGuide.ts";
 
-const idsFor = (question: string) => topicsFor(question).map((topic) => topic.id);
+const idsFor = (question: string) => topicsOf(question).map((topic) => topic.id);
 
 describe("reading the app guide", () => {
   it("has unique topic ids, and every topic says what it answers", () => {
@@ -86,7 +86,7 @@ describe("reading the app guide", () => {
   });
 
   it("returns at most two topics", () => {
-    expect(topicsFor("quest realm ritual budget lore approval").length).toBeLessThanOrEqual(2);
+    expect(topicsOf("quest realm ritual budget lore approval").length).toBeLessThanOrEqual(2);
   });
 
   it("is in Chronicler's instructions, with the rule to say so when it does not know", () => {

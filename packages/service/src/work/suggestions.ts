@@ -5,7 +5,7 @@ import { Changes, invalid, notFound, readSettings, type ServiceFailure } from ".
 import { makeOwnerWaits } from "./attention.ts";
 import { setCardBackups } from "./backups.ts";
 import { changed, unchanged, type WithFollowUps } from "./commands.ts";
-import { findRealm, isGuildmasterThread, recordResolvedCard } from "./guildmaster.ts";
+import { isGuildmasterThread, readOptionalRealm, recordResolvedCard } from "./guildmaster.ts";
 import { resumeInTurn } from "./lifecycle.ts";
 import { findMissions, findMissionsTextOf, maxMatches } from "./matching.ts";
 import { insertSuggestedMessage } from "./messageProvenance.ts";
@@ -263,10 +263,11 @@ export const suggestionsLayer = Layer.effect(
           .slice(0, maxMatches);
         // Chronicler always asks: it is where the owner decides whether a quest continues or a new one opens.
         const isGuildmaster = yield* isGuildmasterThread(threadId);
-        const givenRealm = args.realm?.trim() ?? "";
-        const realm = isGuildmaster && givenRealm !== "" ? yield* findRealm(givenRealm) : null;
-        if (isGuildmaster && givenRealm !== "" && realm === null)
-          return unchanged<Suggested>({ _tag: "UnknownRealm", given: givenRealm });
+        const { isNamed, realm } = isGuildmaster
+          ? yield* readOptionalRealm(args.realm)
+          : ({ isNamed: false, realm: null } as const);
+        if (isNamed && realm === null)
+          return unchanged<Suggested>({ _tag: "UnknownRealm", given: args.realm?.trim() ?? "" });
         const shouldOpenOffTopicMissions = !isGuildmaster && (yield* readSettings).shouldOpenOffTopicMissions;
         // Opening without asking needs no mission to match, so it is checked here, not taken from the thread.
         const matches =

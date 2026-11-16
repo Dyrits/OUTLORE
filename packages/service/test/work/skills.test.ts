@@ -5,7 +5,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { mentionTokensOf, skillTokensOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
-import { listSkills, withSkillInstructions } from "../../src/work/skills.ts";
+import { addSkillInstructions, listSkills } from "../../src/work/skills.ts";
 
 const directories: string[] = [];
 afterEach(() => {
@@ -48,8 +48,8 @@ describe("reading slash-names in messages", () => {
 
   it("points a named skill to its instructions and leaves other messages unchanged", () => {
     const skills = [{ description: "", name: "challenge", path: "/s/challenge/SKILL.md" }];
-    expect(withSkillInstructions("Run /challenge now", skills)).toContain("read /s/challenge/SKILL.md");
-    expect(withSkillInstructions("Run /unknown now", skills)).toBe("Run /unknown now");
+    expect(addSkillInstructions("Run /challenge now", skills)).toContain("read /s/challenge/SKILL.md");
+    expect(addSkillInstructions("Run /unknown now", skills)).toBe("Run /unknown now");
   });
 });
 

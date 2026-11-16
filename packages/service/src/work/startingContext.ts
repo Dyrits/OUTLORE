@@ -13,7 +13,7 @@ import {
 import { contextWindowOf, loreContextOf, loreInstructions } from "../lore/index.ts";
 import { readApprovalInstructions } from "./approvalTerms.ts";
 import { accountOfThread, budgetLineOf } from "./budgetScopes.ts";
-import { guildmasterContextOf } from "./guildmaster.ts";
+import { readGuildmasterContext } from "./guildmaster.ts";
 import { journalContextOf, journalInstructions, openerContextOf, openerMessagesOf } from "./journal.ts";
 import { titleOf } from "./titles.ts";
 import { prepareWorkingFolder, readThreadWorkspace, ScratchRoot, workingFolderOf } from "./workspaces.ts";
@@ -78,7 +78,7 @@ const readSections = (subject: Subject, workspace: string) =>
         : [threadInstructionsOf(subject.position), journalInstructions, loreInstructions]
       ).join("\n\n"),
       journal:
-        subject.isGuildmaster === true ? yield* guildmasterContextOf : yield* journalContextOf(subject.missionId),
+        subject.isGuildmaster === true ? yield* readGuildmasterContext : yield* journalContextOf(subject.missionId),
       lore: yield* loreContextOf(subject.loreThreadId),
       openerMessages: openerContextOf(subject.openerMessages),
       position: positionLineOf(subject.position),

@@ -52,7 +52,7 @@ export const listSkills = (workspacePath: string | null, home?: string) =>
   });
 
 /** A message with a line appended telling the harness where the instructions of each skill it names are; unchanged when it names none. */
-export const withSkillInstructions = (text: string, skills: ReadonlyArray<Skill>) => {
+export const addSkillInstructions = (text: string, skills: ReadonlyArray<Skill>) => {
   const named = [...new Set(skillTokensOf(text).map((token) => token.name))].flatMap((name) => {
     const skill = skills.find((candidate) => candidate.name === name);
     return skill === undefined ? [] : [skill];

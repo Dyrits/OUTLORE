@@ -1,18 +1,19 @@
 import { RitualScope as RitualScopeSchema, Settings } from "@outlore/contracts";
-import { Context, Effect, Schema } from "effect";
+import { Context, Effect, Exit, Match, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { readSettings, type ToolAnswer } from "../core/index.ts";
 import { isNamedByOwner, type NamedAction } from "../policy/index.ts";
 import type { Approvals } from "./approvals.ts";
 import { previewEnding, readWorkingIds } from "./ending.ts";
-import { findRealm, isGuildmasterThread } from "./guildmaster.ts";
+import { isGuildmasterThread, readOptionalRealm } from "./guildmaster.ts";
 import { fallbackNoteOf, ritualStartOf } from "./guildmasterCompanions.ts";
 import { changeableSettings } from "./guildmasterSettings.ts";
+import { clip, parseJson, placeOf, threadsLineOf } from "./guildmasterText.ts";
 import { isRitualRunTurn, readOwnerTexts } from "./messageProvenance.ts";
 import { deriveRealmCreation, deriveRealmRename } from "./realmActions.ts";
 import { coveringEntryOf, type ScopedAction } from "./ritualScope.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
-import { titleOf } from "./titles.ts";
+import { ritualTitleOf, titleOf } from "./titles.ts";
 import { readRunningTurnId } from "./turnAdmission.ts";
 
 // Structural actions by provenance (CHG-0208), replacing the quoted-words check and the one-click guards. The service
@@ -40,7 +41,7 @@ type DerivedAction = {
 };
 
 /** The Ritual whose quest's top thread this is, with its reviewed scope; null for any other thread. */
-const ritualOfThread = (threadId: string) =>
+const readRitualOfThread = (threadId: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     const [row] = yield* sql<{ authority: string }>`
@@ -56,21 +57,11 @@ export const isStructuralCaller = (threadId: string, tool: StructuralTool) =>
   Effect.gen(function* () {
     if (yield* isGuildmasterThread(threadId)) return true;
     if (tool !== "act_on_mission" && tool !== "change_setting") return false;
-    return (yield* ritualOfThread(threadId)) !== null;
+    return (yield* readRitualOfThread(threadId)) !== null;
   });
 
 /** A value as the owner would write it: a text without its JSON quotes, anything else as JSON. */
 const spokenOf = (value: unknown) => (typeof value === "string" ? value : JSON.stringify(value));
-
-const jsonOf = (text: string): unknown => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-};
-
-const threadsLineOf = (count: number) => (count === 1 ? "1 thread" : `${count} threads`);
 
 /** `act_on_mission` as a structural action: the quest by its id, and what Stop or an ending would stop. */
 const deriveQuestAction = (args: ArgumentsOf<"act_on_mission">) =>
@@ -152,10 +143,11 @@ const deriveAction = (callerId: string, tool: StructuralTool, args: object) =>
     if (tool === "change_setting") {
       const { setting, value: text } = args as ArgumentsOf<"change_setting">;
       if (!(changeableSettings as ReadonlyArray<string>).includes(setting)) return null;
-      const value = jsonOf(text);
-      if (value === undefined) return null;
+      const parsed = parseJson(text);
+      if (Exit.isFailure(parsed)) return null;
+      const value = parsed.value;
       const before = yield* readSettings;
-      if (Schema.decodeUnknownExit(Settings)({ ...before, [setting]: value })._tag === "Failure") return null;
+      if (Exit.isFailure(Schema.decodeUnknownExit(Settings)({ ...before, [setting]: value }))) return null;
       const was = before[setting as keyof typeof before];
       return finish({
         named: { operation: "ChangeSetting", targets: [setting], value: spokenOf(value) },
@@ -174,12 +166,12 @@ const deriveAction = (callerId: string, tool: StructuralTool, args: object) =>
       return found === null ? null : finish(found);
     }
     const ritual = args as ArgumentsOf<"create_ritual">;
-    const title = titleOf(ritual.title).slice(0, 80);
+    const title = ritualTitleOf(ritual.title);
     if (ritual.instruction.trim() === "" || title === "") return null;
-    const realm = ritual.realm === undefined || ritual.realm.trim() === "" ? null : yield* findRealm(ritual.realm);
-    if (ritual.realm !== undefined && ritual.realm.trim() !== "" && realm === null) return null;
+    const { isNamed, realm } = yield* readOptionalRealm(ritual.realm);
+    if (isNamed && realm === null) return null;
     const { companion, fallbacks } = ritualStartOf(yield* readSettings, ritual);
-    const where = realm === null ? "with no realm" : `in the realm ${realm.name}`;
+    const where = placeOf(realm);
     return finish({
       details: { companion, fallbacks, instruction: ritual.instruction, schedule: ritual.schedule },
       named: { operation: "CreateRitual", targets: [title], value: null },
@@ -198,17 +190,15 @@ type Authority =
   | { readonly _tag: "Scope"; readonly evidence: string }
   | { readonly _tag: "Ask" };
 
-const clip = (text: string, length: number) => (text.length <= length ? text : `${text.slice(0, length - 1)}…`);
-
 /** The owner's own words of this turn naming the action exactly, or the Ritual's reviewed scope in a run; else ask. */
-const authorityOf = (callerId: string, derived: DerivedAction) =>
+const readAuthority = (callerId: string, derived: DerivedAction) =>
   Effect.gen(function* () {
     const turnId = yield* readRunningTurnId(callerId);
     if (turnId === null || derived.shouldAsk) return { _tag: "Ask" } satisfies Authority;
     const named = (yield* readOwnerTexts(callerId, turnId)).find((text) => isNamedByOwner(text, derived.named));
     if (named !== undefined) return { _tag: "Owner", evidence: clip(named, 400) } satisfies Authority;
     if (derived.scoped !== null) {
-      const ritual = yield* ritualOfThread(callerId);
+      const ritual = yield* readRitualOfThread(callerId);
       if (ritual !== null && (yield* isRitualRunTurn(callerId, turnId))) {
         const entry = coveringEntryOf(ritual.scope, derived.scoped);
         if (entry !== null)
@@ -264,24 +254,34 @@ export const withProvenance = (
   Effect.gen(function* () {
     const derived = yield* read(deriveAction(callerId, tool, args));
     if (derived === null) return yield* run((work) => work);
-    const authority = yield* read(authorityOf(callerId, derived));
-    if (authority._tag === "Ask") {
-      const decision = yield* approvals.confirmAction(callerId, derived.summary, derived.details);
-      if (!decision.isAllowed) return { isError: true, text: decision.text } satisfies ToolAnswer;
-    }
+    const authority = yield* read(readAuthority(callerId, derived));
+    const refusal = yield* Match.valueTags(authority, {
+      Ask: () =>
+        approvals
+          .confirmAction(callerId, derived.summary, derived.details)
+          .pipe(
+            Effect.map((decision) =>
+              decision.isAllowed ? null : ({ isError: true, text: decision.text } satisfies ToolAnswer),
+            ),
+          ),
+      Owner: () => Effect.succeed(null),
+      Scope: () => Effect.succeed(null),
+    });
+    if (refusal !== null) return refusal;
     const receipt: Receipt = { fingerprint: derived.fingerprint, isUsed: false, key: keyOf(callerId, tool, args) };
     const answer = yield* run((work) => Effect.provideService(work, receiptReference, receipt));
     // A tool that reports success without spending the receipt changed something its authorization never covered: a
     // defect in the tool, which no caller can recover from.
     if (!answer.isError && !receipt.isUsed)
       return yield* Effect.die(new Error(`${tool} succeeded without spending its authorization receipt.`));
-    if (!answer.isError && authority._tag !== "Ask")
-      yield* approvals.recordDecision(
-        callerId,
-        derived.summary,
-        derived.details,
-        authority._tag === "Owner" ? "AllowedByMessage" : "AllowedByPermission",
-        authority.evidence,
-      );
+    if (answer.isError) return answer;
+    // The owner already answered a question that was asked; otherwise the allowance is recorded with its evidence.
+    yield* Match.valueTags(authority, {
+      Ask: () => Effect.void,
+      Owner: ({ evidence }) =>
+        approvals.recordDecision(callerId, derived.summary, derived.details, "AllowedByMessage", evidence),
+      Scope: ({ evidence }) =>
+        approvals.recordDecision(callerId, derived.summary, derived.details, "AllowedByPermission", evidence),
+    });
     return answer;
   });

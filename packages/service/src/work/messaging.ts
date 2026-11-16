@@ -4,9 +4,9 @@ import { SqlClient } from "effect/sql";
 import { notFound, touchMission } from "../core/index.ts";
 import { attachToMessage, readStoredAttachments, type StoredAttachment } from "./attachments.ts";
 import { resetOwnerChatter, resetResultChatter } from "./chatter.ts";
-import { mentionNoteOf } from "./mentions.ts";
+import { readMentionNote } from "./mentions.ts";
 import { requireActiveQuestRealm } from "./realmAccess.ts";
-import { listSkills, withSkillInstructions } from "./skills.ts";
+import { addSkillInstructions, listSkills } from "./skills.ts";
 import { readThreadWorkspace } from "./workspaces.ts";
 
 // The thread inbox: a thread's message history and what waits to be delivered to it (thread-messaging).
@@ -108,7 +108,7 @@ export const listPending = (threadId: string, isSteering: boolean) =>
     return yield* Effect.forEach(rows, (row) =>
       Effect.gen(function* () {
         // The owner's `@` mentions of quests, side-quests, and realms are resolved as they are delivered (CHG-0181).
-        const note = row.fromThreadId === null ? yield* mentionNoteOf(row.text) : "";
+        const note = row.fromThreadId === null ? yield* readMentionNote(row.text) : "";
         return {
           attachments: attachments.get(row.id) ?? [],
           id: row.id,
@@ -116,7 +116,7 @@ export const listPending = (threadId: string, isSteering: boolean) =>
             ...row,
             isResult: row.isResult === 1,
             realm: row.realmPath === null ? null : { name: row.realmName ?? row.realmPath, path: row.realmPath },
-            text: row.fromThreadId === null ? `${withSkillInstructions(row.text, skills)}${note}` : row.text,
+            text: row.fromThreadId === null ? `${addSkillInstructions(row.text, skills)}${note}` : row.text,
             viewing: row.viewing,
           }),
         } satisfies PendingMessage;

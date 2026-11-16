@@ -3,6 +3,7 @@ import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
 import { HarnessFailure, type HarnessPrompt, type PromptAnswer, type ToolAnswer, textFieldOf } from "../core/index.ts";
 import { claudeChoicesOf, claudePromptAnswerOf } from "../harness/index.ts";
+import type { ChoiceDecision } from "./approvalContracts.ts";
 import type { Approvals } from "./approvals.ts";
 import { countChatter } from "./chatter.ts";
 import { type CommandRunner, changed, unchanged, type WithFollowUps } from "./commands.ts";
@@ -11,8 +12,8 @@ import {
   createRitualByGuildmaster,
   isGuildmasterThread,
   readControlHistory,
-  refusedAction,
-  refusedRitual,
+  refuseAction,
+  refuseRitual,
 } from "./guildmaster.ts";
 import { readAppGuideByGuildmaster } from "./guildmasterGuide.ts";
 import { withProvenance } from "./guildmasterProvenance.ts";
@@ -29,7 +30,7 @@ import { titleToolsOf } from "./titles.ts";
 import { isBeneath, openThreadByAgent, refusedOf, reportResult } from "./tree.ts";
 
 /** Why a thread may not call a thread tool now, or null: an unknown or deleting thread, or one the chatter guard paused. */
-export const callerRefusalOf = (threadId: string, name: string) =>
+export const readCallerRefusal = (threadId: string, name: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     const [caller] = yield* sql<{
@@ -48,7 +49,7 @@ export const callerRefusalOf = (threadId: string, name: string) =>
 export const askOwnerFor =
   (approvals: Approvals["Service"], sql: SqlClient.SqlClient, threadId: string) => (prompt: HarnessPrompt) =>
     Effect.gen(function* () {
-      const refusal = yield* callerRefusalOf(threadId, "answer_prompt");
+      const refusal = yield* readCallerRefusal(threadId, "answer_prompt");
       if (refusal !== null) return { isAllowed: false, text: refusal } satisfies PromptAnswer;
       // The folder question is one-time: it never goes through the standing permissions (harness/threadFolder.ts).
       if (prompt.folderCheck !== undefined) {
@@ -60,12 +61,7 @@ export const askOwnerFor =
         });
         return { isAllowed: answered.isAllowed, text: answered.text } satisfies PromptAnswer;
       }
-      if (prompt.choices !== undefined) {
-        const chosen = yield* approvals.askChoices(threadId, prompt.choices);
-        return chosen._tag === "Answered"
-          ? { answers: chosen.answers, isAllowed: true, text: "" }
-          : { isAllowed: false, text: chosen.text };
-      }
+      if (prompt.choices !== undefined) return promptAnswerOf(yield* approvals.askChoices(threadId, prompt.choices));
       const decision = yield* approvals.answerPrompt(threadId, prompt);
       return {
         isAllowed: decision.isAllowed,
@@ -82,6 +78,13 @@ export const askOwnerFor =
         ),
       ),
     );
+
+/** What a harness is told of the owner's choice: the answers, or why there are none. */
+const promptAnswerOf = (chosen: ChoiceDecision): PromptAnswer =>
+  Match.valueTags(chosen, {
+    Answered: ({ answers }) => ({ answers, isAllowed: true, text: "" }),
+    Skipped: ({ text }) => ({ isAllowed: false, text }),
+  });
 
 const carryOn = "Carry on as if that message had not been sent to you; do not answer it.";
 // Chronicler answers its owner instead: one sentence saying where the request went.
@@ -140,26 +143,24 @@ export const makeToolHandlers = (dependencies: {
 
   const answer = (text: string, isError = false): ToolAnswer => ({ isError, text });
 
-  const openThread =
-    ({ effort, harness, model, request, title }: ArgumentsOf<"open_thread">) =>
-    (threadIdOf: string) =>
-      runTool(
-        openThreadByAgent(threadIdOf, request, title ?? null, {
-          effort: effort ?? null,
-          harness: harness ?? null,
-          model: model ?? null,
-        }).pipe(
-          // A refused account comes back to the thread as a refusal.
-          Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refusedOf(failure.message))),
-        ),
-      ).pipe(
-        Effect.map((outcome) =>
-          Match.valueTags(outcome, {
-            Opened: (opened) => answer(`Opened thread ${opened.threadId}. Its result will come to you as a message.`),
-            Refused: (refused) => answer(refused.reason, true),
-          }),
-        ),
-      );
+  const openThread = (threadId: string, { effort, harness, model, request, title }: ArgumentsOf<"open_thread">) =>
+    runTool(
+      openThreadByAgent(threadId, request, title ?? null, {
+        effort: effort ?? null,
+        harness: harness ?? null,
+        model: model ?? null,
+      }).pipe(
+        // A refused account comes back to the thread as a refusal.
+        Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refusedOf(failure.message))),
+      ),
+    ).pipe(
+      Effect.map((outcome) =>
+        Match.valueTags(outcome, {
+          Opened: (opened) => answer(`Opened thread ${opened.threadId}. Its result will come to you as a message.`),
+          Refused: (refused) => answer(refused.reason, true),
+        }),
+      ),
+    );
 
   const handlers: ToolHandlers = {
     ...loreToolsOf(commit),
@@ -169,34 +170,26 @@ export const makeToolHandlers = (dependencies: {
       withProvenance(approvals, commit, threadId, "act_on_mission", args, (authorize) =>
         runTool(
           authorize(actOnMission(threadId, args)).pipe(
-            Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refusedAction(failure.message))),
+            Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refuseAction(failure.message))),
           ),
         ).pipe(
           Effect.flatMap((outcome) =>
-            outcome._tag === "ToStop"
-              ? Effect.forEach(outcome.ids, (id) => threads.stop(id), { discard: true }).pipe(
-                  Effect.as(answer(outcome.text)),
-                )
-              : Effect.succeed(answer(outcome.text, outcome._tag === "Refused")),
+            Match.valueTags(outcome, {
+              Done: ({ text }) => Effect.succeed(answer(text)),
+              Refused: ({ text }) => Effect.succeed(answer(text, true)),
+              ToStop: ({ ids, text }) =>
+                Effect.forEach(ids, (id) => threads.stop(id), { discard: true }).pipe(Effect.as(answer(text))),
+            }),
           ),
         ),
       ),
     answer_prompt: (threadId, { input, tool_name, tool_use_id }) => {
       const choices = claudeChoicesOf(tool_name, input);
-      const decision =
+      const deciding =
         choices === null
           ? approvals.answerPrompt(threadId, { input, toolName: tool_name }, tool_use_id ?? null)
-          : approvals
-              .askChoices(threadId, choices)
-              .pipe(
-                Effect.map(
-                  (chosen): PromptAnswer =>
-                    chosen._tag === "Answered"
-                      ? { answers: chosen.answers, isAllowed: true, text: "" }
-                      : { isAllowed: false, text: chosen.text },
-                ),
-              );
-      return decision.pipe(Effect.map((decision) => answer(claudePromptAnswerOf(input, decision))));
+          : approvals.askChoices(threadId, choices).pipe(Effect.map(promptAnswerOf));
+      return deciding.pipe(Effect.map((decision) => answer(claudePromptAnswerOf(input, decision))));
     },
     change_setting: (threadId, args) =>
       withProvenance(approvals, commit, threadId, "change_setting", args, (authorize) =>
@@ -210,27 +203,27 @@ export const makeToolHandlers = (dependencies: {
       withProvenance(approvals, commit, threadId, "create_ritual", args, (authorize) =>
         runTool(
           authorize(createRitualByGuildmaster(threadId, args)).pipe(
-            Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refusedRitual(failure.message))),
+            Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refuseRitual(failure.message))),
           ),
         ).pipe(
-          Effect.map((outcome) => (outcome._tag === "Created" ? answer(outcome.text) : answer(outcome.reason, true))),
+          Effect.map((outcome) =>
+            Match.valueTags(outcome, {
+              Created: ({ text }) => answer(text),
+              Refused: ({ reason }) => answer(reason, true),
+            }),
+          ),
         ),
       ),
     find_missions: suggestions.findMissions,
-    interrupt_thread: (threadId, { thread: target }) =>
-      commit(isBeneath(threadId, target)).pipe(
-        Effect.flatMap((isChild) =>
-          isChild
-            ? threads.interrupt(target)
-            : Effect.fail("Not interrupted: you can only interrupt a thread directly beneath you, by its id."),
-        ),
-        Effect.flatMap((isInterrupted) =>
-          isInterrupted
-            ? Effect.succeed(answer("Interrupted."))
-            : Effect.fail("Not interrupted: that thread is not running."),
-        ),
-        Effect.catch((reason: string) => Effect.succeed(answer(reason, true))),
-      ),
+    interrupt_thread: Effect.fnUntraced(function* (
+      threadId: string,
+      { thread: target }: ArgumentsOf<"interrupt_thread">,
+    ) {
+      if (!(yield* commit(isBeneath(threadId, target))))
+        return answer("Not interrupted: you can only interrupt a thread directly beneath you, by its id.", true);
+      if (!(yield* threads.interrupt(target))) return answer("Not interrupted: that thread is not running.", true);
+      return answer("Interrupted.");
+    }),
     open_thread: (threadId, args) =>
       commit(isGuildmasterThread(threadId)).pipe(
         Effect.flatMap((isGuildmaster) =>
@@ -241,7 +234,7 @@ export const makeToolHandlers = (dependencies: {
                   true,
                 ),
               )
-            : openThread(args)(threadId),
+            : openThread(threadId, args),
         ),
       ),
     read_app_guide: (threadId, args) => runTool(readAppGuideByGuildmaster(threadId, args)),

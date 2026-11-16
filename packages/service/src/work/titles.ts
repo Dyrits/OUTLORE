@@ -13,6 +13,12 @@ export const newQuestTitle = "New quest";
 /** A title from a text: its first line, trimmed, at most 200 characters. */
 export const titleOf = (text: string) => text.trim().split("\n", 1)[0]?.trim().slice(0, 200) ?? "";
 
+/** The most characters a Ritual's title keeps when Chronicler creates it. */
+const maxRitualTitleLength = 80;
+
+/** A Ritual's title from the title Chronicler gave: a title, cut shorter. */
+export const ritualTitleOf = (text: string) => titleOf(text).slice(0, maxRitualTitleLength);
+
 /** Sets the mission's title and its top thread's, which follows it. Callers run it in a transaction. */
 const writeTitle = (missionId: string, title: string, isByUser: boolean) =>
   Effect.gen(function* () {

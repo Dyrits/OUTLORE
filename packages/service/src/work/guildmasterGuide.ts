@@ -92,7 +92,7 @@ const scoreOf = (topic: GuideTopic, question: string, words: ReadonlyArray<strin
 };
 
 /** The topics a question points to, best first, at most two; none when nothing in the guide fits. */
-export const topicsFor = (question: string): ReadonlyArray<GuideTopic> => {
+export const topicsOf = (question: string): ReadonlyArray<GuideTopic> => {
   const asked = question.trim().toLowerCase();
   const exact = guideTopics.find((topic) => topic.id === asked || topic.title.toLowerCase() === asked);
   if (exact !== undefined) return [exact];
@@ -117,7 +117,7 @@ export const readAppGuideByGuildmaster = (callerId: string, args: ArgumentsOf<"r
       return answer({ isError: true, text: "Only Chronicler reads the app guide here." });
     const question = args.topic?.trim() ?? "";
     if (question === "") return answer({ isError: false, text: `${topicIndexText()}\n\n${reminder}` });
-    const topics = topicsFor(question);
+    const topics = topicsOf(question);
     if (topics.length === 0)
       return answer({
         isError: false,

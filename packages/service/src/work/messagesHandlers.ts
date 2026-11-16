@@ -3,7 +3,7 @@ import { readSettings } from "../core/index.ts";
 import { admitOwnerText, nonBlank, runnerOfThread } from "./admission.ts";
 import { addAttachment, discardAttachment, readAttachment } from "./attachments.ts";
 import { changed } from "./commands.ts";
-import { viewingLineOf } from "./guildmaster.ts";
+import { readViewingLine } from "./guildmaster.ts";
 import { ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
 import { insertUserMessage } from "./messaging.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
@@ -51,7 +51,7 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
         const attachmentIds = send.attachmentIds ?? [];
         const text = yield* admitOwnerText(send.text, attachmentIds, runnerOfThread(send.threadId));
         const delivery = send.delivery ?? (yield* readSettings).defaultDelivery;
-        const viewing = yield* viewingLineOf(send.threadId, send.viewing);
+        const viewing = yield* readViewingLine(send.threadId, send.viewing);
         return yield* commands.run(
           commands.once(
             send.requestId,

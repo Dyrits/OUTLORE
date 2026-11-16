@@ -160,7 +160,7 @@ const resolveMention = (reference: MentionReference) =>
  * What the owner's message tells its receiving thread about the quests, side-quests, and realms it mentions: a block
  * appended after the owner's own words, which stay as typed; empty when it mentions none.
  */
-export const mentionNoteOf = (text: string) =>
+export const readMentionNote = (text: string) =>
   Effect.gen(function* () {
     const references = mentionReferencesOf(text);
     if (references.length === 0) return "";

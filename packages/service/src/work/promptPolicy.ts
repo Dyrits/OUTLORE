@@ -23,7 +23,11 @@ interface PromptPolicyDependencies {
   readonly missionOf: (id: string) => Effect.Effect<string | null, SqlError.SqlError>;
   readonly questions: ReturnType<typeof makeQuestions>;
   readonly readTurnId: (id: string) => Effect.Effect<string | null, SqlError.SqlError>;
-  readonly takeAllowance: (id: string, target: string, outside: boolean) => Effect.Effect<boolean, SqlError.SqlError>;
+  readonly takeAllowance: (
+    id: string,
+    target: string,
+    isOutsideSandbox: boolean,
+  ) => Effect.Effect<boolean, SqlError.SqlError>;
 }
 
 /** Harness prompts are judged by containment, exact grants and the turn's single-use allowances. */
@@ -56,7 +60,7 @@ export const makePromptPolicy = ({
      * What a harness action needs beyond its sandbox, or null when it is contained (CHG-0208): gathers the facts
      * Containment (policy/containment.ts) judges from, which the adapter reported and the store holds.
      */
-    const capabilityOf = (
+    const readCapability = (
       threadId: string,
       level: ApprovalLevel,
       canWorkOutsideSandbox: boolean,
@@ -99,7 +103,7 @@ export const makePromptPolicy = ({
         const missionId = yield* missionOf(threadId);
         if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
         const { approvalLevel, shouldAllowOutsideSandbox } = yield* readSettings;
-        const capability = yield* capabilityOf(
+        const capability = yield* readCapability(
           threadId,
           approvalLevel,
           shouldAllowOutsideSandbox,
