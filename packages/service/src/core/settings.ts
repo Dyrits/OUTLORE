@@ -60,7 +60,7 @@ const SavedSettings = Settings.mapFields((fields) => ({
     Light: Schema.NullOr(SavedTier),
   }),
 }));
-const decode = Schema.decodeUnknownSync(SavedSettings);
+const decodeExit = Schema.decodeUnknownExit(SavedSettings);
 
 /** The saved settings with a change merged in; of the tiers only those the change names are replaced, so a tier changed elsewhere meanwhile is kept. */
 export const mergedSettings = (saved: Settings, change: SettingsChange): Settings => ({
@@ -69,17 +69,49 @@ export const mergedSettings = (saved: Settings, change: SettingsChange): Setting
   tiers: { ...saved.tiers, ...change.tiers },
 });
 
-/** Reads the owner's settings, or the defaults when none are stored or they no longer decode. */
+/** The level a setting that no longer decodes falls back to: the stricter one, so a lost choice never asks less. */
+const strictestApprovalLevel: Settings["approvalLevel"] = "CommandsAndEdits";
+
+/** The saved JSON as an object, or null when it is not one. */
+const savedObjectOf = (text: string): Record<string, unknown> | null => {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? { ...parsed } : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * The settings decoded field by field: a field that no longer decodes takes its default, except the approval level,
+ * which takes the stricter level (SP-A-07), and a row that is not an object counts as every field invalid.
+ */
+const settingsOf = (saved: Record<string, unknown> | null): Settings => {
+  const defaults: Record<string, unknown> = defaultSettings;
+  const merged = { ...defaults, ...saved };
+  const whole = decodeExit(merged);
+  if (saved !== null && Exit.isSuccess(whole)) return whole.value;
+  const kept = Object.fromEntries(
+    Object.entries(SavedSettings.fields).map(([key, field]) => {
+      const isValid = saved !== null && Exit.isSuccess(Schema.decodeUnknownExit(field)(merged[key]));
+      if (isValid) return [key, merged[key]];
+      return [key, key === "approvalLevel" ? strictestApprovalLevel : defaults[key]];
+    }),
+  );
+  const decoded = decodeExit(kept);
+  return Exit.isSuccess(decoded) ? decoded.value : { ...defaultSettings, approvalLevel: strictestApprovalLevel };
+};
+
+/**
+ * Reads the owner's settings, or the defaults when none are stored. A setting added after the owner last saved takes
+ * its default and the saved choices stay; one that no longer decodes takes its default alone, never dragging the others
+ * back, and an invalid approval level takes the stricter level.
+ */
 export const readSettings = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<{ value: string }>`SELECT value FROM settings WHERE key = 'settings'`;
   if (row === undefined) return defaultSettings;
-  // A setting added after the owner last saved takes its default; the saved choices stay.
-  try {
-    return decode({ ...defaultSettings, ...JSON.parse(row.value) });
-  } catch {
-    return defaultSettings;
-  }
+  return settingsOf(savedObjectOf(row.value));
 });
 
 /** Stores one row of the settings table, replacing any value the key held. */
