@@ -4,7 +4,7 @@ import { Commands } from "./commands.ts";
 import { reportToGuildmaster } from "./guildmaster.ts";
 
 /**
- * Hearing back (quest coordination): after every committed change, tells the Guildmaster of each quest it opened that
+ * Hearing back (quest coordination): after every committed change, tells Chronicler of each quest it opened that
  * now reports a result, needs the owner, or failed. A sweep with nothing to tell announces nothing, so it cannot loop.
  */
 export const guildmasterReportsLayer = Layer.effectDiscard(

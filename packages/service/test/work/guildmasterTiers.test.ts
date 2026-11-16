@@ -60,7 +60,7 @@ describe("choosing tiers and budgets for Chronicler", () => {
     ),
   );
 
-  it.live("lets the owner's default stand when no tier is set, never the Guildmaster's cheap model", () =>
+  it.live("lets the owner's default stand when no tier is set, never Chronicler's cheap model", () =>
     withService(
       Effect.gen(function* () {
         const settings = yield* call({ _tag: "ReadSettings" });

@@ -28,16 +28,16 @@ import { renameMission, titleOf } from "./titles.ts";
 /** Chronicler's title, in its thread tree and its usage; data made as Guildmaster is renamed by migrations 0041 and 0050. */
 export const guildmasterTitle = "Chronicler";
 
-/** How many quests the Guildmaster's dashboard text lists at most; the latest ones. */
+/** How many quests Chronicler's dashboard text lists at most; the latest ones. */
 const maxListedQuests = 60;
 
 /**
- * The cheapest model Outlore knows for a harness, which the Guildmaster starts on: it only routes. Codex and OpenCode list
+ * The cheapest model Outlore knows for a harness, which Chronicler starts on: it only routes. Codex and OpenCode list
  * their models only by running, so they start on their own default; the owner can hand it over at any time.
  */
 const cheapestModelOf = (harness: HarnessName): ModelChoice => (harness === "claude" ? claudeCheapestModel : "default");
 
-/** The Guildmaster's quest and thread, made on first use. Callers run it in a transaction. */
+/** Chronicler's quest and thread, made on first use. Callers run it in a transaction. */
 export const ensureGuildmaster = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const [existing] = yield* sql<{ missionId: string; threadId: string }>`
@@ -49,12 +49,12 @@ export const ensureGuildmaster = Effect.gen(function* () {
     { effort: "default", harness: settings.defaultHarness, model: cheapestModelOf(settings.defaultHarness) },
     null,
   );
-  // The default quest budget is for quests; the Guildmaster's own is the owner's to set (budget-control).
+  // The default quest budget is for quests; Chronicler's own is the owner's to set (budget-control).
   yield* sql`UPDATE missions SET is_guildmaster = 1, budget_cost = NULL, budget_tokens = NULL WHERE id = ${started.missionId}`;
   return { isCreated: true, missionId: started.missionId, threadId: started.threadId } as const;
 });
 
-/** Where the Guildmaster's conversation is, made when it is not there yet. */
+/** Where Chronicler's conversation is, made when it is not there yet. */
 export const readGuildmaster = ensureGuildmaster.pipe(
   // Only making the place announces a change: a read that always did made every screen that follows changes reload
   // it at once, a loop that froze the Guild Hall.
@@ -64,7 +64,7 @@ export const readGuildmaster = ensureGuildmaster.pipe(
   }),
 );
 
-/** Whether the thread belongs to the Guildmaster. */
+/** Whether the thread belongs to Chronicler. */
 export const isGuildmasterThread = (threadId: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
@@ -73,7 +73,7 @@ export const isGuildmasterThread = (threadId: string) =>
     return rows.length > 0;
   });
 
-/** Whether the quest is the Guildmaster's. */
+/** Whether the quest is Chronicler's. */
 export const isGuildmasterQuest = (missionId: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
@@ -106,13 +106,13 @@ export const viewingLineOf = (threadId: string, viewing: Viewing | null | undefi
       : `the quest "${quest.title}" (id ${quest.id})`;
   });
 
-/** Refuses to end, delete, or rename the Guildmaster's quest: it is permanent (quest coordination, Place). */
+/** Refuses to end, delete, or rename Chronicler's quest: it is permanent (quest coordination, Place). */
 export const refuseGuildmaster = (missionId: string, action: string) =>
   Effect.gen(function* () {
     if (yield* isGuildmasterQuest(missionId)) return yield* invalid(`Chronicler is permanent: it cannot be ${action}.`);
   });
 
-/** A realm the owner or the Guildmaster named, by its folder or its name; null when none matches. */
+/** A realm the owner or Chronicler named, by its folder or its name; null when none matches. */
 export const findRealm = (given: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
@@ -128,7 +128,7 @@ export const findRealm = (given: string) =>
     return byName[0] ?? null;
   });
 
-/** The realms known, one line each, so the Guildmaster can name one when it proposes a quest or manages a realm. */
+/** The realms known, one line each, so Chronicler can name one when it proposes a quest or manages a realm. */
 const realmLinesOf = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   // A quest is placed by its realm's folder, so a realm tied to no folder cannot hold a proposed quest yet (CHG-0161,
@@ -151,8 +151,8 @@ const firstSentenceOf = (text: string) => {
 };
 
 /**
- * What the Guildmaster's turn starts from besides its instructions: the realms, and the dashboard as text, one line
- * per quest that is not archived (quest coordination, Context). Built from stored data; the Guildmaster never keeps it.
+ * What Chronicler's turn starts from besides its instructions: the realms, and the dashboard as text, one line
+ * per quest that is not archived (quest coordination, Context). Built from stored data; Chronicler never keeps it.
  */
 export const guildmasterContextOf = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
@@ -184,11 +184,12 @@ export const guildmasterContextOf = Effect.gen(function* () {
     return `- "${row.title}" (id ${row.id}) · ${states.get(row.id) ?? "Idle"} · ${row.realm ?? "no realm"} · last active ${when} UTC${about === "" ? "" : ` · ${about}`}`;
   });
   const { tiers } = yield* readSettings;
-  const set = (["Light", "Balanced", "Heavy"] as const).flatMap((name) => {
+  const setTierLines = (["Light", "Balanced", "Heavy"] as const).flatMap((name) => {
     const tier = tiers[name];
     return tier === null ? [] : [`- ${name}: ${tier.harness}, model ${tier.model}, effort ${tier.effort}`];
   });
-  const tierLines = set.length === 0 ? ["None set: every quest starts on the owner's default Companion."] : set;
+  const tierLines =
+    setTierLines.length === 0 ? ["None set: every quest starts on the owner's default Companion."] : setTierLines;
   const rituals = yield* sql<{ isOn: number; schedule: string; title: string }>`
     SELECT m.title, r.schedule, r.is_on AS isOn FROM rituals r JOIN missions m ON m.id = r.mission_id
     WHERE m.ending IS NULL OR m.ending = 'Done' ORDER BY m.title`;
@@ -209,7 +210,7 @@ export const guildmasterContextOf = Effect.gen(function* () {
   ].join("\n");
 });
 
-/** Where a quest or a Ritual the Guildmaster made is, in the words it is told. */
+/** Where a quest or a Ritual Chronicler made is, in the words it is told. */
 const placeOf = (realm: { readonly name: string } | null) =>
   realm === null ? "with no realm" : `in the realm ${realm.name}`;
 
@@ -238,7 +239,7 @@ export const recordResolvedCard = (card: ResolvedCard) =>
         'MovedToMission', 1, ${card.isRitual ? 1 : 0}, ${card.target.missionId}, ${card.target.threadId}, ${card.target.title}, ${now}, ${card.realmPath})`;
   });
 
-// ----- Hearing back: the quests the Guildmaster opened tell it when they report, need the owner, or fail -----
+// ----- Hearing back: the quests Chronicler opened tell it when they report, need the owner, or fail -----
 
 /** The report a quest stands in, or null: a failure, a Summons, or a result awaiting "Mark as done?", in that order. */
 const reportOf = (summary: { readonly prompt: string | null; readonly state: string }) =>
@@ -253,7 +254,7 @@ const reportOf = (summary: { readonly prompt: string | null; readonly state: str
 
 const clip = (text: string, length: number) => (text.length <= length ? text : `${text.slice(0, length - 1)}…`);
 
-/** What the Guildmaster is told of one quest's report. */
+/** What Chronicler is told of one quest's report. */
 const reportTextOf = (title: string, id: string, report: "Attention" | "Failed" | "Reported", detail: string) =>
   ({
     Attention: `Quest "${title}" (id ${id}) needs the owner: a thread there waits on a question or a decision. Tell the owner in a sentence, and that they answer it in that quest.${detail}`,
@@ -262,7 +263,7 @@ const reportTextOf = (title: string, id: string, report: "Attention" | "Failed" 
   })[report];
 
 /**
- * Tells the Guildmaster, once, of each quest it opened that now reports, needs the owner, or failed, as a message from
+ * Tells Chronicler, once, of each quest it opened that now reports, needs the owner, or failed, as a message from
  * that quest's top thread; a quest that no longer stands in a report is forgotten, so a later one is told again. It
  * changes nothing the owner sees when there is nothing to tell, so running it after every change cannot loop.
  */
@@ -323,7 +324,7 @@ export type ActedOnQuest =
   | { readonly _tag: "ToStop"; readonly ids: ReadonlyArray<string>; readonly text: string }
   | { readonly _tag: "Refused"; readonly text: string };
 
-/** The outcome of an action the Guildmaster may not take, with the words that tell it why. */
+/** The outcome of an action Chronicler may not take, with the words that tell it why. */
 export const refusedAction = (text: string) => unchanged<ActedOnQuest>({ _tag: "Refused", text });
 
 /**
@@ -377,7 +378,7 @@ export const actOnMission = (callerId: string, args: ArgumentsOf<"act_on_mission
     );
   });
 
-/** What `read_control_history` answers: the Guildmaster's own older messages, newest first. */
+/** What `read_control_history` answers: Chronicler's own older messages, newest first. */
 export const readControlHistory = (callerId: string, args: ArgumentsOf<"read_control_history">) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
@@ -411,10 +412,10 @@ export type RitualCreatedByGuildmaster =
 export const refusedRitual = (reason: string) => unchanged<RitualCreatedByGuildmaster>({ _tag: "Refused", reason });
 
 /**
- * `create_ritual`: the Guildmaster makes a Ritual, an instruction that runs by itself on a schedule in a quest of its
+ * `create_ritual`: Chronicler makes a Ritual, an instruction that runs by itself on a schedule in a quest of its
  * own, in a realm it names or none, on its own Companion unless it chooses another, once authorized by provenance. Its
  * reviewed scope starts empty: only the owner sets it, in the Ritual's form. Nothing runs until it is due. The owner sees
- * it as a card with a link. Only the Guildmaster calls it.
+ * it as a card with a link. Only Chronicler calls it.
  */
 export const createRitualByGuildmaster = (callerId: string, args: ArgumentsOf<"create_ritual">) =>
   Effect.gen(function* () {
@@ -449,6 +450,6 @@ export const createRitualByGuildmaster = (callerId: string, args: ArgumentsOf<"c
     const where = placeOf(realm);
     return changed<RitualCreatedByGuildmaster>({
       _tag: "Created",
-      text: `Created the Ritual "${title}" ${where}, ${JSON.stringify(args.schedule)}, on ${companionLineOf(args.tier, runner)}. It runs by itself in its own quest when due and is on. Tell the owner in a sentence what it will do and when; do not repeat the instruction.`,
+      text: `Created the Ritual "${title}" ${where}, ${JSON.stringify(args.schedule)}, on ${companionLineOf(args.tier ?? null, runner)}. It runs by itself in its own quest when due and is on. Tell the owner in a sentence what it will do and when; do not repeat the instruction.`,
     });
   });

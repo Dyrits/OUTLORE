@@ -50,7 +50,7 @@ const fillers = new Set([
   "your",
 ]);
 
-const indexOf = () =>
+const topicIndexText = () =>
   [
     "Topics in the app guide; call read_app_guide with a topic id, or with a few words of the owner's question:",
     ...guideTopics.map((topic) => `- ${topic.id}: ${topic.title}. ${topic.summary}.`),
@@ -58,7 +58,7 @@ const indexOf = () =>
 
 const sectionOf = (topic: GuideTopic) => `## ${topic.title} (${topic.id})\n${topic.body}`;
 
-const wordsOf = (text: string) =>
+const topicWordsOf = (text: string) =>
   text
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
@@ -96,11 +96,11 @@ export const topicsFor = (question: string): ReadonlyArray<GuideTopic> => {
   const asked = question.trim().toLowerCase();
   const exact = guideTopics.find((topic) => topic.id === asked || topic.title.toLowerCase() === asked);
   if (exact !== undefined) return [exact];
-  const words = wordsOf(asked);
+  const words = topicWordsOf(asked);
   const scored = guideTopics
     .map((topic) => ({ score: scoreOf(topic, asked, words), topic }))
     .filter((entry) => entry.score >= 3)
-    .toSorted((a, b) => b.score - a.score);
+    .toSorted((current, next) => next.score - current.score);
   const best = scored[0];
   if (best === undefined) return [];
   // A second topic joins only when it fits nearly as well.
@@ -116,12 +116,12 @@ export const readAppGuideByGuildmaster = (callerId: string, args: ArgumentsOf<"r
     if (!(yield* isGuildmasterThread(callerId)))
       return answer({ isError: true, text: "Only Chronicler reads the app guide here." });
     const question = args.topic?.trim() ?? "";
-    if (question === "") return answer({ isError: false, text: `${indexOf()}\n\n${reminder}` });
+    if (question === "") return answer({ isError: false, text: `${topicIndexText()}\n\n${reminder}` });
     const topics = topicsFor(question);
     if (topics.length === 0)
       return answer({
         isError: false,
-        text: `The app guide does not cover "${question}".\n\n${indexOf()}\n\nIf none of these topics fits, say you do not know. ${reminder}`,
+        text: `The app guide does not cover "${question}".\n\n${topicIndexText()}\n\nIf none of these topics fits, say you do not know. ${reminder}`,
       });
     return answer({
       isError: false,

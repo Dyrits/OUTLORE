@@ -1,13 +1,22 @@
 import { describe, expect, it } from "@effect/vitest";
+import { Schema } from "effect";
 import { threadTools, toolListing, unaskedToolNamesOf } from "../../src/work/threadTools.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: thread tool names (`save_intel`, ...).
 
+/** The parts of a tool's input schema these checks read. */
+const InputSchema = Schema.Struct({
+  properties: Schema.optional(
+    Schema.Record(Schema.String, Schema.Struct({ description: Schema.optional(Schema.String) })),
+  ),
+  required: Schema.optional(Schema.Array(Schema.String)),
+  type: Schema.optional(Schema.String),
+});
+const inputSchemaOf = (tool: (typeof toolListing)[number]) => Schema.decodeUnknownSync(InputSchema)(tool.inputSchema);
+
 describe("listing the thread tools", () => {
   it("lists every tool with the required arguments its decoder needs", () => {
-    const required = Object.fromEntries(
-      toolListing.map((tool) => [tool.name, (tool.inputSchema as { required?: Array<string> }).required ?? []]),
-    );
+    const required = Object.fromEntries(toolListing.map((tool) => [tool.name, inputSchemaOf(tool).required ?? []]));
     expect(required).toMatchObject({
       find_missions: ["request"],
       interrupt_thread: ["thread"],
@@ -27,9 +36,7 @@ describe("listing the thread tools", () => {
   // so every permission prompt then fails with "MCP tool ... not found. Available MCP tools: none" (read_settings,
   // whose empty struct encoded as `{ "not": { "type": "null" } }`).
   it("gives every tool an object input schema, which Claude Code needs to accept the listing", () => {
-    const notObjects = toolListing
-      .filter((tool) => (tool.inputSchema as { type?: string }).type !== "object")
-      .map((tool) => tool.name);
+    const notObjects = toolListing.filter((tool) => inputSchemaOf(tool).type !== "object").map((tool) => tool.name);
     expect(notObjects).toEqual([]);
   });
 
@@ -45,7 +52,7 @@ describe("listing the thread tools", () => {
     const missing = toolListing
       .filter((tool) => tool.name !== "answer_prompt")
       .flatMap((tool) =>
-        Object.entries((tool.inputSchema as { properties?: Record<string, { description?: string }> }).properties ?? {})
+        Object.entries(inputSchemaOf(tool).properties ?? {})
           .filter(([, property]) => property.description === undefined)
           .map(([name]) => `${tool.name}.${name}`),
       );

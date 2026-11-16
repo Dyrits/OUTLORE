@@ -5,7 +5,8 @@ import { invalid, readSettings } from "../core/index.ts";
 import { Commands, changed, unchanged } from "./commands.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
 
-const pairOf = (a: string, b: string) => (a < b ? ([a, b] as const) : ([b, a] as const));
+const pairOf = (first: string, second: string) =>
+  first < second ? ([first, second] as const) : ([second, first] as const);
 
 /** Resets every exchange involving an owner-addressed thread; an existing pause still needs a decision. */
 export const resetOwnerChatter = Effect.fn("resetOwnerChatter")(function* (threadId: string) {
@@ -59,7 +60,7 @@ export const readChatter = Effect.fn("readChatter")(function* (threadId: string)
 });
 
 /** The unresolved pause's pair; its invalidated turns are cancelled before the decision is applied. */
-const readPause = Effect.fn("readPause")(function* (pauseId: string) {
+const cancelPausedTurns = Effect.fn("cancelPausedTurns")(function* (pauseId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [paused] = yield* sql<{ firstId: string; secondId: string }>`
     SELECT first_id AS firstId, second_id AS secondId FROM chatter WHERE pause_id = ${pauseId}`;
@@ -94,7 +95,7 @@ const decideChatter = Effect.fn("decideChatter")(function* (pauseId: string, cho
 export const resolveChatter = Effect.fn("resolveChatter")(function* (pauseId: string, choice: "Continue" | "Stop") {
   const commands = yield* Commands;
   // Keep Attention in place until the invalidated turns have finished exiting.
-  yield* commands.run(readPause(pauseId));
+  yield* commands.run(cancelPausedTurns(pauseId));
   yield* commands.run(decideChatter(pauseId, choice));
   return null;
 });

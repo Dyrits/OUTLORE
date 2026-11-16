@@ -24,7 +24,7 @@ const appendMessage = (message: {
   readonly harness?: HarnessName | null;
   /** The model that wrote an agent reply, as the harness named it; null otherwise. */
   readonly model?: string | null;
-  /** The realm's folder the owner attached to the message, for the Guildmaster; null otherwise. */
+  /** The realm's folder the owner attached to the message, for Chronicler; null otherwise. */
   readonly realmPath?: string | null;
   /** Where the owner had Chronicler open from, as the line Chronicler reads with the message; null otherwise. */
   readonly viewing?: string | null;
@@ -70,12 +70,12 @@ export const insertReply = (
   });
 
 /** A message waiting to be delivered, as its receiver's harness reads it. */
-export interface PendingMessage {
+export type PendingMessage = {
   /** The files attached to it, in order (message-attachments). */
   readonly attachments: ReadonlyArray<StoredAttachment>;
   readonly id: string;
   readonly text: string;
-}
+};
 
 /**
  * The thread's messages from the owner and other threads not yet delivered, in order; with `isSteering`,
@@ -145,22 +145,22 @@ export const deliverMessages = (messageIds: ReadonlyArray<string>, turnId: strin
   });
 
 /** A message to record in a thread: from the owner, or from another thread of its mission. */
-interface NewMessage {
-  /** The sending thread, for a thread message. */
+type NewMessage = {
   /** The files the owner attached, added beforehand as drafts (message-attachments). */
   readonly attachmentIds?: ReadonlyArray<string>;
+  /** The sending thread, for a thread message. */
   readonly fromThreadId: string | null;
   /** Whether it waits for the receiver's next turn instead of joining a running one (CHG-0039). */
   readonly isQueued: boolean;
   /** Whether it is a result reported by a thread beneath (thread-tree, Results). */
   readonly isResult: boolean;
-  /** The realm's folder the owner attached, for the Guildmaster (quest coordination). */
+  /** The realm's folder the owner attached, for Chronicler (quest coordination). */
   readonly realmPath?: string | null;
   readonly text: string;
   readonly threadId: string;
   /** Where the owner had Chronicler open from, as the line Chronicler reads with the message. */
   readonly viewing?: string | null;
-}
+};
 
 /** Records a message for a thread, after the thread's existing messages. Callers run it in a transaction. */
 export const insertMessage = (message: NewMessage) =>

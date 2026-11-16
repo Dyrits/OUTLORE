@@ -5,7 +5,7 @@ import { topicsFor } from "../../src/work/guildmasterGuide.ts";
 
 const idsFor = (question: string) => topicsFor(question).map((topic) => topic.id);
 
-describe("the app guide", () => {
+describe("reading the app guide", () => {
   it("has unique topic ids, and every topic says what it answers", () => {
     const ids = guideTopics.map((topic) => topic.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -58,7 +58,7 @@ describe("the app guide", () => {
     expect(idsFor("write me a poem")).toEqual([]);
   });
 
-  describe("current-state claims", () => {
+  describe("describing what is built today", () => {
     const body = (id: string) => guideTopics.find((topic) => topic.id === id)?.body ?? "";
 
     it("does not promise the unbuilt own copy or one-button merge as available", () => {

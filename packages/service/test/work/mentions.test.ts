@@ -10,6 +10,7 @@ import {
 } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
+import { isIdle, lastAgentText } from "../fixtures/guildmaster.ts";
 import { call, fixture, open, read, send, settle, start, tool } from "../fixtures/service.ts";
 
 // Quests, side-quests, and realms named with `@` (thread-messaging, Who can message whom; CHG-0181).
@@ -20,7 +21,9 @@ afterEach(() => {
 });
 
 /** Runs a check on a service whose data folder also holds a folder to tie a realm to. */
-const withService = <A, E, R>(body: (folder: string) => Effect.Effect<A, E, R>) => {
+const withService = <Value, Failure, Requirements>(
+  body: (folder: string) => Effect.Effect<Value, Failure, Requirements>,
+) => {
   const value = fixture();
   fixtures.push(value);
   // A real path, as a realm stores it: the temporary folder is a link on macOS.
@@ -28,10 +31,6 @@ const withService = <A, E, R>(body: (folder: string) => Effect.Effect<A, E, R>) 
   mkdirSync(folder);
   return body(folder).pipe(Effect.provide(value.layer));
 };
-
-const isIdle = (detail: { thread: { state: string } }) => detail.thread.state === "Idle";
-const lastReplyOf = (detail: { messages: ReadonlyArray<{ sender: string; text: string }> }) =>
-  detail.messages.filter((message) => message.sender === "agent").at(-1)?.text ?? "";
 
 /** A quest with a known title, settled after its first turn. */
 const startQuest = (title: string, workspacePath: string | null = null) =>
@@ -47,7 +46,7 @@ const say = (missionId: MissionId, threadId: ThreadId, text: string) =>
   Effect.gen(function* () {
     const before = (yield* read(missionId, threadId)).messages.length;
     yield* send(threadId, text);
-    return lastReplyOf(
+    return lastAgentText(
       yield* settle(missionId, (detail) => detail.messages.length >= before + 2 && isIdle(detail), threadId),
     );
   });

@@ -91,7 +91,7 @@ export const makePromptPolicy = ({
         // A prompt from a harness still exiting after Stop runs nothing and asks nobody.
         if ((yield* readTurnId(threadId)) === null)
           return { isAllowed: false, text: "This thread is not at work, so nothing runs." } satisfies Decision;
-        // A prompt that asks the owner to choose is a question, not an action: it always waits for the owner's answer.
+        // What an allowance or a grant names: the file or command the action acts on.
         const target = targetOf(toolName, input);
         const isEscape =
           isOutsideSandbox || (toolName === "Bash" && fieldOf(input, "dangerouslyDisableSandbox") === true);

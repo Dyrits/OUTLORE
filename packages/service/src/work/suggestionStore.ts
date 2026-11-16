@@ -1,4 +1,4 @@
-import type { MissionSummary, Suggestion, SuggestionMatch } from "@outlore/contracts";
+import type { MissionSummary, Suggestion, SuggestionMatch, TierName } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { readSettings } from "../core/index.ts";
@@ -27,8 +27,8 @@ const matchIdsOf = (text: string): ReadonlyArray<string> => {
   return Exit.isSuccess(decoded) ? decoded.value : [];
 };
 
-const tierOf = (stored: string | null) =>
-  stored === "Light" || stored === "Balanced" || stored === "Heavy" ? stored : undefined;
+const tierOf = (stored: string | null): TierName | null =>
+  stored === "Light" || stored === "Balanced" || stored === "Heavy" ? stored : null;
 
 /** Suggestions with their offered missions as they stand now; a mission deleted since is no longer offered. */
 const withMatches = (rows: ReadonlyArray<SuggestionRow>) =>
@@ -43,7 +43,7 @@ const withMatches = (rows: ReadonlyArray<SuggestionRow>) =>
       const preset = isFromGuildmaster === 1 ? tierPresetOf(settings, name) : null;
       return {
         ...row,
-        // The Guildmaster's own Companion only routes: a new quest it offers starts on the tier chosen, else the default.
+        // Chronicler's own Companion only routes: a new quest it offers starts on the tier chosen, else the default.
         // The tier's account is named again because a Runner's account is a plain string and the contract's is branded.
         ...(isFromGuildmaster === 1
           ? { ...companionOf(settings, name, {}), accountId: preset?.accountId ?? null }

@@ -7,12 +7,12 @@ import { workedOutStateOf } from "./missionStates.ts";
 // menu offers, the reference appended to the message the harness reads, and what a mention opens for the turn it reaches.
 
 /** A thread of a quest not archived. */
-interface ThreadRow {
+type ThreadRow = {
   readonly id: string;
   readonly missionId: string;
   readonly parentId: string | null;
   readonly title: string;
-}
+};
 
 /**
  * The quests a mention may name: not archived, and not Chronicler's own. One fragment for the menu and for what a turn may
@@ -106,14 +106,14 @@ const readQuest = (missionId: string) =>
  * What one reference names: the line the receiving thread reads about it, and what it opens for the turn it reaches.
  * The line and the grants come from one reading, so what a thread is told it may do is what it may do.
  */
-interface ResolvedMention {
+type ResolvedMention = {
   /** The line the receiving thread reads, with the ids its tools take. */
   readonly line: string;
   /** The thread it may message, or null. */
   readonly reachableThread: string | null;
   /** The quest whose journal the thread may read, or null. */
   readonly readableQuest: string | null;
-}
+};
 
 const resolveMention = (reference: MentionReference) =>
   Effect.gen(function* () {
@@ -165,16 +165,16 @@ export const mentionNoteOf = (text: string) =>
     const references = mentionReferencesOf(text);
     if (references.length === 0) return "";
     const resolved = yield* Effect.forEach(references, resolveMention);
-    return `\n\n[The owner mentioned these with @, as context: decide from their words whether to look at each or write to it.\n${resolved.map((each) => each.line).join("\n")}]`;
+    return `\n\n[The owner mentioned these with @, as context: decide from their words whether to look at each or write to it.\n${resolved.map((mention) => mention.line).join("\n")}]`;
   });
 
 /** What a thread may reach beyond its tree during its current turn, from what was delivered to that turn. */
-export interface TurnReach {
+export type TurnReach = {
   /** Threads it may message: the top thread of a mentioned quest, a mentioned side-quest, and a thread that wrote to it. */
   readonly reachable: ReadonlySet<string>;
   /** Quests whose journal it may read: those the owner mentioned, or whose side-quest the owner mentioned. */
   readonly readable: ReadonlySet<string>;
-}
+};
 
 /**
  * What the owner's mentions and the thread messages delivered into the thread's latest turn open to it (CHG-0181). A

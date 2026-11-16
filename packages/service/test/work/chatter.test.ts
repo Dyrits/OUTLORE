@@ -22,8 +22,12 @@ const pair = Effect.gen(function* () {
   const started = yield* start(request);
   const child = yield* open(started.threadId, request);
   for (const id of [started.threadId, child.threadId]) {
-    const detail = yield* settle(started.missionId, (d) => d.questions.some((q) => q.outcome === null), id);
-    const question = detail.questions.find((q) => q.outcome === null);
+    const detail = yield* settle(
+      started.missionId,
+      (polled) => polled.questions.some((asked) => asked.outcome === null),
+      id,
+    );
+    const question = detail.questions.find((asked) => asked.outcome === null);
     if (question === undefined) return yield* Effect.die("Missing readiness question");
     yield* call({ _tag: "AnswerQuestion", answer: "Deny", message: null, questionId: question.id });
   }
@@ -34,17 +38,18 @@ describe("guarding against chatter", () => {
   it.live("pauses both threads on their twentieth message and keeps further messages undelivered", () =>
     Effect.gen(function* () {
       const { missionId, threadId, childId } = yield* pair;
-      for (let i = 0; i < 19; i++) yield* message(i % 2 === 0 ? threadId : childId, i % 2 === 0 ? childId : threadId);
+      for (let index = 0; index < 19; index++)
+        yield* message(index % 2 === 0 ? threadId : childId, index % 2 === 0 ? childId : threadId);
       expect((yield* read(missionId)).thread.state).toBe("Running");
       yield* message(childId, threadId, "Twentieth");
       const detail = yield* read(missionId);
-      expect(detail.threads.map((t) => t.state)).toEqual(["Attention", "Attention"]);
+      expect(detail.threads.map((thread) => thread.state)).toEqual(["Attention", "Attention"]);
       expect(detail.chatter).toHaveLength(1);
       expect(detail.chatter[0]?.count).toBe(20);
       yield* message(threadId, childId, "Kept after the threshold");
       const paused = yield* read(missionId, childId);
       expect(paused.thread.waitingCount).toBe(1);
-      expect(paused.messages.some((m) => m.text === "Kept after the threshold")).toBe(true);
+      expect(paused.messages.some((entry) => entry.text === "Kept after the threshold")).toBe(true);
       yield* Effect.sleep("50 millis");
       expect((yield* read(missionId)).thread.state).toBe("Attention");
     }).pipe(Effect.provide(live())),
@@ -112,11 +117,15 @@ describe("guarding against chatter", () => {
       const notice = (yield* read(missionId)).chatter[0];
       if (notice === undefined) return yield* Effect.die("Missing pause");
       yield* call({ _tag: "ResolveChatter", choice: "Continue", id: notice.id });
-      const parent = yield* settle(missionId, (d) => d.thread.state === "Idle");
-      const child = yield* settle(missionId, (d) => d.thread.state === "Idle", childId);
+      const parent = yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+      const child = yield* settle(missionId, (detail) => detail.thread.state === "Idle", childId);
       expect(parent.chatter).toHaveLength(0);
-      expect(parent.messages.some((m) => m.sender === "agent" && m.text.includes("At threshold"))).toBe(true);
-      expect(child.messages.some((m) => m.sender === "agent" && m.text.includes("Kept for child"))).toBe(true);
+      expect(parent.messages.some((entry) => entry.sender === "agent" && entry.text.includes("At threshold"))).toBe(
+        true,
+      );
+      expect(child.messages.some((entry) => entry.sender === "agent" && entry.text.includes("Kept for child"))).toBe(
+        true,
+      );
       yield* message(threadId, childId);
       expect((yield* read(missionId)).chatter).toHaveLength(0);
       yield* message(childId, threadId);
@@ -138,13 +147,15 @@ describe("guarding against chatter", () => {
       if (notice === undefined) return yield* Effect.die("Missing pause");
       yield* call({ _tag: "ResolveChatter", choice: "Stop", id: notice.id });
       const stopped = yield* read(missionId);
-      expect(stopped.threads.map((t) => t.state)).toEqual(["Stopped", "Stopped"]);
+      expect(stopped.threads.map((thread) => thread.state)).toEqual(["Stopped", "Stopped"]);
       expect(stopped.thread.waitingCount).toBe(1);
       expect(stopped.chatter).toHaveLength(0);
       yield* call({ _tag: "ResumeThread", threadId });
-      const resumed = yield* settle(missionId, (d) => d.thread.state === "Idle");
-      expect(resumed.messages.some((m) => m.sender === "agent" && m.text.includes("Keep for parent"))).toBe(true);
-      expect(resumed.threads.find((t) => t.id === childId)?.state).toBe("Stopped");
+      const resumed = yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+      expect(resumed.messages.some((entry) => entry.sender === "agent" && entry.text.includes("Keep for parent"))).toBe(
+        true,
+      );
+      expect(resumed.threads.find((thread) => thread.id === childId)?.state).toBe("Stopped");
     }).pipe(Effect.provide(live())),
   );
 
@@ -181,8 +192,10 @@ describe("guarding against chatter", () => {
       expect((yield* read(missionId)).thread.state).toBe("Stopped");
       yield* call({ _tag: "ResolveChatter", choice: "Stop", id: notice.id });
       yield* call({ _tag: "ResumeThread", threadId });
-      const detail = yield* settle(missionId, (d) => d.thread.state === "Idle");
-      expect(detail.messages.some((m) => m.sender === "agent" && m.text.includes("New instructions"))).toBe(true);
+      const detail = yield* settle(missionId, (polled) => polled.thread.state === "Idle");
+      expect(detail.messages.some((entry) => entry.sender === "agent" && entry.text.includes("New instructions"))).toBe(
+        true,
+      );
     }).pipe(Effect.provide(live())),
   );
 });
@@ -197,12 +210,12 @@ describe("stopping both threads of a chatter pause", () => {
       const started = yield* start(opening(`${opening("wait 60000")}\nwait 60000`));
       const waiting = yield* settle(
         started.missionId,
-        (d) =>
-          d.thread.state === "Waiting" &&
-          d.threads.length === 3 &&
-          d.threads.slice(1).every((t) => t.state === "Running"),
+        (detail) =>
+          detail.thread.state === "Waiting" &&
+          detail.threads.length === 3 &&
+          detail.threads.slice(1).every((thread) => thread.state === "Running"),
       );
-      const [first, second] = waiting.threads.slice(1).map((t) => t.id);
+      const [first, second] = waiting.threads.slice(1).map((thread) => thread.id);
       if (first === undefined || second === undefined) return yield* Effect.die("Missing children");
       yield* message(first, second);
       yield* message(second, first);

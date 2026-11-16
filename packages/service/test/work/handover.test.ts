@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { ThreadId } from "@outlore/contracts";
+import { AccountId, type ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { call, fixture, read, send, settle, start } from "../fixtures/service.ts";
@@ -38,13 +38,13 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
           threadId,
         });
         yield* send(threadId, "runner");
-        const second = yield* settle(started.missionId, (d) => d.messages.length === 4 && idle(d));
+        const second = yield* settle(started.missionId, (detail) => detail.messages.length === 4 && idle(detail));
         expect(lastReplyOf(second)).toBe(`Echo: claude/opus/high/session fake-${threadId}`);
         expect(second.thread.model).toBe("opus");
         expect(second.thread.effort).toBe("high");
         // Same session: no history is replayed.
         yield* send(threadId, "context");
-        const third = yield* settle(started.missionId, (d) => d.messages.length === 6 && idle(d));
+        const third = yield* settle(started.missionId, (detail) => detail.messages.length === 6 && idle(detail));
         expect(lastReplyOf(third)).not.toContain("Conversation so far");
       }),
     ),
@@ -65,7 +65,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
           threadId,
         });
         yield* send(threadId, "runner\ncontext");
-        const second = yield* settle(started.missionId, (d) => d.messages.length === 4 && idle(d));
+        const second = yield* settle(started.missionId, (detail) => detail.messages.length === 4 && idle(detail));
         const reply = lastReplyOf(second);
         expect(reply).toContain("codex/gpt-5/default/session none");
         expect(reply).toContain("Conversation so far");
@@ -100,7 +100,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
           threadId: first.thread.id,
         });
         yield* send(first.thread.id, "Carry on");
-        yield* settle(started.missionId, (d) => d.messages.length === 4 && idle(d));
+        yield* settle(started.missionId, (detail) => detail.messages.length === 4 && idle(detail));
         yield* call({
           _tag: "ChangeThreadRunner",
           accountId: null,
@@ -110,16 +110,16 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
           threadId: first.thread.id,
         });
         yield* send(first.thread.id, "And again");
-        const after = yield* settle(started.missionId, (d) => d.messages.length === 6 && idle(d));
+        const after = yield* settle(started.missionId, (detail) => detail.messages.length === 6 && idle(detail));
         const replies = after.messages.filter((message) => message.sender === "agent");
         expect(replies.map((reply) => [reply.harness, reply.model])).toEqual([
           ["claude", "sonnet"],
           ["codex", "gpt-5"],
           ["opencode", null],
         ]);
-        expect(after.messages.filter((message) => message.sender !== "agent").every((m) => m.harness === null)).toBe(
-          true,
-        );
+        expect(
+          after.messages.filter((message) => message.sender !== "agent").every((message) => message.harness === null),
+        ).toBe(true);
       }),
     ),
   );
@@ -153,13 +153,13 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
         yield* change(first.thread.id, "codex", "gpt-5");
         expect((yield* read(started.missionId)).handovers).toEqual([]);
         yield* send(first.thread.id, "runner");
-        const after = yield* settle(started.missionId, (d) => d.messages.length === 4 && idle(d));
+        const after = yield* settle(started.missionId, (detail) => detail.messages.length === 4 && idle(detail));
         expect(after.handovers.map((handover) => handover.text)).toEqual([
           "Handed over to Codex · gpt-5 · default effort",
         ]);
         // A later turn on the same runner adds none.
         yield* send(first.thread.id, "again");
-        const later = yield* settle(started.missionId, (d) => d.messages.length === 6 && idle(d));
+        const later = yield* settle(started.missionId, (detail) => detail.messages.length === 6 && idle(detail));
         expect(later.handovers).toHaveLength(1);
       }),
     ),
@@ -173,7 +173,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
         yield* change(first.thread.id, "codex");
         yield* change(first.thread.id, "claude");
         yield* send(first.thread.id, "again");
-        const after = yield* settle(started.missionId, (d) => d.messages.length === 4 && idle(d));
+        const after = yield* settle(started.missionId, (detail) => detail.messages.length === 4 && idle(detail));
         expect(after.handovers).toEqual([]);
       }),
     ),
@@ -259,7 +259,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
         const first = yield* settle(started.missionId, idle);
         const refused = yield* call({
           _tag: "ChangeThreadRunner",
-          accountId: crypto.randomUUID() as never,
+          accountId: AccountId.make(crypto.randomUUID()),
           effort: "default",
           harness: "codex",
           model: "default",
@@ -290,7 +290,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
           threadId: first.thread.id,
         });
         yield* call({ _tag: "ResumeThread", threadId: first.thread.id });
-        const after = yield* settle(started.missionId, (d) => d.messages.length === 4 && idle(d));
+        const after = yield* settle(started.missionId, (detail) => detail.messages.length === 4 && idle(detail));
         expect(lastReplyOf(after)).toContain("codex/default/default/session none");
       }),
     ),
@@ -300,7 +300,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
     withService(
       Effect.gen(function* () {
         const started = yield* start("fail claude not signed in\nrunner");
-        const failed = yield* settle(started.missionId, (d) => d.thread.state === "Failed");
+        const failed = yield* settle(started.missionId, (detail) => detail.thread.state === "Failed");
         yield* call({
           _tag: "ChangeThreadRunner",
           accountId: null,
@@ -315,7 +315,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
         expect(changed.thread).toMatchObject({ harness: "codex", state: "Failed", waitingCount: 1 });
         expect(changed.handovers).toEqual([]);
         yield* call({ _tag: "RetryThread", threadId: failed.thread.id });
-        const after = yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+        const after = yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
         expect(lastReplyOf(after)).toContain("codex");
         expect(after.handovers.map((handover) => handover.text)).toEqual([
           "Handed over to Codex · default model · default effort",
@@ -338,7 +338,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
           threadId: first.thread.id,
         });
         yield* send(first.thread.id, "runner");
-        yield* settle(started.missionId, (d) => d.handovers.length === 1 && idle(d));
+        yield* settle(started.missionId, (detail) => detail.handovers.length === 1 && idle(detail));
         const preview = yield* call({ _tag: "PreviewDeletion", threadId: first.thread.id });
         yield* call({ _tag: "DeleteThread", confirmation: preview.confirmation, threadId: first.thread.id });
         expect((yield* Effect.flip(read(started.missionId))).kind).toBe("NotFound");

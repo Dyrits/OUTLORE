@@ -28,17 +28,17 @@ import { prepareWorkingFolder, readThreadWorkspace, ScratchRoot, workingFolderOf
 export const startingContextWarningPercent = 25;
 
 /** What one turn of a thread starts from: its system part, its note, and where it works. */
-export interface TurnContext {
+export type TurnContext = {
   /** The system part: the working folder and the instructions every thread receives, without titles. */
   readonly context: string;
   readonly cwd: string;
   readonly isInWorkspace: boolean;
   /** What changes turn to turn: the titles, the journal, the opener's messages, lore, and the budget line. */
   readonly note: string;
-}
+};
 
 /** A starting context by part, each the text the harness receives. */
-interface Sections {
+type Sections = {
   readonly budget: string | null;
   readonly instructions: string;
   readonly journal: string;
@@ -46,18 +46,18 @@ interface Sections {
   readonly openerMessages: string | null;
   readonly position: string;
   readonly workspace: string;
-}
+};
 
 /** Whom a starting context is for: a thread, or one about to be opened. */
-interface Subject {
-  /** Whether it is the Guildmaster's thread, which starts from the realms and the quest list, not a journal. */
+type Subject = {
+  /** Whether it is Chronicler's thread, which starts from the realms and the quest list, not a journal. */
   readonly isGuildmaster?: boolean;
   /** The thread whose scope the lore comes from: the thread itself, or the opener of one about to be opened. */
   readonly loreThreadId: string;
   readonly missionId: string;
   readonly openerMessages: string | null;
   readonly position: ThreadPosition;
-}
+};
 
 /** Stands in for the id of a thread about to be opened: every id has this length, so the size is the same. */
 const unopenedThreadId = "00000000-0000-0000-0000-000000000000";
@@ -199,7 +199,7 @@ export const readStartingContext = (
       largerModels: catalogModels[harness]
         .map((option) => option.id)
         .filter((model) => contextWindowOf(model) > windowTokens)
-        .toSorted((a, b) => contextWindowOf(b) - contextWindowOf(a)),
+        .toSorted((current, next) => contextWindowOf(next) - contextWindowOf(current)),
       parts,
       tokens,
       warningPercent: startingContextWarningPercent,

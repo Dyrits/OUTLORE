@@ -188,7 +188,7 @@ const deriveAction = (callerId: string, tool: StructuralTool, args: object) =>
       // exists: naming the title in a message authorizes none of them (audit SA-01, SA-05).
       shouldAsk: true,
       state: { companion, realm, title },
-      summary: `Create the Ritual "${title}", ${JSON.stringify(ritual.schedule)}, ${where}, on ${companion.harness} ${companion.model}${fallbackNoteOf(fallbacks, ritual.tier)}.`,
+      summary: `Create the Ritual "${title}", ${JSON.stringify(ritual.schedule)}, ${where}, on ${companion.harness} ${companion.model}${fallbackNoteOf(fallbacks, ritual.tier ?? null)}.`,
     });
   });
 

@@ -26,7 +26,7 @@ const identifierScore = 20;
  * Other missions whose titles, briefings, or opening requests share words with the request, best first, at most 3:
  * a title word counts twice, a briefing or opening word once (provisional, work-in-progress Batch 10), and a shared
  * ticket key or link counts 20. Every mission not deleted counts, whatever its state; the caller's own mission and the
- * Guildmaster's do not.
+ * Chronicler's do not.
  */
 export const findMissions = (callerId: string, request: string) =>
   Effect.gen(function* () {
@@ -56,7 +56,7 @@ export const findMissions = (callerId: string, request: string) =>
         return { ...row, score };
       })
       .filter((row) => row.score > 0)
-      .sort((a, b) => b.score - a.score || b.lastActivityAt - a.lastActivityAt)
+      .sort((current, next) => next.score - current.score || next.lastActivityAt - current.lastActivityAt)
       .slice(0, maxMatches);
     const summaries = new Map<string, MissionSummary>(
       (yield* listMissionSummaries(scored.map((row) => row.id))).map((summary) => [summary.id, summary]),

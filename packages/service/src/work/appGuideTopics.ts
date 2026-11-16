@@ -4,7 +4,7 @@
 // Workshop), and says plainly what is not built; keep it in step with the README and the glossary when they change.
 
 /** One topic of the guide. */
-export interface GuideTopic {
+export type GuideTopic = {
   readonly body: string;
   /** The short name `read_app_guide` takes. */
   readonly id: string;
@@ -13,8 +13,9 @@ export interface GuideTopic {
   /** What the topic answers, in one line, for the index. */
   readonly summary: string;
   readonly title: string;
-}
+};
 
+/** Every topic of the guide, in the order the index lists them. */
 export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [

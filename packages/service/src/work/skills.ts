@@ -40,9 +40,10 @@ const readSkillFolder = (folder: string): ReadonlyArray<Skill> => {
  * The skills in scope: the workspace's, then the global ones, each with `.agents/skills` before `.claude/skills`;
  * for a name found twice the first wins, so the narrower scope does (tool-and-skill-loading, Name conflicts).
  */
-export const listSkills = (workspacePath: string | null, home: string = homedir()) =>
+export const listSkills = (workspacePath: string | null, home?: string) =>
   Effect.sync(() => {
-    const roots = workspacePath === null ? [home] : [workspacePath, home];
+    const homeFolder = home ?? homedir();
+    const roots = workspacePath === null ? [homeFolder] : [workspacePath, homeFolder];
     const found = new Map<string, Skill>();
     for (const skill of roots.flatMap(skillFoldersOf).flatMap(readSkillFolder)) {
       if (!found.has(skill.name)) found.set(skill.name, skill);

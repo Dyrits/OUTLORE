@@ -16,12 +16,12 @@ import { proposeTitle, titleOf } from "./titles.ts";
 import { openAside } from "./tree.ts";
 
 /** Where an off-topic request went, as the suggesting thread is told and its conversation links to. */
-export interface Resolution {
+export type Resolution = {
   readonly outcome: SuggestionOutcome;
   readonly targetMissionId: string | null;
   readonly targetThreadId: string | null;
   readonly targetTitle: string | null;
-}
+};
 
 const withdrawn: Resolution = { outcome: "Withdrawn", targetMissionId: null, targetThreadId: null, targetTitle: null };
 
@@ -93,7 +93,7 @@ export const suggestionsLayer = Layer.effect(
         resolve(suggestionId, threadId, withdrawn).pipe(Effect.tap(() => sql.afterCommit(changes.publish))),
       );
 
-    /** Opens a mission with only the off-topic part, under the proposed title, with no workspace unless the Guildmaster's owner chose a realm. */
+    /** Opens a mission with only the off-topic part, under the proposed title, with no workspace unless the owner chose a realm. */
     const openMission = (
       text: string,
       title: string,
@@ -103,7 +103,7 @@ export const suggestionsLayer = Layer.effect(
     ) =>
       Effect.gen(function* () {
         const started = yield* insertMission(text, choice, realmPath, false);
-        // The Guildmaster hears of this quest's result, Summons, and failure from now on (hearing back).
+        // Chronicler hears of this quest's result, Summons, and failure from now on (hearing back).
         if (isFromGuildmaster)
           yield* sql`UPDATE missions SET opened_by_guildmaster = 1 WHERE id = ${started.missionId}`;
         if (titleOf(title) !== "") yield* proposeTitle(started.missionId, title);
@@ -261,7 +261,7 @@ export const suggestionsLayer = Layer.effect(
         const named = [...new Set(missions)]
           .filter((id) => existing.has(id) && id !== caller.missionId)
           .slice(0, maxMatches);
-        // The Guildmaster always asks: it is where the owner decides whether a quest continues or a new one opens.
+        // Chronicler always asks: it is where the owner decides whether a quest continues or a new one opens.
         const isGuildmaster = yield* isGuildmasterThread(threadId);
         const givenRealm = args.realm?.trim() ?? "";
         const realm = isGuildmaster && givenRealm !== "" ? yield* findRealm(givenRealm) : null;

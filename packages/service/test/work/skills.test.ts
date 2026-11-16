@@ -22,7 +22,7 @@ const folderWith = (skills: Record<string, string>) => {
   return root;
 };
 
-describe("skill discovery", () => {
+describe("discovering skills", () => {
   it.effect("lists global and workspace skills with the workspace copy winning a name", () =>
     Effect.gen(function* () {
       const home = folderWith({
@@ -41,7 +41,7 @@ describe("skill discovery", () => {
   );
 });
 
-describe("slash-names in messages", () => {
+describe("reading slash-names in messages", () => {
   it("finds a name that starts a word and ignores paths", () => {
     expect(skillTokensOf("Use /challenge, then open /Users/me/file").map((token) => token.name)).toEqual(["challenge"]);
   });
@@ -53,7 +53,7 @@ describe("slash-names in messages", () => {
   });
 });
 
-describe("@-paths in messages", () => {
+describe("reading @-paths in messages", () => {
   it("finds a path that starts a word, without closing punctuation, and ignores addresses", () => {
     expect(
       mentionTokensOf("Read @src/index.ts, then @docs/ and mail me@example.com or @README.md.").map(

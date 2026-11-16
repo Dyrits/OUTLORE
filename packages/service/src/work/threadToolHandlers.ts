@@ -84,7 +84,7 @@ export const askOwnerFor =
     );
 
 const carryOn = "Carry on as if that message had not been sent to you; do not answer it.";
-// The Guildmaster answers its owner instead: one sentence saying where the request went.
+// Chronicler answers its owner instead: one sentence saying where the request went.
 const confirmInstead = "Tell the owner in one sentence where it went; do not repeat the request.";
 
 /** What `suggest_mission` tells the thread for each way the owner resolved its suggestion. */

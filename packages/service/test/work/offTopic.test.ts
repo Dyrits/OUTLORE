@@ -1,10 +1,11 @@
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionDetail, MissionId, Suggestion, SuggestionAnswer, ThreadId } from "@outlore/contracts";
+import type { MissionId, Suggestion, SuggestionAnswer, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
-import { fakeHarnessLayer, serviceLayer } from "../src/index.ts";
-import { call, fixture, read, send, settle, start, tool } from "./fixtures/service.ts";
+import { fakeHarnessLayer, serviceLayer } from "../../src/index.ts";
+import { isIdle, lastAgentText, startIdle } from "../fixtures/guildmaster.ts";
+import { call, fixture, read, send, settle, start, tool } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 const setup = () => {
@@ -15,16 +16,6 @@ const setup = () => {
 afterEach(() => {
   for (const value of fixtures.splice(0)) value.remove();
 });
-
-const isIdle = (detail: MissionDetail) => detail.thread.state === "Idle";
-
-/** Starts a mission and waits for its first turn to end. */
-const startIdle = (text: string) =>
-  Effect.gen(function* () {
-    const started = yield* start(text);
-    yield* settle(started.missionId, isIdle);
-    return started;
-  });
 
 /** Rewrites a mission's briefing as the owner. */
 const brief = (missionId: MissionId, briefing: string) =>
@@ -37,16 +28,18 @@ const suggest = (threadId: ThreadId, args: { text: string; title: string; missio
 /** Waits for the thread's open suggestion. */
 const openSuggestion = (missionId: MissionId, threadId: ThreadId | null = null) =>
   Effect.gen(function* () {
-    const detail = yield* settle(missionId, (d) => d.suggestions.some((s) => s.outcome === null), threadId);
-    const suggestion = detail.suggestions.find((s) => s.outcome === null);
+    const detail = yield* settle(
+      missionId,
+      (polled) => polled.suggestions.some((offered) => offered.outcome === null),
+      threadId,
+    );
+    const suggestion = detail.suggestions.find((offered) => offered.outcome === null);
     if (suggestion === undefined) return yield* Effect.die("Missing suggestion");
     return { detail, suggestion };
   });
 
 const answer = (suggestion: Suggestion, given: SuggestionAnswer) =>
   call({ _tag: "AnswerSuggestion", answer: given, suggestionId: suggestion.id });
-
-const lastAgentText = (detail: MissionDetail) => detail.messages.filter((m) => m.sender === "agent").at(-1)?.text ?? "";
 
 describe("finding missions for an off-topic request", () => {
   it.live("matches other missions by title and briefing, whatever their state, best first", () =>
@@ -86,7 +79,7 @@ describe("finding missions for an off-topic request", () => {
       yield* call({ _tag: "DeleteThread", confirmation: preview.confirmation, threadId: deleted.threadId });
       const answer = yield* tool(current.threadId, "find_missions", { request: "garden" });
       expect(answer).not.toContain(deleted.missionId);
-      expect(kept.slice(1).filter((m) => answer.includes(m.missionId))).toHaveLength(3);
+      expect(kept.slice(1).filter((match) => answer.includes(match.missionId))).toHaveLength(3);
       const none = yield* tool(current.threadId, "find_missions", { request: "astronomy" });
       expect(none).toContain("No mission");
     }).pipe(Effect.provide(setup().layer)),
@@ -120,12 +113,16 @@ describe("suggesting where an off-topic request goes", () => {
       const { suggestion } = yield* openSuggestion(current.missionId);
       expect(suggestion.matches[0]?.state).toBe("Done");
       yield* answer(suggestion, { _tag: "Continue", missionId: trip.missionId });
-      const target = yield* settle(trip.missionId, (d) => d.messages.some((m) => m.text === "Echo: Book a hotel"));
-      expect(target.messages.some((m) => m.sender === "user" && m.text === "Book a hotel")).toBe(true);
+      const target = yield* settle(trip.missionId, (detail) =>
+        detail.messages.some((message) => message.text === "Echo: Book a hotel"),
+      );
+      expect(target.messages.some((message) => message.sender === "user" && message.text === "Book a hotel")).toBe(
+        true,
+      );
       expect(target.mission.state).not.toBe("Done");
       const original = yield* settle(
         current.missionId,
-        (d) => isIdle(d) && lastAgentText(d).includes("continued it in mission"),
+        (detail) => isIdle(detail) && lastAgentText(detail).includes("continued it in mission"),
       );
       expect(lastAgentText(original)).toContain("as if that message had not been sent");
       expect(original.suggestions[0]).toMatchObject({
@@ -172,14 +169,19 @@ describe("suggesting where an off-topic request goes", () => {
       const { suggestion } = yield* openSuggestion(current.missionId);
       const choicesBefore = yield* call({ _tag: "ReadStartChoices" });
       yield* answer(suggestion, { _tag: "NewMission", effort: "low", model: "haiku" });
-      const original = yield* settle(current.missionId, (d) => d.suggestions[0]?.outcome === "MovedToMission");
+      const original = yield* settle(
+        current.missionId,
+        (detail) => detail.suggestions[0]?.outcome === "MovedToMission",
+      );
       const moved = original.suggestions[0];
       if (moved?.targetMissionId == null) return yield* Effect.die("Missing new mission");
-      const fresh = yield* settle(moved.targetMissionId, (d) => isIdle(d) && lastAgentText(d) !== "");
+      const fresh = yield* settle(moved.targetMissionId, (detail) => isIdle(detail) && lastAgentText(detail) !== "");
       expect(fresh.mission.title).toBe("Read my emails");
       expect(moved.targetTitle).toBe("Read my emails");
       expect(fresh.thread).toMatchObject({ effort: "low", model: "haiku", workspace: null });
-      expect(fresh.messages.filter((m) => m.sender === "user").map((m) => m.text)).toEqual(["context"]);
+      expect(fresh.messages.filter((message) => message.sender === "user").map((message) => message.text)).toEqual([
+        "context",
+      ]);
       expect(lastAgentText(fresh)).not.toContain("Q3 sales");
       expect(lastAgentText(fresh)).not.toContain("Write the report");
       expect(yield* call({ _tag: "ReadStartChoices" })).toEqual(choicesBefore);
@@ -193,15 +195,19 @@ describe("suggesting where an off-topic request goes", () => {
       yield* suggest(current.threadId, { missions: [], text: "context", title: "Weather chat" });
       const { suggestion } = yield* openSuggestion(current.missionId);
       yield* answer(suggestion, { _tag: "Aside" });
-      const original = yield* settle(current.missionId, (d) => d.suggestions[0]?.outcome === "KeptAsAside");
+      const original = yield* settle(current.missionId, (detail) => detail.suggestions[0]?.outcome === "KeptAsAside");
       const asideId = original.suggestions[0]?.targetThreadId;
       if (asideId == null) return yield* Effect.die("Missing aside");
-      expect(original.threads.find((t) => t.id === asideId)).toMatchObject({
+      expect(original.threads.find((thread) => thread.id === asideId)).toMatchObject({
         isAside: true,
         parentId: current.threadId,
         title: "Weather chat",
       });
-      const aside = yield* settle(current.missionId, (d) => isIdle(d) && lastAgentText(d) !== "", asideId);
+      const aside = yield* settle(
+        current.missionId,
+        (detail) => isIdle(detail) && lastAgentText(detail) !== "",
+        asideId,
+      );
       expect(aside.messages[0]).toMatchObject({ sender: "user", text: "context" });
       const context = lastAgentText(aside);
       expect(context).toContain("The report covers Q3 sales.");
@@ -211,7 +217,7 @@ describe("suggesting where an off-topic request goes", () => {
       expect(refused).toContain("aside");
       yield* tool(asideId, "report_result", { journal: "Talked about the weather", result: "Sunny" });
       const journal = yield* call({ _tag: "ReadJournal", missionId: current.missionId });
-      expect(journal.entries.some((e) => e.text.includes("weather"))).toBe(false);
+      expect(journal.entries.some((entry) => entry.text.includes("weather"))).toBe(false);
     }).pipe(Effect.provide(setup().layer)),
   );
 
@@ -222,7 +228,7 @@ describe("suggesting where an off-topic request goes", () => {
       yield* call({ _tag: "UpdateSettings", settings: { ...settings, shouldOpenOffTopicMissions: true } });
       const current = yield* startIdle("Write the report");
       yield* suggest(current.threadId, { missions: [], text: "Read my emails", title: "Emails" });
-      const original = yield* settle(current.missionId, (d) => isIdle(d) && d.suggestions.length > 0);
+      const original = yield* settle(current.missionId, (polled) => isIdle(polled) && polled.suggestions.length > 0);
       expect(original.suggestions[0]).toMatchObject({ isAutomatic: true, outcome: "MovedToMission" });
       expect(lastAgentText(original)).toContain("as the owner's settings ask");
       const trip = yield* startIdle("Plan the Lisbon trip");
@@ -247,7 +253,7 @@ describe("suggesting where an off-topic request goes", () => {
   it.live("tells every thread how to handle an off-topic message", () =>
     Effect.gen(function* () {
       const current = yield* start("context");
-      const detail = yield* settle(current.missionId, (d) => isIdle(d) && lastAgentText(d) !== "");
+      const detail = yield* settle(current.missionId, (polled) => isIdle(polled) && lastAgentText(polled) !== "");
       expect(lastAgentText(detail)).toContain("find_missions");
       expect(lastAgentText(detail)).toContain("suggest_mission");
     }).pipe(Effect.provide(setup().layer)),
@@ -264,7 +270,7 @@ describe("opening off-topic requests without asking", () => {
       yield* suggest(current.threadId, { missions: [], text: "Book a Lisbon hotel for the trip", title: "Hotel" });
       const { detail, suggestion } = yield* openSuggestion(current.missionId);
       expect(detail.thread.state).toBe("Attention");
-      expect(suggestion.matches.map((m) => m.missionId)).toEqual([trip.missionId]);
+      expect(suggestion.matches.map((match) => match.missionId)).toEqual([trip.missionId]);
     }).pipe(Effect.provide(setup().layer)),
   );
 });
@@ -276,7 +282,7 @@ describe("withdrawing a suggestion", () => {
       yield* suggest(current.threadId, { missions: [], text: "Read my emails", title: "Emails" });
       yield* openSuggestion(current.missionId);
       yield* call({ _tag: "InterruptThread", threadId: current.threadId });
-      const after = yield* settle(current.missionId, (d) => d.suggestions[0]?.outcome === "Withdrawn");
+      const after = yield* settle(current.missionId, (detail) => detail.suggestions[0]?.outcome === "Withdrawn");
       expect(after.thread.state).not.toBe("Attention");
     }).pipe(Effect.provide(setup().layer)),
   );

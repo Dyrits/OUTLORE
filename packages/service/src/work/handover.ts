@@ -12,7 +12,7 @@ import { changed, unchanged } from "./commands.ts";
 // starts a new session that is given the thread's whole conversation (ADR 0006); a change of model or
 // effort alone carries on in the same session.
 
-/** The share of the new model's context window the replayed conversation may take, in percent (provisional). */
+/** The share of the new model's context window the replayed conversation may take, in percent (provisional until the owner settles thread-handover, Long conversations). */
 const historyWindowPercent = 50;
 
 /** What a handover line says: the new runner in words, as the thread's conversation shows it. */
@@ -29,10 +29,10 @@ const handoverTextOf = (runner: Runner, accountLabel: string | null, fellBackAft
  * Changes the thread's runner. Allowed while the thread is in a turn too: that turn finishes on the runner it started
  * on (`isRunnerChangedSince` keeps it from saving its session or falling back), and the next one runs on the new
  * runner. A change of harness or account forgets the harness session, so the thread's next turn starts a new one with
- * the conversation so far. The owner's change starts
- * no turn and leaves no line until one does (`recordPendingHandover`): a message waiting after a failed turn runs on the new runner when the owner retries or writes again. A
- * fallback (backups, rituals) passes the failure that caused it, which the line then gives after the new runner, and
- * runs the waiting messages at once.
+ * the conversation so far. The owner's change starts no turn and leaves no line until one does
+ * (`recordPendingHandover`): a message waiting after a failed turn runs on the new runner when the owner retries or
+ * writes again. A fallback (backups, rituals) passes the failure that caused it, which the line then gives after the
+ * new runner, and runs the waiting messages at once.
  */
 export const changeThreadRunner = (
   threadId: string,
@@ -169,7 +169,7 @@ export const listHandovers = (threadId: string) =>
  * The thread's conversation before this turn, to hand to a harness session that starts with none: the owner's
  * and threads' messages delivered to earlier turns and the thread's own replies, oldest first. The oldest are
  * left out, with a line saying how many, when they would take over half the model's context window
- * (provisional: summarizing the oldest part is staged). Null when there is no earlier conversation.
+ * (provisional: summarizing the oldest part is staged; thread-handover, Long conversations, and ADR 0006). Null when there is no earlier conversation.
  */
 export const readConversationSoFar = (threadId: string, turnId: string, model: ModelChoice) =>
   Effect.gen(function* () {
@@ -200,19 +200,19 @@ export const readConversationSoFar = (threadId: string, turnId: string, model: M
       return [`${speaker}: ${row.text}`, ...images].join("\n");
     });
     const allowance = Math.floor((contextWindowOf(model) * historyWindowPercent) / 100);
-    let used = 0;
-    let first = lines.length;
-    while (first > 0 && used + tokensOf(lines[first - 1] ?? "") <= allowance) {
-      first--;
-      used += tokensOf(lines[first] ?? "");
+    let usedTokens = 0;
+    let firstKeptIndex = lines.length;
+    while (firstKeptIndex > 0 && usedTokens + tokensOf(lines[firstKeptIndex - 1] ?? "") <= allowance) {
+      firstKeptIndex--;
+      usedTokens += tokensOf(lines[firstKeptIndex] ?? "");
     }
-    const kept = lines.slice(first);
+    const kept = lines.slice(firstKeptIndex);
     return [
       "## Conversation so far",
       'This thread ran before in a harness session you do not have (on another harness, account, or model, or one that could not be resumed), and you now continue it. What follows is its conversation, oldest first, with you as "You". Carry on from it; do not repeat it.',
-      ...(first > 0
+      ...(firstKeptIndex > 0
         ? [
-            `(${first} earlier ${first === 1 ? "message was" : "messages were"} left out because the conversation is long.)`,
+            `(${firstKeptIndex} earlier ${firstKeptIndex === 1 ? "message was" : "messages were"} left out because the conversation is long.)`,
           ]
         : []),
       kept.join("\n\n"),

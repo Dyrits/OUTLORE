@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { ModelChoice, StartingContext, ThreadId } from "@outlore/contracts";
+import { type ModelChoice, type StartingContext, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { type TurnRequest, tokensOf } from "../../src/core/index.ts";
@@ -44,7 +44,7 @@ const sumOf = (context: StartingContext) => Object.values(context.parts).reduce(
 const idle = (text = "Hello") =>
   Effect.gen(function* () {
     const started = yield* start(text);
-    yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+    yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
     return started;
   });
 /** A mission whose top thread holds three long owner messages since the journal's latest entry. */
@@ -56,7 +56,7 @@ const crowded = () =>
       yield* send(started.threadId, `${index} ${"x".repeat(80_000)}`);
       yield* settle(
         started.missionId,
-        (d) => d.thread.state === "Idle" && d.messages.length >= before + 2,
+        (detail) => detail.thread.state === "Idle" && detail.messages.length >= before + 2,
         started.threadId,
       );
     }
@@ -153,7 +153,7 @@ describe("previewing a new thread's starting context", () => {
     writeFileSync(join(app, "AGENTS.md"), "a".repeat(8_000));
     return Effect.gen(function* () {
       const started = yield* start("Hello", app);
-      yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
       const shown = yield* preview(started.threadId, "Go on.");
       expect(shown.parts.workspace).toBeGreaterThan(2_000);
       expect(shown.tokens).toBe(sumOf(shown));
@@ -199,7 +199,7 @@ describe("previewing a new thread's starting context", () => {
   it.live("refuses an unknown parent thread", () => {
     const { layer } = live();
     return Effect.gen(function* () {
-      const failure = yield* preview(crypto.randomUUID() as ThreadId, "Go on.").pipe(Effect.flip);
+      const failure = yield* preview(ThreadId.make(crypto.randomUUID()), "Go on.").pipe(Effect.flip);
       expect(failure.message).toBe("No such thread.");
     }).pipe(Effect.provide(layer));
   });
