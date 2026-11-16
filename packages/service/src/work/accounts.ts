@@ -11,11 +11,11 @@ import { AccountsRoot } from "./threads.ts";
 // Provider accounts (provider-accounts): each harness's own sign-in on this computer, and accounts the owner
 // adds, each with its own folder where the harness keeps that account's sign-in and sessions.
 
-interface AccountRow {
+type AccountRow = {
   readonly harness: HarnessName;
   readonly id: string;
   readonly label: string;
-}
+};
 
 /** An added account's folder. */
 const accountFolderOf = (accountsRoot: string, accountId: string) => join(accountsRoot, accountId);
@@ -62,15 +62,15 @@ const readHarness = (harness: HarnessName, rows: ReadonlyArray<AccountRow>) =>
       accounts,
       (account) =>
         installation.problem !== null || account.signIn === "SignedOut"
-          ? Effect.succeed(undefined)
+          ? Effect.succeed(null)
           : tools.listModels(harness, account.configDirectory),
       { concurrency: "unbounded" },
     );
     const update = installation.problem === null ? yield* tools.findUpdate(harness, installation.version) : null;
     return {
       accounts: accounts.map(({ configDirectory: _, ...account }, index) => {
-        const own = accountModels[index];
-        return own === undefined ? account : { ...account, models: own };
+        const own = accountModels[index] ?? null;
+        return own === null ? account : { ...account, models: own };
       }),
       models,
       name: harness,

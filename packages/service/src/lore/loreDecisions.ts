@@ -21,7 +21,7 @@ import {
 // declining a thread's change awaiting approval, and editing, deleting, pinning, or restoring any lore.
 
 /** One stored change awaiting the owner, with what applying it needs. */
-interface ChangeRow {
+type ChangeRow = {
   readonly kind: LoreChangeKind;
   readonly loreEntryId: string | null;
   readonly loreKind: LoreKind;
@@ -35,7 +35,7 @@ interface ChangeRow {
   readonly status: LoreChangeStatus;
   readonly text: string;
   readonly threadId: string;
-}
+};
 
 /**
  * The owner approves or declines a change awaiting approval. An approved change to a lore entry deleted in the

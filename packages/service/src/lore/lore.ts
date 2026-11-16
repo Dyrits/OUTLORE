@@ -27,19 +27,19 @@ export const loreLimit = 200;
 export const contextWindowOf = (_model: ModelChoice) => 200_000;
 
 /** Where a lore entry sits: a thread (the mission's top thread for the whole mission), a workspace, or everywhere. */
-export interface Placement {
+export type Placement = {
   readonly scope: LoreScope;
   readonly threadId: string | null;
   readonly workspaceId: string | null;
-}
+};
 
 /** A thread's lookup scope: itself and each thread above it, nearest first, then its workspace. */
-export interface ScopeChain {
+export type ScopeChain = {
   readonly missionId: string;
   readonly threads: ReadonlyArray<string>;
   readonly topThreadId: string;
   readonly workspaceId: string | null;
-}
+};
 
 /** How wide a placement is, from a thread (0) to the whole mission (1), a workspace (2), and everywhere (3). */
 export const widthOf = (placement: Placement, topThreadId: string) =>
@@ -73,7 +73,7 @@ export const readScopeChain = (threadId: string) =>
   });
 
 /** One stored lore entry with what its scope label needs. */
-export interface LoreEntryRow {
+export type LoreEntryRow = {
   readonly id: string;
   readonly isPinned: number;
   readonly isTopThread: number;
@@ -95,7 +95,7 @@ export interface LoreEntryRow {
   readonly uses: number;
   readonly workspaceId: string | null;
   readonly workspaceName: string | null;
-}
+};
 
 /** Selects lore entries with what their scope labels need; callers add the condition and order. */
 export const selectLoreEntries = (sql: SqlClient.SqlClient) => sql`
@@ -178,14 +178,14 @@ export const readLoreEntry = (loreEntryId: string) =>
   });
 
 /** What a turn's context carries of a thread's lore (scoped-intel, Recall). */
-interface Recall {
+type Recall = {
   /** Dormant lore entries in scope, not listed. */
   readonly dormantCount: number;
   /** Active global lore, oldest first, so a new one is added at the end of the index. */
   readonly index: ReadonlyArray<LoreEntryRow>;
   /** Active thread, mission, and workspace lore, most specific first. */
   readonly inFull: ReadonlyArray<LoreEntryRow>;
-}
+};
 
 const recallOf = (rows: ReadonlyArray<LoreEntryRow>, fading: Fading): Recall => {
   const active = rows.filter((row) => stateOfLoreEntry(row, fading) === "Active");

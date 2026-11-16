@@ -71,10 +71,9 @@ export const planLimitsLayer = Layer.effect(
         const configDirectory = account.accountId === null ? null : join(accountsRoot, account.accountId);
         const report = yield* harness.readPlanLimits(account.harness, configDirectory);
         const now = yield* Clock.currentTimeMillis;
-        const gate = gates.get(key) ?? noReadYet;
         if (report === null || report.windows.length === 0) {
           // A harness that reports nothing has not failed: it is asked again after the reading's time.
-          gates.set(key, afterRead(gate, now));
+          gates.set(key, afterRead(now));
           return;
         }
         const windows = report.windows.map((window) => ({
@@ -86,7 +85,7 @@ export const planLimitsLayer = Layer.effect(
           ON CONFLICT (account_key) DO UPDATE SET windows = excluded.windows, read_at = excluded.read_at`.pipe(
           Effect.orDie,
         );
-        gates.set(key, afterRead(gate, now));
+        gates.set(key, afterRead(now));
         yield* changes.publish;
       }).pipe(
         Effect.onError(() =>

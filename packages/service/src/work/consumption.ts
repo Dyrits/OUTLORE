@@ -7,7 +7,7 @@ import { consumptionColumns } from "../core/index.ts";
 // the quest and thread panels, the dashboard row, and the budget window, so a figure cannot differ between screens.
 
 /** The columns `consumptionColumns` selects, as a row. */
-export interface ConsumptionRow {
+export type ConsumptionRow = {
   readonly cacheCreation: number;
   readonly cacheRead: number;
   readonly earlierTurns: number;
@@ -17,7 +17,7 @@ export interface ConsumptionRow {
   readonly reported: number;
   readonly turns: number;
   readonly unpricedTurns: number;
-}
+};
 
 /** A consumption read from a row of `consumptionColumns`. */
 export const consumptionOf = (row: ConsumptionRow): Consumption => ({

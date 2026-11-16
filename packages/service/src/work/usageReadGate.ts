@@ -5,11 +5,11 @@
 const minute = 60_000;
 
 /** When an account's usage was last read, how many reads failed in a row, and when the next may start after a failure. */
-export interface GateState {
+export type GateState = {
   readonly failures: number;
   readonly readAt: number | null;
   readonly retryAt: number;
-}
+};
 
 /** An account whose usage was never read. */
 export const noReadYet: GateState = { failures: 0, readAt: null, retryAt: 0 };
@@ -22,7 +22,7 @@ export const isReadDue = (state: GateState, now: number) =>
   now >= state.retryAt && (state.readAt === null || now - state.readAt >= standMillis);
 
 /** The state after a successful read. */
-export const afterRead = (_state: GateState, now: number): GateState => ({ failures: 0, readAt: now, retryAt: 0 });
+export const afterRead = (now: number): GateState => ({ failures: 0, readAt: now, retryAt: 0 });
 
 /** The state after a failed read: the next waits longer each time, keeping the last reading's time. */
 export const afterFailure = (state: GateState, now: number): GateState => {

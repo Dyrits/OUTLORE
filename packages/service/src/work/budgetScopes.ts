@@ -5,7 +5,6 @@ import {
   costText,
   isEmpty,
   isReached,
-  limitsTextOf,
   missionLimitsOf,
   missionSpendingOf,
   nextStartOf,
@@ -30,10 +29,10 @@ export type BudgetScope =
   | { readonly _tag: "Account"; readonly accountId: string | null; readonly harness: HarnessName };
 
 /** A provider account: a harness with an added account's id, or null for its own sign-in on this computer. */
-export interface AccountRef {
+export type AccountRef = {
   readonly accountId: string | null;
   readonly harness: HarnessName;
-}
+};
 
 /** The text an account is stored under in `budget_stops`: its harness and id, the id empty for the computer's own. */
 export const accountKeyOf = (ref: AccountRef) => `${ref.harness}:${ref.accountId ?? ""}`;
@@ -68,12 +67,12 @@ export const accountLabelOf = (ref: AccountRef) =>
   Effect.map(accountNameOf(ref), (name) => `${harnessLabels[ref.harness]} · ${name}`);
 
 /** What an account's budget holds, as stored. */
-export interface AccountBudgetRow {
+export type AccountBudgetRow = {
   readonly lastChange: string | null;
   readonly limits: BudgetLimits;
   readonly period: BudgetPeriod | null;
   readonly since: number;
-}
+};
 
 /** An account's budget, or null when it has none. */
 export const readAccountBudgetRow = (ref: AccountRef) =>
@@ -175,9 +174,10 @@ export const scopeOfStop = (row: { accountKey: string | null; missionId: string 
 /** The account's scope when its budget is reached, as a list of at most one. */
 const reachedAccountScopeOf = (account: AccountRef | null) =>
   Effect.gen(function* () {
-    if (account === null) return [] as ReadonlyArray<BudgetScope>;
-    const scope = { _tag: "Account", ...account } as const;
-    return (yield* isScopeReached(scope)) ? ([scope] as ReadonlyArray<BudgetScope>) : [];
+    const none: ReadonlyArray<BudgetScope> = [];
+    if (account === null) return none;
+    const scope: BudgetScope = { _tag: "Account", ...account };
+    return (yield* isScopeReached(scope)) ? [scope] : none;
   });
 
 /** The refusal for work under a reached budget, or null when none is reached. */
@@ -248,9 +248,6 @@ export const budgetLineOf = (missionId: string, account: AccountRef | null = nul
     const accountName = accountParts.length === 0 || account === null ? "" : yield* accountNameOf(account);
     return `Budget: ${mission}${globalParts.length === 0 ? "" : `; global: ${globalParts.join(", ")}`}${accountParts.length === 0 ? "" : `; account ${accountName}: ${accountParts.join(", ")}`}. At a limit, Outlore stops the work under it and asks the owner.`;
   });
-
-/** The words for an account budget's limits, for the account's row. */
-export const accountLimitsTextOf = (limits: BudgetLimits) => limitsTextOf(limits);
 
 /** When an account's period starts over. */
 export const accountNextStartOf = (row: AccountBudgetRow, now: number) =>

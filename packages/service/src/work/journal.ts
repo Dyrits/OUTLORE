@@ -14,13 +14,13 @@ export const nothingToRecord = "nothing to record";
 export type JournalAuthor = { readonly kind: "thread"; readonly threadId: string } | { readonly kind: "user" };
 
 /** A briefing rewrite and the version it was based on, which a thread may omit and is then refused. */
-export interface BriefingRewrite {
+type BriefingRewrite = {
   readonly basedOn: number | null;
   readonly briefing: string;
-}
+};
 
 /** What an update did: the new version and entry number, or why it was refused with the current briefing. */
-export type JournalOutcome =
+type JournalOutcome =
   | { readonly _tag: "Recorded"; readonly number: number; readonly version: number }
   | {
       readonly _tag: "Refused";

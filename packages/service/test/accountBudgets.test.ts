@@ -5,7 +5,6 @@ import {
   type BackupCompanion,
   type BudgetLimits,
   type MissionDetail,
-  type MissionId,
 } from "@outlore/contracts";
 import { Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
@@ -263,5 +262,3 @@ describe("switching to a backup Companion at an account's budget", () => {
     ),
   );
 });
-
-export type { MissionId };

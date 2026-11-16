@@ -16,13 +16,13 @@ import { mergeLoreEntries, moveLoreEntry } from "./loreStore.ts";
 // fading is; only the owner's decisions are stored, so a declined proposal does not come back.
 
 /** A proposal with what applying it needs. */
-interface Evidence {
+type Evidence = {
   readonly proposal: LoreProposal;
   /** The lore entries it moves or merges, the one kept first. */
   readonly rows: ReadonlyArray<LoreEntryRow>;
   /** For a narrowing, the workspace it moves the lore to; null for a widening. */
   readonly workspaceId: string | null;
-}
+};
 
 const proposedOf = (row: LoreEntryRow): ProposedLoreEntry => ({
   id: row.id as ProposedLoreEntry["id"],

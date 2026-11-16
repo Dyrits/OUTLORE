@@ -12,13 +12,13 @@ import {
 // SQL that selects the rows of a breakdown. Dates are local to the computer the service runs on, as the owner reads them.
 
 /** The days a read covers: their texts, and the millisecond bounds, the end excluded. */
-export interface UsageBounds {
+export type UsageBounds = {
   readonly days: ReadonlyArray<DayText>;
   readonly firstDay: DayText;
   readonly from: number;
   readonly lastDay: DayText;
   readonly to: number;
-}
+};
 
 /** A local day as `YYYY-MM-DD`. */
 export const dayTextOf = (date: Date) =>
@@ -61,10 +61,10 @@ export const boundsOf = (period: UsagePeriod, now: number): UsageBounds | null =
 };
 
 /** Where a read finds the quest and the time of the rows it counts: the usage rows' own columns, or another table's. */
-export interface KeyColumns {
+type KeyColumns = {
   readonly mission: string;
   readonly time: string;
-}
+};
 
 /** The usage rows' columns. */
 export const usageColumns: KeyColumns = { mission: "u.mission_id", time: "u.ended_at" };

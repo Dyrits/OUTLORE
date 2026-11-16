@@ -32,12 +32,12 @@ export const isSameOf = (a: string, b: string) => {
 };
 
 /** What a save finds among the lore entries already kept. */
-export interface Duplicates {
+export type Duplicates = {
   /** Lore entries close to the save but not the same, closest first. */
   readonly close: ReadonlyArray<LoreEntryRow>;
   /** The lore the save replaces, or null when it saves a new one. */
   readonly replaced: LoreEntryRow | null;
-}
+};
 
 /**
  * The lore entries in the saving thread's scope, in the save's scope or a wider one, that the save may repeat.

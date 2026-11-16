@@ -32,7 +32,7 @@ const writeSnapshot = Effect.fnUntraced(function* (state: Snapshot) {
       ${state.originExcerpt})`;
 });
 
-interface EntryRecord {
+type EntryRecord = {
   readonly actor: Actor;
   readonly after: Snapshot | null;
   readonly approvedAt: number | null;
@@ -40,7 +40,7 @@ interface EntryRecord {
   readonly kind: LoreHistoryKind;
   readonly loreEntryId: string;
   readonly undid: { readonly id: string; readonly kind: LoreHistoryKind } | null;
-}
+};
 
 /** Adds one history entry made by a thread or the owner. */
 const insertEntry = Effect.fnUntraced(function* (entry: EntryRecord) {
@@ -107,14 +107,14 @@ const removeLoreEntry = Effect.fnUntraced(function* (loreEntryId: string, actor:
 });
 
 /** A new lore entry as a thread saves it, with what it rests on. */
-export interface NewLoreEntry {
+type NewLoreEntry = {
   readonly kind: LoreKind;
   readonly origin: LoreOrigin | null;
   readonly placement: Placement;
   readonly text: string;
   /** The thread that saved it, which is the actor of its save. */
   readonly threadId: string;
-}
+};
 
 /** Saves a new lore entry and records its save, approved by the owner when the time is given; returns its id. */
 export const insertLoreEntry = Effect.fnUntraced(function* (loreEntry: NewLoreEntry, approvedAt: number | null = null) {
@@ -290,11 +290,11 @@ export const countUses = Effect.fnUntraced(function* (threadId: string, loreEntr
 });
 
 /** The history entry an undo reverts. */
-export interface UndoneEntry {
+type UndoneEntry = {
   readonly id: string;
   readonly kind: LoreHistoryKind;
   readonly loreEntryId: string;
-}
+};
 
 /**
  * The owner undoes one history entry: the lore entry takes the state given, or is deleted when it is null. The undo

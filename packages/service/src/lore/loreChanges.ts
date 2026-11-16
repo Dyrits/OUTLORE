@@ -64,7 +64,7 @@ export const textProblemOf = (text: string) => {
     : null;
 };
 
-interface ChangeRecord {
+type ChangeRecord = {
   readonly kind: LoreChangeKind;
   readonly loreEntryId: string | null;
   readonly loreKind: LoreKind;
@@ -75,7 +75,7 @@ interface ChangeRecord {
   readonly status: LoreChangeStatus;
   readonly text: string;
   readonly threadId: string;
-}
+};
 
 const insertChange = (change: ChangeRecord) =>
   Effect.gen(function* () {

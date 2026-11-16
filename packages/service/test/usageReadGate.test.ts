@@ -9,7 +9,7 @@ describe("pacing the reads of a plan's usage", () => {
   });
 
   it("lets a reading stand for four minutes", () => {
-    const state = afterRead(noReadYet, 1_000);
+    const state = afterRead(1_000);
     expect(isReadDue(state, 1_000 + 4 * minute - 1)).toBe(false);
     expect(isReadDue(state, 1_000 + 4 * minute)).toBe(true);
   });
@@ -25,12 +25,11 @@ describe("pacing the reads of a plan's usage", () => {
   });
 
   it("starts over after a successful read", () => {
-    const failed = afterFailure(afterFailure(noReadYet, 0), 0);
-    expect(afterRead(failed, 50 * minute)).toEqual(afterRead(noReadYet, 50 * minute));
+    expect(afterRead(50 * minute)).toEqual({ failures: 0, readAt: 50 * minute, retryAt: 0 });
   });
 
   it("does not read during the wait after a failure, though a reading is old", () => {
-    const state = afterFailure(afterRead(noReadYet, 0), 10 * minute);
+    const state = afterFailure(afterRead(0), 10 * minute);
     expect(isReadDue(state, 10 * minute + 4 * minute)).toBe(false);
     expect(isReadDue(state, 10 * minute + 5 * minute)).toBe(true);
   });

@@ -25,10 +25,10 @@ export const kindOfTool = {
 } as const satisfies Record<ToolKind, LoreKind>;
 
 /** What fading needs to know: the time now and the half-lives in Settings. */
-export interface Fading {
+export type Fading = {
   readonly halfLives: Settings["intelHalfLives"];
   readonly now: number;
-}
+};
 
 /** Reads the time now and the half-lives in Settings. */
 export const readFading = Effect.gen(function* () {
@@ -38,12 +38,12 @@ export const readFading = Effect.gen(function* () {
 });
 
 /** What a lore entry's strength depends on. */
-export interface Fadable {
+type Fadable = {
   readonly isPinned: number;
   readonly kind: LoreKind;
   readonly lastUsedAt: number;
   readonly uses: number;
-}
+};
 
 /** The half-life in days of a lore entry of that kind, or null for a rule, which never fades. */
 export const halfLifeDaysOf = (kind: LoreKind, halfLives: Fading["halfLives"]) =>

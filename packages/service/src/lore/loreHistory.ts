@@ -10,7 +10,7 @@ import { type Fading, fadingStepsOf } from "./loreFading.ts";
 // be undone. The lore store (loreStore.ts) writes it; this module reads it.
 
 /** A lore entry's stored state, kept with each history entry so the owner can undo the change. */
-export interface Snapshot {
+export type Snapshot = {
   readonly id: string;
   readonly isPinned: number;
   readonly kind: LoreKind;
@@ -28,7 +28,7 @@ export interface Snapshot {
   readonly updatedAt: number;
   readonly uses: number;
   readonly workspaceId: string | null;
-}
+};
 
 /** Who made a change: a thread, or the owner. */
 export type Actor = { readonly kind: "Thread"; readonly threadId: string } | { readonly kind: "Owner" };
@@ -70,7 +70,7 @@ export const unrecordedStepsOf = (state: Snapshot, fading: Fading) =>
   });
 
 /** One stored history entry, its states still as JSON. */
-export interface EntryRow {
+export type EntryRow = {
   readonly actor: LoreActor;
   readonly actorTitle: string | null;
   readonly afterState: string | null;
@@ -82,7 +82,7 @@ export interface EntryRow {
   readonly loreEntryId: string;
   readonly undid: LoreHistoryKind | null;
   readonly undoneAt: number | null;
-}
+};
 
 /** A state stored as JSON, or null. */
 export const stateOf = (json: string | null): Snapshot | null =>
