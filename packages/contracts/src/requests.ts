@@ -2,7 +2,6 @@ import { Schema } from "effect";
 import { AttachmentCard, AttachmentContent, maxAttachmentsPerMessage } from "./attachments.ts";
 import { AccountBudget, BudgetLimits, BudgetPeriod, BudgetWindow, PriceStatus } from "./budgets.ts";
 import { BackupCompanions, ModelChoice } from "./companions.ts";
-import { Crest } from "./crest.ts";
 import { EffortChoice, HarnessList, HarnessName } from "./harnesses.ts";
 import {
   AccountId,
@@ -24,7 +23,7 @@ import { JournalView } from "./journal.ts";
 import { LoreHistory, LoreScope, LoreStateFilter, LoreView } from "./lore.ts";
 import { Mentionable } from "./mentions.ts";
 import { PermissionsView, Question } from "./questions.ts";
-import { QuestPlacement, realmRequests, realmResults } from "./realmRequests.ts";
+import { NewRealmAppearance, QuestPlacement, realmRequests, realmResults } from "./realmRequests.ts";
 import {
   EndingPreview,
   GuildHallRecap,
@@ -72,15 +71,13 @@ import {
 } from "./rituals.ts";
 import { ChangeSettings, UpdateSettings } from "./settingsRequests.ts";
 import { Skill } from "./skills.ts";
+import { MessageText, NameText, OwnerMessageText } from "./texts.ts";
 import { UsageFilter, UsagePeriod, UsageReport } from "./usage.ts";
 import { WorkspaceEntry } from "./workspaceEntries.ts";
 import { Folder, FolderListing } from "./workspaces.ts";
 
 // Requests
 
-const MessageText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100_000));
-/** The text of an owner's message, which may be empty when files are attached (message-attachments). */
-const OwnerMessageText = Schema.String.check(Schema.isMaxLength(100_000));
 /** The files an owner's message carries, added beforehand with `AddAttachment`; absent is none. */
 const AttachmentIds = Schema.optionalKey(
   Schema.Array(AttachmentId).check(Schema.isMaxLength(maxAttachmentsPerMessage)),
@@ -110,12 +107,7 @@ export const StartMission = Schema.TaggedStruct("StartMission", {
    * The name and crest the owner gave a folder that is not a realm yet; used when this mission turns it into one, and
    * ignored when the folder already is a realm. Absent names it after its folder, with no crest of its own.
    */
-  realm: Schema.optionalKey(
-    Schema.Struct({
-      crest: Schema.NullOr(Crest),
-      name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(80)),
-    }),
-  ),
+  realm: Schema.optionalKey(NewRealmAppearance),
   requestId: RequestId,
   text: OwnerMessageText,
   /** An existing folder, chosen in the system's folder dialog, or null for the mission's scratch folder. */
@@ -218,7 +210,7 @@ export const PreviewStartingContext = Schema.TaggedStruct("PreviewStartingContex
   model: ModelChoice,
   parentThreadId: ThreadId,
   /** The request typed so far, which may still be empty. */
-  text: Schema.String.check(Schema.isMaxLength(100_000)),
+  text: OwnerMessageText,
 });
 
 /** The counts and snapshot covered by one permanent deletion confirmation. */
@@ -452,13 +444,11 @@ export const ListModelEfforts = Schema.TaggedStruct("ListModelEfforts", {
   model: ModelChoice,
 });
 
-const AccountLabel = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(80));
-
 /** Adds a provider account to a harness, with its own folder; it is signed out until the owner signs in. */
-export const AddAccount = Schema.TaggedStruct("AddAccount", { harness: HarnessName, label: AccountLabel });
+export const AddAccount = Schema.TaggedStruct("AddAccount", { harness: HarnessName, label: NameText });
 
 /** Renames a provider account added in Outlore. */
-export const RenameAccount = Schema.TaggedStruct("RenameAccount", { accountId: AccountId, label: AccountLabel });
+export const RenameAccount = Schema.TaggedStruct("RenameAccount", { accountId: AccountId, label: NameText });
 
 /**
  * Names a harness's own sign-in on this computer, apart from the computer's name; a blank name returns it to the

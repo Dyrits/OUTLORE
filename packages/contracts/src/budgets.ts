@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 import { HarnessName } from "./harnesses.ts";
 import { AccountId, BudgetStopId, MissionId, ThreadId } from "./ids.ts";
+import { PositiveInt } from "./positiveInt.ts";
 
 // Budgets and spending (budget-control).
 
@@ -9,7 +10,7 @@ export const BudgetLimits = Schema.Struct({
   /** For API-key spending, in the provider's currency. */
   cost: Schema.NullOr(Schema.Number.check(Schema.isGreaterThan(0))),
   /** For subscription spending; tokens are never priced. */
-  tokens: Schema.NullOr(Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))),
+  tokens: Schema.NullOr(PositiveInt),
 });
 export type BudgetLimits = typeof BudgetLimits.Type;
 

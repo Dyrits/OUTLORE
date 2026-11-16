@@ -18,6 +18,7 @@ import { Crest } from "./crest.ts";
 import { EffortChoice, HarnessName } from "./harnesses.ts";
 import { AccountId, MessageId, MissionId, SuggestionId, ThreadId, WorkspaceId } from "./ids.ts";
 import { LoreChange, LoreGauge } from "./lore.ts";
+import { PositiveInt } from "./positiveInt.ts";
 import { ApprovalLevel, Question } from "./questions.ts";
 import { RitualCard } from "./ritualSchedules.ts";
 import { Workspace, WorkspaceChoice } from "./workspaces.ts";
@@ -48,11 +49,11 @@ export type MessageDelivery = typeof MessageDelivery.Type;
 export const Settings = Schema.Struct({
   approvalLevel: ApprovalLevel,
   /** Days after a Done mission was marked Done before it is archived, when auto-archive is on. */
-  autoArchiveDays: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+  autoArchiveDays: PositiveInt,
   /** The backup Companions a new quest's thread starts with, in the order a failed turn falls back through them; at most five. */
   backups: BackupCompanions,
   /** The most tokens a mission's briefing may hold, estimated at about 4 characters per token (mission-journal, Size). */
-  briefingLimit: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+  briefingLimit: PositiveInt,
   /** Messages between two threads before the owner decides how they continue. */
   chatterThreshold: Schema.Int.check(Schema.isGreaterThanOrEqualTo(2)),
   /** What Send does while a thread runs; the second button does the other. */
@@ -67,14 +68,14 @@ export const Settings = Schema.Struct({
   globalBudget: BudgetLimits,
   globalBudgetPeriod: BudgetPeriod,
   /** Days without activity before the dashboard asks to archive or mark a mission done (mission-tracking). */
-  inactivityDays: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+  inactivityDays: PositiveInt,
   /** The share of the chosen model's context window, in percent, past which a thread's lore icon turns red (scoped-intel). */
   /** Days over which an unused lore entry's strength halves, by kind; a rule never fades (scoped-intel, Kinds). */
   intelHalfLives: Schema.Struct({
-    decision: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
-    fact: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
-    preference: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
-    temporary: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+    decision: PositiveInt,
+    fact: PositiveInt,
+    preference: PositiveInt,
+    temporary: PositiveInt,
   }),
   intelWarningPercent: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100)),
   /**

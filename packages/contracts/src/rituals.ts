@@ -1,10 +1,11 @@
 import { Schema } from "effect";
 import { ModelChoice } from "./companions.ts";
-import { Crest } from "./crest.ts";
 import { EffortChoice, HarnessName } from "./harnesses.ts";
 import { AccountId, MissionId, RitualId, ThreadId } from "./ids.ts";
+import { NewRealmAppearance } from "./realmRequests.ts";
 import { RequestId } from "./records.ts";
 import { RitualRunState, RitualSchedule } from "./ritualSchedules.ts";
+import { MessageText, NameText } from "./texts.ts";
 
 // Rituals: an instruction run on a schedule in a quest of its own, with Companions to fall back on (rituals).
 
@@ -40,8 +41,6 @@ export type RitualScopeEntry = typeof RitualScopeEntry.Type;
 export const RitualScope = Schema.Array(RitualScopeEntry).check(Schema.isMaxLength(20));
 export type RitualScope = typeof RitualScope.Type;
 
-const RitualTitle = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(80));
-const RitualInstruction = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100_000));
 /** The Companions tried in order after the primary one fails a run. */
 const Fallbacks = Schema.Array(RitualCompanion).check(Schema.isMaxLength(5));
 
@@ -49,7 +48,7 @@ const Fallbacks = Schema.Array(RitualCompanion).check(Schema.isMaxLength(5));
 export const Ritual = Schema.Struct({
   fallbacks: Fallbacks,
   id: RitualId,
-  instruction: RitualInstruction,
+  instruction: MessageText,
   isOn: Schema.Boolean,
   /** Whether the realm it runs in is archived, which keeps it off until the realm is restored. */
   isRealmArchived: Schema.Boolean,
@@ -63,41 +62,36 @@ export const Ritual = Schema.Struct({
   scope: RitualScope,
   /** The quest's top thread, where each run happens. */
   threadId: ThreadId,
-  title: RitualTitle,
+  title: NameText,
 });
 export type Ritual = typeof Ritual.Type;
 
 /** Creates a Ritual and the quest its runs happen in; nothing runs until it is due or run by hand. */
 export const CreateRitual = Schema.TaggedStruct("CreateRitual", {
   fallbacks: Fallbacks,
-  instruction: RitualInstruction,
+  instruction: MessageText,
   primary: RitualCompanion,
   /** The name and crest for a folder that is not a realm yet, as when starting a quest. */
-  realm: Schema.optionalKey(
-    Schema.Struct({
-      crest: Schema.NullOr(Crest),
-      name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(80)),
-    }),
-  ),
+  realm: Schema.optionalKey(NewRealmAppearance),
   requestId: RequestId,
   schedule: RitualSchedule,
   /** The owner's reviewed scope; left out, it is empty. */
   scope: Schema.optionalKey(RitualScope),
-  title: RitualTitle,
+  title: NameText,
   /** An existing folder, or null for the quest's scratch folder. */
   workspacePath: Schema.NullOr(Schema.String),
 });
 /** Replaces a Ritual's fields; a change applies to the next run. */
 export const UpdateRitual = Schema.TaggedStruct("UpdateRitual", {
   fallbacks: Fallbacks,
-  instruction: RitualInstruction,
+  instruction: MessageText,
   isOn: Schema.Boolean,
   primary: RitualCompanion,
   ritualId: RitualId,
   schedule: RitualSchedule,
   /** The owner's reviewed scope, replacing the current one; left out, it is kept; empty revokes it. */
   scope: Schema.optionalKey(RitualScope),
-  title: RitualTitle,
+  title: NameText,
 });
 /** Runs a Ritual now, whatever its schedule and switch. */
 export const RunRitual = Schema.TaggedStruct("RunRitual", { ritualId: RitualId });
