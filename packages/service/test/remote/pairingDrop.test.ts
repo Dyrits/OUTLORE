@@ -68,6 +68,7 @@ const droppedPairing = (dropAt: DropPoint) =>
               listener(data);
             }),
           ),
+        usesLegacyClaim: false,
       };
       const carrier: Carrier = {
         close: () => server.left("client"),
