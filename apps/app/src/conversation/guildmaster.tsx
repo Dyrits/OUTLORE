@@ -8,6 +8,7 @@ import { useThreadPresets } from "../editors/useThreadPresets";
 import { actWith } from "../foundation/acting";
 import { newRequestId, type ServiceClient } from "../foundation/client";
 import { companionLabelOf, harnessLabels } from "../foundation/formatting";
+import { usePageNavigation } from "../foundation/pageNavigation";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
@@ -170,7 +171,7 @@ function ChroniclerChat({
   const [actionError, setActionError] = useState<string | null>(null);
   const presetChoice = useThreadPresets(client, place.threadId, setActionError);
   // The Guildmaster can have a budget of its own, set on its own screen like a quest's (budget-control).
-  const [isBudgetOpen, setIsBudgetOpen] = useState(false);
+  const { isChroniclerBudgetOpen: isBudgetOpen, onChroniclerBudget: setIsBudgetOpen } = usePageNavigation();
   if (detail === null) {
     return (
       <View style={local.page}>

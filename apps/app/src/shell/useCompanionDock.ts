@@ -1,45 +1,20 @@
-import { useEffect, useMemo, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { CompanionPickerProps } from "../editors/companionPicker";
-import { isSamePicker } from "../editors/pickerState";
 import type { CompanionDock } from "../foundation/shellContext";
 import type { RightPanel } from "../foundation/useRightPanel";
-import { isCompanionOffered } from "./companionScope";
+import { createCompanionRegistry } from "./companionRegistry";
 
-type Entry = { picker: CompanionPickerProps | null; rank: number; seq: number };
-
-/** Registers mounted pickers, but never substitutes another owner for an open page-owned picker. */
+/** Binds the plain picker registry to the window's panel and React redraws. */
 export function useCompanionDock(panel: RightPanel, isChroniclerFull: boolean, isChroniclerOpen: boolean) {
-  const pills = useRef(new Map<string, Entry>());
-  const sequence = useRef(0);
+  const [registry] = useState(createCompanionRegistry);
   const [, redraw] = useReducer((count: number) => count + 1, 0);
-  const offered = [...pills.current].filter(
-    ([, entry]) =>
-      entry.picker !== null &&
-      isCompanionOffered(entry.picker.isChronicler === true, isChroniclerFull, isChroniclerOpen),
-  );
-  offered.sort((current, next) => current[1].rank - next[1].rank || next[1].seq - current[1].seq);
-  const content = panel.content;
-  const selected = content?.tab === "companion" ? content : null;
-  const pillId =
-    selected === null
-      ? (offered[0]?.[0] ?? null)
-      : (offered.find(([id]) => id === selected.id)?.[0] ??
-        // Expanding/restoring Chronicler remounts its conversation and therefore its button.
-        (selected.isChronicler ? offered.find(([, entry]) => entry.picker?.isChronicler === true)?.[0] : null) ??
-        null);
-  const companionPicker = pillId === null ? null : (pills.current.get(pillId)?.picker ?? null);
-  const otherPillId =
-    offered.find(
-      ([, entry]) => (entry.picker?.isChronicler === true) !== (companionPicker?.isChronicler === true),
-    )?.[0] ?? null;
-  const isCompanionShown = selected !== null && companionPicker !== null;
-  const latest = useRef({ isCompanionShown, panel, pillId });
-  latest.current = { isCompanionShown, panel, pillId };
+  const selected = registry.selected(panel.content, isChroniclerFull, isChroniclerOpen);
+  const latest = useRef({ ...selected, panel });
+  latest.current = { ...selected, panel };
   const dock = useMemo(() => {
     const choose = (id: string) => {
-      const picker = pills.current.get(id)?.picker;
-      if (picker == null) return;
-      latest.current.panel.show({ id, isChronicler: picker.isChronicler === true, tab: "companion" });
+      const content = registry.choose(id);
+      if (content !== null) latest.current.panel.show(content);
     };
     return {
       choose,
@@ -48,32 +23,21 @@ export function useCompanionDock(panel: RightPanel, isChroniclerFull: boolean, i
         else choose(id);
       },
       publish: (id: string, picker: CompanionPickerProps, rank: number) => {
-        const entry = pills.current.get(id);
-        if (entry === undefined) return;
-        const before = entry.picker;
-        entry.picker = picker;
-        entry.rank = rank;
-        if (
-          before === null ||
-          (latest.current.isCompanionShown && latest.current.pillId === id && !isSamePicker(before, picker))
-        )
-          redraw();
+        if (registry.publish(id, picker, rank)) redraw();
       },
-      register: (id: string) => {
-        sequence.current += 1;
-        pills.current.set(id, { picker: null, rank: 0, seq: sequence.current });
-      },
+      register: registry.register,
       unregister: (id: string) => {
-        pills.current.delete(id);
+        registry.unregister(id);
         const selection = latest.current.panel.content;
         if (selection?.tab === "companion" && selection.id === id && !selection.isChronicler)
           latest.current.panel.show(null);
         redraw();
       },
     } satisfies CompanionDock & { choose: (id: string) => void };
-  }, []);
+  }, [registry]);
+  const content = panel.content;
   useEffect(() => {
-    if (!isChroniclerOpen && selected?.isChronicler) panel.show(null);
-  }, [isChroniclerOpen, selected, panel.show]);
-  return { companionPicker, dock, hasCompanion: offered.length > 0, isCompanionShown, otherPillId, pillId, pills };
+    if (!isChroniclerOpen && content?.tab === "companion" && content.isChronicler) panel.show(null);
+  }, [isChroniclerOpen, content, panel.show]);
+  return { ...selected, dock };
 }

@@ -8,6 +8,7 @@ import {
 } from "@outlore/contracts";
 import { Schema } from "effect";
 import type { DesktopBridge } from "./desktopBridge";
+import { advanceHostLink, initialHostLink } from "./hostStatus";
 import { hostEndpointOf, isFinalLinkClose, isRefusedLinkClose, linkFailureOf, retryDelayOf } from "./hosts";
 import { type OpenTransport, socketTransport, type Transport } from "./transport";
 
@@ -35,10 +36,7 @@ export class ServiceClient {
   private attempt: Transport | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private nextId = 0;
-  private failures = 0;
-  private isEnded = false;
-  private isRefused = false;
-  private lastFailure: string | null = null;
+  private link = initialHostLink;
   private readonly pending = new Map<string, Pending>();
   private readonly listeners = new Set<() => void>();
   private readonly draftListeners = new Set<(threadId: string, text: string) => void>();
@@ -67,19 +65,24 @@ export class ServiceClient {
     return client;
   }
 
+  /** Whether this client has ever reached the selected service. */
+  get hasConnected() {
+    return this.link.hasConnected;
+  }
+
   /** Why the link to the host is down, in the words the owner reads; null while it works or on the local service. */
   get failure() {
-    return this.lastFailure;
+    return this.link.failure;
   }
 
   /** Whether the link stopped trying for good: the host refused this installation, so only pairing again helps. */
   get hasGivenUp() {
-    return this.isEnded;
+    return this.link.hasGivenUp;
   }
 
   /** Whether the host refused this installation, so only pairing again helps (not a host of another release). */
   get needsPairing() {
-    return this.isRefused;
+    return this.link.needsPairing;
   }
 
   /** Calls the listener when the link's failure appears or clears. */
@@ -89,58 +92,67 @@ export class ServiceClient {
   }
 
   private setFailure(next: string | null) {
-    if (next === this.lastFailure) return;
-    this.lastFailure = next;
+    if (next === this.link.failure) return;
+    this.link = advanceHostLink(this.link, { message: next, type: "failure" });
     for (const listener of this.failureListeners) listener();
   }
 
   /** Ends the connection for good, as when the window shows another host. */
   close() {
-    this.isEnded = true;
+    this.link = advanceHostLink(this.link, { type: "end" });
     if (this.retryTimer !== null) clearTimeout(this.retryTimer);
     this.retryTimer = null;
     this.attempt?.close();
     this.socket?.close();
   }
 
-  /** Opens a transport; a failed first attempt is reported to the caller, while a failed reconnection is retried. */
-  private open(isReconnection = false) {
-    return new Promise<void>((resolve, reject) => {
-      let hasOpened = false;
+  /** Opens a transport, exposing a failed first attempt as a retrying client so the window can cancel or recover it. */
+  private open() {
+    return new Promise<void>((resolve) => {
       let socket: Transport | null = null;
       const transport = this.openTransport({
         onClose: (code, reason) => {
           if (this.attempt === socket) this.attempt = null;
           const failure = linkFailureOf(code, reason);
-          if (isFinalLinkClose(code)) this.isEnded = true;
-          if (isRefusedLinkClose(code)) this.isRefused = true;
           if (failure !== null) this.setFailure(failure);
+          this.link = advanceHostLink(this.link, {
+            isFinal: isFinalLinkClose(code),
+            isRefused: isRefusedLinkClose(code),
+            type: "close",
+          });
+          for (const listener of this.failureListeners) listener();
           for (const request of this.pending.values()) {
             request.reject(new Error(failure ?? "The connection to the service closed."));
           }
           this.pending.clear();
-          if (this.isEnded || !(hasOpened || isReconnection)) return;
+          resolve();
+          if (this.link.hasGivenUp) return;
           if (this.socket === socket) this.socket = null;
-          this.failures += 1;
           this.retryTimer = setTimeout(
             () => {
               this.retryTimer = null;
-              if (!this.isEnded) this.open(true).catch(() => void 0);
+              if (!this.link.hasGivenUp) this.open().catch(() => void 0);
             },
-            retryDelayOf(this.failures, this.hostId !== null),
+            retryDelayOf(this.link.failures, this.hostId !== null),
           );
         },
-        onError: () => reject(new Error("Could not reach the local service.")),
+        onError: () => {
+          this.setFailure(
+            this.hostId === null ? "Could not reach this computer's service." : "Could not reach the host.",
+          );
+          resolve();
+        },
         onOpen: () => {
-          hasOpened = true;
+          this.link = advanceHostLink(this.link, { type: "open" });
           if (this.attempt === socket) this.attempt = null;
-          if (this.isEnded) return socket?.close();
+          if (this.link.hasGivenUp) return socket?.close();
           this.socket = socket;
+          this.setFailure(null);
           resolve();
           this.notify();
         },
         onText: (data) => {
-          this.failures = 0;
+          this.link = advanceHostLink(this.link, { type: "message" });
           this.setFailure(null);
           this.receive(data);
         },
@@ -187,7 +199,9 @@ export class ServiceClient {
   request<R extends Request>(request: R): Promise<ResultOf<R["_tag"]>> {
     const socket = this.socket;
     if (socket === null || !socket.isOpen) {
-      return Promise.reject(new Error("Not connected to the local service."));
+      return Promise.reject(
+        new Error(this.hostId === null ? "Not connected to this computer’s service." : "Not connected to the host."),
+      );
     }
     const id = String(++this.nextId);
     return new Promise((resolve, reject) => {
