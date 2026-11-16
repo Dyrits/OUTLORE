@@ -18,7 +18,7 @@ export const refusalText = {
   disabled: "The host is not accepting paired devices. Turn on Allow paired devices on the host.",
   disconnected: "The host disconnected this computer. Pair with it again.",
   "other-release":
-    "This app and the host run different releases. Update the app or the host so that both run the same one.",
+    "The app and the host run different releases. Update the app or the host so that both run the same one.",
   "unknown-device": "The host no longer knows this computer. Pair with it again.",
 } as const;
 

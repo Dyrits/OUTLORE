@@ -160,13 +160,13 @@ describe("the refusal text the owner reads", () => {
         value: { reason, t: "refused" },
       });
     }
-    expect(Object.keys(refusalText)).toHaveLength(6);
+    expect(Object.keys(refusalText)).toHaveLength(7);
   });
 
   it("gives each refusal its own sentence that tells the owner what to do next", () => {
     const sentences = Object.values(refusalText);
     for (const text of sentences) {
-      expect(text, text).toMatch(/^(?:That|The) [^.]+\. (?:Ask|Check|Turn on|Pair) [^.]*\.$/);
+      expect(text, text).toMatch(/^(?:That|The) [^.]+\. (?:Ask|Check|Turn on|Pair|Update) [^.]*\.$/);
     }
     expect(new Set(sentences).size).toBe(sentences.length);
   });
