@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { AccountId } from "@outlore/contracts";
 import { Effect } from "effect";
+import { afterEach, vi } from "vitest";
 import { computerNameOf } from "../../src/remote/config.ts";
 import { call, read, sendTo, settle, startMission } from "../fixtures/service.ts";
 import {
@@ -16,6 +17,8 @@ import {
   startsOf,
   withHarnesses,
 } from "../fixtures/standIns.ts";
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe.each(["claude", "codex"] as const)("checking a %s thread's folder before it starts", (harness) => {
   it.live("starts in a plain workspace folder, asking nothing", () => {
@@ -177,23 +180,29 @@ describe("managing provider accounts", () => {
     }).pipe(Effect.provide(layer));
   });
 
-  it.live("runs a thread with an added account's own folder", () => {
-    const { accountsRoot, layer, logged } = withHarnesses();
-    return Effect.gen(function* () {
-      const added = yield* call({ _tag: "AddAccount", harness: "codex", label: " Work " });
-      const account = added.harnesses.find((harness) => harness.name === "codex")?.accounts[1];
-      expect(account).toMatchObject({ label: "Work", signIn: "SignedIn" });
-      const accountId = account?.id as AccountId;
-      const started = yield* startMission({ accountId, harness: "codex", text: "Hello" });
-      const detail = yield* settle(started.missionId, idleWith(1));
-      expect(detail.thread).toMatchObject({ accountId, accountLabel: "Work", harness: "codex" });
-      expect(logged().find((entry) => entry.pid !== undefined)?.home).toEqual({
-        CODEX_HOME: join(accountsRoot, accountId),
-      });
-      // The next quest starts on the default Companion and the computer's own sign-in, not on this account.
-      expect(yield* call({ _tag: "ReadStartChoices" })).toMatchObject({ accountId: null, harness: "claude" });
-    }).pipe(Effect.provide(layer));
-  });
+  for (const dataHome of [undefined, "/outlore-test-xdg-data"] as const)
+    it.live(
+      `runs a thread with an added account's own folder and ${dataHome === undefined ? "no" : "an inherited"} XDG data home`,
+      () => {
+        vi.stubEnv("XDG_DATA_HOME", dataHome);
+        const { accountsRoot, layer, logged } = withHarnesses();
+        return Effect.gen(function* () {
+          const added = yield* call({ _tag: "AddAccount", harness: "codex", label: " Work " });
+          const account = added.harnesses.find((harness) => harness.name === "codex")?.accounts[1];
+          expect(account).toMatchObject({ label: "Work", signIn: "SignedIn" });
+          const accountId = account?.id as AccountId;
+          const started = yield* startMission({ accountId, harness: "codex", text: "Hello" });
+          const detail = yield* settle(started.missionId, idleWith(1));
+          expect(detail.thread).toMatchObject({ accountId, accountLabel: "Work", harness: "codex" });
+          expect(logged().find((entry) => entry.pid !== undefined)?.home).toEqual({
+            CODEX_HOME: join(accountsRoot, accountId),
+            ...(dataHome === undefined ? {} : { XDG_DATA_HOME: dataHome }),
+          });
+          // The next quest starts on the default Companion and the computer's own sign-in, not on this account.
+          expect(yield* call({ _tag: "ReadStartChoices" })).toMatchObject({ accountId: null, harness: "claude" });
+        }).pipe(Effect.provide(layer));
+      },
+    );
 
   it.live("runs Claude Code with an added account's own configuration folder", () => {
     const { accountsRoot, layer, logged } = withHarnesses();
