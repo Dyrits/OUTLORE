@@ -9,7 +9,7 @@ import {
 import { Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
-import { call, fixture, read, send, settle, start } from "./fixtures/service.ts";
+import { call, fixture, read, send, settle, start } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 afterEach(() => {

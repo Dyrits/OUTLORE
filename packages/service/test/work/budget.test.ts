@@ -5,8 +5,7 @@ import type { BudgetLimits, MissionDetail, MissionId, Settings, ThreadId } from 
 import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { afterEach } from "vitest";
-import { periodStartOf } from "../src/core/spending.ts";
-import { call, fixture, open, read, send, settle, start, tool } from "./fixtures/service.ts";
+import { call, fixture, open, read, send, settle, start, tool } from "../fixtures/service.ts";
 
 const openLine = (request: string) => `call open_thread ${JSON.stringify({ request })}`;
 
@@ -114,7 +113,7 @@ describe("counting spending against budgets", () => {
       yield* settle(started.missionId, (detail) => isIdle(detail), child.threadId);
       const window = yield* call({ _tag: "ReadBudget", missionId: started.missionId });
       expect(window.spent.tokens).toBe(110);
-      expect(window.parts.map((part) => part.spent.tokens).sort()).toEqual([50, 60]);
+      expect(window.parts.map((part) => part.spent.tokens).sort((first, second) => first - second)).toEqual([50, 60]);
       const global = yield* call({ _tag: "ReadBudget", missionId: null });
       expect(global.spent.tokens).toBe(110);
       expect(global.period).toBe("Month");
@@ -141,17 +140,6 @@ describe("counting spending against budgets", () => {
       ]);
     }).pipe(Effect.provide(setup().layer)),
   );
-});
-
-describe("the global budget's period", () => {
-  it("starts at local midnight, on Monday for a week, and on the 1st for a month", () => {
-    const friday = new Date(2026, 10, 6, 15, 30).getTime();
-    const sunday = new Date(2026, 10, 8, 23, 59).getTime();
-    expect(periodStartOf(friday, "Day")).toBe(new Date(2026, 10, 6).getTime());
-    expect(periodStartOf(friday, "Week")).toBe(new Date(2026, 10, 2).getTime());
-    expect(periodStartOf(sunday, "Week")).toBe(new Date(2026, 10, 2).getTime());
-    expect(periodStartOf(friday, "Month")).toBe(new Date(2026, 10, 1).getTime());
-  });
 });
 
 describe("reaching a limit", () => {

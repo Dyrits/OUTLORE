@@ -3,7 +3,7 @@ import type { BackupCompanion } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
-import { call, fixture, open, settle, start } from "./fixtures/service.ts";
+import { call, fixture, open, settle, start } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 afterEach(() => {

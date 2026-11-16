@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { afterFailure, afterRead, type GateState, isReadDue, noReadYet } from "../src/work/usageReadGate.ts";
+import { afterFailure, afterRead, type GateState, isReadDue, noReadYet } from "../../src/work/usageReadGate.ts";
 
 const minute = 60_000;
 

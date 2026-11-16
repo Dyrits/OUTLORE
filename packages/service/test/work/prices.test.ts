@@ -3,8 +3,8 @@ import type { MissionDetail } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
-import { fakePriceSource, testPrices } from "./fixtures/prices.ts";
-import { call, fixture, read, send, settle } from "./fixtures/service.ts";
+import { fakePriceSource, testPrices } from "../fixtures/prices.ts";
+import { call, fixture, read, send, settle } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 const setup = (prices = fakePriceSource(testPrices)) => {
