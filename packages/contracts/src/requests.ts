@@ -22,7 +22,7 @@ import {
 import { JournalView } from "./journal.ts";
 import { LoreHistory, LoreScope, LoreStateFilter, LoreView } from "./lore.ts";
 import { Mentionable } from "./mentions.ts";
-import { PermissionsView, Question } from "./questions.ts";
+import { ChoiceAnswers, PermissionsView, Question } from "./questions.ts";
 import { NewRealmAppearance, QuestPlacement, realmRequests, realmResults } from "./realmRequests.ts";
 import {
   EndingPreview,
@@ -326,7 +326,7 @@ export const AnswerQuestion = Schema.TaggedStruct("AnswerQuestion", {
  * owner's own text; exactly one entry unless the choice allows several. null skips the question.
  */
 export const AnswerChoices = Schema.TaggedStruct("AnswerChoices", {
-  answers: Schema.NullOr(Schema.Array(Schema.Array(Schema.String))),
+  answers: Schema.NullOr(ChoiceAnswers),
   questionId: QuestionId,
 });
 /** Lists the open approval questions of every mission. */

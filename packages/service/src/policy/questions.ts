@@ -1,4 +1,4 @@
-import { Choice, type Question } from "@outlore/contracts";
+import { Choice, Question } from "@outlore/contracts";
 import { Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 
@@ -9,7 +9,7 @@ type QuestionRow = Omit<Question, "answers" | "choices"> & {
 };
 
 const decodeChoices = Schema.decodeUnknownSync(Schema.NullOr(Schema.Array(Choice)));
-const decodeAnswers = Schema.decodeUnknownSync(Schema.NullOr(Schema.Array(Schema.Array(Schema.String))));
+const decodeAnswers = Schema.decodeUnknownSync(Question.fields.answers);
 
 const toQuestion = (row: QuestionRow): Question => ({
   ...row,

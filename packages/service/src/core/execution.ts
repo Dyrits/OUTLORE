@@ -4,6 +4,7 @@ import type {
   AttachmentMediaType,
   BillingKind,
   Choice,
+  ChoiceAnswers,
   EffortChoice,
   HarnessName,
   ModelChoice,
@@ -110,7 +111,7 @@ export type Containment = "Sandboxed" | "Unprotected";
 /** The owner's answer to a harness prompt: whether the action may run, and what to tell the harness otherwise. */
 export type PromptAnswer = {
   /** What the owner chose for a prompt that asked them to choose, one list per question (CHG-0299). */
-  readonly answers?: ReadonlyArray<ReadonlyArray<string>>;
+  readonly answers?: ChoiceAnswers;
   readonly isAllowed: boolean;
   readonly text: string;
 };
