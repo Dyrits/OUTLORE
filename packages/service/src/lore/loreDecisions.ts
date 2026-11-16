@@ -73,12 +73,14 @@ export const resolveLoreChange = Effect.fnUntraced(function* (changeId: string, 
         : correctLoreEntry(loreEntry.id, change.text, actor, now);
     },
   } satisfies Record<Exclude<LoreChangeKind, "Save">, unknown>;
-  if (isApplied && change.kind === "Save") {
-    const loreEntry = { kind: change.loreKind, origin: originOf(change), placement, text: change.text };
-    const loreEntryId = yield* insertLoreEntry({ ...loreEntry, threadId: change.threadId }, now);
-    yield* sql`UPDATE intel_changes SET intel_id = ${loreEntryId} WHERE id = ${changeId}`;
-  } else if (isApplied && target !== null && change.kind !== "Save") {
-    yield* applyToTarget[change.kind](target);
+  if (isApplied) {
+    if (change.kind === "Save") {
+      const loreEntry = { kind: change.loreKind, origin: originOf(change), placement, text: change.text };
+      const loreEntryId = yield* insertLoreEntry({ ...loreEntry, threadId: change.threadId }, now);
+      yield* sql`UPDATE intel_changes SET intel_id = ${loreEntryId} WHERE id = ${changeId}`;
+    } else if (target !== null) {
+      yield* applyToTarget[change.kind](target);
+    }
   }
   yield* sql`UPDATE intel_changes SET status = ${isApplied ? "Approved" : "Declined"}, resolved_at = ${now}
       WHERE id = ${changeId}`;
