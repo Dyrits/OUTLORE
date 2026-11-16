@@ -62,7 +62,7 @@ const startRunning = (accountId: AccountId | null) =>
     return started;
   });
 
-describe("an account's budget", () => {
+describe("enforcing an account's budget", () => {
   it.live("stops the threads on the account across quests, and no others", () =>
     withService(
       Effect.gen(function* () {
@@ -177,7 +177,7 @@ describe("an account's budget", () => {
   );
 });
 
-describe("credits on an account", () => {
+describe("adding credits to an account", () => {
   const day = () => Date.now() - 1000;
 
   it.live("count the account's API-key spending since the day entered, and show what is left", () =>

@@ -286,7 +286,7 @@ describe("ranking lore in searches", () => {
   );
 });
 
-describe("the lore gauge over time", () => {
+describe("counting the lore gauge over time", () => {
   it.effect("counts active scoped lore in full and global lore by its index line, not dormant lore", () =>
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();

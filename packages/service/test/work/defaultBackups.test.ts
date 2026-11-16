@@ -18,7 +18,7 @@ const withService = <A, E, R>(body: Effect.Effect<A, E, R>) => {
 const codex: BackupCompanion = { accountId: null, effort: "default", harness: "codex", model: "gpt-5" };
 const opencode: BackupCompanion = { accountId: null, effort: "default", harness: "opencode", model: "default" };
 
-describe("the Charter's default backup Companions", () => {
+describe("setting the Charter's default backup Companions", () => {
   it.live("are empty at first and saved with the settings", () =>
     withService(
       Effect.gen(function* () {
@@ -61,7 +61,7 @@ describe("the Charter's default backup Companions", () => {
   );
 });
 
-describe("settings saved before the Guild Hall became always shown", () => {
+describe("reading settings saved before the Guild Hall became always shown", () => {
   it.live("keep their other choices and drop the retired one", () =>
     withService(
       Effect.gen(function* () {

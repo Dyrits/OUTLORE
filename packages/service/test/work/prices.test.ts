@@ -119,7 +119,7 @@ describe("estimating a turn's cost", () => {
   });
 });
 
-describe("the price table", () => {
+describe("reading the price table", () => {
   it.live("keeps a turn's stamped estimate when the table changes", () => {
     const { layer, prices } = setup();
     return Effect.gen(function* () {
@@ -193,7 +193,7 @@ describe("the price table", () => {
   });
 });
 
-describe("turns recorded before billing kinds", () => {
+describe("counting turns recorded before billing kinds", () => {
   it.live("stay unpriced, are counted as they were, and are named as earlier turns", () => {
     const { layer } = setup();
     return Effect.gen(function* () {
@@ -209,7 +209,7 @@ describe("turns recorded before billing kinds", () => {
   });
 });
 
-describe("the budget window's consumption", () => {
+describe("splitting the budget window's consumption", () => {
   it.live("splits a mission's use by thread, harness, and model, each with its estimate", () => {
     const { layer } = setup();
     return Effect.gen(function* () {
@@ -245,7 +245,7 @@ describe("the budget window's consumption", () => {
   });
 });
 
-describe("consumption on the quest and thread panels", () => {
+describe("showing consumption on the quest and thread panels", () => {
   it.live("shows what a thread's own turns used, with the estimate", () => {
     const { layer } = setup();
     return Effect.gen(function* () {
@@ -272,7 +272,7 @@ describe("consumption on the quest and thread panels", () => {
   });
 });
 
-describe("cost on each agent reply", () => {
+describe("showing cost on each agent reply", () => {
   const lastReplyOf = (detail: MissionDetail) => detail.messages.filter((message) => message.sender === "agent").at(-1);
 
   it.live("shows the turn's use under its last reply when the harness reports only per turn", () => {

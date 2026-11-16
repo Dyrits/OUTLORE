@@ -368,7 +368,7 @@ describe("warning about lore size", () => {
   });
 });
 
-describe("a realm's lore", () => {
+describe("listing a realm's lore", () => {
   it.live("lists the realm's own deleted lore and no other", () => {
     const { directory, layer } = live();
     return Effect.gen(function* () {

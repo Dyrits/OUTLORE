@@ -18,7 +18,7 @@ const codex: BackupCompanion = { accountId: null, effort: "default", harness: "c
 const replies = (detail: { messages: ReadonlyArray<{ sender: string; text: string }> }) =>
   detail.messages.filter((message) => message.sender === "agent").map((message) => message.text);
 
-describe("a thread's backup Companions", () => {
+describe("saving a thread's backup Companions", () => {
   it.live("are saved in order and shown in the thread's panel", () =>
     withService(
       Effect.gen(function* () {
