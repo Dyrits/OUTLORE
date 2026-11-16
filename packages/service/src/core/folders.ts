@@ -22,6 +22,7 @@ export const realFolderOf = (path: string) =>
     }
   });
 
+/** Whether a path is the root itself or lies inside it; a prefix without the separator, as `/root-app` for `/root`, does not count. */
 export const isWithin = (root: string, path: string) =>
   path === root || path.startsWith(root.endsWith(sep) ? root : root + sep);
 

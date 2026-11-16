@@ -26,6 +26,7 @@ export type RemoteSettings = {
   readonly release: string;
 };
 
+/** What device pairing needs from outside the database, provided once at startup. */
 export class RemoteConfig extends Context.Service<RemoteConfig, RemoteSettings>()("outlore/RemoteConfig") {}
 
 /** The computer's name without its network suffix: `Studio.local` and `Studio.lan` read as `Studio`. */

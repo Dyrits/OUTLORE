@@ -87,8 +87,11 @@ const isTokensReached = (limits: BudgetLimits, spent: Spending): limits is Budge
 export const isReached = (limits: BudgetLimits, spent: Spending) =>
   isCostReached(limits, spent) || isTokensReached(limits, spent);
 
+/** A token count rounded and grouped, as the app shows it. */
 export const tokenCountText = (tokens: number) => Math.round(tokens).toLocaleString("en-US");
+/** A token count with its unit, such as "50,000 tokens". */
 export const tokensText = (tokens: number) => `${tokenCountText(tokens)} tokens`;
+/** A cost in dollars with two decimals, such as "$5.00". */
 export const costText = (cost: number) => `$${cost.toFixed(2)}`;
 
 /** A budget's limits in words, for example "$5.00 and 50,000 tokens". */

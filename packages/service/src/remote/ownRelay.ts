@@ -57,6 +57,7 @@ export const cloudflareApiFor = (token: string, fetchImpl: typeof fetch = fetch)
   },
 });
 
+/** Why deploying the owner's own relay failed, naming the step that refused. */
 export type DeployFailureKind =
   | "cloudflare-error"
   | "many-accounts"
@@ -81,6 +82,7 @@ export type DeployResult =
     }
   | { readonly failure: DeployFailureKind; readonly message: string; readonly ok: false };
 
+/** What a deployment takes: the Cloudflare account to reach, and how the fresh address is probed. */
 export type DeployOptions = {
   /** Asks whether the relay at an address answers; the default opens a connection and reads the relay's reply. */
   readonly answers?: (origin: string) => Promise<boolean>;

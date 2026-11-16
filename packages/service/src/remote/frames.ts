@@ -11,6 +11,7 @@ import { Effect, Exit, Schema } from "effect";
 import { type ServiceFailure, textFieldOf } from "../core/index.ts";
 
 const decodeClientFrame = Schema.decodeUnknownExit(ClientFrameJson);
+/** Encodes one server frame as the text the wire carries. */
 export const encodeServerFrame = Schema.encodeSync(ServerFrameJson);
 
 /** Best effort: answers a malformed frame on its identifier when one can be read. */
