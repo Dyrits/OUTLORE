@@ -4,19 +4,19 @@ import type { ChipKind } from "./chips";
 // What the message box's text field offers the composer, whether it can draw chips inside its text (web) or not.
 
 /** A skill or workspace path chosen from a list: how it reads in the message and how it shows as a chip. */
-export interface Chip {
+export type Chip = {
   readonly kind: ChipKind;
   readonly label: string;
   /** What the message holds in its place, such as `/architect` or `@src/`. */
   readonly token: string;
-}
+};
 
 /** A `/` or `@` that starts a word just before the caret, with what has been typed after it. */
 /** The `/` or `@` the owner typed, with the text after it, as the field reports it. */
-export interface Trigger {
+export type Trigger = {
   readonly character: "/" | "@";
   readonly query: string;
-}
+};
 
 /** What the owner of the field can ask of it from outside: clear it, or put a chip in it. */
 export interface ChipEditorHandle {
@@ -25,7 +25,7 @@ export interface ChipEditorHandle {
   insertChip: (chip: Chip) => void;
 }
 
-export interface ChipEditorProps {
+export type ChipEditorProps = {
   /** Text the field starts with, such as what the owner left unsent; read once, when the field opens. */
   initialText?: string;
   /** Opens the terminal when the caret is at an empty line. */
@@ -38,7 +38,7 @@ export interface ChipEditorProps {
   onKeyDown: (key: { readonly key: string; readonly shiftKey: boolean }) => boolean;
   placeholder: string;
   ref?: Ref<ChipEditorHandle>;
-}
+};
 
 /** The trigger a text ends with, for a field that has no caret to read. */
 export const triggerOfEnd = (text: string): Trigger | null => {

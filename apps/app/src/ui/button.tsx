@@ -1,5 +1,6 @@
-import { Platform, Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { handCursor } from "./pointer";
 
 /** A button: the accent fill for the main action, an outline for the others. */
 export function Button({
@@ -39,8 +40,7 @@ const local = StyleSheet.create({
     minHeight: 32,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    // Web only: the press answers the hand.
-    ...(Platform.OS === "web" ? ({ cursor: "pointer", userSelect: "none" } as object) : {}),
+    ...handCursor,
   },
   buttonText: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
   disabled: { opacity: 0.5 },

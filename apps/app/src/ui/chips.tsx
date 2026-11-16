@@ -51,7 +51,7 @@ export function ChipIcon({ kind }: { kind: ChipKind }) {
 const kinds = new Map<string, WorkspaceEntry["kind"] | null>();
 
 /** Which of the `@`-paths name a file or a folder of the workspace; the others are plain text. */
-export function useMentionKinds(
+function useMentionKinds(
   client: ServiceClient | undefined,
   workspacePath: string | null,
   paths: ReadonlyArray<string>,

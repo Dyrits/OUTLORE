@@ -51,9 +51,6 @@ export const compactCountOf = (count: number): string => {
   return `${shortened}${unit.suffix}`;
 };
 
-/** A count with thousands separators, for an element's accessible label. */
-export const exactCountOf = (count: number) => Math.round(count).toLocaleString("en-US");
-
 /** The known cost of a set of turns: null when it has turns and none has a price, which is not a price of zero. */
 const knownCostOf = (amounts: UsageAmounts) =>
   amounts.turns > 0 && amounts.pricedTurns === 0 ? null : amounts.reported + amounts.estimated;

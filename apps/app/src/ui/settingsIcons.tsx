@@ -37,8 +37,8 @@ export function SettingsIcon({ name, size = 18, tint }: { name: SettingsIconName
       viewBox="0 0 24 24"
       width={size}
     >
-      {iconPaths[name].map((d) => (
-        <Path d={d} key={d} />
+      {iconPaths[name].map((path) => (
+        <Path d={path} key={path} />
       ))}
     </Svg>
   );

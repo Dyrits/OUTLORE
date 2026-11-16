@@ -46,7 +46,7 @@ export function SortableItem({ children, index, onMove }: SortableItemProps) {
       draggable={isArmed}
       onDragEnd={() => setIsArmed(false)}
       onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setEdge(null);
+        if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setEdge(null);
       }}
       onDragOver={(event) => {
         if (!event.dataTransfer.types.includes(sortableDragType)) return;

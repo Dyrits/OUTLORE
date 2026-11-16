@@ -2,7 +2,7 @@ import type { PageSettings } from "@outlore/controller";
 import { version } from "../../../package.json";
 
 /** The release of this web app, the same as the desktop app's when both are built from one tag. */
-export const appRelease: string = version;
+const appRelease: string = version;
 
 /** Whether the app runs in a plain browser: no desktop bridge, so no local service, and a host is all there is to use. */
 export const isBrowserPage = () => typeof window !== "undefined" && window.outlore === undefined;

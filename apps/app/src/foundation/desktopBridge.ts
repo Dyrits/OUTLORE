@@ -2,12 +2,12 @@ import type { Theme } from "./themeName";
 import type { UpdatesBridge } from "./updateState";
 
 /** A bounded replay of the owner's local shell, held only until the desktop app quits. */
-export interface TerminalSession {
+export type TerminalSession = {
   readonly cwd: string;
   readonly isRunning: boolean;
   readonly output: string;
   readonly sequence: number;
-}
+};
 
 /** Capabilities exposed exclusively to the desktop window by its isolated preload. */
 export interface DesktopBridge {

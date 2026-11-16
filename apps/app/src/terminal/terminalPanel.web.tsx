@@ -39,7 +39,7 @@ export function TerminalPanel({ id, cwd, ref, onReady }: TerminalPanelProps) {
     const bridge = window.outlore;
     const element = container.current;
     if (bridge === undefined || element === null) return;
-    let active = true;
+    let isActive = true;
     let sequence: number | null = null;
     const pending: { text: string; sequence: number }[] = [];
     const pendingInput: string[] = [];
@@ -76,7 +76,7 @@ export function TerminalPanel({ id, cwd, ref, onReady }: TerminalPanelProps) {
     terminal.loadAddon(fit);
     terminal.open(element);
     const onError = (reason: unknown) => {
-      if (active) setError(String(reason));
+      if (isActive) setError(String(reason));
     };
     const write = (text: string, next: number) => {
       if (sequence === null) {
@@ -90,10 +90,10 @@ export function TerminalPanel({ id, cwd, ref, onReady }: TerminalPanelProps) {
     };
     const unsubscribe = bridge.terminalListen(
       (session, data, next) => {
-        if (session === id && active) write(data, next);
+        if (session === id && isActive) write(data, next);
       },
       (session) => {
-        if (session === id && active) setIsRunning(false);
+        if (session === id && isActive) setIsRunning(false);
       },
     );
     const input = terminal.onData((data) => {
@@ -101,7 +101,7 @@ export function TerminalPanel({ id, cwd, ref, onReady }: TerminalPanelProps) {
       else pendingInput.push(data);
     });
     const resize = () => {
-      if (!active || element.clientWidth === 0 || element.clientHeight === 0) return;
+      if (!isActive || element.clientWidth === 0 || element.clientHeight === 0) return;
       fit.fit();
       void bridge.terminalResize(id, Math.min(500, terminal.cols), Math.min(200, terminal.rows)).catch(onError);
     };
@@ -109,14 +109,14 @@ export function TerminalPanel({ id, cwd, ref, onReady }: TerminalPanelProps) {
     void bridge
       .terminalOpen(id, cwd)
       .then((session) => {
-        if (!active) return;
+        if (!isActive) return;
         folder.current = session.cwd;
         setIsRunning(session.isRunning);
         sequence = session.sequence;
         terminal.write(session.output);
         for (const chunk of pending) write(chunk.text, chunk.sequence);
         terminal.write("", () => {
-          if (active) {
+          if (isActive) {
             isReady.current = true;
             for (const data of pendingInput.splice(0)) void bridge.terminalWrite(id, data).catch(onError);
             ready.current();
@@ -128,7 +128,7 @@ export function TerminalPanel({ id, cwd, ref, onReady }: TerminalPanelProps) {
       })
       .catch(onError);
     return () => {
-      active = false;
+      isActive = false;
       isReady.current = false;
       surface.current = null;
       observer.disconnect();

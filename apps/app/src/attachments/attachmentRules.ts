@@ -10,7 +10,7 @@ import {
 // The pure rules for a file the owner attaches to a message: what it is, whether it fits, and whether the Companion can read it (message-attachments).
 
 /** What a file's first bytes say it is: an accepted image, a HEIC photo (refused with its own reason), or neither. */
-export type Signature = AttachmentMediaType | "heic" | null;
+type Signature = AttachmentMediaType | "heic" | null;
 
 const textOf = (bytes: Uint8Array, from: number, length: number) =>
   String.fromCharCode(...bytes.slice(from, from + length));

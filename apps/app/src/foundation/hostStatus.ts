@@ -31,7 +31,7 @@ export const hostStatusOf = (input: {
 };
 
 /** All mutable facts about one link, advanced by transport events. */
-export type HostLinkState = HostLink & { failures: number };
+type HostLinkState = HostLink & { failures: number };
 
 /** Transport-independent initial state; failures from the first attempt are recoverable. */
 export const initialHostLink: HostLinkState = {

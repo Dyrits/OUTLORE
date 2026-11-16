@@ -8,7 +8,7 @@ import { type MenuPlacement, menuPlacementOf } from "./menuPlacement";
 const listWidth = 180;
 
 /** One thing the menu can do: its words and what pressing it runs. */
-export type MenuAction = { readonly label: string; readonly onPress: () => void };
+type MenuAction = { readonly label: string; readonly onPress: () => void };
 
 /**
  * A small "⋯" button that opens a list of actions below it (or above, near the window's foot); pressing an action runs

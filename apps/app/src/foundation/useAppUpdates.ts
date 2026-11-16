@@ -4,7 +4,7 @@ import { useIsRemoteHost } from "./hostContext";
 import type { UpdateState, UpdatesBridge } from "./updateState";
 
 /** What a screen needs to show updates and act on them; the actions reject with the reason a request failed. */
-export type AppUpdates = {
+type AppUpdates = {
   readonly bridge: UpdatesBridge;
   readonly error: string | null;
   readonly state: UpdateState | null;
