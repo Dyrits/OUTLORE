@@ -9,6 +9,9 @@ import { invalid, newId } from "../core/index.ts";
 
 const hostIdOf = Schema.decodeSync(HostId);
 
+/** Stored secrets and hashes are base64url text; the bytes come back as they went in. */
+export const bytesOf = (text: string) => decodeBase64Url(text) ?? new Uint8Array(0);
+
 /** A host this installation can connect to, with what it needs to find it and prove itself. */
 export type HostLink = {
   readonly deviceId: string;
@@ -44,9 +47,7 @@ export const readHostLink = Effect.fnUntraced(function* (hostId: string) {
   const [row] = yield* sql<HostLinkRow>`SELECT id, device_id AS deviceId, device_token AS deviceToken,
     host_name AS hostName, host_public_key AS hostPublicKey, relay_origin AS relayOrigin, room
     FROM remote_hosts WHERE id = ${hostId}`;
-  return row === undefined
-    ? null
-    : ({ ...row, hostPublicKey: decodeBase64Url(row.hostPublicKey) ?? new Uint8Array(0) } satisfies HostLink);
+  return row === undefined ? null : ({ ...row, hostPublicKey: bytesOf(row.hostPublicKey) } satisfies HostLink);
 });
 
 /** Keeps a host this installation just paired with. */

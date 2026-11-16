@@ -1,6 +1,5 @@
 import {
   constantTimeEqual,
-  decodeBase64Url,
   encodeBase64Url,
   generateKeyPair,
   hashToken,
@@ -19,6 +18,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, newId } from "../core/index.ts";
 import { computerNameOf, RemoteConfig, webAppOrigin } from "./config.ts";
+import { bytesOf } from "./knownHosts.ts";
 
 // This installation as a host: its identity, its pairing codes and its paired devices (device-pairing). Everything
 // here is storage; the connections are in the host runtime.
@@ -26,8 +26,6 @@ import { computerNameOf, RemoteConfig, webAppOrigin } from "./config.ts";
 /** A pairing code lives ten minutes. */
 export const pairingCodeMillis = 10 * 60 * 1000;
 
-/** Stored secrets and hashes are base64url text; the bytes come back as they went in. */
-const bytesOf = (text: string) => decodeBase64Url(text) ?? new Uint8Array(0);
 const hashText = (bytes: Uint8Array) => encodeBase64Url(hashToken(bytes));
 
 /** This installation as a host: its keys, its room on the relay, and its settings. */
@@ -192,7 +190,7 @@ export const resumeDevice = Effect.fnUntraced(function* (deviceId: string, token
   const [row] = yield* sql<{ name: string; tokenHash: string }>`
     SELECT name, token_hash AS tokenHash FROM paired_devices WHERE id = ${deviceId}`;
   if (row === undefined || !constantTimeEqual(bytesOf(row.tokenHash), hashToken(token))) return null;
-  yield* sql`UPDATE paired_devices SET last_active_at = ${now} WHERE id = ${deviceId}`;
+  yield* touchDevice(deviceId, now);
   return row.name;
 });
 

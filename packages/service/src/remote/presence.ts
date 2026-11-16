@@ -61,10 +61,12 @@ export const hostPresenceLayer = Layer.effect(
         if (devices.get(deviceId) === close) devices.delete(deviceId);
       };
     };
-    const setStatus = (next: RelayStatus) =>
-      SubscriptionRef.getAndSet(status, record?.isEnabled ? next : "Off").pipe(
-        Effect.flatMap((before) => (before === (record?.isEnabled ? next : "Off") ? Effect.void : changes.publish)),
+    const setStatus = (next: RelayStatus) => {
+      const value = record?.isEnabled ? next : "Off";
+      return SubscriptionRef.getAndSet(status, value).pipe(
+        Effect.flatMap((before) => (before === value ? Effect.void : changes.publish)),
       );
+    };
     return {
       admitDevice: Effect.fnUntraced(function* (deviceId: string, close: () => void) {
         if (!record?.isEnabled) return null;
