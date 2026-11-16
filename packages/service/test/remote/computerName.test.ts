@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computerNameOf } from "../../src/remote/config.ts";
+import { computerNameOf } from "../../src/remote/index.ts";
 
 describe("the name a host offers for its computer", () => {
   it("drops the network suffix a machine name often carries", () => {

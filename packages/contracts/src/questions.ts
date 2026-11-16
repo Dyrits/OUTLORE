@@ -48,10 +48,14 @@ export const Choice = Schema.Struct({
 });
 export type Choice = typeof Choice.Type;
 
+/** What the owner answered to each choice, in order: one list per choice, of the options' labels or their own text. */
+export const ChoiceAnswers = Schema.Array(Schema.Array(Schema.String));
+export type ChoiceAnswers = typeof ChoiceAnswers.Type;
+
 /** One approval question about one action, or one set of choices, open or recorded. */
 export const Question = Schema.Struct({
   /** What the owner answered to each choice, in order (the options' labels or typed text); null until answered, and when skipped. */
-  answers: Schema.NullOr(Schema.Array(Schema.Array(Schema.String))),
+  answers: Schema.NullOr(ChoiceAnswers),
   askedAt: Schema.Number,
   /** The questions to choose answers to; null for an approval question (Allow, Always allow, Deny). */
   choices: Schema.NullOr(Schema.Array(Choice)),

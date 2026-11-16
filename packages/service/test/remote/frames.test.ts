@@ -2,7 +2,7 @@ import type { ServerFrame } from "@outlore/contracts";
 import { hostOnlyRequestTags } from "@outlore/contracts";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import { answerText } from "../../src/remote/frames.ts";
+import { answerText } from "../../src/remote/index.ts";
 
 /** A well-formed request of each kind this test sends. */
 const requests = {
@@ -57,7 +57,7 @@ describe("what a paired device may ask of a host", () => {
       answerText(
         (() => Effect.succeed(null)) as never,
         JSON.stringify({ id: "7", request: { _tag: "Nope" } }),
-        (f) => sent.push(f),
+        (frame) => sent.push(frame),
         {
           isPairedDevice: true,
         },

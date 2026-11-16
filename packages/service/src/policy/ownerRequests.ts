@@ -40,10 +40,10 @@ const segmentsOf = (sentence: string) =>
     .map((part) => part.trim())
     .filter(Boolean);
 
-interface Span {
+type Span = {
   readonly end: number;
   readonly start: number;
-}
+};
 
 /** Every place a name appears in the text as whole words; names shorter than 3 characters never count. */
 const spansOf = (text: string, names: ReadonlyArray<string>): Array<Span> =>
@@ -65,19 +65,47 @@ const blanked = (text: string, spans: ReadonlyArray<Span>) =>
     text,
   );
 
-/** Whether the segment names the action: its words, its target, then its value, with nothing else asked. */
-const isNamedIn = (segment: string, sentence: string, action: NamedAction) => {
+/** The words that name the operation: its verbs and nouns, separately and as one set. */
+const ownWordsOf = (action: NamedAction) => {
+  const own = vocabulary[action.operation];
+  return { own, ownWords: new Set([...own.verbs, ...own.nouns]) };
+};
+
+/** Where the action's target and its new value sit in the segment, with the rival names, or null when either is missing. */
+const requestSpanOf = (segment: string, action: NamedAction) => {
   const rivals = spansOf(segment, action.rivals ?? []);
   // A target inside a longer rival name ("Report" in "Weekly report draft") is that rival, not the target.
   const target = spansOf(segment, action.targets).find((span) => !rivals.some((rival) => isWithin(span, rival)));
-  if (target === undefined) return false;
+  if (target === undefined) return null;
   const spans: Array<Span> = [target];
   if (action.value !== null) {
     const after = segment.slice(target.end);
     const value = spansOf(after, [action.value])[0];
-    if (value === undefined) return false;
+    if (value === undefined) return null;
     spans.push({ end: target.end + value.end, start: target.end + value.start });
   }
+  return { rivals, spans };
+};
+
+/** Whether the request's words name the operation and nothing else: its verbs, its nouns where it has them, no other operation's verbs, and no blockers anywhere in the sentence. */
+const hasOwnWordsOnly = (rest: string, whole: string, action: NamedAction) => {
+  const { own, ownWords } = ownWordsOf(action);
+  const words = wordsOf(rest);
+  if (!words.some((word) => own.verbs.includes(word))) return false;
+  if (own.nouns.length > 0 && !words.some((word) => own.nouns.includes(word))) return false;
+  const others = Object.entries(vocabulary)
+    .filter(([operation]) => operation !== action.operation)
+    .flatMap(([, other]) => other.verbs)
+    .filter((word) => !ownWords.has(word));
+  if (words.some((word) => others.includes(word))) return false;
+  return !wordsOf(whole).some((word) => blockers.has(word) && !ownWords.has(word));
+};
+
+/** Whether the segment names the action: its words, its target, then its value, with nothing else asked. */
+const isNamedIn = (segment: string, sentence: string, action: NamedAction) => {
+  const request = requestSpanOf(segment, action);
+  if (request === null) return false;
+  const { rivals, spans } = request;
   // Any other target named beside it, outside the target and the new value, makes the request ambiguous.
   const isCovered = (rival: Span) => spans.some((span) => span.start <= rival.start && rival.end <= span.end);
   if (rivals.some((rival) => !isCovered(rival))) return false;
@@ -90,17 +118,7 @@ const isNamedIn = (segment: string, sentence: string, action: NamedAction) => {
           sentence,
           spans.map((span) => ({ end: span.end + offset, start: span.start + offset })),
         );
-  const own = vocabulary[action.operation];
-  const ownWords = new Set([...own.verbs, ...own.nouns]);
-  const words = wordsOf(rest);
-  if (!words.some((word) => own.verbs.includes(word))) return false;
-  if (own.nouns.length > 0 && !words.some((word) => own.nouns.includes(word))) return false;
-  const others = Object.entries(vocabulary)
-    .filter(([operation]) => operation !== action.operation)
-    .flatMap(([, other]) => other.verbs)
-    .filter((word) => !ownWords.has(word));
-  if (words.some((word) => others.includes(word))) return false;
-  return !wordsOf(whole).some((word) => blockers.has(word) && !ownWords.has(word));
+  return hasOwnWordsOnly(rest, whole, action);
 };
 
 /** Whether the action's target also names one of its rivals: two quests with one title cannot be told apart by name. */
@@ -111,8 +129,7 @@ const isTargetShared = (action: NamedAction) => {
 
 /** Whether the other sentences of the message take it back, hesitate, or change the subject (audit SA-03). */
 const isRetractedElsewhere = (others: ReadonlyArray<string>, action: NamedAction) => {
-  const own = vocabulary[action.operation];
-  const ownWords = new Set([...own.verbs, ...own.nouns]);
+  const { ownWords } = ownWordsOf(action);
   return wordsOf(others.join(" ")).some((word) => blockers.has(word) && !ownWords.has(word));
 };
 

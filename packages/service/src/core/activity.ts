@@ -5,8 +5,7 @@ import { SqlClient } from "effect/sql";
 // A leaf, so every module that records activity can import it without a module-load cycle.
 
 /** Records a mission's latest activity. Callers run it in a transaction. */
-export const touchMission = (missionId: string, now: number) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`UPDATE missions SET last_activity_at = ${now} WHERE id = ${missionId}`;
-  });
+export const touchMission = Effect.fnUntraced(function* (missionId: string, now: number) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE missions SET last_activity_at = ${now} WHERE id = ${missionId}`;
+});

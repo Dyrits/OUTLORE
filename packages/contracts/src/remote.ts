@@ -13,20 +13,11 @@ export type HostId = typeof HostId.Type;
 /** The longest name of a host or of a paired device, in characters. */
 export const maxNameLength = 60;
 
-/**
- * The close codes of the link the local service opens to a paired host for the app: it could not open (try again
- * later), the host ended it, and the host refused this installation (trying again cannot help).
- */
-export const hostLinkCodes = { couldNotOpen: 4000, ended: 4001, refused: 4002 } as const;
-
-/** The path of the loopback server that joins the app to a paired host. */
-export const hostBridgePath = (hostId: string) => `/host/${hostId}`;
-
 /** What a paired device is: another computer's Outlore, or a phone. */
 export const DeviceKind = Schema.Literals(["desktop", "phone", "browser"]);
 export type DeviceKind = typeof DeviceKind.Type;
 
-/** A device paired with this host, as Charter lists it. */
+/** A device paired with this host, as Workshop lists it. */
 export const PairedDevice = Schema.Struct({
   id: DeviceId,
   isConnected: Schema.Boolean,
@@ -42,7 +33,7 @@ export const RelayStatus = Schema.Literals(["Off", "Connecting", "Connected", "U
 export type RelayStatus = typeof RelayStatus.Type;
 
 /**
- * Charter's remote access section: the switch, the host's name, the relay (the shared one, or the owner's own on their
+ * Workshop's remote access section: the switch, the host's name, the relay (the shared one, or the owner's own on their
  * Cloudflare account), and the paired devices.
  */
 export const RemoteAccessView = Schema.Struct({
@@ -72,7 +63,7 @@ export type KnownHost = typeof KnownHost.Type;
 
 // Host-only requests: a paired device never gets them answered, whatever its authority otherwise (device-pairing).
 
-/** Reads Charter's remote access section. */
+/** Reads Workshop's remote access section. */
 export const ReadRemoteAccess = Schema.TaggedStruct("ReadRemoteAccess", {});
 /** Turns "Allow paired devices" on or off; off ends every device's connection and keeps the pairings. */
 export const SetRemoteAccess = Schema.TaggedStruct("SetRemoteAccess", { isEnabled: Schema.Boolean });

@@ -22,6 +22,7 @@ export const realFolderOf = (path: string) =>
     }
   });
 
+/** Whether a path is the root itself or lies inside it; a prefix without the separator, as `/root-app` for `/root`, does not count. */
 export const isWithin = (root: string, path: string) =>
   path === root || path.startsWith(root.endsWith(sep) ? root : root + sep);
 
@@ -62,14 +63,13 @@ export const listBrowsableRoots = Effect.gen(function* () {
 });
 
 /** Starts the browsable roots with the owner's home folder the first time (workspace-attachment). */
-export const seedBrowsableRoots = (homeFolder: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const home = (yield* realFolderOf(homeFolder)) ?? homeFolder;
-    const now = yield* Clock.currentTimeMillis;
-    yield* sql`INSERT INTO browsable_roots (path, added_at)
-      SELECT ${home}, ${now} WHERE NOT EXISTS (SELECT 1 FROM browsable_roots)`;
-  });
+export const seedBrowsableRoots = Effect.fnUntraced(function* (homeFolder: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const home = (yield* realFolderOf(homeFolder)) ?? homeFolder;
+  const now = yield* Clock.currentTimeMillis;
+  yield* sql`INSERT INTO browsable_roots (path, added_at)
+    SELECT ${home}, ${now} WHERE NOT EXISTS (SELECT 1 FROM browsable_roots)`;
+});
 
 /** The browsable roots as a folder listing. */
 const listRootFolders = Effect.gen(function* () {
@@ -82,16 +82,15 @@ export const rootOf = (roots: ReadonlyArray<string>, real: string) =>
   roots.find((candidate) => isWithin(candidate, real));
 
 /** The existing folder at the path when the caller may reach it; refused otherwise. `root` is null outside every root. */
-const requireBrowsable = (path: string, access: FolderAccess) =>
-  Effect.gen(function* () {
-    const real = yield* realFolderOf(path);
-    if (real === null) return yield* invalid(`No folder at ${path}.`);
-    const root = rootOf(yield* listBrowsableRoots, real) ?? null;
-    if (root === null && access === "roots") {
-      return yield* invalid(`${path} is outside the browsable roots in the Workshop.`);
-    }
-    return { path: real, root };
-  });
+const requireBrowsable = Effect.fnUntraced(function* (path: string, access: FolderAccess) {
+  const real = yield* realFolderOf(path);
+  if (real === null) return yield* invalid(`No folder at ${path}.`);
+  const root = rootOf(yield* listBrowsableRoots, real) ?? null;
+  if (root === null && access === "roots") {
+    return yield* invalid(`${path} is outside the browsable roots in the Workshop.`);
+  }
+  return { path: real, root };
+});
 
 const subfoldersOf = (path: string, shouldIncludeHidden: boolean) =>
   Effect.sync(() => {
@@ -101,7 +100,7 @@ const subfoldersOf = (path: string, shouldIncludeHidden: boolean) =>
           // Hidden folders such as `.git` are offered only on Show hidden (CHG-0034).
           .filter((entry) => entry.isDirectory() && (shouldIncludeHidden || !entry.name.startsWith(".")))
           .map((entry) => ({ name: entry.name, path: join(path, entry.name) }) satisfies Folder)
-          .sort((a, b) => a.name.localeCompare(b.name))
+          .sort((left, right) => left.name.localeCompare(right.name))
       );
     } catch {
       return [];
@@ -122,46 +121,43 @@ export const browseFolders = (path: string | null, shouldIncludeHidden: boolean,
       });
 
 /** Makes a new folder inside a folder the caller may reach (New folder). */
-export const createFolder = (parent: string, name: string, access: FolderAccess) =>
-  Effect.gen(function* () {
-    const trimmed = name.trim();
-    if (trimmed === "" || trimmed === "." || trimmed === ".." || /[/\\]/.test(trimmed)) {
-      return yield* invalid("A folder name cannot be empty or contain a slash.");
+export const createFolder = Effect.fnUntraced(function* (parent: string, name: string, access: FolderAccess) {
+  const trimmed = name.trim();
+  if (trimmed === "" || trimmed === "." || trimmed === ".." || /[/\\]/.test(trimmed)) {
+    return yield* invalid("A folder name cannot be empty or contain a slash.");
+  }
+  const folder = yield* requireBrowsable(parent, access);
+  const path = join(folder.path, trimmed);
+  const isCreated = yield* Effect.sync(() => {
+    try {
+      mkdirSync(path);
+      return true;
+    } catch {
+      return false;
     }
-    const folder = yield* requireBrowsable(parent, access);
-    const path = join(folder.path, trimmed);
-    const isCreated = yield* Effect.sync(() => {
-      try {
-        mkdirSync(path);
-        return true;
-      } catch {
-        return false;
-      }
-    });
-    if (!isCreated) return yield* invalid(`Could not create ${path}; it may already exist.`);
-    return { name: trimmed, path } satisfies Folder;
   });
+  if (!isCreated) return yield* invalid(`Could not create ${path}; it may already exist.`);
+  return { name: trimmed, path } satisfies Folder;
+});
 
 /** Adds an existing folder to the browsable roots and returns them all. */
-export const addBrowsableRoot = (path: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const real = yield* realFolderOf(path.trim());
-    if (real === null) return yield* invalid(`No folder at ${path}; give a full path to an existing folder.`);
-    const now = yield* Clock.currentTimeMillis;
-    yield* sql`INSERT INTO browsable_roots (path, added_at) VALUES (${real}, ${now}) ON CONFLICT (path) DO NOTHING`;
-    return yield* listRootFolders;
-  });
+export const addBrowsableRoot = Effect.fnUntraced(function* (path: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const real = yield* realFolderOf(path.trim());
+  if (real === null) return yield* invalid(`No folder at ${path}; give a full path to an existing folder.`);
+  const now = yield* Clock.currentTimeMillis;
+  yield* sql`INSERT INTO browsable_roots (path, added_at) VALUES (${real}, ${now}) ON CONFLICT (path) DO NOTHING`;
+  return yield* listRootFolders;
+});
 
 /** Removes a folder from the browsable roots and returns those left; refused for a path that is not one. */
-export const removeBrowsableRoot = (path: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const trimmed = path.trim();
-    const roots = yield* listBrowsableRoots;
-    const real = (yield* realFolderOf(trimmed)) ?? trimmed;
-    const root = roots.find((candidate) => candidate === trimmed || candidate === real);
-    if (root === undefined) return yield* invalid(`${path} is not one of the browsable roots.`);
-    yield* sql`DELETE FROM browsable_roots WHERE path = ${root}`;
-    return yield* listRootFolders;
-  });
+export const removeBrowsableRoot = Effect.fnUntraced(function* (path: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const trimmed = path.trim();
+  const roots = yield* listBrowsableRoots;
+  const real = (yield* realFolderOf(trimmed)) ?? trimmed;
+  const root = roots.find((candidate) => candidate === trimmed || candidate === real);
+  if (root === undefined) return yield* invalid(`${path} is not one of the browsable roots.`);
+  yield* sql`DELETE FROM browsable_roots WHERE path = ${root}`;
+  return yield* listRootFolders;
+});

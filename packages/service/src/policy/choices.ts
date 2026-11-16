@@ -1,10 +1,7 @@
-import type { Choice } from "@outlore/contracts";
+import type { Choice, ChoiceAnswers } from "@outlore/contracts";
 
 /** Why these answers do not fit the choices, or null: one list per choice, one entry unless it is multiple. */
-export const answersProblemOf = (
-  choices: ReadonlyArray<Choice>,
-  answers: ReadonlyArray<ReadonlyArray<string>>,
-): string | null => {
+export const answersProblemOf = (choices: ReadonlyArray<Choice>, answers: ChoiceAnswers): string | null => {
   if (answers.length !== choices.length) return `Answer all ${choices.length} questions.`;
   for (const [index, choice] of choices.entries()) {
     const given = answers[index] ?? [];

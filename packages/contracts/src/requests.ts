@@ -2,7 +2,6 @@ import { Schema } from "effect";
 import { AttachmentCard, AttachmentContent, maxAttachmentsPerMessage } from "./attachments.ts";
 import { AccountBudget, BudgetLimits, BudgetPeriod, BudgetWindow, PriceStatus } from "./budgets.ts";
 import { BackupCompanions, ModelChoice } from "./companions.ts";
-import { Crest } from "./crest.ts";
 import { EffortChoice, HarnessList, HarnessName } from "./harnesses.ts";
 import {
   AccountId,
@@ -23,8 +22,8 @@ import {
 import { JournalView } from "./journal.ts";
 import { LoreHistory, LoreScope, LoreStateFilter, LoreView } from "./lore.ts";
 import { Mentionable } from "./mentions.ts";
-import { PermissionsView, Question } from "./questions.ts";
-import { QuestPlacement, realmRequests, realmResults } from "./realmRequests.ts";
+import { ChoiceAnswers, PermissionsView, Question } from "./questions.ts";
+import { NewRealmAppearance, QuestPlacement, realmRequests, realmResults } from "./realmRequests.ts";
 import {
   EndingPreview,
   GuildHallRecap,
@@ -72,15 +71,13 @@ import {
 } from "./rituals.ts";
 import { ChangeSettings, UpdateSettings } from "./settingsRequests.ts";
 import { Skill } from "./skills.ts";
+import { MessageText, NameText, OwnerMessageText } from "./texts.ts";
 import { UsageFilter, UsagePeriod, UsageReport } from "./usage.ts";
 import { WorkspaceEntry } from "./workspaceEntries.ts";
 import { Folder, FolderListing } from "./workspaces.ts";
 
 // Requests
 
-const MessageText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100_000));
-/** The text of an owner's message, which may be empty when files are attached (message-attachments). */
-const OwnerMessageText = Schema.String.check(Schema.isMaxLength(100_000));
 /** The files an owner's message carries, added beforehand with `AddAttachment`; absent is none. */
 const AttachmentIds = Schema.optionalKey(
   Schema.Array(AttachmentId).check(Schema.isMaxLength(maxAttachmentsPerMessage)),
@@ -110,12 +107,7 @@ export const StartMission = Schema.TaggedStruct("StartMission", {
    * The name and crest the owner gave a folder that is not a realm yet; used when this mission turns it into one, and
    * ignored when the folder already is a realm. Absent names it after its folder, with no crest of its own.
    */
-  realm: Schema.optionalKey(
-    Schema.Struct({
-      crest: Schema.NullOr(Crest),
-      name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(80)),
-    }),
-  ),
+  realm: Schema.optionalKey(NewRealmAppearance),
   requestId: RequestId,
   text: OwnerMessageText,
   /** An existing folder, chosen in the system's folder dialog, or null for the mission's scratch folder. */
@@ -135,7 +127,7 @@ export const SendMessage = Schema.TaggedStruct("SendMessage", {
   attachmentIds: AttachmentIds,
   /** Steer or Queue while the thread runs; null uses the owner's default. */
   delivery: Schema.NullOr(MessageDelivery),
-  /** The realm's folder the owner attached, for the Guildmaster: a quest it opens starts there. */
+  /** The realm's folder the owner attached, for the Chronicler: a quest it opens starts there. */
   realmPath: Schema.optionalKey(Schema.NullOr(Schema.String)),
   requestId: RequestId,
   text: OwnerMessageText,
@@ -151,7 +143,7 @@ export const ListMissions = Schema.TaggedStruct("ListMissions", {
   state: Schema.NullOr(MissionState),
   workspaceId: Schema.NullOr(WorkspaceId),
 });
-/** Where the Guildmaster's conversation is; the service makes it on first use. */
+/** Where the Chronicler's conversation is; the service makes it on first use. */
 export const ReadGuildmaster = Schema.TaggedStruct("ReadGuildmaster", {});
 /** The Guild Hall's recap since `since`, or since the last visit when null (24 hours before the first). */
 export const ReadGuildHallRecap = Schema.TaggedStruct("ReadGuildHallRecap", { since: Schema.NullOr(Schema.Number) });
@@ -218,7 +210,7 @@ export const PreviewStartingContext = Schema.TaggedStruct("PreviewStartingContex
   model: ModelChoice,
   parentThreadId: ThreadId,
   /** The request typed so far, which may still be empty. */
-  text: Schema.String.check(Schema.isMaxLength(100_000)),
+  text: OwnerMessageText,
 });
 
 /** The counts and snapshot covered by one permanent deletion confirmation. */
@@ -242,7 +234,6 @@ export const ResolveChatter = Schema.TaggedStruct("ResolveChatter", {
 
 /** Reads the owner's settings. */
 export const ReadSettings = Schema.TaggedStruct("ReadSettings", {});
-/** The model price table in use and where it came from (budget-control, The price table). */
 /** Every provider account's use and budget (budget-control, Account budgets and credits). */
 export const ReadAccountBudgets = Schema.TaggedStruct("ReadAccountBudgets", {});
 /**
@@ -264,8 +255,9 @@ export const AddCredit = Schema.TaggedStruct("AddCredit", {
 });
 /** At an account's budget, hands the held thread to its next backup Companion. */
 export const SwitchAtBudget = Schema.TaggedStruct("SwitchAtBudget", { stopId: BudgetStopId });
+/** The model price table in use and where it came from (budget-control, The price table). */
 export const ReadPriceStatus = Schema.TaggedStruct("ReadPriceStatus", {});
-/** Reads the public price table now, as Refresh now in the Charter does. */
+/** Reads the public price table now, as Refresh now in the Workshop does. */
 export const RefreshPrices = Schema.TaggedStruct("RefreshPrices", {});
 
 /** Reads a mission's journal. */
@@ -334,7 +326,7 @@ export const AnswerQuestion = Schema.TaggedStruct("AnswerQuestion", {
  * owner's own text; exactly one entry unless the choice allows several. null skips the question.
  */
 export const AnswerChoices = Schema.TaggedStruct("AnswerChoices", {
-  answers: Schema.NullOr(Schema.Array(Schema.Array(Schema.String))),
+  answers: Schema.NullOr(ChoiceAnswers),
   questionId: QuestionId,
 });
 /** Lists the open approval questions of every mission. */
@@ -452,13 +444,11 @@ export const ListModelEfforts = Schema.TaggedStruct("ListModelEfforts", {
   model: ModelChoice,
 });
 
-const AccountLabel = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(80));
-
 /** Adds a provider account to a harness, with its own folder; it is signed out until the owner signs in. */
-export const AddAccount = Schema.TaggedStruct("AddAccount", { harness: HarnessName, label: AccountLabel });
+export const AddAccount = Schema.TaggedStruct("AddAccount", { harness: HarnessName, label: NameText });
 
 /** Renames a provider account added in Outlore. */
-export const RenameAccount = Schema.TaggedStruct("RenameAccount", { accountId: AccountId, label: AccountLabel });
+export const RenameAccount = Schema.TaggedStruct("RenameAccount", { accountId: AccountId, label: NameText });
 
 /**
  * Names a harness's own sign-in on this computer, apart from the computer's name; a blank name returns it to the
@@ -709,7 +699,7 @@ export const Results = {
   WidenPermission: Schema.Null,
 } as const;
 /** What the service answers to one kind of request. */
-export type ResultOf<T extends RequestTag> = (typeof Results)[T]["Type"];
+export type ResultOf<Tag extends RequestTag> = (typeof Results)[Tag]["Type"];
 
 /** The kinds of failure the app tells apart. */
 export const ErrorKind = Schema.Literals([

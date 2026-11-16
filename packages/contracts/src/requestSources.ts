@@ -2,13 +2,19 @@ import { Match } from "effect";
 import type { Request, RequestTag } from "./requests.ts";
 
 /** The authenticated transport identity accompanying an owner request. */
-export interface RequestSource {
+export type RequestSource = {
   readonly deviceId?: string | null;
   readonly isPairedDevice: boolean;
-}
+};
 
 const shared = Object.assign(() => null, { isHostOnly: false });
 const hostOnly = Object.assign(() => null, { isHostOnly: true });
+
+/** One request rule: its source restriction and the folder it names, in a single line. */
+const rule = <Tag extends RequestTag>(
+  isHostOnly: boolean,
+  folder: (request: Extract<Request, { _tag: Tag }>) => string | null,
+) => Object.assign(folder, { isHostOnly });
 
 type SourceRules = {
   readonly [Tag in RequestTag]: ((request: Extract<Request, { _tag: Tag }>) => string | null) & {
@@ -20,37 +26,27 @@ type SourceRules = {
 export const requestSourceRules = {
   AddAccount: shared,
   AddAttachment: shared,
-  AddBrowsableRoot: Object.assign((given: Extract<Request, { _tag: "AddBrowsableRoot" }>) => given.path, {
-    isHostOnly: true,
-  }),
+  AddBrowsableRoot: rule(true, (given) => given.path),
   AddCredit: shared,
   AddHost: hostOnly,
   AddJournalEntry: shared,
   AnswerChoices: shared,
   AnswerQuestion: shared,
-  AnswerSuggestion: Object.assign(
-    (given: Extract<Request, { _tag: "AnswerSuggestion" }>) =>
-      Match.valueTags(given.answer, {
-        Aside: () => null,
-        Continue: () => null,
-        NewMission: (answer) => answer.realmPath ?? null,
-      }),
-    { isHostOnly: false },
+  AnswerSuggestion: rule(false, (given) =>
+    Match.valueTags(given.answer, {
+      Aside: () => null,
+      Continue: () => null,
+      NewMission: (answer) => answer.realmPath ?? null,
+    }),
   ),
   ArchiveRealm: shared,
-  BrowseFolders: Object.assign((given: Extract<Request, { _tag: "BrowseFolders" }>) => given.path, {
-    isHostOnly: false,
-  }),
+  BrowseFolders: rule(false, (given) => given.path),
   ChangeSettings: shared,
   ChangeThreadRunner: shared,
-  CreateFolder: Object.assign((given: Extract<Request, { _tag: "CreateFolder" }>) => given.parent, {
-    isHostOnly: false,
-  }),
+  CreateFolder: rule(false, (given) => given.parent),
   CreatePairingCode: hostOnly,
-  CreateRealm: Object.assign((given: Extract<Request, { _tag: "CreateRealm" }>) => given.path, { isHostOnly: false }),
-  CreateRitual: Object.assign((given: Extract<Request, { _tag: "CreateRitual" }>) => given.workspacePath, {
-    isHostOnly: false,
-  }),
+  CreateRealm: rule(false, (given) => given.path),
+  CreateRitual: rule(false, (given) => given.workspacePath),
   DeleteIntel: shared,
   DeleteRitual: shared,
   DeleteThread: shared,
@@ -59,9 +55,7 @@ export const requestSourceRules = {
   DismissMissionPrompt: shared,
   EditIntel: shared,
   EndMission: shared,
-  FindArchivedRealm: Object.assign((given: Extract<Request, { _tag: "FindArchivedRealm" }>) => given.path, {
-    isHostOnly: false,
-  }),
+  FindArchivedRealm: rule(false, (given) => given.path),
   InstallHarness: shared,
   InterruptThread: shared,
   ListArchivedRealms: shared,
@@ -73,13 +67,8 @@ export const requestSourceRules = {
   ListModelEfforts: shared,
   ListOpenQuestions: shared,
   ListRituals: shared,
-  ListSkills: Object.assign((given: Extract<Request, { _tag: "ListSkills" }>) => given.workspacePath, {
-    isHostOnly: false,
-  }),
-  ListWorkspaceEntries: Object.assign(
-    (given: Extract<Request, { _tag: "ListWorkspaceEntries" }>) => given.workspacePath,
-    { isHostOnly: false },
-  ),
+  ListSkills: rule(false, (given) => given.workspacePath),
+  ListWorkspaceEntries: rule(false, (given) => given.workspacePath),
   MarkThreadDone: shared,
   MoveQuest: shared,
   OpenThread: shared,
@@ -108,9 +97,7 @@ export const requestSourceRules = {
   ReadUsage: shared,
   RefreshPrices: shared,
   RemoveAccount: shared,
-  RemoveBrowsableRoot: Object.assign((given: Extract<Request, { _tag: "RemoveBrowsableRoot" }>) => given.path, {
-    isHostOnly: true,
-  }),
+  RemoveBrowsableRoot: rule(true, (given) => given.path),
   RemoveHost: hostOnly,
   RemovePermission: shared,
   RenameAccount: shared,
@@ -137,9 +124,7 @@ export const requestSourceRules = {
   SetThreadBackups: shared,
   SignInAccount: shared,
   StartEmptyQuest: shared,
-  StartMission: Object.assign((given: Extract<Request, { _tag: "StartMission" }>) => given.workspacePath, {
-    isHostOnly: false,
-  }),
+  StartMission: rule(false, (given) => given.workspacePath),
   StopAtBudget: shared,
   StopThread: shared,
   SwitchAtBudget: shared,

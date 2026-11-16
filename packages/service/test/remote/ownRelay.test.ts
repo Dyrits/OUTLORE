@@ -1,6 +1,6 @@
 import { relayWorkerBundle } from "@outlore/relay";
 import { describe, expect, it } from "vitest";
-import { cloudflareApiFor, deployRelayToCloudflare, ownRelayTag } from "../../src/remote/ownRelay.ts";
+import { cloudflareApiFor, deployRelayToCloudflare, ownRelayTag } from "../../src/remote/index.ts";
 import { fakeCloudflareApi, newFakeAccount } from "./fakeCloudflare.ts";
 
 // Deploying the relay Worker to a user's own Cloudflare account with one API token (device-pairing, own relay).

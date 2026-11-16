@@ -8,17 +8,17 @@ import { readHostLink } from "../../src/remote/knownHosts.ts";
 // Two whole services, each over its own database, joined by a real local relay: the host accepts paired devices and
 // the controller pairs with it and steers it through its own loopback socket (device-pairing).
 
-import { makeWorld, until, world } from "./fixtures/pairingWorld.ts";
+import { makeWorld, until } from "./fixtures/pairingWorld.ts";
 
 describe("holding a controller host link", () => {
   it.live("refuses a desktop pairing of another release before saving it", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* makeWorld({ controllerRelease: "another-release" });
-        yield* w.allowPairing;
-        const failure = yield* Effect.flip(w.pair(yield* w.newCode()));
+        const world = yield* makeWorld({ controllerRelease: "another-release" });
+        yield* world.allowPairing;
+        const failure = yield* Effect.flip(world.pair(yield* world.newCode()));
         expect(failure).toMatchObject({ message: expect.stringContaining("another-release") });
-        expect(yield* w.controllerSql((sql) => sql`SELECT id FROM remote_hosts`)).toEqual([]);
+        expect(yield* world.controllerSql((sql) => sql`SELECT id FROM remote_hosts`)).toEqual([]);
       }),
     ),
   );
@@ -26,10 +26,10 @@ describe("holding a controller host link", () => {
   it.live("reports closure that arrives during a delayed pairing-store update", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const host = yield* w.pair(yield* w.newCode());
-        const record = yield* w.controllerSql((sql) =>
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const host = yield* world.pair(yield* world.newCode());
+        const record = yield* world.controllerSql((sql) =>
           readHostLink(host.id).pipe(Effect.provideService(SqlClient.SqlClient, sql)),
         );
         let release: () => void = () => {};
@@ -52,7 +52,7 @@ describe("holding a controller host link", () => {
         };
         const opening = resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" });
         yield* Effect.promise(() => ready);
-        yield* w.host({ _tag: "SetRemoteAccess", isEnabled: false });
+        yield* world.host({ _tag: "SetRemoteAccess", isEnabled: false });
         yield* Effect.sleep("100 millis");
         release();
         const link = yield* Effect.promise(() => opening);
@@ -68,18 +68,18 @@ describe("holding a controller host link", () => {
   it.live("rejects an old relay connection after access is switched off and back on", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        const presence = yield* w.presence;
-        yield* w.allowPairing;
+        const world = yield* makeWorld();
+        const presence = yield* world.presence;
+        yield* world.allowPairing;
         const generation = presence.generation();
-        yield* w.host({ _tag: "SetRemoteAccess", isEnabled: false });
+        yield* world.host({ _tag: "SetRemoteAccess", isEnabled: false });
         expect(yield* presence.status).toBe("Off");
         expect(
-          yield* w.hostSql((sql) =>
+          yield* world.hostSql((sql) =>
             presence.admitDevice("absent", () => {}).pipe(Effect.provideService(SqlClient.SqlClient, sql)),
           ),
         ).toBeNull();
-        yield* w.allowPairing;
+        yield* world.allowPairing;
         let isClosed = false;
         const stale: HostConnection = {
           close: () => {
@@ -101,10 +101,10 @@ describe("holding a controller host link", () => {
   it.live("buffers while storage is delayed and closes when storage fails", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const host = yield* w.pair(yield* w.newCode());
-        const record = yield* w.controllerSql((sql) =>
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const host = yield* world.pair(yield* world.newCode());
+        const record = yield* world.controllerSql((sql) =>
           readHostLink(host.id).pipe(Effect.provideService(SqlClient.SqlClient, sql)),
         );
         let release: () => void = () => {};
@@ -158,7 +158,7 @@ describe("holding a controller host link", () => {
         );
         yield* Effect.promise(() => expect(failed).rejects.toThrow("store failed"));
         yield* until(() =>
-          Effect.runPromise(w.accessOf()).then((view) =>
+          Effect.runPromise(world.accessOf()).then((view) =>
             view.devices.every((device) => !device.isConnected) ? true : undefined,
           ),
         );
@@ -169,10 +169,10 @@ describe("holding a controller host link", () => {
   it.live("keeps the host announcement until the bridge starts listening", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const host = yield* w.pair(yield* w.newCode());
-        const channel = yield* w.open(host.id);
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const host = yield* world.pair(yield* world.newCode());
+        const channel = yield* world.open(host.id);
         yield* Effect.sleep("100 millis");
         const frames: string[] = [];
         channel.onText((text) => frames.push(text));

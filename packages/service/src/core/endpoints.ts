@@ -26,19 +26,22 @@ export const endpointsLayer = Layer.effect(
     const port = yield* Deferred.make<number>();
     const tokens = new Map<string, string>();
     const threads = new Map<string, string>();
-    const tokenOf = (threadId: string) => {
-      const issued = tokens.get(threadId);
-      if (issued !== undefined) return issued;
-      const token = randomBytes(24).toString("hex");
-      tokens.set(threadId, token);
-      threads.set(token, threadId);
-      return token;
-    };
+    const tokenOf = (threadId: string) =>
+      Effect.sync(() => {
+        const issued = tokens.get(threadId);
+        if (issued !== undefined) return issued;
+        const token = randomBytes(24).toString("hex");
+        tokens.set(threadId, token);
+        threads.set(token, threadId);
+        return token;
+      });
     return {
       open: (listening) => Deferred.succeed(port, listening).pipe(Effect.asVoid),
       threadOf: (token) => threads.get(token) ?? null,
       urlFor: (threadId) =>
-        Deferred.await(port).pipe(Effect.map((listening) => `http://127.0.0.1:${listening}/mcp/${tokenOf(threadId)}`)),
+        Effect.flatMap(Deferred.await(port), (listening) =>
+          Effect.map(tokenOf(threadId), (token) => `http://127.0.0.1:${listening}/mcp/${token}`),
+        ),
     };
   }),
 );

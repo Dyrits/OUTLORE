@@ -1,11 +1,19 @@
 import { Schema } from "effect";
 import { Crest } from "./crest.ts";
 import { MissionId, RitualId, WorkspaceId } from "./ids.ts";
+import { NameText } from "./texts.ts";
 import { WorkspaceChoice } from "./workspaces.ts";
 
 /** The independently chosen name and crest for a recovered realm. */
 export const RealmAppearance = Schema.Struct({ crest: Schema.NullOr(Crest), name: Schema.String });
 export type RealmAppearance = typeof RealmAppearance.Type;
+
+/**
+ * The name and crest a folder takes when it becomes a realm: the name is required, one to eighty characters.
+ * RealmAppearance itself keeps an unconstrained name, for realms as they are stored and shown.
+ */
+export const NewRealmAppearance = Schema.Struct({ crest: Schema.NullOr(Crest), name: NameText });
+export type NewRealmAppearance = typeof NewRealmAppearance.Type;
 
 /** A quest's authoritative parent placement when an ending commits. */
 export const QuestPlacement = Schema.Struct({
@@ -51,7 +59,7 @@ export const CreateRealm = Schema.TaggedStruct("CreateRealm", {
 /** Renames a realm without treating its name as its identity. */
 export const RenameRealm = Schema.TaggedStruct("RenameRealm", {
   allowDuplicateName: Schema.optional(Schema.Boolean),
-  name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(80)),
+  name: NameText,
   workspaceId: WorkspaceId,
 });
 /** Keeps the owner's crest for a realm. */

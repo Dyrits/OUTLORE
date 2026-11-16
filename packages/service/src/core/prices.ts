@@ -8,14 +8,14 @@ import { readSettings } from "./settings.ts";
 // public table, kept in the service's database, with a snapshot shipped with Outlore as the fallback.
 
 /** A model's price in dollars per million tokens, by token kind; a null cache price is billed as input. */
-export interface PriceRow {
+export type PriceRow = {
   readonly cacheRead: number | null;
   readonly cacheWrite: number | null;
   readonly input: number;
   readonly model: string;
   readonly output: number;
   readonly provider: string;
-}
+};
 
 /** The public table could not be read, with the reason the owner reads. */
 export class PriceReadFailed extends Schema.TaggedError<PriceReadFailed>()("PriceReadFailed", {
@@ -29,16 +29,16 @@ export class PriceSource extends Context.Service<
 >()("outlore/PriceSource") {}
 
 /** What a turn was estimated to cost, with when the table it was priced from was read. */
-export interface Estimate {
+export type Estimate = {
   readonly amount: number;
   readonly pricedAt: number;
-}
+};
 
 /**
  * The providers whose models the table keeps, which are those the harnesses offer and OpenCode lists, in the order
  * tried when a model names no provider.
  */
-export const priceProviders = [
+export const priceProviders: ReadonlyArray<string> = [
   "anthropic",
   "openai",
   "google",
@@ -48,10 +48,10 @@ export const priceProviders = [
   "moonshotai",
   "zai",
   "opencode",
-] as const;
+];
 
 const rankOf = (provider: string) => {
-  const index = (priceProviders as ReadonlyArray<string>).indexOf(provider);
+  const index = priceProviders.indexOf(provider);
   return index === -1 ? priceProviders.length : index;
 };
 
@@ -69,7 +69,7 @@ export const priceOf = (rows: ReadonlyArray<PriceRow>, model: string): PriceRow 
   for (const candidate of [name, withoutDate(name)]) {
     const matches = rows
       .filter((row) => row.model === candidate && (provider === null || row.provider === provider))
-      .toSorted((a, b) => rankOf(a.provider) - rankOf(b.provider));
+      .toSorted((left, right) => rankOf(left.provider) - rankOf(right.provider));
     if (matches[0] !== undefined) return matches[0];
   }
   return null;
@@ -97,7 +97,7 @@ export class PriceTable extends Context.Service<
   }
 >()("outlore/PriceTable") {}
 
-interface StoredRow {
+type StoredRow = {
   readonly cacheRead: number | null;
   readonly cacheWrite: number | null;
   readonly fetchedAt: number;
@@ -105,7 +105,7 @@ interface StoredRow {
   readonly model: string;
   readonly output: number;
   readonly provider: string;
-}
+};
 
 /** The price table over the service's database and a source for the public table. */
 export const priceTableLayer = Layer.effect(
@@ -116,7 +116,10 @@ export const priceTableLayer = Layer.effect(
     const stored = yield* sql<StoredRow>`
       SELECT provider, model, input, output, cache_read AS cacheRead, cache_write AS cacheWrite, fetched_at AS fetchedAt
       FROM prices`.pipe(Effect.orDie);
-    const fetched = yield* Ref.make({ at: stored[0]?.fetchedAt ?? 0, rows: stored as ReadonlyArray<PriceRow> });
+    const fetched = yield* Ref.make<{ at: number; rows: ReadonlyArray<PriceRow> }>({
+      at: stored[0]?.fetchedAt ?? 0,
+      rows: stored,
+    });
 
     /** The rows estimates use now: the fetched table first with the snapshot behind it, or the snapshot alone. */
     const activeOf = Effect.gen(function* () {
@@ -139,16 +142,15 @@ export const priceTableLayer = Layer.effect(
       } satisfies PriceStatus;
     });
 
-    const estimate = (model: string, usage: TokenUsage) =>
-      Effect.gen(function* () {
-        const active = yield* activeOf;
-        const fromTable = priceOf(active.rows, model);
-        if (fromTable !== null) return { amount: amountOf(fromTable, usage), pricedAt: active.at } satisfies Estimate;
-        const fromSnapshot = priceOf(snapshotPrices, model);
-        return fromSnapshot === null
-          ? null
-          : ({ amount: amountOf(fromSnapshot, usage), pricedAt: snapshotAt } satisfies Estimate);
-      });
+    const estimate = Effect.fnUntraced(function* (model: string, usage: TokenUsage) {
+      const active = yield* activeOf;
+      const fromTable = priceOf(active.rows, model);
+      if (fromTable !== null) return { amount: amountOf(fromTable, usage), pricedAt: active.at } satisfies Estimate;
+      const fromSnapshot = priceOf(snapshotPrices, model);
+      return fromSnapshot === null
+        ? null
+        : ({ amount: amountOf(fromSnapshot, usage), pricedAt: snapshotAt } satisfies Estimate);
+    });
 
     const refresh = Effect.gen(function* () {
       if (!(yield* activeOf).isFetching) return yield* status;

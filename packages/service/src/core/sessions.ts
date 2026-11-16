@@ -27,19 +27,21 @@ export const sessionsLayer = Layer.effect(
       for (const send of sinks) send(frame);
     };
 
-    const subscription = yield* PubSub.subscribe(changes.pubsub);
-    yield* PubSub.take(subscription).pipe(
-      Effect.tap((sequence) => Effect.sync(() => broadcast({ _tag: "Changed", sequence }))),
-      Effect.forever,
-      Effect.forkScoped,
-    );
-    const drafts = yield* PubSub.subscribe(changes.drafts);
-    yield* PubSub.take(drafts).pipe(
-      Effect.tap(({ threadId, text }) =>
-        Effect.sync(() => broadcast({ _tag: "Draft", text, threadId: threadId as ThreadId })),
-      ),
-      Effect.forever,
-      Effect.forkScoped,
+    /** Carries every value of `pubsub` to `broadcast` on a fiber of its own, for the layer's lifetime. */
+    const relay = <Value>(pubsub: PubSub.PubSub<Value>, send: (value: Value) => void) =>
+      PubSub.subscribe(pubsub).pipe(
+        Effect.flatMap((subscription) =>
+          PubSub.take(subscription).pipe(
+            Effect.tap((value) => Effect.sync(() => send(value))),
+            Effect.forever,
+            Effect.forkScoped,
+          ),
+        ),
+      );
+
+    yield* relay(changes.pubsub, (sequence) => broadcast({ _tag: "Changed", sequence }));
+    yield* relay(changes.drafts, ({ threadId, text }) =>
+      broadcast({ _tag: "Draft", text, threadId: threadId as ThreadId }),
     );
 
     return {
