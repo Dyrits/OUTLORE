@@ -4,7 +4,7 @@ import { SqlClient } from "effect/sql";
 import { dayMillis, invalid, notFound, readSettings, ServiceFailure } from "../core/index.ts";
 import { Commands, changed } from "./commands.ts";
 import { eraseEmptyQuest } from "./deleting.ts";
-import { refuseGuildmaster } from "./guildmaster.ts";
+import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { updateJournal } from "./journal.ts";
 import { activeStates, haltThreads } from "./lifecycle.ts";
 import { requireActiveQuestRealm } from "./realmAccess.ts";

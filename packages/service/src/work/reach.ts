@@ -1,11 +1,11 @@
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { isGuildmasterThread } from "./guildmaster.ts";
+import { isGuildmasterThread } from "./guildmasterPlace.ts";
 import { readTurnReach } from "./mentions.ts";
 
 // Who a thread may message and whose journal it may read (thread-messaging, Who can message whom; CHG-0181): the tree's
 // own rules, Chronicler's, and what the owner's mentions and the messages delivered to the thread's current turn open. The
-// tools ask here, so the rule, its grants, and the note that tells the thread of them (`mentionNoteOf`) read the same
+// tools ask here, so the rule, its grants, and the note that tells the thread of them (`readMentionNote`) read the same
 // resolution of a mention.
 
 /**

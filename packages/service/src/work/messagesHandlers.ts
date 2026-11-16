@@ -3,7 +3,7 @@ import { readSettings } from "../core/index.ts";
 import { admitOwnerText, nonBlank, runnerOfThread } from "./admission.ts";
 import { addAttachment, discardAttachment, readAttachment } from "./attachments.ts";
 import { changed } from "./commands.ts";
-import { readViewingLine } from "./guildmaster.ts";
+import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
 import { insertUserMessage } from "./messaging.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";

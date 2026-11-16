@@ -7,7 +7,7 @@ import { eraseThreadsLore } from "../lore/index.ts";
 import { eraseAttachmentsOf } from "./attachments.ts";
 import { forgetOutcomesOf } from "./commandOutcomes.ts";
 import { Commands, changed } from "./commands.ts";
-import { refuseGuildmaster } from "./guildmaster.ts";
+import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
 import { ScratchRoot } from "./workspaces.ts";
 

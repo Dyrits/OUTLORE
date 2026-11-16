@@ -5,9 +5,9 @@ import { readSettings, type ToolAnswer } from "../core/index.ts";
 import { isNamedByOwner, type NamedAction } from "../policy/index.ts";
 import type { Approvals } from "./approvals.ts";
 import { previewEnding, readWorkingIds } from "./ending.ts";
-import { isGuildmasterThread, readOptionalRealm } from "./guildmaster.ts";
 import { fallbackNoteOf, ritualStartOf } from "./guildmasterCompanions.ts";
-import { changeableSettings } from "./guildmasterSettings.ts";
+import { isGuildmasterThread, readOptionalRealm } from "./guildmasterPlace.ts";
+import { isChangeableSetting } from "./guildmasterSettingNames.ts";
 import { clip, parseJson, placeOf, threadsLineOf } from "./guildmasterText.ts";
 import { isRitualRunTurn, readOwnerTexts } from "./messageProvenance.ts";
 import { deriveRealmCreation, deriveRealmRename } from "./realmActions.ts";
@@ -137,13 +137,13 @@ const deriveAction = Effect.fnUntraced(function* (callerId: string, tool: Struct
   }
   if (tool === "change_setting") {
     const { setting, value: text } = args as ArgumentsOf<"change_setting">;
-    if (!(changeableSettings as ReadonlyArray<string>).includes(setting)) return null;
+    if (!isChangeableSetting(setting)) return null;
     const parsed = parseJson(text);
     if (Exit.isFailure(parsed)) return null;
     const value = parsed.value;
     const before = yield* readSettings;
     if (Exit.isFailure(Schema.decodeUnknownExit(Settings)({ ...before, [setting]: value }))) return null;
-    const was = before[setting as keyof typeof before];
+    const was = before[setting];
     return finish({
       named: { operation: "ChangeSetting", targets: [setting], value: spokenOf(value) },
       scoped: { operation: "ChangeSetting", payload: JSON.stringify(value), targets: [setting] },

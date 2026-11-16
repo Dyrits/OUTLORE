@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound } from "../core/index.ts";
-import { refuseGuildmaster } from "./guildmaster.ts";
+import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import type { ToolHandlers } from "./threadTools.ts";
 
 /** The title of a quest or thread whose first message holds only images. */

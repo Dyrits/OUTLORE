@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import type { MissionId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
+import { changeableSettings } from "../../src/work/guildmasterSettingNames.ts";
 import { approvedCall, guildmaster, startIdle } from "../fixtures/guildmaster.ts";
 import { call, fixture, tool } from "../fixtures/service.ts";
 
@@ -53,6 +54,24 @@ describe("settings at the owner's request", () => {
       const after = yield* settings;
       expect(after.intelHalfLives.temporary).toBe(7);
       expect({ ...after, intelHalfLives: before.intelHalfLives }).toEqual(before);
+    }).pipe(Effect.provide(setup().layer)),
+  );
+
+  it.live("keeps every stored setting whole when one is set to the value it already has", () =>
+    Effect.gen(function* () {
+      const place = yield* guildmaster;
+      const light = { accountId: null, backups: [], effort: "default", harness: "claude", model: "default" };
+      yield* manage(place, "change_setting", {
+        setting: "tiers",
+        value: JSON.stringify({ Balanced: null, Heavy: null, Light: light }),
+      });
+      const before = yield* settings;
+      expect(before.tiers.Light?.harness).toBe("claude");
+      for (const setting of changeableSettings) {
+        const done = yield* manage(place, "change_setting", { setting, value: JSON.stringify(before[setting]) });
+        expect(done).toContain(`Changed ${setting} from`);
+        expect(yield* settings).toEqual(before);
+      }
     }).pipe(Effect.provide(setup().layer)),
   );
 

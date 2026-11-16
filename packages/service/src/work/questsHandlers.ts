@@ -7,7 +7,7 @@ import { listMissions } from "./dashboard.ts";
 import { deleteThread, previewDeletion } from "./deleting.ts";
 import { dismissPrompt, endMission, previewEnding, reopenMission } from "./ending.ts";
 import { readGuildHallRecap, visitGuildHall } from "./guildHall.ts";
-import { readGuildmaster } from "./guildmaster.ts";
+import { readGuildmaster } from "./guildmasterPlace.ts";
 import { markThreadDone } from "./lifecycle.ts";
 import { readMission, readThreadTree } from "./missionDetail.ts";
 import { insertMission, insertQuest } from "./missions.ts";

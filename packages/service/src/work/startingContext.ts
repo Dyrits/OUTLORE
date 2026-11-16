@@ -13,7 +13,7 @@ import {
 import { contextWindowOf, loreContextOf, loreInstructions } from "../lore/index.ts";
 import { readApprovalInstructions } from "./approvalTerms.ts";
 import { accountOfThread, budgetLineOf } from "./budgetScopes.ts";
-import { readGuildmasterContext } from "./guildmaster.ts";
+import { readGuildmasterContext } from "./guildmasterContext.ts";
 import { journalContextOf, journalInstructions, openerContextOf, openerMessagesOf } from "./journal.ts";
 import { titleOf } from "./titles.ts";
 import { prepareWorkingFolder, readThreadWorkspace, ScratchRoot, workingFolderOf } from "./workspaces.ts";

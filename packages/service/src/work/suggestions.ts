@@ -5,7 +5,8 @@ import { Changes, invalid, notFound, readSettings, type ServiceFailure } from ".
 import { makeOwnerWaits } from "./attention.ts";
 import { setCardBackups } from "./backups.ts";
 import { changed, unchanged, type WithFollowUps } from "./commands.ts";
-import { isGuildmasterThread, readOptionalRealm, recordResolvedCard } from "./guildmaster.ts";
+import { recordResolvedCard } from "./guildmasterCards.ts";
+import { isGuildmasterThread, readOptionalRealm } from "./guildmasterPlace.ts";
 import { resumeInTurn } from "./lifecycle.ts";
 import { findMissions, findMissionsTextOf, maxMatches } from "./matching.ts";
 import { insertSuggestedMessage } from "./messageProvenance.ts";

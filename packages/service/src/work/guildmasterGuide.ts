@@ -2,7 +2,7 @@ import { Effect } from "effect";
 import type { ToolAnswer } from "../core/index.ts";
 import { type GuideTopic, guideTopics } from "./appGuideTopics.ts";
 import { unchanged, type WithFollowUps } from "./commands.ts";
-import { isGuildmasterThread } from "./guildmaster.ts";
+import { isGuildmasterThread } from "./guildmasterPlace.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 
 // Chronicler's app guide tool (quest coordination, "Chronicler explains how the app works"): it reads one topic of the user

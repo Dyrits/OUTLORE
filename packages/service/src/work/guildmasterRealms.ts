@@ -3,7 +3,7 @@ import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
 import type { ToolAnswer } from "../core/index.ts";
 import { changed, unchanged, type WithFollowUps } from "./commands.ts";
-import { isGuildmasterThread } from "./guildmaster.ts";
+import { isGuildmasterThread } from "./guildmasterPlace.ts";
 import { consumeReceipt, notAuthorizedText } from "./guildmasterProvenance.ts";
 import { checkRealmCreation, checkRealmRename } from "./realmChecks.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
