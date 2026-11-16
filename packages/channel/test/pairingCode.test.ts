@@ -28,7 +28,7 @@ const forgeCode = (origin: string) => {
   return `outlore1-${encodeBase64Url(forged)}`;
 };
 
-describe("pairing code", () => {
+describe("handling a pairing code", () => {
   it("makes rooms of 32 lowercase hex characters and secrets of 16 bytes", () => {
     expect(newRoomName()).toMatch(/^[0-9a-f]{32}$/);
     expect(newRoomName()).not.toBe(newRoomName());

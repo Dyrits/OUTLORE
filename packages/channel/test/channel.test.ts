@@ -171,7 +171,7 @@ describe("opening a secure channel", () => {
     expect(initiator.ok).toBe(false);
   });
 
-  it("fails when a handshake message is altered in transit", async () => {
+  it("fails when the client hello is altered in transit", async () => {
     const flip: Interference = (data) => {
       data[40] = (data[40] ?? 0) ^ 1;
       return [data];
@@ -184,7 +184,14 @@ describe("opening a secure channel", () => {
     ]);
     expect(responder).toEqual({ kind: "handshake-failed", ok: false });
     expect(initiator.ok).toBe(false);
+  });
 
+  it("fails when the host reply is altered in transit", async () => {
+    const flip: Interference = (data) => {
+      data[40] = (data[40] ?? 0) ^ 1;
+      return [data];
+    };
+    const host = generateKeyPair();
     const [third, fourth] = fakeCarrierPair({ fromSecond: flip });
     const [initiator2, responder2] = await Promise.all([
       openInitiator(third, host.publicKey, prologue),

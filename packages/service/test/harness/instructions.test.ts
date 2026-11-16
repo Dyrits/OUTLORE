@@ -28,14 +28,18 @@ describe("telling a thread where it may work unasked", () => {
     expect(text).toContain(".worktrees/<name>");
   });
 
-  it("tells a thread it may leave the sandbox without asking once the owner allowed it, and still to ask before consequential actions", () => {
+  it("tells a thread it may leave the sandbox without asking once the owner allowed it", () => {
     const text = approvalInstructionsOf({ ...access, canWorkOutsideSandbox: true }, "claude");
     expect(text).toContain("The owner has allowed you to work outside the sandbox");
     expect(text).not.toContain("asks the owner about that exact command");
-    expect(text).toContain("Before one, call the request_approval tool");
     const normal = approvalInstructionsOf(access, "claude");
     expect(normal).toContain("asks the owner about that exact command");
     expect(normal).not.toContain("The owner has allowed you to work outside the sandbox");
+  });
+
+  it("still asks for approval before consequential actions outside the sandbox", () => {
+    const text = approvalInstructionsOf({ ...access, canWorkOutsideSandbox: true }, "claude");
+    expect(text).toContain("Before one, call the request_approval tool");
   });
 });
 
