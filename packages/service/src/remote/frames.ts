@@ -47,20 +47,22 @@ const answerFrame = (handle: Handle, frame: ClientFrame, send: (frame: ServerFra
       Schema.encodeUnknownSync(Results[frame.request._tag] as unknown as Schema.Codec<unknown>)(value),
     ),
     Effect.exit,
-    Effect.map((exit) => {
-      if (Exit.isSuccess(exit)) {
-        send({ _tag: "Success", id: frame.id, value: exit.value });
-        return;
-      }
-      const failure = firstFailureOf(exit);
-      send(
-        failureFrame(
-          frame.id,
-          failure?.kind ?? "ExecutionFailure",
-          failure?.message ?? "The service failed unexpectedly.",
-        ),
-      );
-    }),
+    Effect.flatMap((exit) =>
+      Effect.sync(() => {
+        if (Exit.isSuccess(exit)) {
+          send({ _tag: "Success", id: frame.id, value: exit.value });
+          return;
+        }
+        const failure = firstFailureOf(exit);
+        send(
+          failureFrame(
+            frame.id,
+            failure?.kind ?? "ExecutionFailure",
+            failure?.message ?? "The service failed unexpectedly.",
+          ),
+        );
+      }),
+    ),
   );
 
 /**
