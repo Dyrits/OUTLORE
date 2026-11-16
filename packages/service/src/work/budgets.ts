@@ -7,6 +7,7 @@ import {
   isEmpty,
   limitsTextOf,
   missionLimitsOf,
+  newId,
   notFound,
   readGlobalBudget,
 } from "../core/index.ts";
@@ -33,7 +34,8 @@ import { haltThreads, holdQuestionHolder, holdThread, releaseThread, waitsInTurn
 export const insertEvent = Effect.fnUntraced(function* (missionId: string, text: string) {
   const sql = yield* SqlClient.SqlClient;
   const now = yield* Clock.currentTimeMillis;
-  yield* sql`INSERT INTO budget_events (id, mission_id, text, at) VALUES (${crypto.randomUUID()}, ${missionId}, ${text}, ${now})`;
+  const id = yield* newId;
+  yield* sql`INSERT INTO budget_events (id, mission_id, text, at) VALUES (${id}, ${missionId}, ${text}, ${now})`;
 });
 
 /** Records a line about the global budget in the Guildmaster's quest, where the owner reads it; nothing is recorded before the Guildmaster exists. */
@@ -51,8 +53,9 @@ const ensureStop = Effect.fnUntraced(function* (scope: BudgetScope, holderId: st
       WHERE resolution IS NULL AND ${stopWhere(sql, scope)}`;
   if (open !== undefined) return { holder: open.threadId, isNew: false };
   const now = yield* Clock.currentTimeMillis;
+  const id = yield* newId;
   yield* sql`INSERT INTO budget_stops (id, mission_id, account_key, thread_id, reached_at)
-      VALUES (${crypto.randomUUID()}, ${scope._tag === "Mission" ? scope.id : null},
+      VALUES (${id}, ${scope._tag === "Mission" ? scope.id : null},
         ${scope._tag === "Account" ? `${scope.harness}:${scope.accountId ?? ""}` : null}, ${holderId}, ${now})`;
   if (scope._tag === "Mission") {
     yield* insertEvent(scope.id, `Stopped at the budget limit: ${yield* reachedTextOfScope(scope)}`);

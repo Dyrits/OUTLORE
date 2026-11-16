@@ -3,6 +3,7 @@ import type { LoreEntryId, LoreHistoryEntry, ThreadId } from "@outlore/contracts
 import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { afterEach } from "vitest";
+import { dayMillis } from "../../src/core/index.ts";
 import { call, entryOf, fixture, open, start, tool } from "../fixtures/service.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...) and thread tool names (`save_intel`, ...).
@@ -19,7 +20,6 @@ afterEach(() => {
   for (const value of fixtures.splice(0)) value.remove();
 });
 
-const day = 24 * 60 * 60 * 1000;
 const advance = (millis: number) =>
   Effect.gen(function* () {
     yield* TestClock.adjust(millis);
@@ -136,13 +136,13 @@ describe("recording fading steps", () => {
       const { threadId } = yield* idle();
       const id = idOf(yield* save(threadId, "The API is flaky this week.", "mission", "temporary"));
       const savedAt = entryOf((yield* historyOf(id)).entries, "Saved").at;
-      yield* advance(20 * day);
+      yield* advance(20 * dayMillis);
       const faded = (yield* historyOf(id)).entries;
       expect(kindsOf(faded)).toEqual(["Archived", "Dormant", "Saved"]);
       const dormant = entryOf(faded, "Dormant");
       // A temporary lore entry's half-life is 3 days: dormant below 0.15 after 3 × log2(1 / 0.15) days.
-      expect((dormant.at - savedAt) / day).toBeCloseTo(3 * Math.log2(1 / 0.15), 3);
-      expect((entryOf(faded, "Archived").at - savedAt) / day).toBeCloseTo(3 * Math.log2(1 / 0.05), 3);
+      expect((dormant.at - savedAt) / dayMillis).toBeCloseTo(3 * Math.log2(1 / 0.15), 3);
+      expect((entryOf(faded, "Archived").at - savedAt) / dayMillis).toBeCloseTo(3 * Math.log2(1 / 0.05), 3);
       expect(dormant).toMatchObject({ actor: "Fading", canUndo: false });
       yield* call({ _tag: "RestoreIntel", loreEntryId: id });
       expect(kindsOf((yield* historyOf(id)).entries)).toEqual(["Restored", "Archived", "Dormant", "Saved"]);
@@ -154,9 +154,9 @@ describe("recording fading steps", () => {
     Effect.gen(function* () {
       const { threadId } = yield* idle();
       const id = idOf(yield* save(threadId, "The API is flaky this week.", "mission", "temporary"));
-      yield* advance(10 * day);
+      yield* advance(10 * dayMillis);
       yield* tool(threadId, "search_intel", { ids: [id] });
-      yield* advance(1 * day);
+      yield* advance(1 * dayMillis);
       expect(kindsOf((yield* historyOf(id)).entries)).toEqual(["Dormant", "Saved"]);
       expect((yield* loreEntryOf(id))?.state).toBe("Active");
     }).pipe(Effect.provide(live().layer)),
@@ -168,7 +168,7 @@ describe("recording fading steps", () => {
       Effect.gen(function* () {
         const { threadId } = yield* idle();
         const id = idOf(yield* save(threadId, "Always run the tests before a commit.", "mission", "rule"));
-        yield* advance(400 * day);
+        yield* advance(400 * dayMillis);
         expect(kindsOf((yield* historyOf(id)).entries)).toEqual(["Saved"]);
       }).pipe(Effect.provide(live().layer)),
     // A thousand days on the test clock take seconds of real fading steps; the default 5 s is too tight in a full run.
@@ -280,7 +280,7 @@ describe("undoing a change", () => {
     Effect.gen(function* () {
       const { threadId } = yield* idle();
       const id = idOf(yield* save(threadId, "The API is flaky this week.", "mission", "temporary"));
-      yield* advance(10 * day);
+      yield* advance(10 * dayMillis);
       yield* call({ _tag: "RestoreIntel", loreEntryId: id });
       expect((yield* loreEntryOf(id))?.state).toBe("Active");
       yield* undo(entryOf((yield* historyOf(id)).entries, "Restored"));

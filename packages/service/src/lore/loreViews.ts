@@ -1,7 +1,7 @@
 import type { LoreChange, LoreScope, LoreStateFilter, LoreView } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { wordsOf } from "../core/index.ts";
+import { toolRefusal, toolText, wordsOf } from "../core/index.ts";
 import {
   type LoreEntryRow,
   listInScope,
@@ -150,12 +150,9 @@ export const relyOnLore = Effect.fnUntraced(function* (threadId: string, ids: Re
   const counted = (yield* searchableOf(threadId)).filter((row) => ids.includes(row.id)).map((row) => row.id);
   const missed = [...new Set(ids)].filter((id) => !counted.includes(id));
   const missedNote = missed.length === 0 ? "" : ` Not in your scope, or archived: ${missed.join(", ")}.`;
-  if (counted.length === 0) return { isError: true, text: `No use counted.${missedNote}` };
+  if (counted.length === 0) return toolRefusal(`No use counted.${missedNote}`);
   yield* countUses(threadId, counted);
-  return {
-    isError: false,
-    text: `Counted ${counted.length === 1 ? "1 use" : `${counted.length} uses`}.${missedNote}`,
-  };
+  return toolText(`Counted ${counted.length === 1 ? "1 use" : `${counted.length} uses`}.${missedNote}`);
 });
 
 /**

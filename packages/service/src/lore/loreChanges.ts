@@ -1,7 +1,7 @@
 import type { LoreChangeKind, LoreChangeStatus, LoreKind, LoreOrigin } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { type ToolAnswer, tokensOf } from "../core/index.ts";
+import { newId, tokensOf, toolRefusal, toolText } from "../core/index.ts";
 import {
   type LoreEntryRow,
   listInScope,
@@ -26,8 +26,6 @@ import { correctLoreEntry, deleteLoreEntry, insertLoreEntry, replaceLoreEntry } 
 
 /** The scopes a thread names in its lore tools; mission is the top thread's scope. */
 export type ToolScope = "thread" | "mission" | "workspace" | "global";
-
-const answer = (text: string, isError = false): ToolAnswer => ({ isError, text });
 
 /** Where a thread's chosen scope puts a lore entry, or why it cannot. */
 const placementOf = (chain: ScopeChain, scope: ToolScope): Placement | string => {
@@ -76,9 +74,10 @@ const insertChange = Effect.fnUntraced(function* (change: ChangeRecord) {
   const sql = yield* SqlClient.SqlClient;
   const now = yield* Clock.currentTimeMillis;
   const origin = originColumnsOf(change.origin);
+  const id = yield* newId;
   yield* sql`INSERT INTO intel_changes (id, thread_id, kind, status, intel_id, intel_kind, scope, scope_thread_id,
         scope_workspace_id, text, previous_text, at, resolved_at, origin_kind, origin_entry, origin_from, origin_excerpt)
-      VALUES (${crypto.randomUUID()}, ${change.threadId}, ${change.kind}, ${change.status}, ${change.loreEntryId},
+      VALUES (${id}, ${change.threadId}, ${change.kind}, ${change.status}, ${change.loreEntryId},
         ${change.loreKind},
         ${change.placement.scope}, ${change.placement.threadId}, ${change.placement.workspaceId}, ${change.text},
         ${change.previousText}, ${now}, ${change.status === "Done" ? now : null}, ${origin.originKind},
@@ -106,12 +105,12 @@ export const saveLoreEntry = Effect.fnUntraced(function* (
   journalEntry: number | null,
 ) {
   const problem = textProblemOf(text);
-  if (problem !== null) return answer(`Not saved: ${problem}.`, true);
+  if (problem !== null) return toolRefusal(`Not saved: ${problem}.`);
   const chain = yield* readScopeChain(threadId);
   const placement = placementOf(chain, scope);
-  if (typeof placement === "string") return answer(`Not saved: ${placement}.`, true);
+  if (typeof placement === "string") return toolRefusal(`Not saved: ${placement}.`);
   const origin = yield* readOrigin(threadId, journalEntry);
-  if (typeof origin === "string") return answer(`Not saved: ${origin}.`, true);
+  if (typeof origin === "string") return toolRefusal(`Not saved: ${origin}.`);
   const loreKind = kindOfTool[toolKind];
   const { close, replaced } = duplicatesOf(text, placement, chain, yield* listInScope(chain), yield* readFading);
   const note = closeNoteOf(close);
@@ -128,13 +127,13 @@ export const saveLoreEntry = Effect.fnUntraced(function* (
     } as const;
     if (replaced.scope === "Global") {
       yield* insertChange({ ...replacement, status: "Awaiting" });
-      return answer(
+      return toolText(
         `It repeats global lore entry ${replaced.id}, "${replaced.text}", so it replaces it. ${awaitingText}`,
       );
     }
     yield* replaceLoreEntry(replaced.id, { kind: loreKind, origin, text }, threadActor(threadId));
     yield* insertChange({ ...replacement, status: "Done" });
-    return answer(`Replaced lore entry ${replaced.id}: it said "${replaced.text}"; it now says the new text.${note}`);
+    return toolText(`Replaced lore entry ${replaced.id}: it said "${replaced.text}"; it now says the new text.${note}`);
   }
   const change = {
     kind: "Save",
@@ -147,11 +146,11 @@ export const saveLoreEntry = Effect.fnUntraced(function* (
   } as const;
   if (placement.scope === "Global") {
     yield* insertChange({ ...change, loreEntryId: null, status: "Awaiting" });
-    return answer(`${awaitingText}${note}`);
+    return toolText(`${awaitingText}${note}`);
   }
   const loreEntryId = yield* insertLoreEntry({ kind: loreKind, origin, placement, text, threadId });
   yield* insertChange({ ...change, loreEntryId, status: "Done" });
-  return answer(`Saved lore entry ${loreEntryId} (${scope}, ${toolKind}).${note}`);
+  return toolText(`Saved lore entry ${loreEntryId} (${scope}, ${toolKind}).${note}`);
 });
 
 /** The lore with that identifier in the thread's scope, or null. */
@@ -165,20 +164,19 @@ export const updateLoreEntry = Effect.fnUntraced(function* (
   text: string | null,
   scope: ToolScope | null,
 ) {
-  if (text === null && scope === null) return answer("Not changed: give text, scope, or both.", true);
+  if (text === null && scope === null) return toolRefusal("Not changed: give text, scope, or both.");
   const problem = text === null ? null : textProblemOf(text);
-  if (problem !== null) return answer(`Not changed: ${problem}.`, true);
+  if (problem !== null) return toolRefusal(`Not changed: ${problem}.`);
   const chain = yield* readScopeChain(threadId);
   const row = yield* readInScope(chain, loreEntryId);
-  if (row === null) return answer(`Not changed: no lore entry ${loreEntryId} in your scope.`, true);
+  if (row === null) return toolRefusal(`Not changed: no lore entry ${loreEntryId} in your scope.`);
   const current = placementOfRow(row);
   const placement = scope === null ? current : placementOf(chain, scope);
-  if (typeof placement === "string") return answer(`Not changed: ${placement}.`, true);
+  if (typeof placement === "string") return toolRefusal(`Not changed: ${placement}.`);
   const isWidening = widthOf(placement, chain.topThreadId) > widthOf(current, chain.topThreadId);
   if (scope !== null && !isWidening) {
-    return answer(
+    return toolRefusal(
       `Not changed: lore entry ${loreEntryId} is ${toolScopeOf(current, chain)} lore; update_intel only widens a scope.`,
-      true,
     );
   }
   const change = {
@@ -193,19 +191,19 @@ export const updateLoreEntry = Effect.fnUntraced(function* (
   } as const;
   if (isWidening || row.scope === "Global") {
     yield* insertChange({ ...change, status: "Awaiting" });
-    return answer(awaitingText);
+    return toolText(awaitingText);
   }
   // Only a widening moves a lore entry, and it waits for the owner, so a change done at once is a correction.
   yield* correctLoreEntry(loreEntryId, change.text, threadActor(threadId));
   yield* insertChange({ ...change, status: "Done" });
-  return answer(`Updated lore entry ${loreEntryId}.`);
+  return toolText(`Updated lore entry ${loreEntryId}.`);
 });
 
 /** `forget_intel`: deletes thread and workspace lore at once; deleting a global lore entry waits for the owner. */
 export const forgetLoreEntry = Effect.fnUntraced(function* (threadId: string, loreEntryId: string) {
   const chain = yield* readScopeChain(threadId);
   const row = yield* readInScope(chain, loreEntryId);
-  if (row === null) return answer(`Not deleted: no lore entry ${loreEntryId} in your scope.`, true);
+  if (row === null) return toolRefusal(`Not deleted: no lore entry ${loreEntryId} in your scope.`);
   const change = {
     kind: "Forget",
     loreEntryId,
@@ -218,9 +216,9 @@ export const forgetLoreEntry = Effect.fnUntraced(function* (threadId: string, lo
   } as const;
   if (row.scope === "Global") {
     yield* insertChange({ ...change, status: "Awaiting" });
-    return answer(awaitingText);
+    return toolText(awaitingText);
   }
   yield* deleteLoreEntry(loreEntryId, threadActor(threadId));
   yield* insertChange({ ...change, status: "Done" });
-  return answer(`Deleted lore entry ${loreEntryId}.`);
+  return toolText(`Deleted lore entry ${loreEntryId}.`);
 });

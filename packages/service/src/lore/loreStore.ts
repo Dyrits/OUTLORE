@@ -1,6 +1,7 @@
 import type { LoreHistoryKind, LoreKind, LoreOrigin } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
+import { newId } from "../core/index.ts";
 import type { Placement } from "./lore.ts";
 import { readFading } from "./loreFading.ts";
 import {
@@ -48,9 +49,10 @@ const insertEntry = Effect.fnUntraced(function* (entry: EntryRecord) {
   const now = yield* Clock.currentTimeMillis;
   const threadId = entry.actor.kind === "Thread" ? entry.actor.threadId : null;
   const state = entry.after ?? entry.before;
+  const id = yield* newId;
   yield* sql`INSERT INTO intel_history (id, intel_id, kind, actor, actor_thread_id, actor_title, at, approved_at,
       before_state, after_state, scope_thread_id, undid, undo_of)
-    VALUES (${crypto.randomUUID()}, ${entry.loreEntryId}, ${entry.kind}, ${entry.actor.kind}, ${threadId},
+    VALUES (${id}, ${entry.loreEntryId}, ${entry.kind}, ${entry.actor.kind}, ${threadId},
       (SELECT title FROM threads WHERE id = ${threadId}), ${now}, ${entry.approvedAt},
       ${entry.before === null ? null : JSON.stringify(entry.before)},
       ${entry.after === null ? null : JSON.stringify(entry.after)}, ${state?.threadId ?? null},
@@ -120,7 +122,7 @@ type NewLoreEntry = {
 export const insertLoreEntry = Effect.fnUntraced(function* (loreEntry: NewLoreEntry, approvedAt: number | null = null) {
   const sql = yield* SqlClient.SqlClient;
   const now = yield* Clock.currentTimeMillis;
-  const id = crypto.randomUUID();
+  const id = yield* newId;
   const origin = originColumnsOf(loreEntry.origin);
   const { placement } = loreEntry;
   yield* sql`INSERT INTO intels (id, scope, kind, thread_id, workspace_id, text, saved_by_thread_id, saved_by_title,

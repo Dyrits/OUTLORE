@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { AccountId, AccountStatus, HarnessInfo, HarnessList, HarnessName } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid, notFound } from "../core/index.ts";
+import { invalid, newId, notFound } from "../core/index.ts";
 import { HarnessTools, harnessLabels, harnessNames, type SignInStatus } from "../harness/index.ts";
 import { ownAccountLabelOf } from "../remote/index.ts";
 import { AccountsRoot } from "./threads.ts";
@@ -146,7 +146,7 @@ export const addAccount = Effect.fnUntraced(function* (harness: HarnessName, lab
   const sql = yield* SqlClient.SqlClient;
   const accountsRoot = yield* AccountsRoot;
   const name = yield* trimmedLabel(label);
-  const id = crypto.randomUUID();
+  const id = yield* newId;
   const now = yield* Clock.currentTimeMillis;
   yield* Effect.sync(() => mkdirSync(accountFolderOf(accountsRoot, id), { recursive: true }));
   yield* sql`INSERT INTO accounts (id, harness, label, created_at) VALUES (${id}, ${harness}, ${name}, ${now})`;

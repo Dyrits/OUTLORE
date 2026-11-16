@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import type { SqlClient } from "effect/sql";
+import { toolText } from "../core/index.ts";
 import { forgetLoreEntry, relyOnLore, saveLoreEntry, searchLoreText, updateLoreEntry } from "../lore/index.ts";
 import { searchInvalid, type ToolHandlers } from "./threadTools.ts";
 
@@ -16,8 +17,6 @@ export const loreToolsOf = (
   search_intel: (threadId, { ids, query, scope }) =>
     query === undefined && (ids === undefined || ids.length === 0)
       ? Effect.succeed(searchInvalid)
-      : commit(searchLoreText(threadId, query ?? null, ids ?? [], scope ?? null)).pipe(
-          Effect.map((text) => ({ isError: false, text })),
-        ),
+      : commit(searchLoreText(threadId, query ?? null, ids ?? [], scope ?? null)).pipe(Effect.map(toolText)),
   update_intel: (threadId, { id, scope, text }) => commit(updateLoreEntry(threadId, id, text ?? null, scope ?? null)),
 });

@@ -5,6 +5,7 @@ import type { LoreEntryId, LoreProposal, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { afterEach } from "vitest";
+import { dayMillis } from "../../src/core/index.ts";
 import { call, entryOf, fixture, start, tool } from "../fixtures/service.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...) and thread tool names (`save_intel`, ...).
@@ -21,7 +22,6 @@ afterEach(() => {
   for (const value of fixtures.splice(0)) value.remove();
 });
 
-const day = 24 * 60 * 60 * 1000;
 const advance = (millis: number) =>
   Effect.gen(function* () {
     yield* TestClock.adjust(millis);
@@ -139,7 +139,7 @@ describe("proposing widening from evidence", () => {
       yield* save(first.threadId, "The provider's API is flaky this week.", "workspace", "temporary");
       yield* save(second.threadId, "The provider's API is flaky this week.", "workspace", "temporary");
       expect(yield* proposals).toHaveLength(1);
-      yield* advance(20 * day);
+      yield* advance(20 * dayMillis);
       expect(yield* proposals).toEqual([]);
     }).pipe(Effect.provide(layer));
   });
@@ -152,10 +152,10 @@ describe("proposing widening from evidence", () => {
       yield* save(first.threadId, "The staging database is called orchid.", "workspace");
       yield* advance(1000);
       const newer = idOf(yield* save(second.threadId, "The staging database is called orchid now.", "workspace"));
-      yield* advance(10 * day);
+      yield* advance(10 * dayMillis);
       yield* tool(first.threadId, "search_intel", { query: "orchid" });
       yield* resolve((yield* proposals)[0], true);
-      yield* advance(36 * day);
+      yield* advance(36 * dayMillis);
       expect(yield* proposals).toMatchObject([
         { kind: "Narrow", loreEntries: [{ id: newer }], scopeLabel: "Workspace alpha", uses: 1 },
       ]);
@@ -193,7 +193,7 @@ describe("proposing widening from evidence", () => {
       const view = yield* panel();
       expect(view.proposals).toEqual([]);
       expect(view.loreEntries.map((loreEntry) => loreEntry.scope)).toEqual(["Workspace", "Workspace"]);
-      yield* advance(day);
+      yield* advance(dayMillis);
       expect(yield* proposals).toEqual([]);
     }).pipe(Effect.provide(layer));
   });
@@ -244,10 +244,10 @@ describe("proposing narrowing from evidence", () => {
     return Effect.gen(function* () {
       const { threadId } = yield* idle(folder(directory, "alpha"));
       const id = yield* saveGlobal(threadId, "The staging database is called orchid.");
-      yield* advance(20 * day);
+      yield* advance(20 * dayMillis);
       yield* tool(threadId, "search_intel", { query: "orchid" });
       expect(yield* proposals).toEqual([]);
-      yield* advance(26 * day);
+      yield* advance(26 * dayMillis);
       yield* tool(threadId, "search_intel", { query: "orchid" });
       expect(yield* proposals).toMatchObject([
         {
@@ -270,7 +270,7 @@ describe("proposing narrowing from evidence", () => {
       yield* saveGlobal(threadId, "The staging database is called orchid.");
       yield* saveGlobal(threadId, "The owner signs off messages with a dash.", "preference");
       yield* saveGlobal(threadId, "Never push to the release branch on weekends.", "rule");
-      yield* advance(100 * day);
+      yield* advance(100 * dayMillis);
       yield* tool(threadId, "search_intel", { query: "orchid weekends" });
       yield* tool(scratch.threadId, "search_intel", { query: "orchid" });
       expect(yield* proposals).toEqual([]);
@@ -285,7 +285,7 @@ describe("proposing narrowing from evidence", () => {
       const scratch = yield* idle();
       yield* saveGlobal(alpha.threadId, "The staging database is called orchid.");
       yield* saveGlobal(alpha.threadId, "The release train leaves on Tuesdays.");
-      yield* advance(46 * day);
+      yield* advance(46 * dayMillis);
       yield* tool(alpha.threadId, "search_intel", { query: "orchid" });
       yield* tool(beta.threadId, "search_intel", { query: "orchid" });
       yield* tool(scratch.threadId, "search_intel", { query: "release train tuesdays" });
@@ -299,9 +299,9 @@ describe("proposing narrowing from evidence", () => {
       const alpha = yield* idle(folder(directory, "alpha"));
       const beta = yield* idle(folder(directory, "beta"));
       yield* saveGlobal(alpha.threadId, "The staging database is called orchid.");
-      yield* advance(10 * day);
+      yield* advance(10 * dayMillis);
       yield* tool(beta.threadId, "search_intel", { query: "orchid" });
-      yield* advance(50 * day);
+      yield* advance(50 * dayMillis);
       yield* tool(alpha.threadId, "search_intel", { query: "orchid" });
       expect(yield* proposals).toMatchObject([{ kind: "Narrow", scopeLabel: "Workspace alpha", uses: 1 }]);
     }).pipe(Effect.provide(layer));
@@ -312,7 +312,7 @@ describe("proposing narrowing from evidence", () => {
     return Effect.gen(function* () {
       const { threadId } = yield* idle(folder(directory, "alpha"));
       const id = yield* saveGlobal(threadId, "The staging database is called orchid.");
-      yield* advance(46 * day);
+      yield* advance(46 * dayMillis);
       yield* tool(threadId, "relied_on_intel", { ids: [id] });
       yield* resolve((yield* proposals)[0], true);
       expect((yield* panel()).loreEntries).toMatchObject([{ id, scope: "Workspace", scopeLabel: "Workspace alpha" }]);
