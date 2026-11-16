@@ -245,11 +245,12 @@ export const suggestionsLayer = Layer.effect(
           missionId: string;
         }>`SELECT mission_id AS missionId FROM threads WHERE id = ${threadId}`;
         if (caller === undefined) return unchanged<Suggested>({ _tag: "UnknownThread" });
+        // Chronicler's own quest is never a place to continue (find_missions leaves it out too).
         const existing = new Set(
           (missions.length === 0
             ? []
             : yield* sql<{ id: string }>`SELECT m.id FROM missions m JOIN threads top ON top.id = m.top_thread_id
-                WHERE m.id IN ${sql.in([...missions])} AND top.is_deleting = 0`
+                WHERE m.id IN ${sql.in([...missions])} AND top.is_deleting = 0 AND m.is_guildmaster = 0`
           ).map((row) => row.id),
         );
         const named = [...new Set(missions)]

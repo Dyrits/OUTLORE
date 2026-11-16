@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { guildmaster, isIdle, listed, say, startIdle } from "../fixtures/guildmaster.ts";
-import { fixture, read, settle, tool } from "../fixtures/service.ts";
+import { fixture, read, send, settle, tool } from "../fixtures/service.ts";
 import { answer, folderIn, questOf } from "./guildmasterHelpers.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
@@ -41,6 +41,22 @@ describe("finding a quest that already fits", () => {
       const found = yield* tool(place.threadId, "find_missions", { request: "Checkout total rounding, PAY-481" });
       expect(found.indexOf(ticket.missionId)).toBeLessThan(found.indexOf(wordy.missionId));
       expect(found).not.toContain(place.missionId);
+    }).pipe(Effect.provide(setup().layer)),
+  );
+
+  it.live("does not let a quest name Chronicler's own quest as a match", () =>
+    Effect.gen(function* () {
+      const place = yield* guildmaster;
+      const caller = yield* startIdle("Existing work");
+      const args = { missions: [place.missionId], text: "Something off topic", title: "Off topic" };
+      yield* send(caller.threadId, `call suggest_mission ${JSON.stringify(args)}`);
+      const waiting = yield* settle(
+        caller.missionId,
+        (detail) => detail.suggestions.some((suggestion) => suggestion.outcome === null),
+        caller.threadId,
+      );
+      const card = waiting.suggestions.find((suggestion) => suggestion.outcome === null);
+      expect(card?.matches).toEqual([]);
     }).pipe(Effect.provide(setup().layer)),
   );
 
