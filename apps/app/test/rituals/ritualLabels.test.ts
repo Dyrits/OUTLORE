@@ -35,9 +35,11 @@ describe("a schedule in words", () => {
 describe("the next run in words", () => {
   const now = at(11, 10, 12, 0);
   it("gives the time today or tomorrow, else the weekday, and says when a Ritual is off", () => {
-    expect(nextRunLabelOf(at(11, 10, 18, 5), now)).toBe("Next run today 18:05");
-    expect(nextRunLabelOf(at(11, 11, 7, 0), now)).toBe("Next run tomorrow 07:00");
-    expect(nextRunLabelOf(at(11, 13, 7, 0), now)).toBe("Next run Fri 07:00");
+    const clock = (time: number) =>
+      new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(time);
+    expect(nextRunLabelOf(at(11, 10, 18, 5), now)).toBe(`Next run today ${clock(at(11, 10, 18, 5))}`);
+    expect(nextRunLabelOf(at(11, 11, 7, 0), now)).toBe(`Next run tomorrow ${clock(at(11, 11, 7, 0))}`);
+    expect(nextRunLabelOf(at(11, 13, 7, 0), now)).toBe(`Next run Fri ${clock(at(11, 13, 7, 0))}`);
     expect(nextRunLabelOf(null, now)).toBe("Off");
   });
 });

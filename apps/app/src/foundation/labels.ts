@@ -21,6 +21,7 @@ import type {
   SuggestionOutcome,
   ThreadPanel,
 } from "@outlore/contracts";
+import { clockOf } from "./formatting";
 
 /** A count with its noun, in the singular for one and the plural otherwise, for example "1 step" or "3 steps". */
 export const countedOf = (count: number, noun: string) => `${count} ${count === 1 ? noun : `${noun}s`}`;
@@ -167,8 +168,6 @@ export const accountBudgetTextOf = (
   return `${parts.length === 0 ? "No budget" : parts.join(" · ")} · counted by Outlore`;
 };
 
-const clockTextOf = (at: number) => new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-
 /** The line under an agent reply, for example "1,240 tokens · ≈ $0.02"; the cost only when a price is known. */
 export const replyUsageTextOf = (usage: ReplyUsage) => {
   const cost = costTextOf({ estimated: usage.estimated ?? 0, reported: usage.reported ?? 0 });
@@ -178,13 +177,13 @@ export const replyUsageTextOf = (usage: ReplyUsage) => {
 
 /** A plan limit in words, for example "5-hour · 40% used · resets 19:30". */
 export const planLimitTextOf = (window: PlanLimitWindow) =>
-  `${window.label} · ${Math.round(window.usedPercent)}% used · resets ${clockTextOf(window.resetsAt)}`;
+  `${window.label} · ${Math.round(window.usedPercent)}% used · resets ${clockOf(window.resetsAt)}`;
 
 /** A plan's limits on one line, for example "5-hour 40% · Weekly 93% · as of 14:02"; none are never guessed. */
 export const planLimitsSummaryOf = (reading: PlanLimitReading | null) =>
   reading === null || reading.windows.length === 0
     ? "Limits not reported"
-    : `${reading.windows.map((window) => `${window.label} ${Math.round(window.usedPercent)}%`).join(" · ")} · as of ${clockTextOf(reading.readAt)}`;
+    : `${reading.windows.map((window) => `${window.label} ${Math.round(window.usedPercent)}%`).join(" · ")} · as of ${clockOf(reading.readAt)}`;
 
 /** Where the price table in use came from, for example "Prices from models.dev · fetched 10 Nov". */
 export const priceStatusTextOf = (status: PriceStatus) => {

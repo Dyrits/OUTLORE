@@ -1,4 +1,5 @@
 import type { RitualRunState, RitualSchedule } from "@outlore/contracts";
+import { clockOf } from "../foundation/formatting";
 
 // How Rituals read in the interface: schedules and next runs in words, and the choices a schedule form offers.
 
@@ -63,8 +64,6 @@ const startOfDay = (millis: number) => {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 };
 const dayMillis = 24 * 60 * 60 * 1000;
-const clockOf = (millis: number) =>
-  new Date(millis).toLocaleTimeString("en-GB", { hour: "2-digit", hour12: false, minute: "2-digit" });
 
 /** When the Ritual next runs, in words relative to now, or "Off" when it has none. */
 export const nextRunLabelOf = (nextRunAt: number | null, now: number): string => {
