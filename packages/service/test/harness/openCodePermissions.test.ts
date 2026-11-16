@@ -69,13 +69,14 @@ describe("asking the owner before OpenCode acts", () => {
     }).pipe(Effect.provide(layer));
   });
 
-  it.live("lets an edit inside the thread's folder run without a question", () => {
+  it.live("lets an edit inside the thread's folder run without a question, and leaves a line for it", () => {
     const { layer } = withHarnesses();
     return Effect.gen(function* () {
       const started = yield* startMission({ harness: "opencode", text: "edit notes/plan.md" });
       const detail = yield* settle(started.missionId, idleWith(1));
       expect(replies(detail)).toEqual(["notes/plan.md: once "]);
-      expect(detail.questions).toEqual([]);
+      // Decided by the service like any harness prompt, so it shows in the thread and in the Permissions history.
+      expect(detail.questions.map((question) => question.outcome)).toEqual(["AllowedAutomatically"]);
     }).pipe(Effect.provide(layer));
   });
 

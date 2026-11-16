@@ -31,7 +31,7 @@ import {
 import { approvalInstructionsOf } from "./instructions.ts";
 import { harnessEnvironmentOf, type RpcIncoming, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
 import { makeOpenCodeLauncher } from "./openCodeLaunch.ts";
-import { editedPathsOf, findFirstOutside, isUnaskedEdit, promptOf, refusalOf } from "./openCodePrompts.ts";
+import { editedPathsOf, findFirstOutside, promptOf, refusalOf } from "./openCodePrompts.ts";
 import { type OpenCodeSandbox, writeOwnerMarker } from "./openCodeSandbox.ts";
 import { sweepOrphans } from "./processTree.ts";
 import { toolServerName } from "./toolNames.ts";
@@ -138,7 +138,7 @@ interface OpenCodeConnection extends HarnessConnection {
 /**
  * OpenCode's permissions (CHG-0031, CHG-0208). Every command and edit asks Outlore. Wrapped in the host's sandbox, a
  * command runs unasked at the default level; with no sandbox, it asks the owner. An edit inside the thread's folder runs
- * unasked unless the level is "Also commands and edits" (`isUnaskedEdit`). Its own subagents stay off: threads open
+ * unasked unless the level is "Also commands and edits", as the service decides. Its own subagents stay off: threads open
  * threads with open_thread (ADR 0007).
  */
 const permissions = [
@@ -201,21 +201,20 @@ const answerRequest = Effect.fnUntraced(function* (
   if (incoming.method !== "session/request_permission")
     return connection.rpc.respondError(incoming.id, `Outlore does not answer ${incoming.method}.`);
   const toolCall = fieldOf(incoming.params, "toolCall");
+  // Every permission request goes to the service, which decides from where the action runs (an edit inside the thread's
+  // folder or one of its workspace's worktrees at the default level runs, leaving a line) and records it.
   // Nothing runs unasked on an assumption: the executor must be seen below the wrapped process, or it asks.
   const isUnconfirmed = connection.isContainmentUnconfirmed();
-  let isAllowed = !isUnconfirmed && !connection.isUnsandboxed && (yield* isUnaskedEdit(request, toolCall));
-  if (!isAllowed) {
-    // An edit naming no file is judged as leaving the folder: its title is no path to trust.
-    const isPathless = textFieldOf(toolCall, "kind") === "edit" && editedPathsOf(toolCall).length === 0;
-    const prompt = {
-      ...promptOf(toolCall, yield* findFirstOutside(request, toolCall)),
-      ...(isUnconfirmed || isPathless ? { isOutsideSandbox: true } : {}),
-      ...(connection.isUnsandboxed ? { isUnsandboxed: true } : {}),
-    };
-    const answer = yield* request.askOwner(prompt);
-    isAllowed = answer.isAllowed;
-    if (!isAllowed) refusals.push(refusalOf(prompt, answer));
-  }
+  // An edit naming no file is judged as leaving the folder: its title is no path to trust.
+  const isPathless = textFieldOf(toolCall, "kind") === "edit" && editedPathsOf(toolCall).length === 0;
+  const prompt = {
+    ...promptOf(toolCall, yield* findFirstOutside(request, toolCall)),
+    ...(isUnconfirmed || isPathless ? { isOutsideSandbox: true } : {}),
+    ...(connection.isUnsandboxed ? { isUnsandboxed: true } : {}),
+  };
+  const answer = yield* request.askOwner(prompt);
+  const isAllowed = answer.isAllowed;
+  if (!isAllowed) refusals.push(refusalOf(prompt, answer));
   const wanted = isAllowed ? "allow_once" : "reject_once";
   const offered = fieldOf(incoming.params, "options");
   const option = Array.isArray(offered)
