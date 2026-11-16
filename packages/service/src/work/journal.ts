@@ -214,9 +214,23 @@ export const journalInstructions = [
   "Call read_journal for the current briefing and older entries. Call update_journal with an entry when you settle a decision, change direction, or finish a piece of work. Rewrite the briefing only when where the quest stands has changed: pass the whole new briefing and basedOn, the version you started from.",
 ].join("\n");
 
-/** The mission's journal for each turn's message: the briefing and the latest entries. */
-export const journalContextOf = Effect.fnUntraced(function* (missionId: string) {
+/**
+ * The mission's journal for each turn's message: the briefing and the latest entries. An aside starts with the briefing
+ * only (mission-journal, thread-tree): its change log is one `read_journal` away.
+ */
+export const journalContextOf = Effect.fnUntraced(function* (
+  missionId: string,
+  { isBriefingOnly = false }: { isBriefingOnly?: boolean } = {},
+) {
   const briefing = yield* readBriefing(missionId);
+  if (isBriefingOnly)
+    return [
+      "# Quest journal at this turn",
+      `Briefing (version ${briefing.version}):`,
+      briefing.briefing === "" ? "(empty)" : briefing.briefing,
+      "",
+      "The change log is not included: call read_journal for its entries.",
+    ].join("\n");
   const entries = yield* listEntries(missionId, null, latestEntryCount);
   return ["# Quest journal at this turn", journalTextOf(briefing, entries)].join("\n");
 });

@@ -192,6 +192,7 @@ describe("suggesting where an off-topic request goes", () => {
     Effect.gen(function* () {
       const current = yield* startIdle("Write the report");
       yield* brief(current.missionId, "The report covers Q3 sales.");
+      yield* tool(current.threadId, "update_journal", { entry: "Settled the layout of the Q3 tables" });
       yield* suggest(current.threadId, { missions: [], text: "context", title: "Weather chat" });
       const { suggestion } = yield* openSuggestion(current.missionId);
       yield* answer(suggestion, { _tag: "Aside" });
@@ -211,6 +212,8 @@ describe("suggesting where an off-topic request goes", () => {
       expect(aside.messages[0]).toMatchObject({ sender: "user", text: "context" });
       const context = lastAgentText(aside);
       expect(context).toContain("The report covers Q3 sales.");
+      // An aside starts with the briefing only (mission-journal): the change log stays out of its first turn.
+      expect(context).not.toContain("Settled the layout of the Q3 tables");
       expect(context).toContain("went off the quest's topic and was put aside");
       expect(context).toContain("comes back to the quest");
       const refused = yield* tool(asideId, "update_journal", { entry: "Weather is fine" });

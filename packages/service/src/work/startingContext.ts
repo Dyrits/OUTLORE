@@ -79,7 +79,9 @@ const readSections = Effect.fnUntraced(function* (subject: Subject, workspace: s
       ? [guildmasterInstructionsOf(subject.position.threadId), loreInstructions]
       : [threadInstructionsOf(subject.position), journalInstructions, loreInstructions]
     ).join("\n\n"),
-    journal: subject.isGuildmaster ? yield* readGuildmasterContext : yield* journalContextOf(subject.missionId),
+    journal: subject.isGuildmaster
+      ? yield* readGuildmasterContext
+      : yield* journalContextOf(subject.missionId, { isBriefingOnly: subject.position.isAside }),
     lore: yield* loreContextOf(subject.loreThreadId),
     openerMessages: openerContextOf(subject.openerMessages),
     position: positionLineOf(subject.position),
