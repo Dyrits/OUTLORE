@@ -79,34 +79,33 @@ const rankOf = (entry: WorkspaceEntry, query: string) => {
  * The entries of the workspace folder that match what follows an `@`, best first; an empty query lists the top level.
  * Refused for a path that is not an existing folder.
  */
-export const listWorkspaceEntries = (workspacePath: string, query: string) =>
-  Effect.gen(function* () {
-    const folder = yield* realFolderOf(workspacePath);
-    if (folder === null) return yield* invalid(`No folder at ${workspacePath}.`);
-    // Both reads are synchronous platform calls, so they are suspended rather than run while the Effect is built.
-    const files = yield* Effect.sync(() => gitFilesOf(folder) ?? walkedFilesOf(folder));
-    const entries = entriesOf(files);
-    const needle = query.trim().toLowerCase();
-    if (needle === "") {
-      return entries
-        .filter((entry) => depthOf(entry) === 1)
-        .sort(
-          (first, second) =>
-            Number(second.kind === "folder") - Number(first.kind === "folder") || first.path.localeCompare(second.path),
-        )
-        .slice(0, MAX_RESULTS);
-    }
+export const listWorkspaceEntries = Effect.fnUntraced(function* (workspacePath: string, query: string) {
+  const folder = yield* realFolderOf(workspacePath);
+  if (folder === null) return yield* invalid(`No folder at ${workspacePath}.`);
+  // Both reads are synchronous platform calls, so they are suspended rather than run while the Effect is built.
+  const files = yield* Effect.sync(() => gitFilesOf(folder) ?? walkedFilesOf(folder));
+  const entries = entriesOf(files);
+  const needle = query.trim().toLowerCase();
+  if (needle === "") {
     return entries
-      .flatMap((entry) => {
-        const rank = rankOf(entry, needle);
-        return rank === null ? [] : [{ entry, rank }];
-      })
+      .filter((entry) => depthOf(entry) === 1)
       .sort(
         (first, second) =>
-          first.rank - second.rank ||
-          first.entry.path.length - second.entry.path.length ||
-          first.entry.path.localeCompare(second.entry.path),
+          Number(second.kind === "folder") - Number(first.kind === "folder") || first.path.localeCompare(second.path),
       )
-      .slice(0, MAX_RESULTS)
-      .map(({ entry }) => entry);
-  });
+      .slice(0, MAX_RESULTS);
+  }
+  return entries
+    .flatMap((entry) => {
+      const rank = rankOf(entry, needle);
+      return rank === null ? [] : [{ entry, rank }];
+    })
+    .sort(
+      (first, second) =>
+        first.rank - second.rank ||
+        first.entry.path.length - second.entry.path.length ||
+        first.entry.path.localeCompare(second.entry.path),
+    )
+    .slice(0, MAX_RESULTS)
+    .map(({ entry }) => entry);
+});

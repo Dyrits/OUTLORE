@@ -12,10 +12,9 @@ import { readTurnReach } from "./mentions.ts";
  * Whether a thread may message another by the tree's rules: its parent, a thread directly beneath it, any thread to
  * the Guildmaster, and the Guildmaster to a quest's top thread (quest coordination, References between quests).
  */
-const isWithinTree = (fromId: string, toId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const rows = yield* sql<{ id: string }>`
+const isWithinTree = Effect.fnUntraced(function* (fromId: string, toId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ id: string }>`
       SELECT id FROM threads
       WHERE (id = ${toId} AND parent_id = ${fromId})
         OR (id = ${fromId} AND parent_id = ${toId})
@@ -27,23 +26,21 @@ const isWithinTree = (fromId: string, toId: string) =>
       WHERE t.id = ${toId} AND m.is_guildmaster = 0 AND t.parent_id IS NULL AND t.is_deleting = 0
         AND EXISTS (SELECT 1 FROM threads f JOIN missions fm ON fm.id = f.mission_id
           WHERE f.id = ${fromId} AND fm.is_guildmaster = 1)`;
-    return rows.length > 0;
-  });
+  return rows.length > 0;
+});
 
 /**
  * Whether a thread may message another: by the tree's rules, or because the owner mentioned that thread's quest or
  * side-quest in a message its current turn received, or because the other thread wrote to it in that turn.
  */
-export const mayMessage = (fromId: string, toId: string) =>
-  Effect.gen(function* () {
-    return (yield* isWithinTree(fromId, toId)) || (yield* readTurnReach(fromId)).reachable.has(toId);
-  });
+export const mayMessage = Effect.fnUntraced(function* (fromId: string, toId: string) {
+  return (yield* isWithinTree(fromId, toId)) || (yield* readTurnReach(fromId)).reachable.has(toId);
+});
 
 /**
  * Whether a thread may read another quest's journal: Chronicler reads any; another thread only one the owner mentioned,
  * or one of whose side-quests the owner mentioned, in a message its current turn received.
  */
-export const mayReadJournal = (threadId: string, missionId: string) =>
-  Effect.gen(function* () {
-    return (yield* readTurnReach(threadId)).readable.has(missionId) || (yield* isGuildmasterThread(threadId));
-  });
+export const mayReadJournal = Effect.fnUntraced(function* (threadId: string, missionId: string) {
+  return (yield* readTurnReach(threadId)).readable.has(missionId) || (yield* isGuildmasterThread(threadId));
+});

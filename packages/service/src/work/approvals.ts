@@ -54,18 +54,16 @@ export const approvalsLayer = Layer.effect(
         ]),
       );
 
-    const takeAllowance = (threadId: string, target: string, outsideSandbox: boolean) =>
-      Effect.gen(function* () {
-        const turnId = yield* readTurnId(threadId);
-        const targets = allowances.get(threadId) ?? [];
-        const index = targets.findIndex(
-          (grant) =>
-            grant.target === target.trim() && grant.turnId === turnId && grant.outsideSandbox === outsideSandbox,
-        );
-        if (index === -1) return false;
-        allowances.set(threadId, targets.toSpliced(index, 1));
-        return true;
-      });
+    const takeAllowance = Effect.fnUntraced(function* (threadId: string, target: string, outsideSandbox: boolean) {
+      const turnId = yield* readTurnId(threadId);
+      const targets = allowances.get(threadId) ?? [];
+      const index = targets.findIndex(
+        (grant) => grant.target === target.trim() && grant.turnId === turnId && grant.outsideSandbox === outsideSandbox,
+      );
+      if (index === -1) return false;
+      allowances.set(threadId, targets.toSpliced(index, 1));
+      return true;
+    });
 
     const questions = makeQuestions(sql, changes, (threadId) => allowances.delete(threadId));
     const { ask, record, answer, answerChoices, withdraw } = questions;
@@ -76,62 +74,60 @@ export const approvalsLayer = Layer.effect(
       readTurnId,
       takeAllowance,
     });
-    const requestApproval = (threadId: string, request: ApprovalRequest) =>
-      Effect.gen(function* () {
-        const missionId = yield* missionOf(threadId);
-        if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
-        const turnId = yield* readTurnId(threadId);
-        if (turnId === null) return { isAllowed: false, text: "No running turn to approve." } satisfies Decision;
-        const outsideSandbox = request.outsideSandbox ?? false;
-        // The question names only what the service knows: the exact command, and whether it leaves the sandbox.
-        const kind = outsideSandbox ? capabilities.outsideSandbox : null;
-        const asked: Asked = {
-          details: request.command,
-          kind: "Approval",
-          missionId,
-          // Always allow saves this exact command, never a pattern the thread proposed.
-          pattern: request.command.trim(),
-          permission: kind ?? "Run this exact command",
-          source: "Thread",
-          summary: outsideSandbox ? `${request.action}. Run this exact command outside the sandbox.` : request.action,
-          threadId,
-        };
-        const covering = yield* findCoveringPermission(threadId, request.command, kind);
-        if (covering !== null) {
-          const resolution: Resolution = { message: covering.sentence, outcome: "AllowedByPermission" };
-          yield* record(asked, resolution);
-          yield* allowOnce(threadId, request.command, turnId, outsideSandbox);
-          return { isAllowed: true, text: textOf(resolution, outsideSandbox) } satisfies Decision;
-        }
-        const resolution = yield* ask(asked);
-        const isAllowed = allowingOutcomes.includes(resolution.outcome) && (yield* readTurnId(threadId)) === turnId;
-        if (isAllowed) yield* allowOnce(threadId, request.command, turnId, outsideSandbox);
-        return { isAllowed, text: textOf(resolution, outsideSandbox) } satisfies Decision;
-      }).pipe(Effect.orDie);
+    const requestApproval = Effect.fnUntraced(function* (threadId: string, request: ApprovalRequest) {
+      const missionId = yield* missionOf(threadId);
+      if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
+      const turnId = yield* readTurnId(threadId);
+      if (turnId === null) return { isAllowed: false, text: "No running turn to approve." } satisfies Decision;
+      const outsideSandbox = request.outsideSandbox ?? false;
+      // The question names only what the service knows: the exact command, and whether it leaves the sandbox.
+      const kind = outsideSandbox ? capabilities.outsideSandbox : null;
+      const asked: Asked = {
+        details: request.command,
+        kind: "Approval",
+        missionId,
+        // Always allow saves this exact command, never a pattern the thread proposed.
+        pattern: request.command.trim(),
+        permission: kind ?? "Run this exact command",
+        source: "Thread",
+        summary: outsideSandbox ? `${request.action}. Run this exact command outside the sandbox.` : request.action,
+        threadId,
+      };
+      const covering = yield* findCoveringPermission(threadId, request.command, kind);
+      if (covering !== null) {
+        const resolution: Resolution = { message: covering.sentence, outcome: "AllowedByPermission" };
+        yield* record(asked, resolution);
+        yield* allowOnce(threadId, request.command, turnId, outsideSandbox);
+        return { isAllowed: true, text: textOf(resolution, outsideSandbox) } satisfies Decision;
+      }
+      const resolution = yield* ask(asked);
+      const isAllowed = allowingOutcomes.includes(resolution.outcome) && (yield* readTurnId(threadId)) === turnId;
+      if (isAllowed) yield* allowOnce(threadId, request.command, turnId, outsideSandbox);
+      return { isAllowed, text: textOf(resolution, outsideSandbox) } satisfies Decision;
+    }, Effect.orDie);
 
     /** Holds the turn on the owner's choices, then tells the thread what was chosen, or that it was skipped. */
-    const askChoices = (threadId: string, choices: ReadonlyArray<Choice>) =>
-      Effect.gen(function* () {
-        const missionId = yield* missionOf(threadId);
-        if (missionId === null) return { _tag: "Skipped", text: "Unknown thread." } satisfies ChoiceDecision;
-        if ((yield* readTurnId(threadId)) === null)
-          return { _tag: "Skipped", text: "This thread is not at work, so nothing runs." } satisfies ChoiceDecision;
-        const resolution = yield* ask({
-          choices,
-          details: choices.map((choice) => choice.question).join("\n"),
-          kind: "Choice",
-          missionId,
-          source: "Harness",
-          summary: `Asks: ${choices.map((choice) => choice.header || choice.question).join(", ")}.`,
-          threadId,
-        });
-        return resolution.outcome === "Answered" && resolution.answers != null
-          ? ({ _tag: "Answered", answers: resolution.answers } satisfies ChoiceDecision)
-          : ({ _tag: "Skipped", text: textOf(resolution) } satisfies ChoiceDecision);
+    const askChoices = Effect.fnUntraced(function* (threadId: string, choices: ReadonlyArray<Choice>) {
+      const missionId = yield* missionOf(threadId);
+      if (missionId === null) return { _tag: "Skipped", text: "Unknown thread." } satisfies ChoiceDecision;
+      if ((yield* readTurnId(threadId)) === null)
+        return { _tag: "Skipped", text: "This thread is not at work, so nothing runs." } satisfies ChoiceDecision;
+      const resolution = yield* ask({
+        choices,
+        details: choices.map((choice) => choice.question).join("\n"),
+        kind: "Choice",
+        missionId,
+        source: "Harness",
+        summary: `Asks: ${choices.map((choice) => choice.header || choice.question).join(", ")}.`,
+        threadId,
       });
+      return resolution.outcome === "Answered" && resolution.answers != null
+        ? ({ _tag: "Answered", answers: resolution.answers } satisfies ChoiceDecision)
+        : ({ _tag: "Skipped", text: textOf(resolution) } satisfies ChoiceDecision);
+    });
 
-    const askAboutFolder = (threadId: string, question: FolderQuestion) =>
-      Effect.gen(function* () {
+    const askAboutFolder = Effect.fnUntraced(
+      function* (threadId: string, question: FolderQuestion) {
         const missionId = yield* missionOf(threadId);
         if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
         // A Confirmation refuses Always allow and never looks up a standing permission.
@@ -147,7 +143,10 @@ export const approvalsLayer = Layer.effect(
         if (isAllowed && question.startsIn !== null) allowedFolders.set(threadId, question.startsIn);
         else allowedFolders.delete(threadId);
         return { isAllowed, text: textOf(resolution) } satisfies Decision;
-      }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie);
+      },
+      Effect.provideService(SqlClient.SqlClient, sql),
+      Effect.orDie,
+    );
 
     const markActivity = (threadId: string, toolUseId: string | null) =>
       toolUseId === null
@@ -181,8 +180,8 @@ export const approvalsLayer = Layer.effect(
           Effect.provideService(SqlClient.SqlClient, sql),
           Effect.orDie,
         ),
-      confirmAction: (threadId, summary, details) =>
-        Effect.gen(function* () {
+      confirmAction: Effect.fnUntraced(
+        function* (threadId, summary, details) {
           const missionId = yield* missionOf(threadId);
           if (missionId === null) return { isAllowed: false, text: "Unknown thread." };
           const resolution = yield* ask({
@@ -194,17 +193,19 @@ export const approvalsLayer = Layer.effect(
             threadId,
           });
           return { isAllowed: resolution.outcome === "Allowed", text: textOf(resolution) };
-        }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie),
+        },
+        Effect.provideService(SqlClient.SqlClient, sql),
+        Effect.orDie,
+      ),
       endTurn: (threadId) => Effect.sync(() => allowances.delete(threadId)).pipe(Effect.asVoid),
-      recordDecision: (threadId, summary, details, outcome, evidence) =>
-        Effect.gen(function* () {
-          const missionId = yield* missionOf(threadId);
-          if (missionId === null) return;
-          yield* record(
-            { details, kind: "Confirmation", missionId, source: "Thread", summary, threadId },
-            { message: evidence, outcome },
-          );
-        }).pipe(Effect.orDie),
+      recordDecision: Effect.fnUntraced(function* (threadId, summary, details, outcome, evidence) {
+        const missionId = yield* missionOf(threadId);
+        if (missionId === null) return;
+        yield* record(
+          { details, kind: "Confirmation", missionId, source: "Thread", summary, threadId },
+          { message: evidence, outcome },
+        );
+      }, Effect.orDie),
       requestApproval: (threadId, request) =>
         requestApproval(threadId, request).pipe(Effect.provideService(SqlClient.SqlClient, sql)),
       withdraw,

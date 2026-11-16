@@ -15,19 +15,18 @@ export const permissionKindsOf = (permissions: ReadonlyArray<StandingPermission>
  * How the thread's actions are approved on this harness now: the owner's level and escape setting, whether the
  * harness's adapter runs it in an enforced sandbox here, and the kinds of standing permission that apply to it.
  */
-export const readApprovalTerms = (threadId: string, harnessName: HarnessName) =>
-  Effect.gen(function* () {
-    const harness = yield* Harness;
-    const { approvalLevel, shouldAllowOutsideSandbox } = yield* readSettings;
-    const permissions = yield* listThreadPermissions(threadId);
-    return {
-      approvalLevel,
-      canWorkOutsideSandbox: shouldAllowOutsideSandbox,
-      // A harness whose adapter reports nothing counts as unprotected, as Approvals judges it (approvals.ts).
-      containment: harness.containmentOf?.(harnessName, approvalLevel) ?? "Unprotected",
-      permissionKinds: permissionKindsOf(permissions),
-    } satisfies ApprovalTerms;
-  });
+export const readApprovalTerms = Effect.fnUntraced(function* (threadId: string, harnessName: HarnessName) {
+  const harness = yield* Harness;
+  const { approvalLevel, shouldAllowOutsideSandbox } = yield* readSettings;
+  const permissions = yield* listThreadPermissions(threadId);
+  return {
+    approvalLevel,
+    canWorkOutsideSandbox: shouldAllowOutsideSandbox,
+    // A harness whose adapter reports nothing counts as unprotected, as Approvals judges it (approvals.ts).
+    containment: harness.containmentOf?.(harnessName, approvalLevel) ?? "Unprotected",
+    permissionKinds: permissionKindsOf(permissions),
+  } satisfies ApprovalTerms;
+});
 
 /** The approval rules the thread's harness appends to its system part (harness/instructions.ts), from its terms. */
 export const readApprovalInstructions = (threadId: string, harnessName: HarnessName) =>

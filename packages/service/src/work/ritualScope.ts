@@ -16,23 +16,22 @@ const jsonTextOf = (text: string) => {
 };
 
 /** Refuses a scope entry that is not exact: a missing or stray new value, or a setting Chronicler may not change. */
-export const validateScope = (scope: RitualScope) =>
-  Effect.gen(function* () {
-    for (const entry of scope) {
-      if (entry.target.trim() === "") return yield* invalid("Each allowed action needs its exact target.");
-      const isValued = entry.operation === "Rename" || entry.operation === "ChangeSetting";
-      if (isValued && (entry.payload === null || entry.payload.trim() === ""))
-        return yield* invalid(`${entry.operation} needs its exact new value.`);
-      if (!isValued && entry.payload !== null) return yield* invalid(`${entry.operation} takes no new value.`);
-      if (entry.operation === "ChangeSetting") {
-        if (!(changeableSettings as ReadonlyArray<string>).includes(entry.target.trim()))
-          return yield* invalid(`A Ritual cannot be allowed to change ${entry.target}.`);
-        if (jsonTextOf(entry.payload ?? "") === null)
-          return yield* invalid("A setting's value must be JSON text, such as true or 14.");
-      }
+export const validateScope = Effect.fnUntraced(function* (scope: RitualScope) {
+  for (const entry of scope) {
+    if (entry.target.trim() === "") return yield* invalid("Each allowed action needs its exact target.");
+    const isValued = entry.operation === "Rename" || entry.operation === "ChangeSetting";
+    if (isValued && (entry.payload === null || entry.payload.trim() === ""))
+      return yield* invalid(`${entry.operation} needs its exact new value.`);
+    if (!isValued && entry.payload !== null) return yield* invalid(`${entry.operation} takes no new value.`);
+    if (entry.operation === "ChangeSetting") {
+      if (!(changeableSettings as ReadonlyArray<string>).includes(entry.target.trim()))
+        return yield* invalid(`A Ritual cannot be allowed to change ${entry.target}.`);
+      if (jsonTextOf(entry.payload ?? "") === null)
+        return yield* invalid("A setting's value must be JSON text, such as true or 14.");
     }
-    return scope;
-  });
+  }
+  return scope;
+});
 
 /** One structural action as the service derived it, in the terms a scope entry uses. */
 export type ScopedAction = {

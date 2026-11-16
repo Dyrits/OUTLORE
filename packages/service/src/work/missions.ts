@@ -43,33 +43,32 @@ import { attachWorkspace, crestOfRow } from "./workspaces.ts";
  * Records the mission, its top thread in the chosen workspace or none, and the first message.
  * Callers run it in a transaction.
  */
-export const insertMission = (
+export const insertMission = Effect.fnUntraced(function* (
   text: string,
   choice: RunnerChoice & { readonly effort: EffortChoice; readonly model: ModelChoice },
   workspacePath: string | null,
   shouldRememberChoices = true,
   realm: { crest: Crest | null; name: string } | null = null,
   attachmentIds: ReadonlyArray<string> = [],
-) =>
-  Effect.gen(function* () {
-    const started = yield* insertQuest(
-      { attachmentIds, firstMessage: text, realm, shouldRememberChoices, title: titleOf(text) || attachmentsTitle },
-      choice,
-      workspacePath,
-    );
-    if (started.messageId === null) return yield* Effect.die("A mission started with text recorded no first message.");
-    return {
-      messageId: started.messageId,
-      missionId: MissionId.make(started.missionId),
-      threadId: ThreadId.make(started.threadId),
-    };
-  });
+) {
+  const started = yield* insertQuest(
+    { attachmentIds, firstMessage: text, realm, shouldRememberChoices, title: titleOf(text) || attachmentsTitle },
+    choice,
+    workspacePath,
+  );
+  if (started.messageId === null) return yield* Effect.die("A mission started with text recorded no first message.");
+  return {
+    messageId: started.messageId,
+    missionId: MissionId.make(started.missionId),
+    threadId: ThreadId.make(started.threadId),
+  };
+});
 
 /**
  * Records a quest, its top thread, and its first message when it has one; a Ritual's quest has none until its first run
  * (rituals). A title given by `isTitleByOwner` is kept against agents' renames. Callers run it in a transaction.
  */
-export const insertQuest = (
+export const insertQuest = Effect.fnUntraced(function* (
   quest: {
     /** The files attached to the first message, added beforehand as drafts (message-attachments). */
     readonly attachmentIds?: ReadonlyArray<string>;
@@ -86,63 +85,59 @@ export const insertQuest = (
   },
   choice: RunnerChoice & { readonly effort: EffortChoice; readonly model: ModelChoice },
   workspacePath: string | null,
-) =>
-  Effect.gen(function* () {
-    const { realm, shouldRememberChoices } = quest;
-    const sql = yield* SqlClient.SqlClient;
-    const global = yield* readGlobalBudget;
-    // A reached global budget refuses new missions (budget-control, Reaching a limit).
-    if (isReached(global.limits, global.spent))
-      return yield* invalid("The global budget is reached. Raise it in the Workshop to start a mission.");
-    const settings = yield* readSettings;
-    const runner = yield* checkAccount(
-      runnerOf(
-        { accountId: null, effort: choice.effort, harness: settings.defaultHarness, model: choice.model },
-        choice,
-      ),
-    );
-    const { accountId, effort, harness, model } = runner;
-    // A reached account budget refuses a quest started on that account (budget-control, Reaching a limit).
-    const accountBudgetRefusal = yield* budgetRefusalOf(null, { accountId, harness }, "Account");
-    if (accountBudgetRefusal !== null) return yield* invalid(accountBudgetRefusal);
-    const realmId = quest.realmId ?? null;
-    if (realmId !== null) {
-      yield* requireActiveRealm(realmId);
-    }
-    const workspaceId =
-      realmId !== null ? realmId : workspacePath === null ? null : yield* attachWorkspace(workspacePath, realm);
-    const now = yield* Clock.currentTimeMillis;
-    const missionId = yield* newId;
-    const threadId = yield* newId;
-    yield* sql`INSERT INTO missions (id, top_thread_id, title, created_at, last_activity_at, is_title_by_user)
+) {
+  const { realm, shouldRememberChoices } = quest;
+  const sql = yield* SqlClient.SqlClient;
+  const global = yield* readGlobalBudget;
+  // A reached global budget refuses new missions (budget-control, Reaching a limit).
+  if (isReached(global.limits, global.spent))
+    return yield* invalid("The global budget is reached. Raise it in the Workshop to start a mission.");
+  const settings = yield* readSettings;
+  const runner = yield* checkAccount(
+    runnerOf({ accountId: null, effort: choice.effort, harness: settings.defaultHarness, model: choice.model }, choice),
+  );
+  const { accountId, effort, harness, model } = runner;
+  // A reached account budget refuses a quest started on that account (budget-control, Reaching a limit).
+  const accountBudgetRefusal = yield* budgetRefusalOf(null, { accountId, harness }, "Account");
+  if (accountBudgetRefusal !== null) return yield* invalid(accountBudgetRefusal);
+  const realmId = quest.realmId ?? null;
+  if (realmId !== null) {
+    yield* requireActiveRealm(realmId);
+  }
+  const workspaceId =
+    realmId !== null ? realmId : workspacePath === null ? null : yield* attachWorkspace(workspacePath, realm);
+  const now = yield* Clock.currentTimeMillis;
+  const missionId = yield* newId;
+  const threadId = yield* newId;
+  yield* sql`INSERT INTO missions (id, top_thread_id, title, created_at, last_activity_at, is_title_by_user)
       VALUES (${missionId}, ${threadId}, ${quest.title}, ${now}, ${now}, ${quest.isTitleByOwner === true ? 1 : 0})`;
-    // The Charter's backup Companions are the new thread's own from the start (thread-panel, Backup companions).
-    yield* sql`INSERT INTO threads (id, mission_id, state, harness, account_id, model, effort, workspace_id, title, backups)
+  // The Charter's backup Companions are the new thread's own from the start (thread-panel, Backup companions).
+  yield* sql`INSERT INTO threads (id, mission_id, state, harness, account_id, model, effort, workspace_id, title, backups)
       VALUES (${threadId}, ${missionId}, 'Idle', ${harness}, ${accountId}, ${model}, ${effort}, ${workspaceId}, ${quest.title}, ${JSON.stringify(settings.backups)})`;
-    const messageId =
-      quest.firstMessage === null
-        ? null
-        : yield* insertMessage({
-            fromThreadId: null,
-            isQueued: false,
-            isResult: false,
-            text: quest.firstMessage,
-            threadId,
-            ...(quest.attachmentIds === undefined ? {} : { attachmentIds: quest.attachmentIds }),
-          });
-    yield* insertJournal(missionId);
-    yield* applyDefaultBudget(missionId, settings.defaultMissionBudget);
-    // A mission opened from an off-topic suggestion is not the owner's own start, so the prefill stays.
-    if (shouldRememberChoices)
-      yield* saveStartChoices({
-        accountId: accountId as StartChoices["accountId"],
-        effort,
-        harness,
-        model,
-        workspacePath,
-      });
-    return { messageId, missionId, threadId };
-  });
+  const messageId =
+    quest.firstMessage === null
+      ? null
+      : yield* insertMessage({
+          fromThreadId: null,
+          isQueued: false,
+          isResult: false,
+          text: quest.firstMessage,
+          threadId,
+          ...(quest.attachmentIds === undefined ? {} : { attachmentIds: quest.attachmentIds }),
+        });
+  yield* insertJournal(missionId);
+  yield* applyDefaultBudget(missionId, settings.defaultMissionBudget);
+  // A mission opened from an off-topic suggestion is not the owner's own start, so the prefill stays.
+  if (shouldRememberChoices)
+    yield* saveStartChoices({
+      accountId: accountId as StartChoices["accountId"],
+      effort,
+      harness,
+      model,
+      workspacePath,
+    });
+  return { messageId, missionId, threadId };
+});
 
 type MissionRow = {
   id: string;
@@ -250,28 +245,26 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
     ORDER BY m.last_activity_at DESC`;
 
 /** The current summary of each given mission, for missions offered elsewhere (thread-tree, Off-topic requests). */
-export const listMissionSummaries = (missionIds: ReadonlyArray<string>) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    if (missionIds.length === 0) return [];
-    const now = yield* Clock.currentTimeMillis;
-    const settings = yield* readSettings;
-    const rows = yield* missionRowsOf(sql, sql`m.id IN ${sql.in(missionIds)}`);
-    return rows.map((row) => summaryOf(row, now, settings));
-  });
+export const listMissionSummaries = Effect.fnUntraced(function* (missionIds: ReadonlyArray<string>) {
+  const sql = yield* SqlClient.SqlClient;
+  if (missionIds.length === 0) return [];
+  const now = yield* Clock.currentTimeMillis;
+  const settings = yield* readSettings;
+  const rows = yield* missionRowsOf(sql, sql`m.id IN ${sql.in(missionIds)}`);
+  return rows.map((row) => summaryOf(row, now, settings));
+});
 
 /** The summaries of the Archived view's missions, or of the dashboard's: not ended, or Done. */
-export const listViewSummaries = (isArchived: boolean) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const now = yield* Clock.currentTimeMillis;
-    const settings = yield* readSettings;
-    // A Ritual's quest is listed with the Rituals, not with the quests (rituals); the Guildmaster's is in no list.
-    const rows = yield* missionRowsOf(
-      sql,
-      isArchived
-        ? sql`m.ending = 'Archived' AND r.id IS NULL AND m.is_guildmaster = 0`
-        : sql`(m.ending IS NULL OR m.ending = 'Done') AND r.id IS NULL AND m.is_guildmaster = 0`,
-    );
-    return rows.map((row) => summaryOf(row, now, settings));
-  });
+export const listViewSummaries = Effect.fnUntraced(function* (isArchived: boolean) {
+  const sql = yield* SqlClient.SqlClient;
+  const now = yield* Clock.currentTimeMillis;
+  const settings = yield* readSettings;
+  // A Ritual's quest is listed with the Rituals, not with the quests (rituals); the Guildmaster's is in no list.
+  const rows = yield* missionRowsOf(
+    sql,
+    isArchived
+      ? sql`m.ending = 'Archived' AND r.id IS NULL AND m.is_guildmaster = 0`
+      : sql`(m.ending IS NULL OR m.ending = 'Done') AND r.id IS NULL AND m.is_guildmaster = 0`,
+  );
+  return rows.map((row) => summaryOf(row, now, settings));
+});

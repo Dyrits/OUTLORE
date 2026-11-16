@@ -49,84 +49,85 @@ export const createRealm = Effect.fnUntraced(function* (
 });
 
 /** Renames a realm; refused for an unknown realm or a blank name. */
-export const renameRealm = (workspaceId: WorkspaceId, name: string, shouldAllowDuplicateName = false) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<{ id: string }>`SELECT id FROM workspaces WHERE id = ${workspaceId}`;
-    if (row === undefined) return yield* invalid("No such realm.");
-    const trimmed = yield* validateRealmName(name, workspaceId, shouldAllowDuplicateName);
-    yield* sql`UPDATE workspaces SET name = ${trimmed} WHERE id = ${workspaceId}`;
-    return null;
-  });
+export const renameRealm = Effect.fnUntraced(function* (
+  workspaceId: WorkspaceId,
+  name: string,
+  shouldAllowDuplicateName = false,
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ id: string }>`SELECT id FROM workspaces WHERE id = ${workspaceId}`;
+  if (row === undefined) return yield* invalid("No such realm.");
+  const trimmed = yield* validateRealmName(name, workspaceId, shouldAllowDuplicateName);
+  yield* sql`UPDATE workspaces SET name = ${trimmed} WHERE id = ${workspaceId}`;
+  return null;
+});
 
 /** Keeps a realm's crest, or clears it with null; refused for an unknown realm. */
-export const setRealmCrest = (workspaceId: WorkspaceId, crest: Crest | null) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<{ id: string }>`SELECT id FROM workspaces WHERE id = ${workspaceId}`;
-    if (row === undefined) return yield* invalid("No such realm.");
-    const text = crest === null ? null : JSON.stringify(Schema.encodeSync(Crest)(crest));
-    yield* sql`UPDATE workspaces SET crest = ${text} WHERE id = ${workspaceId}`;
-    return null;
-  });
+export const setRealmCrest = Effect.fnUntraced(function* (workspaceId: WorkspaceId, crest: Crest | null) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ id: string }>`SELECT id FROM workspaces WHERE id = ${workspaceId}`;
+  if (row === undefined) return yield* invalid("No such realm.");
+  const text = crest === null ? null : JSON.stringify(Schema.encodeSync(Crest)(crest));
+  yield* sql`UPDATE workspaces SET crest = ${text} WHERE id = ${workspaceId}`;
+  return null;
+});
 
 /** Where each mission's threads with no workspace run, one scratch folder per mission. */
 export class ScratchRoot extends Context.Service<ScratchRoot, string>()("outlore/ScratchRoot") {}
 
 /** The existing folder at the path, with links resolved; refused otherwise. */
-const requireFolder = (path: string) =>
-  Effect.gen(function* () {
-    const real = yield* realFolderOf(path);
-    if (real === null) return yield* invalid(`No folder at ${path}.`);
-    return real;
-  });
+const requireFolder = Effect.fnUntraced(function* (path: string) {
+  const real = yield* realFolderOf(path);
+  if (real === null) return yield* invalid(`No folder at ${path}.`);
+  return real;
+});
 
 /**
  * The workspace for a chosen folder: the existing one for that folder, or a new one,
  * since a folder becomes a workspace the first time it is chosen. Callers run it in a transaction.
  */
-export const attachWorkspace = (path: string, realm: { crest: Crest | null; name: string } | null = null) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    // Any folder the owner chose in the system's folder dialog (CHG-0035).
-    const folder = yield* requireFolder(path);
-    const [existing] = yield* sql<{ id: string }>`SELECT id FROM workspaces WHERE path = ${folder}`;
-    if (existing !== undefined) {
-      yield* requireActiveRealm(existing.id);
-      return existing.id;
-    }
-    const id = yield* newId;
-    const now = yield* Clock.currentTimeMillis;
-    const name = realm?.name.trim() || basename(folder) || folder;
-    const crest = realm?.crest == null ? null : JSON.stringify(Schema.encodeSync(Crest)(realm.crest));
-    yield* sql`INSERT INTO workspaces (id, name, path, crest, created_at)
+export const attachWorkspace = Effect.fnUntraced(function* (
+  path: string,
+  realm: { crest: Crest | null; name: string } | null = null,
+) {
+  const sql = yield* SqlClient.SqlClient;
+  // Any folder the owner chose in the system's folder dialog (CHG-0035).
+  const folder = yield* requireFolder(path);
+  const [existing] = yield* sql<{ id: string }>`SELECT id FROM workspaces WHERE path = ${folder}`;
+  if (existing !== undefined) {
+    yield* requireActiveRealm(existing.id);
+    return existing.id;
+  }
+  const id = yield* newId;
+  const now = yield* Clock.currentTimeMillis;
+  const name = realm?.name.trim() || basename(folder) || folder;
+  const crest = realm?.crest == null ? null : JSON.stringify(Schema.encodeSync(Crest)(realm.crest));
+  yield* sql`INSERT INTO workspaces (id, name, path, crest, created_at)
       VALUES (${id}, ${name}, ${folder}, ${crest}, ${now})`;
-    return id;
-  });
+  return id;
+});
 
 /**
  * A thread's workspace with whether its folder still exists, or null for the scratch folder: a thread with no realm,
  * or in a realm tied to no folder, has no workspace.
  */
-export const readThreadWorkspace = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<{ id: string; name: string; path: string }>`
+export const readThreadWorkspace = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ id: string; name: string; path: string }>`
       SELECT w.id, w.name, w.path FROM threads t JOIN workspaces w ON w.id = t.workspace_id
       WHERE t.id = ${threadId} AND w.path IS NOT NULL`;
-    if (row === undefined) return null;
-    const isMissing = (yield* realFolderOf(row.path)) === null;
-    return { id: row.id as WorkspaceId, isMissing, name: row.name, path: row.path } satisfies Workspace;
-  });
+  if (row === undefined) return null;
+  const isMissing = (yield* realFolderOf(row.path)) === null;
+  return { id: row.id as WorkspaceId, isMissing, name: row.name, path: row.path } satisfies Workspace;
+});
 
 /** The folder a thread works in: its workspace's, or its mission's scratch folder; null for an unknown thread. */
-export const threadFolderOf = (threadId: string) =>
-  Effect.gen(function* () {
-    const missionId = yield* readMissionIdOf(threadId);
-    if (missionId === null) return null;
-    const workspace = yield* readThreadWorkspace(threadId);
-    return workspace?.path ?? join(yield* ScratchRoot, missionId);
-  });
+export const threadFolderOf = Effect.fnUntraced(function* (threadId: string) {
+  const missionId = yield* readMissionIdOf(threadId);
+  if (missionId === null) return null;
+  const workspace = yield* readThreadWorkspace(threadId);
+  return workspace?.path ?? join(yield* ScratchRoot, missionId);
+});
 
 // Instruction files a harness started without its own settings does not read (probe, 2026-11-06:
 // Claude Code 2.1.302 with `--setting-sources ""` ignores the folder's CLAUDE.md).
@@ -151,17 +152,16 @@ const readInstructions = (folder: string) =>
   );
 
 /** The starting context naming the thread's workspace, with the folder's own instructions. */
-const workspaceContextOf = (workspace: Workspace) =>
-  Effect.gen(function* () {
-    const instructions = yield* readInstructions(workspace.path);
-    return [
-      "# Your workspace",
-      `You work in the workspace "${workspace.name}" at ${workspace.path}. It is your working folder.`,
-      ...(instructions.length === 0
-        ? []
-        : ["The workspace's own instructions follow; follow them for work in this folder.", ...instructions]),
-    ].join("\n");
-  });
+const workspaceContextOf = Effect.fnUntraced(function* (workspace: Workspace) {
+  const instructions = yield* readInstructions(workspace.path);
+  return [
+    "# Your workspace",
+    `You work in the workspace "${workspace.name}" at ${workspace.path}. It is your working folder.`,
+    ...(instructions.length === 0
+      ? []
+      : ["The workspace's own instructions follow; follow them for work in this folder.", ...instructions]),
+  ].join("\n");
+});
 
 /**
  * Where a thread works and the starting context saying so: its workspace's folder, or its mission's scratch

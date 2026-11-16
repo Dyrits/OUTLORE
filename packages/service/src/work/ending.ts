@@ -66,14 +66,13 @@ export const isEmptyQuest = Effect.fn("isEmptyQuest")(function* (missionId: stri
 });
 
 /** Records the ending and its journal entry. Callers run it in a transaction. */
-const recordEnding = (missionId: string, ending: MissionEnding, entry: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const now = yield* Clock.currentTimeMillis;
-    yield* sql`UPDATE missions SET ending = ${ending}, is_asking_done = 0,
+const recordEnding = Effect.fnUntraced(function* (missionId: string, ending: MissionEnding, entry: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const now = yield* Clock.currentTimeMillis;
+  yield* sql`UPDATE missions SET ending = ${ending}, is_asking_done = 0,
       done_at = ${ending === "Done" ? now : sql`done_at`} WHERE id = ${missionId}`;
-    yield* updateJournal(missionId, { kind: "user" }, entry, null);
-  });
+  yield* updateJournal(missionId, { kind: "user" }, entry, null);
+});
 
 /** Marks a mission Done or archives it, stopping exactly the threads at work the owner's preview named. */
 export const endMission = Effect.fn("endMission")(function* (

@@ -33,39 +33,36 @@ export const runnerOfStarted = (choice: RunnerChoice) =>
   );
 
 /** Refuses attached images for a runner that cannot read them; a message without files is never refused. */
-export const refuseUnreadableImages = (
+export const refuseUnreadableImages = Effect.fnUntraced(function* (
   attachmentIds: ReadonlyArray<string>,
   runner: Effect.Effect<Readable | null, SqlError.SqlError, SqlClient.SqlClient>,
-) =>
-  Effect.gen(function* () {
-    if (attachmentIds.length === 0) return;
-    const resolved = yield* runner;
-    if (resolved === null) return;
-    const reason = yield* imageRefusalOf(resolved);
-    if (reason !== null) return yield* invalid(reason);
-  });
+) {
+  if (attachmentIds.length === 0) return;
+  const resolved = yield* runner;
+  if (resolved === null) return;
+  const reason = yield* imageRefusalOf(resolved);
+  if (reason !== null) return yield* invalid(reason);
+});
 
 /** Admits an owner's text for the runner the request names: the text itself, or the refusal. */
-export const admitOwnerText = (
+export const admitOwnerText = Effect.fnUntraced(function* (
   text: string,
   attachmentIds: ReadonlyArray<string>,
   runner: Effect.Effect<Readable | null, SqlError.SqlError, SqlClient.SqlClient>,
-) =>
-  Effect.gen(function* () {
-    const admitted = attachmentIds.length === 0 ? yield* nonBlank(text) : text;
-    yield* refuseUnreadableImages(attachmentIds, runner);
-    return admitted;
-  });
+) {
+  const admitted = attachmentIds.length === 0 ? yield* nonBlank(text) : text;
+  yield* refuseUnreadableImages(attachmentIds, runner);
+  return admitted;
+});
 
 /** Admits a runner change only when that runner can read the thread's waiting images. */
-export const admitRunnerChange = (change: Parameters<typeof chooseThreadRunner>[0]) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const waiting = yield* sql<{ id: string }>`SELECT a.id FROM attachments a JOIN messages m ON m.id = a.message_id
+export const admitRunnerChange = Effect.fnUntraced(function* (change: Parameters<typeof chooseThreadRunner>[0]) {
+  const sql = yield* SqlClient.SqlClient;
+  const waiting = yield* sql<{ id: string }>`SELECT a.id FROM attachments a JOIN messages m ON m.id = a.message_id
       WHERE m.thread_id = ${change.threadId} AND m.delivered_turn_id IS NULL AND m.sender_kind != 'agent' LIMIT 1`;
-    yield* refuseUnreadableImages(
-      waiting.map((row) => row.id),
-      Effect.succeed(change),
-    );
-    return yield* chooseThreadRunner(change);
-  });
+  yield* refuseUnreadableImages(
+    waiting.map((row) => row.id),
+    Effect.succeed(change),
+  );
+  return yield* chooseThreadRunner(change);
+});

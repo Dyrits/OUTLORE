@@ -22,34 +22,33 @@ export const makeOwnerWaits = <Resolution>(sql: SqlClient.SqlClient, changes: Ch
   const waiting = new Map<string, Deferred.Deferred<Resolution>>();
 
   /** Opens the wait and returns its resolution; null when the thread is not at work in a turn. */
-  const ask = (wait: OwnerWait) =>
-    Effect.gen(function* () {
-      const id = yield* newId;
-      const deferred = yield* Deferred.make<Resolution>();
-      const isAtWork = yield* sql
-        .withTransaction(
-          Effect.gen(function* () {
-            const [thread] = yield* sql<{ state: string; blocker: string | null }>`
+  const ask = Effect.fnUntraced(function* (wait: OwnerWait) {
+    const id = yield* newId;
+    const deferred = yield* Deferred.make<Resolution>();
+    const isAtWork = yield* sql
+      .withTransaction(
+        Effect.gen(function* () {
+          const [thread] = yield* sql<{ state: string; blocker: string | null }>`
             SELECT state, blocker FROM threads WHERE id = ${wait.threadId}`;
-            // A thread no longer at work, such as one just stopped whose harness is still exiting, is not asked.
-            if (thread === undefined || thread.blocker !== null || !["Running", "Attention"].includes(thread.state))
-              return false;
-            waiting.set(id, deferred);
-            const now = yield* Clock.currentTimeMillis;
-            yield* wait.record(id, now);
-            yield* holdInTurn(wait.threadId);
-            yield* touchMission(wait.missionId, now);
-            yield* sql.afterCommit(changes.publish);
-            return true;
-          }),
-        )
-        .pipe(Effect.provideService(SqlClient.SqlClient, sql));
-      if (!isAtWork) return null;
-      return yield* Deferred.await(deferred).pipe(
-        Effect.onInterrupt(() => wait.abandon(id).pipe(Effect.ignore)),
-        Effect.ensuring(Effect.sync(() => waiting.delete(id))),
-      );
-    });
+          // A thread no longer at work, such as one just stopped whose harness is still exiting, is not asked.
+          if (thread === undefined || thread.blocker !== null || !["Running", "Attention"].includes(thread.state))
+            return false;
+          waiting.set(id, deferred);
+          const now = yield* Clock.currentTimeMillis;
+          yield* wait.record(id, now);
+          yield* holdInTurn(wait.threadId);
+          yield* touchMission(wait.missionId, now);
+          yield* sql.afterCommit(changes.publish);
+          return true;
+        }),
+      )
+      .pipe(Effect.provideService(SqlClient.SqlClient, sql));
+    if (!isAtWork) return null;
+    return yield* Deferred.await(deferred).pipe(
+      Effect.onInterrupt(() => wait.abandon(id).pipe(Effect.ignore)),
+      Effect.ensuring(Effect.sync(() => waiting.delete(id))),
+    );
+  });
 
   return {
     ask,
