@@ -7,17 +7,18 @@ import {
   newPairingSecret,
   parseClientHello,
   parseHostReply,
+  refusalText,
 } from "../src/index.ts";
 
 const secret = encodeBase64Url(newPairingSecret());
 const token = encodeBase64Url(newDeviceToken());
-const pair = { deviceKind: "phone", deviceName: "Ada's phone", secret, t: "pair" } as const;
+const pair = { deviceKind: "phone", deviceName: "Ada's phone", release: "0.1.4-Prototype", secret, t: "pair" } as const;
 const resume = { deviceId: "device-1", t: "resume", token } as const;
 const paired = { deviceId: "device-1", hostName: "Studio", t: "paired", token } as const;
 
 const asText = (value: unknown) => JSON.stringify(value);
 
-describe("client hello", () => {
+describe("handling a client hello", () => {
   it("accepts a pair hello and a resume hello", () => {
     expect(parseClientHello(asText(pair))).toEqual({ ok: true, value: pair });
     expect(parseClientHello(asText(resume))).toEqual({ ok: true, value: resume });
@@ -61,20 +62,36 @@ describe("client hello", () => {
     expect(parseClientHello(asText({ t: "resume", token })).ok).toBe(false);
   });
 
+  it("needs the release in a pair hello, so a host can refuse another release before it keeps anything", () => {
+    const { release: _release, ...withoutRelease } = pair;
+    expect(parseClientHello(asText(withoutRelease)).ok).toBe(false);
+    expect(parseClientHello(asText({ ...pair, release: "" })).ok).toBe(false);
+    expect(parseClientHello(asText({ ...pair, release: 3 })).ok).toBe(false);
+    expect(parseClientHello(asText({ ...resume, release: "0.1.4-Prototype" })).ok).toBe(false);
+  });
+
   it("rejects fields that do not belong to the type", () => {
     expect(parseClientHello(asText({ ...pair, extra: true })).ok).toBe(false);
     expect(parseClientHello(asText({ ...resume, deviceName: "x" })).ok).toBe(false);
   });
 });
 
-describe("host reply", () => {
+describe("handling a host reply", () => {
   it("accepts paired, resumed and every refusal reason", () => {
     expect(parseHostReply(asText(paired))).toEqual({ ok: true, value: paired });
     expect(parseHostReply(asText({ hostName: "Studio", t: "resumed" }))).toEqual({
       ok: true,
       value: { hostName: "Studio", t: "resumed" },
     });
-    for (const reason of ["code-invalid", "code-expired", "code-used", "unknown-device", "disabled", "disconnected"]) {
+    for (const reason of [
+      "code-invalid",
+      "code-expired",
+      "code-used",
+      "unknown-device",
+      "disabled",
+      "disconnected",
+      "other-release",
+    ]) {
       expect(parseHostReply(asText({ reason, t: "refused" })), reason).toEqual({
         ok: true,
         value: { reason, t: "refused" },
@@ -116,15 +133,42 @@ describe("host reply", () => {
     });
   });
 
+  it("carries the host's release on a refusal for another release", () => {
+    const refused = { reason: "other-release", release: "0.1.5-Prototype", t: "refused" } as const;
+    expect(parseHostReply(encodeHostReply(refused))).toEqual({ ok: true, value: refused });
+  });
+
   it("rejects a release that is not text, is empty, or rides on a refusal", () => {
     expect(parseHostReply(asText({ ...paired, release: 3 })).ok).toBe(false);
     expect(parseHostReply(asText({ hostName: "Studio", release: "", t: "resumed" })).ok).toBe(false);
-    expect(parseHostReply(asText({ reason: "disabled", release: "0.1.4-Prototype", t: "refused" })).ok).toBe(false);
+    expect(parseHostReply(asText({ reason: "other-release", release: "", t: "refused" })).ok).toBe(false);
+    expect(parseHostReply(asText({ reason: "other-release", release: 3, t: "refused" })).ok).toBe(false);
   });
 
   it("rejects text that is not a JSON object", () => {
     for (const text of ["", "x", "[]", "null"]) {
       expect(parseHostReply(text), text).toEqual({ kind: "malformed", ok: false });
     }
+  });
+});
+
+describe("the refusal text the owner reads", () => {
+  it("covers every reason a host reply can refuse with, and no other", () => {
+    // Driven by refusalText's own keys, so a reason added later (other-release, CHG-0375) is covered by itself.
+    for (const reason of Object.keys(refusalText)) {
+      expect(parseHostReply(asText({ reason, t: "refused" })), reason).toEqual({
+        ok: true,
+        value: { reason, t: "refused" },
+      });
+    }
+    expect(parseHostReply(asText({ reason: "made-up", t: "refused" })).ok).toBe(false);
+  });
+
+  it("gives each refusal its own sentence that tells the owner what to do next", () => {
+    const sentences = Object.values(refusalText);
+    for (const text of sentences) {
+      expect(text, text).toMatch(/^(?:That|The) [^.]+\. (?:Ask|Check|Turn on|Pair|Update) [^.]*\.$/);
+    }
+    expect(new Set(sentences).size).toBe(sentences.length);
   });
 });

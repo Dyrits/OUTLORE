@@ -1,6 +1,6 @@
 {
   "name": "desktop",
-  "version": "0.1.5-Prototype",
+  "version": "0.1.6-Prototype",
   "private": true,
   "description": "Outlore desktop app",
   "author": "Dylan J. Gerrits",
@@ -17,6 +17,7 @@
     "node-pty": "^1.1.0"
   },
   "devDependencies": {
+    "@electron/fuses": "^1.8.0",
     "@types/bun": "^1.4.4",
     "@types/node": "^24",
     "electron": "45.3.1",

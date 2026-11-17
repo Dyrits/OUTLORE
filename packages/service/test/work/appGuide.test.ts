@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { guildmasterInstructionsOf } from "../../src/harness/instructions.ts";
 import { guideTopics } from "../../src/work/appGuideTopics.ts";
-import { topicsFor } from "../../src/work/guildmasterGuide.ts";
+import { topicsOf } from "../../src/work/guildmasterGuide.ts";
 
-const idsFor = (question: string) => topicsFor(question).map((topic) => topic.id);
+const idsFor = (question: string) => topicsOf(question).map((topic) => topic.id);
 
-describe("the app guide", () => {
+describe("reading the app guide", () => {
   it("has unique topic ids, and every topic says what it answers", () => {
     const ids = guideTopics.map((topic) => topic.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -58,8 +58,37 @@ describe("the app guide", () => {
     expect(idsFor("write me a poem")).toEqual([]);
   });
 
-  describe("current-state claims", () => {
+  describe("describing what is built today", () => {
     const body = (id: string) => guideTopics.find((topic) => topic.id === id)?.body ?? "";
+
+    it("describes sandbox escapes, owner-kept settings, and Ritual creation accurately", () => {
+      expect(body("approvals")).not.toMatch(/escape from the sandbox[^.]*always asks/i);
+      expect(body("approvals")).toMatch(/outside the sandbox without asking/i);
+      for (const id of ["chronicler", "workshop"]) expect(body(id)).toMatch(/outside the sandbox/i);
+      expect(body("chronicler")).toMatch(/creating a Ritual always asks/i);
+    });
+
+    it("describes the actual handover replay boundary", () => {
+      const text = body("companions");
+      expect(text).not.toMatch(/full history/i);
+      expect(text).toMatch(/images.*names/i);
+      expect(text).toMatch(/tool calls.*not replayed/i);
+      expect(text).toMatch(/oldest.*half/i);
+    });
+
+    it("describes browser pairing and names the Providers section", () => {
+      expect(body("overview")).not.toMatch(/one user on one computer/i);
+      expect(body("pairing")).toMatch(/browser/i);
+      expect(body("pairing")).not.toMatch(/Not built yet:[^.]*phone web app/i);
+      expect(body("companions")).toMatch(/Providers/);
+      expect(body("companions")).not.toMatch(/Harnesses card/);
+    });
+
+    it("distinguishes quest and realm mentions and explains archiving an empty quest", () => {
+      expect(body("quests")).toMatch(/realm.*context only/i);
+      expect(body("realms")).not.toMatch(/never deletes a realm or a quest/i);
+      expect(body("realms")).toMatch(/archiv.*empty quest.*delet/i);
+    });
 
     it("does not promise the unbuilt own copy or one-button merge as available", () => {
       const text = body("realms");
@@ -80,13 +109,24 @@ describe("the app guide", () => {
       expect(text).toMatch(/Not built yet:[^.]*terminal/i);
     });
 
+    it("says that a scheduled Ritual run that cannot start fails visibly without blocking the next one", () => {
+      const text = body("rituals");
+      expect(text).toMatch(/cannot start fails visibly/i);
+      expect(text).toMatch(/Failed with the reason/);
+      expect(text).toMatch(/next scheduled run is not blocked/i);
+    });
+
+    it("says that a pairing from another release is refused without spending the code", () => {
+      expect(body("pairing")).toMatch(/same release.*refused.*code is not spent/i);
+    });
+
     it("lets one owner pair several installations", () => {
       expect(body("limits")).not.toMatch(/one user on one computer/i);
     });
   });
 
   it("returns at most two topics", () => {
-    expect(topicsFor("quest realm ritual budget lore approval").length).toBeLessThanOrEqual(2);
+    expect(topicsOf("quest realm ritual budget lore approval").length).toBeLessThanOrEqual(2);
   });
 
   it("is in Chronicler's instructions, with the rule to say so when it does not know", () => {

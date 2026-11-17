@@ -1,5 +1,5 @@
 import { wordsOf } from "../core/index.ts";
-import { type LoreEntryRow, type Placement, type ScopeChain, widthOf } from "./lore.ts";
+import { type LoreEntryRow, type Placement, placementOfRow, type ScopeChain, widthOf } from "./lore.ts";
 import { type Fading, stateOfLoreEntry } from "./loreFading.ts";
 
 // Duplicates (scoped-intel, Duplicates): before a save, the closest lore entries in the same scope and the scopes
@@ -19,25 +19,25 @@ const fewestShared = 2;
 const closeLimit = 3;
 
 /** Twice the shared words over both texts' words (the Dice coefficient), from 0 to 1, with the count shared. */
-const closenessOf = (a: ReadonlySet<string>, b: ReadonlySet<string>) => {
+const closenessOf = (first: ReadonlySet<string>, second: ReadonlySet<string>) => {
   let shared = 0;
-  for (const word of a) if (b.has(word)) shared++;
-  return { closeness: a.size + b.size === 0 ? 0 : (2 * shared) / (a.size + b.size), shared };
+  for (const word of first) if (second.has(word)) shared++;
+  return { closeness: first.size + second.size === 0 ? 0 : (2 * shared) / (first.size + second.size), shared };
 };
 
 /** Whether two texts say the same thing, as a save that replaces a lore entry does. */
-export const isSameOf = (a: string, b: string) => {
-  const { closeness, shared } = closenessOf(wordsOf(a), wordsOf(b));
+export const isSameOf = (first: string, second: string) => {
+  const { closeness, shared } = closenessOf(wordsOf(first), wordsOf(second));
   return closeness >= sameAt && shared >= fewestShared;
 };
 
 /** What a save finds among the lore entries already kept. */
-export interface Duplicates {
+export type Duplicates = {
   /** Lore entries close to the save but not the same, closest first. */
   readonly close: ReadonlyArray<LoreEntryRow>;
   /** The lore the save replaces, or null when it saves a new one. */
   readonly replaced: LoreEntryRow | null;
-}
+};
 
 /**
  * The lore entries in the saving thread's scope, in the save's scope or a wider one, that the save may repeat.
@@ -54,13 +54,11 @@ export const duplicatesOf = (
   const words = wordsOf(text);
   const scored = inScope
     .filter(
-      (row) =>
-        widthOf({ scope: row.scope, threadId: row.threadId, workspaceId: row.workspaceId }, chain.topThreadId) >=
-          width && stateOfLoreEntry(row, fading) !== "Archived",
+      (row) => widthOf(placementOfRow(row), chain.topThreadId) >= width && stateOfLoreEntry(row, fading) !== "Archived",
     )
     .map((row) => ({ row, ...closenessOf(words, wordsOf(row.text)) }))
     // Stable: equally close lore entries keep the scope order, most specific first.
-    .toSorted((a, b) => b.closeness - a.closeness);
+    .toSorted((first, second) => second.closeness - first.closeness);
   const isSamePlace = (row: LoreEntryRow) =>
     row.scope === placement.scope && row.threadId === placement.threadId && row.workspaceId === placement.workspaceId;
   const same = scored.find(

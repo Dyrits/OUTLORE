@@ -21,24 +21,22 @@ export const insertSuggestedMessage = Effect.fnUntraced(function* (threadId: str
  * agent's reply, the service's message that starts a Ritual's run, and a suggestion's agent-written text the owner
  * only routed here are never among them.
  */
-export const readOwnerTexts = (threadId: string, turnId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const rows = yield* sql<{ text: string }>`
+export const readOwnerTexts = Effect.fnUntraced(function* (threadId: string, turnId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ text: string }>`
       SELECT m.text FROM messages m
       WHERE m.thread_id = ${threadId} AND m.delivered_turn_id = ${turnId}
         AND m.sender_kind = 'user' AND m.sender_thread_id IS NULL
         AND NOT EXISTS (SELECT 1 FROM ritual_run_messages r WHERE r.message_id = m.id)
         AND NOT EXISTS (SELECT 1 FROM suggested_messages s WHERE s.message_id = m.id)`;
-    return rows.map((row) => row.text);
-  });
+  return rows.map((row) => row.text);
+});
 
 /** Whether the running turn is one of the Ritual's runs: its service-made run message was delivered to it. */
-export const isRitualRunTurn = (threadId: string, turnId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const rows = yield* sql<{ id: string }>`
+export const isRitualRunTurn = Effect.fnUntraced(function* (threadId: string, turnId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ id: string }>`
       SELECT m.id FROM messages m JOIN ritual_run_messages r ON r.message_id = m.id
       WHERE m.thread_id = ${threadId} AND m.delivered_turn_id = ${turnId} LIMIT 1`;
-    return rows.length > 0;
-  });
+  return rows.length > 0;
+});

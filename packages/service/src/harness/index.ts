@@ -1,4 +1,5 @@
 export { type ClaudeOptions, claudeHarnessLayer, makeClaudeHarness } from "./claude.ts";
+export { claudeChoicesOf, claudePromptAnswerOf } from "./claudeChoices.ts";
 export { type CodexOptions, makeCodexHarness } from "./codex.ts";
 export { fakeHarnessLayer } from "./fakeHarness.ts";
 export {

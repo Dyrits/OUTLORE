@@ -52,4 +52,31 @@ export const recentStoreMigrations = {
     yield* sql`UPDATE threads SET title = 'Chronicler'
       WHERE title = 'Iskios' AND mission_id IN (SELECT id FROM missions WHERE is_guildmaster = 1)`;
   }),
+  // Choice questions (CHG-0299): the questions a thread asks the owner to choose answers to, and the answers, both JSON.
+  "0051_choice_questions": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE questions ADD COLUMN choices TEXT`;
+    yield* sql`ALTER TABLE questions ADD COLUMN answers TEXT`;
+  }),
+  "0052_question_kind": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE questions ADD COLUMN kind TEXT NOT NULL DEFAULT 'Confirmation'`;
+    yield* sql`UPDATE questions SET kind = CASE WHEN choices IS NOT NULL THEN 'Choice'
+      WHEN pattern IS NOT NULL AND permission IS NOT NULL THEN 'Approval' ELSE 'Confirmation' END`;
+  }),
+  "0053_command_outcome_wakes": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    // Null marks older value-only rows, decoded on replay without rewriting the saved value.
+    yield* sql`ALTER TABLE command_outcomes ADD COLUMN wakes TEXT`;
+    yield* sql`ALTER TABLE command_outcomes ADD COLUMN thread_id TEXT`;
+    yield* sql`CREATE INDEX command_outcomes_by_thread ON command_outcomes (thread_id)`;
+  }),
+  "0055_lore_change_previous_placement": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    // Older pending changes have no reliable snapshot; do not infer one from a target that may have changed.
+    yield* sql`ALTER TABLE intel_changes ADD COLUMN previous_scope TEXT`;
+    yield* sql`ALTER TABLE intel_changes ADD COLUMN previous_thread_id TEXT`;
+    yield* sql`ALTER TABLE intel_changes ADD COLUMN previous_workspace_id TEXT`;
+    yield* sql`ALTER TABLE intel_changes ADD COLUMN previous_kind TEXT`;
+  }),
 };

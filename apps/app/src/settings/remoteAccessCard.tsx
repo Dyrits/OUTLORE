@@ -7,12 +7,11 @@ import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Button } from "../ui/button";
+import { PairingBlock } from "./pairingBlock";
 import {
   cloudflareTokensUrl,
-  codeLifeOf,
   deviceLineOf,
   ownRelayNoticeOf,
-  pairingHelpOf,
   relayLineOf,
   relayStatusTextOf,
   webAppLineOf,
@@ -42,7 +41,6 @@ function RemoteAccessOnHost({ client }: { client: ServiceClient }) {
   const { data: view, error: readError } = useServiceQuery(client, { _tag: "ReadRemoteAccess" }, "remote-access");
   const [pairing, setPairing] = useState<PairingCode | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isCopied, setIsCopied] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   // The clock behind "expires in" and "last active" moves on once a minute.
   useEffect(() => {
@@ -62,13 +60,6 @@ function RemoteAccessOnHost({ client }: { client: ServiceClient }) {
       </SettingsCard>
     );
   }
-  const copy = () => {
-    if (pairing === null) return;
-    navigator.clipboard?.writeText(pairing.code).then(
-      () => setIsCopied(true),
-      () => setIsCopied(false),
-    );
-  };
   return (
     <SettingsCard
       icon="monitor"
@@ -93,24 +84,11 @@ function RemoteAccessOnHost({ client }: { client: ServiceClient }) {
         <Button
           isDisabled={!view.isEnabled}
           label="Pair a device"
-          onPress={() => {
-            setIsCopied(false);
-            void attempt(client.request({ _tag: "CreatePairingCode" }).then(setPairing));
-          }}
+          onPress={() => void attempt(client.request({ _tag: "CreatePairingCode" }).then(setPairing))}
         />
         {!view.isEnabled && <Text style={styles.muted}>Turn on Allow paired devices first.</Text>}
       </View>
-      {pairing !== null && (
-        <View style={local.codeBox}>
-          <Text accessibilityLabel="Pairing code" selectable style={local.code}>
-            {pairing.code}
-          </Text>
-          <Text style={styles.muted}>
-            {codeLifeOf(pairing.expiresAt, now)} {pairingHelpOf(view.webAppUrl)}
-          </Text>
-          <Button isPrimary={false} label={isCopied ? "Copied" : "Copy the code"} onPress={copy} />
-        </View>
-      )}
+      {pairing !== null && <PairingBlock key={pairing.code} now={now} pairing={pairing} />}
       <SettingsRule />
       <Text style={local.label}>Paired devices</Text>
       {view.devices.length === 0 && <Text style={styles.muted}>No device is paired with this computer.</Text>}
@@ -245,12 +223,6 @@ function RelayChoice({
 }
 
 const local = StyleSheet.create({
-  code: {
-    color: colors.text,
-    fontFamily: fonts.mono,
-    fontSize: fontSizes.sm,
-    lineHeight: 18,
-  },
   codeBox: {
     backgroundColor: colors.page,
     borderColor: colors.edge,

@@ -1,18 +1,20 @@
 import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import type { ServerFrame } from "@outlore/contracts";
+import { linkCodeOf } from "@outlore/controller";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { WebSocket, WebSocketServer } from "ws";
 import { Sessions } from "./core/index.ts";
+import { RemoteConfig } from "./remote/config.ts";
 import { answerText, encodeServerFrame, type HostChannel, openHostChannel } from "./remote/index.ts";
 import { Service } from "./service.ts";
 
 const sameToken = (given: string | null, expected: string) => {
   if (given === null) return false;
-  const a = Buffer.from(given);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  const givenBytes = Buffer.from(given);
+  const expectedBytes = Buffer.from(expected);
+  return givenBytes.length === expectedBytes.length && timingSafeEqual(givenBytes, expectedBytes);
 };
 
 const tokenOf = (request: IncomingMessage) => new URL(request.url ?? "/", "http://127.0.0.1").searchParams.get("token");
@@ -26,6 +28,7 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
     const service = yield* Service;
     const sessions = yield* Sessions;
     const sql = yield* SqlClient.SqlClient;
+    const remote = yield* RemoteConfig;
     const context = yield* Effect.context<never>();
     const run = Effect.runPromiseWith(context);
 
@@ -69,33 +72,40 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
       });
       const opening = openHostChannel(hostId).pipe(
         Effect.provideService(SqlClient.SqlClient, sql),
-        Effect.map((channel) => ({ channel, isFinal: false, message: "" })),
+        Effect.provideService(RemoteConfig, remote),
+        Effect.map((channel) => ({ channel, closeCode: 4000, message: "" })),
         // A host that refuses this installation will keep refusing: say so with a code that ends the app's retries.
         Effect.catch((failure) =>
           Effect.succeed({
             channel: null,
-            isFinal: "kind" in failure && (failure.kind === "AccessRefused" || failure.kind === "NotFound"),
+            closeCode: linkCodeOf[failure.kind],
             message: failure.message,
           }),
         ),
       );
-      void run(opening).then((outcome) => {
-        if (outcome.channel === null) {
-          socket.close(outcome.isFinal ? 4002 : 4000, outcome.message.slice(0, 120));
-          return;
-        }
-        const channel = outcome.channel;
-        if (isClosed) {
-          channel.close();
-          return;
-        }
-        link = channel;
-        channel.onText((text) => {
-          if (socket.readyState === WebSocket.OPEN) socket.send(text);
+      void run(opening)
+        .then((outcome) => {
+          if (outcome.channel === null) {
+            socket.close(outcome.closeCode, outcome.message.slice(0, 120));
+            return;
+          }
+          const channel = outcome.channel;
+          if (isClosed) {
+            channel.close();
+            return;
+          }
+          link = channel;
+          channel.onText((text) => {
+            if (socket.readyState === WebSocket.OPEN) socket.send(text);
+          });
+          channel.onClose(() => socket.close(4001, "The host disconnected."));
+          for (const text of waiting.splice(0)) channel.sendText(text);
+        })
+        .catch(() => {
+          // A defect while opening the link rejects instead of failing, and would leave the app's socket open for good.
+          link?.close();
+          socket.close(4000, "The host link failed.");
         });
-        channel.onClose(() => socket.close(4001, "The host disconnected."));
-        for (const text of waiting.splice(0)) channel.sendText(text);
-      });
     };
 
     wss.on("connection", (socket, request) => {

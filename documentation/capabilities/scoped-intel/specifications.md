@@ -26,10 +26,11 @@ For ordinary threads, visibility follows this table:
   A quest in the Borderlands has no realm lore; a Realm without a workspace still shares lore across its quests.
 - Guildmaster can search and read lore at every scope for the owner's requests (CHG-0132).
   This exception leaves ordinary threads' access unchanged and does not copy lore into broader scopes.
+  Guildmaster's reads beyond its own scope count no use, so they neither delay fading, wake dormant lore, nor add narrowing evidence.
   Guildmaster follows the save, change, widening, and deletion rules below.
 - Quest moves follow [quest placement and moves](../mission-tracking/specifications.md#quest-placement-and-moves).
 
-Realm scopes and moves (CHG-0130), visibility across scopes (CHG-0131), and Guildmaster's access exception (CHG-0132) are agreed; implementation and verification remain pending.
+Realm scopes, moves, and visibility (CHG-0130 and CHG-0131) are implemented. Guildmaster's access exception (CHG-0132) is implemented for search and read; changes and deletion still follow the ordinary scope rules.
 
 ### Lookup
 
@@ -67,6 +68,7 @@ Each intel has a kind, which sets how fast it fades when no thread uses it. The 
 - Below a strength of 0.15 an intel becomes **dormant**: it leaves the index and the starting context, and stays findable through `search_intel`. A use makes it active again.
 - Below a strength of 0.05 an intel becomes **archived**: it leaves search too, and stays in the intel panel's Archived filter, where the user can restore it.
 - Fading never deletes an intel. Only the user, or a thread under the rules of [Correcting and deleting](#correcting-and-deleting), deletes one.
+- When the user deletes a thread or quest, its own thread- or quest-scoped lore, history, and uses are permanently erased with it; they cannot be restored from Deleted.
 
 ### Saving
 
@@ -81,7 +83,7 @@ Each intel has a kind, which sets how fast it fades when no thread uses it. The 
 ### Duplicates
 
 - Before a save, the service finds the closest intels in the same scope and the scopes above it.
-- When one says the same thing, or an older version of it, the save becomes a replacement: the new text replaces the old intel, which keeps its identifier and its uses. When in doubt, the save stays a new intel.
+- When an intel at the exact same placement says the same thing, or an older version of it, the save becomes a replacement: the new text replaces the old intel, which keeps its identifier and its uses. A close match in a wider placement is named, not replaced. When in doubt, the save stays a new intel.
 - A global replacement needs the user's approval, like any global change; its approval card shows the old and the new text.
 
 ### Correcting and deleting
@@ -94,7 +96,7 @@ Each intel has a kind, which sets how fast it fades when no thread uses it. The 
 
 - Every save, replacement, change, widening, deletion, and fading step is recorded with who or what made it and when.
 - The intel panel shows an intel's history, including which intel replaced which, and the user can undo any change. Undoing a deletion restores the intel. Deleted intel stays listed under the panel's Deleted filter, where its deletion can be undone.
-- The agreed [Start afresh flow for an archived realm](../mission-tracking/specifications.md#reusing-an-archived-realms-folder) uses this same deletion and recovery for realm-level lore only (CHG-0271; not implemented). It is not a permanent purge and does not delete global or quest-scoped lore.
+- The [Start afresh flow for an archived realm](../mission-tracking/specifications.md#reusing-an-archived-realms-folder) uses this same deletion and recovery for realm-level lore only (CHG-0271). It is not a permanent purge and does not delete global or quest-scoped lore.
 
 ### Widening and narrowing
 

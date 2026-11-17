@@ -63,7 +63,7 @@ Work with AI agents spreads across disconnected chats, and subagents run out of 
 
 ### Thread states
 
-CHG-0135 and CHG-0136 remove Done from quests and side-quests, as defined in [mission tracking](../mission-tracking/specifications.md#mission-state).
+CHG-0135 and CHG-0136 remove Done from quests and side-quests, as defined in [mission tracking](../mission-tracking/specifications.md#mission-state). Update, 2026-11-17: the owner decided that Done stays (see the update there); this sentence records the 2026-11-11 agreement.
 The interface presents idle, running, or Summons; waiting, failure, and stopped conditions remain visible details, and a failure needing the owner produces Summons.
 
 | State | Meaning |
@@ -78,7 +78,7 @@ The interface presents idle, running, or Summons; waiting, failure, and stopped 
 ### Off-topic requests
 
 - When a message from the user clearly shares nothing with the mission, judged by the thread's agent against the briefing, the thread does not answer it. Merely unexpected messages do not count.
-- The thread first looks for other missions that fit the request, by their titles and briefings only. Every mission that is not deleted counts, whatever its state.
+- The thread first looks for other missions that fit the request, by their titles, briefings, and opening requests. A shared ticket key or link weighs more than plain words. Every ordinary mission that is not deleted counts, whatever its state, except the caller's own mission and Chronicler's; Ritual quests are excluded.
 - It then shows a suggestion with these choices:
   - **Continue in "mission title"**: one for each matching mission, best match first, at most 3, each showing that mission's state;
   - **Open as new mission**;
@@ -112,6 +112,7 @@ The interface presents idle, running, or Summons; waiting, failure, and stopped 
 
 - Deleting a thread deletes every thread beneath it. One confirmation names the count and the running ones, for example "Delete this thread and 5 threads beneath it (2 running)?". Running threads among them are stopped first.
 - Deleting a mission's top thread deletes the mission.
+- A deletion erases the records in one transaction and removes the attached files and the quest's scratch folder only after it has committed. If erasing fails, the files stay with their records, the threads are no longer marked as deleting (they stay Stopped, visible, and can be deleted again), and the owner sees the failure (CHG-0425).
 
 ### Limits
 
@@ -166,3 +167,7 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 - Whether a thread gets its own git worktree (see the [backlog](../../backlog.md)).
 - Moving a thread to another parent.
 - Sharing threads with other people.
+
+- At startup, a surviving deletion marker is cleared and the thread stays Stopped. UUID scratch folders with no surviving quest are removed through the realm-protection guard. File cleanup failures are logged and retried at the next start without blocking use of the app (CHG-0431).
+
+- If scratch removal fails after the records commit, the deletion succeeds, its attachment files are still removed immediately, and the scratch failure is logged for retry on the next startup (CHG-0432).

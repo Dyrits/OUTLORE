@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { call, read, tool, withService } from "../fixtures/service.ts";
+import { call, read, send, settle, tool, withService } from "../fixtures/service.ts";
 
 const list = (isArchived = false) =>
   call({ _tag: "ListMissions", isArchived, search: null, state: null, workspaceId: null });
@@ -14,6 +14,9 @@ describe("archiving and restoring realms", () => {
         if (realm === undefined) return yield* Effect.die("No realm");
         const active = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: "active" });
         const archived = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: "archived" });
+        // A quest that used no tokens is deleted when archived, so this one works a turn first.
+        yield* send(archived.threadId, "usage 5 5 0 0");
+        yield* settle(archived.missionId, (d) => d.thread.state === "Idle");
         const ending = yield* call({ _tag: "PreviewEnding", ending: "Archived", missionId: archived.missionId });
         yield* call({
           _tag: "EndMission",

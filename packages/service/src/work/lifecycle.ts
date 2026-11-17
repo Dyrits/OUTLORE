@@ -26,25 +26,24 @@ export const waitsInTurn = "(state = 'Attention' AND blocker IS NULL)";
  * Parents left Waiting with nothing active beneath them become Idle, up the tree from the given thread.
  * Callers run it in a transaction.
  */
-const relaxAncestors = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    let current: string | null = threadId;
-    while (current !== null) {
-      const [row]: ReadonlyArray<{ parentId: string | null }> = yield* sql<{
-        parentId: string | null;
-      }>`SELECT parent_id AS parentId FROM threads WHERE id = ${current}`;
-      const parentId: string | null = row?.parentId ?? null;
-      if (parentId === null) return;
-      const [parent] = yield* sql<{ state: string; active: number }>`
+const relaxAncestors = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  let current: string | null = threadId;
+  while (current !== null) {
+    const [row]: ReadonlyArray<{ parentId: string | null }> = yield* sql<{
+      parentId: string | null;
+    }>`SELECT parent_id AS parentId FROM threads WHERE id = ${current}`;
+    const parentId: string | null = row?.parentId ?? null;
+    if (parentId === null) return;
+    const [parent] = yield* sql<{ state: string; active: number }>`
         SELECT state, (SELECT COUNT(*) FROM threads c WHERE c.parent_id = ${parentId}
           AND c.state IN ${sql.in(activeStates)}) AS active
         FROM threads WHERE id = ${parentId}`;
-      if (parent?.state !== "Waiting" || parent.active > 0) return;
-      yield* sql`UPDATE threads SET state = 'Idle' WHERE id = ${parentId}`;
-      current = parentId;
-    }
-  });
+    if (parent?.state !== "Waiting" || parent.active > 0) return;
+    yield* sql`UPDATE threads SET state = 'Idle' WHERE id = ${parentId}`;
+    current = parentId;
+  }
+});
 
 /** What the owner can do with a thread in this state, for every interface to offer the same. */
 export const threadActionsOf = (thread: {
@@ -59,80 +58,72 @@ export const threadActionsOf = (thread: {
 });
 
 /** A turn starts: the thread runs and its last failure clears. */
-export const startRunning = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`UPDATE threads SET state = 'Running', failure = NULL WHERE id = ${threadId}`;
-  });
+export const startRunning = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE threads SET state = 'Running', failure = NULL WHERE id = ${threadId}`;
+});
 
 /**
  * A turn ends: the thread is Done if it reported its result in it, Waiting with work still at work
  * beneath it, otherwise Idle; its parents relax.
  */
-export const endTurn = (threadId: string, turnId: string, sessionId: string | null) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<{ reportedTurnId: string | null; active: number }>`
+export const endTurn = Effect.fnUntraced(function* (threadId: string, turnId: string, sessionId: string | null) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ reportedTurnId: string | null; active: number }>`
       SELECT reported_turn_id AS reportedTurnId,
         (SELECT COUNT(*) FROM threads c WHERE c.parent_id = ${threadId} AND c.state IN ${sql.in(activeStates)})
           AS active
       FROM threads WHERE id = ${threadId}`;
-    const state = row?.reportedTurnId === turnId ? "Done" : (row?.active ?? 0) > 0 ? "Waiting" : "Idle";
-    yield* sql`UPDATE threads SET state = ${state}, session_id = ${sessionId}, failure = NULL WHERE id = ${threadId}`;
-    yield* relaxAncestors(threadId);
-  });
+  const state = row?.reportedTurnId === turnId ? "Done" : (row?.active ?? 0) > 0 ? "Waiting" : "Idle";
+  yield* sql`UPDATE threads SET state = ${state}, session_id = ${sessionId}, failure = NULL WHERE id = ${threadId}`;
+  yield* relaxAncestors(threadId);
+});
 
 /** A turn fails: the thread shows Failed with the reason; its parents relax. */
-export const failTurn = (threadId: string, reason: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`UPDATE threads SET state = 'Failed', failure = ${reason} WHERE id = ${threadId}`;
-    yield* relaxAncestors(threadId);
-  });
+export const failTurn = Effect.fnUntraced(function* (threadId: string, reason: string) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE threads SET state = 'Failed', failure = ${reason} WHERE id = ${threadId}`;
+  yield* relaxAncestors(threadId);
+});
 
 /** A running thread asks the owner inside its turn and waits in Attention. */
-export const holdInTurn = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`UPDATE threads SET state = 'Attention' WHERE id = ${threadId} AND state = 'Running'`;
-  });
+export const holdInTurn = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE threads SET state = 'Attention' WHERE id = ${threadId} AND state = 'Running'`;
+});
 
 /** The owner answered inside the turn: the thread runs again once no question or suggestion stays open. */
-export const resumeInTurn = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`UPDATE threads SET state = 'Running'
+export const resumeInTurn = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE threads SET state = 'Running'
       WHERE id = ${threadId} AND ${sql.literal(waitsInTurn)}
         AND NOT EXISTS (SELECT 1 FROM questions WHERE thread_id = ${threadId} AND outcome IS NULL)
         AND NOT EXISTS (SELECT 1 FROM suggestions WHERE thread_id = ${threadId} AND outcome IS NULL)`;
-  });
+});
 
 /** A thread about to start a turn waits in Attention for a reason outside any turn instead. */
-export const holdThread = (threadId: string, reason: HoldReason) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`UPDATE threads SET state = 'Attention', blocker = ${reason}
+export const holdThread = Effect.fnUntraced(function* (threadId: string, reason: HoldReason) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE threads SET state = 'Attention', blocker = ${reason}
       WHERE id = ${threadId} AND state != 'Stopped' AND is_deleting = 0`;
-  });
+});
 
 /**
  * Holds the thread a question shows on, such as a budget stop's, unless it works, has failed, or already
  * waits on the owner for another reason: the question still shows on it, and its own state stays.
  */
-export const holdQuestionHolder = (threadId: string, reason: HoldReason) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`UPDATE threads SET state = 'Attention', blocker = ${reason}
+export const holdQuestionHolder = Effect.fnUntraced(function* (threadId: string, reason: HoldReason) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE threads SET state = 'Attention', blocker = ${reason}
       WHERE id = ${threadId} AND state NOT IN ('Stopped', 'Running', 'Failed') AND is_deleting = 0
         AND (blocker IS NULL OR blocker = ${reason})`;
-  });
+});
 
 /** Releases a held thread, which becomes Idle and runs its kept messages once woken. */
-export const releaseThread = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`UPDATE threads SET state = 'Idle', blocker = NULL WHERE id = ${threadId}`;
-  });
+export const releaseThread = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE threads SET state = 'Idle', blocker = NULL WHERE id = ${threadId}`;
+});
 
 /** Releases the threads held only by chatter pauses since resolved; other reasons and Stop still win. */
 export const releaseResolvedChatter = Effect.gen(function* () {
@@ -143,11 +134,10 @@ export const releaseResolvedChatter = Effect.gen(function* () {
 });
 
 /** A Stopped thread continues: it becomes Idle and runs its kept messages once woken. */
-export const resumeStopped = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`UPDATE threads SET state = 'Idle' WHERE id = ${threadId}`;
-  });
+export const resumeStopped = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE threads SET state = 'Idle' WHERE id = ${threadId}`;
+});
 
 /**
  * At startup no turn runs: threads left Running, Waiting, or waiting inside a turn become Idle; those
@@ -156,6 +146,9 @@ export const resumeStopped = (threadId: string) =>
  */
 export const recoverThreadStates = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
+  // Deletion commits records before removing files. Surviving rows still own all their files and can
+  // be offered again after a crash between marking, erasing, and rollback compensation.
+  yield* sql`UPDATE threads SET is_deleting = 0, state = 'Stopped', blocker = NULL WHERE is_deleting = 1`;
   yield* sql`UPDATE threads SET state = 'Idle'
     WHERE state IN ('Running', 'Waiting') OR ${sql.literal(waitsInTurn)}`;
 });
@@ -181,19 +174,23 @@ export const haltThreads = Effect.fn("haltThreads")(function* (
   if (state === "Stopped") for (const id of ids) yield* relaxAncestors(id);
 });
 
+/** The mission a thread belongs to, or null for an unknown thread. */
+export const readMissionIdOf = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ missionId: string }>`SELECT mission_id AS missionId FROM threads WHERE id = ${threadId}`;
+  return row?.missionId ?? null;
+});
+
 /**
  * The owner or a harness stops a thread: its turn is invalidated and it becomes Stopped; its turn is then
  * cancelled and the mission's waiting threads may take the freed slot. Nothing follows for an unknown thread.
  */
 export const stopThread = Effect.fn("stopThread")(function* (threadId: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const [thread] = yield* sql<{
-    missionId: string;
-  }>`SELECT mission_id AS missionId FROM threads WHERE id = ${threadId}`;
-  if (thread === undefined) return unchanged(null);
+  const missionId = yield* readMissionIdOf(threadId);
+  if (missionId === null) return unchanged(null);
   yield* haltThreads([threadId], "Stopped");
-  yield* touchMission(thread.missionId, yield* Clock.currentTimeMillis);
-  return changed(null, { missionsToWake: [thread.missionId], turnsToCancel: [threadId] });
+  yield* touchMission(missionId, yield* Clock.currentTimeMillis);
+  return changed(null, { missionsToWake: [missionId], turnsToCancel: [threadId] });
 });
 
 /**

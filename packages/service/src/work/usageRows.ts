@@ -12,9 +12,9 @@ const isHarness = Schema.is(HarnessName);
 export const harnessOf = (value: string | null) => (value !== null && isHarness(value) ? value : null);
 
 /** The columns of `amountColumns`, as a row. */
-export interface AmountRow extends ConsumptionRow {
+export type AmountRow = ConsumptionRow & {
   readonly pricedTurns: number;
-}
+};
 
 /** What a set of turns used: `consumptionColumns` and the turns that have a price. */
 export const amountColumns = `${consumptionColumns}, ${pricedTurnsColumn}`;

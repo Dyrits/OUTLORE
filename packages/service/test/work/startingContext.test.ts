@@ -1,12 +1,13 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { ModelChoice, StartingContext, ThreadId } from "@outlore/contracts";
+import { type ModelChoice, type StartingContext, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
-import { sandboxProblem, tokensOf } from "../../src/core/index.ts";
+import { type TurnRequest, tokensOf } from "../../src/core/index.ts";
 import { approvalInstructionsOf } from "../../src/harness/index.ts";
 import { prepareStartingContext } from "../../src/work/startingContext.ts";
+import { receivedFor, recordingHarnessLayer } from "../fixtures/recordingHarness.ts";
 import { call, fixture, open, read, send, settle, start, tool } from "../fixtures/service.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...) and thread tool names (`save_intel`, ...).
@@ -43,7 +44,7 @@ const sumOf = (context: StartingContext) => Object.values(context.parts).reduce(
 const idle = (text = "Hello") =>
   Effect.gen(function* () {
     const started = yield* start(text);
-    yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+    yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
     return started;
   });
 /** A mission whose top thread holds three long owner messages since the journal's latest entry. */
@@ -55,7 +56,7 @@ const crowded = () =>
       yield* send(started.threadId, `${index} ${"x".repeat(80_000)}`);
       yield* settle(
         started.missionId,
-        (d) => d.thread.state === "Idle" && d.messages.length >= before + 2,
+        (detail) => detail.thread.state === "Idle" && detail.messages.length >= before + 2,
         started.threadId,
       );
     }
@@ -63,6 +64,38 @@ const crowded = () =>
   });
 
 describe("previewing a new thread's starting context", () => {
+  it.live("keeps the turn and preview rules stable when another exact action of a granted kind is saved", () => {
+    const requests: Array<TurnRequest> = [];
+    const value = fixture(undefined, undefined, recordingHarnessLayer(requests));
+    fixtures.push(value);
+    return Effect.gen(function* () {
+      const { missionId, threadId } = yield* idle();
+      let previous: string | null = null;
+      for (const command of ["git push origin first", "git push origin second"]) {
+        yield* send(threadId, `ask ${JSON.stringify({ action: "Push changes", command, outsideSandbox: true })}`);
+        const detail = yield* settle(missionId, (detail) =>
+          detail.questions.some((question) => question.outcome === null),
+        );
+        const question = detail.questions.find((question) => question.outcome === null);
+        if (question === undefined) return yield* Effect.die("No question");
+        yield* call({ _tag: "AnswerQuestion", answer: "AlwaysAllow", message: null, questionId: question.id });
+        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        const shown = yield* preview(threadId, "Continue");
+        const child = yield* open(threadId, "Continue");
+        const received = yield* receivedFor(requests, child.threadId);
+        const rules = approvalInstructionsOf(received.access, "claude");
+        expect(received.access.permissionKinds).toEqual(["Run outside the sandbox"]);
+        expect(rules).not.toContain(command);
+        const context = yield* prepareStartingContext(child.threadId);
+        expect(shown.parts.instructions).toBe(
+          tokensOf(context.context.slice(context.context.indexOf("# Threads in Outlore"))) + tokensOf(rules),
+        );
+        if (previous !== null) expect(rules).toBe(previous);
+        previous = rules;
+      }
+    }).pipe(Effect.provide(value.layer));
+  });
+
   it.live("counts the request, the journal, the lore in scope, and the opener's messages", () => {
     const { layer } = live();
     return Effect.gen(function* () {
@@ -120,7 +153,7 @@ describe("previewing a new thread's starting context", () => {
     writeFileSync(join(app, "AGENTS.md"), "a".repeat(8_000));
     return Effect.gen(function* () {
       const started = yield* start("Hello", app);
-      yield* settle(started.missionId, (d) => d.thread.state === "Idle");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
       const shown = yield* preview(started.threadId, "Go on.");
       expect(shown.parts.workspace).toBeGreaterThan(2_000);
       expect(shown.tokens).toBe(sumOf(shown));
@@ -143,7 +176,10 @@ describe("previewing a new thread's starting context", () => {
   });
 
   it.live("measures the starting context the new thread then receives", () => {
-    const { layer } = live();
+    const requests: Array<TurnRequest> = [];
+    const value = fixture(undefined, undefined, recordingHarnessLayer(requests));
+    fixtures.push(value);
+    const { layer } = value;
     return Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       yield* tool(threadId, "save_intel", { kind: "fact", scope: "thread", text: "The owner prefers short replies." });
@@ -152,17 +188,8 @@ describe("previewing a new thread's starting context", () => {
       const shown = yield* preview(threadId, request);
       const child = yield* open(threadId, request);
       const received = yield* prepareStartingContext(child.threadId);
-      const { approvalLevel } = yield* call({ _tag: "ReadSettings" });
-      const isSandboxed = approvalLevel === "RiskyOnly" && (yield* sandboxProblem) === null;
-      const access = {
-        approvalLevel,
-        canWorkOutsideSandbox: false,
-        isInWorkspace: false,
-        mcpUrl: "",
-        permissions: [],
-        unaskedTools: [],
-      };
-      const approval = approvalInstructionsOf(access, isSandboxed, "claude");
+      // The approval rules as the child's harness renders them from the access its turn was given.
+      const approval = approvalInstructionsOf((yield* receivedFor(requests, child.threadId)).access, "claude");
       const tokens = tokensOf(received.context) + tokensOf(approval) + tokensOf(received.note) + tokensOf(request);
       // Each part is rounded up and the separators between parts are left out.
       expect(Math.abs(shown.tokens - tokens)).toBeLessThanOrEqual(Object.keys(shown.parts).length);
@@ -172,7 +199,7 @@ describe("previewing a new thread's starting context", () => {
   it.live("refuses an unknown parent thread", () => {
     const { layer } = live();
     return Effect.gen(function* () {
-      const failure = yield* preview(crypto.randomUUID() as ThreadId, "Go on.").pipe(Effect.flip);
+      const failure = yield* preview(ThreadId.make(crypto.randomUUID()), "Go on.").pipe(Effect.flip);
       expect(failure.message).toBe("No such thread.");
     }).pipe(Effect.provide(layer));
   });

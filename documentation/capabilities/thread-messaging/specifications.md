@@ -13,9 +13,9 @@ Subagents in today's harnesses report once at the end and cannot be asked or red
 - A thread can message its parent and the threads directly beneath it. Siblings reach each other through their parent.
 - When the owner mentions a quest or side-quest with `@` in a message, the thread that receives it may, for the turn that message reaches, read that quest's journal (`read_journal` with `mission`) and message the quest's top thread, or the side-quest itself (CHG-0181). The receiving thread decides from the owner's words whether to do either. The quest that receives such a message may answer its sender in the turn the message reaches, so the reply comes straight back (see [mission-coordination](../mission-coordination/specifications.md#references-between-quests)).
 - Without a mention, a thread reaches another quest only through Chronicler (formerly Guildmaster). A thread cannot widen its own reach by writing an `@` reference: only the owner's messages count.
+- A Ritual's run instruction is a service-made message, not a live owner message; its mentions grant no reach.
 - The user can write to any open thread, including a subagent's (for mirrored subagents, see [thread-tree](../thread-tree/specifications.md#subagents)).
 - Every message shows its sender: the user, or the sending thread.
-- A message can ask for a reply.
 
 ### Mentions with @
 
@@ -41,6 +41,7 @@ Agreed 2026-11-11 (CHG-0195); built in CHG-0196.
 ### Delivery
 
 - **Thread messages**, results included, are delivered into the receiving thread's current turn where its harness allows it; otherwise at its next turn. They are delivered whatever the receiving thread is doing.
+- Chronicler uses the same delivery controls as quest threads: while it works, Send follows the chosen default and the alternative offers Steer or Queue (CHG-0316). Comments remain quest-only.
 - **The user's messages** either steer the current turn or are queued for the next turn. The user chooses on each message. Steer is the default, and a setting changes the default.
 - A thread that is Waiting, Idle, or Done is woken by any message addressed to it, so two threads waiting on each other never stay stuck.
 - A Stopped thread keeps its messages and is not woken (see [thread-tree](../thread-tree/specifications.md#stopping)).
@@ -62,7 +63,7 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 
 | Tool | Purpose | Arguments | Answer |
 | --- | --- | --- | --- |
-| `send_thread_message` | Send a message | Receiving thread (a parent, a thread directly beneath, Chronicler, the top thread of a quest or a side-quest the owner mentioned in this turn, or a thread that wrote to the caller in this turn), text, whether a reply is wanted | The message's identifier, queued until explicit resume when the receiver is Stopped; or a refusal and its reason when the target is outside its reach |
+| `send_thread_message` | Send a message | Receiving thread (a parent, a thread directly beneath, Chronicler, the top thread of a quest or a side-quest the owner mentioned in this turn, or a thread that wrote to the caller in this turn), text | Sent, or a refusal and its reason when the target is outside its reach |
 | `report_result` | Report the thread's result to its parent | The result | — |
 | `interrupt_thread` | Interrupt a thread directly beneath the caller | The thread | Done, or a refusal and its reason when the thread is not directly beneath the caller or is not running |
 

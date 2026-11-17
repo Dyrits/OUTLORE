@@ -37,6 +37,18 @@ export interface Seed {
   readonly tokens?: readonly [number, number, number, number];
 }
 
+/** A subscription turn's usage row for one of `quests`' quests, ended at `endedAt`. */
+export const subscriptionRow = (quest: { mission: string; thread: string }, endedAt: number) =>
+  ({
+    billing: "Subscription",
+    endedAt,
+    estimate: 1,
+    harness: "claude",
+    mission: quest.mission,
+    model: "m",
+    thread: quest.thread,
+  }) as const;
+
 /** Replaces the usage the fake harness left with `rows`, which name the quests and threads they belong to. */
 export const seed = (rows: readonly Seed[]) =>
   Effect.gen(function* () {
@@ -53,7 +65,7 @@ export const seed = (rows: readonly Seed[]) =>
     }
   });
 
-/** Three quests: A in the realm Atlas, B in the realm Borealis, C in the Borderlands. */
+/** Three quests: one in the realm Atlas, one in the realm Borealis, one in the Borderlands. */
 export const quests = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const made = [];
@@ -63,23 +75,25 @@ export const quests = Effect.gen(function* () {
     made.push(quest);
   }
   yield* sql`INSERT INTO workspaces (id, name, path, created_at) VALUES ('realm-atlas', 'Atlas', NULL, 1), ('realm-borealis', 'Borealis', NULL, 2)`;
-  const [a, b, c] = made;
-  if (a === undefined || b === undefined || c === undefined) return yield* Effect.die("quests");
-  yield* sql`UPDATE threads SET workspace_id = 'realm-atlas' WHERE mission_id = ${a.missionId}`;
-  yield* sql`UPDATE threads SET workspace_id = 'realm-borealis' WHERE mission_id = ${b.missionId}`;
-  const [threadA] = yield* sql<{ id: string }>`SELECT id FROM threads WHERE mission_id = ${a.missionId}`;
-  const [threadB] = yield* sql<{ id: string }>`SELECT id FROM threads WHERE mission_id = ${b.missionId}`;
-  const [threadC] = yield* sql<{ id: string }>`SELECT id FROM threads WHERE mission_id = ${c.missionId}`;
+  const [atlas, borealis, borderlands] = made;
+  if (atlas === undefined || borealis === undefined || borderlands === undefined) return yield* Effect.die("quests");
+  yield* sql`UPDATE threads SET workspace_id = 'realm-atlas' WHERE mission_id = ${atlas.missionId}`;
+  yield* sql`UPDATE threads SET workspace_id = 'realm-borealis' WHERE mission_id = ${borealis.missionId}`;
+  const [threadAtlas] = yield* sql<{ id: string }>`SELECT id FROM threads WHERE mission_id = ${atlas.missionId}`;
+  const [threadBorealis] = yield* sql<{ id: string }>`SELECT id FROM threads WHERE mission_id = ${borealis.missionId}`;
+  const [threadBorderlands] = yield* sql<{
+    id: string;
+  }>`SELECT id FROM threads WHERE mission_id = ${borderlands.missionId}`;
   return {
-    a: { mission: a.missionId as string, thread: threadA?.id ?? "" },
-    b: { mission: b.missionId as string, thread: threadB?.id ?? "" },
-    c: { mission: c.missionId as string, thread: threadC?.id ?? "" },
+    atlas: { mission: atlas.missionId as string, thread: threadAtlas?.id ?? "" },
+    borderlands: { mission: borderlands.missionId as string, thread: threadBorderlands?.id ?? "" },
+    borealis: { mission: borealis.missionId as string, thread: threadBorealis?.id ?? "" },
   };
 });
 
 /** The usage of the cases below: several harnesses, models, realms, days, billing kinds, known and unknown prices. */
 export const standard = Effect.gen(function* () {
-  const { a, b, c } = yield* quests;
+  const { atlas, borealis, borderlands } = yield* quests;
   yield* seed([
     // Claude, a subscription turn estimated at $1.00: 100 uncached input, 30 output, 20 cache creation, 1,000 cache reads.
     {
@@ -87,9 +101,9 @@ export const standard = Effect.gen(function* () {
       endedAt: dayAt(1),
       estimate: 1,
       harness: "claude",
-      mission: a.mission,
+      mission: atlas.mission,
       model: "claude-sonnet-5-5",
-      thread: a.thread,
+      thread: atlas.thread,
       tokens: [100, 30, 20, 1000],
     },
     // Claude on an API key, with the cost the harness reported.
@@ -98,9 +112,9 @@ export const standard = Effect.gen(function* () {
       cost: 2,
       endedAt: dayAt(1, 18),
       harness: "claude",
-      mission: b.mission,
+      mission: borealis.mission,
       model: "claude-opus-5-5",
-      thread: b.thread,
+      thread: borealis.thread,
       tokens: [10, 10, 0, 0],
     },
     {
@@ -109,9 +123,9 @@ export const standard = Effect.gen(function* () {
       endedAt: dayAt(2),
       estimate: 0.5,
       harness: "codex",
-      mission: a.mission,
+      mission: atlas.mission,
       model: "gpt-5.1-codex",
-      thread: a.thread,
+      thread: atlas.thread,
     },
     // A model with a known price of zero.
     {
@@ -119,18 +133,18 @@ export const standard = Effect.gen(function* () {
       endedAt: dayAt(2, 14),
       estimate: 0,
       harness: "codex",
-      mission: c.mission,
+      mission: borderlands.mission,
       model: "free-model",
-      thread: c.thread,
+      thread: borderlands.thread,
     },
     // A model the price table does not know: its tokens count, its cost is unavailable.
     {
       billing: "Subscription",
       endedAt: dayAt(2, 9),
       harness: "opencode",
-      mission: c.mission,
+      mission: borderlands.mission,
       model: "x/unknown",
-      thread: c.thread,
+      thread: borderlands.thread,
       tokens: [5, 5, 0, 0],
     },
     // A turn from before billing kinds and models were recorded.
@@ -138,9 +152,9 @@ export const standard = Effect.gen(function* () {
       billing: null,
       endedAt: dayAt(3),
       harness: null,
-      mission: a.mission,
+      mission: atlas.mission,
       model: null,
-      thread: a.thread,
+      thread: atlas.thread,
       tokens: [2, 1, 0, 0],
     },
     // Outside every period below.
@@ -149,10 +163,10 @@ export const standard = Effect.gen(function* () {
       endedAt: dayAt(40),
       estimate: 9,
       harness: "claude",
-      mission: a.mission,
+      mission: atlas.mission,
       model: "claude-sonnet-5-5",
-      thread: a.thread,
+      thread: atlas.thread,
     },
   ]);
-  return { a, b, c };
+  return { atlas, borderlands, borealis };
 });

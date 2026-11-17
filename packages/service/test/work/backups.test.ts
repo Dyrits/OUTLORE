@@ -1,8 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { BackupCompanion } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
-import { call, fixture, open, read, send, settle, start } from "../fixtures/service.ts";
+import { call, codexBackup, fixture, open, read, send, settle, start } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 afterEach(() => {
@@ -13,19 +12,17 @@ const withService = <A, E, R>(body: Effect.Effect<A, E, R>) => {
   fixtures.push(value);
   return body.pipe(Effect.provide(value.layer));
 };
-
-const codex: BackupCompanion = { accountId: null, effort: "default", harness: "codex", model: "gpt-5" };
 const replies = (detail: { messages: ReadonlyArray<{ sender: string; text: string }> }) =>
   detail.messages.filter((message) => message.sender === "agent").map((message) => message.text);
 
-describe("a thread's backup Companions", () => {
+describe("saving a thread's backup Companions", () => {
   it.live("are saved in order and shown in the thread's panel", () =>
     withService(
       Effect.gen(function* () {
         const { threadId } = yield* start("Hello");
         expect((yield* call({ _tag: "ReadThreadPanel", threadId })).backups).toEqual([]);
-        yield* call({ _tag: "SetThreadBackups", backups: [codex], threadId });
-        expect((yield* call({ _tag: "ReadThreadPanel", threadId })).backups).toEqual([codex]);
+        yield* call({ _tag: "SetThreadBackups", backups: [codexBackup], threadId });
+        expect((yield* call({ _tag: "ReadThreadPanel", threadId })).backups).toEqual([codexBackup]);
       }),
     ),
   );
@@ -34,10 +31,13 @@ describe("a thread's backup Companions", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (d) => d.thread.state === "Idle");
-        yield* call({ _tag: "SetThreadBackups", backups: [codex], threadId });
+        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* call({ _tag: "SetThreadBackups", backups: [codexBackup], threadId });
         yield* send(threadId, "fail claude Usage limit reached\nrunner");
-        const detail = yield* settle(missionId, (d) => replies(d).length === 2 && d.thread.state === "Idle");
+        const detail = yield* settle(
+          missionId,
+          (detail) => replies(detail).length === 2 && detail.thread.state === "Idle",
+        );
         expect(replies(detail)[1]).toContain("codex/gpt-5");
         expect(detail.handovers.map((handover) => handover.text)).toEqual([
           expect.stringMatching(/^Fell back to Codex · gpt-5 · default effort · Usage limit reached/),
@@ -51,7 +51,7 @@ describe("a thread's backup Companions", () => {
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
         yield* settle(missionId, (detail) => detail.thread.state === "Idle");
-        yield* call({ _tag: "SetThreadBackups", backups: [codex], threadId });
+        yield* call({ _tag: "SetThreadBackups", backups: [codexBackup], threadId });
         yield* send(threadId, "wait 300\nfail claude Usage limit reached");
         yield* settle(missionId, (detail) => detail.thread.state === "Running");
         yield* call({
@@ -74,7 +74,7 @@ describe("a thread's backup Companions", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("fail claude no");
-        yield* settle(missionId, (d) => d.thread.state === "Failed");
+        yield* settle(missionId, (detail) => detail.thread.state === "Failed");
         expect((yield* read(missionId, threadId)).handovers).toEqual([]);
       }),
     ),
@@ -86,7 +86,7 @@ describe("marking a side-quest done", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (d) => d.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
         const opened = yield* open(threadId, "wait 2000");
         yield* call({ _tag: "MarkThreadDone", threadId: opened.threadId });
         const detail = yield* read(missionId, opened.threadId);

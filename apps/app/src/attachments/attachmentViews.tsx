@@ -4,6 +4,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { imageCache } from "./imageCache";
+import { loadSentImage, type SentImage } from "./sentImage";
 import type { AttachedFile } from "./useAttachments";
 
 // How attached images show (message-attachments): thumbnails above the message box with a × to remove them, and on the messages sent.
@@ -53,33 +54,42 @@ export function AttachmentStrip({
 /** The images already fetched, so a refresh or a scroll does not fetch a sent image again; bounded, as each one is held as base64. */
 const fetched = imageCache(64 * 1024 * 1024);
 
-const addressOf = (client: ServiceClient, card: AttachmentCard) =>
-  fetched.load(card.id, () =>
-    client
-      .request({ _tag: "ReadAttachment", attachmentId: card.id })
-      .then((content) => `data:${content.mediaType};base64,${content.data}`),
-  );
-
-function SentImage({ card, client }: { card: AttachmentCard; client: ServiceClient }) {
-  const [uri, setUri] = useState<string | null>(null);
+function SentImageTile({ card, client }: { card: AttachmentCard; client: ServiceClient }) {
+  const [image, setImage] = useState<SentImage | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new attempt is the retry the owner asked for.
   useEffect(() => {
     let isCurrent = true;
-    addressOf(client, card).then(
-      (address) => isCurrent && setUri(address),
-      () => undefined,
+    setImage(null);
+    loadSentImage(fetched, card.id, () => client.request({ _tag: "ReadAttachment", attachmentId: card.id })).then(
+      (loaded) => isCurrent && setImage(loaded),
     );
     return () => {
       isCurrent = false;
     };
-  }, [client, card]);
+  }, [client, card, attempt]);
   return (
-    <View style={local.sent}>
-      {uri === null ? (
+    <View style={[local.sent, image?.status === "failed" && local.sentFailed]}>
+      {image?.status === "ready" ? (
+        <Image accessibilityLabel={card.name} resizeMode="cover" source={{ uri: image.uri }} style={local.sentImage} />
+      ) : (
         <Text numberOfLines={2} style={local.tileName}>
           {card.name}
         </Text>
-      ) : (
-        <Image accessibilityLabel={card.name} resizeMode="cover" source={{ uri }} style={local.sentImage} />
+      )}
+      {image?.status === "failed" && (
+        <View style={local.failure}>
+          <Text accessibilityRole="alert" style={local.failureText}>
+            {image.message}
+          </Text>
+          <Pressable
+            accessibilityLabel={`Retry loading ${card.name}`}
+            accessibilityRole="button"
+            onPress={() => setAttempt((current) => current + 1)}
+          >
+            <Text style={local.retry}>Retry</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
@@ -91,13 +101,15 @@ export function MessageImages({ cards, client }: { cards: ReadonlyArray<Attachme
   return (
     <View style={local.strip}>
       {cards.map((card) => (
-        <SentImage card={card} client={client} key={card.id} />
+        <SentImageTile card={card} client={client} key={card.id} />
       ))}
     </View>
   );
 }
 
 const local = StyleSheet.create({
+  failure: { gap: 2, padding: 4 },
+  failureText: { color: colors.dangerText, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   image: { borderRadius: radii.md, height: thumbnail, width: thumbnail },
   remove: {
     alignItems: "center",
@@ -111,6 +123,7 @@ const local = StyleSheet.create({
     width: 18,
   },
   removeMark: { color: colors.onGround, fontFamily: fonts.sans, fontSize: 13, lineHeight: 16 },
+  retry: { color: colors.textDim, fontFamily: fonts.sans, fontSize: fontSizes.sm, textDecorationLine: "underline" },
   sent: {
     backgroundColor: colors.surface,
     borderRadius: radii.md,
@@ -119,6 +132,7 @@ const local = StyleSheet.create({
     overflow: "hidden",
     width: 96,
   },
+  sentFailed: { height: "auto", minHeight: 96, overflow: "visible" },
   sentImage: { height: 96, width: 96 },
   strip: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingTop: 6 },
   tile: {

@@ -7,7 +7,7 @@ import { Approvals } from "./approvals.ts";
 import { Commands } from "./commands.ts";
 import { Suggestions } from "./suggestions.ts";
 import { Threads } from "./threads.ts";
-import { callerRefusalOf, makeToolHandlers } from "./threadToolHandlers.ts";
+import { makeToolHandlers, readCallerRefusal } from "./threadToolHandlers.ts";
 import { answerToolCall, isThreadToolName, toolListingOf } from "./threadTools.ts";
 import { readAuthorityHarness } from "./turnAdmission.ts";
 
@@ -72,7 +72,7 @@ export const toolServerLayer = Layer.effectDiscard(
 
     const callTool = (threadId: string, name: string, args: unknown) =>
       Effect.gen(function* () {
-        const refusal = yield* callerRefusalOf(threadId, name);
+        const refusal = yield* readCallerRefusal(threadId, name);
         if (refusal !== null) return textResult(refusal, true);
         // Only a harness that asks its permission prompts through `answer_prompt` may call it (audit SA-14): the
         // others ask in-process, and a call by one would draw an allow decision of its own choosing.

@@ -44,6 +44,6 @@ export const SavedTier = Tier.mapFields((fields) => ({
   backups: BackupCompanions.pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
 }));
 
-/** The three tiers the Guildmaster picks from by how complex a request is; each is optional. */
+/** The three tiers the Chronicler picks from by how complex a request is; each is optional. */
 export const TierName = Schema.Literals(["Light", "Balanced", "Heavy"]);
 export type TierName = typeof TierName.Type;

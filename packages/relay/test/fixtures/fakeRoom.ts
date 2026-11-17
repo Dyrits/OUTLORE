@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { closeWithReason, type Member, RoomCore, type RoomLimits, type RoomPeer } from "../../src/roomCore.ts";
 import type { Role } from "../../src/route.ts";
 
@@ -34,28 +35,31 @@ export const createFakeRoom = (limits: Partial<RoomLimits> = {}) => {
       enroll: (member) => members.set(member.peer, member),
       memberOf: (peer) => members.get(peer) ?? null,
       members: () => [...members.values()],
-      readClaim: () => Promise.resolve(storage.claim),
+      readClaim: () => Effect.sync(() => storage.claim),
       retire: (peer) => members.delete(peer),
-      writeClaim: (hash) => {
-        storage.claim = hash;
-        storage.writes += 1;
-        return Promise.resolve();
-      },
+      writeClaim: (hash) =>
+        Effect.sync(() => {
+          storage.claim = hash;
+          storage.writes += 1;
+        }),
     },
     limits,
   );
 
   /** Connects a stand-in the way a transport does: screen, then open if accepted. */
-  const connect = async (role: Role, secret: string | null = null): Promise<FakePeer> => {
-    const peer = new FakePeer();
-    const claim = secret === null ? null : new TextEncoder().encode(secret.padEnd(16, "."));
-    const rejection = await core.screen(role, claim);
-    if (rejection === null) core.open(peer, role);
-    else closeWithReason(peer, rejection.code, rejection.reason);
-    return peer;
-  };
+  const connectEffect = (role: Role, secret: string | null = null) =>
+    Effect.gen(function* () {
+      const peer = new FakePeer();
+      const claim = secret === null ? null : new TextEncoder().encode(secret.padEnd(16, "."));
+      const rejection = yield* core.screen(role, claim);
+      if (rejection === null) yield* core.open(peer, role);
+      else closeWithReason(peer, rejection.code, rejection.reason);
+      return peer;
+    });
+  const connect = (role: Role, secret: string | null = null): Promise<FakePeer> =>
+    Effect.runPromise(connectEffect(role, secret));
 
-  return { connect, core, storage };
+  return { connect, connectEffect, core, storage };
 };
 
 /** A frame the way a host sends it: a type byte, a client id, then the payload. */

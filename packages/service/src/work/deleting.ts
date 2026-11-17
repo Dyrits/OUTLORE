@@ -1,14 +1,13 @@
-import { join } from "node:path";
 import type { DeletionPreview } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid, notFound, removeScratch, ServiceFailure } from "../core/index.ts";
+import { invalid, notFound, ServiceFailure } from "../core/index.ts";
 import { eraseThreadsLore } from "../lore/index.ts";
-import { eraseAttachmentsOf } from "./attachments.ts";
-import { Commands, changed } from "./commands.ts";
-import { refuseGuildmaster } from "./guildmaster.ts";
+import { forgetAttachmentsOf, removeAttachmentFiles } from "./attachments.ts";
+import { forgetOutcomesOf } from "./commandOutcomes.ts";
+import { Commands, changed, type WithFollowUps } from "./commands.ts";
+import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
-import { ScratchRoot } from "./workspaces.ts";
 
 const readSubtree = Effect.fn("readSubtree")(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
@@ -59,9 +58,7 @@ const eraseSubtree = Effect.fn("eraseSubtree")(function* (rows: Subtree, root: S
   const ids = rows.map((row) => row.id);
   // A received message belongs to its receiver's history, even after its sender is deleted.
   yield* sql`UPDATE messages SET sender_thread_id = NULL WHERE sender_thread_id IN ${sql.in(ids)}`;
-  yield* sql`DELETE FROM command_outcomes WHERE json_extract(outcome, '$.threadId') IN ${sql.in(ids)}
-  OR json_extract(outcome, '$.messageId') IN (SELECT id FROM messages WHERE thread_id IN ${sql.in(ids)})`;
-  yield* eraseAttachmentsOf(ids);
+  yield* forgetOutcomesOf(ids);
   yield* sql`DELETE FROM messages WHERE thread_id IN ${sql.in(ids)}`;
   yield* sql`DELETE FROM chatter WHERE first_id IN ${sql.in(ids)} OR second_id IN ${sql.in(ids)}`;
   yield* releaseResolvedChatter;
@@ -89,14 +86,52 @@ const eraseSubtree = Effect.fn("eraseSubtree")(function* (rows: Subtree, root: S
   return changed(null, { missionsToWake: [root.missionId] });
 });
 
-/** Permanently erases the confirmed subtree after invalidating and cancelling all its turns. */
+/** Puts a subtree whose erasing failed back as it was, so the owner sees it and can delete it again. */
+const restoreAfterFailure = Effect.fn("restoreAfterFailure")(function* (ids: ReadonlyArray<string>) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`UPDATE threads SET is_deleting = 0 WHERE id IN ${sql.in(ids)}`;
+  return changed(null);
+});
+
+/**
+ * Permanently erases the confirmed subtree after invalidating and cancelling all its turns. The records go in one
+ * transaction; the files and the scratch folder go only once it has committed, so a failure leaves records and files
+ * together, and the subtree is no longer marked as deleting.
+ */
 export const deleteThread = Effect.fn("deleteThread")(function* (threadId: string, confirmation: string) {
   const commands = yield* Commands;
-  const scratchRoot = yield* ScratchRoot;
   const rows = yield* commands.run(markDeleting(threadId, confirmation));
   const root = rows[0];
   if (root === undefined) return yield* invalid("No thread to delete.");
-  if (root.parentId === null) yield* removeScratch(join(scratchRoot, root.missionId));
-  yield* commands.run(eraseSubtree(rows, root));
+  const ids = rows.map((row) => row.id);
+  const files = yield* commands
+    .run(
+      forgetAttachmentsOf(ids).pipe(
+        Effect.flatMap((files) => eraseSubtree(rows, root).pipe(Effect.map((done) => withFiles(done, files, root)))),
+      ),
+    )
+    .pipe(Effect.onError(() => commands.run(restoreAfterFailure(ids)).pipe(Effect.orDie)));
+  yield* removeAttachmentFiles(files);
   return null;
+});
+
+/** The erasing's result carrying the files to remove, and a quest's scratch folder to remove once it commits. */
+const withFiles = (
+  done: WithFollowUps<null>,
+  files: ReadonlyArray<string>,
+  root: Subtree[number],
+): WithFollowUps<ReadonlyArray<string>> => ({
+  followUps: root.parentId === null ? { ...done.followUps, missionsToRemoveScratch: [root.missionId] } : done.followUps,
+  value: files,
+});
+
+/** Erases a quest already checked empty by the ending policy, in that policy's transaction. */
+export const eraseEmptyQuest = Effect.fn("eraseEmptyQuest")(function* (threadId: string) {
+  const rows = yield* readSubtree(threadId);
+  const root = rows[0];
+  if (root === undefined || root.parentId !== null) return yield* invalid("No quest to delete.");
+  const marked = yield* markDeleting(threadId, previewOf(rows).confirmation);
+  // Empty quests have no messages, hence no message-owned attachments; unassigned drafts belong to no quest.
+  yield* eraseSubtree(rows, root);
+  return changed(null, { missionsToRemoveScratch: [root.missionId], turnsToCancel: marked.followUps.turnsToCancel });
 });

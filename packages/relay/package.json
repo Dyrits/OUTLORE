@@ -4,19 +4,23 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./browser": "./src/browser.ts"
+    "./browser": "./src/browser.ts",
+    "./client": "./src/client.ts"
   },
   "scripts": {
     "bundle": "bun scripts/bundleWorker.ts",
-    "deploy": "bun run site && bunx wrangler deploy",
+    "deploy": "bun run site && bunx wrangler@4.162.0 deploy",
     "site": "cd ../../apps/app && CI=1 bunx expo export --platform web --output-dir ../../packages/relay/public",
     "typecheck": "tsc -p . && tsc -p tsconfig.worker.json"
   },
   "dependencies": {
+    "@outlore/channel": "workspace:*",
+    "effect": "4.1.4",
     "ws": "8.23.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261112.1",
+    "@types/bun": "^1.4.4",
     "@types/node": "^24",
     "@types/ws": "8.18.2"
   }

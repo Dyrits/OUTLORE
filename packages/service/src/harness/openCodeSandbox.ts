@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { packageCacheFolders } from "./claudeArgs.ts";
 
 // OpenCode has no sandbox of its own, so Outlore starts `opencode acp` inside the host's (CHG-0208): Seatbelt through
 // `sandbox-exec` on macOS, bubblewrap on Linux. Writes are allowed only to the thread's folder, the package caches, and
@@ -13,7 +14,7 @@ import { join } from "node:path";
 // read, is never writable from inside, so nothing planted there runs outside the sandbox.
 
 /** How OpenCode is wrapped on this host. */
-export interface OpenCodeSandbox {
+export type OpenCodeSandbox = {
   /** Folders commands may also write, such as package caches. */
   readonly caches: ReadonlyArray<string>;
   /** The sandbox tool: `/usr/bin/sandbox-exec` or `bwrap`. */
@@ -28,17 +29,12 @@ export interface OpenCodeSandbox {
    * of its own; the folder itself, holding the process marker, is not writable from inside.
    */
   readonly root: string;
-}
+};
 
 /** The package caches a wrapped OpenCode's commands may write, as the Claude Code sandbox allows them (claudeArgs.ts). */
-export const packageCachesOf = (home: string) => [
-  join(home, ".bun", "install", "cache"),
-  join(home, ".npm"),
-  join(home, "Library", "Caches", "electron"),
-  join(home, ".cache", "electron"),
-];
+export const packageCachesOf = (home: string) => packageCacheFolders.map((folder) => join(home, folder));
 
-const whichOf = (name: string) => {
+const findExecutable = (name: string) => {
   try {
     return execFileSync("which", [name], { encoding: "utf8" }).trim() || null;
   } catch {
@@ -47,7 +43,7 @@ const whichOf = (name: string) => {
 };
 
 /** Whether the sandbox tool starts a trivial command, so a broken one counts as missing. */
-const probeOf = (command: string, args: ReadonlyArray<string>) => {
+const probeCommand = (command: string, args: ReadonlyArray<string>) => {
   try {
     return spawnSync(command, [...args], { stdio: "ignore", timeout: 5000 }).status === 0;
   } catch {
@@ -74,14 +70,14 @@ export const detectOpenCodeSandbox = (host: {
     computerDataHome: process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"),
     root: host.root,
   };
-  const probe = host.probe ?? probeOf;
+  const probe = host.probe ?? probeCommand;
   if (host.platform === "darwin") {
     const command = "/usr/bin/sandbox-exec";
     if (!existsSync(command) || !probe(command, ["-p", "(version 1)(allow default)", "/usr/bin/true"])) return null;
     return { ...facts, command, kind: "seatbelt" };
   }
   if (host.platform === "linux") {
-    const command = (host.which ?? whichOf)("bwrap");
+    const command = (host.which ?? findExecutable)("bwrap");
     if (command === null || !probe(command, ["--ro-bind", "/", "/", "--", "/bin/true"])) return null;
     return { ...facts, command, kind: "bwrap" };
   }
@@ -115,7 +111,7 @@ export const openCodeEnvironmentOf = (sandbox: OpenCodeSandbox, accountDataHome:
 });
 
 /** A folder made if missing, by its real path, which Seatbelt matches (`/var` is `/private/var` on macOS). */
-const realFolder = (path: string) => {
+const makeRealFolder = (path: string) => {
   mkdirSync(path, { recursive: true });
   return realpathSync(path);
 };
@@ -125,8 +121,8 @@ const realFolder = (path: string) => {
  * else in its place, such as a link a sandboxed process planted to widen what the next start may write, is removed
  * first. Returned by its real path, checked to be where it should be.
  */
-const ownedFolder = (root: string, parts: ReadonlyArray<string>, mode = 0o755) => {
-  let path = realFolder(root);
+const makeOwnedFolder = (root: string, parts: ReadonlyArray<string>, mode = 0o755) => {
+  let path = makeRealFolder(root);
   for (const part of parts) {
     path = join(path, part);
     const found = lstatSync(path, { throwIfNoEntry: false });
@@ -142,9 +138,9 @@ const ownedFolder = (root: string, parts: ReadonlyArray<string>, mode = 0o755) =
  * (only the owner may read it), and the caches. Never the account's real data folder, nor the service's folder itself.
  */
 export const writableRootsOf = (sandbox: OpenCodeSandbox, cwd: string, accountDataHome: string | null) => [
-  realFolder(cwd),
-  ...sharedParts.map((part) => ownedFolder(sandbox.root, [part])),
-  ownedFolder(sandbox.root, ["data", accountPartOf(accountDataHome)], 0o700),
+  makeRealFolder(cwd),
+  ...sharedParts.map((part) => makeOwnedFolder(sandbox.root, [part])),
+  makeOwnedFolder(sandbox.root, ["data", accountPartOf(accountDataHome)], 0o700),
   ...sandbox.caches.filter((cache) => existsSync(cache)).map((cache) => realpathSync(cache)),
 ];
 
@@ -152,8 +148,8 @@ export const writableRootsOf = (sandbox: OpenCodeSandbox, cwd: string, accountDa
  * The marker every sandboxed OpenCode process the service starts carries in its environment, inherited by all it
  * starts (processTree.ts sweepOrphans): a random id kept in the service's folder, which the sandbox cannot write.
  */
-export const ownerMarkerOf = (sandbox: OpenCodeSandbox) => {
-  const path = join(realFolder(sandbox.root), "owner");
+export const writeOwnerMarker = (sandbox: OpenCodeSandbox) => {
+  const path = join(makeRealFolder(sandbox.root), "owner");
   if (!existsSync(path)) {
     try {
       writeFileSync(path, randomUUID(), { flag: "wx", mode: 0o600 });

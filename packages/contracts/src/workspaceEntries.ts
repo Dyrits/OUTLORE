@@ -10,11 +10,11 @@ export const WorkspaceEntry = Schema.Struct({
 export type WorkspaceEntry = typeof WorkspaceEntry.Type;
 
 /** An `@`-path in a message: its position in the text, starting at the `@`, and the path without it. */
-export interface MentionToken {
+export type MentionToken = {
   readonly end: number;
   readonly path: string;
   readonly start: number;
-}
+};
 
 /** The `@`-paths in a message: an `@` starting a word, then a path up to a space; punctuation closing a sentence is not part of it. */
 export const mentionTokensOf = (text: string): ReadonlyArray<MentionToken> =>

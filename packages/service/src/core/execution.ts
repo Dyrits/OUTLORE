@@ -3,6 +3,8 @@ import type {
   ApprovalLevel,
   AttachmentMediaType,
   BillingKind,
+  Choice,
+  ChoiceAnswers,
   EffortChoice,
   HarnessName,
   ModelChoice,
@@ -34,36 +36,50 @@ export type HarnessEvent =
   | { readonly _tag: "Notice"; readonly text: string };
 
 /** An image attached to a message, as a harness takes it: the file where the service keeps it. */
-export interface ImageAttachment {
+export type ImageAttachment = {
   readonly mediaType: AttachmentMediaType;
   readonly name: string;
   readonly path: string;
-}
+};
 
 /** A message to steer into a thread's running turn, by its identifier. */
-export interface SteeredMessage {
+export type SteeredMessage = {
   readonly id: string;
   readonly images: ReadonlyArray<ImageAttachment>;
   readonly text: string;
-}
+};
 
-/** What a thread may use in a turn, and how its actions are approved (CHG-0031). */
-export interface ThreadAccess {
+/**
+ * How a thread's actions are approved on its harness, as its turn runs and as the preview counts it (CHG-0301):
+ * built once by work/approvalTerms.ts and rendered for the thread by harness/instructions.ts.
+ */
+export type ApprovalTerms = {
   readonly approvalLevel: ApprovalLevel;
   /** Whether the owner allowed commands to leave the sandbox without a question (CHG-0295). */
   readonly canWorkOutsideSandbox: boolean;
+  /** Whether the thread's harness runs it inside a sandbox it enforces here, as its adapter reports (`containmentOf`). */
+  readonly containment: Containment;
+  /**
+   * Each kind of standing permission that applies to the thread, once and sorted, such as "Run outside the sandbox":
+   * never their targets, so a grant changes what the thread is told only when its kind is new.
+   */
+  readonly permissionKinds: ReadonlyArray<string>;
+};
+
+/** What a thread may use in a turn, and how its actions are approved (CHG-0031). */
+export type ThreadAccess = ApprovalTerms & {
   /** Whether the thread works in a workspace, whose sandbox may fetch dependencies (CHG-0034). */
   readonly isInWorkspace: boolean;
   /** The thread's own MCP endpoint serving the thread tools, and Claude Code's permission prompt tool (ADR 0005). */
   readonly mcpUrl: string;
-  /** The sentences of the standing permissions that apply to the thread. */
-  readonly permissions: ReadonlyArray<string>;
   /** The thread tools the thread uses without asking, named as Claude Code lists them (`mcp__outlore__…`). */
   readonly unaskedTools: ReadonlyArray<string>;
-}
+};
 
 /** One action a harness asks permission for, named as Claude Code names its tools (`Bash`, `Edit`, …). */
-export interface HarnessPrompt {
+export type HarnessPrompt = {
+  /** Choices decoded by the adapter; never passed through action-approval policy. */
+  readonly choices?: ReadonlyArray<Choice>;
   /**
    * Set on the question a harness asks before starting in a thread folder that is a link or resolves outside its root
    * (harness/threadFolder.ts): a one-time Allow or Deny for that start, which offers no standing permission and which
@@ -83,7 +99,7 @@ export interface HarnessPrompt {
    */
   readonly isUnsandboxed?: boolean;
   readonly toolName: string;
-}
+};
 
 /**
  * Whether a harness's tool execution runs inside a sandbox it enforces on this computer at an approval level
@@ -93,13 +109,15 @@ export interface HarnessPrompt {
 export type Containment = "Sandboxed" | "Unprotected";
 
 /** The owner's answer to a harness prompt: whether the action may run, and what to tell the harness otherwise. */
-export interface PromptAnswer {
+export type PromptAnswer = {
+  /** What the owner chose for a prompt that asked them to choose, one list per question (CHG-0299). */
+  readonly answers?: ChoiceAnswers;
   readonly isAllowed: boolean;
   readonly text: string;
-}
+};
 
 /** Everything one turn of a thread needs from Outlore. */
-export interface TurnRequest {
+export type TurnRequest = {
   readonly access: ThreadAccess;
   /**
    * Asks the owner, through Approvals, about one action the harness wants to run, waiting with no time limit
@@ -140,10 +158,10 @@ export interface TurnRequest {
   readonly sessionId: string | null;
   readonly text: string;
   readonly threadId: string;
-}
+};
 
 /** How a turn ended, with what it cost. */
-export interface TurnOutcome {
+export type TurnOutcome = {
   /** How the turn was billed; `Unknown` when the harness cannot tell (budget-control, Billing kind). */
   readonly billing: BillingKind;
   /**
@@ -161,7 +179,7 @@ export interface TurnOutcome {
   readonly sessionId: string;
   /** Null when the harness reported no usage; shown as unknown, never guessed. */
   readonly usage: TokenUsage | null;
-}
+};
 
 /** How long a harness has to end an interrupted turn before its process is closed (CHG-0039, provisional). */
 export const interruptGraceMillis = 10_000;
@@ -179,20 +197,20 @@ export const interruptedOutcomeOf = (sessionId: string, usage: TokenUsage | null
 export class HarnessFailure extends Schema.TaggedError<HarnessFailure>()("HarnessFailure", { reason: Schema.String }) {}
 
 /** One plan limit as a harness reports it: a window of so many minutes, how much is used, and when it resets (seconds). */
-export interface PlanLimitReport {
+export type PlanLimitReport = {
   readonly resetsAtSeconds: number;
   readonly usedPercent: number;
   readonly windowMinutes: number;
-}
+};
 
 /**
  * What a harness reports of the plan behind an account: how it is billed, and the limits of a subscription (none for
  * an API key). Never read with a token or credential: the harness's own tool answers (requirements, Comply with provider terms).
  */
-export interface PlanLimitsReport {
+export type PlanLimitsReport = {
   readonly billing: BillingKind;
   readonly windows: ReadonlyArray<PlanLimitReport>;
-}
+};
 
 /** What one harness adapter offers: one turn of a thread at a time, which can be steered and interrupted. */
 export interface HarnessAdapter {

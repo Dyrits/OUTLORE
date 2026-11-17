@@ -58,6 +58,7 @@ Sidebar drag-and-drop and confirmation were agreed on 2026-11-10 (CHG-0133) and 
 
 - A non-archived quest is idle, running, or asking for the user (Summons).
 - Done, Finished, and Fulfilled are no longer quest or side-quest statuses (CHG-0135 and CHG-0136, agreed on 2026-11-11; implementation pending).
+  - Update, 2026-11-17 (owner decision in the codebase review): **Done stays**. A quest marked done ends as Done and Done is a thread state; the code, the dashboard's Mark as done, and CHG-0304 and CHG-0308 keep those paths. Fulfilled and Finished stay retired. The two statements above and the "marking a quest Done is removed" line under Ending a mission record the 2026-11-11 agreement and are kept for history.
 - Reporting a result does not finish or archive a quest, and there is no "Mark as done?" prompt.
 - A quest whose work is complete remains available until the owner archives it.
 - A quest shows Summons if any thread needs the owner; otherwise it shows running while any thread has a turn in progress, and idle otherwise.
@@ -73,6 +74,7 @@ Sidebar drag-and-drop and confirmation were agreed on 2026-11-10 (CHG-0133) and 
 - After 14 days without activity, the dashboard asks whether to archive the quest; it no longer offers Mark as done.
   The question is not sent as a phone notification.
 - Activity is any turn or message in any of the mission's threads, by the user or by an agent. A dismissed question comes back after another 14 days without activity.
+- Archiving a quest that used no tokens, holds no message, and is not a Ritual's, deletes it instead (as [deleting a mission](../thread-tree/specifications.md#deleting) does): it carries nothing, so it does not appear in the Archived view. Archiving a realm still archives its empty quests, so Restore brings them back.
 - Archiving a mission with running threads asks one confirmation that names them, for example "2 threads are still running. Stop them and archive?", then stops them.
 - The previous auto-archive rule based on time since Done no longer applies; no replacement automatic archiving rule is agreed.
 - The inactivity duration is adjustable in settings.
@@ -80,6 +82,11 @@ Sidebar drag-and-drop and confirmation were agreed on 2026-11-10 (CHG-0133) and 
 - Writing in a thread of an archived mission brings the mission back to the active list and the state worked out from its threads.
 - Archiving a mission adds an entry to its journal (see [mission-journal](../mission-journal/specifications.md#when-a-mission-ends)), and `find_missions` still matches archived missions.
 - After the owner's quest-archive action succeeds, the interface returns to that quest's realm overview, or the Borderlands for a quest with no realm. Cancel and failure leave the current view unchanged.
+
+### Creating a realm
+
+- Creating checks and writes in one host transaction (CHG-0317). The result is Created, ArchivedMatch for the chosen folder, or NameTaken for an active name requiring acknowledgement. Recovery takes precedence; no realm is created or restored before the owner chooses.
+- Earlier apps receive null and retain error-based duplicate-name handling. The new app accepts null from an earlier host; recovery on that host still requires its existing flow or an upgrade.
 
 ### Archiving and restoring a realm
 
@@ -168,10 +175,10 @@ The expanded left sidebar uses this order:
 | 5 | Craft | Workflows |
 | 6 | The Keep | Library, Lore, Archive, in that order |
 | 7 | Reserves | Compact usage summary leading to a detailed usage page |
-| 8 | Charter | Placeholder page |
+| 8 | Charter | The Connectors and The Vault ([connectors](../connectors/specifications.md), CHG-0321); a marketplace-like place for connectors, nothing else; unbuilt placeholder today |
 | 9 | Workshop | Application settings, accounts, permissions, and defaults (the former Charter; CHG-0146) |
 
-The separate Workshop for MCP servers, connectors, and skills (position 8 of CHG-0134) is withdrawn for now; the owner will ask for a dedicated menu for them later.
+The separate Workshop for MCP servers, connectors, and skills (position 8 of CHG-0134) was withdrawn on 2026-11-11. On 2026-11-16 the owner asked for connectors in the Charter, which now holds them and The Vault (CHG-0321); skills and custom MCP servers have no place yet.
 
 - The Realms, Borderlands, and The Keep headings fold and unfold their contents the same way: pressing the heading or its fold arrow; each realm can expand or collapse its quests; each quest and side-quest can expand or collapse its children at every supported depth (CHG-0163).
 - Under the Realms heading, each Realm (crest and name) and its quests stand 20 px in from the heading, so the names of the Realms do not line up with the title (the owner's choice, CHG-0167).
@@ -189,9 +196,8 @@ The separate Workshop for MCP servers, connectors, and skills (position 8 of CHG
   The image does not authorize its other Guild Hall contents, footer, wording, or new actions.
 - Library holds generated and uploaded artifacts, especially artifacts from quests without a workspace; it is not limited to workspace-free quests.
   Artifact collection, supported types, storage, retention, and file actions need a separate Library specification before implementation.
-- A separate future resource-management destination is intended for MCP servers, connectors, and skills.
-  Resource scope, inheritance, loading, and failures remain governed by [tool and skill loading](../tool-and-skill-loading/specifications.md).
-  Additional Workshop categories and connector behavior are not settled by this navigation agreement.
+- The Charter holds the connectors and The Vault; their scope, switches per realm and quest, and loading are in [connectors](../connectors/specifications.md). A separate destination for skills and custom MCP servers remains future; their scope, inheritance, loading, and failures stay governed by [tool and skill loading](../tool-and-skill-loading/specifications.md).
+  The Charter holds nothing else (CHG-0326).
 - Reserves opens the [detailed usage page](../budget-control/specifications.md#reserves-usage-page); its name is retained.
 - Quest placement, direct creation, and confirmed moves follow the existing agreements above.
 

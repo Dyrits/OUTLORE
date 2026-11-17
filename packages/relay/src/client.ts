@@ -1,20 +1,18 @@
-import { encodeBase64Url } from "./base64url.ts";
+import type { Carrier } from "@outlore/channel";
+import { encodeBase64Url } from "@outlore/channel/base64url";
+import { Effect, Schema } from "effect";
 import { clientIdBytes, hostFrame, readClosingFrame, relayFrame } from "./roomCore.ts";
+import { claimProtocolOf, relayProtocol } from "./route.ts";
 
 // The relay as its users see it: a host keeps one connection and hears from its clients by their identifiers; a client
 // (a paired device) has one connection that carries its own frames only. Isomorphic: the standard WebSocket only.
 
 /** Whole messages between two peers, in order; the shape the secure channel asks of any carrier. */
-export interface RelayCarrier {
-  close(): void;
-  onClose(listener: () => void): void;
-  onMessage(listener: (data: Uint8Array) => void): void;
-  send(data: Uint8Array): void;
-}
+export type RelayCarrier = Carrier;
 
-export type ConnectFailure = "unreachable";
-
-export type ConnectResult<Value> = { ok: true; value: Value } | { kind: ConnectFailure; ok: false };
+export class ConnectFailure extends Schema.TaggedError<ConnectFailure>()("ConnectFailure", {
+  kind: Schema.Literal("unreachable"),
+}) {}
 
 /** A text frame the relay answers without waking its room: it keeps a path through a mobile network or a NAT open. */
 const keepAliveMillis = 25_000;
@@ -26,32 +24,55 @@ const socketUrl = (relayOrigin: string, room: string, query: Record<string, stri
   return url.toString();
 };
 
-const open = (url: string) =>
-  new Promise<ConnectResult<WebSocket>>((resolve) => {
+/** Opens the socket; an attempt that is interrupted before it opens is abandoned. */
+const open = (url: string, protocols?: string[]) =>
+  Effect.callback<WebSocket, ConnectFailure>((resume) => {
     let socket: WebSocket;
     try {
-      socket = new WebSocket(url);
+      socket = new WebSocket(url, protocols);
     } catch {
-      resolve({ kind: "unreachable", ok: false });
+      resume(Effect.fail(new ConnectFailure({ kind: "unreachable" })));
       return;
     }
     socket.binaryType = "arraybuffer";
-    socket.addEventListener("open", () => resolve({ ok: true, value: socket }), { once: true });
-    socket.addEventListener("error", () => resolve({ kind: "unreachable", ok: false }), { once: true });
+    socket.addEventListener("open", () => resume(Effect.succeed(socket)), { once: true });
+    socket.addEventListener("error", () => resume(Effect.fail(new ConnectFailure({ kind: "unreachable" }))), {
+      once: true,
+    });
+    return Effect.sync(() => {
+      if (socket.readyState !== WebSocket.OPEN) socket.close();
+    });
   });
 
 const bytesOf = (data: unknown): Uint8Array | null =>
-  data instanceof ArrayBuffer ? new Uint8Array(data) : ArrayBuffer.isView(data) ? new Uint8Array(data.buffer) : null;
+  data instanceof ArrayBuffer
+    ? new Uint8Array(data)
+    : ArrayBuffer.isView(data)
+      ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+      : null;
 
 const hex = (bytes: Uint8Array) => Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 const unhex = (text: string) => Uint8Array.from(text.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16));
-/** Pings the relay at a fixed interval until the socket closes. */
-const keepAlive = (socket: WebSocket) => {
-  const timer = setInterval(() => {
-    if (socket.readyState === WebSocket.OPEN) socket.send("ping");
-  }, keepAliveMillis);
-  socket.addEventListener("close", () => clearInterval(timer), { once: true });
-};
+/**
+ * Pings the relay at a fixed interval until the socket closes; a socket that is not open when this starts has nothing
+ * to keep alive, so it ends at once instead of waiting for a close it already missed.
+ */
+export const keepAlive = (socket: Pick<WebSocket, "addEventListener" | "readyState" | "send">) =>
+  Effect.suspend(() =>
+    socket.readyState !== WebSocket.OPEN
+      ? Effect.void
+      : Effect.sync(() => {
+          if (socket.readyState === WebSocket.OPEN) socket.send("ping");
+        }).pipe(
+          Effect.delay(keepAliveMillis),
+          Effect.forever,
+          Effect.raceFirst(
+            Effect.callback<void>((resume) => {
+              socket.addEventListener("close", () => resume(Effect.void), { once: true });
+            }),
+          ),
+        ),
+  );
 
 /** A host's connection to its room. */
 export interface HostConnection {
@@ -68,20 +89,12 @@ export interface HostConnection {
   /** Runs once when the connection ends, with the relay's close code (1006 when it dropped without one). */
   onClose(listener: (code: number, reason: string) => void): void;
   sendToClient(clientId: string, data: Uint8Array): void;
+  /** Whether the claim went in the address because the relay is of an earlier release (see `legacyClaimUntil`). */
+  readonly usesLegacyClaim: boolean;
 }
 
-/** Connects as the host of `room`, claiming it with `claim` (the first claim keeps the room). */
-export async function connectHost(options: {
-  claim: Uint8Array;
-  relayOrigin: string;
-  room: string;
-}): Promise<ConnectResult<HostConnection>> {
-  const opened = await open(
-    socketUrl(options.relayOrigin, options.room, { claim: encodeBase64Url(options.claim), role: "host" }),
-  );
-  if (!opened.ok) return opened;
-  const socket = opened.value;
-  keepAlive(socket);
+/** The host's side of an open socket. */
+const hostConnectionOf = (socket: WebSocket, usesLegacyClaim: boolean): HostConnection => {
   const joined: Array<(clientId: string) => void> = [];
   const left: Array<(clientId: string) => void> = [];
   const data: Array<(clientId: string, data: Uint8Array) => void> = [];
@@ -126,21 +139,19 @@ export async function connectHost(options: {
   };
 
   return {
-    ok: true,
-    value: {
-      close: () => socket.close(1000, "host closed"),
-      closeClient: (clientId) => send(framed(hostFrame.disconnect, clientId, new Uint8Array(0))),
-      onClientData: (listener) => void data.push(listener),
-      onClientJoined: (listener) => void joined.push(listener),
-      onClientLeft: (listener) => void left.push(listener),
-      onClose: (listener) => {
-        if (ended !== null) listener(ended.code, ended.reason);
-        else closed.push(listener);
-      },
-      sendToClient: (clientId, payload) => send(framed(hostFrame.forward, clientId, payload)),
+    close: () => socket.close(1000, "host closed"),
+    closeClient: (clientId) => send(framed(hostFrame.disconnect, clientId, new Uint8Array(0))),
+    onClientData: (listener) => void data.push(listener),
+    onClientJoined: (listener) => void joined.push(listener),
+    onClientLeft: (listener) => void left.push(listener),
+    onClose: (listener) => {
+      if (ended !== null) listener(ended.code, ended.reason);
+      else closed.push(listener);
     },
+    sendToClient: (clientId, payload) => send(framed(hostFrame.forward, clientId, payload)),
+    usesLegacyClaim,
   };
-}
+};
 
 /** A client's connection: the carrier for a secure channel, and why the relay closed it, if it did. */
 export interface ClientConnection {
@@ -149,15 +160,8 @@ export interface ClientConnection {
   closeCode(): number | null;
 }
 
-/** Connects to the host of `room` as a client; the relay closes it with `closeCodes.hostOffline` if no host is there. */
-export async function connectClient(options: {
-  relayOrigin: string;
-  room: string;
-}): Promise<ConnectResult<ClientConnection>> {
-  const opened = await open(socketUrl(options.relayOrigin, options.room, { role: "client" }));
-  if (!opened.ok) return opened;
-  const socket = opened.value;
-  keepAlive(socket);
+/** The client's side of an open socket. */
+const clientConnectionOf = (socket: WebSocket): ClientConnection => {
   const messages: Array<(data: Uint8Array) => void> = [];
   const closed: Array<() => void> = [];
   const early: Uint8Array[] = [];
@@ -187,23 +191,58 @@ export async function connectClient(options: {
   socket.addEventListener("close", (event) => end(event.code));
 
   return {
-    ok: true,
-    value: {
-      carrier: {
-        close: () => socket.close(1000, "client closed"),
-        onClose: (listener) => {
-          if (code !== null) listener();
-          else closed.push(listener);
-        },
-        onMessage: (listener) => {
-          messages.push(listener);
-          for (const frame of early.splice(0)) listener(frame);
-        },
-        send: (frame) => {
-          if (socket.readyState === WebSocket.OPEN) socket.send(frame);
-        },
+    carrier: {
+      close: () => socket.close(1000, "client closed"),
+      onClose: (listener) => {
+        if (code !== null) listener();
+        else closed.push(listener);
       },
-      closeCode: () => code,
+      onMessage: (listener) => {
+        messages.push(listener);
+        for (const frame of early.splice(0)) listener(frame);
+      },
+      send: (frame) => {
+        if (socket.readyState === WebSocket.OPEN) socket.send(frame);
+      },
     },
+    closeCode: () => code,
   };
-}
+};
+
+/**
+ * Connects as the host of `room`, claiming it with `claim` (the first claim keeps the room); an unreachable relay is
+ * the typed failure. The claim travels in the WebSocket subprotocols, not in the address. With `legacyFallback`, any
+ * failure of that first try is followed by a second one with the claim in the address, as earlier hosts sent it; the
+ * caller must therefore set it only when it has reason to think the relay is of an earlier release (the service does,
+ * in `mayFallBackToLegacyClaim`). It is for the transition only (see `legacyClaimUntil`). The keep-alive runs until the
+ * socket closes.
+ */
+export const connectHost = Effect.fnUntraced(function* (options: {
+  claim: Uint8Array;
+  legacyFallback?: boolean;
+  relayOrigin: string;
+  room: string;
+}) {
+  const withSubprotocol = open(socketUrl(options.relayOrigin, options.room, { role: "host" }), [
+    relayProtocol,
+    claimProtocolOf(options.claim),
+  ]).pipe(Effect.map((socket) => ({ socket, usesLegacyClaim: false })));
+  const inAddress = open(
+    socketUrl(options.relayOrigin, options.room, { claim: encodeBase64Url(options.claim), role: "host" }),
+  ).pipe(Effect.map((socket) => ({ socket, usesLegacyClaim: true })));
+  const { socket, usesLegacyClaim } = yield* options.legacyFallback === true
+    ? withSubprotocol.pipe(Effect.catch(() => inAddress))
+    : withSubprotocol;
+  yield* Effect.forkDetach(keepAlive(socket));
+  return hostConnectionOf(socket, usesLegacyClaim);
+});
+
+/**
+ * Connects to the host of `room` as a client; the relay closes it with `closeCodes.hostOffline` if no host is there.
+ * An unreachable relay is the typed failure. The keep-alive runs until the socket closes.
+ */
+export const connectClient = Effect.fnUntraced(function* (options: { relayOrigin: string; room: string }) {
+  const socket = yield* open(socketUrl(options.relayOrigin, options.room, { role: "client" }));
+  yield* Effect.forkDetach(keepAlive(socket));
+  return clientConnectionOf(socket);
+});

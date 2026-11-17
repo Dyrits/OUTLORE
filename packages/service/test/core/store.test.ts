@@ -20,8 +20,37 @@ const migrateUntil = (last: string) =>
     loader: SqliteMigrator.fromRecord(Object.fromEntries(Object.entries(migrations).filter(([id]) => id <= last))),
   });
 
+describe("migrating pending lore changes", () => {
+  it.effect("keeps old proposals and leaves their unknown target state unset", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
+    directories.push(directory);
+    return Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* migrateUntil("0053_command_outcome_wakes");
+      yield* sql`INSERT INTO intel_changes (id, thread_id, kind, status, intel_id, scope, text, previous_text, at)
+        VALUES ('c', 't', 'Update', 'Awaiting', 'l', 'Global', 'New', 'Old', 1)`;
+      yield* migrateUntil("0055_lore_change_previous_placement");
+      expect(
+        yield* sql`SELECT status, text, previous_text AS previousText, previous_scope AS previousScope,
+        previous_thread_id AS previousThreadId, previous_workspace_id AS previousWorkspaceId, previous_kind AS previousKind
+        FROM intel_changes WHERE id = 'c'`,
+      ).toEqual([
+        {
+          previousKind: null,
+          previousScope: null,
+          previousText: "Old",
+          previousThreadId: null,
+          previousWorkspaceId: null,
+          status: "Awaiting",
+          text: "New",
+        },
+      ]);
+    }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
+  });
+});
+
 describe("migrating saved realms to archive support", () => {
-  it.live("reads a realm saved before archive support as active without rewriting it", () => {
+  it.effect("reads a realm saved before archive support as active without rewriting it", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
     directories.push(directory);
     return Effect.gen(function* () {
@@ -37,7 +66,7 @@ describe("migrating saved realms to archive support", () => {
 });
 
 describe("only Realms and Borderlands (CHG-0161)", () => {
-  it.live("keeps realms and their threads, lets a realm have no folder, and drops Free Realms", () => {
+  it.effect("keeps realms and their threads, lets a realm have no folder, and drops Free Realms", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
     directories.push(directory);
     return Effect.gen(function* () {
@@ -68,7 +97,7 @@ describe("only Realms and Borderlands (CHG-0161)", () => {
 });
 
 describe("the assistant renamed Iskios (CHG-0177)", () => {
-  it.live("renames the stored titles of the assistant's quest and thread, and no other", () => {
+  it.effect("renames the stored titles of the assistant's quest and thread, and no other", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
     directories.push(directory);
     return Effect.gen(function* () {
@@ -94,7 +123,7 @@ describe("the assistant renamed Iskios (CHG-0177)", () => {
 });
 
 describe("the assistant renamed Chronicler (CHG-0285)", () => {
-  it.live("renames the stored titles of the assistant's quest and thread, and no other", () => {
+  it.effect("renames the stored titles of the assistant's quest and thread, and no other", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
     directories.push(directory);
     return Effect.gen(function* () {
@@ -114,6 +143,33 @@ describe("the assistant renamed Chronicler (CHG-0285)", () => {
         { id: "gt", title: "Chronicler" },
         { id: "q", title: "Iskios" },
         { id: "qt", title: "Iskios" },
+      ]);
+    }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
+  });
+});
+
+describe("migrating saved questions to explicit kinds", () => {
+  it.effect("preserves past answers and classifies choices, grants and confirmations", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
+    directories.push(directory);
+    return Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* migrateUntil("0051_choice_questions");
+      yield* sql`INSERT INTO missions (id, top_thread_id, title, created_at, last_activity_at) VALUES ('m', 't', 'Quest', 1, 1)`;
+      yield* sql`INSERT INTO threads (id, mission_id, state) VALUES ('t', 'm', 'Idle')`;
+      for (const [id, pattern, permission, choices] of [
+        ["action", "git push", "Run this exact command", null],
+        ["choice", null, null, "[]"],
+        ["confirmation", null, null, null],
+      ]) {
+        yield* sql`INSERT INTO questions (id, mission_id, thread_id, source, summary, details, pattern, permission, choices, asked_at, outcome)
+          VALUES (${id}, 'm', 't', 'Thread', 'Question', 'Details', ${pattern}, ${permission}, ${choices}, 1, 'Withdrawn')`;
+      }
+      yield* migrateUntil("0052_question_kind");
+      expect(yield* sql`SELECT id, kind, outcome FROM questions ORDER BY id`).toEqual([
+        { id: "action", kind: "Approval", outcome: "Withdrawn" },
+        { id: "choice", kind: "Choice", outcome: "Withdrawn" },
+        { id: "confirmation", kind: "Confirmation", outcome: "Withdrawn" },
       ]);
     }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
   });

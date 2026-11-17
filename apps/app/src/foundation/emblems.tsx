@@ -1,4 +1,4 @@
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 
 /** The strokes of each emblem, drawn on a 24 by 24 grid. */
 export const emblemPaths = {
@@ -43,30 +43,9 @@ export function Emblem({ name, size = 18, tint }: { name: EmblemName; size?: num
       viewBox="0 0 24 24"
       width={size}
     >
-      {emblemPaths[name].map((d) => (
-        <Path d={d} key={d} />
+      {emblemPaths[name].map((path) => (
+        <Path d={path} key={path} />
       ))}
-    </Svg>
-  );
-}
-
-/** A small stack of dots, for the realms menu button: a realm's own emblem is not one icon, so the menu has its own. */
-export function RealmsIcon({ size = 18, tint }: { size?: number; tint: string }) {
-  return (
-    <Svg
-      fill="none"
-      height={size}
-      stroke={tint}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={1.7}
-      viewBox="0 0 24 24"
-      width={size}
-    >
-      <Path d="M12 3l9 5-9 5-9-5z" />
-      <Path d="M3 12l9 5 9-5" />
-      <Path d="M3 16l9 5 9-5" />
-      <Circle cx={12} cy={8} fill={tint} r={1} />
     </Svg>
   );
 }

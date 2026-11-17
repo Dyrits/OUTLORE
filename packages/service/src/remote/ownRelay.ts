@@ -1,5 +1,6 @@
 import { newRoomName } from "@outlore/channel";
 import { closeCodes, connectClient, relayWorkerBundle, relayWorkerCompatibilityDate } from "@outlore/relay";
+import { Effect } from "effect";
 
 // A user who does not want to share the project's relay deploys the same Worker to their own Cloudflare account with
 // one API token (device-pairing, own relay). The token is used for this one deployment: it is never stored, never
@@ -15,18 +16,18 @@ export const ownRelayTag = "outlore-relay";
 export const defaultWorkerName = "outlore-relay";
 
 /** One call to Cloudflare's API; `form` is a multipart upload, `body` a JSON one. */
-export interface CloudflareCall {
+export type CloudflareCall = {
   readonly body?: unknown;
   readonly form?: FormData;
   readonly method: "GET" | "POST" | "PUT";
   readonly path: string;
-}
+};
 
 /** What Cloudflare answered: the HTTP status, and the body when it was JSON. */
-export interface CloudflareAnswer {
+export type CloudflareAnswer = {
   readonly json: unknown;
   readonly status: number;
-}
+};
 
 /** Cloudflare's API as one account's token sees it; a stand-in answers in tests. */
 export interface CloudflareApi {
@@ -57,6 +58,7 @@ export const cloudflareApiFor = (token: string, fetchImpl: typeof fetch = fetch)
   },
 });
 
+/** Why deploying the owner's own relay failed, naming the step that refused. */
 export type DeployFailureKind =
   | "cloudflare-error"
   | "many-accounts"
@@ -81,7 +83,8 @@ export type DeployResult =
     }
   | { readonly failure: DeployFailureKind; readonly message: string; readonly ok: false };
 
-export interface DeployOptions {
+/** What a deployment takes: the Cloudflare account to reach, and how the fresh address is probed. */
+export type DeployOptions = {
   /** Asks whether the relay at an address answers; the default opens a connection and reads the relay's reply. */
   readonly answers?: (origin: string) => Promise<boolean>;
   readonly api: CloudflareApi;
@@ -91,7 +94,7 @@ export interface DeployOptions {
   /** The token, only so that no message ever repeats it. */
   readonly token: string;
   readonly workerName?: string;
-}
+};
 
 const tokenWords = "Create it from the “Edit Cloudflare Workers” template and paste all of it.";
 const messages = {
@@ -134,7 +137,14 @@ const sleep = (millis: number) => new Promise<void>((resolve) => setTimeout(reso
 
 /** Whether a relay answers at `origin`: a device with no host in a fresh room is turned away with "host offline". */
 export const relayAnswers = async (origin: string): Promise<boolean> => {
-  const connected = await connectClient({ relayOrigin: origin, room: newRoomName() });
+  const connected = await Effect.runPromise(
+    connectClient({ relayOrigin: origin, room: newRoomName() }).pipe(
+      Effect.match({
+        onFailure: () => ({ ok: false as const }),
+        onSuccess: (value) => ({ ok: true as const, value }),
+      }),
+    ),
+  );
   if (!connected.ok) return false;
   const { carrier, closeCode } = connected.value;
   const code = await new Promise<number | null>((resolve) => {

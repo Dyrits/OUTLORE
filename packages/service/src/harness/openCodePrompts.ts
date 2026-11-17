@@ -48,22 +48,9 @@ export const promptOf = (toolCall: unknown, firstOutside: string | null = null) 
 };
 
 /** The first file an edit names that lies outside the thread's folder, or null when every one is inside. */
-export const firstOutsideOf = Effect.fnUntraced(function* (request: TurnRequest, toolCall: unknown) {
+export const findFirstOutside = Effect.fnUntraced(function* (request: TurnRequest, toolCall: unknown) {
   for (const path of editedPathsOf(toolCall)) if (!(yield* isInsideFolder(request.cwd, path))) return path;
   return null;
-});
-
-/**
- * Whether an edit runs without asking: at the default level, editing inside the thread's folder does, as Claude
- * Code and Codex allow it in their sandbox; editing outside it asks (workspace-attachment). An edit naming no file
- * asks.
- */
-export const isUnaskedEdit = Effect.fnUntraced(function* (request: TurnRequest, toolCall: unknown) {
-  if (request.access.approvalLevel !== "RiskyOnly" || textFieldOf(toolCall, "kind") !== "edit") return false;
-  const paths = editedPathsOf(toolCall);
-  if (paths.length === 0) return false;
-  for (const path of paths) if (!(yield* isInsideFolder(request.cwd, path))) return false;
-  return true;
 });
 
 /** The refused action, named for the model: the command, the file, or the tool. */

@@ -12,10 +12,10 @@ import { detectOpenCodeSandbox } from "./openCodeSandbox.ts";
 import { listOpenCodeEfforts, makeOpenCodeHarness } from "./opencode.ts";
 
 // The harness registry (provider-accounts): each harness defined once, by its facts, its turn adapter, and
-// what Outlore asks its own tool about sign-in and models. Adding a harness adds one entry here.
+// what Outlore asks its own tool about sign-in and models. Adding a harness adds one entry here and one line in `makeHarnessRouter`.
 
 /** What every harness's turn adapter is started with in the app. */
-export interface AdapterOptions {
+export type AdapterOptions = {
   /** The executable. */
   readonly command: string;
   /** The service's own folder, where a wrapped OpenCode keeps its state; the system's temporary folder when left out. */
@@ -24,7 +24,7 @@ export interface AdapterOptions {
   readonly idleTimeout: Duration.Input;
   /** Why the sandbox cannot run here, or null (CHG-0031). */
   readonly sandboxProblem: string | null;
-}
+};
 
 /** One harness: its facts, its turn adapter, and its tool's answers about sign-in and models. */
 export interface HarnessDefinition extends HarnessFacts {
@@ -60,8 +60,8 @@ const codexEffortsOf = (model: unknown): Array<EffortChoice> => {
 };
 
 /** Codex's models, read from its app server's own list. */
-const listCodexModels = (command: string, configDirectory: string | null) =>
-  Effect.gen(function* () {
+const listCodexModels = Effect.fnUntraced(
+  function* (command: string, configDirectory: string | null) {
     const rpc = yield* startRpcProcess({
       args: ["app-server"],
       command,
@@ -88,30 +88,31 @@ const listCodexModels = (command: string, configDirectory: string | null) =>
             : [{ efforts: codexEffortsOf(model), id, label: textFieldOf(model, "displayName") ?? id }];
         })
       : [];
-  }).pipe(Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([])));
+  },
+  Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([])),
+);
 
 const claude: HarnessDefinition = {
   ...harnessFacts.claude,
   makeAdapter: ({ command, idleTimeout, sandboxProblem }) =>
     makeClaudeHarness({ command, idleTimeout, sandboxProblem }),
   readModels: () => Effect.succeed(claudeModels),
-  readSignIn: (command, env) =>
-    Effect.gen(function* () {
-      const { stdout } = yield* runHarnessCommand(command, ["auth", "status", "--json"], env);
-      let status: unknown = null;
-      try {
-        status = JSON.parse(stdout);
-      } catch {
-        return unknownSignIn;
-      }
-      if (fieldOf(status, "loggedIn") !== true) return signedOut;
-      const plan = textFieldOf(status, "subscriptionType");
-      const email = textFieldOf(status, "email");
-      return {
-        detail: [email, plan === null ? null : `Claude ${plan}`].filter((part) => part !== null).join(" · ") || null,
-        signIn: "SignedIn",
-      } satisfies SignInStatus;
-    }),
+  readSignIn: Effect.fnUntraced(function* (command: string, env: Record<string, string>) {
+    const { stdout } = yield* runHarnessCommand(command, ["auth", "status", "--json"], env);
+    let status: unknown = null;
+    try {
+      status = JSON.parse(stdout);
+    } catch {
+      return unknownSignIn;
+    }
+    if (fieldOf(status, "loggedIn") !== true) return signedOut;
+    const plan = textFieldOf(status, "subscriptionType");
+    const email = textFieldOf(status, "email");
+    return {
+      detail: [email, plan === null ? null : `Claude ${plan}`].filter((part) => part !== null).join(" · ") || null,
+      signIn: "SignedIn",
+    } satisfies SignInStatus;
+  }),
 };
 
 const codex: HarnessDefinition = {

@@ -32,14 +32,38 @@ interface Session {
   sequence: number;
 }
 
+/** The shell a terminal opens: the owner's login shell, or Windows' command shell, which has no login shell. */
+export const defaultShellOf = (
+  platform: NodeJS.Platform,
+  loginShell: string | undefined,
+  comspec: string | undefined,
+): string => (platform === "win32" ? comspec || "cmd.exe" : loginShell || "/bin/sh");
+
+/** A Unix login shell loads its start-up files for `-l`; the Windows command shell takes no such flag. */
+export const shellArgsOf = (platform: NodeJS.Platform): string[] => (platform === "win32" ? [] : ["-l"]);
+
+export interface TerminalOptions {
+  home: string;
+  platform?: NodeJS.Platform;
+  shell?: string;
+}
+
 /** Owns desktop shells independently of whether their conversation is visible. */
 export class Terminals {
   private readonly sessions = new Map<string, Session>();
+  private readonly options: { home: string; platform: NodeJS.Platform; shell: string };
   constructor(
     private readonly onData: (id: string, data: string, sequence: number) => void,
     private readonly onExit: (id: string) => void,
-    private readonly options = { home: homedir(), shell: userInfo().shell || process.env.SHELL || "/bin/sh" },
-  ) {}
+    options: TerminalOptions = { home: homedir() },
+  ) {
+    const platform = options.platform ?? process.platform;
+    this.options = {
+      home: options.home,
+      platform,
+      shell: options.shell ?? defaultShellOf(platform, userInfo().shell || process.env.SHELL, process.env.ComSpec),
+    };
+  }
 
   /** Starts a shell or returns its retained output without restarting its process. */
   open(id: string, cwd: string | null) {
@@ -52,7 +76,7 @@ export class Terminals {
     const folder = cwd ?? this.options.home;
     if (!statSync(folder).isDirectory()) throw new Error("The terminal's starting folder is not a directory.");
     prepareTerminalHelper();
-    const shell = spawn(this.options.shell, ["-l"], {
+    const shell = spawn(this.options.shell, shellArgsOf(this.options.platform), {
       cols: 80,
       cwd: folder,
       env: process.env,

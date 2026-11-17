@@ -4,7 +4,7 @@ import type { RitualScopeOperation } from "@outlore/contracts";
 export type StructuralOperation = RitualScopeOperation | "CreateRealm" | "RenameRealm" | "CreateRitual";
 
 /** One structural action as the owner would name it: what, on which target, and to what new value. */
-export interface NamedAction {
+export type NamedAction = {
   readonly operation: StructuralOperation;
   /** The names of the other targets of the same kind, such as the other quests' titles: naming one is ambiguous. */
   readonly rivals?: ReadonlyArray<string>;
@@ -12,57 +12,54 @@ export interface NamedAction {
   readonly targets: ReadonlyArray<string>;
   /** The new value the owner must name too (a new title or name, a setting's value), or null. */
   readonly value: string | null;
-}
+};
 
 const create = ["create", "make", "add", "new", "crée", "créer", "cree", "creer", "ajoute", "ajouter"];
 const rename = ["rename", "renames", "retitle", "renomme", "renommer"];
 
+/** One operation's words: its verbs, and the nouns it also needs. */
+const operationWords = (verbs: ReadonlyArray<string>, nouns: ReadonlyArray<string> = []) => ({ nouns, verbs });
+
 /** The words that name each operation, and the nouns it also needs (a realm, a Ritual), in English and French. */
-export const vocabulary: Record<
+export const vocabulary = {
+  Archive: operationWords(["archive", "archives", "archiver", "archivé", "archivée"]),
+  ChangeSetting: operationWords([
+    "set",
+    "change",
+    "turn",
+    "switch",
+    "enable",
+    "disable",
+    "mets",
+    "mettre",
+    "changer",
+    "active",
+    "activer",
+    "désactive",
+    "désactiver",
+  ]),
+  CreateRealm: operationWords(create, ["realm", "royaume"]),
+  CreateRitual: operationWords([...create, "schedule", "planifie"], ["ritual", "rituel"]),
+  Done: operationWords([
+    "done",
+    "finish",
+    "finished",
+    "complete",
+    "completed",
+    "termine",
+    "terminé",
+    "terminée",
+    "terminer",
+    "fini",
+    "finie",
+  ]),
+  Rename: operationWords(rename),
+  RenameRealm: operationWords(rename, ["realm", "royaume"]),
+  Stop: operationWords(["stop", "stops", "halt", "arrête", "arrete", "arrêter", "arreter", "stoppe", "stopper"]),
+} satisfies Record<
   StructuralOperation,
   { readonly verbs: ReadonlyArray<string>; readonly nouns: ReadonlyArray<string> }
-> = {
-  Archive: { nouns: [], verbs: ["archive", "archives", "archiver", "archivé", "archivée"] },
-  ChangeSetting: {
-    nouns: [],
-    verbs: [
-      "set",
-      "change",
-      "turn",
-      "switch",
-      "enable",
-      "disable",
-      "mets",
-      "mettre",
-      "changer",
-      "active",
-      "activer",
-      "désactive",
-      "désactiver",
-    ],
-  },
-  CreateRealm: { nouns: ["realm", "royaume"], verbs: create },
-  CreateRitual: { nouns: ["ritual", "rituel"], verbs: [...create, "schedule", "planifie"] },
-  Done: {
-    nouns: [],
-    verbs: [
-      "done",
-      "finish",
-      "finished",
-      "complete",
-      "completed",
-      "termine",
-      "terminé",
-      "terminée",
-      "terminer",
-      "fini",
-      "finie",
-    ],
-  },
-  Rename: { nouns: [], verbs: rename },
-  RenameRealm: { nouns: ["realm", "royaume"], verbs: rename },
-  Stop: { nouns: [], verbs: ["stop", "stops", "halt", "arrête", "arrete", "arrêter", "arreter", "stoppe", "stopper"] },
-};
+>;
 
 /** Words that turn a request into a refusal, a doubt, a retraction, or a passing narrative. */
 export const blockers = new Set([

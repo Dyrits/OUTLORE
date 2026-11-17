@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { constantTimeEqual, hashToken, newDeviceToken } from "../src/index.ts";
 
-describe("device tokens", () => {
+describe("handling device tokens", () => {
   it("makes 32 random bytes each time", () => {
     const first = newDeviceToken();
     expect(first.byteLength).toBe(32);
@@ -22,7 +22,7 @@ describe("device tokens", () => {
   });
 });
 
-describe("constantTimeEqual", () => {
+describe("comparing tokens in constant time", () => {
   it("is true for equal bytes, including two empty arrays", () => {
     expect(constantTimeEqual(new Uint8Array([1, 2, 3]), new Uint8Array([1, 2, 3]))).toBe(true);
     expect(constantTimeEqual(new Uint8Array(0), new Uint8Array(0))).toBe(true);

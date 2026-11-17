@@ -1,11 +1,12 @@
 import type { ChatterNotice } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid, readSettings } from "../core/index.ts";
+import { invalid, newId, readSettings } from "../core/index.ts";
 import { Commands, changed, unchanged } from "./commands.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
 
-const pairOf = (a: string, b: string) => (a < b ? ([a, b] as const) : ([b, a] as const));
+const pairOf = (first: string, second: string) =>
+  first < second ? ([first, second] as const) : ([second, first] as const);
 
 /** Resets every exchange involving an owner-addressed thread; an existing pause still needs a decision. */
 export const resetOwnerChatter = Effect.fn("resetOwnerChatter")(function* (threadId: string) {
@@ -33,7 +34,8 @@ export const countChatter = Effect.fn("countChatter")(function* (from: string, t
     SELECT count, pause_id AS pauseId FROM chatter WHERE first_id = ${first} AND second_id = ${second}`;
   const { chatterThreshold } = yield* readSettings;
   if (pair === undefined || pair.pauseId !== null || pair.count < chatterThreshold) return [];
-  yield* sql`UPDATE chatter SET pause_id = ${crypto.randomUUID()}, pause_count = ${pair.count}
+  const pauseId = yield* newId;
+  yield* sql`UPDATE chatter SET pause_id = ${pauseId}, pause_count = ${pair.count}
     WHERE first_id = ${first} AND second_id = ${second}`;
   yield* haltThreads([first, second], "Attention");
   return [first, second];
@@ -59,7 +61,7 @@ export const readChatter = Effect.fn("readChatter")(function* (threadId: string)
 });
 
 /** The unresolved pause's pair; its invalidated turns are cancelled before the decision is applied. */
-const readPause = Effect.fn("readPause")(function* (pauseId: string) {
+const cancelPausedTurns = Effect.fn("cancelPausedTurns")(function* (pauseId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [paused] = yield* sql<{ firstId: string; secondId: string }>`
     SELECT first_id AS firstId, second_id AS secondId FROM chatter WHERE pause_id = ${pauseId}`;
@@ -68,7 +70,7 @@ const readPause = Effect.fn("readPause")(function* (pauseId: string) {
 });
 
 /**
- * Clears the pause, stopping both threads on Stop: on Continue both are woken, on Stop their mission's
+ * Clears the pause, stopping both threads on Stop: on Continue both are woken, on Stop each quest's
  * waiting threads.
  */
 const decideChatter = Effect.fn("decideChatter")(function* (pauseId: string, choice: "Continue" | "Stop") {
@@ -84,17 +86,17 @@ const decideChatter = Effect.fn("decideChatter")(function* (pauseId: string, cho
   }
   yield* haltThreads(ids, "Stopped");
   yield* releaseResolvedChatter;
-  const [mission] = yield* sql<{
+  const missions = yield* sql<{
     missionId: string;
-  }>`SELECT mission_id AS missionId FROM threads WHERE id = ${pair.firstId}`;
-  return changed(null, { missionsToWake: mission === undefined ? [] : [mission.missionId] });
+  }>`SELECT DISTINCT mission_id AS missionId FROM threads WHERE id IN ${sql.in(ids)}`;
+  return changed(null, { missionsToWake: missions.map((mission) => mission.missionId) });
 });
 
 /** Applies the owner's decision once to this pause, preserving queued messages in either choice. */
 export const resolveChatter = Effect.fn("resolveChatter")(function* (pauseId: string, choice: "Continue" | "Stop") {
   const commands = yield* Commands;
   // Keep Attention in place until the invalidated turns have finished exiting.
-  yield* commands.run(readPause(pauseId));
+  yield* commands.run(cancelPausedTurns(pauseId));
   yield* commands.run(decideChatter(pauseId, choice));
   return null;
 });

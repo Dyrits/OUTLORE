@@ -1,20 +1,34 @@
+import { it } from "@effect/vitest";
 import { bytesToHex } from "@noble/hashes/utils.js";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { Effect, Fiber } from "effect";
+import { TestClock } from "effect/testing";
+import { describe, expect } from "vitest";
+import { defaultHandshakeTimeoutMs } from "../src/channel.ts";
 import {
   type Carrier,
-  defaultHandshakeTimeoutMs,
-  fragmentBytes,
+  ChannelFailure,
   generateKeyPair,
-  maxMessageBytes,
-  openInitiator,
-  openResponder,
+  openInitiator as initiate,
+  openResponder as respond,
   type SecureChannel,
 } from "../src/index.ts";
 import { createNoiseInitiator, type TransportKeys } from "../src/noise/index.ts";
+import { fragmentBytes, maxMessageBytes } from "../src/secureChannel.ts";
 import { fakeCarrierPair, type Interference, settle, silentCarrier } from "./fixtures/fakeCarrier.ts";
 
 const prologue = new TextEncoder().encode("room-1");
 const empty = new Uint8Array(0);
+const resultOf = <Value>(effect: Effect.Effect<Value, { readonly kind: string }>) =>
+  Effect.runPromise(
+    effect.pipe(
+      Effect.match({
+        onFailure: (error) => ({ kind: error.kind, ok: false as const }),
+        onSuccess: (value) => ({ ok: true as const, value }),
+      }),
+    ),
+  );
+const openInitiator = (...args: Parameters<typeof initiate>) => resultOf(initiate(...args));
+const openResponder = (...args: Parameters<typeof respond>) => resultOf(respond(...args));
 
 /** Opens both sides over a fake link and fails the test unless both handshakes succeed. */
 const connect = async (interference: { fromFirst?: Interference; fromSecond?: Interference } = {}) => {
@@ -30,7 +44,11 @@ const connect = async (interference: { fromFirst?: Interference; fromSecond?: In
 
 /** Records what a channel delivers and whether it closed. */
 const watch = (channel: SecureChannel) => {
-  const seen = { closes: 0, messages: [] as Uint8Array[], texts: [] as string[] };
+  const seen: { closes: number; messages: Array<Uint8Array>; texts: Array<string> } = {
+    closes: 0,
+    messages: [],
+    texts: [],
+  };
   channel.onMessage((data) => seen.messages.push(data));
   channel.onClose(() => {
     seen.closes += 1;
@@ -39,7 +57,7 @@ const watch = (channel: SecureChannel) => {
 };
 
 const watchText = (channel: SecureChannel) => {
-  const seen = { closes: 0, texts: [] as string[] };
+  const seen: { closes: number; texts: Array<string> } = { closes: 0, texts: [] };
   channel.onText((text) => seen.texts.push(text));
   channel.onClose(() => {
     seen.closes += 1;
@@ -75,11 +93,13 @@ const connectRaw = async () => {
 
 const pattern = (length: number) => new Uint8Array(length).map((_, index) => (index * 31 + (index >> 8)) & 0xff);
 
-afterEach(() => {
-  vi.useRealTimers();
-});
-
 describe("opening a secure channel", () => {
+  it("reports a malformed host key through the typed Effect failure channel", async () => {
+    const failure = await Effect.runPromise(Effect.flip(initiate(silentCarrier(), new Uint8Array(5), prologue)));
+    expect(failure).toBeInstanceOf(ChannelFailure);
+    expect(failure.kind).toBe("handshake-failed");
+  });
+
   it("opens both sides and carries text both ways", async () => {
     const { initiator, responder } = await connect();
     const atResponder = watchText(responder);
@@ -149,7 +169,7 @@ describe("opening a secure channel", () => {
     expect(initiator.ok).toBe(false);
   });
 
-  it("fails when a handshake message is altered in transit", async () => {
+  it("fails when the client hello is altered in transit", async () => {
     const flip: Interference = (data) => {
       data[40] = (data[40] ?? 0) ^ 1;
       return [data];
@@ -162,7 +182,14 @@ describe("opening a secure channel", () => {
     ]);
     expect(responder).toEqual({ kind: "handshake-failed", ok: false });
     expect(initiator.ok).toBe(false);
+  });
 
+  it("fails when the host reply is altered in transit", async () => {
+    const flip: Interference = (data) => {
+      data[40] = (data[40] ?? 0) ^ 1;
+      return [data];
+    };
+    const host = generateKeyPair();
     const [third, fourth] = fakeCarrierPair({ fromSecond: flip });
     const [initiator2, responder2] = await Promise.all([
       openInitiator(third, host.publicKey, prologue),
@@ -172,31 +199,48 @@ describe("opening a secure channel", () => {
     expect(responder2.ok).toBe(true);
   });
 
-  it("gives up with handshake-timeout when the carrier stays silent, and closes it", async () => {
-    const carrier = silentCarrier();
-    const result = await openInitiator(carrier, generateKeyPair().publicKey, prologue, { handshakeTimeoutMs: 20 });
-    expect(result).toEqual({ kind: "handshake-timeout", ok: false });
-    expect(carrier.isClosed()).toBe(true);
+  it.effect("gives up with handshake-timeout when the carrier stays silent, and closes it", () =>
+    Effect.gen(function* () {
+      const carrier = silentCarrier();
+      const initiator = yield* Effect.forkChild(
+        Effect.flip(initiate(carrier, generateKeyPair().publicKey, prologue, { handshakeTimeoutMs: 20 })),
+      );
+      const waiting = silentCarrier();
+      const responder = yield* Effect.forkChild(
+        Effect.flip(respond(waiting, generateKeyPair(), prologue, { handshakeTimeoutMs: 20 })),
+      );
+      yield* TestClock.adjust(20);
+      expect((yield* Fiber.join(initiator)).kind).toBe("handshake-timeout");
+      expect(carrier.isClosed()).toBe(true);
+      expect((yield* Fiber.join(responder)).kind).toBe("handshake-timeout");
+      expect(waiting.isClosed()).toBe(true);
+    }),
+  );
 
-    const waiting = silentCarrier();
-    const responder = await openResponder(waiting, generateKeyPair(), prologue, { handshakeTimeoutMs: 20 });
-    expect(responder).toEqual({ kind: "handshake-timeout", ok: false });
-    expect(waiting.isClosed()).toBe(true);
-  });
+  it.effect("waits 15 seconds by default", () =>
+    Effect.gen(function* () {
+      expect(defaultHandshakeTimeoutMs).toBe(15_000);
+      const carrier = silentCarrier();
+      const pending = yield* Effect.forkChild(Effect.flip(initiate(carrier, generateKeyPair().publicKey, prologue)));
+      yield* TestClock.adjust(14_999);
+      expect(pending.pollUnsafe()).toBeUndefined();
+      expect(carrier.isClosed()).toBe(false);
+      yield* TestClock.adjust(1);
+      expect((yield* Fiber.join(pending)).kind).toBe("handshake-timeout");
+      expect(carrier.isClosed()).toBe(true);
+    }),
+  );
 
-  it("waits 15 seconds by default", async () => {
-    vi.useFakeTimers();
-    expect(defaultHandshakeTimeoutMs).toBe(15_000);
-    let result: Awaited<ReturnType<typeof openInitiator>> | null = null;
-    const pending = openInitiator(silentCarrier(), generateKeyPair().publicKey, prologue).then((value) => {
-      result = value;
-    });
-    await vi.advanceTimersByTimeAsync(14_999);
-    expect(result).toBeNull();
-    await vi.advanceTimersByTimeAsync(1);
-    await pending;
-    expect(result).toEqual({ kind: "handshake-timeout", ok: false });
-  });
+  it.effect("closes the carrier when the fiber running the handshake is interrupted", () =>
+    Effect.gen(function* () {
+      const carrier = silentCarrier();
+      const pending = yield* Effect.forkChild(initiate(carrier, generateKeyPair().publicKey, prologue));
+      yield* Effect.yieldNow;
+      expect(carrier.isClosed()).toBe(false);
+      yield* Fiber.interrupt(pending);
+      expect(carrier.isClosed()).toBe(true);
+    }),
+  );
 
   it("reports carrier-closed when the carrier closes during the handshake", async () => {
     const [first, second] = fakeCarrierPair();
@@ -433,7 +477,7 @@ describe("fragmenting a large message", () => {
     const seen = watch(responder);
     const fragment = new Uint8Array(fragmentBytes);
     const needed = Math.floor(maxMessageBytes / fragmentBytes) + 1;
-    for (let i = 0; i < needed - 1; i += 1) sendRecord(1, fragment);
+    for (let index = 0; index < needed - 1; index += 1) sendRecord(1, fragment);
     await settle();
     // Still under the cap: the receiver keeps waiting for the last fragment.
     expect(seen.closes).toBe(0);

@@ -12,11 +12,11 @@ export const Skill = Schema.Struct({
 export type Skill = typeof Skill.Type;
 
 /** A slash-name in a message: its position in the text and the name without the slash. */
-export interface SkillToken {
+export type SkillToken = {
   readonly end: number;
   readonly name: string;
   readonly start: number;
-}
+};
 
 /** The slash-names in a message: a slash starting a word, then a name that ends the word, so a path such as /Users/me is not one. */
 export const skillTokensOf = (text: string): ReadonlyArray<SkillToken> =>

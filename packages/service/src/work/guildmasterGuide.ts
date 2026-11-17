@@ -1,8 +1,8 @@
 import { Effect } from "effect";
-import type { ToolAnswer } from "../core/index.ts";
+import { type ToolAnswer, toolRefusal, toolText } from "../core/index.ts";
 import { type GuideTopic, guideTopics } from "./appGuideTopics.ts";
 import { unchanged, type WithFollowUps } from "./commands.ts";
-import { isGuildmasterThread } from "./guildmaster.ts";
+import { isGuildmasterThread } from "./guildmasterPlace.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 
 // Chronicler's app guide tool (quest coordination, "Chronicler explains how the app works"): it reads one topic of the user
@@ -50,7 +50,7 @@ const fillers = new Set([
   "your",
 ]);
 
-const indexOf = () =>
+const topicIndexText = () =>
   [
     "Topics in the app guide; call read_app_guide with a topic id, or with a few words of the owner's question:",
     ...guideTopics.map((topic) => `- ${topic.id}: ${topic.title}. ${topic.summary}.`),
@@ -58,7 +58,7 @@ const indexOf = () =>
 
 const sectionOf = (topic: GuideTopic) => `## ${topic.title} (${topic.id})\n${topic.body}`;
 
-const wordsOf = (text: string) =>
+const topicWordsOf = (text: string) =>
   text
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
@@ -92,15 +92,15 @@ const scoreOf = (topic: GuideTopic, question: string, words: ReadonlyArray<strin
 };
 
 /** The topics a question points to, best first, at most two; none when nothing in the guide fits. */
-export const topicsFor = (question: string): ReadonlyArray<GuideTopic> => {
+export const topicsOf = (question: string): ReadonlyArray<GuideTopic> => {
   const asked = question.trim().toLowerCase();
   const exact = guideTopics.find((topic) => topic.id === asked || topic.title.toLowerCase() === asked);
   if (exact !== undefined) return [exact];
-  const words = wordsOf(asked);
+  const words = topicWordsOf(asked);
   const scored = guideTopics
     .map((topic) => ({ score: scoreOf(topic, asked, words), topic }))
     .filter((entry) => entry.score >= 3)
-    .toSorted((a, b) => b.score - a.score);
+    .toSorted((current, next) => next.score - current.score);
   const best = scored[0];
   if (best === undefined) return [];
   // A second topic joins only when it fits nearly as well.
@@ -111,20 +111,19 @@ export const topicsFor = (question: string): ReadonlyArray<GuideTopic> => {
 };
 
 /** `read_app_guide`: the index with no topic, else the topic or topics that fit; a refusal for any thread but Chronicler. */
-export const readAppGuideByGuildmaster = (callerId: string, args: ArgumentsOf<"read_app_guide">) =>
-  Effect.gen(function* () {
-    if (!(yield* isGuildmasterThread(callerId)))
-      return answer({ isError: true, text: "Only Chronicler reads the app guide here." });
-    const question = args.topic?.trim() ?? "";
-    if (question === "") return answer({ isError: false, text: `${indexOf()}\n\n${reminder}` });
-    const topics = topicsFor(question);
-    if (topics.length === 0)
-      return answer({
-        isError: false,
-        text: `The app guide does not cover "${question}".\n\n${indexOf()}\n\nIf none of these topics fits, say you do not know. ${reminder}`,
-      });
-    return answer({
-      isError: false,
-      text: `${topics.map(sectionOf).join("\n\n")}\n\n${reminder}`,
-    });
-  });
+export const readAppGuideByGuildmaster = Effect.fnUntraced(function* (
+  callerId: string,
+  args: ArgumentsOf<"read_app_guide">,
+) {
+  if (!(yield* isGuildmasterThread(callerId))) return answer(toolRefusal("Only Chronicler reads the app guide here."));
+  const question = args.topic?.trim() ?? "";
+  if (question === "") return answer(toolText(`${topicIndexText()}\n\n${reminder}`));
+  const topics = topicsOf(question);
+  if (topics.length === 0)
+    return answer(
+      toolText(
+        `The app guide does not cover "${question}".\n\n${topicIndexText()}\n\nIf none of these topics fits, say you do not know. ${reminder}`,
+      ),
+    );
+  return answer(toolText(`${topics.map(sectionOf).join("\n\n")}\n\n${reminder}`));
+});

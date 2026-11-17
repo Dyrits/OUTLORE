@@ -1,6 +1,7 @@
 import type { UsageFilter, UsageReport } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
+import { exactCountOf } from "../foundation/formatting";
 import { countedOf } from "../foundation/labels";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -11,7 +12,6 @@ import { harnessColorOf } from "./usageColors";
 import {
   compactCountOf,
   costBasisOf,
-  exactCountOf,
   metricValueOf,
   ownTokensOf,
   shareCaptionOf,

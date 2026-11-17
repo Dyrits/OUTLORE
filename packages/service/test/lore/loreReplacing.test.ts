@@ -1,45 +1,14 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
-import { TestClock } from "effect/testing";
-import { afterEach } from "vitest";
-import { call, fixture, open, read, send, start, tool } from "../fixtures/service.ts";
+import { dayMillis } from "../../src/core/index.ts";
+import { advance, idle, idOf, loreEntryOf, panel, save, settleTurns } from "../fixtures/lore.ts";
+import { call, fixture, open, read, register, send, tool } from "../fixtures/service.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...) and thread tool names (`save_intel`, ...).
 
 // Batch 14 (scoped-intel: Duplicates, Saving's origin, Fading's "relied on"), on the test clock.
 
-const fixtures: ReturnType<typeof fixture>[] = [];
-const live = () => {
-  const value = fixture();
-  fixtures.push(value);
-  return value;
-};
-afterEach(() => {
-  for (const value of fixtures.splice(0)) value.remove();
-});
-
-const day = 24 * 60 * 60 * 1000;
-const advance = (millis: number) =>
-  Effect.gen(function* () {
-    yield* TestClock.adjust(millis);
-    for (let i = 0; i < 40; i++) yield* Effect.yieldNow;
-  });
-const settleTurns = Effect.gen(function* () {
-  for (let i = 0; i < 5; i++) yield* advance(20);
-});
-const idle = (text = "Hello", workspacePath: string | null = null) =>
-  Effect.gen(function* () {
-    const started = yield* start(text, workspacePath);
-    yield* settleTurns;
-    return started;
-  });
-const save = (threadId: ThreadId, text: string, scope: string, kind: string, extra: object = {}) =>
-  tool(threadId, "save_intel", { kind, scope, text, ...extra });
-const idOf = (answer: string) => /lore entry (\S+?)[ .:]/.exec(answer)?.[1] ?? "";
-const panel = () => call({ _tag: "ListIntel", scope: null, state: null, threadId: null });
-const loreEntryOf = (id: string) =>
-  panel().pipe(Effect.map((view) => view.loreEntries.find((loreEntry) => loreEntry.id === id)));
+const live = () => register(fixture());
 
 describe("duplicates saved as replacements", () => {
   it.effect("replaces a lore entry saying an older version of the same thing, keeping its id and uses", () =>
@@ -47,7 +16,7 @@ describe("duplicates saved as replacements", () => {
       const { threadId } = yield* idle();
       const id = idOf(yield* save(threadId, "The owner prefers pnpm.", "mission", "preference"));
       yield* tool(threadId, "search_intel", { ids: [id] });
-      yield* advance(10 * day);
+      yield* advance(10 * dayMillis);
       const answer = yield* save(threadId, "The owner prefers Bun.", "mission", "preference");
       expect(answer).toContain(`Replaced lore entry ${id}`);
       expect(answer).toContain("The owner prefers pnpm.");
@@ -120,7 +89,7 @@ describe("duplicates saved as replacements", () => {
     Effect.gen(function* () {
       const { threadId } = yield* idle();
       const old = idOf(yield* save(threadId, "The API is flaky this week.", "mission", "temporary"));
-      yield* advance(20 * day);
+      yield* advance(20 * dayMillis);
       const answer = yield* save(threadId, "The API is flaky this week again.", "mission", "temporary");
       expect(answer).toMatch(/^Saved lore entry /);
       expect(idOf(answer)).not.toBe(old);
@@ -204,10 +173,10 @@ describe("relying on a lore entry", () => {
     Effect.gen(function* () {
       const { threadId } = yield* idle();
       const id = idOf(yield* save(threadId, "The staging server is slow today.", "mission", "temporary"));
-      yield* advance(7 * day);
+      yield* advance(7 * dayMillis);
       expect(yield* tool(threadId, "relied_on_intel", { ids: [id] })).toContain("1 use");
       expect(yield* loreEntryOf(id)).toMatchObject({ state: "Active", strength: 1, uses: 1 });
-      yield* advance(7 * day);
+      yield* advance(7 * dayMillis);
       expect((yield* loreEntryOf(id))?.state).toBe("Active");
     }).pipe(Effect.provide(live().layer)),
   );
@@ -218,7 +187,7 @@ describe("relying on a lore entry", () => {
       const other = (yield* idle()).threadId;
       const foreign = idOf(yield* save(other, "Another mission's fact.", "mission", "fact"));
       const old = idOf(yield* save(threadId, "The API is flaky this week.", "mission", "temporary"));
-      yield* advance(20 * day);
+      yield* advance(20 * dayMillis);
       const answer = yield* tool(threadId, "relied_on_intel", { ids: [foreign, old] });
       expect(answer).toContain("No use counted");
       expect(yield* loreEntryOf(old)).toMatchObject({ state: "Archived", uses: 0 });
@@ -233,7 +202,7 @@ describe("relying on a lore entry", () => {
       yield* send(threadId, "context");
       yield* settleTurns;
       const detail = yield* read(missionId, threadId);
-      const context = detail.messages.findLast((m) => m.sender === "agent")?.text ?? "";
+      const context = detail.messages.findLast((message) => message.sender === "agent")?.text ?? "";
       expect(context).toContain("relied_on_intel");
       expect(context).toMatch(/replaces it/);
       expect(context).toContain("journalEntry");

@@ -1,7 +1,8 @@
 import { Effect } from "effect";
-import type { SqlClient, SqlError } from "effect/sql";
+import { SqlClient, type SqlError } from "effect/sql";
 import { invalid, readSettings, type ServiceFailure } from "../core/index.ts";
 import { type Runner, type RunnerChoice, runnerOf } from "../harness/index.ts";
+import { chooseThreadRunner } from "./handover.ts";
 import { imageRefusalOf, readThreadRunner } from "./vision.ts";
 
 // Admitting an owner's message (message-attachments): the text must say something unless files come with it, and a
@@ -32,26 +33,41 @@ export const runnerOfStarted = (choice: RunnerChoice) =>
   );
 
 /** Refuses attached images for a runner that cannot read them; a message without files is never refused. */
-export const refuseUnreadableImages = (
+export const refuseUnreadableImages = Effect.fnUntraced(function* (
   attachmentIds: ReadonlyArray<string>,
   runner: Effect.Effect<Readable | null, SqlError.SqlError, SqlClient.SqlClient>,
-) =>
-  Effect.gen(function* () {
-    if (attachmentIds.length === 0) return;
-    const resolved = yield* runner;
-    if (resolved === null) return;
-    const reason = yield* imageRefusalOf(resolved);
-    if (reason !== null) return yield* invalid(reason);
-  });
+) {
+  if (attachmentIds.length === 0) return;
+  const resolved = yield* runner;
+  if (resolved === null) return;
+  const reason = yield* imageRefusalOf(resolved);
+  if (reason !== null) return yield* invalid(reason);
+});
 
 /** Admits an owner's text for the runner the request names: the text itself, or the refusal. */
-export const admitOwnerText = (
+export const admitOwnerText = Effect.fnUntraced(function* (
   text: string,
   attachmentIds: ReadonlyArray<string>,
   runner: Effect.Effect<Readable | null, SqlError.SqlError, SqlClient.SqlClient>,
-) =>
-  Effect.gen(function* () {
-    const admitted = attachmentIds.length === 0 ? yield* nonBlank(text) : text;
-    yield* refuseUnreadableImages(attachmentIds, runner);
-    return admitted;
-  });
+) {
+  const admitted = attachmentIds.length === 0 ? yield* nonBlank(text) : text;
+  yield* refuseUnreadableImages(attachmentIds, runner);
+  return admitted;
+});
+
+/** Refuses a runner that cannot read images waiting for the thread, including on a fallback. */
+export const refuseWaitingImages = Effect.fnUntraced(function* (threadId: string, runner: Readable) {
+  const sql = yield* SqlClient.SqlClient;
+  const waiting = yield* sql<{ id: string }>`SELECT a.id FROM attachments a JOIN messages m ON m.id = a.message_id
+      WHERE m.thread_id = ${threadId} AND m.delivered_turn_id IS NULL AND m.sender_kind != 'agent' LIMIT 1`;
+  yield* refuseUnreadableImages(
+    waiting.map((row) => row.id),
+    Effect.succeed(runner),
+  );
+});
+
+/** Admits a runner change only when that runner can read the thread's waiting images. */
+export const admitRunnerChange = Effect.fnUntraced(function* (change: Parameters<typeof chooseThreadRunner>[0]) {
+  yield* refuseWaitingImages(change.threadId, change);
+  return yield* chooseThreadRunner(change);
+});

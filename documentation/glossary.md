@@ -30,7 +30,7 @@ User-authored text and historical service messages are not rewritten.
 | Settings | Workshop (formerly Charter, CHG-0146) |
 
 Journal, briefing, harness, effort, budget, approval, and archive keep their meanings and names.
-Done and its former interface name Fulfilled are retired for quests and side-quests (CHG-0135 and CHG-0136); work remains idle, running, or asking for the owner until the quest is archived.
+Done is the ending a quest reaches when the owner marks it done, and a thread state; its former interface name Fulfilled is retired. Otherwise work remains idle, running, or asking for the owner until the quest is archived.
 Companion means the selected model doing the work, not a conversation or a distinct saved agent definition; selectors say Companion (model) to make this explicit.
 Craft and Ritual are the agreed names for the future automation interfaces.
 Waystones, Spoils, and Chronicle remain mockup suggestions for devices, changes, and traces.
@@ -122,7 +122,17 @@ The place for generated and uploaded artifacts, including those from quests with
 Collection and lifecycle behavior remain to be specified.
 
 **Workshop**:
-The page of application settings, accounts, permissions, and defaults, shown one section at a time: Permissions, Look and feel, Providers (computer name, harnesses, accounts), Companions (the default Companion and the Light, Balanced, and Heavy presets), Remote access, Messaging, Limits, and Updates. Formerly the Charter (CHG-0146). A separate place for MCP servers, connectors, and skills was withdrawn for now.
+The page of application settings, accounts, permissions, and defaults, shown one section at a time: Permissions, Look and feel, Providers (computer name, harnesses, accounts), Companions (the default Companion and the Light, Balanced, and Heavy presets), Remote access, Messaging, Limits, and Updates. Formerly the Charter (CHG-0146), which is now a separate place in the sidebar (see Charter).
+
+**Charter**:
+The sidebar place, after Reserves, where the owner manages what Outlore connects to: the Connectors and The Vault (CHG-0321). It is not the Workshop, though the Workshop bore its name until CHG-0146; it works like a marketplace for connectors and holds nothing else.
+
+**Connector**:
+A named integration that gives threads the tools of one outside service or app, installed once by the owner from the list Outlore offers. It is **installed** (on this computer, global), **connected** (given a key, a sign-in or a permission) and **enabled** (switched on for a realm, the Borderlands or a quest); a thread can use it only when all three hold ([connectors](capabilities/connectors/specifications.md)).
+_Avoid_: Plugin, integration, MCP server (the way a connector is delivered is a technical choice)
+
+**The Vault**:
+Where the host keeps connectors' secrets, shown to the owner by connector, kind and date and never by value.
 
 **Reserves**:
 The usage summary and destination for detailed consumption, budgets, remaining allowances, and reported plan limits.
@@ -187,9 +197,25 @@ _Avoid_: Switch, transfer
 The user's permission for one risky action in one thread.
 _Avoid_: Consent, confirmation
 
+**Choice question**:
+A question a thread asks the owner to answer by choosing from options, with an own answer when allowed, instead of approving an action. One dialog carries up to four choices; the owner sends the answers or skips it. It never saves a standing permission.
+_Avoid_: Poll, form, prompt
+
 **Standing permission**:
 The user's permission for one kind of risky action, in a workspace, a mission, or everywhere, granted with Always allow and removable from the Permissions page.
 _Avoid_: Rule, always-allow, grant
+
+**Computer use**:
+A thread, Chronicler included, seeing and operating the host's own desktop (its screen, pointer and keyboard) through Outlore's `computer_*` tools, one approved app at a time. No sandbox contains it. Specified, not built.
+_Avoid_: Remote control, desktop automation, CUA
+
+**Computer backend**:
+The program behind the `computer_*` tools that reads the screen and sends the clicks and keys: Cua Driver on macOS first, replaceable without changing the tools. Not a harness.
+_Avoid_: Driver (except Cua Driver, its name), agent
+
+**Computer lock**:
+The one hold on the host's desktop that a thread takes while it uses the computer, so two threads never click at once; another thread calling a tool is told who holds it.
+_Avoid_: Mutex, queue
 
 **Attention**:
 The state of a thread that waits for the user: an approval, an answer, a decision after the chatter guard paused it, a budget reached, a missing workspace folder, or a tool or skill loading problem that prevents a turn.
@@ -282,13 +308,21 @@ Outlore installed on a phone from a store (later).
 _Avoid_: Native app
 
 **Paired device**:
-A desktop app, web app, or mobile app connected to a host by a pairing code. It has the owner's full authority over the host it is paired with, except where the host fences it (terminals, folders).
+A desktop app, web app, or mobile app connected to a host by a pairing code or link. It has the owner's full authority over the host it is paired with, except where the host fences it (terminals, folders).
 _Avoid_: Remote, client
 
 **Host**:
 The computer whose Outlore runs the threads, terminals, and folder work that the apps show. It keeps its own name, which the owner can change from the host or from a paired device. With **Keep running after quitting** on, it stays up after its desktop app quits.
 _Avoid_: Server, remote, daemon
 
+**Screen view**:
+One screenshot of the host's display, shown on demand to a paired device with no thread and no agent action; a still image, never a stream, and nothing the paired device can click on.
+_Avoid_: Remote desktop, screen share, stream
+
 **Pairing code**:
-The one-time text the host shows to pair a device, a QR code of it for a phone later. It works once and expires after 10 minutes.
+The one-time text the host shows to pair a device, kept as the fallback beside the QR code and the pairing links. It works once and expires after 10 minutes.
 _Avoid_: Connect code, ticket
+
+**Pairing link**:
+A link that carries a pairing code in its fragment and pairs a device when it is opened or scanned: the **web link** (`<web app address>/#<code>`, opens the web app) and the **app link** (`outlore://pair#<code>`, opens an installed Outlore). The host's QR code encodes the web link; the phone app reads it with its scanner and opens an app link. It is as secret as the code: it works once and expires with it, and the fragment never reaches a server.
+_Avoid_: Invite, share link

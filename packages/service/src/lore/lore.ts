@@ -27,19 +27,26 @@ export const loreLimit = 200;
 export const contextWindowOf = (_model: ModelChoice) => 200_000;
 
 /** Where a lore entry sits: a thread (the mission's top thread for the whole mission), a workspace, or everywhere. */
-export interface Placement {
+export type Placement = {
   readonly scope: LoreScope;
   readonly threadId: string | null;
   readonly workspaceId: string | null;
-}
+};
 
 /** A thread's lookup scope: itself and each thread above it, nearest first, then its workspace. */
-export interface ScopeChain {
+export type ScopeChain = {
   readonly missionId: string;
   readonly threads: ReadonlyArray<string>;
   readonly topThreadId: string;
   readonly workspaceId: string | null;
-}
+};
+
+/** Where a stored lore entry sits. */
+export const placementOfRow = (row: Pick<LoreEntryRow, "scope" | "threadId" | "workspaceId">): Placement => ({
+  scope: row.scope,
+  threadId: row.threadId,
+  workspaceId: row.workspaceId,
+});
 
 /** How wide a placement is, from a thread (0) to the whole mission (1), a workspace (2), and everywhere (3). */
 export const widthOf = (placement: Placement, topThreadId: string) =>
@@ -51,10 +58,9 @@ export const widthOf = (placement: Placement, topThreadId: string) =>
   )[placement.scope];
 
 /** The lookup scope of a thread (scoped-intel, Lookup). */
-export const readScopeChain = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const rows = yield* sql<{ id: string; missionId: string; workspaceId: string | null; depth: number }>`
+export const readScopeChain = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ id: string; missionId: string; workspaceId: string | null; depth: number }>`
       WITH RECURSIVE chain(id, depth) AS (
         SELECT id, 0 FROM threads WHERE id = ${threadId}
         UNION ALL SELECT t.parent_id, chain.depth + 1 FROM threads t JOIN chain ON t.id = chain.id
@@ -62,21 +68,21 @@ export const readScopeChain = (threadId: string) =>
       )
       SELECT t.id, t.mission_id AS missionId, t.workspace_id AS workspaceId, chain.depth
       FROM chain JOIN threads t ON t.id = chain.id ORDER BY chain.depth`;
-    const [own] = rows;
-    if (own === undefined) return yield* notFound("No such thread.");
-    return {
-      missionId: own.missionId,
-      threads: rows.map((row) => row.id),
-      topThreadId: rows.at(-1)?.id ?? own.id,
-      workspaceId: own.workspaceId,
-    } satisfies ScopeChain;
-  });
+  const [own] = rows;
+  if (own === undefined) return yield* notFound("No such thread.");
+  return {
+    missionId: own.missionId,
+    threads: rows.map((row) => row.id),
+    topThreadId: rows.at(-1)?.id ?? own.id,
+    workspaceId: rows.at(-1)?.workspaceId ?? null,
+  } satisfies ScopeChain;
+});
 
 /** One stored lore entry with what its scope label needs. */
-export interface LoreEntryRow {
+export type LoreEntryRow = {
   readonly id: string;
   readonly isPinned: number;
-  readonly isTopThread: number;
+  readonly isTopThread: boolean;
   readonly kind: LoreKind;
   readonly lastUsedAt: number;
   readonly missionId: string | null;
@@ -95,7 +101,15 @@ export interface LoreEntryRow {
   readonly uses: number;
   readonly workspaceId: string | null;
   readonly workspaceName: string | null;
-}
+};
+
+/** A lore entry row as SQLite returns it: `isTopThread` is its 0/1, or null when no thread is joined. */
+export type LoreEntrySqlRow = Omit<LoreEntryRow, "isTopThread"> & {
+  readonly isTopThread: number | null;
+};
+
+/** Reads a lore entry row's SQLite 0/1 flag as the boolean the rest of the code uses. */
+export const loreEntryRowOf = (row: LoreEntrySqlRow): LoreEntryRow => ({ ...row, isTopThread: row.isTopThread === 1 });
 
 /** Selects lore entries with what their scope labels need; callers add the condition and order. */
 export const selectLoreEntries = (sql: SqlClient.SqlClient) => sql`
@@ -109,18 +123,17 @@ export const selectLoreEntries = (sql: SqlClient.SqlClient) => sql`
 /** The scope of a lore entry or a change in words, for the owner and for threads. */
 export const scopeLabelOf = (row: {
   readonly scope: LoreScope;
-  readonly isTopThread: number;
+  readonly isTopThread: boolean;
   readonly missionTitle: string | null;
   readonly threadTitle: string | null;
   readonly workspaceName: string | null;
 }) =>
   ({
     Global: "Global",
-    Thread:
-      row.isTopThread === 1
-        ? `Mission "${row.missionTitle ?? ""}"`
-        : `Thread "${row.threadTitle ?? "a deleted thread"}"`,
-    Workspace: `Workspace ${row.workspaceName ?? ""}`,
+    Thread: row.isTopThread
+      ? `Quest "${row.missionTitle ?? ""}"`
+      : `Side-quest "${row.threadTitle ?? "a deleted side-quest"}"`,
+    Workspace: `Realm ${row.workspaceName ?? ""}`,
   })[row.scope];
 
 /** What a stored lore entry or change rests on, or null when it records none. */
@@ -155,43 +168,41 @@ export const loreEntryOf = (row: LoreEntryRow, fading: Fading): LoreEntry => ({
 });
 
 /** The lore in a thread's scope, most specific first: the thread, each thread above, the workspace, then global. */
-export const listInScope = (chain: ScopeChain) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const rows = yield* sql<LoreEntryRow>`${selectLoreEntries(sql)}
+export const listInScope = Effect.fnUntraced(function* (chain: ScopeChain) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = (yield* sql<LoreEntrySqlRow>`${selectLoreEntries(sql)}
       WHERE (i.scope = 'Thread' AND i.thread_id IN ${sql.in(chain.threads)})
         OR (i.scope = 'Workspace' AND i.workspace_id = ${chain.workspaceId})
         OR i.scope = 'Global'
-      ORDER BY i.saved_at DESC`;
-    const rankOf = (row: LoreEntryRow) =>
-      row.scope === "Thread" ? chain.threads.indexOf(row.threadId ?? "") : row.scope === "Workspace" ? 1e6 : 2e6;
-    // Stable sort: within one scope the newest stays first.
-    return rows.toSorted((a, b) => rankOf(a) - rankOf(b));
-  });
+      ORDER BY i.saved_at DESC`).map(loreEntryRowOf);
+  const rankOf = (row: LoreEntryRow) =>
+    row.scope === "Thread" ? chain.threads.indexOf(row.threadId ?? "") : row.scope === "Workspace" ? 1e6 : 2e6;
+  // Stable sort: within one scope the newest stays first.
+  return rows.toSorted((first, second) => rankOf(first) - rankOf(second));
+});
 
 /** One stored lore entry, or null when it no longer exists. */
-export const readLoreEntry = (loreEntryId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<LoreEntryRow>`${selectLoreEntries(sql)} WHERE i.id = ${loreEntryId}`;
-    return row ?? null;
-  });
+export const readLoreEntry = Effect.fnUntraced(function* (loreEntryId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<LoreEntrySqlRow>`${selectLoreEntries(sql)} WHERE i.id = ${loreEntryId}`;
+  return row === undefined ? null : loreEntryRowOf(row);
+});
 
 /** What a turn's context carries of a thread's lore (scoped-intel, Recall). */
-interface Recall {
+type Recall = {
   /** Dormant lore entries in scope, not listed. */
   readonly dormantCount: number;
   /** Active global lore, oldest first, so a new one is added at the end of the index. */
   readonly index: ReadonlyArray<LoreEntryRow>;
   /** Active thread, mission, and workspace lore, most specific first. */
   readonly inFull: ReadonlyArray<LoreEntryRow>;
-}
+};
 
 const recallOf = (rows: ReadonlyArray<LoreEntryRow>, fading: Fading): Recall => {
   const active = rows.filter((row) => stateOfLoreEntry(row, fading) === "Active");
   return {
     dormantCount: rows.filter((row) => stateOfLoreEntry(row, fading) === "Dormant").length,
-    index: active.filter((row) => row.scope === "Global").toSorted((a, b) => a.savedAt - b.savedAt),
+    index: active.filter((row) => row.scope === "Global").toSorted((first, second) => first.savedAt - second.savedAt),
     inFull: active.filter((row) => row.scope !== "Global"),
   };
 };
@@ -199,8 +210,8 @@ const recallOf = (rows: ReadonlyArray<LoreEntryRow>, fading: Fading): Recall => 
 const agentLabelOf = (row: LoreEntryRow) =>
   ({
     Global: "global",
-    Thread: row.isTopThread === 1 ? "mission" : `thread "${row.threadTitle ?? ""}"`,
-    Workspace: "workspace",
+    Thread: row.isTopThread ? "quest" : `side-quest "${row.threadTitle ?? ""}"`,
+    Workspace: "realm",
   })[row.scope];
 
 /** Lore as a thread reads it in full: one line each, with its identifier, scope, and kind. */
@@ -215,39 +226,37 @@ const indexLinesOf = (rows: ReadonlyArray<LoreEntryRow>) =>
  * What the lore in a thread's scope takes in a turn's context: how many active lore entries, and their tokens in
  * full or as index lines. A thread the owner opens beneath it starts with the same lore.
  */
-export const readLoreSize = (threadId: string) =>
-  Effect.gen(function* () {
-    const recall = recallOf(yield* listInScope(yield* readScopeChain(threadId)), yield* readFading);
-    return {
-      count: recall.inFull.length + recall.index.length,
-      tokens:
-        recall.inFull.reduce((sum, row) => sum + tokensOf(row.text), 0) +
-        recall.index.reduce((sum, row) => sum + tokensOf(summaryOf(row.text)), 0),
-    };
-  });
+export const readLoreSize = Effect.fnUntraced(function* (threadId: string) {
+  const recall = recallOf(yield* listInScope(yield* readScopeChain(threadId)), yield* readFading);
+  return {
+    count: recall.inFull.length + recall.index.length,
+    tokens:
+      recall.inFull.reduce((sum, row) => sum + tokensOf(row.text), 0) +
+      recall.index.reduce((sum, row) => sum + tokensOf(summaryOf(row.text)), 0),
+  };
+});
 
 /** How much of its model's context window the lore in a thread's scope takes (scoped-intel, Size warning). */
-export const readGauge = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const { count, tokens } = yield* readLoreSize(threadId);
-    const [thread] = yield* sql<{ model: ModelChoice }>`SELECT model FROM threads WHERE id = ${threadId}`;
-    const { intelWarningPercent } = yield* readSettings;
-    const windowTokens = contextWindowOf(thread?.model ?? "default");
-    return {
-      count,
-      isOverWarning: tokens * 100 > windowTokens * intelWarningPercent,
-      tokens,
-      warningPercent: intelWarningPercent,
-      windowTokens,
-    } satisfies LoreGauge;
-  });
+export const readGauge = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const { count, tokens } = yield* readLoreSize(threadId);
+  const [thread] = yield* sql<{ model: ModelChoice }>`SELECT model FROM threads WHERE id = ${threadId}`;
+  const { intelWarningPercent } = yield* readSettings;
+  const windowTokens = contextWindowOf(thread?.model ?? "default");
+  return {
+    count,
+    isOverWarning: tokens * 100 > windowTokens * intelWarningPercent,
+    tokens,
+    warningPercent: intelWarningPercent,
+    windowTokens,
+  } satisfies LoreGauge;
+});
 
 /** How a thread keeps lore; part of its system prompt, the same every turn (scoped-intel). */
 export const loreInstructions = [
   "# Lore",
   "Lore is what Outlore keeps between threads: rules, preferences, decisions, facts, and temporary notes, each at the scope where it applies. Each of your turns starts with the lore in your scope.",
-  `Before saving, check there is something worth keeping: saving nothing is better than a vague or forced lore entry. When you learn something later work should know, save it with save_intel: one fact per lore entry, at most ${loreLimit} tokens. Choose the narrowest scope that fits: thread (you and the threads beneath you), mission (every thread of this mission), workspace (every thread working in this folder, in any mission), or global (everywhere; it waits for the owner's approval).`,
+  `Before saving, check there is something worth keeping: saving nothing is better than a vague or forced lore entry. When you learn something later work should know, save it with save_intel: one fact per lore entry, at most ${loreLimit} tokens. Choose the narrowest tool scope that fits: thread (the side-quest and the threads beneath it; on a quest's top thread, the quest), mission (the quest and all its threads), workspace (the realm, with or without a folder, and all its quests), or global (everywhere; it waits for the owner's approval).`,
   "Choose its kind: rule (never fades), preference, decision, fact, or temporary (fades in days). Lore nobody uses fades, so search_intel for what you need: reading a lore entry there keeps it alive. When a lore entry from your context shaped what you did, say so with relied_on_intel and its ids; that keeps it alive too.",
   "A save that says the same as a lore entry in its scope or a wider one, or a newer version of it, replaces it: the lore entry keeps its id and takes the new text. When the lore entry rests on a journal entry, give its number as journalEntry; otherwise the message you are answering is recorded as its origin.",
   "When the owner gives you a rule in a chat, such as 'always run the tests before a commit', save it as a lore entry of kind rule without being asked.",
@@ -256,25 +265,24 @@ export const loreInstructions = [
 ].join("\n");
 
 /** A thread's lore for each turn's message: the lore in its scope (scoped-intel, Recall). */
-export const loreContextOf = (threadId: string) =>
-  Effect.gen(function* () {
-    const chain = yield* readScopeChain(threadId);
-    const recall = recallOf(yield* listInScope(chain), yield* readFading);
-    const count = recall.dormantCount;
-    const dormant =
-      count === 0
-        ? []
-        : count === 1
-          ? ["1 dormant lore entry in your scope is not listed; search_intel finds it by words."]
-          : [`${count} dormant lore entries in your scope are not listed; search_intel finds them by words.`];
-    return [
-      "# Lore at this turn",
-      "The lore in your scope, most specific first; when two conflict, the one listed first wins:",
-      recall.inFull.length === 0 ? "(none yet)" : loreLinesOf(recall.inFull),
-      "",
-      "Global lore, as an index of one line each; read one in full with search_intel and its id:",
-      recall.index.length === 0 ? "(none yet)" : indexLinesOf(recall.index),
-      ...dormant,
-      ...(chain.workspaceId === null ? ["You have no workspace, so workspace lore is not available to you."] : []),
-    ].join("\n");
-  });
+export const loreContextOf = Effect.fnUntraced(function* (threadId: string) {
+  const chain = yield* readScopeChain(threadId);
+  const recall = recallOf(yield* listInScope(chain), yield* readFading);
+  const count = recall.dormantCount;
+  const dormant =
+    count === 0
+      ? []
+      : count === 1
+        ? ["1 dormant lore entry in your scope is not listed; search_intel finds it by words."]
+        : [`${count} dormant lore entries in your scope are not listed; search_intel finds them by words.`];
+  return [
+    "# Lore at this turn",
+    "The lore in your scope, most specific first; when two conflict, the one listed first wins:",
+    recall.inFull.length === 0 ? "(none yet)" : loreLinesOf(recall.inFull),
+    "",
+    "Global lore, as an index of one line each; read one in full with search_intel and its id:",
+    recall.index.length === 0 ? "(none yet)" : indexLinesOf(recall.index),
+    ...dormant,
+    ...(chain.workspaceId === null ? ["Your quest has no realm, so realm lore is not available to you."] : []),
+  ].join("\n");
+});

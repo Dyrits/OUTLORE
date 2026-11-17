@@ -10,7 +10,7 @@ import { type Fading, fadingStepsOf } from "./loreFading.ts";
 // be undone. The lore store (loreStore.ts) writes it; this module reads it.
 
 /** A lore entry's stored state, kept with each history entry so the owner can undo the change. */
-export interface Snapshot {
+export type Snapshot = {
   readonly id: string;
   readonly isPinned: number;
   readonly kind: LoreKind;
@@ -28,7 +28,7 @@ export interface Snapshot {
   readonly updatedAt: number;
   readonly uses: number;
   readonly workspaceId: string | null;
-}
+};
 
 /** Who made a change: a thread, or the owner. */
 export type Actor = { readonly kind: "Thread"; readonly threadId: string } | { readonly kind: "Owner" };
@@ -39,18 +39,17 @@ export const owner: Actor = { kind: "Owner" };
 export const threadActor = (threadId: string): Actor => ({ kind: "Thread", threadId });
 
 /** A lore entry's stored state, or null when it does not exist. */
-export const readSnapshot = (loreEntryId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<Snapshot>`
+export const readSnapshot = Effect.fnUntraced(function* (loreEntryId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<Snapshot>`
       SELECT id, scope, kind, thread_id AS threadId, workspace_id AS workspaceId, text,
         saved_by_thread_id AS savedByThreadId, saved_by_title AS savedByTitle, saved_at AS savedAt,
         updated_at AS updatedAt, last_used_at AS lastUsedAt, uses, is_pinned AS isPinned,
         origin_kind AS originKind, origin_entry AS originEntry, origin_from AS originFrom,
         origin_excerpt AS originExcerpt
       FROM intels WHERE id = ${loreEntryId}`;
-    return row ?? null;
-  });
+  return row ?? null;
+});
 
 /** A fading step's identifier: one per lore entry, step, and time, so a step shown before it is stored keeps it. */
 export const fadingEntryIdOf = (loreEntryId: string, kind: string, at: number) => `${loreEntryId}:${kind}:${at}`;
@@ -59,18 +58,17 @@ export const fadingEntryIdOf = (loreEntryId: string, kind: string, at: number) =
 export const isFadingEntryId = (entryId: string) => /:(Dormant|Archived):\d+$/.test(entryId);
 
 /** The fading steps a lore entry took since its last use and that are not stored yet. */
-export const unrecordedStepsOf = (state: Snapshot, fading: Fading) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const steps = fadingStepsOf(state, fading);
-    if (steps.length === 0) return [];
-    const stored = yield* sql<{ id: string }>`SELECT id FROM intel_history
+export const unrecordedStepsOf = Effect.fnUntraced(function* (state: Snapshot, fading: Fading) {
+  const sql = yield* SqlClient.SqlClient;
+  const steps = fadingStepsOf(state, fading);
+  if (steps.length === 0) return [];
+  const stored = yield* sql<{ id: string }>`SELECT id FROM intel_history
       WHERE id IN ${sql.in(steps.map((step) => fadingEntryIdOf(state.id, step.kind, step.at)))}`;
-    return steps.filter((step) => !stored.some((row) => row.id === fadingEntryIdOf(state.id, step.kind, step.at)));
-  });
+  return steps.filter((step) => !stored.some((row) => row.id === fadingEntryIdOf(state.id, step.kind, step.at)));
+});
 
 /** One stored history entry, its states still as JSON. */
-export interface EntryRow {
+export type EntryRow = {
   readonly actor: LoreActor;
   readonly actorTitle: string | null;
   readonly afterState: string | null;
@@ -82,7 +80,7 @@ export interface EntryRow {
   readonly loreEntryId: string;
   readonly undid: LoreHistoryKind | null;
   readonly undoneAt: number | null;
-}
+};
 
 /** A state stored as JSON, or null. */
 export const stateOf = (json: string | null): Snapshot | null =>
@@ -95,9 +93,8 @@ export const selectEntries = (sql: SqlClient.SqlClient) => sql`
   FROM intel_history`;
 
 /** One stored entry, or null when there is none with that identifier. */
-export const readEntry = (entryId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [row] = yield* sql<EntryRow>`${selectEntries(sql)} WHERE id = ${entryId}`;
-    return row === undefined ? null : { ...row, after: stateOf(row.afterState), before: stateOf(row.beforeState) };
-  });
+export const readEntry = Effect.fnUntraced(function* (entryId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<EntryRow>`${selectEntries(sql)} WHERE id = ${entryId}`;
+  return row === undefined ? null : { ...row, after: stateOf(row.afterState), before: stateOf(row.beforeState) };
+});

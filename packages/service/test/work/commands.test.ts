@@ -7,10 +7,16 @@ import { Effect, Exit, Option } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
 import { storeLayer } from "../../src/core/index.ts";
-import { setMissionBudget } from "../../src/work/budgets.ts";
-import { changed, makeCommands, noFollowUps, unchanged } from "../../src/work/commands.ts";
-import { stopThread } from "../../src/work/lifecycle.ts";
-import { openThreadByAgent, reportResult } from "../../src/work/tree.ts";
+import {
+  changed,
+  makeCommands,
+  noFollowUps,
+  openThreadByAgent,
+  reportResult,
+  setMissionBudget,
+  stopThread,
+  unchanged,
+} from "../../src/work/index.ts";
 import { fixture, open, send, settle, start } from "../fixtures/service.ts";
 
 const directories: Array<string> = [];
@@ -46,12 +52,14 @@ const recordingRunner = Effect.gen(function* () {
     });
   const commands = makeCommands({
     publish: note("publish"),
+    removeScratch: (id) => note(`remove scratch ${id}`),
     sql,
     threads: {
       cancel: (ids) => note(`cancel ${ids.join(" ")}`),
       wake: (id) => note(`wake ${id}`),
       wakeMission: (id) => note(`wake mission ${id}`),
     },
+    withdrawQuestions: (id) => note(`withdraw ${id}`),
   });
   return { calls, commands, sql };
 });
@@ -68,7 +76,13 @@ describe("running a command", () => {
       const value = yield* commands.run(
         insertRoot(sql).pipe(
           Effect.as(
-            changed("done", { missionsToWake: ["m1", "m1"], threadsToWake: ["t1", "t2"], turnsToCancel: ["a", "b"] }),
+            changed("done", {
+              missionsToRemoveScratch: ["deleted"],
+              missionsToWake: ["m1", "m1"],
+              threadsToWake: ["t1", "t2"],
+              threadsToWithdraw: ["ended"],
+              turnsToCancel: ["a", "b"],
+            }),
           ),
         ),
       );
@@ -76,6 +90,8 @@ describe("running a command", () => {
       expect(calls).toEqual([
         "publish: after the transaction, 1 row(s)",
         "cancel a b: after the transaction, 1 row(s)",
+        "withdraw ended: after the transaction, 1 row(s)",
+        "remove scratch deleted: after the transaction, 1 row(s)",
         "wake t1: after the transaction, 1 row(s)",
         "wake t2: after the transaction, 1 row(s)",
         "wake mission m1: after the transaction, 1 row(s)",
@@ -98,7 +114,14 @@ describe("running a command", () => {
         .run(
           insertRoot(sql).pipe(
             Effect.andThen(Effect.fail("refused")),
-            Effect.as(changed(null, { missionsToWake: ["m1"], threadsToWake: ["t1"], turnsToCancel: ["a"] })),
+            Effect.as(
+              changed(null, {
+                missionsToRemoveScratch: ["deleted"],
+                missionsToWake: ["m1"],
+                threadsToWake: ["t1"],
+                turnsToCancel: ["a"],
+              }),
+            ),
           ),
         )
         .pipe(Effect.exit);

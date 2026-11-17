@@ -1,11 +1,13 @@
 import type { LoreChange, LoreScope, LoreStateFilter, LoreView } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { wordsOf } from "../core/index.ts";
+import { toolRefusal, toolText, wordsOf } from "../core/index.ts";
 import {
   type LoreEntryRow,
+  type LoreEntrySqlRow,
   listInScope,
   loreEntryOf,
+  loreEntryRowOf,
   loreLinesOf,
   readGauge,
   readScopeChain,
@@ -38,7 +40,8 @@ const selectChanges = (sql: SqlClient.SqlClient) => sql`
 type ChangeRow = Omit<LoreChange, "scopeLabel"> & {
   scopeThreadTitle: string | null;
   missionTitle: string | null;
-  isTopThread: number;
+  /** SQLite's 0/1, or null when no thread is joined. */
+  isTopThread: number | null;
   workspaceName: string | null;
 };
 
@@ -46,7 +49,7 @@ const changeOf = ({ scopeThreadTitle, missionTitle, isTopThread, workspaceName, 
   ({
     ...row,
     scopeLabel: scopeLabelOf({
-      isTopThread,
+      isTopThread: isTopThread === 1,
       missionTitle,
       scope: row.scope,
       threadTitle: scopeThreadTitle,
@@ -62,57 +65,55 @@ const listAwaitingChanges = Effect.gen(function* () {
 });
 
 /** A thread's changes to lore, in the order made, as its conversation shows them. */
-export const listThreadLoreChanges = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const rows = yield* sql<ChangeRow>`${selectChanges(sql)} WHERE c.thread_id = ${threadId} ORDER BY c.at, c.rowid`;
-    return rows.map(changeOf);
-  });
+export const listThreadLoreChanges = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<ChangeRow>`${selectChanges(sql)} WHERE c.thread_id = ${threadId} ORDER BY c.at, c.rowid`;
+  return rows.map(changeOf);
+});
 
 /**
  * The lore panel: one thread's scope or all lore, filtered by scope and state, and every change awaiting
  * approval.
  */
-export const readLoreView = (
+export const readLoreView = Effect.fnUntraced(function* (
   scope: LoreScope | null,
   state: LoreStateFilter | null,
   threadId: string | null,
   workspaceId: string | null = null,
-) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const fading = yield* readFading;
-    const chain = threadId === null ? null : yield* readScopeChain(threadId);
-    const rows =
-      state === "Deleted"
-        ? []
-        : chain === null
-          ? yield* sql<LoreEntryRow>`${selectLoreEntries(sql)} ORDER BY i.saved_at DESC`
-          : yield* listInScope(chain);
-    const deleted = state === "Deleted" ? yield* listDeletedLore(chain, workspaceId) : [];
-    const isOfState = (row: LoreEntryRow) =>
-      state === null || (state === "Pinned" ? row.isPinned === 1 : stateOfLoreEntry(row, fading) === state);
-    return {
-      awaiting: yield* listAwaitingChanges,
-      deleted: deleted.filter((loreEntry) => scope === null || loreEntry.scope === scope),
-      gauge: threadId === null ? null : yield* readGauge(threadId),
-      loreEntries: rows
-        .filter(
-          (row) =>
-            (scope === null || row.scope === scope) &&
-            (workspaceId === null || (row.scope === "Workspace" && row.workspaceId === workspaceId)) &&
-            isOfState(row),
-        )
-        .map((row) => loreEntryOf(row, fading)),
-      proposals: yield* listLoreProposals,
-    } satisfies LoreView;
-  });
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const fading = yield* readFading;
+  const chain = threadId === null ? null : yield* readScopeChain(threadId);
+  const rows =
+    state === "Deleted"
+      ? []
+      : chain === null
+        ? (yield* sql<LoreEntrySqlRow>`${selectLoreEntries(sql)} ORDER BY i.saved_at DESC`).map(loreEntryRowOf)
+        : yield* listInScope(chain);
+  const deleted = state === "Deleted" ? yield* listDeletedLore(chain, workspaceId) : [];
+  const isOfState = (row: LoreEntryRow) =>
+    state === null || (state === "Pinned" ? row.isPinned === 1 : stateOfLoreEntry(row, fading) === state);
+  return {
+    awaiting: yield* listAwaitingChanges,
+    deleted: deleted.filter((loreEntry) => scope === null || loreEntry.scope === scope),
+    gauge: threadId === null ? null : yield* readGauge(threadId),
+    loreEntries: rows
+      .filter(
+        (row) =>
+          (scope === null || row.scope === scope) &&
+          (workspaceId === null || (row.scope === "Workspace" && row.workspaceId === workspaceId)) &&
+          isOfState(row),
+      )
+      .map((row) => loreEntryOf(row, fading)),
+    proposals: yield* listLoreProposals,
+  } satisfies LoreView;
+});
 
 const isOfToolScope = (row: LoreEntryRow, scope: ToolScope) =>
   ({
     global: row.scope === "Global",
-    mission: row.scope === "Thread" && row.isTopThread === 1,
-    thread: row.scope === "Thread",
+    mission: row.scope === "Thread" && row.isTopThread,
+    thread: row.scope === "Thread" && !row.isTopThread,
     workspace: row.scope === "Workspace",
   })[scope];
 
@@ -132,58 +133,66 @@ const rankByWords = (rows: ReadonlyArray<LoreEntryRow>, query: string) => {
       return { row, score };
     })
     .filter(({ score }) => score > 0)
-    .toSorted((a, b) => b.score - a.score)
+    .toSorted((first, second) => second.score - first.score)
     .map(({ row }) => row);
 };
 
 /** The thread's lore that search reads: in its scope and not archived. */
-const searchableOf = (threadId: string) =>
-  Effect.gen(function* () {
-    const fading = yield* readFading;
-    return (yield* listInScope(yield* readScopeChain(threadId))).filter(
-      (row) => stateOfLoreEntry(row, fading) !== "Archived",
-    );
-  });
+const searchableOf = Effect.fnUntraced(function* (threadId: string) {
+  const fading = yield* readFading;
+  return (yield* listInScope(yield* readScopeChain(threadId))).filter(
+    (row) => stateOfLoreEntry(row, fading) !== "Archived",
+  );
+});
 
 /**
  * `relied_on_intel`: a thread says lore entries shaped what it did, which counts one use of each (scoped-intel,
  * Fading). Only lore in its scope and not archived counts. Callers run it in a transaction.
  */
-export const relyOnLore = (threadId: string, ids: ReadonlyArray<string>) =>
-  Effect.gen(function* () {
-    const counted = (yield* searchableOf(threadId)).filter((row) => ids.includes(row.id)).map((row) => row.id);
-    const missed = [...new Set(ids)].filter((id) => !counted.includes(id));
-    const missedNote = missed.length === 0 ? "" : ` Not in your scope, or archived: ${missed.join(", ")}.`;
-    if (counted.length === 0) return { isError: true, text: `No use counted.${missedNote}` };
-    yield* countUses(threadId, counted);
-    return {
-      isError: false,
-      text: `Counted ${counted.length === 1 ? "1 use" : `${counted.length} uses`}.${missedNote}`,
-    };
-  });
+export const relyOnLore = Effect.fnUntraced(function* (threadId: string, ids: ReadonlyArray<string>) {
+  const counted = (yield* searchableOf(threadId)).filter((row) => ids.includes(row.id)).map((row) => row.id);
+  const missed = [...new Set(ids)].filter((id) => !counted.includes(id));
+  const missedNote = missed.length === 0 ? "" : ` Not in your scope, or archived: ${missed.join(", ")}.`;
+  if (counted.length === 0) return toolRefusal(`No use counted.${missedNote}`);
+  yield* countUses(threadId, counted);
+  return toolText(`Counted ${counted.length === 1 ? "1 use" : `${counted.length} uses`}.${missedNote}`);
+});
 
 /**
  * `search_intel`: the active and dormant lore in the thread's scope read by identifier or matching the
  * query's words, best match first. Each lore entry returned counts as a use, so it fades slower and a dormant one
- * becomes active again (scoped-intel, Fading). Callers run it in a transaction.
+ * becomes active again (scoped-intel, Fading); Chronicler's reads beyond its own scope count none. Callers run it in a
+ * transaction.
  */
-export const searchLoreText = (
+export const searchLoreText = Effect.fnUntraced(function* (
   threadId: string,
   query: string | null,
   ids: ReadonlyArray<string>,
   scope: ToolScope | null,
-) =>
-  Effect.gen(function* () {
-    const rows = (yield* searchableOf(threadId)).filter((row) => scope === null || isOfToolScope(row, scope));
-    const named = rows.filter((row) => ids.includes(row.id));
-    const matched = query === null ? [] : rankByWords(rows, query).filter((row) => !ids.includes(row.id));
-    const found = [...named, ...matched].slice(0, searchLimit);
-    if (found.length === 0) {
-      return "No lore matches. Your context already lists the active lore in your scope, and global lore as an index.";
-    }
-    yield* countUses(
-      threadId,
-      found.map((row) => row.id),
-    );
-    return `Lore found, best match first; when two conflict, the more specific scope wins:\n${loreLinesOf(found)}`;
-  });
+  isChronicler = false,
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const fading = yield* readFading;
+  const available = isChronicler
+    ? (yield* sql<LoreEntrySqlRow>`${selectLoreEntries(sql)}
+          ORDER BY CASE WHEN i.scope = 'Global' THEN 3 WHEN i.scope = 'Workspace' THEN 2
+            WHEN m.top_thread_id = i.thread_id THEN 1 ELSE 0 END, i.saved_at DESC`).map(loreEntryRowOf)
+    : yield* listInScope(yield* readScopeChain(threadId));
+  const rows = available.filter(
+    (row) => stateOfLoreEntry(row, fading) !== "Archived" && (scope === null || isOfToolScope(row, scope)),
+  );
+  const named = rows.filter((row) => ids.includes(row.id));
+  const matched = query === null ? [] : rankByWords(rows, query).filter((row) => !ids.includes(row.id));
+  const found = [...named, ...matched].slice(0, searchLimit);
+  if (found.length === 0) {
+    return "No lore matches. Your context already lists the active lore in your scope, and global lore as an index.";
+  }
+  // Chronicler's wider reads are not use: only lore in its own scope counts, so reading across scopes neither delays
+  // fading nor wakes dormant lore nor skews the evidence for narrowing.
+  const ownIds = isChronicler
+    ? new Set((yield* listInScope(yield* readScopeChain(threadId))).map((row) => row.id))
+    : null;
+  const counted = found.filter((row) => ownIds === null || ownIds.has(row.id)).map((row) => row.id);
+  if (counted.length > 0) yield* countUses(threadId, counted);
+  return `Lore found, best match first; when two conflict, the more specific scope wins:\n${loreLinesOf(found)}`;
+});

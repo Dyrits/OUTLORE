@@ -1,3 +1,5 @@
+import { constantTimeEqual } from "@outlore/channel/constantTimeEqual";
+import { Clock, Effect, Semaphore } from "effect";
 import type { Role } from "./route.ts";
 
 /** What the core needs from one connection, whatever carries it (a `ws` socket, a Durable Object WebSocket, a fake). */
@@ -22,27 +24,39 @@ export type RoomPorts<P> = {
   members(): readonly Member<P>[];
   /** The membership of one connection, or null when it was never accepted or has been removed. */
   memberOf(peer: P): Member<P> | null;
-  /** The SHA-256 of the claim of the host that first took the room, or null when none has. */
-  readClaim(): Promise<Uint8Array | null>;
+  /** The SHA-256 of the claim of the host that first took the room, or null when none has. A storage failure is a defect. */
+  readClaim(): Effect.Effect<Uint8Array | null>;
   /** Removes a connection from the room's members. */
   retire(peer: P): void;
-  /** Stores the SHA-256 of the claim of the host that first took the room. */
-  writeClaim(hash: Uint8Array): Promise<void>;
+  /** Stores the SHA-256 of the claim of the host that first took the room. A storage failure is a defect. */
+  writeClaim(hash: Uint8Array): Effect.Effect<void>;
 };
 
 /** The caps of a room. */
 export type RoomLimits = {
-  /** The largest frame in bytes, counting the 9 byte prefix a client's frame gets on its way to the host. */
-  readonly maxFrameBytes: number;
+  /** The most frames a connection may send at once: the budget it starts with and refills up to. */
+  readonly frameBurst: number;
   /** The most clients a room holds. */
   readonly maxClients: number;
+  /** The largest frame in bytes, counting the 9 byte prefix a client's frame gets on its way to the host. */
+  readonly maxFrameBytes: number;
+  /** How many frames a connection may send each second on average, which is how fast its budget refills. */
+  readonly maxFramesPerSecond: number;
 };
 
 /** Why a connection is closed at once. */
 export type Rejection = { readonly code: number; readonly reason: string };
 
-/** The default caps: 8 clients and 1 MiB frames. */
-export const defaultRoomLimits = { maxClients: 8, maxFrameBytes: 1024 * 1024 } as const satisfies RoomLimits;
+/**
+ * The default caps: 8 clients, 1 MiB frames, and a budget of 200 frames a second with a burst of 400 for each
+ * connection (Cloudflare's soft limit for one object is 1,000 requests a second).
+ */
+export const defaultRoomLimits = {
+  frameBurst: 400,
+  maxClients: 8,
+  maxFrameBytes: 1024 * 1024,
+  maxFramesPerSecond: 200,
+} as const satisfies RoomLimits;
 
 /** The first byte of a binary frame the relay sends to a host: a client's frame, a client joined, a client left. */
 export const relayFrame = { forward: 1, joined: 2, left: 3 } as const;
@@ -67,22 +81,16 @@ export const closeCodes = {
   hostOffline: 1013,
   malformedFrame: 1002,
   normal: 1000,
+  rateLimited: 4029,
   replaced: 1012,
-  roomFull: 1013,
+  roomFull: 4004,
   textNotSupported: 1003,
 } as const;
 
 const claimMismatch = { code: closeCodes.claimMismatch, reason: "claim mismatch" } as const satisfies Rejection;
 
-const sha256 = async (bytes: Uint8Array): Promise<Uint8Array> =>
-  new Uint8Array(await crypto.subtle.digest("SHA-256", Uint8Array.from(bytes)));
-
-// Compares every byte whatever the first difference, so the time taken says nothing about how much matched.
-const sameBytes = (a: Uint8Array, b: Uint8Array): boolean => {
-  let difference = a.length ^ b.length;
-  for (let index = 0; index < a.length; index += 1) difference |= (a[index] ?? 0) ^ (b[index] ?? 0);
-  return difference === 0;
-};
+const sha256 = (bytes: Uint8Array) =>
+  Effect.promise(async () => new Uint8Array(await crypto.subtle.digest("SHA-256", Uint8Array.from(bytes))));
 
 const withPrefix = (type: number, id: Uint8Array, payload: Uint8Array | null): Uint8Array => {
   const frame = new Uint8Array(prefixBytes + (payload?.length ?? 0));
@@ -133,13 +141,18 @@ export const closeWithReason = (peer: RoomPeer, code: number, reason: string): v
 
 /**
  * The rules of one room: who may be its host, who may join, and what is forwarded to whom. A frame is passed on
- * untouched and never read, logged, stored or queued. The core holds no connection state of its own.
+ * untouched and never read, logged, stored or queued. The core holds no connection state of its own. Each operation
+ * is an Effect to run once per call (an event of a connection): the core starts no fiber and no timer, so a room that
+ * hibernates between events loses nothing.
  */
 export class RoomCore<P extends RoomPeer> {
   readonly #limits: RoomLimits;
   readonly #ports: RoomPorts<P>;
   // Serializes claim checks, so two first hosts arriving together cannot both take the room.
-  #claims: Promise<unknown> = Promise.resolve();
+  readonly #claims = Semaphore.makeUnsafe(1);
+  // What each connection has left of its frame budget. In memory only: a flood keeps the object awake, so the budget
+  // lasts exactly while it matters, and a connection that outlives a hibernation starts with a full one.
+  readonly #budgets = new WeakMap<P, { at: number; frames: number }>();
   #forwarded = 0;
 
   constructor(ports: RoomPorts<P>, limits: Partial<RoomLimits> = {}) {
@@ -156,29 +169,50 @@ export class RoomCore<P extends RoomPeer> {
    * Checks a connection before it is accepted: the first host's claim is stored, and every later host must present
    * the same one. Returns null to accept, or why to close the connection at once.
    */
-  screen(role: Role, claim: Uint8Array | null): Promise<Rejection | null> {
-    if (role === "client") return Promise.resolve(null);
-    const result = this.#claims.then(() => this.#checkClaim(claim));
-    this.#claims = result.then(
-      () => null,
-      () => null,
-    );
-    return result;
+  screen(role: Role, claim: Uint8Array | null): Effect.Effect<Rejection | null> {
+    return role === "client" ? Effect.succeed(null) : this.#claims.withPermits(1)(this.#checkClaim(claim));
   }
 
   /**
    * Takes in a connection that passed `screen` and is now accepted by the transport. A new host replaces the old
    * one and ends its clients; a client is closed at once when there is no host or no room.
    */
-  open(peer: P, role: Role): void {
-    if (role === "host") this.#openHost(peer);
-    else this.#openClient(peer);
+  open(peer: P, role: Role): Effect.Effect<void> {
+    return Effect.sync(() => (role === "host" ? this.#openHost(peer) : this.#openClient(peer)));
   }
 
   /** Handles one frame from a connection. */
-  receive(peer: P, data: string | Uint8Array): void {
+  receive(peer: P, data: string | Uint8Array): Effect.Effect<void> {
+    return Clock.currentTimeMillis.pipe(Effect.map((now) => this.#receive(peer, data, now)));
+  }
+
+  /** Handles the end of a connection, however it ended. */
+  close(peer: P): Effect.Effect<void> {
+    return Effect.sync(() => {
+      const member = this.#ports.memberOf(peer);
+      if (member !== null) this.#leave(member);
+    });
+  }
+
+  // Takes one frame from the connection's budget, refilled by the time since its last frame; false when it is spent.
+  #spend(peer: P, now: number): boolean {
+    const { frameBurst, maxFramesPerSecond } = this.#limits;
+    const budget = this.#budgets.get(peer) ?? { at: now, frames: frameBurst };
+    budget.frames = Math.min(frameBurst, budget.frames + ((now - budget.at) * maxFramesPerSecond) / 1000);
+    budget.at = now;
+    this.#budgets.set(peer, budget);
+    if (budget.frames < 1) return false;
+    budget.frames -= 1;
+    return true;
+  }
+
+  #receive(peer: P, data: string | Uint8Array, now: number): void {
     const member = this.#ports.memberOf(peer);
     if (member === null) return;
+    if (!this.#spend(peer, now)) {
+      this.#drop(member, closeCodes.rateLimited, "rate limited");
+      return;
+    }
     if (typeof data === "string") {
       if (data === "ping") attempt(() => peer.send("pong"));
       else this.#drop(member, closeCodes.textNotSupported, "text frames are not supported");
@@ -192,21 +226,18 @@ export class RoomCore<P extends RoomPeer> {
     else this.#receiveFromHost(member, data);
   }
 
-  /** Handles the end of a connection, however it ended. */
-  close(peer: P): void {
-    const member = this.#ports.memberOf(peer);
-    if (member !== null) this.#leave(member);
-  }
-
-  async #checkClaim(claim: Uint8Array | null): Promise<Rejection | null> {
-    if (claim === null) return claimMismatch;
-    const hash = await sha256(claim);
-    const stored = await this.#ports.readClaim();
-    if (stored === null) {
-      await this.#ports.writeClaim(hash);
-      return null;
-    }
-    return sameBytes(stored, hash) ? null : claimMismatch;
+  #checkClaim(claim: Uint8Array | null): Effect.Effect<Rejection | null> {
+    if (claim === null) return Effect.succeed(claimMismatch);
+    const ports = this.#ports;
+    return Effect.gen(function* () {
+      const hash = yield* sha256(claim);
+      const stored = yield* ports.readClaim();
+      if (stored === null) {
+        yield* ports.writeClaim(hash);
+        return null;
+      }
+      return constantTimeEqual(stored, hash) ? null : claimMismatch;
+    });
   }
 
   #hostOf(): (Member<P> & { role: "host" }) | null {
@@ -240,7 +271,7 @@ export class RoomCore<P extends RoomPeer> {
     }
     const id = crypto.getRandomValues(new Uint8Array(clientIdBytes));
     // An id that is already taken is vanishingly rare, but a duplicate would cross two clients' traffic.
-    if (clients.some((client) => sameBytes(client.id, id))) {
+    if (clients.some((client) => constantTimeEqual(client.id, id))) {
       this.#openClient(peer);
       return;
     }
@@ -290,7 +321,7 @@ export class RoomCore<P extends RoomPeer> {
       return;
     }
     const id = data.subarray(1, prefixBytes);
-    const client = this.#clients().find((candidate) => sameBytes(candidate.id, id));
+    const client = this.#clients().find((candidate) => constantTimeEqual(candidate.id, id));
     // An unknown id is a client that has just left; the host cannot know yet.
     if (client === void 0) return;
     if (type === hostFrame.forward) {

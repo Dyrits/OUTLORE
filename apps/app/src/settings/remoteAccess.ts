@@ -28,7 +28,9 @@ export const agoOf = (then: number, now: number) => {
 
 /** A paired device's second line: what it is, and whether it is connected or when it was last active. */
 export const deviceLineOf = (device: PairedDevice, now: number) => {
-  const kind = device.kind === "phone" ? "Phone" : "Desktop";
+  const kind = (
+    { browser: "Browser", desktop: "Desktop", phone: "Phone" } satisfies Record<typeof device.kind, string>
+  )[device.kind];
   if (device.isConnected) return `${kind} · connected now`;
   return device.lastActiveAt === null
     ? `${kind} · never connected`
@@ -56,13 +58,17 @@ export const relayLineOf = (view: Pick<RemoteAccessView, "isOwnRelay" | "relayOr
 
 /** Where the web app opens, said in Charter's relay section; an own relay does not serve it. */
 export const webAppLineOf = (view: Pick<RemoteAccessView, "isOwnRelay" | "webAppUrl">) =>
-  `Web app: ${view.webAppUrl}. Open it in any browser and paste a pairing code.${
+  `Web app: ${view.webAppUrl}. Open it in any browser and paste a pairing code or link.${
     view.isOwnRelay ? " It is served by the shared relay, not by your own." : ""
   }`;
 
-/** What to do with a pairing code just made: paste it in another Outlore, or in the web app. */
-export const pairingHelpOf = (webAppUrl: string) =>
-  `Paste it in the other Outlore, under Add a host, or open ${webAppUrl} in any browser and paste it there.`;
+/** What to do with a pairing code just made: scan the QR code, open a link, or paste the code. */
+export const pairingHelp =
+  "Scan the code with a phone camera, or open a link on the other device. Or paste the code, or a link, under Add a host in the other Outlore.";
+
+/** A pairing link is as secret as the code: whoever has it can pair until it works once or expires. */
+export const pairingSecrecyNotice =
+  "Anyone with this link or code can pair with this computer until it expires. Share it only with the device you mean to pair.";
 
 /** What deploying the owner's own relay does and leaves behind, said before the token is used. */
 export const ownRelayNoticeOf = (pairedDevices: number) => {

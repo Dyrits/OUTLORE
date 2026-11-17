@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
 import { fixture, settle, start } from "../fixtures/service.ts";
-import { dayAt, dayText, isIdle, last30, quests, seed, standard, usage } from "../fixtures/usage.ts";
+import { dayAt, dayText, isIdle, last30, quests, seed, standard, subscriptionRow, usage } from "../fixtures/usage.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 afterEach(() => {
@@ -19,7 +19,7 @@ describe("narrowing the usage page", () => {
   it.live("narrows everything to the selected rows, all of them applying together", () =>
     withService(
       Effect.gen(function* () {
-        const { a } = yield* standard;
+        const { atlas } = yield* standard;
         const claude = yield* usage(last30, [{ dimension: "Harness", key: "claude" }]);
         expect(claude.amounts.turns).toBe(2);
         const models = claude.breakdowns.find((breakdown) => breakdown.dimension === "Model")?.rows ?? [];
@@ -34,7 +34,7 @@ describe("narrowing the usage page", () => {
         expect(narrowed.amounts.turns).toBe(1);
         expect(narrowed.records.rows.map((record) => record.model)).toEqual(["claude-sonnet-5-5"]);
 
-        const quest = yield* usage(last30, [{ dimension: "Quest", key: a.mission }]);
+        const quest = yield* usage(last30, [{ dimension: "Quest", key: atlas.mission }]);
         expect(quest.amounts.turns).toBe(3);
         const day = yield* usage(last30, [{ dimension: "Day", key: dayText(2) }]);
         expect(day.amounts.turns).toBe(3);
@@ -51,17 +51,8 @@ describe("narrowing the usage page", () => {
   it.live("follows local calendar days, with both days of a custom range included", () =>
     withService(
       Effect.gen(function* () {
-        const { a } = yield* quests;
-        const row = (endedAt: number) =>
-          ({
-            billing: "Subscription",
-            endedAt,
-            estimate: 1,
-            harness: "claude",
-            mission: a.mission,
-            model: "m",
-            thread: a.thread,
-          }) as const;
+        const { atlas } = yield* quests;
+        const row = (endedAt: number) => subscriptionRow(atlas, endedAt);
         yield* seed([
           row(dayAt(5, 0, 0, 0, 0)),
           row(dayAt(5, 23, 59, 59, 999)),
@@ -110,17 +101,17 @@ describe("narrowing the usage page", () => {
   it.live("counts the turns that left no usage, the records without a price, and the empty token records", () =>
     withService(
       Effect.gen(function* () {
-        const { a } = yield* standard;
+        const { atlas } = yield* standard;
         const sql = yield* SqlClient.SqlClient;
         // The quests' own turns lost their usage when the case replaced it: three finished turns without a record.
         const before = yield* usage();
         expect(before.gaps.turnsWithoutUsage).toBe(3);
         yield* sql`INSERT INTO turns (id, thread_id, status, started_at, ended_at)
-          VALUES ('turn-no-usage', ${a.thread}, 'completed', ${dayAt(1)}, ${dayAt(1)}),
-                 ('turn-failed', ${a.thread}, 'failed', ${dayAt(1)}, ${dayAt(1)}),
-                 ('turn-old', ${a.thread}, 'completed', ${dayAt(40)}, ${dayAt(40)})`;
+          VALUES ('turn-no-usage', ${atlas.thread}, 'completed', ${dayAt(1)}, ${dayAt(1)}),
+                 ('turn-failed', ${atlas.thread}, 'failed', ${dayAt(1)}, ${dayAt(1)}),
+                 ('turn-old', ${atlas.thread}, 'completed', ${dayAt(40)}, ${dayAt(40)})`;
         yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, billing, harness, model)
-          VALUES ('turn-empty', ${a.mission}, ${a.thread}, ${dayAt(1)}, 0, 0, 0, 0, 'Subscription', 'claude', 'claude-sonnet-5-5')`;
+          VALUES ('turn-empty', ${atlas.mission}, ${atlas.thread}, ${dayAt(1)}, 0, 0, 0, 0, 'Subscription', 'claude', 'claude-sonnet-5-5')`;
         const report = yield* usage();
         expect(report.gaps).toEqual({ earlierTurns: 1, emptyTokenTurns: 1, turnsWithoutUsage: 4, unpricedTurns: 2 });
         // Which harness a turn without usage ran on is unknown, so the count stays out under such a filter.
@@ -178,14 +169,14 @@ describe("narrowing the usage page", () => {
   it.live("does not count a Ritual's scheduled run as a message the owner sent, and counts one run by hand", () =>
     withService(
       Effect.gen(function* () {
-        const { a } = yield* quests;
+        const { atlas } = yield* quests;
         const sql = yield* SqlClient.SqlClient;
-        const before = (yield* usage({ _tag: "Days", days: 7 }, [{ dimension: "Quest", key: a.mission }])).messages;
+        const before = (yield* usage({ _tag: "Days", days: 7 }, [{ dimension: "Quest", key: atlas.mission }])).messages;
         const now = Date.now();
         yield* sql`INSERT INTO messages (id, mission_id, thread_id, sender_kind, text, sequence, sent_at) VALUES
-          ('ritual-scheduled', ${a.mission}, ${a.thread}, 'user', 'Ritual · scheduled 07:00', 9001, ${now}),
-          ('ritual-by-hand', ${a.mission}, ${a.thread}, 'user', 'Ritual · run by you', 9002, ${now})`;
-        const after = (yield* usage({ _tag: "Days", days: 7 }, [{ dimension: "Quest", key: a.mission }])).messages;
+          ('ritual-scheduled', ${atlas.mission}, ${atlas.thread}, 'user', 'Ritual · scheduled 07:00', 9001, ${now}),
+          ('ritual-by-hand', ${atlas.mission}, ${atlas.thread}, 'user', 'Ritual · run by you', 9002, ${now})`;
+        const after = (yield* usage({ _tag: "Days", days: 7 }, [{ dimension: "Quest", key: atlas.mission }])).messages;
         expect(after?.user).toBe((before?.user ?? 0) + 1);
       }),
     ),

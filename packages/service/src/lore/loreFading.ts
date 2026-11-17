@@ -25,10 +25,10 @@ export const kindOfTool = {
 } as const satisfies Record<ToolKind, LoreKind>;
 
 /** What fading needs to know: the time now and the half-lives in Settings. */
-export interface Fading {
+export type Fading = {
   readonly halfLives: Settings["intelHalfLives"];
   readonly now: number;
-}
+};
 
 /** Reads the time now and the half-lives in Settings. */
 export const readFading = Effect.gen(function* () {
@@ -38,12 +38,12 @@ export const readFading = Effect.gen(function* () {
 });
 
 /** What a lore entry's strength depends on. */
-export interface Fadable {
+type Fadable = {
   readonly isPinned: number;
   readonly kind: LoreKind;
   readonly lastUsedAt: number;
   readonly uses: number;
-}
+};
 
 /** The half-life in days of a lore entry of that kind, or null for a rule, which never fades. */
 export const halfLifeDaysOf = (kind: LoreKind, halfLives: Fading["halfLives"]) =>
@@ -55,11 +55,18 @@ export const halfLifeDaysOf = (kind: LoreKind, halfLives: Fading["halfLives"]) =
     Temporary: halfLives.temporary,
   })[kind];
 
+/** How long strength takes to halve for an entry, or null when it never fades (pinned, or a kind with no half-life). */
+const halfLifeMillisOf = (loreEntry: Fadable, fading: Fading) => {
+  const halfLifeDays = halfLifeDaysOf(loreEntry.kind, fading.halfLives);
+  return loreEntry.isPinned === 1 || halfLifeDays === null
+    ? null
+    : halfLifeDays * dayMillis * (1 + Math.log2(1 + loreEntry.uses));
+};
+
 /** From 1 just after a use down towards 0: `0.5 ^ (elapsed / (half-life × (1 + log2(1 + uses))))`. */
 export const strengthOf = (loreEntry: Fadable, fading: Fading) => {
-  const halfLifeDays = halfLifeDaysOf(loreEntry.kind, fading.halfLives);
-  if (loreEntry.isPinned === 1 || halfLifeDays === null) return 1;
-  const halfLife = halfLifeDays * dayMillis * (1 + Math.log2(1 + loreEntry.uses));
+  const halfLife = halfLifeMillisOf(loreEntry, fading);
+  if (halfLife === null) return 1;
   const elapsed = Math.max(0, fading.now - loreEntry.lastUsedAt);
   return 0.5 ** (elapsed / halfLife);
 };
@@ -69,9 +76,8 @@ export const strengthOf = (loreEntry: Fadable, fading: Fading) => {
  * undo). Strength halves each half-life, so it reaches a threshold after `half-life × log2(1 / threshold)`.
  */
 export const fadingStepsOf = (loreEntry: Fadable, fading: Fading) => {
-  const halfLifeDays = halfLifeDaysOf(loreEntry.kind, fading.halfLives);
-  if (loreEntry.isPinned === 1 || halfLifeDays === null) return [];
-  const halfLife = halfLifeDays * dayMillis * (1 + Math.log2(1 + loreEntry.uses));
+  const halfLife = halfLifeMillisOf(loreEntry, fading);
+  if (halfLife === null) return [];
   const steps = [
     { at: loreEntry.lastUsedAt + halfLife * Math.log2(1 / dormantBelow), kind: "Dormant" },
     { at: loreEntry.lastUsedAt + halfLife * Math.log2(1 / archivedBelow), kind: "Archived" },

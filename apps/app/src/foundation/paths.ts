@@ -2,5 +2,5 @@
 const normalizedPath = (path: string) => path.replace(/[\\/]+$/, "").replace(/^\/private(?=\/)/, "");
 
 /** Whether two folder paths name the same folder; a link the service resolved differently is not recognised here. */
-export const samePath = (a: string | null, b: string | null) =>
-  a !== null && b !== null && normalizedPath(a) === normalizedPath(b);
+export const samePath = (first: string | null, second: string | null) =>
+  first !== null && second !== null && normalizedPath(first) === normalizedPath(second);

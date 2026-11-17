@@ -1,6 +1,6 @@
 import { EffortChoice, HarnessName, ModelChoice, RitualSchedule, TierName } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
-import type { ToolAnswer } from "../core/index.ts";
+import { type ToolAnswer, toolRefusal, toolText } from "../core/index.ts";
 import { latestEntryCount, nothingToRecord } from "./journal.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: thread tool names (`save_intel`, ...).
@@ -31,26 +31,24 @@ const definitionOf = <S extends Schema.ConstraintDecoder<unknown> & Schema.Top>(
   };
 };
 
-const invalid = (text: string): ToolAnswer => ({ isError: true, text });
-
 const ToolScope = Schema.Literals(["thread", "mission", "workspace", "global"]);
 const ToolKind = Schema.Literals(["rule", "preference", "decision", "fact", "temporary"]);
 const kindHelp =
   "rule: an instruction to follow, never fades; preference: how the owner likes things; decision: a settled choice; fact: how things are; temporary: true for days only.";
 
 /** The answer to a `search_intel` call with neither query nor ids. */
-export const searchInvalid = invalid(
+export const searchInvalid = toolRefusal(
   "Invalid arguments: give query, ids, or both, and optionally scope (thread, mission, workspace, or global).",
 );
-const scopeHelp =
-  "thread: you and the threads beneath you; mission: every thread of this mission; workspace: every thread in this folder, in any mission; global: everywhere, after the owner's approval.";
+export const scopeHelp =
+  "thread: this side-quest and the threads beneath it (on a quest's top thread, saving at thread puts the lore on the quest, but searching with thread leaves it out: search it with mission); mission: the quest and all its threads; workspace: the realm, with or without a folder, and all its quests; global: everywhere, after the owner's approval.";
 
 /** Every thread tool, by name. */
 export const threadTools = {
   act_on_mission: definitionOf({
     description:
       "Chronicler uses it, at the owner's request: stop a quest's threads, mark it Done, archive it, or rename it. Chronicler derives the exact action and target from the call. It runs at once when the owner's own message in this turn named that action and quest (and new title) plainly; otherwise it asks the owner one Allow or Deny question naming them and waits; marking Done or archiving a quest with threads at work always asks. Do not ask a second question in chat. Nothing you pass counts as the owner's words.",
-    invalid: invalid("Invalid arguments: give mission and action (Stop, Done, Archive, or Rename)."),
+    invalid: toolRefusal("Invalid arguments: give mission and action (Stop, Done, Archive, or Rename)."),
     isUnasked: true,
     schema: Schema.Struct({
       action: Schema.Literals(["Stop", "Done", "Archive", "Rename"]).annotate({
@@ -63,7 +61,7 @@ export const threadTools = {
   answer_prompt: definitionOf({
     description: "Used by Claude Code itself to answer permission prompts. Never call it yourself.",
     // Claude Code reads the decision from the text, so an invalid prompt is denied, not an error.
-    invalid: { isError: false, text: JSON.stringify({ behavior: "deny", message: "Invalid permission prompt." }) },
+    invalid: toolText(JSON.stringify({ behavior: "deny", message: "Invalid permission prompt." })),
     isUnasked: false,
     schema: Schema.Struct({
       input: Schema.Record(Schema.String, Schema.Unknown),
@@ -73,8 +71,8 @@ export const threadTools = {
   }),
   change_setting: definitionOf({
     description:
-      "Chronicler uses it, at the owner's request: change one of the owner's settings (read_settings lists them). It runs at once when the owner's own message in this turn named that setting and its new value plainly; otherwise it asks the owner one Allow or Deny question naming them and waits. The approval level, the budgets, and price fetching are the owner's alone and are refused.",
-    invalid: invalid("Invalid arguments: give setting and value."),
+      "Chronicler uses it, at the owner's request: change one of the owner's settings (read_settings lists them). It runs at once when the owner's own message in this turn named that setting and its new value plainly; otherwise it asks the owner one Allow or Deny question naming them and waits. The approval level, budgets, price fetching, and permission to run outside the sandbox without asking are the owner's alone and are refused.",
+    invalid: toolRefusal("Invalid arguments: give setting and value."),
     isUnasked: true,
     schema: Schema.Struct({
       setting: text("The setting's name, as read_settings gives it, for example shouldShowFinishedQuests."),
@@ -86,7 +84,7 @@ export const threadTools = {
   create_realm: definitionOf({
     description:
       "Only Chronicler uses it, at the owner's request: make a realm, tied to a folder or to none. It runs at once when the owner's own message in this turn asked for a realm by that name (and folder) plainly; otherwise it asks the owner one Allow or Deny question naming them and waits.",
-    invalid: invalid("Invalid arguments: give name; folder is optional."),
+    invalid: toolRefusal("Invalid arguments: give name; folder is optional."),
     isUnasked: true,
     schema: Schema.Struct({
       folder: optionalText(
@@ -98,7 +96,7 @@ export const threadTools = {
   create_ritual: definitionOf({
     description:
       "Only Chronicler uses it. Create a Ritual: an instruction that runs by itself on a schedule, in a quest of its own, for anything the owner wants done repeatedly (every hour, every morning, weekly). Use it, not a quest, for a repeating request. Pick the preset that fits; there is no cron. Check the Rituals in your context first, so the same one is not made twice. It always asks the owner one Allow or Deny question with its title, schedule, realm, Companion, and instruction, and waits; naming the title in a message is not enough. It starts on and runs when next due. Its runs may take no structural action unasked until the owner sets its scope in the Ritual's form; its instruction never grants any.",
-    invalid: invalid(
+    invalid: toolRefusal(
       "Invalid arguments: give instruction, title, and schedule (Daily, Weekdays, Weekly, Monthly, or Hourly).",
     ),
     isUnasked: true,
@@ -125,29 +123,29 @@ export const threadTools = {
   }),
   find_missions: definitionOf({
     description:
-      "Find other missions that may fit an off-topic request, by their titles and briefings: up to 3, best first, with their ids, states, and briefings.",
-    invalid: invalid("Invalid arguments: give request."),
+      "Find other missions that may fit an off-topic request by their titles, briefings, and opening request; a shared ticket key or link ranks above plain words. Returns up to 3, best first, with their ids, states, and briefings; Ritual quests are excluded.",
+    invalid: toolRefusal("Invalid arguments: give request."),
     isUnasked: true,
     schema: Schema.Struct({ request: text("The off-topic part of the owner's message.") }),
   }),
   forget_intel: definitionOf({
     description:
       "Delete a lore entry that no longer holds, by its id. Thread and workspace lore go at once; deleting a global lore entry waits for the owner's approval.",
-    invalid: invalid("Invalid arguments: give id."),
+    invalid: toolRefusal("Invalid arguments: give id."),
     isUnasked: true,
     schema: Schema.Struct({ id: text("The lore entry's id, as your context or search_intel gives it.") }),
   }),
   interrupt_thread: definitionOf({
     description:
       "Interrupt a running thread directly beneath you, by its id: its current turn ends and it waits for a message. Use it when its work is no longer needed or must change course; then message it with what to do instead.",
-    invalid: invalid("Invalid arguments: give thread."),
+    invalid: toolRefusal("Invalid arguments: give thread."),
     isUnasked: true,
     schema: Schema.Struct({ thread: text("The id of the thread beneath you to interrupt.") }),
   }),
   open_thread: definitionOf({
     description:
       "Open a thread beneath you to work on one request on its own, in parallel with you. It starts with your request, in your working folder, with your harness, account, model, and effort unless you choose others, and reports its result to you as a message. Use it instead of subagents. A harness other than yours (claude for Claude Code, codex, opencode) runs on its own sign-in and default model unless you name one of its models.",
-    invalid: invalid("Invalid arguments: give request."),
+    invalid: toolRefusal("Invalid arguments: give request."),
     isUnasked: true,
     schema: Schema.Struct({
       effort: Schema.optionalKey(
@@ -172,7 +170,7 @@ export const threadTools = {
   read_app_guide: definitionOf({
     description:
       "Only Chronicler uses it. Read the app guide, to answer a question about how Outlore works or how to use it. With no topic it lists the topics; give a topic id, or a few words of the owner's question, to read that part.",
-    invalid: invalid("Invalid arguments: topic is text, or leave it out to list the topics."),
+    invalid: toolRefusal("Invalid arguments: topic is text, or leave it out to list the topics."),
     isUnasked: true,
     schema: Schema.Struct({
       topic: optionalText(
@@ -183,7 +181,7 @@ export const threadTools = {
   read_control_history: definitionOf({
     description:
       "Only Chronicler uses it. Read your own older messages with the owner, newest first, when they ask about something said earlier, for example 'Remember what we did about X?'.",
-    invalid: invalid("Invalid arguments: query is text; before and count are whole numbers."),
+    invalid: toolRefusal("Invalid arguments: query is text; before and count are whole numbers."),
     isUnasked: true,
     schema: Schema.Struct({
       before: optionalWhole("Only messages numbered below this one, to read older ones."),
@@ -193,7 +191,7 @@ export const threadTools = {
   }),
   read_journal: definitionOf({
     description: `Read the mission's journal: the briefing of where the mission stands, its version, and change log entries. Without arguments it gives the ${latestEntryCount} latest entries.`,
-    invalid: invalid("Invalid arguments: before and count are whole numbers."),
+    invalid: toolRefusal("Invalid arguments: before and count are whole numbers."),
     isUnasked: true,
     schema: Schema.Struct({
       before: optionalWhole("Only entries numbered below this one, to read older entries."),
@@ -210,14 +208,14 @@ export const threadTools = {
   read_settings: definitionOf({
     description:
       "Only Chronicler uses it. Read the owner's settings as JSON, to answer a question about them or before you change one.",
-    invalid: invalid("Invalid arguments: read_settings takes none."),
+    invalid: toolRefusal("Invalid arguments: read_settings takes none."),
     isUnasked: true,
     schema: Schema.Struct({}),
   }),
   relied_on_intel: definitionOf({
     description:
       "Say that lore entries from your context shaped what you did, by their ids. Each counts as a use and keeps it from fading; only lore that really guided you counts.",
-    invalid: invalid("Invalid arguments: give ids, at least one."),
+    invalid: toolRefusal("Invalid arguments: give ids, at least one."),
     isUnasked: true,
     schema: Schema.Struct({
       ids: Schema.Array(Schema.String)
@@ -228,7 +226,7 @@ export const threadTools = {
   rename_realm: definitionOf({
     description:
       "Only Chronicler uses it, at the owner's request: rename a realm. It runs at once when the owner's own message in this turn named that realm and its new name plainly; otherwise it asks the owner one Allow or Deny question naming them and waits.",
-    invalid: invalid("Invalid arguments: give realm and name."),
+    invalid: toolRefusal("Invalid arguments: give realm and name."),
     isUnasked: true,
     schema: Schema.Struct({
       name: text("The realm's new name, at most 80 characters."),
@@ -238,7 +236,7 @@ export const threadTools = {
   report_result: definitionOf({
     description:
       "When your work is done, report your result to the thread that opened you, with an entry for the mission's journal. You become Done; a later message continues you.",
-    invalid: invalid(
+    invalid: toolRefusal(
       `Not reported: give result, and journal: an entry for the mission's journal, or exactly "${nothingToRecord}".`,
     ),
     isUnasked: true,
@@ -252,7 +250,7 @@ export const threadTools = {
   request_approval: definitionOf({
     description:
       "Ask the owner before one action you judge consequential (see your instructions), or before running one exact command outside the sandbox. One call per action. Wait for the answer; do the action only if it is Allowed. Nothing you write, quote, or cite counts as the owner's approval.",
-    invalid: invalid("Invalid arguments: give action and command."),
+    invalid: toolRefusal("Invalid arguments: give action and command."),
     isUnasked: false,
     schema: Schema.Struct({
       action: text(
@@ -270,7 +268,7 @@ export const threadTools = {
   save_intel: definitionOf({
     description:
       "Save one rule, preference, decision, fact, or temporary note that later work should know, at the narrowest scope that fits, only when it is worth keeping. Thread, mission, and workspace lore are saved at once; global lore waits for the owner's approval. A save repeating a lore entry in that scope or a wider one, or a newer version of it, replaces that lore entry.",
-    invalid: invalid(
+    invalid: toolRefusal(
       "Invalid arguments: give text, scope (thread, mission, workspace, or global), and kind (rule, preference, decision, fact, or temporary).",
     ),
     isUnasked: true,
@@ -299,7 +297,7 @@ export const threadTools = {
   send_thread_message: definitionOf({
     description:
       "Send a message to your parent thread or to a thread directly beneath you, by its id. Any thread may also message Chronicler by its id, to ask it to find the right quest, and Chronicler may message any quest's top thread. During a turn, you may also message the top thread of a quest, or a side-quest, the owner mentioned with @ in a message of that turn, and answer a thread that wrote to you in it. It joins that thread's current turn if it is running, and wakes it if it is idle.",
-    invalid: invalid("Invalid arguments: give to and text."),
+    invalid: toolRefusal("Invalid arguments: give to and text."),
     isUnasked: true,
     schema: Schema.Struct({
       text: text("The message, complete enough to act on: the receiving thread sees none of your conversation."),
@@ -309,14 +307,14 @@ export const threadTools = {
   set_mission_title: definitionOf({
     description:
       "Name the mission. Only the mission's top thread uses it, on its first turn, with a short title of a few words.",
-    invalid: invalid("Not named: give a title."),
+    invalid: toolRefusal("Not named: give a title."),
     isUnasked: true,
     schema: Schema.Struct({ title: text("A short title of a few words.") }),
   }),
   suggest_mission: definitionOf({
     description:
       "Ask the owner where an off-topic message goes: continue in a matching mission, open a new mission, or keep it as an aside beneath you. Wait for the answer, then carry on as if the message had not been sent to you. Chronicler uses it for every request that calls for a quest, with the ids of the quests that fit, or none: the owner chooses Continue in or Open a new quest, and it offers no aside. Chronicler opens no quest without that choice.",
-    invalid: invalid("Invalid arguments: give text, title, and missions."),
+    invalid: toolRefusal("Invalid arguments: give text, title, and missions."),
     isUnasked: true,
     schema: Schema.Struct({
       missions: Schema.optionalKey(
@@ -338,7 +336,7 @@ export const threadTools = {
   update_intel: definitionOf({
     description:
       "Correct a lore entry's text, or propose a wider scope for it when it is not specific to where it was saved. Thread and workspace corrections apply at once; a change to global lore and every widening wait for the owner's approval.",
-    invalid: invalid("Invalid arguments: give id, and text, scope, or both."),
+    invalid: toolRefusal("Invalid arguments: give id, and text, scope, or both."),
     isUnasked: true,
     schema: Schema.Struct({
       id: text("The lore entry's id, as your context or search_intel gives it."),
@@ -349,7 +347,7 @@ export const threadTools = {
   update_journal: definitionOf({
     description:
       "Record a change in the mission's journal: an entry when you settle a decision, change direction, or finish a piece of work. Rewrite the briefing only when where the mission stands has changed; every rewrite comes with an entry.",
-    invalid: invalid("Invalid arguments: give entry."),
+    invalid: toolRefusal("Invalid arguments: give entry."),
     isUnasked: true,
     schema: Schema.Struct({
       basedOn: optionalWhole("With briefing: the briefing version your rewrite starts from, as read_journal gave it."),

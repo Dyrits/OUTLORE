@@ -13,20 +13,11 @@ export type HostId = typeof HostId.Type;
 /** The longest name of a host or of a paired device, in characters. */
 export const maxNameLength = 60;
 
-/**
- * The close codes of the link the local service opens to a paired host for the app: it could not open (try again
- * later), the host ended it, and the host refused this installation (trying again cannot help).
- */
-export const hostLinkCodes = { couldNotOpen: 4000, ended: 4001, refused: 4002 } as const;
-
-/** The path of the loopback server that joins the app to a paired host. */
-export const hostBridgePath = (hostId: string) => `/host/${hostId}`;
-
 /** What a paired device is: another computer's Outlore, or a phone. */
-export const DeviceKind = Schema.Literals(["desktop", "phone"]);
+export const DeviceKind = Schema.Literals(["desktop", "phone", "browser"]);
 export type DeviceKind = typeof DeviceKind.Type;
 
-/** A device paired with this host, as Charter lists it. */
+/** A device paired with this host, as Workshop lists it. */
 export const PairedDevice = Schema.Struct({
   id: DeviceId,
   isConnected: Schema.Boolean,
@@ -42,7 +33,7 @@ export const RelayStatus = Schema.Literals(["Off", "Connecting", "Connected", "U
 export type RelayStatus = typeof RelayStatus.Type;
 
 /**
- * Charter's remote access section: the switch, the host's name, the relay (the shared one, or the owner's own on their
+ * Workshop's remote access section: the switch, the host's name, the relay (the shared one, or the owner's own on their
  * Cloudflare account), and the paired devices.
  */
 export const RemoteAccessView = Schema.Struct({
@@ -57,8 +48,17 @@ export const RemoteAccessView = Schema.Struct({
 });
 export type RemoteAccessView = typeof RemoteAccessView.Type;
 
-/** A pairing code to give to another Outlore; it works once and expires at `expiresAt` (epoch milliseconds). */
-export const PairingCode = Schema.Struct({ code: Schema.String, expiresAt: Schema.Number });
+/**
+ * A pairing code to give to another Outlore; it works once and expires at `expiresAt` (epoch milliseconds). The two
+ * links carry the same code in their fragment: `webLink` opens the web app, `appLink` the installed app. Each is as
+ * secret as the code.
+ */
+export const PairingCode = Schema.Struct({
+  appLink: Schema.String,
+  code: Schema.String,
+  expiresAt: Schema.Number,
+  webLink: Schema.String,
+});
 export type PairingCode = typeof PairingCode.Type;
 
 /** A host this installation is paired with, as the host menu lists it. */
@@ -72,7 +72,7 @@ export type KnownHost = typeof KnownHost.Type;
 
 // Host-only requests: a paired device never gets them answered, whatever its authority otherwise (device-pairing).
 
-/** Reads Charter's remote access section. */
+/** Reads Workshop's remote access section. */
 export const ReadRemoteAccess = Schema.TaggedStruct("ReadRemoteAccess", {});
 /** Turns "Allow paired devices" on or off; off ends every device's connection and keeps the pairings. */
 export const SetRemoteAccess = Schema.TaggedStruct("SetRemoteAccess", { isEnabled: Schema.Boolean });
@@ -101,17 +101,4 @@ export const ReadHostName = Schema.TaggedStruct("ReadHostName", {});
 /** Names this host; the name shows on every paired device. */
 export const RenameHost = Schema.TaggedStruct("RenameHost", { name: Schema.String });
 
-/** The request tags a paired device may not send to a host. */
-export const hostOnlyRequestTags = [
-  "AddBrowsableRoot",
-  "AddHost",
-  "CreatePairingCode",
-  "DisconnectDevice",
-  "ListHosts",
-  "ReadRemoteAccess",
-  "RemoveBrowsableRoot",
-  "RemoveHost",
-  "SetRemoteAccess",
-  "UseOwnRelay",
-  "UseSharedRelay",
-] as const satisfies ReadonlyArray<import("./requests.ts").RequestTag>;
+export { hostOnlyRequestTags } from "./requestSources.ts";

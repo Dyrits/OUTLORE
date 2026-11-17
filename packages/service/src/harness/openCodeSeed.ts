@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { textFieldOf } from "../core/index.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import { harnessEnvironmentOf } from "./lineProcess.ts";
 import {
@@ -25,20 +26,20 @@ import { killProcessTree } from "./processTree.ts";
 // OpenCode does. `--standalone` keeps each from reaching OpenCode's background service.
 
 /** How the seeding commands run: the sandbox, OpenCode's command, the account, and the marker to carry. */
-export interface SeedRun {
+export type SeedRun = {
   readonly accountDataHome: string | null;
   readonly command: string;
   /** Variables every sandboxed process carries, such as the service's marker (processTree.ts sweepOrphans). */
   readonly environment: Record<string, string>;
   readonly prefixArgs: ReadonlyArray<string>;
   readonly sandbox: OpenCodeSandbox;
-}
+};
 
-interface CommandResult {
+type CommandResult = {
   readonly code: number | null;
   readonly stderr: string;
   readonly stdout: string;
-}
+};
 
 /** Runs one short command to its end, with its own process group so a timeout ends all it started. */
 const runOnce = (
@@ -75,12 +76,12 @@ const runOnce = (
   });
 
 /** One sign-in as `opencode auth export` prints it; only its id and integration are read, and whether it changed. */
-interface ExportedSignIn {
+type ExportedSignIn = {
   readonly id: string;
   readonly integrationID: string;
   /** The whole entry as printed, compared with the copy's to find a changed sign-in. */
   readonly text: string;
-}
+};
 
 const exportedOf = (stdout: string, where: string): Array<ExportedSignIn> => {
   let entries: unknown;
@@ -91,10 +92,9 @@ const exportedOf = (stdout: string, where: string): Array<ExportedSignIn> => {
   }
   if (!Array.isArray(entries)) throw new Error(`OpenCode listed no sign-ins of ${where}.`);
   return entries.flatMap((entry: unknown) => {
-    const { id, integrationID } = (entry ?? {}) as { id?: unknown; integrationID?: unknown };
-    return typeof id === "string" && typeof integrationID === "string"
-      ? [{ id, integrationID, text: JSON.stringify(entry) }]
-      : [];
+    const id = textFieldOf(entry, "id");
+    const integrationID = textFieldOf(entry, "integrationID");
+    return id !== null && integrationID !== null ? [{ id, integrationID, text: JSON.stringify(entry) }] : [];
   });
 };
 

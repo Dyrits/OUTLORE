@@ -129,7 +129,7 @@ export const archiveRealm = Effect.fn("archiveRealm")(function* (
     yield* sql`INSERT INTO realm_archived_quests (workspace_id, mission_id, previous_ending)
       VALUES (${workspaceId}, ${quest.id}, ${quest.ending})`;
     const ids = yield* readWorkingIds(quest.id);
-    const ended = yield* endMission(quest.id, "Archived", JSON.stringify(ids));
+    const ended = yield* endMission(quest.id, "Archived", JSON.stringify(ids), "realm archive");
     turnsToCancel.push(...ended.followUps.turnsToCancel);
   }
   // A Ritual stays in the Rituals, off, with its instruction and history; a run underway is stopped.

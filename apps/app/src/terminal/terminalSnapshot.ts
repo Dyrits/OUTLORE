@@ -1,10 +1,10 @@
 import type { IBufferLine } from "@xterm/xterm";
 
 /** The rendered lines needed for a transcript, shared by xterm and its tests. */
-interface RenderedBuffer {
+type RenderedBuffer = {
   getLine(index: number): Pick<IBufferLine, "isWrapped" | "translateToString"> | undefined;
   readonly length: number;
-}
+};
 
 /** Reads the rendered terminal rather than escape sequences or hidden keystrokes. */
 export const terminalTextOf = (buffer: RenderedBuffer) => {

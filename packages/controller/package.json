@@ -11,11 +11,10 @@
   "dependencies": {
     "@outlore/channel": "workspace:*",
     "@outlore/contracts": "workspace:*",
-    "@outlore/relay": "workspace:*"
+    "@outlore/relay": "workspace:*",
+    "effect": "4.1.4"
   },
   "devDependencies": {
-    "@outlore/service": "workspace:*",
-    "@types/node": "^24",
-    "effect": "4.1.4"
+    "@types/node": "^24"
   }
 }

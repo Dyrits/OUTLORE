@@ -1,0 +1,54 @@
+# Handoff: Review and refactor of the whole codebase (phase 1 integrated)
+
+Supersedes: none
+Workspace: ISKIOS repository, `main`; the work was integrated on `worktree/rr-integration` (from `main` at `a6a682d`) and then fast-forwarded into `main` (check `git log origin/main` for whether it was pushed)
+
+To resume: read this whole file first. Treat every claim in State not marked verified as unverified, and check it against the Sources. Read the superseded handoff only when something here cannot be resolved from this file and its Sources. Confirm what was in flight and what you will do next with the user before starting. Never edit this file: a later state goes into a new handoff.
+
+## Goal
+
+Review the whole codebase against its standards and its agreed specifications, then fix what was found: mechanical refactors first, behaviour fixes next (red then green), design items and owner decisions kept apart. Baseline for every finding: commit `d767f75` (`main` at `a6a682d` differs only in skills). Done means every surface is reviewed, the mechanical batches and behaviour fixes are merged, and the owner has decided the open questions.
+
+## State
+
+- Verified (git log, this session): phase 1 (mechanical batches) of slices A, B, C, D and E is integrated on `worktree/rr-integration`. A by merge; E, C, D and B by replaying their own commits (the slice branches also carry cherry-picks of A's commits, so a plain merge of them conflicts). Three integration commits sit on top: a lint fix in `remote/frames.ts` (Biome 2.6.7 flagged the `Effect.map` callback; `rr-a` at `3664c52` shows the same error, so A's "clean" claim does not reproduce), the BriefingRewrite export in `work/journal.ts` (slice D uses what slice C had made private), and the cross-slice items ST-C-17 (`usageGaps.ts` reads `scheduledRunPrefix` from `rituals.ts`) and ST-E-18 (`ritualScope.ts` uses `isChangeableSetting`).
+- Verified (run in this session): Biome clean (772 files) and typecheck 7/7 on the integrated tree. Full suite on the A+C+E tree: 1683 passed, 0 failed, 54 skipped, 1737 total (XDG_DATA_HOME unset, four pty tests skipped). Full suite on the final tree (A+C+D+E plus the integration commits): in the sandbox, 1685 passed, 0 failed, 54 skipped, 1739 total (199 files passed, 3 skipped), third variant (XDG_DATA_HOME unset, pty tests skipped); 1685 is 1679 plus E's 4 and D's 2 new tests. The same tree without B, run outside the sandbox (Seatbelt and process-table tests run): 1721 passed, 0 failed, 18 skipped, 1739 total. These are the only independent full runs; the slice branches' own numbers were their coordinators' claims.
+- Slice B (`worktree/rr-b`, commits `4c78b21`, `8ddde64`, `e4d2512`) is integrated too, with one conflict in `test/fixtures/service.ts` (B's `folders` cleanup registry against C's `register`), resolved by keeping B's registry and having `register` push into it. Batch (c) `e4d2512` is partial and has no independent verifier: ST-B-09 test splits done except `claude.test.ts` (1316 lines, not split; `opencode.test.ts` is 689 lines and still past the 512 limit), ST-B-21 only the new fixtures (`temporary`, `startMission`, `sendTo`, `standIns.ts`), ST-B-34 three stand-in scripts; ST-B-10 describe titles not done, the shared settle fixture and its 6 s to 4 s flakiness check not started, four ST-B-07 renames skipped because their consumers are in `work/`. Its ledger is `.worktrees/rr-b/rr-b-ledger.md`.
+- Not integrated and untouched: slices F and G (`rr-f`, `rr-g`, both at `d767f75`, zero commits). They only produced reviews, kept as cross-checks.
+- Reports and ledgers (verified present): `.worktrees/rr-reports/slice-{a,b,c,d,e}.md` (Standards and Specifications per slice), `slice-e-spec.md`, `slice-f-standards.md`, `slice-f-spec.md`, `slice-g-standards.md`, `slice-g-spec.md`, the per-slice ledgers and verifier ledgers (`slice-c-ledger.md`, `slice-c-verify.md`, `slice-d-ledger.md`, `slice-e-spec-coverage.md`), and the parked red test `slice-a-phase2/folderSearch.test.ts`. The `.worktrees` folder is git-ignored: copy what you need before cleaning it.
+- Verification quality: independent verifiers read the code of slices A, C, D and E commit by commit and found no regression after corrections (D had two regressions caught and fixed before commit); verifiers did not rerun suites. Coordinators' suite numbers are their own claims. The only independent full runs are the ones above.
+- Not reviewed at all: `apps/desktop`, `apps/relay`, `packages/controller` as a surface, the tooling and scripts (the plan listed 11 slices by directory and only the service, `apps/app` foundation and its crest were reached). Slice E got a Standards review and a partial Specifications review (three candidates unconfirmed, see Open questions).
+- The 2026-11-15 architecture audit is already in `main` (verified: `worktree/audit-integration` is an ancestor of `main`), so the G reviewer's caveat that it was missing from the baseline does not apply.
+
+## Decisions
+
+- Owner direction, 2026-11-16: finish what is running before starting anything new; behaviour fixes, refactors in F and G, and the review of the remaining surfaces were held, then the owner asked to integrate, hand off and push, and authorised pushing to `main` while away.
+- Test floor: compare runs only within one variant. Session variant (XDG_DATA_HOME unset, four pty tests run): 1683/0/50. Morning variant (XDG_DATA_HOME set): 1678 passed, 1 XDG failure (`harnesses.test.ts:1536`), 54 skipped. Third variant (XDG unset, pty skipped): 1679/0/54 on 1733 tests, now 1737. The delta is the XDG test plus the four pty tests in `apps/desktop/test/terminals.test.ts:29`. `tracking.test.ts` and `loreHistory` can time out under load and pass alone. Recorded as workspace lore.
+- Slice rules that worked: one commit per batch naming its ids, a disposition ledger that says exactly applied, partial or not done, a read-only verifier per batch, cross-slice items routed through the top thread, full thread UUIDs journaled.
+- Kept as designed (do not change without the owner): the authorization derivation stays done twice with the second derivation inside the transaction, the receipt is single use, fingerprints compare byte for byte (slice D step 3, ST-D-01 partial). Known visible change: `change_setting` on a setting kept from Chronicler now refuses without asking first.
+- `ST-A-19` (renaming wire booleans `inputsImages`, `allowsOther`, `multiple`, `allowDuplicateName`): recommended to leave as is; the owner has not decided.
+- `SP-A-06`: add the French positive tests but keep the `CreateRitual` vocabulary (removing it changes what asks for approval; a design choice).
+
+## Next
+
+1. Check what `git log` and `git status` say now: was `worktree/rr-integration` fast-forwarded into `main` and pushed? If not, finish that first (owner approval is needed for a push unless it was given for it).
+2. Verify slice B batch (c) `e4d2512` read-only against `rr-b-ledger.md`, then finish what it left: ST-B-10 describe titles, the `claude.test.ts` split, a second split of `opencode.test.ts`, the shared settle fixture (check the 6 s to 4 s budget for flakiness first).
+3. Behaviour phase, red then green, one commit per finding, in slice order: SP-A-01, 05, 06 (red test parked in `slice-a-phase2/`); SP-B-01, 06, 09 to 12 and the `XDG_DATA_HOME` leak (`lineProcess.ts` `harnessEnvironmentOf`, which breaks `harnesses.test.ts:1536`); SP-C-01, 02, 05, 16, 17, 19, 20 plus the stale plan-limit reading (`planLimits.ts` never clears the stored reading after a successful "no plan" answer) and the stale lore approval (`loreDecisions.ts` ignores the stored `previous_text`); SP-D-01 to 05, 07, 10a, 11, 16, 17 (app guide text, handover replay claim, browser pairing, deleting an empty quest, skills folded descriptions, Chronicler quest in suggestions, chatter Stop across quests); SP-E-01, 02, 03 only after fault injection confirms them (silent loss of a due Ritual run, orphan attachment file, interrupted deletion); SP-F-02, 03 test gaps; SP-G-03, 04, 06 in `apps/app` (write the credit-coverage guard test first), SP-G-01 packaging (crest CC-BY-3.0 credits missing from the packaged app and web build) and SP-G-02 (`threadTitle` on the Question contract and its service fill).
+4. Remaining Standards items listed in the slice ledgers (design items, file-size splits such as `crestStudio.tsx` 523 lines, the ST-G batch including the app `tsconfig` not extending `tsconfig.base.json`, `workspaces.test.ts` 701 lines, `ST-F-10`, `ST-F-11`, mission-id consolidation across `journal.ts`, `chatter.ts`, `suggestions.ts`, `guildmaster.ts`, `messaging.ts`, `handover.ts`, `budgets.ts`, `codexBackup` adoption in `presets.test.ts`, `presetStacks.test.ts`, `defaultBackups.test.ts`, `guildmasterPresets.test.ts`, `rituals.test.ts`, ST-C-14 `isWidening`, `threads.ts:187` and `AccountsRoot`).
+5. Review the surfaces never reviewed (desktop, relay, controller, tooling) with the same two axes.
+6. Write the final report with the human-only acceptance list from the reports (a window look, live harness runs, a paired browser from another network, live scheduled Ritual under an unavailable primary).
+
+## Open questions
+
+Owner decisions, none of which blocked the mechanical work:
+- Specifications findings: SP-A-02, 03, 04, 07; SP-B-02, 03, 04, 07, 08; SP-C-03, 07, 09, 12, 13, 14, 15, 18; SP-D-06 (build the "reply wanted" flag of `send_thread_message` or drop the specification lines), SP-D-08, 09, 10b, 12, 13 (amend ADR 0006 or build the rest of the handover); SP-G-01 (in-app credits presentation), SP-G-05 (the `@` list shows 5 mixed or 12 per category, the specification says up to 8); SP-F-01 (list Relocate and Clone again as not built in the workspace-attachment specification) and SP-F-04 (Done versus Fulfilled for a Ritual run, which the specification and `ST-G-11` both name).
+- Standards findings: ST-A-19 (above); ST-G-11 (the word shown for Done, glossary says otherwise); ST-G-12 (`Match` from `effect` in `crest.tsx` against ADR 0010 as amended: amend the ADR or replace); ST-G-17 (two clock locales, owner visible); ST-G-02 (offered as known debt).
+- Whether slice E's three Specifications candidates are real: only fault injection can answer.
+- Who reviews `apps/desktop`, `apps/relay` and the tooling, and when.
+
+## Sources
+
+- `.worktrees/rr-reports/` (all reports, ledgers, verifier ledgers, freezes) and the quest journal of the "Review and refactor whole codebase" quest (entries 1 to 172 and later)
+- `documentation/conventions.md`, `documentation/backlog.md`, `documentation/verification/2026-11-14-release-0.1.3-review.md`, `documentation/architecture-audit/`
+- Branches: `worktree/rr-integration`, `worktree/rr-a` to `worktree/rr-g`; baseline `d767f75`
+- Earlier handoff of a related thread: `.agents/handoffs/2026-11-16-0110-architecture-audit.md`

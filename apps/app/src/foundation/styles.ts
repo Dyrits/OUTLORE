@@ -134,16 +134,20 @@ export const styles = StyleSheet.create({
   },
   label: { color: colors.textSecondary, fontFamily: fonts.sans, fontSize: 16, lineHeight: 24, marginTop: 8 },
   link: { color: colors.accentText, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "500" },
-  /** The provider's medallion beside an agent's reply. */
+  /** The provider's medallion: a notch on the top left edge of an agent's reply, so the card keeps the full width. */
   medallion: {
     alignItems: "center",
     backgroundColor: colors.canvas,
     borderColor: colors.border,
-    borderRadius: 22,
+    borderRadius: 16,
     borderWidth: 1,
-    height: 44,
+    height: 32,
     justifyContent: "center",
-    width: 44,
+    left: 12,
+    position: "absolute",
+    top: -16,
+    width: 32,
+    zIndex: 1,
   },
   mentionChip: {
     alignItems: "center",
@@ -210,9 +214,13 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   messageCardAgent: { backgroundColor: colors.bubble },
+  /** An agent's card leaves room under the medallion that sits on its top edge. */
+  messageCardNotched: { paddingTop: 20 },
   messageCardThread: { backgroundColor: colors.successSoft },
   messageCardUser: { backgroundColor: colors.bubbleUser },
-  messageRow: { alignItems: "flex-start", flexDirection: "row", gap: 10, marginVertical: 6, maxWidth: "88%" },
+  messageRow: { alignItems: "flex-start", flexDirection: "row", gap: 10, marginVertical: 6, maxWidth: "92%" },
+  /** An agent's reply spans the row; its medallion sits above the card, which needs room above it. */
+  messageRowAgent: { alignSelf: "stretch", flexDirection: "column", marginTop: 22, maxWidth: "100%" },
   messageRowUser: { alignSelf: "flex-end" },
   missionRowMain: { gap: 2 },
   muted: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.md },
@@ -239,8 +247,19 @@ export const styles = StyleSheet.create({
   questLayout: { backgroundColor: colors.page, flex: 1, flexDirection: "row" },
   questLayoutCompact: { flexDirection: "column" },
   questMain: { flex: 1, gap: 10, paddingHorizontal: 24, paddingVertical: 16 },
+  /** A narrow window gives the conversation the width and height it can: less padding and gap. */
+  questMainCompact: { gap: 6, paddingHorizontal: 10, paddingVertical: 8 },
   questSide: { borderColor: colors.border, borderRightWidth: 1, gap: 8, padding: 12, width: 240 },
-  questSideCompact: { borderBottomWidth: 1, borderRightWidth: 0, maxHeight: 180, width: "100%" },
+  /** The narrow window's one line over the conversation: back, and the side-quests that open or fold. */
+  questSideBar: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  questSideCompact: {
+    borderBottomWidth: 1,
+    borderRightWidth: 0,
+    gap: 4,
+    maxHeight: 180,
+    paddingVertical: 6,
+    width: "100%",
+  },
   raised: { zIndex: 2 },
   row: {
     alignItems: "center",

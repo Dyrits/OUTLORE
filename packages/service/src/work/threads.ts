@@ -10,19 +10,18 @@ import {
   invalid,
   PriceTable,
   readSettings,
+  removeScratch,
   type ServiceFailure,
 } from "../core/index.ts";
-import { removedAccountReasonOf, toolServerName } from "../harness/index.ts";
-import { listThreadPermissions } from "../policy/index.ts";
+import { HarnessTools, removedAccountReasonOf, toolServerName } from "../harness/index.ts";
 import { Approvals } from "./approvals.ts";
+import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
-import { fallBackToBackup, resetBackupStep } from "./backups.ts";
 import { requireChatterDecision } from "./chatter.ts";
 import { changed, makeCommands } from "./commands.ts";
-import { isRunnerChangedSince, readConversationSoFar } from "./handover.ts";
+import { readConversationSoFar } from "./handover.ts";
 import { makeLifecycle, recoverThreadStates, releaseThread, resumeStopped, stopThread } from "./lifecycle.ts";
 import { listPending, listThreadsWithPending } from "./messaging.ts";
-import { fallBackAfterFailure } from "./rituals.ts";
 import { prepareStartingContext } from "./startingContext.ts";
 import { Suggestions } from "./suggestions.ts";
 import { askOwnerFor } from "./threadToolHandlers.ts";
@@ -69,10 +68,10 @@ export class Threads extends Context.Service<
 export class AccountsRoot extends Context.Service<AccountsRoot, string>()("outlore/AccountsRoot") {}
 
 /** A turn the harness is running, with the steered messages already written to it. */
-interface ActiveTurn {
+type ActiveTurn = {
   readonly turnId: string;
   readonly written: Set<string>;
-}
+};
 
 /** Threads over the store and the harness adapters. */
 export const threadsLayer = Layer.effect(
@@ -83,6 +82,7 @@ export const threadsLayer = Layer.effect(
     const changes = yield* Changes;
     const scratchRoot = yield* ScratchRoot;
     const prices = yield* PriceTable;
+    const harnessTools = yield* HarnessTools;
     const accountsRoot = yield* AccountsRoot;
     const attachmentsRoot = yield* AttachmentsRoot;
     /** The stored files as a harness takes them: where each is kept. */
@@ -98,10 +98,13 @@ export const threadsLayer = Layer.effect(
       Context.add(Changes, changes),
       Context.add(PriceTable, prices),
       Context.add(ScratchRoot, scratchRoot),
+      Context.add(HarnessTools, harnessTools),
+      Context.add(AccountsRoot, accountsRoot),
     );
     /** Runs a step over the store, the change feed, and the scratch root this layer was built with. */
-    const local = <A, E>(step: Effect.Effect<A, E, SqlClient.SqlClient | Changes | PriceTable | ScratchRoot>) =>
-      Effect.provideContext(step, services);
+    const local = <A, E>(
+      step: Effect.Effect<A, E, SqlClient.SqlClient | Changes | PriceTable | ScratchRoot | HarnessTools | AccountsRoot>,
+    ) => Effect.provideContext(step, services);
     const turns = yield* FiberMap.make<string>();
     // Wakes for other threads run here, outside any turn's fiber, which a later wake may replace.
     const background = yield* FiberSet.make();
@@ -116,29 +119,24 @@ export const threadsLayer = Layer.effect(
     yield* recoverThreadStates;
 
     const isCurrent = (turnId: string) => local(isCurrentTurn(turnId));
-    const draft = (threadId: string, text: string) => PubSub.publish(changes.drafts, { text, threadId });
-    /** The failed turn's messages become undelivered again, so the next message retries them. */
-    const fail = (threadId: string, turn: Admitted, reason: string) =>
-      local(recordTurnFailure(threadId, turn, reason)).pipe(Effect.andThen(withdrawAll(threadId)));
-
+    const publishDraft = (threadId: string, text: string) => PubSub.publish(changes.drafts, { text, threadId });
     /**
      * Writes the thread's undelivered messages that are not queued into its running turn, each once.
      * Thread messages always steer; the owner's steer unless sent as Queue (CHG-0039).
      */
-    const steerInto = (threadId: string, turn: ActiveTurn) =>
-      Effect.gen(function* () {
+    const steerInto = Effect.fnUntraced(function* (threadId: string, turn: ActiveTurn) {
+      if (!(yield* isCurrent(turn.turnId))) return;
+      const pending = yield* local(listPending(threadId, true));
+      for (const message of pending) {
         if (!(yield* isCurrent(turn.turnId))) return;
-        const pending = yield* local(listPending(threadId, true));
-        for (const message of pending) {
-          if (!(yield* isCurrent(turn.turnId))) return;
-          if (turn.written.has(message.id)) continue;
-          turn.written.add(message.id);
-          const text = message.text;
-          // Not taken: the turn just ended, and the message starts the next one.
-          if (!(yield* harness.steer(threadId, { id: message.id, images: imagesOf(message.attachments), text })))
-            turn.written.delete(message.id);
-        }
-      }).pipe(Effect.orDie);
+        if (turn.written.has(message.id)) continue;
+        turn.written.add(message.id);
+        const text = message.text;
+        // Not taken: the turn just ended, and the message starts the next one.
+        if (!(yield* harness.steer(threadId, { id: message.id, images: imagesOf(message.attachments), text })))
+          turn.written.delete(message.id);
+      }
+    }, Effect.orDie);
 
     /**
      * Once a turn ends or a thread stops, a running slot frees: wakes the mission's other threads whose
@@ -153,90 +151,75 @@ export const threadsLayer = Layer.effect(
         }).pipe(Effect.orDie),
       ).pipe(Effect.asVoid);
 
-    const run = (threadId: string, turn: Admitted): Effect.Effect<void, unknown> =>
-      Effect.gen(function* () {
-        if (!(yield* isCurrent(turn.turnId))) return;
-        const removed = yield* local(removedAccountReasonOf(turn));
-        if (removed !== null) {
-          yield* fail(threadId, turn, removed);
-          return yield* wakeWaiting(turn.missionId, threadId);
-        }
-        const { approvalLevel, shouldAllowOutsideSandbox, shouldStreamReplies } = yield* local(readSettings);
-        const permissions = yield* local(listThreadPermissions(threadId));
-        const { context, cwd, isInWorkspace, note } = yield* local(prepareStartingContext(threadId));
-        // A session that starts with no memory of the thread, after a handover, is given its conversation.
-        const history =
-          turn.sessionId === null ? yield* local(readConversationSoFar(threadId, turn.turnId, turn.model)) : null;
-        const mcpUrl = yield* endpoints.urlFor(threadId);
-        const onEvent = (event: HarnessEvent) =>
-          Match.valueTags(event, {
-            Delivered: (delivered) => local(deliverSteered(turn, delivered.messageId)).pipe(Effect.orDie),
-            Draft: (written) => (shouldStreamReplies ? draft(threadId, written.text).pipe(Effect.asVoid) : Effect.void),
-            Notice: (notice) => local(saveTurnNotice(threadId, turn, notice.text)).pipe(Effect.orDie),
-            Reply: (reply) =>
-              local(saveTurnReply(threadId, turn, reply.text, reply.model ?? null, reply.usage ?? null)).pipe(
-                Effect.andThen(draft(threadId, "")),
-                Effect.orDie,
-              ),
-            ToolCall: (call) =>
-              local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input)).pipe(Effect.orDie),
-          });
-        if (!(yield* isCurrent(turn.turnId))) return;
-        active.set(threadId, { turnId: turn.turnId, written: new Set() });
-        const outcome = yield* harness
-          .runTurn({
-            access: {
-              approvalLevel,
-              canWorkOutsideSandbox: shouldAllowOutsideSandbox,
-              isInWorkspace,
-              mcpUrl,
-              permissions: permissions.map((permission) => permission.sentence),
-              unaskedTools: unaskedToolNamesOf(toolServerName),
-            },
-            askOwner: askOwnerFor(approvals, sql, threadId),
-            configDirectory: turn.accountId === null ? null : join(accountsRoot, turn.accountId),
-            context,
-            conversationSoFar: local(readConversationSoFar(threadId, turn.turnId, turn.model)).pipe(Effect.orDie),
-            cwd,
-            effort: turn.effort,
-            folderRoot: isInWorkspace ? cwd : scratchRoot,
-            harness: turn.harness,
-            images: imagesOf(turn.attachments),
-            model: turn.model,
-            note: history === null ? note : `${history}\n\n${note}`,
-            onEvent,
-            sessionId: turn.sessionId,
-            text: turn.messages.join("\n\n"),
-            threadId,
-          })
-          .pipe(
-            Effect.result,
-            // However the turn ends, what was allowed once in it is spent (action-approval, CHG-0063).
-            Effect.ensuring(
-              Effect.sync(() => active.delete(threadId)).pipe(Effect.andThen(approvals.endTurn(threadId))),
-            ),
-          );
-        yield* draft(threadId, "");
-        if (outcome._tag === "Failure") {
-          yield* fail(threadId, turn, outcome.failure.reason);
-          // The owner chose another runner during the turn: it waits for them, as after any failed turn, and no
-          // fallback replaces their choice (thread-handover).
-          if (yield* local(isRunnerChangedSince(threadId, turn))) return yield* wakeWaiting(turn.missionId, threadId);
-          // A Ritual's run carries on with its next Companion, or fails once they are used up (rituals).
-          yield* commands.run(fallBackAfterFailure(threadId, outcome.failure.reason)).pipe(Effect.orDie);
-          // Any thread carries on with its next backup Companion, if it has one (thread-panel, Backups).
-          yield* commands.run(fallBackToBackup(threadId, outcome.failure.reason)).pipe(Effect.orDie);
-          return yield* wakeWaiting(turn.missionId, threadId);
-        }
-        const halted = yield* local(completeTurn(threadId, turn, outcome.success));
-        yield* local(resetBackupStep(threadId));
-        yield* cancel(halted.filter((id) => id !== threadId));
-        yield* wakeWaiting(turn.missionId, threadId);
-        // Messages that arrived during the turn start the next one, in this same fiber,
-        // so the thread's entry in the fiber map always holds its current turn.
-        const next = yield* local(admitTurn(threadId));
-        if (next !== null) yield* run(threadId, next);
-      });
+    const run = Effect.fnUntraced(function* (
+      threadId: string,
+      turn: Admitted,
+    ): Effect.fn.Return<null | undefined, unknown> {
+      if (!(yield* isCurrent(turn.turnId))) return;
+      const removed = yield* local(removedAccountReasonOf(turn));
+      if (removed !== null) {
+        return yield* commands.run(local(recordTurnFailure(threadId, turn, removed, false))).pipe(Effect.orDie);
+      }
+      const { shouldStreamReplies } = yield* local(readSettings);
+      const terms = yield* local(
+        readApprovalTerms(threadId, turn.harness).pipe(Effect.provideService(Harness, harness)),
+      );
+      const { context, cwd, isInWorkspace, note } = yield* local(prepareStartingContext(threadId));
+      // A session that starts with no memory of the thread, after a handover, is given its conversation.
+      const history =
+        turn.sessionId === null ? yield* local(readConversationSoFar(threadId, turn.turnId, turn.model)) : null;
+      const mcpUrl = yield* endpoints.urlFor(threadId);
+      const onEvent = (event: HarnessEvent) =>
+        Match.valueTags(event, {
+          Delivered: (delivered) => commands.run(local(deliverSteered(turn, delivered.messageId))).pipe(Effect.orDie),
+          Draft: (written) =>
+            shouldStreamReplies ? publishDraft(threadId, written.text).pipe(Effect.asVoid) : Effect.void,
+          Notice: (notice) => commands.run(local(saveTurnNotice(threadId, turn, notice.text))).pipe(Effect.orDie),
+          Reply: (reply) =>
+            commands
+              .run(local(saveTurnReply(threadId, turn, reply.text, reply.model ?? null, reply.usage ?? null)))
+              .pipe(Effect.andThen(publishDraft(threadId, "")), Effect.orDie),
+          ToolCall: (call) =>
+            commands
+              .run(local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input)))
+              .pipe(Effect.orDie),
+        });
+      if (!(yield* isCurrent(turn.turnId))) return;
+      active.set(threadId, { turnId: turn.turnId, written: new Set() });
+      const outcome = yield* harness
+        .runTurn({
+          access: { ...terms, isInWorkspace, mcpUrl, unaskedTools: unaskedToolNamesOf(toolServerName) },
+          askOwner: askOwnerFor(approvals, sql, threadId),
+          configDirectory: turn.accountId === null ? null : join(accountsRoot, turn.accountId),
+          context,
+          conversationSoFar: local(readConversationSoFar(threadId, turn.turnId, turn.model)).pipe(Effect.orDie),
+          cwd,
+          effort: turn.effort,
+          folderRoot: isInWorkspace ? cwd : scratchRoot,
+          harness: turn.harness,
+          images: imagesOf(turn.attachments),
+          model: turn.model,
+          note: history === null ? note : `${history}\n\n${note}`,
+          onEvent,
+          sessionId: turn.sessionId,
+          text: turn.messages.join("\n\n"),
+          threadId,
+        })
+        .pipe(
+          Effect.result,
+          // However the turn ends, what was allowed once in it is spent (action-approval, CHG-0063).
+          Effect.ensuring(Effect.sync(() => active.delete(threadId)).pipe(Effect.andThen(approvals.endTurn(threadId)))),
+        );
+      yield* publishDraft(threadId, "");
+      if (outcome._tag === "Failure") {
+        return yield* commands.run(local(recordTurnFailure(threadId, turn, outcome.failure.reason))).pipe(Effect.orDie);
+      }
+      yield* commands.run(local(completeTurn(threadId, turn, outcome.success))).pipe(Effect.orDie);
+      // Messages that arrived during the turn start the next one, in this same fiber,
+      // so the thread's entry in the fiber map always holds its current turn.
+      const next = yield* local(admitTurn(threadId));
+      if (next !== null) yield* run(threadId, next);
+    });
 
     const wake = (threadId: string): Effect.Effect<void> =>
       Effect.suspend(() => {
@@ -252,22 +235,27 @@ export const threadsLayer = Layer.effect(
         );
       });
 
-    const interrupt = (threadId: string) =>
-      Effect.gen(function* () {
-        if (!active.has(threadId) || !(yield* harness.interrupt(threadId))) return false;
-        // The turn's end, in its own fiber, sets the thread's state and starts its next turn.
-        yield* withdrawAll(threadId);
-        return true;
-      });
+    const interrupt = Effect.fnUntraced(function* (threadId: string) {
+      if (!active.has(threadId) || !(yield* harness.interrupt(threadId))) return false;
+      // The turn's end, in its own fiber, sets the thread's state and starts its next turn.
+      yield* withdrawAll(threadId);
+      return true;
+    });
 
     const { cancel } = makeLifecycle({
       cancelTurn: (id) => FiberMap.remove(turns, id),
-      clearDraft: (id) => draft(id, "").pipe(Effect.asVoid),
+      clearDraft: (id) => publishDraft(id, "").pipe(Effect.asVoid),
       withdraw: withdrawAll,
     });
     const wakeMission = (missionId: string) => wakeWaiting(missionId, "");
     // Commands on a single thread; the service's own runner (commands.ts) is built over this layer.
-    const commands = makeCommands({ publish: changes.publish, sql, threads: { cancel, wake, wakeMission } });
+    const commands = makeCommands({
+      publish: changes.publish,
+      removeScratch: (id) => local(removeScratch(join(scratchRoot, id))).pipe(Effect.orDie),
+      sql,
+      threads: { cancel, wake, wakeMission },
+      withdrawQuestions: withdrawAll,
+    });
 
     const stop = (threadId: string) => commands.run(stopThread(threadId)).pipe(Effect.orDie);
 

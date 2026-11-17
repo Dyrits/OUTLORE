@@ -4,8 +4,8 @@ import { decodeBase64Url, encodeBase64Url } from "./base64url.ts";
 import { fail, type Result, succeed } from "./result.ts";
 
 export const pairingCodePrefix = "outlore1-";
-export const publicKeyBytes = 32;
-export const roomBytes = 16;
+const publicKeyBytes = 32;
+const roomBytes = 16;
 export const pairingSecretBytes = 16;
 const checksumBytes = 4;
 const maxOriginBytes = 255;
@@ -14,14 +14,14 @@ const roomPattern = /^[0-9a-f]{32}$/;
 const versionPattern = /^outlore(\d+)-/;
 
 /** What a host puts in a pairing code and a device reads out of it. */
-export interface PairingCode {
+export type PairingCode = {
   hostPublicKey: Uint8Array;
   relayOrigin: string;
   /** Lowercase hex of 16 random bytes, chosen by the host. */
   room: string;
   /** One-time secret, 16 random bytes, that proves the device saw the code. */
   secret: Uint8Array;
-}
+};
 
 export type PairingCodeErrorKind = "malformed" | "unsupported-version" | "bad-checksum";
 
@@ -35,18 +35,20 @@ export function newPairingSecret(): Uint8Array {
   return randomBytes(pairingSecretBytes);
 }
 
+const localHostnames: ReadonlySet<string> = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** Whether a relay address is on this computer: only a test, a development run or a page served locally names one. */
+export function isLocalOrigin(origin: string): boolean {
+  return URL.canParse(origin) && localHostnames.has(new URL(origin).hostname);
+}
+
 /** True for an origin the relay may have: https, or plain http only for a relay run on this computer. */
 export function isAllowedRelayOrigin(origin: string): boolean {
   if (new TextEncoder().encode(origin).byteLength > maxOriginBytes) return false;
-  let url: URL;
-  try {
-    url = new URL(origin);
-  } catch {
-    return false;
-  }
-  const isLocalHttp = url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+  if (!URL.canParse(origin)) return false;
+  const url = new URL(origin);
   // Only the canonical form, so no path, query, credentials or default port can hide in a code.
-  return (url.protocol === "https:" || isLocalHttp) && url.origin === origin;
+  return (url.protocol === "https:" || (url.protocol === "http:" && isLocalOrigin(origin))) && url.origin === origin;
 }
 
 /**

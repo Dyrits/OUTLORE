@@ -139,7 +139,7 @@ export function MissionBoard({
   return (
     <View style={isWide ? local.columns : local.stacked}>
       {boardColumns.map((column) => {
-        // Resting and Fulfilled show what was touched today; the rest wait behind a line under the cards.
+        // Resting and Done show what was touched today; the rest wait behind a line under the cards.
         const { earlier, shown } =
           trimmedColumns.includes(column) && !isFiltered
             ? splitEarlier(board[column], Date.now(), selectedId)

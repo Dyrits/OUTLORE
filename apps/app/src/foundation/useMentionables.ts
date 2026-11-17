@@ -5,11 +5,11 @@ import type { ServiceClient } from "./client";
 // The quests, side-quests, and realms a typed `@` can name (CHG-0181), loaded once per client for every message box and
 // every message that shows one as a chip, and loaded again after each committed change while any of them is shown.
 
-interface Shared {
+type Shared = {
   readonly listeners: Set<() => void>;
   mentionables: ReadonlyArray<Mentionable> | null;
   unsubscribe: (() => void) | null;
-}
+};
 
 const shared = new WeakMap<ServiceClient, Shared>();
 

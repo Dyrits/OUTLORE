@@ -3,7 +3,8 @@ import { Clock, Effect, Layer, Schedule } from "effect";
 import { SqlClient } from "effect/sql";
 import { dayMillis, invalid, notFound, readSettings, ServiceFailure } from "../core/index.ts";
 import { Commands, changed } from "./commands.ts";
-import { refuseGuildmaster } from "./guildmaster.ts";
+import { eraseEmptyQuest } from "./deleting.ts";
+import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { updateJournal } from "./journal.ts";
 import { activeStates, haltThreads } from "./lifecycle.ts";
 import { requireActiveQuestRealm } from "./realmAccess.ts";
@@ -50,21 +51,35 @@ export const previewEnding = (missionId: string, ending: MissionEnding) =>
     ),
   );
 
+/**
+ * Whether archiving this mission should delete it instead: it used no tokens, holds no message, and is not a
+ * Ritual's, so it carries nothing worth keeping (mission-tracking, Ending a mission).
+ */
+export const isEmptyQuest = Effect.fn("isEmptyQuest")(function* (missionId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ isEmpty: number }>`SELECT
+    NOT EXISTS(SELECT 1 FROM rituals WHERE mission_id = ${missionId})
+    AND NOT EXISTS(SELECT 1 FROM messages WHERE thread_id IN (SELECT id FROM threads WHERE mission_id = ${missionId}))
+    AND COALESCE((SELECT SUM(input + output + cache_read + cache_creation) FROM usage WHERE mission_id = ${missionId}), 0) = 0
+    AS isEmpty`;
+  return row?.isEmpty === 1;
+});
+
 /** Records the ending and its journal entry. Callers run it in a transaction. */
-const recordEnding = (missionId: string, ending: MissionEnding, entry: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const now = yield* Clock.currentTimeMillis;
-    yield* sql`UPDATE missions SET ending = ${ending}, is_asking_done = 0,
+const recordEnding = Effect.fnUntraced(function* (missionId: string, ending: MissionEnding, entry: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const now = yield* Clock.currentTimeMillis;
+  yield* sql`UPDATE missions SET ending = ${ending}, is_asking_done = 0,
       done_at = ${ending === "Done" ? now : sql`done_at`} WHERE id = ${missionId}`;
-    yield* updateJournal(missionId, { kind: "user" }, entry, null);
-  });
+  yield* updateJournal(missionId, { kind: "user" }, entry, null);
+});
 
 /** Marks a mission Done or archives it, stopping exactly the threads at work the owner's preview named. */
 export const endMission = Effect.fn("endMission")(function* (
   missionId: string,
   ending: MissionEnding,
   snapshot: string,
+  source: "owner" | "Chronicler" | "auto-archive" | "realm archive" = "owner",
 ) {
   const sql = yield* SqlClient.SqlClient;
   const [mission] = yield* sql<{
@@ -83,13 +98,27 @@ export const endMission = Effect.fn("endMission")(function* (
       message: "The threads at work changed. Review them again before ending the quest.",
     });
   }
-  yield* haltThreads(ids, "Stopped");
-  yield* recordEnding(missionId, ending, journalEntries[ending]);
-  const [parent] = yield* sql<QuestPlacement>`SELECT top.workspace_id AS workspaceId, w.name AS workspaceName
+  const [parent] = yield* sql<
+    QuestPlacement & { topThreadId: string }
+  >`SELECT top.workspace_id AS workspaceId, w.name AS workspaceName,
+    m.top_thread_id AS topThreadId
     FROM missions m JOIN threads top ON top.id = m.top_thread_id LEFT JOIN workspaces w ON w.id = top.workspace_id
     WHERE m.id = ${missionId}`;
   if (parent === undefined) return yield* notFound("No such quest.");
-  return changed(parent, { turnsToCancel: ids });
+  const placement = { workspaceId: parent.workspaceId, workspaceName: parent.workspaceName };
+  if (ending === "Archived" && source !== "realm archive" && (yield* isEmptyQuest(missionId))) {
+    const deleted = yield* eraseEmptyQuest(parent.topThreadId);
+    return changed(placement, deleted.followUps);
+  }
+  // Auto-archive never stops work: it only files a Done quest away, as before CHG-0304.
+  const stopped = source === "auto-archive" ? [] : ids;
+  yield* haltThreads(stopped, "Stopped");
+  yield* recordEnding(
+    missionId,
+    ending,
+    source === "auto-archive" ? journalEntries.AutoArchived : journalEntries[ending],
+  );
+  return changed(placement, { turnsToCancel: stopped });
 });
 
 /** Returns an ended mission to the state worked out from its threads. */
@@ -125,8 +154,15 @@ const archiveDueMissions = Effect.gen(function* () {
   const now = yield* Clock.currentTimeMillis;
   const due = yield* sql<{ id: string }>`SELECT id FROM missions
     WHERE ending = 'Done' AND done_at IS NOT NULL AND done_at <= ${now - settings.autoArchiveDays * dayMillis}`;
-  for (const { id } of due) yield* recordEnding(id, "Archived", journalEntries.AutoArchived);
-  return changed(null);
+  const missionsToRemoveScratch: string[] = [];
+  const turnsToCancel: string[] = [];
+  for (const { id } of due) {
+    const ids = yield* readWorkingIds(id);
+    const ended = yield* endMission(id, "Archived", JSON.stringify(ids), "auto-archive");
+    missionsToRemoveScratch.push(...ended.followUps.missionsToRemoveScratch);
+    turnsToCancel.push(...ended.followUps.turnsToCancel);
+  }
+  return changed(null, { missionsToRemoveScratch, turnsToCancel });
 });
 
 /** Runs auto-archive at startup and then hourly (provisional: CHG-0045, work-in-progress Batch 9). */

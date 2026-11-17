@@ -28,52 +28,49 @@ export const contextPartsOf = (
 };
 
 /** The context gauge of a thread, or null while no turn has reported its context. */
-const readContextGauge = (threadId: string, model: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    // The latest turn that reported one, not a sum over turns: the context is what the window holds now.
-    const [latest] = yield* sql<{ context: number }>`
+const readContextGauge = Effect.fnUntraced(function* (threadId: string, model: string) {
+  const sql = yield* SqlClient.SqlClient;
+  // The latest turn that reported one, not a sum over turns: the context is what the window holds now.
+  const [latest] = yield* sql<{ context: number }>`
       SELECT context FROM usage WHERE thread_id = ${threadId} AND context IS NOT NULL
       ORDER BY ended_at DESC, rowid DESC LIMIT 1`;
-    if (latest === undefined) return null;
-    const sent = yield* readSentContextSize(threadId);
-    const [{ messageText } = { messageText: 0 }] = yield* sql<{ messageText: number }>`
+  if (latest === undefined) return null;
+  const sent = yield* readSentContextSize(threadId);
+  const [{ messageText } = { messageText: 0 }] = yield* sql<{ messageText: number }>`
       SELECT COALESCE(SUM(LENGTH(text)), 0) AS messageText FROM messages WHERE thread_id = ${threadId}`;
-    return {
-      parts: contextPartsOf(latest.context, [
-        { kind: "Instructions", tokens: sent.instructions },
-        { kind: "Lore", tokens: sent.lore },
-        { kind: "Journal", tokens: sent.journal },
-        { kind: "Messages", tokens: sent.openerMessages + Math.ceil(messageText / 4) },
-      ]),
-      tokens: latest.context,
-      windowTokens: contextWindowOf(model),
-    } satisfies ContextGauge;
-  });
+  return {
+    parts: contextPartsOf(latest.context, [
+      { kind: "Instructions", tokens: sent.instructions },
+      { kind: "Lore", tokens: sent.lore },
+      { kind: "Journal", tokens: sent.journal },
+      { kind: "Messages", tokens: sent.openerMessages + Math.ceil(messageText / 4) },
+    ]),
+    tokens: latest.context,
+    windowTokens: contextWindowOf(model),
+  } satisfies ContextGauge;
+});
 
 /** The plan limits of the account the thread runs on, as last reported. */
-const readThreadPlanLimits = (threadId: string) =>
-  Effect.gen(function* () {
-    const account = yield* accountOfThread(threadId);
-    return account === null ? null : yield* (yield* PlanLimits).latest(account);
-  });
+const readThreadPlanLimits = Effect.fnUntraced(function* (threadId: string) {
+  const account = yield* accountOfThread(threadId);
+  return account === null ? null : yield* (yield* PlanLimits).latest(account);
+});
 
 /** What the panel shows of a thread: its context gauge, its own spending, and its quest's budget. */
-export const readThreadPanel = (threadId: string) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const [thread] = yield* sql<{ backups: string; missionId: string; model: string }>`
+export const readThreadPanel = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [thread] = yield* sql<{ backups: string; missionId: string; model: string }>`
       SELECT mission_id AS missionId, model, backups FROM threads WHERE id = ${threadId}`;
-    if (thread === undefined) return yield* notFound("No such thread.");
-    const [spent] = yield* sql<{ cost: number; tokens: number; turnCount: number }>`
+  if (thread === undefined) return yield* notFound("No such thread.");
+  const [spent] = yield* sql<{ cost: number; tokens: number; turnCount: number }>`
       SELECT ${sql.literal(spendingColumns)}, COUNT(*) AS turnCount FROM usage u WHERE u.thread_id = ${threadId}`;
-    return {
-      backups: decodeBackups(JSON.parse(thread.backups)),
-      budget: { limits: yield* missionLimitsOf(thread.missionId), spent: yield* missionSpendingOf(thread.missionId) },
-      consumption: yield* readThreadConsumption(threadId),
-      context: yield* readContextGauge(threadId, thread.model),
-      planLimits: yield* readThreadPlanLimits(threadId),
-      spending: { cost: spent?.cost ?? 0, tokens: spent?.tokens ?? 0 },
-      turnCount: spent?.turnCount ?? 0,
-    } satisfies ThreadPanel;
-  });
+  return {
+    backups: decodeBackups(JSON.parse(thread.backups)),
+    budget: { limits: yield* missionLimitsOf(thread.missionId), spent: yield* missionSpendingOf(thread.missionId) },
+    consumption: yield* readThreadConsumption(threadId),
+    context: yield* readContextGauge(threadId, thread.model),
+    planLimits: yield* readThreadPlanLimits(threadId),
+    spending: { cost: spent?.cost ?? 0, tokens: spent?.tokens ?? 0 },
+    turnCount: spent?.turnCount ?? 0,
+  } satisfies ThreadPanel;
+});

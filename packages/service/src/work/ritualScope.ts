@@ -1,46 +1,45 @@
 import type { RitualScope, RitualScopeEntry } from "@outlore/contracts";
 import { Effect } from "effect";
 import { invalid } from "../core/index.ts";
-import { changeableSettings } from "./guildmasterSettings.ts";
+import { isChangeableSetting } from "./guildmasterSettingNames.ts";
 
 // A Ritual's reviewed scope (CHG-0208): the structural actions its later runs may take without asking. The owner sets
 // it in the Ritual's form and can empty it at any time; nothing a run writes widens it.
 
-/** The JSON value of a setting's text, compared whole; undefined when it is not JSON. */
+/** The JSON value of a setting's text, compared whole; null when it is not JSON. */
 const jsonTextOf = (text: string) => {
   try {
     return JSON.stringify(JSON.parse(text));
   } catch {
-    return undefined;
+    return null;
   }
 };
 
 /** Refuses a scope entry that is not exact: a missing or stray new value, or a setting Chronicler may not change. */
-export const validateScope = (scope: RitualScope) =>
-  Effect.gen(function* () {
-    for (const entry of scope) {
-      if (entry.target.trim() === "") return yield* invalid("Each allowed action needs its exact target.");
-      const isValued = entry.operation === "Rename" || entry.operation === "ChangeSetting";
-      if (isValued && (entry.payload === null || entry.payload.trim() === ""))
-        return yield* invalid(`${entry.operation} needs its exact new value.`);
-      if (!isValued && entry.payload !== null) return yield* invalid(`${entry.operation} takes no new value.`);
-      if (entry.operation === "ChangeSetting") {
-        if (!(changeableSettings as ReadonlyArray<string>).includes(entry.target.trim()))
-          return yield* invalid(`A Ritual cannot be allowed to change ${entry.target}.`);
-        if (jsonTextOf(entry.payload ?? "") === undefined)
-          return yield* invalid("A setting's value must be JSON text, such as true or 14.");
-      }
+export const validateScope = Effect.fnUntraced(function* (scope: RitualScope) {
+  for (const entry of scope) {
+    if (entry.target.trim() === "") return yield* invalid("Each allowed action needs its exact target.");
+    const isValued = entry.operation === "Rename" || entry.operation === "ChangeSetting";
+    if (isValued && (entry.payload === null || entry.payload.trim() === ""))
+      return yield* invalid(`${entry.operation} needs its exact new value.`);
+    if (!isValued && entry.payload !== null) return yield* invalid(`${entry.operation} takes no new value.`);
+    if (entry.operation === "ChangeSetting") {
+      if (!isChangeableSetting(entry.target.trim()))
+        return yield* invalid(`A Ritual cannot be allowed to change ${entry.target}.`);
+      if (jsonTextOf(entry.payload ?? "") === null)
+        return yield* invalid("A setting's value must be JSON text, such as true or 14.");
     }
-    return scope;
-  });
+  }
+  return scope;
+});
 
 /** One structural action as the service derived it, in the terms a scope entry uses. */
-export interface ScopedAction {
+export type ScopedAction = {
   readonly operation: RitualScopeEntry["operation"];
   readonly payload: string | null;
   /** The names the target goes by: a quest's id and title, or a setting's name. */
   readonly targets: ReadonlyArray<string>;
-}
+};
 
 /** Whether a scope entry covers the action exactly: same operation, same target, same new value. */
 const covers = (entry: RitualScopeEntry, action: ScopedAction) => {

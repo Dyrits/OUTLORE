@@ -41,7 +41,7 @@ Tests run inside a thread's sandbox with no `env -u` and no escape from it; the 
 The [pre-commit hook](.githooks/pre-commit) runs Biome on staged files and runs the workspace typecheck when code or configuration is staged.
 Fix reported issues and stage the corrected files again.
 
-The [Git guard](.agents/hooks/guard-git.py) asks before, or blocks, pushes to `main` and commands that lose local work.
+The [Git guard](.agents/hooks/guard-git.py) asks before, or blocks, pushes to `main`, commands that lose local work, and commands that skip a gate (`commit --no-verify`, `-c core.hooksPath`) or move a branch off its commits (`branch -f`).
 The [pre-push hook](.githooks/pre-push) refuses protected-branch pushes and remote-ref deletion.
 A person can approve a push to `main` with `git push --no-verify`; an agent must obtain the user's approval before bypassing the hook.
 
@@ -54,8 +54,10 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the Android APK on release tags (CHG-0298, built and bundled, committed on `worktree/android-apk`; open: the push, a first Gradle run, a phone check, the release keystore), read the [current handoff](.agents/handoffs/2026-11-15-2150-android-apk.md). Handoffs are shared and committed.
+- To resume pairing by QR code and link (built on web, desktop and mobile; open: merging `worktree/android-apk` so a phone can pair, a window and phone check, the web deployment), read the [current handoff](.agents/handoffs/2026-11-17-1418-pairing-link-mobile.md). Handoffs are shared and committed.
 
-- To resume the release 0.1.5-Prototype (published as a prerelease with the Outlore installers only; note rewritten; open: a real update from an installed 0.1.4, the web app check), read the [current handoff](.agents/handoffs/2026-11-15-2050-release-0.1.5.md). Handoffs are shared and committed.
+- To resume the whole-codebase review (A–E integration and the CI dependency fix are on main and CI is green; next the context-window migration renumber, the open behaviour items, then the deferred reviews), read the [current handoff](.agents/handoffs/2026-11-17-1135-review-ci-green.md). Handoffs are shared and committed.
 
-- To resume the fewer sandbox approval prompts (the suite runs inside the sandbox, CHG-0294; an owner-only setting to leave it without a question, CHG-0295; rebased onto `origin/main`; open: the push, a live check), read the [current handoff](.agents/handoffs/2026-11-15-1920-fewer-approval-prompts.md). Handoffs are shared and committed.
+- To resume the sidebar change that removed the indent before realms (CHG-0332; done and committed; open: the owner's look in a window, what "same for borderlands" meant beyond the quests' alignment), read the [current handoff](.agents/handoffs/2026-11-16-1030-sidebar-realm-indent.md). Handoffs are shared and committed.
+
+

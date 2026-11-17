@@ -1,9 +1,9 @@
-import { type RitualRunState, RitualSchedule } from "@outlore/contracts";
-import { Schema } from "effect";
+import { RitualRunState, RitualSchedule } from "@outlore/contracts";
+import { Option, Schema } from "effect";
+import { hourMillis } from "../core/index.ts";
 
 // When a Ritual is next due (rituals). Schedules are read in the computer's local time.
 
-const hourMillis = 60 * 60 * 1000;
 /** The furthest ahead a day-based schedule looks for its next day: a month's day (28) always occurs within it. */
 const searchDays = 62;
 
@@ -33,13 +33,16 @@ export const nextRunAfter = (schedule: RitualSchedule, after: number): number =>
 export const scheduleOf = (stored: string): RitualSchedule =>
   Schema.decodeUnknownSync(RitualSchedule)(JSON.parse(stored));
 
+const decodeRunState = Schema.decodeUnknownOption(RitualRunState);
+
 /**
  * How the Ritual's latest run stands. A run recorded as underway whose thread was stopped ended without the harness
- * reporting it, so it reads as interrupted; a run the service lost by stopping reads the same, at startup.
+ * reporting it, so it reads as interrupted; a run the service lost by stopping reads the same, at startup. A stored
+ * state no run writes reads as none.
  */
 export const runStateOf = (stored: string | null, threadState: string): RitualRunState | null =>
   stored === null
     ? null
     : stored === "Underway" && threadState === "Stopped"
       ? "Interrupted"
-      : (stored as RitualRunState);
+      : Option.getOrNull(decodeRunState(stored));

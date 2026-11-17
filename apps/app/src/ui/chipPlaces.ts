@@ -17,7 +17,7 @@ import type { ChipKind } from "./chips";
 // Where the chips of a sent message sit in its text, kept apart from the drawing so it can be checked without a screen.
 
 /** The icon each kind of mention draws; a side-quest wears its quest's. */
-export const chipKinds = { quest: "quest", realm: "realm", "side-quest": "quest" } as const satisfies Record<
+const chipKinds = { quest: "quest", realm: "realm", "side-quest": "quest" } as const satisfies Record<
   MentionKind,
   ChipKind
 >;
@@ -30,20 +30,20 @@ export const chipOfMentionable = (mentionable: Mentionable): Chip => ({
 });
 
 /** Where a chip sits in a text, from its `/` or `@` to the end of its token, and what it draws. */
-export interface ChipPlace {
+type ChipPlace = {
   readonly end: number;
   readonly kind: ChipKind;
   readonly label: string;
   readonly start: number;
-}
+};
 
 /** What a text's chips are drawn from; `mentionables` is null while the quests and realms load. */
-export interface ChipSource {
+type ChipSource = {
   /** What each `@`-path names in the workspace; a path missing here is plain text. */
   readonly entries: ReadonlyMap<string, WorkspaceEntry["kind"]>;
   readonly mentionables: ReadonlyArray<Mentionable> | null;
   readonly skills: ReadonlyArray<Skill>;
-}
+};
 
 /** The label of a reference: its name, or what is known of it while loading, or that it is gone. */
 const labelOfReference = (reference: MentionReference, mentionables: ReadonlyArray<Mentionable> | null) => {

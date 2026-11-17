@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 import { HarnessName } from "./harnesses.ts";
 import { AccountId, BudgetStopId, MissionId, ThreadId } from "./ids.ts";
+import { PositiveInt } from "./positiveInt.ts";
 
 // Budgets and spending (budget-control).
 
@@ -9,7 +10,7 @@ export const BudgetLimits = Schema.Struct({
   /** For API-key spending, in the provider's currency. */
   cost: Schema.NullOr(Schema.Number.check(Schema.isGreaterThan(0))),
   /** For subscription spending; tokens are never priced. */
-  tokens: Schema.NullOr(Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))),
+  tokens: Schema.NullOr(PositiveInt),
 });
 export type BudgetLimits = typeof BudgetLimits.Type;
 
@@ -60,7 +61,7 @@ export type Consumption = typeof Consumption.Type;
 export const PriceStatus = Schema.Struct({
   /** When the table was read (or the snapshot made), in milliseconds. */
   at: Schema.Number,
-  /** Whether Outlore reads the public table at all (the Charter switch). */
+  /** Whether Outlore reads the public table at all (the Workshop switch). */
   isFetching: Schema.Boolean,
   /** How many models carry a price. */
   models: Schema.Number,

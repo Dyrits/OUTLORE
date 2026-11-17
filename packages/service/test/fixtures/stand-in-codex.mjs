@@ -2,7 +2,8 @@
 // 2026-11-07. STAND_IN_LOG receives one JSON line per process start ({ args, cwd, env, pid }) and one per
 // request it receives ({ method, params }).
 // A turn's text decides what it does: "run <command>" asks approval for that command first and says
-// whether it was accepted; "slow <millis>" keeps the turn running; "fail" ends the turn failed; anything
+// whether it was accepted; "slow <millis>" keeps the turn running; "fail" ends the turn failed; "mcp-failed" first reports
+// the "outlore" MCP server failed to start (`mcpServer/startupStatus/updated`, shaped after the schema of codex-cli 0.169.0); anything
 // else is echoed. Steered messages join the running turn and are echoed after it.
 import { appendFileSync } from "node:fs";
 import { createInterface } from "node:readline";
@@ -76,6 +77,29 @@ const callTool = async (name, args) => {
 const runTurn = async (turn, text) => {
   const tool = /^call (\S+) (.*)$/.exec(text);
   if (tool !== null) return finish("completed", await callTool(tool[1], JSON.parse(tool[2])));
+  if (text === "choose") {
+    const response = await ask("item/tool/requestUserInput", {
+      autoResolutionMs: null,
+      isBlocking: true,
+      itemId: "question-1",
+      questions: [
+        {
+          header: "Build",
+          id: "build",
+          isOther: true,
+          isSecret: false,
+          options: [
+            { description: "First", label: "A" },
+            { description: "Second", label: "B" },
+          ],
+          question: "Which build?",
+        },
+      ],
+      threadId,
+      turnId: turn.id,
+    });
+    return finish("completed", JSON.stringify(response));
+  }
   const run = /^run (.+)$/.exec(text);
   if (run !== null) {
     const answer = await ask("item/commandExecution/requestApproval", {
@@ -88,6 +112,13 @@ const runTurn = async (turn, text) => {
     return finish("completed", `${run[1]}: ${answer.decision}`);
   }
   if (text === "fail") return finish("failed", null);
+  if (text === "mcp-failed")
+    note("mcpServer/startupStatus/updated", {
+      error: "stand-in: no route",
+      name: "outlore",
+      status: "failed",
+      threadId,
+    });
   // The turn's note, when there is one, precedes the messages after a "---" line.
   const slow = /(?:^|\n---\n\n)slow (\d+)$/.exec(text);
   const delay = slow === null ? 10 : Number(slow[1]);

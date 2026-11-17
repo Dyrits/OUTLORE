@@ -7,7 +7,10 @@ const packageFolder = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** The files the Worker bundle is built from: a change to any of them makes the committed bundle stale. */
 export const workerSourceFiles = [
-  "src/base64url.ts",
+  "../channel/package.json",
+  "../channel/src/base64url.ts",
+  "../channel/src/constantTimeEqual.ts",
+  "src/limits.ts",
   "src/roomCore.ts",
   "src/route.ts",
   "src/worker.ts",

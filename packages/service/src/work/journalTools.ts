@@ -1,6 +1,6 @@
 import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
-import type { ToolAnswer } from "../core/index.ts";
+import { type ToolAnswer, toolRefusal, toolText } from "../core/index.ts";
 import { journalTextOf, missionOf, readJournalText, updateJournal } from "./journal.ts";
 import { mayReadJournal } from "./reach.ts";
 import type { ToolHandlers } from "./threadTools.ts";
@@ -13,20 +13,18 @@ export const journalToolsOf = (
   read_journal: (threadId, { before, count, mission }) => {
     return commit(
       Effect.gen(function* () {
-        if (mission === undefined)
-          return { isError: false, text: yield* readJournalText(threadId, before ?? null, count ?? null) };
+        if (mission === undefined) return toolText(yield* readJournalText(threadId, before ?? null, count ?? null));
         // Another quest's journal is the Guildmaster's to read, whatever the quest; another thread reads one only
         // when the owner mentioned that quest, or one of its side-quests, in a message its current turn received.
         if (!(yield* mayReadJournal(threadId, mission)))
-          return {
-            isError: true,
-            text: "Only Chronicler reads another quest's journal, unless the owner mentioned that quest with @ in a message of this turn.",
-          };
+          return toolRefusal(
+            "Only Chronicler reads another quest's journal, unless the owner mentioned that quest with @ in a message of this turn.",
+          );
         const sql = yield* SqlClient.SqlClient;
         const rows = yield* sql<{ id: string }>`SELECT m.id FROM missions m JOIN threads top ON top.id = m.top_thread_id
           WHERE m.id = ${mission} AND m.is_guildmaster = 0 AND top.is_deleting = 0`;
-        if (rows.length === 0) return { isError: true, text: "No such quest." };
-        return { isError: false, text: yield* readJournalText(threadId, before ?? null, count ?? null, mission) };
+        if (rows.length === 0) return toolRefusal("No such quest.");
+        return toolText(yield* readJournalText(threadId, before ?? null, count ?? null, mission));
       }),
     );
   },
@@ -42,21 +40,18 @@ export const journalToolsOf = (
       Effect.map(
         (outcome): ToolAnswer =>
           Match.valueTags(outcome, {
-            Aside: () => ({
-              isError: true,
-              text: "Not recorded: an aside does not update the journal. Send your parent a thread message with what is relevant; it decides what to record.",
-            }),
-            Recorded: (recorded) => ({
-              isError: false,
-              text: `Recorded entry ${recorded.number}. The briefing is at version ${recorded.version}.`,
-            }),
-            Refused: (refused) => ({
-              isError: true,
-              text:
+            Aside: () =>
+              toolRefusal(
+                "Not recorded: an aside does not update the journal. Send your parent a thread message with what is relevant; it decides what to record.",
+              ),
+            Recorded: (recorded) =>
+              toolText(`Recorded entry ${recorded.number}. The briefing is at version ${recorded.version}.`),
+            Refused: (refused) =>
+              toolRefusal(
                 refused.reason === "Stale"
                   ? `${refused.text}\n\n${journalTextOf(refused, [])}`
                   : `${refused.text} The current briefing is at version ${refused.version}.`,
-            }),
+              ),
           }),
       ),
     );

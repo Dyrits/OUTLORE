@@ -15,7 +15,7 @@ export const defaultRelayOrigin = "https://outlore.dyrits.workers.dev";
 export const webAppOrigin = defaultRelayOrigin;
 
 /** What device pairing needs from outside the database. */
-export interface RemoteSettings {
+export type RemoteSettings = {
   /** The computer's own name, offered as the host's name until the owner chooses one. */
   readonly computerName: string;
   /** Deploys the relay to the Cloudflare account a token reaches; never rejects, and never keeps the token. */
@@ -24,19 +24,10 @@ export interface RemoteSettings {
   readonly relayOrigin: string;
   /** The release this host runs, told to every device that connects so a browser can refuse a host of another release. */
   readonly release: string;
-}
+};
 
+/** What device pairing needs from outside the database, provided once at startup. */
 export class RemoteConfig extends Context.Service<RemoteConfig, RemoteSettings>()("outlore/RemoteConfig") {}
 
 /** The computer's name without its network suffix: `Studio.local` and `Studio.lan` read as `Studio`. */
 export const computerNameOf = (raw: string = hostname()) => raw.split(".")[0]?.trim() || "This computer";
-
-/** Whether a relay address is on this computer: only a test or a development run names one. */
-export const isLocalOrigin = (origin: string) => {
-  try {
-    const { hostname } = new URL(origin);
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
-  } catch {
-    return false;
-  }
-};

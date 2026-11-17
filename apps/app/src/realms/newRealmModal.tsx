@@ -6,13 +6,11 @@ import { crestOf, shuffledCrest } from "../crest/crestShapes";
 import { CrestStudio } from "../crest/crestStudio";
 import type { ServiceClient } from "../foundation/client";
 import { messageOf } from "../foundation/client";
-import { allMissions } from "../foundation/queries";
 import { colors, fontSizes, fonts, outline, radii } from "../foundation/theme";
 import { FolderPicker } from "./folderPicker";
 import { newRealmCrestIdOf, shownCrestOf } from "./newRealmCrest";
-import { folderNameOf, hasRealmNameCollision } from "./realmLabels";
+import { folderNameOf } from "./realmLabels";
 import { proposedRealmOf } from "./realmRecovery";
-import { creationStepOf } from "./realmRecoveryFlow";
 import { RealmRecoveryModal } from "./realmRecoveryModal";
 
 /** A realm being made: named and given a crest. The path is empty until a folder is chosen, and stays so for a realm tied to none. */
@@ -61,30 +59,22 @@ export function NewRealmModal({
     setBusy(true);
     setError(null);
     try {
-      const previous =
-        proposed.path === "" ? null : await client.request({ _tag: "FindArchivedRealm", path: proposed.path });
-      const active = previous === null ? await client.request(allMissions.request) : null;
-      const known = active?.workspaces.find((realm) => realm.path === proposed.path);
-      const step = creationStepOf({
-        hasArchivedRealm: previous !== null,
-        hasDuplicateName: hasRealmNameCollision(proposed.name, active?.workspaces ?? [], known?.id ?? null),
-        shouldAllowDuplicateName,
-      });
-      if (step === "recover") {
-        setArchived(previous);
-        return;
-      }
-      if (step === "duplicate") {
-        setDuplicate(true);
-        return;
-      }
-      await client.request({
+      const outcome = await client.request({
         _tag: "CreateRealm",
         allowDuplicateName: shouldAllowDuplicateName,
         crest: proposed.crest,
         name: proposed.name,
         path: proposed.path === "" ? null : proposed.path,
+        shouldAnswerOutcome: true,
       });
+      if (outcome?._tag === "ArchivedMatch") {
+        setArchived(outcome.archived);
+        return;
+      }
+      if (outcome?._tag === "NameTaken") {
+        setDuplicate(true);
+        return;
+      }
       complete();
     } catch (reason) {
       setError(messageOf(reason));

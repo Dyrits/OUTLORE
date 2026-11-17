@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { join } from "node:path";
+import { delimiter, join, win32 } from "node:path";
 
 const startMark = "__OUTLORE_PATH_START__";
 const endMark = "__OUTLORE_PATH_END__";
@@ -31,20 +31,27 @@ export interface MergedPathInput {
   launchPath: string | undefined;
   /** The login shell's path, or null when it could not be read. */
   loginPath: string | null;
+  /** The platform whose separators and install folders apply; the running one when omitted. */
+  platform?: NodeJS.Platform;
 }
 
 /**
  * The path the installed app runs the service and its shells with: the login shell's folders first, then the launcher's, then where the harness tools install themselves.
  * So `claude`, `codex`, and `opencode` are found even when the shell could not be read.
+ * Only the Unix folders are added: Windows keeps the launcher's path whole, separated by `;`, with its drive letters intact.
  */
-export const mergedPathOf = ({ home, launchPath, loginPath }: MergedPathInput): string => {
-  const installFolders = [
-    join(home, ".local", "bin"),
-    join(home, ".opencode", "bin"),
-    join(home, ".bun", "bin"),
-    "/opt/homebrew/bin",
-    "/usr/local/bin",
-  ];
-  const folders = [...(loginPath?.split(":") ?? []), ...(launchPath?.split(":") ?? []), ...installFolders];
-  return [...new Set(folders.filter((folder) => folder !== ""))].join(":");
+export const mergedPathOf = ({ home, launchPath, loginPath, platform = process.platform }: MergedPathInput): string => {
+  const separator = platform === "win32" ? win32.delimiter : delimiter;
+  const installFolders =
+    platform === "win32"
+      ? []
+      : [
+          join(home, ".local", "bin"),
+          join(home, ".opencode", "bin"),
+          join(home, ".bun", "bin"),
+          "/opt/homebrew/bin",
+          "/usr/local/bin",
+        ];
+  const folders = [...(loginPath?.split(separator) ?? []), ...(launchPath?.split(separator) ?? []), ...installFolders];
+  return [...new Set(folders.filter((folder) => folder !== ""))].join(separator);
 };

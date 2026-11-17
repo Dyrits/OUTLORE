@@ -12,6 +12,7 @@ import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ToggleRow } from "../settings/settingsParts";
 import { Choice } from "../ui/pickers";
+import { questionOriginOf } from "../ui/questionOrigin";
 import { QuestionLine } from "../ui/questions";
 
 /** The names of the approval levels (action-approval, Approval level). */
@@ -131,9 +132,11 @@ export function PermissionsScreen({ client, onBack }: { client: ServiceClient; o
             {view.history.length === 0 && <Text style={styles.muted}>No answers yet.</Text>}
             {view.history.map((question) => (
               <View key={question.id}>
-                <Text numberOfLines={1} style={styles.muted}>
-                  {question.missionTitle}
-                </Text>
+                {questionOriginOf(question).map((line) => (
+                  <Text key={line.key} numberOfLines={1} style={styles.muted}>
+                    {line.title}
+                  </Text>
+                ))}
                 <Text style={styles.body}>{question.summary}</Text>
                 <QuestionLine question={question} />
               </View>

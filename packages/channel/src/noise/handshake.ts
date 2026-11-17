@@ -21,31 +21,31 @@ export const NOISE_NK_PROTOCOL_NAME = "Noise_NK_25519_ChaChaPoly_SHA256";
 export const DH_BYTES = 32;
 
 /** An X25519 key pair, 32 bytes each. */
-export interface NoiseKeyPair {
+export type NoiseKeyPair = {
   publicKey: Uint8Array;
   secretKey: Uint8Array;
-}
+};
 
-export interface NoiseInitiatorOptions {
+export type NoiseInitiatorOptions = {
   /** Test injection only; production generates a fresh ephemeral. */
   ephemeral?: NoiseKeyPair;
   prologue: Uint8Array;
   /** Responder's static public key, trusted out of band. */
   remoteStatic: Uint8Array;
-}
+};
 
-export interface NoiseResponderOptions {
+export type NoiseResponderOptions = {
   /** Test injection only; production generates a fresh ephemeral. */
   ephemeral?: NoiseKeyPair;
   localStatic: NoiseKeyPair;
   prologue: Uint8Array;
-}
+};
 
 /** The two transport ciphers, oriented for the side that holds them. */
-export interface TransportKeys {
+export type TransportKeys = {
   receive: CipherState;
   send: CipherState;
-}
+};
 
 /** One side of a handshake in progress. Protocol violations throw NoiseProtocolError. */
 export interface NoiseHandshake {
@@ -75,10 +75,10 @@ export function createNoiseInitiator(options: NoiseInitiatorOptions): NoiseHands
   requireKeyLength(options.remoteStatic, "remote static key");
   return new HandshakeState({
     ephemeral: options.ephemeral ?? null,
-    initiator: true,
+    isInitiator: true,
+    localStatic: null,
     prologue: options.prologue,
-    rs: options.remoteStatic,
-    s: null,
+    remoteStatic: options.remoteStatic,
   });
 }
 
@@ -87,49 +87,49 @@ export function createNoiseResponder(options: NoiseResponderOptions): NoiseHands
   requireKeyLength(options.localStatic.secretKey, "local static secret key");
   return new HandshakeState({
     ephemeral: options.ephemeral ?? null,
-    initiator: false,
+    isInitiator: false,
+    localStatic: options.localStatic,
     prologue: options.prologue,
-    rs: null,
-    s: options.localStatic,
+    remoteStatic: null,
   });
 }
 
 class HandshakeState implements NoiseHandshake {
   private readonly symmetric = new SymmetricState(NOISE_NK_PROTOCOL_NAME);
-  private readonly initiator: boolean;
-  private readonly s: NoiseKeyPair | null;
-  private e: NoiseKeyPair | null;
-  private rs: Uint8Array | null;
-  private re: Uint8Array | null = null;
+  private readonly isInitiator: boolean;
+  private readonly localStatic: NoiseKeyPair | null;
+  private ephemeral: NoiseKeyPair | null;
+  private remoteStatic: Uint8Array | null;
+  private remoteEphemeral: Uint8Array | null = null;
   private messageIndex = 0;
-  private finished = false;
+  private isFinished = false;
 
   constructor(params: {
-    initiator: boolean;
+    isInitiator: boolean;
     prologue: Uint8Array;
-    s: NoiseKeyPair | null;
-    rs: Uint8Array | null;
+    localStatic: NoiseKeyPair | null;
+    remoteStatic: Uint8Array | null;
     ephemeral: NoiseKeyPair | null;
   }) {
-    this.initiator = params.initiator;
-    this.s = params.s;
-    this.rs = params.rs;
-    this.e = params.ephemeral;
+    this.isInitiator = params.isInitiator;
+    this.localStatic = params.localStatic;
+    this.remoteStatic = params.remoteStatic;
+    this.ephemeral = params.ephemeral;
     this.symmetric.mixHash(params.prologue);
     // Pre-message "<- s": the responder's static public key.
-    const preMessageStatic = this.initiator ? this.rs : (this.s?.publicKey ?? null);
+    const preMessageStatic = this.isInitiator ? this.remoteStatic : (this.localStatic?.publicKey ?? null);
     if (preMessageStatic === null) throw new NoiseProtocolError("missing responder static key");
     this.symmetric.mixHash(preMessageStatic);
   }
 
   writeMessage(payload: Uint8Array): Uint8Array {
-    const tokens = this.nextTokens(this.initiator);
+    const tokens = this.nextTokens(this.isInitiator);
     const parts: Uint8Array[] = [];
     for (const token of tokens) {
       if (token === "e") {
-        this.e ??= generateNoiseKeyPair();
-        parts.push(this.e.publicKey);
-        this.symmetric.mixHash(this.e.publicKey);
+        this.ephemeral ??= generateNoiseKeyPair();
+        parts.push(this.ephemeral.publicKey);
+        this.symmetric.mixHash(this.ephemeral.publicKey);
       } else {
         this.mixToken(token);
       }
@@ -147,16 +147,16 @@ class HandshakeState implements NoiseHandshake {
     if (message.byteLength > NOISE_MAX_MESSAGE_BYTES) {
       throw new NoiseProtocolError("handshake message too large");
     }
-    const tokens = this.nextTokens(!this.initiator);
+    const tokens = this.nextTokens(!this.isInitiator);
     let offset = 0;
     for (const token of tokens) {
       if (token === "e") {
         if (message.byteLength < offset + DH_BYTES) {
           throw new NoiseProtocolError("handshake message truncated");
         }
-        this.re = message.slice(offset, offset + DH_BYTES);
+        this.remoteEphemeral = message.slice(offset, offset + DH_BYTES);
         offset += DH_BYTES;
-        this.symmetric.mixHash(this.re);
+        this.symmetric.mixHash(this.remoteEphemeral);
       } else {
         this.mixToken(token);
       }
@@ -176,19 +176,21 @@ class HandshakeState implements NoiseHandshake {
 
   split(): TransportKeys {
     if (!this.isComplete()) throw new NoiseProtocolError("handshake incomplete");
-    if (this.finished) throw new NoiseProtocolError("handshake already split");
-    this.finished = true;
-    const [c1, c2] = this.symmetric.split();
-    this.e?.secretKey.fill(0);
-    this.e = null;
-    return this.initiator ? { receive: c2, send: c1 } : { receive: c1, send: c2 };
+    if (this.isFinished) throw new NoiseProtocolError("handshake already split");
+    this.isFinished = true;
+    const [firstCipher, secondCipher] = this.symmetric.split();
+    this.ephemeral?.secretKey.fill(0);
+    this.ephemeral = null;
+    return this.isInitiator
+      ? { receive: secondCipher, send: firstCipher }
+      : { receive: firstCipher, send: secondCipher };
   }
 
-  private nextTokens(expectedWriterIsInitiator: boolean): ReadonlyArray<Token> {
+  private nextTokens(isExpectedWriterInitiator: boolean): ReadonlyArray<Token> {
     const tokens = NK_MESSAGES[this.messageIndex];
-    if (tokens === void 0 || this.finished) throw new NoiseProtocolError("handshake complete");
-    const writerIsInitiator = this.messageIndex % 2 === 0;
-    if (writerIsInitiator !== expectedWriterIsInitiator) {
+    if (tokens === void 0 || this.isFinished) throw new NoiseProtocolError("handshake complete");
+    const isWriterInitiator = this.messageIndex % 2 === 0;
+    if (isWriterInitiator !== isExpectedWriterInitiator) {
       throw new NoiseProtocolError("handshake message out of turn");
     }
     return tokens;
@@ -197,9 +199,12 @@ class HandshakeState implements NoiseHandshake {
   /** Mixes the Diffie-Hellman result of an `es` or `ee` token into the chaining key. */
   private mixToken(token: "es" | "ee"): void {
     if (token === "ee") {
-      this.mixDh(this.e, this.re);
+      this.mixDh(this.ephemeral, this.remoteEphemeral);
     } else {
-      this.mixDh(this.initiator ? this.e : this.s, this.initiator ? this.rs : this.re);
+      this.mixDh(
+        this.isInitiator ? this.ephemeral : this.localStatic,
+        this.isInitiator ? this.remoteStatic : this.remoteEphemeral,
+      );
     }
   }
 

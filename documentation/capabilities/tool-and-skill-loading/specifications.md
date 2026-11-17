@@ -10,6 +10,8 @@ This capability is partially implemented. The agreed management and loading beha
 
 These findings are from source inspection, not a new live-harness check. The acceptance list below still describes the complete target.
 
+**Connectors replace its MCP-server rules (CHG-0321, 2026-11-16).** For the connectors the owner installs, scope is global with a choice per realm, the Borderlands and quest (side-quests follow their quest), not workspace and thread; installation, enabling, approval and secrets are agreed in [connectors](../connectors/specifications.md). The MCP-server rules below (workspace-scoped servers, a per-thread disable inherited by threads beneath, conflicting global and workspace names) now apply only to custom MCP servers the owner would add, which stay deferred. Skills are unchanged. The rule that a failed external server warns and the turn goes on, and the rule that thread tools stay enabled, still hold.
+
 ## Problem and outcome
 
 A thread needs the tools and instructions in scope for its work, even when its harness changes. Outlore gives each harness the selected skills, external MCP servers, and its own thread tools. The user can see what a thread receives and where it came from.
@@ -55,7 +57,7 @@ A thread needs the tools and instructions in scope for its work, even when its h
 - The user can disable external MCP servers per thread. Threads opened beneath it inherit that selection.
 - MCP configuration changes take effect on the next turn; a current turn keeps its starting configuration.
 - A failed external MCP server is reported in the thread as a warning. The other servers load and the turn continues.
-- Outlore's own thread tools stay enabled. If they fail to load, the thread waits in Attention with **Retry**.
+- Outlore's own thread tools stay enabled. If they fail to load, the turn fails, with the reason, and the thread offers **Retry** (a Failed thread, which counts among those needing the owner). Claude Code reports the server's status in its start-up event and Codex in a start-up status notification, and both are read; OpenCode's is not yet read (CHG-0377).
 - The local service enforces thread-tool access, regardless of what instructions a harness received. See [0005](../../architecture-decision-record/0005-thread-tools-over-mcp.md).
 
 ### Another workspace

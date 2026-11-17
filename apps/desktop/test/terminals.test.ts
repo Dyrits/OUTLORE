@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { Terminals, unpackedPathOf } from "../src/terminals.ts";
+import { defaultShellOf, shellArgsOf, Terminals, unpackedPathOf } from "../src/terminals.ts";
 import { canOpenTerminal } from "./support/environment.ts";
 
 const folders: string[] = [];
@@ -78,5 +78,19 @@ describe("unpackedPathOf", () => {
 
   it("leaves a path outside an archive alone", () => {
     expect(unpackedPathOf("/repo/node_modules/node-pty")).toBe("/repo/node_modules/node-pty");
+  });
+});
+
+describe("the default shell", () => {
+  it("opens the owner's login shell on macOS and Linux", () => {
+    expect(defaultShellOf("darwin", "/bin/zsh", undefined)).toBe("/bin/zsh");
+    expect(defaultShellOf("linux", "/bin/bash", undefined)).toBe("/bin/bash");
+    expect(shellArgsOf("darwin")).toEqual(["-l"]);
+  });
+
+  it("opens the command shell on Windows, where there is no login shell", () => {
+    expect(defaultShellOf("win32", "/bin/sh", "C:\\Windows\\System32\\cmd.exe")).toBe("C:\\Windows\\System32\\cmd.exe");
+    expect(defaultShellOf("win32", "/bin/sh", undefined)).toBe("cmd.exe");
+    expect(shellArgsOf("win32")).toEqual([]);
   });
 });

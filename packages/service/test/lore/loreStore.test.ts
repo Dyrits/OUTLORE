@@ -6,10 +6,10 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { TestClock } from "effect/testing";
 import { afterEach } from "vitest";
-import { storeLayer } from "../../src/core/index.ts";
+import { dayMillis, storeLayer } from "../../src/core/index.ts";
 import { undoLoreChange } from "../../src/lore/index.ts";
 import type { Placement } from "../../src/lore/lore.ts";
-import { owner, readSnapshot, type Snapshot, threadActor } from "../../src/lore/loreHistory.ts";
+import { owner, readSnapshot, type Snapshot, stateOf, threadActor } from "../../src/lore/loreHistory.ts";
 import {
   correctLoreEntry,
   countUses,
@@ -38,7 +38,6 @@ const inStore = <A, E>(test: Effect.Effect<A, E, SqlClient.SqlClient>) => {
   return test.pipe(Effect.provide(storeLayer(join(directory, "store.sqlite"))));
 };
 
-const day = 24 * 60 * 60 * 1000;
 const global: Placement = { scope: "Global", threadId: null, workspaceId: null };
 const workspace = (workspaceId: string): Placement => ({ scope: "Workspace", threadId: null, workspaceId });
 
@@ -63,7 +62,6 @@ const latestOf = (loreEntryId: string) =>
   historyOf(loreEntryId).pipe(
     Effect.map((entries) => entries.filter((entry) => entry.actor !== "Fading").at(-1) ?? null),
   );
-const stateOf = (json: string | null) => (json === null ? null : (JSON.parse(json) as Snapshot));
 /** A state without its update time, which an undo sets to its own time. */
 const restorable = (state: Snapshot | null) => (state === null ? null : { ...state, updatedAt: 0 });
 
@@ -168,7 +166,7 @@ describe("keeping lore in the store", () => {
       Effect.gen(function* () {
         const used = yield* save("Deploy is frozen.", global, "Temporary");
         const pinned = yield* save("Staging is down.", global, "Temporary");
-        yield* TestClock.adjust(365 * day);
+        yield* TestClock.adjust(365 * dayMillis);
         yield* countUses("thread-1", [used]);
         yield* pinLoreEntry(pinned, true);
         expect((yield* historyOf(used)).map((entry) => entry.kind)).toEqual(["Saved", "Dormant", "Archived"]);
@@ -178,7 +176,7 @@ describe("keeping lore in the store", () => {
           "Archived",
           "Pinned",
         ]);
-        expect(yield* readSnapshot(used)).toMatchObject({ lastUsedAt: 365 * day, uses: 1 });
+        expect(yield* readSnapshot(used)).toMatchObject({ lastUsedAt: 365 * dayMillis, uses: 1 });
       }),
     ),
   );

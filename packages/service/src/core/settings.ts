@@ -1,12 +1,28 @@
-import { SavedTier, Settings, type SettingsChange, StartChoices, startingModel } from "@outlore/contracts";
+import {
+  type BudgetLimits,
+  SavedTier,
+  Settings,
+  type SettingsChange,
+  StartChoices,
+  startingModel,
+} from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid } from "./errors.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: settings keys (`intelHalfLives`, `intelWarningPercent`).
 
+/** A minute in milliseconds. */
+export const minuteMillis = 60 * 1000;
+
+/** An hour in milliseconds. */
+export const hourMillis = 60 * 60 * 1000;
+
 /** A day in milliseconds, the unit of the Settings durations. */
-export const dayMillis = 24 * 60 * 60 * 1000;
+export const dayMillis = 24 * hourMillis;
+
+/** A budget with neither limit. */
+export const noLimits: BudgetLimits = { cost: null, tokens: null };
 
 /** The settings before the owner changes any. */
 export const defaultSettings: Settings = {
@@ -18,9 +34,9 @@ export const defaultSettings: Settings = {
   defaultDelivery: "Steer",
   defaultEffort: "default",
   defaultHarness: "claude",
-  defaultMissionBudget: { cost: null, tokens: null },
+  defaultMissionBudget: noLimits,
   defaultModel: startingModel,
-  globalBudget: { cost: null, tokens: null },
+  globalBudget: noLimits,
   globalBudgetPeriod: "Month",
   inactivityDays: 14,
   intelHalfLives: { decision: 45, fact: 45, preference: 90, temporary: 3 },
@@ -44,7 +60,7 @@ const SavedSettings = Settings.mapFields((fields) => ({
     Light: Schema.NullOr(SavedTier),
   }),
 }));
-const decode = Schema.decodeUnknownSync(SavedSettings);
+const decodeExit = Schema.decodeUnknownExit(SavedSettings);
 
 /** The saved settings with a change merged in; of the tiers only those the change names are replaced, so a tier changed elsewhere meanwhile is kept. */
 export const mergedSettings = (saved: Settings, change: SettingsChange): Settings => ({
@@ -53,34 +69,69 @@ export const mergedSettings = (saved: Settings, change: SettingsChange): Setting
   tiers: { ...saved.tiers, ...change.tiers },
 });
 
-/** Reads the owner's settings, or the defaults when none are stored or they no longer decode. */
+/** The level a setting that no longer decodes falls back to: the stricter one, so a lost choice never asks less. */
+const strictestApprovalLevel: Settings["approvalLevel"] = "CommandsAndEdits";
+
+/** The saved JSON as an object, or null when it is not one. */
+const savedObjectOf = (text: string): Record<string, unknown> | null => {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? { ...parsed } : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * The settings decoded field by field: a field that no longer decodes takes its default, except the approval level,
+ * which takes the stricter level (SP-A-07), and a row that is not an object counts as every field invalid.
+ */
+const settingsOf = (saved: Record<string, unknown> | null): Settings => {
+  const defaults: Record<string, unknown> = defaultSettings;
+  const merged = { ...defaults, ...saved };
+  const whole = decodeExit(merged);
+  if (saved !== null && Exit.isSuccess(whole)) return whole.value;
+  const kept = Object.fromEntries(
+    Object.entries(SavedSettings.fields).map(([key, field]) => {
+      const isValid = saved !== null && Exit.isSuccess(Schema.decodeUnknownExit(field)(merged[key]));
+      if (isValid) return [key, merged[key]];
+      return [key, key === "approvalLevel" ? strictestApprovalLevel : defaults[key]];
+    }),
+  );
+  const decoded = decodeExit(kept);
+  return Exit.isSuccess(decoded) ? decoded.value : { ...defaultSettings, approvalLevel: strictestApprovalLevel };
+};
+
+/**
+ * Reads the owner's settings, or the defaults when none are stored. A setting added after the owner last saved takes
+ * its default and the saved choices stay; one that no longer decodes takes its default alone, never dragging the others
+ * back, and an invalid approval level takes the stricter level.
+ */
 export const readSettings = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<{ value: string }>`SELECT value FROM settings WHERE key = 'settings'`;
   if (row === undefined) return defaultSettings;
-  // A setting added after the owner last saved takes its default; the saved choices stay.
-  try {
-    return decode({ ...defaultSettings, ...JSON.parse(row.value) });
-  } catch {
-    return defaultSettings;
-  }
+  return settingsOf(savedObjectOf(row.value));
 });
 
+/** Stores one row of the settings table, replacing any value the key held. */
+const putSetting = (sql: SqlClient.SqlClient, key: string, value: string) =>
+  sql`INSERT INTO settings (key, value) VALUES (${key}, ${value})
+    ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
+
 /** Stores the owner's settings, refusing any that do not decode. */
-export const writeSettings = (settings: Settings) =>
-  Effect.gen(function* () {
-    const parsed = yield* Schema.decodeUnknownEffect(Settings)(settings).pipe(
-      Effect.catch(() =>
-        invalid(
-          "Invalid settings: the chatter threshold must be a whole number of at least 2; the briefing limit, the inactivity and auto-archive days, and the lore half-lives at least 1; budget limits above 0, tokens in whole numbers.",
-        ),
+export const writeSettings = Effect.fnUntraced(function* (settings: Settings) {
+  const parsed = yield* Schema.decodeUnknownEffect(Settings)(settings).pipe(
+    Effect.catch(() =>
+      invalid(
+        "Invalid settings: the chatter threshold must be a whole number of at least 2; the briefing limit, the inactivity and auto-archive days, and the lore half-lives at least 1; budget limits above 0, tokens in whole numbers.",
       ),
-    );
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`INSERT INTO settings (key, value) VALUES ('settings', ${JSON.stringify(parsed)})
-      ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
-    return settings;
-  });
+    ),
+  );
+  const sql = yield* SqlClient.SqlClient;
+  yield* putSetting(sql, "settings", JSON.stringify(parsed));
+  return settings;
+});
 
 const decodeChoices = Schema.decodeUnknownExit(StartChoices);
 
@@ -114,9 +165,7 @@ export const readStartChoices = Effect.gen(function* () {
 });
 
 /** Remembers a started mission's choices; the next mission takes its folder. Callers run it in a transaction. */
-export const saveStartChoices = (choices: StartChoices) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`INSERT INTO settings (key, value) VALUES ('start_choices', ${JSON.stringify(choices)})
-      ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
-  });
+export const saveStartChoices = Effect.fnUntraced(function* (choices: StartChoices) {
+  const sql = yield* SqlClient.SqlClient;
+  yield* putSetting(sql, "start_choices", JSON.stringify(choices));
+});

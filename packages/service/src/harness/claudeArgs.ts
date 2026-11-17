@@ -10,12 +10,12 @@ import { approvalToolName, promptToolName, toolServerName } from "./toolNames.ts
 // The command line Claude Code starts with: its fixed arguments, and those that follow the thread's access.
 
 /** Where the adapter finds what decides a thread's access. */
-export interface AccessOptions {
+export type AccessOptions = {
   /** Why the sandbox cannot run here, or null; without it every harness prompt asks (CHG-0031). */
   readonly sandboxProblem: string | null;
   /** The owner's Claude Code settings file, whose allow and deny rules apply at "Also commands and edits". */
   readonly userSettingsPath?: string;
-}
+};
 
 // Tools behind approval (CHG-0031): built-in tools only, none of the owner's MCP
 // servers, skills, or settings; every permission prompt goes to Outlore.
@@ -77,6 +77,9 @@ const ownerRulesOf = (path: string) => {
 
 /** The longest timer Node allows, in milliseconds: about 24.8 days. */
 export const noTimeLimit = 2147483647;
+
+/** The package managers' and Electron's caches under the home folder, which a sandboxed thread may write. */
+export const packageCacheFolders = [".bun/install/cache", ".npm", "Library/Caches/electron", ".cache/electron"];
 
 /**
  * The hosts a sandboxed thread reaches unasked (CHG-0208): package registries, GitHub and other code hosts, release
@@ -146,7 +149,7 @@ export const allowedDomains = [
 const threadSandbox = {
   env: { NODE_USE_ENV_PROXY: "1" },
   sandbox: {
-    filesystem: { allowWrite: ["~/.bun/install/cache", "~/.npm", "~/Library/Caches/electron", "~/.cache/electron"] },
+    filesystem: { allowWrite: packageCacheFolders.map((folder) => `~/${folder}`) },
     network: { allowedDomains, allowLocalBinding: true },
   },
 };
@@ -200,23 +203,24 @@ export const accessArgsOf = (
   // A question waits with no time limit (action-approval, Waiting); without its own
   // timeout, Claude Code aborts a call silent for 300 seconds (verified 2026-11-05).
   const mcpConfig = { mcpServers: { [toolServerName]: { timeout: noTimeLimit, type: "http", url: access.mcpUrl } } };
-  const isSandboxed = isSandboxedOf(access.approvalLevel, options);
-  const levelArgs = isSandboxed
-    ? ["--permission-mode", "acceptEdits", "--settings", JSON.stringify(sandboxSettingsOf(worktrees))]
-    : [
-        "--permission-mode",
-        "default",
-        "--settings",
-        JSON.stringify({
-          permissions: ownerRulesOf(options.userSettingsPath ?? join(homedir(), ".claude", "settings.json")),
-        }),
-      ];
+  // The adapter decided the containment once, through `containmentOf` (claude.ts), when the turn's terms were read.
+  const levelArgs =
+    access.containment === "Sandboxed"
+      ? ["--permission-mode", "acceptEdits", "--settings", JSON.stringify(sandboxSettingsOf(worktrees))]
+      : [
+          "--permission-mode",
+          "default",
+          "--settings",
+          JSON.stringify({
+            permissions: ownerRulesOf(options.userSettingsPath ?? join(homedir(), ".claude", "settings.json")),
+          }),
+        ];
   return [
     "--mcp-config",
     JSON.stringify(mcpConfig),
     "--append-system-prompt",
     // Claude Code runs without setting sources, so it reads no CLAUDE.md itself (workspaces.ts).
-    `${context}\n\n${approvalInstructionsOf(access, isSandboxed, "claude")}`,
+    `${context}\n\n${approvalInstructionsOf(access, "claude")}`,
     ...levelArgs,
   ];
 };

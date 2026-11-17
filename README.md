@@ -242,6 +242,7 @@ bun run test
 
 Biome checks formatting and lint rules; TypeScript checks all workspaces.
 Tests run on Electron's bundled Node runtime and use fakes and stand-in executables by default.
+A failing test is retried twice, because the tests that run real processes fail when the machine is busy; the tests that needed a retry are listed at the end of the run, and as warnings in CI.
 A test that needs what the environment withholds, such as a thread's sandbox refusing a Seatbelt profile of its own, a terminal, a disk image, or the process table, is skipped there and named as skipped; run the suite outside such a sandbox to run them.
 Live checks are opt-in, require installed and signed-in harnesses, and consume model usage:
 
@@ -252,7 +253,7 @@ OUTLORE_LIVE_HARNESSES=1 bun run test
 
 Set `OUTLORE_LIVE_OPENCODE_MODEL` if the live OpenCode checks need a specific model identifier.
 Use `bun run format` to apply Biome fixes.
-Commits run Biome on staged files and then the workspace typecheck.
+Commits run Biome on staged files; staged code or configuration also triggers the workspace typecheck, and staged TypeScript triggers related tests.
 
 ### Repository layout
 
@@ -263,7 +264,7 @@ Commits run Biome on staged files and then the workspace typecheck.
 | [`packages/service`](packages/service/) | Local Node service, SQLite storage, harness adapters, scheduling, and MCP thread tools, built with Effect |
 | [`packages/contracts`](packages/contracts/) | Shared records and requests defined with Effect Schema |
 | [`packages/channel`](packages/channel/) | The end-to-end encrypted channel and pairing code used between paired devices |
-| [`packages/relay`](packages/relay/) | The Cloudflare Worker that forwards paired devices' encrypted traffic and serves the web app (`bun run deploy` builds the site and deploys it) |
+| [`packages/relay`](packages/relay/) | The Cloudflare Worker that forwards paired devices' encrypted traffic and serves the web app (`bun run deploy` builds the site and deploys it; after changing the Worker's sources, `bun run bundle` there rebuilds the committed Worker bundle, and a test fails until you do) |
 | [`packages/controller`](packages/controller/) | A browser as a paired device: its pairings in browser storage, pairing with a code, and the encrypted link to a host |
 | [`documentation`](documentation/) | Product specifications, architecture, decisions, and verification evidence |
 
@@ -276,14 +277,13 @@ bun run package
 This builds an installer for the current platform in `apps/desktop/release`.
 It bundles the interface and service, so the installed app needs no development server.
 
-Pushes to `main` and pull requests targeting it run lint, typechecking, and tests through the [desktop workflow](.github/workflows/package.yml).
+Pushes to `main` and pull requests targeting it run lint, typechecking, tests, and the web app's build through the [desktop workflow](.github/workflows/package.yml).
 Push a version tag such as `0.1.0-Prototype` (no `v` prefix) to build macOS arm64 and x64, Windows x64, and Linux x64 installers and publish them on [GitHub Releases](https://github.com/Dyrits/OUTLORE/releases).
 The tag sets the packaged app version (a leading `v`, if present, is dropped); tags containing a hyphen produce prereleases.
 The release is published only after all four installers and the Android app are built and uploaded.
 Installers download directly as `.dmg`, `.exe`, and `.AppImage` files without an extra ZIP wrapper.
 The same tag builds the Android app, the one Expo app built natively (`apps/app`): an `android` job stamps the tag into the app's release, makes the `android/` project with `expo prebuild` (it is generated, not committed), builds the APK with Gradle, and attaches `Outlore-<version>-android.apk`, listed in `SHA512SUMS.txt`, to the release. The app has no local service: it pairs with a running host from a pairing code and keeps the pairing in the phone's secure store. It needs four repository secrets, since an update installs over the previous app only when both carry the same key and a release is never signed with a throwaway one: `ANDROID_KEYSTORE_BASE64` (the keystore file, base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. A tag without them fails the `android` job and so the release. Make the keystore once and keep a copy: `keytool -genkeypair -v -keystore outlore-release.jks -alias outlore -keyalg RSA -keysize 2048 -validity 10000`, then `base64 -i outlore-release.jks | pbcopy` for the first secret. A manual run (**Run workflow**) without the secrets builds an APK signed with the debug key, named `...-android-debug-signed.apk`, to check the build. The Android app is a prerelease like the rest and is installed from the file (Android asks to allow installing from the browser or file manager).
 A release also carries `SHA512SUMS.txt` (what the macOS app checks its download against) and the `latest*.yml` files that `electron-updater` reads on Windows and Linux; the release is not published without them.
-Each macOS installer is also published under its former name, `Iskios-<version>-mac-<arch>.dmg`, as the same file: an installed Iskios 0.1.x looks for that name, so this lets it update itself into Outlore (the app then stays at its old path, such as `/Applications/Iskios.app`, until it is moved). Only the first Outlore release, `0.1.4-Prototype`, does this (the workflow checks the tag); later releases carry the Outlore names only.
 After the release is published, the same tag also puts the relay Worker and the web app online: a `relay` job stamps the tag into the web app's release, builds the site, deploys `packages/relay` with Wrangler, and checks the live address (`https://outlore.dyrits.workers.dev`). It needs the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; `bun run deploy` in `packages/relay` does the same by hand.
 Run `bun apps/desktop/scripts/check-update.ts <older Outlore.app> <newer Outlore-…-mac-…dmg>` to watch a packaged app update itself from a local stand-in for GitHub.
 The workflow also supports **Run workflow** manually for test builds, which upload direct installer files to the run's **Artifacts** section without publishing a release.

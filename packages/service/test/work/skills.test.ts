@@ -5,7 +5,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { mentionTokensOf, skillTokensOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
-import { listSkills, withSkillInstructions } from "../../src/work/skills.ts";
+import { addSkillInstructions, listSkills } from "../../src/work/skills.ts";
 
 const directories: string[] = [];
 afterEach(() => {
@@ -22,7 +22,7 @@ const folderWith = (skills: Record<string, string>) => {
   return root;
 };
 
-describe("skill discovery", () => {
+describe("discovering skills", () => {
   it.effect("lists global and workspace skills with the workspace copy winning a name", () =>
     Effect.gen(function* () {
       const home = folderWith({
@@ -39,21 +39,36 @@ describe("skill discovery", () => {
       ]);
     }),
   );
+
+  it.effect("reads a folded description and a literal one that continue on the lines below", () =>
+    Effect.gen(function* () {
+      const home = folderWith({
+        ".agents/skills/folded/SKILL.md":
+          "---\nname: folded\ndescription: >\n  Builds a thing\n  across two lines.\nlicense: MIT\n---\nBody",
+        ".agents/skills/kept/SKILL.md": "---\nname: kept\ndescription: |-\n  First line\n  Second line\n---\n",
+      });
+      const skills = yield* listSkills(null, home);
+      expect(skills.map((skill) => [skill.name, skill.description])).toEqual([
+        ["folded", "Builds a thing across two lines."],
+        ["kept", "First line\nSecond line"],
+      ]);
+    }),
+  );
 });
 
-describe("slash-names in messages", () => {
+describe("reading slash-names in messages", () => {
   it("finds a name that starts a word and ignores paths", () => {
     expect(skillTokensOf("Use /challenge, then open /Users/me/file").map((token) => token.name)).toEqual(["challenge"]);
   });
 
   it("points a named skill to its instructions and leaves other messages unchanged", () => {
     const skills = [{ description: "", name: "challenge", path: "/s/challenge/SKILL.md" }];
-    expect(withSkillInstructions("Run /challenge now", skills)).toContain("read /s/challenge/SKILL.md");
-    expect(withSkillInstructions("Run /unknown now", skills)).toBe("Run /unknown now");
+    expect(addSkillInstructions("Run /challenge now", skills)).toContain("read /s/challenge/SKILL.md");
+    expect(addSkillInstructions("Run /unknown now", skills)).toBe("Run /unknown now");
   });
 });
 
-describe("@-paths in messages", () => {
+describe("reading @-paths in messages", () => {
   it("finds a path that starts a word, without closing punctuation, and ignores addresses", () => {
     expect(
       mentionTokensOf("Read @src/index.ts, then @docs/ and mail me@example.com or @README.md.").map(

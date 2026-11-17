@@ -1,16 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
-import {
-  AccountId,
-  type MissionDetail,
-  type MissionId,
-  type Suggestion,
-  type SuggestionAnswer,
-  type ThreadId,
-} from "@outlore/contracts";
+import { AccountId, type MissionId, type Suggestion, type SuggestionAnswer, type ThreadId } from "@outlore/contracts";
 import { Effect, Schema } from "effect";
+import { isIdle } from "../fixtures/guildmaster.ts";
 import { call, read, send, settle, start, withService } from "../fixtures/service.ts";
-
-const isIdle = (detail: MissionDetail) => detail.thread.state === "Idle";
 
 /** Has the thread call suggest_mission, as its agent would after judging the owner's message off topic. */
 const suggest = (threadId: ThreadId, args: { text: string; title: string; missions: ReadonlyArray<string> }) =>

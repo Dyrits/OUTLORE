@@ -1,9 +1,13 @@
 import type { KnownHost } from "@outlore/contracts";
 import { createPairedHosts, openBrowserTransport, pairFromBrowser } from "@outlore/controller";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { isBrowserPage, pageSettings, remoteDeviceNoun } from "./browser/page";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PairingOffer } from "../shell/pairingOffer";
+import { pairingOfferOf } from "../shell/pairingOffer";
+import { isBrowserPage, isNativeApp, pageSettings } from "./browser/page";
 import { ServiceClient } from "./client";
+import { type HostLink, hostStatusOf } from "./hostStatus";
 import { pairingStorage } from "./native/pairingStorage";
+import { usePairingLinks } from "./usePairingLinks";
 
 /**
  * Owns the window's local service and its selected host connection. In a plain browser there is no local service: the
@@ -11,6 +15,9 @@ import { pairingStorage } from "./native/pairingStorage";
  */
 export function useHostConnection() {
   const isBrowser = useMemo(isBrowserPage, []);
+  // The phone app (a native build) is remote-only like a browser, but it has no address bar and asks before it pairs.
+  const isPhone = isNativeApp;
+  const deviceNoun: "browser" | "computer" | "phone" = isPhone ? "phone" : isBrowser ? "browser" : "computer";
   const pairedHosts = useMemo(() => (isBrowser ? createPairedHosts(pairingStorage()) : null), [isBrowser]);
   // The local service always stays connected: it lists the hosts and pairs with them. The window shows either its own
   // data or, through it, a paired host's (device-pairing).
@@ -20,7 +27,7 @@ export function useHostConnection() {
   );
   const [hostClient, setHostClient] = useState<ServiceClient | null>(null);
   const [hosts, setHosts] = useState<readonly KnownHost[]>(() => pairedHosts?.known() ?? []);
-  const [computerName, setComputerName] = useState(isBrowser ? `This ${remoteDeviceNoun}` : "This computer");
+  const [computerName, setComputerName] = useState(`This ${deviceNoun}`);
   const setHostId = useCallback(
     (next: string | null) => {
       pairedHosts?.setActive(next);
@@ -28,10 +35,22 @@ export function useHostConnection() {
     },
     [pairedHosts],
   );
-  const [isAddingHost, setIsAddingHost] = useState(false);
-  const [linkFailure, setLinkFailure] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => {
+    setFailure(null);
+    setAttempt((current) => current + 1);
+  }, []);
+  const [isAddingHost, setIsAddingHostState] = useState(false);
+  // A pairing link that opened the app waits here, with its code, until the owner pairs or cancels (device-pairing).
+  const [offer, setOffer] = useState<PairingOffer | null>(null);
+  const setIsAddingHost = useCallback((isAdding: boolean) => {
+    setIsAddingHostState(isAdding);
+    if (!isAdding) setOffer(null);
+  }, []);
+  const [link, setLink] = useState<HostLink | null>(null);
   const client = hostId === null ? localClient : hostClient;
   const [failure, setFailure] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: attempt explicitly restarts a failed connection.
   useEffect(() => {
     if (isBrowser) return;
     let isCurrent = true;
@@ -49,8 +68,9 @@ export function useHostConnection() {
     return () => {
       isCurrent = false;
       opened?.close();
+      setLocalClient(null);
     };
-  }, [isBrowser]);
+  }, [isBrowser, attempt]);
   // The hosts this installation is paired with, and its own computer's name, read from the local service.
   useEffect(() => {
     if (localClient === null) return;
@@ -63,6 +83,7 @@ export function useHostConnection() {
     return () => void unsubscribe();
   }, [localClient]);
   // The link to the chosen host opens when it is chosen and closes when another is.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: attempt explicitly restarts a failed connection.
   useEffect(() => {
     if (hostId === null) return;
     let isCurrent = true;
@@ -86,7 +107,48 @@ export function useHostConnection() {
       opened?.close();
       setHostClient(null);
     };
-  }, [hostId, pairedHosts]);
+  }, [hostId, pairedHosts, attempt]);
+  // The one way a pairing link reaches Add a host, from the address bar, the desktop's protocol handler, or a phone's.
+  const hasHostsRef = useRef(hosts.length > 0);
+  hasHostsRef.current = hosts.length > 0;
+  const offerPairing = useCallback(
+    (link: string) => {
+      const next = pairingOfferOf(link, { hasHosts: hasHostsRef.current, isBrowser, isPhone });
+      if (next === null) return;
+      setOffer(next);
+      setIsAddingHostState(true);
+    },
+    [isBrowser],
+  );
+  // The phone app is opened with `outlore://pair#<code>` (or the web link, when the system hands it over).
+  usePairingLinks(offerPairing);
+  // A browser opened at `<web app>/#<code>` pairs by itself. The fragment leaves the address bar at once, so a reload
+  // or a bookmark never offers a spent code again, and it never reaches the history entry that was written.
+  useEffect(() => {
+    if (!isBrowser || isPhone) return;
+    const takeFragment = () => {
+      const link = window.location.hash;
+      if (pairingOfferOf(link, { hasHosts: false, isBrowser }) === null) return;
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      offerPairing(link);
+    };
+    takeFragment();
+    window.addEventListener("hashchange", takeFragment);
+    return () => window.removeEventListener("hashchange", takeFragment);
+  }, [isBrowser, offerPairing]);
+  // The desktop app is opened with `outlore://pair#<code>`; the window listens first, then asks for what came before.
+  useEffect(() => {
+    const bridge = window.outlore?.pairingLinks;
+    if (bridge === undefined) return;
+    const stop = bridge.listen(offerPairing);
+    bridge.take().then(
+      (link) => {
+        if (link !== null) offerPairing(link);
+      },
+      () => {},
+    );
+    return stop;
+  }, [offerPairing]);
   // A browser pairs on its own and keeps the host; a desktop window asks its local service to.
   const pair = useCallback(
     async (code: string, deviceName: string): Promise<KnownHost> => {
@@ -102,14 +164,21 @@ export function useHostConnection() {
   );
   // Why the link to a host is down, when it is, for the banner over the window.
   useEffect(() => {
-    if (hostClient === null) {
-      setLinkFailure(null);
+    if (client === null) {
+      setLink(null);
       return;
     }
-    setLinkFailure(hostClient.failure);
-    const unsubscribe = hostClient.subscribeFailure(() => setLinkFailure(hostClient.failure));
+    const update = () =>
+      setLink({
+        failure: client.failure,
+        hasConnected: client.hasConnected,
+        hasGivenUp: client.hasGivenUp,
+        needsPairing: client.needsPairing,
+      });
+    update();
+    const unsubscribe = client.subscribeFailure(update);
     return () => void unsubscribe();
-  }, [hostClient]);
+  }, [client]);
   const activeHost = useMemo(
     () => ({
       hostId,
@@ -117,21 +186,30 @@ export function useHostConnection() {
     }),
     [computerName, hostId, hosts],
   );
+  const status = hostStatusOf({
+    failure,
+    hasHosts: hosts.length > 0,
+    hostId,
+    isBrowser,
+    link,
+    name: activeHost.name,
+  });
   return {
     activeHost,
     client,
     computerName,
-    failure,
-    hostClient,
+    deviceNoun,
     hostId,
     hosts,
     isAddingHost,
     isBrowser,
-    linkFailure,
-    localClient,
+    offer,
+    offerPairing,
     pair,
+    retry,
     setFailure,
     setHostId,
     setIsAddingHost,
+    status,
   };
 }

@@ -3,10 +3,10 @@ import { isAcceptedSignature, signatureOf, sizeRefusalOf, typeRefusalOf } from "
 import { reduceImage } from "./imageReduction";
 
 /** A file checked and, when it was too large a picture, scaled down: what is shown and sent. */
-export interface PreparedImage {
+type PreparedImage = {
   readonly blob: Blob;
   readonly mediaType: AttachmentMediaType;
-}
+};
 
 /** The file's name as sent: the service takes 255 characters at most, and a file may come with none. */
 export const attachmentNameOf = (file: File) => (file.name === "" ? "image" : file.name.slice(-255));

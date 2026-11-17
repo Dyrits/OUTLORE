@@ -1,69 +1,48 @@
 import {
-  type DeviceKind,
-  decodeBase64Url,
-  decodePairingCode,
   encodeBase64Url,
   encodeClientHello,
   type HostReply,
+  isLocalOrigin,
   maxDeviceNameLength,
   openInitiator,
   parseHostReply,
+  readPairingInput,
   refusalText,
   roomPrologue,
   type SecureChannel,
 } from "@outlore/channel";
-import type { KnownHost } from "@outlore/contracts";
 import { closeCodes, connectClient } from "@outlore/relay/browser";
-import type { PairedHosts, StoredHost } from "./pairedHosts.ts";
-import { hostLinkCodes, type OpenTransport } from "./transport.ts";
+import { Clock, Deferred, Effect } from "effect";
+import type { HostLinkRecord, PairedHostStore } from "./hostStore.ts";
+import { type ControllerKind, controllerWords, LinkFailure, linkTexts, releaseProblemOf } from "./linkFailure.ts";
 
-// A browser as a paired device (browser access, 0019): it pairs with a code, and opens the end-to-end encrypted
-// channel to its host itself, with no local service in between. The desktop window does the same through its service
-// (`service/src/remote/controller.ts`); the words for each outcome are the same.
+// A controller's link to a host (device-pairing): it pairs with a code, resumes with its token, and holds the end-to-end
+// encrypted channel. The desktop app runs it in its service (`service/src/remote/controller.ts`) and the web app in
+// the browser (browser access, 0019); only the store of pairings differs. Nothing here needs Node.
 
-/** What the page this runs in tells the link. */
-export interface PageSettings {
-  /** Whether a pairing code may name a relay on this computer: only a page served from this computer. */
+/** What the controller running this link is, and what it accepts. */
+export interface LinkSettings {
+  /** Whether a pairing code may name a relay on this computer: only a test or a development run, or a local page. */
   readonly allowLocalRelay: boolean;
-  /** What the host lists this device as: a browser is a "desktop" (the default), the mobile app a "phone". */
-  readonly deviceKind?: DeviceKind;
-  /** The release of the web app that is running; the host must run the same one. */
+  readonly kind: ControllerKind;
+  /** The release this controller runs; the host must run the same one (0019, Versions). */
   readonly release: string;
+}
+
+/** An open link to a host, its answer read; what the host sends next waits until `listen` is called. */
+export interface HostLink {
+  readonly channel: SecureChannel;
+  readonly hostName: string;
+  listen(listener: (text: string) => void): void;
 }
 
 /** How long pairing or opening a link may take in all. */
 const linkMillis = 20_000;
 
-/** An outcome the owner reads, with the close code that tells the client whether trying again can help. */
-class LinkFailure extends Error {
-  constructor(
-    message: string,
-    readonly code: number = hostLinkCodes.couldNotOpen,
-  ) {
-    super(message);
-  }
-}
+/** Whether a relay address is on this computer: only a test, a development run or a page served locally names one. */
+export { isLocalOrigin } from "@outlore/channel";
 
-const failures = {
-  hostOffline: "The host is not connected right now. Check that its Outlore is open and Allow paired devices is on.",
-  timedOut: "The host did not answer in time.",
-  unreachable: "Could not reach the relay. Check your internet connection.",
-} as const;
-
-const isLocalOrigin = (origin: string) => {
-  try {
-    const { hostname } = new URL(origin);
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
-  } catch {
-    return false;
-  }
-};
-
-/** The words for a host of another release than this web app, or null when they match. */
-export const releaseProblemOf = (hostRelease: string | undefined, appRelease: string) =>
-  hostRelease === appRelease
-    ? null
-    : `This web app is release ${appRelease}, but the host runs ${hostRelease ?? "an older release"}. Open the web app of the host's release, or update the host.`;
+type FirstText = { readonly text: string } | "closed" | "timedOut";
 
 /**
  * Reads a channel's first text, then keeps whatever comes next until `listen` is called: the host sends its first
@@ -73,24 +52,20 @@ const tapChannel = (channel: SecureChannel) => {
   let isFirstRead = false;
   let forward: ((text: string) => void) | null = null;
   const later: string[] = [];
-  let settleFirst: (text: string | null) => void = () => {};
-  const first = new Promise<string | null>((resolve) => {
-    const timer = setTimeout(() => resolve(null), linkMillis);
-    settleFirst = (text) => {
-      clearTimeout(timer);
-      resolve(text);
-    };
-  });
+  const first = Deferred.makeUnsafe<FirstText>();
+  const settleFirst = (outcome: FirstText) => Deferred.doneUnsafe(first, Effect.succeed(outcome));
   channel.onText((text) => {
     if (!isFirstRead) {
       isFirstRead = true;
-      settleFirst(text);
+      settleFirst({ text });
     } else if (forward === null) later.push(text);
     else forward(text);
   });
-  channel.onClose(() => settleFirst(null));
+  channel.onClose(() => settleFirst("closed"));
   return {
-    first,
+    first: Deferred.await(first).pipe(
+      Effect.timeoutOrElse({ duration: linkMillis, orElse: () => Effect.succeed("timedOut" as const) }),
+    ),
     listen: (listener: (text: string) => void) => {
       forward = listener;
       for (const text of later.splice(0)) listener(text);
@@ -100,158 +75,143 @@ const tapChannel = (channel: SecureChannel) => {
 
 type Hello = Parameters<typeof encodeClientHello>[0];
 
-/** Opens the secure channel to a host, saying who this browser is with `hello`, and reads its answer. */
-const openToHost = async (
-  link: Pick<StoredHost, "relayOrigin" | "room"> & { hostPublicKey: Uint8Array },
-  hello: Hello,
-): Promise<{ channel: SecureChannel; listen: (listener: (text: string) => void) => void; reply: HostReply }> => {
-  const connected = await connectClient({ relayOrigin: link.relayOrigin, room: link.room }).catch(() => null);
-  if (connected === null || !connected.ok) throw new LinkFailure(failures.unreachable);
-  const connection = connected.value;
-  const opened = await openInitiator(connection.carrier, link.hostPublicKey, roomPrologue(link.room), {
-    handshakeTimeoutMs: linkMillis,
-  });
-  if (!opened.ok) {
-    connection.carrier.close();
-    // The relay says why it closed: no host in the room, or the host left it.
-    const code = connection.closeCode();
-    throw new LinkFailure(
-      code === closeCodes.hostOffline || code === closeCodes.hostLeft ? failures.hostOffline : failures.timedOut,
-    );
-  }
-  const channel = opened.value;
-  const tap = tapChannel(channel);
-  channel.sendText(encodeClientHello(hello));
-  const text = await tap.first;
-  const reply = text === null ? null : parseHostReply(text);
-  if (reply === null || !reply.ok) {
-    channel.close();
-    throw new LinkFailure(failures.timedOut);
-  }
-  return { channel, listen: tap.listen, reply: reply.value };
-};
+/**
+ * Why the relay turned the connection away, from its close code: no host, the host left, the room is full, or the
+ * relay limited this connection (trying again later may help).
+ */
+const relayRefusalOf = (code: number | null) =>
+  code === closeCodes.hostOffline || code === closeCodes.hostLeft
+    ? linkTexts.hostOffline
+    : code === closeCodes.roomFull
+      ? linkTexts.roomFull
+      : code === closeCodes.rateLimited
+        ? linkTexts.busy
+        : linkTexts.timedOut;
 
-/** Pairs this browser with the host that made `code`; keeps the host and returns it for the host menu. */
-export const pairFromBrowser = async (
+/**
+ * Opens the secure channel to a host, saying who this controller is with `hello`, and reads its answer. The relay
+ * connection and the channel close when the fiber is interrupted or anything below fails; once the answer is read, the
+ * caller owns the channel.
+ */
+const openToHost = Effect.fnUntraced(function* (
+  link: Omit<HostLinkRecord, "deviceId" | "deviceToken" | "hostName">,
+  hello: Hello,
+) {
+  const connection = yield* connectClient({ relayOrigin: link.relayOrigin, room: link.room }).pipe(
+    Effect.mapError(() => new LinkFailure("couldNotOpen", linkTexts.unreachable)),
+  );
+  const channel = yield* openInitiator(connection.carrier, link.hostPublicKey, roomPrologue(link.room), {
+    handshakeTimeoutMs: linkMillis,
+  }).pipe(
+    Effect.mapError(() => new LinkFailure("couldNotOpen", relayRefusalOf(connection.closeCode()))),
+    Effect.onError(() => Effect.sync(() => connection.carrier.close())),
+  );
+  return yield* Effect.gen(function* () {
+    const tap = tapChannel(channel);
+    channel.sendText(encodeClientHello(hello));
+    const first = yield* tap.first;
+    const reply = typeof first === "string" ? null : parseHostReply(first.text);
+    if (reply === null || !reply.ok) {
+      const isUnread = first === "closed" && hello.t === "pair";
+      return yield* new LinkFailure("couldNotOpen", isUnread ? linkTexts.unreadablePairing : linkTexts.timedOut);
+    }
+    return { channel, listen: tap.listen, reply: reply.value satisfies HostReply };
+  }).pipe(Effect.onError(() => Effect.sync(() => channel.close())));
+});
+
+const linkFailureOf = (reason: unknown): LinkFailure =>
+  reason instanceof LinkFailure
+    ? reason
+    : new LinkFailure("couldNotOpen", reason instanceof Error ? reason.message : linkTexts.unreachable);
+
+/** Pairs with the host that made `code`, a raw pairing code or a pairing link; keeps the host and returns it for the host menu. */
+export const pairWithCode = Effect.fnUntraced(function* (
   code: string,
   deviceName: string,
-  hosts: PairedHosts,
-  page: PageSettings,
-): Promise<KnownHost> => {
-  const decoded = decodePairingCode(code);
+  store: PairedHostStore,
+  settings: LinkSettings,
+) {
+  const decoded = readPairingInput(code);
   if (!decoded.ok) {
-    throw new Error(
-      decoded.kind === "unsupported-version"
-        ? "This pairing code is from a newer Outlore. Update this app and try again."
-        : refusalText["code-invalid"],
+    return yield* new LinkFailure(
+      "invalid",
+      decoded.kind === "unsupported-version" ? linkTexts.newerCode : refusalText["code-invalid"],
     );
   }
   const pairing = decoded.value;
-  // Only a page served from this computer may use a relay on it; a pasted code must not point a site at one.
-  if (isLocalOrigin(pairing.relayOrigin) && !page.allowLocalRelay) {
-    throw new Error("This pairing code names a relay on this computer, which is not accepted.");
+  // A pasted code must not point this controller at a relay on this computer, unless it runs from here itself.
+  if (isLocalOrigin(pairing.relayOrigin) && !settings.allowLocalRelay) {
+    return yield* new LinkFailure("invalid", linkTexts.localRelay);
   }
   const name = deviceName.trim();
   if (name === "" || name.length > maxDeviceNameLength) {
-    throw new Error(`Name this device in 1 to ${maxDeviceNameLength} characters.`);
+    return yield* new LinkFailure(
+      "invalid",
+      `Name this ${controllerWords[settings.kind].self} in 1 to ${maxDeviceNameLength} characters.`,
+    );
   }
-  const { channel, reply } = await openToHost(pairing, {
-    deviceKind: page.deviceKind ?? "desktop",
+  const { channel, reply } = yield* openToHost(pairing, {
+    deviceKind: settings.kind,
     deviceName: name,
+    release: settings.release,
     secret: encodeBase64Url(pairing.secret),
     t: "pair",
   });
   // The host is told everything it needs; the channel closes once the answer is read.
   channel.close();
-  if (reply.t === "refused") throw new Error(refusalText[reply.reason]);
-  if (reply.t !== "paired") throw new Error(failures.timedOut);
-  // The host has already counted this device; the owner can disconnect it there. Nothing is kept for a host this web
-  // app cannot use.
-  const mismatch = releaseProblemOf(reply.release, page.release);
-  if (mismatch !== null) throw new Error(mismatch);
-  return hosts.save(
-    {
-      deviceId: reply.deviceId,
-      deviceToken: reply.token,
-      hostName: reply.hostName,
-      hostPublicKey: encodeBase64Url(pairing.hostPublicKey),
-      relayOrigin: pairing.relayOrigin,
-      room: pairing.room,
-    },
-    Date.now(),
-  );
-};
+  if (reply.t === "refused" && reply.reason === "other-release") {
+    // The host turned the pairing away before keeping the device or spending the code.
+    const mismatch = releaseProblemOf(reply.release, settings.release, settings.kind);
+    return yield* new LinkFailure("otherRelease", mismatch ?? refusalText["other-release"]);
+  }
+  if (reply.t === "refused") return yield* new LinkFailure("invalid", refusalText[reply.reason]);
+  if (reply.t !== "paired") return yield* new LinkFailure("couldNotOpen", linkTexts.timedOut);
+  // A host of another release turns a pairing away before it keeps anything; one that answered anyway (an earlier
+  // release) has counted this device, and the owner can disconnect it there. Nothing is kept for a host this
+  // controller cannot use.
+  const mismatch = releaseProblemOf(reply.release, settings.release, settings.kind);
+  if (mismatch !== null) return yield* new LinkFailure("otherRelease", mismatch);
+  const now = yield* Clock.currentTimeMillis;
+  return yield* Effect.tryPromise({
+    catch: linkFailureOf,
+    try: () =>
+      store.save(
+        {
+          deviceId: reply.deviceId,
+          deviceToken: reply.token,
+          hostName: reply.hostName,
+          hostPublicKey: pairing.hostPublicKey,
+          relayOrigin: pairing.relayOrigin,
+          room: pairing.room,
+        },
+        now,
+      ),
+  });
+});
 
-/** Opens a link to a saved host: the secure channel, resumed, or the reason it could not be. */
-const resumeHost = async (hosts: PairedHosts, hostId: string, page: PageSettings) => {
-  const stored = hosts.link(hostId);
-  const hostPublicKey = stored === null ? null : decodeBase64Url(stored.hostPublicKey);
-  if (stored === null || hostPublicKey === null) {
-    throw new LinkFailure("This browser has no such host.", hostLinkCodes.refused);
+/** Opens a link to a kept host: the secure channel, resumed, or the reason it could not be. */
+export const resumeHost = Effect.fnUntraced(function* (store: PairedHostStore, hostId: string, settings: LinkSettings) {
+  const stored = yield* Effect.tryPromise({ catch: linkFailureOf, try: () => store.link(hostId) });
+  if (stored === null) {
+    return yield* new LinkFailure("noSuchHost", `This ${controllerWords[settings.kind].self} has no such host.`);
   }
-  const { channel, listen, reply } = await openToHost(
-    { hostPublicKey, relayOrigin: stored.relayOrigin, room: stored.room },
-    { deviceId: stored.deviceId, t: "resume", token: stored.deviceToken },
-  );
-  if (reply.t === "refused") {
-    channel.close();
-    throw new LinkFailure(refusalText[reply.reason], hostLinkCodes.refused);
-  }
-  if (reply.t !== "resumed") {
-    channel.close();
-    throw new LinkFailure(failures.timedOut);
-  }
-  const mismatch = releaseProblemOf(reply.release, page.release);
-  if (mismatch !== null) {
-    channel.close();
-    throw new LinkFailure(mismatch, hostLinkCodes.otherRelease);
-  }
-  hosts.touch(hostId, reply.hostName, Date.now());
-  return { channel, listen };
-};
-
-/**
- * The transport to a paired host for a `ServiceClient`. It reports itself open at once, as the desktop's loopback
- * socket does while the service opens the link, and holds what is sent until the link is up; a link that cannot open
- * closes with the codes the desktop uses: 4000 to try again later, 4002 when trying again cannot help, 4001 when the
- * host ended it.
- */
-export const openBrowserTransport =
-  (hosts: PairedHosts, hostId: string, page: PageSettings): OpenTransport =>
-  (handlers) => {
-    const waiting: string[] = [];
-    let channel: SecureChannel | null = null;
-    let isClosed = false;
-    void Promise.resolve().then(async () => {
-      if (isClosed) return;
-      handlers.onOpen();
-      try {
-        const opened = await resumeHost(hosts, hostId, page);
-        if (isClosed) return opened.channel.close();
-        channel = opened.channel;
-        opened.listen((text) => handlers.onText(text));
-        opened.channel.onClose(() => {
-          if (!isClosed) handlers.onClose(hostLinkCodes.ended, "The host disconnected.");
-        });
-        for (const text of waiting.splice(0)) opened.channel.sendText(text);
-      } catch (reason) {
-        if (isClosed) return;
-        const code = reason instanceof LinkFailure ? reason.code : hostLinkCodes.couldNotOpen;
-        const message = reason instanceof Error ? reason.message : failures.unreachable;
-        handlers.onClose(code, message.slice(0, 200));
-      }
-    });
-    return {
-      close: () => {
-        isClosed = true;
-        channel?.close();
-      },
-      get isOpen() {
-        return !isClosed;
-      },
-      send: (text) => {
-        if (channel === null) waiting.push(text);
-        else channel.sendText(text);
-      },
-    };
-  };
+  const { channel, listen, reply } = yield* openToHost(stored, {
+    deviceId: stored.deviceId,
+    t: "resume",
+    token: stored.deviceToken,
+  });
+  // From here the channel closes unless the link is handed over: on a refusal, another release, a failed store, or
+  // an interruption (the owning fiber was canceled).
+  return yield* Effect.gen(function* () {
+    if (reply.t !== "resumed") {
+      if (reply.t === "refused") return yield* new LinkFailure("refused", refusalText[reply.reason]);
+      return yield* new LinkFailure("couldNotOpen", linkTexts.timedOut);
+    }
+    const mismatch = releaseProblemOf(reply.release, settings.release, settings.kind);
+    if (mismatch !== null) return yield* new LinkFailure("otherRelease", mismatch);
+    // Noting the answer may take a while (the service writes it to its database); `listen` keeps what arrives meanwhile.
+    const now = yield* Clock.currentTimeMillis;
+    yield* Effect.tryPromise({ catch: linkFailureOf, try: () => store.touch(hostId, reply.hostName, now) });
+    return { channel, hostName: reply.hostName, listen } satisfies HostLink;
+  }).pipe(Effect.onError(() => Effect.sync(() => channel.close())));
+});

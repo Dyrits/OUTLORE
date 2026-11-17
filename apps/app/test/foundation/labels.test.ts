@@ -426,7 +426,7 @@ describe("a plan's limits in words", () => {
 
   it("says a window's use and when it resets", () => {
     expect(planLimitTextOf({ label: "5-hour", resetsAt: reset, usedPercent: 40 })).toBe(
-      "5-hour · 40% used · resets 19:30",
+      `5-hour · 40% used · resets ${new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(reset)}`,
     );
   });
 
@@ -439,7 +439,9 @@ describe("a plan's limits in words", () => {
           { label: "Weekly", resetsAt: reset, usedPercent: 93 },
         ],
       }),
-    ).toBe("5-hour 40% · Weekly 93% · as of 14:02");
+    ).toBe(
+      `5-hour 40% · Weekly 93% · as of ${new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(at)}`,
+    );
   });
 
   it("says the limits are not reported, never guessing them", () => {

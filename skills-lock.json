@@ -11,7 +11,7 @@
       "source": "cloudflare/skills",
       "sourceType": "github",
       "skillPath": "skills/cloudflare/SKILL.md",
-      "computedHash": "4bc710f0b53747dcf25621f499d4095f53e6f809e8a094fb72ec879805702ed1"
+      "computedHash": "a40c5c77e4b96b0f6603a54e67bf2ff401a872366af48ff8f6ae0e872d4ad324"
     },
     "durable-objects": {
       "source": "cloudflare/skills",
@@ -29,37 +29,37 @@
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-data-fetching/SKILL.md",
-      "computedHash": "e6d81073bbc3698c74d03a5790b68a3d1adcda0c5681da01576651575b64a35d"
+      "computedHash": "5566b445229ee4751aca90f0f08e06af0c53aa16d2227f20e9137c264cb9bc6e"
     },
     "expo-design-system": {
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-design-system/SKILL.md",
-      "computedHash": "9a848126c0cc6e07fd35830f63b53d4aa8b48abb96eabd4cb4be6034a5635d09"
+      "computedHash": "e2fe37e041433e6f73702cc7dd8e8f2736c5e6fa62ce32cccc630c5f4ce76309"
     },
     "expo-dom": {
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-dom/SKILL.md",
-      "computedHash": "f6cb695d6d0739641133e9998910d46ebadf672e3da67821bc4e160a20a0f12f"
+      "computedHash": "eb211170e3cd6b72c6bed26c18586a5ad6d48a45fc481f1b411682c4f7c39ae2"
     },
     "expo-overview": {
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-overview/SKILL.md",
-      "computedHash": "5d7950efcd9abc68e7b9e0d4926fffd11063c45308b7b35faecd3ec84ab38ce3"
+      "computedHash": "06a4c16a5e14819b54fd419f2009119ffcb6f8694b067ad589255cf03f5c6671"
     },
     "expo-router": {
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-router/SKILL.md",
-      "computedHash": "f4d5e46dd7c7a1712db7c4e7b4fdd2649a55e16c97d71207221726cd7a58a3c6"
+      "computedHash": "9c3a05a145ceec25ccca5c733b9403b03c7174c60c48c017009c2c5a1a68c8cb"
     },
     "expo-upgrade": {
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-upgrade/SKILL.md",
-      "computedHash": "64e918ef206f6bfa450a20fb2668371d884c8d1003b6e947d825396da27c9fe0"
+      "computedHash": "e7963891b55078eec241470f30ebd45afe0d3b7f1363d62e26f5af1b32382f7e"
     },
     "frontend-design": {
       "source": "anthropics/skills",
@@ -89,7 +89,7 @@
       "source": "cloudflare/skills",
       "sourceType": "github",
       "skillPath": "skills/workers-best-practices/SKILL.md",
-      "computedHash": "8f6d21790dd1c99fa9357cb4ada0aedef39c4d90f7eae1865b4e31bf9946ab1f"
+      "computedHash": "7f941bbc549454872a4c7c261bf75a1ef7aaa69666bc85cec91e97cf40c11cc6"
     },
     "wrangler": {
       "source": "cloudflare/skills",

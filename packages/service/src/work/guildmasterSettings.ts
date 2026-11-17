@@ -1,56 +1,31 @@
-import { Settings } from "@outlore/contracts";
-import { Effect, Schema } from "effect";
-import { readSettings, type ToolAnswer, writeSettings } from "../core/index.ts";
+import { Effect, Match } from "effect";
+import { readSettings, type ToolAnswer, toolRefusal, toolText, writeSettings } from "../core/index.ts";
 import { changed, unchanged, type WithFollowUps } from "./commands.ts";
-import { isGuildmasterThread } from "./guildmaster.ts";
+import { isGuildmasterThread } from "./guildmasterPlace.ts";
+import { readSettingChange } from "./guildmasterPreflight.ts";
 import { consumeReceipt, isStructuralCaller, notAuthorizedText } from "./guildmasterProvenance.ts";
+import { settingsKeptFromChronicler } from "./guildmasterSettingNames.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 
 // Chronicler's settings tools (quest coordination, CHG-0193): it reads the owner's settings, and changes one once the exact
 // change is authorized by provenance (guildmasterProvenance.ts, CHG-0208). Chronicler calls them, and a Ritual's own thread
 // within its reviewed scope; never on its own initiative.
 
-/**
- * The settings Chronicler never changes: what agents may do without asking and what they may spend. The owner sets them in
- * the Workshop, because a quest's text could otherwise talk Chronicler into widening them.
- */
-export const settingsKeptFromChronicler = [
-  "approvalLevel",
-  "defaultMissionBudget",
-  "globalBudget",
-  "globalBudgetPeriod",
-  "shouldAllowOutsideSandbox",
-  "shouldFetchPrices",
-] as const satisfies ReadonlyArray<keyof Settings>;
+/** Kept for ritualScope.ts, which is not in this slice and should import it from guildmasterSettingNames.ts. */
+export { changeableSettings } from "./guildmasterSettingNames.ts";
 
-const isKept = (key: string) => (settingsKeptFromChronicler as ReadonlyArray<string>).includes(key);
-
-/** The value as parsed JSON, or undefined when the text is not JSON. */
-const jsonOf = (text: string): unknown => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-};
-
-const refused = (text: string): WithFollowUps<ToolAnswer> => unchanged({ isError: true, text });
-
-/** The settings' names, which `change_setting` takes: every setting Chronicler may change. */
-export const changeableSettings = (Object.keys(Settings.fields) as ReadonlyArray<keyof Settings>).filter(
-  (key) => !isKept(key),
-);
+const refused = (text: string): WithFollowUps<ToolAnswer> => unchanged(toolRefusal(text));
 
 /** `read_settings`: the owner's settings as JSON, with the names Chronicler may not change. Only Chronicler reads them. */
-export const readSettingsByGuildmaster = (callerId: string) =>
-  Effect.gen(function* () {
-    if (!(yield* isGuildmasterThread(callerId))) return refused("Only Chronicler reads the settings here.");
-    const settings = yield* readSettings;
-    return unchanged({
-      isError: false,
-      text: `${JSON.stringify(settings)}\n\nYou may not change: ${settingsKeptFromChronicler.join(", ")}; the owner sets those in the Workshop.`,
-    } satisfies ToolAnswer);
-  });
+export const readSettingsByGuildmaster = Effect.fnUntraced(function* (callerId: string) {
+  if (!(yield* isGuildmasterThread(callerId))) return refused("Only Chronicler reads the settings here.");
+  const settings = yield* readSettings;
+  return unchanged(
+    toolText(
+      `${JSON.stringify(settings)}\n\nYou may not change: ${settingsKeptFromChronicler.join(", ")}; the owner sets those in the Workshop.`,
+    ),
+  );
+});
 
 /**
  * `change_setting`: sets one setting to a new value, kept whole, as the settings screen would save it; refused for a
@@ -60,24 +35,16 @@ export const changeSettingByGuildmaster = (callerId: string, args: ArgumentsOf<"
   Effect.gen(function* () {
     if (!(yield* isStructuralCaller(callerId, "change_setting")))
       return refused("Only Chronicler changes the settings here.");
-    if (isKept(args.setting))
-      return refused(`Not done: ${args.setting} is the owner's alone to change, in the Workshop. Tell them where.`);
-    if (!(changeableSettings as ReadonlyArray<string>).includes(args.setting))
-      return refused(`Not done: no setting "${args.setting}". Read the settings first; use a name from them.`);
-    const value = jsonOf(args.value);
-    if (value === undefined)
-      return refused(`Not done: value must be JSON text, such as true, 14, or "Steer"; ${args.value} is not.`);
-    const before = yield* readSettings;
-    const after = { ...before, [args.setting]: value };
-    // The value must decode as the setting, whole: a wrong shape or range changes nothing.
-    if (Schema.decodeUnknownExit(Settings)(after)._tag === "Failure")
-      return refused(
-        `Not done: ${JSON.stringify(value)} is not a value ${args.setting} accepts. Read the settings for its shape.`,
-      );
-    if (!(yield* consumeReceipt(callerId, "change_setting", args))) return refused(notAuthorizedText);
-    yield* writeSettings(after as Settings);
-    return changed({
-      isError: false,
-      text: `Changed ${args.setting} from ${JSON.stringify(before[args.setting as keyof Settings])} to ${JSON.stringify(value)}. Tell the owner in a sentence.`,
-    } satisfies ToolAnswer);
+    return yield* Match.valueTags(yield* readSettingChange(args), {
+      Clear: Effect.fnUntraced(function* ({ after, before, setting, value }) {
+        if (!(yield* consumeReceipt(callerId, "change_setting", args))) return refused(notAuthorizedText);
+        yield* writeSettings(after);
+        return changed(
+          toolText(
+            `Changed ${setting} from ${JSON.stringify(before)} to ${JSON.stringify(value)}. Tell the owner in a sentence.`,
+          ),
+        );
+      }),
+      Refused: ({ text }) => Effect.succeed(refused(text)),
+    });
   }).pipe(Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refused(`Not done: ${failure.message}`))));

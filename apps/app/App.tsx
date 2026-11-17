@@ -1,66 +1,61 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer } from "react";
 import { Pressable, Text, View } from "react-native";
 import { ArchiveNavigation } from "./src/foundation/archiveNavigation";
-import { remoteDeviceNoun } from "./src/foundation/browser/page";
 import { applyAppearance, rememberPlace, resumedPlace } from "./src/foundation/colorScheme";
 import { ActiveHostContext, HostMenuContext } from "./src/foundation/hostContext";
+import { PageNavigation } from "./src/foundation/pageNavigation";
 import { colors } from "./src/foundation/theme";
 import { useHostConnection } from "./src/foundation/useHostConnection";
 import { useRightPanel } from "./src/foundation/useRightPanel";
-import { type SettingsSectionId, settingsSectionOf } from "./src/settings/settingsSections";
+import type { SettingsSectionId } from "./src/settings/settingsSections";
 import { AddHostModal } from "./src/shell/addHostModal";
 import { AppScreen } from "./src/shell/appScreen";
 import { appStyles as styles } from "./src/shell/appStyles";
-import { archiveParentOf, detailsModeOf, resumablePlaces } from "./src/shell/navigation";
+import { initialLocation, navigate, panelScopeOf } from "./src/shell/location";
+import { detailsModeOf } from "./src/shell/navigation";
 import { useAttentionNotice } from "./src/shell/notifications";
 import type { RealmListing } from "./src/shell/questTree";
 import { Shell } from "./src/shell/shell";
 import type { Place } from "./src/shell/sidebar";
 
-export default function App() {
+export function App() {
   const {
     isBrowser,
     pair,
     hostId,
     setHostId,
-    hostClient,
     hosts,
     computerName,
+    deviceNoun,
     isAddingHost,
     setIsAddingHost,
-    linkFailure,
+    offer,
     client,
-    failure,
     setFailure,
     activeHost,
+    status,
+    retry,
   } = useHostConnection();
-  const [openMission, setOpenMission] = useState<MissionId | null>(null);
-  // The place the rail leads to; a quest, when one is open, shows in its stead.
-  const [place, setPlace] = useState<Place>(
-    () => resumablePlaces.find((resumable) => resumable === resumedPlace) ?? "Guildmaster",
-  );
-  // The realm or Free Realm whose quests the quest list page shows.
-  const [listedRealm, setListedRealm] = useState<RealmListing | null>(null);
-  // The quest picked on the board, shown in the side panel without opening it.
-  const [selectedMission, setSelectedMission] = useState<MissionId | null>(null);
-  // The side-quest open in the open quest, chosen in the sidebar or the conversation; null for the quest itself.
-  const [openThread, setOpenThread] = useState<ThreadId | null>(null);
-  const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
-  const [settingsSection, setSettingsSection] = useState<SettingsSectionId>(() => settingsSectionOf(resumedPlace));
-  // The realm chosen for the Guildmaster's next message: from a realm's page.
-  const [guildmasterRealm, setGuildmasterRealm] = useState<string | null>(null);
-  // Counts openings from the sidebar, so choosing the open mission again goes back to its threads.
-  const [openCount, setOpenCount] = useState(0);
-  const rightPanel = useRightPanel(hostId, {
-    isPermissionsOpen,
-    openCount,
+  const [location, dispatch] = useReducer(navigate, resumedPlace, initialLocation);
+  const {
     openMission,
     openThread,
+    selectedMission,
+    listedRealm,
     place,
-    realm: place === "RealmQuests" ? (listedRealm?.id ?? null) : null,
-    section: place === "Settings" ? settingsSection : null,
-  });
+    settingsSection,
+    isPermissionsOpen,
+    guildmasterRealm,
+    openCount,
+  } = location;
+  const setGuildmasterRealm = (path: string | null) => dispatch({ path, type: "chroniclerRealm" });
+  const setIsPermissionsOpen = (isOpen: boolean) => dispatch({ isOpen, type: "permissions" });
+  const setSettingsSection = (section: SettingsSectionId) => dispatch({ section, type: "section" });
+  const setOpenThread = (id: ThreadId | null) => {
+    if (openMission !== null) dispatch({ id, missionId: openMission, type: "thread" });
+  };
+  const rightPanel = useRightPanel(hostId, panelScopeOf(location));
   useAttentionNotice(client);
 
   useEffect(() => rememberPlace(place), [place]);
@@ -75,28 +70,46 @@ export default function App() {
       onAdd: () => setIsAddingHost(true),
       onChoose: (next: string | null) => {
         // Another computer's quests are not this one's: nothing open stays open.
-        setOpenMission(null);
-        setOpenThread(null);
-        setSelectedMission(null);
-        setListedRealm(null);
-        setIsPermissionsOpen(false);
+        dispatch({ type: "host" });
         setFailure(null);
         setHostId(next);
       },
     }),
     [computerName, hostId, hosts, isBrowser, setFailure, setHostId, setIsAddingHost],
   );
+  // Add a host, opened from the host menu or by a pairing link. It also shows over the screen that waits for a host, so a
+  // link that opens the app while its host is unreachable is not lost.
+  const addHostDialog = isAddingHost ? (
+    <AddHostModal
+      computerName={computerName}
+      deviceNoun={deviceNoun}
+      key={offer?.code ?? "manual"}
+      offer={offer}
+      onCancel={() => setIsAddingHost(false)}
+      onPair={(code, deviceName) =>
+        pair(code, deviceName).then((host) => {
+          setIsAddingHost(false);
+          hostMenu.onChoose(host.id);
+          return host;
+        })
+      }
+    />
+  ) : null;
   // A browser with no host has nothing to show: it pairs first.
-  if (isBrowser && hosts.length === 0) {
+  if (status.kind === "pairing" || (status.canPair && isAddingHost)) {
     return (
       <View style={styles.center}>
         <AddHostModal
           computerName={computerName}
-          deviceNoun={remoteDeviceNoun}
+          deviceNoun={deviceNoun}
           isRequired
+          key={offer?.code ?? "manual"}
+          offer={offer}
           onPair={(code, deviceName) =>
             pair(code, deviceName).then((host) => {
+              setIsAddingHost(false);
               hostMenu.onChoose(host.id);
+              retry();
               return host;
             })
           }
@@ -104,59 +117,51 @@ export default function App() {
       </View>
     );
   }
-  if (client === null) {
+  if (status.kind === "connecting" || client === null) {
     return (
       <View style={styles.center}>
-        <Text style={styles.connecting}>
-          {failure ?? (hostId === null ? "Connecting to the local service…" : `Connecting to ${activeHost.name}…`)}
-        </Text>
-        {hostId !== null && !isBrowser && (
+        <Text style={styles.connecting}>{status.message}</Text>
+        {status.canRetry && (
+          <Pressable accessibilityRole="button" onPress={retry} style={styles.backButton}>
+            <Text style={styles.backText}>Retry</Text>
+          </Pressable>
+        )}
+        {status.canPair && (
+          <Pressable accessibilityRole="button" onPress={() => setIsAddingHost(true)} style={styles.backButton}>
+            <Text style={styles.backText}>Pair again</Text>
+          </Pressable>
+        )}
+        {hosts
+          .filter((host) => host.id !== hostId)
+          .map((host) => (
+            <Pressable
+              accessibilityRole="button"
+              key={host.id}
+              onPress={() => hostMenu.onChoose(host.id)}
+              style={styles.backButton}
+            >
+              <Text style={styles.backText}>Connect to {host.name}</Text>
+            </Pressable>
+          ))}
+        {status.canUseComputer && (
           <Pressable accessibilityRole="button" onPress={() => hostMenu.onChoose(null)} style={styles.backButton}>
             <Text style={styles.backText}>Back to this computer</Text>
           </Pressable>
         )}
+        {addHostDialog}
       </View>
     );
   }
-  // The sidebar leads to one place at a time: going there closes whatever else is open.
-  const goTo = (next: Place) => {
-    setSettingsSection("permissions");
-    setOpenMission(null);
-    setOpenThread(null);
-    setSelectedMission(null);
-    setIsPermissionsOpen(false);
-    setPlace(next);
-  };
-  const openMissionFromAnywhere = (id: MissionId) => {
-    setIsPermissionsOpen(false);
-    setSelectedMission(null);
-    setOpenMission(id);
-    setOpenThread(null);
-    setOpenCount(openCount + 1);
-  };
-  // A side-quest of the quest already open shows in place; one of another quest opens that quest on it.
-  const openSideQuest = (missionId: MissionId, threadId: ThreadId) => {
-    setIsPermissionsOpen(false);
-    setSelectedMission(null);
-    if (missionId !== openMission) {
-      setOpenMission(missionId);
-      setOpenCount(openCount + 1);
-    }
-    setOpenThread(threadId);
-  };
+  const goTo = (place: Place) => dispatch({ place, type: "place" });
+  const openMissionFromAnywhere = (id: MissionId) => dispatch({ id, type: "quest" });
+  const openSideQuest = (missionId: MissionId, id: ThreadId) => dispatch({ id, missionId, type: "thread" });
   const selectMission = (id: MissionId | null) => {
-    setSelectedMission(id);
+    dispatch({ id, type: "select" });
     rightPanel.show(id === null ? null : { tab: "quest" });
   };
-  const openRealm = (listing: RealmListing) => {
-    setListedRealm(listing);
-    goTo("RealmQuests");
-  };
-  const openParent = (quest: { workspaceId: string | null; workspaceName: string | null }) => {
-    const parent = archiveParentOf(quest);
-    setListedRealm(parent.listing);
-    goTo(parent.place);
-  };
+  const openRealm = (listing: RealmListing) => dispatch({ listing, type: "realm" });
+  const openParent = (quest: { workspaceId: string | null; workspaceName: string | null }) =>
+    dispatch({ quest, type: "parent" });
   const detailsMode = detailsModeOf({ hasListedRealm: listedRealm !== null, openMission, place, selectedMission });
   const details =
     detailsMode === "toggle"
@@ -170,7 +175,9 @@ export default function App() {
       chronicler={{ onRealm: setGuildmasterRealm, realmPath: guildmasterRealm }}
       client={client}
       details={details}
+      dispatch={dispatch}
       listedRealm={listedRealm}
+      location={location}
       onOpenMission={openMissionFromAnywhere}
       onOpenRealmQuests={openRealm}
       onOpenThread={openSideQuest}
@@ -183,7 +190,7 @@ export default function App() {
       <AppScreen
         client={client}
         navigation={{
-          closeMission: () => setOpenMission(null),
+          closeMission: () => dispatch({ type: "close" }),
           goTo,
           openMission: openMissionFromAnywhere,
           openParent,
@@ -213,14 +220,19 @@ export default function App() {
     <ActiveHostContext.Provider value={activeHost}>
       <HostMenuContext.Provider value={hostMenu}>
         <View style={styles.root}>
-          {hostId !== null && linkFailure !== null && (
+          {status.failure !== null && (
             <View accessibilityRole="alert" style={styles.banner}>
               <Text numberOfLines={2} style={styles.bannerText}>
-                {activeHost.name}: {linkFailure}
-                {hostClient?.hasGivenUp === true ? "" : " Trying again…"}
+                {activeHost.name}: {status.failure}
+                {status.isRetrying ? " Trying again…" : ""}
               </Text>
+              {status.canRetry && (
+                <Pressable accessibilityRole="button" onPress={retry}>
+                  <Text style={styles.bannerLink}>Retry</Text>
+                </Pressable>
+              )}
               {isBrowser ? (
-                hostClient?.needsPairing === true && (
+                status.canPair && (
                   <Pressable accessibilityRole="button" onPress={() => setIsAddingHost(true)}>
                     <Text style={styles.bannerLink}>Pair again</Text>
                   </Pressable>
@@ -238,23 +250,19 @@ export default function App() {
               realm: () => goTo("Realms"),
             }}
           >
-            <View style={styles.root}>{shell}</View>
+            <PageNavigation.Provider
+              value={{
+                isChroniclerBudgetOpen: location.isChroniclerBudgetOpen,
+                onChroniclerBudget: (isOpen) => dispatch({ isOpen, type: "chroniclerBudget" }),
+                onPage: (page) => dispatch({ page, type: "page" }),
+                page: location.page,
+              }}
+            >
+              <View style={styles.root}>{shell}</View>
+            </PageNavigation.Provider>
           </ArchiveNavigation.Provider>
         </View>
-        {isAddingHost && (
-          <AddHostModal
-            computerName={computerName}
-            deviceNoun={isBrowser ? remoteDeviceNoun : "computer"}
-            onCancel={() => setIsAddingHost(false)}
-            onPair={(code, deviceName) =>
-              pair(code, deviceName).then((host) => {
-                setIsAddingHost(false);
-                hostMenu.onChoose(host.id);
-                return host;
-              })
-            }
-          />
-        )}
+        {addHostDialog}
       </HostMenuContext.Provider>
     </ActiveHostContext.Provider>
   );

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { decodeBase64Url, encodeBase64Url } from "../src/index.ts";
 
-describe("base64url", () => {
+describe("encoding and decoding base64url", () => {
   it("encodes the RFC 4648 examples without padding", () => {
     const text = (value: string) => encodeBase64Url(new TextEncoder().encode(value));
     expect([text(""), text("f"), text("fo"), text("foo"), text("foob"), text("fooba"), text("foobar")]).toEqual([

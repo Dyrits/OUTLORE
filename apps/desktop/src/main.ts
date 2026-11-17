@@ -8,9 +8,11 @@ import { iconFileOf } from "./appIcon.ts";
 import { appVersionOf } from "./appVersion.ts";
 import { moveFormerData } from "./formerData.ts";
 import { instanceOf } from "./instance.ts";
+import { createPairingLinkQueue, pairingLinkIn, protocolClientOf } from "./pairingLinks.ts";
 import { mergedPathOf, readLoginPath } from "./shellPath.ts";
 import { Terminals } from "./terminals.ts";
-import { setUpUpdates } from "./updates/setup.ts";
+import { setUpUpdates } from "./updateSetup.ts";
+import { createWindowHandlers } from "./windowCalls.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** The app's icons, beside `dist` in the desktop app's own `assets`: Outlore's, and Gild's hooded figure. */
@@ -95,12 +97,44 @@ const quitWith = (reason: string) => {
 };
 
 let mainWindow: BrowserWindow | undefined;
-// A second launch on this profile brings the running window forward instead of starting another service.
-app.on("second-instance", () => {
+const bringWindowForward = () => {
   if (mainWindow === undefined || mainWindow.isDestroyed()) return;
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.focus();
+};
+// Pairing links (`outlore://pair#<code>`) go to the window alone: never logged, never in a title or a command line of
+// ours. The link is as secret as the code in it.
+const pairingLinks = createPairingLinkQueue((link) => {
+  if (mainWindow !== undefined && !mainWindow.isDestroyed()) mainWindow.webContents.send("outlore:pairingLink", link);
 });
+// A second launch on this profile brings the running window forward instead of starting another service; on Windows and
+// Linux a link opened while the app runs arrives as that launch's arguments.
+app.on("second-instance", (_event, argv) => {
+  const link = pairingLinkIn(argv);
+  if (link !== null) pairingLinks.receive(link);
+  bringWindowForward();
+});
+// macOS hands the link to the running app (or to the one it starts), before ready as well as after.
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  pairingLinks.receive(url);
+  bringWindowForward();
+});
+if (isFirstInstance) {
+  const protocolClient = protocolClientOf({
+    argv1: process.argv[1],
+    environment: process.env,
+    execPath: process.execPath,
+    isDefaultApp: process.defaultApp === true,
+    isPackaged: app.isPackaged,
+  });
+  if (protocolClient !== null) {
+    app.setAsDefaultProtocolClient("outlore", protocolClient.executable ?? void 0, protocolClient.args);
+  }
+  // Windows and Linux start the app with the link as an argument.
+  const firstLink = pairingLinkIn(process.argv);
+  if (firstLink !== null) pairingLinks.receive(firstLink);
+}
 
 app
   .whenReady()
@@ -114,8 +148,9 @@ app
         return file === null ? new Response("Not found", { status: 404 }) : net.fetch(pathToFileURL(file).toString());
       });
     }
-    // A Finder or Dock launch gives only the system folders, where the harness tools are not; the service and the shells inherit this path.
-    if (app.isPackaged) {
+    // A Finder or Dock launch on macOS gives only the system folders, where the harness tools are not; the service and
+    // the shells inherit this path. Windows has no login shell to ask, and its launcher already carries its `;`-separated path.
+    if (app.isPackaged && process.platform !== "win32") {
       const loginPath = readLoginPath(userInfo().shell || process.env.SHELL || "/bin/sh");
       process.env.PATH = mergedPathOf({ home: homedir(), launchPath: process.env.PATH, loginPath });
     }
@@ -135,15 +170,11 @@ app
     });
     mainWindow = window;
     // The owner token travels in the endpoint: only the app's own main frame may read it (audit SA-12).
-    ipcMain.handle("outlore:endpoint", (event) => {
-      if (
-        event.sender !== window.webContents ||
-        event.senderFrame !== window.webContents.mainFrame ||
-        new URL(event.senderFrame.url).origin !== new URL(appUrl).origin
-      )
-        throw new Error("The endpoint is only given to Outlore's desktop window.");
-      return endpoint;
-    });
+    const handleWindow = createWindowHandlers(ipcMain, window.webContents, appUrl);
+    handleWindow("outlore:endpoint", () => endpoint);
+    // The window takes the link that came before it listened, then gets the later ones as events; a reload starts over.
+    handleWindow("outlore:pairingLinkTake", () => pairingLinks.take());
+    window.webContents.on("did-start-loading", () => pairingLinks.reset());
     // A link in a reply opens in the system's browser, never in a window of its own that could receive the bridge, and
     // the app's window never navigates away from the app.
     window.webContents.setWindowOpenHandler(({ url }) => {
@@ -162,38 +193,21 @@ app
       },
     );
     // Terminal execution is a desktop capability; embedded frames cannot call it.
-    const checkTerminalSender = (event: Electron.IpcMainInvokeEvent) => {
-      if (
-        event.sender !== window.webContents ||
-        event.senderFrame !== window.webContents.mainFrame ||
-        new URL(event.senderFrame.url).origin !== new URL(appUrl).origin
-      )
-        throw new Error("Terminal access is only available in Outlore's desktop window.");
-    };
-    ipcMain.handle("outlore:terminalOpen", (event, id: string, cwd: string | null) => {
-      checkTerminalSender(event);
+    handleWindow("outlore:terminalOpen", (id: string, cwd: string | null) => {
       return terminals.open(id, cwd);
     });
-    ipcMain.handle("outlore:terminalWrite", (event, id: string, data: string) => {
-      checkTerminalSender(event);
+    handleWindow("outlore:terminalWrite", (id: string, data: string) => {
       terminals.write(id, data);
     });
-    ipcMain.handle("outlore:terminalResize", (event, id: string, cols: number, rows: number) => {
-      checkTerminalSender(event);
+    handleWindow("outlore:terminalResize", (id: string, cols: number, rows: number) => {
       terminals.resize(id, cols, rows);
     });
-    ipcMain.handle("outlore:terminalClose", (event, id: string) => {
-      checkTerminalSender(event);
+    handleWindow("outlore:terminalClose", (id: string) => {
       terminals.close(id);
     });
     window.on("closed", () => terminals.dispose());
     // The theme chosen in the app sets the Dock's and the window's icon; the installed file's own icon stays Outlore's.
-    ipcMain.handle("outlore:setTheme", (event, theme: unknown) => {
-      if (
-        event.sender !== window.webContents ||
-        new URL(event.senderFrame?.url ?? "").origin !== new URL(appUrl).origin
-      )
-        throw new Error("The theme is only set from Outlore's desktop window.");
+    handleWindow("outlore:setTheme", (theme: unknown) => {
       app.dock?.setIcon(iconPathOf(theme));
       window.setIcon(iconPathOf(theme));
     });
@@ -204,23 +218,12 @@ app
       bounce = null;
     };
     window.on("focus", stopBounce);
-    ipcMain.handle("outlore:requestAttention", (event) => {
-      if (
-        event.sender !== window.webContents ||
-        new URL(event.senderFrame?.url ?? "").origin !== new URL(appUrl).origin
-      )
-        throw new Error("The Dock is only called from Outlore's desktop window.");
+    handleWindow("outlore:requestAttention", () => {
       if (window.isDestroyed() || window.isFocused() || bounce !== null) return;
       bounce = app.dock?.bounce("critical") ?? null;
     });
     // The installed app looks for a newer release once its window is up; the owner decides when it installs.
-    const updates = await setUpUpdates(
-      window,
-      (event) =>
-        event.sender === window.webContents &&
-        event.senderFrame === window.webContents.mainFrame &&
-        new URL(event.senderFrame.url).origin === new URL(appUrl).origin,
-    );
+    const updates = await setUpUpdates(window, handleWindow);
     if (!(await load(window))) quitWith(`Could not load ${appUrl}`);
     else updates.start();
   })

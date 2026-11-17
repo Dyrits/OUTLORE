@@ -162,4 +162,73 @@ describe("the owner naming a structural action", () => {
     for (const phrasing of refused)
       expect(isNamedByOwner(`Create realm Garden at ${phrasing}`, garden), phrasing).toBe(false);
   });
+
+  it("never lets a quoted path stand for its shorter prefix, and needs the closing quote", () => {
+    const garden: NamedAction = { operation: "CreateRealm", targets: ["Garden"], value: "/Users/me/Google" };
+    for (const phrasing of [
+      '"/Users/me/Google Drive/work"',
+      "`/Users/me/Google Drive/work`",
+      "“/Users/me/Google Drive/work”",
+      "'/Users/me/Google Drive/work'",
+      '"/Users/me/Google, Drive/work"',
+      '"/Users/me/Google',
+    ])
+      expect(isNamedByOwner(`Create realm Garden at ${phrasing}.`, garden), phrasing).toBe(false);
+    for (const phrasing of ['"/Users/me/Google"', "`/Users/me/Google/`", "“/Users/me/Google”", "'/Users/me/Google'"])
+      expect(isNamedByOwner(`Create realm Garden at ${phrasing}.`, garden), phrasing).toBe(true);
+  });
+
+  it("asks when an unquoted path is followed by what may be the rest of a path with a space", () => {
+    const garden: NamedAction = { operation: "CreateRealm", targets: ["Garden"], value: "/Users/me/Google" };
+    expect(isNamedByOwner("Create realm Garden at /Users/me/Google Drive/work.", garden)).toBe(false);
+    expect(isNamedByOwner("Create realm Garden at /Users/me/Google now.", garden)).toBe(true);
+    expect(isNamedByOwner("Create realm Garden at /Users/me/Google.", garden)).toBe(true);
+  });
+
+  it("keeps a quoted name whole when splitting a message into requests", () => {
+    expect(isNamedByOwner('Archive "Weekly report draft, Old notes".', archive)).toBe(false);
+    expect(isNamedByOwner('Archive "Weekly report draft and Old notes".', archive)).toBe(false);
+    expect(isNamedByOwner('Archive "Weekly report draft".', archive)).toBe(true);
+    expect(isNamedByOwner('Archive "Weekly report draft", and rename Old notes to "x, y".', archive)).toBe(true);
+  });
+
+  it("accepts a plain request in French for each operation (SP-A-06)", () => {
+    const rapport = { rivals: ["Notes"], targets: ["Rapport hebdomadaire"] };
+    const accepted: Array<[string, NamedAction]> = [
+      ["Archive Rapport hebdomadaire.", { ...rapport, operation: "Archive", value: null }],
+      ["Merci d'archiver Rapport hebdomadaire", { ...rapport, operation: "Archive", value: null }],
+      ["Arrête Rapport hebdomadaire.", { ...rapport, operation: "Stop", value: null }],
+      ["Termine Rapport hebdomadaire.", { ...rapport, operation: "Done", value: null }],
+      ["Renomme Rapport hebdomadaire en Bilan.", { ...rapport, operation: "Rename", value: "Bilan" }],
+      ["Renomme le royaume Idées en Notions.", { operation: "RenameRealm", targets: ["Idées"], value: "Notions" }],
+      ["Ajoute un royaume Jardin.", { operation: "CreateRealm", targets: ["Jardin"], value: null }],
+      [
+        "Crée un royaume Jardin dans /dummy/root.",
+        { operation: "CreateRealm", targets: ["Jardin"], value: "/dummy/root" },
+      ],
+      [
+        "Active shouldShowFinishedQuests",
+        { operation: "ChangeSetting", targets: ["shouldShowFinishedQuests"], value: null },
+      ],
+      [
+        "Mets shouldShowFinishedQuests à true.",
+        { operation: "ChangeSetting", targets: ["shouldShowFinishedQuests"], value: "true" },
+      ],
+    ];
+    for (const [message, action] of accepted) expect(isNamedByOwner(message, action), message).toBe(true);
+  });
+
+  it("still refuses a French request that is negated, doubtful, narrated, or names another action", () => {
+    const rapport = { rivals: ["Notes"], targets: ["Rapport hebdomadaire"], value: null };
+    const stop: NamedAction = { ...rapport, operation: "Stop" };
+    for (const message of [
+      "N'arrête pas Rapport hebdomadaire.",
+      "Peut-être arrête Rapport hebdomadaire.",
+      "Arrête Rapport hebdomadaire ou Notes.",
+      "Termine Rapport hebdomadaire.",
+    ])
+      expect(isNamedByOwner(message, stop), message).toBe(false);
+    const done: NamedAction = { ...rapport, operation: "Done" };
+    expect(isNamedByOwner("Rapport hebdomadaire est terminé.", done)).toBe(false);
+  });
 });

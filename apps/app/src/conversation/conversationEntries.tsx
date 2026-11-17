@@ -52,7 +52,8 @@ function QuestButton({
 }
 
 /**
- * A reply from the thread's agent: the provider's mark beside a parchment card that names the model and its time.
+ * A reply from the thread's agent: a parchment card, with the provider's mark in a notch on its top edge, that names
+ * the model and its time.
  * A draft has no time yet and is drawn faded.
  */
 export function AgentReply({
@@ -75,12 +76,12 @@ export function AgentReply({
   usage?: ReplyUsage | null;
 }) {
   return (
-    <View style={[styles.messageRow, isDraft && styles.draft]}>
-      <View style={styles.medallion}>
-        <ProviderMark harness={harness} />
-      </View>
+    <View style={[styles.messageRow, styles.messageRowAgent, isDraft && styles.draft]}>
       <CommentableCard about="agent" messageId={messageId} text={text}>
-        <View style={[styles.messageCard, styles.messageCardAgent]}>
+        <View style={[styles.messageCard, styles.messageCardAgent, styles.messageCardNotched]}>
+          <View style={styles.medallion}>
+            <ProviderMark harness={harness} size={20} />
+          </View>
           <View style={styles.senderHeader}>
             <Text style={styles.senderName}>{label}</Text>
             {time !== null && <Text style={styles.senderTime}>{time}</Text>}
