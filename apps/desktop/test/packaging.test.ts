@@ -52,6 +52,17 @@ describe("the installer's build configuration", () => {
     expect(typeof hook.default).toBe("function");
   });
 
+  it("finds the executable electron-builder wrote on each system", () => {
+    const { packedPath } = require("../scripts/packedPath.cjs") as {
+      packedPath: (context: unknown) => string;
+    };
+    const packager = { appInfo: { productFilename: "Outlore" }, executableName: "outlore" };
+    const at = (electronPlatformName: string) => packedPath({ appOutDir: "/out", electronPlatformName, packager });
+    expect(at("darwin")).toBe(join("/out", "Outlore.app"));
+    expect(at("win32")).toBe(join("/out", "Outlore.exe"));
+    expect(at("linux")).toBe(join("/out", "outlore"));
+  });
+
   it("needs none of the disabled fuses on any start path", () => {
     // RunAsNode: the service is an Electron utility process, not the binary started as Node.
     expect(readFileSync(join(desktop, "src/main.ts"), "utf8")).toContain("utilityProcess.fork");
