@@ -81,7 +81,7 @@ The owner deferred further screen specification until work on Reserves begins; t
 - The page defaults to all Outlore usage, Cost, and the last 30 days (CHG-0136).
   The metric selector offers Cost and Tokens; the period selector offers 7 days, 30 days, and a custom date range.
 - Selecting a breakdown row filters the graph and totals and exposes the corresponding turn records.
-  Active filters stay visible and are easy to clear.
+  Totals and turn records follow every filter; the graph leaves out a Day filter, and each breakdown leaves out the filter on its own dimension, keeping alternatives visible. Active filters stay visible and are easy to clear.
 - A graph shows daily usage for the selected scope, metric, and period, with date and value axes.
 - The summary shows the selected period's cost in USD, separate quest, thread, and turn counts instead of an ambiguous Sessions count, and whether the amounts are API estimates, reported costs, or a mixture.
 - Date ranges use local calendar days, including today in the 7-day and 30-day presets and both selected dates in a custom range (CHG-0137).
