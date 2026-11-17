@@ -1,5 +1,9 @@
 # Work in progress
 
+## Voice input · 2026-11-18 · batch 1 built on `worktree/voice-input` (base `00d569c`); the composer, the recording, and the phone are not built
+
+The owner's answers are in [ADR 0024](architecture-decision-record/0024-speech-is-transcribed-on-the-owners-device-with-whisper-cpp.md) (accepted): no vendor receives audio; whisper.cpp on the desktop and the phone; the `base` model; many languages; no direct voice for now. Agreed and delivered: [CHG-0447](changelog/0.1.8-Prototype.md) (approach) and [CHG-0448](changelog/0.1.8-Prototype.md) (the service's transcriber, `packages/service/src/voice/transcribe.ts`), tested against whisper.cpp at `8302b819` with the `base` model and whisper.cpp's sample. Full suite (`CI=1 bun run test`): 2,055 passed, 56 skipped. Not built: the microphone button in the composer, the desktop recording, the phone's native module, the model's download and bundling, the start-and-stop choice, the licence exclusions. Open: whether the phone spike (latency, memory, battery on a device) comes before the desktop batch; the owner's look at the composer when built. The engine's own GPU path aborted inside the sandbox; the CPU path is verified.
+
 ## Charter's Code Mode switch · 2026-11-17 · built and tested on branch `worktree/charter-switch`, the owner's look pending
 
 The Charter place opens a page with a Connectors section holding the global "Code Mode for connectors" switch (CHG-0444): off by default, marked Experimental, explained in plain words, reading and writing `shouldUseCodeMode`. With no connector gateway the setting still changes nothing visible. Not merged or pushed; not seen in a window or on a phone. The Vault, connectors and per-quest or per-realm switches remain unbuilt.
