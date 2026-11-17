@@ -98,6 +98,19 @@ const codexModelsLayer = Layer.effect(
 ).pipe(Layer.provide(fakeHarnessToolsLayer()));
 
 describe("message attachments: images added to the owner's messages", () => {
+  it.live("names an empty quest from its first image-only message", () =>
+    withService(
+      Effect.gen(function* () {
+        const quest = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: crypto.randomUUID() });
+        const image = yield* add("shot.png", png());
+        yield* sendWith(quest.threadId, "", [image.id]);
+        const detail = yield* settle(quest.missionId, idle);
+        expect(detail.mission.title).toBe("Attached images");
+        expect(detail.thread.title).toBe("Attached images");
+      }),
+    ),
+  );
+
   it.live("skips a blind backup when a failed message has an image", () =>
     withService(
       Effect.gen(function* () {

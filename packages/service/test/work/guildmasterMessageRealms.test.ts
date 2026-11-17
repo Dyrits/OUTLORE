@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@effect/vitest";
+import { mentionTokenOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { guildmaster, lastAgentText, say, startIdle } from "../fixtures/guildmaster.ts";
-import { fixture, send, settle } from "../fixtures/service.ts";
+import { call, fixture, send, settle } from "../fixtures/service.ts";
 import { folderIn } from "./guildmasterHelpers.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
@@ -16,6 +17,32 @@ afterEach(() => {
 });
 
 describe("carrying a realm chosen for a message", () => {
+  it.live("composes the owner's text, mention, realm, and viewing context in one message", () => {
+    const { directory, layer } = setup();
+    return Effect.gen(function* () {
+      const folder = folderIn(directory, "app");
+      const target = yield* startIdle("Existing work", folder);
+      const place = yield* guildmaster;
+      const text = `Compare ${mentionTokenOf({ id: target.missionId, kind: "quest" })}`;
+      yield* call({
+        _tag: "SendMessage",
+        delivery: null,
+        realmPath: folder,
+        requestId: crypto.randomUUID(),
+        text,
+        threadId: place.threadId,
+        viewing: { missionId: target.missionId, screen: "Quest" },
+      });
+      const detail = yield* settle(place.missionId, (value) => lastAgentText(value).includes(text), place.threadId);
+      const reply = lastAgentText(detail);
+      expect(reply).toContain(text);
+      expect(reply).toContain(`top thread id ${target.threadId}`);
+      expect(reply).toContain(`The owner chose the realm "app" (${folder})`);
+      expect(reply).toContain(`the quest "Existing work" (id ${target.missionId}) open`);
+      expect(detail.messages.find((message) => message.sender === "user")?.text).toBe(text);
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("reaches the Guildmaster's turn with the message, and is kept on it", () => {
     const { directory, layer } = setup();
     return Effect.gen(function* () {
