@@ -35,8 +35,8 @@ const identifierScore = 20;
 /**
  * Other missions whose titles, briefings, or opening requests share words with the request, best first, at most 3:
  * a title word counts twice, a briefing or opening word once (provisional, work-in-progress Batch 10), and a shared
- * ticket key or link counts 20. Every mission not deleted counts, whatever its state; the caller's own mission and the
- * Chronicler's do not.
+ * ticket key or link counts 20. Every ordinary mission not deleted counts, whatever its state; Ritual quests, the
+ * caller's own mission and Chronicler's do not.
  */
 export const findMissions = Effect.fnUntraced(function* (callerId: string, request: string) {
   const sql = yield* SqlClient.SqlClient;
@@ -51,7 +51,9 @@ export const findMissions = Effect.fnUntraced(function* (callerId: string, reque
   }>`
       SELECT m.id, m.title, j.briefing, m.last_activity_at AS lastActivityAt, ${openingRequestOf(sql)} AS opening
       FROM missions m JOIN threads top ON top.id = m.top_thread_id LEFT JOIN journals j ON j.mission_id = m.id
-      WHERE top.is_deleting = 0 AND m.is_guildmaster = 0 AND m.id <> (SELECT mission_id FROM threads WHERE id = ${callerId})`;
+      WHERE top.is_deleting = 0 AND m.is_guildmaster = 0
+        AND NOT EXISTS (SELECT 1 FROM rituals r WHERE r.mission_id = m.id)
+        AND m.id <> (SELECT mission_id FROM threads WHERE id = ${callerId})`;
   const scored = rows
     .map((row) => {
       const title = wordsOf(row.title);

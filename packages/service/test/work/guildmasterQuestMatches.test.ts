@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { guildmaster, isIdle, listed, say, startIdle } from "../fixtures/guildmaster.ts";
-import { fixture, read, send, settle, tool } from "../fixtures/service.ts";
+import { call, fixture, read, send, settle, tool } from "../fixtures/service.ts";
 import { answer, folderIn, questOf } from "./guildmasterHelpers.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
@@ -16,6 +16,26 @@ afterEach(() => {
 });
 
 describe("finding a quest that already fits", () => {
+  it.live("does not offer a Ritual's quest as a match", () =>
+    Effect.gen(function* () {
+      const place = yield* guildmaster;
+      const ritual = yield* call({
+        _tag: "CreateRitual",
+        fallbacks: [],
+        instruction: "Review PAY-481",
+        primary: { accountId: null, effort: "default", harness: "claude", model: "claude-sonnet-5-5" },
+        requestId: crypto.randomUUID(),
+        schedule: { _tag: "Daily", time: "07:00" },
+        title: "PAY-481 review",
+        workspacePath: null,
+      });
+      const ordinary = yield* startIdle("PAY-481 ordinary quest");
+      const found = yield* tool(place.threadId, "find_missions", { request: "PAY-481" });
+      expect(found).toContain(ordinary.missionId);
+      expect(found).not.toContain(ritual.missionId);
+    }).pipe(Effect.provide(setup().layer)),
+  );
+
   it.live("finds the quest on the same ticket, though its title and briefing never name it", () =>
     Effect.gen(function* () {
       const place = yield* guildmaster;
