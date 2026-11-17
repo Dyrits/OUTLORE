@@ -65,6 +65,42 @@ describe("controlling one installation from another through the relay", () => {
     ),
   );
 
+  it.live("gives a pairing code with a web link and an app link that carry the same code in their fragment", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const made = (yield* world.host({ _tag: "CreatePairingCode" })) as {
+          appLink: string;
+          code: string;
+          expiresAt: number;
+          webLink: string;
+        };
+        expect(made.webLink).toBe(`https://outlore.dyrits.workers.dev/#${made.code}`);
+        expect(made.appLink).toBe(`outlore://pair#${made.code}`);
+        expect(made.expiresAt).toBeGreaterThan(Date.now());
+        expect(decodePairingCode(made.code).ok).toBe(true);
+      }),
+    ),
+  );
+
+  it.live("pairs with a web link or an app link pasted where a code goes, once only", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const world = yield* makeWorld();
+        yield* world.allowPairing;
+        const first = (yield* world.host({ _tag: "CreatePairingCode" })) as { appLink: string; webLink: string };
+        const host = yield* world.pair(`  ${first.webLink}\n`);
+        expect(host.name).toBe("Host Mac");
+        const again = yield* Effect.flip(world.pair(first.webLink));
+        expect(String((again as { message: string }).message)).toContain("already used");
+        const second = (yield* world.host({ _tag: "CreatePairingCode" })) as { appLink: string };
+        yield* world.pair(second.appLink, "Second");
+        expect((yield* world.accessOf()).devices).toHaveLength(2);
+      }),
+    ),
+  );
+
   it.live("accepts a pairing code once, and refuses an expired or garbled one", () =>
     Effect.scoped(
       Effect.gen(function* () {

@@ -11,6 +11,7 @@ export {
   newPairingSecret,
   newRoomName,
 } from "./pairingCode.ts";
+export { appPairingLinkOf, pairingInputOf, readPairingInput, webPairingLinkOf } from "./pairingLink.ts";
 export { roomPrologue } from "./prologue.ts";
 export type { ClientHello, DeviceKind, HostReply, ProtocolErrorKind, RefusalReason } from "./protocol.ts";
 export {

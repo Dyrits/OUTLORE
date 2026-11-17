@@ -10,6 +10,11 @@ publish:
   provider: github
   owner: Dyrits
   repo: OUTLORE
+# Registers `outlore://` with the system (Info.plist on macOS, the registry on Windows, the desktop entry on Linux), so a pairing link opens the app (device-pairing).
+protocols:
+  - name: Outlore pairing link
+    schemes:
+      - outlore
 # Linux has no node-pty prebuild; rebuild native dependencies for the packaged Electron.
 npmRebuild: true
 directories:

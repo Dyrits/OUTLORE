@@ -34,6 +34,12 @@ describe("the installer's build configuration", () => {
     expect(webNotices).toContain(readFileSync(join(desktop, "assets/one.LICENSE"), "utf8"));
   });
 
+  it("registers the outlore scheme for pairing links, and the main process registers the same one", () => {
+    const config = configuration.join("\n");
+    expect(config).toMatch(/^protocols:\n {2}- name: .+\n {4}schemes:\n {6}- outlore$/m);
+    expect(readFileSync(join(desktop, "src/main.ts"), "utf8")).toContain('setAsDefaultProtocolClient("outlore"');
+  });
+
   it("turns off, after packing, the Electron fuses the app does not need", async () => {
     expect(settingOf("afterPack")).toBe("scripts/afterPack.cjs");
     const { fusePolicy } = require("../scripts/fusePolicy.cjs") as { fusePolicy: Record<string, boolean> };

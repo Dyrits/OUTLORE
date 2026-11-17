@@ -1,5 +1,4 @@
 import {
-  decodePairingCode,
   encodeBase64Url,
   encodeClientHello,
   type HostReply,
@@ -7,6 +6,7 @@ import {
   maxDeviceNameLength,
   openInitiator,
   parseHostReply,
+  readPairingInput,
   refusalText,
   roomPrologue,
   type SecureChannel,
@@ -124,14 +124,14 @@ const linkFailureOf = (reason: unknown): LinkFailure =>
     ? reason
     : new LinkFailure("couldNotOpen", reason instanceof Error ? reason.message : linkTexts.unreachable);
 
-/** Pairs with the host that made `code`; keeps the host and returns it for the host menu. */
+/** Pairs with the host that made `code`, a raw pairing code or a pairing link; keeps the host and returns it for the host menu. */
 export const pairWithCode = Effect.fnUntraced(function* (
   code: string,
   deviceName: string,
   store: PairedHostStore,
   settings: LinkSettings,
 ) {
-  const decoded = decodePairingCode(code);
+  const decoded = readPairingInput(code);
   if (!decoded.ok) {
     return yield* new LinkFailure(
       "invalid",

@@ -8,6 +8,7 @@ import { iconFileOf } from "./appIcon.ts";
 import { appVersionOf } from "./appVersion.ts";
 import { moveFormerData } from "./formerData.ts";
 import { instanceOf } from "./instance.ts";
+import { createPairingLinkQueue, pairingLinkIn, protocolClientOf } from "./pairingLinks.ts";
 import { mergedPathOf, readLoginPath } from "./shellPath.ts";
 import { Terminals } from "./terminals.ts";
 import { setUpUpdates } from "./updateSetup.ts";
@@ -96,12 +97,44 @@ const quitWith = (reason: string) => {
 };
 
 let mainWindow: BrowserWindow | undefined;
-// A second launch on this profile brings the running window forward instead of starting another service.
-app.on("second-instance", () => {
+const bringWindowForward = () => {
   if (mainWindow === undefined || mainWindow.isDestroyed()) return;
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.focus();
+};
+// Pairing links (`outlore://pair#<code>`) go to the window alone: never logged, never in a title or a command line of
+// ours. The link is as secret as the code in it.
+const pairingLinks = createPairingLinkQueue((link) => {
+  if (mainWindow !== undefined && !mainWindow.isDestroyed()) mainWindow.webContents.send("outlore:pairingLink", link);
 });
+// A second launch on this profile brings the running window forward instead of starting another service; on Windows and
+// Linux a link opened while the app runs arrives as that launch's arguments.
+app.on("second-instance", (_event, argv) => {
+  const link = pairingLinkIn(argv);
+  if (link !== null) pairingLinks.receive(link);
+  bringWindowForward();
+});
+// macOS hands the link to the running app (or to the one it starts), before ready as well as after.
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  pairingLinks.receive(url);
+  bringWindowForward();
+});
+if (isFirstInstance) {
+  const protocolClient = protocolClientOf({
+    argv1: process.argv[1],
+    environment: process.env,
+    execPath: process.execPath,
+    isDefaultApp: process.defaultApp === true,
+    isPackaged: app.isPackaged,
+  });
+  if (protocolClient !== null) {
+    app.setAsDefaultProtocolClient("outlore", protocolClient.executable ?? void 0, protocolClient.args);
+  }
+  // Windows and Linux start the app with the link as an argument.
+  const firstLink = pairingLinkIn(process.argv);
+  if (firstLink !== null) pairingLinks.receive(firstLink);
+}
 
 app
   .whenReady()
@@ -139,6 +172,9 @@ app
     // The owner token travels in the endpoint: only the app's own main frame may read it (audit SA-12).
     const handleWindow = createWindowHandlers(ipcMain, window.webContents, appUrl);
     handleWindow("outlore:endpoint", () => endpoint);
+    // The window takes the link that came before it listened, then gets the later ones as events; a reload starts over.
+    handleWindow("outlore:pairingLinkTake", () => pairingLinks.take());
+    window.webContents.on("did-start-loading", () => pairingLinks.reset());
     // A link in a reply opens in the system's browser, never in a window of its own that could receive the bridge, and
     // the app's window never navigates away from the app.
     window.webContents.setWindowOpenHandler(({ url }) => {

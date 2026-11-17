@@ -1,6 +1,8 @@
 import type { KnownHost } from "@outlore/contracts";
 import { createPairedHosts, openBrowserTransport, pairFromBrowser } from "@outlore/controller";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PairingOffer } from "../shell/pairingOffer";
+import { pairingOfferOf } from "../shell/pairingOffer";
 import { isBrowserPage, pageSettings } from "./browser/page";
 import { ServiceClient } from "./client";
 import { type HostLink, hostStatusOf } from "./hostStatus";
@@ -33,7 +35,13 @@ export function useHostConnection() {
     setFailure(null);
     setAttempt((current) => current + 1);
   }, []);
-  const [isAddingHost, setIsAddingHost] = useState(false);
+  const [isAddingHost, setIsAddingHostState] = useState(false);
+  // A pairing link that opened the app waits here, with its code, until the owner pairs or cancels (device-pairing).
+  const [offer, setOffer] = useState<PairingOffer | null>(null);
+  const setIsAddingHost = useCallback((isAdding: boolean) => {
+    setIsAddingHostState(isAdding);
+    if (!isAdding) setOffer(null);
+  }, []);
   const [link, setLink] = useState<HostLink | null>(null);
   const client = hostId === null ? localClient : hostClient;
   const [failure, setFailure] = useState<string | null>(null);
@@ -95,6 +103,45 @@ export function useHostConnection() {
       setHostClient(null);
     };
   }, [hostId, pairedHosts, attempt]);
+  // The one way a pairing link reaches Add a host, from the address bar, the desktop's protocol handler, or a phone's.
+  const hasHostsRef = useRef(hosts.length > 0);
+  hasHostsRef.current = hosts.length > 0;
+  const offerPairing = useCallback(
+    (link: string) => {
+      const next = pairingOfferOf(link, { hasHosts: hasHostsRef.current, isBrowser });
+      if (next === null) return;
+      setOffer(next);
+      setIsAddingHostState(true);
+    },
+    [isBrowser],
+  );
+  // A browser opened at `<web app>/#<code>` pairs by itself. The fragment leaves the address bar at once, so a reload
+  // or a bookmark never offers a spent code again, and it never reaches the history entry that was written.
+  useEffect(() => {
+    if (!isBrowser) return;
+    const takeFragment = () => {
+      const link = window.location.hash;
+      if (pairingOfferOf(link, { hasHosts: false, isBrowser }) === null) return;
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      offerPairing(link);
+    };
+    takeFragment();
+    window.addEventListener("hashchange", takeFragment);
+    return () => window.removeEventListener("hashchange", takeFragment);
+  }, [isBrowser, offerPairing]);
+  // The desktop app is opened with `outlore://pair#<code>`; the window listens first, then asks for what came before.
+  useEffect(() => {
+    const bridge = window.outlore?.pairingLinks;
+    if (bridge === undefined) return;
+    const stop = bridge.listen(offerPairing);
+    bridge.take().then(
+      (link) => {
+        if (link !== null) offerPairing(link);
+      },
+      () => {},
+    );
+    return stop;
+  }, [offerPairing]);
   // A browser pairs on its own and keeps the host; a desktop window asks its local service to.
   const pair = useCallback(
     async (code: string, deviceName: string): Promise<KnownHost> => {
@@ -148,6 +195,8 @@ export function useHostConnection() {
     hosts,
     isAddingHost,
     isBrowser,
+    offer,
+    offerPairing,
     pair,
     retry,
     setFailure,

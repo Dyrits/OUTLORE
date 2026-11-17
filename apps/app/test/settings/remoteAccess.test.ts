@@ -6,7 +6,8 @@ import {
   codeLifeOf,
   deviceLineOf,
   ownRelayNoticeOf,
-  pairingHelpOf,
+  pairingHelp,
+  pairingSecrecyNotice,
   relayLineOf,
   relayStatusTextOf,
   webAppLineOf,
@@ -66,17 +67,18 @@ describe("Charter's relay wording", () => {
   it("says where the web app opens, and that an own relay does not serve it", () => {
     const webAppUrl = "https://outlore.dyrits.workers.dev";
     expect(webAppLineOf({ isOwnRelay: false, webAppUrl })).toBe(
-      "Web app: https://outlore.dyrits.workers.dev. Open it in any browser and paste a pairing code.",
+      "Web app: https://outlore.dyrits.workers.dev. Open it in any browser and paste a pairing code or link.",
     );
     expect(webAppLineOf({ isOwnRelay: true, webAppUrl })).toBe(
-      "Web app: https://outlore.dyrits.workers.dev. Open it in any browser and paste a pairing code. It is served by the shared relay, not by your own.",
+      "Web app: https://outlore.dyrits.workers.dev. Open it in any browser and paste a pairing code or link. It is served by the shared relay, not by your own.",
     );
   });
 
-  it("points the pairing code at the other Outlore and at the web app", () => {
-    expect(pairingHelpOf("https://outlore.dyrits.workers.dev")).toBe(
-      "Paste it in the other Outlore, under Add a host, or open https://outlore.dyrits.workers.dev in any browser and paste it there.",
-    );
+  it("tells how to use the QR code, the links and the code, and that a link is as secret as the code", () => {
+    expect(pairingHelp).toContain("Scan the code with a phone camera");
+    expect(pairingHelp).toContain("Add a host");
+    expect(pairingSecrecyNotice).toMatch(/anyone with (this|the) link or code can pair/i);
+    expect(pairingSecrecyNotice).toContain("until it expires");
   });
 
   it("falls back to the whole address when it cannot be read as one", () => {

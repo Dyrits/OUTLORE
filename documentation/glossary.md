@@ -308,7 +308,7 @@ Outlore installed on a phone from a store (later).
 _Avoid_: Native app
 
 **Paired device**:
-A desktop app, web app, or mobile app connected to a host by a pairing code. It has the owner's full authority over the host it is paired with, except where the host fences it (terminals, folders).
+A desktop app, web app, or mobile app connected to a host by a pairing code or link. It has the owner's full authority over the host it is paired with, except where the host fences it (terminals, folders).
 _Avoid_: Remote, client
 
 **Host**:
@@ -320,5 +320,9 @@ One screenshot of the host's display, shown on demand to a paired device with no
 _Avoid_: Remote desktop, screen share, stream
 
 **Pairing code**:
-The one-time text the host shows to pair a device, a QR code of it for a phone later. It works once and expires after 10 minutes.
+The one-time text the host shows to pair a device, kept as the fallback beside the QR code and the pairing links. It works once and expires after 10 minutes.
 _Avoid_: Connect code, ticket
+
+**Pairing link**:
+A link that carries a pairing code in its fragment and pairs a device when it is opened or scanned: the **web link** (`<web app address>/#<code>`, opens the web app) and the **app link** (`outlore://pair#<code>`, opens an installed Outlore). The host's QR code encodes the web link. It is as secret as the code: it works once and expires with it, and the fragment never reaches a server.
+_Avoid_: Invite, share link

@@ -29,6 +29,7 @@ export function App() {
     computerName,
     isAddingHost,
     setIsAddingHost,
+    offer,
     client,
     setFailure,
     activeHost,
@@ -83,6 +84,8 @@ export function App() {
           computerName={computerName}
           deviceNoun="browser"
           isRequired
+          key={offer?.code ?? "manual"}
+          offer={offer}
           onPair={(code, deviceName) =>
             pair(code, deviceName).then((host) => {
               setIsAddingHost(false);
@@ -243,6 +246,8 @@ export function App() {
           <AddHostModal
             computerName={computerName}
             deviceNoun={isBrowser ? "browser" : "computer"}
+            key={offer?.code ?? "manual"}
+            offer={offer}
             onCancel={() => setIsAddingHost(false)}
             onPair={(code, deviceName) =>
               pair(code, deviceName).then((host) => {

@@ -48,8 +48,17 @@ export const RemoteAccessView = Schema.Struct({
 });
 export type RemoteAccessView = typeof RemoteAccessView.Type;
 
-/** A pairing code to give to another Outlore; it works once and expires at `expiresAt` (epoch milliseconds). */
-export const PairingCode = Schema.Struct({ code: Schema.String, expiresAt: Schema.Number });
+/**
+ * A pairing code to give to another Outlore; it works once and expires at `expiresAt` (epoch milliseconds). The two
+ * links carry the same code in their fragment: `webLink` opens the web app, `appLink` the installed app. Each is as
+ * secret as the code.
+ */
+export const PairingCode = Schema.Struct({
+  appLink: Schema.String,
+  code: Schema.String,
+  expiresAt: Schema.Number,
+  webLink: Schema.String,
+});
 export type PairingCode = typeof PairingCode.Type;
 
 /** A host this installation is paired with, as the host menu lists it. */

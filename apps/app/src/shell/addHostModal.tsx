@@ -1,9 +1,10 @@
 import type { KnownHost } from "@outlore/contracts";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { messageOf } from "../foundation/client";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { Button } from "../ui/button";
+import type { PairingOffer } from "./pairingOffer";
 
 /**
  * The dialog that pairs this installation with a host: the pairing code the host shows, pasted, and the name this
@@ -13,6 +14,7 @@ export function AddHostModal({
   computerName,
   deviceNoun = "computer",
   isRequired = false,
+  offer = null,
   onCancel,
   onPair,
 }: {
@@ -22,11 +24,13 @@ export function AddHostModal({
   deviceNoun?: "browser" | "computer";
   /** A browser with no host has nothing else to show, so the dialog cannot be dismissed. */
   isRequired?: boolean;
+  /** A pairing link that opened the app: its code is filled in, and a browser with no host pairs with it at once. */
+  offer?: PairingOffer | null;
   onCancel?: () => void;
-  /** Pairs with the host and resolves with it; rejects with the reason the owner reads. */
+  /** Pairs with the host and resolves with it; rejects with the reason the owner reads. `code` is a code or a link. */
   onPair: (code: string, deviceName: string) => Promise<KnownHost>;
 }) {
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(offer?.code ?? "");
   const [name, setName] = useState(computerName);
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
@@ -42,6 +46,15 @@ export function AddHostModal({
       },
     );
   };
+  // A link that opened the web app of a browser with no host pairs by itself, once; a failure stays on screen with the
+  // code in place, so the owner reads why and can try again or paste another.
+  const hasPairedAtOnce = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: it runs once, when the dialog opens with such a link.
+  useEffect(() => {
+    if (offer?.shouldPairAtOnce !== true || hasPairedAtOnce.current) return;
+    hasPairedAtOnce.current = true;
+    pair();
+  }, []);
   return (
     <Modal animationType="fade" onRequestClose={onCancel} transparent visible>
       <View style={local.backdrop}>
@@ -50,17 +63,19 @@ export function AddHostModal({
           <Text style={local.title}>Add a host</Text>
           <Text style={local.help}>
             On the other computer, open the Charter, turn on Allow paired devices, and choose Pair a device. Paste the
-            code it shows here. It works once and expires after ten minutes.
+            code or the link it shows here, or scan its QR code with a phone. It works once and expires after ten
+            minutes.
           </Text>
-          <Text style={local.label}>Pairing code</Text>
+          {offer !== null && offer.notice !== "" && <Text style={local.notice}>{offer.notice}</Text>}
+          <Text style={local.label}>Pairing code or link</Text>
           <TextInput
-            accessibilityLabel="Pairing code"
+            accessibilityLabel="Pairing code or link"
             autoCapitalize="none"
             autoCorrect={false}
             autoFocus
             multiline
             onChangeText={setCode}
-            placeholder="outlore1-…"
+            placeholder="outlore1-… or a link"
             placeholderTextColor={colors.placeholder}
             style={[local.input, local.codeInput]}
             value={code}
@@ -107,6 +122,7 @@ const local = StyleSheet.create({
     padding: 10,
   },
   label: { color: colors.textDim, fontFamily: fonts.sans, fontSize: fontSizes.sm },
+  notice: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, lineHeight: 20 },
   panel: {
     backgroundColor: colors.sidebar,
     borderColor: colors.edge,

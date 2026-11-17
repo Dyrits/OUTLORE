@@ -189,6 +189,32 @@ describe("a browser pairing with a running host and using it", () => {
     ),
   );
 
+  it.live("pairs from the web link the host shows, as the page does when it opens one, and not twice", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const w = yield* world;
+        yield* w.allowPairing;
+        const made = (yield* w.host({ _tag: "CreatePairingCode" })) as { appLink: string; webLink: string };
+        // The page hands the browser what the address bar held after the `#`, as a link or a bare code.
+        const fragment = new URL(made.webLink).hash;
+        expect(fragment).toMatch(/^#outlore1-/);
+        const browser = w.browser();
+        const host = yield* Effect.promise(() => browser.pair(made.webLink));
+        expect(host).toMatchObject({ name: "Host Mac" });
+        expect(browser.hosts.known()).toMatchObject([{ id: host.id }]);
+        const again = yield* Effect.promise(() =>
+          w
+            .browser()
+            .pair(made.webLink)
+            .catch((error: Error) => error),
+        );
+        expect(String((again as Error).message)).toContain("already used");
+        const second = (yield* w.host({ _tag: "CreatePairingCode" })) as { appLink: string };
+        expect(yield* Effect.promise(() => w.browser().pair(second.appLink))).toMatchObject({ name: "Host Mac" });
+      }),
+    ),
+  );
+
   it.live("lets the browser search the host's folders and not its own", () =>
     Effect.scoped(
       Effect.gen(function* () {

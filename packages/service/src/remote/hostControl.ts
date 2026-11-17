@@ -1,8 +1,8 @@
-import { encodePairingCode } from "@outlore/channel";
+import { appPairingLinkOf, encodePairingCode, webPairingLinkOf } from "@outlore/channel";
 import { Clock, Effect } from "effect";
 import type { SqlClient, SqlError } from "effect/sql";
 import { invalid, ServiceFailure } from "../core/index.ts";
-import { RemoteConfig } from "./config.ts";
+import { RemoteConfig, webAppOrigin } from "./config.ts";
 import {
   ensureHostRecord,
   forgetDevice,
@@ -55,7 +55,7 @@ export const makeHostControl = (dependencies: {
           room: record.room,
           secret,
         });
-        return { code, expiresAt };
+        return { appLink: appPairingLinkOf(code), code, expiresAt, webLink: webPairingLinkOf(webAppOrigin, code) };
       }),
     ),
     /** Forgets a paired device and ends its connection, then shows the section. */
