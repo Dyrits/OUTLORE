@@ -29,7 +29,7 @@ For ordinary threads, visibility follows this table:
   Guildmaster follows the save, change, widening, and deletion rules below.
 - Quest moves follow [quest placement and moves](../mission-tracking/specifications.md#quest-placement-and-moves).
 
-Realm scopes and moves (CHG-0130), visibility across scopes (CHG-0131), and Guildmaster's access exception (CHG-0132) are agreed; implementation and verification remain pending.
+Realm scopes, moves, and visibility (CHG-0130 and CHG-0131) are implemented. Guildmaster's access exception (CHG-0132) is implemented for search and read; changes and deletion still follow the ordinary scope rules.
 
 ### Lookup
 
@@ -94,7 +94,7 @@ Each intel has a kind, which sets how fast it fades when no thread uses it. The 
 
 - Every save, replacement, change, widening, deletion, and fading step is recorded with who or what made it and when.
 - The intel panel shows an intel's history, including which intel replaced which, and the user can undo any change. Undoing a deletion restores the intel. Deleted intel stays listed under the panel's Deleted filter, where its deletion can be undone.
-- The agreed [Start afresh flow for an archived realm](../mission-tracking/specifications.md#reusing-an-archived-realms-folder) uses this same deletion and recovery for realm-level lore only (CHG-0271; not implemented). It is not a permanent purge and does not delete global or quest-scoped lore.
+- The [Start afresh flow for an archived realm](../mission-tracking/specifications.md#reusing-an-archived-realms-folder) uses this same deletion and recovery for realm-level lore only (CHG-0271). It is not a permanent purge and does not delete global or quest-scoped lore.
 
 ### Widening and narrowing
 
