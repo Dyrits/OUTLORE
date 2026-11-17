@@ -78,7 +78,7 @@ The interface presents idle, running, or Summons; waiting, failure, and stopped 
 ### Off-topic requests
 
 - When a message from the user clearly shares nothing with the mission, judged by the thread's agent against the briefing, the thread does not answer it. Merely unexpected messages do not count.
-- The thread first looks for other missions that fit the request, by their titles and briefings only. Every mission that is not deleted counts, whatever its state.
+- The thread first looks for other missions that fit the request, by their titles, briefings, and opening requests. A shared ticket key or link weighs more than plain words. Every ordinary mission that is not deleted counts, whatever its state, except the caller's own mission and Chronicler's; Ritual quests are excluded.
 - It then shows a suggestion with these choices:
   - **Continue in "mission title"**: one for each matching mission, best match first, at most 3, each showing that mission's state;
   - **Open as new mission**;

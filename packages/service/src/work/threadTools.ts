@@ -71,7 +71,7 @@ export const threadTools = {
   }),
   change_setting: definitionOf({
     description:
-      "Chronicler uses it, at the owner's request: change one of the owner's settings (read_settings lists them). It runs at once when the owner's own message in this turn named that setting and its new value plainly; otherwise it asks the owner one Allow or Deny question naming them and waits. The approval level, the budgets, and price fetching are the owner's alone and are refused.",
+      "Chronicler uses it, at the owner's request: change one of the owner's settings (read_settings lists them). It runs at once when the owner's own message in this turn named that setting and its new value plainly; otherwise it asks the owner one Allow or Deny question naming them and waits. The approval level, budgets, price fetching, and permission to run outside the sandbox without asking are the owner's alone and are refused.",
     invalid: toolRefusal("Invalid arguments: give setting and value."),
     isUnasked: true,
     schema: Schema.Struct({
@@ -123,7 +123,7 @@ export const threadTools = {
   }),
   find_missions: definitionOf({
     description:
-      "Find other missions that may fit an off-topic request, by their titles and briefings: up to 3, best first, with their ids, states, and briefings.",
+      "Find other missions that may fit an off-topic request by their titles, briefings, and opening request; a shared ticket key or link ranks above plain words. Returns up to 3, best first, with their ids, states, and briefings; Ritual quests are excluded.",
     invalid: toolRefusal("Invalid arguments: give request."),
     isUnasked: true,
     schema: Schema.Struct({ request: text("The off-topic part of the owner's message.") }),

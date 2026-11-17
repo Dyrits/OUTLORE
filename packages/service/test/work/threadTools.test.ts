@@ -15,6 +15,12 @@ const InputSchema = Schema.Struct({
 const inputSchemaOf = (tool: (typeof toolListing)[number]) => Schema.decodeUnknownSync(InputSchema)(tool.inputSchema);
 
 describe("listing the thread tools", () => {
+  it("describes the owner-kept sandbox setting and the full quest matching inputs", () => {
+    expect(threadTools.change_setting.description).toContain("outside the sandbox");
+    expect(threadTools.find_missions.description).toContain("opening request");
+    expect(threadTools.find_missions.description).toContain("ticket key");
+  });
+
   it("lists every tool with the required arguments its decoder needs", () => {
     const required = Object.fromEntries(toolListing.map((tool) => [tool.name, inputSchemaOf(tool).required ?? []]));
     expect(required).toMatchObject({
