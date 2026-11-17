@@ -109,6 +109,17 @@ describe("reading the app guide", () => {
       expect(text).toMatch(/Not built yet:[^.]*terminal/i);
     });
 
+    it("says that a scheduled Ritual run that cannot start fails visibly without blocking the next one", () => {
+      const text = body("rituals");
+      expect(text).toMatch(/cannot start fails visibly/i);
+      expect(text).toMatch(/Failed with the reason/);
+      expect(text).toMatch(/next scheduled run is not blocked/i);
+    });
+
+    it("says that a pairing from another release is refused without spending the code", () => {
+      expect(body("pairing")).toMatch(/same release.*refused.*code is not spent/i);
+    });
+
     it("lets one owner pair several installations", () => {
       expect(body("limits")).not.toMatch(/one user on one computer/i);
     });

@@ -271,7 +271,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "A Ritual is a request with a schedule: a morning digest, a weekly dependency check. It has a title, an instruction, a schedule, a harness and Companion, backup Companions, an optional realm, and an on/off switch.",
       "Schedules are presets, with no cron: every day at a time, weekdays at a time, every week on a day, every month on a day, or every N hours, in the computer's local time.",
       "Each Ritual has its own quest; every run is a turn in its main thread, so the quest holds the whole history. Run now on the Ritual's card starts a run at any moment. Rituals live in the sidebar's Rituals place. Outlore can create one on request.",
-      "Rituals run through the local service, so Outlore must be running. A run missed while the app was closed or the computer asleep is skipped, not caught up. A run's commands follow the thread's approval level; a Ritual takes no action on quests or settings unless its scope, set in its form, allows it.",
+      "Rituals run through the local service, so Outlore must be running. A run missed while the app was closed or the computer asleep is skipped, not caught up. A scheduled run that cannot start fails visibly: the Ritual's thread shows Failed with the reason, nothing the failed start wrote is kept, and the next scheduled run is not blocked. A run's commands follow the thread's approval level; a Ritual takes no action on quests or settings unless its scope, set in its form, allows it.",
     ].join("\n"),
     id: "rituals",
     keywords: [
@@ -327,7 +327,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Pairing lets the owner control one Outlore from another app or a browser on a phone or computer, on any internet connection, with no account. It is early work. The computer being controlled is the host; it shows a one-time pairing code, valid for 10 minutes and usable once, which the other device enters. The folder picker works on a paired host, limited to the folders the host allows. The connection is end-to-end encrypted through a shared relay, and a paired device has the owner's full authority over the host.",
+      "Pairing lets the owner control one Outlore from another app or a browser on a phone or computer, on any internet connection, with no account. It is early work. The computer being controlled is the host; it shows a one-time pairing code, valid for 10 minutes and usable once, which the other device enters. The folder picker works on a paired host, limited to the folders the host allows. The connection is end-to-end encrypted through a shared relay, and a paired device has the owner's full authority over the host. The device and the host must run the same release: a pairing from another release is refused, the code is not spent, and no device is kept.",
       "Paired devices are listed in the Workshop's Remote access card, where each can be disconnected. A host menu is at the top left of the app, and the host can rename itself.",
       "Not built yet: a QR code for the pairing code, notifications, the terminal on a host, and the direct connection that skips the relay. Browser pairing is built; phone layouts and pairing across another network still need checking.",
     ].join("\n"),
