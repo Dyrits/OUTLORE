@@ -57,7 +57,7 @@ A thread needs the tools and instructions in scope for its work, even when its h
 - The user can disable external MCP servers per thread. Threads opened beneath it inherit that selection.
 - MCP configuration changes take effect on the next turn; a current turn keeps its starting configuration.
 - A failed external MCP server is reported in the thread as a warning. The other servers load and the turn continues.
-- Outlore's own thread tools stay enabled. If they fail to load, the turn fails, with the reason, and the thread offers **Retry** (a Failed thread, which counts among those needing the owner). Claude Code reports the server's status in its start-up event and Codex in a start-up status notification, and both are read; OpenCode's is not yet read (CHG-TBD-B-1).
+- Outlore's own thread tools stay enabled. If they fail to load, the turn fails, with the reason, and the thread offers **Retry** (a Failed thread, which counts among those needing the owner). Claude Code reports the server's status in its start-up event and Codex in a start-up status notification, and both are read; OpenCode's is not yet read (CHG-0377).
 - The local service enforces thread-tool access, regardless of what instructions a harness received. See [0005](../../architecture-decision-record/0005-thread-tools-over-mcp.md).
 
 ### Another workspace

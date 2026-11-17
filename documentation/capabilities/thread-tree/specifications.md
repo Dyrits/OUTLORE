@@ -112,7 +112,7 @@ The interface presents idle, running, or Summons; waiting, failure, and stopped 
 
 - Deleting a thread deletes every thread beneath it. One confirmation names the count and the running ones, for example "Delete this thread and 5 threads beneath it (2 running)?". Running threads among them are stopped first.
 - Deleting a mission's top thread deletes the mission.
-- A deletion erases the records in one transaction and removes the attached files and the quest's scratch folder only after it has committed. If erasing fails, the files stay with their records, the threads are no longer marked as deleting (they stay Stopped, visible, and can be deleted again), and the owner sees the failure (CHG-TBD-E-3).
+- A deletion erases the records in one transaction and removes the attached files and the quest's scratch folder only after it has committed. If erasing fails, the files stay with their records, the threads are no longer marked as deleting (they stay Stopped, visible, and can be deleted again), and the owner sees the failure (CHG-0425).
 
 ### Limits
 
@@ -168,6 +168,6 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 - Moving a thread to another parent.
 - Sharing threads with other people.
 
-- At startup, a surviving deletion marker is cleared and the thread stays Stopped. UUID scratch folders with no surviving quest are removed through the realm-protection guard. File cleanup failures are logged and retried at the next start without blocking use of the app (CHG-TBD-E-9).
+- At startup, a surviving deletion marker is cleared and the thread stays Stopped. UUID scratch folders with no surviving quest are removed through the realm-protection guard. File cleanup failures are logged and retried at the next start without blocking use of the app (CHG-0431).
 
-- If scratch removal fails after the records commit, the deletion succeeds, its attachment files are still removed immediately, and the scratch failure is logged for retry on the next startup (CHG-TBD-E-10).
+- If scratch removal fails after the records commit, the deletion succeeds, its attachment files are still removed immediately, and the scratch failure is logged for retry on the next startup (CHG-0432).
