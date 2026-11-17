@@ -40,8 +40,8 @@ const kindHelp =
 export const searchInvalid = toolRefusal(
   "Invalid arguments: give query, ids, or both, and optionally scope (thread, mission, workspace, or global).",
 );
-const scopeHelp =
-  "thread: you and the threads beneath you; mission: every thread of this mission; workspace: every thread in this folder, in any mission; global: everywhere, after the owner's approval.";
+export const scopeHelp =
+  "thread: this side-quest and the threads beneath it (on a quest's top thread, saving at thread puts the lore on the quest, but searching with thread leaves it out: search it with mission); mission: the quest and all its threads; workspace: the realm, with or without a folder, and all its quests; global: everywhere, after the owner's approval.";
 
 /** Every thread tool, by name. */
 export const threadTools = {
