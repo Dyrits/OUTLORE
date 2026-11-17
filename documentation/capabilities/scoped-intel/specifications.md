@@ -26,6 +26,7 @@ For ordinary threads, visibility follows this table:
   A quest in the Borderlands has no realm lore; a Realm without a workspace still shares lore across its quests.
 - Guildmaster can search and read lore at every scope for the owner's requests (CHG-0132).
   This exception leaves ordinary threads' access unchanged and does not copy lore into broader scopes.
+  Guildmaster's reads beyond its own scope count no use, so they neither delay fading, wake dormant lore, nor add narrowing evidence.
   Guildmaster follows the save, change, widening, and deletion rules below.
 - Quest moves follow [quest placement and moves](../mission-tracking/specifications.md#quest-placement-and-moves).
 

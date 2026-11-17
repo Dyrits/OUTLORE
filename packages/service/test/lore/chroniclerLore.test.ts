@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { guildmaster } from "../fixtures/guildmaster.ts";
-import { approveAll, idOf, save } from "../fixtures/lore.ts";
+import { approveAll, idOf, loreEntryOf, save } from "../fixtures/lore.ts";
 import { fixture, open, register, settle, start, tool } from "../fixtures/service.ts";
 
 describe("searching lore as Chronicler", () => {
@@ -42,6 +42,22 @@ describe("searching lore as Chronicler", () => {
         "Not changed",
       );
       expect(yield* tool(chronicler.threadId, "forget_intel", { id: sideId })).toContain("Not deleted");
+    }).pipe(Effect.provide(layer));
+  });
+
+  it.live("counts no use and wakes no dormant lore when it reads another scope", () => {
+    const { directory, layer } = register(fixture());
+    return Effect.gen(function* () {
+      const chronicler = yield* guildmaster;
+      const quest = yield* start("Quest", directory);
+      yield* settle(quest.missionId, (detail) => detail.thread.state === "Idle");
+      const questId = idOf(yield* save(quest.threadId, "Orchid quest detail.", "mission"));
+      const before = yield* loreEntryOf(questId);
+      expect(yield* tool(chronicler.threadId, "search_intel", { query: "orchid" })).toContain("Orchid quest detail.");
+      expect(yield* tool(chronicler.threadId, "search_intel", { ids: [questId] })).toContain("Orchid quest detail.");
+      const after = yield* loreEntryOf(questId);
+      expect(after?.uses).toBe(0);
+      expect(after).toMatchObject({ lastUsedAt: before?.lastUsedAt, state: before?.state });
     }).pipe(Effect.provide(layer));
   });
 });

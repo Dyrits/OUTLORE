@@ -161,7 +161,8 @@ export const relyOnLore = Effect.fnUntraced(function* (threadId: string, ids: Re
 /**
  * `search_intel`: the active and dormant lore in the thread's scope read by identifier or matching the
  * query's words, best match first. Each lore entry returned counts as a use, so it fades slower and a dormant one
- * becomes active again (scoped-intel, Fading). Callers run it in a transaction.
+ * becomes active again (scoped-intel, Fading); Chronicler's reads beyond its own scope count none. Callers run it in a
+ * transaction.
  */
 export const searchLoreText = Effect.fnUntraced(function* (
   threadId: string,
@@ -186,9 +187,12 @@ export const searchLoreText = Effect.fnUntraced(function* (
   if (found.length === 0) {
     return "No lore matches. Your context already lists the active lore in your scope, and global lore as an index.";
   }
-  yield* countUses(
-    threadId,
-    found.map((row) => row.id),
-  );
+  // Chronicler's wider reads are not use: only lore in its own scope counts, so reading across scopes neither delays
+  // fading nor wakes dormant lore nor skews the evidence for narrowing.
+  const ownIds = isChronicler
+    ? new Set((yield* listInScope(yield* readScopeChain(threadId))).map((row) => row.id))
+    : null;
+  const counted = found.filter((row) => ownIds === null || ownIds.has(row.id)).map((row) => row.id);
+  if (counted.length > 0) yield* countUses(threadId, counted);
   return `Lore found, best match first; when two conflict, the more specific scope wins:\n${loreLinesOf(found)}`;
 });
