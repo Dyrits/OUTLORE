@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "0.1.6-Prototype",
+  "version": "0.1.7-Prototype",
   "private": true,
   "main": "index.ts",
   "scripts": {
