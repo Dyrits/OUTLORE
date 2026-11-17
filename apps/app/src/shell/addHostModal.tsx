@@ -4,7 +4,8 @@ import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-nativ
 import { messageOf } from "../foundation/client";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { Button } from "../ui/button";
-import type { PairingOffer } from "./pairingOffer";
+import { type PairingOffer, scannedOfferOf } from "./pairingOffer";
+import { canScanQrCode, QrScanner } from "./qrScanner";
 
 /**
  * The dialog that pairs this installation with a host: the pairing code the host shows, pasted, and the name this
@@ -20,8 +21,8 @@ export function AddHostModal({
 }: {
   /** The name offered for this computer. */
   computerName: string;
-  /** What this device is called in the dialog: a browser is not a computer. */
-  deviceNoun?: "browser" | "computer";
+  /** What this device is called in the dialog: a browser or a phone is not a computer. */
+  deviceNoun?: "browser" | "computer" | "phone";
   /** A browser with no host has nothing else to show, so the dialog cannot be dismissed. */
   isRequired?: boolean;
   /** A pairing link that opened the app: its code is filled in, and a browser with no host pairs with it at once. */
@@ -33,6 +34,18 @@ export function AddHostModal({
   const [code, setCode] = useState(offer?.code ?? "");
   const [name, setName] = useState(computerName);
   const [error, setError] = useState<string | null>(null);
+  // The phone's scanner read a QR code: its code replaces the field and its notice names the relay, then it waits for Pair.
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanned, setScanned] = useState<PairingOffer | null>(null);
+  const shown = scanned ?? offer;
+  const takeScan = (text: string) => {
+    const next = scannedOfferOf(text);
+    setIsScanning(false);
+    if (next === null) return;
+    setScanned(next);
+    setCode(next.code);
+    setError(null);
+  };
   const [isBusy, setIsBusy] = useState(false);
   const isReady = code.trim() !== "" && name.trim() !== "" && !isBusy;
   const pair = () => {
@@ -55,46 +68,54 @@ export function AddHostModal({
     hasPairedAtOnce.current = true;
     pair();
   }, []);
+  // The scanner fills this same modal: a second one opened while this one is on screen can fail to appear on a phone.
   return (
-    <Modal animationType="fade" onRequestClose={onCancel} transparent visible>
-      <View style={local.backdrop}>
-        {!isRequired && <Pressable accessibilityLabel="Close" onPress={onCancel} style={StyleSheet.absoluteFill} />}
-        <View style={local.panel}>
-          <Text style={local.title}>Add a host</Text>
-          <Text style={local.help}>
-            On the other computer, open the Charter, turn on Allow paired devices, and choose Pair a device. Paste the
-            code or the link it shows here, or scan its QR code with a phone. It works once and expires after ten
-            minutes.
-          </Text>
-          {offer !== null && offer.notice !== "" && <Text style={local.notice}>{offer.notice}</Text>}
-          <Text style={local.label}>Pairing code or link</Text>
-          <TextInput
-            accessibilityLabel="Pairing code or link"
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoFocus
-            multiline
-            onChangeText={setCode}
-            placeholder="outlore1-… or a link"
-            placeholderTextColor={colors.placeholder}
-            style={[local.input, local.codeInput]}
-            value={code}
-          />
-          <Text style={local.label}>Name this {deviceNoun}</Text>
-          <TextInput
-            accessibilityLabel={`Name of this ${deviceNoun}`}
-            maxLength={60}
-            onChangeText={setName}
-            style={local.input}
-            value={name}
-          />
-          {error !== null && <Text style={local.error}>{error}</Text>}
-          <View style={local.footer}>
-            {!isRequired && <Button isPrimary={false} label="Cancel" onPress={() => onCancel?.()} />}
-            <Button isDisabled={!isReady} label={isBusy ? "Pairing…" : "Pair"} onPress={pair} />
+    <Modal animationType="fade" onRequestClose={isScanning ? () => setIsScanning(false) : onCancel} transparent visible>
+      {isScanning ? (
+        <QrScanner onCancel={() => setIsScanning(false)} onScanned={takeScan} />
+      ) : (
+        <View style={local.backdrop}>
+          {!isRequired && <Pressable accessibilityLabel="Close" onPress={onCancel} style={StyleSheet.absoluteFill} />}
+          <View style={local.panel}>
+            <Text style={local.title}>Add a host</Text>
+            <Text style={local.help}>
+              On the other computer, open the Charter, turn on Allow paired devices, and choose Pair a device.{" "}
+              {canScanQrCode
+                ? "Scan its QR code with the camera, or paste the code or the link it shows here."
+                : "Paste the code or the link it shows here, or scan its QR code with a phone."}{" "}
+              It works once and expires after ten minutes.
+            </Text>
+            {canScanQrCode && <Button isPrimary={false} label="Scan a QR code" onPress={() => setIsScanning(true)} />}
+            {shown !== null && shown.notice !== "" && <Text style={local.notice}>{shown.notice}</Text>}
+            <Text style={local.label}>Pairing code or link</Text>
+            <TextInput
+              accessibilityLabel="Pairing code or link"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus={!canScanQrCode}
+              multiline
+              onChangeText={setCode}
+              placeholder="outlore1-… or a link"
+              placeholderTextColor={colors.placeholder}
+              style={[local.input, local.codeInput]}
+              value={code}
+            />
+            <Text style={local.label}>Name this {deviceNoun}</Text>
+            <TextInput
+              accessibilityLabel={`Name of this ${deviceNoun}`}
+              maxLength={60}
+              onChangeText={setName}
+              style={local.input}
+              value={name}
+            />
+            {error !== null && <Text style={local.error}>{error}</Text>}
+            <View style={local.footer}>
+              {!isRequired && <Button isPrimary={false} label="Cancel" onPress={() => onCancel?.()} />}
+              <Button isDisabled={!isReady} label={isBusy ? "Pairing…" : "Pair"} onPress={pair} />
+            </View>
           </View>
         </View>
-      </View>
+      )}
     </Modal>
   );
 }

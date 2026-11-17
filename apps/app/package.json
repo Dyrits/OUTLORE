@@ -16,6 +16,7 @@
     "@xterm/xterm": "^6.0.0",
     "effect": "4.1.4",
     "expo": "~58.0.25",
+    "expo-camera": "~58.0.14",
     "expo-font": "~58.0.12",
     "marked": "^18.2.0",
     "react": "19.3.0",

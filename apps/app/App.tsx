@@ -27,6 +27,7 @@ export function App() {
     setHostId,
     hosts,
     computerName,
+    deviceNoun,
     isAddingHost,
     setIsAddingHost,
     offer,
@@ -76,13 +77,31 @@ export function App() {
     }),
     [computerName, hostId, hosts, isBrowser, setFailure, setHostId, setIsAddingHost],
   );
+  // Add a host, opened from the host menu or by a pairing link. It also shows over the screen that waits for a host, so a
+  // link that opens the app while its host is unreachable is not lost.
+  const addHostDialog = isAddingHost ? (
+    <AddHostModal
+      computerName={computerName}
+      deviceNoun={deviceNoun}
+      key={offer?.code ?? "manual"}
+      offer={offer}
+      onCancel={() => setIsAddingHost(false)}
+      onPair={(code, deviceName) =>
+        pair(code, deviceName).then((host) => {
+          setIsAddingHost(false);
+          hostMenu.onChoose(host.id);
+          return host;
+        })
+      }
+    />
+  ) : null;
   // A browser with no host has nothing to show: it pairs first.
   if (status.kind === "pairing" || (status.canPair && isAddingHost)) {
     return (
       <View style={styles.center}>
         <AddHostModal
           computerName={computerName}
-          deviceNoun="browser"
+          deviceNoun={deviceNoun}
           isRequired
           key={offer?.code ?? "manual"}
           offer={offer}
@@ -129,6 +148,7 @@ export function App() {
             <Text style={styles.backText}>Back to this computer</Text>
           </Pressable>
         )}
+        {addHostDialog}
       </View>
     );
   }
@@ -242,22 +262,7 @@ export function App() {
             </PageNavigation.Provider>
           </ArchiveNavigation.Provider>
         </View>
-        {isAddingHost && (
-          <AddHostModal
-            computerName={computerName}
-            deviceNoun={isBrowser ? "browser" : "computer"}
-            key={offer?.code ?? "manual"}
-            offer={offer}
-            onCancel={() => setIsAddingHost(false)}
-            onPair={(code, deviceName) =>
-              pair(code, deviceName).then((host) => {
-                setIsAddingHost(false);
-                hostMenu.onChoose(host.id);
-                return host;
-              })
-            }
-          />
-        )}
+        {addHostDialog}
       </HostMenuContext.Provider>
     </ActiveHostContext.Provider>
   );

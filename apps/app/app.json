@@ -14,6 +14,17 @@
     },
     "name": "Outlore",
     "orientation": "portrait",
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Outlore uses the camera only to read the QR code of a host you want to pair with.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ]
+    ],
+    "scheme": "outlore",
     "slug": "outlore",
     "splash": {
       "backgroundColor": "#000216",

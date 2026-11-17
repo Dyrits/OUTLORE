@@ -1,11 +1,13 @@
 import type { KnownHost } from "@outlore/contracts";
 import { createPairedHosts, openBrowserTransport, pairFromBrowser } from "@outlore/controller";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Platform } from "react-native";
 import type { PairingOffer } from "../shell/pairingOffer";
 import { pairingOfferOf } from "../shell/pairingOffer";
 import { isBrowserPage, pageSettings } from "./browser/page";
 import { ServiceClient } from "./client";
 import { type HostLink, hostStatusOf } from "./hostStatus";
+import { usePairingLinks } from "./usePairingLinks";
 
 /**
  * Owns the window's local service and its selected host connection. In a plain browser there is no local service: the
@@ -13,6 +15,9 @@ import { type HostLink, hostStatusOf } from "./hostStatus";
  */
 export function useHostConnection() {
   const isBrowser = useMemo(isBrowserPage, []);
+  // The phone app (a native build) is remote-only like a browser, but it has no address bar and asks before it pairs.
+  const isPhone = Platform.OS !== "web";
+  const deviceNoun: "browser" | "computer" | "phone" = isPhone ? "phone" : isBrowser ? "browser" : "computer";
   const pairedHosts = useMemo(() => (isBrowser ? createPairedHosts(window.localStorage) : null), [isBrowser]);
   // The local service always stays connected: it lists the hosts and pairs with them. The window shows either its own
   // data or, through it, a paired host's (device-pairing).
@@ -22,7 +27,7 @@ export function useHostConnection() {
   );
   const [hostClient, setHostClient] = useState<ServiceClient | null>(null);
   const [hosts, setHosts] = useState<readonly KnownHost[]>(() => pairedHosts?.known() ?? []);
-  const [computerName, setComputerName] = useState(isBrowser ? "This browser" : "This computer");
+  const [computerName, setComputerName] = useState(`This ${deviceNoun}`);
   const setHostId = useCallback(
     (next: string | null) => {
       pairedHosts?.setActive(next);
@@ -108,17 +113,19 @@ export function useHostConnection() {
   hasHostsRef.current = hosts.length > 0;
   const offerPairing = useCallback(
     (link: string) => {
-      const next = pairingOfferOf(link, { hasHosts: hasHostsRef.current, isBrowser });
+      const next = pairingOfferOf(link, { hasHosts: hasHostsRef.current, isBrowser, isPhone });
       if (next === null) return;
       setOffer(next);
       setIsAddingHostState(true);
     },
-    [isBrowser],
+    [isBrowser, isPhone],
   );
+  // The phone app is opened with `outlore://pair#<code>` (or the web link, when the system hands it over).
+  usePairingLinks(offerPairing);
   // A browser opened at `<web app>/#<code>` pairs by itself. The fragment leaves the address bar at once, so a reload
   // or a bookmark never offers a spent code again, and it never reaches the history entry that was written.
   useEffect(() => {
-    if (!isBrowser) return;
+    if (!isBrowser || isPhone) return;
     const takeFragment = () => {
       const link = window.location.hash;
       if (pairingOfferOf(link, { hasHosts: false, isBrowser }) === null) return;
@@ -128,7 +135,7 @@ export function useHostConnection() {
     takeFragment();
     window.addEventListener("hashchange", takeFragment);
     return () => window.removeEventListener("hashchange", takeFragment);
-  }, [isBrowser, offerPairing]);
+  }, [isBrowser, isPhone, offerPairing]);
   // The desktop app is opened with `outlore://pair#<code>`; the window listens first, then asks for what came before.
   useEffect(() => {
     const bridge = window.outlore?.pairingLinks;
@@ -191,6 +198,7 @@ export function useHostConnection() {
     activeHost,
     client,
     computerName,
+    deviceNoun,
     hostId,
     hosts,
     isAddingHost,
