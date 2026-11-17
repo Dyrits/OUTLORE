@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "@effect/sql-sqlite-node": "4.1.4",
+    "@jitl/quickjs-singlefile-mjs-release-sync": "0.32.0",
     "@outlore/channel": "workspace:*",
     "@outlore/contracts": "workspace:*",
     "@outlore/controller": "workspace:*",
     "@outlore/relay": "workspace:*",
     "effect": "4.1.4",
+    "quickjs-emscripten-core": "0.32.0",
     "ws": "8.23.0"
   },
   "devDependencies": {

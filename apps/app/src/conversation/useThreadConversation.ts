@@ -22,7 +22,8 @@ export function useThreadConversation(
   options: ConversationOptions,
 ) {
   const draft = useDraft(client, threadId);
-  const followNewest = useFollowNewest();
+  const entries = detail === null ? [] : entriesOf(detail, detail.thread.actions.isInTurn);
+  const followNewest = useFollowNewest(entries);
   const skills = useSkills(client, path);
   const terminal = useTerminal(threadId, path);
   const comments = useThreadComments(threadId);
@@ -57,7 +58,7 @@ export function useThreadConversation(
     alternative: { label: state.other, onSend: sendAs(state.other) },
     comments,
     draft,
-    entries: detail === null ? [] : entriesOf(detail, detail.thread.actions.isInTurn),
+    entries,
     followNewest,
     harnesses,
     interrupt: () => client.request({ _tag: "InterruptThread", threadId }),

@@ -54,10 +54,10 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume pairing by QR code and link (built on web, desktop and mobile; open: merging `worktree/android-apk` so a phone can pair, a window and phone check, the web deployment), read the [current handoff](.agents/handoffs/2026-11-17-1418-pairing-link-mobile.md). Handoffs are shared and committed.
+- To resume conversations opening on their last messages (CHG-0442; built as an inverted feed, tested, not checked in a window; open: commit, push with the owner's approval, the owner's look in a window and on a phone; the scroll cue is still undecided), read the [current handoff](.agents/handoffs/2026-11-17-2228-open-on-last-messages.md). Handoffs are shared and committed.
 
-- To resume the whole-codebase review (A–E integration and the CI dependency fix are on main and CI is green; next the context-window migration renumber, the open behaviour items, then the deferred reviews), read the [current handoff](.agents/handoffs/2026-11-17-1135-review-ci-green.md). Handoffs are shared and committed.
+- To resume Code Mode (core built and on main, CHG-0441, ADR 0023; open: the connectors' gateway, the Charter's switch, a live run and measuring its gain), read the [current handoff](.agents/handoffs/2026-11-17-2226-code-mode-core.md). Handoffs are shared and committed.
 
-- To resume the sidebar change that removed the indent before realms (CHG-0332; done and committed; open: the owner's look in a window, what "same for borderlands" meant beyond the quests' alignment), read the [current handoff](.agents/handoffs/2026-11-16-1030-sidebar-realm-indent.md). Handoffs are shared and committed.
+- To resume the running-quest sidebar change (CHG-0440; implemented and tested on main, not yet committed or checked in the window; open: commit, push with the owner's approval, the owner's look in a window), read the [current handoff](.agents/handoffs/2026-11-17-2209-running-quest-sidebar.md). Handoffs are shared and committed.
 
 

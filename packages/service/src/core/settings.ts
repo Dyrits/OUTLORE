@@ -48,6 +48,7 @@ export const defaultSettings: Settings = {
   shouldShowAgentThreads: true,
   shouldShowFinishedQuests: false,
   shouldStreamReplies: true,
+  shouldUseCodeMode: false,
   tiers: { Balanced: null, Heavy: null, Light: null },
 };
 

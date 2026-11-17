@@ -25,11 +25,15 @@ export const callTool = Effect.fnUntraced(function* (threadId: string, name: str
 });
 
 const decodeToolListing = Schema.decodeUnknownSync(
-  Schema.Struct({ result: Schema.Struct({ tools: Schema.Array(Schema.Struct({ name: Schema.String })) }) }),
+  Schema.Struct({
+    result: Schema.Struct({
+      tools: Schema.Array(Schema.Struct({ description: Schema.String, name: Schema.String })),
+    }),
+  }),
 );
 
-/** Lists the tools a thread's authenticated MCP endpoint offers, by name. */
-export const listToolNames = Effect.fnUntraced(function* (threadId: string) {
+/** Lists the tools a thread's authenticated MCP endpoint offers, with their descriptions. */
+export const listTools = Effect.fnUntraced(function* (threadId: string) {
   const url = yield* (yield* Endpoints).urlFor(threadId);
   const listed = yield* Effect.promise(async () => {
     const response = await fetch(url, {
@@ -39,5 +43,9 @@ export const listToolNames = Effect.fnUntraced(function* (threadId: string) {
     });
     return decodeToolListing(await response.json());
   });
-  return listed.result.tools.map((tool) => tool.name);
+  return listed.result.tools;
 });
+
+/** Lists the tools a thread's authenticated MCP endpoint offers, by name. */
+export const listToolNames = (threadId: string) =>
+  listTools(threadId).pipe(Effect.map((tools) => tools.map((tool) => tool.name)));

@@ -163,3 +163,4 @@ Tests mirror the folders under `test/`; shared fixtures stay in `test/fixtures/`
 - [0020: Conversation terminals run in the host service, fenced for paired devices](architecture-decision-record/0020-terminals-run-in-the-host.md)
 - [0021: Computer use lives in the host, behind Outlore's own `computer_*` tools, with Cua Driver as a replaceable backend](architecture-decision-record/0021-computer-use-in-the-host-behind-computer-tools.md) (proposed)
 - [0022: The Vault keeps connector secrets in an encrypted file, the key in the operating system's secret store, and hides its folder from the harnesses' sandboxes](architecture-decision-record/0022-the-vault-encrypts-secrets-and-hides-its-folder-from-sandboxes.md) (proposed)
+- [0023: Code Mode runs the model's code in QuickJS compiled to WebAssembly, inside the host service](architecture-decision-record/0023-code-mode-runs-in-quickjs-inside-the-host.md)

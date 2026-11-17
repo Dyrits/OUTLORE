@@ -1,5 +1,14 @@
 # Work in progress
 
+## Conversation opens on its last messages · 2026-11-17 · built and tested, the owner's look pending
+
+A quest, side-quest, or Chronicler's conversation now opens on its newest entry: the feed is drawn inverted, so no scroll pass follows each measurement (CHG-0442, [changelog](changelog/0.1.7-Prototype.md)). Not in the change: how the scroll cue looks, still open in the [backlog](backlog.md) ("Scroll indicator, to settle"). Open: the owner's look in a window and on a phone, a long thread. Uncommitted in the working tree.
+
+## Code Mode core · 2026-11-17 · built and checked on `worktree/code-mode`, not merged
+
+The owner asked to implement Code Mode (Cloudflare's design) and chose to build its core ahead of the connectors, with QuickJS in WebAssembly as the executor (CHG-0441, [ADR 0023](architecture-decision-record/0023-code-mode-runs-in-quickjs-inside-the-host.md)). Starting revision `0affd46`, rebased on `6bc53e8`; worktree `.worktrees/code-mode`. Built: `packages/service/src/connectors/` (gateway interface with a no-connector layer, executor, declarations, `run_connector_code`), the setting `shouldUseCodeMode`, the tool server's wiring. Checks: Biome, typecheck, full suite (2,034 passed, 54 skipped), 25 new tests; [verification](verification/2026-11-17-code-mode-core.md).
+Open: the owner's review and the merge into `main`; the Charter's switch (with the Charter); wiring to the real gateway (connectors slice 3) and a live run on each harness; measuring the gain; whether a setting change reaches a reused harness process before its restart.
+
 ## Connectors · 2026-11-16 · specified (CHG-0321 to CHG-0327), nothing built
 
 The owner wants connectors in the Charter (a marketplace-like place), with a switch on each realm and quest, a global switch and a switch per tool, Composio and Apple apps first, a Vault for secrets, and Code Mode as one experimental global setting. [Specification](capabilities/connectors/specifications.md), [draft](capabilities/connectors/draft.md) (open items only), [research](research/code-mode-autonomy-connectors-2026-11-16.md), [handoff](../.agents/handoffs/2026-11-16-0835-connectors-specification.md). Also written: the requirement *Connector secrets stay on the host*, the glossary terms Charter, Connector and The Vault, the outline line, notes in tool-and-skill-loading, mission-tracking and thread-panel, and backlog items. Open: which group of the thread panel holds the tools line, whether The Vault holds other secrets later. The [blueprint](capabilities/connectors/blueprint.md) and [ADR 0022](architecture-decision-record/0022-the-vault-encrypts-secrets-and-hides-its-folder-from-sandboxes.md) are proposed (CHG-0328) and were revised after a second opinion (CHG-0330), awaiting the owner's review; the build starts with read-denial probes of each harness using a disposable secret, then the Vault. Not authorized to build.

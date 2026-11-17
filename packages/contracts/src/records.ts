@@ -93,6 +93,11 @@ export const Settings = Schema.Struct({
   /** Whether the rail lists finished (Done) quests among the quests; off by default, the board still shows them. */
   shouldShowFinishedQuests: Schema.Boolean,
   shouldStreamReplies: Schema.Boolean,
+  /**
+   * Whether threads reach their connectors' tools by running code that calls them instead of calling each one, off by
+   * default and experimental (connectors, Code Mode; CHG-0324, CHG-0441). Applies from a thread's next listing.
+   */
+  shouldUseCodeMode: Schema.Boolean,
   /** The Companions the Chronicler picks from by a request's complexity; none set means the defaults above. */
   tiers: Schema.Struct({ Balanced: Schema.NullOr(Tier), Heavy: Schema.NullOr(Tier), Light: Schema.NullOr(Tier) }),
 });

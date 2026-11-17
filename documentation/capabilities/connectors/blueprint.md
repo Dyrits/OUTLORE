@@ -95,7 +95,7 @@ By harness, each with its own probe (see the ADR's Unchecked):
 | A secret appears nowhere, gone on removal | The Vault property test above; slice 2. |
 | Apple apps refused off macOS; permission requested only from the host's window; an app not chosen offers no tools | `connectors/` catalog constraint, `requestContext` origin, the app-to-tool filter in `listingFor` and in `call`, and an app turned off during a call; the permission check through the real child process on a Mac; slice 4. |
 | The Vault unreadable from a harness's sandbox | Per-harness probe with an outside control; slice 2. |
-| Code Mode same results and questions | Not in these slices. |
+| Code Mode same results and questions | `test/connectors/codeMode.test.ts` against a fake gateway (CHG-0441); the real gateway's questions with slice 3. |
 | Human walkthrough in the Charter, on a phone | App on the real service; slice 5. |
 
 ## Order
@@ -105,7 +105,7 @@ By harness, each with its own probe (see the ADR's Unchecked):
 3. **The gateway with a fake connector.** Catalog, tables, availability, listing, call, asking, stopping, owner requests and contracts, with the fake backend. Provable on the three fake harnesses.
 4. **The backends and the first two connectors**: http MCP and Composio; stdio MCP, Apple apps, its permission. Real harness conformance runs.
 5. **The app**: the Charter, panels, the thread panel's tools line.
-6. **Code Mode** (own ADR for the executor), after the native connectors, as agreed.
+6. **Code Mode**: its core was built first, at the owner's choice (CHG-0441, [ADR 0023](../../architecture-decision-record/0023-code-mode-runs-in-quickjs-inside-the-host.md)), in `connectors/` (`gateway.ts` holds the `ConnectorGateway` interface `listingFor` and `call` that this blueprint describes, with a layer that offers no connector until slice 3; `codeMode.ts`, `codeRunner.ts`, `codeExecutor.ts`, `codeTypes.ts`). Slice 3's gateway replaces `noConnectorsLayer`; what remains here is the Charter's switch (slice 5) and the check that a run's calls follow the turn snapshot.
 
 ## Requirements
 
