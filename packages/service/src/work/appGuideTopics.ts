@@ -35,7 +35,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "To start a quest: press the new-quest button on a realm or on the Borderlands in the sidebar, or tell Chronicler what you want and choose on the card it shows (Continue in a quest that fits, or Open as new quest). Chronicler never opens a quest on its own.",
       "States a quest or thread shows: Underway (running), Resting (idle), Awaiting word (waiting for an answer), and Summons (needs the owner: an approval, an answer, a budget reached, a missing folder, or a tool problem). A quest stays open until it is archived; archived quests are in the Archive, under The Keep.",
       "Each quest has a briefing (where it stands, rewritten as it changes) and a journal (a dated log only ever added to). Every thread in the quest reads them before it starts.",
-      "Threads message each other along the tree, and any thread can reach a quest or realm the owner names with @. A side-quest opened by a thread tells its parent when it reports a result.",
+      "Threads message each other along the tree. When the owner names a quest or side-quest with @, the receiving thread may reach it for that turn; a realm named with @ is context only and opens no reach. A side-quest opened by a thread tells its parent when it reports a result.",
     ].join("\n"),
     id: "quests",
     keywords: [
@@ -63,7 +63,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "The Borderlands hold quests with no realm: no folder and no shared lore. A quest there has only its own lore and global lore. Every quest belongs to a realm or to the Borderlands, and a whole quest tree can be moved between them, after a confirmation, while no thread of it is running.",
       "A quest with no folder works in a scratch folder Outlore keeps for it.",
       "Own copy is agreed but not built: a thread cannot yet be given its own git worktree, and there is no merge button. Threads beneath a thread work in the same folder as it, and an agent can still use git or worktrees itself when asked.",
-      "Add a realm from the sidebar, or ask Chronicler to make or rename one. Chronicler never deletes a realm or a quest; the most it does to a quest is archive it, when asked.",
+      "Add a realm from the sidebar, or ask Chronicler to make or rename one. Chronicler cannot delete a realm. When asked to archive an empty quest with no usage that is not a Ritual's, it deletes the quest instead.",
     ].join("\n"),
     id: "realms",
     keywords: [

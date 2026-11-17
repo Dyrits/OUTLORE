@@ -84,6 +84,12 @@ describe("reading the app guide", () => {
       expect(body("companions")).not.toMatch(/Harnesses card/);
     });
 
+    it("distinguishes quest and realm mentions and explains archiving an empty quest", () => {
+      expect(body("quests")).toMatch(/realm.*context only/i);
+      expect(body("realms")).not.toMatch(/never deletes a realm or a quest/i);
+      expect(body("realms")).toMatch(/archiv.*empty quest.*delet/i);
+    });
+
     it("does not promise the unbuilt own copy or one-button merge as available", () => {
       const text = body("realms");
       expect(text).toMatch(/own copy/i);
