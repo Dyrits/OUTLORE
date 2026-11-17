@@ -89,6 +89,9 @@ const stepGroupsOf = (
 /** A settled action does not establish what a working thread is doing now. */
 export const workingLabel = "Working…";
 
+/** The entries newest first: a feed drawn inverted starts from the bottom of the view, where the newest entry sits. */
+export const newestFirstOf = (entries: ReadonlyArray<Entry>): Array<Entry> => [...entries].reverse();
+
 /**
  * Messages, questions, off-topic suggestions, budget lines, handovers, lore changes, and the threads opened beneath, in the order they happened.
  * An aside is left out: its suggestion line already leads to it.

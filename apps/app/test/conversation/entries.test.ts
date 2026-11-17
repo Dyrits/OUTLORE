@@ -7,7 +7,7 @@ import {
   type ThreadSummary,
 } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
-import { entriesOf, workingLabel } from "../../src/conversation/entries";
+import { entriesOf, newestFirstOf, workingLabel } from "../../src/conversation/entries";
 
 const summary = (id: string, parentId: string | null, openedAt: number, isAside = false) =>
   ({
@@ -253,5 +253,19 @@ describe("a turn's actions, folded as steps while messages stay visible", () => 
 
   it("leaves a lone reply of a finished turn as it is", () => {
     expect(entriesOf(turn([owner(0), agent(4000)])).map((entry) => entry._tag)).toEqual(["Message", "Message"]);
+  });
+
+  describe("newestFirstOf", () => {
+    it("lists the newest entry first", () => {
+      const entries = entriesOf(turn([owner(0), agent(4000)]));
+      expect(newestFirstOf(entries).map((entry) => entry.key)).toEqual(entries.map((entry) => entry.key).reverse());
+    });
+
+    it("leaves the chronological list it was given as it was", () => {
+      const entries = entriesOf(turn([owner(0), agent(4000)]));
+      const keys = entries.map((entry) => entry.key);
+      newestFirstOf(entries);
+      expect(entries.map((entry) => entry.key)).toEqual(keys);
+    });
   });
 });

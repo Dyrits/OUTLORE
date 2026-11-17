@@ -58,7 +58,7 @@ function ThreadPane({
     realmPath: null,
     viewing: null,
   });
-  const { draft, skills, actionError, terminal, followNewest, comments, entries, act } = conversation;
+  const { draft, skills, actionError, terminal, followNewest, comments, act } = conversation;
   const [isOpening, setIsOpening] = useState(false);
   const { canOpenBeneath, canResume, canStop, isInTurn } = thread.actions;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
@@ -139,9 +139,8 @@ function ThreadPane({
         <FlatList<Entry>
           {...followNewest.listProps}
           contentContainerStyle={styles.feed}
-          data={entries}
           keyExtractor={(entry) => entry.key}
-          ListFooterComponent={<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />}
+          ListHeaderComponent={<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />}
           renderItem={({ item }) => (
             <EntryView
               client={client}

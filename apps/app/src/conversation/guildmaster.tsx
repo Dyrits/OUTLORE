@@ -246,9 +246,8 @@ function ChroniclerChat({
         <FlatList<Entry>
           {...followNewest.listProps}
           contentContainerStyle={styles.feed}
-          data={entries}
           keyExtractor={(entry) => entry.key}
-          ListFooterComponent={<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />}
+          ListHeaderComponent={<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />}
           renderItem={({ item }) => (
             <EntryView
               client={client}

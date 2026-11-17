@@ -1,5 +1,9 @@
 # Work in progress
 
+## Conversation opens on its last messages · 2026-11-17 · built and tested, the owner's look pending
+
+A quest, side-quest, or Chronicler's conversation now opens on its newest entry: the feed is drawn inverted, so no scroll pass follows each measurement (CHG-0442, [changelog](changelog/0.1.7-Prototype.md)). Not in the change: how the scroll cue looks, still open in the [backlog](backlog.md) ("Scroll indicator, to settle"). Open: the owner's look in a window and on a phone, a long thread. Uncommitted in the working tree.
+
 ## Code Mode core · 2026-11-17 · built and checked on `worktree/code-mode`, not merged
 
 The owner asked to implement Code Mode (Cloudflare's design) and chose to build its core ahead of the connectors, with QuickJS in WebAssembly as the executor (CHG-0441, [ADR 0023](architecture-decision-record/0023-code-mode-runs-in-quickjs-inside-the-host.md)). Starting revision `0affd46`, rebased on `6bc53e8`; worktree `.worktrees/code-mode`. Built: `packages/service/src/connectors/` (gateway interface with a no-connector layer, executor, declarations, `run_connector_code`), the setting `shouldUseCodeMode`, the tool server's wiring. Checks: Biome, typecheck, full suite (2,034 passed, 54 skipped), 25 new tests; [verification](verification/2026-11-17-code-mode-core.md).
