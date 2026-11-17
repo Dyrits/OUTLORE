@@ -19,7 +19,7 @@ import type { RealmListing } from "./src/shell/questTree";
 import { Shell } from "./src/shell/shell";
 import type { Place } from "./src/shell/sidebar";
 
-export default function App() {
+export function App() {
   const {
     isBrowser,
     pair,

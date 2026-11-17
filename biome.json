@@ -40,7 +40,11 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "style": {
+        "noDefaultExport": "error",
+        "noNonNullAssertion": "error"
+      }
     }
   },
   "overrides": [
@@ -53,6 +57,21 @@
         }
       },
       "includes": ["opencode.json", "**/package.json", "skills-lock.json"]
+    },
+    {
+      "includes": [
+        "packages/relay/src/worker.ts",
+        "vitest.config.ts",
+        ".agents/vitest/retriedReporter.ts",
+        "apps/app/test/raw.d.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
     }
   ],
   "vcs": {
