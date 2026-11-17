@@ -9,8 +9,8 @@ import { hostLinkCodes, type OpenTransport } from "./transport.ts";
 /** Settings of the web app's page, or of the mobile app, which links to a host the same way. */
 export interface PageSettings {
   readonly allowLocalRelay: boolean;
-  /** The mobile app says it is a phone; a page in a browser leaves this out. */
-  readonly kind?: "phone";
+  /** How this app identifies itself to the host. */
+  readonly kind: "browser" | "phone";
   readonly release: string;
 }
 
@@ -26,7 +26,7 @@ const browserStore = (hosts: PairedHosts): PairedHostStore => ({
 
 /** Pairs a browser (or the mobile app) and keeps the pairing in its storage. */
 export const pairFromBrowser = (code: string, name: string, hosts: PairedHosts, page: PageSettings) =>
-  Effect.runPromise(pairWithCode(code, name, browserStore(hosts), { ...page, kind: page.kind ?? "browser" }));
+  Effect.runPromise(pairWithCode(code, name, browserStore(hosts), page));
 
 /**
  * The transport to a paired host for a `ServiceClient`. It reports itself open at once, as the desktop's loopback
@@ -47,7 +47,7 @@ export const openBrowserTransport =
         yield* Effect.yieldNow;
         if (isClosed) return;
         handlers.onOpen();
-        return yield* resumeHost(browserStore(hosts), hostId, { ...page, kind: page.kind ?? "browser" });
+        return yield* resumeHost(browserStore(hosts), hostId, page);
       }).pipe(
         Effect.match({
           onFailure: (reason) => {

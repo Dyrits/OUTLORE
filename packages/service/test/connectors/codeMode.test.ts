@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Deferred, Effect, Fiber } from "effect";
-import { noConnectorsLayer } from "../../src/connectors/index.ts";
+import { noConnectorsLayer } from "../../src/connectors/gateway.ts";
 import { fakeGateway, serviceWithGateway } from "../fixtures/connectors.ts";
 import { callTool, listToolNames, listTools } from "../fixtures/mcp.ts";
 import { call, start } from "../fixtures/service.ts";

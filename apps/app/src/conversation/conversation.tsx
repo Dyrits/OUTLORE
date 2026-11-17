@@ -137,10 +137,9 @@ function ThreadPane({
           </View>
         )}
         <FlatList<Entry>
-          {...followNewest.listProps}
+          {...followNewest.listPropsOf(<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />)}
           contentContainerStyle={styles.feed}
           keyExtractor={(entry) => entry.key}
-          ListHeaderComponent={<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />}
           renderItem={({ item }) => (
             <EntryView
               client={client}

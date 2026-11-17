@@ -7,6 +7,7 @@ import {
   type KeyValueStorage,
   type OpenTransport,
   openBrowserTransport,
+  type PageSettings,
   pairFromBrowser,
 } from "@outlore/controller";
 import { startNodeRelay } from "@outlore/relay";
@@ -128,13 +129,13 @@ const makeWorld = () =>
       host({ _tag: "CreatePairingCode" }).pipe(Effect.map((made) => (made as { code: string }).code));
     /** One browser (or the mobile app, with `kind: "phone"`): its own storage, and the settings of the page it runs on. */
     const browser = (
-      settings: { kind?: "phone"; release?: string; storage?: ReturnType<typeof memoryStorage> } = {},
+      settings: { kind?: PageSettings["kind"]; release?: string; storage?: ReturnType<typeof memoryStorage> } = {},
     ) => {
       const storage = settings.storage ?? memoryStorage();
       const hosts = createPairedHosts(storage);
       const page = {
         allowLocalRelay: true,
-        ...(settings.kind === undefined ? {} : { kind: settings.kind }),
+        kind: settings.kind ?? "browser",
         release: settings.release ?? hostRelease,
       };
       return {
@@ -198,24 +199,21 @@ describe("a browser pairing with a running host and using it", () => {
   it.live("lists the mobile app as a phone and a browser as a browser", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
+        const scene = yield* world;
+        yield* scene.allowPairing;
         for (const [kind, name] of [
           ["phone", "Pixel"],
-          [undefined, "Firefox"],
+          ["browser", "Firefox"],
         ] as const) {
-          const device = w.browser(kind === undefined ? {} : { kind });
-          yield* Effect.promise(async () => device.pair(await Effect.runPromise(w.newCode()), name));
+          const device = scene.browser({ kind });
+          yield* Effect.promise(async () => device.pair(await Effect.runPromise(scene.newCode()), name));
         }
-        const access = (yield* w.host({ _tag: "ReadRemoteAccess" })) as {
-          devices: Array<{ kind: string; name: string }>;
-        };
-        expect(access.devices.map(({ kind, name }) => [name, kind])).toEqual(
-          expect.arrayContaining([
-            ["Pixel", "phone"],
-            ["Firefox", "browser"],
+        expect(yield* scene.host({ _tag: "ReadRemoteAccess" })).toMatchObject({
+          devices: expect.arrayContaining([
+            expect.objectContaining({ kind: "phone", name: "Pixel" }),
+            expect.objectContaining({ kind: "browser", name: "Firefox" }),
           ]),
-        );
+        });
       }),
     ),
   );
@@ -285,9 +283,11 @@ describe("a browser pairing with a running host and using it", () => {
         const fresh = yield* w.newCode();
         const elsewhere = createPairedHosts(memoryStorage());
         const refused = yield* Effect.promise(() =>
-          pairFromBrowser(fresh, "Firefox", elsewhere, { allowLocalRelay: false, release: hostRelease }).catch(
-            (e: Error) => e,
-          ),
+          pairFromBrowser(fresh, "Firefox", elsewhere, {
+            allowLocalRelay: false,
+            kind: "browser",
+            release: hostRelease,
+          }).catch((e: Error) => e),
         );
         expect(String((refused as Error).message)).toContain("relay on this computer");
         expect(elsewhere.known()).toEqual([]);
@@ -334,6 +334,7 @@ describe("a browser pairing with a running host and using it", () => {
         const link = driven(
           openBrowserTransport(createPairedHosts(matching.storage), host.id, {
             allowLocalRelay: true,
+            kind: "browser",
             release: "0.1.9-Prototype",
           }),
         );

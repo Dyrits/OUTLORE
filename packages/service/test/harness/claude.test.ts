@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { markPrompted } from "../../src/work/activities.ts";
-import { unaskedToolNamesOf } from "../../src/work/threadTools.ts";
+import { unaskedToolNamesOf } from "../../src/work/threadToolAccess.ts";
 import { withClaude, withoutNote } from "../fixtures/claude.ts";
 import { call, read, sendTo, settle, startMission } from "../fixtures/service.ts";
 import { idleWith } from "../fixtures/standIns.ts";

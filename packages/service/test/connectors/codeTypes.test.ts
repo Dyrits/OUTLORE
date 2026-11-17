@@ -24,7 +24,17 @@ describe("declaring connector tools as types", () => {
 
   it("keeps a description from closing its comment", () => {
     const declaration = declarationOf([
-      { description: "Ends */ here", inputSchema: { type: "object" }, member: "go", namespace: "fake" },
+      {
+        member: "go",
+        namespace: "fake",
+        tool: {
+          connector: "fake",
+          description: "Ends */ here",
+          inputSchema: { type: "object" },
+          name: "fake__go",
+          tool: "go",
+        },
+      },
     ]);
     expect(declaration).toContain("/** Ends * / here */");
     expect(declaration).toContain("go(input: Record<string, unknown>): Promise<unknown>;");

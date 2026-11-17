@@ -2,7 +2,7 @@ import { Effect, Exit, Match, Schema } from "effect";
 import { type ToolAnswer, toolRefusal } from "../core/index.ts";
 import type { CodeExecutor } from "./codeExecutor.ts";
 import { CodeCallFailure, type CodeFunction, type CodeRun, defaultCodeLimits } from "./codeRun.ts";
-import { declarationOf, identifierOf } from "./codeTypes.ts";
+import { type Binding, declarationOf, identifierOf } from "./codeTypes.ts";
 import type { ConnectorGateway, ConnectorTool } from "./gateway.ts";
 
 // Code Mode for connectors (connectors specification, Code Mode; CHG-0324, CHG-0441): with the setting on, a thread is
@@ -15,9 +15,6 @@ export const codeToolName = "run_connector_code";
 
 /** The most characters of a run's answer a thread reads, as Cloudflare's Code Mode caps its own (about 6,000 tokens). */
 const maxAnswerCharacters = 24_000;
-
-/** Where one connector tool lives in the code: `connectors.<namespace>.<member>`. */
-type Binding = { readonly member: string; readonly namespace: string; readonly tool: ConnectorTool };
 
 /** Each tool's place in the code; two tools whose names read the same as identifiers get a numbered suffix. */
 const bindingsOf = (tools: ReadonlyArray<ConnectorTool>): ReadonlyArray<Binding> => {
@@ -32,7 +29,7 @@ const bindingsOf = (tools: ReadonlyArray<ConnectorTool>): ReadonlyArray<Binding>
   });
 };
 
-const example = (bindings: ReadonlyArray<Binding>) => {
+const exampleOf = (bindings: ReadonlyArray<Binding>) => {
   const first = bindings[0];
   return first === undefined
     ? ""
@@ -43,12 +40,12 @@ const descriptionOf = (bindings: ReadonlyArray<Binding>) =>
   `Run a short JavaScript program that calls your connectors' tools, and get back what it returns. Use it to chain several calls, or to filter or sum their results, so only what you need comes back.
 
 Available:
-${declarationOf(bindings.map(({ member, namespace, tool }) => ({ description: tool.description, inputSchema: tool.inputSchema, member, namespace })))}
+${declarationOf(bindings)}
 
-Write an async arrow function in plain JavaScript (no TypeScript types) that returns the result; a function body ending in return also works. Each call returns the tool's result, parsed from JSON when it is JSON. A call the owner denies, or to a connector or tool that is switched off, throws an Error with the reason; a write may wait for the owner's answer. The program has no files, network, environment or modules: only connectors and console.log, whose lines come back with the result. It stops after ${defaultCodeLimits.cpuMillis / 1000} seconds of running time (waiting for a call does not count) or ${defaultCodeLimits.maxCalls} calls.${example(bindings)}`;
+Write an async arrow function in plain JavaScript (no TypeScript types) that returns the result; a function body ending in return also works. Each call returns the tool's result, parsed from JSON when it is JSON. A call the owner denies, or to a connector or tool that is switched off, throws an Error with the reason; a write may wait for the owner's answer. The program has no files, network, environment or modules: only connectors and console.log, whose lines come back with the result. It stops after ${defaultCodeLimits.cpuMillis / 1000} seconds of running time (waiting for a call does not count) or ${defaultCodeLimits.maxCalls} calls.${exampleOf(bindings)}`;
 
 /** The listing entry of Code Mode's tool for these connector tools, or null when there are none to call. */
-export const codeToolOf = (tools: ReadonlyArray<ConnectorTool>) =>
+const codeToolOf = (tools: ReadonlyArray<ConnectorTool>) =>
   tools.length === 0
     ? null
     : {
@@ -92,7 +89,7 @@ const CodeArguments = Schema.Struct({ code: Schema.String });
 const decodeArguments = Schema.decodeUnknownExit(CodeArguments);
 
 /** Runs a thread's program against its connector tools, each call through the gateway as a listed tool would be. */
-export const runConnectorCode = (
+const runConnectorCode = (
   executor: CodeExecutor["Service"],
   gateway: ConnectorGateway["Service"],
   threadId: string,
@@ -121,8 +118,9 @@ export const runConnectorCode = (
   });
 
 /** The connector part of a thread's listing: Code Mode's one tool when it is on, else each connector tool. */
-export const connectorListingOf = (tools: ReadonlyArray<ConnectorTool>, isCodeModeOn: boolean) => {
-  if (!isCodeModeOn) return tools.map(({ description, inputSchema, name }) => ({ description, inputSchema, name }));
+export const connectorListingOf = (tools: ReadonlyArray<ConnectorTool>, shouldUseCodeMode: boolean) => {
+  if (!shouldUseCodeMode)
+    return tools.map(({ description, inputSchema, name }) => ({ description, inputSchema, name }));
   const codeTool = codeToolOf(tools);
   return codeTool === null ? [] : [codeTool];
 };
@@ -134,13 +132,19 @@ export const connectorListingOf = (tools: ReadonlyArray<ConnectorTool>, isCodeMo
 export const answerConnectorCall = (
   executor: CodeExecutor["Service"],
   gateway: ConnectorGateway["Service"],
-  call: { readonly args: unknown; readonly isCodeModeOn: boolean; readonly name: string; readonly threadId: string },
+  call: {
+    readonly args: unknown;
+    readonly name: string;
+    readonly shouldUseCodeMode: boolean;
+    readonly threadId: string;
+  },
 ) =>
   Effect.gen(function* () {
     if (call.name === codeToolName)
-      return call.isCodeModeOn ? yield* runConnectorCode(executor, gateway, call.threadId, call.args) : null;
+      return call.shouldUseCodeMode ? yield* runConnectorCode(executor, gateway, call.threadId, call.args) : null;
     const tools = yield* gateway.listingFor(call.threadId);
     if (!tools.some((tool) => tool.name === call.name)) return null;
-    if (call.isCodeModeOn) return toolRefusal(`Code Mode is on: call ${call.name} from code, with ${codeToolName}.`);
+    if (call.shouldUseCodeMode)
+      return toolRefusal(`Code Mode is on: call ${call.name} from code, with ${codeToolName}.`);
     return yield* gateway.call(call.threadId, call.name, call.args);
   });

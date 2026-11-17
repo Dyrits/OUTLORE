@@ -17,6 +17,7 @@ Branch `worktree/code-mode`, on `main` at `6bc53e8` (started from `0affd46`, reb
 ## Not checked
 
 - No real connector: the gateway is a fake, and the service's production layer offers no connector, so no thread is offered `run_connector_code` yet.
+- The fake write waits on a test signal. With the real gateway, check that direct and Code Mode calls show the same approval question, the thread waits in Attention, and the code resumes with the answer. Check how Codex and OpenCode handle approval for `run_connector_code` and for the calls it makes.
 - No live harness: whether Claude Code, Codex and OpenCode write working code against the declarations, and whether the setting's change reaches a reused harness process before it restarts (connectors blueprint, Open).
 - No token or latency measurement of Code Mode's gain.
 - The Charter's switch: not built; the setting is changed through `ChangeSettings` or Chronicler's `change_setting`.

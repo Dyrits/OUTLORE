@@ -1,12 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Deferred, Effect, Fiber } from "effect";
-import {
-  CodeCallFailure,
-  CodeExecutor,
-  type CodeFunctions,
-  codeExecutorLayer,
-  defaultCodeLimits,
-} from "../../src/connectors/index.ts";
+import { codeExecutorLayer } from "../../src/connectors/codeExecutor.ts";
+import { CodeCallFailure, type CodeFunctions, defaultCodeLimits } from "../../src/connectors/codeRun.ts";
+import { CodeExecutor } from "../../src/connectors/index.ts";
 
 const echo = (input: unknown) => Effect.succeed({ echoed: input });
 const functions = { fake: { echo, fail: () => Effect.fail(new CodeCallFailure({ message: "Switched off" })) } };
@@ -75,6 +71,15 @@ describe("running a thread's code", () => {
         ...defaultCodeLimits,
         memoryBytes: 4 * 1024 * 1024,
       });
+      expect(result.outcome).toEqual({ _tag: "Failed", message: "The code ran out of memory (4 MB)." });
+    }),
+  );
+
+  it.live("reports a failure when evaluating the expression exhausts memory", () =>
+    Effect.gen(function* () {
+      const memoryBytes = 4 * 1024 * 1024;
+      const code = `async () => '${"x".repeat(memoryBytes)}'`;
+      const result = yield* run(code, { ...defaultCodeLimits, memoryBytes });
       expect(result.outcome).toEqual({ _tag: "Failed", message: "The code ran out of memory (4 MB)." });
     }),
   );

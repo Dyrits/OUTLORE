@@ -1,7 +1,6 @@
 import { join } from "node:path";
 import { Clock, Context, Effect, FiberMap, FiberSet, Layer, Match, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
-import { codeToolName } from "../connectors/index.ts";
 import {
   Changes,
   Endpoints,
@@ -25,8 +24,8 @@ import { makeLifecycle, recoverThreadStates, releaseThread, resumeStopped, stopT
 import { listPending, listThreadsWithPending } from "./messaging.ts";
 import { prepareStartingContext } from "./startingContext.ts";
 import { Suggestions } from "./suggestions.ts";
+import { unaskedToolNamesOf } from "./threadToolAccess.ts";
 import { askOwnerFor } from "./threadToolHandlers.ts";
-import { unaskedToolNamesOf } from "./threadTools.ts";
 import { type Admitted, admitTurn, isCurrentTurn } from "./turnAdmission.ts";
 import {
   completeTurn,
@@ -189,12 +188,7 @@ export const threadsLayer = Layer.effect(
       active.set(threadId, { turnId: turn.turnId, written: new Set() });
       const outcome = yield* harness
         .runTurn({
-          access: {
-            ...terms,
-            isInWorkspace,
-            mcpUrl,
-            unaskedTools: [...unaskedToolNamesOf(toolServerName), `mcp__${toolServerName}__${codeToolName}`],
-          },
+          access: { ...terms, isInWorkspace, mcpUrl, unaskedTools: unaskedToolNamesOf(toolServerName) },
           askOwner: askOwnerFor(approvals, sql, threadId),
           configDirectory: turn.accountId === null ? null : join(accountsRoot, turn.accountId),
           context,

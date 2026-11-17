@@ -1,28 +1,30 @@
 import { join } from "node:path";
 import { Deferred, Effect, Layer } from "effect";
-import { ConnectorGateway, type ConnectorTool } from "../../src/connectors/index.ts";
+import type { ConnectorTool } from "../../src/connectors/gateway.ts";
+import { ConnectorGateway } from "../../src/connectors/index.ts";
+import { type ToolAnswer, unknownToolAnswer } from "../../src/core/index.ts";
 import { fakeHarnessLayer, serviceLayer } from "../../src/index.ts";
 import { temporary } from "./service.ts";
 
 /** One call the fake gateway received. */
 export type GatewayCall = { readonly args: unknown; readonly name: string; readonly threadId: string };
 
-const tool = (connector: string, name: string, description: string, inputSchema: Record<string, unknown>) =>
+const toolOf = (connector: string, name: string, description: string, inputSchema: Record<string, unknown>) =>
   ({ connector, description, inputSchema, name: `${connector}__${name}`, tool: name }) satisfies ConnectorTool;
 
 /** The fake connector's tools: a read, a write that waits for the owner, and a switched-off one. */
 export const fakeConnectorTools = [
-  tool("calendar", "list-events", "Lists the events of a day.", {
+  toolOf("calendar", "list-events", "Lists the events of a day.", {
     properties: { day: { description: "The day, as YYYY-MM-DD.", type: "string" } },
     required: ["day"],
     type: "object",
   }),
-  tool("calendar", "create-event", "Creates an event.", {
+  toolOf("calendar", "create-event", "Creates an event.", {
     properties: { day: { type: "string" }, title: { type: "string" } },
     required: ["day", "title"],
     type: "object",
   }),
-  tool("calendar", "delete-event", "Deletes an event.", {
+  toolOf("calendar", "delete-event", "Deletes an event.", {
     properties: { id: { type: "string" } },
     required: ["id"],
     type: "object",
@@ -37,7 +39,7 @@ export const fakeGateway = Effect.gen(function* () {
   const calls: Array<GatewayCall> = [];
   const asked = yield* Deferred.make<GatewayCall>();
   const answer = yield* Deferred.make<boolean>();
-  const answers: Record<string, (args: unknown) => Effect.Effect<{ isError: boolean; text: string }>> = {
+  const answers: Record<string, (args: unknown) => Effect.Effect<ToolAnswer>> = {
     "calendar__create-event": (args) =>
       Effect.gen(function* () {
         yield* Deferred.succeed(asked, { args, name: "calendar__create-event", threadId: "" });
@@ -54,10 +56,8 @@ export const fakeGateway = Effect.gen(function* () {
     call: (threadId, name, args) =>
       Effect.suspend(() => {
         calls.push({ args, name, threadId });
-        const answered = Object.hasOwn(answers, name) ? answers[name] : undefined;
-        return answered === undefined
-          ? Effect.succeed({ isError: true, text: `Unknown tool: ${name}` })
-          : answered(args);
+        const answered = Object.hasOwn(answers, name) ? (answers[name] ?? null) : null;
+        return answered === null ? Effect.succeed(unknownToolAnswer(name)) : answered(args);
       }),
     listingFor: () => Effect.succeed(fakeConnectorTools),
   });

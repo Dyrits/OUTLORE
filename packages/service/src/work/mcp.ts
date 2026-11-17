@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { Effect, Exit, Layer, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { answerConnectorCall, CodeExecutor, ConnectorGateway, connectorListingOf } from "../connectors/index.ts";
-import { Endpoints, readSettings } from "../core/index.ts";
+import { Endpoints, readSettings, unknownToolAnswer } from "../core/index.ts";
 import { harnessFacts, toolServerName } from "../harness/index.ts";
 import { Approvals } from "./approvals.ts";
 import { Commands } from "./commands.ts";
@@ -59,7 +59,7 @@ export const toolServerLayer = Layer.effectDiscard(
     const handlers = makeToolHandlers({ approvals, commands, suggestions, threads });
     const run = Effect.runPromiseWith(context);
 
-    const isCodeModeOn = readSettings.pipe(
+    const readShouldUseCodeMode = readSettings.pipe(
       Effect.map((settings) => settings.shouldUseCodeMode),
       Effect.provideService(SqlClient.SqlClient, sql),
     );
@@ -69,11 +69,11 @@ export const toolServerLayer = Layer.effectDiscard(
         if (isThreadToolName(name)) return yield* answerToolCall(handlers, name, threadId, args);
         const answer = yield* answerConnectorCall(executor, gateway, {
           args,
-          isCodeModeOn: yield* isCodeModeOn,
           name,
+          shouldUseCodeMode: yield* readShouldUseCodeMode,
           threadId,
         });
-        return answer ?? { isError: true, text: `Unknown tool: ${name}` };
+        return answer ?? unknownToolAnswer(name);
       }).pipe(Effect.map(({ isError, text }) => textResult(text, isError)));
 
     // The running turn's admitted harness decides, not a harness the owner picked during it (thread-handover).
@@ -98,7 +98,7 @@ export const toolServerLayer = Layer.effectDiscard(
     const listTools = (threadId: string) =>
       Effect.gen(function* () {
         const own = toolListingOf(yield* hasPromptToolOf(threadId));
-        const connectors = connectorListingOf(yield* gateway.listingFor(threadId), yield* isCodeModeOn);
+        const connectors = connectorListingOf(yield* gateway.listingFor(threadId), yield* readShouldUseCodeMode);
         return [...own, ...connectors];
       }).pipe(Effect.orDie);
 

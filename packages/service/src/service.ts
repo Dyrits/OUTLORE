@@ -2,7 +2,7 @@ import { dirname, join } from "node:path";
 import type { Request, RequestSource } from "@outlore/contracts";
 import { Effect, Layer, Match, Semaphore } from "effect";
 import type { SqlError } from "effect/sql";
-import { type ConnectorGateway, codeExecutorLayer, noConnectorsLayer } from "./connectors/index.ts";
+import { type ConnectorGateway, connectorsLayer } from "./connectors/index.ts";
 import {
   addBrowsableRoot,
   browseFolders,
@@ -229,8 +229,7 @@ export const serviceLayer = (options: ServiceOptions) => {
   const foundation = Layer.mergeAll(
     changesLayer,
     endpointsLayer,
-    codeExecutorLayer,
-    options.connectorGateway ?? noConnectorsLayer,
+    connectorsLayer(options.connectorGateway),
     options.harness,
     options.harnessTools ?? fakeHarnessToolsLayer(),
     Layer.succeed(ScratchRoot, options.scratchRoot),

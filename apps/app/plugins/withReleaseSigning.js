@@ -14,10 +14,11 @@ const releaseSigning = `        release {
         }
 `;
 
+/** Configures signing for the generated Android release build. */
 module.exports = (config) =>
-  withAppBuildGradle(config, (mod) => {
-    let gradle = mod.modResults.contents;
-    if (gradle.includes("ANDROID_KEYSTORE_FILE")) return mod;
+  withAppBuildGradle(config, (gradleConfig) => {
+    let gradle = gradleConfig.modResults.contents;
+    if (gradle.includes("ANDROID_KEYSTORE_FILE")) return gradleConfig;
     // A second block under signingConfigs, next to the debug one.
     gradle = gradle.replace(/(signingConfigs \{\n(?: {8}debug \{[\s\S]*?\n {8}\}\n))/, `$1${releaseSigning}`);
     // The release build uses it when the keystore is given.
@@ -28,6 +29,6 @@ module.exports = (config) =>
     if (!gradle.includes("signingConfigs.release")) {
       throw new Error("withReleaseSigning: the generated build.gradle has a shape this plugin does not know.");
     }
-    mod.modResults.contents = gradle;
-    return mod;
+    gradleConfig.modResults.contents = gradle;
+    return gradleConfig;
   });

@@ -1,13 +1,27 @@
 # Work in progress
 
+## Review since 0.1.6-Prototype · 2026-11-17 · uncommitted refactors
+
+The review covers `0affd46..fd7f802`. The refactors cover Code Mode's service wiring, the inverted conversation feed, and the mobile pairing adapter. An executor regression test verifies that a compilation error caused by exhausting QuickJS memory returns a failure. An exception in the separate connector completion callback can still escape before the pending call is disposed. The service composition and release workflow remain above the size guideline. The workflow's duplicated version stamping is pending a packaging check. Capability findings and decisions are listed below.
+
+The Standards and Specifications reviewers checked the patch. `bun run check`, `bun run typecheck`, and `git diff --check HEAD` passed. The full suite ran with `CI=1` and `XDG_DATA_HOME` absent (2,045 passed, 50 skipped). Four terminal tests skipped at the baseline ran in this session. The additional test covers the QuickJS compilation failure.
+
 ## Conversation opens on its last messages · 2026-11-17 · built and tested, the owner's look pending
 
-A quest, side-quest, or Chronicler's conversation now opens on its newest entry: the feed is drawn inverted, so no scroll pass follows each measurement (CHG-0442, [changelog](changelog/0.1.7-Prototype.md)). Not in the change: how the scroll cue looks, still open in the [backlog](backlog.md) ("Scroll indicator, to settle"). Open: the owner's look in a window and on a phone, a long thread. Uncommitted in the working tree.
+A quest, side-quest, or Chronicler's conversation uses an inverted feed to open on its newest entry (CHG-0442, committed as `28aaa8c`). The [thread messaging specification](capabilities/thread-messaging/specifications.md#position-in-a-conversation) lists the window and phone checks. Keeping the reading position during a streaming reply remains unverified and may fail on Android. The scroll cue remains open in the [backlog](backlog.md).
 
-## Code Mode core · 2026-11-17 · built and checked on `worktree/code-mode`, not merged
+## Code Mode core · 2026-11-17 · merged into `main`
 
 The owner asked to implement Code Mode (Cloudflare's design) and chose to build its core ahead of the connectors, with QuickJS in WebAssembly as the executor (CHG-0441, [ADR 0023](architecture-decision-record/0023-code-mode-runs-in-quickjs-inside-the-host.md)). Starting revision `0affd46`, rebased on `6bc53e8`; worktree `.worktrees/code-mode`. Built: `packages/service/src/connectors/` (gateway interface with a no-connector layer, executor, declarations, `run_connector_code`), the setting `shouldUseCodeMode`, the tool server's wiring. Checks: Biome, typecheck, full suite (2,034 passed, 54 skipped), 25 new tests; [verification](verification/2026-11-17-code-mode-core.md).
-Open: the owner's review and the merge into `main`; the Charter's switch (with the Charter); wiring to the real gateway (connectors slice 3) and a live run on each harness; measuring the gain; whether a setting change reaches a reused harness process before its restart.
+The Charter switch, real gateway, approval checks, live harness runs, and measurement remain open. The server currently reads the setting per request. It needs to keep the setting and gateway listing consistent throughout a turn. The tool description should also say that a call past the 200th throws an error the code can catch. Decide whether Chronicler and Rituals should be able to change the setting.
+
+## Android APK · 2026-11-17 · merged into `main` and launched on a phone
+
+The local build and launch are recorded in the [verification note](verification/2026-11-15-android-apk.md#follow-up-on-2026-11-17-chg-0443) (CHG-0298 and CHG-0443). A phone check still needs to cover pairing, the camera, pairing links, and screens. Review the light-only Expo configuration against the agreed system appearance and check the wording when the phone refuses a local relay. The release key and first GitHub packaging run are pending. A manual run can currently pass with debug signing even when a tag would fail. Decide whether debug signing should require an explicit workflow input or be available only in local builds.
+
+## Running quests in the sidebar · 2026-11-17 · merged into `main`
+
+CHG-0440 keeps quests in the Running state visible past the list cap. The sidebar still needs a window check. Decide whether a quest in Summons should also stay visible when it has a running side-quest.
 
 ## Connectors · 2026-11-16 · specified (CHG-0321 to CHG-0327), nothing built
 
@@ -19,7 +33,7 @@ The owner authorized every candidate of the [audit](architecture-audit/architect
 
 ## Choice dialog for AskUserQuestion · 2026-11-15 · built and tested, window look and a live Claude Code run pending
 
-The owner reported that Claude Code's `AskUserQuestion` showed no dialog: it ran unasked and came back with no answers. CHG-0299 (in `changelog/0.1.6-Prototype.md`; starting revision `d0896ad`, committed on `main`) makes it a choice question: one dialog with the call's choices (single or multiple, an own answer, Send, Skip), the turn held in Attention, the answers returned in `updatedInput.answers`; Stop withdraws, Skip is recorded as Skipped. Agreed with the owner: multiple choices and an own answer supported, Skip distinct from a withdrawal, Claude Code only wired, contract shaped for Codex and OpenCode. [Specification](capabilities/action-approval/specifications.md#choice-questions), [verification](verification/2026-11-15-choice-dialog.md). Open: the owner's look at the dialog (no window drive was possible in the sandbox), a live Claude Code run, Codex and OpenCode adapters (backlog), merging the changelog file with `worktree/android-apk`'s (CHG-0298).
+The owner reported that Claude Code's `AskUserQuestion` showed no dialog: it ran unasked and came back with no answers. CHG-0299 (in `changelog/0.1.6-Prototype.md`; starting revision `d0896ad`, committed on `main`) makes it a choice question: one dialog with the call's choices (single or multiple, an own answer, Send, Skip), the turn held in Attention, the answers returned in `updatedInput.answers`; Stop withdraws, Skip is recorded as Skipped. Agreed with the owner: multiple choices and an own answer supported, Skip distinct from a withdrawal, Claude Code only wired, contract shaped for Codex and OpenCode. [Specification](capabilities/action-approval/specifications.md#choice-questions), [verification](verification/2026-11-15-choice-dialog.md). The owner's look at the dialog, a live Claude Code run, and the Codex and OpenCode adapters remain open.
 
 ## Mobile navigation · 2026-11-15 · built and checked in a 390 px window, owner's look pending
 

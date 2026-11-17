@@ -1,4 +1,5 @@
 import { Predicate } from "effect";
+import type { ConnectorTool } from "./gateway.ts";
 
 // The declarations a thread reads in Code Mode's tool description, written from each connector tool's JSON Schema, as
 // Cloudflare's Code Mode does (`generateTypesFromJsonSchema`): a model writes correct calls more often from types
@@ -69,26 +70,21 @@ export const identifierOf = (name: string) => {
   return /^[0-9]/.test(replaced) ? `_${replaced}` : replaced;
 };
 
-/** One function of the declaration: where it lives, what it says, and what it takes. */
-export type DeclaredFunction = {
-  readonly description: string;
-  readonly inputSchema: unknown;
-  readonly member: string;
-  readonly namespace: string;
-};
+/** Where one connector tool lives in the code: `connectors.<namespace>.<member>`. */
+export type Binding = { readonly member: string; readonly namespace: string; readonly tool: ConnectorTool };
 
 /** The `connectors` declaration a thread writes its code against. */
-export const declarationOf = (functions: ReadonlyArray<DeclaredFunction>) => {
-  const namespaces = new Map<string, Array<DeclaredFunction>>();
-  for (const declared of functions) {
-    const members = namespaces.get(declared.namespace) ?? [];
-    members.push(declared);
-    namespaces.set(declared.namespace, members);
+export const declarationOf = (bindings: ReadonlyArray<Binding>) => {
+  const namespaces = new Map<string, Array<Binding>>();
+  for (const binding of bindings) {
+    const members = namespaces.get(binding.namespace) ?? [];
+    members.push(binding);
+    namespaces.set(binding.namespace, members);
   }
   const blocks = [...namespaces].map(([namespace, members]) => {
     const lines = members.map(
-      (member) =>
-        `${commentOf(member.description, "    ")}    ${keyOf(member.member)}(input: ${typeOfSchema(member.inputSchema, 1, "    ")}): Promise<unknown>;\n`,
+      ({ member, tool }) =>
+        `${commentOf(tool.description, "    ")}    ${keyOf(member)}(input: ${typeOfSchema(tool.inputSchema, 1, "    ")}): Promise<unknown>;\n`,
     );
     return `  ${keyOf(namespace)}: {\n${lines.join("")}  };\n`;
   });

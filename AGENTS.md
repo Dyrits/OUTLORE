@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume findings from the review since 0.1.6-Prototype, read the [current handoff](.agents/handoffs/2026-11-17-2316-release-review.md). Handoffs are shared and committed.
+
 - To resume the Android APK (merged into main and installed on the owner's phone, CHG-0443; open: the owner's check on the phone, a manual package run, the release keystore secrets), read the [current handoff](.agents/handoffs/2026-11-17-2239-android-apk-merged.md). Handoffs are shared and committed.
 
 - To resume conversations opening on their last messages (CHG-0442; built as an inverted feed, tested, not checked in a window; open: commit, push with the owner's approval, the owner's look in a window and on a phone; the scroll cue is still undecided), read the [current handoff](.agents/handoffs/2026-11-17-2228-open-on-last-messages.md). Handoffs are shared and committed.
-
-- To resume Code Mode (core built and on main, CHG-0441, ADR 0023; open: the connectors' gateway, the Charter's switch, a live run and measuring its gain), read the [current handoff](.agents/handoffs/2026-11-17-2226-code-mode-core.md). Handoffs are shared and committed.

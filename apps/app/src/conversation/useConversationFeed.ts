@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactElement, useEffect, useRef, useState } from "react";
 import type { FlatList } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { type Entry, newestFirstOf } from "./entries";
@@ -18,15 +18,17 @@ export function useDraft(client: ServiceClient, threadId: string | null) {
   return draft;
 }
 
-/**
- * Draws the feed inverted, so it opens on its newest entry at the bottom of the view and a reply or a question
- * lands there as it arrives. Reading up keeps the place the owner is at; sending brings the owner back down.
- * The feed no longer scrolls to its end after each content measurement.
- */
+/** Opens the feed at its newest entry and lets the composer return there after a send. */
 export function useFollowNewest(entries: ReadonlyArray<Entry>) {
   const list = useRef<FlatList<Entry>>(null);
   return {
     follow: () => list.current?.scrollToOffset({ animated: false, offset: 0 }),
-    listProps: { data: newestFirstOf(entries), inverted: true, ref: list },
+    listPropsOf: (footer: ReactElement) => ({
+      data: newestFirstOf(entries),
+      inverted: true,
+      // An inverted list draws its header below the newest entry.
+      ListHeaderComponent: footer,
+      ref: list,
+    }),
   };
 }

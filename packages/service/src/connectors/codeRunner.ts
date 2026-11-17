@@ -1,14 +1,14 @@
-import { Effect, Exit, type Fiber, Schema } from "effect";
+import { Exit, type Fiber, Schema } from "effect";
 import type { QuickJSContext, QuickJSDeferredPromise, QuickJSHandle, QuickJSRuntime } from "quickjs-emscripten-core";
 import type { CodeCallFailure, CodeFunction, CodeFunctions, CodeLimits, CodeOutcome, CodeRun } from "./codeRun.ts";
 
-const megabytes = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} MB`;
+const megabytesOf = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} MB`;
 
 // A program first read as one expression (an arrow function, or a call), then as a function body when that does not
 // parse: models write both, and Cloudflare's own description asks for the first.
-const asExpression = (code: string) =>
+const expressionProgramOf = (code: string) =>
   `(async () => {\nconst __outlore_value = (\n${code}\n);\nreturn typeof __outlore_value === "function" ? await __outlore_value() : await __outlore_value;\n})()`;
-const asBody = (code: string) => `(async () => {\n${code}\n})()`;
+const bodyProgramOf = (code: string) => `(async () => {\n${code}\n})()`;
 
 const ErrorShape = Schema.Struct({ message: Schema.optional(Schema.String), name: Schema.optional(Schema.String) });
 const decodeError = Schema.decodeUnknownExit(ErrorShape);
@@ -48,6 +48,7 @@ export const runOnce = (
   functions: CodeFunctions,
   limits: CodeLimits,
   now: () => number,
+  forkCall: (call: ReturnType<CodeFunction>) => Fiber.Fiber<unknown, CodeCallFailure>,
   resume: (run: CodeRun) => void,
 ) => {
   const state: RunState = {
@@ -70,7 +71,7 @@ export const runOnce = (
   });
 
   /** Runs one entry into QuickJS, counting its time. */
-  const entered = <A>(enter: () => A) => {
+  const runTimed = <A>(enter: () => A) => {
     state.enteredAt = now();
     try {
       return enter();
@@ -100,8 +101,25 @@ export const runOnce = (
       return { _tag: "Failed", message: `The code ran past its time limit (${limits.cpuMillis} ms).` };
     const text = errorTextOf(thrown);
     if (text === "InternalError: out of memory")
-      return { _tag: "Failed", message: `The code ran out of memory (${megabytes(limits.memoryBytes)}).` };
+      return { _tag: "Failed", message: `The code ran out of memory (${megabytesOf(limits.memoryBytes)}).` };
     return { _tag: "Failed", message: text };
+  };
+
+  const failWith = (error: QuickJSHandle) => {
+    const thrown = context.dump(error);
+    error.dispose();
+    finish(failureOf(thrown));
+  };
+
+  const rejectWith = (deferred: QuickJSDeferredPromise, message: string) => {
+    const error = context.newError(message);
+    deferred.reject(error);
+    error.dispose();
+  };
+
+  const runPendingJobs = () => {
+    const ran = runTimed(() => runtime.executePendingJobs());
+    if (ran.error !== undefined) failWith(ran.error);
   };
 
   // Plain data crosses as JSON text, parsed by QuickJS's own `JSON.parse`, so no host object enters the code.
@@ -127,25 +145,16 @@ export const runOnce = (
       value.dispose();
     } else {
       const failure = Exit.findErrorOption(exit);
-      const error = context.newError(failure._tag === "Some" ? failure.value.message : "The call failed.");
-      deferred.reject(error);
-      error.dispose();
+      rejectWith(deferred, failure._tag === "Some" ? failure.value.message : "The call failed.");
     }
     deferred.dispose();
-    const ran = entered(() => runtime.executePendingJobs());
-    if (ran.error !== undefined) {
-      const thrown = context.dump(ran.error);
-      ran.error.dispose();
-      finish(failureOf(thrown));
-    }
+    runPendingJobs();
   };
 
   const callOf = (call: CodeFunction) => (input: QuickJSHandle) => {
     const deferred = context.newPromise();
     if (state.callCount >= limits.maxCalls) {
-      const error = context.newError(`The code made more than ${limits.maxCalls} connector calls.`);
-      deferred.reject(error);
-      error.dispose();
+      rejectWith(deferred, `The code made more than ${limits.maxCalls} connector calls.`);
       const handle = deferred.handle.dup();
       deferred.dispose();
       return handle;
@@ -154,11 +163,11 @@ export const runOnce = (
     const argument = context.typeof(input) === "undefined" ? {} : context.dump(input);
     pending.add(deferred);
     const handle = deferred.handle.dup();
-    const fiber = Effect.runFork(call(argument));
+    const fiber = forkCall(call(argument));
     calls.add(fiber);
     fiber.addObserver((exit) => {
       calls.delete(fiber);
-      // A call can end before `runFork` returns; settling waits until QuickJS has left this function.
+      // A call can end before the fork returns; settling waits until QuickJS has left this function.
       queueMicrotask(() => settle(deferred, exit));
     });
     return handle;
@@ -195,46 +204,39 @@ export const runOnce = (
   };
 
   const evaluate = () => {
-    const first = entered(() => context.evalCode(asExpression(code), "code.js"));
+    const first = runTimed(() => context.evalCode(expressionProgramOf(code), "code.js"));
     if (first.error === undefined) return first;
     const firstError = context.dump(first.error);
-    first.error.dispose();
     if (!errorTextOf(firstError).startsWith("SyntaxError")) return first;
-    return entered(() => context.evalCode(asBody(code), "code.js"));
+    first.error.dispose();
+    return runTimed(() => context.evalCode(bodyProgramOf(code), "code.js"));
   };
 
   install();
   const evaluated = evaluate();
   if (evaluated.error !== undefined) {
-    const thrown = context.dump(evaluated.error);
-    evaluated.error.dispose();
-    finish(failureOf(thrown));
+    failWith(evaluated.error);
     return dispose;
   }
   const promise = evaluated.value;
-  context.resolvePromise(promise).then((settled) => {
-    if (state.isDone) {
-      if (settled.error !== undefined) settled.error.dispose();
-      else settled.value.dispose();
-      return;
-    }
-    if (settled.error !== undefined) {
-      const thrown = context.dump(settled.error);
-      settled.error.dispose();
-      finish(failureOf(thrown));
-    } else {
+  context
+    .resolvePromise(promise)
+    .then((settled) => {
+      if (state.isDone) {
+        if (settled.error !== undefined) settled.error.dispose();
+        else settled.value.dispose();
+        return;
+      }
+      if (settled.error !== undefined) return failWith(settled.error);
       const value = context.dump(settled.value);
       settled.value.dispose();
       finish({ _tag: "Returned", value });
-    }
-  });
+    })
+    .catch((error: unknown) => {
+      if (!state.isDone) finish(failureOf(error));
+    });
   promise.dispose();
   // Jobs the code queued without a call (an already resolved `await`) run now.
-  const ran = entered(() => runtime.executePendingJobs());
-  if (ran.error !== undefined) {
-    const thrown = context.dump(ran.error);
-    ran.error.dispose();
-    finish(failureOf(thrown));
-  }
+  runPendingJobs();
   return dispose;
 };

@@ -46,6 +46,10 @@ Agreed 2026-11-11 (CHG-0195); built in CHG-0196.
 - A thread that is Waiting, Idle, or Done is woken by any message addressed to it, so two threads waiting on each other never stay stuck.
 - A Stopped thread keeps its messages and is not woken (see [thread-tree](../thread-tree/specifications.md#stopping)).
 
+### Position in a conversation
+
+When the owner opens a quest, a side-quest, or Chronicler's conversation, the latest messages are visible immediately at the bottom (CHG-0442). New replies and questions appear there. The view follows them while the owner is at the bottom, keeps the message being read in place when the owner scrolls up, and returns to the latest message when the owner sends.
+
 ### Interruptions
 
 - The user can interrupt any thread.
@@ -79,6 +83,7 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
   - interruptions by the user and by a parent;
   - the chatter guard pausing both threads at the limit.
 - **Human acceptance**: during the [thread-tree](../thread-tree/specifications.md#acceptance-and-validation) check, the user steers one running thread, queues a message to another, and sees a subagent ask its parent a question and get an answer.
+- **Conversation position**. The entry-order test checks that the inverted feed receives the newest entry first. In the desktop window and on an Android phone, open a long conversation, see the latest messages immediately, and watch a reply arrive while at the bottom. Scroll up during a streaming reply and verify that the message being read stays in place. Send a message and confirm the view returns to the bottom. Repeat for Chronicler's conversation. Device and window checks are pending.
 
 ## Requirements
 

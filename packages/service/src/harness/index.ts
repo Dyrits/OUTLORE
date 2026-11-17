@@ -34,5 +34,5 @@ export {
   runnerOf,
 } from "./runners.ts";
 export { folderEscapeOf, resolvedFolderOf } from "./threadFolder.ts";
-export { toolServerName } from "./toolNames.ts";
+export { qualifiedToolNameOf, toolServerName } from "./toolNames.ts";
 export { workspaceWorktreesOf } from "./worktrees.ts";

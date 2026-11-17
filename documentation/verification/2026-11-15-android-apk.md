@@ -10,7 +10,7 @@ Wired and bundled, not built or run. CHG-0298 adds an `android` job to the relea
 - `expo export --platform android` produces a Hermes bundle (6.3 MB) and `--platform web` still exports.
 - `expo prebuild --platform android` generates the project; its `app/build.gradle` has `applicationId 'app.outlore.mobile'`, `versionName` from `package.json`, `versionCode` from `ANDROID_VERSION_CODE`, and a `release` signing config read from `ANDROID_KEYSTORE_*` with the debug key as the fallback.
 - The workflow file parses as YAML.
-- Tests: `apps/app/test/foundation/pairingStorage.test.ts` (storage over a mocked secure store), `packages/controller/test/browserDevice.test.ts` (phone and desktop kinds listed by a real host over a real relay).
+- The branch tested the secure-storage adapter. The merged integration test in `packages/service/test/remote/browserDevice.test.ts` checks that a host lists a phone and a browser with their respective kinds over a real relay.
 
 ## Not checked
 
@@ -18,3 +18,7 @@ Wired and bundled, not built or run. CHG-0298 adds an `android` job to the relea
 - `expo-crypto`'s `getRandomValues` under Hermes with `@noble` (read, not run), and `expo-secure-store`'s synchronous calls on a device.
 - The workflow on GitHub (new action versions `actions/setup-java@v5`, the SDK's `apksigner` path, Gradle's download), and the keystore secrets, which do not exist yet.
 - The first run: use **Run workflow** on the branch (it builds a debug-signed APK) before tagging.
+
+## Follow-up on 2026-11-17 (CHG-0443)
+
+The [Android handoff](../../.agents/handoffs/2026-11-17-2239-android-apk-merged.md) records the local build after the merge. `expo prebuild --platform android --no-install` generated the Android project. Gradle's `assembleRelease` built a 34 MB arm64-v8a APK with Temurin 17 and Android Build Tools 37.0.0, using the debug key. `adb install -r` installed it on the owner's phone. The launch logged `ReactNativeJS: Running "main"` and showed no crash or script error. The phone was locked, so pairing, camera use, links, and screens still need testing. The GitHub workflow and release signing also remain to be checked.

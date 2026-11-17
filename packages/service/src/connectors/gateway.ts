@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from "effect";
-import type { ToolAnswer } from "../core/index.ts";
+import { type ToolAnswer, unknownToolAnswer } from "../core/index.ts";
 
 /** One tool of a connector as a thread is offered it: its listed name is `<connector>__<tool>` (connectors blueprint). */
 export type ConnectorTool = {
@@ -33,6 +33,6 @@ export class ConnectorGateway extends Context.Service<
  * connectors' slice 3 (connectors blueprint, Order), and Code Mode then reaches its tools unchanged (CHG-0441).
  */
 export const noConnectorsLayer = Layer.succeed(ConnectorGateway, {
-  call: (_threadId, name) => Effect.succeed({ isError: true, text: `Unknown tool: ${name}` }),
+  call: (_threadId, name) => Effect.succeed(unknownToolAnswer(name)),
   listingFor: () => Effect.succeed([]),
 });

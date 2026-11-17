@@ -25,6 +25,7 @@ export const codeExecutorLayer = Layer.effect(
       Effect.gen(function* () {
         const module = yield* loadModule;
         const clock = yield* Clock.Clock;
+        const context = yield* Effect.context<never>();
         return yield* Effect.acquireUseRelease(
           Effect.sync(() => {
             const runtime = module.newRuntime();
@@ -40,6 +41,7 @@ export const codeExecutorLayer = Layer.effect(
                 functions,
                 limits,
                 () => clock.currentTimeMillisUnsafe(),
+                Effect.runForkWith(context),
                 (done) => resume(Effect.succeed(done)),
               );
               return Effect.sync(dispose);

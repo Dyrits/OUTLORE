@@ -255,7 +255,7 @@ describe("a turn's actions, folded as steps while messages stay visible", () => 
     expect(entriesOf(turn([owner(0), agent(4000)])).map((entry) => entry._tag)).toEqual(["Message", "Message"]);
   });
 
-  describe("newestFirstOf", () => {
+  describe("ordering entries for the inverted feed", () => {
     it("lists the newest entry first", () => {
       const entries = entriesOf(turn([owner(0), agent(4000)]));
       expect(newestFirstOf(entries).map((entry) => entry.key)).toEqual(entries.map((entry) => entry.key).reverse());

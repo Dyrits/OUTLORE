@@ -385,12 +385,6 @@ export const toolListingOf = (hasPromptTool: boolean) =>
 /** Whether a name is one of the thread tools. */
 export const isThreadToolName = (name: string): name is ThreadToolName => Object.hasOwn(threadTools, name);
 
-/** The tool names Claude Code runs without asking, as it prefixes them with the server name. */
-export const unaskedToolNamesOf = (serverName: string) =>
-  Object.entries(threadTools)
-    .filter(([, tool]) => tool.isUnasked)
-    .map(([name]) => `mcp__${serverName}__${name}`);
-
 /** Decodes a call's arguments and answers it, or answers that the arguments are invalid. */
 export const answerToolCall = <Name extends ThreadToolName>(
   handlers: ToolHandlers,

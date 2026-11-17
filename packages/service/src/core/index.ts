@@ -86,5 +86,5 @@ export {
 } from "./spending.ts";
 export { storeLayer } from "./store.ts";
 export { tokensOf } from "./tokens.ts";
-export { type ToolAnswer, toolRefusal, toolText } from "./toolAnswer.ts";
+export { type ToolAnswer, toolRefusal, toolText, unknownToolAnswer } from "./toolAnswer.ts";
 export { wordsOf } from "./words.ts";
