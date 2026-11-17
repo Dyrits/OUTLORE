@@ -90,7 +90,15 @@ export const makeCommands = (dependencies: {
     // Cancelled before any wake, so a woken thread never races a turn that is still ending.
     if (followUps.turnsToCancel.length > 0) yield* threads.cancel(followUps.turnsToCancel);
     for (const id of followUps.threadsToWithdraw) yield* dependencies.withdrawQuestions(id);
-    for (const id of followUps.missionsToRemoveScratch) yield* dependencies.removeScratch(id);
+    for (const id of followUps.missionsToRemoveScratch) {
+      // The deletion is already committed. A scratch failure must not prevent attachment cleanup or
+      // report that committed deletion as failed; startup reconciliation will retry the folder.
+      yield* dependencies
+        .removeScratch(id)
+        .pipe(
+          Effect.catchCause((cause) => Effect.logWarning(`Scratch cleanup will retry quest ${id} at startup`, cause)),
+        );
+    }
     for (const id of followUps.threadsToWake) yield* threads.wake(id);
     for (const id of new Set(followUps.missionsToWake)) yield* threads.wakeMission(id);
   });

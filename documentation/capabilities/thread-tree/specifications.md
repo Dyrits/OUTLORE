@@ -169,3 +169,5 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 - Sharing threads with other people.
 
 - At startup, a surviving deletion marker is cleared and the thread stays Stopped. UUID scratch folders with no surviving quest are removed through the realm-protection guard. File cleanup failures are logged and retried at the next start without blocking use of the app (CHG-TBD-E-9).
+
+- If scratch removal fails after the records commit, the deletion succeeds, its attachment files are still removed immediately, and the scratch failure is logged for retry on the next startup (CHG-TBD-E-10).

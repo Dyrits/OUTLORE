@@ -34,6 +34,27 @@ const createQuest = Effect.gen(function* () {
 });
 
 describe("startup reconciliation before any upload can start", () => {
+  it.live("erases images immediately and reports success when scratch cleanup fails after commit", () =>
+    Effect.gen(function* () {
+      const value = register(fixture());
+      yield* Effect.gen(function* () {
+        const { started, card } = yield* createQuest;
+        const sql = yield* SqlClient.SqlClient;
+        const threads = yield* Threads;
+        const preview = yield* call({ _tag: "PreviewDeletion", threadId: started.threadId });
+        const commands = makeCommands({
+          publish: Effect.void,
+          removeScratch: () => Effect.die("injected scratch failure after commit"),
+          sql,
+          threads,
+          withdrawQuestions: () => Effect.void,
+        });
+        yield* deleteThread(started.threadId, preview.confirmation).pipe(Effect.provideService(Commands, commands));
+        expect(readdirSync(join(value.directory, "attachments"))).toEqual([]);
+        expect((yield* Effect.flip(call({ _tag: "ReadAttachment", attachmentId: card.id }))).kind).toBe("NotFound");
+      }).pipe(Effect.provide(value.layer));
+    }),
+  );
   it.live("keeps unknown scratch folders and a deleted quest folder registered as a realm", () =>
     Effect.gen(function* () {
       const value = register(fixture());
@@ -72,7 +93,7 @@ describe("startup reconciliation before any upload can start", () => {
     }),
   );
 
-  it.live("starts despite an unremovable file and retries on the next start", () =>
+  it.live.skipIf(process.platform === "win32")("starts despite an unremovable file and retries on the next start", () =>
     Effect.gen(function* () {
       const value = register(fixture());
       yield* createQuest.pipe(Effect.provide(value.layer));
@@ -126,6 +147,22 @@ describe("startup reconciliation before any upload can start", () => {
             run: <A, E, R>(operation: Parameters<typeof runner.run<A, E, R>>[0]) => {
               runs++;
               if (stage === "before commit" && runs === 3) return Effect.die("cut before compensation");
+              if (runs === 2 && (stage === "before scratch" || stage === "after scratch")) {
+                // A process cut after COMMIT cannot be recovered by the runner's ordinary error handler.
+                return sql.withTransaction(operation).pipe(
+                  Effect.provideService(SqlClient.SqlClient, sql),
+                  Effect.tap(() =>
+                    stage === "before scratch"
+                      ? Effect.die("cut before scratch")
+                      : removeScratch(scratch).pipe(
+                          Effect.provideService(SqlClient.SqlClient, sql),
+                          Effect.orDie,
+                          Effect.andThen(Effect.die("cut after scratch")),
+                        ),
+                  ),
+                  Effect.map((done) => done.value),
+                );
+              }
               return runner
                 .run(operation)
                 .pipe(
