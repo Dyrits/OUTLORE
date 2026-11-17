@@ -168,8 +168,18 @@ export const searchLoreText = Effect.fnUntraced(function* (
   query: string | null,
   ids: ReadonlyArray<string>,
   scope: ToolScope | null,
+  isChronicler = false,
 ) {
-  const rows = (yield* searchableOf(threadId)).filter((row) => scope === null || isOfToolScope(row, scope));
+  const sql = yield* SqlClient.SqlClient;
+  const fading = yield* readFading;
+  const available = isChronicler
+    ? (yield* sql<LoreEntrySqlRow>`${selectLoreEntries(sql)}
+          ORDER BY CASE WHEN i.scope = 'Global' THEN 3 WHEN i.scope = 'Workspace' THEN 2
+            WHEN m.top_thread_id = i.thread_id THEN 1 ELSE 0 END, i.saved_at DESC`).map(loreEntryRowOf)
+    : yield* listInScope(yield* readScopeChain(threadId));
+  const rows = available.filter(
+    (row) => stateOfLoreEntry(row, fading) !== "Archived" && (scope === null || isOfToolScope(row, scope)),
+  );
   const named = rows.filter((row) => ids.includes(row.id));
   const matched = query === null ? [] : rankByWords(rows, query).filter((row) => !ids.includes(row.id));
   const found = [...named, ...matched].slice(0, searchLimit);
