@@ -68,8 +68,9 @@ export const readGuildmasterContext = Effect.gen(function* () {
     opening: string | null;
     realm: string | null;
     title: string;
+    total: number;
   }>`
-    SELECT m.id, m.title, m.last_activity_at AS lastActivityAt, j.briefing, w.name AS realm,
+    SELECT m.id, m.title, m.last_activity_at AS lastActivityAt, j.briefing, w.name AS realm, COUNT(*) OVER () AS total,
       ${openingRequestOf(sql)} AS opening
     FROM missions m
       JOIN threads top ON top.id = m.top_thread_id
@@ -85,6 +86,7 @@ export const readGuildmasterContext = Effect.gen(function* () {
     const when = timeOf(row.lastActivityAt);
     return `- "${row.title}" (id ${row.id}) · ${summaries.get(row.id)?.state ?? "Idle"} · ${row.realm ?? "no realm"} · last active ${when} UTC${about === "" ? "" : ` · ${about}`}`;
   });
+  const omitted = Math.max(0, (rows[0]?.total ?? 0) - rows.length);
   const { tiers } = yield* readSettings;
   const setTierLines = (["Light", "Balanced", "Heavy"] as const).flatMap((name) => {
     const tier = tiers[name];
@@ -109,5 +111,6 @@ export const readGuildmasterContext = Effect.gen(function* () {
     "",
     "# Quests, latest first (this is the dashboard; look deeper with find_missions)",
     ...(lines.length === 0 ? ["No quest yet."] : lines),
+    ...(omitted === 0 ? [] : [`${omitted} older quest${omitted === 1 ? "" : "s"} not listed.`]),
   ].join("\n");
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import type { ThreadId, Viewing } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
+import { readGuildmasterContext } from "../../src/work/guildmasterContext.ts";
 import { guildmaster, isIdle, lastAgentText, startIdle } from "../fixtures/guildmaster.ts";
 import { call, fixture, settle } from "../fixtures/service.ts";
 
@@ -16,6 +17,20 @@ afterEach(() => {
 });
 
 describe("telling Chronicler where the owner has it open from", () => {
+  it.live("reports how many older quests are left out after the first 60", () =>
+    Effect.gen(function* () {
+      yield* guildmaster;
+      for (let index = 0; index < 60; index++) yield* startIdle(`Quest number ${index}`);
+      expect(yield* readGuildmasterContext).not.toContain("older quests not listed");
+      yield* startIdle("Quest number 60");
+      expect(yield* readGuildmasterContext).toContain("1 older quest not listed");
+      yield* startIdle("Quest number 61");
+      const context = yield* readGuildmasterContext;
+      expect(context).toContain("2 older quests not listed");
+      expect(context.match(/ · last active /g) ?? []).toHaveLength(60);
+    }).pipe(Effect.provide(setup().layer)),
+  );
+
   const sayFrom = (threadId: ThreadId, text: string, viewing: Viewing | null) =>
     call({ _tag: "SendMessage", delivery: null, requestId: crypto.randomUUID(), text, threadId, viewing });
 

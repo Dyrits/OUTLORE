@@ -80,7 +80,7 @@ The additional search and management operations still need design, implementatio
 
 - Guildmaster has no journal.
 - Each turn, Guildmaster starts with its instructions, global intel, the dashboard as text, and its 20 latest messages. The local service summarizes older messages.
-- The dashboard as text lists each quest that is not archived on one line: title, state, workspace, the first sentence of its briefing, and last activity. The local service builds it from stored data; Guildmaster never maintains it.
+- The dashboard as text lists up to 60 of the most recently active quests that are not archived, one per line: title, state, workspace, the first sentence of its briefing, and last activity. When there are more, a line gives the number of older quests not listed. Ritual quests are listed separately. The local service builds it from stored data; Guildmaster never maintains it.
 - Each message the owner writes to Outlore carries where they had it open from (CHG-0193): the quest when a quest is open, named from the stored title, else the screen's name as the sidebar gives it (Guild Hall, Settings, Rituals, the quests of a realm, and so on). Outlore reads it as a note after the message, not shown in the owner's message, so that "this quest" or "this page" means that screen; it reads the quest's journal or the settings only when the answer needs them.
 - Guildmaster can retrieve full journals, conversations, its own older messages, and other app information as needed to answer the owner's request.
   It retrieves information when needed instead of loading all app data into every turn.
