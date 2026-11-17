@@ -54,10 +54,10 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume pairing by QR code and link (side-quest A built: parser, QR on the host, web auto-pair, desktop `outlore://` handler; open: the mobile app, a window and phone check, the web deployment), read the [current handoff](.agents/handoffs/2026-11-17-1318-pairing-link.md). Handoffs are shared and committed.
+
 - To resume the whole-codebase review (A–E integration and the CI dependency fix are on main and CI is green; next the context-window migration renumber, the open behaviour items, then the deferred reviews), read the [current handoff](.agents/handoffs/2026-11-17-1135-review-ci-green.md). Handoffs are shared and committed.
 
 - To resume the sidebar change that removed the indent before realms (CHG-0332; done and committed; open: the owner's look in a window, what "same for borderlands" meant beyond the quests' alignment), read the [current handoff](.agents/handoffs/2026-11-16-1030-sidebar-realm-indent.md). Handoffs are shared and committed.
-
-- To resume the connectors blueprint (connector gateway, the Vault and ADR 0022, both proposed and revised after a second opinion, CHG-0328 and CHG-0330; specification agreed in CHG-0321 to CHG-0327; nothing built; open: the owner's review, whether to add the proposed Vault states to the specification, authorizing read-denial probes with a disposable secret), read the [current handoff](.agents/handoffs/2026-11-16-1008-connectors-blueprint.md). Handoffs are shared and committed.
 
 
