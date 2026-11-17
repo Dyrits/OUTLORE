@@ -2,9 +2,30 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { save } from "../fixtures/lore.ts";
-import { call, fixture, open, read, register, send, settle, start } from "../fixtures/service.ts";
+import { call, fixture, open, read, register, send, settle, start, tool } from "../fixtures/service.ts";
 
 describe("recalling the quest's realm", () => {
+  it.live("keeps quest lore out of another quest in the same realm", () => {
+    const { directory, layer } = register(fixture());
+    return Effect.gen(function* () {
+      const first = yield* start("First", directory);
+      yield* settle(first.missionId, (detail) => detail.thread.state === "Idle");
+      yield* save(first.threadId, "A private quartz quest fact.", "mission");
+      const second = yield* start("Second", directory);
+      yield* settle(second.missionId, (detail) => detail.thread.state === "Idle");
+      const result = yield* tool(second.threadId, "search_intel", { query: "quartz" });
+      expect(result).toContain("No lore");
+      const view = yield* call({
+        _tag: "ListIntel",
+        scope: null,
+        state: null,
+        threadId: second.threadId,
+        workspaceId: null,
+      });
+      expect(view.loreEntries.map((entry) => entry.text)).not.toContain("A private quartz quest fact.");
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("ignores a side-quest's different workspace and does not leak its lore", () => {
     const { directory, layer } = register(fixture());
     return Effect.gen(function* () {
