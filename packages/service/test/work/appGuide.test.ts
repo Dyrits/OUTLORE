@@ -76,6 +76,14 @@ describe("reading the app guide", () => {
       expect(text).toMatch(/oldest.*half/i);
     });
 
+    it("describes browser pairing and names the Providers section", () => {
+      expect(body("overview")).not.toMatch(/one user on one computer/i);
+      expect(body("pairing")).toMatch(/browser/i);
+      expect(body("pairing")).not.toMatch(/Not built yet:[^.]*phone web app/i);
+      expect(body("companions")).toMatch(/Providers/);
+      expect(body("companions")).not.toMatch(/Harnesses card/);
+    });
+
     it("does not promise the unbuilt own copy or one-button merge as available", () => {
       const text = body("realms");
       expect(text).toMatch(/own copy/i);

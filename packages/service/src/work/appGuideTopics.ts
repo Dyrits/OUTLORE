@@ -22,7 +22,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "Outlore is a local-first desktop app for working with AI agents. It runs Claude Code, Codex, and OpenCode, the owner's own command-line tools and accounts, in one place. Outlore does not resell model access: the owner pays each provider directly.",
       "A piece of work is a quest. Inside it, the owner or a thread opens side-quests, each of which can use its own harness, model, and effort, and the threads of a quest talk to each other. The quest keeps a briefing and a journal that every thread in it reads.",
       "Everything is stored on the owner's computer, in a database in the app's data folder. Work happens in realms (folders or repositories) the owner chooses.",
-      "Outlore is in alpha and serves one user on one computer.",
+      "Outlore is in alpha and serves one owner, who may pair several devices.",
     ].join("\n"),
     id: "overview",
     keywords: ["what is outlore", "alpha", "local", "data", "privacy", "providers", "accounts"],
@@ -134,7 +134,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Settings are in the Workshop, in the sidebar. It holds: Harnesses (what is installed, with an Install button for a missing one), Accounts, Permissions, Theme and appearance, the default harness, model, and effort for a first quest, Backup companions, Quest upkeep, the default budget for new quests, the global budget, how a message sent while work is underway behaves (steer or wait), the chatter guard, the briefing limit, lore settings, model prices, and Remote access with paired devices.",
+      "Settings are in the Workshop, in the sidebar. Its Providers section shows installed harnesses and an Install button for a missing one, and holds accounts. Other sections cover Permissions, Look and feel, Companions, quest upkeep, budgets, messaging, lore settings, model prices, and Remote access with paired devices.",
       "Ask Chronicler to read or change a setting. It cannot change the approval level, the budgets, price fetching, or permission to run outside the sandbox without asking.",
       "The sidebar's Charter row is a placeholder page for now; the settings are not there.",
     ].join("\n"),
@@ -190,7 +190,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "A thread has a harness (Claude Code, Codex, or OpenCode), a model (called its Companion), and an effort level. The owner chooses them when starting a thread and may change them during a turn; the next turn uses the new choice. When a new session is needed, a handover replays stored message text: earlier images appear as names and tool calls are not replayed. The oldest messages are omitted with a notice if the replay exceeds half the new model's context window.",
-      "Outlore looks for the claude, codex, and opencode commands on the computer's PATH, and only the ones the owner means to use are needed. The Workshop's Harnesses card shows what is available and can install a missing one (this needs Node.js and npm with a writable global install folder); each harness handles its own sign-in.",
+      "Outlore looks for the claude, codex, and opencode commands on the computer's PATH, and only the ones the owner means to use are needed. The Workshop's Providers section shows what is available and can install a missing one (this needs Node.js and npm with a writable global install folder); each harness handles its own sign-in.",
       "Accounts: each harness can have the computer's own sign-in plus accounts added in Outlore, each with its own folder, such as a second Claude account called Work. A thread runs on the account chosen for it.",
       "Backup companions: when a turn fails (usage limit, overload, model unavailable, signed out), the thread can be handed over to the next backup Companion, which may be on another harness; the switch is a visible line in the conversation.",
     ].join("\n"),
@@ -327,9 +327,9 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Pairing lets the owner control one Outlore from another, such as another computer's app, on any internet connection, with no account. It is early work. The computer being controlled is the host; it shows a one-time pairing code, valid for 10 minutes and usable once, and the other app adds it with Add a host. The folder picker works on a paired host, limited to the folders the host allows. The connection is end-to-end encrypted through a shared relay, and a paired device has the owner's full authority over the host.",
+      "Pairing lets the owner control one Outlore from another app or a browser on a phone or computer, on any internet connection, with no account. It is early work. The computer being controlled is the host; it shows a one-time pairing code, valid for 10 minutes and usable once, which the other device enters. The folder picker works on a paired host, limited to the folders the host allows. The connection is end-to-end encrypted through a shared relay, and a paired device has the owner's full authority over the host.",
       "Paired devices are listed in the Workshop's Remote access card, where each can be disconnected. A host menu is at the top left of the app, and the host can rename itself.",
-      "Not built yet: the phone web app, a QR code for the pairing code, notifications, the terminal on a host, and the direct connection that skips the relay. Pairing has not been tried on two physical computers yet.",
+      "Not built yet: a QR code for the pairing code, notifications, the terminal on a host, and the direct connection that skips the relay. Browser pairing is built; phone layouts and pairing across another network still need checking.",
     ].join("\n"),
     id: "pairing",
     keywords: [
@@ -378,7 +378,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Alpha limits to tell the owner plainly: one owner, who can use several installations by pairing them; Craft (workflows) is not available; the Library is not settled; Outlore has no screen for managing MCP servers yet; the phone web app and parts of pairing are not built; updates are checked and downloaded but installed only on the owner's Restart and update (unverified on Windows and Linux); macOS and Windows builds are unsigned; Windows and Linux builds have had little testing on real machines.",
+      "Alpha limits to tell the owner plainly: one owner, who can use several installations by pairing them; Craft (workflows) is not available; the Library is not settled; Outlore has no screen for managing MCP servers yet; phone layouts and parts of pairing still need work or checking; updates are checked and downloaded but installed only on the owner's Restart and update (unverified on Windows and Linux); macOS and Windows builds are unsigned; Windows and Linux builds have had little testing on real machines.",
       "Bugs and requests go to GitHub Issues, with the operating system, Outlore version, harness, steps to reproduce, and logs with private information removed.",
     ].join("\n"),
     id: "limits",
