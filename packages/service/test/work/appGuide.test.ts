@@ -61,6 +61,13 @@ describe("reading the app guide", () => {
   describe("describing what is built today", () => {
     const body = (id: string) => guideTopics.find((topic) => topic.id === id)?.body ?? "";
 
+    it("describes sandbox escapes, owner-kept settings, and Ritual creation accurately", () => {
+      expect(body("approvals")).not.toMatch(/escape from the sandbox[^.]*always asks/i);
+      expect(body("approvals")).toMatch(/outside the sandbox without asking/i);
+      for (const id of ["chronicler", "workshop"]) expect(body(id)).toMatch(/outside the sandbox/i);
+      expect(body("chronicler")).toMatch(/creating a Ritual always asks/i);
+    });
+
     it("does not promise the unbuilt own copy or one-button merge as available", () => {
       const text = body("realms");
       expect(text).toMatch(/own copy/i);

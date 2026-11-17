@@ -86,8 +86,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
     body: [
       "The Guild Hall is the first entry of the sidebar. It is a hub: a line saying how many quests wait for the owner, the waiting quests as cards, recent quests, and the finished quests of the period.",
       'Chronicler, the app\'s assistant, is a permanent conversation, a panel the top bar\'s Chronicler button opens or folds on every screen. It knows which quest or screen the owner has open, so "this quest" or "this page" means it.',
-      "Chronicler can: answer questions about the owner's quests and about using the app; propose a quest on a card (it never opens one itself); create a Ritual; create or rename a realm; stop a quest's threads, mark it Done, archive it, or rename it; read the settings and change most of them. It cannot change the approval level, the budgets, or price fetching: those are set in the Workshop.",
-      "Chronicler does not do the work itself, no editing files or running commands. Anything else goes to a quest. An action on the app runs at once when the owner's message in that turn plainly named the action, its target, and its new value; otherwise Chronicler asks one Allow or Deny question.",
+      "Chronicler can: answer questions about the owner's quests and about using the app; propose a quest on a card (it never opens one itself); create a Ritual; create or rename a realm; stop a quest's threads, mark it Done, archive it, or rename it; read the settings and change most of them. It cannot change the approval level, the budgets, price fetching, or permission to run outside the sandbox without asking: those are set in the Workshop.",
+      "Chronicler does not do the work itself, no editing files or running commands. Anything else goes to a quest. An action on the app runs at once when the owner's message in that turn plainly named the action, its target, and its new value; otherwise Chronicler asks one Allow or Deny question. Creating a Ritual always asks, because its instruction runs unattended.",
       "Chronicler runs on a harness and model like any thread; the owner chooses them and may hand it over at any time.",
     ].join("\n"),
     id: "chronicler",
@@ -135,7 +135,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "Settings are in the Workshop, in the sidebar. It holds: Harnesses (what is installed, with an Install button for a missing one), Accounts, Permissions, Theme and appearance, the default harness, model, and effort for a first quest, Backup companions, Quest upkeep, the default budget for new quests, the global budget, how a message sent while work is underway behaves (steer or wait), the chatter guard, the briefing limit, lore settings, model prices, and Remote access with paired devices.",
-      "Ask Chronicler to read or change a setting. It cannot change the approval level, the budgets, or price fetching.",
+      "Ask Chronicler to read or change a setting. It cannot change the approval level, the budgets, price fetching, or permission to run outside the sandbox without asking.",
       "The sidebar's Charter row is a placeholder page for now; the settings are not there.",
     ].join("\n"),
     id: "workshop",
@@ -217,7 +217,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Each harness runs its commands in a sandbox that limits damage to the computer's files and processes. A thread works on its own at the default approval level and asks before consequential actions: ones that reach people or systems outside the computer or cannot be undone. An escape from the sandbox, or a change outside the thread's folder, always asks.",
+      "Each harness runs its commands in a sandbox that limits damage to the computer's files and processes. A thread works on its own at the default approval level and asks before consequential actions: ones that reach people or systems outside the computer or cannot be undone. A sandbox escape asks unless the owner enabled running commands outside the sandbox without asking or granted a matching standing permission; a file change outside the thread's folder still asks.",
       "An approval question says in plain words what the thread wants to do; Show details reveals the exact command. The buttons are Allow (this once), Always allow (a standing permission for that exact action), and Deny, with an optional message saying what to do instead. A thread with an open question is in Summons.",
       "Standing permissions are listed in the Workshop's Permissions card, where each can be removed.",
       "Words never approve a command: not a quoted message, not a Ritual's instruction, nothing a thread writes.",
