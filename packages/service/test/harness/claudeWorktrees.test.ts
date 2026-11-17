@@ -335,6 +335,7 @@ it.live("shows the reply as it is written only while the setting is on", () => {
         shouldShowAgentThreads: true,
         shouldShowFinishedQuests: false,
         shouldStreamReplies: false,
+        shouldUseCodeMode: false,
         tiers: { Balanced: null, Heavy: null, Light: null },
       },
     });

@@ -2,6 +2,7 @@ import { dirname, join } from "node:path";
 import type { Request, RequestSource } from "@outlore/contracts";
 import { Effect, Layer, Match, Semaphore } from "effect";
 import type { SqlError } from "effect/sql";
+import { type ConnectorGateway, codeExecutorLayer, noConnectorsLayer } from "./connectors/index.ts";
 import {
   addBrowsableRoot,
   browseFolders,
@@ -196,6 +197,8 @@ export interface ServiceOptions {
   readonly attachmentsRoot?: string;
   /** The computer's name, offered as the host's name until the owner chooses one; the machine's own when left out. */
   readonly computerName?: string;
+  /** The connector gateway; one that offers no connector when left out, until the connectors are built (CHG-0441). */
+  readonly connectorGateway?: Layer.Layer<ConnectorGateway>;
   /** Deploys the relay to the Cloudflare account a token reaches (device-pairing, own relay); the real deployment when left out. */
   readonly deployOwnRelay?: (token: string) => Promise<DeployResult>;
   readonly filename: string;
@@ -226,6 +229,8 @@ export const serviceLayer = (options: ServiceOptions) => {
   const foundation = Layer.mergeAll(
     changesLayer,
     endpointsLayer,
+    codeExecutorLayer,
+    options.connectorGateway ?? noConnectorsLayer,
     options.harness,
     options.harnessTools ?? fakeHarnessToolsLayer(),
     Layer.succeed(ScratchRoot, options.scratchRoot),

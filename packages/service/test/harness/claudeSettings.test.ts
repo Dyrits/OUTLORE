@@ -45,6 +45,7 @@ describe("reading and saving settings", () => {
         shouldShowAgentThreads: true,
         shouldShowFinishedQuests: false,
         shouldStreamReplies: true,
+        shouldUseCodeMode: false,
         tiers: { Balanced: null, Heavy: null, Light: null },
       });
 
@@ -71,6 +72,7 @@ describe("reading and saving settings", () => {
         shouldShowAgentThreads: true,
         shouldShowFinishedQuests: false,
         shouldStreamReplies: false,
+        shouldUseCodeMode: true,
         tiers: { Balanced: null, Heavy: null, Light: null },
       } as const;
       yield* call({ _tag: "UpdateSettings", settings: updated }).pipe(Effect.provide(serviceLayer(options)));
@@ -106,6 +108,7 @@ describe("reading and saving settings", () => {
         shouldShowAgentThreads: true,
         shouldShowFinishedQuests: false,
         shouldStreamReplies: false,
+        shouldUseCodeMode: false,
         tiers: { Balanced: null, Heavy: null, Light: null },
       });
     }).pipe(Effect.provide(layer));

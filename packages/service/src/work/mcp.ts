@@ -1,7 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { Effect, Exit, Layer, Schema } from "effect";
 import { SqlClient } from "effect/sql";
-import { Endpoints } from "../core/index.ts";
+import { answerConnectorCall, CodeExecutor, ConnectorGateway, connectorListingOf } from "../connectors/index.ts";
+import { Endpoints, readSettings } from "../core/index.ts";
 import { harnessFacts, toolServerName } from "../harness/index.ts";
 import { Approvals } from "./approvals.ts";
 import { Commands } from "./commands.ts";
@@ -51,17 +52,29 @@ export const toolServerLayer = Layer.effectDiscard(
     const commands = yield* Commands;
     const threads = yield* Threads;
     const endpoints = yield* Endpoints;
+    const gateway = yield* ConnectorGateway;
+    const executor = yield* CodeExecutor;
     const context = yield* Effect.context<never>();
 
     const handlers = makeToolHandlers({ approvals, commands, suggestions, threads });
     const run = Effect.runPromiseWith(context);
 
+    const isCodeModeOn = readSettings.pipe(
+      Effect.map((settings) => settings.shouldUseCodeMode),
+      Effect.provideService(SqlClient.SqlClient, sql),
+    );
+
     const dispatchTool = (threadId: string, name: string, args: unknown) =>
-      isThreadToolName(name)
-        ? answerToolCall(handlers, name, threadId, args).pipe(
-            Effect.map(({ isError, text }) => textResult(text, isError)),
-          )
-        : Effect.succeed(textResult(`Unknown tool: ${name}`, true));
+      Effect.gen(function* () {
+        if (isThreadToolName(name)) return yield* answerToolCall(handlers, name, threadId, args);
+        const answer = yield* answerConnectorCall(executor, gateway, {
+          args,
+          isCodeModeOn: yield* isCodeModeOn,
+          name,
+          threadId,
+        });
+        return answer ?? { isError: true, text: `Unknown tool: ${name}` };
+      }).pipe(Effect.map(({ isError, text }) => textResult(text, isError)));
 
     // The running turn's admitted harness decides, not a harness the owner picked during it (thread-handover).
     const hasPromptToolOf = (threadId: string) =>
@@ -81,8 +94,13 @@ export const toolServerLayer = Layer.effectDiscard(
         return yield* dispatchTool(threadId, name, args);
       }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie);
 
-    /** The tools the thread's harness lists: `answer_prompt` only for Claude Code. */
-    const listTools = (threadId: string) => hasPromptToolOf(threadId).pipe(Effect.map(toolListingOf), Effect.orDie);
+    /** The tools the thread's harness lists: `answer_prompt` only for Claude Code, then its connectors' tools. */
+    const listTools = (threadId: string) =>
+      Effect.gen(function* () {
+        const own = toolListingOf(yield* hasPromptToolOf(threadId));
+        const connectors = connectorListingOf(yield* gateway.listingFor(threadId), yield* isCodeModeOn);
+        return [...own, ...connectors];
+      }).pipe(Effect.orDie);
 
     const respondJson = (response: ServerResponse, body: unknown) => {
       response.writeHead(200, { "content-type": "application/json" });
