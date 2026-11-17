@@ -10,7 +10,7 @@ import { moveFormerData } from "./formerData.ts";
 import { instanceOf } from "./instance.ts";
 import { mergedPathOf, readLoginPath } from "./shellPath.ts";
 import { Terminals } from "./terminals.ts";
-import { setUpUpdates } from "./updates/setup.ts";
+import { setUpUpdates } from "./updateSetup.ts";
 import { createWindowHandlers } from "./windowCalls.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));

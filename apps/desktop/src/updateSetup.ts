@@ -1,14 +1,14 @@
 import { readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { app, type BrowserWindow, shell } from "electron";
-import type { UpdateState } from "../../../app/src/foundation/updateState.ts";
-import { appVersionOf } from "../appVersion.ts";
-import type { createWindowHandlers } from "../windowCalls.ts";
-import { UpdateController } from "./controller.ts";
-import { createLibraryUpdater } from "./libraryUpdater.ts";
-import { createMacUpdater } from "./macUpdater.ts";
-import { defaultReleasesUrl, releasesPageUrl } from "./network.ts";
-import type { Updater } from "./updater.ts";
+import type { UpdateState } from "../../app/src/foundation/updateState.ts";
+import { appVersionOf } from "./appVersion.ts";
+import { UpdateController } from "./updates/controller.ts";
+import { createLibraryUpdater } from "./updates/libraryUpdater.ts";
+import { createMacUpdater } from "./updates/macUpdater.ts";
+import { defaultReleasesUrl, releasesPageUrl } from "./updates/network.ts";
+import type { Updater } from "./updates/updater.ts";
+import type { createWindowHandlers } from "./windowCalls.ts";
 
 /** Only this repository's pages open from an update notice. */
 const isReleasePage = (url: unknown): url is string =>
