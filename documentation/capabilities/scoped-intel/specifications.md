@@ -67,6 +67,7 @@ Each intel has a kind, which sets how fast it fades when no thread uses it. The 
 - Below a strength of 0.15 an intel becomes **dormant**: it leaves the index and the starting context, and stays findable through `search_intel`. A use makes it active again.
 - Below a strength of 0.05 an intel becomes **archived**: it leaves search too, and stays in the intel panel's Archived filter, where the user can restore it.
 - Fading never deletes an intel. Only the user, or a thread under the rules of [Correcting and deleting](#correcting-and-deleting), deletes one.
+- When the user deletes a thread or quest, its own thread- or quest-scoped lore, history, and uses are permanently erased with it; they cannot be restored from Deleted.
 
 ### Saving
 
