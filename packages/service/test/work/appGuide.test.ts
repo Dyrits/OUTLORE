@@ -68,6 +68,14 @@ describe("reading the app guide", () => {
       expect(body("chronicler")).toMatch(/creating a Ritual always asks/i);
     });
 
+    it("describes the actual handover replay boundary", () => {
+      const text = body("companions");
+      expect(text).not.toMatch(/full history/i);
+      expect(text).toMatch(/images.*names/i);
+      expect(text).toMatch(/tool calls.*not replayed/i);
+      expect(text).toMatch(/oldest.*half/i);
+    });
+
     it("does not promise the unbuilt own copy or one-button merge as available", () => {
       const text = body("realms");
       expect(text).toMatch(/own copy/i);

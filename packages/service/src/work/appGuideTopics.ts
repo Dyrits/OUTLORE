@@ -189,7 +189,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "A thread has a harness (Claude Code, Codex, or OpenCode), a model (called its Companion), and an effort level. The owner chooses them when starting a thread and may change any of them between turns without losing the conversation: the new one is given the thread's full history (a handover).",
+      "A thread has a harness (Claude Code, Codex, or OpenCode), a model (called its Companion), and an effort level. The owner chooses them when starting a thread and may change them during a turn; the next turn uses the new choice. When a new session is needed, a handover replays stored message text: earlier images appear as names and tool calls are not replayed. The oldest messages are omitted with a notice if the replay exceeds half the new model's context window.",
       "Outlore looks for the claude, codex, and opencode commands on the computer's PATH, and only the ones the owner means to use are needed. The Workshop's Harnesses card shows what is available and can install a missing one (this needs Node.js and npm with a writable global install folder); each harness handles its own sign-in.",
       "Accounts: each harness can have the computer's own sign-in plus accounts added in Outlore, each with its own folder, such as a second Claude account called Work. A thread runs on the account chosen for it.",
       "Backup companions: when a turn fails (usage limit, overload, model unavailable, signed out), the thread can be handed over to the next backup Companion, which may be on another harness; the switch is a visible line in the conversation.",
