@@ -62,7 +62,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "A realm groups quests that share lore. A realm may be tied to one folder or repository on the computer (the realm's workspace, where its threads work) or tied to none. The sidebar lists realms tied to a folder first, then those tied to none.",
       "The Borderlands hold quests with no realm: no folder and no shared lore. A quest there has only its own lore and global lore. Every quest belongs to a realm or to the Borderlands, and a whole quest tree can be moved between them, after a confirmation, while no thread of it is running.",
       "A quest with no folder works in a scratch folder Outlore keeps for it.",
-      "Own copy is agreed but not built: a thread cannot yet be given its own git worktree, and there is no merge button. Threads beneath a thread work in the same folder as it, and an agent can still use git or worktrees itself when asked.",
+      "Own copy: a thread can open a side-quest with its own copy of a git workspace (open_thread with ownCopy). Outlore makes a git worktree in the workspace's .worktrees folder on a new branch named after the quest, and the side-quest and those beneath it work and commit there without asking; it reports its branch and the thread that opened it merges it with git. Not built yet: the owner asking for an own copy when opening a side-quest, the one-button merge, and deleting the worktree on archive. Otherwise threads beneath a thread work in the same folder as it.",
       "Add a realm from the sidebar, or ask Chronicler to make or rename one. Chronicler cannot delete a realm. When asked to archive an empty quest with no usage that is not a Ritual's, it deletes the quest instead.",
     ].join("\n"),
     id: "realms",

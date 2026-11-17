@@ -8,6 +8,7 @@ import { changed, unchanged } from "./commands.ts";
 import { type JournalAuthor, nothingToRecord, openerMessagesOf, updateJournal } from "./journal.ts";
 import { maxOwnerDepth } from "./lifecycle.ts";
 import { insertMessage } from "./messaging.ts";
+import { ownCopyForChild } from "./ownCopies.ts";
 import { readStartingContext, startingContextRefusalOf } from "./startingContext.ts";
 import { attachmentsTitle, titleOf } from "./titles.ts";
 import { depthOf, maxRunning, runningCountOf } from "./treeLimits.ts";
@@ -22,6 +23,8 @@ type Opening = {
   /** An off-topic request the owner kept beneath the thread (thread-tree, Off-topic requests). */
   readonly isAside: boolean;
   readonly isOpenedByAgent: boolean;
+  /** Whether the thread gets an own copy of its own (workspace-attachment); otherwise it shares its parent's, if any. */
+  readonly isOwnCopyAsked: boolean;
   readonly parentId: string;
   readonly text: string;
   /** A short title; the first line of the text when null. */
@@ -53,10 +56,11 @@ const insertThread = Effect.fnUntraced(function* (opening: Opening) {
   const threadId = yield* newId;
   // An aside starts from the off-topic request alone, without its opener's conversation.
   const openerMessages = opening.isAside ? null : yield* openerMessagesOf(opening.parentId);
-  yield* sql`INSERT INTO threads (id, mission_id, parent_id, state, harness, account_id, model, effort, workspace_id, title, is_opened_by_agent, opener_messages, is_aside, backups)
+  const ownCopy = yield* ownCopyForChild(opening.parentId, threadId, opening.isOwnCopyAsked);
+  yield* sql`INSERT INTO threads (id, mission_id, parent_id, state, harness, account_id, model, effort, workspace_id, title, is_opened_by_agent, opener_messages, is_aside, backups, own_copy, own_copy_branch)
       VALUES (${threadId}, ${parent.missionId}, ${opening.parentId}, 'Idle', ${runner.harness}, ${runner.accountId},
         ${runner.model}, ${runner.effort}, ${parent.workspaceId}, ${titleOf(opening.title ?? opening.text) || attachmentsTitle}, ${opening.isOpenedByAgent ? 1 : 0},
-        ${openerMessages}, ${opening.isAside ? 1 : 0}, ${backups})`;
+        ${openerMessages}, ${opening.isAside ? 1 : 0}, ${backups}, ${ownCopy?.path ?? null}, ${ownCopy?.branch ?? null})`;
   const messageId = yield* insertMessage({
     fromThreadId: opening.isOpenedByAgent ? opening.parentId : null,
     isQueued: false,
@@ -95,6 +99,7 @@ export const openThreadByOwner = Effect.fnUntraced(function* (
     choice,
     isAside: false,
     isOpenedByAgent: false,
+    isOwnCopyAsked: false,
     parentId,
     text,
     title: null,
@@ -112,6 +117,7 @@ export const openAside = (parentId: string, text: string, title: string) =>
     choice: {},
     isAside: true,
     isOpenedByAgent: false,
+    isOwnCopyAsked: false,
     parentId,
     text,
     title: title.trim() === "" ? null : title,
@@ -141,6 +147,7 @@ export const openThreadByAgent = Effect.fnUntraced(function* (
   request: string,
   title: string | null,
   choice: RunnerChoice & { readonly harness: HarnessName | null },
+  isOwnCopyAsked = false,
 ) {
   const sql = yield* SqlClient.SqlClient;
   const [caller] = yield* sql<{
@@ -168,6 +175,7 @@ export const openThreadByAgent = Effect.fnUntraced(function* (
     choice,
     isAside: false,
     isOpenedByAgent: true,
+    isOwnCopyAsked,
     parentId: callerId,
     text: request,
     title: title !== null && title.trim() !== "" ? title : null,

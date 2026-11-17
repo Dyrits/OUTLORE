@@ -140,14 +140,19 @@ export const makeToolHandlers = (dependencies: {
   const commit = <A, E>(work: Effect.Effect<A, E, SqlClient.SqlClient>) =>
     runTool(Effect.map(work, (value) => changed(value)));
 
-  const openThread = (threadId: string, { effort, harness, model, request, title }: ArgumentsOf<"open_thread">) =>
+  const openThread = (
+    threadId: string,
+    { effort, harness, model, ownCopy, request, title }: ArgumentsOf<"open_thread">,
+  ) =>
     runTool(
-      openThreadByAgent(threadId, request, title ?? null, {
-        effort: effort ?? null,
-        harness: harness ?? null,
-        model: model ?? null,
-      }).pipe(
-        // A refused account comes back to the thread as a refusal.
+      openThreadByAgent(
+        threadId,
+        request,
+        title ?? null,
+        { effort: effort ?? null, harness: harness ?? null, model: model ?? null },
+        ownCopy === true,
+      ).pipe(
+        // A refused account, or an own copy git refused, comes back to the thread as a refusal.
         Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refusedOf(failure.message))),
       ),
     ).pipe(

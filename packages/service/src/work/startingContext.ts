@@ -15,6 +15,7 @@ import { readApprovalInstructions } from "./approvalTerms.ts";
 import { accountOfThread, budgetLineOf } from "./budgetScopes.ts";
 import { readGuildmasterContext } from "./guildmasterContext.ts";
 import { journalContextOf, journalInstructions, openerContextOf, openerMessagesOf } from "./journal.ts";
+import { readOwnCopy } from "./ownCopies.ts";
 import { titleOf } from "./titles.ts";
 import { prepareWorkingFolder, readThreadWorkspace, ScratchRoot, workingFolderOf } from "./workspaces.ts";
 
@@ -127,6 +128,7 @@ const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
   };
   return {
     harness: row.harness,
+    ownCopy: yield* readOwnCopy(threadId),
     subject: {
       isGuildmaster: row.isGuildmaster === 1,
       loreThreadId: threadId,
@@ -141,8 +143,8 @@ const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
 /** The thread's starting context for its next turn, with its scratch folder made when it has no workspace. */
 export const prepareStartingContext = Effect.fnUntraced(function* (threadId: string) {
   const scratchRoot = yield* ScratchRoot;
-  const { subject, workspace } = yield* readThreadSubject(threadId);
-  const folder = yield* prepareWorkingFolder(workspace, join(scratchRoot, subject.missionId));
+  const { ownCopy, subject, workspace } = yield* readThreadSubject(threadId);
+  const folder = yield* prepareWorkingFolder(workspace, join(scratchRoot, subject.missionId), ownCopy);
   const sections = yield* readSections(subject, folder.context);
   return {
     context: systemPartOf(sections),
@@ -170,7 +172,7 @@ export const readStartingContext = Effect.fnUntraced(function* (
   if (parent === undefined) return yield* notFound("No such thread.");
   const harness = choice.harness ?? parent.harness;
   const workspace = yield* readThreadWorkspace(parentId);
-  const folder = yield* workingFolderOf(workspace, join(scratchRoot, parent.missionId));
+  const folder = yield* workingFolderOf(workspace, join(scratchRoot, parent.missionId), yield* readOwnCopy(parentId));
   const position = {
     isAside: false,
     parent: { id: parentId, title: parent.title },
@@ -226,8 +228,8 @@ export const startingContextRefusalOf = (context: StartingContext) =>
  */
 export const readSentContextSize = Effect.fnUntraced(function* (threadId: string) {
   const scratchRoot = yield* ScratchRoot;
-  const { harness, subject, workspace } = yield* readThreadSubject(threadId);
-  const folder = yield* workingFolderOf(workspace, join(scratchRoot, subject.missionId));
+  const { harness, ownCopy, subject, workspace } = yield* readThreadSubject(threadId);
+  const folder = yield* workingFolderOf(workspace, join(scratchRoot, subject.missionId), ownCopy);
   const sections = yield* readSections(subject, folder.context);
   const approvals = yield* readApprovalInstructions(threadId, harness);
   return {

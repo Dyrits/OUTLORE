@@ -163,6 +163,12 @@ export const threadTools = {
           description: "The new thread's model; default is the harness's own. Yours when left out.",
         }),
       ),
+      ownCopy: Schema.optionalKey(
+        Schema.Boolean.annotate({
+          description:
+            "True to give the new thread its own copy of your git workspace: Outlore makes a git worktree in .worktrees/ on a new branch from the commit you work on, and the thread and those beneath it work and commit there without asking the owner. It reports its branch for you to merge. Left out, it works in your folder.",
+        }),
+      ),
       request: text("Everything the new thread needs to know: it sees none of your conversation."),
       title: optionalText("A short title for the new thread, a few words, shown to the owner."),
     }),

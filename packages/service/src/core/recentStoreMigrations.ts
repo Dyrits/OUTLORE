@@ -79,4 +79,11 @@ export const recentStoreMigrations = {
     yield* sql`ALTER TABLE intel_changes ADD COLUMN previous_workspace_id TEXT`;
     yield* sql`ALTER TABLE intel_changes ADD COLUMN previous_kind TEXT`;
   }),
+  // Own copy (workspace-attachment, CHG-0441): the git worktree a thread works in and its branch, made for it or
+  // inherited from its parent; null for a thread that works in its workspace's folder. 0054 is taken by another branch.
+  "0056_thread_own_copy": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE threads ADD COLUMN own_copy TEXT`;
+    yield* sql`ALTER TABLE threads ADD COLUMN own_copy_branch TEXT`;
+  }),
 };
