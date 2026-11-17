@@ -131,9 +131,9 @@ export const scopeLabelOf = (row: {
   ({
     Global: "Global",
     Thread: row.isTopThread
-      ? `Mission "${row.missionTitle ?? ""}"`
-      : `Thread "${row.threadTitle ?? "a deleted thread"}"`,
-    Workspace: `Workspace ${row.workspaceName ?? ""}`,
+      ? `Quest "${row.missionTitle ?? ""}"`
+      : `Side-quest "${row.threadTitle ?? "a deleted side-quest"}"`,
+    Workspace: `Realm ${row.workspaceName ?? ""}`,
   })[row.scope];
 
 /** What a stored lore entry or change rests on, or null when it records none. */
@@ -210,8 +210,8 @@ const recallOf = (rows: ReadonlyArray<LoreEntryRow>, fading: Fading): Recall => 
 const agentLabelOf = (row: LoreEntryRow) =>
   ({
     Global: "global",
-    Thread: row.isTopThread ? "mission" : `thread "${row.threadTitle ?? ""}"`,
-    Workspace: "workspace",
+    Thread: row.isTopThread ? "quest" : `side-quest "${row.threadTitle ?? ""}"`,
+    Workspace: "realm",
   })[row.scope];
 
 /** Lore as a thread reads it in full: one line each, with its identifier, scope, and kind. */
@@ -256,7 +256,7 @@ export const readGauge = Effect.fnUntraced(function* (threadId: string) {
 export const loreInstructions = [
   "# Lore",
   "Lore is what Outlore keeps between threads: rules, preferences, decisions, facts, and temporary notes, each at the scope where it applies. Each of your turns starts with the lore in your scope.",
-  `Before saving, check there is something worth keeping: saving nothing is better than a vague or forced lore entry. When you learn something later work should know, save it with save_intel: one fact per lore entry, at most ${loreLimit} tokens. Choose the narrowest scope that fits: thread (you and the threads beneath you), mission (every thread of this mission), workspace (every thread working in this folder, in any mission), or global (everywhere; it waits for the owner's approval).`,
+  `Before saving, check there is something worth keeping: saving nothing is better than a vague or forced lore entry. When you learn something later work should know, save it with save_intel: one fact per lore entry, at most ${loreLimit} tokens. Choose the narrowest tool scope that fits: thread (the side-quest and the threads beneath it; on a quest's top thread, the quest), mission (the quest and all its threads), workspace (the realm, with or without a folder, and all its quests), or global (everywhere; it waits for the owner's approval).`,
   "Choose its kind: rule (never fades), preference, decision, fact, or temporary (fades in days). Lore nobody uses fades, so search_intel for what you need: reading a lore entry there keeps it alive. When a lore entry from your context shaped what you did, say so with relied_on_intel and its ids; that keeps it alive too.",
   "A save that says the same as a lore entry in its scope or a wider one, or a newer version of it, replaces it: the lore entry keeps its id and takes the new text. When the lore entry rests on a journal entry, give its number as journalEntry; otherwise the message you are answering is recorded as its origin.",
   "When the owner gives you a rule in a chat, such as 'always run the tests before a commit', save it as a lore entry of kind rule without being asked.",
@@ -283,6 +283,6 @@ export const loreContextOf = Effect.fnUntraced(function* (threadId: string) {
     "Global lore, as an index of one line each; read one in full with search_intel and its id:",
     recall.index.length === 0 ? "(none yet)" : indexLinesOf(recall.index),
     ...dormant,
-    ...(chain.workspaceId === null ? ["You have no workspace, so workspace lore is not available to you."] : []),
+    ...(chain.workspaceId === null ? ["Your quest has no realm, so realm lore is not available to you."] : []),
   ].join("\n");
 });

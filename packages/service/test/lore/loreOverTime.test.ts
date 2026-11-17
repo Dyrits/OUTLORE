@@ -33,7 +33,7 @@ describe("saving lore by kind", () => {
       expect(yield* tool(threadId, "save_intel", { scope: "thread", text: "No kind." })).toContain("kind");
       yield* save(threadId, "The owner prefers Bun.", "thread", "preference");
       const found = yield* tool(threadId, "search_intel", { query: "bun" });
-      expect(found).toContain("(mission, preference) The owner prefers Bun.");
+      expect(found).toContain("(quest, preference) The owner prefers Bun.");
       expect((yield* panel()).loreEntries).toMatchObject([
         { isPinned: false, kind: "Preference", state: "Active", strength: 1, text: "The owner prefers Bun." },
       ]);

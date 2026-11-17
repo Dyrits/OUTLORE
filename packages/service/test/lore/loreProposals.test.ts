@@ -58,8 +58,8 @@ describe("proposing widening from evidence", () => {
       });
       expect(proposal?.loreEntries.map((loreEntry) => loreEntry.id).toSorted()).toEqual([newer, older].toSorted());
       expect(proposal?.loreEntries.map((loreEntry) => loreEntry.scopeLabel).toSorted()).toEqual([
-        "Workspace alpha",
-        "Workspace beta",
+        "Realm alpha",
+        "Realm beta",
       ]);
     }).pipe(Effect.provide(layer));
   });
@@ -124,7 +124,7 @@ describe("proposing widening from evidence", () => {
       yield* resolve((yield* proposals)[0], true);
       yield* advance(36 * dayMillis);
       expect(yield* proposals).toMatchObject([
-        { kind: "Narrow", loreEntries: [{ id: newer }], scopeLabel: "Workspace alpha", uses: 1 },
+        { kind: "Narrow", loreEntries: [{ id: newer }], scopeLabel: "Realm alpha", uses: 1 },
       ]);
     }).pipe(Effect.provide(layer));
   });
@@ -197,10 +197,7 @@ describe("proposing widening from evidence", () => {
       yield* call({ _tag: "UndoIntelChange", entryId: entryOf((yield* historyOf(newer)).entries, "Widened").id });
       yield* call({ _tag: "UndoIntelChange", entryId: entryOf((yield* historyOf(older)).entries, "Merged").id });
       const loreEntries = (yield* panel()).loreEntries;
-      expect(loreEntries.map((loreEntry) => loreEntry.scopeLabel).toSorted()).toEqual([
-        "Workspace alpha",
-        "Workspace beta",
-      ]);
+      expect(loreEntries.map((loreEntry) => loreEntry.scopeLabel).toSorted()).toEqual(["Realm alpha", "Realm beta"]);
     }).pipe(Effect.provide(layer));
   });
 });
@@ -221,7 +218,7 @@ describe("proposing narrowing from evidence", () => {
           halfLifeDays: 45,
           kind: "Narrow",
           loreEntries: [{ id, scopeLabel: "Global" }],
-          scopeLabel: "Workspace alpha",
+          scopeLabel: "Realm alpha",
           uses: 2,
         },
       ]);
@@ -270,7 +267,7 @@ describe("proposing narrowing from evidence", () => {
       yield* tool(beta.threadId, "search_intel", { query: "orchid" });
       yield* advance(50 * dayMillis);
       yield* tool(alpha.threadId, "search_intel", { query: "orchid" });
-      expect(yield* proposals).toMatchObject([{ kind: "Narrow", scopeLabel: "Workspace alpha", uses: 1 }]);
+      expect(yield* proposals).toMatchObject([{ kind: "Narrow", scopeLabel: "Realm alpha", uses: 1 }]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -282,10 +279,10 @@ describe("proposing narrowing from evidence", () => {
       yield* advance(46 * dayMillis);
       yield* tool(threadId, "relied_on_intel", { ids: [id] });
       yield* resolve((yield* proposals)[0], true);
-      expect((yield* panel()).loreEntries).toMatchObject([{ id, scope: "Workspace", scopeLabel: "Workspace alpha" }]);
+      expect((yield* panel()).loreEntries).toMatchObject([{ id, scope: "Workspace", scopeLabel: "Realm alpha" }]);
       expect(yield* proposals).toEqual([]);
       const narrowed = entryOf((yield* historyOf(id)).entries, "Narrowed");
-      expect(narrowed).toMatchObject({ actor: "Owner", scopeLabel: "Workspace alpha" });
+      expect(narrowed).toMatchObject({ actor: "Owner", scopeLabel: "Realm alpha" });
       yield* call({ _tag: "UndoIntelChange", entryId: narrowed.id });
       expect((yield* panel()).loreEntries).toMatchObject([{ id, scope: "Global" }]);
     }).pipe(Effect.provide(layer));
