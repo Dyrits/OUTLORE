@@ -3,6 +3,7 @@ import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { notFound, readSettings } from "../core/index.ts";
 import { checkBackups } from "../harness/index.ts";
+import { refuseWaitingImages } from "./admission.ts";
 import { changed, unchanged, type WithFollowUps } from "./commands.ts";
 import { changeThreadRunner } from "./handover.ts";
 
@@ -61,7 +62,11 @@ export const fallBackToBackup = Effect.fnUntraced(function* (
     const candidate = backups[index];
     if (candidate === undefined) continue;
     if (isOtherAccountRequired && candidate.harness === row.harness && candidate.accountId === row.accountId) continue;
-    const outcome = yield* Effect.exit(changeThreadRunner(threadId, candidate, { fellBackAfter: reason }));
+    const outcome = yield* Effect.exit(
+      refuseWaitingImages(threadId, candidate).pipe(
+        Effect.andThen(changeThreadRunner(threadId, candidate, { fellBackAfter: reason })),
+      ),
+    );
     if (!Exit.isSuccess(outcome) || !outcome.value.followUps.isChanged) continue;
     yield* sql`UPDATE threads SET backup_step = ${index + 1} WHERE id = ${threadId}`;
     return { followUps: outcome.value.followUps, value: null } satisfies WithFollowUps<null>;

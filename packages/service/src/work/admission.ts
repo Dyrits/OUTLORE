@@ -55,14 +55,19 @@ export const admitOwnerText = Effect.fnUntraced(function* (
   return admitted;
 });
 
-/** Admits a runner change only when that runner can read the thread's waiting images. */
-export const admitRunnerChange = Effect.fnUntraced(function* (change: Parameters<typeof chooseThreadRunner>[0]) {
+/** Refuses a runner that cannot read images waiting for the thread, including on a fallback. */
+export const refuseWaitingImages = Effect.fnUntraced(function* (threadId: string, runner: Readable) {
   const sql = yield* SqlClient.SqlClient;
   const waiting = yield* sql<{ id: string }>`SELECT a.id FROM attachments a JOIN messages m ON m.id = a.message_id
-      WHERE m.thread_id = ${change.threadId} AND m.delivered_turn_id IS NULL AND m.sender_kind != 'agent' LIMIT 1`;
+      WHERE m.thread_id = ${threadId} AND m.delivered_turn_id IS NULL AND m.sender_kind != 'agent' LIMIT 1`;
   yield* refuseUnreadableImages(
     waiting.map((row) => row.id),
-    Effect.succeed(change),
+    Effect.succeed(runner),
   );
+});
+
+/** Admits a runner change only when that runner can read the thread's waiting images. */
+export const admitRunnerChange = Effect.fnUntraced(function* (change: Parameters<typeof chooseThreadRunner>[0]) {
+  yield* refuseWaitingImages(change.threadId, change);
   return yield* chooseThreadRunner(change);
 });

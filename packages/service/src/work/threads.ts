@@ -13,7 +13,7 @@ import {
   removeScratch,
   type ServiceFailure,
 } from "../core/index.ts";
-import { removedAccountReasonOf, toolServerName } from "../harness/index.ts";
+import { HarnessTools, removedAccountReasonOf, toolServerName } from "../harness/index.ts";
 import { Approvals } from "./approvals.ts";
 import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
@@ -82,6 +82,7 @@ export const threadsLayer = Layer.effect(
     const changes = yield* Changes;
     const scratchRoot = yield* ScratchRoot;
     const prices = yield* PriceTable;
+    const harnessTools = yield* HarnessTools;
     const accountsRoot = yield* AccountsRoot;
     const attachmentsRoot = yield* AttachmentsRoot;
     /** The stored files as a harness takes them: where each is kept. */
@@ -97,10 +98,13 @@ export const threadsLayer = Layer.effect(
       Context.add(Changes, changes),
       Context.add(PriceTable, prices),
       Context.add(ScratchRoot, scratchRoot),
+      Context.add(HarnessTools, harnessTools),
+      Context.add(AccountsRoot, accountsRoot),
     );
     /** Runs a step over the store, the change feed, and the scratch root this layer was built with. */
-    const local = <A, E>(step: Effect.Effect<A, E, SqlClient.SqlClient | Changes | PriceTable | ScratchRoot>) =>
-      Effect.provideContext(step, services);
+    const local = <A, E>(
+      step: Effect.Effect<A, E, SqlClient.SqlClient | Changes | PriceTable | ScratchRoot | HarnessTools | AccountsRoot>,
+    ) => Effect.provideContext(step, services);
     const turns = yield* FiberMap.make<string>();
     // Wakes for other threads run here, outside any turn's fiber, which a later wake may replace.
     const background = yield* FiberSet.make();

@@ -13,6 +13,7 @@ import {
 import { Cause, Clock, Effect, Exit, Layer, PubSub, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { Changes, hourMillis, invalid, newId, notFound } from "../core/index.ts";
+import { refuseWaitingImages } from "./admission.ts";
 import { Commands, changed, unchanged, type WithFollowUps } from "./commands.ts";
 import { changeThreadRunner } from "./handover.ts";
 import { failTurn } from "./lifecycle.ts";
@@ -287,7 +288,11 @@ export const fallBackAfterFailure = Effect.fnUntraced(function* (threadId: strin
   for (let index = row.fallbackStep; index < fallbacks.length; index++) {
     const candidate = fallbacks[index];
     if (candidate === undefined) continue;
-    const outcome = yield* Effect.exit(changeThreadRunner(threadId, candidate, { fellBackAfter: reason }));
+    const outcome = yield* Effect.exit(
+      refuseWaitingImages(threadId, candidate).pipe(
+        Effect.andThen(changeThreadRunner(threadId, candidate, { fellBackAfter: reason })),
+      ),
+    );
     // A Companion that cannot be taken, such as one on a removed account, or that is already the thread's, is passed over.
     if (!Exit.isSuccess(outcome) || !outcome.value.followUps.isChanged) continue;
     yield* sql`UPDATE rituals SET fallback_step = ${index + 1} WHERE id = ${row.id}`;

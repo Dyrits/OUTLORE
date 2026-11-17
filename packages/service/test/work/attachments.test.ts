@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "@effect/vitest";
-import type { AttachmentId, ThreadId } from "@outlore/contracts";
+import type { AttachmentId, MessageDelivery, ThreadId } from "@outlore/contracts";
 import { Effect, Layer } from "effect";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, fakeHarnessToolsLayer, HarnessTools, serviceLayer } from "../../src/index.ts";
@@ -57,11 +57,16 @@ const webp = () => Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4), Buffer.f
 
 const add = (name: string, bytes: Buffer) => call({ _tag: "AddAttachment", data: bytes.toString("base64"), name });
 
-const sendWith = (threadId: ThreadId, text: string, attachmentIds: ReadonlyArray<AttachmentId>) =>
+const sendWith = (
+  threadId: ThreadId,
+  text: string,
+  attachmentIds: ReadonlyArray<AttachmentId>,
+  delivery: MessageDelivery | null = null,
+) =>
   call({
     _tag: "SendMessage",
     attachmentIds,
-    delivery: null,
+    delivery,
     requestId: crypto.randomUUID(),
     text,
     threadId,
@@ -93,6 +98,51 @@ const codexModelsLayer = Layer.effect(
 ).pipe(Layer.provide(fakeHarnessToolsLayer()));
 
 describe("message attachments: images added to the owner's messages", () => {
+  it.live("skips a blind backup when a failed message has an image", () =>
+    withService(
+      Effect.gen(function* () {
+        const started = yield* start("Hello");
+        yield* settle(started.missionId, idle);
+        const blind = { accountId: null, effort: "default", harness: "codex", model: "gpt-blind" } as const;
+        const seeing = { ...blind, model: "gpt-seeing" };
+        yield* call({ _tag: "SetThreadBackups", backups: [blind, seeing], threadId: started.threadId });
+        const image = yield* add("shot.png", png());
+        yield* sendWith(started.threadId, "fail claude no\nrunner", [image.id]);
+        const done = yield* settle(started.missionId, (detail) => idle(detail) && detail.handovers.length > 0);
+        expect(done.thread.model).toBe("gpt-seeing");
+        expect(done.handovers).toHaveLength(1);
+      }),
+      codexModelsLayer,
+    ),
+  );
+
+  it.live("skips a blind Ritual fallback when an image is waiting", () =>
+    withService(
+      Effect.gen(function* () {
+        const blind = { accountId: null, effort: "default", harness: "codex", model: "gpt-blind" } as const;
+        const seeing = { ...blind, model: "gpt-seeing" };
+        const ritual = yield* call({
+          _tag: "CreateRitual",
+          fallbacks: [blind, seeing],
+          instruction: "wait 300\nfail claude no\nrunner",
+          primary: { accountId: null, effort: "default", harness: "claude", model: "claude-sonnet-5-5" },
+          requestId: crypto.randomUUID(),
+          schedule: { _tag: "Daily", time: "07:00" },
+          title: "Check",
+          workspacePath: null,
+        });
+        yield* call({ _tag: "RunRitual", ritualId: ritual.ritualId });
+        yield* settle(ritual.missionId, (detail) => detail.thread.state === "Running");
+        const image = yield* add("shot.png", png());
+        yield* sendWith(ritual.threadId, "see", [image.id], "Queue");
+        const done = yield* settle(ritual.missionId, (detail) => idle(detail) && detail.handovers.length > 0);
+        expect(done.thread.model).toBe("gpt-seeing");
+        expect(done.handovers).toHaveLength(1);
+      }),
+      codexModelsLayer,
+    ),
+  );
+
   it.live("an added image is answered as a card and its bytes are read back by identifier", () =>
     withService(
       Effect.gen(function* () {
