@@ -26,7 +26,8 @@ const reasonOf = (mission: MissionSummary): WaitReason | null =>
 
 /** The quests that wait for the owner and the ones touched last, each newest first (a quest may be in both), and how many are underway. */
 export const hubOf = (missions: ReadonlyArray<MissionSummary>) => {
-  const newestFirst = missions.toSorted((a, b) => b.lastActivityAt - a.lastActivityAt);
+  // Not toSorted: Hermes, the phone app's engine, does not have it.
+  const newestFirst = [...missions].sort((a, b) => b.lastActivityAt - a.lastActivityAt);
   return {
     recent: newestFirst.slice(0, recentLimit),
     running: missions.filter((mission) => mission.state === "Running").length,

@@ -35,6 +35,20 @@ describe("what the hub shows of the quests", () => {
   it("has nothing to list with no quest", () => {
     expect(hubOf([])).toEqual({ recent: [], running: 0, waiting: [] });
   });
+
+  // Hermes, the phone app's engine, has toReversed and toSpliced but no Array.prototype.toSorted: the hub threw
+  // "undefined is not a function" and crashed the Android app as soon as a pairing connected.
+  it("works on an engine without Array.prototype.toSorted, as the phone app's Hermes is", () => {
+    const toSorted = Object.getOwnPropertyDescriptor(Array.prototype, "toSorted");
+    Reflect.deleteProperty(Array.prototype, "toSorted");
+    try {
+      const missions = [mission("old", { lastActivityAt: 1 }), mission("new", { lastActivityAt: 2 })];
+      expect(hubOf(missions).recent.map((row) => row.id)).toEqual(["new", "old"]);
+      expect(missions.map((row) => row.id)).toEqual(["old", "new"]);
+    } finally {
+      if (toSorted) Object.defineProperty(Array.prototype, "toSorted", toSorted);
+    }
+  });
 });
 
 const consumption = (more: Partial<Consumption> = {}): Consumption => ({
