@@ -41,7 +41,7 @@ Tests run inside a thread's sandbox with no `env -u` and no escape from it; the 
 The [pre-commit hook](.githooks/pre-commit) runs Biome on staged files and runs the workspace typecheck when code or configuration is staged.
 Fix reported issues and stage the corrected files again.
 
-The [Git guard](.agents/hooks/guard-git.py) asks before, or blocks, pushes to `main` and commands that lose local work.
+The [Git guard](.agents/hooks/guard-git.py) asks before, or blocks, pushes to `main`, commands that lose local work, and commands that skip a gate (`commit --no-verify`, `-c core.hooksPath`) or move a branch off its commits (`branch -f`).
 The [pre-push hook](.githooks/pre-push) refuses protected-branch pushes and remote-ref deletion.
 A person can approve a push to `main` with `git push --no-verify`; an agent must obtain the user's approval before bypassing the hook.
 

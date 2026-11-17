@@ -27,7 +27,7 @@ How code is written in this project. Project-agnostic: every rule could be trans
 ## Types and absence
 
 - **Own values are never set to `undefined`; deliberate absence is `null`**: `undefined` only arrives from outside, from a side effect or an API (a missing row or array element, `Map.get`, an omitted optional field), so it never means "decided to be empty". Where an API requires `undefined`, write `void 0`.
-- **No `any` and no non-null `!`**: both switch off the checks the strict compiler options exist for.
+- **No `any` and no non-null `!`**: both switch off the checks the strict compiler options exist for. Biome fails both (`noExplicitAny`, `noNonNullAssertion`), with no exception.
 - **An `interface` declares a contract, a type declares data**: an `interface` is what something offers or must satisfy (a service, a port), and a `type` is a value's shape or anything computed from one (an object shape, a component's props, a union, an alias, a type derived from a schema): the keyword tells the reader whether a name is behaviour to implement or data to pass around.
 - **`satisfies` checks a shape; `as` is reserved** for applying a brand to identifiers read from storage and for `as Error` on a caught value: an `as` elsewhere hides a mismatch the compiler would report.
 
@@ -74,5 +74,5 @@ These follow Effect's own guide (`packages/service/node_modules/effect/AGENTS.md
 
 ## Modules and dependencies
 
-- **Exports are named; `export default` is used only where a framework requires it**: named exports keep one name across imports and searches.
+- **Exports are named; `export default` is used only where a framework requires it**: named exports keep one name across imports and searches. Biome fails `export default` (`noDefaultExport`) except in the files `biome.json` lists, which a tool or the platform loads by that form (the Worker entry, the Vitest configuration and reporter, a type declaration for raw imports).
 - **The Effect ecosystem or the platform comes first; a new library is added only for a job neither covers**, with the reason in the change description: each dependency is code to audit and upgrade.

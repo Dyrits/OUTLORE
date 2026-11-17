@@ -30,7 +30,7 @@ User-authored text and historical service messages are not rewritten.
 | Settings | Workshop (formerly Charter, CHG-0146) |
 
 Journal, briefing, harness, effort, budget, approval, and archive keep their meanings and names.
-Done and its former interface name Fulfilled are retired for quests and side-quests (CHG-0135 and CHG-0136); work remains idle, running, or asking for the owner until the quest is archived.
+Done is the ending a quest reaches when the owner marks it done, and a thread state; its former interface name Fulfilled is retired. Otherwise work remains idle, running, or asking for the owner until the quest is archived.
 Companion means the selected model doing the work, not a conversation or a distinct saved agent definition; selectors say Companion (model) to make this explicit.
 Craft and Ritual are the agreed names for the future automation interfaces.
 Waystones, Spoils, and Chronicle remain mockup suggestions for devices, changes, and traces.

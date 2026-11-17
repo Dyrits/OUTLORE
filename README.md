@@ -241,6 +241,7 @@ bun run test
 
 Biome checks formatting and lint rules; TypeScript checks all workspaces.
 Tests run on Electron's bundled Node runtime and use fakes and stand-in executables by default.
+A failing test is retried twice, because the tests that run real processes fail when the machine is busy; the tests that needed a retry are listed at the end of the run, and as warnings in CI.
 A test that needs what the environment withholds, such as a thread's sandbox refusing a Seatbelt profile of its own, a terminal, a disk image, or the process table, is skipped there and named as skipped; run the suite outside such a sandbox to run them.
 Live checks are opt-in, require installed and signed-in harnesses, and consume model usage:
 
@@ -262,7 +263,7 @@ Commits run Biome on staged files; staged code or configuration also triggers th
 | [`packages/service`](packages/service/) | Local Node service, SQLite storage, harness adapters, scheduling, and MCP thread tools, built with Effect |
 | [`packages/contracts`](packages/contracts/) | Shared records and requests defined with Effect Schema |
 | [`packages/channel`](packages/channel/) | The end-to-end encrypted channel and pairing code used between paired devices |
-| [`packages/relay`](packages/relay/) | The Cloudflare Worker that forwards paired devices' encrypted traffic and serves the web app (`bun run deploy` builds the site and deploys it) |
+| [`packages/relay`](packages/relay/) | The Cloudflare Worker that forwards paired devices' encrypted traffic and serves the web app (`bun run deploy` builds the site and deploys it; after changing the Worker's sources, `bun run bundle` there rebuilds the committed Worker bundle, and a test fails until you do) |
 | [`packages/controller`](packages/controller/) | A browser as a paired device: its pairings in browser storage, pairing with a code, and the encrypted link to a host |
 | [`documentation`](documentation/) | Product specifications, architecture, decisions, and verification evidence |
 
@@ -275,7 +276,7 @@ bun run package
 This builds an installer for the current platform in `apps/desktop/release`.
 It bundles the interface and service, so the installed app needs no development server.
 
-Pushes to `main` and pull requests targeting it run lint, typechecking, and tests through the [desktop workflow](.github/workflows/package.yml).
+Pushes to `main` and pull requests targeting it run lint, typechecking, tests, and the web app's build through the [desktop workflow](.github/workflows/package.yml).
 Push a version tag such as `0.1.0-Prototype` (no `v` prefix) to build macOS arm64 and x64, Windows x64, and Linux x64 installers and publish them on [GitHub Releases](https://github.com/Dyrits/OUTLORE/releases).
 The tag sets the packaged app version (a leading `v`, if present, is dropped); tags containing a hyphen produce prereleases.
 The release is published only after all four builds and uploads succeed.
