@@ -82,7 +82,7 @@ Each intel has a kind, which sets how fast it fades when no thread uses it. The 
 ### Duplicates
 
 - Before a save, the service finds the closest intels in the same scope and the scopes above it.
-- When one says the same thing, or an older version of it, the save becomes a replacement: the new text replaces the old intel, which keeps its identifier and its uses. When in doubt, the save stays a new intel.
+- When an intel at the exact same placement says the same thing, or an older version of it, the save becomes a replacement: the new text replaces the old intel, which keeps its identifier and its uses. A close match in a wider placement is named, not replaced. When in doubt, the save stays a new intel.
 - A global replacement needs the user's approval, like any global change; its approval card shows the old and the new text.
 
 ### Correcting and deleting
