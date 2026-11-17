@@ -70,7 +70,7 @@ const cancelPausedTurns = Effect.fn("cancelPausedTurns")(function* (pauseId: str
 });
 
 /**
- * Clears the pause, stopping both threads on Stop: on Continue both are woken, on Stop their mission's
+ * Clears the pause, stopping both threads on Stop: on Continue both are woken, on Stop each quest's
  * waiting threads.
  */
 const decideChatter = Effect.fn("decideChatter")(function* (pauseId: string, choice: "Continue" | "Stop") {
@@ -86,10 +86,10 @@ const decideChatter = Effect.fn("decideChatter")(function* (pauseId: string, cho
   }
   yield* haltThreads(ids, "Stopped");
   yield* releaseResolvedChatter;
-  const [mission] = yield* sql<{
+  const missions = yield* sql<{
     missionId: string;
-  }>`SELECT mission_id AS missionId FROM threads WHERE id = ${pair.firstId}`;
-  return changed(null, { missionsToWake: mission === undefined ? [] : [mission.missionId] });
+  }>`SELECT DISTINCT mission_id AS missionId FROM threads WHERE id IN ${sql.in(ids)}`;
+  return changed(null, { missionsToWake: missions.map((mission) => mission.missionId) });
 });
 
 /** Applies the owner's decision once to this pause, preserving queued messages in either choice. */

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { ThreadId } from "@outlore/contracts";
+import { mentionTokenOf, type ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
+import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
+import { resolveChatter } from "../../src/work/chatter.ts";
+import { Commands, makeCommands } from "../../src/work/commands.ts";
+import { readTurnReach } from "../../src/work/mentions.ts";
 import { call, fixture, open, read, send, settle, start, tool } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
@@ -201,6 +205,47 @@ describe("guarding against chatter", () => {
 });
 
 describe("stopping both threads of a chatter pause", () => {
+  it.live("wakes both quests after stopping a cross-quest pair", () =>
+    Effect.gen(function* () {
+      const settings = yield* call({ _tag: "ReadSettings" });
+      yield* call({ _tag: "UpdateSettings", settings: { ...settings, chatterThreshold: 2 } });
+      const opening = `call open_thread ${JSON.stringify({ request: "wait 60000" })}`;
+      const first = yield* start(opening);
+      const second = yield* start(opening);
+      const firstWaiting = yield* settle(first.missionId, (detail) => detail.thread.state === "Waiting");
+      const secondWaiting = yield* settle(second.missionId, (detail) => detail.thread.state === "Waiting");
+      const firstChild = firstWaiting.threads.find((thread) => thread.id !== first.threadId);
+      const secondChild = secondWaiting.threads.find((thread) => thread.id !== second.threadId);
+      if (firstChild === undefined || secondChild === undefined) return yield* Effect.die("Missing side-quests");
+      yield* send(firstChild.id, `Ask ${mentionTokenOf({ id: secondChild.id, kind: "side-quest" })}`);
+      for (let attempt = 0; attempt < 100; attempt++) {
+        if ((yield* readTurnReach(firstChild.id)).reachable.has(secondChild.id)) break;
+        yield* Effect.sleep("10 millis");
+      }
+      expect(yield* message(firstChild.id, secondChild.id)).toBe("Sent.");
+      expect(yield* message(secondChild.id, firstChild.id)).toBe("Sent.");
+      const notice = (yield* read(first.missionId, firstChild.id)).chatter[0];
+      if (notice === undefined) return yield* Effect.die("Missing pause");
+      const sql = yield* SqlClient.SqlClient;
+      const woken: string[] = [];
+      const commands = makeCommands({
+        publish: Effect.void,
+        removeScratch: () => Effect.void,
+        sql,
+        threads: {
+          cancel: () => Effect.void,
+          wake: () => Effect.void,
+          wakeMission: (id) => Effect.sync(() => void woken.push(id)),
+        },
+        withdrawQuestions: () => Effect.void,
+      });
+      yield* resolveChatter(notice.id, "Stop").pipe(Effect.provideService(Commands, commands));
+      expect((yield* read(first.missionId)).thread.state).toBe("Idle");
+      expect((yield* read(second.missionId)).thread.state).toBe("Idle");
+      expect(new Set(woken)).toEqual(new Set([first.missionId, second.missionId]));
+    }).pipe(Effect.provide(live())),
+  );
+
   it.live("returns their parent, left Waiting, to Idle", () =>
     Effect.gen(function* () {
       const settings = yield* call({ _tag: "ReadSettings" });
