@@ -13,6 +13,7 @@ Subagents in today's harnesses report once at the end and cannot be asked or red
 - A thread can message its parent and the threads directly beneath it. Siblings reach each other through their parent.
 - When the owner mentions a quest or side-quest with `@` in a message, the thread that receives it may, for the turn that message reaches, read that quest's journal (`read_journal` with `mission`) and message the quest's top thread, or the side-quest itself (CHG-0181). The receiving thread decides from the owner's words whether to do either. The quest that receives such a message may answer its sender in the turn the message reaches, so the reply comes straight back (see [mission-coordination](../mission-coordination/specifications.md#references-between-quests)).
 - Without a mention, a thread reaches another quest only through Chronicler (formerly Guildmaster). A thread cannot widen its own reach by writing an `@` reference: only the owner's messages count.
+- A Ritual's run instruction is a service-made message, not a live owner message; its mentions grant no reach.
 - The user can write to any open thread, including a subagent's (for mirrored subagents, see [thread-tree](../thread-tree/specifications.md#subagents)).
 - Every message shows its sender: the user, or the sending thread.
 

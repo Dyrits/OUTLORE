@@ -21,6 +21,12 @@ type ThreadRow = {
 const isOpenQuestOf = (sql: SqlClient.SqlClient) =>
   sql`(m.ending IS NULL OR m.ending <> 'Archived') AND m.is_guildmaster = 0`;
 
+/** Whether `m` is the owner's own message, rather than a service-made run or routed suggestion. */
+export const isOwnerMessageOf = (sql: SqlClient.SqlClient) =>
+  sql`m.sender_kind = 'user' AND m.sender_thread_id IS NULL
+    AND NOT EXISTS (SELECT 1 FROM ritual_run_messages r WHERE r.message_id = m.id)
+    AND NOT EXISTS (SELECT 1 FROM suggested_messages s WHERE s.message_id = m.id)`;
+
 /** The titles from a quest's top thread down to the thread, the top one being the quest's title. */
 const trailOf = (thread: ThreadRow, byId: ReadonlyMap<string, ThreadRow>, questTitle: string) => {
   const titles: string[] = [];
@@ -195,8 +201,8 @@ export type TurnReach = {
 export const readTurnReach = Effect.fnUntraced(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
   // A sender being deleted can no longer be answered.
-  const delivered = yield* sql<{ text: string; senderKind: string; fromThreadId: string | null }>`
-      SELECT m.text, m.sender_kind AS senderKind, s.id AS fromThreadId FROM messages m
+  const delivered = yield* sql<{ text: string; senderKind: string; fromThreadId: string | null; isOwner: number }>`
+      SELECT m.text, m.sender_kind AS senderKind, s.id AS fromThreadId, (${isOwnerMessageOf(sql)}) AS isOwner FROM messages m
         LEFT JOIN threads s ON s.id = m.sender_thread_id AND s.is_deleting = 0
       WHERE m.thread_id = ${threadId} AND m.sender_kind IN ('user', 'thread') AND m.delivered_turn_id = (
         SELECT t.id FROM turns t WHERE t.thread_id = ${threadId} ORDER BY t.started_at DESC, t.rowid DESC LIMIT 1)`;
@@ -204,7 +210,7 @@ export const readTurnReach = Effect.fnUntraced(function* (threadId: string) {
   const reachable = new Set<string>();
   for (const message of delivered) {
     if (message.senderKind === "thread" && message.fromThreadId !== null) reachable.add(message.fromThreadId);
-    if (message.senderKind !== "user") continue;
+    if (message.isOwner !== 1) continue;
     for (const reference of mentionReferencesOf(message.text)) {
       const resolved = yield* resolveMention(reference);
       if (resolved.readableQuest !== null) readable.add(resolved.readableQuest);

@@ -4,7 +4,7 @@ import { SqlClient } from "effect/sql";
 import { newId, notFound, touchMission } from "../core/index.ts";
 import { attachToMessage, readStoredAttachments, type StoredAttachment } from "./attachments.ts";
 import { resetOwnerChatter, resetResultChatter } from "./chatter.ts";
-import { readMentionNote } from "./mentions.ts";
+import { isOwnerMessageOf, readMentionNote } from "./mentions.ts";
 import { requireActiveQuestRealm } from "./realmAccess.ts";
 import { addSkillInstructions, listSkills } from "./skills.ts";
 import { readThreadWorkspace } from "./workspaces.ts";
@@ -88,12 +88,14 @@ export const listPending = Effect.fnUntraced(function* (threadId: string, isStee
     fromThreadId: string | null;
     fromTitle: string | null;
     isResult: number;
+    isOwner: number;
     realmName: string | null;
     realmPath: string | null;
     viewing: string | null;
   }>`
       SELECT m.id, m.text, m.sender_thread_id AS fromThreadId, COALESCE(s.title, m.sender_title) AS fromTitle,
-        m.is_result AS isResult, m.realm_path AS realmPath, w.name AS realmName, m.viewing AS viewing
+        m.is_result AS isResult, (${isOwnerMessageOf(sql)}) AS isOwner,
+        m.realm_path AS realmPath, w.name AS realmName, m.viewing AS viewing
       FROM messages m LEFT JOIN threads s ON s.id = m.sender_thread_id LEFT JOIN workspaces w ON w.path = m.realm_path
       WHERE m.thread_id = ${threadId} AND m.sender_kind IN ('user', 'thread') AND m.delivered_turn_id IS NULL
         AND ${isSteering ? sql`m.is_queued = 0` : sql`1 = 1`}
@@ -107,7 +109,7 @@ export const listPending = Effect.fnUntraced(function* (threadId: string, isStee
     rows,
     Effect.fnUntraced(function* (row) {
       // The owner's `@` mentions of quests, side-quests, and realms are resolved as they are delivered (CHG-0181).
-      const note = row.fromThreadId === null ? yield* readMentionNote(row.text) : "";
+      const note = row.isOwner === 1 ? yield* readMentionNote(row.text) : "";
       return {
         attachments: attachments.get(row.id) ?? [],
         id: row.id,

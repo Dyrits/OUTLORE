@@ -58,6 +58,38 @@ const archive = (missionId: MissionId) =>
   });
 
 describe("reading references in a message", () => {
+  it.live("does not grant reach or claim to grant it from a Ritual run's instruction", () =>
+    withService(() =>
+      Effect.gen(function* () {
+        const target = yield* startQuest("Other work");
+        const reference = mentionTokenOf({ id: target.missionId, kind: "quest" });
+        const ritual = yield* call({
+          _tag: "CreateRitual",
+          fallbacks: [],
+          instruction: `Check ${reference}`,
+          primary: { accountId: null, effort: "default", harness: "claude", model: "claude-sonnet-5-5" },
+          requestId: crypto.randomUUID(),
+          schedule: { _tag: "Daily", time: "07:00" },
+          title: "Check work",
+          workspacePath: null,
+        });
+        yield* call({ _tag: "RunRitual", ritualId: ritual.ritualId });
+        const run = yield* settle(ritual.missionId, (detail) => detail.messages.length >= 2 && isIdle(detail));
+        expect(yield* tool(ritual.threadId, "read_journal", { mission: target.missionId })).toContain(
+          "Only Chronicler",
+        );
+        expect(yield* tool(ritual.threadId, "send_thread_message", { text: "Hi", to: target.threadId })).toContain(
+          "Not sent",
+        );
+        expect(lastAgentText(run)).not.toContain("This turn you may read its journal");
+        yield* say(ritual.missionId, ritual.threadId, `Ask ${reference}`);
+        expect(yield* tool(ritual.threadId, "read_journal", { mission: target.missionId })).not.toContain(
+          "Only Chronicler",
+        );
+      }),
+    ),
+  );
+
   it("reads quest, side-quest, and realm tokens once each, and leaves workspace paths alone", () => {
     const text = "Ask @quest:1a-2b, then @side-quest:3c and @realm:4d; @quest:1a-2b again. Read @src/index.ts.";
     expect(mentionReferencesOf(text)).toEqual([
