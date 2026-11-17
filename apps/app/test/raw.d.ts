@@ -3,3 +3,9 @@ declare module "*.md?raw" {
   const text: string;
   export default text;
 }
+
+/** Source-only rendering guards, loaded by Vite without importing native UI modules. */
+declare module "*.tsx?raw" {
+  const text: string;
+  export default text;
+}

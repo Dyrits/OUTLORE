@@ -160,9 +160,11 @@ function ChoiceCard({
     <View style={styles.question}>
       {onOpenMission !== void 0 && (
         <Pressable onPress={onOpenMission}>
-          <Text numberOfLines={1} style={styles.link}>
-            {questionOriginOf(question)}
-          </Text>
+          {questionOriginOf(question).map((line) => (
+            <Text key={line.key} numberOfLines={1} style={styles.link}>
+              {line.title}
+            </Text>
+          ))}
         </Pressable>
       )}
       {choices.map((choice, index) => (
@@ -228,9 +230,11 @@ function ActionCard({
     <View style={styles.question}>
       {onOpenMission !== void 0 && (
         <Pressable onPress={onOpenMission}>
-          <Text numberOfLines={1} style={styles.link}>
-            {questionOriginOf(question)}
-          </Text>
+          {questionOriginOf(question).map((line) => (
+            <Text key={line.key} numberOfLines={1} style={styles.link}>
+              {line.title}
+            </Text>
+          ))}
         </Pressable>
       )}
       <Text style={styles.questionText}>{question.summary}</Text>

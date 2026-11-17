@@ -1,5 +1,9 @@
 import type { Question } from "@outlore/contracts";
 
-/** The quest and source thread of a question shown outside its conversation. */
-export const questionOriginOf = (question: Pick<Question, "missionTitle" | "threadTitle">): string =>
-  `${question.missionTitle} · ${question.threadTitle}`;
+/** Separate quest and source-thread lines, so a long quest cannot truncate the thread. */
+export const questionOriginOf = (
+  question: Pick<Question, "missionTitle" | "threadTitle">,
+): ReadonlyArray<{ key: string; title: string }> => [
+  { key: "quest", title: question.missionTitle },
+  { key: "thread", title: question.threadTitle },
+];

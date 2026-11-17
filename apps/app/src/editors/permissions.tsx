@@ -132,9 +132,11 @@ export function PermissionsScreen({ client, onBack }: { client: ServiceClient; o
             {view.history.length === 0 && <Text style={styles.muted}>No answers yet.</Text>}
             {view.history.map((question) => (
               <View key={question.id}>
-                <Text numberOfLines={1} style={styles.muted}>
-                  {questionOriginOf(question)}
-                </Text>
+                {questionOriginOf(question).map((line) => (
+                  <Text key={line.key} numberOfLines={1} style={styles.muted}>
+                    {line.title}
+                  </Text>
+                ))}
                 <Text style={styles.body}>{question.summary}</Text>
                 <QuestionLine question={question} />
               </View>
