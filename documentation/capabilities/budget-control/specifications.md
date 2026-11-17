@@ -134,7 +134,7 @@ Recorded Reserves acceptance direction, to refine when the screen is specified f
 
 ### Record
 
-- Every budget change (set, raised, lowered, removed) and every stop at a limit appears as a short line in the mission's top thread, or in Guildmaster, for example "Budget raised to $15 · 14:02 · phone". Global budget events appear in Guildmaster. A stop at an account's budget appears as a line in each stopped thread's quest, for example "Account Work reached its budget · $50.00 · 14:02"; a change to an account's budget shows in the account's row.
+- Every budget change (set, raised, lowered, removed) and every stop at a limit appears as a short line in the mission's top thread, or in Guildmaster, for example "Budget raised to $15 · 14:02". No device is stored on the event. Global budget events appear in Guildmaster. A stop at an account's budget appears as a line in each stopped thread's quest, for example "Account Work reached its budget · $50.00 · 14:02"; a change to an account's budget shows in the account's row.
 
 ## External contract
 
