@@ -1,5 +1,6 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
 import type { ReactNode } from "react";
+import { CharterScreen } from "../charter/charterScreen";
 import { Conversation } from "../conversation/conversation";
 import { GuildmasterScreen } from "../conversation/guildmaster";
 import { PermissionsScreen } from "../editors/permissions";
@@ -80,7 +81,7 @@ export function AppScreen({
   const screens = {
     Archived: <ArchiveScreen client={client} onOpen={navigation.openMission} />,
     Borderlands: quests(null),
-    Charter: <UnbuiltScreen place="Charter" />,
+    Charter: <CharterScreen client={client} />,
     Craft: <UnbuiltScreen place="Craft" />,
     Guildmaster: (
       <GuildmasterScreen

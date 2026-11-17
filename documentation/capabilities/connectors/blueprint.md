@@ -105,7 +105,7 @@ By harness, each with its own probe (see the ADR's Unchecked):
 3. **The gateway with a fake connector.** Catalog, tables, availability, listing, call, asking, stopping, owner requests and contracts, with the fake backend. Provable on the three fake harnesses.
 4. **The backends and the first two connectors**: http MCP and Composio; stdio MCP, Apple apps, its permission. Real harness conformance runs.
 5. **The app**: the Charter, panels, the thread panel's tools line.
-6. **Code Mode**: its core was built first, at the owner's choice (CHG-0441, [ADR 0023](../../architecture-decision-record/0023-code-mode-runs-in-quickjs-inside-the-host.md)), in `connectors/` (`gateway.ts` holds the `ConnectorGateway` interface `listingFor` and `call` that this blueprint describes, with a layer that offers no connector until slice 3; `codeMode.ts`, `codeRunner.ts`, `codeExecutor.ts`, `codeTypes.ts`). Slice 3's gateway replaces `noConnectorsLayer`; what remains here is the Charter's switch (slice 5) and the check that a run's calls follow the turn snapshot.
+6. **Code Mode**: its core was built first, at the owner's choice (CHG-0441, [ADR 0023](../../architecture-decision-record/0023-code-mode-runs-in-quickjs-inside-the-host.md)), in `connectors/` (`gateway.ts` holds the `ConnectorGateway` interface `listingFor` and `call` that this blueprint describes, with a layer that offers no connector until slice 3; `codeMode.ts`, `codeRunner.ts`, `codeExecutor.ts`, `codeTypes.ts`). Slice 3's gateway replaces `noConnectorsLayer`; the Charter's Code Mode switch is built (CHG-0444, `apps/app/src/charter/`); what remains here is the rest of the Charter (slice 5) and the check that a run's calls follow the turn snapshot.
 
 ## Requirements
 

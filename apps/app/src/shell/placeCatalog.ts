@@ -61,6 +61,7 @@ export const screenNames: Record<Place, string> = {
 /** Destinations safe to resume without a quest or realm selection. */
 export const resumablePlaces: readonly Place[] = [
   "Archived",
+  "Charter",
   "Craft",
   "Guildmaster",
   "Library",

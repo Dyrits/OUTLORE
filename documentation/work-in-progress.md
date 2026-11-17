@@ -1,5 +1,9 @@
 # Work in progress
 
+## Charter's Code Mode switch · 2026-11-17 · built and tested on branch `worktree/charter-switch`, the owner's look pending
+
+The Charter place opens a page with a Connectors section holding the global "Code Mode for connectors" switch (CHG-0444): off by default, marked Experimental, explained in plain words, reading and writing `shouldUseCodeMode`. With no connector gateway the setting still changes nothing visible. Not merged or pushed; not seen in a window or on a phone. The Vault, connectors and per-quest or per-realm switches remain unbuilt.
+
 ## Review since 0.1.6-Prototype · 2026-11-17 · uncommitted refactors
 
 The review covers `0affd46..fd7f802`. The refactors cover Code Mode's service wiring, the inverted conversation feed, and the mobile pairing adapter. An executor regression test verifies that a compilation error caused by exhausting QuickJS memory returns a failure. An exception in the separate connector completion callback can still escape before the pending call is disposed. The service composition and release workflow remain above the size guideline. The workflow's duplicated version stamping is pending a packaging check. Capability findings and decisions are listed below.

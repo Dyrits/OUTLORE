@@ -97,18 +97,26 @@ export function SettingsMenu({
   );
 }
 
-/** The page's heading on the wood: a red tab with the gear, the title, and what the page is for. */
-export function SettingsHeading() {
+/** The page's heading on the wood: a red tab with an icon, the title, and what the page is for; the Workshop's by default. */
+export function SettingsHeading({
+  icon = "gear",
+  line = "Configure your guild's accounts, budgets, and word limits.",
+  title = "Workshop",
+}: {
+  icon?: SettingsIconName;
+  line?: string;
+  title?: string;
+}) {
   return (
     <View style={local.heading}>
       <View style={local.tab}>
-        <SettingsIcon name="gear" size={30} tint={colors.highlight} />
+        <SettingsIcon name={icon} size={30} tint={colors.highlight} />
       </View>
       <View style={local.headingText}>
         <Text accessibilityRole="header" style={local.headingTitle}>
-          Workshop
+          {title}
         </Text>
-        <Text style={local.headingLine}>Configure your guild's accounts, budgets, and word limits.</Text>
+        <Text style={local.headingLine}>{line}</Text>
       </View>
     </View>
   );

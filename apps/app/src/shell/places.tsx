@@ -40,7 +40,6 @@ const local = StyleSheet.create({
 
 /** What each place that is specified but not built yet says; its entry is in the sidebar in its agreed place. */
 const unbuilt = {
-  Charter: "The Charter page is not built yet.",
   Craft: "Craft will hold workflows. It is not built yet.",
   Library: "Library will hold generated and uploaded artifacts. It is not built yet.",
 } as const;
