@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the whole-codebase review and its CI dependency fix (A–E integration is on main; check publication and CI for the controller's Effect dependency correction, then the deferred review work), read the [current handoff](.agents/handoffs/2026-11-17-1120-review-ci-dependency.md). Handoffs are shared and committed.
+- To resume the whole-codebase review (A–E integration and the CI dependency fix are on main and CI is green; next the context-window migration renumber, the open behaviour items, then the deferred reviews), read the [current handoff](.agents/handoffs/2026-11-17-1135-review-ci-green.md). Handoffs are shared and committed.
 
 - To resume the sidebar change that removed the indent before realms (CHG-0332; done and committed; open: the owner's look in a window, what "same for borderlands" meant beyond the quests' alignment), read the [current handoff](.agents/handoffs/2026-11-16-1030-sidebar-realm-indent.md). Handoffs are shared and committed.
 
