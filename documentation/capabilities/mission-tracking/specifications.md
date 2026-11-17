@@ -58,6 +58,7 @@ Sidebar drag-and-drop and confirmation were agreed on 2026-11-10 (CHG-0133) and 
 
 - A non-archived quest is idle, running, or asking for the user (Summons).
 - Done, Finished, and Fulfilled are no longer quest or side-quest statuses (CHG-0135 and CHG-0136, agreed on 2026-11-11; implementation pending).
+  - Update, 2026-11-17 (owner decision in the codebase review): **Done stays**. A quest marked done ends as Done and Done is a thread state; the code, the dashboard's Mark as done, and CHG-0304 and CHG-0308 keep those paths. Fulfilled and Finished stay retired. The two statements above and the "marking a quest Done is removed" line under Ending a mission record the 2026-11-11 agreement and are kept for history.
 - Reporting a result does not finish or archive a quest, and there is no "Mark as done?" prompt.
 - A quest whose work is complete remains available until the owner archives it.
 - A quest shows Summons if any thread needs the owner; otherwise it shows running while any thread has a turn in progress, and idle otherwise.

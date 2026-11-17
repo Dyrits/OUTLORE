@@ -63,7 +63,7 @@ Work with AI agents spreads across disconnected chats, and subagents run out of 
 
 ### Thread states
 
-CHG-0135 and CHG-0136 remove Done from quests and side-quests, as defined in [mission tracking](../mission-tracking/specifications.md#mission-state).
+CHG-0135 and CHG-0136 remove Done from quests and side-quests, as defined in [mission tracking](../mission-tracking/specifications.md#mission-state). Update, 2026-11-17: the owner decided that Done stays (see the update there); this sentence records the 2026-11-11 agreement.
 The interface presents idle, running, or Summons; waiting, failure, and stopped conditions remain visible details, and a failure needing the owner produces Summons.
 
 | State | Meaning |
