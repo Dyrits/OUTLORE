@@ -224,6 +224,19 @@ describe("recalling lore", () => {
       expect(context).toContain("listed first wins");
     }).pipe(Effect.provide(layer));
   });
+
+  it.live("searches side-quest lore without including the quest's own lore when filtered to thread", () => {
+    const { layer } = live();
+    return Effect.gen(function* () {
+      const { missionId, threadId } = yield* idle();
+      yield* save(threadId, "Release target: quest preview.", "mission");
+      const beneath = yield* child(missionId, threadId);
+      yield* save(beneath, "Release target: side-quest local.", "thread");
+      const found = yield* tool(beneath, "search_intel", { query: "release target", scope: "thread" });
+      expect(found).toContain("side-quest local");
+      expect(found).not.toContain("quest preview");
+    }).pipe(Effect.provide(layer));
+  });
 });
 
 describe("correcting and deleting lore", () => {

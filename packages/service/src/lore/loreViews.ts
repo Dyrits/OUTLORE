@@ -113,7 +113,7 @@ const isOfToolScope = (row: LoreEntryRow, scope: ToolScope) =>
   ({
     global: row.scope === "Global",
     mission: row.scope === "Thread" && row.isTopThread,
-    thread: row.scope === "Thread",
+    thread: row.scope === "Thread" && !row.isTopThread,
     workspace: row.scope === "Workspace",
   })[scope];
 
