@@ -1,9 +1,12 @@
 import type { MissionSummary, ThreadId, ThreadSummary } from "@outlore/contracts";
 import { ancestorIdsOf, type Placements, sideQuestRowsOf } from "./questTree";
 
-/** Keeps the open quest visible beyond a placement's normal row limit. */
+/**
+ * Keeps the open quest and every running quest visible beyond a placement's normal row limit, each in its place in the
+ * list (the open quest is kept whatever its state; running quests are kept so the owner always sees what works).
+ */
 export const visibleQuestsOf = (quests: readonly MissionSummary[], limit: number, openMission: string | null) =>
-  quests.filter((quest, index) => index < limit || quest.id === openMission);
+  quests.filter((quest, index) => index < limit || quest.id === openMission || quest.state === "Running");
 
 /** Reveals the location's ancestors without modifying the owner's saved folds. */
 export const threadOutlineOf = (
