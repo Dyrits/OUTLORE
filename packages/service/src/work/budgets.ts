@@ -218,7 +218,8 @@ export const switchAtBudget = Effect.fnUntraced(function* (stopId: string) {
   yield* releaseThread(stop.threadId);
   const reason = `Account ${yield* accountLabelOf(scope)} reached its budget`;
   const switched = yield* fallBackToBackup(stop.threadId, reason, { isOtherAccountRequired: true });
-  if (!switched.followUps.isChanged) return yield* invalid("This thread has no backup Companion to switch to.");
+  if (!switched.followUps.isChanged)
+    return yield* invalid("This thread has no backup Companion on another account that can take this message.");
   const others = (yield* heldThreadsOf(scope)).filter((thread) => thread.id !== stop.threadId);
   const now = yield* Clock.currentTimeMillis;
   if (others[0] === undefined)

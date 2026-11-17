@@ -280,7 +280,7 @@ describe("switching to a backup Companion at an account's budget", () => {
         const switchStopId = held.budgetStop?.id;
         if (switchStopId === undefined) return yield* Effect.die("budget stop");
         const refusal = yield* call({ _tag: "SwitchAtBudget", stopId: switchStopId }).pipe(Effect.flip);
-        expect(refusal.message).toContain("backup");
+        expect(refusal.message).toContain("no backup Companion on another account that can take this message");
       }),
     ),
   );
@@ -295,7 +295,7 @@ describe("switching to a backup Companion at an account's budget", () => {
         const switchStopId = held.budgetStop?.id;
         if (switchStopId === undefined) return yield* Effect.die("budget stop");
         const refusal = yield* call({ _tag: "SwitchAtBudget", stopId: switchStopId }).pipe(Effect.flip);
-        expect(refusal.message).toContain("backup");
+        expect(refusal.message).toContain("no backup Companion on another account that can take this message");
       }),
     ),
   );
