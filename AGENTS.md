@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the Charter's Code Mode switch (CHG-0444; built and tested on branch `worktree/charter-switch`, not merged or pushed; open: the owner's look in a window and on a phone, the merge), read the [current handoff](.agents/handoffs/2026-11-17-2347-charter-code-mode-switch.md). Handoffs are shared and committed.
+- To resume the Charter's Code Mode switch (CHG-0444; merged into `main`, push pending the owner's approval; open: the owner's look in a window and on a phone, the sidebar note), read the [current handoff](.agents/handoffs/2026-11-17-2348-charter-code-mode-switch-on-main.md). Handoffs are shared and committed.
 
 - To resume findings from the review since 0.1.6-Prototype, read the [current handoff](.agents/handoffs/2026-11-17-2316-release-review.md). Handoffs are shared and committed.
 
