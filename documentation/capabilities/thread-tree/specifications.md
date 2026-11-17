@@ -167,3 +167,5 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 - Whether a thread gets its own git worktree (see the [backlog](../../backlog.md)).
 - Moving a thread to another parent.
 - Sharing threads with other people.
+
+- At startup, a surviving deletion marker is cleared and the thread stays Stopped. UUID scratch folders with no surviving quest are removed through the realm-protection guard. File cleanup failures are logged and retried at the next start without blocking use of the app (CHG-TBD-E-9).

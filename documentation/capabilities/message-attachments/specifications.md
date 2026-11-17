@@ -46,3 +46,5 @@ A message is text only, so the owner cannot show a thread a screenshot, an error
 ## Requirements
 
 - [Respect upstream licenses](../../requirements.md): OpenBot's code is not copied (PolyForm Noncommercial); its ideas are written independently.
+
+- Before requests or uploads can start, startup removes draft rows and UUID image files with no surviving attachment row. Sent files and unknown names stay; a failed file removal is logged and retried at the next start without blocking the app (CHG-TBD-E-9).

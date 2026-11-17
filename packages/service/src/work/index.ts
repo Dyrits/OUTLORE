@@ -3,7 +3,7 @@
 export { addCredit, readAccountBudgets, setAccountBudget } from "./accountBudgets.ts";
 export { accountsHandlers } from "./accountsHandlers.ts";
 export { Approvals, approvalsLayer } from "./approvals.ts";
-export { AttachmentsRoot, sweepDrafts } from "./attachments.ts";
+export { AttachmentsRoot } from "./attachments.ts";
 export { budgetPeriodsLayer } from "./budgetPeriods.ts";
 export { saveSettings } from "./budgetSettings.ts";
 export { setMissionBudget, stopAtBudget, switchAtBudget } from "./budgets.ts";
@@ -30,6 +30,7 @@ export { nextRunAfter, runStateOf } from "./ritualSchedule.ts";
 export { ritualsLayer } from "./rituals.ts";
 export { ritualsHandlers } from "./ritualsHandlers.ts";
 export { listSkills } from "./skills.ts";
+export { startupCleanupLayer } from "./startupCleanup.ts";
 export { Suggestions, suggestionsLayer } from "./suggestions.ts";
 export { AccountsRoot, Threads, threadsLayer } from "./threads.ts";
 export { openThreadByAgent, reportResult } from "./tree.ts";

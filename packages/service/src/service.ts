@@ -77,9 +77,9 @@ import {
   saveSettings,
   setAccountBudget,
   setMissionBudget,
+  startupCleanupLayer,
   stopAtBudget,
   suggestionsLayer,
-  sweepDrafts,
   switchAtBudget,
   Threads,
   threadsLayer,
@@ -235,7 +235,7 @@ export const serviceLayer = (options: ServiceOptions) => {
   ).pipe(
     Layer.provideMerge(Layer.effectDiscard(seedBrowsableRoots(options.homeFolder))),
     // The root is handed in here: layers stacked beneath the one that provides it never see it.
-    Layer.provideMerge(Layer.effectDiscard(Effect.provideService(sweepDrafts, AttachmentsRoot, attachmentsRoot))),
+    Layer.provideMerge(startupCleanupLayer(attachmentsRoot, options.scratchRoot)),
     Layer.provideMerge(priceTableLayer.pipe(Layer.provide(options.priceSource ?? noPriceSourceLayer))),
     Layer.provideMerge(storeLayer(options.filename)),
   );

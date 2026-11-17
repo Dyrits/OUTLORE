@@ -82,8 +82,7 @@ export const addAttachment = Effect.fnUntraced(function* (name: string, data: st
   });
   const now = yield* Clock.currentTimeMillis;
   const sha256 = createHash("sha256").update(bytes).digest("hex");
-  // The file is written first, so a record that cannot be written takes it away again: the sweep at startup only
-  // finds files that have a record.
+  // Compensate a failed insert immediately; startup reconciliation also covers a crash before this point.
   yield* sql`INSERT INTO attachments (id, file, name, media_type, size, sha256, created_at)
       VALUES (${id}, ${file}, ${name}, ${mediaType}, ${bytes.length}, ${sha256}, ${now})`.pipe(
     Effect.onError(() => Effect.promise(() => rm(join(root, file), { force: true }))),
@@ -181,13 +180,4 @@ export const forgetAttachmentsOf = Effect.fnUntraced(function* (threadIds: Reado
 export const removeAttachmentFiles = Effect.fnUntraced(function* (files: ReadonlyArray<string>) {
   const root = yield* AttachmentsRoot;
   yield* Effect.promise(() => Promise.all(files.map((file) => rm(join(root, file), { force: true }))));
-});
-
-/** Erases every draft nobody sent, as the service starts: no message box survives a restart. */
-export const sweepDrafts = Effect.gen(function* () {
-  const sql = yield* SqlClient.SqlClient;
-  const root = yield* AttachmentsRoot;
-  const rows = yield* sql<{ file: string }>`SELECT file FROM attachments WHERE message_id IS NULL`;
-  yield* sql`DELETE FROM attachments WHERE message_id IS NULL`;
-  yield* Effect.promise(() => Promise.all(rows.map((row) => rm(join(root, row.file), { force: true }))));
 });

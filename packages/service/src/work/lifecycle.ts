@@ -146,6 +146,9 @@ export const resumeStopped = Effect.fnUntraced(function* (threadId: string) {
  */
 export const recoverThreadStates = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
+  // Deletion commits records before removing files. Surviving rows still own all their files and can
+  // be offered again after a crash between marking, erasing, and rollback compensation.
+  yield* sql`UPDATE threads SET is_deleting = 0, state = 'Stopped', blocker = NULL WHERE is_deleting = 1`;
   yield* sql`UPDATE threads SET state = 'Idle'
     WHERE state IN ('Running', 'Waiting') OR ${sql.literal(waitsInTurn)}`;
 });
