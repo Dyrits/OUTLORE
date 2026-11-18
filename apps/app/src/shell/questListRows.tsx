@@ -2,7 +2,7 @@ import type { MissionId, MissionSummary, ThreadId, ThreadSummary } from "@outlor
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { harnessLabels, modelLabelOf } from "../foundation/formatting";
-import { colors, fontSizes, fonts, radii, stateLabels, stateTones, yourTurnColor } from "../foundation/theme";
+import { colors, fontSizes, fonts, radii, stateLabels, stateTones } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { EndingConfirmation } from "../quests/missionActions";
@@ -14,7 +14,6 @@ function QuestLine({
   depth,
   harness,
   isOpen,
-  isYourTurn,
   lastActivityAt,
   model,
   now,
@@ -27,7 +26,6 @@ function QuestLine({
   depth: number;
   harness: MissionSummary["harness"];
   isOpen: boolean;
-  isYourTurn: boolean;
   lastActivityAt: number;
   model: MissionSummary["model"];
   now: number;
@@ -67,10 +65,7 @@ function QuestLine({
           <Text style={[local.foldMark, isOpen && local.foldMarkOpen]}>›</Text>
         </Pressable>
       )}
-      <View
-        accessibilityLabel={stateLabels[state]}
-        style={[local.dot, { backgroundColor: isYourTurn ? yourTurnColor : tone.color }]}
-      />
+      <View accessibilityLabel={stateLabels[state]} style={[local.dot, { backgroundColor: tone.color }]} />
       <Text numberOfLines={1} style={local.title}>
         {title}
       </Text>
@@ -131,7 +126,6 @@ export function QuestTreeLines({
           depth={row.depth}
           harness={row.thread?.harness ?? mission.harness}
           isOpen={!collapsed.has(row.id)}
-          isYourTurn={(row.thread?.isYourTurn ?? mission.isYourTurn) === true}
           key={row.id}
           lastActivityAt={row.thread?.lastActivityAt ?? mission.lastActivityAt}
           model={row.thread?.model ?? mission.model}

@@ -37,8 +37,6 @@ export const onePalettes = {
     successSoft: "#343b3b",
     successText: "#a1c181",
     surface: "#2f343e",
-    /** The mark of a quest whose turn has ended and waits for the owner. */
-    teal: "#56b6c2",
     terminal: "#282c34",
     text: "#dce0e5",
     textDim: "#878a98",
@@ -82,8 +80,6 @@ export const onePalettes = {
     successSoft: "#dfeadb",
     successText: "#2b6927",
     surface: "#ebebec",
-    /** The mark of a quest whose turn has ended and waits for the owner. */
-    teal: "#1a8a8a",
     terminal: "#fafafa",
     text: "#242529",
     textDim: "#7e8086",

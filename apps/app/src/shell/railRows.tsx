@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { canHover } from "../foundation/inputModality";
-import { stateTones, yourTurnColor } from "../foundation/theme";
+import { stateTones } from "../foundation/theme";
 import { Chevron, useRowActions } from "./railActions";
 import { isHovered, local } from "./railStyles";
 /** The link under a group that lists only some of its quests: it leads to the page that lists them all. */
@@ -30,6 +30,7 @@ export function Row({
   ringColor,
   onPress,
   textStyle,
+  turnColor,
 }: {
   /** What stands at the end only with the row's marks, on hover or focus, given whether they show. */
   hoverAccessory?: (isShown: boolean) => ReactNode;
@@ -41,8 +42,14 @@ export function Row({
   /** The fold mark before the label of a quest or errand row; null `onPress` keeps its place empty. */
   fold?: { isOpen: boolean; label: string; onPress: (() => void) | null };
   onPress: () => void;
-  /** The color of the row's outline: a summons rings its row in the color of its dot, so it is hard to miss. */
+  /**
+   * The color of the row's ring: a summons rings its row in the color of its dot, so it is hard to miss. The ring is the
+   * bottom edge for three quarters of the width and the left edge for three quarters of the height, from the lower-left
+   * corner, rounded there; a border cannot cover part of a side, so it is drawn over the row.
+   */
   ringColor?: string;
+  /** The color of the row's your-turn mark: a half-size corner at the bottom left, for a quest or errand waiting for the owner. */
+  turnColor?: string;
   textStyle?: object;
 }) {
   const { focusProps, isShown, rowProps } = useRowActions();
@@ -57,7 +64,6 @@ export function Row({
         !canHover && local.rowTouch,
         local.rowQuest,
         { paddingLeft: 5 + indent },
-        ringColor !== undefined && { borderColor: ringColor },
         (state.pressed || isHovered(state)) && local.rowHovered,
         isSelected && local.rowSelected,
       ]}
@@ -68,13 +74,15 @@ export function Row({
         {label}
       </Text>
       {hoverAccessory?.(isShown)}
+      {ringColor !== undefined && <View pointerEvents="none" style={[local.ring, { borderColor: ringColor }]} />}
+      {turnColor !== undefined && <View pointerEvents="none" style={[local.turnMark, { borderColor: turnColor }]} />}
     </Pressable>
   );
 }
 
-/** A state's dot: the color the state reads in everywhere else, or the owner's-turn color for a rested quest waiting on them. */
-export function StateDot({ isYourTurn = false, state }: { isYourTurn?: boolean; state: keyof typeof stateTones }) {
-  return <View style={[local.dot, { backgroundColor: isYourTurn ? yourTurnColor : stateTones[state].color }]} />;
+/** A state's dot: the color the state reads in everywhere else. */
+export function StateDot({ state }: { state: keyof typeof stateTones }) {
+  return <View style={[local.dot, { backgroundColor: stateTones[state].color }]} />;
 }
 
 /** The number at the end of a row, such as a realm's or the archive's quests: shown, like the row's marks, on hover or focus. */

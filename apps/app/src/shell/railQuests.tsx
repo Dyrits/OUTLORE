@@ -25,6 +25,10 @@ import { chevronWidth, indentStep, isHovered, local } from "./railStyles";
 const ringOf = (state: MissionSummary["state"] | ThreadState) =>
   state === "Attention" ? stateTones.Attention.color : undefined;
 
+/** A quest or errand waiting for the owner's turn is marked in its dot's color, the grey it reads in its state. */
+const turnOf = (isYourTurn: boolean, state: MissionSummary["state"] | ThreadState) =>
+  isYourTurn ? stateTones[state].color : undefined;
+
 /** A quest's errands, nested beneath it with their branch guides; each can collapse its own errands. */
 function SideQuests({
   client,
@@ -91,10 +95,11 @@ function SideQuests({
             indent={depth * indentStep}
             isSelected={selectedThread === thread.id}
             label={foldedCount > 0 ? `${thread.title} +${foldedCount}` : thread.title}
-            leading={<StateDot isYourTurn={thread.isYourTurn === true} state={thread.state} />}
+            leading={<StateDot state={thread.state} />}
             onPress={() => onOpenThread(missionId, thread.id)}
             ringColor={ringOf(thread.state)}
             textStyle={local.sideQuestText}
+            turnColor={turnOf(thread.isYourTurn === true, thread.state)}
           />
         </View>
       ))}
@@ -162,9 +167,10 @@ export function Quest({
           }
           isSelected={isHere && (openThread === null || openThread === mission.topThreadId)}
           label={mission.title}
-          leading={<StateDot isYourTurn={mission.isYourTurn === true} state={mission.state} />}
+          leading={<StateDot state={mission.state} />}
           onPress={() => onOpenMission(mission.id)}
           ringColor={ringOf(mission.state)}
+          turnColor={turnOf(mission.isYourTurn === true, mission.state)}
         />
       </DragSource>
       {(ending.pending !== null || ending.error !== null) && (

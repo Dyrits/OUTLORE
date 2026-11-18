@@ -83,6 +83,18 @@ export const local = StyleSheet.create({
   questMark: { alignItems: "center", height: 18, justifyContent: "center", width: 18 },
   realmText: { flexBasis: "auto", flexGrow: 0, flexShrink: 1, fontWeight: "600" },
   realmTextEnd: { flex: 1 },
+  // The summons ring: a bottom and left border from the row's lower-left corner, 75% of its width along the bottom and
+  // 75% of its height up the left, rounded at the corner.
+  ring: {
+    borderBottomLeftRadius: radii.md,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    top: "25%",
+    width: "75%",
+  },
   row: {
     alignItems: "center",
     borderRadius: radii.md,
@@ -93,8 +105,9 @@ export const local = StyleSheet.create({
     paddingVertical: 4,
   },
   rowHovered: { backgroundColor: colors.controlHover },
-  // A row of quests keeps a 1 px outline, clear unless a summons rings it; the padding gives that pixel back.
-  rowQuest: { borderColor: "transparent", borderWidth: 1, paddingRight: 7, paddingVertical: 3 },
+  // A row of quests keeps a 1 px outline, clear unless a summons rings it; the padding gives that pixel back. The 1 px
+  // margin below keeps a ring from touching the next row.
+  rowQuest: { borderColor: "transparent", borderWidth: 1, marginBottom: 1, paddingRight: 7, paddingVertical: 3 },
   rowSelected: { backgroundColor: colors.controlActive },
   rowText: { color: colors.onGround, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.base },
   rowTextSelected: { color: colors.text, fontWeight: "600" },
@@ -120,4 +133,16 @@ export const local = StyleSheet.create({
   },
   sideQuestText: { fontSize: fontSizes.md },
   spending: { paddingHorizontal: 6, paddingVertical: 4 },
+  // The your-turn mark: a bottom and left border at the lower-left corner, 50% of the width and of the height, rounded at
+  // the corner, in the same corner as the summons ring and in the grey of the row's dot.
+  turnMark: {
+    borderBottomLeftRadius: radii.md,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    bottom: 0,
+    height: "50%",
+    left: 0,
+    position: "absolute",
+    width: "50%",
+  },
 });

@@ -58,5 +58,5 @@ Latest handoffs:
 
 - To resume queueing by default with Steer and Interrupt on a queued message, now without a delivery setting and with icons (CHG-0519, CHG-0523, pushed to `origin/main` with this handoff once the owner approves; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-19-0020-remove-delivery-setting.md). Handoffs are shared and committed.
 
-- To resume the summons ring, the teal "your turn" dot, the quest list's archive button and archiving an errand on its own (CHG-0512 to CHG-0516, pushed to `origin/main` with this handoff; open: the owner's look in a window and on a phone; and another session's uncommitted CHG-0514 needs the next free number), read the [current handoff](.agents/handoffs/2026-11-18-2105-summons-your-turn-errand-archive.md). Handoffs are shared and committed.
+- To resume the sidebar's corner marks, a summons in amber and the owner's turn in grey with the teal dot gone (CHG-0524, committed with this handoff, not pushed: the push needs the owner's decision; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-19-0038-sidebar-corner-marks.md). Handoffs are shared and committed.
 
