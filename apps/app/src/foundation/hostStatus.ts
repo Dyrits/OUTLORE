@@ -1,9 +1,12 @@
+import { hostLinkCodes, isFinalLinkClose, isRefusedLinkClose } from "./hosts";
+
 /** Facts from the selected link; the window never combines them itself. */
 export type HostLink = {
   failure: string | null;
   hasConnected: boolean;
   hasGivenUp: boolean;
   needsPairing: boolean;
+  hasReleaseMismatch: boolean;
 };
 
 /** Derives the window's connection state and the recovery actions it can offer. */
@@ -23,6 +26,7 @@ export const hostStatusOf = (input: {
     canRetry: failure !== null && input.link?.needsPairing !== true,
     canUseComputer: !input.isBrowser && input.hostId !== null,
     failure,
+    hasReleaseMismatch: input.link?.hasReleaseMismatch === true,
     isRetrying: failure !== null && input.link?.hasGivenUp === false,
     kind: isPairing ? "pairing" : hasConnected ? "content" : "connecting",
     message:
@@ -39,6 +43,7 @@ export const initialHostLink: HostLinkState = {
   failures: 0,
   hasConnected: false,
   hasGivenUp: false,
+  hasReleaseMismatch: false,
   needsPairing: false,
 };
 
@@ -49,7 +54,7 @@ export const advanceHostLink = (
     | { type: "open" }
     | { type: "failure"; message: string | null }
     | { type: "message" }
-    | { type: "close"; isFinal: boolean; isRefused: boolean }
+    | { type: "close"; code: number }
     | { type: "end" },
 ): HostLinkState => {
   if (event.type === "end") return { ...state, hasGivenUp: true };
@@ -57,5 +62,11 @@ export const advanceHostLink = (
   if (event.type === "open") return { ...state, hasConnected: true };
   if (event.type === "failure") return { ...state, failure: event.message };
   if (event.type === "message") return { ...state, failures: 0 };
-  return { ...state, failures: state.failures + 1, hasGivenUp: event.isFinal, needsPairing: event.isRefused };
+  return {
+    ...state,
+    failures: state.failures + 1,
+    hasGivenUp: isFinalLinkClose(event.code),
+    hasReleaseMismatch: event.code === hostLinkCodes.otherRelease,
+    needsPairing: isRefusedLinkClose(event.code),
+  };
 };

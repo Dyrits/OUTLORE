@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { advanceHostLink, hostStatusOf, initialHostLink } from "../../src/foundation/hostStatus";
+import { hostLinkCodes } from "../../src/foundation/hosts";
 
 const input = { failure: null, hasHosts: true, hostId: "host", isBrowser: true, link: null, name: "Studio" };
-const link = { failure: null, hasConnected: true, hasGivenUp: false, needsPairing: false };
+const link = { ...initialHostLink, hasConnected: true };
 
 describe("presenting the selected host link", () => {
   it("requires pairing when a browser knows no host", () => {
@@ -29,6 +30,14 @@ describe("presenting the selected host link", () => {
       hostStatusOf({ ...input, link: { ...link, failure: "Revoked", hasGivenUp: true, needsPairing: true } }),
     ).toMatchObject({ canPair: true, canRetry: false, isRetrying: false });
   });
+  it("exposes a release mismatch without offering to pair again", () => {
+    const refused = advanceHostLink(initialHostLink, { code: hostLinkCodes.otherRelease, type: "close" });
+    expect(hostStatusOf({ ...input, link: refused })).toMatchObject({
+      canPair: false,
+      hasReleaseMismatch: true,
+      kind: "connecting",
+    });
+  });
   it("offers a desktop window its own computer when a remote host fails", () => {
     expect(hostStatusOf({ ...input, isBrowser: false, link: { ...link, failure: "Offline" } }).canUseComputer).toBe(
       true,
@@ -39,7 +48,7 @@ describe("presenting the selected host link", () => {
 
 describe("advancing a host link", () => {
   it("counts failed attempts and resets their backoff after a received frame", () => {
-    const failed = advanceHostLink(initialHostLink, { isFinal: false, isRefused: false, type: "close" });
+    const failed = advanceHostLink(initialHostLink, { code: hostLinkCodes.ended, type: "close" });
     expect(failed.failures).toBe(1);
     const open = advanceHostLink(failed, { type: "open" });
     expect(open.hasConnected).toBe(true);
@@ -48,7 +57,7 @@ describe("advancing a host link", () => {
   it("keeps cancelled or refused links ended despite late transport events", () => {
     for (const ended of [
       advanceHostLink(initialHostLink, { type: "end" }),
-      advanceHostLink(initialHostLink, { isFinal: true, isRefused: true, type: "close" }),
+      advanceHostLink(initialHostLink, { code: hostLinkCodes.refused, type: "close" }),
     ]) {
       expect(advanceHostLink(ended, { type: "open" })).toBe(ended);
       expect(advanceHostLink(ended, { message: "late", type: "failure" })).toBe(ended);

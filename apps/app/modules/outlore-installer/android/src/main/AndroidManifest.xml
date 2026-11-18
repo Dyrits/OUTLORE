@@ -1,0 +1,18 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Lets the app ask Android to install an update of itself; the owner still allows it once in Android's settings and
+       confirms each install (app-updates, The Android app). -->
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+  <application>
+    <provider
+      android:name="app.outlore.installer.UpdateFileProvider"
+      android:authorities="${applicationId}.outlore.updates"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/outlore_update_paths" />
+    </provider>
+  </application>
+</manifest>

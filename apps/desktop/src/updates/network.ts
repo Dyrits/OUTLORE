@@ -4,11 +4,8 @@ import { rm } from "node:fs/promises";
 import type { ReleaseListing } from "./releases.ts";
 import { listingsOf } from "./releases.ts";
 
-/** The repository's public release list, the one address a check asks; a development run may name another. */
-export const defaultReleasesUrl = "https://api.github.com/repos/Dyrits/OUTLORE/releases?per_page=30";
-
-/** The page owners can open when an update cannot install itself. */
-export const releasesPageUrl = "https://github.com/Dyrits/OUTLORE/releases";
+// The two addresses are shared with the phone's updater.
+export { defaultReleasesUrl, releasesPageUrl } from "../../../../packages/contracts/src/releaseChoice.ts";
 
 /** Platform `fetch`, replaceable so tests answer from a local server. */
 export type Fetch = typeof fetch;

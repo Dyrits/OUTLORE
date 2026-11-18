@@ -176,6 +176,7 @@ export function useHostConnection() {
         failure: client.failure,
         hasConnected: client.hasConnected,
         hasGivenUp: client.hasGivenUp,
+        hasReleaseMismatch: client.hasReleaseMismatch,
         needsPairing: client.needsPairing,
       });
     update();

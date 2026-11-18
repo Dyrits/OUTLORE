@@ -1,6 +1,6 @@
 # Backlog
 
-- **Android self-update, specified, not built** (the owner, 2026-11-18; CHG-0454): the phone app finds, downloads and installs a newer release's APK on the owner's press, as the desktop does ([specification](capabilities/app-updates/specifications.md#the-android-app-agreed-chg-0454-not-built)). Needs the release key in the repository's secrets first. Candidate spike: skipping Android's install confirmation ([draft](capabilities/app-updates/draft.md)).
+- **Android install confirmation spike** (2026-11-18). Try whether Android can skip its own confirmation after the owner presses **Install update**. The updater keeps both confirmations while this is open. [Draft](capabilities/app-updates/draft.md)
 
 - **Terminals in the mobile app**. Add a terminal view to the mobile app for the host's existing terminal service. [Same features in every app](requirements.md) and [device pairing](capabilities/device-pairing/specifications.md).
 

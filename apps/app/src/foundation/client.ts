@@ -9,7 +9,7 @@ import {
 import { Schema } from "effect";
 import type { DesktopBridge } from "./desktopBridge";
 import { advanceHostLink, initialHostLink } from "./hostStatus";
-import { hostEndpointOf, isFinalLinkClose, isRefusedLinkClose, linkFailureOf, retryDelayOf } from "./hosts";
+import { hostEndpointOf, linkFailureOf, retryDelayOf } from "./hosts";
 import { type OpenTransport, socketTransport, type Transport } from "./transport";
 
 declare global {
@@ -85,6 +85,11 @@ export class ServiceClient {
     return this.link.needsPairing;
   }
 
+  /** Whether the host refused the app because it runs a different release. */
+  get hasReleaseMismatch() {
+    return this.link.hasReleaseMismatch;
+  }
+
   /** Calls the listener when the link's failure appears or clears. */
   subscribeFailure(listener: () => void) {
     this.failureListeners.add(listener);
@@ -115,11 +120,7 @@ export class ServiceClient {
           if (this.attempt === socket) this.attempt = null;
           const failure = linkFailureOf(code, reason);
           if (failure !== null) this.setFailure(failure);
-          this.link = advanceHostLink(this.link, {
-            isFinal: isFinalLinkClose(code),
-            isRefused: isRefusedLinkClose(code),
-            type: "close",
-          });
+          this.link = advanceHostLink(this.link, { code, type: "close" });
           for (const listener of this.failureListeners) listener();
           for (const request of this.pending.values()) {
             request.reject(new Error(failure ?? "The connection to the service closed."));

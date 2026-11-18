@@ -1,0 +1,6 @@
+{
+  "android": {
+    "modules": ["app.outlore.installer.OutloreInstallerModule"]
+  },
+  "platforms": ["android"]
+}

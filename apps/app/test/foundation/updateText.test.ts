@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { UpdateState, UpdateStatus } from "../../src/foundation/updateState";
-import { canCheckNow, lastCheckedTextOf, restartWarningOf, statusTextOf } from "../../src/foundation/updateText";
+import {
+  androidInstallWarningOf,
+  canCheckNow,
+  downloadSizeOf,
+  installAllowanceText,
+  lastCheckedTextOf,
+  restartWarningOf,
+  statusTextOf,
+} from "../../src/foundation/updateText";
 
 const stateOf = (status: UpdateStatus, options: Partial<UpdateState> = {}): UpdateState => ({
   currentVersion: "0.1.1-Prototype",
@@ -78,5 +86,36 @@ describe("warning before a restart", () => {
   it("names the version and what a restart costs", () => {
     expect(restartWarningOf("0.1.2-Prototype")).toContain("0.1.2-Prototype");
     expect(restartWarningOf("0.1.2-Prototype")).toContain("Turns still running stop");
+  });
+});
+
+describe("the phone's updates", () => {
+  const available = { _tag: "Available", notes: "", pageUrl: "", sizeBytes: 34_000_000, version: "0.1.9" } as const;
+
+  it("says a release found on mobile data waits, with its size", () => {
+    expect(statusTextOf(stateOf(available))).toBe(
+      "Outlore 0.1.9 is available. You are on mobile data, so it is not downloaded yet (about 34 MB).",
+    );
+  });
+
+  it("lets Check now run again over a release that waits for Wi-Fi", () => {
+    expect(canCheckNow(stateOf(available))).toBe(true);
+  });
+
+  it("rounds a size to megabytes, and says so when it is unknown", () => {
+    expect(downloadSizeOf(33_600_000)).toBe("about 34 MB");
+    expect(downloadSizeOf(300_000)).toBe("under 1 MB");
+    expect(downloadSizeOf(0)).toBe("of unknown size");
+  });
+
+  it("says what installing costs: Android closes the app and asks first, pairings stay", () => {
+    const text = androidInstallWarningOf("0.1.9");
+    expect(text).toContain("Android");
+    expect(text).toContain("0.1.9");
+    expect(text).toContain("paired");
+  });
+
+  it("explains the one-time allowance in plain words", () => {
+    expect(installAllowanceText).toContain("Install unknown apps");
   });
 });

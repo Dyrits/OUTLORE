@@ -12,7 +12,8 @@ import { SettingsCard, ToggleRow } from "./settingsParts";
 /**
  * The installed app's updates: the version, whether Outlore looks for new releases, what the last look found, and,
  * once one has downloaded, its notes and the button that installs it (app-updates). Only the desktop window of this
- * computer can update; elsewhere the card says so.
+ * computer and the phone's own app can update; elsewhere the card says so. On the phone a release found on mobile data
+ * waits for **Download anyway**.
  */
 export function UpdatesCard() {
   const updates = useAppUpdates();
@@ -42,16 +43,18 @@ export function UpdatesCard() {
     );
   return (
     <SettingsCard icon="gear" summary={`Installed: ${state.currentVersion}`} title="Updates">
-      <ToggleRow
-        label="Look for new releases (once at start, then every 6 hours)"
-        onChange={(isEnabled) => act(updates.bridge.setEnabled(isEnabled))}
-        value={state.isEnabled}
-      />
+      {status._tag !== "Unsupported" && (
+        <ToggleRow
+          label="Look for new releases (once at start, then every 6 hours)"
+          onChange={(isEnabled) => act(updates.bridge.setEnabled(isEnabled))}
+          value={state.isEnabled}
+        />
+      )}
       <Text style={status._tag === "Failed" ? styles.error : styles.muted}>{statusTextOf(state)}</Text>
       {status._tag !== "Unsupported" && state.isEnabled && (
         <Text style={styles.muted}>{lastCheckedTextOf(state.lastCheckedAt, Date.now())}</Text>
       )}
-      {status._tag === "Ready" && (
+      {(status._tag === "Ready" || (status._tag === "Available" && state.isEnabled)) && (
         <View style={local.notes}>
           <Text selectable style={local.notesText}>
             {status.notes === "" ? "This release has no notes." : status.notes}
@@ -60,7 +63,15 @@ export function UpdatesCard() {
       )}
       {error !== null && <Text style={styles.error}>{error}</Text>}
       <View style={local.actions}>
-        {status._tag === "Ready" && <Button label="Restart and update" onPress={() => setIsAsking(true)} />}
+        {status._tag === "Ready" && (
+          <Button
+            label={updates.bridge.platform === "android" ? "Install update" : "Restart and update"}
+            onPress={() => setIsAsking(true)}
+          />
+        )}
+        {status._tag === "Available" && state.isEnabled && (
+          <Button label="Download anyway" onPress={() => setIsAsking(true)} />
+        )}
         {status._tag === "Failed" && status.pageUrl !== null && (
           <Button
             isPrimary={false}
@@ -75,13 +86,8 @@ export function UpdatesCard() {
           onPress={() => void act(updates.bridge.check())}
         />
       </View>
-      {isAsking && status._tag === "Ready" && (
-        <UpdateModal
-          bridge={updates.bridge}
-          notes={status.notes}
-          onClose={() => setIsAsking(false)}
-          version={status.version}
-        />
+      {isAsking && (status._tag === "Ready" || (status._tag === "Available" && state.isEnabled)) && (
+        <UpdateModal bridge={updates.bridge} onClose={() => setIsAsking(false)} update={status} />
       )}
     </SettingsCard>
   );

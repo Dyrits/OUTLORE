@@ -1,6 +1,7 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
 import { useEffect, useMemo, useReducer } from "react";
 import { Pressable, Text, View } from "react-native";
+import { startAndroidUpdates } from "./src/foundation/androidUpdates/platform";
 import { ArchiveNavigation } from "./src/foundation/archiveNavigation";
 import { applyAppearance, rememberPlace, resumedPlace } from "./src/foundation/colorScheme";
 import { ActiveHostContext, HostMenuContext } from "./src/foundation/hostContext";
@@ -19,6 +20,7 @@ import { useAttentionNotice } from "./src/shell/notifications";
 import type { RealmListing } from "./src/shell/questTree";
 import { Shell } from "./src/shell/shell";
 import type { Place } from "./src/shell/sidebar";
+import { UpdateNotice } from "./src/shell/updateNotice";
 
 export function App() {
   const {
@@ -60,6 +62,7 @@ export function App() {
   useAttentionNotice(client);
 
   useEffect(() => rememberPlace(place), [place]);
+  useEffect(startAndroidUpdates, []);
   // The browser's own chrome, the page behind the app, and the Dock's icon follow the theme and look in use.
   useEffect(() => applyAppearance(colors.ground), []);
   const hostMenu = useMemo(
@@ -124,6 +127,7 @@ export function App() {
       <View style={styles.center}>
         <AppStatusBar />
         <Text style={styles.connecting}>{status.message}</Text>
+        <UpdateNotice hasReleaseMismatch={status.hasReleaseMismatch} />
         {status.canRetry && (
           <Pressable accessibilityRole="button" onPress={retry} style={styles.backButton}>
             <Text style={styles.backText}>Retry</Text>
@@ -231,6 +235,7 @@ export function App() {
                 {activeHost.name}: {status.failure}
                 {status.isRetrying ? " Trying again…" : ""}
               </Text>
+              {status.hasReleaseMismatch && <UpdateNotice hasReleaseMismatch />}
               {status.canRetry && (
                 <Pressable accessibilityRole="button" onPress={retry}>
                   <Text style={styles.bannerLink}>Retry</Text>

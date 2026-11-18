@@ -30,6 +30,14 @@ export {
   RestoreRealm,
 } from "./realmRequests.ts";
 export * from "./records.ts";
+export {
+  checksumsOf,
+  chooseReleaseFor,
+  defaultReleasesUrl,
+  type FoundRelease,
+  listingsOf,
+  plainNotesOf,
+} from "./releaseChoice.ts";
 export * from "./remote.ts";
 export { type RequestSource, requestSourceRules, sourceRulesOf } from "./requestSources.ts";
 export * from "./requests.ts";

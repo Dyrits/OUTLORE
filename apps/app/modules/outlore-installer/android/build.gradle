@@ -1,0 +1,20 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'app.outlore.installer'
+version = '1.0.0'
+
+android {
+  namespace "app.outlore.installer"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+dependencies {
+  // FileProvider hands Android's installer the downloaded APK without sharing the app's folders.
+  implementation "androidx.core:core-ktx:1.13.1"
+}

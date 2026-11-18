@@ -2,7 +2,7 @@
 
 Status: **agreed and built (CHG-0266), released in 0.1.2-Prototype. The look, an update from a published release, and the Windows and Linux updaters await the owner** (2026-11-13).
 
-The Android app's updating is agreed separately, [below](#the-android-app-agreed-chg-0454-not-built).
+The [Android app](#the-android-app) uses the same release channel and its own installer.
 
 ## Problem and outcome
 
@@ -40,7 +40,7 @@ Checks an agent can perform:
 
 Human acceptance: the owner reviews the look of the Updates section and the notice, and updates a real installed copy from one release to the next once two releases exist. Windows and Linux updating is accepted only after a run on those systems.
 
-## The Android app (agreed, CHG-0454; not built)
+## The Android app
 
 Problem: the phone app has no way to learn of a newer release, and a host refuses an app of another release, so each time the desktop host updates, the phone stops working until the owner installs the new APK by hand.
 
@@ -51,7 +51,7 @@ Outcome: the installed phone app finds a newer release, downloads its APK, and i
 - **Checks**: once at start, every 6 hours while the app is open, and on **Check now**, reading the repository's public GitHub release list as the desktop does. The **channel** rule is the desktop's (a build with a prerelease part follows prereleases and stable releases; a stable build follows stable releases only), and so are the privacy rule and the switch: one HTTPS request carrying the app's name and version and nothing about quests, hosts, pairings or the owner; with the switch off the app makes no request. The switch belongs to this phone and is kept beside the app's data.
 - **Downloading**: automatic only on Wi-Fi or another unmetered network. On mobile data the notice offers **Download anyway** (the APK is about 34 MB at 0.1.7; the real size is shown).
 - **What the owner sees**: the same **Updates** section as on the desktop in the app's settings (installed version, version found, when it last checked, **Check now**, the switch, and the release notes of a ready update with the breaking changes as written) and a quiet notice when an update is ready. When a host refuses the app for running another release (`otherRelease`), the refusal also offers **Update this app** when a newer release exists.
-- **The install**: **Install update** names what happens (the app closes and reopens) and opens Android's confirmation. The first time, Android needs a one-time "Install unknown apps" allowance for Outlore: the app asks only when the owner first presses **Install update**, says why in plain words, and if the owner refuses it offers the release's page instead. A running phone has no turns of its own to stop, so there is no such warning as on the desktop.
+- **The install**: **Install update** tells the owner the app closes during installation and can be reopened afterwards. Android shows its own confirmation. Android 8 and later require a one-time "Install unknown apps" allowance for Outlore. The app explains the allowance when the owner presses **Install update** and offers the release page if they decline. On Android 7, the system installer handles the device-wide allowance.
 - **Trust and signing**: an update is accepted when its SHA-512 matches `SHA512SUMS.txt` of the same release and Android confirms it is signed with the same key as the installed app. A wrong hash deletes the file and is reported; a key mismatch is shown with its reason and leaves the installed app running. Because of that, a phone with a debug-signed or any APK not signed with the release key cannot update into a release-signed one: it needs one manual uninstall, which loses its pairings, and updates itself from then on. This depends on the release key being set in the repository's secrets ([release workflow](../../../.github/workflows/package.yml)).
 - **Pairings survive**: an update keeps the host's key, room and device token held in the phone's secure store, so the phone stays paired.
 - **Failure** is shown in the Updates section with its reason and never stops the app; the next check tries again. A failed or cancelled install leaves the installed version running.
