@@ -18,11 +18,13 @@ export type Trigger = {
   readonly query: string;
 };
 
-/** What the owner of the field can ask of it from outside: clear it, or put a chip in it. */
+/** What the owner of the field can ask of it from outside: clear it, or put a chip or words in it. */
 export interface ChipEditorHandle {
   clear: () => void;
   /** Puts a chip where the trigger is, in place of it. */
   insertChip: (chip: Chip) => void;
+  /** Puts dictated words at the caret, kept apart from the text around them by spaces. */
+  insertText: (spoken: string) => void;
 }
 
 export type ChipEditorProps = {

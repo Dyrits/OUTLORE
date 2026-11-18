@@ -5,6 +5,7 @@ export * from "./activities.ts";
 export * from "./attachments.ts";
 export * from "./budgets.ts";
 export * from "./companions.ts";
+export * from "./dictation.ts";
 export * from "./frames.ts";
 export * from "./harnesses.ts";
 export * from "./ids.ts";

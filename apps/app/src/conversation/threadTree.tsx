@@ -225,6 +225,7 @@ export function OpenThreadForm({
           />
         }
         attachments={{ client, refusal: imageRefusalOf(harnesses, runner.harness, model) }}
+        dictation={{ client }}
         mentions={{ client, workspacePath: parent.workspace?.path ?? null }}
         skills={skills}
         {...(isOverWarning ? { alternative: { label: "Start anyway", onSend: openWith(true) } } : {})}

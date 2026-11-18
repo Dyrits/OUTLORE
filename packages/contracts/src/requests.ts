@@ -2,6 +2,7 @@ import { Schema } from "effect";
 import { AttachmentCard, AttachmentContent, maxAttachmentsPerMessage } from "./attachments.ts";
 import { AccountBudget, BudgetLimits, BudgetPeriod, BudgetWindow, PriceStatus } from "./budgets.ts";
 import { BackupCompanions, ModelChoice } from "./companions.ts";
+import { DictationStatus, maxDictationBytes, Transcript } from "./dictation.ts";
 import { EffortChoice, HarnessList, HarnessName } from "./harnesses.ts";
 import {
   AccountId,
@@ -93,6 +94,14 @@ export const AddAttachment = Schema.TaggedStruct("AddAttachment", {
 export const DiscardAttachment = Schema.TaggedStruct("DiscardAttachment", { attachmentId: AttachmentId });
 /** Reads an attached file's bytes; they never ride inside a conversation. */
 export const ReadAttachment = Schema.TaggedStruct("ReadAttachment", { attachmentId: AttachmentId });
+
+/** Asks whether the host can transcribe a dictation now, before the owner starts speaking. */
+export const ReadDictation = Schema.TaggedStruct("ReadDictation", {});
+/** Transcribes one dictated recording on the host; the recording is not kept. */
+export const TranscribeDictation = Schema.TaggedStruct("TranscribeDictation", {
+  /** The recording's bytes, base64: a 16 kHz, mono, 16-bit WAV file. */
+  data: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(Math.ceil(maxDictationBytes / 3) * 4)),
+});
 
 /** Starts a mission with its first message, model, effort, and workspace. */
 export const StartMission = Schema.TaggedStruct("StartMission", {
@@ -482,6 +491,8 @@ export const Request = Schema.Union([
   AddAttachment,
   DiscardAttachment,
   ReadAttachment,
+  ReadDictation,
+  TranscribeDictation,
   StartMission,
   StartEmptyQuest,
   PreviewDeletion,
@@ -644,6 +655,7 @@ export const Results = {
   ReadAccountBudgets: Schema.Array(AccountBudget),
   ReadAttachment: AttachmentContent,
   ReadBudget: BudgetWindow,
+  ReadDictation: DictationStatus,
   ReadGuildHallRecap: GuildHallRecap,
   ReadGuildmaster: GuildmasterPlace,
   ReadHostName: Schema.String,
@@ -689,6 +701,7 @@ export const Results = {
   StopAtBudget: Schema.Null,
   StopThread: Schema.Null,
   SwitchAtBudget: Schema.Null,
+  TranscribeDictation: Transcript,
   UndoIntelChange: Schema.Null,
   UpdateHarness: HarnessList,
   UpdateRitual: Schema.Null,

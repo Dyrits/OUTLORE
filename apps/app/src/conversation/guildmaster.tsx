@@ -216,6 +216,7 @@ function ChroniclerChat({
         {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
         accessory={<ConversationRunner client={client} conversation={conversation} isChronicler thread={thread} />}
         attachments={{ client, refusal: conversation.refusal }}
+        dictation={{ client }}
         mentions={{ client, workspacePath: realm?.path ?? null }}
         onSend={conversation.send}
         {...(canStop ? { onStop: conversation.stop } : {})}

@@ -4,14 +4,16 @@ import { Pressable, Switch, Text, View } from "react-native";
 import { AttachButton } from "../attachments/attachButton";
 import { AttachmentStrip } from "../attachments/attachmentViews";
 import { useAttachments } from "../attachments/useAttachments";
+import { DictationButton } from "../dictation/dictationButton";
+import { useDictation } from "../dictation/useDictation";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { colors, stateLabels, stateTones } from "../foundation/theme";
 import { ChipEditor } from "./chipEditor";
 import type { ChipEditorHandle } from "./chipEditorTypes";
-import { ChipIcon } from "./chips";
 import { SendArrow, SideQuestBranch, StopSquare } from "./composerIcons";
-import { type MenuRow, mentionCategories } from "./mentionMenu";
+import { ComposerMenu } from "./composerMenu";
+import type { MenuRow } from "./mentionMenu";
 import { forgetSentText, isSentText, rememberUnsentText } from "./unsentText";
 import { useComposerList } from "./useComposerList";
 import { useDraftText } from "./useDraftText";
@@ -89,6 +91,7 @@ export function Composer({
   onOpenSideQuest,
   skills = [],
   mentions,
+  dictation: dictable,
   onBang,
   hasContent = false,
 }: {
@@ -127,6 +130,8 @@ export function Composer({
    * (CHG-0181). Without it, an `@` offers nothing.
    */
   mentions?: { readonly client: ServiceClient; readonly workspacePath: string | null };
+  /** A microphone that puts spoken words in the box, transcribed by the host (voice-input); shown only where it can record. */
+  dictation?: { readonly client: ServiceClient };
   onBang?: () => void;
   /** Whether an attached terminal can be sent without typed text. */
   hasContent?: boolean;
@@ -143,6 +148,7 @@ export function Composer({
   const cannotSend = isEmpty || files.isBusy || refusal !== null;
   const [error, setError] = useState<string | null>(null);
   const list = useComposerList(skills, mentions);
+  const dictation = useDictation(dictable?.client ?? null, (spoken) => editor.current?.insertText(spoken));
   const choose = (row: MenuRow) => {
     const chip = list.choose(row);
     if (chip !== null) editor.current?.insertChip(chip);
@@ -172,31 +178,7 @@ export function Composer({
     );
   return (
     <View style={styles.composer}>
-      {list.rows.length > 0 && (
-        <View style={styles.skillList}>
-          {list.rows.map((row) =>
-            row.type === "heading" ? (
-              <Text key={row.key} style={styles.mentionHeading}>
-                {mentionCategories[row.category].label}
-              </Text>
-            ) : (
-              <Pressable
-                key={row.key}
-                onPress={() => choose(row)}
-                style={[styles.skillOption, row === list.highlighted && styles.skillOptionChosen]}
-              >
-                <ChipIcon kind={row.type === "category" ? mentionCategories[row.category].kind : row.chip.kind} />
-                <Text style={styles.skillName}>
-                  {row.type === "category" ? mentionCategories[row.category].label : row.chip.label}
-                </Text>
-                <Text numberOfLines={1} style={styles.skillDescription}>
-                  {row.type === "category" ? "›" : row.description}
-                </Text>
-              </Pressable>
-            ),
-          )}
-        </View>
-      )}
+      {list.rows.length > 0 && <ComposerMenu highlighted={list.highlighted} onChoose={choose} rows={list.rows} />}
       {attachable !== undefined && <AttachmentStrip files={files.files} onRemove={files.remove} />}
       <View style={styles.composerPill}>
         {attachable !== undefined && <AttachButton onFiles={files.attach} />}
@@ -227,6 +209,9 @@ export function Composer({
           />
         </View>
         <View style={styles.composerActions}>
+          {dictation.isAvailable && (
+            <DictationButton onCancel={dictation.cancel} onPress={dictation.press} phase={dictation.phase} />
+          )}
           {onInterrupt !== undefined && (
             <Pressable onPress={() => interrupt(onInterrupt)} style={styles.buttonSecondary}>
               <Text style={styles.buttonSecondaryText}>Interrupt</Text>
@@ -276,6 +261,7 @@ export function Composer({
       {accessory !== undefined && <View style={styles.composerAccessory}>{accessory}</View>}
       {refusal !== null && <Text style={styles.error}>{refusal}</Text>}
       {files.error !== null && <Text style={styles.error}>{files.error}</Text>}
+      {dictation.error !== null && <Text style={styles.error}>{dictation.error}</Text>}
       {error !== null && <Text style={styles.error}>{error}</Text>}
     </View>
   );

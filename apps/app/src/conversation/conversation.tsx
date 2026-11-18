@@ -204,6 +204,7 @@ function ThreadPane({
               // after a failed turn, runs on it.
               accessory={<ConversationRunner client={client} conversation={conversation} thread={thread} />}
               attachments={{ client, refusal: conversation.refusal }}
+              dictation={{ client }}
               mentions={{ client, workspacePath: thread.workspace?.path ?? null }}
               skills={skills}
               {...(isInTurn

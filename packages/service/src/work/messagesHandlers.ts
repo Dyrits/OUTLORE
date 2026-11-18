@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { readSettings } from "../core/index.ts";
+import { readDictationStatus, transcribeDictation } from "../voice/index.ts";
 import { admitOwnerText, nonBlank, runnerOfThread } from "./admission.ts";
 import { addAttachment, discardAttachment, readAttachment } from "./attachments.ts";
 import { changed } from "./commands.ts";
@@ -8,7 +9,7 @@ import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } 
 import { insertUserMessage } from "./messaging.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 import { nameNewQuest } from "./titles.ts";
-/** Requests for messages share the service request context. */
+/** Requests for writing and reading messages, dictation included, share the service request context. */
 export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "commands">) => {
   /** Writes the owner's journal entry once per request, and shows the owner the journal as it stands. */
   const writeOwnerJournal = (
@@ -36,6 +37,7 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
     AddJournalEntry: (add) => nonBlank(add.text).pipe(Effect.andThen((text) => writeOwnerJournal(add, text, null))),
     DiscardAttachment: (given) => discardAttachment(given.attachmentId).pipe(Effect.as(null)),
     ReadAttachment: (read) => readAttachment(read.attachmentId),
+    ReadDictation: () => readDictationStatus,
     ReadJournal: (read) => readJournalView(read.missionId),
     RewriteBriefing: (rewrite) => {
       const entry = rewrite.entry === null || rewrite.entry.trim() === "" ? "Rewrote the briefing" : rewrite.entry;
@@ -64,13 +66,16 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
         ),
       );
     }),
+    TranscribeDictation: (given) => transcribeDictation(given.data),
   } satisfies OwnerHandlers<
     | "AddAttachment"
     | "AddJournalEntry"
     | "DiscardAttachment"
     | "ReadAttachment"
+    | "ReadDictation"
     | "ReadJournal"
     | "RewriteBriefing"
     | "SendMessage"
+    | "TranscribeDictation"
   >;
 };

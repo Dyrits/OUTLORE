@@ -1,96 +1,12 @@
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
-import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { spacedTranscriptOf } from "../dictation/dictation";
+import { colors, fontSizes, fonts } from "../foundation/theme";
 import { bulkPasteLength, insertBulkText } from "./bulkPaste";
-import type { Chip, ChipEditorProps, Trigger } from "./chipEditorTypes";
-import { iconPaths } from "./chips";
+import { chipElementOf, textAroundOf, textOf, triggerBeforeCaret } from "./chipEditorDom";
+import type { ChipEditorProps } from "./chipEditorTypes";
 
 // The message box's text field on the web: an editable element where a chosen skill or path is a chip inside the text, as in OpenBot.
 // The message is read back as plain text, each chip as its token; the element's content is kept by hand, never by React.
-
-const SVG = "http://www.w3.org/2000/svg";
-
-/** The chip as it sits in the text: not editable, so the caret moves across it and Backspace removes it whole. */
-const chipElementOf = (chip: Chip) => {
-  const element = document.createElement("span");
-  element.contentEditable = "false";
-  element.dataset.token = chip.token;
-  Object.assign(element.style, {
-    alignItems: "center",
-    background: colors.accentSoft,
-    borderRadius: `${radii.sm}px`,
-    color: colors.accentText,
-    display: "inline-flex",
-    gap: "4px",
-    height: "18px",
-    lineHeight: "18px",
-    margin: "0 1px",
-    padding: "0 5px",
-    verticalAlign: "middle",
-  });
-  const icon = document.createElementNS(SVG, "svg");
-  for (const [name, value] of Object.entries({
-    fill: "none",
-    height: "12",
-    stroke: colors.accentText,
-    "stroke-linecap": "round",
-    "stroke-linejoin": "round",
-    "stroke-width": "1.5",
-    viewBox: "0 0 16 16",
-    width: "12",
-  })) {
-    icon.setAttribute(name, value);
-  }
-  for (const d of iconPaths[chip.kind]) {
-    const path = document.createElementNS(SVG, "path");
-    path.setAttribute("d", d);
-    icon.appendChild(path);
-  }
-  const label = document.createElement("span");
-  label.textContent = chip.label;
-  element.append(icon, label);
-  return element;
-};
-
-/** The message as plain text: chips as their tokens, kept apart from the words around them by a space. */
-const textOf = (root: Node, shouldKeepLastBreak = false): string => {
-  let text = "";
-  const add = (piece: string) => {
-    text += piece;
-  };
-  const walk = (node: Node) => {
-    for (const child of Array.from(node.childNodes)) {
-      if (child instanceof HTMLElement && child.dataset.token !== undefined) {
-        add(`${text === "" || /\s$/.test(text) ? "" : " "}${child.dataset.token}`);
-        const next = child.nextSibling?.textContent ?? "";
-        if (next !== "" && !/^\s/.test(next)) add(" ");
-      } else if (child instanceof HTMLBRElement) {
-        // The last break of a block only holds the line open, as the browser leaves one after a deletion.
-        if (child.nextSibling !== null || shouldKeepLastBreak) add("\n");
-      } else if (child instanceof HTMLElement) {
-        if (text !== "" && !text.endsWith("\n")) add("\n");
-        walk(child);
-      } else {
-        add((child.textContent ?? "").replace(/ /g, " "));
-      }
-    }
-  };
-  walk(root);
-  return text;
-};
-
-/** What is typed just before the caret that a list can complete: where it is, and the trigger it reads as. */
-const triggerBeforeCaret = (root: HTMLElement) => {
-  const selection = window.getSelection();
-  const node = selection?.anchorNode;
-  if (selection === null || !selection.isCollapsed || node?.nodeType !== Node.TEXT_NODE || !root.contains(node))
-    return null;
-  const before = (node.textContent ?? "").slice(0, selection.anchorOffset);
-  const match = /(^|\s)([/@])(\S*)$/.exec(before);
-  if (match === null) return null;
-  const query = match[3] ?? "";
-  const trigger: Trigger = { character: match[2] === "@" ? "@" : "/", query };
-  return { end: selection.anchorOffset, node, start: before.length - query.length - 1, trigger };
-};
 
 /** The message field of the web app: text and chips in one editable line, reporting its trigger at the caret. */
 export function ChipEditor({
@@ -106,6 +22,8 @@ export function ChipEditor({
   const [isEmpty, setIsEmpty] = useState(initialText === "");
   // The trigger as last read, kept because choosing from the list takes the focus and the caret with it.
   const triggered = useRef<ReturnType<typeof triggerBeforeCaret>>(null);
+  // The caret as last placed in the field, kept because pressing the microphone takes the focus and the caret with it.
+  const caret = useRef<Range | null>(null);
   const handlers = useRef({ onChange, onFiles, onKeyDown });
   handlers.current = { onChange, onFiles, onKeyDown };
 
@@ -113,6 +31,9 @@ export function ChipEditor({
     const element = root.current;
     if (element === null) return;
     triggered.current = triggerBeforeCaret(element);
+    const selection = window.getSelection();
+    if (selection !== null && selection.rangeCount > 0 && element.contains(selection.anchorNode))
+      caret.current = selection.getRangeAt(0).cloneRange();
     const text = textOf(element);
     setIsEmpty(text === "" && element.querySelector("[data-token]") === null);
     handlers.current.onChange(text, triggered.current?.trigger ?? null);
@@ -140,6 +61,25 @@ export function ChipEditor({
       caret.collapse(true);
       window.getSelection()?.removeAllRanges();
       window.getSelection()?.addRange(caret);
+      report();
+    },
+    insertText: (spoken) => {
+      const element = root.current;
+      if (element === null) return;
+      element.focus();
+      const kept = caret.current;
+      // Where the caret was when the field last had it; at the end when it never had one or the text under it is gone.
+      const range = kept !== null && element.contains(kept.startContainer) ? kept : document.createRange();
+      if (range !== kept) {
+        range.selectNodeContents(element);
+        range.collapse(false);
+      }
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      const { after, before } = textAroundOf(element, range);
+      // The browser's own insertion, so the owner can undo it like typing.
+      document.execCommand("insertText", false, spacedTranscriptOf(before, after, spoken));
       report();
     },
   }));
