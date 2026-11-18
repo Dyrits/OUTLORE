@@ -7,6 +7,7 @@ import { holdIfReached } from "./budgets.ts";
 import { recordPendingHandover } from "./handover.ts";
 import { holdThread, startRunning } from "./lifecycle.ts";
 import { deliverMessages, listPending } from "./messaging.ts";
+import { readOwnCopy } from "./ownCopies.ts";
 import { isQuestRealmArchived } from "./realmAccess.ts";
 import { maxRunning, runningCountOf } from "./treeLimits.ts";
 import { readThreadWorkspace } from "./workspaces.ts";
@@ -77,7 +78,8 @@ export const admitTurn = Effect.fnUntraced(function* (threadId: string) {
       if ((yield* runningCountOf(thread.missionId)) >= maxRunning) return null;
       const now = yield* Clock.currentTimeMillis;
       const workspace = yield* readThreadWorkspace(threadId);
-      if (workspace?.isMissing === true) {
+      // A deleted own copy holds the thread as a missing workspace does (workspace-attachment, CHG-0441).
+      if (workspace?.isMissing === true || (yield* readOwnCopy(threadId))?.isMissing === true) {
         yield* holdThread(threadId, "MissingWorkspace");
         yield* touchMission(thread.missionId, now);
         yield* sql.afterCommit(changes.publish);

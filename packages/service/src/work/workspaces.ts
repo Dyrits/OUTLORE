@@ -5,6 +5,7 @@ import { Clock, Context, Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, newId, realFolderOf } from "../core/index.ts";
 import { readMissionIdOf } from "./lifecycle.ts";
+import { type OwnCopy, readOwnCopy } from "./ownCopies.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 import { validateRealmName } from "./realmNames.ts";
 
@@ -121,10 +122,12 @@ export const readThreadWorkspace = Effect.fnUntraced(function* (threadId: string
   return { id: row.id as WorkspaceId, isMissing, name: row.name, path: row.path } satisfies Workspace;
 });
 
-/** The folder a thread works in: its workspace's, or its mission's scratch folder; null for an unknown thread. */
+/** The folder a thread works in: its own copy, its workspace's, or its mission's scratch folder; null for an unknown thread. */
 export const threadFolderOf = Effect.fnUntraced(function* (threadId: string) {
   const missionId = yield* readMissionIdOf(threadId);
   if (missionId === null) return null;
+  const ownCopy = yield* readOwnCopy(threadId);
+  if (ownCopy !== null) return ownCopy.path;
   const workspace = yield* readThreadWorkspace(threadId);
   return workspace?.path ?? join(yield* ScratchRoot, missionId);
 });
@@ -151,12 +154,21 @@ const readInstructions = (folder: string) =>
     }),
   );
 
-/** The starting context naming the thread's workspace, with the folder's own instructions. */
-const workspaceContextOf = Effect.fnUntraced(function* (workspace: Workspace) {
-  const instructions = yield* readInstructions(workspace.path);
+/** The lines saying the thread works in its own copy of the workspace, and what to do with its branch. */
+const ownCopyLinesOf = (workspace: Workspace, ownCopy: OwnCopy) => [
+  `You work in your own copy of the workspace "${workspace.name}": the git worktree at ${ownCopy.path}, on the branch ${ownCopy.branch}, made from ${workspace.path}. It is your working folder; work and commit there, never in ${workspace.path}.`,
+  "Commit your work on your branch, and name the branch in your result so the thread that opened you can merge it. Threads you open share your copy unless you ask for their own.",
+  "Your copy has no installed packages: prepare it as the instructions below say for a worktree, or install them.",
+];
+
+/** The starting context naming the thread's workspace or its own copy of it, with the folder's own instructions. */
+const workspaceContextOf = Effect.fnUntraced(function* (workspace: Workspace, ownCopy: OwnCopy | null) {
+  const instructions = yield* readInstructions(ownCopy?.path ?? workspace.path);
   return [
     "# Your workspace",
-    `You work in the workspace "${workspace.name}" at ${workspace.path}. It is your working folder.`,
+    ...(ownCopy === null
+      ? [`You work in the workspace "${workspace.name}" at ${workspace.path}. It is your working folder.`]
+      : ownCopyLinesOf(workspace, ownCopy)),
     ...(instructions.length === 0
       ? []
       : ["The workspace's own instructions follow; follow them for work in this folder.", ...instructions]),
@@ -164,10 +176,10 @@ const workspaceContextOf = Effect.fnUntraced(function* (workspace: Workspace) {
 });
 
 /**
- * Where a thread works and the starting context saying so: its workspace's folder, or its mission's scratch
- * folder when it has none. Only describes the folder; `prepareWorkingFolder` makes it.
+ * Where a thread works and the starting context saying so: its own copy of its workspace, its workspace's folder, or
+ * its mission's scratch folder when it has none. Only describes the folder; `prepareWorkingFolder` makes it.
  */
-export const workingFolderOf = (workspace: Workspace | null, scratchFolder: string) =>
+export const workingFolderOf = (workspace: Workspace | null, scratchFolder: string, ownCopy: OwnCopy | null = null) =>
   workspace === null
     ? Effect.succeed({
         context: [
@@ -176,10 +188,16 @@ export const workingFolderOf = (workspace: Workspace | null, scratchFolder: stri
         ].join("\n"),
         cwd: scratchFolder,
       })
-    : workspaceContextOf(workspace).pipe(Effect.map((context) => ({ context, cwd: workspace.path })));
+    : workspaceContextOf(workspace, ownCopy).pipe(
+        Effect.map((context) => ({ context, cwd: ownCopy?.path ?? workspace.path })),
+      );
 
 /** Where a thread works and the starting context saying so, with the scratch folder made on first use. */
-export const prepareWorkingFolder = (workspace: Workspace | null, scratchFolder: string) =>
+export const prepareWorkingFolder = (
+  workspace: Workspace | null,
+  scratchFolder: string,
+  ownCopy: OwnCopy | null = null,
+) =>
   (workspace === null ? Effect.sync(() => void mkdirSync(scratchFolder, { recursive: true })) : Effect.void).pipe(
-    Effect.andThen(workingFolderOf(workspace, scratchFolder)),
+    Effect.andThen(workingFolderOf(workspace, scratchFolder, ownCopy)),
   );
