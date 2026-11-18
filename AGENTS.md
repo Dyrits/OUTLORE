@@ -58,4 +58,4 @@ Latest handoffs:
 
 - To resume the Android pairing and status-bar fixes or prepare the deferred release, read the [current handoff](.agents/handoffs/2026-11-18-0124-android-pairing-hotfix.md). Handoffs are shared and committed.
 
-- To resume voice input, read the [current state](documentation/work-in-progress.md#voice-input--2026-11-18--service-transcriber-on-main) for the transcriber on `main` (CHG-0450 and CHG-0451), then the [original handoff](.agents/handoffs/2026-11-18-0109-voice-input.md) for the desktop microphone and phone spike.
+- To resume voice input (desktop dictation is built, CHG-0499; open: the owner's try with a real microphone, then packaging or the web and phone), read the [current handoff](.agents/handoffs/2026-11-18-1345-voice-dictation-desktop.md). Handoffs are shared and committed.
