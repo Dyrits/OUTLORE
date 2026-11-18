@@ -86,14 +86,9 @@ export function TopBar({
         accessibilityRole="button"
         accessibilityState={{ expanded: chronicler.isOpen }}
         onPress={chronicler.onToggle}
-        style={({ pressed }) => [
-          local.chroniclerButton,
-          (pressed || chronicler.isOpen) && local.topIconActive,
-          noDragRegion,
-        ]}
+        style={({ pressed }) => [local.topIcon, (pressed || chronicler.isOpen) && local.topIconActive, noDragRegion]}
       >
         <Text style={local.chroniclerMark}>✦</Text>
-        <Text style={local.chroniclerText}>Chronicler</Text>
       </Pressable>
       {details !== null && details.isPinned !== true && (
         <Pressable
@@ -174,16 +169,7 @@ export function QuestColumn({
 }
 
 const local = StyleSheet.create({
-  chroniclerButton: {
-    alignItems: "center",
-    borderRadius: radii.sm,
-    flexDirection: "row",
-    gap: 6,
-    height: 28,
-    paddingHorizontal: 9,
-  },
-  chroniclerMark: { color: colors.accentText, fontSize: fontSizes.md },
-  chroniclerText: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
+  chroniclerMark: { color: colors.accentText, fontSize: fontSizes.lg },
   crumbCurrent: { color: colors.onGround },
   crumbPinned: { paddingLeft: 6 },
   crumbText: { fontFamily: fonts.sans, fontSize: fontSizes.lg },
