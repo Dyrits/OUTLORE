@@ -20,12 +20,14 @@ export function useThreadConversation(
   threadId: ThreadId,
   path: string | null,
   options: ConversationOptions,
+  /** Where the `!` terminal starts; the thread's working folder, which an own copy makes differ from `path`. */
+  terminalPath: string | null = path,
 ) {
   const draft = useDraft(client, threadId);
   const entries = detail === null ? [] : entriesOf(detail, detail.thread.actions.isInTurn);
   const followNewest = useFollowNewest(entries);
   const skills = useSkills(client, path);
-  const terminal = useTerminal(threadId, path);
+  const terminal = useTerminal(threadId, terminalPath);
   const comments = useThreadComments(threadId);
   const [actionError, setActionError] = useState<string | null>(null);
   const presetChoice = useThreadPresets(client, threadId, setActionError);

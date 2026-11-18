@@ -7,7 +7,7 @@ import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { ownCopyNameOf } from "../../src/work/ownCopies.ts";
 import { prepareStartingContext } from "../../src/work/startingContext.ts";
-import { fixture, settle, start, temporary, tool } from "../fixtures/service.ts";
+import { fixture, read, settle, start, temporary, tool } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 const live = () => {
@@ -91,6 +91,24 @@ describe("opening a thread with an own copy", () => {
       if (grandchildId === null) return yield* Effect.die(new Error("not opened"));
       expect((yield* prepareStartingContext(grandchildId)).cwd).toBe((yield* prepareStartingContext(childId)).cwd);
       expect((yield* prepareStartingContext(started.threadId)).cwd).toBe(folder);
+    }).pipe(Effect.provide(layer));
+  });
+
+  it.live("tells the app where a thread works, so its `!` terminal can start there", () => {
+    const { layer } = live();
+    const folder = repository();
+    return Effect.gen(function* () {
+      const started = yield* idleIn(folder);
+      const childId = openedIdOf(yield* tool(started.threadId, "open_thread", { ownCopy: true, request: "Branch." }));
+      if (childId === null) return yield* Effect.die(new Error("not opened"));
+      const grandchildId = openedIdOf(yield* tool(childId, "open_thread", { request: "Help on the branch." }));
+      if (grandchildId === null) return yield* Effect.die(new Error("not opened"));
+      const { cwd } = yield* prepareStartingContext(childId);
+      const branch = git(cwd, "branch", "--show-current");
+      // The thread in the copy and the thread sharing it both show it; the quest's top thread shows none.
+      expect((yield* read(started.missionId, childId)).thread.ownCopy).toEqual({ branch, path: cwd });
+      expect((yield* read(started.missionId, grandchildId)).thread.ownCopy).toEqual({ branch, path: cwd });
+      expect((yield* read(started.missionId, started.threadId)).thread.ownCopy).toBeNull();
     }).pipe(Effect.provide(layer));
   });
 
