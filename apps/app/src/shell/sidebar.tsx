@@ -260,7 +260,7 @@ function SectionTitle({ isOpen, onToggle, title }: { isOpen: boolean; onToggle: 
       onPress={onToggle}
       style={(state) => [local.sectionRow, (state.pressed || isHovered(state)) && local.rowHovered]}
     >
-      <FoldChevron color={colors.textMuted} isOpen={isOpen} size={14} />
+      <FoldChevron color={colors.textMuted} isOpen={isOpen} size={16} />
       <Text style={local.sectionTitle}>{title}</Text>
     </Pressable>
   );

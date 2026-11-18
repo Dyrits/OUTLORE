@@ -97,15 +97,18 @@ export const local = StyleSheet.create({
   rowSelected: { backgroundColor: colors.controlActive },
   rowText: { color: colors.onGround, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.base },
   rowTextSelected: { color: colors.text, fontWeight: "600" },
+  // A section's label row: the height and text size of the sidebar's other rows, so Realms and Borderlands read as rows.
   sectionRow: {
     alignItems: "center",
     borderRadius: radii.md,
     flexDirection: "row",
-    gap: 2,
-    paddingLeft: 2,
-    paddingVertical: 2,
+    gap: 4,
+    minHeight: 28,
+    paddingLeft: 4,
+    paddingRight: 8,
+    paddingVertical: 4,
   },
-  sectionTitle: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
+  sectionTitle: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.base, fontWeight: "600" },
   sidebar: {
     backgroundColor: colors.sidebar,
     borderRightColor: colors.border,
