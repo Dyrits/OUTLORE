@@ -245,6 +245,10 @@ export const ThreadActions = Schema.Struct({
 });
 export type ThreadActions = typeof ThreadActions.Type;
 
+/** A thread's own git worktree of its workspace and its branch (workspace-attachment, Own copy). */
+export const OwnCopyView = Schema.Struct({ branch: Schema.String, path: Schema.String });
+export type OwnCopyView = typeof OwnCopyView.Type;
+
 /** The selected thread as its conversation shows it, with the owner's actions on it. */
 export const ThreadView = Schema.Struct({
   /** The provider account it runs with, or null for the harness's own sign-in on this computer. */
@@ -262,6 +266,8 @@ export const ThreadView = Schema.Struct({
   harness: HarnessName,
   id: ThreadId,
   model: ModelChoice,
+  /** The worktree the thread works in, itself or inherited from its parent; null when it works in its workspace's folder. */
+  ownCopy: Schema.NullOr(OwnCopyView),
   parentId: Schema.NullOr(ThreadId),
   state: ThreadState,
   title: Schema.String,

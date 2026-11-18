@@ -21,6 +21,7 @@ import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
 import { ConversationRunner } from "./conversationRunner";
 import type { Entry } from "./entries";
+import { terminalFolderOf } from "./terminalFolder";
 import { ChatterNotices } from "./threadActions";
 import { ThreadPanel } from "./threadPanel";
 import { OpenThreadForm, ThreadTree } from "./threadTree";
@@ -53,11 +54,14 @@ function ThreadPane({
   const { thread } = detail;
   const ending = useEnding(client, detail.mission);
   const work = thread.parentId === null ? "quest" : "side-quest";
-  const conversation = useThreadConversation(client, detail, thread.id, thread.workspace?.path ?? null, {
-    isChronicler: false,
-    realmPath: null,
-    viewing: null,
-  });
+  const conversation = useThreadConversation(
+    client,
+    detail,
+    thread.id,
+    thread.workspace?.path ?? null,
+    { isChronicler: false, realmPath: null, viewing: null },
+    terminalFolderOf(thread),
+  );
   const { draft, skills, actionError, terminal, followNewest, comments, entries, act } = conversation;
   const [isOpening, setIsOpening] = useState(false);
   const { canOpenBeneath, canResume, canStop, isInTurn } = thread.actions;

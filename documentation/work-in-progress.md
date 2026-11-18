@@ -1,5 +1,9 @@
 # Work in progress
 
+## The `!` terminal in an own copy · 2026-11-18 · built and tested, the owner's look pending
+
+CHG-0455: a thread working in its own copy opens the `!` terminal in that worktree (`ownCopy` on the thread's conversation view, `terminalFolderOf`). Built on `worktree/own-copy` in `.worktrees/bang-worktree` (branch `worktree/bang-worktree`), so it merges after own copy; not pushed. The owner's rule: a thread keeps one working folder; another place means a side-quest, so hand-made worktrees are not followed. Open: a window check on an own copy; the full suite was not run.
+
 ## Connectors · 2026-11-16 · specified (CHG-0321 to CHG-0327), nothing built
 
 The owner wants connectors in the Charter (a marketplace-like place), with a switch on each realm and quest, a global switch and a switch per tool, Composio and Apple apps first, a Vault for secrets, and Code Mode as one experimental global setting. [Specification](capabilities/connectors/specifications.md), [draft](capabilities/connectors/draft.md) (open items only), [research](research/code-mode-autonomy-connectors-2026-11-16.md), [handoff](../.agents/handoffs/2026-11-16-0835-connectors-specification.md). Also written: the requirement *Connector secrets stay on the host*, the glossary terms Charter, Connector and The Vault, the outline line, notes in tool-and-skill-loading, mission-tracking and thread-panel, and backlog items. Open: which group of the thread panel holds the tools line, whether The Vault holds other secrets later. The [blueprint](capabilities/connectors/blueprint.md) and [ADR 0022](architecture-decision-record/0022-the-vault-encrypts-secrets-and-hides-its-folder-from-sandboxes.md) are proposed (CHG-0328) and were revised after a second opinion (CHG-0330), awaiting the owner's review; the build starts with read-denial probes of each harness using a disposable secret, then the Vault. Not authorized to build.

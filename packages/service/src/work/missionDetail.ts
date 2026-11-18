@@ -12,6 +12,7 @@ import { readChatter } from "./chatter.ts";
 import { listHandovers } from "./handover.ts";
 import { threadActionsOf } from "./lifecycle.ts";
 import { listMissionSummaries } from "./missions.ts";
+import { readOwnCopy } from "./ownCopies.ts";
 import { listThreadSuggestions } from "./suggestionStore.ts";
 import { readThreadWorkspace } from "./workspaces.ts";
 
@@ -74,6 +75,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
   if (thread === undefined) return yield* notFound("No such thread in this mission.");
   const computerName = yield* ownAccountLabelOf(thread.harness);
   const workspace = yield* readThreadWorkspace(selected.id);
+  const ownCopy = yield* readOwnCopy(selected.id);
   const messages = yield* sql<
     Omit<Message, "attachments" | "isResult" | "isQueued" | "usage"> & {
       isResult: number;
@@ -134,6 +136,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
       accountLabel: accountLabelOf(thread.accountId, thread.accountLabel, computerName),
       actions: threadActionsOf({ blocker: thread.blocker, depth: selected.depth, state: selected.state }),
       depth: selected.depth,
+      ownCopy: ownCopy === null ? null : { branch: ownCopy.branch, path: ownCopy.path },
       parentId: selected.parentId,
       state: selected.state,
       title: selected.title,
