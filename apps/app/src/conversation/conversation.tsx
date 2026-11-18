@@ -1,6 +1,6 @@
 import type { BudgetScope, MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
-import { FlatList, Pressable, Text, useWindowDimensions, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { BudgetScreen, BudgetStopCard } from "../editors/budgets";
 import type { ServiceClient } from "../foundation/client";
 import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
@@ -8,6 +8,7 @@ import { countedOf } from "../foundation/labels";
 import { usePageNavigation } from "../foundation/pageNavigation";
 import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
+import { colors, fontSizes, fonts, radii, stateLabels, stateTones } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { JournalScreen } from "../lore/journal";
@@ -39,7 +40,10 @@ function ThreadPane({
   onOpenMission,
   onOpenBudget,
   onOpenDetails,
+  onBack,
 }: {
+  /** In a narrow window, which has no sidebar: the header's round back arrow, which opens the main menu. */
+  onBack?: () => void;
   /** Whether this thread's header offers the link to the quest's side panel, where no top bar has the icon. */
   canOpenDetails: boolean;
   client: ServiceClient;
@@ -69,25 +73,67 @@ function ThreadPane({
   return (
     <CommentsProvider value={comments}>
       <View style={[styles.flex, styles.pane]}>
-        <View style={styles.header}>
-          <Text numberOfLines={1} style={[styles.paneTitle, styles.flex]}>
-            {thread.title}
-          </Text>
-          <StateIndicator state={thread.state} />
-          {thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived" && (
-            <ArchiveButton isDisabled={ending.isBusy} label="Archive quest" onPress={() => ending.start("Archived")} />
-          )}
-          {canResume && (
-            <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
-              <Text style={styles.link}>Resume</Text>
+        {onBack !== undefined && (
+          // A phone's header: a round back arrow, the title and state in the middle, and the archive button.
+          <View style={local.mobileHeader}>
+            <Pressable
+              accessibilityLabel="Back to the menu"
+              accessibilityRole="button"
+              onPress={onBack}
+              style={local.round}
+            >
+              <Text style={local.roundText}>‹</Text>
             </Pressable>
-          )}
-          {canOpenDetails && (
-            <Pressable onPress={onOpenDetails}>
-              <Text style={styles.link}>Quest panel</Text>
-            </Pressable>
-          )}
-        </View>
+            <View style={local.mobileTitle}>
+              <Text numberOfLines={1} style={local.mobileTitleText}>
+                {thread.title}
+              </Text>
+              <Text numberOfLines={1} style={[local.mobileState, { color: stateTones[thread.state].color }]}>
+                {stateLabels[thread.state]}
+              </Text>
+            </View>
+            {thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived" ? (
+              <View style={local.round}>
+                <ArchiveButton
+                  isDisabled={ending.isBusy}
+                  label="Archive quest"
+                  onPress={() => ending.start("Archived")}
+                />
+              </View>
+            ) : (
+              <View style={local.roundSpace} />
+            )}
+          </View>
+        )}
+        {(onBack === undefined || canResume || canOpenDetails) && (
+          <View style={styles.header}>
+            {onBack === undefined && (
+              <>
+                <Text numberOfLines={1} style={[styles.paneTitle, styles.flex]}>
+                  {thread.title}
+                </Text>
+                <StateIndicator state={thread.state} />
+                {thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived" && (
+                  <ArchiveButton
+                    isDisabled={ending.isBusy}
+                    label="Archive quest"
+                    onPress={() => ending.start("Archived")}
+                  />
+                )}
+              </>
+            )}
+            {canResume && (
+              <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
+                <Text style={styles.link}>Resume</Text>
+              </Pressable>
+            )}
+            {canOpenDetails && (
+              <Pressable onPress={onOpenDetails}>
+                <Text style={styles.link}>Quest panel</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
         <EndingConfirmation ending={ending} />
         {ending.error !== null && <Text style={styles.error}>{ending.error}</Text>}
         {parent !== undefined && (
@@ -299,9 +345,6 @@ export function Conversation({
         // With the sidebar showing, it is the quest's one tree; this one serves the narrow window, which has none.
         <View style={[styles.questSide, isCompact && styles.questSideCompact]}>
           <View style={styles.questSideBar}>
-            <Pressable onPress={goBack}>
-              <Text style={styles.link}>← Back</Text>
-            </Pressable>
             {isCompact && (
               <Pressable
                 accessibilityRole="button"
@@ -326,11 +369,6 @@ export function Conversation({
         </View>
       )}
       <View style={[styles.questMain, isCompact && styles.questMainCompact]}>
-        {!hasSidebar && !hasSideQuests && (
-          <Pressable onPress={goBack}>
-            <Text style={styles.link}>← Back</Text>
-          </Pressable>
-        )}
         {error !== null && <Text style={styles.error}>{error}</Text>}
         {detail && (
           <ThreadPane
@@ -339,6 +377,7 @@ export function Conversation({
             detail={detail}
             isCompact={isCompact}
             key={detail.thread.id}
+            {...(hasSidebar ? {} : { onBack: goBack })}
             onOpenBudget={() => setBudgetScope(detail.budgetStop?.scope ?? "Mission")}
             onOpenDetails={() => onSetDetails(true)}
             onOpenMission={onOpenMission}
@@ -349,3 +388,36 @@ export function Conversation({
     </View>
   );
 }
+
+const roundSize = 36;
+
+const local = StyleSheet.create({
+  // A phone's quest header: two round buttons around a rounded bar that holds the title and the state.
+  mobileHeader: { alignItems: "center", flexDirection: "row", gap: 8, paddingBottom: 6 },
+  mobileState: { fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
+  mobileTitle: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.edge,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: roundSize,
+    paddingHorizontal: 14,
+    paddingVertical: 3,
+  },
+  mobileTitleText: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
+  round: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.edge,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    height: roundSize,
+    justifyContent: "center",
+    width: roundSize,
+  },
+  roundSpace: { width: roundSize },
+  roundText: { color: colors.textSecondary, fontSize: 24, lineHeight: 26, marginTop: -2 },
+});
