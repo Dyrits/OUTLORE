@@ -163,42 +163,32 @@ export function Sidebar({
   return (
     <View style={[local.sidebar, { width }]}>
       <ScrollView contentContainerStyle={local.group} style={local.flex}>
-        {placements.realms.length === 0 && placements.borderlands.length === 0 && (
-          <Text style={local.empty}>No realm or quest yet.</Text>
-        )}
-        {placements.realms.length > 0 && (
-          <Text accessibilityRole="header" style={local.sectionTitle}>
-            Realms
-          </Text>
-        )}
+        <Text accessibilityRole="header" style={local.sectionTitle}>
+          Realms
+        </Text>
         {tied.map(rowOf)}
         {untied.map(rowOf)}
-        {borderlandQuests.length > 0 && (
-          <>
-            {placements.realms.length > 0 && <View style={local.creationDivider} />}
-            <Text accessibilityRole="header" style={local.sectionTitle}>
-              Borderlands
-            </Text>
-            {borderlandQuests.map((mission) => (
-              <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
-            ))}
-            {placements.borderlands.length > borderlandQuests.length && (
-              <ShowAll
-                count={placements.borderlands.length}
-                onPress={() => setEveryBorderlandShown(true)}
-                subject="quests in no realm"
-              />
-            )}
-          </>
-        )}
-        <View style={local.creationDivider} />
-        {failureUnder("none")}
         <Row
           accessory={<NewRealmIcon color={colors.highlight} />}
           isSelected={false}
           label="Visit a realm"
           onPress={() => setIsCreating(true)}
         />
+        <View style={local.creationDivider} />
+        <Text accessibilityRole="header" style={local.sectionTitle}>
+          Borderlands
+        </Text>
+        {borderlandQuests.map((mission) => (
+          <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
+        ))}
+        {placements.borderlands.length > borderlandQuests.length && (
+          <ShowAll
+            count={placements.borderlands.length}
+            onPress={() => setEveryBorderlandShown(true)}
+            subject="quests in no realm"
+          />
+        )}
+        {failureUnder("none")}
         <Row
           accessory={<NewQuestIcon color={colors.highlight} />}
           isSelected={false}
