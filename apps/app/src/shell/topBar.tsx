@@ -1,10 +1,7 @@
 import { type ReactNode, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import type { ServiceClient } from "../foundation/client";
 import { HostMenuContext } from "../foundation/hostContext";
-import { usedTextOf } from "../foundation/labels";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
-import { useServiceQuery } from "../foundation/useServiceQuery";
 import { HostMenu } from "./hostMenu";
 import { UpdateNotice } from "./updateNotice";
 
@@ -39,16 +36,13 @@ export function PanelIcon({ side = "left" }: { side?: "left" | "right" }) {
 }
 
 /**
- * The top bar: the host menu at its start and, at the end, the spending, which the collapsed rail no longer shows,
- * then the quest panel's icon and, furthest right like its panel, Chronicler's mark. It names no place: the rail and the screens say where the owner is.
+ * The top bar: the host menu at its start and, at the end, the quest panel's icon and, furthest right like its panel, Chronicler's mark. It names no place: the rail and the screens say where the owner is.
  */
 export function TopBar({
-  client,
   details,
   chronicler,
   menu,
 }: {
-  client: ServiceClient;
   /** The icon that shows or hides the quest's side panel; none outside a quest. */
   details: DetailsToggle | null;
   /** The button that opens or folds Chronicler's panel (quest coordination, Chronicler everywhere). */
@@ -80,7 +74,6 @@ export function TopBar({
       <View style={noDragRegion}>
         <UpdateNotice />
       </View>
-      {menu === undefined && <SpendingLine client={client} />}
       {details !== null && details.isPinned !== true && (
         <Pressable
           accessibilityLabel={details.isOpen ? "Hide quest panel" : "Show quest panel"}
@@ -102,13 +95,6 @@ export function TopBar({
       </Pressable>
     </View>
   );
-}
-
-/** The spending of the global budget's period as one line; nothing while it is unread. */
-function SpendingLine({ client }: { client: ServiceClient }) {
-  const { data: global } = useServiceQuery(client, { _tag: "ReadBudget", missionId: null }, "budget:global");
-  if (global === null) return null;
-  return <Text style={local.topSpending}>{usedTextOf(global.consumption)}</Text>;
 }
 
 /**
@@ -203,5 +189,4 @@ const local = StyleSheet.create({
   topBarTitle: { paddingLeft: 82 },
   topIcon: { alignItems: "center", borderRadius: radii.sm, height: 28, justifyContent: "center", width: 28 },
   topIconActive: { backgroundColor: colors.ground },
-  topSpending: { color: colors.onGround, fontFamily: fonts.sans, fontSize: fontSizes.sm },
 });

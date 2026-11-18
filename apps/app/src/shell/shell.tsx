@@ -249,7 +249,6 @@ export function Shell(
           <View style={local.narrow}>
             <TopBar
               chronicler={narrowChroniclerToggle}
-              client={props.client}
               details={details}
               menu={{
                 isOpen: isMenuOpen,
@@ -278,7 +277,7 @@ export function Shell(
           <CompanionTabOf.Provider value={isCompanionShown ? pillId : null}>
             <TopBarShown.Provider value={true}>
               <View style={local.window}>
-                <TopBar chronicler={chroniclerToggle} client={props.client} details={null} />
+                <TopBar chronicler={chroniclerToggle} details={null} />
                 <View style={local.body}>
                   <View style={local.frame}>
                     {!isHidden && (

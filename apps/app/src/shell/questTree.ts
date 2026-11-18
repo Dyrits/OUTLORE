@@ -45,14 +45,16 @@ export const toggledFold = (folded: ReadonlySet<string>, id: string): ReadonlySe
 };
 
 /**
- * Whether a sidebar row shows its hover marks (a heading's fold arrow; overview, new quest, new realm): only while the
- * pointer is over it, or while a keyboard focus is inside it so they stay reachable. The focus a click leaves does not
- * count. Otherwise they keep their place, unseen.
+ * Whether a sidebar row shows its hover marks (a heading's fold arrow; overview, new quest, new realm): always on a
+ * device that cannot hover (a phone, a touch screen), where they could not be found otherwise; elsewhere only while the
+ * pointer is over the row, or while a keyboard focus is inside it so they stay reachable. The focus a click leaves does
+ * not count. Otherwise they keep their place, unseen.
  */
 export const areActionsShown = (row: {
+  readonly canHover: boolean;
   readonly hasKeyboardFocusWithin: boolean;
   readonly isHovered: boolean;
-}): boolean => row.isHovered || row.hasKeyboardFocusWithin;
+}): boolean => !row.canHover || row.isHovered || row.hasKeyboardFocusWithin;
 
 /** One errand row of the sidebar: how deep it sits beneath its quest, and what it hides. */
 export interface SideQuestRow {

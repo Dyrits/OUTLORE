@@ -4,6 +4,7 @@ import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-na
 import { ReserveRows } from "../editors/budgets";
 import { PlanLimitRings } from "../editors/planLimitRings";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
+import { canHover } from "../foundation/inputModality";
 import { allMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -255,10 +256,14 @@ function SectionTitle({ isOpen, onToggle, title }: { isOpen: boolean; onToggle: 
   return (
     <Pressable
       accessibilityLabel={`${isOpen ? "Fold" : "Unfold"} ${title}`}
-      accessibilityRole="header"
+      accessibilityRole="button"
       accessibilityState={{ expanded: isOpen }}
       onPress={onToggle}
-      style={(state) => [local.sectionRow, (state.pressed || isHovered(state)) && local.rowHovered]}
+      style={(state) => [
+        local.sectionRow,
+        !canHover && local.rowTouch,
+        (state.pressed || isHovered(state)) && local.rowHovered,
+      ]}
     >
       <FoldChevron color={colors.textMuted} isOpen={isOpen} size={16} />
       <Text style={local.sectionTitle}>{title}</Text>

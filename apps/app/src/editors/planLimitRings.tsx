@@ -146,6 +146,8 @@ export function PlanLimitRings({ client }: { client: ServiceClient }) {
               onFocus={() => setShown(key)}
               onHoverIn={() => setShown(key)}
               onHoverOut={() => setShown(null)}
+              // A finger cannot hover: a tap opens the card and a second tap closes it.
+              onPress={() => setShown(shown === key ? null : key)}
               style={[local.circle, shown === key && local.circleLifted]}
             >
               <PlanRings harness={budget.harness} logoSize={logoSize} rings={rings} stroke={ringStroke} />

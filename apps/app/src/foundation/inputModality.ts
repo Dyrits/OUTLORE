@@ -18,3 +18,13 @@ if (Platform.OS === "web" && typeof document !== "undefined") {
 
 /** Whether a focus happening now came from the keyboard, as `:focus-visible` would say. */
 export const isKeyboardFocus = (): boolean => modality === "keyboard";
+
+/**
+ * Whether the device's main pointer can hover: a mouse or trackpad, not a finger. A phone, the native builds, and a
+ * touch screen in a browser cannot, so what a row shows only on hover is shown there all the time (CHG-0497).
+ */
+export const canHover: boolean =
+  Platform.OS === "web" &&
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(hover: hover)").matches;

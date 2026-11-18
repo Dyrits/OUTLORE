@@ -1,6 +1,7 @@
 import type { MissionId, MissionSummary, ThreadId } from "@outlore/contracts";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
+import { canHover } from "../foundation/inputModality";
 import { colors } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -113,9 +114,10 @@ export function Quest({
             label: mission.title,
             onPress: mission.threadCount > 1 ? () => onToggle(mission.id) : null,
           }}
-          // The dot stays; on hover or focus the archive or delete mark shows at its right, in a place kept while unseen.
+          // On hover or focus the archive or delete mark shows at the row's end, in a place kept while unseen. A device that
+          // cannot hover has none: there the quest's header holds the archive button.
           hoverAccessory={(isShown) =>
-            Platform.OS === "web" && (
+            canHover && (
               <View style={[local.questMark, !isShown && local.actionsHidden]}>
                 <Pressable
                   accessibilityLabel={label}
@@ -186,7 +188,12 @@ export function RealmHeader({
       accessibilityLabel={name}
       accessibilityRole="button"
       onPress={onToggle}
-      style={(state) => [local.row, { paddingLeft: 6 }, (state.pressed || isHovered(state)) && local.rowHovered]}
+      style={(state) => [
+        local.row,
+        !canHover && local.rowTouch,
+        { paddingLeft: 6 },
+        (state.pressed || isHovered(state)) && local.rowHovered,
+      ]}
     >
       <FolderCue path={path} />
       <Text numberOfLines={1} style={[local.rowText, local.realmText]}>

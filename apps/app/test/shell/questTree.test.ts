@@ -170,12 +170,16 @@ describe("folding the sidebar's sections", () => {
 
 describe("the actions of a sidebar row", () => {
   it("show while the pointer is over the row or a keyboard focus is inside it", () => {
-    expect(areActionsShown({ hasKeyboardFocusWithin: false, isHovered: true })).toBe(true);
-    expect(areActionsShown({ hasKeyboardFocusWithin: true, isHovered: false })).toBe(true);
+    expect(areActionsShown({ canHover: true, hasKeyboardFocusWithin: false, isHovered: true })).toBe(true);
+    expect(areActionsShown({ canHover: true, hasKeyboardFocusWithin: true, isHovered: false })).toBe(true);
+  });
+
+  it("always show on a device that cannot hover, such as a phone", () => {
+    expect(areActionsShown({ canHover: false, hasKeyboardFocusWithin: false, isHovered: false })).toBe(true);
   });
 
   it("stay hidden otherwise, including after a click left the focus inside the row", () => {
-    expect(areActionsShown({ hasKeyboardFocusWithin: false, isHovered: false })).toBe(false);
+    expect(areActionsShown({ canHover: true, hasKeyboardFocusWithin: false, isHovered: false })).toBe(false);
   });
 });
 

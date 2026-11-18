@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
+import { canHover } from "../foundation/inputModality";
 import { stateTones } from "../foundation/theme";
 import { Chevron, useRowActions } from "./railActions";
 import { isHovered, local } from "./railStyles";
@@ -55,6 +56,7 @@ export function Row({
       onPress={onPress}
       style={(state) => [
         local.row,
+        !canHover && local.rowTouch,
         { paddingLeft: 6 + indent },
         isButton && local.buttonRest,
         (state.pressed || isHovered(state)) && (isButton ? local.buttonHovered : local.rowHovered),

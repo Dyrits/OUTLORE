@@ -97,6 +97,8 @@ export const local = StyleSheet.create({
   rowSelected: { backgroundColor: colors.controlActive },
   rowText: { color: colors.onGround, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.base },
   rowTextSelected: { color: colors.text, fontWeight: "600" },
+  // A finger needs a taller target than a pointer: rows on a device that cannot hover.
+  rowTouch: { minHeight: 40 },
   // A section's label row: the height and text size of the sidebar's other rows, so Realms and Borderlands read as rows.
   sectionRow: {
     alignItems: "center",

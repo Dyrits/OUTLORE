@@ -2,7 +2,7 @@ import { type ReactNode, useState } from "react";
 import { Platform, Pressable, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { emblemPaths } from "../foundation/emblems";
-import { isKeyboardFocus } from "../foundation/inputModality";
+import { canHover, isKeyboardFocus } from "../foundation/inputModality";
 import { colors } from "../foundation/theme";
 import { FoldChevron } from "../ui/foldChevron";
 import { areActionsShown, folderCueOf } from "./questTree";
@@ -155,7 +155,7 @@ export const useRowActions = () => {
     onBlur: () => setHasKeyboardFocusWithin(false),
     onFocus: () => setHasKeyboardFocusWithin(isKeyboardFocus()),
   };
-  const isShown = areActionsShown({ hasKeyboardFocusWithin, isHovered });
+  const isShown = areActionsShown({ canHover, hasKeyboardFocusWithin, isHovered });
   return {
     actionsStyle: [local.actions, !isShown && local.actionsHidden],
     focusProps,
