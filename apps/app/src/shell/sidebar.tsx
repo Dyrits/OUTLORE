@@ -14,7 +14,7 @@ import { FoldChevron } from "../ui/foldChevron";
 import { SettingsIcon } from "../ui/settingsIcons";
 import type { Place } from "./placeCatalog";
 import { DropTarget, RealmDragSource } from "./questDrag";
-import { placementsOf, type RealmListing, realmGroupsOf, reorderedRealmIds, toggledFold } from "./questTree";
+import { placementsOf, type RealmListing, reorderedRealmIds, toggledFold } from "./questTree";
 import { NewQuestIcon, NewRealmIcon } from "./railActions";
 import { railOutlineOf } from "./railOutline";
 import { Quest, RealmHeader } from "./railQuests";
@@ -181,7 +181,6 @@ export function Sidebar({
     );
   };
 
-  const { tied, untied } = realmGroupsOf(outline.realms);
   const rowOf = ({ quests, workspace, visibleQuests }: (typeof outline.realms)[number]) =>
     realmRow({ id: workspace.id, name: workspace.name, path: workspace.path, quests, visibleQuests });
   return (
@@ -199,11 +198,7 @@ export function Sidebar({
           label="Visit a realm"
           onPress={() => setIsCreating(true)}
         />
-        {!foldedSections.set.has("Realms") && tied.map(rowOf)}
-        {!foldedSections.set.has("Realms") && tied.length > 0 && untied.length > 0 && (
-          <View style={local.creationDivider} />
-        )}
-        {!foldedSections.set.has("Realms") && untied.map(rowOf)}
+        {!foldedSections.set.has("Realms") && outline.realms.map(rowOf)}
         <View style={local.creationDivider} />
         <SectionTitle
           isOpen={!foldedSections.set.has("Borderlands")}

@@ -30,17 +30,6 @@ export const placementsOf = (
   };
 };
 
-/**
- * The realms split for the sidebar (CHG-0170): those tied to a folder first, then those tied to none, each keeping the
- * order it was given; a thin line separates them when both have realms.
- */
-export const realmGroupsOf = <T extends { readonly workspace: Pick<WorkspaceChoice, "path"> }>(
-  realms: ReadonlyArray<T>,
-): { readonly tied: ReadonlyArray<T>; readonly untied: ReadonlyArray<T> } => ({
-  tied: realms.filter((each) => each.workspace.path !== null),
-  untied: realms.filter((each) => each.workspace.path === null),
-});
-
 /** What the folder icon after a realm's name says on hover: its full path; null where no icon shows, for a realm tied to no folder. */
 export const folderCueOf = (realm: Pick<WorkspaceChoice, "path">): string | null =>
   realm.path === null ? null : `Tied to ${realm.path}`;
@@ -191,18 +180,17 @@ export interface RealmListing {
 }
 
 /**
- * The order of all realms after one is dragged onto another within its group (tied to a folder, or tied to none): it
- * takes the other's place and the ones between shift by one. Null for a drop on itself or on a realm of the other group.
+ * The order of all realms after one is dragged onto another: it takes the other's place and the ones between shift by
+ * one. Null for a drop on itself or on an unknown realm.
  */
 export const reorderedRealmIds = (
-  realms: ReadonlyArray<{ readonly id: string; readonly path: string | null }>,
+  realms: ReadonlyArray<{ readonly id: string }>,
   movedId: string,
   targetId: string,
 ): ReadonlyArray<string> | null => {
   const moved = realms.find((each) => each.id === movedId);
   const target = realms.find((each) => each.id === targetId);
   if (moved === undefined || target === undefined || moved.id === target.id) return null;
-  if ((moved.path === null) !== (target.path === null)) return null;
   const without = realms.filter((each) => each.id !== movedId);
   const at = without.findIndex((each) => each.id === targetId);
   const from = realms.findIndex((each) => each.id === movedId);

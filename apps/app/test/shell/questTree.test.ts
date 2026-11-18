@@ -8,7 +8,6 @@ import {
   folderCueOf,
   placementsOf,
   questListRowsOf,
-  realmGroupsOf,
   recencyGroupsOf,
   reorderedRealmIds,
   sideQuestRowsOf,
@@ -208,42 +207,16 @@ describe("the full quest list's rows", () => {
   });
 });
 
-describe("the realms tied to a folder and those without", () => {
-  const tied = (name: string) => ({ workspace: realm(name, name) });
-  const untied = (name: string) => ({ workspace: realm(name, name, null) });
-
-  it("lists the realms tied to a folder first, then those without, each in its own order", () => {
-    const groups = realmGroupsOf([untied("Alpha"), tied("Beta"), untied("Gamma"), tied("Delta")]);
-    expect(groups.tied.map((each) => each.workspace.name)).toEqual(["Beta", "Delta"]);
-    expect(groups.untied.map((each) => each.workspace.name)).toEqual(["Alpha", "Gamma"]);
-  });
-
-  it("leaves a group empty when every realm is on one side", () => {
-    expect(realmGroupsOf([tied("Beta")])).toMatchObject({ tied: [{ workspace: { name: "Beta" } }], untied: [] });
-    expect(realmGroupsOf([untied("Alpha")])).toMatchObject({ tied: [], untied: [{ workspace: { name: "Alpha" } }] });
-  });
-
-  it("has two empty groups with no realm", () => {
-    expect(realmGroupsOf([])).toEqual({ tied: [], untied: [] });
-  });
-});
-
 describe("putting a dragged realm in another place", () => {
-  const realms = [
-    { id: "a", path: "/a" },
-    { id: "b", path: "/b" },
-    { id: "c", path: "/c" },
-    { id: "x", path: null },
-    { id: "y", path: null },
-  ];
-  it("takes the place of the realm it is dropped on, within its group", () => {
+  const realms = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "x" }, { id: "y" }];
+  it("takes the place of the realm it is dropped on", () => {
     expect(reorderedRealmIds(realms, "a", "c")).toEqual(["b", "c", "a", "x", "y"]);
     expect(reorderedRealmIds(realms, "c", "a")).toEqual(["c", "a", "b", "x", "y"]);
     expect(reorderedRealmIds(realms, "y", "x")).toEqual(["a", "b", "c", "y", "x"]);
+    expect(reorderedRealmIds(realms, "a", "y")).toEqual(["b", "c", "x", "y", "a"]);
   });
-  it("does nothing when dropped on itself or on a realm of the other group", () => {
+  it("does nothing when dropped on itself or on an unknown realm", () => {
     expect(reorderedRealmIds(realms, "a", "a")).toBeNull();
-    expect(reorderedRealmIds(realms, "a", "x")).toBeNull();
-    expect(reorderedRealmIds(realms, "x", "b")).toBeNull();
+    expect(reorderedRealmIds(realms, "a", "nope")).toBeNull();
   });
 });
