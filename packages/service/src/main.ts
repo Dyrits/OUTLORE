@@ -41,6 +41,7 @@ const liveLayer = Layer.unwrap(
       claude: yield* Config.String("OUTLORE_CLAUDE_PATH").pipe(Config.withDefault("claude")),
       codex: yield* Config.String("OUTLORE_CODEX_PATH").pipe(Config.withDefault("codex")),
       opencode: yield* Config.String("OUTLORE_OPENCODE_PATH").pipe(Config.withDefault("opencode")),
+      vibe: yield* Config.String("OUTLORE_VIBE_PATH").pipe(Config.withDefault("vibe-acp")),
     };
     // OUTLORE_RELAY_ORIGIN points pairing at another relay, such as one run locally for checks (device-pairing).
     const relayOrigin = yield* Config.String("OUTLORE_RELAY_ORIGIN").pipe(Config.withDefault(defaultRelayOrigin));

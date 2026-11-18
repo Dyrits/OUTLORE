@@ -3,8 +3,9 @@ import Svg, { Path } from "react-native-svg";
 import { colors } from "../foundation/theme";
 
 /**
- * Each harness's provider logo as a single filled path on a 24 by 24 grid: Claude and OpenCode from Simple Icons
- * (CC0), OpenAI from LobeHub's icon set (MIT). The marks remain their owners' trademarks and only identify the provider.
+ * Each harness's provider logo as a single filled path on a 24 by 24 grid: Claude, OpenCode and Mistral AI from
+ * Simple Icons (CC0), OpenAI from LobeHub's icon set (MIT). The marks remain their owners' trademarks and only
+ * identify the provider.
  */
 const marks = {
   claude: {
@@ -17,6 +18,10 @@ const marks = {
     rule: "evenodd",
   },
   opencode: { color: colors.text, path: "M22 24H2V0h20zM17 4.8H7v14.4h10z", rule: "evenodd" },
+  vibe: {
+    color: "#FA520F",
+    path: "M17.143 3.429v3.428h-3.429v3.429h-3.428V6.857H6.857V3.43H3.43v13.714H0v3.428h10.286v-3.428H6.857v-3.429h3.429v3.429h3.429v-3.429h3.428v3.429h-3.428v3.428H24v-3.428h-3.43V3.429z",
+  },
 } as const satisfies Record<HarnessName, { color: string; path: string; rule?: "evenodd" }>;
 
 /** The provider's logo for a thread's harness, shown beside the replies it writes. */

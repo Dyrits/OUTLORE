@@ -63,11 +63,12 @@ type Subject = {
 /** Stands in for the id of a thread about to be opened: every id has this length, so the size is the same. */
 const unopenedThreadId = "00000000-0000-0000-0000-000000000000";
 
-// Codex and OpenCode list their models only by running (HarnessTools.listModels), so they suggest none.
+// Codex, OpenCode and Vibe list their models only by running (HarnessTools.listModels), so they suggest none.
 const catalogModels = {
   claude: claudeModels,
   codex: [],
   opencode: [],
+  vibe: [],
 } as const satisfies Record<HarnessName, ReadonlyArray<ModelOption>>;
 
 /** The tokens of a part that may be absent: none when it is. */

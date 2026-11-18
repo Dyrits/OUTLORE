@@ -9,12 +9,17 @@ export {
   HarnessTools,
   harnesses,
   listOpenCodeEfforts,
+  listVibeModels,
   liveHarnessToolsLayer,
   makeClaudeHarness,
   makeCodexHarness,
   makeHarnessRouter,
   makeOpenCodeHarness,
+  makeVibeHarness,
   type OpenCodeOptions,
+  readVibeSignIn,
+  type VibeOptions,
+  vibePlanLimitsOf,
 } from "./harness/index.ts";
 export { serveLoopback } from "./server.ts";
 export { Service, type ServiceOptions, serviceLayer } from "./service.ts";

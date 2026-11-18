@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { EffortChoice, HarnessName, ModelOption, SignInState } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer } from "effect";
-import { invalid, type ServiceFailure, textFieldOf } from "../core/index.ts";
-import { accountEnvironmentOf, harnessFacts } from "./harnessCatalog.ts";
+import { fieldOf, invalid, type ServiceFailure, textFieldOf } from "../core/index.ts";
+import { accountEnvironmentOf, type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
 import { harnesses } from "./harnesses.ts";
 import { installHarnessPackage, updateTimeoutMillis } from "./harnessInstallation.ts";
 import { updateOf } from "./harnessVersions.ts";
@@ -109,6 +109,23 @@ const effortWarmingConcurrency = 2;
 /** How long the newest release is reused before the registry is asked again. */
 const latestLifetimeMillis = 30 * 60 * 1000;
 
+/** Where each registry publishes a package's newest release, and where in its answer the version is. */
+const releaseRegistries = {
+  // The npm registry's `latest` tag.
+  npm: {
+    urlOf: (packageName: string) => `https://registry.npmjs.org/${packageName}/latest`,
+    versionOf: (body: unknown) => textFieldOf(body, "version"),
+  },
+  // PyPI's JSON API, for a Python package (Vibe).
+  pypi: {
+    urlOf: (packageName: string) => `https://pypi.org/pypi/${packageName}/json`,
+    versionOf: (body: unknown) => textFieldOf(fieldOf(body, "info"), "version"),
+  },
+} as const satisfies Record<
+  HarnessFacts["releaseRegistry"],
+  { readonly urlOf: (packageName: string) => string; readonly versionOf: (body: unknown) => string | null }
+>;
+
 /** Reads each tool's own status command; nothing here sees a credential. */
 export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
   Layer.sync(HarnessTools, () => {
@@ -129,15 +146,16 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
 
     const latest = new Map<HarnessName, { readonly at: number; readonly version: string | null }>();
 
-    // The npm registry's `latest` tag; any failure reads as "not known", so an offline computer sees no update.
-    const readLatest = (harness: HarnessName) =>
-      Effect.tryPromise(async () => {
-        const response = await fetch(`https://registry.npmjs.org/${harnessFacts[harness].packageName}/latest`, {
-          signal: AbortSignal.timeout(8000),
-        });
+    // The harness's package registry; any failure reads as "not known", so an offline computer sees no update.
+    const readLatest = (harness: HarnessName) => {
+      const facts = harnessFacts[harness];
+      const registry = releaseRegistries[facts.releaseRegistry];
+      return Effect.tryPromise(async () => {
+        const response = await fetch(registry.urlOf(facts.packageName), { signal: AbortSignal.timeout(8000) });
         const body: unknown = await response.json();
-        return response.ok ? textFieldOf(body, "version") : null;
+        return response.ok ? registry.versionOf(body) : null;
       }).pipe(Effect.catch(() => Effect.succeed(null)));
+    };
 
     const findUpdate = Effect.fnUntraced(function* (harness: HarnessName, installed: string | null) {
       const now = yield* Clock.currentTimeMillis;
@@ -150,10 +168,12 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
     });
 
     const update = Effect.fnUntraced(function* (harness: HarnessName) {
-      const label = harnessFacts[harness].label;
+      const facts = harnessFacts[harness];
+      const label = facts.label;
+      // Vibe's ACP server has no update command; its `vibe` command updates it the way it was installed.
       const run = yield* runHarnessCommand(
-        commands[harness],
-        harnessFacts[harness].updateArgs,
+        facts.updateCommand ?? commands[harness],
+        facts.updateArgs,
         {},
         updateTimeoutMillis,
       );

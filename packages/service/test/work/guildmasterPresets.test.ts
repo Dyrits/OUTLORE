@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { BackupCompanion, MissionId, ThreadId } from "@outlore/contracts";
+import type { BackupCompanion, HarnessName, MissionId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { guildmaster, isIdle, say } from "../fixtures/guildmaster.ts";
 import { call, settle, withService } from "../fixtures/service.ts";
@@ -17,7 +17,7 @@ const waitOn = (place: Place) =>
 const codex: BackupCompanion = { accountId: null, effort: "default", harness: "codex", model: "gpt-5" };
 
 /** Sets Heavy to the given Companion with one backup. */
-const setHeavy = (primary: { effort: string; harness: "claude" | "codex" | "opencode"; model: string }) =>
+const setHeavy = (primary: { effort: string; harness: HarnessName; model: string }) =>
   Effect.gen(function* () {
     yield* call({
       _tag: "ChangeSettings",

@@ -10,6 +10,7 @@ import {
   makeClaudeHarness,
   makeCodexHarness,
   makeOpenCodeHarness,
+  makeVibeHarness,
   routeHarnesses,
   serviceLayer,
 } from "../../src/index.ts";
@@ -22,6 +23,7 @@ const commands = {
   claude: process.env.OUTLORE_CLAUDE_PATH ?? "claude",
   codex: process.env.OUTLORE_CODEX_PATH ?? "codex",
   opencode: process.env.OUTLORE_OPENCODE_PATH ?? "opencode",
+  vibe: process.env.OUTLORE_VIBE_PATH ?? "vibe-acp",
 };
 
 const live = (directory = realpathSync(temporary("outlore-live-"))) => {
@@ -32,6 +34,7 @@ const live = (directory = realpathSync(temporary("outlore-live-"))) => {
         claude: yield* makeClaudeHarness({ command: commands.claude, idleTimeout: "1 minute", sandboxProblem: null }),
         codex: yield* makeCodexHarness({ command: commands.codex, idleTimeout: "1 minute" }),
         opencode: yield* makeOpenCodeHarness({ command: commands.opencode, idleTimeout: "1 minute", sandbox: null }),
+        vibe: yield* makeVibeHarness({ command: commands.vibe, idleTimeout: "1 minute" }),
       });
     }),
   );

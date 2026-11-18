@@ -26,6 +26,7 @@ const sandboxAdvice = {
   },
   codex: null,
   opencode: null,
+  vibe: null,
 } as const satisfies Record<HarnessName, { readonly allowed: string; readonly asking: string } | null>;
 
 /** The sandbox advice a thread on this harness is given under these terms, or null for none. */

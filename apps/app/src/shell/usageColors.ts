@@ -6,6 +6,7 @@ const harnessColors = {
   claude: colors.warning,
   codex: colors.violet,
   opencode: colors.textMuted,
+  vibe: colors.success,
 } as const satisfies Record<HarnessName, string>;
 
 /** A harness's color; turns that recorded no harness are grey. */

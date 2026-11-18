@@ -45,10 +45,10 @@ describe("installing and updating harnesses", () => {
     updates.available.codex = "0.167.0";
     return Effect.gen(function* () {
       const before = yield* call({ _tag: "ListHarnesses" });
-      expect(before.harnesses.map((harness) => harness.update)).toEqual([null, "0.167.0", null]);
+      expect(before.harnesses.map((harness) => harness.update)).toEqual([null, "0.167.0", null, null]);
       const after = yield* call({ _tag: "UpdateHarness", harness: "codex" });
       expect(updates.updated).toEqual(["codex"]);
-      expect(after.harnesses.map((harness) => harness.update)).toEqual([null, null, null]);
+      expect(after.harnesses.map((harness) => harness.update)).toEqual([null, null, null, null]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -78,7 +78,7 @@ describe("signing in to a harness", () => {
     const { layer } = withHarnesses();
     return Effect.gen(function* () {
       const claude = yield* call({ _tag: "SignInAccount", accountId: null, harness: "claude" });
-      expect(claude?.harnesses.map((harness) => harness.name)).toEqual(["claude", "codex", "opencode"]);
+      expect(claude?.harnesses.map((harness) => harness.name)).toEqual(["claude", "codex", "opencode", "vibe"]);
       expect(yield* call({ _tag: "SignInAccount", accountId: null, harness: "opencode" })).toBeNull();
     }).pipe(Effect.provide(layer));
   });
@@ -102,7 +102,11 @@ describe("signing in to a harness", () => {
         writeFileSync(join(folder, "fail"), "");
         const failure = yield* tools.openSignIn("claude", null).pipe(Effect.flip);
         expect(failure.message).toBe("Claude Code did not sign in. one two no way");
-      }).pipe(Effect.provide(liveHarnessToolsLayer({ claude: command, codex: "codex", opencode: "opencode" })));
+      }).pipe(
+        Effect.provide(
+          liveHarnessToolsLayer({ claude: command, codex: "codex", opencode: "opencode", vibe: "vibe-acp" }),
+        ),
+      );
     },
   );
 

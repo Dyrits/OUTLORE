@@ -20,6 +20,7 @@ describe("tabsOf", () => {
     harness("claude", [own({ models: [model("sonnet")] }), added({ models: [model("opus")] })]),
     harness("codex", [own()]),
     harness("opencode", [own()], "not installed"),
+    harness("vibe", [own()]),
   ]);
 
   it("makes one tab per account of a harness, each with that account's models", () => {
@@ -29,6 +30,7 @@ describe("tabsOf", () => {
       ["claude", work, "Work"],
       ["codex", null, "Mac"],
       ["opencode", null, "Mac"],
+      ["vibe", null, "Mac"],
     ]);
     expect(tabs[0]?.models.map((option) => option.id)).toEqual(["sonnet"]);
     expect(tabs[1]?.models.map((option) => option.id)).toEqual(["opus"]);
@@ -61,7 +63,7 @@ describe("tabsOf", () => {
   });
 
   it("lists every harness before the host has read its accounts", () => {
-    expect(tabsOf(null, true, { accountId: null, harness: "claude" })).toHaveLength(3);
+    expect(tabsOf(null, true, { accountId: null, harness: "claude" })).toHaveLength(4);
   });
 });
 

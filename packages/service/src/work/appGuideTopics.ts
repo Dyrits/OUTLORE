@@ -19,7 +19,7 @@ export type GuideTopic = {
 export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
-      "Outlore is a local-first desktop app for working with AI agents. It runs Claude Code, Codex, and OpenCode, the owner's own command-line tools and accounts, in one place. Outlore does not resell model access: the owner pays each provider directly.",
+      "Outlore is a local-first desktop app for working with AI agents. It runs Claude Code, Codex, OpenCode, and Mistral Vibe, the owner's own command-line tools and accounts, in one place. Outlore does not resell model access: the owner pays each provider directly.",
       "A piece of work is a quest. Inside it, the owner or a thread opens errands, each of which can use its own harness, model, and effort, and the threads of a quest talk to each other. The quest keeps a briefing and a journal that every thread in it reads.",
       "Everything is stored on the owner's computer, in a database in the app's data folder. Work happens in realms (folders or repositories) the owner chooses.",
       "Outlore is in alpha and serves one owner, who may pair several devices.",
@@ -188,8 +188,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "A thread has a harness (Claude Code, Codex, or OpenCode), a model (called its Companion), and an effort level. The owner chooses them when starting a thread and may change them during a turn; the next turn uses the new choice. When a new session is needed, a handover replays stored message text: earlier images appear as names and tool calls are not replayed. The oldest messages are omitted with a notice if the replay exceeds half the new model's context window.",
-      "Outlore looks for the claude, codex, and opencode commands on the computer's PATH, and only the ones the owner means to use are needed. The Workshop's Providers section shows what is available and can install a missing one (this needs Node.js and npm with a writable global install folder); each harness handles its own sign-in.",
+      "A thread has a harness (Claude Code, Codex, OpenCode, or Mistral Vibe), a model (called its Companion), and an effort level. The owner chooses them when starting a thread and may change them during a turn; the next turn uses the new choice. When a new session is needed, a handover replays stored message text: earlier images appear as names and tool calls are not replayed. The oldest messages are omitted with a notice if the replay exceeds half the new model's context window.",
+      "Outlore looks for the claude, codex, opencode, and vibe-acp commands on the computer's PATH, and only the ones the owner means to use are needed. The Workshop's Providers section shows what is available and can install a missing one (this needs Node.js and npm with a writable global install folder, or uv for Mistral Vibe); each harness handles its own sign-in.",
       "Accounts: each harness can have the computer's own sign-in plus accounts added in Outlore, each with its own folder, such as a second Claude account called Work. A thread runs on the account chosen for it.",
       "Backup companions: when a turn fails (usage limit, overload, model unavailable, signed out), the thread can be handed over to the next backup Companion, which may be on another harness; the switch is a visible line in the conversation.",
     ].join("\n"),
@@ -202,6 +202,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "claude",
       "codex",
       "opencode",
+      "vibe",
+      "mistral",
       "handover",
       "switch",
       "account",

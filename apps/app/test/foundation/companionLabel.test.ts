@@ -7,6 +7,8 @@ describe("companionLabelOf", () => {
     expect(companionLabelOf("claude", "claude-opus-4-1-20250805", "opus")).toBe("Anthropic - Opus 4.1");
     expect(companionLabelOf("claude", "claude-3-5-haiku-20241022", "haiku")).toBe("Anthropic - Haiku 3.5");
     expect(companionLabelOf("codex", "gpt-5.1-codex", "default")).toBe("OpenAI - GPT-5.1 Codex");
+    expect(companionLabelOf("vibe", "devstral-2", "default")).toBe("Mistral - Devstral 2");
+    expect(companionLabelOf("vibe", "mistral-large-4", "default")).toBe("Mistral - Mistral Large 4");
   });
 
   it("falls back to the chosen model under the harness's company when none was reported", () => {

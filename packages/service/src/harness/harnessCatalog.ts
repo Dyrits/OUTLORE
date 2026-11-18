@@ -33,10 +33,14 @@ export type HarnessFacts = {
   readonly fixedModels: ReadonlyArray<ModelOption> | null;
   /** Whether the harness asks its permission prompts through the `answer_prompt` thread tool (ADR 0005). */
   readonly hasPromptTool: boolean;
+  /** The tool that installs the harness's official package when the Workshop offers Install: npm, or uv for a Python package. */
+  readonly installVia: "npm" | "uv";
   /** The harness's name as the owner reads it. */
   readonly label: string;
-  /** The package whose `latest` tag on the npm registry is the harness's newest release. */
+  /** The package whose newest release is the harness's newest; read from its registry (`releaseRegistry`). */
   readonly packageName: string;
+  /** Where the newest release's version is read: the npm registry or PyPI's JSON API. */
+  readonly releaseRegistry: "npm" | "pypi";
   /** The arguments of the harness's own sign-in command. */
   readonly signInArgs: ReadonlyArray<string>;
   /**
@@ -46,6 +50,8 @@ export type HarnessFacts = {
   readonly signInNeedsNoTerminal: boolean;
   /** The arguments of the harness's own command that updates it, which knows how it was installed. */
   readonly updateArgs: ReadonlyArray<string>;
+  /** The executable the update command runs on when it is not the harness's own command (Vibe updates through `vibe`); else null. */
+  readonly updateCommand: string | null;
 };
 
 /** Each harness's facts, by name. */
@@ -56,22 +62,28 @@ export const harnessFacts = {
     configVariable: "CLAUDE_CONFIG_DIR",
     fixedModels: claudeModels,
     hasPromptTool: true,
+    installVia: "npm",
     label: "Claude Code",
     packageName: "@anthropic-ai/claude-code",
+    releaseRegistry: "npm",
     signInArgs: ["auth", "login"],
     signInNeedsNoTerminal: true,
     updateArgs: ["update"],
+    updateCommand: null,
   },
   codex: {
     approvedCommandAdvice: "",
     configVariable: "CODEX_HOME",
     fixedModels: null,
     hasPromptTool: false,
+    installVia: "npm",
     label: "Codex",
     packageName: "@openai/codex",
+    releaseRegistry: "npm",
     signInArgs: ["login"],
     signInNeedsNoTerminal: true,
     updateArgs: ["update"],
+    updateCommand: null,
   },
   opencode: {
     approvedCommandAdvice: "",
@@ -79,11 +91,31 @@ export const harnessFacts = {
     configVariable: "XDG_DATA_HOME",
     fixedModels: null,
     hasPromptTool: false,
+    installVia: "npm",
     label: "OpenCode",
     packageName: "opencode-ai",
+    releaseRegistry: "npm",
     signInArgs: ["auth", "login"],
     signInNeedsNoTerminal: false,
     updateArgs: ["upgrade"],
+    updateCommand: null,
+  },
+  vibe: {
+    approvedCommandAdvice: "",
+    // Mistral Vibe keeps its sign-in, sessions, and configuration under `$VIBE_HOME` (default `~/.vibe`).
+    configVariable: "VIBE_HOME",
+    fixedModels: null,
+    hasPromptTool: false,
+    // Vibe is a Python package, installed with uv; its `vibe` command updates it the way it was installed.
+    installVia: "uv",
+    label: "Mistral Vibe",
+    packageName: "mistral-vibe",
+    releaseRegistry: "pypi",
+    signInArgs: ["--setup"],
+    // `vibe-acp --setup` is an interactive screen, so it needs a Terminal window (like OpenCode).
+    signInNeedsNoTerminal: false,
+    updateArgs: ["update"],
+    updateCommand: "vibe",
   },
 } as const satisfies Record<HarnessName, HarnessFacts>;
 
@@ -92,10 +124,11 @@ export const harnessLabels = {
   claude: harnessFacts.claude.label,
   codex: harnessFacts.codex.label,
   opencode: harnessFacts.opencode.label,
+  vibe: harnessFacts.vibe.label,
 } as const satisfies Record<HarnessName, string>;
 
 /** Every harness, in the order pickers list them. */
-export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode"];
+export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode", "vibe"];
 
 /** The environment that points a harness at an account's folder; empty for the computer's own sign-in. */
 export const accountEnvironmentOf = (harness: HarnessName, configDirectory: string | null): Record<string, string> =>

@@ -169,7 +169,7 @@ _Avoid_: Worktree, fork, sandbox
 ## Execution
 
 **Harness**:
-An agent runtime that carries out a thread's turns: Claude Code, Codex, or OpenCode.
+An agent runtime that carries out a thread's turns: Claude Code, Codex, OpenCode, or Mistral Vibe.
 _Avoid_: Bot, engine, runner
 
 **Agent**:

@@ -35,4 +35,6 @@ export {
 } from "./runners.ts";
 export { folderEscapeOf, resolvedFolderOf } from "./threadFolder.ts";
 export { qualifiedToolNameOf, toolServerName } from "./toolNames.ts";
+export { makeVibeHarness, type VibeOptions } from "./vibe.ts";
+export { listVibeModels, readVibeSignIn, vibePlanLimitsOf } from "./vibeAccount.ts";
 export { workspaceWorktreesOf } from "./worktrees.ts";

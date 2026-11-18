@@ -154,7 +154,9 @@ describe("running OpenCode threads", () => {
       // A pick now answers from what was kept, without opening a session.
       expect(yield* tools.listEfforts("opencode", null, "provider/model-a")).toEqual(["none", "high"]);
       expect(sessions()).toBe(before);
-    }).pipe(Effect.provide(liveHarnessToolsLayer({ claude: "claude", codex: "codex", opencode: command })));
+    }).pipe(
+      Effect.provide(liveHarnessToolsLayer({ claude: "claude", codex: "codex", opencode: command, vibe: "vibe-acp" })),
+    );
   });
 
   it.live("reads an OpenCode account's Go plan limits from its own local API, once, in three windows", () => {

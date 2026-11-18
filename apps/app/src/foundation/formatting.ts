@@ -13,6 +13,7 @@ export const harnessLabels = {
   claude: "Claude Code",
   codex: "Codex",
   opencode: "OpenCode",
+  vibe: "Mistral Vibe",
 } as const satisfies Record<HarnessName, string>;
 
 /** A model's label from its harness's list, or its identifier when the list does not name it. */
@@ -39,10 +40,12 @@ export const runnerSummaryOf = (
 };
 
 /** Each harness's usual model company, when the model's own identifier names none. */
-const harnessProviders = { claude: "Anthropic", codex: "OpenAI", opencode: "OpenCode" } as const satisfies Record<
-  HarnessName,
-  string
->;
+const harnessProviders = {
+  claude: "Anthropic",
+  codex: "OpenAI",
+  opencode: "OpenCode",
+  vibe: "Mistral",
+} as const satisfies Record<HarnessName, string>;
 
 const titled = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
@@ -62,6 +65,9 @@ const knownModelOf = (id: string): { name: string; provider: string } | null => 
   // OpenAI: `gpt-5.1-codex` as "GPT-5.1 Codex".
   const gpt = /^gpt-(.+)$/.exec(withoutDate);
   if (gpt !== null) return { name: `GPT-${(gpt[1] ?? "").split("-").map(titled).join(" ")}`, provider: "OpenAI" };
+  // Mistral: `mistral-large-4` as "Mistral Large 4", `devstral-2` as "Devstral 2".
+  if (/^(mistral|devstral|codestral|ministral|pixtral)-/.test(withoutDate))
+    return { name: withoutDate.split("-").map(titled).join(" "), provider: "Mistral" };
   return null;
 };
 

@@ -55,4 +55,17 @@ describe("installing harness packages", () => {
       ]);
     }),
   );
+
+  it.effect("installs Mistral Vibe with uv, and names uv as the prerequisite", () =>
+    Effect.gen(function* () {
+      const calls: Array<unknown> = [];
+      const run: typeof runHarnessCommand = (...args) => {
+        calls.push(args);
+        return Effect.succeed({ code: null, output: "", stdout: "" });
+      };
+      const failure = yield* installHarnessPackage("vibe", run, "darwin").pipe(Effect.flip);
+      expect(calls).toEqual([["uv", ["tool", "install", "--python", "3.14", "mistral-vibe"], {}, 300000]]);
+      expect(failure.message).toContain("Install uv, then try again.");
+    }),
+  );
 });

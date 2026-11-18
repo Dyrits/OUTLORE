@@ -11,6 +11,7 @@ import {
   makeClaudeHarness,
   makeCodexHarness,
   makeOpenCodeHarness,
+  makeVibeHarness,
   routeHarnesses,
   serviceLayer,
 } from "../../src/index.ts";
@@ -136,6 +137,11 @@ export const withHarnesses = (
           instructionsFolder: join(directory, "instructions"),
           prefixArgs: [join(import.meta.dirname, "stand-in-opencode.mjs")],
           sandbox: openCodeSandbox(directory),
+        }),
+        vibe: yield* makeVibeHarness({
+          command: process.execPath,
+          idleTimeout,
+          prefixArgs: [join(import.meta.dirname, "stand-in-vibe.mjs")],
         }),
       });
     }),

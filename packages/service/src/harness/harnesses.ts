@@ -10,6 +10,8 @@ import type { SignInStatus } from "./harnessTools.ts";
 import { harnessEnvironmentOf, runHarnessCommand, startRpcProcess } from "./lineProcess.ts";
 import { detectOpenCodeSandbox } from "./openCodeSandbox.ts";
 import { listOpenCodeEfforts, makeOpenCodeHarness } from "./opencode.ts";
+import { makeVibeHarness } from "./vibe.ts";
+import { listVibeModels, readVibeSignIn } from "./vibeAccount.ts";
 
 // The harness registry (provider-accounts): each harness defined once, by its facts, its turn adapter, and
 // what Outlore asks its own tool about sign-in and models. Adding a harness adds one entry here and one line in `makeHarnessRouter`.
@@ -169,8 +171,15 @@ const opencode: HarnessDefinition = {
     ),
 };
 
+const vibe: HarnessDefinition = {
+  ...harnessFacts.vibe,
+  makeAdapter: ({ command, idleTimeout }) => makeVibeHarness({ command, idleTimeout }),
+  readModels: (command, configDirectory) => listVibeModels(command, configDirectory),
+  readSignIn: (command, env) => readVibeSignIn(command, env),
+};
+
 /** Every harness, by name. */
-export const harnesses = { claude, codex, opencode } satisfies Record<HarnessName, HarnessDefinition>;
+export const harnesses = { claude, codex, opencode, vibe } satisfies Record<HarnessName, HarnessDefinition>;
 
 /** The adapter the app runs turns through: each harness's own, started from its definition (provider-accounts). */
 export const makeHarnessRouter = (commands: Record<HarnessName, string>, options: Omit<AdapterOptions, "command">) => {
@@ -179,5 +188,6 @@ export const makeHarnessRouter = (commands: Record<HarnessName, string>, options
     claude: adapterOf("claude"),
     codex: adapterOf("codex"),
     opencode: adapterOf("opencode"),
+    vibe: adapterOf("vibe"),
   } satisfies Record<HarnessName, unknown>).pipe(Effect.map(routeHarnesses));
 };

@@ -54,9 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume Mistral Vibe as a fourth harness (CHG-0520, pushed to `origin/main` with this handoff; open: a live check with a real `vibe-acp`, and the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-2209-mistral-vibe-provider.md). Handoffs are shared and committed.
+
 - To resume queueing by default with Steer and Interrupt on a queued message (CHG-0519, pushed to `origin/main` with this handoff; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-2142-queue-steer-interrupt.md). Handoffs are shared and committed.
 
 - To resume the summons ring, the teal "your turn" dot, the quest list's archive button and archiving an errand on its own (CHG-0512 to CHG-0516, pushed to `origin/main` with this handoff; open: the owner's look in a window and on a phone; and another session's uncommitted CHG-0514 needs the next free number), read the [current handoff](.agents/handoffs/2026-11-18-2105-summons-your-turn-errand-archive.md). Handoffs are shared and committed.
-
-- To resume the plan-limit rings with the shortest window outermost (CHG-0511, pushed to `origin/main` with this handoff; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-2101-usage-rings-order.md). Handoffs are shared and committed.
 
