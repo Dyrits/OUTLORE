@@ -51,7 +51,9 @@ export const local = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  emptyRealm: {
+  // A group with nothing in it yet: the sidebar's two sections, and a realm without quests. Muted, italic, and in
+  // line with the text of the rows the group would list.
+  emptyGroup: {
     color: colors.textMuted,
     fontFamily: fonts.sans,
     fontSize: fontSizes.md,

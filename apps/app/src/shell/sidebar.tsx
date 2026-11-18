@@ -166,7 +166,7 @@ export function Sidebar({
             />
           </RealmDragSource>
           {failureUnder(realm.id)}
-          {!isClosed && realm.quests.length === 0 && <Text style={local.emptyRealm}>No quest in this realm yet.</Text>}
+          {!isClosed && realm.quests.length === 0 && <Text style={local.emptyGroup}>No quest in this realm yet.</Text>}
           {!isClosed &&
             realm.visibleQuests.map((mission) => (
               <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
@@ -194,6 +194,9 @@ export function Sidebar({
           label="Visit a realm"
           onPress={() => setIsCreating(true)}
         />
+        {!isFolded("Realms") && outline.realms.length === 0 && (
+          <Text style={local.emptyGroup}>No realm to visit yet.</Text>
+        )}
         {!isFolded("Realms") && outline.realms.map(realmRow)}
         <Divider />
         <SectionTitle
@@ -209,6 +212,9 @@ export function Sidebar({
           label="Start a quest"
           onPress={() => startQuest("none", null)}
         />
+        {!isFolded("Borderlands") && placements.borderlands.length === 0 && (
+          <Text style={local.emptyGroup}>No quest in the Borderlands yet.</Text>
+        )}
         {(isFolded("Borderlands") ? [] : borderlandQuests).map((mission) => (
           <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
         ))}
