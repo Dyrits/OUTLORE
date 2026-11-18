@@ -55,7 +55,6 @@ function SideQuests({
             />
           ))}
           <Row
-            accessory={<StateDot state={thread.state} />}
             fold={{
               isOpen: !outline.collapsed.has(thread.id),
               label: thread.title,
@@ -64,6 +63,7 @@ function SideQuests({
             indent={depth * indentStep}
             isSelected={selectedThread === thread.id}
             label={foldedCount > 0 ? `${thread.title} +${foldedCount}` : thread.title}
+            leading={<StateDot state={thread.state} />}
             onPress={() => onOpenThread(missionId, thread.id)}
             textStyle={local.sideQuestText}
           />
@@ -108,7 +108,6 @@ export function Quest({
       {/* Only the quest's own row is picked up; its errands go with it. */}
       <DragSource missionId={mission.id}>
         <Row
-          accessory={<StateDot state={mission.state} />}
           fold={{
             isOpen,
             label: mission.title,
@@ -132,6 +131,7 @@ export function Quest({
           }
           isSelected={isHere && (openThread === null || openThread === mission.topThreadId)}
           label={mission.title}
+          leading={<StateDot state={mission.state} />}
           onPress={() => onOpenMission(mission.id)}
         />
       </DragSource>

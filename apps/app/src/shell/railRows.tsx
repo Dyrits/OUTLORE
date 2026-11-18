@@ -23,6 +23,7 @@ export function Row({
   accessory,
   hoverAccessory,
   indent = 0,
+  leading,
   isSelected,
   fold,
   label,
@@ -33,6 +34,8 @@ export function Row({
   /** What stands at the end only with the row's marks, on hover or focus, given whether they show. */
   hoverAccessory?: (isShown: boolean) => ReactNode;
   indent?: number;
+  /** What stands before the label, after the fold mark, such as a state dot. */
+  leading?: ReactNode;
   isSelected: boolean;
   label: string;
   /** The fold mark before the label of a quest or errand row; null `onPress` keeps its place empty. */
@@ -55,6 +58,7 @@ export function Row({
       ]}
     >
       {fold !== undefined && <Chevron {...fold} focusProps={focusProps} isShown={isShown} />}
+      {leading}
       <Text numberOfLines={1} style={[local.rowText, isSelected && local.rowTextSelected, textStyle]}>
         {label}
       </Text>
