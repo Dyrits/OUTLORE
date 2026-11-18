@@ -44,15 +44,24 @@ export function Chevron({
 
 /** The sword that marks a quest elsewhere, with a plus in its open corner: the mark of starting a quest. */
 export function NewQuestIcon({ color }: { color: string }) {
-  return <CreationIcon color={color} emblem="sword" plus="M6 2.5v6M3 5.5h6" />;
+  return <CreationIcon color={color} paths={emblemPaths.sword} plus="M6 2.5v6M3 5.5h6" />;
 }
 
-/** The castle with a small plus in its upper-left corner: the mark of creating a realm. */
+/**
+ * A compass with a small plus in its upper-left corner: the mark of visiting a new realm. The compass is drawn smaller
+ * than the sword so that the plus clears its rim.
+ */
 export function NewRealmIcon({ color }: { color: string }) {
-  return <CreationIcon color={color} emblem="castle" plus="M6 1v5M3.5 3.5h5" />;
+  return (
+    <CreationIcon
+      color={color}
+      paths={["M13 5.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15z", "M16.5 9.5l-2 4.5-4.5 2 2-4.5z"]}
+      plus="M5 2.5v5M2.5 5h5"
+    />
+  );
 }
 
-function CreationIcon({ color, emblem, plus }: { color: string; emblem: "sword" | "castle"; plus: string }) {
+function CreationIcon({ color, paths, plus }: { color: string; paths: readonly string[]; plus: string }) {
   return (
     <Svg
       fill="none"
@@ -64,7 +73,7 @@ function CreationIcon({ color, emblem, plus }: { color: string; emblem: "sword" 
       viewBox="0 0 24 24"
       width={18}
     >
-      {emblemPaths[emblem].map((d) => (
+      {paths.map((d) => (
         <Path d={d} key={d} />
       ))}
       <Path d={plus} />
