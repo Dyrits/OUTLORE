@@ -52,10 +52,6 @@ export function Shell(
     location: Location;
     dispatch: Dispatch<NavigationEvent>;
     details: DetailsToggle | null;
-    /** Whether the Workshop (Settings) is the screen shown, which its top-bar icon shows. */
-    isWorkshopOpen: boolean;
-    /** Opens the Workshop, or from it goes back to where the owner was before. */
-    onWorkshop: () => void;
     /** The place the content shows, told to Chronicler. */
     place: Place | null;
     rightPanel: RightPanel;
@@ -66,7 +62,6 @@ export function Shell(
   },
 ) {
   const { width } = useWindowDimensions();
-  const workshop = { isOpen: props.isWorkshopOpen, onToggle: props.onWorkshop };
   const [isHidden, setIsHidden] = useState(readHidden);
   const [storedRailWidth, setRailWidth] = useState(readRailWidth);
   // Held to a quarter of the window again whenever the window changes size; the remembered width stays as dragged.
@@ -262,7 +257,6 @@ export function Shell(
                   setIsMenuOpen(!isMenuOpen);
                 },
               }}
-              workshop={workshop}
             />
             <View style={[local.narrowContent, isNarrowCovered && local.hidden]}>{props.children}</View>
             {isMenuOpen && (
@@ -284,7 +278,7 @@ export function Shell(
           <CompanionTabOf.Provider value={isCompanionShown ? pillId : null}>
             <TopBarShown.Provider value={true}>
               <View style={local.window}>
-                <TopBar chronicler={chroniclerToggle} client={props.client} details={null} workshop={workshop} />
+                <TopBar chronicler={chroniclerToggle} client={props.client} details={null} />
                 <View style={local.body}>
                   <View style={local.frame}>
                     {!isHidden && (

@@ -5,6 +5,10 @@ describe("the Settings sections", () => {
   it("holds the Connectors section, where the Charter's Code Mode switch went", () => {
     expect(settingsSections.map((section) => section.id)).toContain("connectors");
   });
+
+  it("holds the Reserves section, the usage report that used to be a place of its own", () => {
+    expect(settingsSections.map((section) => section.id)).toContain("reserves");
+  });
 });
 
 describe("resuming the Workshop after an appearance change", () => {

@@ -14,6 +14,7 @@ import { useHasSidebar, useHasTopBar } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { UsageScreen } from "../shell/usagePage";
 import { Choice } from "../ui/pickers";
 import { AccountBudgetsCard } from "./accountBudgetsCard";
 import { BrowsableRootsCard } from "./browsableRootsCard";
@@ -256,6 +257,9 @@ export function SettingsScreen({
                   saveLabel="Save global budget"
                 />
               </SettingsCard>
+            </Section>
+            <Section active={active} id="reserves">
+              <UsageScreen client={client} isEmbedded />
             </Section>
             <Section active={active} id="updates">
               <UpdatesCard />

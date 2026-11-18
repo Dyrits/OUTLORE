@@ -12,6 +12,7 @@ import { type Destination, type MoveConfirmation, moveConfirmationOf } from "../
 import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
 import { FoldChevron } from "../ui/foldChevron";
+import { SettingsIcon } from "../ui/settingsIcons";
 import { DropTarget, RealmDragSource } from "./questDrag";
 import { placementsOf, type RealmListing, reorderedRealmIds, toggledFold } from "./questTree";
 import { NewQuestIcon, NewRealmIcon } from "./railActions";
@@ -40,6 +41,8 @@ export function Sidebar({
   onOpenMission,
   onOpenRealmQuests,
   onOpenThread,
+  isWorkshopOpen,
+  onWorkshop,
   openMission,
   openThread,
 }: {
@@ -51,6 +54,10 @@ export function Sidebar({
   onOpenRealmQuests: (listing: RealmListing) => void;
   /** Opens an errand of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
+  /** Whether the Workshop (Settings) is the screen shown, which its row shows. */
+  isWorkshopOpen: boolean;
+  /** Opens the Workshop, or from it goes back to where the owner was before. */
+  onWorkshop: () => void;
   openMission: MissionId | null;
   /** The errand open in the open quest, or null for the quest itself. */
   openThread: ThreadId | null;
@@ -220,7 +227,7 @@ export function Sidebar({
         )}
       </ScrollView>
       <View style={local.footer}>
-        <Spending client={client} />
+        <Spending client={client} isWorkshopOpen={isWorkshopOpen} onWorkshop={onWorkshop} />
       </View>
       {pendingMove !== null && (
         <MoveQuestModal
@@ -260,19 +267,40 @@ function SectionTitle({ isOpen, onToggle, title }: { isOpen: boolean; onToggle: 
 }
 
 /**
- * The foot of the sidebar: the global budget's meters, when it has limits, and the plans' limit rings.
+ * The foot of the sidebar, between lines: the global budget's meters, when it has limits, and the plans' limit rings,
+ * then the Workshop's row, whose gear stays pressed while the Workshop is shown and which, pressed again, goes back to
+ * where the owner was before.
  */
-function Spending({ client }: { client: ServiceClient }) {
+function Spending({
+  client,
+  isWorkshopOpen,
+  onWorkshop,
+}: {
+  client: ServiceClient;
+  isWorkshopOpen: boolean;
+  onWorkshop: () => void;
+}) {
   const { data: global } = useServiceQuery(client, { _tag: "ReadBudget", missionId: null }, "budget:global");
+  const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
   const hasLimits = global !== null && (global.limits.cost !== null || global.limits.tokens !== null);
+  const hasRings =
+    budgets?.some((budget) => budget.planLimits !== null && budget.planLimits.windows.length > 0) ?? false;
   return (
     <>
+      <View style={local.creationDivider} />
       {hasLimits && (
         <View style={local.spending}>
           <ReserveRows use={global} />
         </View>
       )}
-      {global !== null && <PlanLimitRings client={client} />}
+      {hasRings && <PlanLimitRings client={client} />}
+      {(hasLimits || hasRings) && <View style={local.creationDivider} />}
+      <Row
+        isSelected={isWorkshopOpen}
+        label="Workshop"
+        leading={<SettingsIcon name="gear" size={18} tint={colors.textSecondary} />}
+        onPress={onWorkshop}
+      />
     </>
   );
 }

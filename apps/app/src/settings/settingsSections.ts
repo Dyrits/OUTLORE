@@ -8,6 +8,7 @@ export const settingsSections = [
   { icon: "monitor", id: "remote", label: "Remote access" },
   { icon: "chat", id: "messaging", label: "Messaging" },
   { icon: "layers", id: "limits", label: "Limits" },
+  { icon: "gem", id: "reserves", label: "Reserves" },
   { icon: "gear", id: "updates", label: "Updates" },
 ] as const;
 

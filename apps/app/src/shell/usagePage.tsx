@@ -1,5 +1,5 @@
 import type { UsageDimension, UsageFilter, UsagePeriod } from "@outlore/contracts";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
@@ -27,7 +27,16 @@ const metrics: ReadonlyArray<UsageMetric> = ["Cost", "Tokens"];
  * Companion (model), realm, and quest, over the last 7 or 30 days or a range, as cost or tokens. Choosing a row, a
  * harness, or a day narrows the totals and the turn records to it, and leaves the other rows in view to choose instead.
  */
-export function UsageScreen({ client }: { client: ServiceClient }) {
+/** The report's body: scrolling on a page of its own, plain where a Workshop section already scrolls. */
+function Body({ children, isEmbedded }: { children: ReactNode; isEmbedded: boolean }) {
+  return isEmbedded ? (
+    <View style={local.content}>{children}</View>
+  ) : (
+    <ScrollView contentContainerStyle={local.content}>{children}</ScrollView>
+  );
+}
+
+export function UsageScreen({ client, isEmbedded = false }: { client: ServiceClient; isEmbedded?: boolean }) {
   const [period, setPeriod] = useState<UsagePeriod>({ _tag: "Days", days: 30 });
   const [isCustom, setIsCustom] = useState(false);
   const [range, setRange] = useState({ from: "", to: "" });
@@ -57,8 +66,8 @@ export function UsageScreen({ client }: { client: ServiceClient }) {
   const breakdown = report?.breakdowns.find((candidate) => candidate.dimension === dimension);
   const notice = report === null ? null : noticeOf(report.gaps);
   return (
-    <View style={local.page}>
-      <ScrollView contentContainerStyle={local.content}>
+    <View style={isEmbedded ? undefined : local.page}>
+      <Body isEmbedded={isEmbedded}>
         {error !== null && <Text style={local.invalid}>{error}</Text>}
         {notice !== null && (
           <View accessibilityLabel="Partial data" style={local.notice}>
@@ -132,7 +141,7 @@ export function UsageScreen({ client }: { client: ServiceClient }) {
             <Estimates />
           </>
         )}
-      </ScrollView>
+      </Body>
     </View>
   );
 }
