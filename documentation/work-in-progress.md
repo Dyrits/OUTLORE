@@ -2,7 +2,7 @@
 
 ## The `!` terminal in an own copy · 2026-11-18 · built and tested, the owner's look pending
 
-CHG-0455: a thread working in its own copy opens the `!` terminal in that worktree (`ownCopy` on the thread's conversation view, `terminalFolderOf`). Built on `worktree/own-copy` in `.worktrees/bang-worktree` (branch `worktree/bang-worktree`), so it merges after own copy; not pushed. The owner's rule: a thread keeps one working folder; another place means a side-quest, so hand-made worktrees are not followed. Open: a window check on an own copy; the full suite was not run.
+CHG-0455: a thread working in its own copy opens the `!` terminal in that worktree (`ownCopy` on the thread's conversation view, `terminalFolderOf`). Built on `worktree/own-copy` in `.worktrees/bang-worktree` (branch `worktree/bang-worktree`), so it merges after own copy; not pushed. The owner's rule: a thread keeps one working folder; another place means a side-quest, so hand-made worktrees are not followed. Open: a window check on an own copy; the full suite passes (2,019 passed, 54 skipped).
 
 ## Connectors · 2026-11-16 · specified (CHG-0321 to CHG-0327), nothing built
 
