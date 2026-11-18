@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the Android self-update (landed on local `main`, not pushed; open: the push, the unmerged context-window branch, a phone check), read the [current handoff](.agents/handoffs/2026-11-18-1404-android-update-landed.md). Handoffs are shared and committed.
+- To resume the Android self-update (on `origin/main`; open: a phone check) and the context-window redo (`worktree/context-window-redo`, CHG-0501; open: the owner's merge and look), read the [current handoff](.agents/handoffs/2026-11-18-1435-context-window-redo.md). Handoffs are shared and committed.
 
 - To resume the plan-limit rings' order fix (CHG-0500; committed; push waiting for the owner's approval; open: the owner's look at the rings in a window), read the [current handoff](.agents/handoffs/2026-11-18-1346-plan-ring-order.md). Handoffs are shared and committed.
 
