@@ -18,10 +18,15 @@ import { readThreadWorkspace } from "./workspaces.ts";
 
 // What the owner reads of one mission: its thread tree and one thread's conversation.
 
-type ThreadRow = Omit<ThreadSummary, "isOpenedByAgent" | "isAside"> & { isOpenedByAgent: number; isAside: number };
+type ThreadRow = Omit<ThreadSummary, "isOpenedByAgent" | "isAside" | "isYourTurn" | "isArchived"> & {
+  isArchived: number;
+  isOpenedByAgent: number;
+  isAside: number;
+  isYourTurn: number;
+};
 
 /** The mission's threads with their depth and kept messages, each parent before the threads beneath it. */
-const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId: string) {
+const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId: string, includeArchived: boolean) {
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql<ThreadRow & { path: string }>`
       WITH RECURSIVE tree(id, depth, path) AS (
@@ -31,19 +36,23 @@ const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId:
         FROM threads t JOIN tree ON t.parent_id = tree.id
       )
       SELECT t.id, t.parent_id AS parentId, t.title, t.state, tree.depth, tree.path,
-        t.is_opened_by_agent AS isOpenedByAgent, t.is_aside AS isAside,
+        (t.archived_at IS NOT NULL) AS isArchived, t.is_opened_by_agent AS isOpenedByAgent, t.is_aside AS isAside,
+        (t.state = 'Idle' AND (SELECT status FROM turns WHERE thread_id = t.id ORDER BY started_at DESC, rowid DESC LIMIT 1)
+          = 'completed') AS isYourTurn,
         (SELECT COALESCE(MIN(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS openedAt,
         (SELECT COALESCE(MAX(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS lastActivityAt,
         t.harness, t.model,
         (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id AND m.sender_kind IN ('user', 'thread')
           AND m.delivered_turn_id IS NULL) AS waitingCount
       FROM tree JOIN threads t ON t.id = tree.id
-      WHERE t.mission_id = ${missionId}
+      WHERE t.mission_id = ${missionId} AND (${includeArchived ? 1 : 0} = 1 OR t.archived_at IS NULL)
       ORDER BY tree.path`;
   return rows.map(({ path: _path, ...row }) => ({
     ...row,
+    isArchived: row.isArchived === 1,
     isAside: row.isAside === 1,
     isOpenedByAgent: row.isOpenedByAgent === 1,
+    isYourTurn: row.isYourTurn === 1,
   }));
 });
 
@@ -55,7 +64,7 @@ const accountLabelOf = (accountId: string | null, label: string | null, computer
 export const readThreadTree = Effect.fnUntraced(function* (missionId: string) {
   const [summary] = yield* listMissionSummaries([missionId]);
   if (summary === undefined) return yield* notFound("No such mission.");
-  return yield* listThreads(missionId, summary.topThreadId);
+  return yield* listThreads(missionId, summary.topThreadId, false);
 });
 
 /** A mission with its thread tree and the conversation of one thread, the top thread by default. */
@@ -63,7 +72,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
   const sql = yield* SqlClient.SqlClient;
   const [summary] = yield* listMissionSummaries([missionId]);
   if (summary === undefined) return yield* notFound("No such mission.");
-  const threads = yield* listThreads(missionId, summary.topThreadId);
+  const threads = yield* listThreads(missionId, summary.topThreadId, true);
   const selected = threads.find((thread) => thread.id === (threadId ?? summary.topThreadId));
   if (selected === undefined) return yield* notFound("No such thread in this mission.");
   const [thread] = yield* sql<
@@ -77,8 +86,9 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
   const workspace = yield* readThreadWorkspace(selected.id);
   const ownCopy = yield* readOwnCopy(selected.id);
   const messages = yield* sql<
-    Omit<Message, "attachments" | "isResult" | "isQueued" | "usage"> & {
+    Omit<Message, "attachments" | "isResult" | "isQueued" | "isDelivered" | "usage"> & {
       isResult: number;
+      isDelivered: number;
       isQueued: number;
       usageCacheCreation: number | null;
       usageCacheRead: number | null;
@@ -91,7 +101,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
       SELECT m.id, m.thread_id AS threadId, m.sender_kind AS sender, m.model, m.harness, m.text, m.sequence, m.sent_at AS sentAt,
         m.sender_thread_id AS fromThreadId, COALESCE(s.title, m.sender_title) AS fromTitle, m.is_result AS isResult,
         CASE WHEN sm.is_guildmaster = 0 THEN s.mission_id END AS fromMissionId,
-        (m.is_queued = 1 AND m.delivered_turn_id IS NULL) AS isQueued,
+        (m.is_queued = 1 AND m.delivered_turn_id IS NULL) AS isQueued, (m.delivered_turn_id IS NOT NULL) AS isDelivered,
         ru.input AS usageInput, ru.output AS usageOutput, ru.cache_read AS usageCacheRead,
         ru.cache_creation AS usageCacheCreation, ru.estimate AS usageEstimate, ru.reported AS usageReported
       FROM messages m LEFT JOIN reply_usage ru ON ru.message_id = m.id LEFT JOIN threads s ON s.id = m.sender_thread_id LEFT JOIN missions sm ON sm.id = s.mission_id
@@ -111,6 +121,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
       ({ usageCacheCreation, usageCacheRead, usageEstimate, usageInput, usageOutput, usageReported, ...message }) => ({
         ...message,
         attachments: cards.get(message.id) ?? [],
+        isDelivered: message.isDelivered === 1,
         isQueued: message.isQueued === 1,
         isResult: message.isResult === 1,
         usage:

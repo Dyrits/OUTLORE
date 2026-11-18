@@ -173,6 +173,7 @@ type MissionRow = {
   ritualNextRunAt: number | null;
   ritualSchedule: string | null;
   topState: string;
+  topYourTurn: number;
   spentCost: number;
   spentTokens: number;
 };
@@ -197,6 +198,7 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
     id: MissionId.make(row.id),
     isEmpty: row.isEmpty === 1,
     isTitleByUser: row.isTitleByUser === 1,
+    isYourTurn: row.ending === null && row.topYourTurn === 1 && workedOutStateOf(states) === "Idle",
     lastActivityAt: row.lastActivityAt,
     model: row.model,
     prompt: promptOf(row, now, settings),
@@ -225,8 +227,8 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
 const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
   sql<MissionRow>`
     SELECT m.id, m.title, m.top_thread_id AS topThreadId, top.harness AS harness, top.model AS model, m.last_activity_at AS lastActivityAt,
-      (SELECT group_concat(t.state) FROM threads t WHERE t.mission_id = m.id) AS states,
-      (SELECT COUNT(*) FROM threads t WHERE t.mission_id = m.id) AS threadCount,
+      (SELECT group_concat(t.state) FROM threads t WHERE t.mission_id = m.id AND t.archived_at IS NULL) AS states,
+      (SELECT COUNT(*) FROM threads t WHERE t.mission_id = m.id AND t.archived_at IS NULL) AS threadCount,
       ${sql.literal(emptyQuestCondition("m.id"))} AS isEmpty,
       m.ending, m.is_title_by_user AS isTitleByUser, m.is_asking_done AS isAskingDone,
       m.inactivity_dismissed_at AS inactivityDismissedAt,
@@ -235,7 +237,9 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
       COALESCE(SUM(${sql.literal(tokenSum)}), 0) AS spentTokens,
       w.id AS workspaceId, w.name AS workspaceName,
       r.id AS ritualId, r.is_on AS ritualIsOn, r.last_run_at AS ritualLastRunAt, r.last_run_state AS ritualLastRunState,
-      r.next_run_at AS ritualNextRunAt, r.schedule AS ritualSchedule, top.state AS topState
+      r.next_run_at AS ritualNextRunAt, r.schedule AS ritualSchedule, top.state AS topState,
+      (top.state = 'Idle' AND (SELECT status FROM turns WHERE thread_id = top.id ORDER BY started_at DESC, rowid DESC LIMIT 1)
+        = 'completed') AS topYourTurn
     FROM missions m
       JOIN threads top ON top.id = m.top_thread_id
       LEFT JOIN rituals r ON r.mission_id = m.id

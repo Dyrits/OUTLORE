@@ -1,8 +1,9 @@
-import type { MissionId, MissionSummary, ThreadId } from "@outlore/contracts";
+import type { MissionId, MissionSummary, ThreadId, ThreadState } from "@outlore/contracts";
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import type { ServiceClient } from "../foundation/client";
+import { messageOf, type ServiceClient } from "../foundation/client";
 import { canHover } from "../foundation/inputModality";
-import { colors } from "../foundation/theme";
+import { colors, stateTones } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { EndingConfirmation } from "../quests/missionActions";
@@ -19,6 +20,10 @@ import {
 import { threadOutlineOf } from "./railOutline";
 import { Count, Row, StateDot } from "./railRows";
 import { chevronWidth, indentStep, isHovered, local } from "./railStyles";
+
+/** A summons rings its row in the color of its state dot; any other state leaves the row plain. */
+const ringOf = (state: MissionSummary["state"] | ThreadState) =>
+  state === "Attention" ? stateTones.Attention.color : undefined;
 
 /** A quest's errands, nested beneath it with their branch guides; each can collapse its own errands. */
 function SideQuests({
@@ -40,6 +45,7 @@ function SideQuests({
   shouldShowAgentThreads: boolean;
 }) {
   const { data: threads } = useServiceQuery(client, { _tag: "ReadThreadTree", missionId }, `${missionId}:tree`);
+  const [error, setError] = useState<string | null>(null);
   if (threads === null) return null;
   const outline = threadOutlineOf(threads, collapsed, selectedThread, shouldShowAgentThreads);
   const { rows } = outline;
@@ -61,15 +67,38 @@ function SideQuests({
               label: thread.title,
               onPress: hasChildren ? () => onToggle(thread.id) : null,
             }}
+            // On hover or focus the archive mark shows at the row's end; a device that cannot hover has the errand's panel.
+            hoverAccessory={(isShown) =>
+              canHover && (
+                <View style={[local.questMark, !isShown && local.actionsHidden]}>
+                  <Pressable
+                    accessibilityLabel={`Archive ${thread.title}`}
+                    accessibilityRole="button"
+                    disabled={!isShown}
+                    hitSlop={6}
+                    onPress={() =>
+                      client.request({ _tag: "ArchiveThread", threadId: thread.id }).then(
+                        () => setError(null),
+                        (reason) => setError(messageOf(reason)),
+                      )
+                    }
+                  >
+                    <ArchiveIcon color={colors.textMuted} />
+                  </Pressable>
+                </View>
+              )
+            }
             indent={depth * indentStep}
             isSelected={selectedThread === thread.id}
             label={foldedCount > 0 ? `${thread.title} +${foldedCount}` : thread.title}
-            leading={<StateDot state={thread.state} />}
+            leading={<StateDot isYourTurn={thread.isYourTurn === true} state={thread.state} />}
             onPress={() => onOpenThread(missionId, thread.id)}
+            ringColor={ringOf(thread.state)}
             textStyle={local.sideQuestText}
           />
         </View>
       ))}
+      {error !== null && <Text style={local.questError}>{error}</Text>}
     </>
   );
 }
@@ -133,8 +162,9 @@ export function Quest({
           }
           isSelected={isHere && (openThread === null || openThread === mission.topThreadId)}
           label={mission.title}
-          leading={<StateDot state={mission.state} />}
+          leading={<StateDot isYourTurn={mission.isYourTurn === true} state={mission.state} />}
           onPress={() => onOpenMission(mission.id)}
+          ringColor={ringOf(mission.state)}
         />
       </DragSource>
       {(ending.pending !== null || ending.error !== null) && (

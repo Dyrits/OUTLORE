@@ -214,6 +214,59 @@ export const markThreadDone = Effect.fn("markThreadDone")(function* (threadId: s
   return changed(null, { missionsToWake: [thread.missionId], turnsToCancel: [threadId] });
 });
 
+/** The errand and the errands beneath it, with their states and whether the owner archived them. */
+const readErrandTree = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{
+    archivedAt: number | null;
+    id: string;
+    missionId: string;
+    parentArchivedAt: number | null;
+    parentId: string | null;
+    state: string;
+  }>`WITH RECURSIVE subtree(id) AS (
+      SELECT id FROM threads WHERE id = ${threadId}
+      UNION ALL SELECT t.id FROM threads t JOIN subtree s ON t.parent_id = s.id
+    )
+    SELECT t.id, t.mission_id AS missionId, t.parent_id AS parentId, t.state, t.archived_at AS archivedAt,
+      (SELECT p.archived_at FROM threads p WHERE p.id = t.parent_id) AS parentArchivedAt
+    FROM threads t JOIN subtree s ON s.id = t.id WHERE t.is_deleting = 0 ORDER BY t.rowid`;
+  const [root] = rows;
+  if (root === undefined) return yield* notFound("No such thread.");
+  if (root.parentId === null) return yield* invalid("The quest's own thread ends with the quest: archive the quest.");
+  return rows;
+});
+
+/**
+ * The owner archives an errand on its own: it and the errands beneath it stop if they are at work, and leave the
+ * lists, their conversations kept. Each parent left Waiting with nothing at work beneath it returns to Idle.
+ */
+export const archiveThread = Effect.fn("archiveThread")(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* readErrandTree(threadId);
+  const ids = rows.map((row) => row.id);
+  const working = rows.filter((row) => activeStates.includes(row.state)).map((row) => row.id);
+  const now = yield* Clock.currentTimeMillis;
+  yield* haltThreads(working, "Stopped");
+  yield* sql`UPDATE threads SET archived_at = ${now} WHERE id IN ${sql.in(ids)} AND archived_at IS NULL`;
+  const [root] = rows;
+  if (root !== undefined) yield* relaxAncestors(root.id);
+  yield* touchMission(rows[0]?.missionId ?? "", now);
+  return changed(null, { missionsToWake: rows[0] === undefined ? [] : [rows[0].missionId], turnsToCancel: working });
+});
+
+/** The owner brings an archived errand back with the errands archived beneath it; its parent must not be archived. */
+export const restoreThread = Effect.fn("restoreThread")(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* readErrandTree(threadId);
+  const [root] = rows;
+  if (root === undefined || root.archivedAt === null) return yield* invalid("This errand is not archived.");
+  if (root.parentArchivedAt !== null) return yield* invalid("Restore the errand above it first.");
+  yield* sql`UPDATE threads SET archived_at = NULL WHERE id IN ${sql.in(rows.map((row) => row.id))}`;
+  yield* touchMission(root.missionId, yield* Clock.currentTimeMillis);
+  return changed(null);
+});
+
 /** Owns cancelling threads' turns without holding a database transaction while a harness exits. */
 export const makeLifecycle = (dependencies: {
   /** Withdraws everything the thread waits on the owner for. */

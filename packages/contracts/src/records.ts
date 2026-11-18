@@ -130,6 +130,8 @@ export const MissionSummary = Schema.Struct({
   isEmpty: Schema.Boolean,
   /** Whether the owner renamed it, after which `set_mission_title` is refused. */
   isTitleByUser: Schema.Boolean,
+  /** Whether it is Idle after its top thread's turn ended normally, so the next move is the owner's. */
+  isYourTurn: Schema.optionalKey(Schema.Boolean),
   lastActivityAt: Schema.Number,
   model: ModelChoice,
   /** The question the dashboard asks of it, or null. */
@@ -220,10 +222,14 @@ export const ThreadSummary = Schema.Struct({
   /** The thread's harness and model, shown beside it in the full quest list. */
   harness: HarnessName,
   id: ThreadId,
+  /** Whether the owner archived it (with its quest's other errands left alone): only the conversation's tree lists these. */
+  isArchived: Schema.optionalKey(Schema.Boolean),
   /** Whether it holds an off-topic request the owner kept as an aside (thread-tree, Off-topic requests). */
   isAside: Schema.Boolean,
   /** Whether a thread opened it with `open_thread`, rather than the owner. */
   isOpenedByAgent: Schema.Boolean,
+  /** Whether its turn ended normally and it waits for the owner: Idle after a completed turn, not a fresh or interrupted one. */
+  isYourTurn: Schema.optionalKey(Schema.Boolean),
   /** The time of its latest message, or of its opening while it has none. */
   lastActivityAt: Schema.Number,
   model: ModelChoice,

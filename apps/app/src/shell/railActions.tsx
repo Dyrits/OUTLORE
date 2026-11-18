@@ -1,8 +1,9 @@
-import { type ReactNode, useState } from "react";
+import { type ElementRef, type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { Platform, Pressable, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { emblemPaths } from "../foundation/emblems";
 import { canHover, isKeyboardFocus } from "../foundation/inputModality";
+import { isPointerOver } from "../foundation/pointerPosition";
 import { colors } from "../foundation/theme";
 import { FoldChevron } from "../ui/foldChevron";
 import { areActionsShown, folderCueOf } from "./questTree";
@@ -150,6 +151,12 @@ type FocusProps = { readonly onBlur: () => void; readonly onFocus: () => void };
 export const useRowActions = () => {
   const [isHovered, setIsHovered] = useState(false);
   const [hasKeyboardFocusWithin, setHasKeyboardFocusWithin] = useState(false);
+  const rowRef = useRef<ElementRef<typeof View>>(null);
+  // A row that moved under a still pointer (the one above it was archived) hears no pointer enter: look at where the
+  // pointer is after each render, once the row has its place.
+  useLayoutEffect(() => {
+    if (canHover) setIsHovered(isPointerOver(rowRef.current));
+  });
   // Only a keyboard focus shows them: the focus a click leaves behind does not, once the pointer moves away.
   const focusProps: FocusProps = {
     onBlur: () => setHasKeyboardFocusWithin(false),
@@ -167,6 +174,7 @@ export const useRowActions = () => {
       ...focusProps,
       onPointerEnter: () => setIsHovered(true),
       onPointerLeave: () => setIsHovered(false),
+      ref: rowRef,
     },
   };
 };

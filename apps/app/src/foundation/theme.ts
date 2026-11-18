@@ -36,6 +36,9 @@ export const stateLabels = {
   Waiting: "Awaiting word",
 } as const;
 
+/** The mark of a quest whose turn ended normally: Resting, but waiting for the owner (the state stays Idle). */
+export const yourTurnColor = colors.teal;
+
 /** How each state reads: its ink color and the soft fill behind its mark. */
 export const stateTones: Record<ThreadState | MissionState, { readonly color: string; readonly soft: string }> = {
   Archived: { color: colors.textMuted, soft: colors.controlActive },

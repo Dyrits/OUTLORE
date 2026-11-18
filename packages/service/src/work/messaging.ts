@@ -1,7 +1,7 @@
 import { type HarnessName, MessageId, type SendMessageResult } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { newId, notFound, touchMission } from "../core/index.ts";
+import { invalid, newId, notFound, touchMission } from "../core/index.ts";
 import { attachToMessage, readStoredAttachments, type StoredAttachment } from "./attachments.ts";
 import { resetOwnerChatter, resetResultChatter } from "./chatter.ts";
 import { isOwnerMessageOf, readMentionNote } from "./mentions.ts";
@@ -166,8 +166,11 @@ export const insertMessage = Effect.fnUntraced(function* (message: NewMessage) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{
     missionId: string;
-  }>`SELECT mission_id AS missionId FROM threads WHERE id = ${message.threadId} AND is_deleting = 0`;
+    archivedAt: number | null;
+  }>`SELECT mission_id AS missionId, archived_at AS archivedAt FROM threads
+    WHERE id = ${message.threadId} AND is_deleting = 0`;
   if (thread === undefined) return yield* notFound("No such thread.");
+  if (thread.archivedAt !== null) return yield* invalid("This errand is archived. Restore it to write in it.");
   yield* requireActiveQuestRealm(thread.missionId);
   if (message.fromThreadId === null) {
     yield* resetOwnerChatter(message.threadId);

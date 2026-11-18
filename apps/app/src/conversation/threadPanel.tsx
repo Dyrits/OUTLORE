@@ -55,20 +55,34 @@ function ContextMeter({ gauge }: { gauge: ContextGauge }) {
   );
 }
 
-/** The errand's own "Mark as done": it ends the errand and leaves its quest as it is. */
-function SideQuestDone({ client, state, threadId }: { client: ServiceClient; state: string; threadId: ThreadId }) {
+/** The errand's own actions, leaving its quest as it is: "Mark as done", and archiving it or bringing it back. */
+function SideQuestDone({
+  client,
+  isArchived,
+  state,
+  threadId,
+}: {
+  client: ServiceClient;
+  isArchived: boolean;
+  state: string;
+  threadId: ThreadId;
+}) {
   const [error, setError] = useState<string | null>(null);
+  const send = (tag: "ArchiveThread" | "MarkThreadDone" | "RestoreThread") =>
+    client.request({ _tag: tag, threadId }).then(
+      () => setError(null),
+      (reason) => setError(messageOf(reason)),
+    );
   return (
     <View style={local.done}>
       <Button
-        isDisabled={state === "Done"}
+        isDisabled={state === "Done" || isArchived}
         label={state === "Done" ? "Done" : "Mark as done"}
-        onPress={() =>
-          client.request({ _tag: "MarkThreadDone", threadId }).then(
-            () => setError(null),
-            (reason) => setError(messageOf(reason)),
-          )
-        }
+        onPress={() => send("MarkThreadDone")}
+      />
+      <Button
+        label={isArchived ? "Restore errand" : "Archive errand"}
+        onPress={() => send(isArchived ? "RestoreThread" : "ArchiveThread")}
       />
       {error !== null && <Text style={local.error}>{error}</Text>}
     </View>
@@ -149,7 +163,14 @@ export function ThreadPanel({
           thread.depth === 0
             ? null
             : {
-                action: <SideQuestDone client={client} state={thread.state} threadId={thread.id} />,
+                action: (
+                  <SideQuestDone
+                    client={client}
+                    isArchived={detail.threads.find((each) => each.id === thread.id)?.isArchived === true}
+                    state={thread.state}
+                    threadId={thread.id}
+                  />
+                ),
                 onOpenQuest,
                 title: thread.title,
               },

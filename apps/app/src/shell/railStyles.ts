@@ -93,6 +93,8 @@ export const local = StyleSheet.create({
     paddingVertical: 4,
   },
   rowHovered: { backgroundColor: colors.controlHover },
+  // A row of quests keeps a 1 px outline, clear unless a summons rings it; the padding gives that pixel back.
+  rowQuest: { borderColor: "transparent", borderWidth: 1, paddingRight: 7, paddingVertical: 3 },
   rowSelected: { backgroundColor: colors.controlActive },
   rowText: { color: colors.onGround, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.base },
   rowTextSelected: { color: colors.text, fontWeight: "600" },

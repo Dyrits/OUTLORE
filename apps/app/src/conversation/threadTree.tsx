@@ -36,9 +36,20 @@ export function ThreadTree({
   threads: ReadonlyArray<ThreadSummary>;
 }) {
   const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set());
+  const archived = threads.filter((thread) => thread.isArchived === true);
+  const parentOf = new Map(threads.map((thread) => [thread.id, thread.parentId]));
+  const depthOf = (thread: ThreadSummary) => {
+    let depth = 0;
+    for (let up = thread.parentId; up !== null; up = parentOf.get(up) ?? null) depth++;
+    return depth;
+  };
   return (
     <ScrollView contentContainerStyle={styles.treeList} style={styles.tree}>
-      {foldThreads(threads, shouldShowAgentThreads, unfolded).map(({ thread, depth, foldedCount }, index) => (
+      {foldThreads(
+        threads.filter((thread) => thread.isArchived !== true),
+        shouldShowAgentThreads,
+        unfolded,
+      ).map(({ thread, depth, foldedCount }, index) => (
         <View key={thread.id}>
           {index === 0 && <Text style={styles.treeSection}>Quest</Text>}
           {index === 1 && <Text style={[styles.treeSection, styles.treeSectionLater]}>Errands</Text>}
@@ -68,6 +79,24 @@ export function ThreadTree({
             )}
           </Pressable>
         </View>
+      ))}
+      {archived.length > 0 && <Text style={[styles.treeSection, styles.treeSectionLater]}>Archived errands</Text>}
+      {archived.map((thread) => (
+        <Pressable
+          key={thread.id}
+          onPress={() => onSelect(thread.id)}
+          style={[
+            styles.treeRow,
+            { paddingLeft: 8 + Math.max(0, depthOf(thread) - 1) * 16 },
+            thread.id === selectedId && styles.treeRowSelected,
+          ]}
+        >
+          <View style={styles.treeTitleRow}>
+            <Text numberOfLines={1} style={styles.treeTitle}>
+              {thread.title}
+            </Text>
+          </View>
+        </Pressable>
       ))}
     </ScrollView>
   );

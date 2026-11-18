@@ -98,4 +98,9 @@ export const recentStoreMigrations = {
     yield* sql`ALTER TABLE usage ADD COLUMN context_window INTEGER`;
     yield* sql`CREATE INDEX usage_by_model_window ON usage (model, ended_at) WHERE context_window IS NOT NULL`;
   }),
+  // An errand the owner archived on its own, with the errands beneath it: when, or null while it is in the lists (thread-tree).
+  "0059_thread_archived": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE threads ADD COLUMN archived_at INTEGER`;
+  }),
 };

@@ -398,6 +398,13 @@ export const ChangeThreadRunner = Schema.TaggedStruct("ChangeThreadRunner", {
 });
 /** Marks an errand done on the owner's word, without ending its quest; its turn stops (thread-tree, Done). */
 export const MarkThreadDone = Schema.TaggedStruct("MarkThreadDone", { threadId: ThreadId });
+/**
+ * Archives an errand and the errands beneath it on their own, without archiving its quest: their work stops and they
+ * leave the lists, and the conversations stay readable from the quest (thread-tree, Archiving an errand).
+ */
+export const ArchiveThread = Schema.TaggedStruct("ArchiveThread", { threadId: ThreadId });
+/** Brings an archived errand, with the errands archived beneath it, back to the lists; they stay Stopped. */
+export const RestoreThread = Schema.TaggedStruct("RestoreThread", { threadId: ThreadId });
 /** Saves the thread's backup Companions, in the order a failed turn falls back through them (thread-panel, Backups). */
 export const SetThreadBackups = Schema.TaggedStruct("SetThreadBackups", {
   backups: BackupCompanions,
@@ -553,6 +560,8 @@ export const Request = Schema.Union([
   RunRitual,
   SetThreadBackups,
   MarkThreadDone,
+  ArchiveThread,
+  RestoreThread,
   DeleteRitual,
   ListRituals,
   ReadRitual,
@@ -621,6 +630,7 @@ export const Results = {
   AnswerChoices: Question,
   AnswerQuestion: Question,
   AnswerSuggestion: Suggestion,
+  ArchiveThread: Schema.Null,
   BrowseFolders: FolderListing,
   ChangeSettings: Settings,
   ChangeThreadRunner: Schema.Null,
@@ -687,6 +697,7 @@ export const Results = {
   ResolveIntelChange: Schema.Null,
   ResolveIntelProposal: Schema.Null,
   RestoreIntel: Schema.Null,
+  RestoreThread: Schema.Null,
   ResumeThread: Schema.Null,
   RetryThread: Schema.Null,
   RewriteBriefing: JournalView,

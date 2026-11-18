@@ -8,7 +8,7 @@ import { deleteThread, previewDeletion } from "./deleting.ts";
 import { dismissPrompt, endMission, previewEnding, reopenMission } from "./ending.ts";
 import { readGuildHallRecap, visitGuildHall } from "./guildHall.ts";
 import { readGuildmaster } from "./guildmasterPlace.ts";
-import { markThreadDone } from "./lifecycle.ts";
+import { archiveThread, markThreadDone, restoreThread } from "./lifecycle.ts";
 import { readMission, readThreadTree } from "./missionDetail.ts";
 import { insertMission, insertQuest } from "./missions.ts";
 import { moveQuest } from "./questMoves.ts";
@@ -24,6 +24,7 @@ export const questsHandlers = ({
   threads,
 }: Pick<HandlerDependencies, "commands" | "change" | "threads">) =>
   ({
+    ArchiveThread: (given) => commands.run(archiveThread(given.threadId)),
     ChangeThreadRunner: (given) => commands.run(admitRunnerChange(given)),
     DeleteThread: (given) => deleteThread(given.threadId, given.confirmation),
     DismissMissionPrompt: (given) => commands.run(dismissPrompt(given.missionId, given.prompt)),
@@ -77,6 +78,7 @@ export const questsHandlers = ({
     ReadThreadTree: (read) => readThreadTree(read.missionId),
     RenameMission: (rename) => change(renameMission(rename.missionId, rename.title)),
     ReopenMission: (reopen) => commands.run(reopenMission(reopen.missionId)),
+    RestoreThread: (given) => commands.run(restoreThread(given.threadId)),
     ResumeThread: (resume) => threads.resume(resume.threadId).pipe(Effect.as(null)),
     RetryThread: (retry) => threads.retry(retry.threadId).pipe(Effect.as(null)),
     SetThreadBackups: (given) => commands.run(setThreadBackups(given.threadId, given.backups)),
@@ -140,6 +142,8 @@ export const questsHandlers = ({
     | "InterruptThread"
     | "ListMissions"
     | "MarkThreadDone"
+    | "ArchiveThread"
+    | "RestoreThread"
     | "MoveQuest"
     | "OpenThread"
     | "PreviewDeletion"

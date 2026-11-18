@@ -71,7 +71,7 @@ The interface presents idle, running, or Summons; waiting, failure, and stopped 
 | Running | A turn is in progress. |
 | Waiting | It waits for a reply or for a thread beneath it. |
 | Attention | It waits for an approval, an answer, a raised budget, a missing workspace folder, or a tool or skill loading problem that prevents a turn. Shown prominently and sent as a phone notification. |
-| Idle | No turn in progress and nothing awaited. |
+| Idle | No turn in progress and nothing awaited. After a turn that ended normally the thread and its quest also carry `isYourTurn`, shown as a teal dot in the sidebar and the quest list instead of the grey one (CHG-0513); the state stays Idle. |
 | Failed | Its harness failed; the user can hand it over to another. |
 | Stopped | The user stopped it; it stays stopped until the user resumes it. |
 
@@ -107,6 +107,14 @@ The interface presents idle, running, or Summons; waiting, failure, and stopped 
 
 - Stopping a thread stops only that thread. Threads beneath it keep running and can still message it.
 - Messages that reach a stopped thread are kept, and it stays stopped until the user resumes it. The tree shows how many messages wait, for example "3 messages waiting".
+
+### Archiving an errand
+
+- The owner can archive an errand on its own, from a button on its row in the sidebar and from its panel, without archiving its quest (CHG-0516). The quest's own thread cannot be archived on its own: it ends with its quest.
+- Archiving stops the errand and the errands beneath it that are at work, archives them with it, and returns a parent left Waiting with nothing at work beneath it to Idle. No confirmation is asked.
+- Archived errands leave the sidebar, the quest list, the quest's thread count and its state. The quest's conversation tree lists them under **Archived errands**, and their conversations stay readable.
+- **Restore errand** in the errand's panel brings it back with the errands archived beneath it; they stay Stopped until resumed. It is refused while the errand above it is archived.
+- A message to an archived errand, from the owner or a thread, is refused with "This errand is archived. Restore it to write in it."
 
 ### Deleting
 

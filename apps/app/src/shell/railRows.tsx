@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { canHover } from "../foundation/inputModality";
-import { stateTones } from "../foundation/theme";
+import { stateTones, yourTurnColor } from "../foundation/theme";
 import { Chevron, useRowActions } from "./railActions";
 import { isHovered, local } from "./railStyles";
 /** The link under a group that lists only some of its quests: it leads to the page that lists them all. */
@@ -27,6 +27,7 @@ export function Row({
   isSelected,
   fold,
   label,
+  ringColor,
   onPress,
   textStyle,
 }: {
@@ -40,6 +41,8 @@ export function Row({
   /** The fold mark before the label of a quest or errand row; null `onPress` keeps its place empty. */
   fold?: { isOpen: boolean; label: string; onPress: (() => void) | null };
   onPress: () => void;
+  /** The color of the row's outline: a summons rings its row in the color of its dot, so it is hard to miss. */
+  ringColor?: string;
   textStyle?: object;
 }) {
   const { focusProps, isShown, rowProps } = useRowActions();
@@ -52,7 +55,9 @@ export function Row({
       style={(state) => [
         local.row,
         !canHover && local.rowTouch,
-        { paddingLeft: 6 + indent },
+        local.rowQuest,
+        { paddingLeft: 5 + indent },
+        ringColor !== undefined && { borderColor: ringColor },
         (state.pressed || isHovered(state)) && local.rowHovered,
         isSelected && local.rowSelected,
       ]}
@@ -67,9 +72,9 @@ export function Row({
   );
 }
 
-/** A state's dot: the color the state reads in everywhere else. */
-export function StateDot({ state }: { state: keyof typeof stateTones }) {
-  return <View style={[local.dot, { backgroundColor: stateTones[state].color }]} />;
+/** A state's dot: the color the state reads in everywhere else, or the owner's-turn color for a rested quest waiting on them. */
+export function StateDot({ isYourTurn = false, state }: { isYourTurn?: boolean; state: keyof typeof stateTones }) {
+  return <View style={[local.dot, { backgroundColor: isYourTurn ? yourTurnColor : stateTones[state].color }]} />;
 }
 
 /** The number at the end of a row, such as a realm's or the archive's quests: shown, like the row's marks, on hover or focus. */
