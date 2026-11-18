@@ -28,7 +28,7 @@ A thread can open side-quests, each with the model and effort that suits it.
 The model is a choice, not an identity.
 
 Lore has a scope: one quest, one realm, or the whole application, and each thread receives the context that matches it.
-A **realm** is a workspace, tied to a local folder or to none, with its own customizable crest.
+A **realm** is a workspace, tied to a local folder or to none.
 
 ## See it work
 

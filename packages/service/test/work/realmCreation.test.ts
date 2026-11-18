@@ -7,7 +7,6 @@ it.live("creates, acknowledges a name collision, and offers an archived folder w
     Effect.gen(function* () {
       const given = {
         _tag: "CreateRealm",
-        crest: null,
         name: "Garden",
         path: null,
         shouldAnswerOutcome: true,

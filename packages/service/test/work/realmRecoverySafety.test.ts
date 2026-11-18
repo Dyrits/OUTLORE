@@ -6,7 +6,7 @@ describe("recovering realms safely", () => {
   it.live("refuses a stale wipe when lore changed after the owner saw its preview", () =>
     withService(
       Effect.gen(function* () {
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: null });
+        yield* call({ _tag: "CreateRealm", name: "Garden", path: null });
         const list = yield* call({
           _tag: "ListMissions",
           isArchived: false,
@@ -58,7 +58,7 @@ describe("recovering realms safely", () => {
   it.live("ignores archived realm names when checking a new name but warns on restoring a collision", () =>
     withService(
       Effect.gen(function* () {
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: null });
+        yield* call({ _tag: "CreateRealm", name: "Garden", path: null });
         const list = yield* call({
           _tag: "ListMissions",
           isArchived: false,
@@ -70,7 +70,7 @@ describe("recovering realms safely", () => {
         if (realm === undefined) return yield* Effect.die("No realm");
         const preview = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
         yield* call({ _tag: "ArchiveRealm", snapshot: preview.snapshot, workspaceId: realm.id });
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: null });
+        yield* call({ _tag: "CreateRealm", name: "Garden", path: null });
         const recovery = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
         const restore = {
           _tag: "RestoreRealm" as const,

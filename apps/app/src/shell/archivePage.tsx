@@ -1,7 +1,6 @@
 import type { MissionId, RealmArchivePreview } from "@outlore/contracts";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { CrestBadge } from "../crest/crest";
 import type { ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { colors, outline, radii } from "../foundation/theme";
@@ -45,7 +44,6 @@ export function ArchiveScreen({ client, onOpen }: { client: ServiceClient; onOpe
         {shown.length > 0 && <Text style={styles.title}>Realms</Text>}
         {shown.map((preview) => (
           <View key={preview.realm.id} style={local.realm}>
-            <CrestBadge crest={preview.realm.crest} id={preview.realm.id} size={40} />
             <View style={styles.flex}>
               <Text style={styles.body}>{preview.realm.name}</Text>
               <Text style={styles.muted}>

@@ -1,6 +1,5 @@
-import type { Crest, MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
+import type { MissionId, MissionSummary, ThreadId } from "@outlore/contracts";
 import { Pressable, Text, View } from "react-native";
-import { CrestBadge } from "../crest/crest";
 import type { ServiceClient } from "../foundation/client";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -126,12 +125,10 @@ export function Quest({
 }
 
 /**
- * A realm's row: its crest, its name with the folder mark when it is tied to a folder, its quest count, and its chevron,
+ * A realm's row: its name with the folder mark when it is tied to a folder, its quest count, and its chevron,
  * always; its overview and new-quest buttons only while hovered or focused.
  */
 export function RealmHeader({
-  crest,
-  id,
   isOpen,
   name,
   onNewQuest,
@@ -140,8 +137,6 @@ export function RealmHeader({
   path,
   questCount,
 }: {
-  crest: Crest | null;
-  id: WorkspaceId;
   isOpen: boolean;
   name: string;
   onNewQuest: () => void;
@@ -159,7 +154,6 @@ export function RealmHeader({
       onPress={onToggle}
       style={(state) => [local.row, { paddingLeft: 6 }, (state.pressed || isHovered(state)) && local.rowHovered]}
     >
-      <CrestBadge crest={crest} id={id} size={22} />
       <Text numberOfLines={1} style={[local.rowText, local.realmText]}>
         {name}
       </Text>

@@ -1,5 +1,4 @@
 import { Schema } from "effect";
-import { Crest } from "./crest.ts";
 import { WorkspaceId } from "./ids.ts";
 
 // Workspaces and the folder browser (workspace-attachment).
@@ -32,8 +31,6 @@ export type FolderListing = typeof FolderListing.Type;
  * its quests that folder to work in; a realm tied to none has a null path, and its quests work in their scratch folder.
  */
 export const WorkspaceChoice = Schema.Struct({
-  /** The crest the owner designed for the realm, or null until then; its quests wear it. */
-  crest: Schema.NullOr(Crest),
   id: WorkspaceId,
   name: Schema.String,
   /** The realm's folder, or null for a realm tied to no folder. */

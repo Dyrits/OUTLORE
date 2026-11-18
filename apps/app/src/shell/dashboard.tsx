@@ -2,7 +2,6 @@ import type { MissionId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { GuildmasterHandoff } from "../conversation/guildmaster";
-import { CrestStudio } from "../crest/crestStudio";
 import { BudgetMeters, BudgetScreen, BudgetStopCard } from "../editors/budgets";
 import type { ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
@@ -73,16 +72,14 @@ export function Dashboard({
   // The questions cover every mission on the dashboard, whatever the filters show.
   const { data: all } = useServiceQuery(client, allMissions.request, allMissions.key);
   const asking = isArchived ? [] : (all?.missions.filter((mission) => mission.prompt !== null) ?? []);
-  // The realm whose board shows, and whether its crest studio is open.
+  // The realm whose board shows.
   const realm = (data?.workspaces ?? []).find((w) => w.id === workspaceId) ?? null;
   // Chronicler places a quest by its realm's folder, so a realm tied to no folder offers no message to it yet (CHG-0161).
   const handoffRealm = realm?.path == null ? null : { name: realm.name, path: realm.path };
-  // The realm whose crest studio or lore is open; showing another realm closes them.
+  // The realm whose lore is open; showing another realm closes it.
   // The realm's figures count all its quests, whatever the search shows.
   const realmMissions = (all?.missions ?? []).filter((mission) => mission.workspaceId === realm?.id);
-  const [designingId, setDesigningId] = useState<WorkspaceId | null>(null);
   const [loreId, setLoreId] = useState<WorkspaceId | null>(null);
-  const isDesigning = realm !== null && designingId === realm.id;
   const isRealmLoreOpen = realm !== null && loreId === realm.id;
   // With a sidebar a card only selects its quest, and the panel beside the board shows it; without one it opens it.
   // Pressing the quest already chosen puts it back.
@@ -104,7 +101,6 @@ export function Dashboard({
         client={client}
         key={realm.id}
         missions={realmMissions}
-        onCustomize={() => setDesigningId(realm.id)}
         onOpenLore={() => setLoreId(realm.id)}
         onSelect={onSelect}
         realm={realm}
@@ -154,17 +150,6 @@ export function Dashboard({
   }
   return (
     <View style={local.scroll}>
-      {isDesigning && realm !== null && (
-        <CrestStudio
-          id={realm.id}
-          initial={realm.crest}
-          name={realm.name}
-          onCancel={() => setDesigningId(null)}
-          onDone={(crest) =>
-            client.request({ _tag: "SetRealmCrest", crest, workspaceId: realm.id }).then(() => setDesigningId(null))
-          }
-        />
-      )}
       <ScrollView
         contentContainerStyle={local.content}
         onLayout={(event) => setWidth(event.nativeEvent.layout.width)}

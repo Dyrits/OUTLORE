@@ -5,7 +5,6 @@ import type {
   PreviewRealmArchive,
   RenameRealm,
   RestoreRealm,
-  SetRealmCrest,
 } from "@outlore/contracts";
 import { Effect } from "effect";
 import { type CommandRunner, changed } from "./commands.ts";
@@ -17,7 +16,7 @@ import {
   previewRealmArchive,
   restoreRealm,
 } from "./realmLifecycle.ts";
-import { createRealm, renameRealm, setRealmCrest } from "./workspaces.ts";
+import { createRealm, renameRealm } from "./workspaces.ts";
 
 /** Realm request handlers share the command runner's transaction and post-commit cancellation. */
 export const realmHandlers = (commands: CommandRunner) => ({
@@ -26,9 +25,7 @@ export const realmHandlers = (commands: CommandRunner) => ({
   CreateRealm: (given: typeof CreateRealm.Type) =>
     given.shouldAnswerOutcome
       ? commands.run(createRealmOutcome(given))
-      : commands.run(
-          createRealm(given.path, given.name, given.crest, given.allowDuplicateName ?? false).pipe(Effect.map(changed)),
-        ),
+      : commands.run(createRealm(given.path, given.name, given.allowDuplicateName ?? false).pipe(Effect.map(changed))),
   FindArchivedRealm: (given: typeof FindArchivedRealm.Type) => findArchivedRealm(given.path),
   ListArchivedRealms: () => listArchivedRealms,
   PreviewRealmArchive: (given: typeof PreviewRealmArchive.Type) => previewRealmArchive(given.workspaceId),
@@ -37,6 +34,4 @@ export const realmHandlers = (commands: CommandRunner) => ({
       renameRealm(given.workspaceId, given.name, given.allowDuplicateName ?? false).pipe(Effect.map(changed)),
     ),
   RestoreRealm: (given: typeof RestoreRealm.Type) => commands.run(restoreRealm(given)),
-  SetRealmCrest: (given: typeof SetRealmCrest.Type) =>
-    commands.run(setRealmCrest(given.workspaceId, given.crest).pipe(Effect.map(changed))),
 });

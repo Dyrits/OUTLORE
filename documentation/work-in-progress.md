@@ -1,8 +1,8 @@
 # Work in progress
 
-## Simpler app · 2026-11-18 · agreement and blueprint
+## Simpler app · 2026-11-18 · batch 1 of 4 (crests removed) built and tested on `worktree/sidebar`; the rest not started
 
-CHG-0449 records the simpler sidebar, removal of the Guild Hall hub, crests, and Gild, and the errand rename. The owner deferred implementation to a later session. [Specification](capabilities/mission-tracking/specifications.md#simplified-left-navigation) · [Blueprint](capabilities/mission-tracking/blueprint.md#simplified-sidebar-errands-and-crest-removal-chg-0449)
+Batch 1 (CHG-0452): crests are gone from the contracts, service and app; checks in the changelog. Next: batch 2 (sidebar rows, footer menu, Guild Hall hub, Charter into Settings, Gild), then batch 3 (ungrouped quests in the Realms overview, quest moves), then batch 4 (errand rename). The questions on moving a quest out of a realm, budget rings, the mention token and Workshop icons are still open. CHG-0449 records the simpler sidebar, removal of the Guild Hall hub, crests, and Gild, and the errand rename. The owner deferred implementation to a later session. [Specification](capabilities/mission-tracking/specifications.md#simplified-left-navigation) · [Blueprint](capabilities/mission-tracking/blueprint.md#simplified-sidebar-errands-and-crest-removal-chg-0449)
 
 ## Voice input · 2026-11-18 · service transcriber on `main`
 

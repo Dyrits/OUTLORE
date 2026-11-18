@@ -24,6 +24,6 @@ export const createRealmOutcome = Effect.fn("createRealmOutcome")(function* (giv
       AND lower(name) = lower(${name}) AND id IS NOT ${existing?.id ?? null}`;
     if (duplicates.length > 0) return unchanged<RealmCreation>({ _tag: "NameTaken", name });
   }
-  yield* createRealm(folder, name, given.crest, given.allowDuplicateName ?? false);
+  yield* createRealm(folder, name, given.allowDuplicateName ?? false);
   return changed<RealmCreation>({ _tag: "Created" });
 });

@@ -1,5 +1,4 @@
 import {
-  type Crest,
   MissionId,
   type Ritual,
   type RitualCompanion,
@@ -122,7 +121,7 @@ export const createRitual = Effect.fnUntraced(function* (input: {
   readonly fallbacks: ReadonlyArray<RitualCompanion>;
   readonly instruction: string;
   readonly primary: RitualCompanion;
-  readonly realm: { crest: Crest | null; name: string } | null;
+  readonly realm: { name: string } | null;
   readonly schedule: RitualSchedule;
   readonly title: string;
   readonly workspacePath: string | null;

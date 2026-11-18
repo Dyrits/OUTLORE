@@ -21,7 +21,7 @@ export type RecoveryEvent =
 /** Direct Archive restoration has no proposed appearance; folder reuse first asks which recovery the owner wants. */
 export const initialRecoveryFlowOf = (hasProposal: boolean): RecoveryFlow => ({
   hasConfirmedName: false,
-  picks: { crest: "old", name: "old" },
+  picks: { name: "old" },
   shouldStartAfresh: false,
   step: hasProposal ? "choice" : "restore",
 });
@@ -34,10 +34,7 @@ export const transitionRecovery = (state: RecoveryFlow, event: RecoveryEvent): R
   if (event._tag === "Choose")
     return {
       hasConfirmedName: false,
-      picks: {
-        crest: event.shouldStartAfresh ? "proposed" : "old",
-        name: event.shouldStartAfresh ? "proposed" : "old",
-      },
+      picks: { name: event.shouldStartAfresh ? "proposed" : "old" },
       shouldStartAfresh: event.shouldStartAfresh,
       step: event.hasDifferences ? "comparison" : "review",
     };
@@ -76,7 +73,7 @@ export const creationStepOf = (checks: {
 export const recoveryTitles = {
   cancelled: "Realm recovery cancelled",
   choice: "This realm is archived",
-  comparison: "Choose the realm's name and crest",
+  comparison: "Choose the realm's name",
   duplicate: "Use the same realm name?",
   restore: "Restore realm",
   review: "Preparing realm recovery…",

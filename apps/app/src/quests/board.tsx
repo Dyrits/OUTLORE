@@ -1,7 +1,6 @@
 import type { MissionId, MissionSummary } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { CrestBadge } from "../crest/crest";
 import { BudgetMeters } from "../editors/budgets";
 import {
   type BoardColumn,
@@ -66,12 +65,6 @@ export function MissionCard({
       )}
       <Pressable accessibilityRole="button" onPress={onOpen} style={local.cardMain}>
         <View style={local.titleRow}>
-          <CrestBadge
-            crest={mission.workspaceCrest}
-            id={mission.workspaceId ?? mission.id}
-            isLoose={mission.workspaceId === null}
-            size={38}
-          />
           <Text numberOfLines={3} style={[local.cardTitle, local.titleText]}>
             {mission.state === "Done" && <Text style={local.tick}>✓ </Text>}
             {mission.title}

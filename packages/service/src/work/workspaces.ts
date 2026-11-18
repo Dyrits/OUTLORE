@@ -1,33 +1,20 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { Crest, type Workspace, type WorkspaceId } from "@outlore/contracts";
-import { Clock, Context, Effect, Schema } from "effect";
+import type { Workspace, WorkspaceId } from "@outlore/contracts";
+import { Clock, Context, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, newId, realFolderOf } from "../core/index.ts";
 import { readMissionIdOf } from "./lifecycle.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 import { validateRealmName } from "./realmNames.ts";
 
-const decodeCrest = Schema.decodeUnknownSync(Crest);
-
-/** The crest a workspace row holds, or null when none was designed or the stored text no longer fits the crest. */
-export const crestOfRow = (text: string | null): Crest | null => {
-  if (text === null) return null;
-  try {
-    return decodeCrest(JSON.parse(text));
-  } catch {
-    return null;
-  }
-};
-
 /**
- * Makes a realm with the given name and crest: from a folder, where an existing realm for the folder is left as it is,
+ * Makes a realm with the given name: from a folder, where an existing realm for the folder is left as it is,
  * or tied to no folder (a null path), refused for a blank name.
  */
 export const createRealm = Effect.fnUntraced(function* (
   path: string | null,
   name: string,
-  crest: Crest | null,
   shouldAllowDuplicateName = false,
 ) {
   const sql = yield* SqlClient.SqlClient;
@@ -39,12 +26,11 @@ export const createRealm = Effect.fnUntraced(function* (
     existing?.id ?? null,
     shouldAllowDuplicateName,
   );
-  if (folder !== null) return yield* attachWorkspace(folder, { crest, name: trimmed }).pipe(Effect.as(null));
+  if (folder !== null) return yield* attachWorkspace(folder, { name: trimmed }).pipe(Effect.as(null));
   const now = yield* Clock.currentTimeMillis;
-  const text = crest === null ? null : JSON.stringify(Schema.encodeSync(Crest)(crest));
   const id = yield* newId;
-  yield* sql`INSERT INTO workspaces (id, name, path, crest, created_at)
-        VALUES (${id}, ${trimmed}, NULL, ${text}, ${now})`;
+  yield* sql`INSERT INTO workspaces (id, name, path, created_at)
+        VALUES (${id}, ${trimmed}, NULL, ${now})`;
   return null;
 });
 
@@ -62,16 +48,6 @@ export const renameRealm = Effect.fnUntraced(function* (
   return null;
 });
 
-/** Keeps a realm's crest, or clears it with null; refused for an unknown realm. */
-export const setRealmCrest = Effect.fnUntraced(function* (workspaceId: WorkspaceId, crest: Crest | null) {
-  const sql = yield* SqlClient.SqlClient;
-  const [row] = yield* sql<{ id: string }>`SELECT id FROM workspaces WHERE id = ${workspaceId}`;
-  if (row === undefined) return yield* invalid("No such realm.");
-  const text = crest === null ? null : JSON.stringify(Schema.encodeSync(Crest)(crest));
-  yield* sql`UPDATE workspaces SET crest = ${text} WHERE id = ${workspaceId}`;
-  return null;
-});
-
 /** Where each mission's threads with no workspace run, one scratch folder per mission. */
 export class ScratchRoot extends Context.Service<ScratchRoot, string>()("outlore/ScratchRoot") {}
 
@@ -86,10 +62,7 @@ const requireFolder = Effect.fnUntraced(function* (path: string) {
  * The workspace for a chosen folder: the existing one for that folder, or a new one,
  * since a folder becomes a workspace the first time it is chosen. Callers run it in a transaction.
  */
-export const attachWorkspace = Effect.fnUntraced(function* (
-  path: string,
-  realm: { crest: Crest | null; name: string } | null = null,
-) {
+export const attachWorkspace = Effect.fnUntraced(function* (path: string, realm: { name: string } | null = null) {
   const sql = yield* SqlClient.SqlClient;
   // Any folder the owner chose in the system's folder dialog (CHG-0035).
   const folder = yield* requireFolder(path);
@@ -101,9 +74,8 @@ export const attachWorkspace = Effect.fnUntraced(function* (
   const id = yield* newId;
   const now = yield* Clock.currentTimeMillis;
   const name = realm?.name.trim() || basename(folder) || folder;
-  const crest = realm?.crest == null ? null : JSON.stringify(Schema.encodeSync(Crest)(realm.crest));
-  yield* sql`INSERT INTO workspaces (id, name, path, crest, created_at)
-      VALUES (${id}, ${name}, ${folder}, ${crest}, ${now})`;
+  yield* sql`INSERT INTO workspaces (id, name, path, created_at)
+      VALUES (${id}, ${name}, ${folder}, ${now})`;
   return id;
 });
 

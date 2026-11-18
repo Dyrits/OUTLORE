@@ -45,7 +45,7 @@ describe("taking structural actions the owner's message names", () => {
   it.live("runs a realm change and a setting change the owner named exactly, with no question", () =>
     Effect.gen(function* () {
       const place = yield* guildmaster;
-      yield* call({ _tag: "CreateRealm", crest: null, name: "Ideas", path: null });
+      yield* call({ _tag: "CreateRealm", name: "Ideas", path: null });
       yield* say(
         place.threadId,
         `Rename the realm Ideas to Notions.\ncall rename_realm ${JSON.stringify({ name: "Notions", realm: "Ideas" })}`,

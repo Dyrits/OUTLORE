@@ -34,7 +34,7 @@ const listed = () => call({ _tag: "ListMissions", isArchived: false, search: nul
 /** A realm tied to a folder, or to none with a null path, and its id. */
 const makeRealm = (name: string, path: string | null) =>
   Effect.gen(function* () {
-    yield* call({ _tag: "CreateRealm", crest: null, name, path });
+    yield* call({ _tag: "CreateRealm", name, path });
     const realm = (yield* listed()).workspaces.find((each) => each.name === name);
     if (realm === undefined) return yield* Effect.die(new Error(`no realm ${name}`));
     return realm.id;

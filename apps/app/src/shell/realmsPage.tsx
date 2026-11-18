@@ -1,7 +1,6 @@
 import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { CrestBadge } from "../crest/crest";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
@@ -78,7 +77,6 @@ export function RealmsScreen({
                 onPress={() => onOpenRealm({ id: workspace.id, name: workspace.name })}
                 style={local.realm}
               >
-                <CrestBadge crest={workspace.crest} id={workspace.id} size={28} />
                 <Text style={local.name}>{realmLabelOf(workspace, data?.workspaces ?? [])}</Text>
                 <Text style={styles.muted}>{quests.length}</Text>
               </Pressable>
@@ -110,7 +108,7 @@ export function RealmsScreen({
       {isCreating && (
         <NewRealmModal
           client={client}
-          initial={{ crest: null, name: "", path: "" }}
+          initial={{ name: "", path: "" }}
           isFolderRequired={false}
           onCancel={() => setCreating(false)}
         />

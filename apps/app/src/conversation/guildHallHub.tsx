@@ -2,7 +2,6 @@ import type { GuildHallRecap, MissionId, MissionSummary } from "@outlore/contrac
 import { type ReactNode, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { CrestBadge } from "../crest/crest";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii, stateTones } from "../foundation/theme";
 import { agoOf } from "../shell/questTree";
@@ -44,12 +43,6 @@ function WaitingCard({
         pressed && local.pressed,
       ]}
     >
-      <CrestBadge
-        crest={mission.workspaceCrest}
-        id={mission.workspaceId ?? mission.id}
-        isLoose={mission.workspaceId === null}
-        size={40}
-      />
       <View style={local.waitingMain}>
         <Text numberOfLines={2} style={local.waitingTitle}>
           {mission.title}
@@ -174,12 +167,6 @@ function RecentRow({
       onPress={() => onOpen(mission.id)}
       style={({ pressed }) => [local.row, !isFirst && local.rowDivided, pressed && local.pressed]}
     >
-      <CrestBadge
-        crest={mission.workspaceCrest}
-        id={mission.workspaceId ?? mission.id}
-        isLoose={mission.workspaceId === null}
-        size={30}
-      />
       <View style={local.rowTitles}>
         <Text numberOfLines={1} style={local.rowTitle}>
           {mission.title}

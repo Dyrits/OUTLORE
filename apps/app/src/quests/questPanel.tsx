@@ -1,7 +1,6 @@
 import type { HarnessName, MissionDetail, MissionId, MissionSummary, WorkspaceChoice } from "@outlore/contracts";
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { CrestBadge } from "../crest/crest";
 import { BudgetMeters } from "../editors/budgets";
 import { boardOf } from "../foundation/boardColumns";
 import type { ServiceClient } from "../foundation/client";
@@ -138,12 +137,6 @@ export function QuestSidebar({
             </Pressable>
           )}
           <View style={local.heroRow}>
-            <CrestBadge
-              crest={mission.workspaceCrest}
-              id={mission.workspaceId ?? mission.id}
-              isLoose={mission.workspaceId === null}
-              size={56}
-            />
             {thread?.sideQuest != null ? (
               <Text style={[local.heroName, styles.flex]}>{thread.sideQuest.title}</Text>
             ) : (
@@ -310,20 +303,18 @@ function QuestLedger({
 }
 
 /**
- * What the board's side panel shows for a realm while no quest is chosen: its crest and name, its folder, the ledger
- * of its quests, those needing the owner or underway, and the button that opens the crest studio.
+ * What the board's side panel shows for a realm while no quest is chosen: its name, its folder, the ledger
+ * of its quests, and those needing the owner or underway.
  */
 export function RealmPanel({
   client,
   missions,
-  onCustomize,
   onOpenLore,
   onSelect,
   realm,
 }: {
   client: ServiceClient;
   missions: ReadonlyArray<MissionSummary>;
-  onCustomize: () => void;
   /** Opens the lore kept for this realm. */
   onOpenLore: () => void;
   onSelect: (id: MissionId) => void;
@@ -342,14 +333,6 @@ export function RealmPanel({
         <View style={local.hero}>
           <Text style={local.kicker}>Realm</Text>
           <View style={local.heroRow}>
-            <Pressable
-              accessibilityHint="Press to customize the crest"
-              accessibilityLabel={`Crest of ${realm.name}`}
-              accessibilityRole="button"
-              onPress={onCustomize}
-            >
-              <CrestBadge crest={realm.crest} id={realm.id} size={64} />
-            </Pressable>
             <RealmName client={client} realm={realm} textStyle={local.heroName} />
           </View>
           <Text numberOfLines={2} style={local.meta}>

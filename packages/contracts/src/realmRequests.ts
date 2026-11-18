@@ -1,18 +1,17 @@
 import { Schema } from "effect";
-import { Crest } from "./crest.ts";
 import { MissionId, RitualId, WorkspaceId } from "./ids.ts";
 import { NameText } from "./texts.ts";
 import { WorkspaceChoice } from "./workspaces.ts";
 
-/** The independently chosen name and crest for a recovered realm. */
-export const RealmAppearance = Schema.Struct({ crest: Schema.NullOr(Crest), name: Schema.String });
+/** The name chosen for a recovered realm. */
+export const RealmAppearance = Schema.Struct({ name: Schema.String });
 export type RealmAppearance = typeof RealmAppearance.Type;
 
 /**
- * The name and crest a folder takes when it becomes a realm: the name is required, one to eighty characters.
+ * The name a folder takes when it becomes a realm: required, one to eighty characters.
  * RealmAppearance itself keeps an unconstrained name, for realms as they are stored and shown.
  */
-export const NewRealmAppearance = Schema.Struct({ crest: Schema.NullOr(Crest), name: NameText });
+export const NewRealmAppearance = Schema.Struct({ name: NameText });
 export type NewRealmAppearance = typeof NewRealmAppearance.Type;
 
 /** A quest's authoritative parent placement when an ending commits. */
@@ -62,11 +61,6 @@ export const RenameRealm = Schema.TaggedStruct("RenameRealm", {
   name: NameText,
   workspaceId: WorkspaceId,
 });
-/** Keeps the owner's crest for a realm. */
-export const SetRealmCrest = Schema.TaggedStruct("SetRealmCrest", {
-  crest: Schema.NullOr(Crest),
-  workspaceId: WorkspaceId,
-});
 /** Previews the quests, lore and working threads covered by a realm archive. */
 export const PreviewRealmArchive = Schema.TaggedStruct("PreviewRealmArchive", { workspaceId: WorkspaceId });
 /**
@@ -107,7 +101,6 @@ export type RealmCreation = typeof RealmCreation.Type;
 export const realmRequests = [
   CreateRealm,
   RenameRealm,
-  SetRealmCrest,
   PreviewRealmArchive,
   ArchiveRealm,
   ListArchivedRealms,
@@ -124,5 +117,4 @@ export const realmResults = {
   PreviewRealmArchive: RealmArchivePreview,
   RenameRealm: Schema.Null,
   RestoreRealm: Schema.Null,
-  SetRealmCrest: Schema.Null,
 };

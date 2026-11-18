@@ -71,7 +71,7 @@ export const CreateRitual = Schema.TaggedStruct("CreateRitual", {
   fallbacks: Fallbacks,
   instruction: MessageText,
   primary: RitualCompanion,
-  /** The name and crest for a folder that is not a realm yet, as when starting a quest. */
+  /** The name for a folder that is not a realm yet, as when starting a quest. */
   realm: Schema.optionalKey(NewRealmAppearance),
   requestId: RequestId,
   schedule: RitualSchedule,

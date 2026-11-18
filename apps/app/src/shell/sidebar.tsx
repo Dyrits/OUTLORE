@@ -1,4 +1,4 @@
-import type { Crest, MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
+import type { MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
@@ -115,11 +115,10 @@ export function Sidebar({
   };
 
   /**
-   * A realm: its crest, its name with the folder mark when it is tied to a folder, its quests beneath it while it is
+   * A realm: its name with the folder mark when it is tied to a folder, its quests beneath it while it is
    * unfolded, and the button for a new quest.
    */
   const realmRow = (realm: {
-    crest: Crest | null;
     id: WorkspaceId;
     name: string;
     path: string | null;
@@ -131,8 +130,6 @@ export function Sidebar({
       <DropTarget key={realm.id} onDropQuest={dropOn({ id: realm.id, name: realm.name })}>
         <View>
           <RealmHeader
-            crest={realm.crest}
-            id={realm.id}
             isOpen={!isClosed}
             name={realmLabelOf(realm, data?.workspaces ?? [])}
             onNewQuest={() => startQuest(realm.id, realm.id)}
@@ -185,7 +182,6 @@ export function Sidebar({
             const { tied, untied } = realmGroupsOf(outline.realms);
             const rowOf = ({ quests, workspace, visibleQuests }: (typeof outline.realms)[number]) =>
               realmRow({
-                crest: workspace.crest,
                 id: workspace.id,
                 name: workspace.name,
                 path: workspace.path,
@@ -277,7 +273,7 @@ export function Sidebar({
       {isCreating && (
         <NewRealmModal
           client={client}
-          initial={{ crest: null, name: "", path: "" }}
+          initial={{ name: "", path: "" }}
           isFolderRequired={false}
           onCancel={() => setIsCreating(false)}
         />

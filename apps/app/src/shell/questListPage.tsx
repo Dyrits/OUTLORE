@@ -1,7 +1,6 @@
 import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { CrestStudio } from "../crest/crestStudio";
 import type { ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { useHasSidebar, useQuestPanel } from "../foundation/shellContext";
@@ -40,8 +39,7 @@ export function QuestListScreen({
   const now = Date.now();
   const hasSidebar = useHasSidebar();
   const realm = listing === null ? null : (data?.workspaces.find((each) => each.id === listing.id) ?? null);
-  // The realm whose crest studio or lore is open; showing another realm closes them.
-  const [designingId, setDesigningId] = useState<WorkspaceId | null>(null);
+  // The realm whose lore is open; showing another realm closes it.
   const [loreId, setLoreId] = useState<WorkspaceId | null>(null);
   useQuestPanel(
     hasSidebar && realm !== null && (
@@ -49,7 +47,6 @@ export function QuestListScreen({
         client={client}
         key={realm.id}
         missions={quests}
-        onCustomize={() => setDesigningId(realm.id)}
         onOpenLore={() => setLoreId(realm.id)}
         onSelect={onOpen}
         realm={realm}
@@ -74,17 +71,6 @@ export function QuestListScreen({
         <View style={{ alignItems: "flex-end", paddingHorizontal: 28, paddingTop: 16 }}>
           <RealmArchiveAction client={client} isIcon workspaceId={realm.id} />
         </View>
-      )}
-      {realm !== null && designingId === realm.id && (
-        <CrestStudio
-          id={realm.id}
-          initial={realm.crest}
-          name={realm.name}
-          onCancel={() => setDesigningId(null)}
-          onDone={(crest) =>
-            client.request({ _tag: "SetRealmCrest", crest, workspaceId: realm.id }).then(() => setDesigningId(null))
-          }
-        />
       )}
       <ScrollView contentContainerStyle={local.content} style={local.page}>
         {quests.length === 0 && (

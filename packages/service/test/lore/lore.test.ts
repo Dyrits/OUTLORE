@@ -170,7 +170,7 @@ describe("recalling lore", () => {
   it.live("shares realm lore across the quests of a realm with no folder, and not with the Borderlands", () => {
     const { layer } = live();
     return Effect.gen(function* () {
-      yield* call({ _tag: "CreateRealm", crest: null, name: "Game Design", path: null });
+      yield* call({ _tag: "CreateRealm", name: "Game Design", path: null });
       const list = { _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null } as const;
       const realmId = (yield* call(list)).workspaces[0]?.id ?? null;
       const inRealm = () =>

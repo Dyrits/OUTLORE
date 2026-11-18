@@ -62,7 +62,7 @@ Source layout (`packages/service/src`, CHG-0125): a folder holds modules that de
 `connectors/` holds the connector gateway interface, Code Mode's tool and declarations, and the QuickJS executor (CHG-0441, ADR 0023).
 `work/` holds the modules that call one another in a ring (threads, tree, lifecycle, missions, the Guildmaster, rituals, budgets, the tool server) and stays one folder until its own seams are settled; `service.ts`, `server.ts`, `main.ts`, and `index.ts` stay in `src/` as the entry points.
 The files named below keep their names; find one by name under its folder.
-The app (`apps/app/src`) groups by part, and its folders form one downward chain without cycles: `foundation`, `attachments`, `terminal`, `ui`, `editors`, `crest`, `realms`, `rituals`, `quests`, `lore`, `conversation`, `settings`, `shell`.
+The app (`apps/app/src`) groups by part, and its folders form one downward chain without cycles: `foundation`, `attachments`, `terminal`, `ui`, `editors`, `realms`, `rituals`, `quests`, `lore`, `conversation`, `settings`, `shell`.
 Tests mirror the folders under `test/`; shared fixtures stay in `test/fixtures/`.
 
 - **Thread lifecycle** (`lifecycle.ts`): the only writer of a thread's state and blocker. Callers name a transition (start or end a turn, fail, hold in a turn or for a reason, release, stop, resume, recover at startup); each keeps the tree's rules, such as a parent left Waiting with nothing at work beneath it becoming Idle. It also works out the actions the owner can take on a thread.

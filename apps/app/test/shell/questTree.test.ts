@@ -83,7 +83,7 @@ describe("the path to a thread", () => {
 const quest = (id: string, workspaceId: string | null, lastActivityAt: number) =>
   ({ id, lastActivityAt, workspaceId }) as unknown as MissionSummary;
 const realm = (id: string, name: string, path: string | null = `/${name}`) =>
-  ({ crest: null, id, name, path }) as unknown as WorkspaceChoice;
+  ({ id, name, path }) as unknown as WorkspaceChoice;
 
 describe("the placements of quests", () => {
   const placements = placementsOf(

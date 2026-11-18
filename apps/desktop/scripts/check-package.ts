@@ -59,8 +59,6 @@ const evaluate = (url: string, expression: string) =>
 const expression = `(async () => {
   const text = document.body?.innerText ?? "";
   if (!(text.includes("Guild Hall") && text.includes("Realms")) || typeof window.outlore?.endpoint !== "function") return "waiting";
-  const credits = await fetch("outlore-app://app/crest-credits.txt");
-  if (!credits.ok || !(await credits.text()).includes("Creative Commons Attribution 3.0")) return "credits-missing";
   await window.outlore.endpoint();
   const session = await window.outlore.terminalOpen("package-check", null);
   await window.outlore.terminalClose("package-check");
@@ -113,12 +111,9 @@ const check = async () => {
               continue;
             const result = await evaluate(page.webSocketDebuggerUrl, expression);
             if (result === "ready") {
-              console.log(
-                "PASS: packaged Guild Hall screen, crest credits, service bridge, native terminal, and fuses are ready.",
-              );
+              console.log("PASS: packaged Guild Hall screen, service bridge, native terminal, and fuses are ready.");
               return;
             }
-            if (result === "credits-missing") throw new Error("The packaged app does not serve the crest credits.");
             if (result !== "waiting") throw new Error("The packaged terminal did not start.");
           }
         }

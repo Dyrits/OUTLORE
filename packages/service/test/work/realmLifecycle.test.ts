@@ -9,7 +9,7 @@ describe("archiving and restoring realms", () => {
   it.live("restores the realm's quests without reopening a previously archived quest", () =>
     withService(
       Effect.gen(function* () {
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: null });
+        yield* call({ _tag: "CreateRealm", name: "Garden", path: null });
         const realm = (yield* list()).workspaces[0];
         if (realm === undefined) return yield* Effect.die("No realm");
         const active = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: "active" });
@@ -54,13 +54,13 @@ describe("archiving and restoring realms", () => {
         const roots = yield* call({ _tag: "BrowseFolders", path: null, shouldIncludeHidden: false });
         const path = roots.folders[0]?.path;
         if (path === undefined) return yield* Effect.die("No folder");
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path });
+        yield* call({ _tag: "CreateRealm", name: "Garden", path });
         const realm = (yield* list()).workspaces[0];
         if (realm === undefined) return yield* Effect.die("No realm");
         const quest = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: "quest" });
         const preview = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
         yield* call({ _tag: "ArchiveRealm", snapshot: preview.snapshot, workspaceId: realm.id });
-        expect(yield* Effect.flip(call({ _tag: "CreateRealm", crest: null, name: "New garden", path }))).toMatchObject({
+        expect(yield* Effect.flip(call({ _tag: "CreateRealm", name: "New garden", path }))).toMatchObject({
           kind: "InvalidInput",
         });
         expect(
@@ -95,12 +95,13 @@ describe("archiving and restoring realms", () => {
   it.live("requires confirmation before creating or renaming to a duplicate active name", () =>
     withService(
       Effect.gen(function* () {
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: null });
-        expect(
-          yield* Effect.flip(call({ _tag: "CreateRealm", crest: null, name: "garden", path: null })),
-        ).toMatchObject({ kind: "InvalidInput", message: expect.stringContaining("active realm") });
-        yield* call({ _tag: "CreateRealm", allowDuplicateName: true, crest: null, name: "Garden", path: null });
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Notes", path: null });
+        yield* call({ _tag: "CreateRealm", name: "Garden", path: null });
+        expect(yield* Effect.flip(call({ _tag: "CreateRealm", name: "garden", path: null }))).toMatchObject({
+          kind: "InvalidInput",
+          message: expect.stringContaining("active realm"),
+        });
+        yield* call({ _tag: "CreateRealm", allowDuplicateName: true, name: "Garden", path: null });
+        yield* call({ _tag: "CreateRealm", name: "Notes", path: null });
         const notes = (yield* list()).workspaces.find((realm) => realm.name === "Notes");
         if (notes === undefined) return yield* Effect.die("No notes realm");
         expect(yield* Effect.flip(call({ _tag: "RenameRealm", name: "Garden", workspaceId: notes.id }))).toMatchObject({
@@ -115,7 +116,7 @@ describe("archiving and restoring realms", () => {
   it.live("starts afresh with only realm lore deleted recoverably and all old quests archived", () =>
     withService(
       Effect.gen(function* () {
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: null });
+        yield* call({ _tag: "CreateRealm", name: "Garden", path: null });
         const realm = (yield* list()).workspaces[0];
         if (realm === undefined) return yield* Effect.die("No realm");
         const quest = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: "quest" });
@@ -127,7 +128,7 @@ describe("archiving and restoring realms", () => {
         const saved = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
         yield* call({
           _tag: "RestoreRealm",
-          appearance: { crest: null, name: "Fresh garden" },
+          appearance: { name: "Fresh garden" },
           shouldStartAfresh: true,
           snapshot: saved.snapshot,
           workspaceId: realm.id,

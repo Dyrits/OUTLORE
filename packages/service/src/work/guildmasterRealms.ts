@@ -32,7 +32,7 @@ export const createRealmByGuildmaster = (callerId: string, args: ArgumentsOf<"cr
         const before = yield* countRealms;
         // The realm rules decide last which folder is the realm's: a folder that already has a realm keeps it,
         // whatever name is given, and nothing is made then.
-        yield* createRealm(folder, name, null, checked.hasDuplicateName);
+        yield* createRealm(folder, name, checked.hasDuplicateName);
         if ((yield* countRealms) === before)
           return refused(`Not done: the folder ${folder} already belongs to a realm. Rename that realm instead.`);
         return done(

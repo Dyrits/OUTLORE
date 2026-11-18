@@ -1,5 +1,4 @@
 import {
-  type Crest,
   type EffortChoice,
   type HarnessName,
   type MissionEnding,
@@ -37,7 +36,7 @@ import { workedOutStateOf } from "./missionStates.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 import { runStateOf, scheduleOf } from "./ritualSchedule.ts";
 import { attachmentsTitle, titleOf } from "./titles.ts";
-import { attachWorkspace, crestOfRow } from "./workspaces.ts";
+import { attachWorkspace } from "./workspaces.ts";
 
 /**
  * Records the mission, its top thread in the chosen workspace or none, and the first message.
@@ -48,7 +47,7 @@ export const insertMission = Effect.fnUntraced(function* (
   choice: RunnerChoice & { readonly effort: EffortChoice; readonly model: ModelChoice },
   workspacePath: string | null,
   shouldRememberChoices = true,
-  realm: { crest: Crest | null; name: string } | null = null,
+  realm: { name: string } | null = null,
   attachmentIds: ReadonlyArray<string> = [],
 ) {
   const started = yield* insertQuest(
@@ -79,7 +78,7 @@ export const insertQuest = Effect.fnUntraced(function* (
      */
     readonly realmId?: string | null;
     readonly isTitleByOwner?: boolean;
-    readonly realm: { crest: Crest | null; name: string } | null;
+    readonly realm: { name: string } | null;
     readonly shouldRememberChoices: boolean;
     readonly title: string;
   },
@@ -162,7 +161,6 @@ type MissionRow = {
   unpricedTurns: number;
   earlierTurns: number;
   workspaceId: string | null;
-  workspaceCrest: string | null;
   workspaceName: string | null;
   budgetCost: number | null;
   budgetTokens: number | null;
@@ -216,7 +214,6 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
     title: row.title,
     topThreadId: ThreadId.make(row.topThreadId),
     usage: { cacheCreation: row.cacheCreation, cacheRead: row.cacheRead, input: row.input, output: row.output },
-    workspaceCrest: crestOfRow(row.workspaceCrest),
     workspaceId: row.workspaceId === null ? null : WorkspaceId.make(row.workspaceId),
     workspaceName: row.workspaceName,
   };
@@ -232,7 +229,7 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
       ${sql.literal(consumptionColumns)},
       m.budget_cost AS budgetCost, m.budget_tokens AS budgetTokens, COALESCE(SUM(${sql.literal(costSum)}), 0) AS spentCost,
       COALESCE(SUM(${sql.literal(tokenSum)}), 0) AS spentTokens,
-      w.id AS workspaceId, w.name AS workspaceName, w.crest AS workspaceCrest,
+      w.id AS workspaceId, w.name AS workspaceName,
       r.id AS ritualId, r.is_on AS ritualIsOn, r.last_run_at AS ritualLastRunAt, r.last_run_state AS ritualLastRunState,
       r.next_run_at AS ritualNextRunAt, r.schedule AS ritualSchedule, top.state AS topState
     FROM missions m

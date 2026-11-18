@@ -104,8 +104,8 @@ export const StartMission = Schema.TaggedStruct("StartMission", {
   harness: Schema.optionalKey(HarnessName),
   model: ModelChoice,
   /**
-   * The name and crest the owner gave a folder that is not a realm yet; used when this mission turns it into one, and
-   * ignored when the folder already is a realm. Absent names it after its folder, with no crest of its own.
+   * The name the owner gave a folder that is not a realm yet; used when this mission turns it into one, and
+   * ignored when the folder already is a realm. Absent names it after its folder.
    */
   realm: Schema.optionalKey(NewRealmAppearance),
   requestId: RequestId,

@@ -32,7 +32,7 @@ describe("recalling the quest's realm", () => {
       const quest = yield* start("Quest", directory);
       yield* settle(quest.missionId, (detail) => detail.thread.state === "Idle");
       yield* save(quest.threadId, "Realm alpha keeps moon maps.", "workspace");
-      yield* call({ _tag: "CreateRealm", crest: null, name: "Beta", path: null });
+      yield* call({ _tag: "CreateRealm", name: "Beta", path: null });
       const list = yield* call({
         _tag: "ListMissions",
         isArchived: false,

@@ -1,7 +1,7 @@
 import Svg, { Path } from "react-native-svg";
 import { emblemPaths } from "../foundation/emblems";
 
-/** The line drawings of the Charter's sections on a 24 by 24 grid, apart from the realm emblems the crest studio offers. */
+/** The line drawings of the Charter's sections on a 24 by 24 grid. */
 const iconPaths = {
   chat: ["M4 5h16v11H11l-4 4v-4H4z", "M8 9.5h8", "M8 12.5h5"],
   code: ["M8 7l-5 5 5 5", "M16 7l5 5-5 5", "M14 5l-4 14"],
