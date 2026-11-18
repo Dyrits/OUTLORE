@@ -95,7 +95,7 @@ export function NewRealmModal({
       <View style={local.backdrop}>
         <Pressable accessibilityLabel="Close" disabled={isBusy} onPress={cancel} style={StyleSheet.absoluteFill} />
         <View style={local.menu}>
-          <Text style={local.menuTitle}>Travel to a new realm</Text>
+          <Text style={local.menuTitle}>Visit a new realm</Text>
           <View style={local.folderRow}>
             <Text numberOfLines={2} style={[local.menuPath, editing.path === "" && local.menuPathEmpty]}>
               {editing.path !== ""
@@ -152,7 +152,7 @@ export function NewRealmModal({
               }}
               style={[local.menuDone, !isReady && local.menuDoneOff]}
             >
-              <Text style={local.menuDoneText}>{isDuplicate ? "Use this name" : "Create the realm"}</Text>
+              <Text style={local.menuDoneText}>{isDuplicate ? "Use this name" : "Visit the realm"}</Text>
             </Pressable>
           </View>
         </View>
