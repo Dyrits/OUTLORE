@@ -11,6 +11,7 @@ import { useRightPanel } from "./src/foundation/useRightPanel";
 import type { SettingsSectionId } from "./src/settings/settingsSections";
 import { AddHostModal } from "./src/shell/addHostModal";
 import { AppScreen } from "./src/shell/appScreen";
+import { AppStatusBar } from "./src/shell/appStatusBar";
 import { appStyles as styles } from "./src/shell/appStyles";
 import { initialLocation, navigate, panelScopeOf } from "./src/shell/location";
 import { detailsModeOf } from "./src/shell/navigation";
@@ -99,6 +100,7 @@ export function App() {
   if (status.kind === "pairing" || (status.canPair && isAddingHost)) {
     return (
       <View style={styles.center}>
+        <AppStatusBar />
         <AddHostModal
           computerName={computerName}
           deviceNoun={deviceNoun}
@@ -120,6 +122,7 @@ export function App() {
   if (status.kind === "connecting" || client === null) {
     return (
       <View style={styles.center}>
+        <AppStatusBar />
         <Text style={styles.connecting}>{status.message}</Text>
         {status.canRetry && (
           <Pressable accessibilityRole="button" onPress={retry} style={styles.backButton}>
@@ -219,7 +222,8 @@ export function App() {
   return (
     <ActiveHostContext.Provider value={activeHost}>
       <HostMenuContext.Provider value={hostMenu}>
-        <View style={styles.root}>
+        <View style={styles.screen}>
+          <AppStatusBar />
           {status.failure !== null && (
             <View accessibilityRole="alert" style={styles.banner}>
               <Text numberOfLines={2} style={styles.bannerText}>
