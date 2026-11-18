@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume implementing the simpler navigation, errands, and removal of crests and Gild (CHG-0449), read the [current handoff](.agents/handoffs/2026-11-18-0126-simpler-navigation.md). Handoffs are shared and committed.
+- To resume the simpler sidebar (batch 1, crest removal, is committed on `worktree/sidebar`; batches 2 to 4 are not started), read the [current handoff](.agents/handoffs/2026-11-18-0907-sidebar-batch-1-crests-removed.md). Handoffs are shared and committed.
 
 - To resume the Android pairing and status-bar fixes or prepare the deferred release, read the [current handoff](.agents/handoffs/2026-11-18-0124-android-pairing-hotfix.md). Handoffs are shared and committed.
 
