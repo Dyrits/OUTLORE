@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the sidebar's creation rows (CHG-0503 to CHG-0506; committed; push waiting for the owner's approval; open: which button the owner meant, and the owner's look in a window), read the [current handoff](.agents/handoffs/2026-11-18-1621-creation-rows.md). Handoffs are shared and committed.
+
 - To resume the Android self-update (on `origin/main`; open: a phone check) and the context-window redo (`worktree/context-window-redo`, CHG-0501; open: the owner's merge and look), read the [current handoff](.agents/handoffs/2026-11-18-1435-context-window-redo.md). Handoffs are shared and committed.
 
 - To resume the plan-limit rings' order fix (CHG-0500; committed; push waiting for the owner's approval; open: the owner's look at the rings in a window), read the [current handoff](.agents/handoffs/2026-11-18-1346-plan-ring-order.md). Handoffs are shared and committed.
-
-- To resume voice input (desktop dictation is built, CHG-0499; open: the owner's try with a real microphone, then packaging or the web and phone), read the [current handoff](.agents/handoffs/2026-11-18-1345-voice-dictation-desktop.md). Handoffs are shared and committed.
