@@ -17,7 +17,7 @@ Branch `worktree/code-mode-widen`, started from `main` at `00d569c`. Run inside 
   - the sixth and seventh calls to `send_thread_message` in a run are refused by the cap of 5, and 20 calls to `read_journal` are not counted;
   - Chronicler's `create_ritual` called from code asks the owner, the thread waits, and the Ritual is made after Allow;
   - a setting flipped during a turn changes neither the listing nor the answers of that turn; the next turn starts with it, and flipping it back mid-turn changes nothing either (the fake harness, with `Endpoints.heldCodeMode` awaited).
-- `codeExecutor.test.ts` (13): the existing twelve with the nested globals, and one new test for `outlore` and `connectors` beside each other.
+- `codeExecutor.test.ts` (14): the thirteen existing with the nested globals, and one new test for `outlore` and `connectors` beside each other.
 - `threadTools.test.ts`: only tools that already run unasked are covered; the direct four; the three work-starting tools; `run_code` unasked only while Code Mode is on.
 - `activities.test.ts` (3): a `run_code` call shows as "Run code that calls its tools".
 - `apps/app/test/charter/codeMode.test.ts`: the new label, explanation and state lines.

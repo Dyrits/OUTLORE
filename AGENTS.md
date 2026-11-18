@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the Charter's Code Mode switch (CHG-0444; merged into `main`, push pending the owner's approval; open: the owner's look in a window and on a phone, the sidebar note), read the [current handoff](.agents/handoffs/2026-11-17-2348-charter-code-mode-switch-on-main.md). Handoffs are shared and committed.
+- To resume Code Mode widened to every tool of Outlore's tool server (CHG-0446, CHG-0447; on branch `worktree/code-mode-widen`, not merged or pushed; open: the owner's review of the decisions, a live harness check, the owner's look at the Charter's switch), read the [current handoff](.agents/handoffs/2026-11-18-0105-code-mode-widened.md). Handoffs are shared and committed.
 
 - To resume findings from the review since 0.1.6-Prototype, read the [current handoff](.agents/handoffs/2026-11-17-2316-release-review.md). Handoffs are shared and committed.
 
