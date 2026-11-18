@@ -1,5 +1,9 @@
 # Work in progress
 
+## Android self-update · 2026-11-18 · specified (CHG-0454), nothing built
+
+The owner asked that the APK update itself on a new release, like the desktop. Agreed: check and download in the background (Wi-Fi only), the owner presses **Install update**, Android confirms; same Updates section, switch and channel; hash and same-key checks. [Specification](capabilities/app-updates/specifications.md#the-android-app-agreed-chg-0454-not-built) · [draft](capabilities/app-updates/draft.md). Authorization to build is pending. Prerequisites: the release key in the repository's secrets and a first release-signed APK installed by hand. Open: a spike on skipping Android's confirmation.
+
 ## Simpler app · 2026-11-18 · all four batches built, tested and merged into the local `main`; the owner's look pending, not pushed
 
 CHG-0459 uses flat creation rows with the castle and sword-and-plus icons at the right of the labels on desktop and phone.
