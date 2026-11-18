@@ -1,5 +1,5 @@
 import type { MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
 import { PlanLimitRings } from "../editors/planLimitRings";
@@ -12,7 +12,6 @@ import { type Destination, type MoveConfirmation, moveConfirmationOf } from "../
 import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
 import { FoldChevron } from "../ui/foldChevron";
-import { SettingsIcon } from "../ui/settingsIcons";
 import { DropTarget, RealmDragSource } from "./questDrag";
 import { placementsOf, type RealmListing, reorderedRealmIds, toggledFold } from "./questTree";
 import { NewQuestIcon, NewRealmIcon } from "./railActions";
@@ -41,9 +40,6 @@ export function Sidebar({
   onOpenMission,
   onOpenRealmQuests,
   onOpenThread,
-  isMenuOutside = false,
-  isWorkshopOpen,
-  onWorkshop,
   openMission,
   openThread,
 }: {
@@ -55,12 +51,6 @@ export function Sidebar({
   onOpenRealmQuests: (listing: RealmListing) => void;
   /** Opens an errand of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
-  /** Whether the window draws the menu button itself, at this same place, so it stays when the sidebar is hidden. */
-  isMenuOutside?: boolean;
-  /** Whether the Workshop (Settings) is the open destination, which its icon shows. */
-  isWorkshopOpen: boolean;
-  /** Opens the Workshop, or from it goes back to where the owner was before. */
-  onWorkshop: () => void;
   openMission: MissionId | null;
   /** The errand open in the open quest, or null for the quest itself. */
   openThread: ThreadId | null;
@@ -230,13 +220,7 @@ export function Sidebar({
         )}
       </ScrollView>
       <View style={local.footer}>
-        <Spending client={client}>
-          {isMenuOutside ? (
-            <View style={local.menuPlace} />
-          ) : (
-            <SidebarMenu isOpen={isWorkshopOpen} onPress={onWorkshop} />
-          )}
-        </Spending>
+        <Spending client={client} />
       </View>
       {pendingMove !== null && (
         <MoveQuestModal
@@ -275,30 +259,10 @@ function SectionTitle({ isOpen, onToggle, title }: { isOpen: boolean; onToggle: 
   );
 }
 
-/** The Workshop's gear at the foot: one press opens the Workshop (Settings); it stays pressed while open, and a press then closes it. */
-export function SidebarMenu({ isOpen, onPress }: { isOpen: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityLabel={isOpen ? "Close the Workshop" : "Open the Workshop"}
-      accessibilityRole="button"
-      accessibilityState={{ selected: isOpen }}
-      onPress={onPress}
-      style={(state) => [
-        local.workshopButton,
-        (state.pressed || isHovered(state)) && local.rowHovered,
-        isOpen && local.rowSelected,
-      ]}
-    >
-      <SettingsIcon name="gear" size={20} tint={colors.textSecondary} />
-    </Pressable>
-  );
-}
-
 /**
- * The foot of the sidebar: the global budget's meters, when it has limits, the plans' limit rings, and the menu button
- * (or, where the window draws that button itself, the room it takes).
+ * The foot of the sidebar: the global budget's meters, when it has limits, and the plans' limit rings.
  */
-function Spending({ children, client }: { children: ReactNode; client: ServiceClient }) {
+function Spending({ client }: { client: ServiceClient }) {
   const { data: global } = useServiceQuery(client, { _tag: "ReadBudget", missionId: null }, "budget:global");
   const hasLimits = global !== null && (global.limits.cost !== null || global.limits.tokens !== null);
   return (
@@ -309,7 +273,6 @@ function Spending({ children, client }: { children: ReactNode; client: ServiceCl
         </View>
       )}
       {global !== null && <PlanLimitRings client={client} />}
-      <View style={local.menuRow}>{children}</View>
     </>
   );
 }

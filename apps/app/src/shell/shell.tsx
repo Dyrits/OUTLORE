@@ -31,7 +31,7 @@ import {
   rememberPaneWidth,
   rememberRailWidth,
 } from "./railStorage";
-import { type Place, Sidebar, SidebarMenu } from "./sidebar";
+import { type Place, Sidebar } from "./sidebar";
 import { type DetailsToggle, PanelIcon, QuestColumn, questColumnWidth, TopBar } from "./topBar";
 import { useCompanionDock } from "./useCompanionDock";
 import { viewingOf } from "./viewing";
@@ -52,6 +52,10 @@ export function Shell(
     location: Location;
     dispatch: Dispatch<NavigationEvent>;
     details: DetailsToggle | null;
+    /** Whether the Workshop (Settings) is the screen shown, which its top-bar icon shows. */
+    isWorkshopOpen: boolean;
+    /** Opens the Workshop, or from it goes back to where the owner was before. */
+    onWorkshop: () => void;
     /** The place the content shows, told to Chronicler. */
     place: Place | null;
     rightPanel: RightPanel;
@@ -62,6 +66,7 @@ export function Shell(
   },
 ) {
   const { width } = useWindowDimensions();
+  const workshop = { isOpen: props.isWorkshopOpen, onToggle: props.onWorkshop };
   const [isHidden, setIsHidden] = useState(readHidden);
   const [storedRailWidth, setRailWidth] = useState(readRailWidth);
   // Held to a quarter of the window again whenever the window changes size; the remembered width stays as dragged.
@@ -257,6 +262,7 @@ export function Shell(
                   setIsMenuOpen(!isMenuOpen);
                 },
               }}
+              workshop={workshop}
             />
             <View style={[local.narrowContent, isNarrowCovered && local.hidden]}>{props.children}</View>
             {isMenuOpen && (
@@ -278,13 +284,12 @@ export function Shell(
           <CompanionTabOf.Provider value={isCompanionShown ? pillId : null}>
             <TopBarShown.Provider value={true}>
               <View style={local.window}>
-                <TopBar chronicler={chroniclerToggle} client={props.client} details={null} />
+                <TopBar chronicler={chroniclerToggle} client={props.client} details={null} workshop={workshop} />
                 <View style={local.body}>
                   <View style={local.frame}>
                     {!isHidden && (
                       <Sidebar
                         {...props}
-                        isMenuOutside
                         onOpenMission={props.onOpenMission}
                         onOpenRealmQuests={props.onOpenRealmQuests}
                         onOpenThread={props.onOpenThread}
@@ -340,9 +345,6 @@ export function Shell(
                       {chroniclerChat}
                     </ChroniclerColumn>
                   )}
-                  <View style={local.menuPin}>
-                    <SidebarMenu isOpen={props.isWorkshopOpen} onPress={props.onWorkshop} />
-                  </View>
                   {(hasQuestPanel ? details.isPinned !== true : hasCompanion) && (
                     <Pressable
                       accessibilityLabel={isColumnOpen ? "Hide quest panel" : "Show quest panel"}
@@ -417,17 +419,6 @@ const local = StyleSheet.create({
     width: handleSize * 0.75,
   },
   hidden: { display: "none" },
-  // The foot buttons' fixed place at the window's bottom left, the same with the sidebar shown or hidden: the Workshop's
-  // gear, and the Reserves chest that opens the plan limits above itself.
-  menuPin: {
-    alignItems: "flex-end",
-    bottom: 8,
-    flexDirection: "row",
-    gap: 2,
-    left: 12,
-    position: "absolute",
-    zIndex: 5,
-  },
   narrow: { backgroundColor: colors.page, flex: 1 },
   narrowContent: { flex: 1 },
   noCompanion: { color: colors.textMuted, padding: 16 },

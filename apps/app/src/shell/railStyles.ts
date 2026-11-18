@@ -50,9 +50,6 @@ export const local = StyleSheet.create({
   footer: { gap: 1, paddingBottom: 8, paddingLeft: 8, paddingRight: 16 },
   group: { gap: 1, paddingBottom: 12, paddingLeft: 8, paddingRight: 16, paddingTop: 8 },
   guide: { backgroundColor: colors.border, bottom: 0, position: "absolute", top: 0, width: 1 },
-  // The button's room, kept empty when the window draws the button itself.
-  menuPlace: { height: 30 },
-  menuRow: { alignItems: "flex-start", paddingLeft: 4 },
   more: {
     alignItems: "center",
     borderRadius: radii.md,
@@ -109,5 +106,4 @@ export const local = StyleSheet.create({
   },
   sideQuestText: { fontSize: fontSizes.md },
   spending: { paddingHorizontal: 6, paddingVertical: 4 },
-  workshopButton: { alignItems: "center", borderRadius: radii.md, height: 30, justifyContent: "center", width: 30 },
 });

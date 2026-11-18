@@ -5,6 +5,7 @@ import { HostMenuContext } from "../foundation/hostContext";
 import { usedTextOf } from "../foundation/labels";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { SettingsIcon } from "../ui/settingsIcons";
 import { HostMenu } from "./hostMenu";
 import { UpdateNotice } from "./updateNotice";
 
@@ -50,7 +51,7 @@ function MenuIcon() {
 }
 
 /**
- * The top bar: the host menu at its start and, at the end, the spending, which the collapsed rail no longer shows,
+ * The top bar: the host menu at its start, the Workshop's gear beside it and, at the end, the spending, which the collapsed rail no longer shows,
  * and Chronicler's button. It names no place: the rail and the screens say where the owner is.
  */
 export function TopBar({
@@ -58,6 +59,7 @@ export function TopBar({
   details,
   chronicler,
   menu,
+  workshop,
 }: {
   client: ServiceClient;
   /** The icon that shows or hides the quest's side panel; none outside a quest. */
@@ -66,6 +68,8 @@ export function TopBar({
   chronicler: { isOpen: boolean; onToggle: () => void };
   /** The button that opens or closes the full-screen menu, in a window too narrow for the sidebar; none where it shows. */
   menu?: { isOpen: boolean; onToggle: () => void };
+  /** The Workshop's gear, right of the host menu: it stays pressed while the Workshop is shown, and a press then closes it. */
+  workshop: { isOpen: boolean; onToggle: () => void };
 }) {
   const hostMenu = useContext(HostMenuContext);
   return (
@@ -87,6 +91,15 @@ export function TopBar({
           <HostMenu {...hostMenu} />
         </View>
       )}
+      <Pressable
+        accessibilityLabel={workshop.isOpen ? "Close the Workshop" : "Open the Workshop"}
+        accessibilityRole="button"
+        accessibilityState={{ selected: workshop.isOpen }}
+        onPress={workshop.onToggle}
+        style={({ pressed }) => [local.topIcon, (pressed || workshop.isOpen) && local.topIconActive, noDragRegion]}
+      >
+        <SettingsIcon name="gear" size={18} tint={colors.textSecondary} />
+      </Pressable>
       <View style={local.spacer} />
       <View style={noDragRegion}>
         <UpdateNotice />
