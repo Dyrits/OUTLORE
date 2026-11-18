@@ -83,8 +83,6 @@ describe("steering a running thread", () => {
 
   it.live("queues the owner's message by default, and a Steer on it joins the running turn", () =>
     Effect.gen(function* () {
-      const settings = yield* call({ _tag: "ReadSettings" });
-      expect(settings.defaultDelivery).toBe("Queue");
       const started = yield* start("wait 400");
       yield* settle(started.missionId, isRunning);
       const sent = yield* send(started.threadId, "Sooner");
@@ -115,10 +113,8 @@ describe("steering a running thread", () => {
     }).pipe(Effect.provide(live())),
   );
 
-  it.live("steers a message sent as Steer even when the owner's default is Queue", () =>
+  it.live("steers a message sent as Steer, though messages queue by default", () =>
     Effect.gen(function* () {
-      const settings = yield* call({ _tag: "ReadSettings" });
-      yield* call({ _tag: "UpdateSettings", settings: { ...settings, defaultDelivery: "Queue" } });
       const started = yield* start("wait 400");
       yield* settle(started.missionId, isRunning);
       yield* send(started.threadId, "Now", "Steer");

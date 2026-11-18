@@ -6,13 +6,12 @@ import { type Comment, messageWithComments } from "./comments";
 export type ConversationOptions = { isChronicler: boolean; realmPath: string | null; viewing: Viewing | null };
 
 /** Delivery and placeholder decisions shared by both conversation panes. */
-export const conversationStateOf = (state: string, isInTurn: boolean, delivery: MessageDelivery, name: string) => ({
-  delivery: isInTurn ? delivery : null,
+export const conversationStateOf = (state: string, isInTurn: boolean, name: string) => ({
   placeholder:
     state === "Stopped"
       ? `Write to ${name}; it waits until you resume it…`
       : isInTurn
-        ? `Write to ${name}; Send ${delivery === "Steer" ? "joins its current turn" : "waits for its next turn"}…`
+        ? `Write to ${name}; Send waits for its next turn, unless you steer it…`
         : `Write to ${name}…`,
 });
 

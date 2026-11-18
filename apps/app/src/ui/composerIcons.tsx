@@ -46,3 +46,41 @@ export function SideQuestBranch() {
     </Svg>
   );
 }
+
+/** The Steer icon: an arrow bending into the line it joins, the running turn. */
+export function SteerIcon({ tint }: { tint: string }) {
+  return (
+    <Svg
+      fill="none"
+      height={14}
+      stroke={tint}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.8}
+      viewBox="0 0 16 16"
+      width={14}
+    >
+      <Path d="M2.5 13.5 V8 a3 3 0 0 1 3-3 H13" />
+      <Path d="M9.5 1.5 L 13.2 5 L 9.5 8.5" />
+    </Svg>
+  );
+}
+
+/** The Interrupt icon: a bar and a triangle, skipping the running turn to the queued message. */
+export function InterruptIcon({ tint }: { tint: string }) {
+  return (
+    <Svg
+      fill="none"
+      height={14}
+      stroke={tint}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.8}
+      viewBox="0 0 16 16"
+      width={14}
+    >
+      <Path d="M3 3 L 11 8 L 3 13 Z" />
+      <Path d="M13.5 3 V13" />
+    </Svg>
+  );
+}

@@ -31,7 +31,6 @@ export const defaultSettings: Settings = {
   backups: [],
   briefingLimit: 2000,
   chatterThreshold: 20,
-  defaultDelivery: "Queue",
   defaultEffort: "default",
   defaultHarness: "claude",
   defaultMissionBudget: noLimits,

@@ -84,8 +84,6 @@ describe("keeping a continued suggestion's words from authorizing a Ritual's str
       Effect.gen(function* () {
         const quest = yield* restingQuest;
         const ritual = yield* createEmptyScopeRitual;
-        const settings = yield* call({ _tag: "ReadSettings" });
-        yield* call({ _tag: "UpdateSettings", settings: { ...settings, defaultDelivery: "Queue" } });
         yield* send(ritual.threadId, "wait 600");
         yield* settle(ritual.missionId, (detail) => detail.thread.state === "Running");
         const suggester = yield* continueSuggestion(ritual.missionId, archiveScriptOf(quest.missionId));

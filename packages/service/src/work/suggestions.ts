@@ -135,8 +135,7 @@ export const suggestionsLayer = Layer.effect(
           const [mission] = yield* sql<{ title: string; topThreadId: string }>`
               SELECT title, top_thread_id AS topThreadId FROM missions WHERE id = ${missionId}`;
           if (mission === undefined) return yield* notFound("No such mission.");
-          const { defaultDelivery } = yield* readSettings;
-          yield* insertSuggestedMessage(mission.topThreadId, suggestion.text, defaultDelivery === "Queue");
+          yield* insertSuggestedMessage(mission.topThreadId, suggestion.text, true);
           return {
             outcome: "Continued",
             targetMissionId: missionId,

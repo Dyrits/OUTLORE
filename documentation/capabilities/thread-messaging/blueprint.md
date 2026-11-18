@@ -8,7 +8,7 @@ Messaging exposes `send`, `reportResult`, `interrupt`, and `readConversation`. I
 
 Bind MCP calls to their sending thread. Permit its parent and direct descendants. A later reference resolver will issue validated target references for cross-tree and cross-mission messages; plain text that claims an `@` reference grants no access. Replies use the persisted originating message's authorized return target. Before reference support exists, refuse unsupported targets explicitly rather than accepting arbitrary thread identifiers.
 
-An owner message can request Steer or Queue; Steer is the default. Execution returns whether it accepted mid-turn delivery. When unsupported, queue for the next turn and expose that outcome. Waiting, Idle, and Done receivers wake; Stopped receivers retain messages without waking. A failed receiver retains delivery for explicit recovery rather than retrying a broken process indefinitely.
+An owner message can request Steer or Queue; Queue is the default, with no setting (CHG-0523). Execution returns whether it accepted mid-turn delivery. When unsupported, queue for the next turn and expose that outcome. Waiting, Idle, and Done receivers wake; Stopped receivers retain messages without waking. A failed receiver retains delivery for explicit recovery rather than retrying a broken process indefinitely.
 
 Track the chatter count per unordered pair of threads. Reset it on a user message to either participant or a result in their exchange. At the configured threshold, default 20, Threads pauses both in Attention and admits no further automatic turn between them until the owner decides. Keep all triggering messages. Tests must exercise simultaneous sends at the threshold.
 

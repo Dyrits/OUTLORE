@@ -65,12 +65,9 @@ describe("sending a conversation message", () => {
     await sendConversationMessage(fake.given);
     expect(fake.requests[0]).toMatchObject({ realmPath: "/realm", text: "hello terminal" });
   });
-  it("delivers only in a running turn and explains stopped messages", () => {
-    expect(conversationStateOf("Idle", false, "Queue", "Chronicler").delivery).toBeNull();
-    expect(conversationStateOf("Running", true, "Queue", "Chronicler")).toMatchObject({
-      delivery: "Queue",
-    });
-    expect(conversationStateOf("Stopped", false, "Steer", "this quest").placeholder).toContain("resume");
+  it("explains what Send does in a running turn and for stopped threads", () => {
+    expect(conversationStateOf("Running", true, "Chronicler").placeholder).toContain("next turn");
+    expect(conversationStateOf("Stopped", false, "this quest").placeholder).toContain("resume");
     expect(footerOf("", false)).toBe("empty");
     expect(footerOf("", true)).toBe("working");
     expect(footerOf("reply", true)).toBe("draft");

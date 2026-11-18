@@ -1,11 +1,10 @@
-import type { AttachmentId, MessageDelivery, MessageId, MissionDetail, ThreadId } from "@outlore/contracts";
+import type { AttachmentId, MessageId, MissionDetail, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
 import { imageRefusalOf } from "../attachments/attachmentRules";
 import { useHarnesses } from "../editors/runners";
 import { useThreadPresets } from "../editors/useThreadPresets";
 import { actWith } from "../foundation/acting";
 import type { ServiceClient } from "../foundation/client";
-import { useServiceQuery } from "../foundation/useServiceQuery";
 import { useSkills } from "../foundation/useSkills";
 import { useTerminal } from "../terminal/useTerminal";
 import { entriesOf } from "./entries";
@@ -32,21 +31,19 @@ export function useThreadConversation(
   const [actionError, setActionError] = useState<string | null>(null);
   const presetChoice = useThreadPresets(client, threadId, setActionError);
   const { data: harnesses } = useHarnesses(client);
-  const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const thread = detail?.thread ?? null;
   const state = conversationStateOf(
     thread?.state ?? "Idle",
     thread?.actions.isInTurn ?? false,
-    settings?.defaultDelivery ?? "Steer",
     options.isChronicler ? "Chronicler" : thread?.parentId === null ? "this quest" : "this errand",
   );
-  const sendAs = (delivery: MessageDelivery | null) => (text: string, attachmentIds: ReadonlyArray<AttachmentId>) =>
+  const send = (text: string, attachmentIds: ReadonlyArray<AttachmentId>) =>
     sendConversationMessage({
       attachmentIds,
       clearComments: options.isChronicler ? () => {} : comments.clear,
       client,
       comments: comments.items,
-      delivery,
+      delivery: null,
       follow: followNewest.follow,
       options,
       prepare: terminal.prepare,
@@ -66,7 +63,7 @@ export function useThreadConversation(
     placeholder: state.placeholder,
     presetChoice,
     refusal: thread === null ? null : imageRefusalOf(harnesses, thread.harness, thread.model),
-    send: sendAs(state.delivery),
+    send,
     skills,
     steer: (messageId: MessageId) => client.request({ _tag: "SteerQueuedMessage", messageId }),
     stop: () => client.request({ _tag: "StopThread", threadId }),

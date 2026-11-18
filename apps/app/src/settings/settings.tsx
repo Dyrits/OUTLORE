@@ -1,9 +1,4 @@
-import {
-  BudgetPeriod,
-  MessageDelivery as MessageDeliveries,
-  type MessageDelivery,
-  type SettingsChange,
-} from "@outlore/contracts";
+import { BudgetPeriod, type SettingsChange } from "@outlore/contracts";
 import { type ReactNode, useRef, useState } from "react";
 import { Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from "react-native";
 import { BudgetEditor } from "../editors/budgets";
@@ -33,12 +28,6 @@ import { UpdatesCard } from "./updatesCard";
 import { WorkshopTabsProvider } from "./workshopTabs";
 
 // Stored and wire names keep `intel` so existing data and agents still work: settings keys (`intelHalfLives`, `intelWarningPercent`).
-
-/** What each delivery does to a running thread, as the Settings choice names it. */
-const deliveryLabels = {
-  Queue: "Queue for its next turn",
-  Steer: "Steer its current turn",
-} as const satisfies Record<MessageDelivery, string>;
 
 /** One section of the page: its cards, drawn only while the menu has it chosen. */
 function Section({ active, children, id }: { active: SettingsSectionId; children: ReactNode; id: SettingsSectionId }) {
@@ -170,18 +159,7 @@ export function SettingsScreen({
               <BrowsableRootsCard client={client} />
             </Section>
             <Section active={active} id="messaging">
-              <SettingsCard
-                icon="hourglass"
-                title="Send, while work is underway"
-                trailing={
-                  <Choice
-                    label={(delivery) => deliveryLabels[delivery]}
-                    onChange={(defaultDelivery) => save({ defaultDelivery })}
-                    options={MessageDeliveries.literals}
-                    value={settings.defaultDelivery}
-                  />
-                }
-              >
+              <SettingsCard icon="hourglass" title="Errands opened by agents">
                 <ToggleRow
                   label="Show errands opened by agents"
                   onChange={(shouldShowAgentThreads) => save({ shouldShowAgentThreads })}

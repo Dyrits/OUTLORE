@@ -12,6 +12,7 @@ import { LoreChangeCard, LoreChangeLine } from "../lore/lore";
 import { TerminalMessage } from "../terminal/terminalMessage";
 import { terminalSnapshotOf } from "../terminal/terminalSnapshot";
 import { ChipText } from "../ui/chips";
+import { InterruptIcon, SteerIcon } from "../ui/composerIcons";
 import { ProviderMark } from "../ui/providerMarks";
 import { QuestionCard, QuestionLine } from "../ui/questions";
 import { Commentable } from "./commentable";
@@ -219,10 +220,20 @@ function MessageBubble({
           )}
           {message.sender === "user" && message.isQueued && isInTurn && (
             <View style={{ flexDirection: "row", gap: 16 }}>
-              <Pressable accessibilityRole="button" onPress={() => void onSteer(message.id).catch(() => {})}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void onSteer(message.id).catch(() => {})}
+                style={{ alignItems: "center", flexDirection: "row", gap: 6 }}
+              >
+                <SteerIcon tint={colors.accentText} />
                 <Text style={styles.link}>Steer</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={() => void onInterrupt().catch(() => {})}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void onInterrupt().catch(() => {})}
+                style={{ alignItems: "center", flexDirection: "row", gap: 6 }}
+              >
+                <InterruptIcon tint={colors.accentText} />
                 <Text style={styles.link}>Interrupt</Text>
               </Pressable>
             </View>

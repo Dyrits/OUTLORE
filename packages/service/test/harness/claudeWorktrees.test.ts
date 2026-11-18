@@ -352,7 +352,6 @@ it.live("shows the reply as it is written only while the setting is on", () => {
         backups: [],
         briefingLimit: 2000,
         chatterThreshold: 20,
-        defaultDelivery: "Steer",
         defaultEffort: "default",
         defaultHarness: "claude",
         defaultMissionBudget: { cost: null, tokens: null },

@@ -1,5 +1,4 @@
 import { Effect } from "effect";
-import { readSettings } from "../core/index.ts";
 import { readDictationStatus, transcribeDictation } from "../voice/index.ts";
 import { admitOwnerText, nonBlank, runnerOfThread } from "./admission.ts";
 import { addAttachment, discardAttachment, readAttachment } from "./attachments.ts";
@@ -46,7 +45,7 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
     SendMessage: Effect.fnUntraced(function* (send) {
       const attachmentIds = send.attachmentIds ?? [];
       const text = yield* admitOwnerText(send.text, attachmentIds, runnerOfThread(send.threadId));
-      const delivery = send.delivery ?? (yield* readSettings).defaultDelivery;
+      const delivery = send.delivery ?? "Queue";
       const viewing = yield* readViewingLine(send.threadId, send.viewing);
       return yield* commands.run(
         commands.once(

@@ -55,8 +55,6 @@ export const Settings = Schema.Struct({
   briefingLimit: PositiveInt,
   /** Messages between two threads before the owner decides how they continue. */
   chatterThreshold: Schema.Int.check(Schema.isGreaterThanOrEqualTo(2)),
-  /** What Send does while a thread runs; the second button does the other. */
-  defaultDelivery: MessageDelivery,
   defaultEffort: EffortChoice,
   /** The harness a new mission starts on before any mission was started (provider-accounts). */
   defaultHarness: HarnessName,
