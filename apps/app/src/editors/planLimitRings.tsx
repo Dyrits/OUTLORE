@@ -111,9 +111,9 @@ function UsageCard({
  * window around the provider's logo, the rings of the different providers side by side in a row, green until 80%, orange
  * from 80% and red at 100%. Hovering or focusing a provider lifts its rings and opens a card with each window's share
  * left and time to its reset. An account whose harness reports none shows nothing here (its Charter row says
- * "Limits not reported"), and nothing is shown before a reading arrives.
+ * "Limits not reported"), and nothing is shown before a reading arrives. `isAtEnd` lines the rings up at the right.
  */
-export function PlanLimitRings({ client }: { client: ServiceClient }) {
+export function PlanLimitRings({ client, isAtEnd = false }: { client: ServiceClient; isAtEnd?: boolean }) {
   const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
   const [shown, setShown] = useState<string | null>(null);
   const reported =
@@ -129,7 +129,7 @@ export function PlanLimitRings({ client }: { client: ServiceClient }) {
           windows={currentWindowsOf(detailed.planLimits?.windows ?? [], Date.now())}
         />
       )}
-      <View style={local.row}>
+      <View style={[local.row, isAtEnd && local.rowAtEnd]}>
         {reported.map((budget) => {
           const key = `${budget.harness}:${budget.accountId ?? ""}`;
           const name = budget.accountId === null ? budget.harness : budget.label;
@@ -192,6 +192,7 @@ const local = StyleSheet.create({
   ringBox: { alignItems: "center", height: size, justifyContent: "center", width: size },
   ringSvg: { position: "absolute" },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingHorizontal: 7 },
+  rowAtEnd: { justifyContent: "flex-end" },
   track: { backgroundColor: colors.ground, borderRadius: radii.pill, height: 6, overflow: "hidden" },
   window: { gap: 5 },
   windowLeft: {

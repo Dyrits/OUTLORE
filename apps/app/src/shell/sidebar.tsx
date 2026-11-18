@@ -1,5 +1,5 @@
 import type { MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { type DimensionValue, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
 import { PlanLimitRings } from "../editors/planLimitRings";
@@ -197,14 +197,13 @@ export function Sidebar({
         />
       </ScrollView>
       <View style={local.footer}>
-        <Spending client={client} />
-        <View style={local.menuRow}>
+        <Spending client={client}>
           <ActionMenu
             accessibilityLabel="Menu"
             actions={menuPlaces.map((entry) => ({ label: entry.label, onPress: () => onPlace(entry.place) }))}
             glyph="☰"
           />
-        </View>
+        </Spending>
       </View>
       {pendingMove !== null && (
         <MoveQuestModal
@@ -227,15 +226,28 @@ export function Sidebar({
   );
 }
 
-/** The compact usage summary above the menu: the global budget's meters, when it has limits, and the plans' limits. */
-function Spending({ client }: { client: ServiceClient }) {
+/**
+ * The foot of the sidebar: the global budget's meters, when it has limits, above one row with the menu at the left
+ * and the plans' limit rings at the right.
+ */
+function Spending({ children, client }: { children: ReactNode; client: ServiceClient }) {
   const { data: global } = useServiceQuery(client, { _tag: "ReadBudget", missionId: null }, "budget:global");
-  if (global === null) return null;
-  const hasLimits = global.limits.cost !== null || global.limits.tokens !== null;
+  const hasLimits = global !== null && (global.limits.cost !== null || global.limits.tokens !== null);
   return (
-    <View style={local.spending}>
-      {hasLimits && <ReserveRows use={global} />}
-      <PlanLimitRings client={client} />
-    </View>
+    <>
+      {hasLimits && (
+        <View style={local.spending}>
+          <ReserveRows use={global} />
+        </View>
+      )}
+      <View style={local.menuRow}>
+        {children}
+        {global !== null && (
+          <View style={local.flex}>
+            <PlanLimitRings client={client} isAtEnd />
+          </View>
+        )}
+      </View>
+    </>
   );
 }
