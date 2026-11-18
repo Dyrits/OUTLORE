@@ -81,8 +81,8 @@ describe("saving a thread's backup Companions", () => {
   );
 });
 
-describe("marking a side-quest done", () => {
-  it.live("ends only the side-quest, and refuses the quest's own thread", () =>
+describe("marking an errand done", () => {
+  it.live("ends only the errand, and refuses the quest's own thread", () =>
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");

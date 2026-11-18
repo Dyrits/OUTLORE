@@ -50,7 +50,7 @@ const lastReplyOf = (detail: { messages: ReadonlyArray<{ sender: string; text: s
   detail.messages.filter((message) => message.sender === "agent").at(-1)?.text ?? "";
 
 describe("moving a quest between realms, and out of them", () => {
-  it.live("moves the quest and every side-quest, and keeps the conversation", () =>
+  it.live("moves the quest and every errand, and keeps the conversation", () =>
     withService(({ garden, workshop }) =>
       Effect.gen(function* () {
         const gardenId = yield* makeRealm("Garden", garden);

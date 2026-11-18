@@ -47,7 +47,7 @@ describe("reading the app guide", () => {
     ["what can you do for me", "chronicler"],
     ["my mac says the app is blocked", "install"],
     ["what does lore do and why did it fade", "lore"],
-    ["what is a side-quest", "quests"],
+    ["what is an errand", "quests"],
   ])("answers %j from the %s topic", (question, id) => {
     expect(idsFor(question)).toContain(id);
     expect(idsFor(question)[0]).toBe(id);

@@ -1,27 +1,27 @@
 import { Schema } from "effect";
 import { mentionTokensOf } from "./workspaceEntries.ts";
 
-// What a typed `@` in a message can name besides a workspace's files and folders: a quest, a side-quest, or a realm
+// What a typed `@` in a message can name besides a workspace's files and folders: a quest, an errand, or a realm
 // (thread-messaging, Who can message whom; CHG-0181). A mention is context only: the receiving thread decides from the
 // owner's words whether to read the item or message it.
 
-/** The kinds of thing a reference names; a side-quest is a thread beneath a quest's top thread. */
+/** The kinds of thing a reference names; an errand is a thread beneath a quest's top thread. */
 export const MentionKind = Schema.Literals(["quest", "side-quest", "realm"]);
 export type MentionKind = typeof MentionKind.Type;
 
-/** One quest, side-quest, or realm the `@` menu offers; archived quests and their side-quests are never offered. */
+/** One quest, errand, or realm the `@` menu offers; archived quests and their errands are never offered. */
 export const Mentionable = Schema.Struct({
   /** What the chip and the menu add after the name: a quest's realm, or a realm's folder; null for neither. */
   detail: Schema.NullOr(Schema.String),
-  /** The quest's id, the side-quest's thread id, or the realm's id. */
+  /** The quest's id, the errand's thread id, or the realm's id. */
   id: Schema.String,
   kind: MentionKind,
-  /** The titles from the quest down to the side-quest itself, or the realm's name alone; the chip joins them with ›. */
+  /** The titles from the quest down to the errand itself, or the realm's name alone; the chip joins them with ›. */
   trail: Schema.Array(Schema.String),
 });
 export type Mentionable = typeof Mentionable.Type;
 
-/** A reference to a quest, side-quest, or realm as the message holds it, without its leading `@`. */
+/** A reference to a quest, errand, or realm as the message holds it, without its leading `@`. */
 export type MentionReference = {
   readonly id: string;
   readonly kind: MentionKind;
@@ -44,7 +44,7 @@ export const referenceOf = (path: string): MentionReference | null => {
   return { id: match[2] ?? "", kind };
 };
 
-/** The quest, side-quest, and realm references in a message, in order, each once. */
+/** The quest, errand, and realm references in a message, in order, each once. */
 export const mentionReferencesOf = (text: string): ReadonlyArray<MentionReference> => {
   const seen = new Set<string>();
   return mentionTokensOf(text).flatMap((token) => {
@@ -55,5 +55,5 @@ export const mentionReferencesOf = (text: string): ReadonlyArray<MentionReferenc
   });
 };
 
-/** The label a chip shows: the realm's name, the quest's title, or `Quest › Side-quest`. */
+/** The label a chip shows: the realm's name, the quest's title, or `Quest › Errand`. */
 export const mentionLabelOf = (mentionable: Pick<Mentionable, "trail">) => mentionable.trail.join(" › ");

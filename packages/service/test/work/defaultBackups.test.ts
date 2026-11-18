@@ -43,7 +43,7 @@ describe("setting the Charter's default backup Companions", () => {
     ),
   );
 
-  it.live("start a new quest's thread, and a side-quest takes its parent's, not a later change", () =>
+  it.live("start a new quest's thread, and an errand takes its parent's, not a later change", () =>
     withService(
       Effect.gen(function* () {
         const settings = yield* call({ _tag: "ReadSettings" });

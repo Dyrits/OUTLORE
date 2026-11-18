@@ -296,7 +296,7 @@ export function ProvidersSection({
     <>
       <View style={local.intro}>
         <Text style={[styles.muted, styles.flex]}>
-          Each account keeps its own sign-in and conversations. Quests and side-quests use the account chosen when they
+          Each account keeps its own sign-in and conversations. Quests and errands use the account chosen when they
           start.
         </Text>
         <Pressable accessibilityRole="button" onPress={onRefresh}>

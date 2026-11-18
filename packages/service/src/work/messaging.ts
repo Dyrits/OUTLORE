@@ -108,7 +108,7 @@ export const listPending = Effect.fnUntraced(function* (threadId: string, isStee
   return yield* Effect.forEach(
     rows,
     Effect.fnUntraced(function* (row) {
-      // The owner's `@` mentions of quests, side-quests, and realms are resolved as they are delivered (CHG-0181).
+      // The owner's `@` mentions of quests, errands, and realms are resolved as they are delivered (CHG-0181).
       const note = row.isOwner === 1 ? yield* readMentionNote(row.text) : "";
       return {
         attachments: attachments.get(row.id) ?? [],

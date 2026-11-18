@@ -150,7 +150,7 @@ export function RecordsTable({ hiddenCount, rows }: { hiddenCount: number; rows:
     <View accessibilityLabel="Turn records">
       <View style={local.headerRow}>
         <Text style={[local.header, local.timeCell]}>When</Text>
-        <Text style={[local.header, local.nameCell]}>Quest · side-quest</Text>
+        <Text style={[local.header, local.nameCell]}>Quest · errand</Text>
         <Text style={[local.header, local.numberCell]}>Cost</Text>
         <Text accessibilityLabel="Tokens without cache reads" style={[local.header, local.numberCell]}>
           Tokens

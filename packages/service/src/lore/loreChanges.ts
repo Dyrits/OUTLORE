@@ -35,7 +35,7 @@ const placementOf = (chain: ScopeChain, scope: ToolScope): Placement | string =>
     thread: { scope: "Thread", threadId: chain.threads[0] ?? null, workspaceId: null },
     workspace:
       chain.workspaceId === null
-        ? "this quest is in no realm: choose thread (this side-quest) or mission (this quest) instead"
+        ? "this quest is in no realm: choose thread (this errand) or mission (this quest) instead"
         : { scope: "Workspace", threadId: null, workspaceId: chain.workspaceId },
   } as const satisfies Record<ToolScope, Placement | string>;
   return placements[scope];

@@ -35,7 +35,7 @@ export function Row({
   indent?: number;
   isSelected: boolean;
   label: string;
-  /** The fold mark before the label of a quest or side-quest row; null `onPress` keeps its place empty. */
+  /** The fold mark before the label of a quest or errand row; null `onPress` keeps its place empty. */
   fold?: { isOpen: boolean; label: string; onPress: (() => void) | null };
   onPress: () => void;
   textStyle?: object;

@@ -1,6 +1,6 @@
 import type { Message } from "@outlore/contracts";
 
-// Comments on messages of a quest or side-quest. The owner writes them while reading; they wait, per thread, and go with
+// Comments on messages of a quest or errand. The owner writes them while reading; they wait, per thread, and go with
 // the next message the owner sends. They travel inside that message's text, as terminal output does
 // (`terminalSnapshot`), so the harness reads them and the conversation can draw them back as quotes.
 

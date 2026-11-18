@@ -9,7 +9,7 @@ import { areActionsShown, folderCueOf } from "./questTree";
 
 import { isHovered, local } from "./railStyles";
 /**
- * The mark that folds or unfolds what lies beneath a realm, quest, or side-quest row: a chevron, shown like the row's
+ * The mark that folds or unfolds what lies beneath a realm, quest, or errand row: a chevron, shown like the row's
  * actions only on hover or keyboard focus, in a place kept while unseen. A row with nothing beneath it keeps the place empty.
  */
 export function Chevron({

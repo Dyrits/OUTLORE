@@ -39,7 +39,7 @@ const tree = [
 ];
 const none = new Set<string>();
 
-describe("the side-quests a quest lists in the sidebar", () => {
+describe("the errands a quest lists in the sidebar", () => {
   it("lists every level beneath the quest, in order, without the quest itself", () => {
     const rows = sideQuestRowsOf(tree, { collapsed: none, shouldShowAgentThreads: true });
     expect(rows.map((row) => [row.thread.id, row.depth])).toEqual([
@@ -50,19 +50,19 @@ describe("the side-quests a quest lists in the sidebar", () => {
     ]);
   });
 
-  it("marks the rows that have side-quests beneath them", () => {
+  it("marks the rows that have errands beneath them", () => {
     const rows = sideQuestRowsOf(tree, { collapsed: none, shouldShowAgentThreads: true });
     expect(rows.map((row) => row.hasChildren)).toEqual([true, true, false, false]);
   });
 
-  it("hides what lies beneath a collapsed side-quest at any depth and shows the rest", () => {
+  it("hides what lies beneath a collapsed errand at any depth and shows the rest", () => {
     const rows = sideQuestRowsOf(tree, { collapsed: new Set(["a"]), shouldShowAgentThreads: true });
     expect(rows.map((row) => row.thread.id)).toEqual(["a", "b"]);
     const inner = sideQuestRowsOf(tree, { collapsed: new Set(["a1"]), shouldShowAgentThreads: true });
     expect(inner.map((row) => row.thread.id)).toEqual(["a", "a1", "b"]);
   });
 
-  it("lists nothing for a quest with no side-quest", () => {
+  it("lists nothing for a quest with no errand", () => {
     expect(sideQuestRowsOf([thread("top", null, 0)], { collapsed: none, shouldShowAgentThreads: true })).toEqual([]);
   });
 
@@ -182,7 +182,7 @@ describe("the actions of a sidebar row", () => {
 describe("the full quest list's rows", () => {
   const top = { id: "q1", threadCount: 5 } as unknown as MissionSummary;
 
-  it("lists a quest, then its side-quests beneath it at every depth, indented by level", () => {
+  it("lists a quest, then its errands beneath it at every depth, indented by level", () => {
     const rows = questListRowsOf(top, tree, none);
     expect(rows.map((row) => [row.id, row.depth, row.hasChildren])).toEqual([
       ["q1", 0, true],
@@ -193,12 +193,12 @@ describe("the full quest list's rows", () => {
     ]);
   });
 
-  it("hides the side-quests of a collapsed quest, and what lies beneath a collapsed side-quest", () => {
+  it("hides the errands of a collapsed quest, and what lies beneath a collapsed errand", () => {
     expect(questListRowsOf(top, tree, new Set(["q1"])).map((row) => row.id)).toEqual(["q1"]);
     expect(questListRowsOf(top, tree, new Set(["a"])).map((row) => row.id)).toEqual(["q1", "a", "b"]);
   });
 
-  it("lists the quest alone while its tree is not read yet, or when it has no side-quest", () => {
+  it("lists the quest alone while its tree is not read yet, or when it has no errand", () => {
     expect(questListRowsOf(top, null, none).map((row) => [row.id, row.hasChildren])).toEqual([["q1", true]]);
     const single = { id: "q2", threadCount: 1 } as unknown as MissionSummary;
     expect(questListRowsOf(single, [thread("top", null, 0)], none).map((row) => [row.id, row.hasChildren])).toEqual([

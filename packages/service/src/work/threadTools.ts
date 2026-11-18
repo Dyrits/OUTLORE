@@ -41,7 +41,7 @@ export const searchInvalid = toolRefusal(
   "Invalid arguments: give query, ids, or both, and optionally scope (thread, mission, workspace, or global).",
 );
 export const scopeHelp =
-  "thread: this side-quest and the threads beneath it (on a quest's top thread, saving at thread puts the lore on the quest, but searching with thread leaves it out: search it with mission); mission: the quest and all its threads; workspace: the realm, with or without a folder, and all its quests; global: everywhere, after the owner's approval.";
+  "thread: this errand and the threads beneath it (on a quest's top thread, saving at thread puts the lore on the quest, but searching with thread leaves it out: search it with mission); mission: the quest and all its threads; workspace: the realm, with or without a folder, and all its quests; global: everywhere, after the owner's approval.";
 
 /** Every thread tool, by name. */
 export const threadTools = {
@@ -296,7 +296,7 @@ export const threadTools = {
   }),
   send_thread_message: definitionOf({
     description:
-      "Send a message to your parent thread or to a thread directly beneath you, by its id. Any thread may also message Chronicler by its id, to ask it to find the right quest, and Chronicler may message any quest's top thread. During a turn, you may also message the top thread of a quest, or a side-quest, the owner mentioned with @ in a message of that turn, and answer a thread that wrote to you in it. It joins that thread's current turn if it is running, and wakes it if it is idle.",
+      "Send a message to your parent thread or to a thread directly beneath you, by its id. Any thread may also message Chronicler by its id, to ask it to find the right quest, and Chronicler may message any quest's top thread. During a turn, you may also message the top thread of a quest, or an errand, the owner mentioned with @ in a message of that turn, and answer a thread that wrote to you in it. It joins that thread's current turn if it is running, and wakes it if it is idle.",
     invalid: toolRefusal("Invalid arguments: give to and text."),
     isUnasked: true,
     schema: Schema.Struct({

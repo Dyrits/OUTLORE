@@ -39,7 +39,7 @@ describe("confirming a realm archive safely", () => {
     ),
   );
 
-  it.live("refuses a stale confirmation when an idle side-quest is added behind the running limit", () =>
+  it.live("refuses a stale confirmation when an idle errand is added behind the running limit", () =>
     withService(
       Effect.gen(function* () {
         const realm = yield* create;
@@ -73,7 +73,7 @@ describe("confirming a realm archive safely", () => {
     ),
   );
 
-  it.live("rechecks and stops working side-quests at every depth", () =>
+  it.live("rechecks and stops working errands at every depth", () =>
     withService(
       Effect.gen(function* () {
         const realm = yield* create;

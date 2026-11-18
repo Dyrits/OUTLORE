@@ -27,11 +27,11 @@ export function QuestListScreen({
   /** The realm to list. */
   listing: RealmListing;
   onOpen: (missionId: MissionId) => void;
-  /** Opens a side-quest of a quest. */
+  /** Opens an errand of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
 }) {
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
-  // Quests start unfolded here, so their side-quests show; the owner folds any quest or side-quest.
+  // Quests start unfolded here, so their errands show; the owner folds any quest or errand.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const toggle = (id: string) => setCollapsed((current) => toggledFold(current, id));
   const { data } = useServiceQuery(client, allMissions.request, allMissions.key);

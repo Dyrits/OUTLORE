@@ -31,7 +31,7 @@ const useToggles = () => {
 /**
  * The left sidebar (CHG-0449): the Realms title, which opens the overview; each realm with its quests; the quests that
  * are in no realm as ordinary rows; the buttons that visit a realm and start a quest; and at the foot the menu of the other
- * places. Quests nest their side-quests at every depth, and the sidebar opens the path to the thread that is open.
+ * places. Quests nest their errands at every depth, and the sidebar opens the path to the thread that is open.
  */
 export function Sidebar({
   client,
@@ -50,11 +50,11 @@ export function Sidebar({
   onOpenMission: (id: MissionId) => void;
   /** Opens the page that lists all of a realm's quests. */
   onOpenRealmQuests: (listing: RealmListing) => void;
-  /** Opens a side-quest of a quest. */
+  /** Opens an errand of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   onPlace: (place: Place) => void;
   openMission: MissionId | null;
-  /** The side-quest open in the open quest, or null for the quest itself. */
+  /** The errand open in the open quest, or null for the quest itself. */
   openThread: ThreadId | null;
   place: Place | null;
 }) {
@@ -64,7 +64,7 @@ export function Sidebar({
   const isHere = (each: Place) => openMission === null && place === each;
   // The menu that makes a realm, tied to a folder or to none.
   const [isCreating, setIsCreating] = useState(false);
-  // Realms start open and quests start closed, so a long list of quests stays short; side-quests start open.
+  // Realms start open and quests start closed, so a long list of quests stays short; errands start open.
   const closedRealms = useToggles();
   // Realms, Borderlands, and The Keep fold under their headings, all the same way.
   const foldedSections = useToggles();

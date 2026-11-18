@@ -70,7 +70,7 @@ describe("saving lore", () => {
       const { threadId } = yield* idle();
       const refusal = yield* save(threadId, "Tests run with bun.", "workspace");
       expect(refusal).toContain("in no realm");
-      expect(refusal).toContain("choose thread (this side-quest) or mission (this quest)");
+      expect(refusal).toContain("choose thread (this errand) or mission (this quest)");
       expect(refusal).not.toContain("workspace");
       expect((yield* panel()).loreEntries).toEqual([]);
     }).pipe(Effect.provide(layer));
@@ -154,13 +154,13 @@ describe("recalling lore", () => {
     }).pipe(Effect.provide(layer));
   });
 
-  it.live("takes a side-quest's realm from the quest's top thread, whatever workspace the side-quest row names", () => {
+  it.live("takes an errand's realm from the quest's top thread, whatever workspace the errand row names", () => {
     const { directory, layer } = live();
     return Effect.gen(function* () {
       const { missionId, threadId } = yield* idle(directory);
       yield* save(threadId, "Run the tests before a commit.", "workspace");
       const beneath = yield* child(missionId, threadId);
-      // A quest's realm is its top thread's workspace (ADR 0015): the side-quest row's own value never decides it.
+      // A quest's realm is its top thread's workspace (ADR 0015): the errand row's own value never decides it.
       const sql = yield* SqlClient.SqlClient;
       yield* sql`UPDATE threads SET workspace_id = NULL WHERE id = ${beneath}`;
       expect(yield* contextOf(missionId, beneath)).toContain("Run the tests before a commit.");
@@ -228,15 +228,15 @@ describe("recalling lore", () => {
     }).pipe(Effect.provide(layer));
   });
 
-  it.live("searches side-quest lore without including the quest's own lore when filtered to thread", () => {
+  it.live("searches errand lore without including the quest's own lore when filtered to thread", () => {
     const { layer } = live();
     return Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       yield* save(threadId, "Release target: quest preview.", "mission");
       const beneath = yield* child(missionId, threadId);
-      yield* save(beneath, "Release target: side-quest local.", "thread");
+      yield* save(beneath, "Release target: errand local.", "thread");
       const found = yield* tool(beneath, "search_intel", { query: "release target", scope: "thread" });
-      expect(found).toContain("side-quest local");
+      expect(found).toContain("errand local");
       expect(found).not.toContain("quest preview");
     }).pipe(Effect.provide(layer));
   });

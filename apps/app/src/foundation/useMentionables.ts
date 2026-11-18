@@ -2,7 +2,7 @@ import type { Mentionable } from "@outlore/contracts";
 import { useEffect, useState } from "react";
 import type { ServiceClient } from "./client";
 
-// The quests, side-quests, and realms a typed `@` can name (CHG-0181), loaded once per client for every message box and
+// The quests, errands, and realms a typed `@` can name (CHG-0181), loaded once per client for every message box and
 // every message that shows one as a chip, and loaded again after each committed change while any of them is shown.
 
 type Shared = {
@@ -31,7 +31,7 @@ const load = (client: ServiceClient, state: Shared) =>
     () => void 0,
   );
 
-/** The quests, side-quests, and realms to offer or to show as chips; null until first loaded, or while not needed. */
+/** The quests, errands, and realms to offer or to show as chips; null until first loaded, or while not needed. */
 export function useMentionables(client: ServiceClient | undefined, isNeeded: boolean) {
   const [, setVersion] = useState(0);
   useEffect(() => {

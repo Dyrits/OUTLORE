@@ -55,7 +55,7 @@ function ContextMeter({ gauge }: { gauge: ContextGauge }) {
   );
 }
 
-/** The side-quest's own "Mark as done": it ends the side-quest and leaves its quest as it is. */
+/** The errand's own "Mark as done": it ends the errand and leaves its quest as it is. */
 function SideQuestDone({ client, state, threadId }: { client: ServiceClient; state: string; threadId: ThreadId }) {
   const [error, setError] = useState<string | null>(null);
   return (
@@ -92,7 +92,7 @@ export function ThreadPanel({
   onOpenBudget: () => void;
   onOpenJournal: () => void;
   onOpenLore: () => void;
-  /** Opens the quest's own thread, from a side-quest's panel. */
+  /** Opens the quest's own thread, from an errand's panel. */
   onOpenQuest: () => void;
 }) {
   const { thread } = detail;

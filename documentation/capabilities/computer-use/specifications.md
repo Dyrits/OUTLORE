@@ -172,7 +172,7 @@ The tools are named and described here by behavior. Schemas, argument names and 
 
 - [action-approval](../action-approval/specifications.md): questions, standing permissions, Attention, the Permissions page, the Steps lines.
 - [device-pairing](../device-pairing/specifications.md): answering from a phone, the relay, the encrypted connection, the host-only switches.
-- [thread-tree](../thread-tree/specifications.md): thread states, Stop, side-quests.
+- [thread-tree](../thread-tree/specifications.md): thread states, Stop, errands.
 - [tool-and-skill-loading](../tool-and-skill-loading/specifications.md): the tools reach every harness through Outlore's own tool server.
 - [mission-coordination](../mission-coordination/specifications.md): Chronicler uses the tools; `change_setting` refuses these settings.
 - [rituals](../rituals/specifications.md): a Ritual's quest waits at the question.

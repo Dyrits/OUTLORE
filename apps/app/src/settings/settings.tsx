@@ -182,17 +182,17 @@ export function SettingsScreen({
                 }
               >
                 <ToggleRow
-                  label="Show side-quests opened by agents"
+                  label="Show errands opened by agents"
                   onChange={(shouldShowAgentThreads) => save({ shouldShowAgentThreads })}
                   value={settings.shouldShowAgentThreads}
                 />
               </SettingsCard>
               <SettingsCard
                 icon="chat"
-                title="Chatter guard · messages between quests and side-quests"
+                title="Chatter guard · messages between quests and errands"
                 trailing={
                   <NumberField
-                    label="Chatter guard · messages between quests and side-quests"
+                    label="Chatter guard · messages between quests and errands"
                     minimum={2}
                     onInvalid={setSaveError}
                     onSave={(chatterThreshold) => save({ chatterThreshold })}
@@ -217,10 +217,10 @@ export function SettingsScreen({
               />
               <SettingsCard
                 icon="scroll"
-                title="Lore warning · percent of a model's context window before a quest or side-quest's lore icon turns red"
+                title="Lore warning · percent of a model's context window before a quest or errand's lore icon turns red"
                 trailing={
                   <NumberField
-                    label="Lore warning · percent of a model's context window before a quest or side-quest's lore icon turns red"
+                    label="Lore warning · percent of a model's context window before a quest or errand's lore icon turns red"
                     minimum={1}
                     onInvalid={setSaveError}
                     onSave={(intelWarningPercent) => save({ intelWarningPercent: Math.min(intelWarningPercent, 100) })}

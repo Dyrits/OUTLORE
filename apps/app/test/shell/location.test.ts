@@ -27,7 +27,7 @@ describe("navigating the window", () => {
       expect(next.isNarrowChroniclerOpen).toBe(false);
     }
   });
-  it("closes Journal, Lore and Budget when choosing a side-quest without remounting the quest", () => {
+  it("closes Journal, Lore and Budget when choosing an errand without remounting the quest", () => {
     const opened = navigate(initialLocation(null), { id: quest, type: "quest" });
     for (const page of [
       { kind: "journal" },

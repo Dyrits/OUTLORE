@@ -15,9 +15,9 @@ User-authored text and historical service messages are not rewritten.
 | Mission | Quest |
 | Top-level mission thread | Quest |
 | Model selected to do the work | Companion |
-| Thread opened beneath another thread | Errand (formerly Side-quest, agreed 2026-11-18, CHG-0449; not yet renamed in the app) |
+| Thread opened beneath another thread | Errand (formerly Side-quest, renamed 2026-11-18, CHG-0449 and CHG-0456) |
 | Grouping of missions with shared lore, tied or not to a workspace | Realm |
-| Autonomous mission, with no workspace and no shared lore | A quest in no realm, listed with the realms (the name Borderlands is retired, agreed 2026-11-18, CHG-0449; not yet renamed in the app) |
+| Autonomous mission, with no workspace and no shared lore | A quest in no realm, listed with the realms (the name Borderlands is retired in the interface, CHG-0449 and CHG-0455; code and stored values keep it) |
 | Control conversation | Guild Hall |
 | Entity the user talks with in Control | Chronicler (formerly Guildmaster, CHG-0173) |
 | Workflow | Craft |
@@ -34,7 +34,7 @@ Done is the ending a quest reaches when the owner marks it done, and a thread st
 Companion means the selected model doing the work, not a conversation or a distinct saved agent definition; selectors say Companion (model) to make this explicit.
 Craft and Ritual are the agreed names for the future automation interfaces.
 Waystones, Spoils, and Chronicle remain mockup suggestions for devices, changes, and traces.
-A side-quest (to be called an errand, CHG-0449) may contain further errands; the name covers every child thread, including an aside, whose off-topic behavior stays distinct. Until the app is renamed, text in the app and the older specifications still says side-quest; read it as errand.
+An errand (formerly a side-quest, CHG-0449) may contain further errands; the name covers every child thread, including an aside, whose off-topic behavior stays distinct. The app, Chronicler's guide, the tool descriptions and the specifications say errand; code identifiers (`sideQuest`) and the stored mention token `@side-quest:` keep the old word, and dated records and the changelog keep what they were written with.
 
 ## Work
 
@@ -59,7 +59,7 @@ A message one thread sends another, in either direction along the tree, or to an
 _Avoid_: Ping, notification
 
 **Comment**:
-A note the owner writes on a message of a quest or side-quest, on the whole message or on a passage selected in it. Comments wait, per thread, in the browser's storage and go with the owner's next message in that thread, as a block in its text.
+A note the owner writes on a message of a quest or errand, on the whole message or on a passage selected in it. Comments wait, per thread, in the browser's storage and go with the owner's next message in that thread, as a block in its text.
 _Avoid_: Annotation, review note, reply (a reply is a message)
 
 **Attachment**:
@@ -90,7 +90,7 @@ The app-wide assistant the user talks with in the Guild Hall to learn how the ap
 _Avoid_: Coordinator, dispatcher, orchestrator, main thread, Mission control
 
 **Mention**:
-A quest, side-quest, or realm the owner names with `@` in a message, as context for the thread that receives it.
+A quest, errand, or realm the owner names with `@` in a message, as context for the thread that receives it.
 _Avoid_: Reference (the token's name in code), link, tag
 
 **Reach**:
@@ -125,10 +125,10 @@ Collection and lifecycle behavior remain to be specified.
 The page of application settings, accounts, permissions, and defaults, shown one section at a time: Permissions, Look and feel, Providers (computer name, harnesses, accounts), Companions (the default Companion and the Light, Balanced, and Heavy presets), Remote access, Messaging, Limits, and Updates. Formerly the Charter (CHG-0146), which is now a separate place in the sidebar (see Charter).
 
 **Charter**:
-Where the owner manages what Outlore connects to: the Connectors and The Vault (CHG-0321). It is not the Workshop, though the Workshop bore its name until CHG-0146; it works like a marketplace for connectors and holds nothing else. Agreed 2026-11-18 (CHG-0449; not built): it stops being a place in the sidebar and becomes the **Connectors** section of the Workshop (Settings).
+Where the owner manages what Outlore connects to: the Connectors and The Vault (CHG-0321). It is not the Workshop, though the Workshop bore its name until CHG-0146; it works like a marketplace for connectors and holds nothing else. Since 2026-11-18 (CHG-0449, CHG-0453) it is no place in the sidebar but the **Connectors** section of the Workshop (Settings).
 
 **The menu**:
-The one button at the foot of the sidebar (agreed 2026-11-18, CHG-0449; not built) that opens every place other than Chronicler, the Realms and quests: Rituals, Lore, Archive, Reserves and Settings. The phone's menu lists the same places.
+The one button at the foot of the sidebar (CHG-0449, CHG-0453) that opens every place other than Chronicler, the Realms and quests: Rituals, Lore, Archive, Reserves and Settings. On a phone the menu button shows the whole sidebar as a screen, with the same menu at its foot (CHG-0454).
 
 **Connector**:
 A named integration that gives threads the tools of one outside service or app, installed once by the owner from the list Outlore offers. It is **installed** (on this computer, global), **connected** (given a key, a sign-in or a permission) and **enabled** (switched on for a realm, the Borderlands or a quest); a thread can use it only when all three hold ([connectors](capabilities/connectors/specifications.md)).
@@ -282,7 +282,7 @@ Saved facts, preferences, and decisions, each held at one lore scope. One item i
 _Avoid_: Memory, note, knowledge, intel
 
 **Lore scope**:
-Where a lore entry belongs: a side-quest, a quest, a realm, or global.
+Where a lore entry belongs: an errand, a quest, a realm, or global.
 See [lore scopes](capabilities/scoped-intel/specifications.md#scopes) for visibility and Guildmaster's access exception.
 
 **Lore kind**:

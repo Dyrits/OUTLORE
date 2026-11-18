@@ -1,7 +1,7 @@
 import { StyleSheet } from "react-native";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { expandedWidth } from "./railStorage";
-/** How far each level of side-quests steps in, and the width of the chevron's place at the start of a row. */
+/** How far each level of errands steps in, and the width of the chevron's place at the start of a row. */
 export const indentStep = 14;
 export const chevronWidth = 16;
 /** How many quests the sidebar lists under the Borderlands, and under each realm; the quest list page lists them all. */

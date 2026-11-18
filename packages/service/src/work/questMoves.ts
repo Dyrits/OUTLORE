@@ -7,7 +7,7 @@ import { releaseThread, waitsInTurn } from "./lifecycle.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 
 // Quest moves (mission-tracking, Quest placement and moves): a quest's realm is its top thread's workspace, inherited
-// by its side-quests, so a move rewrites that one column across the whole tree. Realm lore and standing permissions
+// by its errands, so a move rewrites that one column across the whole tree. Realm lore and standing permissions
 // are keyed by the same id, so they follow the destination without being copied.
 
 /**

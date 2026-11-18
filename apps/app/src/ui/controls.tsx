@@ -118,12 +118,12 @@ export function Composer({
   onChangeText?: (text: string) => void;
   /** Controls shown under the box, at its right, such as pickers for what the message runs on. */
   accessory?: ReactNode;
-  /** Opens a side-quest from the icon after the send button. */
+  /** Opens an errand from the icon after the send button. */
   onOpenSideQuest?: () => void;
   /** The skills a slash offers; a slash-name matching one is highlighted. */
   skills?: ReadonlyArray<Skill>;
   /**
-   * What an `@` names: quests, side-quests, and realms, and the files and folders of the workspace when it has a path
+   * What an `@` names: quests, errands, and realms, and the files and folders of the workspace when it has a path
    * (CHG-0181). Without it, an `@` offers nothing.
    */
   mentions?: { readonly client: ServiceClient; readonly workspacePath: string | null };
@@ -263,7 +263,7 @@ export function Composer({
           )}
           {onOpenSideQuest !== undefined && (
             <Pressable
-              accessibilityLabel="Open side-quest"
+              accessibilityLabel="Open errand"
               accessibilityRole="button"
               onPress={onOpenSideQuest}
               style={styles.buttonSecondary}

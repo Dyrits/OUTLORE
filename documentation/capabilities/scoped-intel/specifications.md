@@ -15,14 +15,14 @@ For ordinary threads, visibility follows this table:
 
 | Scope | Lore available |
 | --- | --- |
-| Side-quest | Its own, its ancestor side-quests', its quest's, its realm's when present, and global lore |
+| Errand | Its own, its ancestor errands', its quest's, its realm's when present, and global lore |
 | Quest | Its own, its realm's when present, and global lore |
 | Realm | Its own and global lore |
 | Global | Global lore |
 
 - A quest holds its lore on its top thread, making it available throughout the quest tree.
 - Lore stays hidden from ancestors and sibling branches unless the owner approves [widening](#widening-and-narrowing).
-- Realm membership determines realm lore, even when a side-quest works in another workspace.
+- Realm membership determines realm lore, even when an errand works in another workspace.
   A quest in the Borderlands has no realm lore; a Realm without a workspace still shares lore across its quests.
 - Guildmaster can search and read lore at every scope for the owner's requests (CHG-0132).
   This exception leaves ordinary threads' access unchanged and does not copy lore into broader scopes.
@@ -135,10 +135,10 @@ Search ranks the closest match first and ranks higher an intel matching a word f
 ## Acceptance and validation
 
 - **Automated, with a fake harness**:
-  - side-quest lore visible to that thread and its descendants, hidden from ordinary ancestor and sibling threads, with Guildmaster's read exception checked separately;
+  - errand lore visible to that thread and its descendants, hidden from ordinary ancestor and sibling threads, with Guildmaster's read exception checked separately;
   - quest lore visible throughout its tree but not to its realm or another quest;
   - realm lore visible throughout its quests, with global lore available at every scope and narrower lore winning conflicts;
-  - a side-quest working in another workspace retaining its quest's realm lore without acquiring the other workspace's realm lore;
+  - an errand working in another workspace retaining its quest's realm lore without acquiring the other workspace's realm lore;
   - a new thread starting with thread, quest, and realm intel in full, the global index, and the count of dormant intels;
   - a new global intel added at the end of the index, leaving the lines before it unchanged;
   - the lookup order, and the most specific intel winning a conflict;

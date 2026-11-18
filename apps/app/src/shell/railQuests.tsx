@@ -9,7 +9,7 @@ import { threadOutlineOf } from "./railOutline";
 import { Count, Row, StateDot } from "./railRows";
 import { chevronWidth, indentStep, isHovered, local } from "./railStyles";
 
-/** A quest's side-quests, nested beneath it with their branch guides; each can collapse its own side-quests. */
+/** A quest's errands, nested beneath it with their branch guides; each can collapse its own errands. */
 function SideQuests({
   client,
   collapsed,
@@ -63,7 +63,7 @@ function SideQuests({
   );
 }
 
-/** One quest of a placement, with its side-quests beneath it while it is expanded. */
+/** One quest of a placement, with its errands beneath it while it is expanded. */
 export function Quest({
   client,
   collapsed,
@@ -92,7 +92,7 @@ export function Quest({
   const isHere = openMission === mission.id;
   return (
     <>
-      {/* Only the quest's own row is picked up; its side-quests go with it. */}
+      {/* Only the quest's own row is picked up; its errands go with it. */}
       <DragSource missionId={mission.id}>
         <Row
           accessory={<StateDot state={mission.state} />}

@@ -26,7 +26,7 @@ describe("recalling the quest's realm", () => {
     }).pipe(Effect.provide(layer));
   });
 
-  it.live("ignores a side-quest's different workspace and does not leak its lore", () => {
+  it.live("ignores an errand's different workspace and does not leak its lore", () => {
     const { directory, layer } = register(fixture());
     return Effect.gen(function* () {
       const quest = yield* start("Quest", directory);
@@ -46,7 +46,7 @@ describe("recalling the quest's realm", () => {
       yield* send(other.threadId, "Other quest");
       yield* settle(other.missionId, (detail) => detail.thread.state === "Idle");
       yield* save(other.threadId, "Realm beta keeps star maps.", "workspace");
-      const side = yield* open(quest.threadId, "Side-quest");
+      const side = yield* open(quest.threadId, "Errand");
       yield* settle(quest.missionId, (detail) => detail.thread.state === "Idle", side.threadId);
       const sql = yield* SqlClient.SqlClient;
       yield* sql`UPDATE threads SET workspace_id = ${beta.id} WHERE id = ${side.threadId}`;

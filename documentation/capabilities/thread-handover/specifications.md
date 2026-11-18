@@ -4,7 +4,7 @@ Status: built on 2026-11-10 by an agent under the owner's instruction ("make tha
 
 ## Problem and outcome
 
-A quest runs on one harness and model for its whole life. When a limit is reached, a model is too weak for the next step, or a provider is down, the owner has to open a new quest and lose the conversation. A handover changes the harness, account, model, or effort of a quest or side-quest in the middle of it, and the new one carries on with everything said so far (ADR 0006).
+A quest runs on one harness and model for its whole life. When a limit is reached, a model is too weak for the next step, or a provider is down, the owner has to open a new quest and lose the conversation. A handover changes the harness, account, model, or effort of a quest or errand in the middle of it, and the new one carries on with everything said so far (ADR 0006).
 
 ## Agreed behavior
 

@@ -52,7 +52,7 @@ function ThreadPane({
 }) {
   const { thread } = detail;
   const ending = useEnding(client, detail.mission);
-  const work = thread.parentId === null ? "quest" : "side-quest";
+  const work = thread.parentId === null ? "quest" : "errand";
   const conversation = useThreadConversation(client, detail, thread.id, thread.workspace?.path ?? null, {
     isChronicler: false,
     realmPath: null,
@@ -220,7 +220,7 @@ export function Conversation({
 }) {
   const { width } = useWindowDimensions();
   const isCompact = width < 820;
-  // On a narrow window the side-quests list is folded to one line until it is wanted, so the conversation keeps the room.
+  // On a narrow window the errands list is folded to one line until it is wanted, so the conversation keeps the room.
   const [isTreeOpen, setIsTreeOpen] = useState(false);
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const selectedId = selectedThreadId;
@@ -304,7 +304,7 @@ export function Conversation({
                 accessibilityState={{ expanded: isTreeOpen }}
                 onPress={() => setIsTreeOpen(!isTreeOpen)}
               >
-                <Text style={styles.link}>Side-quests {isTreeOpen ? "▴" : "▾"}</Text>
+                <Text style={styles.link}>Errands {isTreeOpen ? "▴" : "▾"}</Text>
               </Pressable>
             )}
           </View>

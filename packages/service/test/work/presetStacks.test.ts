@@ -105,7 +105,7 @@ describe("choosing a preset on a thread", () => {
     ),
   );
 
-  it.live("opens a side-quest with the chosen stack instead of inheriting the parent's backups", () =>
+  it.live("opens an errand with the chosen stack instead of inheriting the parent's backups", () =>
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
@@ -125,7 +125,7 @@ describe("choosing a preset on a thread", () => {
     ),
   );
 
-  it.live("leaves a side-quest's backups as they are when the preset it used changes later", () =>
+  it.live("leaves an errand's backups as they are when the preset it used changes later", () =>
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
@@ -144,7 +144,7 @@ describe("choosing a preset on a thread", () => {
     ),
   );
 
-  it.live("opens a side-quest without inherited backups when the chosen preset has none", () =>
+  it.live("opens an errand without inherited backups when the chosen preset has none", () =>
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");

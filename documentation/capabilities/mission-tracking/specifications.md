@@ -34,7 +34,7 @@ Agreed on 2026-11-10 (CHG-0130). On 2026-11-11 (CHG-0161) the placements were re
 - Before changing placement, Outlore asks for confirmation naming the source and destination and explaining that the available realm lore will change.
   Confirm applies the move; Cancel leaves the quest and its tree in their original placement.
   This confirmation applies to every placement-changing move, including taking a quest out of its realm, whichever interface initiates it. See [Simplified left navigation](#simplified-left-navigation) for the change to the sidebar targets.
-- A move includes the quest and every side-quest at every depth, including threads explicitly attached to another workspace; no branch stays behind.
+- A move includes the quest and every errand at every depth, including threads explicitly attached to another workspace; no branch stays behind.
 - A move is refused while any thread in the quest tree is running; it does not stop running threads automatically.
   The running-thread check applies when the owner confirms, even if no thread was running when the drag began.
 - Moving into a Realm tied to a workspace changes the workspace of every thread in the tree to that Realm's workspace.
@@ -57,15 +57,15 @@ Sidebar drag-and-drop and confirmation were agreed on 2026-11-10 (CHG-0133) and 
 ### Mission state
 
 - A non-archived quest is idle, running, or asking for the user (Summons).
-- Done, Finished, and Fulfilled are no longer quest or side-quest statuses (CHG-0135 and CHG-0136, agreed on 2026-11-11; implementation pending).
+- Done, Finished, and Fulfilled are no longer quest or errand statuses (CHG-0135 and CHG-0136, agreed on 2026-11-11; implementation pending).
   - Update, 2026-11-17 (owner decision in the codebase review): **Done stays**. A quest marked done ends as Done and Done is a thread state; the code, the dashboard's Mark as done, and CHG-0304 and CHG-0308 keep those paths. Fulfilled and Finished stay retired. The two statements above and the "marking a quest Done is removed" line under Ending a mission record the 2026-11-11 agreement and are kept for history.
 - Reporting a result does not finish or archive a quest, and there is no "Mark as done?" prompt.
 - A quest whose work is complete remains available until the owner archives it.
 - A quest shows Summons if any thread needs the owner; otherwise it shows running while any thread has a turn in progress, and idle otherwise.
 - A failure requiring owner intervention produces Summons with its reason.
   Waiting and stopped remain visible thread details, and stopped threads require explicit resume.
-- Reporting a side-quest's result still informs its parent, then leaves it idle unless it has more work or needs the owner.
-- No migration of existing Done quests or side-quests is required: the product is unshipped, and the owner accepts resetting development data instead (CHG-0137).
+- Reporting an errand's result still informs its parent, then leaves it idle unless it has more work or needs the owner.
+- No migration of existing Done quests or errands is required: the product is unshipped, and the owner accepts resetting development data instead (CHG-0137).
   This specification does not perform a reset.
 
 ### Ending a mission
@@ -95,7 +95,7 @@ Agreed on 2026-11-13 (CHG-0271), built; the quest and Ritual choices below were 
 - The owner removes a realm from active use by archiving it, not by permanently deleting it. This applies to realms tied to a folder and to realms tied to none.
 - **Archive realm…** is available in the realm's panel and through the same top-right archive button used for quests, acting on the realm when its overview is shown. Right-click actions are deferred.
 - Every realm archive asks for confirmation naming the realm and counting its quests. Nothing changes before confirmation; Cancel leaves the realm unchanged.
-- The confirmation also counts running threads across its quests, including nested side-quests. When any are running, the confirming action says **Stop and archive realm** and stops them as part of archiving.
+- The confirmation also counts running threads across its quests, including nested errands. When any are running, the confirming action says **Stop and archive realm** and stops them as part of archiving.
 - Archiving hides the realm and all its quests from active lists, the sidebar, and the Realms overview. Its identity, name, crest, lore, conversations, journals, and folder association are preserved. It never deletes the workspace folder.
 - Archived realms appear in the Archive with a Restore action. Restore brings back the realm and the quests that were active when it was archived; quests already individually archived stay archived.
 - After a successful realm archive, the interface goes to the Realms overview. Cancel or failure leaves the current view unchanged.
@@ -140,14 +140,14 @@ Agreed on 2026-11-13 (CHG-0271); implemented in 0.1.3-Prototype, with the quest-
 Agreed on 2026-11-13 (CHG-0271); not implemented.
 
 - The Realms destination becomes a compact quest-list overview grouped by active realm, using the existing overview's row presentation rather than a new card layout.
-- Each realm group has its name (and, until CHG-0449 is built, its crest), links to that realm's overview, and lists its active quests with state, Companion, latest activity, and foldable nested side-quests.
+- Each realm group has its name (and, until CHG-0449 is built, its crest), links to that realm's overview, and lists its active quests with state, Companion, latest activity, and foldable nested errands.
 - Realm grouping takes precedence over day grouping. Include empty active realms with a New quest action; leave archived realms out.
 - With CHG-0449, quests in no realm appear as plain rows after the realm groups. Pressing the sidebar's **Realms** title opens this overview. See [Simplified left navigation](#simplified-left-navigation).
 
 ### Spending
 
 - A mission's spending is the total of its threads' spending, in each provider's own unit: a cost for API-key turns, tokens for subscription turns, chosen by each turn's billing kind. What counts toward a limit, and the one case where an estimate does, is agreed in [budget-control](../budget-control/specifications.md#budgets).
-- Beside them, every turn whose model has a price carries an estimated cost, shown as `≈ $1.20` on the mission's card, row, and information, and on each side-quest's. Estimates, billing kinds, and the price table are agreed in [budget-control](../budget-control/specifications.md#estimated-cost) (CHG-0126).
+- Beside them, every turn whose model has a price carries an estimated cost, shown as `≈ $1.20` on the mission's card, row, and information, and on each errand's. Estimates, billing kinds, and the price table are agreed in [budget-control](../budget-control/specifications.md#estimated-cost) (CHG-0126).
 
 ### Compact left navigation
 
@@ -160,7 +160,7 @@ Agreed on 2026-11-13 (CHG-0271); not implemented.
 
 ### Simplified left navigation
 
-Agreed on 2026-11-18 (CHG-0449). Built so far, on branch `worktree/sidebar`: crest removal (CHG-0452) and the sidebar, footer menu, Guild Hall hub removal, Connectors in Settings, Gild removal and icon removal (CHG-0453); the ungrouped quests in the Realms overview, the retired Borderlands page and drop zone, and the quest panel's Realm row (CHG-0455) are built; the errand rename is pending. This section supersedes the earlier sidebar layout and crest behavior. The quest cap, full quest list, and realm archive and recovery are outside this change.
+Agreed on 2026-11-18 (CHG-0449). Built on branch `worktree/sidebar` in four batches: crest removal (CHG-0452); the sidebar, footer menu, hub, Gild and icon removal and Connectors in Settings (CHG-0453, CHG-0454 for the phone); quests in no realm in the Realms overview, the Borderlands page and drop zone retired, and the quest panel's Realm row (CHG-0455); the errand rename with its guard test (CHG-0456). Not merged; the owner's look in a window and on a phone is pending.
 
 - Pressing the **Realms** title at the top of the sidebar opens the overview of all realms. The title has no adjacent action buttons.
 - Each realm is a group of quests with a title, a fold control, and a folder mark when tied to a folder. Each quest can show its nested errands. Quests in no realm appear as ordinary rows after the realm groups in both the sidebar and the Realms overview, with no heading, divider, or mark. The separate Borderlands page is removed.
@@ -186,8 +186,8 @@ The expanded left sidebar uses this order:
 | Position | Entry | Contents or destination |
 | --- | --- | --- |
 | 1 | Guild Hall | The place where the owner talks with Guildmaster |
-| 2 | Realms | Realms, tied to a workspace or not, each containing its quests and their nested side-quests |
-| 3 | Borderlands | Autonomous quests with no workspace and no shared lore, each with its nested side-quests |
+| 2 | Realms | Realms, tied to a workspace or not, each containing its quests and their nested errands |
+| 3 | Borderlands | Autonomous quests with no workspace and no shared lore, each with its nested errands |
 | 4 | Rituals | Routines |
 | 5 | Craft | Workflows |
 | 6 | The Keep | Library, Lore, Archive, in that order |
@@ -197,16 +197,16 @@ The expanded left sidebar uses this order:
 
 The separate Workshop for MCP servers, connectors, and skills (position 8 of CHG-0134) was withdrawn on 2026-11-11. On 2026-11-16 the owner asked for connectors in the Charter, which now holds them and The Vault (CHG-0321); skills and custom MCP servers have no place yet.
 
-- The Realms, Borderlands, and The Keep headings fold and unfold their contents the same way: pressing the heading or its fold arrow; each realm can expand or collapse its quests; each quest and side-quest can expand or collapse its children at every supported depth (CHG-0163).
+- The Realms, Borderlands, and The Keep headings fold and unfold their contents the same way: pressing the heading or its fold arrow; each realm can expand or collapse its quests; each quest and errand can expand or collapse its children at every supported depth (CHG-0163).
 - Under the Realms heading, each Realm (crest and name) and its quests stand 20 px in from the heading, so the names of the Realms do not line up with the title (the owner's choice, CHG-0167).
 - The Borderlands section is the former Realmless section renamed, with the Borderlands mountain icon and the same new-quest button; it has no intermediate grouping.
 - A realm tied to a folder shows a small line-drawn folder icon after its name, with the folder's full path on hover and as its accessible label; a realm tied to no folder shows none (CHG-0163; a scroll was tried and dropped, CHG-0170).
 - The Realms section lists the realms tied to a folder first, then a thin hairline, then the realms tied to none, each group keeping its order; this reorders realms, tied before untied. The hairline shows only when both groups have realms (CHG-0170).
 - Inside one block (between two diamond dividers) the categories are spaced identically, 36 px rows 1 px apart, in the scrolling part and the fixed foot alike; only the dividers separate blocks (CHG-0171).
-- Hover marks (CHG-0163, after the Delta app): the fold arrow of the group headings, realm rows, quests, and side-quests, and the action buttons (realm overview, new quest, new realm) show only while the pointer is anywhere over the whole row, or while a keyboard focus (as `:focus-visible` would show it) is inside the row; the focus a mouse click leaves does not keep them. The quest count of a realm row and of the Archive row shows the same way, only on hover or keyboard focus (CHG-0171). They keep their place while unseen, so nothing moves or truncates when they appear. Always shown: titles, icons and crests, the folder icon, and state dots. The hover belongs to the whole row box, up to its edges, including the place of the hidden buttons (CHG-0171).
-- The fold arrow is a bow arrow, fletching at the tail, pointing right when folded and down when open. On a group heading it stands right after the title; on a realm row after the name and its folder icon; on quest and side-quest rows in its former place before the title.
-- Each Realm and the Borderlands show their three newest quests; the open quest and every running quest remain visible beyond the cap, each in its place in the list (CHG-0440). A "Show all N quests" link opens the corresponding full list, most recent first; N counts the quests, not their side-quests.
-- The full list nests each quest's side-quests beneath it as the sidebar does, indented, each with its state, title, harness, model, and latest activity, and each quest and side-quest with children folds and unfolds; quests start unfolded there. Day groups and order follow each quest's own latest activity (CHG-0163; nesting rather than a flat list is an assumption the owner may overrule).
+- Hover marks (CHG-0163, after the Delta app): the fold arrow of the group headings, realm rows, quests, and errands, and the action buttons (realm overview, new quest, new realm) show only while the pointer is anywhere over the whole row, or while a keyboard focus (as `:focus-visible` would show it) is inside the row; the focus a mouse click leaves does not keep them. The quest count of a realm row and of the Archive row shows the same way, only on hover or keyboard focus (CHG-0171). They keep their place while unseen, so nothing moves or truncates when they appear. Always shown: titles, icons and crests, the folder icon, and state dots. The hover belongs to the whole row box, up to its edges, including the place of the hidden buttons (CHG-0171).
+- The fold arrow is a bow arrow, fletching at the tail, pointing right when folded and down when open. On a group heading it stands right after the title; on a realm row after the name and its folder icon; on quest and errand rows in its former place before the title.
+- Each Realm and the Borderlands show their three newest quests; the open quest and every running quest remain visible beyond the cap, each in its place in the list (CHG-0440). A "Show all N quests" link opens the corresponding full list, most recent first; N counts the quests, not their errands.
+- The full list nests each quest's errands beneath it as the sidebar does, indented, each with its state, title, harness, model, and latest activity, and each quest and errand with children folds and unfolds; quests start unfolded there. Day groups and order follow each quest's own latest activity (CHG-0163; nesting rather than a flat list is an assumption the owner may overrule).
 - A Realm's quest list offers its realm panel, including crest, lore, and rename controls, with or without a folder. The Borderlands panel content remains undecided.
 - The sidebar is the only left quest tree; the conversation retains its details sidebar on the right, following [quest tree visibility](../thread-tree/specifications.md#quest-tree-visibility).
 - The owner's supplied Guild Hall image is the reference for the nested quest presentation: visible parent-child relationships, indentation, branch guides, expansion controls, and state indicators.
@@ -221,7 +221,7 @@ The separate Workshop for MCP servers, connectors, and skills (position 8 of CHG
 Navigation acceptance, once the draft decisions are settled:
 
 - **Agent validation**: check the ten entries and their order; the three Keep destinations; and Reserves access to the usage page.
-- **Agent validation**: use quests in both placements, including a realm tied to no folder, with multiple side-quest depths; expand and collapse parents, open descendants, and check that selection reaches the intended conversation.
+- **Agent validation**: use quests in both placements, including a realm tied to no folder, with multiple errand depths; expand and collapse parents, open descendants, and check that selection reaches the intended conversation.
 - **Human acceptance**: compare the nesting with the supplied reference in the running desktop app and judge readability at the compact sidebar width.
 - **Agent validation**: in dark and light, hover marks hidden at rest, shown when the pointer is anywhere on the row (including its far right), hidden again after a click once the pointer leaves, shown on keyboard focus; no heading title truncated at the minimum width; the rail dragged to a quarter of two window widths.
 - Agent validation includes more quests than the former recent-quests cutoff, an idle quest after reporting a result, archive and reopen, long titles, empty groups, and collapsed and narrow-screen navigation.
@@ -246,7 +246,7 @@ Threads use this thread tool (see [0005](../../architecture-decision-record/0005
   - preserving conversations, journals, and thread lore while changing workspace attachments and shared lore access;
   - leaving files, edits, branches, and own copies at their original locations after a move, with old own-copy locations still accessible;
   - a mission's three active states, with Summons taking precedence over running and running over idle, including nested descendants;
-  - a side-quest reporting its result to its parent and returning to idle, with no Mark as done action;
+  - an errand reporting its result to its parent and returning to idle, with no Mark as done action;
   - failures needing the owner producing Summons, waiting and stopped shown as details, and stopped threads staying stopped until explicitly resumed;
   - the top thread's result leaving the quest available without a Done state or Mark as done prompt;
   - the inactivity question after the set duration, agent activity resetting it, and a dismissed question coming back;
@@ -267,7 +267,7 @@ Threads use this thread tool (see [0005](../../architecture-decision-record/0005
   - independently choosing old or proposed name and crest, defaults for both paths, equal-row and equal-popup skipping, folder-name fallback, and a shuffled crest participating in comparison;
   - Start afresh requiring its final counted confirmation, preserving the realm id, leaving all old quests archived, deleting only realm-level lore, and restoring a deleted entry through the existing history;
   - duplicate active names warning without blocking, archived names excluded from collisions, and parent-folder hints in the sidebar, overview, and pickers;
-  - the Realms overview grouping active quests and nested side-quests by realm, including empty realms and excluding archived realms and the Borderlands.
+  - the Realms overview grouping active quests and nested errands by realm, including empty realms and excluding archived realms and the Borderlands.
 - **Realm lifecycle batch, human acceptance**: judge the grouped overview, both archive entry points, confirmation wording and counts, Archive restoration, and the independent name/crest comparison in the running desktop app.
 - **Human acceptance**: on the desktop and on the phone web app, the user starts 3 missions, sees the one that needs them first, leaves a completed quest idle, archives one, and reopens it.
 

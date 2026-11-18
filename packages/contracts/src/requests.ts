@@ -164,7 +164,7 @@ export const EndMission = Schema.TaggedStruct("EndMission", {
 /** Returns a Done or archived mission to the state worked out from its threads. */
 export const ReopenMission = Schema.TaggedStruct("ReopenMission", { missionId: MissionId });
 /**
- * Moves a quest, with every side-quest at every depth, to a realm or to the Borderlands (mission-tracking, Quest placement
+ * Moves a quest, with every errand at every depth, to a realm or to the Borderlands (mission-tracking, Quest placement
  * and moves). Refused while any thread of the quest is in a turn; the app asks the owner to confirm before it sends this.
  */
 export const MoveQuest = Schema.TaggedStruct("MoveQuest", {
@@ -387,7 +387,7 @@ export const ChangeThreadRunner = Schema.TaggedStruct("ChangeThreadRunner", {
   model: ModelChoice,
   threadId: ThreadId,
 });
-/** Marks a side-quest done on the owner's word, without ending its quest; its turn stops (thread-tree, Done). */
+/** Marks an errand done on the owner's word, without ending its quest; its turn stops (thread-tree, Done). */
 export const MarkThreadDone = Schema.TaggedStruct("MarkThreadDone", { threadId: ThreadId });
 /** Saves the thread's backup Companions, in the order a failed turn falls back through them (thread-panel, Backups). */
 export const SetThreadBackups = Schema.TaggedStruct("SetThreadBackups", {
@@ -417,7 +417,7 @@ export const ListWorkspaceEntries = Schema.TaggedStruct("ListWorkspaceEntries", 
   query: Schema.String,
   workspacePath: Schema.String,
 });
-/** The quests, side-quests, and realms a typed `@` can name: none archived, and never Chronicler's own (CHG-0181). */
+/** The quests, errands, and realms a typed `@` can name: none archived, and never Chronicler's own (CHG-0181). */
 export const ListMentionables = Schema.TaggedStruct("ListMentionables", {});
 /** Makes a folder inside a browsable folder (New folder). */
 export const CreateFolder = Schema.TaggedStruct("CreateFolder", { name: Schema.String, parent: Schema.String });

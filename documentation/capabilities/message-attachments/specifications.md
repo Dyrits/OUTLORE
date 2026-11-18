@@ -9,7 +9,7 @@ A message is text only, so the owner cannot show a thread a screenshot, an error
 ## Agreed behavior
 
 - **Attaching**: pasting an image (Ctrl or Command+V with an image on the clipboard; pasting text is unchanged), dropping files on the message box, and a file button all go through one step that adds the file. Each attached image shows as a thumbnail above the message box with a × to remove it before sending.
-- **Where**: every message the owner sends: a started quest, a message in any quest or side-quest (Control included), and the first message of a side-quest the owner opens. A message may hold images alone, with no text.
+- **Where**: every message the owner sends: a started quest, a message in any quest or errand (Control included), and the first message of an errand the owner opens. A message may hold images alone, with no text.
 - **What is accepted**: PNG, JPEG, GIF, and WebP, told by the file's first bytes and not by its name; anything else (HEIC included) is refused with the reason. At most 8 images per message and 5 MB each.
 - **Reduced before it leaves the window**: a PNG, JPEG, or WebP longer than 1568 pixels on either side is scaled down to that size in the app, as Cindy and the vision documentation advise. A GIF is never changed, so a GIF over 5 MB is refused.
 - **Upload first** (as OpenBot does): adding a file sends it to the service, which writes it to a draft folder and answers a card (identifier, name, type, size). The message then carries the identifiers. Removing a thumbnail erases the draft; drafts nobody sent are erased when the service starts. A file whose record cannot be written is removed again, so none stays without a record (CHG-0424).

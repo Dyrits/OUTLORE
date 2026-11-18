@@ -91,7 +91,7 @@ export type ThreadSections = {
   /** The thread's Companions group: what it runs on, its backups, and its context. */
   companions: ReactNode;
   knows: ReactNode;
-  /** Given for a side-quest: it names the quest it belongs to and ends on its own. */
+  /** Given for an errand: it names the quest it belongs to and ends on its own. */
   sideQuest: { action: ReactNode; onOpenQuest: () => void; title: string } | null;
   spends: ReactNode;
 };
@@ -127,9 +127,9 @@ export function QuestSidebar({
       <ScrollView contentContainerStyle={local.content} style={styles.flex}>
         <View style={local.hero}>
           {onBack === undefined ? (
-            // A plain quest is already named by the column's Quest tab; only a side-quest or a Ritual says what it is.
+            // A plain quest is already named by the column's Quest tab; only an errand or a Ritual says what it is.
             (thread?.sideQuest != null || mission.ritual !== null) && (
-              <Text style={local.kicker}>{thread?.sideQuest != null ? "Side-quest" : "Ritual"}</Text>
+              <Text style={local.kicker}>{thread?.sideQuest != null ? "Errand" : "Ritual"}</Text>
             )
           ) : (
             <Pressable accessibilityRole="button" onPress={onBack}>
@@ -318,7 +318,7 @@ export function RealmPanel({
         <Group label="Details">
           <Row label="Quests" value={String(missions.length)} />
           <Row
-            label="Side-quests"
+            label="Errands"
             value={String(missions.reduce((sum, mission) => sum + Math.max(0, mission.threadCount - 1), 0))}
           />
           {lastActivity !== null && <Row label="Last active" value={timeOf(lastActivity)} />}

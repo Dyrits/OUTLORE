@@ -194,9 +194,9 @@ export const stopThread = Effect.fn("stopThread")(function* (threadId: string) {
 });
 
 /**
- * The owner marks a side-quest done without ending its quest: its turn is stopped and invalidated, the thread becomes
+ * The owner marks an errand done without ending its quest: its turn is stopped and invalidated, the thread becomes
  * Done, and each parent left Waiting with nothing at work beneath it returns to Idle. The quest's top thread is not
- * a side-quest: it ends with its quest.
+ * an errand: it ends with its quest.
  */
 export const markThreadDone = Effect.fn("markThreadDone")(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;

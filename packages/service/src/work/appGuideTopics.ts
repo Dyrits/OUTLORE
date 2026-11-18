@@ -20,7 +20,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "Outlore is a local-first desktop app for working with AI agents. It runs Claude Code, Codex, and OpenCode, the owner's own command-line tools and accounts, in one place. Outlore does not resell model access: the owner pays each provider directly.",
-      "A piece of work is a quest. Inside it, the owner or a thread opens side-quests, each of which can use its own harness, model, and effort, and the threads of a quest talk to each other. The quest keeps a briefing and a journal that every thread in it reads.",
+      "A piece of work is a quest. Inside it, the owner or a thread opens errands, each of which can use its own harness, model, and effort, and the threads of a quest talk to each other. The quest keeps a briefing and a journal that every thread in it reads.",
       "Everything is stored on the owner's computer, in a database in the app's data folder. Work happens in realms (folders or repositories) the owner chooses.",
       "Outlore is in alpha and serves one owner, who may pair several devices.",
     ].join("\n"),
@@ -31,17 +31,17 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "A quest is a piece of work and its tree of threads. The first thread is the quest's main thread; a side-quest is a thread opened beneath another thread, and may have side-quests of its own.",
+      "A quest is a piece of work and its tree of threads. The first thread is the quest's main thread; an errand is a thread opened beneath another thread, and may have errands of its own.",
       "To start a quest: press Start a quest in the sidebar (the quest is then in no realm), or the new-quest button on a realm, or tell Chronicler what you want and choose on the card it shows (Continue in a quest that fits, or Open as new quest). Chronicler never opens a quest on its own.",
       "States a quest or thread shows: Underway (running), Resting (idle), Awaiting word (waiting for an answer), and Summons (needs the owner: an approval, an answer, a budget reached, a missing folder, or a tool problem). A quest stays open until it is archived; archived quests are in the Archive, under The Keep.",
       "Each quest has a briefing (where it stands, rewritten as it changes) and a journal (a dated log only ever added to). Every thread in the quest reads them before it starts.",
-      "Threads message each other along the tree. When the owner names a quest or side-quest with @, the receiving thread may reach it for that turn; a realm named with @ is context only and opens no reach. A side-quest opened by a thread tells its parent when it reports a result.",
+      "Threads message each other along the tree. When the owner names a quest or errand with @, the receiving thread may reach it for that turn; a realm named with @ is context only and opens no reach. An errand opened by a thread tells its parent when it reports a result.",
     ].join("\n"),
     id: "quests",
     keywords: [
       "quest",
       "side-quest",
-      "side quest",
+      "errand",
       "thread",
       "mission",
       "start",
@@ -54,8 +54,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "underway",
       "resting",
     ],
-    summary: "Quests, side-quests, their states, and how to start one",
-    title: "Quests and side-quests",
+    summary: "Quests, errands, their states, and how to start one",
+    title: "Quests and errands",
   },
   {
     body: [
@@ -109,7 +109,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "The sidebar, from the top: the Realms title, which opens the overview of all realms; each realm with its quests and side-quests; the quests that are in no realm, as ordinary rows after the realms; and two buttons, Visit a realm and Start a quest. A menu button at the foot opens Rituals, Lore, Archive, Reserves, and Settings. On a phone the top bar's menu button opens this same sidebar as a full screen; the other screen is the conversation.",
+      "The sidebar, from the top: the Realms title, which opens the overview of all realms; each realm with its quests and errands; the quests that are in no realm, as ordinary rows after the realms; and two buttons, Visit a realm and Start a quest. A menu button at the foot opens Rituals, Lore, Archive, Reserves, and Settings. On a phone the top bar's menu button opens this same sidebar as a full screen; the other screen is the conversation.",
       "Realms fold and unfold. Each realm and the quests in no realm show their three newest quests, with a Show all link to the full list.",
       "The top bar shows where the owner is and has the Chronicler button. A quest has its own side panel with its details.",
       "Themes: One or Iskios, each in a dark and a light look, or following the system. The owner chooses them in Settings.",
@@ -156,7 +156,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "Write to any thread in its message box. Special marks in a message:",
-      "- @ names a quest, side-quest, or realm to give the thread as context. A thread reads only its own tree and what the owner mentioned.",
+      "- @ names a quest, errand, or realm to give the thread as context. A thread reads only its own tree and what the owner mentioned.",
       "- / lists skills found in the realm's .agents/skills and .claude/skills folders and then the home folder's; pick one and the thread is told to read and follow it. Skills from plugins are not listed.",
       "- ! (desktop only) opens a shell inside the message; its visible output is sent as context.",
       "- Images can be pasted, dropped, or chosen and are given to the harness with the message. Only images are supported so far.",
@@ -302,7 +302,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Lore is saved facts, preferences, and decisions that threads recall later. Each lore entry belongs to a scope: a side-quest, a quest, a realm, or global. Its kind sets how fast it fades when unused: a rule never fades; by default a preference loses half its strength in 90 days, a decision or a fact in 45, and a temporary entry in 3 (the half-lives are in the Workshop).",
+      "Lore is saved facts, preferences, and decisions that threads recall later. Each lore entry belongs to a scope: an errand, a quest, a realm, or global. Its kind sets how fast it fades when unused: a rule never fades; by default a preference loses half its strength in 90 days, a decision or a fact in 45, and a temporary entry in 3 (the half-lives are in the Workshop).",
       "A faded entry becomes dormant (out of the starting context, still found by search) and later archived (out of search too, kept in the lore panel, where it can be restored). Using an entry slows its fading, and a pinned entry never fades.",
       "Lore is in the sidebar's menu, next to the Archive. Threads propose and save lore as they work; the owner can review it, pin it, and restore archived entries.",
     ].join("\n"),

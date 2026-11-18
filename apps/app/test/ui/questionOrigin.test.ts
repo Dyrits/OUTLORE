@@ -4,7 +4,7 @@ import { questionOriginOf } from "../../src/ui/questionOrigin";
 import cards from "../../src/ui/questions.tsx?raw";
 
 describe("a question outside its thread", () => {
-  it("names both its quest and its source side-quest", () => {
+  it("names both its quest and its source errand", () => {
     expect(questionOriginOf({ missionTitle: "Release", threadTitle: "Check Linux" })).toEqual([
       { key: "quest", title: "Release" },
       { key: "thread", title: "Check Linux" },
