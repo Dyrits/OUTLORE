@@ -30,6 +30,7 @@ import { checkAccount, type RunnerChoice, runnerOf } from "../harness/index.ts";
 import { budgetRefusalOf } from "./budgetScopes.ts";
 import { applyDefaultBudget } from "./budgets.ts";
 import { consumptionOf } from "./consumption.ts";
+import { emptyQuestCondition } from "./emptyQuest.ts";
 import { insertJournal } from "./journal.ts";
 import { insertMessage } from "./messaging.ts";
 import { workedOutStateOf } from "./missionStates.ts";
@@ -148,6 +149,7 @@ type MissionRow = {
   states: string;
   threadCount: number;
   ending: MissionEnding | null;
+  isEmpty: number;
   isTitleByUser: number;
   isAskingDone: number;
   inactivityDismissedAt: number | null;
@@ -193,6 +195,7 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
     consumption: consumptionOf(row),
     harness: row.harness,
     id: MissionId.make(row.id),
+    isEmpty: row.isEmpty === 1,
     isTitleByUser: row.isTitleByUser === 1,
     lastActivityAt: row.lastActivityAt,
     model: row.model,
@@ -224,6 +227,7 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
     SELECT m.id, m.title, m.top_thread_id AS topThreadId, top.harness AS harness, top.model AS model, m.last_activity_at AS lastActivityAt,
       (SELECT group_concat(t.state) FROM threads t WHERE t.mission_id = m.id) AS states,
       (SELECT COUNT(*) FROM threads t WHERE t.mission_id = m.id) AS threadCount,
+      ${sql.literal(emptyQuestCondition("m.id"))} AS isEmpty,
       m.ending, m.is_title_by_user AS isTitleByUser, m.is_asking_done AS isAskingDone,
       m.inactivity_dismissed_at AS inactivityDismissedAt,
       ${sql.literal(consumptionColumns)},

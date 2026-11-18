@@ -69,6 +69,9 @@ export const local = StyleSheet.create({
     paddingVertical: 4,
   },
   newQuestHovered: { backgroundColor: colors.controlActive },
+  questError: { color: colors.dangerText, fontFamily: fonts.sans, fontSize: fontSizes.sm, paddingVertical: 2 },
+  /** The fixed place at the end of a quest row: its state dot, or on hover its archive or delete mark. */
+  questMark: { alignItems: "center", height: 18, justifyContent: "center", width: 18 },
   realmText: { flexBasis: "auto", flexGrow: 0, flexShrink: 1, fontWeight: "600" },
   realmTextEnd: { flex: 1 },
   row: {

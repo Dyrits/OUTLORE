@@ -239,6 +239,16 @@ describe("ending a mission", () => {
     }).pipe(Effect.provide(live())),
   );
 
+  it.effect("reports a quest as empty only while it holds no message, no tokens, and no Ritual", () =>
+    Effect.gen(function* () {
+      const empty = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: "empty" });
+      const used = yield* idle();
+      const missions = yield* list();
+      expect(summaryOf(missions, empty.missionId)?.isEmpty).toBe(true);
+      expect(summaryOf(missions, used.missionId)?.isEmpty).toBe(false);
+    }).pipe(Effect.provide(live())),
+  );
+
   it.effect("keeps a quest with a message but no tokens when it is archived", () =>
     Effect.gen(function* () {
       const started = yield* start("wait 100000");

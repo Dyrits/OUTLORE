@@ -27,6 +27,7 @@ const quest = (id: string, state: "Idle" | "Running" = "Idle") =>
     consumption: { earlierTurns: 0, estimated: 0, reported: 0, tokens: usage, turns: 0, unpricedTurns: 0 },
     harness: "claude",
     id,
+    isEmpty: false,
     isTitleByUser: false,
     lastActivityAt: 0,
     model: "default",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Platform, Pressable, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { emblemPaths } from "../foundation/emblems";
@@ -68,6 +68,45 @@ function CreationIcon({ color, emblem, plus }: { color: string; emblem: "sword" 
         <Path d={d} key={d} />
       ))}
       <Path d={plus} />
+    </Svg>
+  );
+}
+
+/** The mark of archiving a quest: an archive box. */
+export function ArchiveIcon({ color }: { color: string }) {
+  return (
+    <LineIcon color={color}>
+      <Path d="M3 4h18v4H3z" />
+      <Path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
+      <Path d="M10 12h4" />
+    </LineIcon>
+  );
+}
+
+/** The mark of deleting an empty quest: a bin. */
+export function DeleteIcon({ color }: { color: string }) {
+  return (
+    <LineIcon color={color}>
+      <Path d="M4 7h16" />
+      <Path d="M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12" />
+      <Path d="M9 7V4h6v3" />
+    </LineIcon>
+  );
+}
+
+function LineIcon({ children, color }: { children: ReactNode; color: string }) {
+  return (
+    <Svg
+      fill="none"
+      height={15}
+      stroke={color}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.8}
+      viewBox="0 0 24 24"
+      width={15}
+    >
+      {children}
     </Svg>
   );
 }

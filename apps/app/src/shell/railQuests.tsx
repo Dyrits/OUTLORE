@@ -1,10 +1,20 @@
 import type { MissionId, MissionSummary, ThreadId } from "@outlore/contracts";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { colors } from "../foundation/theme";
+import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { EndingConfirmation } from "../quests/missionActions";
 import { DragSource } from "./questDrag";
-import { Chevron, FolderCue, NewQuestIcon, OverviewButton, useRowActions } from "./railActions";
+import {
+  ArchiveIcon,
+  Chevron,
+  DeleteIcon,
+  FolderCue,
+  NewQuestIcon,
+  OverviewButton,
+  useRowActions,
+} from "./railActions";
 import { threadOutlineOf } from "./railOutline";
 import { Count, Row, StateDot } from "./railRows";
 import { chevronWidth, indentStep, isHovered, local } from "./railStyles";
@@ -90,22 +100,47 @@ export function Quest({
   shouldShowAgentThreads: boolean;
 }) {
   const isHere = openMission === mission.id;
+  // An archive from the sidebar leaves the current view alone unless this quest is the one open.
+  const ending = useEnding(client, mission, isHere);
+  const label = mission.isEmpty ? `Delete ${mission.title}` : `Archive ${mission.title}`;
   return (
     <>
       {/* Only the quest's own row is picked up; its errands go with it. */}
       <DragSource missionId={mission.id}>
         <Row
-          accessory={<StateDot state={mission.state} />}
           fold={{
             isOpen,
             label: mission.title,
             onPress: mission.threadCount > 1 ? () => onToggle(mission.id) : null,
           }}
+          hoverAccessory={(isShown) => (
+            <View style={local.questMark}>
+              {isShown && Platform.OS === "web" ? (
+                <Pressable
+                  accessibilityLabel={label}
+                  accessibilityRole="button"
+                  disabled={ending.isBusy}
+                  hitSlop={6}
+                  onPress={() => ending.start("Archived")}
+                >
+                  {mission.isEmpty ? <DeleteIcon color={colors.textMuted} /> : <ArchiveIcon color={colors.textMuted} />}
+                </Pressable>
+              ) : (
+                <StateDot state={mission.state} />
+              )}
+            </View>
+          )}
           isSelected={isHere && (openThread === null || openThread === mission.topThreadId)}
           label={mission.title}
           onPress={() => onOpenMission(mission.id)}
         />
       </DragSource>
+      {(ending.pending !== null || ending.error !== null) && (
+        <View style={{ paddingLeft: chevronWidth }}>
+          <EndingConfirmation ending={ending} />
+          {ending.error !== null && <Text style={local.questError}>{ending.error}</Text>}
+        </View>
+      )}
       {isOpen && mission.threadCount > 1 && (
         <View style={{ paddingLeft: chevronWidth }}>
           <SideQuests

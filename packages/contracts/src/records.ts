@@ -126,6 +126,8 @@ export const MissionSummary = Schema.Struct({
   /** The top thread's harness and model, for the card. */
   harness: HarnessName,
   id: MissionId,
+  /** Whether it carries nothing worth keeping (no message, no tokens, not a Ritual's): archiving it deletes it. */
+  isEmpty: Schema.Boolean,
   /** Whether the owner renamed it, after which `set_mission_title` is refused. */
   isTitleByUser: Schema.Boolean,
   lastActivityAt: Schema.Number,

@@ -4,6 +4,7 @@ import { SqlClient } from "effect/sql";
 import { dayMillis, invalid, notFound, readSettings, ServiceFailure } from "../core/index.ts";
 import { Commands, changed } from "./commands.ts";
 import { eraseEmptyQuest } from "./deleting.ts";
+import { emptyQuestCondition } from "./emptyQuest.ts";
 import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { updateJournal } from "./journal.ts";
 import { activeStates, haltThreads } from "./lifecycle.ts";
@@ -57,11 +58,9 @@ export const previewEnding = (missionId: string, ending: MissionEnding) =>
  */
 export const isEmptyQuest = Effect.fn("isEmptyQuest")(function* (missionId: string) {
   const sql = yield* SqlClient.SqlClient;
-  const [row] = yield* sql<{ isEmpty: number }>`SELECT
-    NOT EXISTS(SELECT 1 FROM rituals WHERE mission_id = ${missionId})
-    AND NOT EXISTS(SELECT 1 FROM messages WHERE thread_id IN (SELECT id FROM threads WHERE mission_id = ${missionId}))
-    AND COALESCE((SELECT SUM(input + output + cache_read + cache_creation) FROM usage WHERE mission_id = ${missionId}), 0) = 0
-    AS isEmpty`;
+  const [row] = yield* sql<{
+    isEmpty: number;
+  }>`SELECT ${sql.literal(emptyQuestCondition("m.id"))} AS isEmpty FROM missions m WHERE m.id = ${missionId}`;
   return row?.isEmpty === 1;
 });
 

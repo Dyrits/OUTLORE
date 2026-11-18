@@ -5,9 +5,10 @@ import type { ServiceClient } from "./client";
 
 /**
  * Marks a mission Done or archives it; when threads are still at work, one confirmation names them first
- * (mission-tracking, Ending a mission).
+ * (mission-tracking, Ending a mission). Archiving goes to the quest's parent view unless `shouldLeave` is false, as for a
+ * quest archived from the sidebar while another view is open.
  */
-export function useEnding(client: ServiceClient, mission: MissionSummary) {
+export function useEnding(client: ServiceClient, mission: MissionSummary, shouldLeave = true) {
   const navigation = useContext(ArchiveNavigation);
   const [pending, setPending] = useState<{ ending: MissionEnding; preview: EndingPreview } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +28,7 @@ export function useEnding(client: ServiceClient, mission: MissionSummary) {
   const finish = (ending: MissionEnding, preview: EndingPreview) =>
     client.request({ _tag: "EndMission", ending, missionId: mission.id, snapshot: preview.snapshot }).then((parent) => {
       setPending(null);
-      if (ending === "Archived") navigation.quest(parent);
+      if (ending === "Archived" && shouldLeave) navigation.quest(parent);
     });
   const start = (ending: MissionEnding) =>
     run(async () => {
