@@ -35,7 +35,7 @@ export function Row({
   /** What stands at the end only with the row's marks, on hover or focus, given whether they show. */
   hoverAccessory?: (isShown: boolean) => ReactNode;
   indent?: number;
-  /** Whether the row is an action rather than a place: it rests on a soft rounded fill, which deepens on hover. */
+  /** Whether the row is an action rather than a place: it has a thin rounded border and fills softly on hover. */
   isButton?: boolean;
   /** What stands before the label, after the fold mark, such as a state dot. */
   leading?: ReactNode;

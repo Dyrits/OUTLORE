@@ -22,10 +22,9 @@ export const local = StyleSheet.create({
     width: 28,
   },
   addHovered: { backgroundColor: colors.controlActive },
-  buttonHovered: { backgroundColor: colors.controlActive },
-  /** A quiet label over a group of the sidebar: small and muted, so it names the group without weight. */
-  // A creation row reads as an action by a soft fill, with no border and no change of type.
-  buttonRest: { backgroundColor: colors.controlHover, marginVertical: 2, minHeight: 30 },
+  buttonHovered: { backgroundColor: colors.controlHover },
+  // A creation row reads as an action by a thin rounded border, with no fill at rest and no change of type.
+  buttonRest: { borderColor: colors.border, borderRadius: radii.md, borderWidth: 1, marginVertical: 2, minHeight: 32 },
   chevron: { alignItems: "center", height: 20, justifyContent: "center", width: chevronWidth },
   count: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   creationDivider: { backgroundColor: colors.edge, height: 1, marginHorizontal: 6, marginVertical: 6 },
