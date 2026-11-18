@@ -38,17 +38,6 @@ export function PanelIcon({ side = "left" }: { side?: "left" | "right" }) {
   );
 }
 
-/** The three bars of the button that opens the narrow window's menu. */
-function MenuIcon() {
-  return (
-    <View style={local.menuIcon}>
-      <View style={local.menuBar} />
-      <View style={local.menuBar} />
-      <View style={local.menuBar} />
-    </View>
-  );
-}
-
 /**
  * The top bar: the host menu at its start and, at the end, the spending, which the collapsed rail no longer shows,
  * and Chronicler's button. It names no place: the rail and the screens say where the owner is.
@@ -79,7 +68,7 @@ export function TopBar({
           onPress={menu.onToggle}
           style={({ pressed }) => [local.topIcon, (pressed || menu.isOpen) && local.topIconActive, noDragRegion]}
         >
-          {menu.isOpen ? <Text style={local.menuClose}>✕</Text> : <MenuIcon />}
+          <PanelIcon />
         </Pressable>
       )}
       {hostMenu !== null && (
@@ -198,9 +187,6 @@ const local = StyleSheet.create({
   crumbCurrent: { color: colors.onGround },
   crumbPinned: { paddingLeft: 6 },
   crumbText: { fontFamily: fonts.sans, fontSize: fontSizes.lg },
-  menuBar: { backgroundColor: colors.onGround, borderRadius: 1, height: 2 },
-  menuClose: { color: colors.onGround, fontSize: fontSizes.base },
-  menuIcon: { gap: 3, width: 16 },
   panelIcon: {
     borderColor: colors.onGround,
     borderRadius: 3,
