@@ -210,6 +210,14 @@ export function Sidebar({
           onToggle={() => foldedSections.toggle("Borderlands")}
           title="Borderlands"
         />
+        {failureUnder("none")}
+        <Row
+          accessory={<NewQuestIcon color={colors.highlight} />}
+          isSelected={false}
+          label="Start a quest"
+          onPress={() => startQuest("none", null)}
+          textStyle={local.creationText}
+        />
         {(foldedSections.set.has("Borderlands") ? [] : borderlandQuests).map((mission) => (
           <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
         ))}
@@ -220,14 +228,6 @@ export function Sidebar({
             subject="quests in no realm"
           />
         )}
-        {failureUnder("none")}
-        <Row
-          accessory={<NewQuestIcon color={colors.highlight} />}
-          isSelected={false}
-          label="Start a quest"
-          onPress={() => startQuest("none", null)}
-          textStyle={local.creationText}
-        />
       </ScrollView>
       <View style={local.footer}>
         <Spending client={client}>

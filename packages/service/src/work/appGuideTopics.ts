@@ -109,7 +109,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "The sidebar, from the top: a small Realms label over each realm with its quests and errands, ending with the Visit a realm button; then a line, and a small Borderlands label over the quests that are in no realm, ending with the Start a quest button. A gear icon at the foot, at the window's bottom left whether the sidebar is shown or not, opens the Workshop (Settings). Rituals, Lore, Archive and Reserves have no entry in the sidebar for now. On a phone the top bar's menu button opens this same sidebar as a full screen; the other screen is the conversation.",
+      "The sidebar, from the top: a small Realms label over each realm with its quests and errands, ending with the Visit a realm button; then a line, and a small Borderlands label, then the Start a quest button directly under it, then the quests that are in no realm below the button. A gear icon at the foot, at the window's bottom left whether the sidebar is shown or not, opens the Workshop (Settings). Rituals, Lore, Archive and Reserves have no entry in the sidebar for now. On a phone the top bar's menu button opens this same sidebar as a full screen; the other screen is the conversation.",
       "Realms fold and unfold. Each realm and the quests in no realm show their three newest quests, with a Show all link to the full list.",
       "The top bar shows where the owner is and has the Chronicler button. A quest has its own side panel with its details.",
       "Themes: One or Iskios, each in a dark and a light look, or following the system. The owner chooses them in Settings.",
