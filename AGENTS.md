@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the sidebar's creation rows (CHG-0503 to CHG-0506; committed; push waiting for the owner's approval; open: which button the owner meant, and the owner's look in a window), read the [current handoff](.agents/handoffs/2026-11-18-1621-creation-rows.md). Handoffs are shared and committed.
+- To resume the sidebar's creation rows (CHG-0503 to CHG-0506; pushed to `origin/main`, whose tip is the handoff commit itself; open: which button the owner meant, and the owner's look in a window), read the [current handoff](.agents/handoffs/2026-11-18-1621-creation-rows.md). Handoffs are shared and committed.
 
 - To resume the Android self-update (on `origin/main`; open: a phone check) and the context-window redo (`worktree/context-window-redo`, CHG-0501; open: the owner's merge and look), read the [current handoff](.agents/handoffs/2026-11-18-1435-context-window-redo.md). Handoffs are shared and committed.
 
