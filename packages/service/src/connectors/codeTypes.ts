@@ -1,7 +1,7 @@
 import { Predicate } from "effect";
 import type { ConnectorTool } from "./gateway.ts";
 
-// The declarations a thread reads in Code Mode's tool description, written from each connector tool's JSON Schema, as
+// The declarations a thread reads in Code Mode's tool description, written from each tool's JSON Schema, as
 // Cloudflare's Code Mode does (`generateTypesFromJsonSchema`): a model writes correct calls more often from types
 // than from schemas. Only what a model needs is rendered; anything else reads `unknown`.
 
@@ -64,7 +64,7 @@ const objectTypeOf = (schema: Readonly<Record<string, unknown>>, depth: number, 
   return `{\n${lines.join("")}${indent}}`;
 };
 
-/** A name usable as `connectors.<namespace>.<name>`: letters, digits, `_` and `$`, not starting with a digit. */
+/** A name usable as `connectors.<namespace>.<name>` or `outlore.<name>`: letters, digits, `_` and `$`, not starting with a digit. */
 export const identifierOf = (name: string) => {
   const replaced = name.replace(/[^A-Za-z0-9_$]/g, "_");
   return /^[0-9]/.test(replaced) ? `_${replaced}` : replaced;
@@ -89,4 +89,22 @@ export const declarationOf = (bindings: ReadonlyArray<Binding>) => {
     return `  ${keyOf(namespace)}: {\n${lines.join("")}  };\n`;
   });
   return `declare const connectors: {\n${blocks.join("")}};`;
+};
+
+/** One of Outlore's own tools as Code Mode lists it in the code: `outlore.<name>`. */
+export type OwnTool = {
+  readonly description: string;
+  /** The tool's JSON Schema for its arguments. */
+  readonly inputSchema: Readonly<Record<string, unknown>>;
+  /** The tool's name, which is also its member of `outlore`. */
+  readonly name: string;
+};
+
+/** The `outlore` declaration a thread writes its calls to Outlore's own tools against. */
+export const ownDeclarationOf = (tools: ReadonlyArray<OwnTool>) => {
+  const lines = tools.map(
+    ({ description, inputSchema, name }) =>
+      `${commentOf(description, "  ")}  ${keyOf(identifierOf(name))}(input: ${typeOfSchema(inputSchema, 1, "  ")}): Promise<unknown>;\n`,
+  );
+  return `declare const outlore: {\n${lines.join("")}};`;
 };

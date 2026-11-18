@@ -160,7 +160,7 @@ export const threadsLayer = Layer.effect(
       if (removed !== null) {
         return yield* commands.run(local(recordTurnFailure(threadId, turn, removed, false))).pipe(Effect.orDie);
       }
-      const { shouldStreamReplies } = yield* local(readSettings);
+      const { shouldStreamReplies, shouldUseCodeMode } = yield* local(readSettings);
       const terms = yield* local(
         readApprovalTerms(threadId, turn.harness).pipe(Effect.provideService(Harness, harness)),
       );
@@ -185,10 +185,18 @@ export const threadsLayer = Layer.effect(
               .pipe(Effect.orDie),
         });
       if (!(yield* isCurrent(turn.turnId))) return;
+      // The tool server answers under the setting this turn starts with, as its harness lists the tools (CHG-0446).
+      yield* endpoints.holdCodeMode(threadId, shouldUseCodeMode);
       active.set(threadId, { turnId: turn.turnId, written: new Set() });
       const outcome = yield* harness
         .runTurn({
-          access: { ...terms, isInWorkspace, mcpUrl, unaskedTools: unaskedToolNamesOf(toolServerName) },
+          access: {
+            ...terms,
+            isInWorkspace,
+            mcpUrl,
+            unaskedTools: unaskedToolNamesOf(toolServerName, shouldUseCodeMode),
+            usesCodeMode: shouldUseCodeMode,
+          },
           askOwner: askOwnerFor(approvals, sql, threadId),
           configDirectory: turn.accountId === null ? null : join(accountsRoot, turn.accountId),
           context,

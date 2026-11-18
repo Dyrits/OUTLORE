@@ -317,7 +317,13 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
   // its thread; the effort goes with each turn.
   // Where the folder really points too: a link pointed elsewhere restarts the process, whose start checks it again.
   restartKeyOf: (request) =>
-    JSON.stringify([threadSettingsOf(request, request.cwd), request.configDirectory, resolvedFolderOf(request.cwd)]),
+    JSON.stringify([
+      threadSettingsOf(request, request.cwd),
+      // The tools are listed when the process starts, so a change of Code Mode restarts it.
+      request.access.usesCodeMode,
+      request.configDirectory,
+      resolvedFolderOf(request.cwd),
+    ]),
 
   runTurn: Effect.fnUntraced(function* (connection: CodexConnection, request: TurnRequest, turn: PooledTurn) {
     const effort = effortOf(request.effort);

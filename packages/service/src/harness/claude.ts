@@ -145,6 +145,8 @@ const claudeProtocolOf = (
   restartKeyOf: (request) =>
     JSON.stringify([
       accessArgsOf(request.access, request.context, options, listThreadWorktrees(request)),
+      // The tools are listed when the process starts, so a change of Code Mode restarts it.
+      request.access.usesCodeMode,
       request.configDirectory,
       request.cwd,
       // Where the folder really points: a link pointed elsewhere restarts the process, whose start checks it again.

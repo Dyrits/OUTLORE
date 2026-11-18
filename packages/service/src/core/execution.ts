@@ -74,6 +74,11 @@ export type ThreadAccess = ApprovalTerms & {
   readonly mcpUrl: string;
   /** The thread tools the thread uses without asking, named as Claude Code lists them (`mcp__outlore__…`). */
   readonly unaskedTools: ReadonlyArray<string>;
+  /**
+   * Whether the thread's tools are listed under Code Mode this turn (connectors specification, Code Mode). A harness
+   * lists its tools when its process starts, so a change of it restarts the process: it is part of every restart key.
+   */
+  readonly usesCodeMode: boolean;
 };
 
 /** One action a harness asks permission for, named as Claude Code names its tools (`Bash`, `Edit`, …). */

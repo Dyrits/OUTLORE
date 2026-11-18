@@ -1,8 +1,8 @@
 # Work in progress
 
-## Charter's Code Mode switch · 2026-11-17 · built and tested on branch `worktree/charter-switch`, the owner's look pending
+## Code Mode widened · 2026-11-18 · built and tested on branch `worktree/code-mode-widen`, not merged, the owner's look and a live harness check pending
 
-The Charter place opens a page with a Connectors section holding the global "Code Mode for connectors" switch (CHG-0444): off by default, marked Experimental, explained in plain words, reading and writing `shouldUseCodeMode`. With no connector gateway the setting still changes nothing visible. Not merged or pushed; not seen in a window or on a phone. The Vault, connectors and per-quest or per-realm switches remain unbuilt.
+The owner said Code Mode should do many things, as in Cloudflare's article, and asked for it built (proposal CHG-0446, delivery CHG-0447). With the switch on, a thread reaches Outlore's own tools and its connectors' tools by code, through one `run_code` tool; four tools stay direct; at most 5 calls that start work a run; the setting is read once per turn and joins the harness restart keys; the Charter's switch reads "Code Mode". It works with no connector. Biome, typecheck and the full suite pass (2,061 passed, 54 skipped). The listing is only 7% smaller; the gain of chained calls is unmeasured. Not seen in a window or on a phone, not tried on a live Claude Code, Codex or OpenCode. The decisions are listed in the [specification](capabilities/connectors/specifications.md#code-mode) and the owner can redirect any. [Verification](verification/2026-11-18-code-mode-widened.md).
 
 ## Review since 0.1.6-Prototype · 2026-11-17 · uncommitted refactors
 

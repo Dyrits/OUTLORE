@@ -2,7 +2,7 @@ import { type Effect, Schema } from "effect";
 
 // What a Code Mode run is given and gives back (ADR 0023).
 
-/** A connector call that failed or was refused; its message is thrown into the code as an `Error`. */
+/** A tool call that failed or was refused; its message is thrown into the code as an `Error`. */
 export class CodeCallFailure extends Schema.TaggedError<CodeCallFailure>()("CodeCallFailure", {
   message: Schema.String,
 }) {}
@@ -10,8 +10,11 @@ export class CodeCallFailure extends Schema.TaggedError<CodeCallFailure>()("Code
 /** One function the code may call, given the code's single argument as plain data. */
 export type CodeFunction = (input: unknown) => Effect.Effect<unknown, CodeCallFailure>;
 
-/** The functions the code reaches as `connectors.<namespace>.<name>(input)`. */
-export type CodeFunctions = Readonly<Record<string, Readonly<Record<string, CodeFunction>>>>;
+/** Functions, or objects holding them, that the code reaches by name. */
+export type CodeApi = { readonly [name: string]: CodeFunction | CodeApi };
+
+/** What the code reaches: each name is a global (`connectors.<connector>.<tool>(input)`, `outlore.<tool>(input)`). */
+export type CodeFunctions = CodeApi;
 
 /** What one run may use. */
 export type CodeLimits = {
@@ -24,7 +27,7 @@ export type CodeLimits = {
   readonly stackBytes: number;
 };
 
-/** The limits of a thread's run (ADR 0023): short glue between connector calls, not computation. */
+/** The limits of a thread's run (ADR 0023): short glue between tool calls, not computation. */
 export const defaultCodeLimits: CodeLimits = {
   cpuMillis: 5_000,
   maxCalls: 200,

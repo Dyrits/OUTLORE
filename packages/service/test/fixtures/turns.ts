@@ -12,6 +12,7 @@ export const turnRequestOf = (fields: Partial<TurnRequest> = {}): TurnRequest =>
     mcpUrl: "http://127.0.0.1:9/mcp/none",
     permissionKinds: [],
     unaskedTools: [],
+    usesCodeMode: false,
   },
   askOwner: () => Effect.succeed({ isAllowed: true, text: "" }),
   configDirectory: null,

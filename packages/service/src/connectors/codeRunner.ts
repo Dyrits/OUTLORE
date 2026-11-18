@@ -1,6 +1,14 @@
 import { Exit, type Fiber, Schema } from "effect";
 import type { QuickJSContext, QuickJSDeferredPromise, QuickJSHandle, QuickJSRuntime } from "quickjs-emscripten-core";
-import type { CodeCallFailure, CodeFunction, CodeFunctions, CodeLimits, CodeOutcome, CodeRun } from "./codeRun.ts";
+import type {
+  CodeApi,
+  CodeCallFailure,
+  CodeFunction,
+  CodeFunctions,
+  CodeLimits,
+  CodeOutcome,
+  CodeRun,
+} from "./codeRun.ts";
 
 const megabytesOf = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} MB`;
 
@@ -38,8 +46,8 @@ type RunState = {
 
 /**
  * Runs the code once in a fresh context of the runtime, resuming with the finished run, and returns what stops it
- * early. The model's JavaScript sees only the ECMAScript built-ins, `console`, and the given functions under the one
- * global `connectors`. A call is a promise inside QuickJS that resolves when its Effect ends, so a call that waits for
+ * early. The model's JavaScript sees only the ECMAScript built-ins, `console`, and the given functions, each name a
+ * global. A call is a promise inside QuickJS that resolves when its Effect ends, so a call that waits for
  * the owner holds no CPU and does not count against the time limit.
  */
 export const runOnce = (
@@ -154,7 +162,7 @@ export const runOnce = (
   const callOf = (call: CodeFunction) => (input: QuickJSHandle) => {
     const deferred = context.newPromise();
     if (state.callCount >= limits.maxCalls) {
-      rejectWith(deferred, `The code made more than ${limits.maxCalls} connector calls.`);
+      rejectWith(deferred, `The code made more than ${limits.maxCalls} calls.`);
       const handle = deferred.handle.dup();
       deferred.dispose();
       return handle;
@@ -173,6 +181,22 @@ export const runOnce = (
     return handle;
   };
 
+  /** Sets each of the api's names on the target: a function as a function, an object as an object of them. */
+  const installApi = (target: QuickJSHandle, api: CodeApi) => {
+    for (const [name, member] of Object.entries(api)) {
+      if (typeof member === "function") {
+        const handle = context.newFunction(name, callOf(member));
+        context.setProp(target, name, handle);
+        handle.dispose();
+      } else {
+        const object = context.newObject();
+        installApi(object, member);
+        context.setProp(target, name, object);
+        object.dispose();
+      }
+    }
+  };
+
   const install = () => {
     const consoleObject = context.newObject();
     const log = context.newFunction("log", (...values) => {
@@ -188,19 +212,7 @@ export const runOnce = (
     context.setProp(context.global, "console", consoleObject);
     consoleObject.dispose();
 
-    const connectors = context.newObject();
-    for (const [namespace, members] of Object.entries(functions)) {
-      const namespaceObject = context.newObject();
-      for (const [name, call] of Object.entries(members)) {
-        const handle = context.newFunction(name, callOf(call));
-        context.setProp(namespaceObject, name, handle);
-        handle.dispose();
-      }
-      context.setProp(connectors, namespace, namespaceObject);
-      namespaceObject.dispose();
-    }
-    context.setProp(context.global, "connectors", connectors);
-    connectors.dispose();
+    installApi(context.global, functions);
   };
 
   const evaluate = () => {

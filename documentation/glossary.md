@@ -131,6 +131,9 @@ The sidebar place, after Reserves, where the owner manages what Outlore connects
 A named integration that gives threads the tools of one outside service or app, installed once by the owner from the list Outlore offers. It is **installed** (on this computer, global), **connected** (given a key, a sign-in or a permission) and **enabled** (switched on for a realm, the Borderlands or a quest); a thread can use it only when all three hold ([connectors](capabilities/connectors/specifications.md)).
 _Avoid_: Plugin, integration, MCP server (the way a connector is delivered is a technical choice)
 
+**Code Mode**:
+An experimental global setting (off by default, in the Charter) under which a thread reaches the tools of Outlore's tool server, its connectors' tools and Outlore's own thread tools except the four that stay direct, by writing a short piece of code that one tool, `run_code`, runs, instead of having each tool listed and called one by one (CHG-0324, CHG-0446, CHG-0447). Never a harness's own Bash, file or editing tools.
+
 **The Vault**:
 Where the host keeps connectors' secrets, shown to the owner by connector, kind and date and never by value.
 

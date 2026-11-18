@@ -47,6 +47,9 @@ const detailOf = (toolName: string, input: unknown) => {
  */
 export const callDescriptionOf = (toolName: string, input: unknown): Pick<Activity, "detail" | "summary"> | null => {
   if (leftOut.has(toolName)) return null;
+  // Code Mode's one tool: the calls its code makes are not reported by the harness, so this line is how a run shows.
+  if (toolName === `${chroniclerPrefix}run_code`)
+    return { detail: "run code", summary: "Run code that calls its tools" };
   if (toolName.startsWith(chroniclerPrefix))
     return { detail: toolName.slice(chroniclerPrefix.length).replaceAll("_", " "), summary: "Use an Outlore tool" };
   const kind = Object.hasOwn(kinds, toolName) ? kinds[toolName] : null;

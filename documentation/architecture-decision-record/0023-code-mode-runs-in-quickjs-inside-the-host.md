@@ -27,3 +27,7 @@ Decided by the owner on 2026-11-17 ([CHG-0441](../changelog/0.1.7-Prototype.md))
 - QuickJS interprets; a run is slower than V8 for heavy computation. The code is expected to be short glue between connector calls.
 - A run is not resumable: if the host stops during a run, the run is lost and the thread sees its call fail. Cloudflare's replay after an approval is not needed, since a run simply waits for the owner's answer.
 - The executor is replaceable behind `runCode` in `packages/service/src/connectors/codeExecutor.ts`.
+
+## Note · 2026-11-18 · Code Mode widened beyond connectors; this decision is unchanged
+
+At the owner's instruction Code Mode now covers every tool of Outlore's tool server, Outlore's own thread tools as well as the connectors' ([CHG-0446](../changelog/0.1.8-Prototype.md), [CHG-0447](../changelog/0.1.8-Prototype.md), [connectors specification](../capabilities/connectors/specifications.md#code-mode)). This decision stands as written: nothing in the executor is about connectors, since the host hands it named functions and it reaches nothing else. The runner now installs any nested set of host functions as globals (`connectors.<connector>.<tool>` and `outlore.<tool>`), where it installed one `connectors` global. "Local" extends to what Outlore's own tools return (lore, journals), which also stays on the host. No hard-to-reverse choice appears, so there is no new ADR; the title and first paragraph above, which say "for connectors", keep the words they were decided with.

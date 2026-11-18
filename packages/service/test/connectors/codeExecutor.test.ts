@@ -5,7 +5,9 @@ import { CodeCallFailure, type CodeFunctions, defaultCodeLimits } from "../../sr
 import { CodeExecutor } from "../../src/connectors/index.ts";
 
 const echo = (input: unknown) => Effect.succeed({ echoed: input });
-const functions = { fake: { echo, fail: () => Effect.fail(new CodeCallFailure({ message: "Switched off" })) } };
+const functions = {
+  connectors: { fake: { echo, fail: () => Effect.fail(new CodeCallFailure({ message: "Switched off" })) } },
+};
 
 const run = (code: string, limits = defaultCodeLimits, given: CodeFunctions = functions) =>
   Effect.gen(function* () {
@@ -59,7 +61,7 @@ describe("running a thread's code", () => {
 
   it.live("does not count the wait for a call against the time limit", () =>
     Effect.gen(function* () {
-      const slow = { fake: { slow: () => Effect.sleep("300 millis").pipe(Effect.as("done")) } };
+      const slow = { connectors: { fake: { slow: () => Effect.sleep("300 millis").pipe(Effect.as("done")) } } };
       const result = yield* run("async () => connectors.fake.slow({})", { ...defaultCodeLimits, cpuMillis: 100 }, slow);
       expect(result.outcome).toEqual({ _tag: "Returned", value: "done" });
     }),
@@ -93,7 +95,7 @@ describe("running a thread's code", () => {
           maxCalls: 3,
         },
       );
-      expect(result.outcome).toEqual({ _tag: "Failed", message: "Error: The code made more than 3 connector calls." });
+      expect(result.outcome).toEqual({ _tag: "Failed", message: "Error: The code made more than 3 calls." });
       expect(result.callCount).toBe(3);
     }),
   );
@@ -121,18 +123,35 @@ describe("running a thread's code", () => {
       const started = yield* Deferred.make<void>();
       const interrupted = yield* Deferred.make<void>();
       const waiting = {
-        fake: {
-          wait: () =>
-            Deferred.succeed(started, void 0).pipe(
-              Effect.andThen(Effect.never),
-              Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0)),
-            ),
+        connectors: {
+          fake: {
+            wait: () =>
+              Deferred.succeed(started, void 0).pipe(
+                Effect.andThen(Effect.never),
+                Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0)),
+              ),
+          },
         },
       };
       const fiber = yield* Effect.forkChild(run("async () => connectors.fake.wait({})", defaultCodeLimits, waiting));
       yield* Deferred.await(started);
       yield* Fiber.interrupt(fiber);
       yield* Deferred.await(interrupted);
+    }),
+  );
+
+  it.live("installs each top-level name as a global, with functions at any depth", () =>
+    Effect.gen(function* () {
+      const given: CodeFunctions = {
+        connectors: { fake: { echo } },
+        outlore: { read_journal: () => Effect.succeed("the journal") },
+      };
+      const result = yield* run(
+        "async () => [await outlore.read_journal({}), (await connectors.fake.echo(1)).echoed, Object.keys(outlore)]",
+        defaultCodeLimits,
+        given,
+      );
+      expect(result.outcome).toEqual({ _tag: "Returned", value: ["the journal", 1, ["read_journal"]] });
     }),
   );
 

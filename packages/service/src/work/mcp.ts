@@ -1,7 +1,13 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { Effect, Exit, Layer, Schema } from "effect";
 import { SqlClient } from "effect/sql";
-import { answerConnectorCall, CodeExecutor, ConnectorGateway, connectorListingOf } from "../connectors/index.ts";
+import {
+  answerCodeModeCall,
+  CodeExecutor,
+  ConnectorGateway,
+  type OwnTools,
+  offeredToolsOf,
+} from "../connectors/index.ts";
 import { Endpoints, readSettings, unknownToolAnswer } from "../core/index.ts";
 import { harnessFacts, toolServerName } from "../harness/index.ts";
 import { Approvals } from "./approvals.ts";
@@ -9,7 +15,7 @@ import { Commands } from "./commands.ts";
 import { Suggestions } from "./suggestions.ts";
 import { Threads } from "./threads.ts";
 import { makeToolHandlers, readCallerRefusal } from "./threadToolHandlers.ts";
-import { answerToolCall, isThreadToolName, toolListingOf } from "./threadTools.ts";
+import { answerToolCall, isCoveredByCodeMode, isThreadToolName, startsWork, toolListingOf } from "./threadTools.ts";
 import { readAuthorityHarness } from "./turnAdmission.ts";
 
 const RpcMessage = Schema.Struct({
@@ -64,17 +70,13 @@ export const toolServerLayer = Layer.effectDiscard(
       Effect.provideService(SqlClient.SqlClient, sql),
     );
 
-    const dispatchTool = (threadId: string, name: string, args: unknown) =>
-      Effect.gen(function* () {
-        if (isThreadToolName(name)) return yield* answerToolCall(handlers, name, threadId, args);
-        const answer = yield* answerConnectorCall(executor, gateway, {
-          args,
-          name,
-          shouldUseCodeMode: yield* readShouldUseCodeMode,
-          threadId,
-        });
-        return answer ?? unknownToolAnswer(name);
-      }).pipe(Effect.map(({ isError, text }) => textResult(text, isError)));
+    // The setting the thread's turn started with, which its harness listed its tools under, holds for the whole turn
+    // (connectors specification, Code Mode); before any turn has held one, the setting as it is now.
+    const codeModeOf = (threadId: string) =>
+      Effect.suspend(() => {
+        const held = endpoints.heldCodeMode(threadId);
+        return held === null ? readShouldUseCodeMode : Effect.succeed(held);
+      });
 
     // The running turn's admitted harness decides, not a harness the owner picked during it (thread-handover).
     const hasPromptToolOf = (threadId: string) =>
@@ -83,23 +85,66 @@ export const toolServerLayer = Layer.effectDiscard(
         Effect.provideService(SqlClient.SqlClient, sql),
       );
 
-    const callTool = (threadId: string, name: string, args: unknown) =>
+    /** The caller checks every call to the tool server has, or null when the thread may make this call now. */
+    const readRefusalOf = (threadId: string, name: string) =>
       Effect.gen(function* () {
         const refusal = yield* readCallerRefusal(threadId, name);
-        if (refusal !== null) return textResult(refusal, true);
+        if (refusal !== null) return refusal;
         // Only a harness that asks its permission prompts through `answer_prompt` may call it (audit SA-14): the
         // others ask in-process, and a call by one would draw an allow decision of its own choosing.
         if (name === "answer_prompt" && !(yield* hasPromptToolOf(threadId)))
-          return textResult("This tool is not available to this thread.", true);
-        return yield* dispatchTool(threadId, name, args);
+          return "This tool is not available to this thread.";
+        return null;
+      });
+
+    /** Answers a thread tool, or an unknown name, once the caller's checks have passed. */
+    const answerOwnTool = (threadId: string, name: string, args: unknown) =>
+      isThreadToolName(name) ? answerToolCall(handlers, name, threadId, args) : Effect.succeed(unknownToolAnswer(name));
+
+    /**
+     * Outlore's own tools as one thread's code calls them: each call has the caller checks and the answer a direct
+     * call has, so a call from code is never easier than a call made directly.
+     */
+    const ownToolsFor = (threadId: string): OwnTools => ({
+      call: (name, args) =>
+        Effect.gen(function* () {
+          const refusal = yield* readRefusalOf(threadId, name);
+          return refusal === null
+            ? yield* answerOwnTool(threadId, name, args)
+            : ({ isError: true, text: refusal } as const);
+        }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie),
+      isCovered: isCoveredByCodeMode,
+      startsWork,
+    });
+
+    const dispatchTool = (threadId: string, name: string, args: unknown) =>
+      Effect.gen(function* () {
+        const answer = yield* answerCodeModeCall(executor, gateway, ownToolsFor(threadId), {
+          args,
+          name,
+          ownListed: toolListingOf(yield* hasPromptToolOf(threadId)),
+          shouldUseCodeMode: yield* codeModeOf(threadId),
+          threadId,
+        });
+        return answer ?? (yield* answerOwnTool(threadId, name, args));
+      }).pipe(Effect.map(({ isError, text }) => textResult(text, isError)));
+
+    const callTool = (threadId: string, name: string, args: unknown) =>
+      Effect.gen(function* () {
+        const refusal = yield* readRefusalOf(threadId, name);
+        return refusal === null ? yield* dispatchTool(threadId, name, args) : textResult(refusal, true);
       }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie);
 
     /** The tools the thread's harness lists: `answer_prompt` only for Claude Code, then its connectors' tools. */
     const listTools = (threadId: string) =>
       Effect.gen(function* () {
-        const own = toolListingOf(yield* hasPromptToolOf(threadId));
-        const connectors = connectorListingOf(yield* gateway.listingFor(threadId), yield* readShouldUseCodeMode);
-        return [...own, ...connectors];
+        const ownListed = toolListingOf(yield* hasPromptToolOf(threadId));
+        return offeredToolsOf(
+          ownListed,
+          yield* gateway.listingFor(threadId),
+          ownToolsFor(threadId),
+          yield* codeModeOf(threadId),
+        );
       }).pipe(Effect.orDie);
 
     const respondJson = (response: ServerResponse, body: unknown) => {

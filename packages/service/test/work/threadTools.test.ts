@@ -1,7 +1,13 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Schema } from "effect";
 import { unaskedToolNamesOf } from "../../src/work/threadToolAccess.ts";
-import { threadTools, toolListing } from "../../src/work/threadTools.ts";
+import {
+  isCoveredByCodeMode,
+  startsWork,
+  type ThreadToolName,
+  threadTools,
+  toolListing,
+} from "../../src/work/threadTools.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: thread tool names (`save_intel`, ...).
 
@@ -48,12 +54,36 @@ describe("listing the thread tools", () => {
   });
 
   it("runs every tool unasked except the approval tools themselves", () => {
-    const names = unaskedToolNamesOf("outlore");
+    const names = unaskedToolNamesOf("outlore", false);
     expect(names).toContain("mcp__outlore__open_thread");
-    expect(names).toContain("mcp__outlore__run_connector_code");
+    expect(names).not.toContain("mcp__outlore__run_code");
     expect(names).not.toContain("mcp__outlore__request_approval");
     expect(names).not.toContain("mcp__outlore__answer_prompt");
-    expect(names).toHaveLength(Object.keys(threadTools).length - 2 + 1);
+    expect(names).toHaveLength(Object.keys(threadTools).length - 2);
+  });
+
+  it("also runs Code Mode's tool unasked while Code Mode is on, and only then", () => {
+    expect(unaskedToolNamesOf("outlore", true)).toEqual([
+      ...unaskedToolNamesOf("outlore", false),
+      "mcp__outlore__run_code",
+    ]);
+  });
+
+  // Code Mode runs the covered tools from code, where Claude Code's own prompt cannot ask first: only tools that already
+  // run unasked, asking the owner in their own handler when they must, may be covered.
+  it("covers only tools that run unasked, and leaves the approval tools and the turn-ending tools direct", () => {
+    const covered = Object.keys(threadTools).filter(isCoveredByCodeMode);
+    expect(covered.filter((name) => !threadTools[name as ThreadToolName].isUnasked)).toEqual([]);
+    const direct = Object.keys(threadTools).filter((name) => !isCoveredByCodeMode(name));
+    expect(direct.sort()).toEqual(["answer_prompt", "report_result", "request_approval", "suggest_mission"]);
+  });
+
+  it("counts only the tools that start or redirect other threads' work", () => {
+    expect(Object.keys(threadTools).filter(startsWork).sort()).toEqual([
+      "interrupt_thread",
+      "open_thread",
+      "send_thread_message",
+    ]);
   });
 
   it("describes every argument a thread fills in", () => {

@@ -4,19 +4,23 @@ import { initialLocation } from "../../src/shell/location";
 
 describe("Charter's Code Mode wording", () => {
   it("names the switch as the specification does and marks it experimental", () => {
-    expect(codeModeLabel).toBe("Code Mode for connectors");
+    expect(codeModeLabel).toBe("Code Mode");
     expect(experimentalLabel).toBe("Experimental");
   });
 
-  it("explains in plain words that it changes nothing visible yet and applies from the next turn", () => {
+  it("explains in plain words what it covers and leaves alone, and that it applies from the next turn", () => {
     expect(codeModeExplanation).toContain("short piece of code");
-    expect(codeModeExplanation).toContain("changes nothing you can see");
+    expect(codeModeExplanation).toContain("Outlore's tools and its connectors' tools");
+    expect(codeModeExplanation).toContain("still asks you");
+    expect(codeModeExplanation).toContain("commands and file edits are not affected");
     expect(codeModeExplanation).toContain("next turn");
+    // Outlore's own tools exist now, so it no longer says that nothing changes yet.
+    expect(codeModeExplanation).not.toContain("changes nothing");
   });
 
   it("says what each state means for a thread", () => {
-    expect(codeModeStateOf(true)).toMatch(/^On:/);
-    expect(codeModeStateOf(false)).toMatch(/^Off:/);
+    expect(codeModeStateOf(true)).toBe("On: a thread writes code to call Outlore's tools and its connectors' tools.");
+    expect(codeModeStateOf(false)).toBe("Off: a thread sees each tool and calls it one by one.");
   });
 });
 

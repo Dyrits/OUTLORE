@@ -27,12 +27,14 @@ export const callTool = Effect.fnUntraced(function* (threadId: string, name: str
 const decodeToolListing = Schema.decodeUnknownSync(
   Schema.Struct({
     result: Schema.Struct({
-      tools: Schema.Array(Schema.Struct({ description: Schema.String, name: Schema.String })),
+      tools: Schema.Array(
+        Schema.Struct({ description: Schema.String, inputSchema: Schema.Unknown, name: Schema.String }),
+      ),
     }),
   }),
 );
 
-/** Lists the tools a thread's authenticated MCP endpoint offers, with their descriptions. */
+/** Lists the tools a thread's authenticated MCP endpoint offers, with their descriptions and input schemas. */
 export const listTools = Effect.fnUntraced(function* (threadId: string) {
   const url = yield* (yield* Endpoints).urlFor(threadId);
   const listed = yield* Effect.promise(async () => {

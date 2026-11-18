@@ -382,6 +382,32 @@ export const toolListing = Object.entries(threadTools).map(([name, tool]) => ({
 export const toolListingOf = (hasPromptTool: boolean) =>
   hasPromptTool ? toolListing : toolListing.filter((tool) => tool.name !== "answer_prompt");
 
+/**
+ * The tools Code Mode never covers, which stay listed and are called directly (connectors specification, Code Mode):
+ * the two that put a question to the owner, whose approval must be seen and never run from code (`answer_prompt` is how
+ * Claude Code asks its own permission prompts), the one that ends the thread's turn, and the one that stops the thread
+ * until the owner chooses where a message goes.
+ */
+const directToolNames: ReadonlySet<string> = new Set([
+  "answer_prompt",
+  "report_result",
+  "request_approval",
+  "suggest_mission",
+] satisfies ReadonlyArray<ThreadToolName>);
+
+/** Whether Code Mode covers a thread tool: it is called from code, not listed, while Code Mode is on. */
+export const isCoveredByCodeMode = (name: string) => Object.hasOwn(threadTools, name) && !directToolNames.has(name);
+
+/** The tools that start or redirect other threads' work, which one run of code may call only so many times. */
+const workStartingToolNames: ReadonlySet<string> = new Set([
+  "interrupt_thread",
+  "open_thread",
+  "send_thread_message",
+] satisfies ReadonlyArray<ThreadToolName>);
+
+/** Whether a thread tool starts or redirects other threads' work. */
+export const startsWork = (name: string) => workStartingToolNames.has(name);
+
 /** Whether a name is one of the thread tools. */
 export const isThreadToolName = (name: string): name is ThreadToolName => Object.hasOwn(threadTools, name);
 

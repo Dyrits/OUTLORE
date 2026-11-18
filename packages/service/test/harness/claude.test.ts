@@ -30,7 +30,7 @@ describe("running Claude Code threads", () => {
       expect(args).toContain("--permission-prompts host --permission-prompt-tool mcp__outlore__answer_prompt");
       expect(args).toContain("--allowedTools mcp__outlore__request_approval");
       expect(args).toContain(
-        `--allowedTools mcp__outlore__request_approval ${unaskedToolNamesOf("outlore").join(" ")}`,
+        `--allowedTools mcp__outlore__request_approval ${unaskedToolNamesOf("outlore", false).join(" ")}`,
       );
       expect(args).toContain("--strict-mcp-config");
       // Native subagents stay off, and threads open threads with open_thread instead (ADR 0007).
