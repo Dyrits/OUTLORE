@@ -1,6 +1,7 @@
 import type { BudgetScope, MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { BudgetScreen, BudgetStopCard } from "../editors/budgets";
 import type { ServiceClient } from "../foundation/client";
 import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
@@ -8,7 +9,7 @@ import { countedOf } from "../foundation/labels";
 import { usePageNavigation } from "../foundation/pageNavigation";
 import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
-import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { colors, radii } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { JournalScreen } from "../lore/journal";
@@ -74,33 +75,44 @@ function ThreadPane({
     <CommentsProvider value={comments}>
       <View style={[styles.flex, styles.pane]}>
         {onBack !== undefined && (
-          // A phone's header: a round back arrow, the title with its state's dot in the middle, and the archive button.
+          // A phone's header, in the app's own look: a back chevron, the title with its state's dot in the middle, and
+          // the archive button, each control in a square of the same size so the title stays centered.
           <View style={local.mobileHeader}>
             <Pressable
               accessibilityLabel="Back to the menu"
               accessibilityRole="button"
+              hitSlop={6}
               onPress={onBack}
-              style={local.round}
+              style={({ pressed }) => [local.control, pressed && local.controlPressed]}
             >
-              <Text style={local.roundText}>‹</Text>
+              <Svg
+                fill="none"
+                height={20}
+                stroke={colors.textSecondary}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+                width={20}
+              >
+                <Path d="M15 6l-6 6 6 6" />
+              </Svg>
             </Pressable>
             <View style={local.mobileTitle}>
-              <Text numberOfLines={1} style={local.mobileTitleText}>
+              <Text numberOfLines={1} style={[styles.paneTitle, local.mobileTitleText]}>
                 {thread.title}
               </Text>
               <StateIndicator state={thread.state} />
             </View>
-            {thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived" ? (
-              <View style={local.round}>
+            <View style={local.control}>
+              {thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived" && (
                 <ArchiveButton
                   isDisabled={ending.isBusy}
                   label="Archive quest"
                   onPress={() => ending.start("Archived")}
                 />
-              </View>
-            ) : (
-              <View style={local.roundSpace} />
-            )}
+              )}
+            </View>
           </View>
         )}
         {(onBack === undefined || canResume || canOpenDetails) && (
@@ -387,42 +399,10 @@ export function Conversation({
   );
 }
 
-const roundSize = 36;
-
 const local = StyleSheet.create({
-  // A phone's quest header: two round buttons around a rounded bar that holds the title and the state.
-  mobileHeader: { alignItems: "center", flexDirection: "row", gap: 8, paddingBottom: 6 },
-  mobileTitle: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.edge,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    flex: 1,
-    flexDirection: "row",
-    gap: 6,
-    justifyContent: "center",
-    minHeight: roundSize,
-    paddingHorizontal: 14,
-    paddingVertical: 3,
-  },
-  mobileTitleText: {
-    color: colors.text,
-    flexShrink: 1,
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.md,
-    fontWeight: "600",
-  },
-  round: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.edge,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    height: roundSize,
-    justifyContent: "center",
-    width: roundSize,
-  },
-  roundSpace: { width: roundSize },
-  roundText: { color: colors.textSecondary, fontSize: 24, lineHeight: 26, marginTop: -2 },
+  control: { alignItems: "center", borderRadius: radii.md, height: 32, justifyContent: "center", width: 32 },
+  controlPressed: { backgroundColor: colors.controlHover },
+  mobileHeader: { alignItems: "center", flexDirection: "row", gap: 8, minHeight: 32, paddingBottom: 4 },
+  mobileTitle: { alignItems: "center", flex: 1, flexDirection: "row", gap: 8, justifyContent: "center" },
+  mobileTitleText: { flexShrink: 1 },
 });
