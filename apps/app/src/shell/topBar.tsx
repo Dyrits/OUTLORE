@@ -40,7 +40,7 @@ export function PanelIcon({ side = "left" }: { side?: "left" | "right" }) {
 
 /**
  * The top bar: the host menu at its start and, at the end, the spending, which the collapsed rail no longer shows,
- * and Chronicler's button. It names no place: the rail and the screens say where the owner is.
+ * then the quest panel's icon and, furthest right like its panel, Chronicler's mark. It names no place: the rail and the screens say where the owner is.
  */
 export function TopBar({
   client,
@@ -81,15 +81,6 @@ export function TopBar({
         <UpdateNotice />
       </View>
       {menu === undefined && <SpendingLine client={client} />}
-      <Pressable
-        accessibilityLabel={chronicler.isOpen ? "Fold Chronicler" : "Ask Chronicler"}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: chronicler.isOpen }}
-        onPress={chronicler.onToggle}
-        style={({ pressed }) => [local.topIcon, (pressed || chronicler.isOpen) && local.topIconActive, noDragRegion]}
-      >
-        <Text style={local.chroniclerMark}>✦</Text>
-      </Pressable>
       {details !== null && details.isPinned !== true && (
         <Pressable
           accessibilityLabel={details.isOpen ? "Hide quest panel" : "Show quest panel"}
@@ -100,6 +91,15 @@ export function TopBar({
           <PanelIcon side="right" />
         </Pressable>
       )}
+      <Pressable
+        accessibilityLabel={chronicler.isOpen ? "Fold Chronicler" : "Ask Chronicler"}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: chronicler.isOpen }}
+        onPress={chronicler.onToggle}
+        style={({ pressed }) => [local.topIcon, (pressed || chronicler.isOpen) && local.topIconActive, noDragRegion]}
+      >
+        <Text style={local.chroniclerMark}>✦</Text>
+      </Pressable>
     </View>
   );
 }
