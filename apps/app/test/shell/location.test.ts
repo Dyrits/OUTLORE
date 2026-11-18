@@ -87,3 +87,34 @@ describe("navigating the window", () => {
     );
   });
 });
+
+describe("the Workshop icon", () => {
+  it("opens the Workshop, and a second press goes back to where the owner was", () => {
+    const inQuest = navigate(initialLocation(null), { id: quest, type: "quest" });
+    const inWorkshop = navigate(inQuest, { type: "workshop" });
+    expect(inWorkshop.place).toBe("Settings");
+    expect(inWorkshop.openMission).toBeNull();
+    const back = navigate(inWorkshop, { type: "workshop" });
+    expect(back.place).toBe(inQuest.place);
+    expect(back.openMission).toBe(quest);
+    expect(back.workshopReturn).toBeNull();
+  });
+
+  it("goes to the home screen when the Workshop was opened by other means", () => {
+    const opened = navigate(initialLocation("Settings"), { type: "workshop" });
+    expect(opened.place).toBe("Home");
+  });
+
+  it("forgets where to go back to once the owner goes elsewhere", () => {
+    const inWorkshop = navigate(navigate(initialLocation(null), { id: quest, type: "quest" }), { type: "workshop" });
+    const elsewhere = navigate(inWorkshop, { id: "other" as typeof quest, type: "quest" });
+    expect(elsewhere.workshopReturn).toBeNull();
+    expect(navigate(elsewhere, { type: "workshop" }).place).toBe("Settings");
+  });
+
+  it("keeps its way back while the owner moves inside the Workshop", () => {
+    const inWorkshop = navigate(navigate(initialLocation(null), { id: quest, type: "quest" }), { type: "workshop" });
+    const inSection = navigate(inWorkshop, { section: "permissions", type: "section" });
+    expect(navigate(inSection, { type: "workshop" }).openMission).toBe(quest);
+  });
+});

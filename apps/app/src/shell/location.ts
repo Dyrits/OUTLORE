@@ -21,11 +21,14 @@ export type Location = {
   isChroniclerFull: boolean;
   isMenuOpen: boolean;
   isNarrowChroniclerOpen: boolean;
+  /** Where the owner was when the Workshop was opened from its icon; pressing the icon again goes back there. */
+  workshopReturn: Location | null;
 };
 
 /** Events are the only way a page or frame changes the location. */
 export type NavigationEvent =
   | { type: "place"; place: Place }
+  | { type: "workshop" }
   | { type: "quest"; id: MissionId }
   | { type: "thread"; missionId: MissionId; id: ThreadId | null }
   | { type: "select"; id: MissionId | null }
@@ -58,6 +61,7 @@ export const initialLocation = (resumed: string | null): Location => ({
   place: resumablePlaces.find((place) => place === resumed) ?? "Home",
   selectedMission: null,
   settingsSection: settingsSectionOf(resumed),
+  workshopReturn: null,
 });
 
 const uncovered = (location: Location): Location => ({
@@ -70,8 +74,33 @@ const uncovered = (location: Location): Location => ({
   page: null,
 });
 
+/** The events that go to another destination, after which the Workshop icon no longer has a place to go back to. */
+const leavingEvents: ReadonlyArray<NavigationEvent["type"]> = [
+  "place",
+  "quest",
+  "thread",
+  "close",
+  "host",
+  "realm",
+  "parent",
+];
+
 /** Resolves navigation atomically so no newly opened destination remains behind an old layer. */
 export const navigate = (location: Location, event: NavigationEvent): Location => {
+  if (event.type === "workshop") {
+    // Pressed while open, the icon closes the Workshop and returns to where the owner was before it.
+    if (location.place === "Settings" && location.openMission === null)
+      return location.workshopReturn ?? navigate(location, { place: "Home", type: "place" });
+    return {
+      ...navigate(location, { place: "Settings", type: "place" }),
+      workshopReturn: { ...location, workshopReturn: null },
+    };
+  }
+  const next = resolved(location, event);
+  return leavingEvents.includes(event.type) ? { ...next, workshopReturn: null } : next;
+};
+
+const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "workshop" }>): Location => {
   if (event.type === "place")
     return {
       ...uncovered(location),
@@ -108,10 +137,10 @@ export const navigate = (location: Location, event: NavigationEvent): Location =
       selectedMission: null,
     };
   if (event.type === "realm")
-    return { ...navigate(location, { place: "RealmQuests", type: "place" }), listedRealm: event.listing };
+    return { ...resolved(location, { place: "RealmQuests", type: "place" }), listedRealm: event.listing };
   if (event.type === "parent") {
     const parent = archiveParentOf(event.quest);
-    return { ...navigate(location, { place: parent.place, type: "place" }), listedRealm: parent.listing };
+    return { ...resolved(location, { place: parent.place, type: "place" }), listedRealm: parent.listing };
   }
   if (event.type === "select") return { ...location, selectedMission: event.id };
   if (event.type === "page") return { ...location, page: event.page };

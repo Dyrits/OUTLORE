@@ -7,7 +7,6 @@ import { meterLevelOf, planLimitTextOf } from "../foundation/labels";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ProviderMark } from "../ui/providerMarks";
-import { ReservesIcon } from "../ui/reservesIcon";
 import { currentWindowsOf, leftPercentOf, type Ring, resetsInTextOf, ringStackOf } from "./planRings";
 
 const size = 44;
@@ -108,34 +107,6 @@ function UsageCard({
 }
 
 /**
- * The Reserves button at the window's bottom left: the old Reserves chest, which opens the plan limits in a strip above
- * itself and folds them on a second press. Nothing shows while no plan reports a limit.
- */
-export function UsageButton({ client }: { client: ServiceClient }) {
-  const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
-  const [isOpen, setIsOpen] = useState(false);
-  if (!budgets?.some((budget) => budget.planLimits !== null && budget.planLimits.windows.length > 0)) return null;
-  return (
-    <View style={local.usage}>
-      {isOpen && (
-        <View style={local.usageStrip}>
-          <PlanLimitRings client={client} />
-        </View>
-      )}
-      <Pressable
-        accessibilityLabel={`${isOpen ? "Fold" : "Unfold"} plan limits`}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: isOpen }}
-        onPress={() => setIsOpen(!isOpen)}
-        style={({ pressed }) => [local.usageButton, (pressed || isOpen) && local.usageButtonOpen]}
-      >
-        <ReservesIcon size={22} />
-      </Pressable>
-    </View>
-  );
-}
-
-/**
  * The plan limits each subscription's harness reports, as the rail shows them beside the reserves: one ring per
  * window around the provider's logo, the rings of the different providers side by side in a row, green until 80%, orange
  * from 80% and red at 100%. Hovering or focusing a provider lifts its rings and opens a card with each window's share
@@ -222,24 +193,6 @@ const local = StyleSheet.create({
   ringSvg: { position: "absolute" },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingHorizontal: 7 },
   track: { backgroundColor: colors.ground, borderRadius: radii.pill, height: 6, overflow: "hidden" },
-  usage: { zIndex: 9 },
-  usageButton: { alignItems: "center", borderRadius: radii.md, height: 30, justifyContent: "center", width: 30 },
-  usageButtonOpen: { backgroundColor: colors.controlHover },
-  usageStrip: {
-    backgroundColor: colors.surface,
-    borderColor: colors.edge,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    bottom: "100%",
-    left: 0,
-    marginBottom: 6,
-    padding: 6,
-    position: "absolute",
-    shadowColor: colors.shadow,
-    shadowOffset: { height: 6, width: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-  },
   window: { gap: 5 },
   windowLeft: {
     color: colors.text,

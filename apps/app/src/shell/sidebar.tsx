@@ -2,6 +2,7 @@ import type { MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/
 import { type ReactNode, useState } from "react";
 import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
+import { PlanLimitRings } from "../editors/planLimitRings";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
@@ -12,7 +13,6 @@ import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
 import { FoldChevron } from "../ui/foldChevron";
 import { SettingsIcon } from "../ui/settingsIcons";
-import type { Place } from "./placeCatalog";
 import { DropTarget, RealmDragSource } from "./questDrag";
 import { placementsOf, type RealmListing, reorderedRealmIds, toggledFold } from "./questTree";
 import { NewQuestIcon, NewRealmIcon } from "./railActions";
@@ -42,7 +42,8 @@ export function Sidebar({
   onOpenRealmQuests,
   onOpenThread,
   isMenuOutside = false,
-  onPlace,
+  isWorkshopOpen,
+  onWorkshop,
   openMission,
   openThread,
 }: {
@@ -56,7 +57,10 @@ export function Sidebar({
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   /** Whether the window draws the menu button itself, at this same place, so it stays when the sidebar is hidden. */
   isMenuOutside?: boolean;
-  onPlace: (place: Place) => void;
+  /** Whether the Workshop (Settings) is the open destination, which its icon shows. */
+  isWorkshopOpen: boolean;
+  /** Opens the Workshop, or from it goes back to where the owner was before. */
+  onWorkshop: () => void;
   openMission: MissionId | null;
   /** The errand open in the open quest, or null for the quest itself. */
   openThread: ThreadId | null;
@@ -227,7 +231,11 @@ export function Sidebar({
       </ScrollView>
       <View style={local.footer}>
         <Spending client={client}>
-          {isMenuOutside ? <View style={local.menuPlace} /> : <SidebarMenu onPlace={onPlace} />}
+          {isMenuOutside ? (
+            <View style={local.menuPlace} />
+          ) : (
+            <SidebarMenu isOpen={isWorkshopOpen} onPress={onWorkshop} />
+          )}
         </Spending>
       </View>
       {pendingMove !== null && (
@@ -267,14 +275,19 @@ function SectionTitle({ isOpen, onToggle, title }: { isOpen: boolean; onToggle: 
   );
 }
 
-/** The Workshop's gear at the foot: one press opens the Workshop (Settings). */
-export function SidebarMenu({ onPlace }: { onPlace: (place: Place) => void }) {
+/** The Workshop's gear at the foot: one press opens the Workshop (Settings); it stays pressed while open, and a press then closes it. */
+export function SidebarMenu({ isOpen, onPress }: { isOpen: boolean; onPress: () => void }) {
   return (
     <Pressable
-      accessibilityLabel="Open the Workshop"
+      accessibilityLabel={isOpen ? "Close the Workshop" : "Open the Workshop"}
       accessibilityRole="button"
-      onPress={() => onPlace("Settings")}
-      style={(state) => [local.workshopButton, (state.pressed || isHovered(state)) && local.rowHovered]}
+      accessibilityState={{ selected: isOpen }}
+      onPress={onPress}
+      style={(state) => [
+        local.workshopButton,
+        (state.pressed || isHovered(state)) && local.rowHovered,
+        isOpen && local.rowSelected,
+      ]}
     >
       <SettingsIcon name="gear" size={20} tint={colors.textSecondary} />
     </Pressable>
@@ -282,8 +295,8 @@ export function SidebarMenu({ onPlace }: { onPlace: (place: Place) => void }) {
 }
 
 /**
- * The foot of the sidebar: the global budget's meters, when it has limits, then the menu button. The plans' limit rings
- * are behind the top bar's Usage button.
+ * The foot of the sidebar: the global budget's meters, when it has limits, the plans' limit rings, and the menu button
+ * (or, where the window draws that button itself, the room it takes).
  */
 function Spending({ children, client }: { children: ReactNode; client: ServiceClient }) {
   const { data: global } = useServiceQuery(client, { _tag: "ReadBudget", missionId: null }, "budget:global");
@@ -295,6 +308,7 @@ function Spending({ children, client }: { children: ReactNode; client: ServiceCl
           <ReserveRows use={global} />
         </View>
       )}
+      {global !== null && <PlanLimitRings client={client} />}
       <View style={local.menuRow}>{children}</View>
     </>
   );

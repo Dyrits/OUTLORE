@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
 import { CompanionPanel } from "../editors/companionPicker";
-import { UsageButton } from "../editors/planLimitRings";
 import {
   CompanionDockActions,
   CompanionTabOf,
@@ -289,7 +288,6 @@ export function Shell(
                         onOpenMission={props.onOpenMission}
                         onOpenRealmQuests={props.onOpenRealmQuests}
                         onOpenThread={props.onOpenThread}
-                        onPlace={props.onPlace}
                         openMission={isChroniclerFull ? null : props.openMission}
                         openThread={isChroniclerFull ? null : props.openThread}
                         width={railWidth}
@@ -343,8 +341,7 @@ export function Shell(
                     </ChroniclerColumn>
                   )}
                   <View style={local.menuPin}>
-                    <SidebarMenu onPlace={props.onPlace} />
-                    <UsageButton client={props.client} />
+                    <SidebarMenu isOpen={props.isWorkshopOpen} onPress={props.onWorkshop} />
                   </View>
                   {(hasQuestPanel ? details.isPinned !== true : hasCompanion) && (
                     <Pressable

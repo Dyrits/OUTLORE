@@ -179,12 +179,13 @@ export function App() {
       client={client}
       details={details}
       dispatch={dispatch}
+      isWorkshopOpen={place === "Settings" && location.openMission === null && !location.isChroniclerFull}
       listedRealm={listedRealm}
       location={location}
       onOpenMission={openMissionFromAnywhere}
       onOpenRealmQuests={openRealm}
       onOpenThread={openSideQuest}
-      onPlace={goTo}
+      onWorkshop={() => dispatch({ type: "workshop" })}
       openMission={openMission}
       openThread={openThread}
       place={place}
