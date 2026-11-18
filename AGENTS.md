@@ -54,8 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the browser for threads (Kitesurf, Playwright and OpenBot research; nothing built, no batch agreed yet; open: the owner's approval of a first batch), read the [current handoff](.agents/handoffs/2026-11-18-1928-thread-browser.md). Handoffs are shared and committed.
+
 - To resume the sidebar's creation icons (CHG-0507, which removed the creation rows of CHG-0503 to CHG-0506; committed and pushed with this handoff; open: the owner's look in a window and on a phone, and an unrelated uncommitted `shell.tsx` change), read the [current handoff](.agents/handoffs/2026-11-18-1752-creation-icons.md). Handoffs are shared and committed.
 
 - To resume the Android self-update (on `origin/main`; open: a phone check) and the context-window redo (`worktree/context-window-redo`, CHG-0501; open: the owner's merge and look), read the [current handoff](.agents/handoffs/2026-11-18-1435-context-window-redo.md). Handoffs are shared and committed.
 
-- To resume the plan-limit rings' order fix (CHG-0500; committed; push waiting for the owner's approval; open: the owner's look at the rings in a window), read the [current handoff](.agents/handoffs/2026-11-18-1346-plan-ring-order.md). Handoffs are shared and committed.
