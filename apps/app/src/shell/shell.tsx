@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
 import { CompanionPanel } from "../editors/companionPicker";
+import { UsageEdge } from "../editors/planLimitRings";
 import {
   CompanionDockActions,
   CompanionTabOf,
@@ -340,6 +341,7 @@ export function Shell(
                       {chroniclerChat}
                     </ChroniclerColumn>
                   )}
+                  <UsageEdge client={props.client} />
                   {(hasQuestPanel ? details.isPinned !== true : hasCompanion) && (
                     <Pressable
                       accessibilityLabel={isColumnOpen ? "Hide quest panel" : "Show quest panel"}

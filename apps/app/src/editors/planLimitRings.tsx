@@ -6,7 +6,6 @@ import type { ServiceClient } from "../foundation/client";
 import { meterLevelOf, planLimitTextOf } from "../foundation/labels";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { FoldChevron } from "../ui/foldChevron";
 import { ProviderMark } from "../ui/providerMarks";
 import { currentWindowsOf, leftPercentOf, type Ring, resetsInTextOf, ringStackOf } from "./planRings";
 
@@ -86,16 +85,18 @@ function WindowBar({ now, window }: { now: number; window: PlanLimitWindow }) {
 /** What hovering or focusing a provider's rings opens: a card above them with the provider and each window spelled out. */
 function UsageCard({
   harness,
+  isBelow,
   name,
   windows,
 }: {
   harness: HarnessName;
+  isBelow: boolean;
   name: string;
   windows: readonly PlanLimitWindow[];
 }) {
   const now = Date.now();
   return (
-    <View pointerEvents="none" style={local.card}>
+    <View pointerEvents="none" style={[local.card, isBelow && local.cardBelow]}>
       <View style={local.provider}>
         <ProviderMark harness={harness} size={16} />
         <Text style={local.providerName}>{name}</Text>
@@ -108,28 +109,30 @@ function UsageCard({
 }
 
 /**
- * The plan limits behind a "Usage" row that unfolds them to its right, folded at first, for the foot of the sidebar; nothing shows
- * while no plan reports a limit.
+ * A tab on the window's left border that unfolds the plan limits to its right, over whatever stands there, whether the
+ * sidebar is shown or not. It folds back on a second press. Nothing shows while no plan reports a limit.
  */
-export function FoldablePlanLimits({ client }: { client: ServiceClient }) {
+export function UsageEdge({ client }: { client: ServiceClient }) {
   const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
   const [isOpen, setIsOpen] = useState(false);
   if (!budgets?.some((budget) => budget.planLimits !== null && budget.planLimits.windows.length > 0)) return null;
   return (
-    <View style={local.foldBar}>
+    <View pointerEvents="box-none" style={local.edge}>
       <Pressable
         accessibilityLabel={`${isOpen ? "Fold" : "Unfold"} plan limits`}
         accessibilityRole="button"
         accessibilityState={{ expanded: isOpen }}
         onPress={() => setIsOpen(!isOpen)}
-        style={local.foldRow}
+        style={[local.edgeTab, isOpen && local.edgeTabOpen]}
       >
-        <FoldChevron color={colors.textMuted} isOpen={isOpen} size={15} />
-        {!isOpen && <Text style={local.foldText}>Usage</Text>}
+        <Svg fill="none" height={14} stroke={colors.textMuted} strokeWidth={2.2} viewBox="0 0 24 24" width={14}>
+          <Circle cx={12} cy={12} r={8} />
+          <Circle cx={12} cy={12} r={2.5} />
+        </Svg>
       </Pressable>
       {isOpen && (
-        <View style={local.foldRings}>
-          <PlanLimitRings client={client} />
+        <View style={local.edgeStrip}>
+          <PlanLimitRings client={client} isCardBelow />
         </View>
       )}
     </View>
@@ -143,7 +146,7 @@ export function FoldablePlanLimits({ client }: { client: ServiceClient }) {
  * left and time to its reset. An account whose harness reports none shows nothing here (its Charter row says
  * "Limits not reported"), and nothing is shown before a reading arrives.
  */
-export function PlanLimitRings({ client }: { client: ServiceClient }) {
+export function PlanLimitRings({ client, isCardBelow = false }: { client: ServiceClient; isCardBelow?: boolean }) {
   const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
   const [shown, setShown] = useState<string | null>(null);
   const reported =
@@ -155,6 +158,7 @@ export function PlanLimitRings({ client }: { client: ServiceClient }) {
       {detailed !== undefined && (
         <UsageCard
           harness={detailed.harness}
+          isBelow={isCardBelow}
           name={detailed.accountId === null ? detailed.harness : detailed.label}
           windows={currentWindowsOf(detailed.planLimits?.windows ?? [], Date.now())}
         />
@@ -208,12 +212,37 @@ const local = StyleSheet.create({
     shadowRadius: 14,
     zIndex: 10,
   },
+  // Under rings at the top of the window, the card opens downward.
+  cardBelow: { bottom: "auto", marginBottom: 0, marginTop: 6, top: "100%" },
   circle: { borderRadius: radii.pill, padding: 3 },
   circleLifted: { backgroundColor: colors.controlHover, transform: [{ scale: 1.08 }] },
-  foldBar: { alignItems: "center", flexDirection: "row" },
-  foldRings: { flex: 1 },
-  foldRow: { alignItems: "center", flexDirection: "row", gap: 2, minHeight: 26, paddingHorizontal: 4 },
-  foldText: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
+  edge: { alignItems: "center", flexDirection: "row", left: 0, position: "absolute", top: "22%", zIndex: 9 },
+  edgeStrip: {
+    backgroundColor: colors.surface,
+    borderBottomRightRadius: radii.lg,
+    borderColor: colors.edge,
+    borderTopRightRadius: radii.lg,
+    borderWidth: 1,
+    marginLeft: -1,
+    padding: 6,
+    shadowColor: colors.shadow,
+    shadowOffset: { height: 6, width: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+  },
+  edgeTab: {
+    alignItems: "center",
+    backgroundColor: colors.sidebar,
+    borderBottomRightRadius: radii.md,
+    borderColor: colors.edge,
+    borderTopRightRadius: radii.md,
+    borderWidth: 1,
+    height: 30,
+    justifyContent: "center",
+    paddingRight: 1,
+    width: 16,
+  },
+  edgeTabOpen: { backgroundColor: colors.ground },
   group: { paddingTop: 6 },
   provider: { alignItems: "center", flexDirection: "row", gap: 8 },
   providerName: {
