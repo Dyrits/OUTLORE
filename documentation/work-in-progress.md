@@ -4,6 +4,8 @@
 
 CHG-0459 uses flat creation rows with the castle and sword-and-plus icons at the right of the labels on desktop and phone.
 
+CHG-0462 adds a plus to the castle, a leading folder icon on folder-backed realms, and a divider above the sidebar's two creation rows. Browser verification confirmed that the global **Start a quest** action creates a quest in no realm even from a realm view. The backup editor uses **Add a backup companion** in both layouts.
+
 CHG-0452 crests removed; CHG-0457 and CHG-0454 the Realms title, realms and quests, quests in no realm as plain rows, Visit a realm and Start a quest, the footer menu, the phone's menu screen being the sidebar, the hub, Gild and nav icons removed, Connectors in Settings; CHG-0458 quests in no realm in the Realms overview, the Borderlands page and drop zone gone, a quest leaves its realm from the quest panel's Realm row (my choice); CHG-0456 side-quest worded errand, with a guard test. Numbers: written as CHG-0453 and CHG-0455, renumbered CHG-0457 and CHG-0458 at the merge because own copy and the `!` terminal had taken them. Open: the owner's look in a window and on a phone, a push (needs the owner's approval), the Realm row as the way out of a realm, budget rings in Reserves, the Workshop's icons, and unused leftovers (the service's hub requests, the app's Chronicler-realm plumbing). [Specification](capabilities/mission-tracking/specifications.md#simplified-left-navigation) · [Blueprint](capabilities/mission-tracking/blueprint.md#simplified-sidebar-errands-and-crest-removal-chg-0449)
 
 ## Voice input · 2026-11-18 · service transcriber on `main`

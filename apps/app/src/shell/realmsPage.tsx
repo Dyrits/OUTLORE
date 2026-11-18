@@ -2,7 +2,6 @@ import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { type ReactNode, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
-import { Emblem } from "../foundation/emblems";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
@@ -13,7 +12,7 @@ import { Button } from "../ui/button";
 import { handCursor } from "../ui/pointer";
 import { QuestTreeLines } from "./questListRows";
 import { placementsOf, type RealmListing, toggledFold } from "./questTree";
-import { NewQuestIcon } from "./railActions";
+import { FolderCue, NewQuestIcon, NewRealmIcon } from "./railActions";
 import { isHovered } from "./railStyles";
 
 /** The full compact overview grouped by active realm, including realms with no quest yet. */
@@ -54,7 +53,7 @@ export function RealmsScreen({
         <View style={local.toolbar}>
           <Text style={styles.muted}>Quests by realm</Text>
           <CreationButton label="New realm" onPress={() => setCreating(true)}>
-            <Emblem name="castle" tint={colors.highlight} />
+            <NewRealmIcon color={colors.highlight} />
           </CreationButton>
         </View>
         {error !== null && (
@@ -83,6 +82,7 @@ export function RealmsScreen({
                 onPress={() => onOpenRealm({ id: workspace.id, name: workspace.name })}
                 style={local.realm}
               >
+                <FolderCue path={workspace.path} />
                 <Text style={local.name}>{realmLabelOf(workspace, data?.workspaces ?? [])}</Text>
                 <Text style={styles.muted}>{quests.length}</Text>
               </Pressable>

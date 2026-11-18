@@ -27,6 +27,7 @@ export const local = StyleSheet.create({
   addHovered: { backgroundColor: colors.controlActive },
   chevron: { alignItems: "center", height: 20, justifyContent: "center", width: chevronWidth },
   count: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
+  creationDivider: { backgroundColor: colors.edge, height: 1, marginHorizontal: 6, marginVertical: 6 },
   dot: { borderRadius: radii.pill, height: 8, width: 8 },
   empty: {
     color: colors.textMuted,
@@ -44,7 +45,7 @@ export const local = StyleSheet.create({
     paddingVertical: 4,
   },
   flex: { flex: 1 },
-  folderCue: { alignItems: "center", flexShrink: 0, justifyContent: "center", marginLeft: 5 },
+  folderCue: { alignItems: "center", flexShrink: 0, justifyContent: "center" },
   // The same 1 px between rows as in the scrolling part, so a block's categories are evenly spaced everywhere.
   footer: { gap: 1, paddingBottom: 8, paddingLeft: 8, paddingRight: 16 },
   group: { gap: 1, paddingBottom: 12, paddingLeft: 8, paddingRight: 16, paddingTop: 8 },

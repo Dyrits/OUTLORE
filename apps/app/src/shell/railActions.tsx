@@ -44,6 +44,15 @@ export function Chevron({
 
 /** The sword that marks a quest elsewhere, with a plus in its open corner: the mark of starting a quest. */
 export function NewQuestIcon({ color }: { color: string }) {
+  return <CreationIcon color={color} emblem="sword" plus="M6 2.5v6M3 5.5h6" />;
+}
+
+/** The castle with a small plus above its battlements: the mark of creating a realm. */
+export function NewRealmIcon({ color }: { color: string }) {
+  return <CreationIcon color={color} emblem="castle" plus="M19 1v5M16.5 3.5h5" />;
+}
+
+function CreationIcon({ color, emblem, plus }: { color: string; emblem: "sword" | "castle"; plus: string }) {
   return (
     <Svg
       fill="none"
@@ -55,17 +64,16 @@ export function NewQuestIcon({ color }: { color: string }) {
       viewBox="0 0 24 24"
       width={18}
     >
-      {emblemPaths.sword.map((d) => (
+      {emblemPaths[emblem].map((d) => (
         <Path d={d} key={d} />
       ))}
-      <Path d="M6 2.5v6" />
-      <Path d="M3 5.5h6" />
+      <Path d={plus} />
     </Svg>
   );
 }
 
 /**
- * The small folder after the name of a realm tied to a folder (CHG-0161, CHG-0170); a realm tied to none has no mark. Hovering
+ * The small folder before the name of a realm tied to a folder (CHG-0161, CHG-0170); a realm tied to none has no mark. Hovering
  * shows the folder's full path: react-native-web passes no `title` on, so the web build sets it on the element itself.
  */
 export function FolderCue({ path }: { path: string | null }) {

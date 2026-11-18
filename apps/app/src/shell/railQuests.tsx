@@ -154,10 +154,10 @@ export function RealmHeader({
       onPress={onToggle}
       style={(state) => [local.row, { paddingLeft: 6 }, (state.pressed || isHovered(state)) && local.rowHovered]}
     >
+      <FolderCue path={path} />
       <Text numberOfLines={1} style={[local.rowText, local.realmText]}>
         {name}
       </Text>
-      <FolderCue path={path} />
       <Chevron focusProps={focusProps} isOpen={isOpen} isShown={isShown} label={name} onPress={onToggle} />
       <View style={local.realmTextEnd} />
       <Count isShown={isShown} value={questCount} />

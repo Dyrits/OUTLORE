@@ -28,7 +28,7 @@ function BinIcon({ color }: { color: string }) {
 
 /**
  * An ordered list of backup Companions (thread-panel, Backup companions): each with its harness, account, model, and
- * effort, a move up and a move down, Remove, and **+ Add a backup Companion**. It owns no state: every change goes to
+ * effort, a move up and a move down, Remove, and **+ Add a backup companion**. It owns no state: every change goes to
  * `onChange`. A thread's menu and the Charter's default list both draw it.
  */
 export function BackupsEditor({
@@ -131,7 +131,7 @@ export function BackupsEditor({
         ))}
         {backups.length < maxBackups ? (
           <Pressable accessibilityRole="button" onPress={add}>
-            <Text style={local.add}>+ Add a backup Companion</Text>
+            <Text style={local.add}>+ Add a backup companion</Text>
           </Pressable>
         ) : (
           <Text style={styles.muted}>The most is {maxBackups}.</Text>
@@ -183,7 +183,7 @@ export function BackupsEditor({
       ))}
       {backups.length < maxBackups ? (
         <Pressable accessibilityRole="button" onPress={add} style={[local.item, backups.length > 0 && local.itemRuled]}>
-          <Text style={local.add}>+ Add a backup Companion</Text>
+          <Text style={local.add}>+ Add a backup companion</Text>
         </Pressable>
       ) : (
         <Text style={[styles.muted, local.item]}>The most is {maxBackups}.</Text>

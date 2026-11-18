@@ -4,7 +4,6 @@ import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-na
 import { ReserveRows } from "../editors/budgets";
 import { PlanLimitRings } from "../editors/planLimitRings";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
-import { Emblem } from "../foundation/emblems";
 import { allMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -16,7 +15,7 @@ import { ActionMenu } from "../ui/actionMenu";
 import { menuPlaces, type Place } from "./placeCatalog";
 import { DropTarget } from "./questDrag";
 import { placementsOf, type RealmListing, realmGroupsOf, toggledFold } from "./questTree";
-import { NewQuestIcon } from "./railActions";
+import { NewQuestIcon, NewRealmIcon } from "./railActions";
 import { railOutlineOf } from "./railOutline";
 import { Quest, RealmHeader } from "./railQuests";
 import { Row, ShowAll } from "./railRows";
@@ -194,9 +193,10 @@ export function Sidebar({
             subject="quests in no realm"
           />
         )}
+        <View style={local.creationDivider} />
         {failureUnder("none")}
         <Row
-          accessory={<Emblem name="castle" tint={colors.highlight} />}
+          accessory={<NewRealmIcon color={colors.highlight} />}
           isSelected={false}
           label="Visit a realm"
           onPress={() => setIsCreating(true)}
