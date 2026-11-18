@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume voice input in the message boxes (whisper.cpp on the owner's device, no vendor receives audio; the service's transcriber is committed on branch `worktree/voice-input`, not merged; open: merge with renumbering of CHG-0447/0448, the desktop microphone button, a phone spike), read the [current handoff](.agents/handoffs/2026-11-18-0109-voice-input.md). Handoffs are shared and committed.
+
 - To resume Code Mode widened to every tool of Outlore's tool server (CHG-0446, CHG-0447; on branch `worktree/code-mode-widen`, not merged or pushed; open: the owner's review of the decisions, a live harness check, the owner's look at the Charter's switch), read the [current handoff](.agents/handoffs/2026-11-18-0105-code-mode-widened.md). Handoffs are shared and committed.
 
 - To resume findings from the review since 0.1.6-Prototype, read the [current handoff](.agents/handoffs/2026-11-17-2316-release-review.md). Handoffs are shared and committed.
-
-- To resume the Android APK (merged into main and installed on the owner's phone, CHG-0443; open: the owner's check on the phone, a manual package run, the release keystore secrets), read the [current handoff](.agents/handoffs/2026-11-17-2239-android-apk-merged.md). Handoffs are shared and committed.
