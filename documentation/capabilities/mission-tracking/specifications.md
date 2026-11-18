@@ -96,9 +96,9 @@ Agreed on 2026-11-13 (CHG-0271), built; the quest and Ritual choices below were 
 - **Archive realm…** is available in the realm's panel and through the same top-right archive button used for quests, acting on the realm when its overview is shown. Right-click actions are deferred.
 - Every realm archive asks for confirmation naming the realm and counting its quests. Nothing changes before confirmation; Cancel leaves the realm unchanged.
 - The confirmation also counts running threads across its quests, including nested errands. When any are running, the confirming action says **Stop and archive realm** and stops them as part of archiving.
-- Archiving hides the realm and all its quests from active lists, the sidebar, and the Realms overview. Its identity, name, crest, lore, conversations, journals, and folder association are preserved. It never deletes the workspace folder.
+- Archiving hides the realm and all its quests from active lists and the sidebar. Its identity, name, crest, lore, conversations, journals, and folder association are preserved. It never deletes the workspace folder.
 - Archived realms appear in the Archive with a Restore action. Restore brings back the realm and the quests that were active when it was archived; quests already individually archived stay archived.
-- After a successful realm archive, the interface goes to the Realms overview. Cancel or failure leaves the current view unchanged.
+- After a successful realm archive, the interface goes to the home screen. Cancel or failure leaves the current view unchanged.
 - **Quests that stay active** (agreed 2026-11-14, CHG-0270): the confirmation lists the realm's active quests, each with a checkbox, all unchecked. A checked quest moves with its whole tree to the Borderlands instead of being archived; every other quest is archived with the realm. A moved quest keeps its conversation, journal, and its own lore, but loses access to the realm's lore, and a later restore of the realm does not bring it back. A quest at work cannot be checked: a move never stops threads, so it is stopped and archived like the rest unless the owner stops it first. A Ritual's quest is not listed here.
 - **Rituals** (agreed 2026-11-14, CHG-0270): the confirmation names the realm's Rituals and says they will be switched off. Archiving switches them off, stops a run underway, and keeps each Ritual and its quest in the Rituals place with its instruction and history, marked **Realm archived**. While the realm is archived a Ritual cannot be switched on or run. Restore and Start afresh leave the Rituals off until the owner switches them on. Moving a Ritual to the Borderlands is not offered.
 
@@ -123,7 +123,7 @@ Agreed on 2026-11-13 (CHG-0271); implemented in 0.1.3-Prototype, with the quest-
 
 - Realm names are labels, not identities, and duplicate names are allowed. Realms have distinct ids; folder-tied realms are also distinguished by their resolved folders.
 - Creating or renaming a realm to a name shared by another active realm warns the owner and lets them confirm rather than blocking. Archived realms do not count as collisions.
-- Where active names collide, folder-tied realms show a parent-folder hint alongside their name in the sidebar, the Realms overview, and realm pickers, for example `app · client-a`.
+- Where active names collide, folder-tied realms show a parent-folder hint alongside their name in the sidebar and realm pickers, for example `app · client-a`.
 - A colliding realm tied to no folder has no folder hint; the warning still asks for confirmation.
 
 ### Dashboard
@@ -137,12 +137,12 @@ Agreed on 2026-11-13 (CHG-0271); implemented in 0.1.3-Prototype, with the quest-
 
 ### Realms overview
 
-Agreed on 2026-11-13 (CHG-0271); not implemented.
+Agreed on 2026-11-13 (CHG-0271); removed by CHG-0463 (the sidebar lists every realm and quest, and the app opens on a plain home screen).
 
 - The Realms destination becomes a compact quest-list overview grouped by active realm, using the existing overview's row presentation rather than a new card layout.
 - Each realm group has its name (and, until CHG-0449 is built, its crest), links to that realm's overview, and lists its active quests with state, Companion, latest activity, and foldable nested errands.
 - Realm grouping takes precedence over day grouping. Include empty active realms with a New quest action; leave archived realms out.
-- With CHG-0449, quests in no realm appear as plain rows after the realm groups. Pressing the sidebar's **Realms** title opens this overview. See [Simplified left navigation](#simplified-left-navigation).
+- With CHG-0449, quests in no realm appear as plain rows after the realm groups. See [Simplified left navigation](#simplified-left-navigation).
 
 ### Spending
 
@@ -162,10 +162,10 @@ Agreed on 2026-11-13 (CHG-0271); not implemented.
 
 Agreed on 2026-11-18 (CHG-0449). Crest removal is CHG-0452. The sidebar, footer menu, retired destinations, Gild removal and Connectors in Settings are CHG-0457, with the phone layout in CHG-0454. The Realms overview and quest panel's Realm row are CHG-0458. The errand rename is CHG-0456. Compact creation rows are CHG-0459.
 
-- Pressing the **Realms** title at the top of the sidebar opens the overview of all realms. The title has no adjacent action buttons.
-- Each realm is a group of quests with a title and a fold control. A small folder icon precedes the title of a folder-backed realm in the sidebar and the Realms overview. Each quest can show its nested errands. Quests in no realm appear as ordinary rows after the realm groups in both the sidebar and the Realms overview, with no heading, divider, or mark. The separate Borderlands page is removed.
+- The sidebar has no **Realms** title and the Realms overview page is removed (CHG-0463). The app opens on a plain home screen with one **Start a quest** button, and Back leads there. The sidebar lists every realm with its quests.
+- Each realm is a group of quests with a title and a fold control. A small folder icon precedes the title of a folder-backed realm in the sidebar. Each quest can show its nested errands. Quests in no realm appear after the realm groups, flush with the realms and below a horizontal line. Each list shows five quests and the quests that are running; **Show all** appears whenever quests are hidden and reveals the rest. The separate Borderlands page is removed.
 - A horizontal line separates the quest list from two flat action rows, with an icon at the right of each label. **Visit a realm**, marked with a castle and plus, opens the realm creation flow. **Start a quest**, marked with a sword and plus, creates an empty quest in no realm, including when the current view is a realm.
-- In the Realms overview, the castle and plus in the toolbar opens realm creation. The sword and plus in each realm header creates an empty quest in that realm.
+- The sword and plus in each realm header creates an empty quest in that realm.
 - One menu at the foot opens **Rituals**, **Lore**, **Archive**, **Reserves**, and **Settings**. The phone has a simple view: one screen with the sidebar (the realms, quests and errands, the two buttons and the same menu), and the conversation screen; the owner asked for this on 2026-11-18 (CHG-0454). The Charter becomes the **Connectors** section of Settings. The Craft and Library placeholders are removed. [Connectors specification](../connectors/specifications.md)
 - The Guild Hall hub is removed for now. Chronicler remains available from its top-bar button and opens in its own right-hand panel. [Quest coordination](../mission-coordination/specifications.md#place)
 - Quests can still be dragged onto a realm. The sidebar has no dedicated drop zone for taking a quest out of a realm; instead the quest panel has a **Realm** row (a plain quest, not an errand or a Ritual) that lists the other realms and "No realm", on a phone as well (CHG-0458, my choice, to redirect). Any placement change requires the existing confirmation and running-thread check. [Quest placement and moves](#quest-placement-and-moves)
@@ -173,7 +173,7 @@ Agreed on 2026-11-18 (CHG-0449). Crest removal is CHG-0452. The sidebar, footer 
 - The interface, Chronicler's guide, and thread tool text use **errand**. Code retains identifiers such as `thread` and `guildmaster`.
 - Remove **Gild** from the available themes. **One** and **Iskios** remain available in their light and dark looks.
 
-**Agent acceptance.** In light and dark looks and at narrow widths, the Realms title opens the overview, each of the two creation buttons opens its own flow, and every menu item opens its destination on desktop and phone. Quests with no realm appear after grouped quests in both views, including when there are no realm groups. Dragging displays no dedicated target for ungrouped quests. Dropping on a realm still requires confirmation. Chronicler and its conversation are accessible after removing the hub. A database with saved crests opens and shows realm names without crests. The interface, guide, and tool text use the new terms. The theme picker offers One and Iskios only.
+**Agent acceptance.** In light and dark looks and at narrow widths, each of the two creation buttons opens its own flow, and every menu item opens its destination on desktop and phone. Quests with no realm appear after grouped quests in both views, including when there are no realm groups. Dragging displays no dedicated target for ungrouped quests. Dropping on a realm still requires confirmation. Chronicler and its conversation are accessible after removing the hub. A database with saved crests opens and shows realm names without crests. The interface, guide, and tool text use the new terms. The theme picker offers One and Iskios only.
 
 **Owner acceptance.** Review the sidebar in a window and on a phone.
 

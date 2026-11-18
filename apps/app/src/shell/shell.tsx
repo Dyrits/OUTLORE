@@ -31,7 +31,7 @@ import {
   rememberPaneWidth,
   rememberRailWidth,
 } from "./railStorage";
-import { Sidebar } from "./sidebar";
+import { type Place, Sidebar } from "./sidebar";
 import { type DetailsToggle, PanelIcon, QuestColumn, questColumnWidth, TopBar } from "./topBar";
 import { useCompanionDock } from "./useCompanionDock";
 import { viewingOf } from "./viewing";
@@ -52,6 +52,8 @@ export function Shell(
     location: Location;
     dispatch: Dispatch<NavigationEvent>;
     details: DetailsToggle | null;
+    /** The place the content shows, told to Chronicler. */
+    place: Place | null;
     rightPanel: RightPanel;
     /** The realm whose quest list is open, named in the top bar. */
     listedRealm: RealmListing | null;
@@ -288,7 +290,6 @@ export function Shell(
                         onPlace={props.onPlace}
                         openMission={isChroniclerFull ? null : props.openMission}
                         openThread={isChroniclerFull ? null : props.openThread}
-                        place={isChroniclerFull ? null : props.place}
                         width={railWidth}
                       />
                     )}

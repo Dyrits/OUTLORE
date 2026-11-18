@@ -1,6 +1,9 @@
 import type { MissionSummary, ThreadId, ThreadSummary } from "@outlore/contracts";
 import { ancestorIdsOf, type Placements, sideQuestRowsOf } from "./questTree";
 
+/** The normal sidebar quota for each realm and for quests in no realm. */
+const sidebarQuestLimit = 5;
+
 /**
  * Keeps the open quest and every running quest visible beyond a placement's normal row limit, each in its place in the
  * list (the open quest is kept whatever its state; running quests are kept so the owner always sees what works).
@@ -25,7 +28,7 @@ export const railOutlineOf = (
   placements: Placements,
   openMission: string | null,
   openQuests: ReadonlySet<string>,
-  limit: number,
+  limit = sidebarQuestLimit,
 ) => ({
   borderlands: visibleQuestsOf(placements.borderlands, limit, openMission),
   isQuestOpen: (id: string) => openQuests.has(id) || id === openMission,

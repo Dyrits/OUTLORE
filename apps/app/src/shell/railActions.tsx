@@ -47,9 +47,9 @@ export function NewQuestIcon({ color }: { color: string }) {
   return <CreationIcon color={color} emblem="sword" plus="M6 2.5v6M3 5.5h6" />;
 }
 
-/** The castle with a small plus above its battlements: the mark of creating a realm. */
+/** The castle with a small plus in its upper-left corner: the mark of creating a realm. */
 export function NewRealmIcon({ color }: { color: string }) {
-  return <CreationIcon color={color} emblem="castle" plus="M19 1v5M16.5 3.5h5" />;
+  return <CreationIcon color={color} emblem="castle" plus="M6 1v5M3.5 3.5h5" />;
 }
 
 function CreationIcon({ color, emblem, plus }: { color: string; emblem: "sword" | "castle"; plus: string }) {

@@ -4,9 +4,6 @@ import { expandedWidth } from "./railStorage";
 /** How far each level of errands steps in, and the width of the chevron's place at the start of a row. */
 export const indentStep = 14;
 export const chevronWidth = 16;
-/** How many quests the sidebar lists under the Borderlands, and under each realm; the quest list page lists them all. */
-export const borderlandsShown = 3;
-export const realmShown = 3;
 
 export const isHovered = (state: unknown) => (state as { hovered?: boolean }).hovered === true;
 
@@ -72,15 +69,6 @@ export const local = StyleSheet.create({
     paddingVertical: 4,
   },
   newQuestHovered: { backgroundColor: colors.controlActive },
-  realmsTitle: {
-    alignItems: "center",
-    borderRadius: radii.md,
-    flexDirection: "row",
-    minHeight: 34,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-  },
-  realmsTitleText: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.lg, fontWeight: "700" },
   realmText: { flexBasis: "auto", flexGrow: 0, flexShrink: 1, fontWeight: "600" },
   realmTextEnd: { flex: 1 },
   row: {

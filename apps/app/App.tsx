@@ -250,7 +250,7 @@ export function App() {
           <ArchiveNavigation.Provider
             value={{
               quest: openParent,
-              realm: () => goTo("Realms"),
+              realm: () => goTo("Home"),
             }}
           >
             <PageNavigation.Provider

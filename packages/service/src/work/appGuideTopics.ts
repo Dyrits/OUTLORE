@@ -85,7 +85,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Chronicler has no page of its own and no hub: the Guild Hall page is gone, and the app opens on the Realms overview.",
+      "Chronicler has no page of its own and no hub: the Guild Hall page is gone, and the app opens on a plain home screen, and the sidebar lists every realm and quest.",
       'Chronicler, the app\'s assistant, is a permanent conversation, a panel the top bar\'s Chronicler button opens or folds on every screen. It knows which quest or screen the owner has open, so "this quest" or "this page" means it.',
       "Chronicler can: answer questions about the owner's quests and about using the app; propose a quest on a card (it never opens one itself); create a Ritual; create or rename a realm; stop a quest's threads, mark it Done, archive it, or rename it; read the settings and change most of them. It cannot change the approval level, the budgets, price fetching, or permission to run outside the sandbox without asking: those are set in the Workshop.",
       "Chronicler does not do the work itself, no editing files or running commands. Anything else goes to a quest. An action on the app runs at once when the owner's message in that turn plainly named the action, its target, and its new value; otherwise Chronicler asks one Allow or Deny question. Creating a Ritual always asks, because its instruction runs unattended.",
@@ -109,7 +109,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "The sidebar, from the top: the Realms title, which opens the overview of all realms; each realm with its quests and errands; the quests that are in no realm, as ordinary rows after the realms; and two buttons, Visit a realm and Start a quest. A menu button at the foot opens Rituals, Lore, Archive, Reserves, and Settings. On a phone the top bar's menu button opens this same sidebar as a full screen; the other screen is the conversation.",
+      "The sidebar, from the top: each realm with its quests and errands; the quests that are in no realm, as ordinary rows after the realms; and two buttons, Visit a realm and Start a quest. A menu button at the foot opens Rituals, Lore, Archive, Reserves, and Settings. On a phone the top bar's menu button opens this same sidebar as a full screen; the other screen is the conversation.",
       "Realms fold and unfold. Each realm and the quests in no realm show their three newest quests, with a Show all link to the full list.",
       "The top bar shows where the owner is and has the Chronicler button. A quest has its own side panel with its details.",
       "Themes: One or Iskios, each in a dark and a light look, or following the system. The owner chooses them in Settings.",

@@ -55,7 +55,7 @@ export const initialLocation = (resumed: string | null): Location => ({
   openMission: null,
   openThread: null,
   page: null,
-  place: resumablePlaces.find((place) => place === resumed) ?? "Realms",
+  place: resumablePlaces.find((place) => place === resumed) ?? "Home",
   selectedMission: null,
   settingsSection: settingsSectionOf(resumed),
 });

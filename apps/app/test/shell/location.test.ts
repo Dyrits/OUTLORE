@@ -6,14 +6,14 @@ const quest = "quest" as import("@outlore/contracts").MissionId;
 const thread = "thread" as import("@outlore/contracts").ThreadId;
 
 describe("opening the window", () => {
-  it("starts on the Realms overview, and resumes a destination that needs no selection", () => {
-    expect(initialLocation(null).place).toBe("Realms");
+  it("starts on the home screen, and resumes a destination that needs no selection", () => {
+    expect(initialLocation(null).place).toBe("Home");
     expect(initialLocation("Rituals").place).toBe("Rituals");
     expect(initialLocation("Settings").place).toBe("Settings");
   });
-  it("opens the Realms overview for a destination that no longer exists", () => {
+  it("opens the home screen for a destination that no longer exists", () => {
     for (const retired of ["Guildmaster", "Quests", "Craft", "Library", "Charter"])
-      expect(initialLocation(retired).place).toBe("Realms");
+      expect(initialLocation(retired).place).toBe("Home");
   });
 });
 

@@ -1,6 +1,6 @@
 import type { MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
-import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-native";
+import { type DimensionValue, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
 import { PlanLimitRings } from "../editors/planLimitRings";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
@@ -19,7 +19,7 @@ import { NewQuestIcon, NewRealmIcon } from "./railActions";
 import { railOutlineOf } from "./railOutline";
 import { Quest, RealmHeader } from "./railQuests";
 import { Row, ShowAll } from "./railRows";
-import { borderlandsShown, isHovered, local, realmShown } from "./railStyles";
+import { local } from "./railStyles";
 
 export type { Place } from "./placeCatalog";
 
@@ -31,7 +31,7 @@ const useToggles = () => {
 };
 
 /**
- * The left sidebar (CHG-0449): the Realms title, which opens the overview; each realm with its quests; the quests that
+ * The left sidebar (CHG-0449): each realm with its quests; the quests that
  * are in no realm as ordinary rows; the buttons that visit a realm and start a quest; and at the foot the menu of the other
  * places. Quests nest their errands at every depth, and the sidebar opens the path to the thread that is open.
  */
@@ -44,7 +44,6 @@ export function Sidebar({
   onPlace,
   openMission,
   openThread,
-  place,
 }: {
   client: ServiceClient;
   /** The open rail's width, as dragged; the whole width on a phone, where this is the menu screen. */
@@ -58,12 +57,10 @@ export function Sidebar({
   openMission: MissionId | null;
   /** The errand open in the open quest, or null for the quest itself. */
   openThread: ThreadId | null;
-  place: Place | null;
 }) {
   const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const placements = placementsOf(data?.missions ?? [], data?.workspaces ?? []);
-  const isHere = (each: Place) => openMission === null && place === each;
   // The menu that makes a realm, tied to a folder or to none.
   const [isCreating, setIsCreating] = useState(false);
   // Realms start open and quests start closed, so a long list of quests stays short; errands start open.
@@ -71,8 +68,11 @@ export function Sidebar({
   // Realms, Borderlands, and The Keep fold under their headings, all the same way.
   const foldedSections = useToggles();
   const openQuests = useToggles();
+  // Quests in no realm show five rows until the owner asks for the rest.
+  const [isEveryBorderlandShown, setEveryBorderlandShown] = useState(false);
   const collapsedThreads = useToggles();
-  const outline = railOutlineOf(placements, openMission, openQuests.set, realmShown);
+  const outline = railOutlineOf(placements, openMission, openQuests.set);
+  const borderlandQuests = isEveryBorderlandShown ? placements.borderlands : outline.borderlands;
   const questProps = {
     client,
     collapsed: collapsedThreads.set,
@@ -145,7 +145,7 @@ export function Sidebar({
             realm.visibleQuests.map((mission) => (
               <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
             ))}
-          {!isClosed && realm.quests.length > realmShown && (
+          {!isClosed && realm.quests.length > realm.visibleQuests.length && (
             <ShowAll
               count={realm.quests.length}
               onPress={() => onOpenRealmQuests({ id: realm.id, name: realm.name })}
@@ -163,35 +163,25 @@ export function Sidebar({
   return (
     <View style={[local.sidebar, { width }]}>
       <ScrollView contentContainerStyle={local.group} style={local.flex}>
-        <Pressable
-          accessibilityHint="Quests sharing lore, tied to a folder or repository or to none"
-          accessibilityLabel="Realms"
-          accessibilityRole="button"
-          onPress={() => onPlace("Realms")}
-          style={(state) => [
-            local.realmsTitle,
-            (state.pressed || isHovered(state)) && local.rowHovered,
-            isHere("Realms") && local.rowSelected,
-          ]}
-        >
-          <Text numberOfLines={1} style={local.realmsTitleText}>
-            Realms
-          </Text>
-        </Pressable>
         {placements.realms.length === 0 && placements.borderlands.length === 0 && (
           <Text style={local.empty}>No realm or quest yet.</Text>
         )}
         {tied.map(rowOf)}
         {untied.map(rowOf)}
-        {outline.borderlands.map((mission) => (
-          <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
-        ))}
-        {placements.borderlands.length > borderlandsShown && (
-          <ShowAll
-            count={placements.borderlands.length}
-            onPress={() => onPlace("Realms")}
-            subject="quests in no realm"
-          />
+        {borderlandQuests.length > 0 && (
+          <>
+            {placements.realms.length > 0 && <View style={local.creationDivider} />}
+            {borderlandQuests.map((mission) => (
+              <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
+            ))}
+            {placements.borderlands.length > borderlandQuests.length && (
+              <ShowAll
+                count={placements.borderlands.length}
+                onPress={() => setEveryBorderlandShown(true)}
+                subject="quests in no realm"
+              />
+            )}
+          </>
         )}
         <View style={local.creationDivider} />
         {failureUnder("none")}

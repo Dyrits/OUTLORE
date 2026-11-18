@@ -43,6 +43,15 @@ const quest = (id: string, state: "Idle" | "Running" = "Idle") =>
   });
 
 describe("revealing the rail location", () => {
+  it("shows the first five quests and any running quest beyond them by default", () => {
+    const quests = ["one", "two", "three", "four", "five", "hidden"].map((id) => quest(id));
+    const outline = railOutlineOf(
+      { borderlands: [...quests, quest("running", "Running")], realms: [] },
+      null,
+      new Set(),
+    );
+    expect(outline.borderlands.map((each) => each.id)).toEqual(["one", "two", "three", "four", "five", "running"]);
+  });
   it("reveals the selected thread through folded ancestors without changing stored folds", () => {
     const collapsed = new Set(["parent"]);
     const outline = threadOutlineOf(tree, collapsed, tree[2]?.id ?? null, true);

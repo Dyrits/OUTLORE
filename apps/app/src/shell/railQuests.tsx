@@ -101,7 +101,6 @@ export function Quest({
             label: mission.title,
             onPress: mission.threadCount > 1 ? () => onToggle(mission.id) : null,
           }}
-          indent={chevronWidth}
           isSelected={isHere && (openThread === null || openThread === mission.topThreadId)}
           label={mission.title}
           onPress={() => onOpenMission(mission.id)}
