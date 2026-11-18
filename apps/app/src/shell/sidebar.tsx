@@ -10,6 +10,7 @@ import { MoveQuestModal } from "../quests/moveQuestModal";
 import { type Destination, type MoveConfirmation, moveConfirmationOf } from "../quests/questMove";
 import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
+import { FoldChevron } from "../ui/foldChevron";
 import { SettingsIcon } from "../ui/settingsIcons";
 import type { Place } from "./placeCatalog";
 import { DropTarget, RealmDragSource } from "./questDrag";
@@ -96,7 +97,9 @@ export function Sidebar({
       .then((started) => {
         const unfold = (current: ReadonlySet<string>) => new Set([...current].filter((id) => id !== groupId));
         closedRealms.setSet(unfold);
-        foldedSections.setSet(unfold);
+        // The section the new quest stands in unfolds too.
+        const section = groupId === "none" ? "Borderlands" : "Realms";
+        foldedSections.setSet((current) => new Set([...current].filter((id) => id !== section)));
         onOpenMission(started.missionId);
       })
       .catch((reason) => setNewQuestFailure({ groupId, message: messageOf(reason) }));
@@ -184,12 +187,16 @@ export function Sidebar({
   return (
     <View style={[local.sidebar, { width }]}>
       <ScrollView contentContainerStyle={local.group} style={local.flex}>
-        <Text accessibilityRole="header" style={local.sectionTitle}>
-          Realms
-        </Text>
-        {tied.map(rowOf)}
-        {tied.length > 0 && untied.length > 0 && <View style={local.creationDivider} />}
-        {untied.map(rowOf)}
+        <SectionTitle
+          isOpen={!foldedSections.set.has("Realms")}
+          onToggle={() => foldedSections.toggle("Realms")}
+          title="Realms"
+        />
+        {!foldedSections.set.has("Realms") && tied.map(rowOf)}
+        {!foldedSections.set.has("Realms") && tied.length > 0 && untied.length > 0 && (
+          <View style={local.creationDivider} />
+        )}
+        {!foldedSections.set.has("Realms") && untied.map(rowOf)}
         <Row
           accessory={<NewRealmIcon color={colors.highlight} />}
           isSelected={false}
@@ -197,13 +204,15 @@ export function Sidebar({
           onPress={() => setIsCreating(true)}
         />
         <View style={local.creationDivider} />
-        <Text accessibilityRole="header" style={local.sectionTitle}>
-          Borderlands
-        </Text>
-        {borderlandQuests.map((mission) => (
+        <SectionTitle
+          isOpen={!foldedSections.set.has("Borderlands")}
+          onToggle={() => foldedSections.toggle("Borderlands")}
+          title="Borderlands"
+        />
+        {(foldedSections.set.has("Borderlands") ? [] : borderlandQuests).map((mission) => (
           <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
         ))}
-        {placements.borderlands.length > borderlandQuests.length && (
+        {!foldedSections.set.has("Borderlands") && placements.borderlands.length > borderlandQuests.length && (
           <ShowAll
             count={placements.borderlands.length}
             onPress={() => setEveryBorderlandShown(true)}
@@ -241,6 +250,22 @@ export function Sidebar({
         />
       )}
     </View>
+  );
+}
+
+/** A quiet label over a group of the sidebar; pressing it folds or unfolds the group. */
+function SectionTitle({ isOpen, onToggle, title }: { isOpen: boolean; onToggle: () => void; title: string }) {
+  return (
+    <Pressable
+      accessibilityLabel={`${isOpen ? "Fold" : "Unfold"} ${title}`}
+      accessibilityRole="header"
+      accessibilityState={{ expanded: isOpen }}
+      onPress={onToggle}
+      style={(state) => [local.sectionRow, (state.pressed || isHovered(state)) && local.rowHovered]}
+    >
+      <FoldChevron color={colors.textMuted} isOpen={isOpen} size={12} />
+      <Text style={local.sectionTitle}>{title}</Text>
+    </Pressable>
   );
 }
 

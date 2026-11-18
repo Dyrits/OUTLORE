@@ -90,15 +90,15 @@ export const local = StyleSheet.create({
   rowText: { color: colors.onGround, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.base },
   rowTextSelected: { color: colors.text, fontWeight: "600" },
   /** A quiet label over a group of the sidebar: small and muted, so it names the group without weight. */
-  sectionTitle: {
-    color: colors.textMuted,
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.xs,
-    fontWeight: "600",
-    paddingBottom: 2,
-    paddingHorizontal: 6,
-    paddingTop: 4,
+  sectionRow: {
+    alignItems: "center",
+    borderRadius: radii.md,
+    flexDirection: "row",
+    gap: 2,
+    paddingLeft: 2,
+    paddingVertical: 2,
   },
+  sectionTitle: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
   sidebar: {
     backgroundColor: colors.sidebar,
     borderRightColor: colors.border,
