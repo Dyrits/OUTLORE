@@ -47,9 +47,9 @@ export function NewQuestIcon({ color }: { color: string }) {
   return <CreationIcon color={color} paths={emblemPaths.sword} plus="M6 2.5v6M3 5.5h6" />;
 }
 
-/** The compass: the mark of visiting a realm. */
+/** A plain plus: the mark of visiting a new realm. */
 export function NewRealmIcon({ color }: { color: string }) {
-  return <CreationIcon color={color} paths={emblemPaths.compass} />;
+  return <CreationIcon color={color} paths={["M12 5v14", "M5 12h14"]} />;
 }
 
 function CreationIcon({ color, paths, plus }: { color: string; paths: readonly string[]; plus?: string }) {
