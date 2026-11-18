@@ -10,6 +10,7 @@ import {
   questListRowsOf,
   realmGroupsOf,
   recencyGroupsOf,
+  reorderedRealmIds,
   sideQuestRowsOf,
   toggledFold,
 } from "../../src/shell/questTree";
@@ -95,11 +96,11 @@ describe("the placements of quests", () => {
     expect(placements.borderlands.map((each) => each.id)).toEqual(["q2", "q4"]);
   });
 
-  it("lists realms by name, with or without a folder, with their own quests latest first, and keeps a realm with none", () => {
+  it("lists realms in the order the service gave, with their own quests latest first, and keeps a realm with none", () => {
     expect(placements.realms.map((each) => [each.workspace.name, each.quests.map((q) => q.id)])).toEqual([
+      ["Zeta", ["q3", "q1"]],
       ["Alpha", []],
       ["Middle", ["q5"]],
-      ["Zeta", ["q3", "q1"]],
     ]);
   });
 });
@@ -224,5 +225,25 @@ describe("the realms tied to a folder and those without", () => {
 
   it("has two empty groups with no realm", () => {
     expect(realmGroupsOf([])).toEqual({ tied: [], untied: [] });
+  });
+});
+
+describe("putting a dragged realm in another place", () => {
+  const realms = [
+    { id: "a", path: "/a" },
+    { id: "b", path: "/b" },
+    { id: "c", path: "/c" },
+    { id: "x", path: null },
+    { id: "y", path: null },
+  ];
+  it("takes the place of the realm it is dropped on, within its group", () => {
+    expect(reorderedRealmIds(realms, "a", "c")).toEqual(["b", "c", "a", "x", "y"]);
+    expect(reorderedRealmIds(realms, "c", "a")).toEqual(["c", "a", "b", "x", "y"]);
+    expect(reorderedRealmIds(realms, "y", "x")).toEqual(["a", "b", "c", "y", "x"]);
+  });
+  it("does nothing when dropped on itself or on a realm of the other group", () => {
+    expect(reorderedRealmIds(realms, "a", "a")).toBeNull();
+    expect(reorderedRealmIds(realms, "a", "x")).toBeNull();
+    expect(reorderedRealmIds(realms, "x", "b")).toBeNull();
   });
 });

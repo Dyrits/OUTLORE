@@ -86,4 +86,9 @@ export const recentStoreMigrations = {
     yield* sql`ALTER TABLE threads ADD COLUMN own_copy TEXT`;
     yield* sql`ALTER TABLE threads ADD COLUMN own_copy_branch TEXT`;
   }),
+  // The order the owner gave the realms by dragging them in the sidebar; null until one is placed, after those that are.
+  "0057_realm_order": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE workspaces ADD COLUMN position INTEGER`;
+  }),
 };

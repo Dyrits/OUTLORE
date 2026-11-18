@@ -61,6 +61,11 @@ export const RenameRealm = Schema.TaggedStruct("RenameRealm", {
   name: NameText,
   workspaceId: WorkspaceId,
 });
+/**
+ * Puts the listed realms in this order in the sidebar (the owner drags one past another). Realms left out keep their
+ * place after those listed; an archived or unknown realm is refused.
+ */
+export const ReorderRealms = Schema.TaggedStruct("ReorderRealms", { workspaceIds: Schema.Array(WorkspaceId) });
 /** Previews the quests, lore and working threads covered by a realm archive. */
 export const PreviewRealmArchive = Schema.TaggedStruct("PreviewRealmArchive", { workspaceId: WorkspaceId });
 /**
@@ -101,6 +106,7 @@ export type RealmCreation = typeof RealmCreation.Type;
 export const realmRequests = [
   CreateRealm,
   RenameRealm,
+  ReorderRealms,
   PreviewRealmArchive,
   ArchiveRealm,
   ListArchivedRealms,
@@ -116,5 +122,6 @@ export const realmResults = {
   ListArchivedRealms: Schema.Array(RealmArchivePreview),
   PreviewRealmArchive: RealmArchivePreview,
   RenameRealm: Schema.Null,
+  ReorderRealms: Schema.Null,
   RestoreRealm: Schema.Null,
 };

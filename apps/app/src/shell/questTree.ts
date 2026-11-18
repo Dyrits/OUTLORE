@@ -22,12 +22,11 @@ export const placementsOf = (
   const latestFirst = [...missions].sort((a, b) => b.lastActivityAt - a.lastActivityAt);
   return {
     borderlands: latestFirst.filter((mission) => mission.workspaceId === null),
-    realms: [...workspaces]
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((workspace) => ({
-        quests: latestFirst.filter((mission) => mission.workspaceId === workspace.id),
-        workspace,
-      })),
+    // The service lists realms in the owner's order (dragged in the sidebar), by name for those never placed.
+    realms: workspaces.map((workspace) => ({
+      quests: latestFirst.filter((mission) => mission.workspaceId === workspace.id),
+      workspace,
+    })),
   };
 };
 
@@ -190,3 +189,25 @@ export interface RealmListing {
   readonly id: string;
   readonly name: string;
 }
+
+/**
+ * The order of all realms after one is dragged onto another within its group (tied to a folder, or tied to none): it
+ * takes the other's place and the ones between shift by one. Null for a drop on itself or on a realm of the other group.
+ */
+export const reorderedRealmIds = (
+  realms: ReadonlyArray<{ readonly id: string; readonly path: string | null }>,
+  movedId: string,
+  targetId: string,
+): ReadonlyArray<string> | null => {
+  const moved = realms.find((each) => each.id === movedId);
+  const target = realms.find((each) => each.id === targetId);
+  if (moved === undefined || target === undefined || moved.id === target.id) return null;
+  if ((moved.path === null) !== (target.path === null)) return null;
+  const without = realms.filter((each) => each.id !== movedId);
+  const at = without.findIndex((each) => each.id === targetId);
+  const from = realms.findIndex((each) => each.id === movedId);
+  const to = realms.findIndex((each) => each.id === targetId);
+  // Dragged down, it lands after the target; dragged up, before it.
+  without.splice(from < to ? at + 1 : at, 0, moved);
+  return without.map((each) => each.id);
+};

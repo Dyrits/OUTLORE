@@ -49,6 +49,23 @@ export const renameRealm = Effect.fnUntraced(function* (
   return null;
 });
 
+/** Gives each listed active realm its place in the owner's order; realms not listed keep theirs after those listed. */
+export const reorderRealms = Effect.fnUntraced(function* (workspaceIds: ReadonlyArray<WorkspaceId>) {
+  const sql = yield* SqlClient.SqlClient;
+  const active = yield* sql<{ id: string }>`SELECT id FROM workspaces WHERE archived_at IS NULL`;
+  const known = new Set(active.map((row) => row.id));
+  if (workspaceIds.some((id) => !known.has(id))) return yield* invalid("No such realm.");
+  // Listed realms take 0, 1, 2…; the others follow them in the order they already had.
+  const others = yield* sql<{ id: string }>`SELECT id FROM workspaces WHERE archived_at IS NULL
+    ORDER BY COALESCE(position, 1000000), name COLLATE NOCASE`;
+  const order = [
+    ...workspaceIds,
+    ...others.map((row) => row.id).filter((id) => !workspaceIds.includes(id as WorkspaceId)),
+  ];
+  for (const [index, id] of order.entries()) yield* sql`UPDATE workspaces SET position = ${index} WHERE id = ${id}`;
+  return null;
+});
+
 /** Where each mission's threads with no workspace run, one scratch folder per mission. */
 export class ScratchRoot extends Context.Service<ScratchRoot, string>()("outlore/ScratchRoot") {}
 

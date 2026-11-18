@@ -39,7 +39,8 @@ export const listMissions = Effect.fnUntraced(function* (filters: MissionFilters
     name: string;
     path: string | null;
     archivedAt: number | null;
-  }>`SELECT id, name, path, archived_at AS archivedAt FROM workspaces`;
+  }>`SELECT id, name, path, archived_at AS archivedAt FROM workspaces
+    ORDER BY COALESCE(position, 1000000), name COLLATE NOCASE`;
   // Every realm shows on the board, even with no quest yet; the Archived view lists only the realms it has quests in.
   const workspaces = known.filter((workspace) =>
     filters.isArchived ? ids.has(workspace.id) : workspace.archivedAt === null,

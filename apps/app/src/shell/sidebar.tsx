@@ -12,8 +12,8 @@ import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
 import { ActionMenu } from "../ui/actionMenu";
 import { menuPlaces, type Place } from "./placeCatalog";
-import { DropTarget } from "./questDrag";
-import { placementsOf, type RealmListing, realmGroupsOf, toggledFold } from "./questTree";
+import { DropTarget, RealmDragSource } from "./questDrag";
+import { placementsOf, type RealmListing, realmGroupsOf, reorderedRealmIds, toggledFold } from "./questTree";
 import { NewQuestIcon, NewRealmIcon } from "./railActions";
 import { railOutlineOf } from "./railOutline";
 import { Quest, RealmHeader } from "./railQuests";
@@ -114,6 +114,19 @@ export function Sidebar({
       setPendingMove({ confirmation, destination, missionId: mission.id });
   };
 
+  // A realm dropped on another of its group takes that place; the whole new order is saved.
+  const dropRealmOn = (targetId: WorkspaceId) => (movedId: string) => {
+    const order = reorderedRealmIds(
+      placements.realms.map((each) => each.workspace),
+      movedId,
+      targetId,
+    );
+    if (order === null) return;
+    client
+      .request({ _tag: "ReorderRealms", workspaceIds: order.map((id) => id as WorkspaceId) })
+      .catch((reason) => setNewQuestFailure({ groupId: targetId, message: messageOf(reason) }));
+  };
+
   /**
    * A realm: its name with the folder mark when it is tied to a folder, its quests beneath it while it is
    * unfolded, and the button for a new quest.
@@ -127,17 +140,23 @@ export function Sidebar({
   }) => {
     const isClosed = closedRealms.set.has(realm.id);
     return (
-      <DropTarget key={realm.id} onDropQuest={dropOn({ id: realm.id, name: realm.name })}>
+      <DropTarget
+        key={realm.id}
+        onDropQuest={dropOn({ id: realm.id, name: realm.name })}
+        onDropRealm={dropRealmOn(realm.id)}
+      >
         <View>
-          <RealmHeader
-            isOpen={!isClosed}
-            name={realmLabelOf(realm, data?.workspaces ?? [])}
-            onNewQuest={() => startQuest(realm.id, realm.id)}
-            onOverview={() => onOpenRealmQuests({ id: realm.id, name: realm.name })}
-            onToggle={() => closedRealms.toggle(realm.id)}
-            path={realm.path}
-            questCount={realm.quests.length}
-          />
+          <RealmDragSource realmId={realm.id}>
+            <RealmHeader
+              isOpen={!isClosed}
+              name={realmLabelOf(realm, data?.workspaces ?? [])}
+              onNewQuest={() => startQuest(realm.id, realm.id)}
+              onOverview={() => onOpenRealmQuests({ id: realm.id, name: realm.name })}
+              onToggle={() => closedRealms.toggle(realm.id)}
+              path={realm.path}
+              questCount={realm.quests.length}
+            />
+          </RealmDragSource>
           {failureUnder(realm.id)}
           {!isClosed && realm.quests.length === 0 && <Text style={local.emptyRealm}>No quest in this realm yet.</Text>}
           {!isClosed &&

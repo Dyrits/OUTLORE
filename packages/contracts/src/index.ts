@@ -25,6 +25,7 @@ export {
   RealmArchiveRitual,
   RealmCreation,
   RenameRealm,
+  ReorderRealms,
   RestoreRealm,
 } from "./realmRequests.ts";
 export * from "./records.ts";

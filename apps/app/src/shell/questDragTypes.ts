@@ -13,9 +13,21 @@ export interface DragSourceProps {
   readonly missionId: string;
 }
 
-/** A place a quest can be dropped on. */
+/** What a dragged realm carries: its workspace id, under this type. */
+export const realmDragType = "application/x-outlore-realm";
+
+/** A realm's heading, which can be picked up to put the realm in another place of the list. */
+export interface RealmDragSourceProps {
+  readonly children: ReactNode;
+  /** The realm's workspace id. */
+  readonly realmId: string;
+}
+
+/** A place a quest can be dropped on, and where a dragged realm can be put. */
 export interface DropTargetProps {
   readonly children: ReactNode;
   /** Hears the mission id of the quest dropped here. */
   readonly onDropQuest: (missionId: string) => void;
+  /** Hears the workspace id of the realm dropped here, when the place is a realm. */
+  readonly onDropRealm?: (realmId: string) => void;
 }

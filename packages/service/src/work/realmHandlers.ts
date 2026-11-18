@@ -4,6 +4,7 @@ import type {
   FindArchivedRealm,
   PreviewRealmArchive,
   RenameRealm,
+  ReorderRealms,
   RestoreRealm,
 } from "@outlore/contracts";
 import { Effect } from "effect";
@@ -16,7 +17,7 @@ import {
   previewRealmArchive,
   restoreRealm,
 } from "./realmLifecycle.ts";
-import { createRealm, renameRealm } from "./workspaces.ts";
+import { createRealm, renameRealm, reorderRealms } from "./workspaces.ts";
 
 /** Realm request handlers share the command runner's transaction and post-commit cancellation. */
 export const realmHandlers = (commands: CommandRunner) => ({
@@ -33,5 +34,7 @@ export const realmHandlers = (commands: CommandRunner) => ({
     commands.run(
       renameRealm(given.workspaceId, given.name, given.allowDuplicateName ?? false).pipe(Effect.map(changed)),
     ),
+  ReorderRealms: (given: typeof ReorderRealms.Type) =>
+    commands.run(reorderRealms(given.workspaceIds).pipe(Effect.map(changed))),
   RestoreRealm: (given: typeof RestoreRealm.Type) => commands.run(restoreRealm(given)),
 });
