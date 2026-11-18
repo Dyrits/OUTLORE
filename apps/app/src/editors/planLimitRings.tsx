@@ -108,7 +108,7 @@ function UsageCard({
 }
 
 /**
- * The plan limits behind a "Usage" row that unfolds them, folded at first, for the foot of the sidebar; nothing shows
+ * The plan limits behind a "Usage" row that unfolds them to its right, folded at first, for the foot of the sidebar; nothing shows
  * while no plan reports a limit.
  */
 export function FoldablePlanLimits({ client }: { client: ServiceClient }) {
@@ -116,7 +116,7 @@ export function FoldablePlanLimits({ client }: { client: ServiceClient }) {
   const [isOpen, setIsOpen] = useState(false);
   if (!budgets?.some((budget) => budget.planLimits !== null && budget.planLimits.windows.length > 0)) return null;
   return (
-    <View>
+    <View style={local.foldBar}>
       <Pressable
         accessibilityLabel={`${isOpen ? "Fold" : "Unfold"} plan limits`}
         accessibilityRole="button"
@@ -125,9 +125,13 @@ export function FoldablePlanLimits({ client }: { client: ServiceClient }) {
         style={local.foldRow}
       >
         <FoldChevron color={colors.textMuted} isOpen={isOpen} size={15} />
-        <Text style={local.foldText}>Usage</Text>
+        {!isOpen && <Text style={local.foldText}>Usage</Text>}
       </Pressable>
-      {isOpen && <PlanLimitRings client={client} />}
+      {isOpen && (
+        <View style={local.foldRings}>
+          <PlanLimitRings client={client} />
+        </View>
+      )}
     </View>
   );
 }
@@ -206,6 +210,8 @@ const local = StyleSheet.create({
   },
   circle: { borderRadius: radii.pill, padding: 3 },
   circleLifted: { backgroundColor: colors.controlHover, transform: [{ scale: 1.08 }] },
+  foldBar: { alignItems: "center", flexDirection: "row" },
+  foldRings: { flex: 1 },
   foldRow: { alignItems: "center", flexDirection: "row", gap: 2, minHeight: 26, paddingHorizontal: 4 },
   foldText: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
   group: { paddingTop: 6 },
