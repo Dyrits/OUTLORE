@@ -1,5 +1,9 @@
 # Work in progress
 
+## Updating a host from a paired device · 2026-11-18 · on `main`; a phone and a packaged macOS update pending
+
+CHG-0517 (agreement) and CHG-0518 (delivery): a device of a later release offers **Update host**, the host installs once no turn is running, restarts, and the device reconnects with its stored pairing. A host from before this feature must be updated by hand once. Open: the owner's merge, a phone one release ahead of a packaged macOS host, and the look of the banner. [Specification](capabilities/app-updates/specifications.md#updating-a-host-from-a-paired-device) · [Verification](verification/2026-11-18-host-update.md).
+
 ## Android self-update · 2026-11-18 · phone acceptance pending
 
 The updater is implemented and merged into `main`, pushed (CHG-0460, CHG-0461). On a phone, install a release-signed APK with the updater, decline the install allowance once, then allow it and install a newer APK signed with the same key. Open Outlore again and confirm the host is still paired. The release signing secrets are needed for this check. [Specification](capabilities/app-updates/specifications.md#the-android-app)

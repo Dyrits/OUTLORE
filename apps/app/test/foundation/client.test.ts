@@ -83,3 +83,65 @@ describe("the service client's reconnection", () => {
     expect(FakeSocket.all[1]?.readyState).toBe(3);
   });
 });
+
+describe("the update link to a host that restarts to install", () => {
+  beforeEach(() => {
+    FakeSocket.all = [];
+    vi.useFakeTimers();
+    vi.stubGlobal("WebSocket", FakeSocket);
+    vi.stubGlobal("window", { outlore: { endpoint: async () => "ws://service/?token=t" } });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  const hostEnds = (socket: FakeSocket | undefined, code: number, reason: string) => {
+    if (socket === undefined) throw new Error("no socket");
+    socket.readyState = 3;
+    socket.onclose?.({ code, reason });
+  };
+
+  it("connects to the host through the path that keeps a host of another release", async () => {
+    const connecting = ServiceClient.connect("host-1", true);
+    await vi.waitFor(() => expect(FakeSocket.all).toHaveLength(1));
+    expect(FakeSocket.all[0]?.url).toBe("ws://service/host/host-1/update?token=t");
+    FakeSocket.all[0]?.open();
+    (await connecting).close();
+  });
+
+  it("keeps trying for as long as the install takes and is connected again when the host returns", async () => {
+    const connecting = ServiceClient.connect("host-1", true);
+    await vi.waitFor(() => expect(FakeSocket.all).toHaveLength(1));
+    FakeSocket.all[0]?.open();
+    const client = await connecting;
+    // The host quits to swap its app; every try then ends because the relay has no host in the room.
+    hostEnds(FakeSocket.all[0], 4001, "The host disconnected.");
+    expect(client.hasGivenUp).toBe(false);
+    await expect(client.request({ _tag: "ReadHostUpdate" })).rejects.toThrow("Not connected to the host.");
+    for (let minute = 0; minute < 10; minute++) {
+      await vi.advanceTimersByTimeAsync(60_000);
+      const last = FakeSocket.all[FakeSocket.all.length - 1];
+      hostEnds(last, 4000, "The host is not connected right now.");
+      expect(client.hasGivenUp).toBe(false);
+    }
+    expect(FakeSocket.all.length).toBeGreaterThan(10);
+    // The new release is up: the next try opens and the same link is used again, with no new pairing.
+    await vi.advanceTimersByTimeAsync(60_000);
+    FakeSocket.all[FakeSocket.all.length - 1]?.open();
+    expect(client.hasConnected).toBe(true);
+    expect(client.hasGivenUp).toBe(false);
+    expect(client.failure).toBeNull();
+    client.close();
+  });
+
+  it("gives up only when the host no longer knows this device", async () => {
+    const connecting = ServiceClient.connect("host-1", true);
+    await vi.waitFor(() => expect(FakeSocket.all).toHaveLength(1));
+    FakeSocket.all[0]?.open();
+    const client = await connecting;
+    hostEnds(FakeSocket.all[0], 4002, "The host no longer knows this computer.");
+    expect(client.hasGivenUp).toBe(true);
+    expect(client.needsPairing).toBe(true);
+  });
+});

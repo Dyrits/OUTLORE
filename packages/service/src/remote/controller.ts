@@ -4,6 +4,7 @@ import {
   type LinkSettings,
   type PairedHostStore,
   pairWithCode,
+  type ResumeOptions,
   resumeHost,
 } from "@outlore/controller";
 import { Effect } from "effect";
@@ -60,11 +61,14 @@ export const pairWithHost = Effect.fn("pairWithHost")(function* (code: string, d
   return yield* pairWithCode(code, deviceName, store, linkOptionsOf(config)).pipe(Effect.mapError(failureOf));
 });
 
-/** Resumes a desktop link, retaining host frames until the loopback bridge listens. */
-export const openHostChannel = Effect.fn("openHostChannel")(function* (hostId: string) {
+/**
+ * Resumes a desktop link, retaining host frames until the loopback bridge listens. `acceptOtherRelease` keeps the link
+ * to a host of another release, for the one that updates it.
+ */
+export const openHostChannel = Effect.fn("openHostChannel")(function* (hostId: string, options: ResumeOptions = {}) {
   const config = yield* RemoteConfig;
   const store = yield* storedHosts;
-  const opened = yield* resumeHost(store, hostId, linkOptionsOf(config));
+  const opened = yield* resumeHost(store, hostId, linkOptionsOf(config), options);
   return {
     close: () => opened.channel.close(),
     hostName: opened.hostName,

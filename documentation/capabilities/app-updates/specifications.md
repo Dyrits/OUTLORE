@@ -63,6 +63,24 @@ Dependencies: [device pairing](../device-pairing/specifications.md#the-mobile-ap
 
 Not in the Android app: a store listing, iOS, installing without Android's confirmation (a possible later refinement, see the [draft](draft.md)), a choice of channel, a data backup, and a rollback.
 
+## Updating a host from a paired device
+
+Problem: a host refuses a paired device of another release, so a phone, browser or second computer that was updated first loses its host until the owner goes to the host and updates it there. Status: **agreed with the owner on 2026-11-18, built in CHG-0518. The first update to this feature must be made on the host by hand, and a real phone and a packaged macOS update are not yet tried.**
+
+Agreed behavior:
+
+- **One tap, never automatic.** When a paired device runs a later release than its host, the banner that today says the releases differ also offers **Update host**. The tap asks first: the host downloads the new release and installs it once no turn is running, so running turns finish first; the host then restarts and the device reconnects by itself. **Later** closes the question and nothing starts.
+- **The host never stops a turn for this.** It looks for a newer release (a check the owner asked for runs even with automatic checking off), downloads it, and installs only when no turn is running; it re-checks every 2 seconds while turns run. Once told, the install is the host's own decision: the device may disconnect or close and the install still happens. Asking again changes nothing; a failed install or check is shown and **Try again** asks again.
+- **What the device shows**: looking for the release, **Downloading n%**, **Waiting for N running turns to finish**, **Installing**, **Reconnecting…**, or the reason it stopped. The host's update state is read every 3 seconds over a short-lived update link.
+- **The pairing survives the restart.** The device's key and token are kept (the host's database, the phone's secure store, the browser's storage); the update link and the device's own link keep trying after the host quits (a second, doubling to half a minute) until the host returns, with no new pairing. When the host answers on the device's release the device's own link starts again at once.
+- **Only a host older than the device is offered.** A host newer than the device keeps today's text (the device updates itself); a host that cannot update itself (a development run, no updater on that platform) says why; a host from before this feature does not know the two requests and answers with a failure, shown as "This host is too old to update from here; update it on the host once, then this works."
+- **Devices of another release send only those two requests** (`ReadHostUpdate`, `UpdateHost`) over a link the host's resume accepts despite the other release (the hello and resumed messages are unchanged). The host cannot tell the device's release on a resume, so the limit is the device's own discipline.
+- The service reaches the desktop updater through its parent process (the utility process's message port), which owns the updater; a service started on its own has none and reports unsupported. Moving the updater into the service (0018) is not part of this.
+
+Acceptance, checks an agent can perform: the service arms an install, waits while turns run, installs once at zero, ignores a second ask, refuses when unsupported, and keeps the install when the device disconnects (`packages/service/test/update/hostUpdate.test.ts`); a device of a later release is refused on the plain link and served on the update link, the host installs, restarts on the same database and the same pairing resumes, for a browser device and for a desktop device through its own service, and a request the host does not know fails (`packages/service/test/update/deviceUpdate.test.ts`); the main process answers the service's calls from the updater controller and a forced check ignores the switch (`apps/desktop/test/serviceUpdates.test.ts`, `controller.test.ts`); the offer, the steps and the wording, and a link that does not give up in ten minutes (`apps/app/test/foundation/hostUpdate.test.ts`, `client.test.ts`). Human acceptance: with a phone one release ahead of a packaged macOS host, tap **Update host** and find the phone connected again after the host restarts.
+
+Not covered: a browser opened on a web build of the relay is the relay's one deployed build, so it offers the update only when that build is newer than the host; forcing an update over running turns; a host running in the background (0018); an update of the relay or the web build; hosts older than this feature (updated by hand once).
+
 ## Requirements covered
 
 - Updating reads a public release list and sends nothing about the owner ([requirements](../../requirements.md#privacy-and-data)).

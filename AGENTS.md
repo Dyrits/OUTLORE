@@ -58,5 +58,5 @@ Latest handoffs:
 
 - To resume the plan-limit rings with the shortest window outermost (CHG-0511, pushed to `origin/main` with this handoff; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-2101-usage-rings-order.md). Handoffs are shared and committed.
 
-- To resume the provider sign-in without a Terminal window (CHG-0510, pushed to `origin/main` with this handoff; open: the owner's real sign-in check, and a fallback for Claude Code if it needs a pasted code), read the [current handoff](.agents/handoffs/2026-11-18-2100-sign-in-without-terminal.md). Handoffs are shared and committed.
+- To resume the remote host update (CHG-0517 and CHG-0518: a device of a later release offers **Update host**; pushed to `origin/main` with this handoff; open: the owner's phone check against a packaged macOS host and the banner's look), read the [current handoff](.agents/handoffs/2026-11-18-2030-remote-host-update.md). Handoffs are shared and committed.
 

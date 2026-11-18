@@ -113,6 +113,14 @@ describe("checking for updates", () => {
 });
 
 describe("the switch", () => {
+  it("checks on a forced request even while checking is off, as when a paired device updates the host", async () => {
+    const { calls, updater } = standIn([async () => ready]);
+    const { controller } = controllerOf(updater, { settings: { isEnabled: false } });
+    expect((await controller.check({ isForced: true })).status._tag).toBe("Ready");
+    expect(calls.checks).toBe(1);
+    expect(controller.state().isEnabled).toBe(false);
+  });
+
   it("asks no one while checking is off, at start or on demand", async () => {
     const { calls, updater } = standIn([]);
     const { controller, timers } = controllerOf(updater, { settings: { isEnabled: false } });

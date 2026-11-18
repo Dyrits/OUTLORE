@@ -34,6 +34,8 @@ export interface HostLink {
   readonly channel: SecureChannel;
   readonly hostName: string;
   listen(listener: (text: string) => void): void;
+  /** The release the host runs, as it said when the link resumed. */
+  readonly release: string;
 }
 
 /** How long pairing or opening a link may take in all. */
@@ -189,8 +191,22 @@ export const pairWithCode = Effect.fnUntraced(function* (
   });
 });
 
+/** What else a resumed link may be asked to be. */
+export interface ResumeOptions {
+  /**
+   * Keep the link when the host runs another release than this controller. Only the link that updates the host uses
+   * it (app-updates, Updating a host from a paired device): it sends the two requests about updating and nothing else.
+   */
+  readonly acceptOtherRelease?: boolean;
+}
+
 /** Opens a link to a kept host: the secure channel, resumed, or the reason it could not be. */
-export const resumeHost = Effect.fnUntraced(function* (store: PairedHostStore, hostId: string, settings: LinkSettings) {
+export const resumeHost = Effect.fnUntraced(function* (
+  store: PairedHostStore,
+  hostId: string,
+  settings: LinkSettings,
+  options: ResumeOptions = {},
+) {
   const stored = yield* Effect.tryPromise({ catch: linkFailureOf, try: () => store.link(hostId) });
   if (stored === null) {
     return yield* new LinkFailure("noSuchHost", `This ${controllerWords[settings.kind].self} has no such host.`);
@@ -208,10 +224,12 @@ export const resumeHost = Effect.fnUntraced(function* (store: PairedHostStore, h
       return yield* new LinkFailure("couldNotOpen", linkTexts.timedOut);
     }
     const mismatch = releaseProblemOf(reply.release, settings.release, settings.kind);
-    if (mismatch !== null) return yield* new LinkFailure("otherRelease", mismatch);
+    if (mismatch !== null && options.acceptOtherRelease !== true) {
+      return yield* new LinkFailure("otherRelease", mismatch);
+    }
     // Noting the answer may take a while (the service writes it to its database); `listen` keeps what arrives meanwhile.
     const now = yield* Clock.currentTimeMillis;
     yield* Effect.tryPromise({ catch: linkFailureOf, try: () => store.touch(hostId, reply.hostName, now) });
-    return { channel, hostName: reply.hostName, listen } satisfies HostLink;
+    return { channel, hostName: reply.hostName, listen, release: reply.release ?? "" } satisfies HostLink;
   }).pipe(Effect.onError(() => Effect.sync(() => channel.close())));
 });

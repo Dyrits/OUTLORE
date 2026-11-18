@@ -21,7 +21,7 @@ declare global {
 const decodeFrame = Schema.decodeUnknownSync(ServerFrameJson);
 
 /** A request the service refused or failed, carrying its error. */
-class RequestFailed extends Error {
+export class RequestFailed extends Error {
   constructor(readonly error: ServiceError) {
     super(error.message);
   }
@@ -48,12 +48,15 @@ export class ServiceClient {
     readonly hostId: string | null,
   ) {}
 
-  /** Connects to the local service, or to a paired host's service through it. */
-  static async connect(hostId: string | null = null): Promise<ServiceClient> {
+  /**
+   * Connects to the local service, or to a paired host's service through it. `isForUpdate` connects to a host of another
+   * release, for the two requests that update it (app-updates).
+   */
+  static async connect(hostId: string | null = null, isForUpdate = false): Promise<ServiceClient> {
     if (window.outlore === undefined) return Promise.reject(new Error("Open Outlore through the desktop app."));
     const endpoint = await window.outlore.endpoint();
     return ServiceClient.connectThrough(
-      socketTransport(hostId === null ? endpoint : hostEndpointOf(endpoint, hostId)),
+      socketTransport(hostId === null ? endpoint : hostEndpointOf(endpoint, hostId, isForUpdate)),
       hostId,
     );
   }

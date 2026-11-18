@@ -41,6 +41,7 @@ import {
   remoteStateLayer,
 } from "./remote/index.ts";
 import { Service } from "./serviceTag.ts";
+import { HostUpdate, type HostUpdater, hostUpdateLayer, noHostUpdaterLayer } from "./update/index.ts";
 import {
   AccountsRoot,
   Approvals,
@@ -104,6 +105,7 @@ const make = Effect.gen(function* () {
   const approvals = yield* Approvals;
   const suggestions = yield* Suggestions;
   const prices = yield* PriceTable;
+  const hostUpdate = yield* HostUpdate;
   /** Runs storage work as a command whose only follow-up is announcing the change. */
   const change = <A, E, R>(work: Effect.Effect<A, E, R>) => commands.run(Effect.map(work, (value) => changed(value)));
   const hostControl = makeHostControl({ change, config: remoteConfig, state: remote });
@@ -152,6 +154,7 @@ const make = Effect.gen(function* () {
           ListWorkspaceEntries: (given) => listWorkspaceEntries(given.workspacePath, given.query),
           ReadAccountBudgets: () => readAccountBudgets,
           ReadBudget: (read) => readBudgetWindow(read.missionId),
+          ReadHostUpdate: () => hostUpdate.read,
           ReadPermissions: (read) => readPermissionsView(read.missionId),
           ReadPriceStatus: () => prices.status,
           ReadSettings: () => readSettings,
@@ -179,6 +182,7 @@ const make = Effect.gen(function* () {
           SetMissionBudget: (given) => commands.run(setMissionBudget(given.missionId, given.limits)),
           StopAtBudget: (given) => commands.run(stopAtBudget(given.stopId)),
           SwitchAtBudget: (given) => commands.run(switchAtBudget(given.stopId)),
+          UpdateHost: () => hostUpdate.arm,
           UpdateSettings: (update) => saveSettings(() => update.settings),
           WidenPermission: (widen) => change(widenPermission(widen.permissionId)),
         },
@@ -207,6 +211,8 @@ export interface ServiceOptions {
   readonly harnessTools?: Layer.Layer<HarnessTools>;
   /** The owner's home folder, the first browsable root (workspace-attachment). */
   readonly homeFolder: string;
+  /** The updater of the app this host runs in, for updating the host from a paired device; none when left out. */
+  readonly hostUpdater?: Layer.Layer<HostUpdater>;
   /** The Worker's name on the owner's Cloudflare account; "outlore-relay" when left out. */
   readonly ownRelayWorkerName?: string;
   /** Where the model price table is read from; none, so the snapshot alone, when left out (decision record 0014). */
@@ -247,23 +253,28 @@ export const serviceLayer = (options: ServiceOptions) => {
     Layer.provideMerge(Layer.mergeAll(approvalsLayer, suggestionsLayer)),
     Layer.provideMerge(foundation),
   );
+  const remoteConfigLayer = Layer.succeed(RemoteConfig, {
+    computerName: options.computerName ?? computerNameOf(),
+    deployOwnRelay:
+      options.deployOwnRelay ??
+      ((token) =>
+        deployRelayToCloudflare({
+          api: cloudflareApiFor(token),
+          token,
+          ...(options.ownRelayWorkerName === undefined ? {} : { workerName: options.ownRelayWorkerName }),
+        })),
+    relayOrigin: options.relayOrigin ?? defaultRelayOrigin,
+    release: options.release ?? "development",
+  });
   const core = Layer.effect(Service, make).pipe(
     Layer.provideMerge(
       Layer.mergeAll(
-        Layer.succeed(RemoteConfig, {
-          computerName: options.computerName ?? computerNameOf(),
-          deployOwnRelay:
-            options.deployOwnRelay ??
-            ((token) =>
-              deployRelayToCloudflare({
-                api: cloudflareApiFor(token),
-                token,
-                ...(options.ownRelayWorkerName === undefined ? {} : { workerName: options.ownRelayWorkerName }),
-              })),
-          relayOrigin: options.relayOrigin ?? defaultRelayOrigin,
-          release: options.release ?? "development",
-        }),
+        remoteConfigLayer,
         remoteStateLayer,
+        hostUpdateLayer.pipe(
+          Layer.provide(options.hostUpdater ?? noHostUpdaterLayer()),
+          Layer.provide(remoteConfigLayer),
+        ),
         autoArchiveLayer,
         budgetPeriodsLayer,
         guildmasterReportsLayer,

@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import type { ServerFrame } from "@outlore/contracts";
-import { linkCodeOf } from "@outlore/controller";
+import { linkCodeOf, type ResumeOptions } from "@outlore/controller";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { WebSocket, WebSocketServer } from "ws";
@@ -58,7 +58,7 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
      * app speaks to the host's service as to its own. A link that cannot open closes the socket with code 4000 and the
      * reason the owner reads, or 4002 when the host refuses this installation; a link that ends closes it with 4001.
      */
-    const bridgeToHost = (socket: WebSocket, hostId: string) => {
+    const bridgeToHost = (socket: WebSocket, hostId: string, options: ResumeOptions = {}) => {
       const waiting: string[] = [];
       let link: HostChannel | null = null;
       let isClosed = false;
@@ -70,7 +70,7 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
         isClosed = true;
         link?.close();
       });
-      const opening = openHostChannel(hostId).pipe(
+      const opening = openHostChannel(hostId, options).pipe(
         Effect.provideService(SqlClient.SqlClient, sql),
         Effect.provideService(RemoteConfig, remote),
         Effect.map((channel) => ({ channel, closeCode: 4000, message: "" })),
@@ -109,9 +109,13 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
     };
 
     wss.on("connection", (socket, request) => {
-      const hostId = /^\/host\/([A-Za-z0-9-]+)$/.exec(new URL(request.url ?? "/", "http://127.0.0.1").pathname)?.[1];
-      if (hostId !== undefined) {
-        bridgeToHost(socket, hostId);
+      const hostPath = /^\/host\/([A-Za-z0-9-]+)(\/update)?$/.exec(
+        new URL(request.url ?? "/", "http://127.0.0.1").pathname,
+      );
+      if (hostPath?.[1] !== undefined) {
+        // `/host/<id>/update` is the link that updates a host of another release: it keeps that link where the plain one
+        // would end with the release mismatch.
+        bridgeToHost(socket, hostPath[1], hostPath[2] === undefined ? {} : { acceptOtherRelease: true });
         return;
       }
       const send = sendTo(socket);

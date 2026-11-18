@@ -106,6 +106,19 @@ export function useHostConnection() {
       setHostClient(null);
     };
   }, [hostId, pairedHosts, attempt]);
+  // The link that updates the selected host when it runs another release than this device: a second link that keeps it.
+  const openUpdateLink = useCallback(
+    () =>
+      hostId === null
+        ? Promise.reject(new Error("No host is selected."))
+        : pairedHosts === null
+          ? ServiceClient.connect(hostId, true)
+          : ServiceClient.connectThrough(
+              openBrowserTransport(pairedHosts, hostId, pageSettings(), { acceptOtherRelease: true }),
+              hostId,
+            ),
+    [hostId, pairedHosts],
+  );
   // The one way a pairing link reaches Add a host, from the address bar, the desktop's protocol handler, or a phone's.
   const hasHostsRef = useRef(hosts.length > 0);
   hasHostsRef.current = hosts.length > 0;
@@ -209,6 +222,7 @@ export function useHostConnection() {
     isBrowser: usesRemoteHost,
     offer,
     offerPairing,
+    openUpdateLink,
     pair,
     retry,
     setFailure,

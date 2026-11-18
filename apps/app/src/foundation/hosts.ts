@@ -3,10 +3,13 @@
 
 import { hostLinkCodes } from "@outlore/controller";
 
-/** The loopback server's address for the link to one paired host; the token and the port stay those of the window's. */
-export const hostEndpointOf = (endpoint: string, hostId: string) => {
+/**
+ * The loopback server's address for the link to one paired host; the token and the port stay those of the window's.
+ * `isForUpdate` names the link that updates a host of another release, which the plain link would end.
+ */
+export const hostEndpointOf = (endpoint: string, hostId: string, isForUpdate = false) => {
   const url = new URL(endpoint);
-  url.pathname = `/host/${hostId}`;
+  url.pathname = `/host/${hostId}${isForUpdate ? "/update" : ""}`;
   return url.toString();
 };
 

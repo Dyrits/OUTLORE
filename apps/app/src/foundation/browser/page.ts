@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 import { version } from "../../../package.json";
 
 /** The release of this app, the same as the desktop app's when both are built from one tag. */
-const appRelease: string = version;
+export const appRelease: string = version;
 
 /** Whether the app runs on the phone. */
 export const isMobileApp = Platform.OS !== "web";

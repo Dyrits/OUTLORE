@@ -64,11 +64,15 @@ export class UpdateController {
     if (this.options.earlierFailure === null) void this.check();
   }
 
-  /** Looks for a newer release now. Does nothing, and asks no one, while checking is off or an update waits. */
-  check(): Promise<UpdateState> {
+  /**
+   * Looks for a newer release now. Does nothing, and asks no one, while checking is off or an update waits; a forced
+   * check (the owner asked to update the host) looks even while checking is off.
+   */
+  check(options: { readonly isForced?: boolean } = {}): Promise<UpdateState> {
     const { updater } = this.options;
     const isIdle = this.status._tag === "Idle" || this.status._tag === "Failed";
-    if (updater === null || !this.settings.isEnabled || !isIdle) return Promise.resolve(this.state());
+    const isAllowed = this.settings.isEnabled || options.isForced === true;
+    if (updater === null || !isAllowed || !isIdle) return Promise.resolve(this.state());
     this.running ??= this.run(updater).finally(() => {
       this.running = null;
     });

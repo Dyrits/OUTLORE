@@ -15,6 +15,12 @@ describe("the link to a paired host", () => {
     );
   });
 
+  it("names the path of the link that updates a host of another release", () => {
+    expect(hostEndpointOf("ws://127.0.0.1:5123/?token=abc", "7f0c-12", true)).toBe(
+      "ws://127.0.0.1:5123/host/7f0c-12/update?token=abc",
+    );
+  });
+
   it("tells a link that could not open, or that the host ended, from any other close", () => {
     expect(linkFailureOf(hostLinkCodes.couldNotOpen, "The host is not connected right now.")).toBe(
       "The host is not connected right now.",

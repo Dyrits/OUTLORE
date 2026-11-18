@@ -8,6 +8,7 @@ export * from "./companions.ts";
 export * from "./dictation.ts";
 export * from "./frames.ts";
 export * from "./harnesses.ts";
+export * from "./hostUpdate.ts";
 export * from "./ids.ts";
 export * from "./journal.ts";
 export * from "./lore.ts";
@@ -33,9 +34,11 @@ export * from "./records.ts";
 export {
   checksumsOf,
   chooseReleaseFor,
+  compareVersions,
   defaultReleasesUrl,
   type FoundRelease,
   listingsOf,
+  parseVersion,
   plainNotesOf,
 } from "./releaseChoice.ts";
 export * from "./remote.ts";

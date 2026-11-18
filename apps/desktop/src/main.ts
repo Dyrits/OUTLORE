@@ -9,6 +9,7 @@ import { appVersionOf } from "./appVersion.ts";
 import { moveFormerData } from "./formerData.ts";
 import { instanceOf } from "./instance.ts";
 import { createPairingLinkQueue, pairingLinkIn, protocolClientOf } from "./pairingLinks.ts";
+import { answerServiceUpdates, type ServiceUpdates } from "./serviceUpdates.ts";
 import { mergedPathOf, readLoginPath } from "./shellPath.ts";
 import { Terminals } from "./terminals.ts";
 import { setUpUpdates } from "./updateSetup.ts";
@@ -49,6 +50,12 @@ const formerDataMoved = Promise.resolve().then(() => {
   moveFormerData(app.getPath("appData"), app.getPath("userData"), claudeFolder);
 });
 
+/** The updates of this app, once set up; the service's calls about updating the host wait for them. */
+let updatesReady: (updates: ServiceUpdates) => void = () => undefined;
+const updatesOfService = new Promise<ServiceUpdates>((resolve) => {
+  updatesReady = resolve;
+});
+
 /** Starts the local service on Electron's Node and resolves its loopback endpoint. */
 const startService = (token: string) => {
   const service = utilityProcess.fork(join(here, "service.js"), [], {
@@ -62,9 +69,12 @@ const startService = (token: string) => {
     stdio: "inherit",
   });
   app.on("will-quit", () => service.kill());
+  // A paired device may ask this host to update; the service cannot reach the updater, so it asks here.
+  const answerUpdates = answerServiceUpdates(updatesOfService, (message) => service.postMessage(message));
   return new Promise<string>((resolve, reject) => {
     service.once("exit", (code) => reject(new Error(`The service exited with code ${code}`)));
     service.on("message", (message: { type?: string; port?: number }) => {
+      answerUpdates(message);
       if (message.type === "ready") resolve(`ws://127.0.0.1:${message.port}/?token=${token}`);
     });
   });
@@ -224,6 +234,11 @@ app
     });
     // The installed app looks for a newer release once its window is up; the owner decides when it installs.
     const updates = await setUpUpdates(window, handleWindow);
+    updatesReady({
+      check: () => updates.check({ isForced: true }),
+      install: () => updates.install(),
+      state: () => updates.state(),
+    });
     if (!(await load(window))) quitWith(`Could not load ${appUrl}`);
     else updates.start();
   })

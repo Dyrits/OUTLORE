@@ -1,6 +1,6 @@
 import { decodeBase64Url, encodeBase64Url, type SecureChannel } from "@outlore/channel";
 import { Effect } from "effect";
-import { pairWithCode, resumeHost } from "./hostLink.ts";
+import { pairWithCode, type ResumeOptions, resumeHost } from "./hostLink.ts";
 import type { PairedHostStore } from "./hostStore.ts";
 import { LinkFailure, linkCodeOf } from "./linkFailure.ts";
 import type { PairedHosts } from "./pairedHosts.ts";
@@ -32,10 +32,10 @@ export const pairFromBrowser = (code: string, name: string, hosts: PairedHosts, 
  * The transport to a paired host for a `ServiceClient`. It reports itself open at once, as the desktop's loopback
  * socket does while the service opens the link, and holds what is sent until the link is up; a link that cannot open
  * closes with the codes the desktop uses: 4000 to try again later, 4002 when trying again cannot help, 4001 when the
- * host ended it.
+ * host ended it. With `options.acceptOtherRelease` it also serves a host of another release, for the link that updates it.
  */
 export const openBrowserTransport =
-  (hosts: PairedHosts, hostId: string, page: PageSettings): OpenTransport =>
+  (hosts: PairedHosts, hostId: string, page: PageSettings, options: ResumeOptions = {}): OpenTransport =>
   (handlers) => {
     const waiting: string[] = [];
     let channel: SecureChannel | null = null;
@@ -47,7 +47,7 @@ export const openBrowserTransport =
         yield* Effect.yieldNow;
         if (isClosed) return;
         handlers.onOpen();
-        return yield* resumeHost(browserStore(hosts), hostId, page);
+        return yield* resumeHost(browserStore(hosts), hostId, page, options);
       }).pipe(
         Effect.match({
           onFailure: (reason) => {

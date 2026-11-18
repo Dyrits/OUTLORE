@@ -4,6 +4,7 @@ import { AccountBudget, BudgetLimits, BudgetPeriod, BudgetWindow, PriceStatus } 
 import { BackupCompanions, ModelChoice } from "./companions.ts";
 import { DictationStatus, maxDictationBytes, Transcript } from "./dictation.ts";
 import { EffortChoice, HarnessList, HarnessName } from "./harnesses.ts";
+import { HostUpdate } from "./hostUpdate.ts";
 import {
   AccountId,
   AttachmentId,
@@ -102,6 +103,14 @@ export const TranscribeDictation = Schema.TaggedStruct("TranscribeDictation", {
   /** The recording's bytes, base64: a 16 kHz, mono, 16-bit WAV file. */
   data: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(Math.ceil(maxDictationBytes / 3) * 4)),
 });
+
+/** Reads the host's release and where updating it stands; a paired device of another release may ask it. */
+export const ReadHostUpdate = Schema.TaggedStruct("ReadHostUpdate", {});
+/**
+ * Tells the host to look for a newer release, download it, and install it once no turn is running; the answer is
+ * where that stands. Repeating it changes nothing, and a running turn is never stopped for it.
+ */
+export const UpdateHost = Schema.TaggedStruct("UpdateHost", {});
 
 /** Starts a mission with its first message, model, effort, and workspace. */
 export const StartMission = Schema.TaggedStruct("StartMission", {
@@ -501,6 +510,8 @@ export const Request = Schema.Union([
   DiscardAttachment,
   ReadAttachment,
   ReadDictation,
+  ReadHostUpdate,
+  UpdateHost,
   TranscribeDictation,
   StartMission,
   StartEmptyQuest,
@@ -671,6 +682,7 @@ export const Results = {
   ReadGuildHallRecap: GuildHallRecap,
   ReadGuildmaster: GuildmasterPlace,
   ReadHostName: Schema.String,
+  ReadHostUpdate: HostUpdate,
   ReadIntelHistory: LoreHistory,
   ReadJournal: JournalView,
   ReadMission: MissionDetail,
@@ -717,6 +729,7 @@ export const Results = {
   TranscribeDictation: Transcript,
   UndoIntelChange: Schema.Null,
   UpdateHarness: HarnessList,
+  UpdateHost: HostUpdate,
   UpdateRitual: Schema.Null,
   UpdateSettings: Settings,
   UseOwnRelay: RemoteAccessView,

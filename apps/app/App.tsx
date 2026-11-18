@@ -14,6 +14,7 @@ import { AddHostModal } from "./src/shell/addHostModal";
 import { AppScreen } from "./src/shell/appScreen";
 import { AppStatusBar } from "./src/shell/appStatusBar";
 import { appStyles as styles } from "./src/shell/appStyles";
+import { HostUpdateOffer } from "./src/shell/hostUpdateOffer";
 import { initialLocation, navigate, panelScopeOf } from "./src/shell/location";
 import { detailsModeOf } from "./src/shell/navigation";
 import { useAttentionNotice } from "./src/shell/notifications";
@@ -39,6 +40,7 @@ export function App() {
     activeHost,
     status,
     retry,
+    openUpdateLink,
   } = useHostConnection();
   const [location, dispatch] = useReducer(navigate, resumedPlace, initialLocation);
   const {
@@ -128,6 +130,7 @@ export function App() {
         <AppStatusBar />
         <Text style={styles.connecting}>{status.message}</Text>
         <UpdateNotice hasReleaseMismatch={status.hasReleaseMismatch} />
+        {status.hasReleaseMismatch && <HostUpdateOffer key={hostId} onUpdated={retry} openLink={openUpdateLink} />}
         {status.canRetry && (
           <Pressable accessibilityRole="button" onPress={retry} style={styles.backButton}>
             <Text style={styles.backText}>Retry</Text>
@@ -236,6 +239,9 @@ export function App() {
                 {status.isRetrying ? " Trying again…" : ""}
               </Text>
               {status.hasReleaseMismatch && <UpdateNotice hasReleaseMismatch />}
+              {status.hasReleaseMismatch && (
+                <HostUpdateOffer key={hostId} onUpdated={retry} openLink={openUpdateLink} />
+              )}
               {status.canRetry && (
                 <Pressable accessibilityRole="button" onPress={retry}>
                   <Text style={styles.bannerLink}>Retry</Text>

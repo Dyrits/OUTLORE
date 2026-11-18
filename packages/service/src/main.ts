@@ -7,10 +7,9 @@ import { fakeHarnessLayer, fakeHarnessToolsLayer, liveHarnessToolsLayer, makeHar
 import { defaultRelayOrigin } from "./remote/index.ts";
 import { serveLoopback } from "./server.ts";
 import { serviceLayer } from "./service.ts";
+import { parentPortUpdaterLayer, type UpdaterPort } from "./update/parentPortUpdater.ts";
 
-interface ParentPort {
-  postMessage(message: unknown): void;
-}
+interface ParentPort extends UpdaterPort {}
 
 /** Electron's utility process gives `process` a `parentPort`; any other host has none. */
 const parentPortOf = (host: unknown): ParentPort | null => {
@@ -19,7 +18,15 @@ const parentPortOf = (host: unknown): ParentPort | null => {
   if (!Predicate.hasProperty(port, "postMessage")) return null;
   const postMessage = port.postMessage;
   if (!Predicate.isFunction(postMessage)) return null;
-  return { postMessage: (message) => postMessage.call(port, message) };
+  const on = Predicate.hasProperty(port, "on") ? port.on : null;
+  return {
+    // The main process's messages arrive as events whose `data` is the message.
+    onMessage: (listener) => {
+      if (!Predicate.isFunction(on)) return;
+      on.call(port, "message", (event: unknown) => listener(Predicate.hasProperty(event, "data") ? event.data : event));
+    },
+    postMessage: (message) => postMessage.call(port, message),
+  };
 };
 
 const parentPort = parentPortOf(process);
@@ -53,6 +60,8 @@ const liveLayer = Layer.unwrap(
         accountsRoot: join(dataDirectory, "accounts"),
         filename: join(dataDirectory, "outlore.sqlite"),
         harness,
+        // Only the desktop app's own service can update its host: it reaches the updater through its parent.
+        ...(parentPort === null ? {} : { hostUpdater: parentPortUpdaterLayer(parentPort) }),
         harnessTools: harnessName === "fake" ? fakeHarnessToolsLayer() : liveHarnessToolsLayer(commands),
         homeFolder: homedir(),
         priceSource: harnessName === "fake" ? noPriceSourceLayer : modelsDevSourceLayer(),
