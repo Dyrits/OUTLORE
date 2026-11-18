@@ -85,16 +85,18 @@ function WindowBar({ now, window }: { now: number; window: PlanLimitWindow }) {
 /** What hovering or focusing a provider's rings opens: a card above them with the provider and each window spelled out. */
 function UsageCard({
   harness,
+  isAtEnd,
   name,
   windows,
 }: {
   harness: HarnessName;
+  isAtEnd: boolean;
   name: string;
   windows: readonly PlanLimitWindow[];
 }) {
   const now = Date.now();
   return (
-    <View pointerEvents="none" style={local.card}>
+    <View pointerEvents="none" style={[local.card, isAtEnd && local.cardAtEnd]}>
       <View style={local.provider}>
         <ProviderMark harness={harness} size={16} />
         <Text style={local.providerName}>{name}</Text>
@@ -125,6 +127,7 @@ export function PlanLimitRings({ client, isAtEnd = false }: { client: ServiceCli
       {detailed !== undefined && (
         <UsageCard
           harness={detailed.harness}
+          isAtEnd={isAtEnd}
           name={detailed.accountId === null ? detailed.harness : detailed.label}
           windows={currentWindowsOf(detailed.planLimits?.windows ?? [], Date.now())}
         />
@@ -178,6 +181,8 @@ const local = StyleSheet.create({
     shadowRadius: 14,
     zIndex: 10,
   },
+  // Over a narrow group of rings at the right, the card keeps a width of its own and ends where the rings end.
+  cardAtEnd: { left: "auto", width: 220 },
   circle: { borderRadius: radii.pill, padding: 3 },
   circleLifted: { backgroundColor: colors.controlHover, transform: [{ scale: 1.08 }] },
   group: { paddingTop: 6 },

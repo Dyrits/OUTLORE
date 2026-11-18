@@ -47,7 +47,7 @@ export const local = StyleSheet.create({
   footer: { gap: 1, paddingBottom: 8, paddingLeft: 8, paddingRight: 16 },
   group: { gap: 1, paddingBottom: 12, paddingLeft: 8, paddingRight: 16, paddingTop: 8 },
   guide: { backgroundColor: colors.border, bottom: 0, position: "absolute", top: 0, width: 1 },
-  menuRow: { alignItems: "flex-end", flexDirection: "row", justifyContent: "space-between", paddingLeft: 4 },
+  menuRow: { alignItems: "flex-start", paddingLeft: 4 },
   more: {
     alignItems: "center",
     borderRadius: radii.md,
