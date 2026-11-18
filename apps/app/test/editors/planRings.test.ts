@@ -5,16 +5,16 @@ const fiveHour = { label: "5-hour", resetsAt: 1_000, usedPercent: 0 };
 const weekly = { label: "Weekly", resetsAt: 9_000, usedPercent: 11 };
 
 describe("laying plan limits out as rings", () => {
-  it("puts the window that resets last outermost and the first inner, shrinking each ring by a stroke and a gap", () => {
+  it("puts the window that resets first outermost and the last inner, shrinking each ring by a stroke and a gap", () => {
     const { rings } = ringStackOf([fiveHour, weekly], 44, 4, 2);
-    expect(rings.map((ring) => ring.window.label)).toEqual(["Weekly", "5-hour"]);
+    expect(rings.map((ring) => ring.window.label)).toEqual(["5-hour", "Weekly"]);
     expect(rings.map((ring) => ring.radius)).toEqual([20, 14]);
   });
 
   it("keeps a logo room inside the three thinner rings of OpenCode Go's three windows", () => {
     const monthly = { label: "Monthly", resetsAt: 20_000, usedPercent: 7 };
     const { logoSize, rings } = ringStackOf([fiveHour, weekly, monthly], 44, 3, 1);
-    expect(rings.map((ring) => ring.window.label)).toEqual(["Monthly", "Weekly", "5-hour"]);
+    expect(rings.map((ring) => ring.window.label)).toEqual(["5-hour", "Weekly", "Monthly"]);
     expect(rings.map((ring) => ring.radius)).toEqual([20.5, 16.5, 12.5]);
     expect(logoSize).toBe(16);
   });
@@ -34,8 +34,8 @@ describe("laying plan limits out as rings", () => {
       4,
       2,
     );
-    expect(rings[1]?.filled).toBe(0);
-    expect(rings[0]?.filled).toBeCloseTo(rings[0]?.circumference ?? 0);
+    expect(rings[0]?.filled).toBe(0);
+    expect(rings[1]?.filled).toBeCloseTo(rings[1]?.circumference ?? 0);
   });
 
   it("colors by how full it is: normal, warning from 80, reached at 100", () => {
@@ -54,7 +54,7 @@ describe("laying plan limits out as rings", () => {
 });
 
 describe("ring order once a window has reset", () => {
-  it("keeps the weekly ring outermost when its reset has passed and the 5-hour one still counts down", () => {
+  it("keeps the 5-hour ring outermost when the weekly one's reset has passed and the 5-hour one still counts down", () => {
     // The state of the owner's screenshot: the 5-hour window is at its limit and resets later than the weekly one,
     // whose reset has already passed (so it reads as unused).
     const now = 5_000;
@@ -66,7 +66,7 @@ describe("ring order once a window has reset", () => {
       now,
     );
     const { rings } = ringStackOf(windows, 44, 4, 2);
-    expect(rings.map((ring) => ring.window.label)).toEqual(["Weekly", "5-hour"]);
+    expect(rings.map((ring) => ring.window.label)).toEqual(["5-hour", "Weekly"]);
   });
 
   it("falls back to the reset time for a reading saved before the window lengths were kept", () => {
@@ -79,7 +79,7 @@ describe("ring order once a window has reset", () => {
       4,
       2,
     );
-    expect(rings.map((ring) => ring.window.label)).toEqual(["5-hour", "Weekly"]);
+    expect(rings.map((ring) => ring.window.label)).toEqual(["Weekly", "5-hour"]);
   });
 });
 
