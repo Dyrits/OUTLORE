@@ -196,6 +196,7 @@ export function App() {
         navigation={{
           closeMission: () => dispatch({ type: "close" }),
           goTo,
+          openMenu: () => dispatch({ isOpen: true, type: "menu" }),
           openMission: openMissionFromAnywhere,
           openParent,
           openRealm,

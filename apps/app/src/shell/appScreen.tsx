@@ -30,6 +30,8 @@ type Destination = {
 interface Navigation {
   closeMission: () => void;
   goTo: (place: Place) => void;
+  /** Shows the narrow window's main menu: the sidebar as a full screen. */
+  openMenu: () => void;
   openMission: (id: MissionId) => void;
   /** Goes to a quest's parent view: its realm's quests, or the home screen for a quest in no realm. */
   openParent: (quest: { workspaceId: string | null; workspaceName: string | null }) => void;
@@ -58,7 +60,8 @@ export function AppScreen({
         client={client}
         key={`${view.openMission}:${view.openCount}`}
         missionId={view.openMission}
-        onBack={(quest) => (quest === null ? navigation.closeMission() : navigation.openParent(quest))}
+        // The Back of a quest shows only in a narrow window, which has no sidebar: it goes back to the main menu.
+        onBack={navigation.openMenu}
         onOpenMission={navigation.openMission}
         onSelectThread={navigation.selectThread}
         onSetDetails={navigation.showDetails}
