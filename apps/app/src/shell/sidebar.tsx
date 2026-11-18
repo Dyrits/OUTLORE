@@ -188,6 +188,7 @@ export function Sidebar({
           Realms
         </Text>
         {tied.map(rowOf)}
+        {tied.length > 0 && untied.length > 0 && <View style={local.creationDivider} />}
         {untied.map(rowOf)}
         <Row
           accessory={<NewRealmIcon color={colors.highlight} />}

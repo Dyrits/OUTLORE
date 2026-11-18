@@ -108,28 +108,28 @@ export function Quest({
       {/* Only the quest's own row is picked up; its errands go with it. */}
       <DragSource missionId={mission.id}>
         <Row
+          accessory={<StateDot state={mission.state} />}
           fold={{
             isOpen,
             label: mission.title,
             onPress: mission.threadCount > 1 ? () => onToggle(mission.id) : null,
           }}
-          hoverAccessory={(isShown) => (
-            <View style={local.questMark}>
-              {isShown && Platform.OS === "web" ? (
+          // The dot stays; on hover or focus the archive or delete mark shows at its right, in a place kept while unseen.
+          hoverAccessory={(isShown) =>
+            Platform.OS === "web" && (
+              <View style={[local.questMark, !isShown && local.actionsHidden]}>
                 <Pressable
                   accessibilityLabel={label}
                   accessibilityRole="button"
-                  disabled={ending.isBusy}
+                  disabled={ending.isBusy || !isShown}
                   hitSlop={6}
                   onPress={() => ending.start("Archived")}
                 >
                   {mission.isEmpty ? <DeleteIcon color={colors.textMuted} /> : <ArchiveIcon color={colors.textMuted} />}
                 </Pressable>
-              ) : (
-                <StateDot state={mission.state} />
-              )}
-            </View>
-          )}
+              </View>
+            )
+          }
           isSelected={isHere && (openThread === null || openThread === mission.topThreadId)}
           label={mission.title}
           onPress={() => onOpenMission(mission.id)}
