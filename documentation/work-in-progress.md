@@ -1,5 +1,9 @@
 # Work in progress
 
+## Queue by default, Steer or Interrupt a queued message · 2026-11-18 · on `main`; the owner's look pending
+
+CHG-0519: while a thread runs, Send queues the message (the default setting is now Queue); the composer has Stop only. A message no turn has taken in is faint, with **Steer** (it joins the running turn) and **Interrupt** (stops the turn and sends it) under it while the thread runs. Stopping with a message queued keeps it queued and faint until Resume. Open: the owner's look in a window and on a phone; an owner who saved Steer as the default keeps it. [Specification](capabilities/thread-messaging/specifications.md#delivery)
+
 ## Updating a host from a paired device · 2026-11-18 · on `main`; a phone and a packaged macOS update pending
 
 CHG-0517 (agreement) and CHG-0518 (delivery): a device of a later release offers **Update host**, the host installs once no turn is running, restarts, and the device reconnects with its stored pairing. A host from before this feature must be updated by hand once. Open: the owner's merge, a phone one release ahead of a packaged macOS host, and the look of the banner. [Specification](capabilities/app-updates/specifications.md#updating-a-host-from-a-paired-device) · [Verification](verification/2026-11-18-host-update.md).

@@ -75,8 +75,8 @@ export function StateIndicator({ state }: { state: ThreadState | MissionState })
 }
 
 /**
- * A message box that keeps the text until the service accepts it, sent with Enter or the arrow button. While a thread runs, a smaller second
- * button sends the other way (Steer or Queue) and Interrupt ends the thread's current turn (CHG-0039).
+ * A message box that keeps the text until the service accepts it, sent with Enter or the arrow button. While a thread runs, the send button queues
+ * the message and Stop replaces it when the box is empty; a queued message is steered or interrupted from its card (CHG-0514).
  */
 export function Composer({
   draftKey,
@@ -84,7 +84,6 @@ export function Composer({
   onSend,
   alternative,
   attachments: attachable,
-  onInterrupt,
   onStop,
   onChangeText,
   accessory,
@@ -111,7 +110,6 @@ export function Composer({
    * the client. `refusal` is why the Companion about to read the message cannot read images, or null; the message is then not sent.
    */
   attachments?: { readonly client: ServiceClient; readonly refusal: string | null };
-  onInterrupt?: () => Promise<unknown>;
   /**
    * Stops the thread. While it is given and the box holds nothing to send, the send button turns into a stop button;
    * typing something turns it back into the arrow.
@@ -211,11 +209,6 @@ export function Composer({
         <View style={styles.composerActions}>
           {dictation.isAvailable && (
             <DictationButton onCancel={dictation.cancel} onPress={dictation.press} phase={dictation.phase} />
-          )}
-          {onInterrupt !== undefined && (
-            <Pressable onPress={() => interrupt(onInterrupt)} style={styles.buttonSecondary}>
-              <Text style={styles.buttonSecondaryText}>Interrupt</Text>
-            </Pressable>
           )}
           {alternative !== undefined && (
             <Pressable

@@ -8,7 +8,6 @@ export type ConversationOptions = { isChronicler: boolean; realmPath: string | n
 /** Delivery and placeholder decisions shared by both conversation panes. */
 export const conversationStateOf = (state: string, isInTurn: boolean, delivery: MessageDelivery, name: string) => ({
   delivery: isInTurn ? delivery : null,
-  other: delivery === "Steer" ? ("Queue" as const) : ("Steer" as const),
   placeholder:
     state === "Stopped"
       ? `Write to ${name}; it waits until you resume it…`

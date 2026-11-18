@@ -153,6 +153,8 @@ export const SendMessage = Schema.TaggedStruct("SendMessage", {
   /** Where the owner has Chronicler open from, for Chronicler: the screen, and its quest when it is one. */
   viewing: Schema.optionalKey(Schema.NullOr(Viewing)),
 });
+/** Lets a queued owner message join its thread's running turn instead of waiting for the next one (thread-messaging, Delivery). */
+export const SteerQueuedMessage = Schema.TaggedStruct("SteerQueuedMessage", { messageId: MessageId });
 /** The dashboard (not archived) or the Archived view, filtered by state and workspace and searched. */
 export const ListMissions = Schema.TaggedStruct("ListMissions", {
   isArchived: Schema.Boolean,
@@ -519,6 +521,7 @@ export const Request = Schema.Union([
   ResolveChatter,
   DeleteThread,
   SendMessage,
+  SteerQueuedMessage,
   ListMissions,
   ReadStartChoices,
   ReadGuildmaster,
@@ -723,6 +726,7 @@ export const Results = {
   SignInAccount: Schema.NullOr(HarnessList),
   StartEmptyQuest: StartEmptyQuestResult,
   StartMission: StartMissionResult,
+  SteerQueuedMessage: Schema.Null,
   StopAtBudget: Schema.Null,
   StopThread: Schema.Null,
   SwitchAtBudget: Schema.Null,

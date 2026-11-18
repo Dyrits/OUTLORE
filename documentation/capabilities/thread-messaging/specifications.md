@@ -41,8 +41,10 @@ Agreed 2026-11-11 (CHG-0195); built in CHG-0196.
 ### Delivery
 
 - **Thread messages**, results included, are delivered into the receiving thread's current turn where its harness allows it; otherwise at its next turn. They are delivered whatever the receiving thread is doing.
-- Chronicler uses the same delivery controls as quest threads: while it works, Send follows the chosen default and the alternative offers Steer or Queue (CHG-0316). Comments remain quest-only.
-- **The user's messages** either steer the current turn or are queued for the next turn. The user chooses on each message. Steer is the default, and a setting changes the default.
+- Chronicler uses the same delivery controls as quest threads: while it works, Send follows the chosen default and a queued message offers Steer or Interrupt (CHG-0316, CHG-0519). Comments remain quest-only.
+- **The user's messages** either steer the current turn or are queued for the next turn. Queue is the default while a thread runs, and a setting changes the default (CHG-0519).
+- **A queued message** is drawn fainter than the others until a turn takes it in, with no text label. While the thread runs, two actions sit under it: **Steer** lets it join the running turn, and **Interrupt** stops the turn and sends the message in one go, so it starts the next turn at once. A thread's composer has no Interrupt and no second send button; its only extra control is Stop.
+- **Stopping with a message queued.** The message stays queued and faint, with no actions, and is delivered when the owner resumes the thread, as for any message a Stopped thread keeps.
 - A thread that is Waiting, Idle, or Done is woken by any message addressed to it, so two threads waiting on each other never stay stuck.
 - A Stopped thread keeps its messages and is not woken (see [thread-tree](../thread-tree/specifications.md#stopping)).
 

@@ -173,8 +173,11 @@ function ThreadPane({
               client={client}
               entry={item}
               harness={thread.harness}
+              isInTurn={isInTurn}
+              onInterrupt={conversation.interrupt}
               onOpenMission={onOpenMission}
               onSelectThread={onSelect}
+              onSteer={conversation.steer}
               skills={skills}
               workspacePath={thread.workspace?.path ?? null}
             />
@@ -207,12 +210,6 @@ function ThreadPane({
               dictation={{ client }}
               mentions={{ client, workspacePath: thread.workspace?.path ?? null }}
               skills={skills}
-              {...(isInTurn
-                ? {
-                    alternative: conversation.alternative,
-                    onInterrupt: conversation.interrupt,
-                  }
-                : {})}
               {...(canStop ? { onStop: conversation.stop } : {})}
               onSend={conversation.send}
               placeholder={conversation.placeholder}

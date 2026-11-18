@@ -129,6 +129,7 @@ export const requestSourceRules = {
   SignInAccount: shared,
   StartEmptyQuest: shared,
   StartMission: rule(false, (given) => given.workspacePath),
+  SteerQueuedMessage: shared,
   StopAtBudget: shared,
   StopThread: shared,
   SwitchAtBudget: shared,

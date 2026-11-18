@@ -1,4 +1,4 @@
-import type { AttachmentId, MessageDelivery, MissionDetail, ThreadId } from "@outlore/contracts";
+import type { AttachmentId, MessageDelivery, MessageId, MissionDetail, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
 import { imageRefusalOf } from "../attachments/attachmentRules";
 import { useHarnesses } from "../editors/runners";
@@ -57,7 +57,6 @@ export function useThreadConversation(
   return {
     act: actWith(setActionError),
     actionError,
-    alternative: { label: state.other, onSend: sendAs(state.other) },
     comments,
     draft,
     entries,
@@ -69,6 +68,7 @@ export function useThreadConversation(
     refusal: thread === null ? null : imageRefusalOf(harnesses, thread.harness, thread.model),
     send: sendAs(state.delivery),
     skills,
+    steer: (messageId: MessageId) => client.request({ _tag: "SteerQueuedMessage", messageId }),
     stop: () => client.request({ _tag: "StopThread", threadId }),
     terminal,
   };

@@ -200,8 +200,11 @@ function ChroniclerChat({
               client={client}
               entry={item}
               harness={thread.harness}
+              isInTurn={isInTurn}
+              onInterrupt={conversation.interrupt}
               onOpenMission={onOpenMission}
               onSelectThread={() => {}}
+              onSteer={conversation.steer}
               skills={skills}
               workspacePath={realm?.path ?? null}
             />
@@ -221,9 +224,7 @@ function ChroniclerChat({
         onSend={conversation.send}
         {...(canStop ? { onStop: conversation.stop } : {})}
         placeholder={conversation.placeholder}
-        {...(isInTurn ? { alternative: conversation.alternative } : {})}
         skills={skills}
-        {...(isInTurn ? { onInterrupt: conversation.interrupt } : {})}
       />
     </View>
   );

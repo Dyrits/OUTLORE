@@ -143,6 +143,20 @@ export const deliverMessages = Effect.fnUntraced(function* (messageIds: Readonly
       WHERE id IN ${sql.in(messageIds)} AND delivered_turn_id IS NULL`;
 });
 
+/**
+ * Lets a queued owner message join its thread's running turn: it is no longer queued, so the turn may take it in.
+ * Returns the thread, or refuses when the message was already delivered or was never queued. Callers run it in a transaction.
+ */
+export const releaseQueued = Effect.fnUntraced(function* (messageId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [message] = yield* sql<{ threadId: string }>`
+    UPDATE messages SET is_queued = 0
+    WHERE id = ${messageId} AND sender_kind = 'user' AND is_queued = 1 AND delivered_turn_id IS NULL
+    RETURNING thread_id AS threadId`;
+  if (message === undefined) return yield* invalid("This message is no longer queued.");
+  return message.threadId;
+});
+
 /** A message to record in a thread: from the owner, or from another thread of its mission. */
 type NewMessage = {
   /** The files the owner attached, added beforehand as drafts (message-attachments). */

@@ -1,4 +1,4 @@
-import type { HarnessName, Message, MissionId, ReplyUsage, Skill, ThreadId } from "@outlore/contracts";
+import type { HarnessName, Message, MessageId, MissionId, ReplyUsage, Skill, ThreadId } from "@outlore/contracts";
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { MessageImages } from "../attachments/attachmentViews";
@@ -125,9 +125,9 @@ export function WorkingIndicator({ harness, label }: { harness: HarnessName; lab
   );
 }
 
-/** The label above a message: none for the owner's own unless it waits for the next turn. */
+/** The label above a message: none for the owner's own, whose faint card says it waits. */
 const senderLabelOf = (message: Message) => {
-  if (message.sender === "user") return message.isQueued ? "Queued for the next turn" : null;
+  if (message.sender === "user") return null;
   return `${message.isResult ? "Result from" : "From"} "${shortened(message.fromTitle ?? "a quest")}"`;
 };
 
@@ -136,12 +136,21 @@ function MessageBubble({
   client,
   fromQuest,
   harness,
+  isInTurn,
   message,
+  onInterrupt,
   onOpenMission,
+  onSteer,
   skills,
   workspacePath,
 }: {
   client: ServiceClient;
+  /** Whether the thread is at work: only then can a queued message be steered or sent by interrupting. */
+  isInTurn: boolean;
+  /** Ends the thread's current turn, so a queued message starts the next at once. */
+  onInterrupt: () => Promise<unknown>;
+  /** Lets a queued message join the thread's current turn. */
+  onSteer: (messageId: MessageId) => Promise<unknown>;
   /** The quest a report came from, which its card opens by a small button at its corner. */
   fromQuest: MissionId | null;
   harness: HarnessName;
@@ -172,7 +181,15 @@ function MessageBubble({
   return (
     <View style={[styles.messageRow, message.sender === "user" && styles.messageRowUser]}>
       <CommentableCard about={message.sender} messageId={message.id} text={message.text}>
-        <View style={[styles.messageCard, cardStyles[message.sender], fromQuest !== null && styles.cardWithCorner]}>
+        <View
+          style={[
+            styles.messageCard,
+            cardStyles[message.sender],
+            fromQuest !== null && styles.cardWithCorner,
+            // The owner's message the agent does not have yet is drawn fainter, until it is delivered.
+            message.sender === "user" && !message.isDelivered && { opacity: 0.6 },
+          ]}
+        >
           {/* The owner's own messages need no label, as in a chat; a queued one says it waits. */}
           {sender !== null && <Text style={styles.senderName}>{sender}</Text>}
           {message.sender === "user" ? (
@@ -200,6 +217,16 @@ function MessageBubble({
               onOpenMission={onOpenMission}
             />
           )}
+          {message.sender === "user" && message.isQueued && isInTurn && (
+            <View style={{ flexDirection: "row", gap: 16 }}>
+              <Pressable accessibilityRole="button" onPress={() => void onSteer(message.id).catch(() => {})}>
+                <Text style={styles.link}>Steer</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => void onInterrupt().catch(() => {})}>
+                <Text style={styles.link}>Interrupt</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </CommentableCard>
     </View>
@@ -211,13 +238,20 @@ export function EntryView({
   client,
   entry,
   harness,
+  isInTurn,
+  onInterrupt,
   onOpenMission,
   onSelectThread,
+  onSteer,
   skills,
   workspacePath,
 }: {
   client: ServiceClient;
   entry: Entry;
+  /** Whether the thread is at work. */
+  isInTurn: boolean;
+  onInterrupt: () => Promise<unknown>;
+  onSteer: (messageId: MessageId) => Promise<unknown>;
   /** The harness the thread runs on now: the mark of a reply that records none. */
   harness: HarnessName;
   /** The skills and workspace the owner's messages are read against, to draw what they named as chips. */
@@ -291,8 +325,11 @@ export function EntryView({
       client={client}
       fromQuest={entry.fromQuest}
       harness={harness}
+      isInTurn={isInTurn}
       message={entry.message}
+      onInterrupt={onInterrupt}
       onOpenMission={onOpenMission}
+      onSteer={onSteer}
       skills={skills}
       workspacePath={workspacePath}
     />

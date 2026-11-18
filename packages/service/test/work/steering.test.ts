@@ -55,11 +55,11 @@ const isIdleWith = (count: number) => (detail: MissionDetail) =>
 const childOf = (detail: MissionDetail) => detail.threads.find((thread) => thread.parentId === detail.thread.id);
 
 describe("steering a running thread", () => {
-  it.live("joins the owner's message to the running turn by default", () =>
+  it.live("joins the owner's message to the running turn when it is sent as Steer", () =>
     Effect.gen(function* () {
       const started = yield* start("wait 400");
       yield* settle(started.missionId, isRunning);
-      yield* send(started.threadId, "Also this");
+      yield* send(started.threadId, "Also this", "Steer");
       const detail = yield* settle(started.missionId, isIdleWith(1));
       expect(repliesOf(detail)).toEqual(["Echo: waited 400 + Also this"]);
       yield* Effect.sleep("100 millis");
@@ -81,11 +81,32 @@ describe("steering a running thread", () => {
     }).pipe(Effect.provide(live())),
   );
 
-  it.live("queues the owner's message when the owner's default is Queue", () =>
+  it.live("queues the owner's message by default, and a Steer on it joins the running turn", () =>
     Effect.gen(function* () {
       const settings = yield* call({ _tag: "ReadSettings" });
-      expect(settings.defaultDelivery).toBe("Steer");
-      yield* call({ _tag: "UpdateSettings", settings: { ...settings, defaultDelivery: "Queue" } });
+      expect(settings.defaultDelivery).toBe("Queue");
+      const started = yield* start("wait 400");
+      yield* settle(started.missionId, isRunning);
+      const sent = yield* send(started.threadId, "Sooner");
+      const queued = yield* read(started.missionId);
+      expect(queued.messages.find((message) => message.id === sent.messageId)).toMatchObject({
+        isDelivered: false,
+        isQueued: true,
+      });
+      yield* call({ _tag: "SteerQueuedMessage", messageId: sent.messageId });
+      const detail = yield* settle(started.missionId, isIdleWith(1));
+      expect(repliesOf(detail)).toEqual(["Echo: waited 400 + Sooner"]);
+      expect(detail.messages.find((message) => message.id === sent.messageId)).toMatchObject({
+        isDelivered: true,
+        isQueued: false,
+      });
+      const refused = yield* failureOf({ _tag: "SteerQueuedMessage", messageId: sent.messageId });
+      expect(refused).toBeDefined();
+    }).pipe(Effect.provide(live())),
+  );
+
+  it.live("queues the owner's message when the owner's default is Queue", () =>
+    Effect.gen(function* () {
       const started = yield* start("wait 300");
       yield* settle(started.missionId, isRunning);
       yield* send(started.threadId, "Later");

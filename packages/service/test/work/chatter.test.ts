@@ -6,7 +6,7 @@ import { afterEach } from "vitest";
 import { resolveChatter } from "../../src/work/chatter.ts";
 import { Commands, makeCommands } from "../../src/work/commands.ts";
 import { readTurnReach } from "../../src/work/mentions.ts";
-import { call, fixture, open, read, send, settle, start, tool } from "../fixtures/service.ts";
+import { call, fixture, open, read, send, sendTo, settle, start, tool } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 const live = () => {
@@ -217,7 +217,7 @@ describe("stopping both threads of a chatter pause", () => {
       const firstChild = firstWaiting.threads.find((thread) => thread.id !== first.threadId);
       const secondChild = secondWaiting.threads.find((thread) => thread.id !== second.threadId);
       if (firstChild === undefined || secondChild === undefined) return yield* Effect.die("Missing errands");
-      yield* send(firstChild.id, `Ask ${mentionTokenOf({ id: secondChild.id, kind: "side-quest" })}`);
+      yield* sendTo(firstChild.id, `Ask ${mentionTokenOf({ id: secondChild.id, kind: "side-quest" })}`, "Steer");
       for (let attempt = 0; attempt < 100; attempt++) {
         if ((yield* readTurnReach(firstChild.id)).reachable.has(secondChild.id)) break;
         yield* Effect.sleep("10 millis");

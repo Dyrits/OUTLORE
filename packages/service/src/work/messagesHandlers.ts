@@ -6,7 +6,7 @@ import { addAttachment, discardAttachment, readAttachment } from "./attachments.
 import { changed } from "./commands.ts";
 import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
-import { insertUserMessage } from "./messaging.ts";
+import { insertUserMessage, releaseQueued } from "./messaging.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 import { nameNewQuest } from "./titles.ts";
 /** Requests for writing and reading messages, dictation included, share the service request context. */
@@ -66,6 +66,10 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
         ),
       );
     }),
+    SteerQueuedMessage: (given) =>
+      commands.run(
+        releaseQueued(given.messageId).pipe(Effect.map((threadId) => changed(null, { threadsToWake: [threadId] }))),
+      ),
     TranscribeDictation: (given) => transcribeDictation(given.data),
   } satisfies OwnerHandlers<
     | "AddAttachment"
@@ -76,6 +80,7 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
     | "ReadJournal"
     | "RewriteBriefing"
     | "SendMessage"
+    | "SteerQueuedMessage"
     | "TranscribeDictation"
   >;
 };
