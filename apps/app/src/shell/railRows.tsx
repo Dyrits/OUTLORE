@@ -81,3 +81,14 @@ export function StateDot({ state }: { state: keyof typeof stateTones }) {
 export function Count({ isShown, value }: { isShown: boolean; value: number }) {
   return value > 0 ? <Text style={[local.count, !isShown && local.actionsHidden]}>{value}</Text> : null;
 }
+
+/** The line between two parts of the sidebar, with a diamond at its middle (as before CHG-0453). */
+export function Divider() {
+  return (
+    <View style={local.divider}>
+      <View style={local.dividerLine} />
+      <View style={local.diamond} />
+      <View style={local.dividerLine} />
+    </View>
+  );
+}

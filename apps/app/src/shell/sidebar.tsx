@@ -18,7 +18,7 @@ import { placementsOf, type RealmListing, reorderedRealmIds, toggledFold } from 
 import { NewQuestIcon, NewRealmIcon } from "./railActions";
 import { railOutlineOf } from "./railOutline";
 import { Quest, RealmHeader } from "./railQuests";
-import { Row, ShowAll } from "./railRows";
+import { Divider, Row, ShowAll } from "./railRows";
 import { isHovered, local } from "./railStyles";
 
 export type { Place } from "./placeCatalog";
@@ -201,7 +201,7 @@ export function Sidebar({
           onPress={() => setIsCreating(true)}
         />
         {!foldedSections.set.has("Realms") && outline.realms.map(rowOf)}
-        <View style={local.creationDivider} />
+        <Divider />
         <SectionTitle
           isOpen={!foldedSections.set.has("Borderlands")}
           onToggle={() => foldedSections.toggle("Borderlands")}
@@ -287,14 +287,14 @@ function Spending({
     budgets?.some((budget) => budget.planLimits !== null && budget.planLimits.windows.length > 0) ?? false;
   return (
     <>
-      <View style={local.creationDivider} />
+      <Divider />
       {hasLimits && (
         <View style={local.spending}>
           <ReserveRows use={global} />
         </View>
       )}
       {hasRings && <PlanLimitRings client={client} />}
-      {(hasLimits || hasRings) && <View style={local.creationDivider} />}
+      {(hasLimits || hasRings) && <Divider />}
       <Row
         isSelected={isWorkshopOpen}
         label="Workshop"

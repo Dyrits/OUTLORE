@@ -27,7 +27,15 @@ export const local = StyleSheet.create({
   buttonRest: { borderColor: colors.border, borderRadius: radii.md, borderWidth: 1, marginVertical: 2, minHeight: 32 },
   chevron: { alignItems: "center", height: 20, justifyContent: "center", width: chevronWidth },
   count: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
-  creationDivider: { backgroundColor: colors.edge, height: 1, marginHorizontal: 6, marginVertical: 6 },
+  diamond: {
+    backgroundColor: colors.edge,
+    height: 7,
+    marginHorizontal: 6,
+    transform: [{ rotate: "45deg" }],
+    width: 7,
+  },
+  divider: { alignItems: "center", flexDirection: "row", marginHorizontal: 6, marginVertical: 8 },
+  dividerLine: { backgroundColor: colors.border, flex: 1, height: 1 },
   dot: { borderRadius: radii.pill, height: 8, width: 8 },
   empty: {
     color: colors.textMuted,
