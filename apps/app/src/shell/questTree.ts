@@ -180,22 +180,20 @@ export interface RealmListing {
 }
 
 /**
- * The order of all realms after one is dragged onto another: it takes the other's place and the ones between shift by
- * one. Null for a drop on itself or on an unknown realm.
+ * The order of all realms after one is dropped before or after another. Null for a drop on itself or on an unknown
+ * realm, and for a drop that leaves the order as it was.
  */
 export const reorderedRealmIds = (
   realms: ReadonlyArray<{ readonly id: string }>,
   movedId: string,
   targetId: string,
+  side: "before" | "after",
 ): ReadonlyArray<string> | null => {
   const moved = realms.find((each) => each.id === movedId);
-  const target = realms.find((each) => each.id === targetId);
-  if (moved === undefined || target === undefined || moved.id === target.id) return null;
+  if (moved === undefined || realms.every((each) => each.id !== targetId) || movedId === targetId) return null;
   const without = realms.filter((each) => each.id !== movedId);
   const at = without.findIndex((each) => each.id === targetId);
-  const from = realms.findIndex((each) => each.id === movedId);
-  const to = realms.findIndex((each) => each.id === targetId);
-  // Dragged down, it lands after the target; dragged up, before it.
-  without.splice(from < to ? at + 1 : at, 0, moved);
-  return without.map((each) => each.id);
+  without.splice(side === "before" ? at : at + 1, 0, moved);
+  const order = without.map((each) => each.id);
+  return order.every((id, index) => id === realms[index]?.id) ? null : order;
 };

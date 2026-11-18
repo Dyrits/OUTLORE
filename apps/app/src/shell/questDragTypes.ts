@@ -28,6 +28,9 @@ export interface DropTargetProps {
   readonly children: ReactNode;
   /** Hears the mission id of the quest dropped here. */
   readonly onDropQuest: (missionId: string) => void;
-  /** Hears the workspace id of the realm dropped here, when the place is a realm. */
-  readonly onDropRealm?: (realmId: string) => void;
+  /**
+   * Hears the workspace id of the realm dropped here, when the place is a realm, and whether it was dropped on the
+   * place's upper or lower half: the dragged realm goes before or after this one.
+   */
+  readonly onDropRealm?: (realmId: string, side: "before" | "after") => void;
 }

@@ -121,11 +121,12 @@ export function Sidebar({
   };
 
   // A realm dropped on another of its group takes that place; the whole new order is saved.
-  const dropRealmOn = (targetId: WorkspaceId) => (movedId: string) => {
+  const dropRealmOn = (targetId: WorkspaceId) => (movedId: string, side: "before" | "after") => {
     const order = reorderedRealmIds(
       placements.realms.map((each) => each.workspace),
       movedId,
       targetId,
+      side,
     );
     if (order === null) return;
     client

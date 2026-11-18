@@ -209,14 +209,17 @@ describe("the full quest list's rows", () => {
 
 describe("putting a dragged realm in another place", () => {
   const realms = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "x" }, { id: "y" }];
-  it("takes the place of the realm it is dropped on", () => {
-    expect(reorderedRealmIds(realms, "a", "c")).toEqual(["b", "c", "a", "x", "y"]);
-    expect(reorderedRealmIds(realms, "c", "a")).toEqual(["c", "a", "b", "x", "y"]);
-    expect(reorderedRealmIds(realms, "y", "x")).toEqual(["a", "b", "c", "y", "x"]);
-    expect(reorderedRealmIds(realms, "a", "y")).toEqual(["b", "c", "x", "y", "a"]);
+  it("lands before or after the realm it is dropped on", () => {
+    expect(reorderedRealmIds(realms, "a", "c", "before")).toEqual(["b", "a", "c", "x", "y"]);
+    expect(reorderedRealmIds(realms, "a", "c", "after")).toEqual(["b", "c", "a", "x", "y"]);
+    expect(reorderedRealmIds(realms, "c", "a", "before")).toEqual(["c", "a", "b", "x", "y"]);
+    expect(reorderedRealmIds(realms, "y", "x", "before")).toEqual(["a", "b", "c", "y", "x"]);
+    expect(reorderedRealmIds(realms, "a", "y", "after")).toEqual(["b", "c", "x", "y", "a"]);
   });
-  it("does nothing when dropped on itself or on an unknown realm", () => {
-    expect(reorderedRealmIds(realms, "a", "a")).toBeNull();
-    expect(reorderedRealmIds(realms, "a", "nope")).toBeNull();
+  it("does nothing when dropped on itself, on an unknown realm, or where it already stands", () => {
+    expect(reorderedRealmIds(realms, "a", "a", "before")).toBeNull();
+    expect(reorderedRealmIds(realms, "a", "nope", "after")).toBeNull();
+    expect(reorderedRealmIds(realms, "b", "a", "after")).toBeNull();
+    expect(reorderedRealmIds(realms, "a", "b", "before")).toBeNull();
   });
 });
