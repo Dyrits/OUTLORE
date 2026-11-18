@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
 import { CompanionPanel } from "../editors/companionPicker";
-import { UsageEdge } from "../editors/planLimitRings";
+import { UsageButton } from "../editors/planLimitRings";
 import {
   CompanionDockActions,
   CompanionTabOf,
@@ -342,9 +342,9 @@ export function Shell(
                       {chroniclerChat}
                     </ChroniclerColumn>
                   )}
-                  <UsageEdge client={props.client} />
                   <View style={local.menuPin}>
                     <SidebarMenu onPlace={props.onPlace} />
+                    <UsageButton client={props.client} />
                   </View>
                   {(hasQuestPanel ? details.isPinned !== true : hasCompanion) && (
                     <Pressable
@@ -420,8 +420,17 @@ const local = StyleSheet.create({
     width: handleSize * 0.75,
   },
   hidden: { display: "none" },
-  // The menu button's fixed place at the window's bottom left, the same with the sidebar shown or hidden.
-  menuPin: { bottom: 8, left: 12, position: "absolute", zIndex: 5 },
+  // The foot buttons' fixed place at the window's bottom left, the same with the sidebar shown or hidden: the Workshop's
+  // gear, and the Reserves chest that opens the plan limits above itself.
+  menuPin: {
+    alignItems: "flex-end",
+    bottom: 8,
+    flexDirection: "row",
+    gap: 2,
+    left: 12,
+    position: "absolute",
+    zIndex: 5,
+  },
   narrow: { backgroundColor: colors.page, flex: 1 },
   narrowContent: { flex: 1 },
   noCompanion: { color: colors.textMuted, padding: 16 },

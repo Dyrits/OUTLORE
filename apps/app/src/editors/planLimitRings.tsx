@@ -7,6 +7,7 @@ import { meterLevelOf, planLimitTextOf } from "../foundation/labels";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ProviderMark } from "../ui/providerMarks";
+import { ReservesIcon } from "../ui/reservesIcon";
 import { currentWindowsOf, leftPercentOf, type Ring, resetsInTextOf, ringStackOf } from "./planRings";
 
 const size = 44;
@@ -85,18 +86,16 @@ function WindowBar({ now, window }: { now: number; window: PlanLimitWindow }) {
 /** What hovering or focusing a provider's rings opens: a card above them with the provider and each window spelled out. */
 function UsageCard({
   harness,
-  isBelow,
   name,
   windows,
 }: {
   harness: HarnessName;
-  isBelow: boolean;
   name: string;
   windows: readonly PlanLimitWindow[];
 }) {
   const now = Date.now();
   return (
-    <View pointerEvents="none" style={[local.card, isBelow && local.cardBelow]}>
+    <View pointerEvents="none" style={local.card}>
       <View style={local.provider}>
         <ProviderMark harness={harness} size={16} />
         <Text style={local.providerName}>{name}</Text>
@@ -109,32 +108,29 @@ function UsageCard({
 }
 
 /**
- * A tab on the window's left border that unfolds the plan limits to its right, over whatever stands there, whether the
- * sidebar is shown or not. It folds back on a second press. Nothing shows while no plan reports a limit.
+ * The Reserves button at the window's bottom left: the old Reserves chest, which opens the plan limits in a strip above
+ * itself and folds them on a second press. Nothing shows while no plan reports a limit.
  */
-export function UsageEdge({ client }: { client: ServiceClient }) {
+export function UsageButton({ client }: { client: ServiceClient }) {
   const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
   const [isOpen, setIsOpen] = useState(false);
   if (!budgets?.some((budget) => budget.planLimits !== null && budget.planLimits.windows.length > 0)) return null;
   return (
-    <View pointerEvents="box-none" style={local.edge}>
+    <View style={local.usage}>
+      {isOpen && (
+        <View style={local.usageStrip}>
+          <PlanLimitRings client={client} />
+        </View>
+      )}
       <Pressable
         accessibilityLabel={`${isOpen ? "Fold" : "Unfold"} plan limits`}
         accessibilityRole="button"
         accessibilityState={{ expanded: isOpen }}
         onPress={() => setIsOpen(!isOpen)}
-        style={[local.edgeTab, isOpen && local.edgeTabOpen]}
+        style={({ pressed }) => [local.usageButton, (pressed || isOpen) && local.usageButtonOpen]}
       >
-        <Svg fill="none" height={14} stroke={colors.textMuted} strokeWidth={2.2} viewBox="0 0 24 24" width={14}>
-          <Circle cx={12} cy={12} r={8} />
-          <Circle cx={12} cy={12} r={2.5} />
-        </Svg>
+        <ReservesIcon size={22} />
       </Pressable>
-      {isOpen && (
-        <View style={local.edgeStrip}>
-          <PlanLimitRings client={client} isCardBelow />
-        </View>
-      )}
     </View>
   );
 }
@@ -146,7 +142,7 @@ export function UsageEdge({ client }: { client: ServiceClient }) {
  * left and time to its reset. An account whose harness reports none shows nothing here (its Charter row says
  * "Limits not reported"), and nothing is shown before a reading arrives.
  */
-export function PlanLimitRings({ client, isCardBelow = false }: { client: ServiceClient; isCardBelow?: boolean }) {
+export function PlanLimitRings({ client }: { client: ServiceClient }) {
   const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
   const [shown, setShown] = useState<string | null>(null);
   const reported =
@@ -158,7 +154,6 @@ export function PlanLimitRings({ client, isCardBelow = false }: { client: Servic
       {detailed !== undefined && (
         <UsageCard
           harness={detailed.harness}
-          isBelow={isCardBelow}
           name={detailed.accountId === null ? detailed.harness : detailed.label}
           windows={currentWindowsOf(detailed.planLimits?.windows ?? [], Date.now())}
         />
@@ -212,37 +207,8 @@ const local = StyleSheet.create({
     shadowRadius: 14,
     zIndex: 10,
   },
-  // Under rings at the top of the window, the card opens downward.
-  cardBelow: { bottom: "auto", marginBottom: 0, marginTop: 6, top: "100%" },
   circle: { borderRadius: radii.pill, padding: 3 },
   circleLifted: { backgroundColor: colors.controlHover, transform: [{ scale: 1.08 }] },
-  edge: { alignItems: "center", flexDirection: "row", left: 0, position: "absolute", top: "22%", zIndex: 9 },
-  edgeStrip: {
-    backgroundColor: colors.surface,
-    borderBottomRightRadius: radii.lg,
-    borderColor: colors.edge,
-    borderTopRightRadius: radii.lg,
-    borderWidth: 1,
-    marginLeft: -1,
-    padding: 6,
-    shadowColor: colors.shadow,
-    shadowOffset: { height: 6, width: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-  },
-  edgeTab: {
-    alignItems: "center",
-    backgroundColor: colors.sidebar,
-    borderBottomRightRadius: radii.md,
-    borderColor: colors.edge,
-    borderTopRightRadius: radii.md,
-    borderWidth: 1,
-    height: 30,
-    justifyContent: "center",
-    paddingRight: 1,
-    width: 16,
-  },
-  edgeTabOpen: { backgroundColor: colors.ground },
   group: { paddingTop: 6 },
   provider: { alignItems: "center", flexDirection: "row", gap: 8 },
   providerName: {
@@ -256,6 +222,24 @@ const local = StyleSheet.create({
   ringSvg: { position: "absolute" },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingHorizontal: 7 },
   track: { backgroundColor: colors.ground, borderRadius: radii.pill, height: 6, overflow: "hidden" },
+  usage: { zIndex: 9 },
+  usageButton: { alignItems: "center", borderRadius: radii.md, height: 30, justifyContent: "center", width: 30 },
+  usageButtonOpen: { backgroundColor: colors.controlHover },
+  usageStrip: {
+    backgroundColor: colors.surface,
+    borderColor: colors.edge,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    bottom: "100%",
+    left: 0,
+    marginBottom: 6,
+    padding: 6,
+    position: "absolute",
+    shadowColor: colors.shadow,
+    shadowOffset: { height: 6, width: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+  },
   window: { gap: 5 },
   windowLeft: {
     color: colors.text,
