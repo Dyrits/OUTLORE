@@ -54,9 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the summons ring, the teal "your turn" dot, the quest list's archive button and archiving an errand on its own (CHG-0512 to CHG-0516, pushed to `origin/main` with this handoff; open: the owner's look in a window and on a phone; and another session's uncommitted CHG-0514 needs the next free number), read the [current handoff](.agents/handoffs/2026-11-18-2105-summons-your-turn-errand-archive.md). Handoffs are shared and committed.
+
 - To resume the plan-limit rings with the shortest window outermost (CHG-0511, pushed to `origin/main` with this handoff; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-2101-usage-rings-order.md). Handoffs are shared and committed.
 
 - To resume the provider sign-in without a Terminal window (CHG-0510, pushed to `origin/main` with this handoff; open: the owner's real sign-in check, and a fallback for Claude Code if it needs a pasted code), read the [current handoff](.agents/handoffs/2026-11-18-2100-sign-in-without-terminal.md). Handoffs are shared and committed.
-
-- To resume the browser for threads (Kitesurf, Playwright and OpenBot research; nothing built, no batch agreed yet; open: the owner's approval of a first batch), read the [current handoff](.agents/handoffs/2026-11-18-1928-thread-browser.md). Handoffs are shared and committed.
 
