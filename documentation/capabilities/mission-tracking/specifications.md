@@ -162,7 +162,7 @@ Agreed on 2026-11-13 (CHG-0271); removed by CHG-0463 (the sidebar lists every re
 
 Agreed on 2026-11-18 (CHG-0449). Crest removal is CHG-0452. The sidebar, footer menu, retired destinations, Gild removal and Connectors in Settings are CHG-0457, with the phone layout in CHG-0454. The Realms overview and quest panel's Realm row are CHG-0458. The errand rename is CHG-0456. Compact creation rows are CHG-0459.
 
-- The **Realms** and **Borderlands** labels use the size of the sidebar's other rows, and the two creation rows (**Visit a realm**, **Start a quest**) are drawn as buttons with a rounded border (CHG-0474).
+- The **Realms** and **Borderlands** labels use the size of the sidebar's other rows, and the two creation rows (**Visit a realm**, **Start a quest**) have no border and read in italics (CHG-0476; CHG-0474 had given them a rounded border).
 - A quest's or errand's state dot stands before its title, after the fold mark (CHG-0473), not at the end of the row.
 - Pressing the **Realms** or **Borderlands** label folds or unfolds its section (a small chevron stands before it; CHG-0472). Folding hides the section's realms or quests and the **Show all** link; the section's action row stays. Each realm still folds by pressing its own heading. Starting a quest unfolds the section and realm it lands in. Folds are not remembered across restarts.
 - Within the **Realms** section, realms tied to a folder come first, then a thin horizontal line, then those tied to none (the line shows only when both exist; CHG-0471).

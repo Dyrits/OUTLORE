@@ -199,10 +199,10 @@ export function Sidebar({
         {!foldedSections.set.has("Realms") && untied.map(rowOf)}
         <Row
           accessory={<NewRealmIcon color={colors.highlight} />}
-          frameStyle={local.buttonRow}
           isSelected={false}
           label="Visit a realm"
           onPress={() => setIsCreating(true)}
+          textStyle={local.creationText}
         />
         <View style={local.creationDivider} />
         <SectionTitle
@@ -223,10 +223,10 @@ export function Sidebar({
         {failureUnder("none")}
         <Row
           accessory={<NewQuestIcon color={colors.highlight} />}
-          frameStyle={local.buttonRow}
           isSelected={false}
           label="Start a quest"
           onPress={() => startQuest("none", null)}
+          textStyle={local.creationText}
         />
       </ScrollView>
       <View style={local.footer}>
