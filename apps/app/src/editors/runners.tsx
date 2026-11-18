@@ -2,7 +2,7 @@ import type { AccountId, EffortChoice, HarnessList, HarnessName, ModelChoice } f
 import { type ComponentProps, type ReactElement, useCallback, useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
-import { harnessLabels, modelLabelOf } from "../foundation/formatting";
+import { effortName, harnessLabels, modelLabelOf } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
 import { Choice, Menu, Steps } from "../ui/pickers";
 import { harnessNames, harnessOfAccount } from "./accountModels";
@@ -233,7 +233,7 @@ export function RunnerPickers({
           <Text style={styles.fieldName}>Effort</Text>
           <Steps
             accessibilityLabel="Effort"
-            label={(effort: EffortChoice) => (effort === "default" ? "default" : effort)}
+            label={effortName}
             onChange={(effort: EffortChoice) => onChange({ ...value, effort })}
             options={effortOptions}
             value={value.effort}

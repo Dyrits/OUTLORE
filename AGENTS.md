@@ -58,4 +58,4 @@ Latest handoffs:
 
 - To resume Code Mode widened to every tool of Outlore's tool server (CHG-0446, CHG-0447; on branch `worktree/code-mode-widen`, not merged or pushed; open: the owner's review of the decisions, a live harness check, the owner's look at the Charter's switch), read the [current handoff](.agents/handoffs/2026-11-18-0105-code-mode-widened.md). Handoffs are shared and committed.
 
-- To resume findings from the review since 0.1.6-Prototype, read the [current handoff](.agents/handoffs/2026-11-17-2316-release-review.md). Handoffs are shared and committed.
+- To resume the effort-level title case (merged into main, branch deleted; open: the owner's look in the app, the "XHigh" spelling, a changelog entry), read the [current handoff](.agents/handoffs/2026-11-18-0054-effort-title-case.md). Handoffs are shared and committed.

@@ -35,7 +35,7 @@ export const runnerSummaryOf = (
   const models = info?.accounts.find((account) => account.id === accountId)?.models ?? info?.models;
   const account =
     info !== undefined && info.accounts.length > 1 ? info.accounts.find(({ id }) => id === accountId) : undefined;
-  return `${modelLabelOf(runner.model, models)}${runner.effort === "default" ? "" : ` · ${runner.effort}`}${account === undefined ? "" : ` · ${account.label}`}`;
+  return `${modelLabelOf(runner.model, models)}${runner.effort === "default" ? "" : ` · ${effortName(runner.effort)}`}${account === undefined ? "" : ` · ${account.label}`}`;
 };
 
 /** Each harness's usual model company, when the model's own identifier names none. */
@@ -90,8 +90,12 @@ export const replyWriterOf = (
   return { harness, label: companionLabelOf(harness, reply.model, "default") };
 };
 
+/** An effort level in title case, such as "High" or "XHigh"; the providers name them in lowercase. */
+export const effortName = (effort: EffortChoice) =>
+  effort === "default" ? "Default" : effort === "xhigh" ? "XHigh" : effort.charAt(0).toUpperCase() + effort.slice(1);
+
 /** An effort level as the owner reads it. */
-export const effortLabel = (effort: EffortChoice) => (effort === "default" ? "Default effort" : effort);
+export const effortLabel = (effort: EffortChoice) => (effort === "default" ? "Default effort" : effortName(effort));
 
 /** A turn's tokens in full, each kind counted. */
 export const usageDetail = (usage: TokenUsage) =>

@@ -1,7 +1,7 @@
 import type { AccountId, EffortChoice, HarnessList, HarnessName, ModelChoice } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
+import { effortName, harnessLabels, modelLabelOf } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, outline, radii, round } from "../foundation/theme";
 import { modelsMatching } from "../ui/modelSearch";
@@ -134,7 +134,7 @@ export function CompanionBody(props: CompanionBodyProps) {
           <Text style={local.footerName}>Effort</Text>
           <Steps
             accessibilityLabel="Effort"
-            label={(effort: EffortChoice) => (effort === "default" ? "default" : effortLabel(effort))}
+            label={effortName}
             onChange={props.onEffort}
             options={props.effortOptions}
             value={props.effort}

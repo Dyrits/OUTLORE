@@ -1,7 +1,7 @@
 import type { AccountId, EffortChoice, HarnessList, HarnessName, ModelChoice } from "@outlore/contracts";
 import { type ReactElement, useContext, useEffect, useId, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { modelLabelOf, runnerSummaryOf } from "../foundation/formatting";
+import { effortName, modelLabelOf, runnerSummaryOf } from "../foundation/formatting";
 import { CompanionDockActions, CompanionTabOf } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
@@ -129,7 +129,7 @@ export function CompanionPicker({
           <Text numberOfLines={1} style={local.triggerText}>
             {currentLabel}
           </Text>
-          {props.effort !== "default" && <Text style={local.triggerEffort}>{props.effort}</Text>}
+          {props.effort !== "default" && <Text style={local.triggerEffort}>{effortName(props.effort)}</Text>}
           <Text style={styles.menuCaret}>⌄</Text>
         </Pressable>
       ) : (
