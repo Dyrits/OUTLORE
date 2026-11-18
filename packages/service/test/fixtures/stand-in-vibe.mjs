@@ -153,6 +153,19 @@ createInterface({ input: process.stdin }).on("line", (line) => {
         protocolVersion: 1,
       },
     });
+  // Vibe validates `mcpServers` against ACP's `HttpMcpServer` (type, name, url, headers all required) and answers
+  // -32602 Invalid params otherwise, as mistral-vibe 3.1.3 does.
+  if (
+    (method === "session/new" || method === "session/load") &&
+    !(params.mcpServers ?? []).every(
+      (server) =>
+        server.type === "http" &&
+        typeof server.name === "string" &&
+        typeof server.url === "string" &&
+        Array.isArray(server.headers),
+    )
+  )
+    return send({ error: { code: -32602, message: "Invalid params" }, id });
   if (method === "session/new")
     return send({
       id,

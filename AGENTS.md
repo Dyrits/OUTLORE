@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume Mistral Vibe as a fourth harness (CHG-0520, pushed to `origin/main` with this handoff; open: a live check with a real `vibe-acp`, and the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-2209-mistral-vibe-provider.md). Handoffs are shared and committed.
+- To resume Mistral Vibe as a fourth harness (CHG-0520 and the MCP server shape fix CHG-0522, pushed to `origin/main` with this handoff; open: a full thread on a real `vibe-acp` in the app, and the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-2351-mistral-vibe-mcp-shape-fix.md). Handoffs are shared and committed.
 
 - To resume queueing by default with Steer and Interrupt on a queued message (CHG-0519, pushed to `origin/main` with this handoff; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-2142-queue-steer-interrupt.md). Handoffs are shared and committed.
 

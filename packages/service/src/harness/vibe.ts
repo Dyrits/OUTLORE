@@ -56,8 +56,13 @@ interface VibeConnection extends HarnessConnection {
   readonly toolCalls: Map<string, unknown>;
 }
 
-/** The session's MCP servers: Outlore's own tool server, as an HTTP MCP server (ACP `HttpMcpServer`). */
-const mcpServersOf = (access: ThreadAccess) => [{ name: toolServerName, url: access.mcpUrl }];
+/**
+ * The session's MCP servers: Outlore's own tool server, as an HTTP MCP server (ACP `HttpMcpServer`). Vibe requires
+ * `type` and `headers` and answers -32602 Invalid params without them.
+ */
+const mcpServersOf = (access: ThreadAccess) => [
+  { headers: [], name: toolServerName, type: "http", url: access.mcpUrl },
+];
 
 /** The modes a session's answer lists, by id. */
 const modeIdsOf = (modes: unknown): ReadonlyArray<string> => {
