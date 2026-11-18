@@ -54,9 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the browser for threads (Kitesurf, Playwright and OpenBot research; nothing built, no batch agreed yet; open: the owner's approval of a first batch), read the [current handoff](.agents/handoffs/2026-11-18-1928-thread-browser.md). Handoffs are shared and committed.
+- To resume the provider sign-in without a Terminal window (CHG-0510, pushed to `origin/main` with this handoff; open: the owner's real sign-in check, and a fallback for Claude Code if it needs a pasted code), read the [current handoff](.agents/handoffs/2026-11-18-2100-sign-in-without-terminal.md). Handoffs are shared and committed.
 
-- To resume the sidebar's creation icons (CHG-0507, which removed the creation rows of CHG-0503 to CHG-0506; committed and pushed with this handoff; open: the owner's look in a window and on a phone, and an unrelated uncommitted `shell.tsx` change), read the [current handoff](.agents/handoffs/2026-11-18-1752-creation-icons.md). Handoffs are shared and committed.
+- To resume the browser for threads (Kitesurf, Playwright and OpenBot research; nothing built, no batch agreed yet; open: the owner's approval of a first batch), read the [current handoff](.agents/handoffs/2026-11-18-1928-thread-browser.md). Handoffs are shared and committed.
 
 - To resume the context-window redo with the 272K soft limit (CHG-0509, pushed to `origin/main` with this handoff; open: the main rebase past the Vibe edits, a live harness check, the owner's look) and the Android phone check, read the [current handoff](.agents/handoffs/2026-11-18-1853-context-window-soft-limit.md). Handoffs are shared and committed.
 
