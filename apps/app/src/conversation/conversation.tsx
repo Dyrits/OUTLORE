@@ -8,7 +8,7 @@ import { countedOf } from "../foundation/labels";
 import { usePageNavigation } from "../foundation/pageNavigation";
 import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
-import { colors, fontSizes, fonts, radii, stateLabels, stateTones } from "../foundation/theme";
+import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { JournalScreen } from "../lore/journal";
@@ -74,7 +74,7 @@ function ThreadPane({
     <CommentsProvider value={comments}>
       <View style={[styles.flex, styles.pane]}>
         {onBack !== undefined && (
-          // A phone's header: a round back arrow, the title and state in the middle, and the archive button.
+          // A phone's header: a round back arrow, the title with its state's dot in the middle, and the archive button.
           <View style={local.mobileHeader}>
             <Pressable
               accessibilityLabel="Back to the menu"
@@ -88,9 +88,7 @@ function ThreadPane({
               <Text numberOfLines={1} style={local.mobileTitleText}>
                 {thread.title}
               </Text>
-              <Text numberOfLines={1} style={[local.mobileState, { color: stateTones[thread.state].color }]}>
-                {stateLabels[thread.state]}
-              </Text>
+              <StateIndicator state={thread.state} />
             </View>
             {thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived" ? (
               <View style={local.round}>
@@ -394,7 +392,6 @@ const roundSize = 36;
 const local = StyleSheet.create({
   // A phone's quest header: two round buttons around a rounded bar that holds the title and the state.
   mobileHeader: { alignItems: "center", flexDirection: "row", gap: 8, paddingBottom: 6 },
-  mobileState: { fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
   mobileTitle: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -402,12 +399,20 @@ const local = StyleSheet.create({
     borderRadius: radii.pill,
     borderWidth: 1,
     flex: 1,
+    flexDirection: "row",
+    gap: 6,
     justifyContent: "center",
     minHeight: roundSize,
     paddingHorizontal: 14,
     paddingVertical: 3,
   },
-  mobileTitleText: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
+  mobileTitleText: {
+    color: colors.text,
+    flexShrink: 1,
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.md,
+    fontWeight: "600",
+  },
   round: {
     alignItems: "center",
     backgroundColor: colors.surface,
