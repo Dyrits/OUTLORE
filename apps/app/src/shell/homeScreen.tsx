@@ -25,7 +25,7 @@ export function HomeScreen({ client, onOpen }: { client: ServiceClient; onOpen: 
   return (
     <View accessibilityLabel="Home" style={local.page}>
       <Text style={local.title}>Pick a quest in the sidebar, or start one.</Text>
-      <Button isDisabled={isStarting} label="Start a quest" onPress={() => void start()} />
+      <Button isDisabled={isStarting} label="Start a new quest" onPress={() => void start()} />
       {failure !== null && <Text style={styles.error}>{failure}</Text>}
     </View>
   );

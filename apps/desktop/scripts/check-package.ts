@@ -58,7 +58,8 @@ const evaluate = (url: string, expression: string) =>
 // The endpoint itself contains an owner token, so only the success verdict leaves the renderer.
 const expression = `(async () => {
   const text = document.body?.innerText ?? "";
-  if (!(text.includes("Start a quest") && text.includes("Realms")) || typeof window.outlore?.endpoint !== "function") return "waiting";
+  if (!(text.includes("Start a new quest") && text.includes("Realms")) || typeof window.outlore?.endpoint !== "function")
+    return "waiting";
   await window.outlore.endpoint();
   const session = await window.outlore.terminalOpen("package-check", null);
   await window.outlore.terminalClose("package-check");

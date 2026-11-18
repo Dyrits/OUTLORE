@@ -191,7 +191,7 @@ export function Sidebar({
           accessory={<NewRealmIcon color={colors.highlight} />}
           isButton
           isSelected={false}
-          label="Visit a realm"
+          label="Visit a new realm"
           onPress={() => setIsCreating(true)}
         />
         {!isFolded("Realms") && outline.realms.length === 0 && (
@@ -209,7 +209,7 @@ export function Sidebar({
           accessory={<NewQuestIcon color={colors.highlight} />}
           isButton
           isSelected={false}
-          label="Start a quest"
+          label="Start a new quest"
           onPress={() => startQuest("none", null)}
         />
         {!isFolded("Borderlands") && placements.borderlands.length === 0 && (
