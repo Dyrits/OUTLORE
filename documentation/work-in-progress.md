@@ -1,5 +1,9 @@
 # Work in progress
 
+## Simpler app · 2026-11-18 · agreement and blueprint
+
+CHG-0449 records the simpler sidebar, removal of the Guild Hall hub, crests, and Gild, and the errand rename. The owner deferred implementation to a later session. [Specification](capabilities/mission-tracking/specifications.md#simplified-left-navigation) · [Blueprint](capabilities/mission-tracking/blueprint.md#simplified-sidebar-errands-and-crest-removal-chg-0449)
+
 ## Code Mode widened · 2026-11-18 · built and tested on branch `worktree/code-mode-widen`, not merged, the owner's look and a live harness check pending
 
 The owner said Code Mode should do many things, as in Cloudflare's article, and asked for it built (proposal CHG-0446, delivery CHG-0447). With the switch on, a thread reaches Outlore's own tools and its connectors' tools by code, through one `run_code` tool; four tools stay direct; at most 5 calls that start work a run; the setting is read once per turn and joins the harness restart keys; the Charter's switch reads "Code Mode". It works with no connector. Biome, typecheck and the full suite pass (2,061 passed, 54 skipped). The listing is only 7% smaller; the gain of chained calls is unmeasured. Not seen in a window or on a phone, not tried on a live Claude Code, Codex or OpenCode. The decisions are listed in the [specification](capabilities/connectors/specifications.md#code-mode) and the owner can redirect any. [Verification](verification/2026-11-18-code-mode-widened.md).

@@ -33,7 +33,7 @@ Agreed on 2026-11-10 (CHG-0130). On 2026-11-11 (CHG-0161) the placements were re
 - The sidebar supports dragging a quest from its current Realm or the Borderlands onto another placement.
 - Before changing placement, Outlore asks for confirmation naming the source and destination and explaining that the available realm lore will change.
   Confirm applies the move; Cancel leaves the quest and its tree in their original placement.
-  This confirmation applies to every placement-changing move, including moving a quest into the Borderlands, whichever interface initiates it.
+  This confirmation applies to every placement-changing move, including taking a quest out of its realm, whichever interface initiates it. See [Simplified left navigation](#simplified-left-navigation) for the change to the sidebar targets.
 - A move includes the quest and every side-quest at every depth, including threads explicitly attached to another workspace; no branch stays behind.
 - A move is refused while any thread in the quest tree is running; it does not stop running threads automatically.
   The running-thread check applies when the owner confirms, even if no thread was running when the drag began.
@@ -111,7 +111,7 @@ Agreed on 2026-11-13 (CHG-0271); not implemented.
 - Restore keeps the realm's lore and brings its previously active quests back as described above.
 - Start afresh reactivates the same realm id with no realm-level lore in use. All its previous quests stay archived, attached to that realm and findable in the Archive, with their own lore, conversations, and journals unchanged. Global lore is unchanged.
 - Starting afresh deletes the realm-level lore through the existing recoverable [lore deletion and history](../scoped-intel/specifications.md#history-and-undo), not a permanent purge. The owner can recover those entries through the lore panel's Deleted filter.
-- For both Restore and Start afresh, a two-column comparison then shows the archived realm's name and crest beside the proposed name and crest. The owner chooses the name and crest independently, so either combination is possible.
+- For both Restore and Start afresh, a two-column comparison then shows the archived realm's name and crest beside the proposed name and crest. The owner chooses the name and crest independently, so either combination is possible. (Crests are removed by CHG-0449, see [Simplified left navigation](#simplified-left-navigation): the comparison covers the name only.)
 - Each comparison row is omitted when its two values are exactly the same; if neither row remains, the comparison popup is skipped. Restore defaults to the archived values, and Start afresh to the proposed values.
 - A blank name in the form resolves to the folder's name and is treated as the proposed name for comparison. The form starts with a randomly shuffled crest, which is a proposed value, not an absent choice. These rules supersede the earlier proposal to treat blank fields as no choice.
 - Start afresh has a final confirmation after the comparison, naming the realm and counting the realm-level lore entries to delete. Its actions are **Wipe lore and start afresh** and **Cancel**, and it explains recovery through the Deleted filter.
@@ -140,10 +140,9 @@ Agreed on 2026-11-13 (CHG-0271); implemented in 0.1.3-Prototype, with the quest-
 Agreed on 2026-11-13 (CHG-0271); not implemented.
 
 - The Realms destination becomes a compact quest-list overview grouped by active realm, using the existing overview's row presentation rather than a new card layout.
-- Each realm group has its crest and name, links to that realm's overview, and lists its active quests with state, Companion, latest activity, and foldable nested side-quests.
+- Each realm group has its name (and, until CHG-0449 is built, its crest), links to that realm's overview, and lists its active quests with state, Companion, latest activity, and foldable nested side-quests.
 - Realm grouping takes precedence over day grouping. Include empty active realms with a New quest action; leave archived realms out.
-- The Borderlands retain their own page and are not another realm group.
-- An overview button beside the sidebar's Realms heading opens this destination. Pressing the heading or its fold arrow keeps the existing fold behavior.
+- With CHG-0449, quests in no realm appear as plain rows after the realm groups. Pressing the sidebar's **Realms** title opens this overview. See [Simplified left navigation](#simplified-left-navigation).
 
 ### Spending
 
@@ -159,9 +158,27 @@ Agreed on 2026-11-13 (CHG-0271); not implemented.
 - The quest tree lives within the main sidebar, following [quest tree visibility](../thread-tree/specifications.md#quest-tree-visibility).
 - Agent validation checks navigation, collapse, resizing, and readable access to long labels at the reduced width; human acceptance checks the proportions in the running app.
 
+### Simplified left navigation
+
+Agreed on 2026-11-18 (CHG-0449). Implementation is pending. This section supersedes the earlier sidebar layout and crest behavior. The quest cap, full quest list, and realm archive and recovery are outside this change.
+
+- Pressing the **Realms** title at the top of the sidebar opens the overview of all realms. The title has no adjacent action buttons.
+- Each realm is a group of quests with a title, a fold control, and a folder mark when tied to a folder. Each quest can show its nested errands. Quests in no realm appear as ordinary rows after the realm groups in both the sidebar and the Realms overview, with no heading, divider, or mark. The separate Borderlands page is removed.
+- Two buttons sit below the quest list. **Visit a realm** opens the realm creation flow. **Start a quest** opens direct quest creation.
+- One menu at the foot opens **Rituals**, **Lore**, **Archive**, **Reserves**, and **Settings**. The phone menu opens the same places. The Charter becomes the **Connectors** section of Settings. The Craft and Library placeholders are removed. [Connectors specification](../connectors/specifications.md)
+- The Guild Hall hub is removed for now. Chronicler remains available from its top-bar button and opens in its own right-hand panel. [Quest coordination](../mission-coordination/specifications.md#place)
+- Quests can still be dragged onto a realm. The sidebar has no dedicated drop zone for taking a quest out of a realm. Any placement change requires the existing confirmation and running-thread check. [Quest placement and moves](#quest-placement-and-moves)
+- Rows use text, a state dot where applicable, and a folder mark for folder-tied realms. Folds use plain chevrons. The menu button uses a standard glyph. Crests are removed from the interface and realm tools. New-realm and recovery forms drop crest choice, and the recovery comparison covers the name alone. Existing crest data stays stored and the app ignores it.
+- The interface, Chronicler's guide, and thread tool text use **errand**. Code retains identifiers such as `thread` and `guildmaster`.
+- Remove **Gild** from the available themes. **One** and **Iskios** remain available in their light and dark looks.
+
+**Agent acceptance.** In light and dark looks and at narrow widths, the Realms title opens the overview, each of the two creation buttons opens its own flow, and every menu item opens its destination on desktop and phone. Quests with no realm appear after grouped quests in both views, including when there are no realm groups. Dragging displays no dedicated target for ungrouped quests. Dropping on a realm still requires confirmation. Chronicler and its conversation are accessible after removing the hub. A database with saved crests opens and shows realm names without crests. The interface, guide, and tool text use the new terms. The theme picker offers One and Iskios only.
+
+**Owner acceptance.** Review the sidebar in a window and on a phone.
+
 ### Left navigation structure
 
-Agreed on 2026-11-11 (CHG-0134). The owner then asked for the sidebar to be built (CHG-0143); direct creation is built (`f21e768`); confirmed quest moves and lifecycle changes remain to build.
+Agreed on 2026-11-11 (CHG-0134). Partly superseded on 2026-11-18 by [Simplified left navigation](#simplified-left-navigation) (CHG-0449). The owner then asked for the sidebar to be built (CHG-0143); direct creation is built (`f21e768`); confirmed quest moves and lifecycle changes remain to build.
 This navigation scope is specified; [related capability work](draft.md) is deferred to the relevant capability's implementation preparation.
 
 The expanded left sidebar uses this order:

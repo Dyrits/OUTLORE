@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume implementing the simpler navigation, errands, and removal of crests and Gild (CHG-0449), read the [current handoff](.agents/handoffs/2026-11-18-0126-simpler-navigation.md). Handoffs are shared and committed.
+
 - To resume the Android pairing and status-bar fixes or prepare the deferred release, read the [current handoff](.agents/handoffs/2026-11-18-0124-android-pairing-hotfix.md). Handoffs are shared and committed.
 
 - To resume voice input in the message boxes (whisper.cpp on the owner's device, no vendor receives audio; the service's transcriber is committed on branch `worktree/voice-input`, not merged; open: merge with renumbering of CHG-0447/0448, the desktop microphone button, a phone spike), read the [current handoff](.agents/handoffs/2026-11-18-0109-voice-input.md). Handoffs are shared and committed.
-
-- To resume Code Mode widened to every tool of Outlore's tool server (CHG-0446, CHG-0447; on branch `worktree/code-mode-widen`, not merged or pushed; open: the owner's review of the decisions, a live harness check, the owner's look at the Charter's switch), read the [current handoff](.agents/handoffs/2026-11-18-0105-code-mode-widened.md). Handoffs are shared and committed.

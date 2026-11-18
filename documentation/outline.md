@@ -17,8 +17,8 @@ The first build serves one user. The [architecture](architecture.md#future-multi
 
 This is the capability map, including agreed future behavior, not a checklist of shipped features. Read each specification's implementation status and the [working state](work-in-progress.md) before relying on a capability. In particular, app-managed cloning/worktrees, native-subagent mirroring, full skill/MCP management, browser access, workflows, and multiplayer are not built in full.
 
-- **[mission-tracking](capabilities/mission-tracking/specifications.md)**: creating quests directly in realms or through Outlore, keeping them in realms or the Borderlands, moving whole quest trees with confirmation, and following their state, threads, and spending.
-- **[mission-coordination](capabilities/mission-coordination/specifications.md)**: talking with Chronicler, the app's assistant, in the Guild Hall to find information across Outlore, manage the app, and coordinate quests and their messages.
+- **[mission-tracking](capabilities/mission-tracking/specifications.md)**: creating quests directly or through Chronicler, organizing them in realms or leaving them ungrouped, moving whole quest trees with confirmation, and following their state, threads, and spending.
+- **[mission-coordination](capabilities/mission-coordination/specifications.md)**: talking with Chronicler, the app's assistant, to find information across Outlore, manage the app, and coordinate quests and their messages.
 - **[mission-journal](capabilities/mission-journal/specifications.md)**: keeping each mission's briefing and change log, read by every thread in the mission and updated as it works.
 - **[thread-tree](capabilities/thread-tree/specifications.md)**: opening threads beneath a thread, by the user or by a thread, each with its own harness, agent, model, and effort; every subagent a harness starts shows up as a thread beneath the one that started it, so the user can follow it.
 - **[thread-messaging](capabilities/thread-messaging/specifications.md)**: thread messages in both directions along the tree, with replies and interruptions; the user can write in any open thread, including a subagent's.

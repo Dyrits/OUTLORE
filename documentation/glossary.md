@@ -15,9 +15,9 @@ User-authored text and historical service messages are not rewritten.
 | Mission | Quest |
 | Top-level mission thread | Quest |
 | Model selected to do the work | Companion |
-| Thread opened beneath another thread | Side-quest |
+| Thread opened beneath another thread | Errand (formerly Side-quest, agreed 2026-11-18, CHG-0449; not yet renamed in the app) |
 | Grouping of missions with shared lore, tied or not to a workspace | Realm |
-| Home of autonomous missions, with no workspace and no shared lore | Borderlands |
+| Autonomous mission, with no workspace and no shared lore | A quest in no realm, listed with the realms (the name Borderlands is retired, agreed 2026-11-18, CHG-0449; not yet renamed in the app) |
 | Control conversation | Guild Hall |
 | Entity the user talks with in Control | Chronicler (formerly Guildmaster, CHG-0173) |
 | Workflow | Craft |
@@ -34,7 +34,7 @@ Done is the ending a quest reaches when the owner marks it done, and a thread st
 Companion means the selected model doing the work, not a conversation or a distinct saved agent definition; selectors say Companion (model) to make this explicit.
 Craft and Ritual are the agreed names for the future automation interfaces.
 Waystones, Spoils, and Chronicle remain mockup suggestions for devices, changes, and traces.
-A side-quest may contain further side-quests; this name covers every child thread, including an aside, whose off-topic behavior stays distinct.
+A side-quest (to be called an errand, CHG-0449) may contain further errands; the name covers every child thread, including an aside, whose off-topic behavior stays distinct. Until the app is renamed, text in the app and the older specifications still says side-quest; read it as errand.
 
 ## Work
 
@@ -83,7 +83,7 @@ The one overview of all missions with their state, threads, spending, and the st
 _Avoid_: Mission dashboard, index, mission list, board, kanban
 
 **Guild Hall** (technical term: Control conversation):
-The place where the user talks with Chronicler, containing the one permanent thread outside every quest.
+The name of Chronicler's permanent conversation outside every quest. CHG-0449 retires the Guild Hall hub page and keeps the conversation in Chronicler's own panel. [Quest coordination](capabilities/mission-coordination/specifications.md#place)
 
 **Chronicler** (the assistant; formerly **Guildmaster**, CHG-0173):
 The app-wide assistant the user talks with in the Guild Hall to learn how the app works and to manage realms and quests. It proposes quests and never opens one without the user's confirmation.
@@ -109,7 +109,7 @@ _Avoid_: Mode, appearance
 The theme the app had as its own look before the rename to Outlore: a flat dark navy look, and the original application icon as the Dock icon.
 
 **Gild**:
-The theme beside Iskios: brown, gilt, and parchment colors, and a hooded figure as the Dock icon.
+The theme with brown, gilt, and parchment colors and a hooded figure as the Dock icon. CHG-0449 records its planned removal.
 
 **One**:
 The neutral theme based on Zed's One Light and One Dark colors. It is the default theme. It keeps the original application icon and the shared sidebar drawings.
@@ -125,7 +125,10 @@ Collection and lifecycle behavior remain to be specified.
 The page of application settings, accounts, permissions, and defaults, shown one section at a time: Permissions, Look and feel, Providers (computer name, harnesses, accounts), Companions (the default Companion and the Light, Balanced, and Heavy presets), Remote access, Messaging, Limits, and Updates. Formerly the Charter (CHG-0146), which is now a separate place in the sidebar (see Charter).
 
 **Charter**:
-The sidebar place, after Reserves, where the owner manages what Outlore connects to: the Connectors and The Vault (CHG-0321). It is not the Workshop, though the Workshop bore its name until CHG-0146; it works like a marketplace for connectors and holds nothing else.
+Where the owner manages what Outlore connects to: the Connectors and The Vault (CHG-0321). It is not the Workshop, though the Workshop bore its name until CHG-0146; it works like a marketplace for connectors and holds nothing else. Agreed 2026-11-18 (CHG-0449; not built): it stops being a place in the sidebar and becomes the **Connectors** section of the Workshop (Settings).
+
+**The menu**:
+The one button at the foot of the sidebar (agreed 2026-11-18, CHG-0449; not built) that opens every place other than Chronicler, the Realms and quests: Rituals, Lore, Archive, Reserves and Settings. The phone's menu lists the same places.
 
 **Connector**:
 A named integration that gives threads the tools of one outside service or app, installed once by the owner from the list Outlore offers. It is **installed** (on this computer, global), **connected** (given a key, a sign-in or a permission) and **enabled** (switched on for a realm, the Borderlands or a quest); a thread can use it only when all three hold ([connectors](capabilities/connectors/specifications.md)).
@@ -148,7 +151,7 @@ _Avoid_: Project, repo, directory
 A grouping of quests with lore shared across its quests. A realm may be tied to one workspace (a repository or folder) or tied to none.
 
 **Borderlands**:
-The one place for autonomous quests: no workspace, no shared lore. A quest there has its own lore and global lore only. Every quest belongs to a realm or to the Borderlands.
+The stored placement of quests with no realm. These quests have their own lore and global lore. Under CHG-0449 they appear as ordinary quest rows after the realm groups, with no separate heading, marker, or page. [Simplified left navigation](capabilities/mission-tracking/specifications.md#simplified-left-navigation) · [ADR 0015](architecture-decision-record/0015-realms-tied-or-not-and-one-borderlands.md)
 _Avoid_: Free Realm, Realmless
 
 **Browsable root**:
