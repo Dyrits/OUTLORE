@@ -19,7 +19,7 @@
 
 - `bun run check`: clean.
 - `bun run typecheck`: clean on all seven workspaces.
-- `CI=1 bun run test`: 268 files (264 passed, 4 skipped); 2,198 tests (2,143 passed, 55 skipped). The skipped ones are the suite's existing live-harness and process-table tests.
+- `CI=1 bun run test`: 270 files (266 passed, 4 skipped); 2,222 tests (2,167 passed, 55 skipped), run on the tip rebased onto `32e1ae7`. The skipped ones are the suite's existing live-harness and process-table tests.
 
 ## Not checked
 
