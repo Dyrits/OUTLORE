@@ -17,6 +17,7 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Choice } from "../ui/pickers";
 import { AccountBudgetsCard } from "./accountBudgetsCard";
 import { BrowsableRootsCard } from "./browsableRootsCard";
+import { CodeModeCard } from "./codeModeCard";
 import { ComputerNameCard } from "./computerNameCard";
 import { DefaultCompanionCard } from "./defaultCompanionCard";
 import { LookCard } from "./lookCard";
@@ -43,7 +44,7 @@ function Section({ active, children, id }: { active: SettingsSectionId; children
   return id === active ? <View style={local.section}>{children}</View> : null;
 }
 
-/** The Charter (Settings), where the owner chooses how Outlore runs their threads. */
+/** The Workshop (Settings), where the owner chooses how Outlore runs their threads. */
 export function SettingsScreen({
   active,
   client,
@@ -58,7 +59,7 @@ export function SettingsScreen({
   onPermissions: () => void;
 }) {
   const hasSidebar = useHasSidebar();
-  // With a top bar, the sidebar or the narrow window's menu leads away; the page keeps no Back to the Guild Hall.
+  // With a top bar, the sidebar or the narrow window's menu leads away; the page keeps no Back link.
   const hasTopBar = useHasTopBar();
   const { data: settings, error } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -160,6 +161,9 @@ export function SettingsScreen({
                 <PresetsCard client={client} onSave={save} settings={settings} />
               </WorkshopTabsProvider>
             </Section>
+            <Section active={active} id="connectors">
+              <CodeModeCard onSave={save} settings={settings} />
+            </Section>
             <Section active={active} id="remote">
               <RemoteAccessCard client={client} />
               <BrowsableRootsCard client={client} />
@@ -178,17 +182,17 @@ export function SettingsScreen({
                 }
               >
                 <ToggleRow
-                  label="Show side-quests opened by agents"
+                  label="Show errands opened by agents"
                   onChange={(shouldShowAgentThreads) => save({ shouldShowAgentThreads })}
                   value={settings.shouldShowAgentThreads}
                 />
               </SettingsCard>
               <SettingsCard
                 icon="chat"
-                title="Chatter guard · messages between quests and side-quests"
+                title="Chatter guard · messages between quests and errands"
                 trailing={
                   <NumberField
-                    label="Chatter guard · messages between quests and side-quests"
+                    label="Chatter guard · messages between quests and errands"
                     minimum={2}
                     onInvalid={setSaveError}
                     onSave={(chatterThreshold) => save({ chatterThreshold })}
@@ -213,10 +217,10 @@ export function SettingsScreen({
               />
               <SettingsCard
                 icon="scroll"
-                title="Lore warning · percent of a model's context window before a quest or side-quest's lore icon turns red"
+                title="Lore warning · percent of a model's context window before a quest or errand's lore icon turns red"
                 trailing={
                   <NumberField
-                    label="Lore warning · percent of a model's context window before a quest or side-quest's lore icon turns red"
+                    label="Lore warning · percent of a model's context window before a quest or errand's lore icon turns red"
                     minimum={1}
                     onInvalid={setSaveError}
                     onSave={(intelWarningPercent) => save({ intelWarningPercent: Math.min(intelWarningPercent, 100) })}

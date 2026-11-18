@@ -1,23 +1,18 @@
-import type { GuildHallRecap, GuildmasterPlace, MissionId, Viewing } from "@outlore/contracts";
-import { useEffect, useState } from "react";
+import type { GuildmasterPlace, MissionId, Viewing } from "@outlore/contracts";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { imageRefusalOf } from "../attachments/attachmentRules";
 import { BudgetScreen, BudgetStopCard } from "../editors/budgets";
-import { useHarnesses } from "../editors/runners";
-import { newRequestId, type ServiceClient } from "../foundation/client";
+import type { ServiceClient } from "../foundation/client";
 import { companionLabelOf, harnessLabels } from "../foundation/formatting";
 import { usePageNavigation } from "../foundation/pageNavigation";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { useSkills } from "../foundation/useSkills";
 import { Composer, StateIndicator } from "../ui/controls";
 import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
 import { ConversationRunner } from "./conversationRunner";
 import type { Entry } from "./entries";
-import { GuildHallHub } from "./guildHallHub";
 import { useThreadConversation } from "./useThreadConversation";
 
 /** The realm chosen for the next message, shown over the message box and cleared with its ×. */
@@ -32,53 +27,6 @@ function RealmNote({ name, onClear }: { name: string; onClear: () => void }) {
       </Pressable>
     </View>
   );
-}
-
-/**
- * The Guild Hall page: the hub, with what waits for the owner, the quests touched last, and the recap of the period.
- * Chronicler's conversation is not here but in the panel every screen offers (`shell/chroniclerDock.tsx`).
- */
-export function GuildmasterScreen({
-  client,
-  onOpenMission,
-  onViewAll,
-}: {
-  client: ServiceClient;
-  onOpenMission: (id: MissionId) => void;
-  onViewAll: () => void;
-}) {
-  const recap = useVisitRecap(client);
-  const { data: known } = useServiceQuery(client, allMissions.request, allMissions.key);
-  return (
-    <View style={local.hubPage}>
-      <GuildHallHub
-        missions={known?.missions ?? null}
-        onOpenMission={onOpenMission}
-        onViewAll={onViewAll}
-        recap={recap}
-      />
-    </View>
-  );
-}
-
-/**
- * The recap of the period since the owner's last visit, read when the owner arrives and kept on that start while they
- * stay; arriving also records the visit, so the next recap starts here (quest coordination, Guild Hall as a hub).
- */
-function useVisitRecap(client: ServiceClient): GuildHallRecap | null {
-  const [start, setStart] = useState<{ isFirstVisit: boolean; since: number } | null>(null);
-  const { data: recap } = useServiceQuery(
-    client,
-    { _tag: "ReadGuildHallRecap", since: start?.since ?? null },
-    `guild-hall-recap:${start?.since ?? "arriving"}`,
-  );
-  useEffect(() => {
-    if (recap === null || start !== null) return;
-    setStart({ isFirstVisit: recap.isFirstVisit, since: recap.since });
-    client.request({ _tag: "VisitGuildHall" }).catch(() => {});
-  }, [client, recap, start]);
-  // Later reads give the start back, so only the first read knows it was the owner's first visit.
-  return recap === null || start === null ? recap : { ...recap, isFirstVisit: start.isFirstVisit };
 }
 
 /**
@@ -280,78 +228,6 @@ function ChroniclerChat({
   );
 }
 
-/**
- * The message at the foot of a realm's page: it goes to the Guildmaster with the realm attached, and the screen then
- * shows the Guildmaster's conversation. No quest starts from here directly.
- */
-export function GuildmasterHandoff(props: {
-  client: ServiceClient;
-  onSent: () => void;
-  realm: { readonly name: string; readonly path: string };
-}) {
-  const { data: place, error } = useServiceQuery(props.client, { _tag: "ReadGuildmaster" }, "guildmaster");
-  return place === null ? (
-    <Text style={styles.muted}>{error ?? "Calling Chronicler…"}</Text>
-  ) : (
-    <GuildmasterHandoffReady {...props} place={place} />
-  );
-}
-
-function GuildmasterHandoffReady({
-  place,
-  client,
-  onSent,
-  realm,
-}: {
-  client: ServiceClient;
-  place: GuildmasterPlace;
-  /** Goes to the Guildmaster once the message is sent. */
-  onSent: () => void;
-  realm: { readonly name: string; readonly path: string };
-}) {
-  const { data: harnesses } = useHarnesses(client);
-  const { data: detail } = useServiceQuery(
-    client,
-    { _tag: "ReadMission", missionId: place.missionId, threadId: null },
-    `handoff-runner:${place?.missionId ?? "loading"}`,
-  );
-  const skills = useSkills(client, realm.path);
-  return (
-    <View style={local.handoff}>
-      <Text style={styles.muted}>
-        Goes to Chronicler, who proposes a quest in <Text style={styles.code}>{realm.name}</Text> unless one already
-        fits.
-      </Text>
-      <Composer
-        attachments={{
-          client,
-          refusal:
-            detail === null
-              ? "Reading Chronicler’s Companion…"
-              : imageRefusalOf(harnesses, detail.thread.harness, detail.thread.model),
-        }}
-        draftKey={`handoff:${realm.path}`}
-        mentions={{ client, workspacePath: realm.path }}
-        onSend={async (text, attachmentIds) => {
-          const place = await client.request({ _tag: "ReadGuildmaster" });
-          await client.request({
-            _tag: "SendMessage",
-            attachmentIds,
-            delivery: null,
-            realmPath: realm.path,
-            requestId: newRequestId(),
-            text,
-            threadId: place.threadId,
-          });
-          onSent();
-        }}
-        placeholder={`Ask Chronicler for something in ${realm.name}…`}
-        skills={skills}
-      />
-    </View>
-  );
-}
-
 const local = StyleSheet.create({
   empty: { alignItems: "center", flex: 1, gap: 8, justifyContent: "center", paddingHorizontal: 24 },
   emptyText: {
@@ -363,7 +239,6 @@ const local = StyleSheet.create({
   },
   emptyTitle: { color: colors.onGround, fontFamily: fonts.sans, fontSize: fontSizes.lg, fontWeight: "700" },
   handoff: { gap: 6 },
-  hubPage: { backgroundColor: colors.page, flex: 1 },
   link: { color: colors.highlight, fontFamily: fonts.sans, fontSize: fontSizes.md },
   note: { alignItems: "center", flexDirection: "row", gap: 8 },
   noteClear: { color: colors.highlight, fontFamily: fonts.sans, fontSize: fontSizes.lg, paddingHorizontal: 4 },

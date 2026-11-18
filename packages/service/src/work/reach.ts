@@ -31,7 +31,7 @@ const isWithinTree = Effect.fnUntraced(function* (fromId: string, toId: string) 
 
 /**
  * Whether a thread may message another: by the tree's rules, or because the owner mentioned that thread's quest or
- * side-quest in a message its current turn received, or because the other thread wrote to it in that turn.
+ * errand in a message its current turn received, or because the other thread wrote to it in that turn.
  */
 export const mayMessage = Effect.fnUntraced(function* (fromId: string, toId: string) {
   return (yield* isWithinTree(fromId, toId)) || (yield* readTurnReach(fromId)).reachable.has(toId);
@@ -39,7 +39,7 @@ export const mayMessage = Effect.fnUntraced(function* (fromId: string, toId: str
 
 /**
  * Whether a thread may read another quest's journal: Chronicler reads any; another thread only one the owner mentioned,
- * or one of whose side-quests the owner mentioned, in a message its current turn received.
+ * or one of whose errands the owner mentioned, in a message its current turn received.
  */
 export const mayReadJournal = Effect.fnUntraced(function* (threadId: string, missionId: string) {
   return (yield* readTurnReach(threadId)).readable.has(missionId) || (yield* isGuildmasterThread(threadId));

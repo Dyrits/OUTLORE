@@ -14,7 +14,16 @@ type MenuAction = { readonly label: string; readonly onPress: () => void };
  * A small "⋯" button that opens a list of actions below it (or above, near the window's foot); pressing an action runs
  * it and closes the list. The list opens in its own layer, as `Menu` does, so a click outside closes it.
  */
-export function ActionMenu({ accessibilityLabel, actions }: { accessibilityLabel: string; actions: MenuAction[] }) {
+export function ActionMenu({
+  accessibilityLabel,
+  actions,
+  glyph = "⋯",
+}: {
+  accessibilityLabel: string;
+  actions: MenuAction[];
+  /** The button's mark; the three dots by default. */
+  glyph?: string;
+}) {
   const [placement, setPlacement] = useState<MenuPlacement | null>(null);
   const button = useRef<ComponentRef<typeof View>>(null);
   const window = useWindowDimensions();
@@ -33,7 +42,7 @@ export function ActionMenu({ accessibilityLabel, actions }: { accessibilityLabel
         ref={button}
         style={({ pressed }) => [local.button, (isOpen || pressed) && styles.menuButtonOpen]}
       >
-        <Text style={local.dots}>⋯</Text>
+        <Text style={local.dots}>{glyph}</Text>
       </Pressable>
       <Modal animationType="none" onRequestClose={close} transparent visible={isOpen}>
         <Pressable accessibilityLabel="Close the menu" onPress={close} style={StyleSheet.absoluteFill} />

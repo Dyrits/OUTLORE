@@ -51,10 +51,3 @@ describe.each(themes.flatMap((theme) => (["dark", "light"] as const).map((scheme
     });
   },
 );
-
-describe("the palettes", () => {
-  it("give Gild its own colors", () => {
-    expect(palettes.gild.dark.accent).not.toBe(palettes.iskios.dark.accent);
-    expect(palettes.gild.light.page).not.toBe(palettes.iskios.light.page);
-  });
-});

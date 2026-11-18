@@ -222,7 +222,7 @@ const states = [
   "Pinned",
   "Deleted",
 ] as const satisfies ReadonlyArray<LoreStateFilter | null>;
-const scopeNames = { Global: "Global", Thread: "Quest and side-quests", Workspace: "Realm" } as const satisfies Record<
+const scopeNames = { Global: "Global", Thread: "Quest and errands", Workspace: "Realm" } as const satisfies Record<
   LoreScope,
   string
 >;
@@ -276,7 +276,7 @@ export function LoreScreen({
       {error !== null && <Text style={styles.error}>{error}</Text>}
       {data?.gauge != null && (
         <Text style={data.gauge.isOverWarning ? styles.error : styles.muted}>
-          The lore in this quest or side-quest's scope takes {data.gauge.tokens} tokens of its model's{" "}
+          The lore in this quest or errand's scope takes {data.gauge.tokens} tokens of its model's{" "}
           {data.gauge.windowTokens.toLocaleString("en-US")}-token context window; the icon turns red past{" "}
           {data.gauge.warningPercent}%.
         </Text>

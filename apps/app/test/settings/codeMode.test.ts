@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { codeModeExplanation, codeModeLabel, codeModeStateOf, experimentalLabel } from "../../src/charter/codeMode";
-import { initialLocation } from "../../src/shell/location";
+import { codeModeExplanation, codeModeLabel, codeModeStateOf, experimentalLabel } from "../../src/settings/codeMode";
 
-describe("Charter's Code Mode wording", () => {
+describe("Code Mode wording in Settings", () => {
   it("names the switch as the specification does and marks it experimental", () => {
     expect(codeModeLabel).toBe("Code Mode");
     expect(experimentalLabel).toBe("Experimental");
@@ -21,11 +20,5 @@ describe("Charter's Code Mode wording", () => {
   it("says what each state means for a thread", () => {
     expect(codeModeStateOf(true)).toBe("On: a thread writes code to call Outlore's tools and its connectors' tools.");
     expect(codeModeStateOf(false)).toBe("Off: a thread sees each tool and calls it one by one.");
-  });
-});
-
-describe("opening on the Charter", () => {
-  it("resumes the Charter, which needs no quest or realm selection", () => {
-    expect(initialLocation("Charter").place).toBe("Charter");
   });
 });

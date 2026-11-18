@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { archiveParentOf, detailsModeOf } from "../../src/shell/navigation";
 
-const view = { hasListedRealm: false, openMission: null, place: "Guildmaster" as const, selectedMission: null };
+const view = { hasListedRealm: false, openMission: null, place: "Realms" as const, selectedMission: null };
 
 describe("returning after a quest archive", () => {
   it("returns to the quest's containing realm instead of the last visited screen", () => {
@@ -11,17 +11,16 @@ describe("returning after a quest archive", () => {
     });
     expect(archiveParentOf({ workspaceId: null, workspaceName: null })).toEqual({
       listing: null,
-      place: "Borderlands",
+      place: "Realms",
     });
   });
 });
 
 describe("the side panel's mode", () => {
-  it("has no details to open on the quest board until a quest is selected", () => {
-    expect(detailsModeOf({ ...view, place: "Quests" })).toBe("none");
+  it("has no details to open on the Realms overview until a quest is selected", () => {
+    expect(detailsModeOf(view)).toBe("none");
   });
-  it("is a toggle when a quest is open, even from the quests place", () => {
-    expect(detailsModeOf({ ...view, openMission: "m", place: "Quests" })).toBe("toggle");
+  it("is a toggle when a quest is open, even from the Realms overview", () => {
     expect(detailsModeOf({ ...view, openMission: "m" })).toBe("toggle");
   });
   it("is a toggle when a quest is chosen without opening it", () => {

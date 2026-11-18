@@ -5,6 +5,18 @@ import { initialLocation, navigate, panelScopeOf } from "../../src/shell/locatio
 const quest = "quest" as import("@outlore/contracts").MissionId;
 const thread = "thread" as import("@outlore/contracts").ThreadId;
 
+describe("opening the window", () => {
+  it("starts on the Realms overview, and resumes a destination that needs no selection", () => {
+    expect(initialLocation(null).place).toBe("Realms");
+    expect(initialLocation("Rituals").place).toBe("Rituals");
+    expect(initialLocation("Settings").place).toBe("Settings");
+  });
+  it("opens the Realms overview for a destination that no longer exists", () => {
+    for (const retired of ["Guildmaster", "Quests", "Craft", "Library", "Charter"])
+      expect(initialLocation(retired).place).toBe("Realms");
+  });
+});
+
 describe("navigating the window", () => {
   it("uncovers a quest opened from expanded or narrow Chronicler", () => {
     for (const type of ["full", "narrowChronicler"] as const) {
@@ -15,7 +27,7 @@ describe("navigating the window", () => {
       expect(next.isNarrowChroniclerOpen).toBe(false);
     }
   });
-  it("closes Journal, Lore and Budget when choosing a side-quest without remounting the quest", () => {
+  it("closes Journal, Lore and Budget when choosing an errand without remounting the quest", () => {
     const opened = navigate(initialLocation(null), { id: quest, type: "quest" });
     for (const page of [
       { kind: "journal" },

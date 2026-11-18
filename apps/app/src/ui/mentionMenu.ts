@@ -31,7 +31,7 @@ const MIXED_LIMIT = 5;
 
 const questOptionOf = (mentionable: Mentionable): MenuRow => ({
   chip: chipOfMentionable(mentionable),
-  description: mentionable.detail ?? (mentionable.kind === "realm" ? "Tied to no folder" : "Borderlands"),
+  description: mentionable.detail ?? (mentionable.kind === "realm" ? "Tied to no folder" : "No realm"),
   key: `${mentionable.kind}:${mentionable.id}`,
   type: "option",
 });
@@ -46,7 +46,7 @@ const entryOptionOf = (entry: WorkspaceEntry): MenuRow => ({
 /**
  * The list for what follows a typed `@`. With nothing typed after it: the categories, Files & Directories only when a
  * folder is linked, or the chosen category's items. With text: each category's matches under its heading, a quest
- * matching on its title or a side-quest on its path (`Quest › Side-quest`), a realm on its name, and the workspace's
+ * matching on its title or an errand on its path (`Quest › Errand`), a realm on its name, and the workspace's
  * entries as the service found them.
  */
 export const mentionMenuOf = (given: {

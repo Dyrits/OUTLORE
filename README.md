@@ -2,7 +2,7 @@
 
 A local-first desktop workspace for working with AI agents across Claude Code, Codex, and OpenCode.
 
-Keep a piece of work in one quest, delegate parts of it into side-quests, and choose the harness, model, account, and effort for each thread.
+Keep a piece of work in one quest, delegate parts of it into errands, and choose the harness, model, account, and effort for each thread.
 Follow their conversations, answer approval requests, and hand a thread over to another harness with its history intact.
 
 Outlore is in **alpha** and serves one user.
@@ -24,11 +24,11 @@ Moving from one project to another, you rarely need the same context, the same m
 Outlore starts from the task instead of from an agent with a role.
 
 Each piece of work is a **quest**, with its goal, its journal, its lore, and its tree of conversations.
-A thread can open side-quests, each with the model and effort that suits it.
+A thread can open errands, each with the model and effort that suits it.
 The model is a choice, not an identity.
 
 Lore has a scope: one quest, one realm, or the whole application, and each thread receives the context that matches it.
-A **realm** is a workspace, tied to a local folder or to none, with its own customizable crest.
+A **realm** is a workspace, tied to a local folder or to none.
 
 ## See it work
 
@@ -42,12 +42,12 @@ Its output goes with your next message as context.
 
 ![Typing ! opens a shell; bun test fails by one cent, and the output is sent to the agent with the message.](documentation/readme/terminal.gif)
 
-### Side-quests with their own Companion
+### Errands with their own Companion
 
-Open a side-quest beneath any thread and give it another model and effort.
+Open an errand beneath any thread and give it another model and effort.
 It reports back to its parent when it is done.
 
-![A side-quest opened on Sonnet 5.5 at medium effort writes the tests and reports back to the quest running on Opus 5.5.](documentation/readme/side-quest.gif)
+![An errand opened on Sonnet 5.5 at medium effort writes the tests and reports back to the quest running on Opus 5.5.](documentation/readme/side-quest.gif)
 
 ### Switch agents mid-conversation
 
@@ -81,7 +81,7 @@ It finds the quest that already covers the request and offers to continue there,
 
 - Work with Claude Code, Codex, and OpenCode in the same application, using your own subscriptions or API keys through their command-line tools.
 - Start or continue quests through Chronicler, a permanent assistant that routes your requests to the right quest.
-- Open side-quests beneath a thread, give them different models, and exchange messages along the tree.
+- Open errands beneath a thread, give them different models, and exchange messages along the tree.
 - Change a thread's harness, account, model, or effort between turns without discarding its conversation.
 - Pick a Companion by its provider account (two subscriptions of one harness appear as two options), or apply a Light, Balanced, or Heavy preset, which sets a Companion and its backups together.
 - Choose folders with one folder picker, on this computer or on a paired host.
@@ -97,7 +97,7 @@ The interface uses guild names for familiar concepts:
 | In Outlore | Meaning |
 | --- | --- |
 | Quest | A piece of work and its tree of threads |
-| Side-quest | A thread opened beneath another thread |
+| Errand | A thread opened beneath another thread |
 | Companion | The model selected for a thread |
 | Preset | A named Companion with its backups, chosen as a whole (Light, Balanced, Heavy) |
 | Realm | A workspace folder or repository |
@@ -125,7 +125,7 @@ It asks GitHub's public release list for newer releases and sends nothing about 
 On macOS Outlore replaces its own app after checking the download against the release's `SHA512SUMS.txt`; on Windows and Linux it uses `electron-updater`, which has not been run on those systems yet.
 A development run (`bun run dev`) never updates.
 
-Before uploading a macOS installer, the workflow verifies and mounts its DMG, copies the app to a fresh location, and checks the rendered Guild Hall screen, service bridge, and native terminal on temporary data.
+Before uploading a macOS installer, the workflow verifies and mounts its DMG, copies the app to a fresh location, and checks the rendered sidebar, service bridge, and native terminal on temporary data.
 Run that same application check locally with `bun apps/desktop/scripts/check-package.ts /Applications/Outlore.app`.
 This check proves packaged startup; Apple trust checks on other computers still require Developer ID signing and notarization.
 
@@ -181,7 +181,7 @@ You only need the harnesses you intend to use.
 1. Open Outlore and visit the Workshop to check harness availability and accounts.
 2. Add a realm if you want agents to work in a local folder or repository.
 3. Tell Outlore what you want to do, then open the quest it creates or continues.
-4. Choose a Companion, send a message, and open side-quests as needed.
+4. Choose a Companion, send a message, and open errands as needed.
 
 Rituals run through the local service, so leave Outlore running for scheduled work.
 Runs missed while the app is closed or the computer is asleep are skipped.

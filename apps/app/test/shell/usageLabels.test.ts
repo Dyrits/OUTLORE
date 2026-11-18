@@ -20,10 +20,10 @@ const row = (key: string, name: string | null = null): UsageRow => ({
 });
 
 describe("naming breakdown rows", () => {
-  it("names harnesses, the Borderlands, Chronicler, deleted quests, and what was not recorded", () => {
+  it("names harnesses, no realm, Chronicler, deleted quests, and what was not recorded", () => {
     expect(rowLabelOf("Harness", row("claude"))).toBe("Claude Code");
     expect(rowLabelOf("Harness", row(""))).toBe("Not recorded");
-    expect(rowLabelOf("Realm", row(""))).toBe("Borderlands");
+    expect(rowLabelOf("Realm", row(""))).toBe("No realm");
     expect(rowLabelOf("Realm", row("~chronicler", "Chronicler (assistant)"))).toBe("Chronicler (assistant)");
     expect(rowLabelOf("Realm", row("~deleted"))).toBe("Deleted quests");
     expect(rowLabelOf("Realm", row("realm-1", "Atlas"))).toBe("Atlas");

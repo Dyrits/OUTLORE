@@ -1,7 +1,6 @@
 import type { ThreadId, WorkspaceChoice } from "@outlore/contracts";
 import { type ReactNode, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { CrestBadge } from "../crest/crest";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { samePath } from "../foundation/paths";
 import { styles } from "../foundation/styles";
@@ -36,7 +35,7 @@ export function RealmChooser({
     setIsPicking(false);
     const known = realms.find((realm) => samePath(realm.path, path));
     if (known !== undefined) onChange(known.path);
-    else setEditing({ crest: null, name: folderNameOf(path), path });
+    else setEditing({ name: folderNameOf(path), path });
   };
   const sorted = tiedRealmsOf(realms);
   return (
@@ -50,7 +49,6 @@ export function RealmChooser({
             // Pressing the chosen realm again unchooses it, and the quest starts with no realm.
             onPress={() => onChange(samePath(realm.path, value) ? null : realm.path)}
           >
-            <CrestBadge crest={realm.crest} id={realm.id} size={24} />
             <Text numberOfLines={1} style={[local.chipText, samePath(realm.path, value) && local.chipTextSelected]}>
               {realmLabelOf(realm, realms)}
             </Text>

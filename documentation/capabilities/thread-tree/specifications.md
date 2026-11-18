@@ -6,7 +6,7 @@ Technical design: [proposed blueprint](blueprint.md), including the first slice'
 
 The agreed behavior below includes unfinished work. This source review is not a fresh live-provider or device test.
 
-- App-owned side-quests are built: the owner or `open_thread` creates a persisted thread, with its own harness, account, model, effort, and backups. Children currently inherit the parent's workspace; an independent workspace and an agent definition are not implemented options; `open_thread` takes `ownCopy` (CHG-0441), which the owner's own opening does not offer yet ([tree.ts](../../../packages/service/src/work/tree.ts#L15-L70), [threadTools.ts](../../../packages/service/src/work/threadTools.ts#L147-L171)).
+- App-owned errands are built: the owner or `open_thread` creates a persisted thread, with its own harness, account, model, effort, and backups. Children currently inherit the parent's workspace; an independent workspace and an agent definition are not implemented options; `open_thread` takes `ownCopy` (CHG-0441), which the owner's own opening does not offer yet ([tree.ts](../../../packages/service/src/work/tree.ts#L15-L70), [threadTools.ts](../../../packages/service/src/work/threadTools.ts#L147-L171)).
 - Thread messaging, results, stopping, deletion, and the shared journal are implemented. Whole-quest moves and the nested main sidebar are built, although their older agreement notes below originally said implementation was pending ([questMoves.ts](../../../packages/service/src/work/questMoves.ts#L13-L60), [sidebar.tsx](../../../apps/app/src/shell/sidebar.tsx), [working state](../../work-in-progress.md#quest-moves--2026-11-11--built-and-checked-owner-review-pending)).
 - Native subagent tools are disabled in the current adapters in favor of `open_thread`. Mirroring a harness-native subagent into an independently steerable Outlore thread is not built ([Claude Code](../../../packages/service/src/harness/claudeArgs.ts#L34-L44), [Codex](../../../packages/service/src/harness/codex.ts#L72-L86), [OpenCode](../../../packages/service/src/harness/opencode.ts#L146-L165)).
 - Starting-context measurement and the owner's size warning are built; automatic summarization is not. Skills have only the partial implementation described in [tool and skill loading](../tool-and-skill-loading/specifications.md#implementation-status--2026-11-15).
@@ -29,8 +29,8 @@ Work with AI agents spreads across disconnected chats, and subagents run out of 
 
 - The main left sidebar contains the quest tree, nested beneath Realms or the Borderlands as defined in [mission tracking](../mission-tracking/specifications.md#left-navigation-structure).
 - There is one navigation sidebar on the left and one details sidebar on the right; no second quest-tree sidebar sits beside the left navigation (CHG-0135, agreed on 2026-11-11; implementation pending).
-- Creating the first side-quest or deleting the last changes the nested sidebar tree without adding or removing another column.
-- The main quest remains accessible from the sidebar when viewing a side-quest.
+- Creating the first errand or deleting the last changes the nested sidebar tree without adding or removing another column.
+- The main quest remains accessible from the sidebar when viewing an errand.
 - Thread navigation stays accessible when the sidebar is collapsed or hidden on a narrow screen, and the Back to quests link remains available.
 - The original no-new-tabs rule was superseded by the Companions tab and the [panel ownership agreement](../thread-panel/specifications.md#panel-ownership-across-navigation); the quest tree remains in the main left sidebar.
 - Agent validation covers quests with no children, creating and deleting children, folded children, selecting a child and returning to its quest, collapsed navigation, the narrow-screen back link, and the absence of a duplicate left tree column.
@@ -63,7 +63,7 @@ Work with AI agents spreads across disconnected chats, and subagents run out of 
 
 ### Thread states
 
-CHG-0135 and CHG-0136 remove Done from quests and side-quests, as defined in [mission tracking](../mission-tracking/specifications.md#mission-state). Update, 2026-11-17: the owner decided that Done stays (see the update there); this sentence records the 2026-11-11 agreement.
+CHG-0135 and CHG-0136 remove Done from quests and errands, as defined in [mission tracking](../mission-tracking/specifications.md#mission-state). Update, 2026-11-17: the owner decided that Done stays (see the update there); this sentence records the 2026-11-11 agreement.
 The interface presents idle, running, or Summons; waiting, failure, and stopped conditions remain visible details, and a failure needing the owner produces Summons.
 
 | State | Meaning |
@@ -98,7 +98,7 @@ The interface presents idle, running, or Summons; waiting, failure, and stopped 
 ### Results
 
 - A thread reports a result when its work is done.
-  A side-quest's result goes to its parent as a thread message (see [thread-messaging](../thread-messaging/specifications.md)), whatever the parent is doing.
+  An errand's result goes to its parent as a thread message (see [thread-messaging](../thread-messaging/specifications.md)), whatever the parent is doing.
   Reporting a result leaves the thread idle unless it has further work or needs the owner; it does not archive the quest.
 - A thread can report its result while threads beneath it still run; their results reach it whenever they come.
 - Writing in an idle thread continues it; an explicitly stopped thread still requires resume.

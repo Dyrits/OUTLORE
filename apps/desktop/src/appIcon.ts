@@ -2,7 +2,6 @@ import type { Theme } from "../../app/src/foundation/themeName.ts";
 
 /** The icon file of each theme, in the desktop app's `assets`. */
 export const iconFiles = {
-  gild: "icon-gild.png",
   iskios: "icon.png",
   one: "icon.png",
 } as const satisfies Record<Theme, string>;

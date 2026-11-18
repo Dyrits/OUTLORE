@@ -13,7 +13,7 @@ import { afterEach } from "vitest";
 import { isIdle, lastAgentText } from "../fixtures/guildmaster.ts";
 import { call, fixture, open, read, send, settle, start, tool } from "../fixtures/service.ts";
 
-// Quests, side-quests, and realms named with `@` (thread-messaging, Who can message whom; CHG-0181).
+// Quests, errands, and realms named with `@` (thread-messaging, Who can message whom; CHG-0181).
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 afterEach(() => {
@@ -90,7 +90,7 @@ describe("reading references in a message", () => {
     ),
   );
 
-  it("reads quest, side-quest, and realm tokens once each, and leaves workspace paths alone", () => {
+  it("reads quest, errand, and realm tokens once each, and leaves workspace paths alone", () => {
     const text = "Ask @quest:1a-2b, then @side-quest:3c and @realm:4d; @quest:1a-2b again. Read @src/index.ts.";
     expect(mentionReferencesOf(text)).toEqual([
       { id: "1a-2b", kind: "quest" },
@@ -102,11 +102,11 @@ describe("reading references in a message", () => {
   });
 });
 
-describe("offering quests, side-quests, and realms to the @ menu", () => {
-  it.live("lists open quests with their side-quests beneath, then realms, and leaves out archived quests", () =>
+describe("offering quests, errands, and realms to the @ menu", () => {
+  it.live("lists open quests with their errands beneath, then realms, and leaves out archived quests", () =>
     withService((folder) =>
       Effect.gen(function* () {
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: folder });
+        yield* call({ _tag: "CreateRealm", name: "Garden", path: folder });
         const login = yield* startQuest("Fix login", folder);
         const side = yield* open(login.threadId, "Write the tests");
         yield* settle(login.missionId, (detail) => detail.threads.every((thread) => thread.state !== "Running"));
@@ -136,7 +136,7 @@ describe("resolving the owner's mentions for the receiving thread", () => {
   it.live("appends what each mentioned quest and realm is, with its ids, after the owner's unchanged words", () =>
     withService((folder) =>
       Effect.gen(function* () {
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: folder });
+        yield* call({ _tag: "CreateRealm", name: "Garden", path: folder });
         const realm = (yield* call({ _tag: "ListMentionables" })).find((each) => each.kind === "realm");
         const login = yield* startQuest("Fix login", folder);
         const here = yield* startQuest("Release notes");
@@ -251,7 +251,7 @@ describe("reaching a quest the owner mentioned", () => {
     ),
   );
 
-  it.live("reaches a mentioned side-quest and reads its quest's journal", () =>
+  it.live("reaches a mentioned errand and reads its quest's journal", () =>
     withService(() =>
       Effect.gen(function* () {
         const login = yield* startQuest("Fix login");
@@ -296,7 +296,7 @@ describe("reaching a quest the owner mentioned", () => {
   it.live("grants nothing for a realm's mention, even of the realm a quest sits in", () =>
     withService((folder) =>
       Effect.gen(function* () {
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: folder });
+        yield* call({ _tag: "CreateRealm", name: "Garden", path: folder });
         const realm = (yield* call({ _tag: "ListMentionables" })).find((each) => each.kind === "realm");
         const login = yield* startQuest("Fix login", folder);
         const here = yield* startQuest("Release notes");

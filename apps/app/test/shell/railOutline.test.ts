@@ -38,7 +38,6 @@ const quest = (id: string, state: "Idle" | "Running" = "Idle") =>
     title: id,
     topThreadId: "top",
     usage,
-    workspaceCrest: null,
     workspaceId: null,
     workspaceName: null,
   });

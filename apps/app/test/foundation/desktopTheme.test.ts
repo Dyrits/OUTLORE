@@ -13,12 +13,12 @@ describe("syncDesktopTheme", () => {
     await expect(
       syncDesktopTheme(
         { setTheme: () => Promise.reject(new Error("The theme is only set from Outlore's desktop window.")) },
-        "gild",
+        "iskios",
       ),
     ).resolves.toBeUndefined();
   });
 
   it("does nothing without a desktop app", async () => {
-    await expect(syncDesktopTheme(undefined, "gild")).resolves.toBeUndefined();
+    await expect(syncDesktopTheme(undefined, "iskios")).resolves.toBeUndefined();
   });
 });

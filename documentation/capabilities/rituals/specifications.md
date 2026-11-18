@@ -9,7 +9,7 @@ The owner repeats the same request: a morning digest, a weekly dependency check.
 ## Agreed behavior
 
 - **A Ritual** has a title, an instruction, a schedule, a harness with account, Companion (model) and effort, an ordered list of fallback Companions, an optional realm (workspace), and an on or off switch. A Ritual Outlore creates on a tier takes the tier's backups as its fallbacks (provisional, [companion-presets](../companion-presets/specifications.md#provisional-choices)).
-- **One quest per Ritual**: creating a Ritual creates its quest. Each run is a turn in that quest's main thread, so the quest holds the whole history of the Ritual. The owner opens side-quests beneath it as in any quest.
+- **One quest per Ritual**: creating a Ritual creates its quest. Each run is a turn in that quest's main thread, so the quest holds the whole history of the Ritual. The owner opens errands beneath it as in any quest.
 - **Schedule presets only** (no cron): every day at a time; weekdays at a time; every week on a day at a time; every month on a day at a time; every N hours. Times are the computer's local time.
 - **Where the scheduler runs**: the local service. It sleeps until the next Ritual is due, wakes on any change and at least hourly. A run that starts more than 5 minutes after its time (the app was closed or the computer asleep) is skipped, not caught up; the quest says nothing for it, and the Ritual moves to its next time.
 - **Run now**: a button on the Ritual's card and in its quest's panel starts a run at any moment, whatever the schedule and the switch. A run is refused while the quest's main thread is at work (Running, Awaiting word, or Summons) or Stopped, with the reason for a manual run; a scheduled one is skipped.

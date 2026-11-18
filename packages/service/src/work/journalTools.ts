@@ -15,7 +15,7 @@ export const journalToolsOf = (
       Effect.gen(function* () {
         if (mission === undefined) return toolText(yield* readJournalText(threadId, before ?? null, count ?? null));
         // Another quest's journal is the Guildmaster's to read, whatever the quest; another thread reads one only
-        // when the owner mentioned that quest, or one of its side-quests, in a message its current turn received.
+        // when the owner mentioned that quest, or one of its errands, in a message its current turn received.
         if (!(yield* mayReadJournal(threadId, mission)))
           return toolRefusal(
             "Only Chronicler reads another quest's journal, unless the owner mentioned that quest with @ in a message of this turn.",

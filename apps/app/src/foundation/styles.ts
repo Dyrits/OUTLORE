@@ -250,7 +250,7 @@ export const styles = StyleSheet.create({
   /** A narrow window gives the conversation the width and height it can: less padding and gap. */
   questMainCompact: { gap: 6, paddingHorizontal: 10, paddingVertical: 8 },
   questSide: { borderColor: colors.border, borderRightWidth: 1, gap: 8, padding: 12, width: 240 },
-  /** The narrow window's one line over the conversation: back, and the side-quests that open or fold. */
+  /** The narrow window's one line over the conversation: back, and the errands that open or fold. */
   questSideBar: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   questSideCompact: {
     borderBottomWidth: 1,

@@ -14,7 +14,6 @@ import {
   TokenUsage,
 } from "./budgets.ts";
 import { BackupCompanions, ModelChoice, Tier } from "./companions.ts";
-import { Crest } from "./crest.ts";
 import { EffortChoice, HarnessName } from "./harnesses.ts";
 import { AccountId, MessageId, MissionId, SuggestionId, ThreadId, WorkspaceId } from "./ids.ts";
 import { LoreChange, LoreGauge } from "./lore.ts";
@@ -143,7 +142,6 @@ export const MissionSummary = Schema.Struct({
   topThreadId: ThreadId,
   usage: TokenUsage,
   /** The top thread's workspace; both null when it runs in the mission's scratch folder. */
-  workspaceCrest: Schema.NullOr(Crest),
   workspaceId: Schema.NullOr(WorkspaceId),
   workspaceName: Schema.NullOr(Schema.String),
 });

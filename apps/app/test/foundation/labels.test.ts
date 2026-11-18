@@ -46,29 +46,27 @@ describe("counted nouns", () => {
 });
 
 describe("tree and deletion labels", () => {
-  it("names one folded side-quest in the singular", () => {
-    expect(foldedLabelOf(1)).toBe("+1 side-quest");
-    expect(foldedLabelOf(3)).toBe("+3 side-quests");
+  it("names one folded errand in the singular", () => {
+    expect(foldedLabelOf(1)).toBe("+1 errand");
+    expect(foldedLabelOf(3)).toBe("+3 errands");
   });
 
   it("names the top-level work as a quest in deletion confirmation", () => {
     expect(deletionQuestionOf({ descendantCount: 1, isMission: true, runningCount: 0 })).toBe(
-      "Delete this quest and 1 side-quest beneath it?",
+      "Delete this quest and 1 errand beneath it?",
     );
   });
 
-  it("asks about the side-quests beneath, naming running ones only when some run", () => {
-    expect(deletionQuestionOf({ descendantCount: 0, isMission: false, runningCount: 0 })).toBe(
-      "Delete this side-quest?",
-    );
+  it("asks about the errands beneath, naming running ones only when some run", () => {
+    expect(deletionQuestionOf({ descendantCount: 0, isMission: false, runningCount: 0 })).toBe("Delete this errand?");
     expect(deletionQuestionOf({ descendantCount: 0, isMission: false, runningCount: 1 })).toBe(
-      "Delete this side-quest (running)?",
+      "Delete this errand (running)?",
     );
     expect(deletionQuestionOf({ descendantCount: 1, isMission: false, runningCount: 0 })).toBe(
-      "Delete this side-quest and 1 side-quest beneath it?",
+      "Delete this errand and 1 errand beneath it?",
     );
     expect(deletionQuestionOf({ descendantCount: 5, isMission: false, runningCount: 2 })).toBe(
-      "Delete this side-quest and 5 side-quests beneath it (2 running)?",
+      "Delete this errand and 5 errands beneath it (2 running)?",
     );
   });
 });
@@ -86,9 +84,9 @@ describe("journal labels", () => {
 });
 
 describe("dashboard labels", () => {
-  it("counts a quest and its side-quests, naming running ones only when some run", () => {
-    expect(threadCountOf({ runningCount: 0, threadCount: 1 })).toBe("1 quest · 0 side-quests");
-    expect(threadCountOf({ runningCount: 2, threadCount: 5 })).toBe("1 quest · 4 side-quests · 2 running");
+  it("counts a quest and its errands, naming running ones only when some run", () => {
+    expect(threadCountOf({ runningCount: 0, threadCount: 1 })).toBe("1 quest · 0 errands");
+    expect(threadCountOf({ runningCount: 2, threadCount: 5 })).toBe("1 quest · 4 errands · 2 running");
   });
 
   it("asks Mark as done after a result, and about inactivity in days", () => {
@@ -265,9 +263,9 @@ describe("starting context labels", () => {
     windowTokens: 200_000,
   } as const;
 
-  it("says how much of the context window a new side-quest would start with", () => {
+  it("says how much of the context window a new errand would start with", () => {
     expect(startingContextWarningOf(context)).toBe(
-      "This side-quest would start with about 75,000 tokens, 38% of the model's 200,000-token context window; the warning is at 25%.",
+      "This errand would start with about 75,000 tokens, 38% of the model's 200,000-token context window; the warning is at 25%.",
     );
   });
 

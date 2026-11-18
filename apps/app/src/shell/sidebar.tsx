@@ -1,26 +1,28 @@
-import type { Crest, MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
+import type { MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
 import { PlanLimitRings } from "../editors/planLimitRings";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
+import { Emblem } from "../foundation/emblems";
 import { allMissions } from "../foundation/queries";
+import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { MoveQuestModal } from "../quests/moveQuestModal";
+import { type Destination, type MoveConfirmation, moveConfirmationOf } from "../quests/questMove";
 import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
-import { MoveQuestModal } from "./moveQuestModal";
-import { type Place, placeGroups } from "./placeCatalog";
+import { ActionMenu } from "../ui/actionMenu";
+import { menuPlaces, type Place } from "./placeCatalog";
 import { DropTarget } from "./questDrag";
-import { borderlandsDestination, type Destination, type MoveConfirmation, moveConfirmationOf } from "./questMove";
 import { placementsOf, type RealmListing, realmGroupsOf, toggledFold } from "./questTree";
+import { NewQuestIcon } from "./railActions";
 import { railOutlineOf } from "./railOutline";
 import { Quest, RealmHeader } from "./railQuests";
-import { Count, Divider, Heading, Row, ShowAll } from "./railRows";
-import { borderlandsShown, chevronWidth, local, realmShown } from "./railStyles";
+import { Row, ShowAll } from "./railRows";
+import { borderlandsShown, isHovered, local, realmShown } from "./railStyles";
 
 export type { Place } from "./placeCatalog";
-
-const keepRooms = placeGroups[2] ?? [];
 
 /** A set of ids the owner toggles, as the expanded and collapsed rows of the tree. */
 const useToggles = () => {
@@ -30,9 +32,9 @@ const useToggles = () => {
 };
 
 /**
- * The left sidebar, in the agreed order: Guild Hall, the Realms with their quests, the Borderlands' quests, Rituals,
- * Craft, The Keep, Reserves, and the Workshop (the settings). Quests nest their side-quests at every depth,
- * and the sidebar opens the path to the thread that is open.
+ * The left sidebar (CHG-0449): the Realms title, which opens the overview; each realm with its quests; the quests that
+ * are in no realm as ordinary rows; the buttons that visit a realm and start a quest; and at the foot the menu of the other
+ * places. Quests nest their errands at every depth, and the sidebar opens the path to the thread that is open.
  */
 export function Sidebar({
   client,
@@ -46,16 +48,16 @@ export function Sidebar({
   place,
 }: {
   client: ServiceClient;
-  /** The open rail's width, as dragged. */
-  width: number;
+  /** The open rail's width, as dragged; the whole width on a phone, where this is the menu screen. */
+  width: DimensionValue;
   onOpenMission: (id: MissionId) => void;
   /** Opens the page that lists all of a realm's quests. */
   onOpenRealmQuests: (listing: RealmListing) => void;
-  /** Opens a side-quest of a quest. */
+  /** Opens an errand of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   onPlace: (place: Place) => void;
   openMission: MissionId | null;
-  /** The side-quest open in the open quest, or null for the quest itself. */
+  /** The errand open in the open quest, or null for the quest itself. */
   openThread: ThreadId | null;
   place: Place | null;
 }) {
@@ -65,7 +67,7 @@ export function Sidebar({
   const isHere = (each: Place) => openMission === null && place === each;
   // The menu that makes a realm, tied to a folder or to none.
   const [isCreating, setIsCreating] = useState(false);
-  // Realms start open and quests start closed, so a long list of quests stays short; side-quests start open.
+  // Realms start open and quests start closed, so a long list of quests stays short; errands start open.
   const closedRealms = useToggles();
   // Realms, Borderlands, and The Keep fold under their headings, all the same way.
   const foldedSections = useToggles();
@@ -115,11 +117,10 @@ export function Sidebar({
   };
 
   /**
-   * A realm: its crest, its name with the folder mark when it is tied to a folder, its quests beneath it while it is
+   * A realm: its name with the folder mark when it is tied to a folder, its quests beneath it while it is
    * unfolded, and the button for a new quest.
    */
   const realmRow = (realm: {
-    crest: Crest | null;
     id: WorkspaceId;
     name: string;
     path: string | null;
@@ -131,8 +132,6 @@ export function Sidebar({
       <DropTarget key={realm.id} onDropQuest={dropOn({ id: realm.id, name: realm.name })}>
         <View>
           <RealmHeader
-            crest={realm.crest}
-            id={realm.id}
             isOpen={!isClosed}
             name={realmLabelOf(realm, data?.workspaces ?? [])}
             onNewQuest={() => startQuest(realm.id, realm.id)}
@@ -159,111 +158,65 @@ export function Sidebar({
     );
   };
 
+  const { tied, untied } = realmGroupsOf(outline.realms);
+  const rowOf = ({ quests, workspace, visibleQuests }: (typeof outline.realms)[number]) =>
+    realmRow({ id: workspace.id, name: workspace.name, path: workspace.path, quests, visibleQuests });
   return (
     <View style={[local.sidebar, { width }]}>
       <ScrollView contentContainerStyle={local.group} style={local.flex}>
-        <PlaceRow isSelected={isHere("Guildmaster")} onPress={() => onPlace("Guildmaster")} place="Guildmaster" />
-        <Divider />
-
-        <Heading
-          icon="realms"
-          isOpen={!foldedSections.set.has("Realms")}
-          isSelected={isHere("Realms")}
-          label="Realms"
-          note="Quests sharing lore, tied to a folder or repository or to none"
-          onAdd={() => setIsCreating(true)}
-          onOverview={() => onPlace("Realms")}
-          onPress={() => foldedSections.toggle("Realms")}
-          onToggle={() => foldedSections.toggle("Realms")}
-        />
-        {!foldedSections.set.has("Realms") && placements.realms.length === 0 && (
-          <Text style={local.empty}>No realm yet.</Text>
+        <Pressable
+          accessibilityHint="Quests sharing lore, tied to a folder or repository or to none"
+          accessibilityLabel="Realms"
+          accessibilityRole="button"
+          onPress={() => onPlace("Realms")}
+          style={(state) => [
+            local.realmsTitle,
+            (state.pressed || isHovered(state)) && local.rowHovered,
+            isHere("Realms") && local.rowSelected,
+          ]}
+        >
+          <Text numberOfLines={1} style={local.realmsTitleText}>
+            Realms
+          </Text>
+        </Pressable>
+        {placements.realms.length === 0 && placements.borderlands.length === 0 && (
+          <Text style={local.empty}>No realm or quest yet.</Text>
         )}
-        {!foldedSections.set.has("Realms") &&
-          (() => {
-            // Realms tied to a folder first, then a thin line, then those tied to none (CHG-0170).
-            const { tied, untied } = realmGroupsOf(outline.realms);
-            const rowOf = ({ quests, workspace, visibleQuests }: (typeof outline.realms)[number]) =>
-              realmRow({
-                crest: workspace.crest,
-                id: workspace.id,
-                name: workspace.name,
-                path: workspace.path,
-                quests,
-                visibleQuests,
-              });
-            return (
-              <>
-                {tied.map(rowOf)}
-                {tied.length > 0 && untied.length > 0 && <View style={local.realmSplit} />}
-                {untied.map(rowOf)}
-              </>
-            );
-          })()}
-
-        <DropTarget onDropQuest={dropOn(borderlandsDestination)}>
-          <Heading
-            icon="borderlands"
-            isOpen={!foldedSections.set.has("Borderlands")}
-            isSelected={isHere("Borderlands")}
-            label="Borderlands"
-            note="Autonomous quests, with no workspace and no shared lore"
-            onNewQuest={() => startQuest("Borderlands", null)}
-            onOverview={() => onPlace("Borderlands")}
-            onPress={() => foldedSections.toggle("Borderlands")}
-            onToggle={() => foldedSections.toggle("Borderlands")}
+        {tied.map(rowOf)}
+        {untied.map(rowOf)}
+        {outline.borderlands.map((mission) => (
+          <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
+        ))}
+        {placements.borderlands.length > borderlandsShown && (
+          <ShowAll
+            count={placements.borderlands.length}
+            onPress={() => onPlace("Realms")}
+            subject="quests in no realm"
           />
-          {failureUnder("Borderlands")}
-          {!foldedSections.set.has("Borderlands") && placements.borderlands.length === 0 && (
-            <Text style={local.empty}>No quest yet.</Text>
-          )}
-          {!foldedSections.set.has("Borderlands") &&
-            outline.borderlands.map((mission) => (
-              <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
-            ))}
-          {!foldedSections.set.has("Borderlands") && placements.borderlands.length > borderlandsShown && (
-            <ShowAll
-              count={placements.borderlands.length}
-              onPress={() => onPlace("Borderlands")}
-              subject="the Borderlands"
-            />
-          )}
-        </DropTarget>
-
-        <Divider />
-        <PlaceRow isSelected={isHere("Rituals")} onPress={() => onPlace("Rituals")} place="Rituals" />
-        <PlaceRow isSelected={isHere("Craft")} onPress={() => onPlace("Craft")} place="Craft" />
-        <Divider />
-        <Heading
-          icon="the-keep"
-          isOpen={!foldedSections.set.has("Keep")}
-          label="The Keep"
-          note="Library, lore, and the archive"
-          onPress={() => foldedSections.toggle("Keep")}
-          onToggle={() => foldedSections.toggle("Keep")}
+        )}
+        {failureUnder("none")}
+        <Row
+          accessory={<Emblem name="castle" tint={colors.highlight} />}
+          isSelected={false}
+          label="Visit a realm"
+          onPress={() => setIsCreating(true)}
         />
-        {!foldedSections.set.has("Keep") &&
-          keepRooms.map((room) => (
-            <Row
-              hoverAccessory={
-                room.place === "Archived" ? (isShown) => <ArchiveCount client={client} isShown={isShown} /> : undefined
-              }
-              icon={room.icon}
-              indent={chevronWidth}
-              isSelected={isHere(room.place)}
-              key={room.place}
-              label={room.label}
-              onPress={() => onPlace(room.place)}
-            />
-          ))}
+        <Row
+          accessory={<NewQuestIcon color={colors.highlight} />}
+          isSelected={false}
+          label="Start a quest"
+          onPress={() => startQuest("none", null)}
+        />
       </ScrollView>
       <View style={local.footer}>
-        <Divider />
-        <PlaceRow isSelected={isHere("Reserves")} onPress={() => onPlace("Reserves")} place="Reserves" />
         <Spending client={client} />
-        <Divider />
-        <PlaceRow isSelected={isHere("Charter")} onPress={() => onPlace("Charter")} place="Charter" />
-        <PlaceRow isSelected={isHere("Settings")} onPress={() => onPlace("Settings")} place="Settings" />
+        <View style={local.menuRow}>
+          <ActionMenu
+            accessibilityLabel="Menu"
+            actions={menuPlaces.map((entry) => ({ label: entry.label, onPress: () => onPlace(entry.place) }))}
+            glyph="☰"
+          />
+        </View>
       </View>
       {pendingMove !== null && (
         <MoveQuestModal
@@ -277,7 +230,7 @@ export function Sidebar({
       {isCreating && (
         <NewRealmModal
           client={client}
-          initial={{ crest: null, name: "", path: "" }}
+          initial={{ name: "", path: "" }}
           isFolderRequired={false}
           onCancel={() => setIsCreating(false)}
         />
@@ -286,14 +239,7 @@ export function Sidebar({
   );
 }
 
-/** The number of archived quests, at the end of the Archive row, shown with the row's marks. */
-function ArchiveCount({ client, isShown }: { client: ServiceClient; isShown: boolean }) {
-  const request = { _tag: "ListMissions", isArchived: true, search: null, state: null, workspaceId: null } as const;
-  const { data } = useServiceQuery(client, request, `missions:${JSON.stringify(request)}`);
-  return <Count isShown={isShown} value={data?.missions.length ?? 0} />;
-}
-
-/** The compact usage summary under Reserves: the global budget's meters, when it has limits, and the plans' limits. */
+/** The compact usage summary above the menu: the global budget's meters, when it has limits, and the plans' limits. */
 function Spending({ client }: { client: ServiceClient }) {
   const { data: global } = useServiceQuery(client, { _tag: "ReadBudget", missionId: null }, "budget:global");
   if (global === null) return null;
@@ -303,13 +249,5 @@ function Spending({ client }: { client: ServiceClient }) {
       {hasLimits && <ReserveRows use={global} />}
       <PlanLimitRings client={client} />
     </View>
-  );
-}
-
-/** One fixed rail destination, named and illustrated by the same catalog as the narrow menu. */
-function PlaceRow({ place, isSelected, onPress }: { place: Place; isSelected: boolean; onPress: () => void }) {
-  const entry = placeGroups.flat().find((entry) => entry.place === place);
-  return entry === undefined ? null : (
-    <Row icon={entry.icon} isMain isSelected={isSelected} label={entry.label} onPress={onPress} />
   );
 }

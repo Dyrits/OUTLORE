@@ -15,7 +15,7 @@ afterEach(() => {
 
 /** A realm tied to the fixture's folder, so a Ritual can be made in it. */
 const createFolderRealm = Effect.fnUntraced(function* (path: string) {
-  yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path });
+  yield* call({ _tag: "CreateRealm", name: "Garden", path });
   const realm = (yield* list()).workspaces[0];
   if (realm === undefined) return yield* Effect.die("No realm");
   return realm;

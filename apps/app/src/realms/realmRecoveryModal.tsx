@@ -1,7 +1,6 @@
 import type { RealmAppearance, RealmArchivePreview } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { CrestBadge } from "../crest/crest";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
@@ -72,7 +71,7 @@ export function RealmRecoveryModal({
   const choose = (shouldStartAfresh: boolean) => {
     const next = transitionRecovery(flow, {
       _tag: "Choose",
-      hasDifferences: comparison.hasCrestDifference || comparison.hasNameDifference,
+      hasDifferences: comparison.hasNameDifference,
       shouldStartAfresh,
     });
     setFlow(next);
@@ -121,19 +120,6 @@ export function RealmRecoveryModal({
                     >
                       <Text style={styles.body}>{candidate.name}</Text>
                       <Text style={styles.muted}>{picks.name === side ? "Selected name" : "Choose name"}</Text>
-                    </Pressable>
-                  )}
-                  {comparison.hasCrestDifference && (
-                    <Pressable
-                      accessibilityLabel={side === "old" ? "Keep archived crest" : "Use proposed crest"}
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: picks.crest === side }}
-                      disabled={isBusy}
-                      onPress={() => setFlow(transitionRecovery(flow, { _tag: "Pick", field: "crest", value: side }))}
-                      style={[local.option, picks.crest === side && local.selected]}
-                    >
-                      <CrestBadge crest={candidate.crest} id={preview.realm.id} size={80} />
-                      <Text style={styles.muted}>{picks.crest === side ? "Selected crest" : "Choose crest"}</Text>
                     </Pressable>
                   )}
                 </View>

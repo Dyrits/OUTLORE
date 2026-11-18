@@ -4,7 +4,7 @@ import { folderOfRequest } from "../../src/work/index.ts";
 
 describe("identifying folders named in requests", () => {
   it("extracts the named folder from every folder-bearing request tag", () => {
-    expect(folderOfRequest({ _tag: "CreateRealm", crest: null, name: "App", path: "/work/app" })).toBe("/work/app");
+    expect(folderOfRequest({ _tag: "CreateRealm", name: "App", path: "/work/app" })).toBe("/work/app");
     expect(folderOfRequest({ _tag: "FindArchivedRealm", path: "/work/old" })).toBe("/work/old");
     expect(
       folderOfRequest({

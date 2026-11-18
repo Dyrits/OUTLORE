@@ -74,7 +74,7 @@ describe("the Companions a proposal card offers", () => {
 
 describe("offering realms on a quest proposal", () => {
   const realm = (id: string, name: string, path: string | null) =>
-    ({ crest: null, id: WorkspaceId.make(id), name, path }) satisfies WorkspaceChoice;
+    ({ id: WorkspaceId.make(id), name, path }) satisfies WorkspaceChoice;
 
   it("tells two realms of the same name apart by their parent folder, keeping each one's folder", () => {
     const options = realmOptionsOf([realm("b", "app", "/client-b/app"), realm("a", "app", "/client-a/app")]);

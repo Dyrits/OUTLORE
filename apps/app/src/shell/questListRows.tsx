@@ -6,7 +6,7 @@ import { colors, fontSizes, fonts, radii, stateLabels, stateTones } from "../fou
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { agoOf, questListRowsOf } from "./questTree";
 
-/** The shared compact quest and side-quest row, indented beneath its parent. */
+/** The shared compact quest and errand row, indented beneath its parent. */
 function QuestLine({
   depth,
   harness,

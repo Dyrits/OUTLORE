@@ -79,7 +79,8 @@ export function AddHostModal({
           <View style={local.panel}>
             <Text style={local.title}>Add a host</Text>
             <Text style={local.help}>
-              On the other computer, open the Charter, turn on Allow paired devices, and choose Pair a device.{" "}
+              On the other computer, open Settings, choose Remote access, turn on Allow paired devices, and choose Pair
+              a device.{" "}
               {canScanQrCode
                 ? "Scan its QR code with the camera, or paste the code or the link it shows here."
                 : "Paste the code or the link it shows here, or scan its QR code with a phone."}{" "}

@@ -119,7 +119,6 @@ export const requestSourceRules = {
   SendMessage: shared,
   SetAccountBudget: shared,
   SetMissionBudget: shared,
-  SetRealmCrest: shared,
   SetRemoteAccess: hostOnly,
   SetThreadBackups: shared,
   SignInAccount: shared,

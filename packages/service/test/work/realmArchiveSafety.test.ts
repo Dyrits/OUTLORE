@@ -7,7 +7,7 @@ import { call, fixture, open, read, send, settle, withService } from "../fixture
 
 const list = () => call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null });
 const create = Effect.gen(function* () {
-  yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: null });
+  yield* call({ _tag: "CreateRealm", name: "Garden", path: null });
   const realm = (yield* list()).workspaces[0];
   if (realm === undefined) return yield* Effect.die("No realm");
   return realm;
@@ -22,7 +22,7 @@ describe("confirming a realm archive safely", () => {
     withService(
       Effect.gen(function* () {
         const source = yield* create;
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Notes", path: null });
+        yield* call({ _tag: "CreateRealm", name: "Notes", path: null });
         const destination = (yield* list()).workspaces.find((realm) => realm.name === "Notes");
         if (destination === undefined) return yield* Effect.die("No destination");
         const quest = yield* call({ _tag: "StartEmptyQuest", realmId: source.id, requestId: "new" });
@@ -39,7 +39,7 @@ describe("confirming a realm archive safely", () => {
     ),
   );
 
-  it.live("refuses a stale confirmation when an idle side-quest is added behind the running limit", () =>
+  it.live("refuses a stale confirmation when an idle errand is added behind the running limit", () =>
     withService(
       Effect.gen(function* () {
         const realm = yield* create;
@@ -73,7 +73,7 @@ describe("confirming a realm archive safely", () => {
     ),
   );
 
-  it.live("rechecks and stops working side-quests at every depth", () =>
+  it.live("rechecks and stops working errands at every depth", () =>
     withService(
       Effect.gen(function* () {
         const realm = yield* create;
@@ -101,7 +101,7 @@ describe("confirming a realm archive safely", () => {
     writeFileSync(filename, "keep this file");
     return Effect.gen(function* () {
       const original = yield* Effect.gen(function* () {
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Folder garden", path: value.directory });
+        yield* call({ _tag: "CreateRealm", name: "Folder garden", path: value.directory });
         const realm = (yield* list()).workspaces[0];
         if (realm === undefined) return yield* Effect.die("No realm");
         const quest = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: "new" });

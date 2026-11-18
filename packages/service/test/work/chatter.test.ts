@@ -216,7 +216,7 @@ describe("stopping both threads of a chatter pause", () => {
       const secondWaiting = yield* settle(second.missionId, (detail) => detail.thread.state === "Waiting");
       const firstChild = firstWaiting.threads.find((thread) => thread.id !== first.threadId);
       const secondChild = secondWaiting.threads.find((thread) => thread.id !== second.threadId);
-      if (firstChild === undefined || secondChild === undefined) return yield* Effect.die("Missing side-quests");
+      if (firstChild === undefined || secondChild === undefined) return yield* Effect.die("Missing errands");
       yield* send(firstChild.id, `Ask ${mentionTokenOf({ id: secondChild.id, kind: "side-quest" })}`);
       for (let attempt = 0; attempt < 100; attempt++) {
         if ((yield* readTurnReach(firstChild.id)).reachable.has(secondChild.id)) break;

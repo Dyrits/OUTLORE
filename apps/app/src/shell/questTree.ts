@@ -66,20 +66,20 @@ export const areActionsShown = (row: {
   readonly isHovered: boolean;
 }): boolean => row.isHovered || row.hasKeyboardFocusWithin;
 
-/** One side-quest row of the sidebar: how deep it sits beneath its quest, and what it hides. */
+/** One errand row of the sidebar: how deep it sits beneath its quest, and what it hides. */
 export interface SideQuestRow {
-  /** Levels beneath the quest: 1 for a quest's own side-quests. */
+  /** Levels beneath the quest: 1 for a quest's own errands. */
   readonly depth: number;
   /** Threads the agents opened that the setting folds into this row. */
   readonly foldedCount: number;
-  /** Whether it has side-quests beneath it, so it can expand and collapse. */
+  /** Whether it has errands beneath it, so it can expand and collapse. */
   readonly hasChildren: boolean;
   readonly thread: ThreadSummary;
 }
 
 /**
- * The side-quests of one quest as the sidebar lists them: its tree in order, the quest itself left out, and the
- * descendants of a collapsed side-quest hidden. Threads the owner chose to fold away stay folded into their opener.
+ * The errands of one quest as the sidebar lists them: its tree in order, the quest itself left out, and the
+ * descendants of a collapsed errand hidden. Threads the owner chose to fold away stay folded into their opener.
  */
 export const sideQuestRowsOf = (
   threads: ReadonlyArray<ThreadSummary>,
@@ -99,19 +99,19 @@ export const sideQuestRowsOf = (
   return visible;
 };
 
-/** One row of the full quest list: the quest at depth 0, or one of its side-quests beneath it. */
+/** One row of the full quest list: the quest at depth 0, or one of its errands beneath it. */
 export interface QuestListRow {
   readonly depth: number;
-  /** Whether it has side-quests beneath it, so it can expand and collapse. */
+  /** Whether it has errands beneath it, so it can expand and collapse. */
   readonly hasChildren: boolean;
-  /** The quest's id for the quest's row, the thread's for a side-quest's. */
+  /** The quest's id for the quest's row, the thread's for an errand's. */
   readonly id: string;
-  /** The side-quest, or null for the quest's own row. */
+  /** The errand, or null for the quest's own row. */
   readonly thread: ThreadSummary | null;
 }
 
 /**
- * The rows the full quest list shows for one quest: the quest, then its side-quests nested as the sidebar nests them
+ * The rows the full quest list shows for one quest: the quest, then its errands nested as the sidebar nests them
  * (`sideQuestRowsOf`, with the same setting for agents' threads), unless the quest is collapsed. Its tree is null until read.
  */
 export const questListRowsOf = (

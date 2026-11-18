@@ -9,7 +9,7 @@ The owner confirmed that shell output belongs in the Companion's context and cla
 - On Windows, which has no login shell, `!` opens the command shell named by `ComSpec` (the Windows system shell), and the app keeps the launcher's `;`-separated `PATH` instead of reading a login shell's (CHG-0356).
 - An exclamation mark in ordinary text stays text; paste and input composition do not trigger a shell.
 - With a workspace-backed Realm, the starting folder is that Realm's root, including the Realm selected in the Guild Hall.
-- A thread that works in its own copy (a git worktree, [workspace attachment](../workspace-attachment/specifications.md#own-copy)) starts the terminal in that worktree, where the agent works, not in the workspace's checkout (CHG-0455). Threads sharing a copy share its folder. A thread keeps its working folder for its whole life; work somewhere else is a side-quest with its own copy.
+- A thread that works in its own copy (a git worktree, [workspace attachment](../workspace-attachment/specifications.md#own-copy)) starts the terminal in that worktree, where the agent works, not in the workspace's checkout (CHG-0455). Threads sharing a copy share its folder. A thread keeps its working folder for its whole life; work somewhere else is an errand with its own copy.
 - For a quest in a Realm without a workspace or in the Borderlands, the terminal starts in the owner's home folder.
   Agents without a workspace still use the quest's [scratch folder](../workspace-attachment/specifications.md#no-workspace).
 - The terminal accepts interactive input, control keys, and resizing through a pseudo-terminal.

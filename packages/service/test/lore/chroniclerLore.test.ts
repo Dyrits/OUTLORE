@@ -15,24 +15,24 @@ describe("searching lore as Chronicler", () => {
       const questId = idOf(yield* save(quest.threadId, "Orchid quest detail.", "mission"));
       yield* save(quest.threadId, "Orchid global detail.", "global");
       yield* approveAll();
-      const side = yield* open(quest.threadId, "Side-quest");
+      const side = yield* open(quest.threadId, "Errand");
       yield* settle(quest.missionId, (detail) => detail.thread.state === "Idle", side.threadId);
-      const sideId = idOf(yield* save(side.threadId, "Orchid side-quest detail.", "thread"));
+      const sideId = idOf(yield* save(side.threadId, "Orchid errand detail.", "thread"));
       const other = yield* start("Other quest", null);
       yield* settle(other.missionId, (detail) => detail.thread.state === "Idle");
       const found = yield* tool(chronicler.threadId, "search_intel", { query: "orchid" });
       expect(found).toContain("Orchid realm detail.");
       expect(found).toContain("Orchid quest detail.");
-      expect(found).toContain("Orchid side-quest detail.");
+      expect(found).toContain("Orchid errand detail.");
       expect(found).toContain("Orchid global detail.");
-      expect(found.indexOf("Orchid side-quest detail.")).toBeLessThan(found.indexOf("Orchid quest detail."));
+      expect(found.indexOf("Orchid errand detail.")).toBeLessThan(found.indexOf("Orchid quest detail."));
       expect(found.indexOf("Orchid quest detail.")).toBeLessThan(found.indexOf("Orchid realm detail."));
       expect(found.indexOf("Orchid realm detail.")).toBeLessThan(found.indexOf("Orchid global detail."));
       const questOnly = yield* tool(chronicler.threadId, "search_intel", { query: "orchid", scope: "mission" });
       expect(questOnly).toContain("Orchid quest detail.");
-      expect(questOnly).not.toContain("Orchid side-quest detail.");
+      expect(questOnly).not.toContain("Orchid errand detail.");
       expect(yield* tool(chronicler.threadId, "search_intel", { ids: [realmId, questId, sideId] })).toContain(
-        "Orchid side-quest detail.",
+        "Orchid errand detail.",
       );
       expect(yield* tool(other.threadId, "search_intel", { ids: [realmId, questId, sideId] })).toContain("No lore");
       const helper = yield* open(chronicler.threadId, "Chronicler helper");

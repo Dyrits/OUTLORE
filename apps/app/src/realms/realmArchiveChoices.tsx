@@ -21,7 +21,7 @@ export function QuestChecklist({
         const isChecked = moved.has(quest.id);
         return (
           <Pressable
-            accessibilityLabel={`Move ${quest.title} to the Borderlands`}
+            accessibilityLabel={`Take ${quest.title} out of the realm instead of archiving it`}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: isChecked, disabled: isBusy || quest.isWorking }}
             disabled={isBusy || quest.isWorking}
@@ -40,7 +40,7 @@ export function QuestChecklist({
                 {quest.isWorking
                   ? "At work: stop it first to move it. It will be stopped and archived."
                   : isChecked
-                    ? "Moves to the Borderlands"
+                    ? "Leaves the realm, in no realm"
                     : "Archived with the realm"}
               </Text>
             </View>

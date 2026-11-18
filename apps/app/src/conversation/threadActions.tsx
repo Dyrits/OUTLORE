@@ -55,7 +55,7 @@ export function DeleteThreadAction({
         <View style={styles.failure}>
           <Text style={styles.body}>{deletionQuestionOf(preview)}</Text>
           <Text style={styles.muted}>
-            This permanently erases {preview.isMission ? "the quest" : "this side-quest and its side-quests"} and their
+            This permanently erases {preview.isMission ? "the quest" : "this errand and its errands"} and their
             conversations.
           </Text>
           <View style={styles.inlineRow}>

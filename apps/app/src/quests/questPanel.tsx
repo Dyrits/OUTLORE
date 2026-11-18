@@ -1,7 +1,6 @@
 import type { HarnessName, MissionDetail, MissionId, MissionSummary, WorkspaceChoice } from "@outlore/contracts";
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { CrestBadge } from "../crest/crest";
 import { BudgetMeters } from "../editors/budgets";
 import { boardOf } from "../foundation/boardColumns";
 import type { ServiceClient } from "../foundation/client";
@@ -16,13 +15,13 @@ import {
 } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, outline, radii, stateLabels, stateTones } from "../foundation/theme";
-import { useServiceQuery } from "../foundation/useServiceQuery";
 import { RealmArchiveAction } from "../realms/realmArchiveAction";
 import { RealmName } from "../realms/realmName";
 import { RitualControls } from "../rituals/rituals";
 import { ProviderMark } from "../ui/providerMarks";
 import { RowChevron, RowIcon, type RowIconName } from "../ui/rowIcons";
 import { MissionEndingActions, MissionTitle } from "./missionActions";
+import { QuestRealm } from "./questRealm";
 
 /** A labelled group of rows in a rounded card, as in the quest's side panel; the rows are set apart by thin rules. */
 export function Group({ children, label }: { children: ReactNode; label: string }) {
@@ -92,7 +91,7 @@ export type ThreadSections = {
   /** The thread's Companions group: what it runs on, its backups, and its context. */
   companions: ReactNode;
   knows: ReactNode;
-  /** Given for a side-quest: it names the quest it belongs to and ends on its own. */
+  /** Given for an errand: it names the quest it belongs to and ends on its own. */
   sideQuest: { action: ReactNode; onOpenQuest: () => void; title: string } | null;
   spends: ReactNode;
 };
@@ -128,9 +127,9 @@ export function QuestSidebar({
       <ScrollView contentContainerStyle={local.content} style={styles.flex}>
         <View style={local.hero}>
           {onBack === undefined ? (
-            // A plain quest is already named by the column's Quest tab; only a side-quest or a Ritual says what it is.
+            // A plain quest is already named by the column's Quest tab; only an errand or a Ritual says what it is.
             (thread?.sideQuest != null || mission.ritual !== null) && (
-              <Text style={local.kicker}>{thread?.sideQuest != null ? "Side-quest" : "Ritual"}</Text>
+              <Text style={local.kicker}>{thread?.sideQuest != null ? "Errand" : "Ritual"}</Text>
             )
           ) : (
             <Pressable accessibilityRole="button" onPress={onBack}>
@@ -138,12 +137,6 @@ export function QuestSidebar({
             </Pressable>
           )}
           <View style={local.heroRow}>
-            <CrestBadge
-              crest={mission.workspaceCrest}
-              id={mission.workspaceId ?? mission.id}
-              isLoose={mission.workspaceId === null}
-              size={56}
-            />
             {thread?.sideQuest != null ? (
               <Text style={[local.heroName, styles.flex]}>{thread.sideQuest.title}</Text>
             ) : (
@@ -176,6 +169,15 @@ export function QuestSidebar({
         {thread !== undefined && <Group label="Companions">{thread.companions}</Group>}
         <Group label="Knows">
           <Row icon="book" label="Journal" onPress={onOpenJournal} value="Where it stands" />
+          {thread?.sideQuest == null && mission.ritual === null && (
+            <QuestRealm
+              client={client}
+              mission={mission}
+              renderRow={(onPress) => (
+                <Row icon="state" label="Realm" onPress={onPress} value={mission.workspaceName ?? "None"} />
+              )}
+            />
+          )}
           {thread?.knows}
         </Group>
         <Group label="Does">
@@ -202,39 +204,6 @@ export function QuestSidebar({
         </View>
       </ScrollView>
     </View>
-  );
-}
-
-/**
- * The panel for a quest picked on the board: it loads the quest itself and offers to open it, since the board's card
- * only selects it.
- */
-export function QuestPreview({
-  client,
-  missionId,
-  onBack,
-  onOpenBudget,
-  onOpenJournal,
-  onOpenQuest,
-}: {
-  client: ServiceClient;
-  missionId: MissionId;
-  onBack: () => void;
-  onOpenBudget: () => void;
-  onOpenJournal: () => void;
-  onOpenQuest: () => void;
-}) {
-  const { data } = useServiceQuery(client, { _tag: "ReadMission", missionId, threadId: null }, `${missionId}:top`);
-  if (data === null || data.mission.id !== missionId) return <View style={local.panel} />;
-  return (
-    <QuestSidebar
-      client={client}
-      mission={data.mission}
-      onBack={onBack}
-      onOpenBudget={onOpenBudget}
-      onOpenJournal={onOpenJournal}
-      onOpenQuest={onOpenQuest}
-    />
   );
 }
 
@@ -310,20 +279,18 @@ function QuestLedger({
 }
 
 /**
- * What the board's side panel shows for a realm while no quest is chosen: its crest and name, its folder, the ledger
- * of its quests, those needing the owner or underway, and the button that opens the crest studio.
+ * What the board's side panel shows for a realm while no quest is chosen: its name, its folder, the ledger
+ * of its quests, and those needing the owner or underway.
  */
 export function RealmPanel({
   client,
   missions,
-  onCustomize,
   onOpenLore,
   onSelect,
   realm,
 }: {
   client: ServiceClient;
   missions: ReadonlyArray<MissionSummary>;
-  onCustomize: () => void;
   /** Opens the lore kept for this realm. */
   onOpenLore: () => void;
   onSelect: (id: MissionId) => void;
@@ -342,14 +309,6 @@ export function RealmPanel({
         <View style={local.hero}>
           <Text style={local.kicker}>Realm</Text>
           <View style={local.heroRow}>
-            <Pressable
-              accessibilityHint="Press to customize the crest"
-              accessibilityLabel={`Crest of ${realm.name}`}
-              accessibilityRole="button"
-              onPress={onCustomize}
-            >
-              <CrestBadge crest={realm.crest} id={realm.id} size={64} />
-            </Pressable>
             <RealmName client={client} realm={realm} textStyle={local.heroName} />
           </View>
           <Text numberOfLines={2} style={local.meta}>
@@ -359,7 +318,7 @@ export function RealmPanel({
         <Group label="Details">
           <Row label="Quests" value={String(missions.length)} />
           <Row
-            label="Side-quests"
+            label="Errands"
             value={String(missions.reduce((sum, mission) => sum + Math.max(0, mission.threadCount - 1), 0))}
           />
           {lastActivity !== null && <Row label="Last active" value={timeOf(lastActivity)} />}

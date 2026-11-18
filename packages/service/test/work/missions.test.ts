@@ -157,7 +157,7 @@ describe("starting an empty quest in a realm", () => {
     Effect.gen(function* () {
       const folder = mkdtempSync(join(tmpdir(), "outlore-realm-"));
       directories.push(folder);
-      yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: folder });
+      yield* call({ _tag: "CreateRealm", name: "Garden", path: folder });
       const [realm] = (yield* realmList()).workspaces;
       const realmId = realm?.id ?? null;
       const started = yield* call({ _tag: "StartEmptyQuest", realmId, requestId: "e1" });
@@ -191,7 +191,7 @@ describe("starting an empty quest in a realm with no folder or in the Borderland
     "places it in the realm, with no folder to work in, or in the Borderlands, and refuses an unknown realm",
     () =>
       Effect.gen(function* () {
-        yield* call({ _tag: "CreateRealm", crest: null, name: "Garden", path: null });
+        yield* call({ _tag: "CreateRealm", name: "Garden", path: null });
         const [realm] = (yield* realmList()).workspaces;
         const placed = yield* call({ _tag: "StartEmptyQuest", realmId: realm?.id ?? null, requestId: "f1" });
         const borderlands = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: "f2" });

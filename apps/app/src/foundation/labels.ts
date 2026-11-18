@@ -26,9 +26,9 @@ import { clockOf } from "./formatting";
 /** A count with its noun, in the singular for one and the plural otherwise, for example "1 step" or "3 steps". */
 export const countedOf = (count: number, noun: string) => `${count} ${count === 1 ? noun : `${noun}s`}`;
 
-const sideQuestsOf = (count: number) => countedOf(count, "side-quest");
+const sideQuestsOf = (count: number) => countedOf(count, "errand");
 
-/** The mark on a thread that folds agent-opened threads beneath it, for example "+3 side-quests". */
+/** The mark on a thread that folds agent-opened threads beneath it, for example "+3 errands". */
 export const foldedLabelOf = (count: number) => `+${sideQuestsOf(count)}`;
 
 /** The one deletion confirmation: the threads beneath, and the running ones only when some run. */
@@ -44,7 +44,7 @@ export const deletionQuestionOf = (preview: {
       : preview.descendantCount === 0
         ? " (running)"
         : ` (${preview.runningCount} running)`;
-  return `Delete this ${preview.isMission ? "quest" : "side-quest"}${beneath}${running}?`;
+  return `Delete this ${preview.isMission ? "quest" : "errand"}${beneath}${running}?`;
 };
 
 /** Who wrote a journal entry, as the Journal view names it. */
@@ -64,7 +64,7 @@ export const briefingSizeOf = (tokens: number, limit: number) =>
 
 /** The warning before a thread starts with too large a starting context (thread-tree, Opening a thread). */
 export const startingContextWarningOf = (context: StartingContext) =>
-  `This side-quest would start with about ${tokenCountOf(context.tokens)} tokens, ${Math.round((context.tokens * 100) / context.windowTokens)}% of the model's ${countOf(context.windowTokens)}-token context window; the warning is at ${context.warningPercent}%.`;
+  `This errand would start with about ${tokenCountOf(context.tokens)} tokens, ${Math.round((context.tokens * 100) / context.windowTokens)}% of the model's ${countOf(context.windowTokens)}-token context window; the warning is at ${context.warningPercent}%.`;
 
 /** Each part of a starting context with its tokens, for example "Request 100 · Journal 50 · … tokens". */
 export const startingContextPartsOf = (parts: StartingContextParts) =>
@@ -78,7 +78,7 @@ export const startingContextPartsOf = (parts: StartingContextParts) =>
     `Title and budget ${tokenCountOf(parts.position + parts.budget)} tokens`,
   ].join(" · ");
 
-/** A dashboard row's thread count, for example "1 quest · 4 side-quests · 2 running". */
+/** A dashboard row's thread count, for example "1 quest · 4 errands · 2 running". */
 export const threadCountOf = (mission: { readonly runningCount: number; readonly threadCount: number }) =>
   `1 quest · ${sideQuestsOf(Math.max(0, mission.threadCount - 1))}${mission.runningCount === 0 ? "" : ` · ${mission.runningCount} running`}`;
 
@@ -370,5 +370,5 @@ export const loreProposalLineOf = (
 export const scopeNameOf = (label: string) =>
   label.replace(
     /^(Mission|Thread|Workspace)(?= |$)/,
-    (term) => ({ Mission: "Quest", Thread: "Side-quest", Workspace: "Realm" })[term] ?? term,
+    (term) => ({ Mission: "Quest", Thread: "Errand", Workspace: "Realm" })[term] ?? term,
   );

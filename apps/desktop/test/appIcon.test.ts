@@ -7,10 +7,6 @@ import { iconFileOf, iconFiles } from "../src/appIcon.ts";
 const assets = join(dirname(fileURLToPath(import.meta.url)), "..", "assets");
 
 describe("iconFileOf", () => {
-  it("gives Gild's hooded figure for the Gild theme", () => {
-    expect(iconFileOf("gild")).toBe("icon-gild.png");
-  });
-
   it("keeps Iskios's icon for the One color theme", () => {
     expect(iconFiles.one).toBe("icon.png");
     expect(iconFileOf("one")).toBe("icon.png");

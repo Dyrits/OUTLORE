@@ -37,7 +37,7 @@ SQLite is the production persistence adapter; temporary SQLite is the test adapt
 
 ## Simplified sidebar, errands and crest removal (CHG-0449)
 
-Proposed design for the [Simplified left navigation](specifications.md#simplified-left-navigation). Implementation is pending. The app, contracts, and service keep their existing boundaries and storage ownership. Quest placement follows [ADR 0015](../../architecture-decision-record/0015-realms-tied-or-not-and-one-borderlands.md).
+Proposed design for the [Simplified left navigation](specifications.md#simplified-left-navigation). All four batches are built (CHG-0452 to CHG-0456). The app, contracts, and service keep their existing boundaries and storage ownership. Quest placement follows [ADR 0015](../../architecture-decision-record/0015-realms-tied-or-not-and-one-borderlands.md).
 
 Modules and interfaces (all in `apps/app/src` unless noted):
 

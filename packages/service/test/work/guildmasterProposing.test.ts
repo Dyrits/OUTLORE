@@ -127,7 +127,7 @@ describe("proposing a quest", () => {
 
   it.live("makes no card for a realm that does not exist or has no folder, and tells Chronicler which to name", () =>
     Effect.gen(function* () {
-      yield* call({ _tag: "CreateRealm", crest: null, name: "Ideas", path: null });
+      yield* call({ _tag: "CreateRealm", name: "Ideas", path: null });
       yield* startIdle("Existing");
       const place = yield* guildmaster;
       for (const realm of ["nowhere", "Ideas"]) {

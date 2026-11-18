@@ -232,8 +232,7 @@ export function EntryView({
       <View style={styles.questionLine}>
         <Pressable onPress={() => onSelectThread(thread.id)}>
           <Text style={styles.link}>
-            {thread.isOpenedByAgent ? "Companion opened a side-quest" : "Opened a side-quest"}:{" "}
-            {shortened(thread.title)}
+            {thread.isOpenedByAgent ? "Companion opened an errand" : "Opened an errand"}: {shortened(thread.title)}
           </Text>
         </Pressable>
       </View>

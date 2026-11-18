@@ -59,7 +59,7 @@ const accountLabelOf = (row: UsageRow) => {
 
 /** A realm row's name: the Borderlands for the empty key; Chronicler's own quests carry their name from the service. */
 const realmLabelOf = (row: UsageRow) => {
-  if (row.key === "") return "Borderlands";
+  if (row.key === "") return "No realm";
   if (row.key === deletedRealmKey) return "Deleted quests";
   return row.name ?? "Realm";
 };

@@ -8,7 +8,7 @@ import { colors } from "../foundation/theme";
 import { useMentionables } from "../foundation/useMentionables";
 import { chipsOf } from "./chipPlaces";
 
-// A chosen skill, workspace path, quest, side-quest, or realm drawn as a small chip with an icon, in the conversation and
+// A chosen skill, workspace path, quest, errand, or realm drawn as a small chip with an icon, in the conversation and
 // in the suggestion list.
 
 const ICON_SIZE = 12;
@@ -17,7 +17,7 @@ const ICON_SIZE = 12;
 export const iconPaths = {
   file: ["M3.5 1.5 H9.5 L12.5 4.5 V14.5 H3.5 Z", "M9.5 1.5 V4.5 H12.5"],
   folder: ["M1.5 3.5 H6 L7.5 5 H14.5 V13 H1.5 Z"],
-  // A pennant on its pole, for a quest or side-quest.
+  // A pennant on its pole, for a quest or errand.
   quest: ["M4 14.5 V1.5", "M4 2.5 H12.5 L10.5 5.5 L12.5 8.5 H4"],
   // A keep with its battlements, for a realm.
   realm: ["M2.5 14.5 V5.5 H4.5 V7 H6.5 V5.5 H9.5 V7 H11.5 V5.5 H13.5 V14.5 Z", "M7 14.5 V11.5 H9 V14.5"],
@@ -86,7 +86,7 @@ function useMentionKinds(
   return found;
 }
 
-/** The chips of a text: skills, workspace paths as the service knows them, and quests, side-quests, and realms. */
+/** The chips of a text: skills, workspace paths as the service knows them, and quests, errands, and realms. */
 function useChipsOf({
   client,
   skills,
@@ -111,7 +111,7 @@ function useChipsOf({
   return chipsOf(text, { entries, mentionables, skills });
 }
 
-/** A message's text with each chosen skill, workspace path, quest, side-quest, or realm as a chip with its icon. */
+/** A message's text with each chosen skill, workspace path, quest, errand, or realm as a chip with its icon. */
 export function ChipText({
   client,
   skills,

@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { workedOutStateOf } from "./missionStates.ts";
 
-// Quests, side-quests, and realms the owner names with `@` (thread-messaging, Who can message whom; CHG-0181): what the
+// Quests, errands, and realms the owner names with `@` (thread-messaging, Who can message whom; CHG-0181): what the
 // menu offers, the reference appended to the message the harness reads, and what a mention opens for the turn it reaches.
 
 /** A thread of a quest not archived. */
@@ -41,7 +41,7 @@ const trailOf = (thread: ThreadRow, byId: ReadonlyMap<string, ThreadRow>, questT
 };
 
 /**
- * Every quest not archived with its side-quests beneath it, latest activity first, then every realm by name. Chronicler's own
+ * Every quest not archived with its errands beneath it, latest activity first, then every realm by name. Chronicler's own
  * quest and threads being deleted are never offered.
  */
 export const listMentionables = Effect.gen(function* () {
@@ -79,7 +79,7 @@ export const listMentionables = Effect.gen(function* () {
   ];
 });
 
-/** A mentioned side-quest's thread, in a quest not archived; null when there is none. */
+/** A mentioned errand's thread, in a quest not archived; null when there is none. */
 const readSideQuest = Effect.fnUntraced(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<{ missionId: string; state: string }>`
@@ -121,7 +121,7 @@ type ResolvedMention = {
 
 /** The words for a quest's realm, as the receiving thread reads them. */
 const realmLabelOf = (quest: { readonly workspaceName: string | null }) =>
-  quest.workspaceName === null ? "the Borderlands" : `realm ${quest.workspaceName}`;
+  quest.workspaceName === null ? "no realm" : `realm ${quest.workspaceName}`;
 
 const resolveRealmMention = Effect.fnUntraced(function* (reference: MentionReference) {
   const sql = yield* SqlClient.SqlClient;
@@ -161,7 +161,7 @@ const resolveSideQuestMention = Effect.fnUntraced(function* (reference: MentionR
     return { line: `${token} = no open ${reference.kind} has this id: it was archived or deleted.`, ...grants };
   const [thread] = yield* sql<{ title: string }>`SELECT title FROM threads WHERE id = ${reference.id}`;
   return {
-    line: `${token} = Side-quest "${thread?.title ?? ""}" of quest "${quest.title}" (thread id ${reference.id}, state ${sideQuest.state}, quest id ${quest.id}, ${realmLabelOf(quest)}). This turn you may read its quest's journal with read_journal (mission ${quest.id}) and message it with send_thread_message.`,
+    line: `${token} = Errand "${thread?.title ?? ""}" of quest "${quest.title}" (thread id ${reference.id}, state ${sideQuest.state}, quest id ${quest.id}, ${realmLabelOf(quest)}). This turn you may read its quest's journal with read_journal (mission ${quest.id}) and message it with send_thread_message.`,
     ...grants,
   } satisfies ResolvedMention;
 });
@@ -175,7 +175,7 @@ const resolvers = {
 const resolveMention = (reference: MentionReference) => resolvers[reference.kind](reference);
 
 /**
- * What the owner's message tells its receiving thread about the quests, side-quests, and realms it mentions: a block
+ * What the owner's message tells its receiving thread about the quests, errands, and realms it mentions: a block
  * appended after the owner's own words, which stay as typed; empty when it mentions none.
  */
 export const readMentionNote = Effect.fnUntraced(function* (text: string) {
@@ -187,9 +187,9 @@ export const readMentionNote = Effect.fnUntraced(function* (text: string) {
 
 /** What a thread may reach beyond its tree during its current turn, from what was delivered to that turn. */
 export type TurnReach = {
-  /** Threads it may message: the top thread of a mentioned quest, a mentioned side-quest, and a thread that wrote to it. */
+  /** Threads it may message: the top thread of a mentioned quest, a mentioned errand, and a thread that wrote to it. */
   readonly reachable: ReadonlySet<string>;
-  /** Quests whose journal it may read: those the owner mentioned, or whose side-quest the owner mentioned. */
+  /** Quests whose journal it may read: those the owner mentioned, or whose errand the owner mentioned. */
   readonly readable: ReadonlySet<string>;
 };
 

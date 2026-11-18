@@ -1,6 +1,5 @@
-import type { Crest, MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
+import type { MissionId, MissionSummary, ThreadId } from "@outlore/contracts";
 import { Pressable, Text, View } from "react-native";
-import { CrestBadge } from "../crest/crest";
 import type { ServiceClient } from "../foundation/client";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -10,7 +9,7 @@ import { threadOutlineOf } from "./railOutline";
 import { Count, Row, StateDot } from "./railRows";
 import { chevronWidth, indentStep, isHovered, local } from "./railStyles";
 
-/** A quest's side-quests, nested beneath it with their branch guides; each can collapse its own side-quests. */
+/** A quest's errands, nested beneath it with their branch guides; each can collapse its own errands. */
 function SideQuests({
   client,
   collapsed,
@@ -64,7 +63,7 @@ function SideQuests({
   );
 }
 
-/** One quest of a placement, with its side-quests beneath it while it is expanded. */
+/** One quest of a placement, with its errands beneath it while it is expanded. */
 export function Quest({
   client,
   collapsed,
@@ -93,7 +92,7 @@ export function Quest({
   const isHere = openMission === mission.id;
   return (
     <>
-      {/* Only the quest's own row is picked up; its side-quests go with it. */}
+      {/* Only the quest's own row is picked up; its errands go with it. */}
       <DragSource missionId={mission.id}>
         <Row
           accessory={<StateDot state={mission.state} />}
@@ -126,12 +125,10 @@ export function Quest({
 }
 
 /**
- * A realm's row: its crest, its name with the folder mark when it is tied to a folder, its quest count, and its chevron,
+ * A realm's row: its name with the folder mark when it is tied to a folder, its quest count, and its chevron,
  * always; its overview and new-quest buttons only while hovered or focused.
  */
 export function RealmHeader({
-  crest,
-  id,
   isOpen,
   name,
   onNewQuest,
@@ -140,8 +137,6 @@ export function RealmHeader({
   path,
   questCount,
 }: {
-  crest: Crest | null;
-  id: WorkspaceId;
   isOpen: boolean;
   name: string;
   onNewQuest: () => void;
@@ -159,7 +154,6 @@ export function RealmHeader({
       onPress={onToggle}
       style={(state) => [local.row, { paddingLeft: 6 }, (state.pressed || isHovered(state)) && local.rowHovered]}
     >
-      <CrestBadge crest={crest} id={id} size={22} />
       <Text numberOfLines={1} style={[local.rowText, local.realmText]}>
         {name}
       </Text>

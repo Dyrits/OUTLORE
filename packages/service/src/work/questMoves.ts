@@ -7,7 +7,7 @@ import { releaseThread, waitsInTurn } from "./lifecycle.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 
 // Quest moves (mission-tracking, Quest placement and moves): a quest's realm is its top thread's workspace, inherited
-// by its side-quests, so a move rewrites that one column across the whole tree. Realm lore and standing permissions
+// by its errands, so a move rewrites that one column across the whole tree. Realm lore and standing permissions
 // are keyed by the same id, so they follow the destination without being copied.
 
 /**
@@ -54,7 +54,7 @@ export const moveQuest = Effect.fn("moveQuest")(function* (missionId: string, re
   yield* updateJournal(
     missionId,
     { kind: "user" },
-    `Moved by the user from ${source?.name ?? "the Borderlands"} to ${destination.name ?? "the Borderlands"} (${where}). Earlier messages may refer to the former place; the realm lore available now is the destination's.`,
+    `Moved by the user from ${source?.name ?? "no realm"} to ${destination.name ?? "no realm"} (${where}). Earlier messages may refer to the former place; the realm lore available now is the destination's.`,
     null,
   );
   return changed(null, { threadsToWake: held.map((thread) => thread.id) });

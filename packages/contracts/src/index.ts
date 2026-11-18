@@ -5,7 +5,6 @@ export * from "./activities.ts";
 export * from "./attachments.ts";
 export * from "./budgets.ts";
 export * from "./companions.ts";
-export * from "./crest.ts";
 export * from "./frames.ts";
 export * from "./harnesses.ts";
 export * from "./ids.ts";
@@ -27,7 +26,6 @@ export {
   RealmCreation,
   RenameRealm,
   RestoreRealm,
-  SetRealmCrest,
 } from "./realmRequests.ts";
 export * from "./records.ts";
 export * from "./remote.ts";

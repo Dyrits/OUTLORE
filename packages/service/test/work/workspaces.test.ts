@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { MissionDetail, Request } from "@outlore/contracts";
 import { Effect } from "effect";
+import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
 import { isInsideFolder } from "../../src/core/index.ts";
 import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
@@ -451,83 +452,52 @@ describe("standing permissions in a workspace", () => {
   });
 });
 
-describe("designing a realm's crest", () => {
-  const crest = {
-    band: "Chevron",
-    bandWidth: 1,
-    colors: {
-      band: "#d9ad4f",
-      edge: "#3b0f0c",
-      emblem: "#f2d98a",
-      field: "#8b1e1a",
-      secondField: "#5e1210",
-      trim: "#d9ad4f",
-    },
-    division: "PerPale",
-    edge: 0.35,
-    emblem: { _tag: "Charge", id: "lion" },
-    emblemScale: 1,
-    finish: "Sheen",
-    plate: "Shield",
-    trim: "DoubleLine",
-  } as const;
+describe("naming a realm", () => {
   const listed = call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null });
 
-  it.live("keeps the crest on the realm and on its quests, and clears it with null", () => {
+  it.live("names a new realm when its first quest starts, and ignores the name for an existing realm", () => {
+    const { home, layer } = setUp();
+    const app = join(home, "app");
+    return Effect.gen(function* () {
+      yield* call({
+        _tag: "StartMission",
+        effort: "default",
+        model: "default",
+        realm: { name: "The Orchard" },
+        requestId: crypto.randomUUID(),
+        text: "Begin",
+        workspacePath: app,
+      });
+      const first = yield* listed;
+      expect(first.workspaces[0]).toMatchObject({ name: "The Orchard", path: app });
+      yield* call({
+        _tag: "StartMission",
+        effort: "default",
+        model: "default",
+        realm: { name: "Other" },
+        requestId: crypto.randomUUID(),
+        text: "Again",
+        workspacePath: app,
+      });
+      expect((yield* listed).workspaces[0]).toMatchObject({ name: "The Orchard" });
+    }).pipe(Effect.provide(layer));
+  });
+
+  it.live("ignores a crest an earlier version stored on a realm", () => {
     const { home, layer } = setUp();
     return Effect.gen(function* () {
-      const started = yield* start("Fix the build", join(home, "app"));
-      const before = yield* listed;
-      expect(before.workspaces[0]?.crest).toBeNull();
-      const workspaceId = before.workspaces[0]?.id;
-      if (workspaceId === undefined) return yield* Effect.die(new Error("no realm"));
-      yield* call({ _tag: "SetRealmCrest", crest, workspaceId });
+      yield* start("Fix the build", join(home, "app"));
+      const sql = yield* SqlClient.SqlClient;
+      yield* sql`UPDATE workspaces SET crest = '{"plate":"Shield"}'`;
       const after = yield* listed;
-      expect(after.workspaces[0]?.crest).toEqual(crest);
-      expect(after.missions.find((mission) => mission.id === started.missionId)?.workspaceCrest).toEqual(crest);
-      yield* call({ _tag: "SetRealmCrest", crest: null, workspaceId });
-      expect((yield* listed).workspaces[0]?.crest).toBeNull();
+      expect(after.workspaces[0]).toEqual({
+        id: after.workspaces[0]?.id,
+        name: "app",
+        path: join(home, "app"),
+      });
+      expect(after.missions[0]).not.toHaveProperty("workspaceCrest");
     }).pipe(Effect.provide(layer));
   });
-
-  it.live("refuses a crest for a realm that does not exist", () => {
-    const { layer } = setUp();
-    return Effect.gen(function* () {
-      const failure = yield* failureOf({ _tag: "SetRealmCrest", crest, workspaceId: "nope" as never });
-      expect(JSON.stringify(failure)).toContain("No such realm");
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live(
-    "names a new realm and gives it a crest when its first quest starts, and ignores both for an existing realm",
-    () => {
-      const { home, layer } = setUp();
-      const app = join(home, "app");
-      return Effect.gen(function* () {
-        yield* call({
-          _tag: "StartMission",
-          effort: "default",
-          model: "default",
-          realm: { crest, name: "The Orchard" },
-          requestId: crypto.randomUUID(),
-          text: "Begin",
-          workspacePath: app,
-        });
-        const first = yield* listed;
-        expect(first.workspaces[0]).toMatchObject({ crest, name: "The Orchard", path: app });
-        yield* call({
-          _tag: "StartMission",
-          effort: "default",
-          model: "default",
-          realm: { crest: null, name: "Other" },
-          requestId: crypto.randomUUID(),
-          text: "Again",
-          workspacePath: app,
-        });
-        expect((yield* listed).workspaces[0]).toMatchObject({ crest, name: "The Orchard" });
-      }).pipe(Effect.provide(layer));
-    },
-  );
 
   it.live("renames a realm, and refuses a blank name", () => {
     const { home, layer } = setUp();
@@ -548,11 +518,11 @@ describe("designing a realm's crest", () => {
     const { home, layer } = setUp();
     const app = join(home, "app");
     return Effect.gen(function* () {
-      yield* call({ _tag: "CreateRealm", crest, name: "The Orchard", path: app });
+      yield* call({ _tag: "CreateRealm", name: "The Orchard", path: app });
       const imported = yield* listed;
       expect(imported.missions).toEqual([]);
-      expect(imported.workspaces[0]).toMatchObject({ crest, name: "The Orchard", path: app });
-      const failure = yield* failureOf({ _tag: "CreateRealm", crest: null, name: "Nope", path: join(home, "missing") });
+      expect(imported.workspaces[0]).toMatchObject({ name: "The Orchard", path: app });
+      const failure = yield* failureOf({ _tag: "CreateRealm", name: "Nope", path: join(home, "missing") });
       expect(JSON.stringify(failure)).toContain("No folder");
     }).pipe(Effect.provide(layer));
   });
@@ -622,61 +592,40 @@ describe("naming files and folders of a workspace with @", () => {
 });
 
 describe("realms with no folder", () => {
-  const crest = {
-    band: "None",
-    bandWidth: 1,
-    colors: {
-      band: "#d9ad4f",
-      edge: "#3b0f0c",
-      emblem: "#f2d98a",
-      field: "#8b1e1a",
-      secondField: "#5e1210",
-      trim: "#d9ad4f",
-    },
-    division: "Plain",
-    edge: 0.35,
-    emblem: { _tag: "Charge", id: "lion" },
-    emblemScale: 1,
-    finish: "Flat",
-    plate: "Shield",
-    trim: "None",
-  } as const;
   const realms = () =>
     call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null }).pipe(
       Effect.map((list) => list.workspaces),
     );
 
-  it.live("makes a realm with a name and no folder, and lists it among the realms with its crest", () => {
+  it.live("makes a realm with a name and no folder, and lists it among the realms", () => {
     const { home, layer } = setUp();
     return Effect.gen(function* () {
-      yield* call({ _tag: "CreateRealm", crest, name: "  Game Design ", path: null });
-      yield* call({ _tag: "CreateRealm", crest: null, name: "Archive of ideas", path: null });
-      yield* call({ _tag: "CreateRealm", crest: null, name: "App", path: join(home, "app") });
+      yield* call({ _tag: "CreateRealm", name: "  Game Design ", path: null });
+      yield* call({ _tag: "CreateRealm", name: "Archive of ideas", path: null });
+      yield* call({ _tag: "CreateRealm", name: "App", path: join(home, "app") });
       const listed = yield* realms();
       expect(listed.map(({ name, path }) => ({ name, path })).sort((a, b) => a.name.localeCompare(b.name))).toEqual([
         { name: "App", path: join(home, "app") },
         { name: "Archive of ideas", path: null },
         { name: "Game Design", path: null },
       ]);
-      expect(listed.find((each) => each.name === "Game Design")?.crest).toEqual(crest);
     }).pipe(Effect.provide(layer));
   });
 
-  it.live("renames a realm with no folder and keeps its crest", () => {
+  it.live("renames a realm with no folder", () => {
     const { layer } = setUp();
     return Effect.gen(function* () {
-      yield* call({ _tag: "CreateRealm", crest: null, name: "Game Design", path: null });
+      yield* call({ _tag: "CreateRealm", name: "Game Design", path: null });
       const [realm] = yield* realms();
       yield* call({ _tag: "RenameRealm", name: "Level Design", workspaceId: realm?.id as never });
-      yield* call({ _tag: "SetRealmCrest", crest, workspaceId: realm?.id as never });
-      expect(yield* realms()).toEqual([{ crest, id: realm?.id, name: "Level Design", path: null }]);
+      expect(yield* realms()).toEqual([{ id: realm?.id, name: "Level Design", path: null }]);
     }).pipe(Effect.provide(layer));
   });
 
   it.live("refuses a blank name", () => {
     const { layer } = setUp();
     return Effect.gen(function* () {
-      const failure = yield* failureOf({ _tag: "CreateRealm", crest: null, name: "   ", path: null });
+      const failure = yield* failureOf({ _tag: "CreateRealm", name: "   ", path: null });
       expect(JSON.stringify(failure)).toContain("needs a name");
       expect(yield* realms()).toEqual([]);
     }).pipe(Effect.provide(layer));

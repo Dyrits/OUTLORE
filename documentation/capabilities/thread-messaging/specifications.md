@@ -11,7 +11,7 @@ Subagents in today's harnesses report once at the end and cannot be asked or red
 ### Who can message whom
 
 - A thread can message its parent and the threads directly beneath it. Siblings reach each other through their parent.
-- When the owner mentions a quest or side-quest with `@` in a message, the thread that receives it may, for the turn that message reaches, read that quest's journal (`read_journal` with `mission`) and message the quest's top thread, or the side-quest itself (CHG-0181). The receiving thread decides from the owner's words whether to do either. The quest that receives such a message may answer its sender in the turn the message reaches, so the reply comes straight back (see [mission-coordination](../mission-coordination/specifications.md#references-between-quests)).
+- When the owner mentions a quest or errand with `@` in a message, the thread that receives it may, for the turn that message reaches, read that quest's journal (`read_journal` with `mission`) and message the quest's top thread, or the errand itself (CHG-0181). The receiving thread decides from the owner's words whether to do either. The quest that receives such a message may answer its sender in the turn the message reaches, so the reply comes straight back (see [mission-coordination](../mission-coordination/specifications.md#references-between-quests)).
 - Without a mention, a thread reaches another quest only through Chronicler (formerly Guildmaster). A thread cannot widen its own reach by writing an `@` reference: only the owner's messages count.
 - A Ritual's run instruction is a service-made message, not a live owner message; its mentions grant no reach.
 - The user can write to any open thread, including a subagent's (for mirrored subagents, see [thread-tree](../thread-tree/specifications.md#subagents)).
@@ -21,18 +21,18 @@ Subagents in today's harnesses report once at the end and cannot be asked or red
 
 Agreed 2026-11-11 (CHG-0181); built in CHG-0182.
 
-- In any message box (a quest's, a side-quest's, Outlore's), a bare `@` lists three categories with their icons: Quests, Realms, and Files & Directories, the last only when the message box has a linked folder. Arrow keys and Enter open a category; Backspace right after the `@` returns to the categories. As soon as text follows the `@`, the list mixes the matches of every category, each under its heading. The `/` skills list is unchanged.
-- Quests lists every quest not archived and, beneath each, its side-quests shown as `Quest › Side-quest`; Chronicler's own conversation is never offered. Realms lists every realm, tied to a folder or not. Archived quests and their side-quests are left out entirely.
-- A chosen quest, side-quest, or realm becomes a chip with its icon (a pennant for a quest or side-quest, a keep for a realm) and its name, in the message box and in the sent message. The message holds a one-word token with the id: `@quest:<quest id>`, `@side-quest:<thread id>`, or `@realm:<realm id>`. File and folder paths keep their `@path` form. A token naming a quest since archived or deleted shows as "quest no longer open".
+- In any message box (a quest's, an errand's, Outlore's), a bare `@` lists three categories with their icons: Quests, Realms, and Files & Directories, the last only when the message box has a linked folder. Arrow keys and Enter open a category; Backspace right after the `@` returns to the categories. As soon as text follows the `@`, the list mixes the matches of every category, each under its heading. The `/` skills list is unchanged.
+- Quests lists every quest not archived and, beneath each, its errands shown as `Quest › Errand`; Chronicler's own conversation is never offered. Realms lists every realm, tied to a folder or not. Archived quests and their errands are left out entirely.
+- A chosen quest, errand, or realm becomes a chip with its icon (a pennant for a quest or errand, a keep for a realm) and its name, in the message box and in the sent message. The message holds a one-word token with the id: `@quest:<quest id>`, `@side-quest:<thread id>`, or `@realm:<realm id>`. File and folder paths keep their `@path` form. A token naming a quest since archived or deleted shows as "quest no longer open".
 - A mention is context only. The owner's text reaches the thread unchanged, followed by a block the service adds as it delivers the message, one line per mention with its ids, for example `Quest "Fix login" (id …, state Running, realm Outlore, top thread id …)` and `Realm "Outlore" (id …, folder …)`. The receiving thread decides from the owner's words whether to read the quest's journal, write to it, or neither.
-- The widened reach (above) holds only for quests and side-quests the owner named, only in the turn the message reaches, and never for an archived quest. A realm mention opens nothing: it only says which realm is meant.
+- The widened reach (above) holds only for quests and errands the owner named, only in the turn the message reaches, and never for an archived quest. A realm mention opens nothing: it only says which realm is meant.
 - On the phone and other builds that cannot draw chips inside the text, the chosen token is written into the text as typed; the categories still show.
 
 ### Comments on messages
 
 Agreed 2026-11-11 (CHG-0195); built in CHG-0196.
 
-- In a quest's or side-quest's conversation (not Outlore's), the owner can comment on any message, theirs, the Companion's, or another quest's. A small Comment button shows on the message's card while the pointer is on it or it has focus; selecting text inside one message shows a Comment on selection button beside it. Either opens a field under the card: Enter saves, Shift+Enter breaks the line, Escape cancels.
+- In a quest's or errand's conversation (not Outlore's), the owner can comment on any message, theirs, the Companion's, or another quest's. A small Comment button shows on the message's card while the pointer is on it or it has focus; selecting text inside one message shows a Comment on selection button beside it. Either opens a field under the card: Enter saves, Shift+Enter breaks the line, Escape cancels.
 - A comment waits. Each thread keeps its own in the browser's storage until they are sent or removed, so a reload or leaving the thread loses none. They show in a tray above the message box ("2 comments · sent with your next message"), each with the passage it is about, and can be edited or removed there; a message with comments waiting says so under its card. A thread with comments can be sent with no typed text.
 - Sending carries every waiting comment in the same message: after what the owner typed, a `<comments>` block with one `<comment on=… part=…>` per comment holding its quote (the selected passage, or the first 300 characters of the whole message) and the owner's note. The harness reads it as part of the message; the conversation draws it back as quoted passages under the typed text. Comments leave the tray only once the service has taken the message.
 - A comment is a note in the next message: it is context, not a command, and it opens no reach beyond what the message's words and mentions already do.
@@ -48,7 +48,7 @@ Agreed 2026-11-11 (CHG-0195); built in CHG-0196.
 
 ### Position in a conversation
 
-When the owner opens a quest, a side-quest, or Chronicler's conversation, the latest messages are visible immediately at the bottom (CHG-0442). New replies and questions appear there. The view follows them while the owner is at the bottom, keeps the message being read in place when the owner scrolls up, and returns to the latest message when the owner sends.
+When the owner opens a quest, an errand, or Chronicler's conversation, the latest messages are visible immediately at the bottom (CHG-0442). New replies and questions appear there. The view follows them while the owner is at the bottom, keeps the message being read in place when the owner scrolls up, and returns to the latest message when the owner sends.
 
 ### Interruptions
 
@@ -67,7 +67,7 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 
 | Tool | Purpose | Arguments | Answer |
 | --- | --- | --- | --- |
-| `send_thread_message` | Send a message | Receiving thread (a parent, a thread directly beneath, Chronicler, the top thread of a quest or a side-quest the owner mentioned in this turn, or a thread that wrote to the caller in this turn), text | Sent, or a refusal and its reason when the target is outside its reach |
+| `send_thread_message` | Send a message | Receiving thread (a parent, a thread directly beneath, Chronicler, the top thread of a quest or an errand the owner mentioned in this turn, or a thread that wrote to the caller in this turn), text | Sent, or a refusal and its reason when the target is outside its reach |
 | `report_result` | Report the thread's result to its parent | The result | — |
 | `interrupt_thread` | Interrupt a thread directly beneath the caller | The thread | Done, or a refusal and its reason when the thread is not directly beneath the caller or is not running |
 

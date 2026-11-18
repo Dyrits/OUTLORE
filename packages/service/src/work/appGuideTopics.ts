@@ -20,7 +20,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "Outlore is a local-first desktop app for working with AI agents. It runs Claude Code, Codex, and OpenCode, the owner's own command-line tools and accounts, in one place. Outlore does not resell model access: the owner pays each provider directly.",
-      "A piece of work is a quest. Inside it, the owner or a thread opens side-quests, each of which can use its own harness, model, and effort, and the threads of a quest talk to each other. The quest keeps a briefing and a journal that every thread in it reads.",
+      "A piece of work is a quest. Inside it, the owner or a thread opens errands, each of which can use its own harness, model, and effort, and the threads of a quest talk to each other. The quest keeps a briefing and a journal that every thread in it reads.",
       "Everything is stored on the owner's computer, in a database in the app's data folder. Work happens in realms (folders or repositories) the owner chooses.",
       "Outlore is in alpha and serves one owner, who may pair several devices.",
     ].join("\n"),
@@ -31,17 +31,17 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "A quest is a piece of work and its tree of threads. The first thread is the quest's main thread; a side-quest is a thread opened beneath another thread, and may have side-quests of its own.",
-      "To start a quest: press the new-quest button on a realm or on the Borderlands in the sidebar, or tell Chronicler what you want and choose on the card it shows (Continue in a quest that fits, or Open as new quest). Chronicler never opens a quest on its own.",
+      "A quest is a piece of work and its tree of threads. The first thread is the quest's main thread; an errand is a thread opened beneath another thread, and may have errands of its own.",
+      "To start a quest: press Start a quest in the sidebar (the quest is then in no realm), or the new-quest button on a realm, or tell Chronicler what you want and choose on the card it shows (Continue in a quest that fits, or Open as new quest). Chronicler never opens a quest on its own.",
       "States a quest or thread shows: Underway (running), Resting (idle), Awaiting word (waiting for an answer), and Summons (needs the owner: an approval, an answer, a budget reached, a missing folder, or a tool problem). A quest stays open until it is archived; archived quests are in the Archive, under The Keep.",
       "Each quest has a briefing (where it stands, rewritten as it changes) and a journal (a dated log only ever added to). Every thread in the quest reads them before it starts.",
-      "Threads message each other along the tree. When the owner names a quest or side-quest with @, the receiving thread may reach it for that turn; a realm named with @ is context only and opens no reach. A side-quest opened by a thread tells its parent when it reports a result.",
+      "Threads message each other along the tree. When the owner names a quest or errand with @, the receiving thread may reach it for that turn; a realm named with @ is context only and opens no reach. An errand opened by a thread tells its parent when it reports a result.",
     ].join("\n"),
     id: "quests",
     keywords: [
       "quest",
       "side-quest",
-      "side quest",
+      "errand",
       "thread",
       "mission",
       "start",
@@ -54,20 +54,21 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "underway",
       "resting",
     ],
-    summary: "Quests, side-quests, their states, and how to start one",
-    title: "Quests and side-quests",
+    summary: "Quests, errands, their states, and how to start one",
+    title: "Quests and errands",
   },
   {
     body: [
       "A realm groups quests that share lore. A realm may be tied to one folder or repository on the computer (the realm's workspace, where its threads work) or tied to none. The sidebar lists realms tied to a folder first, then those tied to none.",
-      "The Borderlands hold quests with no realm: no folder and no shared lore. A quest there has only its own lore and global lore. Every quest belongs to a realm or to the Borderlands, and a whole quest tree can be moved between them, after a confirmation, while no thread of it is running.",
+      "A quest can be in no realm: it has no folder and no shared lore, only its own lore and global lore. It is listed with the realms, after them, as an ordinary row. (This was called the Borderlands.) A whole quest tree can be moved to a realm, or out of its realm, with the quest panel's Realm row or by dragging it onto a realm, after a confirmation, while no thread of it is running.",
       "A quest with no folder works in a scratch folder Outlore keeps for it.",
-      "Own copy: a thread can open a side-quest with its own copy of a git workspace (open_thread with ownCopy). Outlore makes a git worktree in the workspace's .worktrees folder on a new branch named after the quest, and the side-quest and those beneath it work and commit there without asking; it reports its branch and the thread that opened it merges it with git. Not built yet: the owner asking for an own copy when opening a side-quest, the one-button merge, and deleting the worktree on archive. Otherwise threads beneath a thread work in the same folder as it.",
+      "Own copy: a thread can open an errand with its own copy of a git workspace (open_thread with ownCopy). Outlore makes a git worktree in the workspace's .worktrees folder on a new branch named after the quest, and the errand and those beneath it work and commit there without asking; it reports its branch and the thread that opened it merges it with git. Not built yet: the owner asking for an own copy when opening an errand, the one-button merge, and deleting the worktree on archive. Otherwise threads beneath a thread work in the same folder as it.",
       "Add a realm from the sidebar, or ask Chronicler to make or rename one. Chronicler cannot delete a realm. When asked to archive an empty quest with no usage that is not a Ritual's, it deletes the quest instead.",
     ].join("\n"),
     id: "realms",
     keywords: [
       "realm",
+      "no realm",
       "borderlands",
       "workspace",
       "folder",
@@ -79,12 +80,12 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "move",
       "branch",
     ],
-    summary: "Realms, the Borderlands, folders, and own copies",
+    summary: "Realms, quests in no realm, folders, and own copies",
     title: "Realms and workspaces",
   },
   {
     body: [
-      "The Guild Hall is the first entry of the sidebar. It is a hub: a line saying how many quests wait for the owner, the waiting quests as cards, recent quests, and the finished quests of the period.",
+      "Chronicler has no page of its own and no hub: the Guild Hall page is gone, and the app opens on the Realms overview.",
       'Chronicler, the app\'s assistant, is a permanent conversation, a panel the top bar\'s Chronicler button opens or folds on every screen. It knows which quest or screen the owner has open, so "this quest" or "this page" means it.',
       "Chronicler can: answer questions about the owner's quests and about using the app; propose a quest on a card (it never opens one itself); create a Ritual; create or rename a realm; stop a quest's threads, mark it Done, archive it, or rename it; read the settings and change most of them. It cannot change the approval level, the budgets, price fetching, or permission to run outside the sandbox without asking: those are set in the Workshop.",
       "Chronicler does not do the work itself, no editing files or running commands. Anything else goes to a quest. An action on the app runs at once when the owner's message in that turn plainly named the action, its target, and its new value; otherwise Chronicler asks one Allow or Deny question. Creating a Ritual always asks, because its instruction runs unattended.",
@@ -103,15 +104,15 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "card",
       "top bar",
     ],
-    summary: "The Guild Hall, and what Chronicler can and cannot do",
-    title: "The Guild Hall and Chronicler",
+    summary: "What Chronicler can and cannot do",
+    title: "Chronicler",
   },
   {
     body: [
-      "The sidebar, in order: Guild Hall; Realms, each with its quests and side-quests; Borderlands; Rituals; Craft (planned workflows, not available yet); The Keep (Library, Lore, Archive); Reserves (usage and budgets); Charter (a placeholder page for now); and Workshop (the settings).",
-      "Headings and realms fold and unfold. Each realm and the Borderlands show their three newest quests, with a Show all link to the full list.",
+      "The sidebar, from the top: the Realms title, which opens the overview of all realms; each realm with its quests and errands; the quests that are in no realm, as ordinary rows after the realms; and two buttons, Visit a realm and Start a quest. A menu button at the foot opens Rituals, Lore, Archive, Reserves, and Settings. On a phone the top bar's menu button opens this same sidebar as a full screen; the other screen is the conversation.",
+      "Realms fold and unfold. Each realm and the quests in no realm show their three newest quests, with a Show all link to the full list.",
       "The top bar shows where the owner is and has the Chronicler button. A quest has its own side panel with its details.",
-      "Themes: One, Iskios or Gild, each in a dark and a light look, or following the system. The owner chooses them in the Workshop.",
+      "Themes: One or Iskios, each in a dark and a light look, or following the system. The owner chooses them in Settings.",
     ].join("\n"),
     id: "navigation",
     keywords: [
@@ -122,7 +123,6 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "rail",
       "screen",
       "theme",
-      "gild",
       "dark",
       "light",
       "look",
@@ -134,9 +134,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Settings are in the Workshop, in the sidebar. Its Providers section shows installed harnesses and an Install button for a missing one, and holds accounts. Other sections cover Permissions, Look and feel, Companions, quest upkeep, budgets, messaging, lore settings, model prices, and Remote access with paired devices.",
+      "Settings are in the sidebar's menu. Its Providers section shows installed harnesses and an Install button for a missing one, and holds accounts. Other sections cover Permissions, Look and feel, Companions, Connectors (the Code Mode switch), quest upkeep, budgets, messaging, lore settings, model prices, and Remote access with paired devices.",
       "Ask Chronicler to read or change a setting. It cannot change the approval level, the budgets, price fetching, or permission to run outside the sandbox without asking.",
-      "The sidebar's Charter row is a placeholder page for now; the settings are not there.",
     ].join("\n"),
     id: "workshop",
     keywords: [
@@ -157,7 +156,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "Write to any thread in its message box. Special marks in a message:",
-      "- @ names a quest, side-quest, or realm to give the thread as context. A thread reads only its own tree and what the owner mentioned.",
+      "- @ names a quest, errand, or realm to give the thread as context. A thread reads only its own tree and what the owner mentioned.",
       "- / lists skills found in the realm's .agents/skills and .claude/skills folders and then the home folder's; pick one and the thread is told to read and follow it. Skills from plugins are not listed.",
       "- ! (desktop only) opens a shell inside the message; its visible output is sent as context.",
       "- Images can be pasted, dropped, or chosen and are given to the harness with the message. Only images are supported so far.",
@@ -243,7 +242,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "A budget is a spending limit, in cost, tokens, or both, that every thread of a quest draws on. A global budget limits all spending over a day, week, or month. An account budget limits, or gives a credit for, one provider account. At a limit, new spending stops and the quest asks for attention.",
-      "Budgets are set in the Workshop (the default for new quests, and the global budget). Reserves, in the sidebar, shows usage, budgets, and what each limit leaves; the rail shows rings that fill as a budget is used.",
+      "Budgets are set in the Workshop (the default for new quests, and the global budget). Reserves, in the sidebar's menu, shows usage, budgets, and what each limit leaves; the rail shows rings that fill as a budget is used.",
       "A turn's estimated cost is worked out from its tokens and a model price table, shown with ≈. It counts toward a limit only for an API-key turn the harness reported no cost for. Prices are read from the public models.dev table at startup and daily; the Workshop has a switch to stop that, and a snapshot shipped with the app is the fallback.",
       "Plan limits (a subscription's 5-hour or weekly window) are shown when the harness reports them, and never enforced by Outlore.",
     ].join("\n"),
@@ -303,10 +302,9 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Lore is saved facts, preferences, and decisions that threads recall later. Each lore entry belongs to a scope: a side-quest, a quest, a realm, or global. Its kind sets how fast it fades when unused: a rule never fades; by default a preference loses half its strength in 90 days, a decision or a fact in 45, and a temporary entry in 3 (the half-lives are in the Workshop).",
+      "Lore is saved facts, preferences, and decisions that threads recall later. Each lore entry belongs to a scope: an errand, a quest, a realm, or global. Its kind sets how fast it fades when unused: a rule never fades; by default a preference loses half its strength in 90 days, a decision or a fact in 45, and a temporary entry in 3 (the half-lives are in the Workshop).",
       "A faded entry becomes dormant (out of the starting context, still found by search) and later archived (out of search too, kept in the lore panel, where it can be restored). Using an entry slows its fading, and a pinned entry never fades.",
-      "Lore is under The Keep, in the sidebar, next to the Library and the Archive. Threads propose and save lore as they work; the owner can review it, pin it, and restore archived entries.",
-      "The Library is meant for generated and uploaded files; its behavior is not settled yet.",
+      "Lore is in the sidebar's menu, next to the Archive. Threads propose and save lore as they work; the owner can review it, pin it, and restore archived entries.",
     ].join("\n"),
     id: "lore",
     keywords: [
@@ -322,8 +320,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "knowledge",
       "facts",
     ],
-    summary: "Lore, The Keep, and the Archive",
-    title: "Lore and The Keep",
+    summary: "Lore and the Archive",
+    title: "Lore and the Archive",
   },
   {
     body: [
@@ -378,7 +376,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Alpha limits to tell the owner plainly: one owner, who can use several installations by pairing them; Craft (workflows) is not available; the Library is not settled; Outlore has no screen for managing MCP servers yet; phone layouts and parts of pairing still need work or checking; updates are checked and downloaded but installed only on the owner's Restart and update (unverified on Windows and Linux); macOS and Windows builds are unsigned; Windows and Linux builds have had little testing on real machines.",
+      "Alpha limits to tell the owner plainly: one owner, who can use several installations by pairing them; Craft (workflows) and a Library of artifacts are not available; Outlore has no screen for managing MCP servers yet; phone layouts and parts of pairing still need work or checking; updates are checked and downloaded but installed only on the owner's Restart and update (unverified on Windows and Linux); macOS and Windows builds are unsigned; Windows and Linux builds have had little testing on real machines.",
       "Bugs and requests go to GitHub Issues, with the operating system, Outlore version, harness, steps to reproduce, and logs with private information removed.",
     ].join("\n"),
     id: "limits",

@@ -1,4 +1,4 @@
-// The words of the Charter's Code Mode switch (connectors specification, Code Mode).
+// The words of the Connectors section's Code Mode switch (connectors specification, Code Mode).
 
 /** The switch's name: Code Mode covers Outlore's own tools as well as the connectors' (CHG-0446). */
 export const codeModeLabel = "Code Mode";

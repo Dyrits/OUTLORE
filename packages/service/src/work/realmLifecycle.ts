@@ -17,7 +17,7 @@ import { updateJournal } from "./journal.ts";
 import { haltThreads } from "./lifecycle.ts";
 import { moveQuest } from "./questMoves.ts";
 import { validateRealmName } from "./realmNames.ts";
-import { crestOfRow, renameRealm, setRealmCrest } from "./workspaces.ts";
+import { renameRealm } from "./workspaces.ts";
 
 /** The complete realm state covered by a confirmation, including lore identity rather than only a count. */
 export const previewRealmArchive = Effect.fn("previewRealmArchive")(function* (workspaceId: string) {
@@ -26,9 +26,8 @@ export const previewRealmArchive = Effect.fn("previewRealmArchive")(function* (w
     id: WorkspaceId;
     name: string;
     path: string | null;
-    crest: string | null;
     archivedAt: number | null;
-  }>`SELECT id, name, path, crest, archived_at AS archivedAt FROM workspaces WHERE id = ${workspaceId}`;
+  }>`SELECT id, name, path, archived_at AS archivedAt FROM workspaces WHERE id = ${workspaceId}`;
   if (realm === undefined) return yield* notFound("No such realm.");
   // A Ritual's quest is one of the realm's missions but not one of its quests: the archive switches the Ritual off.
   const missions = yield* sql<{ id: string; title: string; ending: string | null; isRitual: number }>`
@@ -60,7 +59,7 @@ export const previewRealmArchive = Effect.fn("previewRealmArchive")(function* (w
     loreCount: lore.length,
     questCount: missions.filter((mission) => mission.isRitual === 0).length,
     quests,
-    realm: { crest: crestOfRow(realm.crest), id: realm.id, name: realm.name, path: realm.path },
+    realm: { id: realm.id, name: realm.name, path: realm.path },
     rituals: rituals.map((ritual) => ({ id: ritual.id, isOn: ritual.isOn === 1, title: ritual.title })),
     snapshot,
     workingCount: working.length,
@@ -111,7 +110,7 @@ export const archiveRealm = Effect.fn("archiveRealm")(function* (
   for (const id of moved) {
     const quest = current.quests.find((each) => each.id === id);
     if (quest === undefined)
-      return yield* invalid("Only an active quest of this realm can be moved to the Borderlands.");
+      return yield* invalid("Only an active quest of this realm can be taken out of this realm.");
     if (quest.isWorking)
       return yield* invalid(`"${quest.title}" is at work. Stop it first, or leave it to be archived with the realm.`);
   }
@@ -159,7 +158,6 @@ export const restoreRealm = Effect.fn("restoreRealm")(function* (given: typeof R
   );
   if (given.appearance !== null) {
     yield* renameRealm(current.realm.id, given.appearance.name, given.allowDuplicateName ?? false);
-    yield* setRealmCrest(current.realm.id, given.appearance.crest);
   }
   if (given.shouldStartAfresh) {
     const lore = yield* sql<{ id: string }>`SELECT id FROM intels

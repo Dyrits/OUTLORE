@@ -166,7 +166,7 @@ describe("asking before structural actions the owner did not name", () => {
     Effect.gen(function* () {
       const place = yield* guildmaster;
       const quest = yield* startIdle("Keep this quest");
-      yield* call({ _tag: "CreateRealm", crest: null, name: "Ideas", path: null });
+      yield* call({ _tag: "CreateRealm", name: "Ideas", path: null });
       const cases: ReadonlyArray<readonly [string, object, string]> = [
         [
           "act_on_mission",

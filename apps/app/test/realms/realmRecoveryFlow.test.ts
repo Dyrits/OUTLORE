@@ -7,13 +7,13 @@ describe("confirming realm recovery", () => {
     expect(
       transitionRecovery(initial, { _tag: "Choose", hasDifferences: true, shouldStartAfresh: false }),
     ).toMatchObject({
-      picks: { crest: "old", name: "old" },
+      picks: { name: "old" },
       step: "comparison",
     });
     expect(
       transitionRecovery(initial, { _tag: "Choose", hasDifferences: true, shouldStartAfresh: true }),
     ).toMatchObject({
-      picks: { crest: "proposed", name: "proposed" },
+      picks: { name: "proposed" },
       step: "comparison",
     });
   });
@@ -50,7 +50,7 @@ describe("confirming realm recovery", () => {
       field: "name",
       value: "proposed",
     });
-    expect(selected.picks).toEqual({ crest: "old", name: "proposed" });
+    expect(selected.picks).toEqual({ name: "proposed" });
     expect(selected.hasConfirmedName).toBe(false);
   });
   it("cannot reach a save after cancellation", () => {

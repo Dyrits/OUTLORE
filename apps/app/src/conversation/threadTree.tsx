@@ -41,7 +41,7 @@ export function ThreadTree({
       {foldThreads(threads, shouldShowAgentThreads, unfolded).map(({ thread, depth, foldedCount }, index) => (
         <View key={thread.id}>
           {index === 0 && <Text style={styles.treeSection}>Quest</Text>}
-          {index === 1 && <Text style={[styles.treeSection, styles.treeSectionLater]}>Side-quests</Text>}
+          {index === 1 && <Text style={[styles.treeSection, styles.treeSectionLater]}>Errands</Text>}
           <Pressable
             onPress={() => {
               if (foldedCount > 0) setUnfolded((current) => new Set([...current, thread.id]));
@@ -49,7 +49,7 @@ export function ThreadTree({
             }}
             style={[
               styles.treeRow,
-              // The first level of side-quests has its own heading, so it lines up with the quest; deeper ones step in.
+              // The first level of errands has its own heading, so it lines up with the quest; deeper ones step in.
               { paddingLeft: 8 + Math.max(0, depth - 1) * 16 },
               thread.id === selectedId && styles.treeRowSelected,
             ]}
@@ -151,9 +151,9 @@ export function OpenThreadForm({
     <View style={styles.openForm}>
       <View style={styles.header}>
         <Text numberOfLines={1} style={[styles.label, styles.flex]}>
-          New side-quest beneath "{parent.title}"
+          New errand beneath "{parent.title}"
         </Text>
-        <Pressable accessibilityLabel="Cancel new side-quest" accessibilityRole="button" hitSlop={8} onPress={onCancel}>
+        <Pressable accessibilityLabel="Cancel new errand" accessibilityRole="button" hitSlop={8} onPress={onCancel}>
           <Text style={styles.error}>✕</Text>
         </Pressable>
       </View>
@@ -230,7 +230,7 @@ export function OpenThreadForm({
         {...(isOverWarning ? { alternative: { label: "Start anyway", onSend: openWith(true) } } : {})}
         onChangeText={request.change}
         onSend={openWith(false)}
-        placeholder="The side-quest's first message…"
+        placeholder="The errand's first message…"
       />
     </View>
   );

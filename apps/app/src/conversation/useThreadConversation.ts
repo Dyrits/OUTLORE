@@ -38,7 +38,7 @@ export function useThreadConversation(
     thread?.state ?? "Idle",
     thread?.actions.isInTurn ?? false,
     settings?.defaultDelivery ?? "Steer",
-    options.isChronicler ? "Chronicler" : thread?.parentId === null ? "this quest" : "this side-quest",
+    options.isChronicler ? "Chronicler" : thread?.parentId === null ? "this quest" : "this errand",
   );
   const sendAs = (delivery: MessageDelivery | null) => (text: string, attachmentIds: ReadonlyArray<AttachmentId>) =>
     sendConversationMessage({

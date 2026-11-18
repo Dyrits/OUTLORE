@@ -29,7 +29,7 @@ export function SendArrow() {
   );
 }
 
-/** The side-quest icon: a branch leaving the main line, in dim ink. */
+/** The errand icon: a branch leaving the main line, in dim ink. */
 export function SideQuestBranch() {
   return (
     <Svg

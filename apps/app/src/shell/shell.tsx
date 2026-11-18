@@ -15,7 +15,6 @@ import type { RightPanel } from "../foundation/useRightPanel";
 import { ChroniclerColumn, chroniclerColumnWidth } from "./chroniclerDock";
 import { EdgeResizer } from "./edgeResizer";
 import type { Location, NavigationEvent } from "./location";
-import { MobileMenu } from "./mobileMenu";
 import type { RealmListing } from "./questTree";
 import {
   chroniclerWidthKey,
@@ -219,7 +218,7 @@ export function Shell(
         ))}
     </QuestColumn>
   );
-  // Beside every screen, the Guild Hall's hub included, Chronicler is a column; a narrow window gives it the whole content
+  // Beside every screen Chronicler is a column; a narrow window gives it the whole content
   // area instead, and its restore button closes it.
   // Chronicler's column stands at the window's far right, past the quest panel, which its handle then clears.
   const isChroniclerColumn = isChroniclerOpen && hasRail && !isChroniclerFull;
@@ -259,7 +258,9 @@ export function Shell(
             />
             <View style={[local.narrowContent, isNarrowCovered && local.hidden]}>{props.children}</View>
             {isMenuOpen && (
-              <MobileMenu onPlace={props.onPlace} place={props.openMission === null ? props.place : null} />
+              <View style={local.narrowContent}>
+                <Sidebar {...props} width="100%" />
+              </View>
             )}
             {isNarrowChroniclerOpen && !isMenuOpen && <View style={local.narrowContent}>{chroniclerChat}</View>}
             {!isMenuOpen && !isNarrowChroniclerOpen && panelColumn}

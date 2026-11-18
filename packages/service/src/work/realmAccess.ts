@@ -11,7 +11,7 @@ export const requireActiveRealm = Effect.fn("requireActiveRealm")(function* (wor
   if (realm.archivedAt !== null) return yield* invalid("Restore this archived realm before using it.");
 });
 
-/** Whether a quest's containing realm is archived, independent of a side-quest's own attachment. */
+/** Whether a quest's containing realm is archived, independent of an errand's own attachment. */
 export const isQuestRealmArchived = Effect.fn("isQuestRealmArchived")(function* (missionId: string) {
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql`SELECT w.id FROM missions m JOIN threads top ON top.id = m.top_thread_id

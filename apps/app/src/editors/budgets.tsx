@@ -265,9 +265,9 @@ export function BudgetStopCard({
     <View style={styles.question}>
       <Text style={styles.questionText}>
         {isGlobal
-          ? "The global budget is reached. All running quests and side-quests stopped."
+          ? "The global budget is reached. All running quests and errands stopped."
           : isAccount
-            ? `The budget of ${stop.accountLabel ?? "this account"} is reached. Its running quests and side-quests stopped.`
+            ? `The budget of ${stop.accountLabel ?? "this account"} is reached. Its running quests and errands stopped.`
             : "This quest's budget is reached. Its running work stopped."}
       </Text>
       <Text style={styles.muted}>Reached {timeOf(stop.reachedAt)}</Text>
@@ -356,7 +356,7 @@ export function BudgetScreen({
           )}
           <Text style={styles.label}>Limits</Text>
           <BudgetEditor key={JSON.stringify(data.limits)} limits={data.limits} onSave={saveLimits} />
-          <Text style={styles.label}>{missionId === null ? "By quest" : "By quest / side-quest"}</Text>
+          <Text style={styles.label}>{missionId === null ? "By quest" : "By quest / errand"}</Text>
           {data.parts.length === 0 && <Text style={styles.muted}>Nothing spent yet.</Text>}
           {data.parts.map((part) => (
             <View key={part.id} style={styles.toggle}>

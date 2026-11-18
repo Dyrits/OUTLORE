@@ -33,7 +33,7 @@ describe("offering what an @ names", () => {
     ]);
   });
 
-  it("lists a chosen category's items, side-quests as Quest › Side-quest", () => {
+  it("lists a chosen category's items, errands as Quest › Errand", () => {
     expect(labelsOf(mentionMenuOf({ category: "quests", entries, hasFolder: true, mentionables, query: "" }))).toEqual([
       "Fix login",
       "Fix login › Write tests",
@@ -58,7 +58,7 @@ describe("offering what an @ names", () => {
     expect(selectableRowsOf(rows).every((row) => row.type === "option")).toBe(true);
   });
 
-  it("writes a quest, side-quest, or realm as a one-word token with its id and shows its name", () => {
+  it("writes a quest, errand, or realm as a one-word token with its id and shows its name", () => {
     const rows = mentionMenuOf({ category: null, entries: [], hasFolder: false, mentionables, query: "ou" });
     const chips = rows.flatMap((row) => (row.type === "option" ? [row.chip] : []));
     expect(chips).toContainEqual({ kind: "realm", label: "Outlore", token: "@realm:r1" });
@@ -91,7 +91,7 @@ describe("moving through the @ list with the keys", () => {
 });
 
 describe("drawing the references of a sent message as chips", () => {
-  it("shows a quest, side-quest, and realm by name and keeps file paths as before", () => {
+  it("shows a quest, errand, and realm by name and keeps file paths as before", () => {
     const text = "See @quest:q1, @side-quest:t1 in @realm:r1 and @src/";
     const chips = chipsOf(text, { entries: new Map([["src/", "folder"]]), mentionables, skills: [] });
     expect(chips.map((chip) => [chip.kind, chip.label])).toEqual([

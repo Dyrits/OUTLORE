@@ -1,17 +1,20 @@
 import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { CrestBadge } from "../crest/crest";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
+import { Emblem } from "../foundation/emblems";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
-import { colors, fontSizes, fonts } from "../foundation/theme";
+import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
 import { Button } from "../ui/button";
+import { handCursor } from "../ui/pointer";
 import { QuestTreeLines } from "./questListRows";
 import { placementsOf, type RealmListing, toggledFold } from "./questTree";
+import { NewQuestIcon } from "./railActions";
+import { isHovered } from "./railStyles";
 
 /** The full compact overview grouped by active realm, including realms with no quest yet. */
 export function RealmsScreen({
@@ -44,13 +47,15 @@ export function RealmsScreen({
       setStarting(null);
     }
   };
-  const groups = placementsOf(data?.missions ?? [], data?.workspaces ?? []).realms;
+  const { borderlands: ungrouped, realms: groups } = placementsOf(data?.missions ?? [], data?.workspaces ?? []);
   return (
     <View accessibilityLabel="Realms overview" style={local.page}>
       <ScrollView contentContainerStyle={local.content}>
         <View style={local.toolbar}>
           <Text style={styles.muted}>Quests by realm</Text>
-          <Button label="New realm" onPress={() => setCreating(true)} />
+          <CreationButton label="New realm" onPress={() => setCreating(true)}>
+            <Emblem name="castle" tint={colors.highlight} />
+          </CreationButton>
         </View>
         {error !== null && (
           <View style={local.toolbar}>
@@ -66,8 +71,8 @@ export function RealmsScreen({
           </Text>
         )}
         {data === null && error === null && <Text style={styles.muted}>Loading realms…</Text>}
-        {data !== null && groups.length === 0 && (
-          <Text style={styles.muted}>No active realm yet. Create one to group quests and share lore.</Text>
+        {data !== null && groups.length === 0 && ungrouped.length === 0 && (
+          <Text style={styles.muted}>No realm or quest yet. Create a realm to group quests and share lore.</Text>
         )}
         {groups.map(({ workspace, quests }) => (
           <View key={workspace.id} style={local.group}>
@@ -78,17 +83,18 @@ export function RealmsScreen({
                 onPress={() => onOpenRealm({ id: workspace.id, name: workspace.name })}
                 style={local.realm}
               >
-                <CrestBadge crest={workspace.crest} id={workspace.id} size={28} />
                 <Text style={local.name}>{realmLabelOf(workspace, data?.workspaces ?? [])}</Text>
                 <Text style={styles.muted}>{quests.length}</Text>
               </Pressable>
-              <Button
+              <CreationButton
                 isDisabled={startingId !== null}
-                label="New quest"
+                label={`New quest in ${workspace.name}`}
                 onPress={() => {
                   void start(workspace.id);
                 }}
-              />
+              >
+                <NewQuestIcon color={colors.highlight} />
+              </CreationButton>
             </View>
             {quests.length === 0 && <Text style={styles.muted}>No quest in this realm yet.</Text>}
             {quests.map((mission) => (
@@ -106,11 +112,29 @@ export function RealmsScreen({
             ))}
           </View>
         ))}
+        {/* Quests in no realm stand after the realms as ordinary rows: no heading, divider, or mark. */}
+        {ungrouped.length > 0 && (
+          <View style={local.group}>
+            {ungrouped.map((mission) => (
+              <QuestTreeLines
+                client={client}
+                collapsed={collapsed}
+                key={mission.id}
+                mission={mission}
+                now={Date.now()}
+                onOpen={onOpen}
+                onOpenThread={onOpenThread}
+                onToggle={(id) => setCollapsed((current) => toggledFold(current, id))}
+                shouldShowAgentThreads={settings?.shouldShowAgentThreads ?? true}
+              />
+            ))}
+          </View>
+        )}
       </ScrollView>
       {isCreating && (
         <NewRealmModal
           client={client}
-          initial={{ crest: null, name: "", path: "" }}
+          initial={{ name: "", path: "" }}
           isFolderRequired={false}
           onCancel={() => setCreating(false)}
         />
@@ -119,8 +143,46 @@ export function RealmsScreen({
   );
 }
 
+function CreationButton({
+  children,
+  isDisabled = false,
+  label,
+  onPress,
+}: {
+  children: ReactNode;
+  isDisabled?: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      disabled={isDisabled}
+      onPress={onPress}
+      style={(state) => [
+        local.creationButton,
+        (state.pressed || isHovered(state)) && local.creationButtonHovered,
+        isDisabled && local.creationButtonDisabled,
+      ]}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
 const local = StyleSheet.create({
   content: { gap: 24, paddingHorizontal: 28, paddingVertical: 20 },
+  creationButton: {
+    alignItems: "center",
+    borderRadius: radii.md,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+    ...handCursor,
+  },
+  creationButtonDisabled: { opacity: 0.5 },
+  creationButtonHovered: { backgroundColor: colors.controlHover },
   group: { gap: 6 },
   name: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
   page: { backgroundColor: colors.page, flex: 1 },

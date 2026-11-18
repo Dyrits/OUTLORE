@@ -228,7 +228,6 @@ describe("naming a folder from a paired device", () => {
       expect(
         (yield* pairedDevice.failureOf({
           _tag: "CreateRealm",
-          crest: null,
           name: "Elsewhere",
           path: outside,
         })).message,

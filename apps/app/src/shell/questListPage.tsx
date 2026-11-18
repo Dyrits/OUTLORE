@@ -1,7 +1,6 @@
 import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { CrestStudio } from "../crest/crestStudio";
 import type { ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { useHasSidebar, useQuestPanel } from "../foundation/shellContext";
@@ -15,7 +14,7 @@ import { QuestTreeLines } from "./questListRows";
 import { type RealmListing, recencyGroupsOf, toggledFold } from "./questTree";
 
 /**
- * The page of a realm's quests or the Borderlands': every one of them, latest first by the quest's own activity, under Today,
+ * The page of a realm's quests: every one of them, latest first by the quest's own activity, under Today,
  * Yesterday, and the months. A realm's page has the realm's panel in the window's side column, as its board has.
  */
 export function QuestListScreen({
@@ -25,23 +24,22 @@ export function QuestListScreen({
   onOpenThread,
 }: {
   client: ServiceClient;
-  /** The realm to list, or null for the Borderlands' quests. */
-  listing: RealmListing | null;
+  /** The realm to list. */
+  listing: RealmListing;
   onOpen: (missionId: MissionId) => void;
-  /** Opens a side-quest of a quest. */
+  /** Opens an errand of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
 }) {
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
-  // Quests start unfolded here, so their side-quests show; the owner folds any quest or side-quest.
+  // Quests start unfolded here, so their errands show; the owner folds any quest or errand.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const toggle = (id: string) => setCollapsed((current) => toggledFold(current, id));
   const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
-  const quests = (data?.missions ?? []).filter((mission) => mission.workspaceId === (listing?.id ?? null));
+  const quests = (data?.missions ?? []).filter((mission) => mission.workspaceId === listing.id);
   const now = Date.now();
   const hasSidebar = useHasSidebar();
-  const realm = listing === null ? null : (data?.workspaces.find((each) => each.id === listing.id) ?? null);
-  // The realm whose crest studio or lore is open; showing another realm closes them.
-  const [designingId, setDesigningId] = useState<WorkspaceId | null>(null);
+  const realm = data?.workspaces.find((each) => each.id === listing.id) ?? null;
+  // The realm whose lore is open; showing another realm closes it.
   const [loreId, setLoreId] = useState<WorkspaceId | null>(null);
   useQuestPanel(
     hasSidebar && realm !== null && (
@@ -49,7 +47,6 @@ export function QuestListScreen({
         client={client}
         key={realm.id}
         missions={quests}
-        onCustomize={() => setDesigningId(realm.id)}
         onOpenLore={() => setLoreId(realm.id)}
         onSelect={onOpen}
         realm={realm}
@@ -75,21 +72,8 @@ export function QuestListScreen({
           <RealmArchiveAction client={client} isIcon workspaceId={realm.id} />
         </View>
       )}
-      {realm !== null && designingId === realm.id && (
-        <CrestStudio
-          id={realm.id}
-          initial={realm.crest}
-          name={realm.name}
-          onCancel={() => setDesigningId(null)}
-          onDone={(crest) =>
-            client.request({ _tag: "SetRealmCrest", crest, workspaceId: realm.id }).then(() => setDesigningId(null))
-          }
-        />
-      )}
       <ScrollView contentContainerStyle={local.content} style={local.page}>
-        {quests.length === 0 && (
-          <EmptyBoard line={listing === null ? "No quest in the Borderlands yet." : "No quest in this realm yet."} />
-        )}
+        {quests.length === 0 && <EmptyBoard line="No quest in this realm yet." />}
         {recencyGroupsOf(quests, now).map((group) => (
           <View key={group.heading} style={local.group}>
             <Text style={local.heading}>{group.heading}</Text>

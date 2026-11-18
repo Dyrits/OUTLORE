@@ -1,23 +1,19 @@
-import type { Crest, RealmArchivePreview } from "@outlore/contracts";
+import type { RealmArchivePreview } from "@outlore/contracts";
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { CrestBadge } from "../crest/crest";
-import { crestOf, shuffledCrest } from "../crest/crestShapes";
-import { CrestStudio } from "../crest/crestStudio";
 import type { ServiceClient } from "../foundation/client";
 import { messageOf } from "../foundation/client";
 import { colors, fontSizes, fonts, outline, radii } from "../foundation/theme";
 import { FolderPicker } from "./folderPicker";
-import { newRealmCrestIdOf, shownCrestOf } from "./newRealmCrest";
 import { folderNameOf } from "./realmLabels";
 import { proposedRealmOf } from "./realmRecovery";
 import { RealmRecoveryModal } from "./realmRecoveryModal";
 
-/** A realm being made: named and given a crest. The path is empty until a folder is chosen, and stays so for a realm tied to none. */
-export type NewRealm = { crest: Crest | null; name: string; path: string };
+/** A realm being made: named. The path is empty until a folder is chosen, and stays so for a realm tied to none. */
+export type NewRealm = { name: string; path: string };
 
 /**
- * The menu that makes a realm: its folder, its name, and its crest. It opens with a folder chosen, or with none and a
+ * The menu that makes a realm: its folder and its name. It opens with a folder chosen, or with none and a
  * button to choose one; the realm is made once a name is given, and a folder where one is required
  * (workspace-attachment; CHG-0035). Where the folder is optional, a realm made without one is tied to no folder (CHG-0161).
  * The folder is chosen in the folder picker, which shows the folders of the computer whose Outlore the window shows.
@@ -37,15 +33,13 @@ export function NewRealmModal({
   /** Selects the successfully created or recovered realm in the calling form. */
   onCreated?: (realm: NewRealm) => void;
 }) {
-  const [editing, setEditing] = useState(() => ({ ...initial, crest: initial.crest ?? shuffledCrest() }));
-  const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const [editing, setEditing] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [isPicking, setIsPicking] = useState(false);
   const [isBusy, setBusy] = useState(false);
   const [isDuplicate, setDuplicate] = useState(false);
   const [archived, setArchived] = useState<RealmArchivePreview | null>(null);
-  // The realm is made wearing exactly the crest the menu shows (an undesigned one is drawn from the folder, not the new id).
-  const proposed = proposedRealmOf({ ...editing, crest: shownCrestOf(editing) });
+  const proposed = proposedRealmOf(editing);
   const isReady = proposed.name !== "" && (!isFolderRequired || editing.path !== "") && !isBusy;
   const complete = () => {
     onCreated?.(proposed);
@@ -62,7 +56,6 @@ export function NewRealmModal({
       const outcome = await client.request({
         _tag: "CreateRealm",
         allowDuplicateName: shouldAllowDuplicateName,
-        crest: proposed.crest,
         name: proposed.name,
         path: proposed.path === "" ? null : proposed.path,
         shouldAnswerOutcome: true,
@@ -125,7 +118,6 @@ export function NewRealmModal({
             )}
           </View>
           <View style={local.namingRow}>
-            <CrestBadge crest={editing.crest} id={newRealmCrestIdOf(editing.path)} size={72} />
             <View style={local.menuFields}>
               <Text style={local.menuLabel}>Name</Text>
               <TextInput
@@ -142,9 +134,6 @@ export function NewRealmModal({
                 style={local.nameInput}
                 value={editing.name}
               />
-              <Pressable accessibilityRole="button" onPress={() => setIsStudioOpen(true)} style={local.menuButton}>
-                <Text style={local.menuButtonText}>Customize the crest</Text>
-              </Pressable>
             </View>
           </View>
           {isDuplicate && (
@@ -169,19 +158,6 @@ export function NewRealmModal({
         </View>
       </View>
       {isPicking && <FolderPicker client={client} onCancel={() => setIsPicking(false)} onChoose={choose} />}
-      {isStudioOpen && (
-        <CrestStudio
-          id={newRealmCrestIdOf(editing.path)}
-          initial={editing.crest}
-          name={editing.name.trim() || (editing.path === "" ? "New realm" : folderNameOf(editing.path))}
-          onCancel={() => setIsStudioOpen(false)}
-          onDone={(crest) => {
-            setEditing({ ...editing, crest: crestOf(crest, editing.path || "new-realm") });
-            setIsStudioOpen(false);
-            return Promise.resolve();
-          }}
-        />
-      )}
     </Modal>
   );
 }

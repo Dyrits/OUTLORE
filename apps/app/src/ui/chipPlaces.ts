@@ -16,13 +16,13 @@ import type { ChipKind } from "./chips";
 
 // Where the chips of a sent message sit in its text, kept apart from the drawing so it can be checked without a screen.
 
-/** The icon each kind of mention draws; a side-quest wears its quest's. */
+/** The icon each kind of mention draws; an errand wears its quest's. */
 const chipKinds = { quest: "quest", realm: "realm", "side-quest": "quest" } as const satisfies Record<
   MentionKind,
   ChipKind
 >;
 
-/** The chip a quest, side-quest, or realm is as a choice in the list and in the message: its icon, label, and token. */
+/** The chip a quest, errand, or realm is as a choice in the list and in the message: its icon, label, and token. */
 export const chipOfMentionable = (mentionable: Mentionable): Chip => ({
   kind: chipKinds[mentionable.kind],
   label: mentionLabelOf(mentionable),

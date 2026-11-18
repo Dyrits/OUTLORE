@@ -35,7 +35,7 @@ CHG-0449 removes the Guild Hall hub for now. Chronicler's permanent conversation
 
 ### What Guildmaster does itself
 
-- Guildmaster can access all information and resources managed by Outlore: Realms, the Borderlands, side-quests, conversations, journals, lore, Rituals, and app configuration, including retained archived information.
+- Guildmaster can access all information and resources managed by Outlore: Realms, the Borderlands, errands, conversations, journals, lore, Rituals, and app configuration, including retained archived information.
 - It answers information requests and manages the app directly in the Guild Hall.
 - It manages resources at the owner's request, including moving quests, changing their state, renaming them, and managing lore, Rituals, settings, and budgets.
   Each operation keeps its existing rules and confirmations.
@@ -72,7 +72,7 @@ The additional search and management operations still need design, implementatio
 
 ### References between quests
 
-- The owner references a quest, side-quest, or realm with `@` from any message box, Outlore's included, as [thread-messaging](../thread-messaging/specifications.md#mentions-with-) describes (CHG-0181, built in CHG-0182). For the turn it reaches, the receiving thread may read the mentioned quest's journal and message its top thread, or the mentioned side-quest; the message goes straight to it and the reply comes straight back, without Outlore. A mention is context: the thread decides from the owner's words whether to use it. A thread's own `@` in a message opens nothing.
+- The owner references a quest, errand, or realm with `@` from any message box, Outlore's included, as [thread-messaging](../thread-messaging/specifications.md#mentions-with-) describes (CHG-0181, built in CHG-0182). For the turn it reaches, the receiving thread may read the mentioned quest's journal and message its top thread, or the mentioned errand; the message goes straight to it and the reply comes straight back, without Outlore. A mention is context: the thread decides from the owner's words whether to use it. A thread's own `@` in a message opens nothing.
 - Without a reference, a thread, or the user writing in a quest's thread, can write to `@Guildmaster`. Guildmaster finds the quest that fits with `find_missions` and forwards the message there, or answers that none fits.
 - Every message between quests shows in both threads as a normal message labelled with the sender's quest. Guildmaster shows it as a compact event line, not a chat bubble, for example "Release notes › Draft → Read my emails › Triage", and it stays out of Guildmaster's context.
 - The [chatter guard](../thread-messaging/specifications.md#chatter-guard) applies to each pair of threads, across quests too.

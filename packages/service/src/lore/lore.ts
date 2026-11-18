@@ -130,9 +130,7 @@ export const scopeLabelOf = (row: {
 }) =>
   ({
     Global: "Global",
-    Thread: row.isTopThread
-      ? `Quest "${row.missionTitle ?? ""}"`
-      : `Side-quest "${row.threadTitle ?? "a deleted side-quest"}"`,
+    Thread: row.isTopThread ? `Quest "${row.missionTitle ?? ""}"` : `Errand "${row.threadTitle ?? "a deleted errand"}"`,
     Workspace: `Realm ${row.workspaceName ?? ""}`,
   })[row.scope];
 
@@ -210,7 +208,7 @@ const recallOf = (rows: ReadonlyArray<LoreEntryRow>, fading: Fading): Recall => 
 const agentLabelOf = (row: LoreEntryRow) =>
   ({
     Global: "global",
-    Thread: row.isTopThread ? "quest" : `side-quest "${row.threadTitle ?? ""}"`,
+    Thread: row.isTopThread ? "quest" : `errand "${row.threadTitle ?? ""}"`,
     Workspace: "realm",
   })[row.scope];
 
@@ -256,7 +254,7 @@ export const readGauge = Effect.fnUntraced(function* (threadId: string) {
 export const loreInstructions = [
   "# Lore",
   "Lore is what Outlore keeps between threads: rules, preferences, decisions, facts, and temporary notes, each at the scope where it applies. Each of your turns starts with the lore in your scope.",
-  `Before saving, check there is something worth keeping: saving nothing is better than a vague or forced lore entry. When you learn something later work should know, save it with save_intel: one fact per lore entry, at most ${loreLimit} tokens. Choose the narrowest tool scope that fits: thread (the side-quest and the threads beneath it; on a quest's top thread, the quest), mission (the quest and all its threads), workspace (the realm, with or without a folder, and all its quests), or global (everywhere; it waits for the owner's approval).`,
+  `Before saving, check there is something worth keeping: saving nothing is better than a vague or forced lore entry. When you learn something later work should know, save it with save_intel: one fact per lore entry, at most ${loreLimit} tokens. Choose the narrowest tool scope that fits: thread (the errand and the threads beneath it; on a quest's top thread, the quest), mission (the quest and all its threads), workspace (the realm, with or without a folder, and all its quests), or global (everywhere; it waits for the owner's approval).`,
   "Choose its kind: rule (never fades), preference, decision, fact, or temporary (fades in days). Lore nobody uses fades, so search_intel for what you need: reading a lore entry there keeps it alive. When a lore entry from your context shaped what you did, say so with relied_on_intel and its ids; that keeps it alive too.",
   "A save that says the same as a lore entry in its scope or a wider one, or a newer version of it, replaces it: the lore entry keeps its id and takes the new text. When the lore entry rests on a journal entry, give its number as journalEntry; otherwise the message you are answering is recorded as its origin.",
   "When the owner gives you a rule in a chat, such as 'always run the tests before a commit', save it as a lore entry of kind rule without being asked.",
