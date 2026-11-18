@@ -199,10 +199,10 @@ export function Sidebar({
         {!foldedSections.set.has("Realms") && untied.map(rowOf)}
         <Row
           accessory={<NewRealmIcon color={colors.highlight} />}
+          isButton
           isSelected={false}
           label="Visit a realm"
           onPress={() => setIsCreating(true)}
-          textStyle={local.creationText}
         />
         <View style={local.creationDivider} />
         <SectionTitle
@@ -213,10 +213,10 @@ export function Sidebar({
         {failureUnder("none")}
         <Row
           accessory={<NewQuestIcon color={colors.highlight} />}
+          isButton
           isSelected={false}
           label="Start a quest"
           onPress={() => startQuest("none", null)}
-          textStyle={local.creationText}
         />
         {(foldedSections.set.has("Borderlands") ? [] : borderlandQuests).map((mission) => (
           <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />

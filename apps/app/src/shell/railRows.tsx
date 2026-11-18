@@ -23,6 +23,7 @@ export function Row({
   accessory,
   hoverAccessory,
   indent = 0,
+  isButton = false,
   leading,
   isSelected,
   fold,
@@ -34,6 +35,8 @@ export function Row({
   /** What stands at the end only with the row's marks, on hover or focus, given whether they show. */
   hoverAccessory?: (isShown: boolean) => ReactNode;
   indent?: number;
+  /** Whether the row is an action rather than a place: it rests on a soft rounded fill, which deepens on hover. */
+  isButton?: boolean;
   /** What stands before the label, after the fold mark, such as a state dot. */
   leading?: ReactNode;
   isSelected: boolean;
@@ -53,7 +56,8 @@ export function Row({
       style={(state) => [
         local.row,
         { paddingLeft: 6 + indent },
-        (state.pressed || isHovered(state)) && local.rowHovered,
+        isButton && local.buttonRest,
+        (state.pressed || isHovered(state)) && (isButton ? local.buttonHovered : local.rowHovered),
         isSelected && local.rowSelected,
       ]}
     >

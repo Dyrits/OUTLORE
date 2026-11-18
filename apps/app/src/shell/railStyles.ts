@@ -22,12 +22,13 @@ export const local = StyleSheet.create({
     width: 28,
   },
   addHovered: { backgroundColor: colors.controlActive },
+  buttonHovered: { backgroundColor: colors.controlActive },
+  /** A quiet label over a group of the sidebar: small and muted, so it names the group without weight. */
+  // A creation row reads as an action by a soft fill, with no border and no change of type.
+  buttonRest: { backgroundColor: colors.controlHover, marginVertical: 2, minHeight: 30 },
   chevron: { alignItems: "center", height: 20, justifyContent: "center", width: chevronWidth },
   count: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   creationDivider: { backgroundColor: colors.edge, height: 1, marginHorizontal: 6, marginVertical: 6 },
-  /** A quiet label over a group of the sidebar: small and muted, so it names the group without weight. */
-  // The two creation rows read as actions, in italics.
-  creationText: { fontStyle: "italic" },
   dot: { borderRadius: radii.pill, height: 8, width: 8 },
   empty: {
     color: colors.textMuted,
