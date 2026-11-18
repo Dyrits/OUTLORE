@@ -144,6 +144,8 @@ export const PlanLimitWindow = Schema.Struct({
   /** When the window starts over, in milliseconds. */
   resetsAt: Schema.Number,
   usedPercent: Schema.Number,
+  /** How long the window lasts, in minutes (300 for a 5-hour window); readings saved before it was kept lack it. */
+  windowMinutes: Schema.optionalKey(Schema.Number),
 });
 export type PlanLimitWindow = typeof PlanLimitWindow.Type;
 

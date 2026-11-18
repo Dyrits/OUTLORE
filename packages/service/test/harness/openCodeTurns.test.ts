@@ -171,9 +171,9 @@ describe("running OpenCode threads", () => {
         reading = yield* own();
       }
       expect(reading?.planLimits?.windows).toEqual([
-        { label: "5-hour", resetsAt: 1794481927000, usedPercent: 12 },
-        { label: "Weekly", resetsAt: 1794787200000, usedPercent: 40 },
-        { label: "Monthly", resetsAt: 1796315927000, usedPercent: 7 },
+        { label: "5-hour", resetsAt: 1794481927000, usedPercent: 12, windowMinutes: 300 },
+        { label: "Weekly", resetsAt: 1794787200000, usedPercent: 40, windowMinutes: 10080 },
+        { label: "Monthly", resetsAt: 1796315927000, usedPercent: 7, windowMinutes: 43200 },
       ]);
       yield* own();
       yield* own();

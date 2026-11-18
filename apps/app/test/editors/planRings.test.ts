@@ -53,6 +53,36 @@ describe("laying plan limits out as rings", () => {
   });
 });
 
+describe("ring order once a window has reset", () => {
+  it("keeps the weekly ring outermost when its reset has passed and the 5-hour one still counts down", () => {
+    // The state of the owner's screenshot: the 5-hour window is at its limit and resets later than the weekly one,
+    // whose reset has already passed (so it reads as unused).
+    const now = 5_000;
+    const windows = currentWindowsOf(
+      [
+        { label: "5-hour", resetsAt: 10_000, usedPercent: 100, windowMinutes: 300 },
+        { label: "Weekly", resetsAt: 1_000, usedPercent: 0, windowMinutes: 10_080 },
+      ],
+      now,
+    );
+    const { rings } = ringStackOf(windows, 44, 4, 2);
+    expect(rings.map((ring) => ring.window.label)).toEqual(["Weekly", "5-hour"]);
+  });
+
+  it("falls back to the reset time for a reading saved before the window lengths were kept", () => {
+    const { rings } = ringStackOf(
+      [
+        { label: "5-hour", resetsAt: 10_000, usedPercent: 0 },
+        { label: "Weekly", resetsAt: 9_000, usedPercent: 0 },
+      ],
+      44,
+      4,
+      2,
+    );
+    expect(rings.map((ring) => ring.window.label)).toEqual(["5-hour", "Weekly"]);
+  });
+});
+
 describe("windows that have reset", () => {
   it("read as unused once their reset time has passed, and are kept otherwise", () => {
     const [soon, later] = currentWindowsOf(

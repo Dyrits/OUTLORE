@@ -101,8 +101,8 @@ describe("running Codex threads", () => {
         reading = yield* own();
       }
       expect(reading?.planLimits?.windows).toEqual([
-        { label: "5-hour", resetsAt: 1794405450000, usedPercent: 40 },
-        { label: "Weekly", resetsAt: 1794412621000, usedPercent: 93 },
+        { label: "5-hour", resetsAt: 1794405450000, usedPercent: 40, windowMinutes: 300 },
+        { label: "Weekly", resetsAt: 1794412621000, usedPercent: 93, windowMinutes: 10080 },
       ]);
       yield* own();
       yield* own();

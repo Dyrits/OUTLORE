@@ -24,9 +24,11 @@ export const currentWindowsOf = (windows: readonly PlanLimitWindow[], now: numbe
   windows.map((window) => (window.resetsAt <= now ? { ...window, usedPercent: 0 } : window));
 
 /**
- * Lays a plan's windows out as concentric rings in a square of `size` points: the window that resets last is the
- * outer ring and the one that resets first the inner, as in a 5-hour ring inside a weekly ring. A ring shows what is
- * left, as the hover card does: full when nothing is used, empty at the limit. A used share is kept between 0 and 100.
+ * Lays a plan's windows out as concentric rings in a square of `size` points: the longest window is the outer ring and
+ * the shortest the inner, as in a 5-hour ring inside a weekly ring. The order is by length, not by reset time, because
+ * a window whose reset has passed keeps its old reset time and would otherwise sink inside a window still counting down.
+ * A reading saved without lengths falls back to the reset time. A ring shows what is left, as the hover card does: full
+ * when nothing is used, empty at the limit. A used share is kept between 0 and 100.
  */
 export const ringStackOf = (
   windows: readonly PlanLimitWindow[],
@@ -34,7 +36,9 @@ export const ringStackOf = (
   stroke: number,
   gap: number,
 ): RingStack => {
-  const outward = [...windows].sort((a, b) => b.resetsAt - a.resetsAt);
+  const outward = [...windows].sort(
+    (a, b) => (b.windowMinutes ?? 0) - (a.windowMinutes ?? 0) || b.resetsAt - a.resetsAt,
+  );
   const rings = outward.map((window, index): Ring => {
     const radius = size / 2 - stroke / 2 - index * (stroke + gap);
     const circumference = 2 * Math.PI * radius;

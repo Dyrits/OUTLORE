@@ -35,6 +35,7 @@ const decodeWindows = Schema.decodeUnknownSync(
       label: Schema.String,
       resetsAt: Schema.Number,
       usedPercent: Schema.Number,
+      windowMinutes: Schema.optionalKey(Schema.Number),
     }),
   ),
 );
@@ -80,6 +81,7 @@ export const planLimitsLayer = Layer.effect(
           label: windowLabelOf(window.windowMinutes),
           resetsAt: window.resetsAtSeconds * 1000,
           usedPercent: window.usedPercent,
+          windowMinutes: window.windowMinutes,
         }));
         yield* sql`INSERT INTO plan_limits (account_key, windows, read_at) VALUES (${key}, ${JSON.stringify(windows)}, ${now})
           ON CONFLICT (account_key) DO UPDATE SET windows = excluded.windows, read_at = excluded.read_at`.pipe(

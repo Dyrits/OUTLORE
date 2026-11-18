@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the simpler sidebar (merged into `main`, reviewed and refactored; open: the push, and the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-1325-sidebar-review-and-push.md). Handoffs are shared and committed.
-
-- To resume the Android pairing and status-bar fixes or prepare the deferred release, read the [current handoff](.agents/handoffs/2026-11-18-0124-android-pairing-hotfix.md). Handoffs are shared and committed.
+- To resume the plan-limit rings' order fix (CHG-0500; committed; push waiting for the owner's approval; open: the owner's look at the rings in a window), read the [current handoff](.agents/handoffs/2026-11-18-1346-plan-ring-order.md). Handoffs are shared and committed.
 
 - To resume voice input (desktop dictation is built, CHG-0499; open: the owner's try with a real microphone, then packaging or the web and phone), read the [current handoff](.agents/handoffs/2026-11-18-1345-voice-dictation-desktop.md). Handoffs are shared and committed.
+
+- To resume the simpler sidebar (merged into `main` and pushed; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-1325-sidebar-review-and-push.md). Handoffs are shared and committed.
