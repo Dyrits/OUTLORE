@@ -22,6 +22,16 @@ export const local = StyleSheet.create({
     width: 28,
   },
   addHovered: { backgroundColor: colors.controlActive },
+  /** A quiet label over a group of the sidebar: small and muted, so it names the group without weight. */
+  // A creation row drawn as a button: a rounded border around the whole row.
+  buttonRow: {
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginVertical: 2,
+    minHeight: 32,
+    paddingLeft: 10,
+  },
   chevron: { alignItems: "center", height: 20, justifyContent: "center", width: chevronWidth },
   count: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   creationDivider: { backgroundColor: colors.edge, height: 1, marginHorizontal: 6, marginVertical: 6 },
@@ -89,7 +99,6 @@ export const local = StyleSheet.create({
   rowSelected: { backgroundColor: colors.controlActive },
   rowText: { color: colors.onGround, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.base },
   rowTextSelected: { color: colors.text, fontWeight: "600" },
-  /** A quiet label over a group of the sidebar: small and muted, so it names the group without weight. */
   sectionRow: {
     alignItems: "center",
     borderRadius: radii.md,
@@ -98,7 +107,7 @@ export const local = StyleSheet.create({
     paddingLeft: 2,
     paddingVertical: 2,
   },
-  sectionTitle: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
+  sectionTitle: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
   sidebar: {
     backgroundColor: colors.sidebar,
     borderRightColor: colors.border,

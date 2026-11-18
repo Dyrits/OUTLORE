@@ -199,6 +199,7 @@ export function Sidebar({
         {!foldedSections.set.has("Realms") && untied.map(rowOf)}
         <Row
           accessory={<NewRealmIcon color={colors.highlight} />}
+          frameStyle={local.buttonRow}
           isSelected={false}
           label="Visit a realm"
           onPress={() => setIsCreating(true)}
@@ -222,6 +223,7 @@ export function Sidebar({
         {failureUnder("none")}
         <Row
           accessory={<NewQuestIcon color={colors.highlight} />}
+          frameStyle={local.buttonRow}
           isSelected={false}
           label="Start a quest"
           onPress={() => startQuest("none", null)}
@@ -263,7 +265,7 @@ function SectionTitle({ isOpen, onToggle, title }: { isOpen: boolean; onToggle: 
       onPress={onToggle}
       style={(state) => [local.sectionRow, (state.pressed || isHovered(state)) && local.rowHovered]}
     >
-      <FoldChevron color={colors.textMuted} isOpen={isOpen} size={12} />
+      <FoldChevron color={colors.textMuted} isOpen={isOpen} size={14} />
       <Text style={local.sectionTitle}>{title}</Text>
     </Pressable>
   );

@@ -22,6 +22,7 @@ export function ShowAll({ count, onPress, subject }: { count: number; onPress: (
 export function Row({
   accessory,
   hoverAccessory,
+  frameStyle,
   indent = 0,
   leading,
   isSelected,
@@ -33,6 +34,8 @@ export function Row({
   accessory?: ReactNode;
   /** What stands at the end only with the row's marks, on hover or focus, given whether they show. */
   hoverAccessory?: (isShown: boolean) => ReactNode;
+  /** More style for the row's frame, such as a border that makes it a button. */
+  frameStyle?: object;
   indent?: number;
   /** What stands before the label, after the fold mark, such as a state dot. */
   leading?: ReactNode;
@@ -55,6 +58,7 @@ export function Row({
         { paddingLeft: 6 + indent },
         (state.pressed || isHovered(state)) && local.rowHovered,
         isSelected && local.rowSelected,
+        frameStyle,
       ]}
     >
       {fold !== undefined && <Chevron {...fold} focusProps={focusProps} isShown={isShown} />}
