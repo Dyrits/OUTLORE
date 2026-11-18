@@ -219,7 +219,7 @@ export function Shell(
         ))}
     </QuestColumn>
   );
-  // Beside every screen, the Guild Hall's hub included, Chronicler is a column; a narrow window gives it the whole content
+  // Beside every screen Chronicler is a column; a narrow window gives it the whole content
   // area instead, and its restore button closes it.
   // Chronicler's column stands at the window's far right, past the quest panel, which its handle then clears.
   const isChroniclerColumn = isChroniclerOpen && hasRail && !isChroniclerFull;

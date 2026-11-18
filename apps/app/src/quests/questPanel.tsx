@@ -15,7 +15,6 @@ import {
 } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, outline, radii, stateLabels, stateTones } from "../foundation/theme";
-import { useServiceQuery } from "../foundation/useServiceQuery";
 import { RealmArchiveAction } from "../realms/realmArchiveAction";
 import { RealmName } from "../realms/realmName";
 import { RitualControls } from "../rituals/rituals";
@@ -195,39 +194,6 @@ export function QuestSidebar({
         </View>
       </ScrollView>
     </View>
-  );
-}
-
-/**
- * The panel for a quest picked on the board: it loads the quest itself and offers to open it, since the board's card
- * only selects it.
- */
-export function QuestPreview({
-  client,
-  missionId,
-  onBack,
-  onOpenBudget,
-  onOpenJournal,
-  onOpenQuest,
-}: {
-  client: ServiceClient;
-  missionId: MissionId;
-  onBack: () => void;
-  onOpenBudget: () => void;
-  onOpenJournal: () => void;
-  onOpenQuest: () => void;
-}) {
-  const { data } = useServiceQuery(client, { _tag: "ReadMission", missionId, threadId: null }, `${missionId}:top`);
-  if (data === null || data.mission.id !== missionId) return <View style={local.panel} />;
-  return (
-    <QuestSidebar
-      client={client}
-      mission={data.mission}
-      onBack={onBack}
-      onOpenBudget={onOpenBudget}
-      onOpenJournal={onOpenJournal}
-      onOpenQuest={onOpenQuest}
-    />
   );
 }
 

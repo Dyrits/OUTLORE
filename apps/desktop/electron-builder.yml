@@ -22,7 +22,6 @@ directories:
 files:
   - dist/**
   - assets/icon.png
-  - assets/icon-gild.png
   - assets/one.LICENSE
   - package.json
 extraResources:

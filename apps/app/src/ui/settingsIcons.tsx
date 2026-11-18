@@ -1,7 +1,7 @@
 import Svg, { Path } from "react-native-svg";
 import { emblemPaths } from "../foundation/emblems";
 
-/** The line drawings of the Charter's sections on a 24 by 24 grid. */
+/** The line drawings of the Workshop's sections on a 24 by 24 grid. */
 const iconPaths = {
   chat: ["M4 5h16v11H11l-4 4v-4H4z", "M8 9.5h8", "M8 12.5h5"],
   code: ["M8 7l-5 5 5 5", "M16 7l5 5-5 5", "M14 5l-4 14"],
@@ -21,10 +21,10 @@ const iconPaths = {
   sliders: ["M4 7h3", "M11 7h9", "M9 4v6", "M4 17h9", "M17 17h3", "M15 14v6"],
 } as const satisfies Record<string, readonly string[]>;
 
-/** The names of the icons the Charter draws: one per section, and the gear of its heading. */
+/** The names of the icons the Workshop draws: one per section, and the gear of its heading. */
 export type SettingsIconName = keyof typeof iconPaths;
 
-/** One Charter icon as a stroked line drawing. */
+/** One Workshop icon as a stroked line drawing. */
 export function SettingsIcon({ name, size = 18, tint }: { name: SettingsIconName; size?: number; tint: string }) {
   return (
     <Svg

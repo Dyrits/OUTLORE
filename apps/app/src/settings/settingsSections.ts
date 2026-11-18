@@ -4,6 +4,7 @@ export const settingsSections = [
   { icon: "sliders", id: "defaults", label: "Look and feel" },
   { icon: "code", id: "providers", label: "Providers" },
   { icon: "sliders", id: "companions", label: "Companions" },
+  { icon: "code", id: "connectors", label: "Connectors" },
   { icon: "monitor", id: "remote", label: "Remote access" },
   { icon: "chat", id: "messaging", label: "Messaging" },
   { icon: "layers", id: "limits", label: "Limits" },

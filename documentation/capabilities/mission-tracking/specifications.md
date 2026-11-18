@@ -160,7 +160,7 @@ Agreed on 2026-11-13 (CHG-0271); not implemented.
 
 ### Simplified left navigation
 
-Agreed on 2026-11-18 (CHG-0449). Implementation is pending. This section supersedes the earlier sidebar layout and crest behavior. The quest cap, full quest list, and realm archive and recovery are outside this change.
+Agreed on 2026-11-18 (CHG-0449). Built so far, on branch `worktree/sidebar`: crest removal (CHG-0452) and the sidebar, footer menu, Guild Hall hub removal, Connectors in Settings, Gild removal and icon removal (CHG-0453); the ungrouped quests in the Realms overview, the retired Borderlands page and drop zone, and the errand rename are pending. This section supersedes the earlier sidebar layout and crest behavior. The quest cap, full quest list, and realm archive and recovery are outside this change.
 
 - Pressing the **Realms** title at the top of the sidebar opens the overview of all realms. The title has no adjacent action buttons.
 - Each realm is a group of quests with a title, a fold control, and a folder mark when tied to a folder. Each quest can show its nested errands. Quests in no realm appear as ordinary rows after the realm groups in both the sidebar and the Realms overview, with no heading, divider, or mark. The separate Borderlands page is removed.

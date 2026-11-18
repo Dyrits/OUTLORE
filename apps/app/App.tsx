@@ -201,7 +201,6 @@ export function App() {
           openThread: openSideQuest,
           selectMission,
           selectThread: setOpenThread,
-          setGuildmasterRealm,
           setPermissions: setIsPermissionsOpen,
           setSettingsSection,
           showDetails: (isOpen) => rightPanel.show(isOpen ? { tab: "quest" } : null),

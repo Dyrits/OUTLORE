@@ -2,7 +2,7 @@ import type { HarnessName } from "@outlore/contracts";
 import { createContext, type ReactNode, useContext, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fontSizes, fonts, outline, round } from "../foundation/theme";
-import { BowArrow } from "./bowArrow";
+import { FoldChevron } from "./foldChevron";
 import { ProviderMark } from "./providerMarks";
 
 /** Which fold of a group is unfolded: one at a time, so the column stays short. */
@@ -55,7 +55,7 @@ export function Fold({
           style={({ pressed }) => [local.header, pressed && local.pressed]}
         >
           <Text style={local.title}>{title}</Text>
-          <BowArrow color={colors.textMuted} isOpen={isOpen} size={15} />
+          <FoldChevron color={colors.textMuted} isOpen={isOpen} size={15} />
           <View style={local.summary}>
             {harness !== undefined && <ProviderMark harness={harness} size={13} />}
             <Text numberOfLines={1} style={local.summaryText}>

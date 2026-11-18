@@ -4,12 +4,12 @@ import Svg, { Circle, Path } from "react-native-svg";
 import { emblemPaths } from "../foundation/emblems";
 import { isKeyboardFocus } from "../foundation/inputModality";
 import { colors } from "../foundation/theme";
-import { BowArrow } from "../ui/bowArrow";
+import { FoldChevron } from "../ui/foldChevron";
 import { areActionsShown, folderCueOf } from "./questTree";
 
 import { isHovered, local } from "./railStyles";
 /**
- * The mark that folds or unfolds what lies beneath a realm, quest, or side-quest row: the bow arrow, shown like the row's
+ * The mark that folds or unfolds what lies beneath a realm, quest, or side-quest row: a chevron, shown like the row's
  * actions only on hover or keyboard focus, in a place kept while unseen. A row with nothing beneath it keeps the place empty.
  */
 export function Chevron({
@@ -37,7 +37,7 @@ export function Chevron({
       onPress={onPress}
       style={[local.chevron, !isShown && local.actionsHidden]}
     >
-      <BowArrow color={colors.textMuted} isOpen={isOpen} size={15} />
+      <FoldChevron color={colors.textMuted} isOpen={isOpen} size={15} />
     </Pressable>
   );
 }

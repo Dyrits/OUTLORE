@@ -1,8 +1,6 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
 import type { ReactNode } from "react";
-import { CharterScreen } from "../charter/charterScreen";
 import { Conversation } from "../conversation/conversation";
-import { GuildmasterScreen } from "../conversation/guildmaster";
 import { PermissionsScreen } from "../editors/permissions";
 import type { ServiceClient } from "../foundation/client";
 import { LoreScreen } from "../lore/lore";
@@ -10,8 +8,6 @@ import { RitualsScreen } from "../rituals/rituals";
 import { SettingsScreen } from "../settings/settings";
 import type { SettingsSectionId } from "../settings/settingsSections";
 import { ArchiveScreen } from "./archivePage";
-import { Dashboard } from "./dashboard";
-import { UnbuiltScreen } from "./places";
 import { QuestListScreen } from "./questListPage";
 import type { RealmListing } from "./questTree";
 import { RealmsScreen } from "./realmsPage";
@@ -41,7 +37,6 @@ interface Navigation {
   openThread: (missionId: MissionId, threadId: ThreadId) => void;
   selectMission: (id: MissionId | null) => void;
   selectThread: (id: ThreadId | null) => void;
-  setGuildmasterRealm: (path: string | null) => void;
   setPermissions: (isOpen: boolean) => void;
   setSettingsSection: (section: SettingsSectionId) => void;
   showDetails: (isOpen: boolean) => void;
@@ -81,36 +76,7 @@ export function AppScreen({
   const screens = {
     Archived: <ArchiveScreen client={client} onOpen={navigation.openMission} />,
     Borderlands: quests(null),
-    Charter: <CharterScreen client={client} />,
-    Craft: <UnbuiltScreen place="Craft" />,
-    Guildmaster: (
-      <GuildmasterScreen
-        client={client}
-        onOpenMission={navigation.openMission}
-        onViewAll={() => navigation.goTo("Quests")}
-      />
-    ),
-    Library: <UnbuiltScreen place="Library" />,
-    Lore: <LoreScreen client={client} onBack={() => navigation.goTo("Guildmaster")} threadId={null} title="All lore" />,
-    Quests: (
-      <Dashboard
-        client={client}
-        isArchived={false}
-        key={view.place}
-        onArchived={() => navigation.goTo("Archived")}
-        onBack={() => navigation.goTo("Guildmaster")}
-        onLore={() => navigation.goTo("Lore")}
-        onOpen={navigation.openMission}
-        onSelect={navigation.selectMission}
-        onSendToGuildmaster={(path) => {
-          navigation.goTo("Guildmaster");
-          navigation.setGuildmasterRealm(path);
-        }}
-        onSettings={() => navigation.goTo("Settings")}
-        selectedId={view.selectedMission}
-        workspaceId={null}
-      />
-    ),
+    Lore: <LoreScreen client={client} onBack={() => navigation.goTo("Realms")} threadId={null} title="All lore" />,
     RealmQuests: quests(view.listedRealm),
     Realms: (
       <RealmsScreen
@@ -128,7 +94,7 @@ export function AppScreen({
       <SettingsScreen
         active={view.settingsSection}
         client={client}
-        onBack={() => navigation.goTo("Guildmaster")}
+        onBack={() => navigation.goTo("Realms")}
         onPermissions={() => navigation.setPermissions(true)}
         onSection={navigation.setSettingsSection}
       />

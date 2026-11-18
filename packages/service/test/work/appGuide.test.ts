@@ -29,7 +29,7 @@ describe("reading the app guide", () => {
   it("finds a topic by its id or its title", () => {
     expect(idsFor("rituals")).toEqual(["rituals"]);
     expect(idsFor("  Budgets ")).toEqual(["budgets"]);
-    expect(idsFor("Lore and The Keep")).toEqual(["lore"]);
+    expect(idsFor("Lore and the Archive")).toEqual(["lore"]);
   });
 
   it.each([

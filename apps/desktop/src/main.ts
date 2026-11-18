@@ -15,7 +15,7 @@ import { setUpUpdates } from "./updateSetup.ts";
 import { createWindowHandlers } from "./windowCalls.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-/** The app's icons, beside `dist` in the desktop app's own `assets`: Outlore's, and Gild's hooded figure. */
+/** The app's icons, beside `dist` in the desktop app's own `assets`: Outlore's. */
 const iconPathOf = (theme: unknown) => join(here, "..", "assets", iconFileOf(theme));
 const iconPath = iconPathOf("one");
 /** The installed app carries its screens and loads them from its own scheme; a development run loads the dev server. */

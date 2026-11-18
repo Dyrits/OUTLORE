@@ -58,7 +58,7 @@ const evaluate = (url: string, expression: string) =>
 // The endpoint itself contains an owner token, so only the success verdict leaves the renderer.
 const expression = `(async () => {
   const text = document.body?.innerText ?? "";
-  if (!(text.includes("Guild Hall") && text.includes("Realms")) || typeof window.outlore?.endpoint !== "function") return "waiting";
+  if (!(text.includes("Start a quest") && text.includes("Realms")) || typeof window.outlore?.endpoint !== "function") return "waiting";
   await window.outlore.endpoint();
   const session = await window.outlore.terminalOpen("package-check", null);
   await window.outlore.terminalClose("package-check");
@@ -111,7 +111,7 @@ const check = async () => {
               continue;
             const result = await evaluate(page.webSocketDebuggerUrl, expression);
             if (result === "ready") {
-              console.log("PASS: packaged Guild Hall screen, service bridge, native terminal, and fuses are ready.");
+              console.log("PASS: packaged sidebar, service bridge, native terminal, and fuses are ready.");
               return;
             }
             if (result !== "waiting") throw new Error("The packaged terminal did not start.");

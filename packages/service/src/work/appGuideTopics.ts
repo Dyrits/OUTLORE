@@ -84,7 +84,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "The Guild Hall is the first entry of the sidebar. It is a hub: a line saying how many quests wait for the owner, the waiting quests as cards, recent quests, and the finished quests of the period.",
+      "Chronicler has no page of its own and no hub: the Guild Hall page is gone, and the app opens on the Realms overview.",
       'Chronicler, the app\'s assistant, is a permanent conversation, a panel the top bar\'s Chronicler button opens or folds on every screen. It knows which quest or screen the owner has open, so "this quest" or "this page" means it.',
       "Chronicler can: answer questions about the owner's quests and about using the app; propose a quest on a card (it never opens one itself); create a Ritual; create or rename a realm; stop a quest's threads, mark it Done, archive it, or rename it; read the settings and change most of them. It cannot change the approval level, the budgets, price fetching, or permission to run outside the sandbox without asking: those are set in the Workshop.",
       "Chronicler does not do the work itself, no editing files or running commands. Anything else goes to a quest. An action on the app runs at once when the owner's message in that turn plainly named the action, its target, and its new value; otherwise Chronicler asks one Allow or Deny question. Creating a Ritual always asks, because its instruction runs unattended.",
@@ -103,15 +103,15 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "card",
       "top bar",
     ],
-    summary: "The Guild Hall, and what Chronicler can and cannot do",
-    title: "The Guild Hall and Chronicler",
+    summary: "What Chronicler can and cannot do",
+    title: "Chronicler",
   },
   {
     body: [
-      "The sidebar, in order: Guild Hall; Realms, each with its quests and side-quests; Borderlands; Rituals; Craft (planned workflows, not available yet); The Keep (Library, Lore, Archive); Reserves (usage and budgets); Charter (a placeholder page for now); and Workshop (the settings).",
-      "Headings and realms fold and unfold. Each realm and the Borderlands show their three newest quests, with a Show all link to the full list.",
+      "The sidebar, from the top: the Realms title, which opens the overview of all realms; each realm with its quests and side-quests; the quests that are in no realm, as ordinary rows after the realms; and two buttons, Visit a realm and Start a quest. A menu button at the foot opens Rituals, Lore, Archive, Reserves, and Settings. On a phone the menu also lists Realms.",
+      "Realms fold and unfold. Each realm and the quests in no realm show their three newest quests, with a Show all link to the full list.",
       "The top bar shows where the owner is and has the Chronicler button. A quest has its own side panel with its details.",
-      "Themes: One, Iskios or Gild, each in a dark and a light look, or following the system. The owner chooses them in the Workshop.",
+      "Themes: One or Iskios, each in a dark and a light look, or following the system. The owner chooses them in Settings.",
     ].join("\n"),
     id: "navigation",
     keywords: [
@@ -122,7 +122,6 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "rail",
       "screen",
       "theme",
-      "gild",
       "dark",
       "light",
       "look",
@@ -134,9 +133,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Settings are in the Workshop, in the sidebar. Its Providers section shows installed harnesses and an Install button for a missing one, and holds accounts. Other sections cover Permissions, Look and feel, Companions, quest upkeep, budgets, messaging, lore settings, model prices, and Remote access with paired devices.",
+      "Settings are in the sidebar's menu. Its Providers section shows installed harnesses and an Install button for a missing one, and holds accounts. Other sections cover Permissions, Look and feel, Companions, Connectors (the Code Mode switch), quest upkeep, budgets, messaging, lore settings, model prices, and Remote access with paired devices.",
       "Ask Chronicler to read or change a setting. It cannot change the approval level, the budgets, price fetching, or permission to run outside the sandbox without asking.",
-      "The sidebar's Charter row is a placeholder page for now; the settings are not there.",
     ].join("\n"),
     id: "workshop",
     keywords: [
@@ -243,7 +241,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "A budget is a spending limit, in cost, tokens, or both, that every thread of a quest draws on. A global budget limits all spending over a day, week, or month. An account budget limits, or gives a credit for, one provider account. At a limit, new spending stops and the quest asks for attention.",
-      "Budgets are set in the Workshop (the default for new quests, and the global budget). Reserves, in the sidebar, shows usage, budgets, and what each limit leaves; the rail shows rings that fill as a budget is used.",
+      "Budgets are set in the Workshop (the default for new quests, and the global budget). Reserves, in the sidebar's menu, shows usage, budgets, and what each limit leaves; the rail shows rings that fill as a budget is used.",
       "A turn's estimated cost is worked out from its tokens and a model price table, shown with ≈. It counts toward a limit only for an API-key turn the harness reported no cost for. Prices are read from the public models.dev table at startup and daily; the Workshop has a switch to stop that, and a snapshot shipped with the app is the fallback.",
       "Plan limits (a subscription's 5-hour or weekly window) are shown when the harness reports them, and never enforced by Outlore.",
     ].join("\n"),
@@ -305,8 +303,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
     body: [
       "Lore is saved facts, preferences, and decisions that threads recall later. Each lore entry belongs to a scope: a side-quest, a quest, a realm, or global. Its kind sets how fast it fades when unused: a rule never fades; by default a preference loses half its strength in 90 days, a decision or a fact in 45, and a temporary entry in 3 (the half-lives are in the Workshop).",
       "A faded entry becomes dormant (out of the starting context, still found by search) and later archived (out of search too, kept in the lore panel, where it can be restored). Using an entry slows its fading, and a pinned entry never fades.",
-      "Lore is under The Keep, in the sidebar, next to the Library and the Archive. Threads propose and save lore as they work; the owner can review it, pin it, and restore archived entries.",
-      "The Library is meant for generated and uploaded files; its behavior is not settled yet.",
+      "Lore is in the sidebar's menu, next to the Archive. Threads propose and save lore as they work; the owner can review it, pin it, and restore archived entries.",
     ].join("\n"),
     id: "lore",
     keywords: [
@@ -322,8 +319,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "knowledge",
       "facts",
     ],
-    summary: "Lore, The Keep, and the Archive",
-    title: "Lore and The Keep",
+    summary: "Lore and the Archive",
+    title: "Lore and the Archive",
   },
   {
     body: [
@@ -378,7 +375,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Alpha limits to tell the owner plainly: one owner, who can use several installations by pairing them; Craft (workflows) is not available; the Library is not settled; Outlore has no screen for managing MCP servers yet; phone layouts and parts of pairing still need work or checking; updates are checked and downloaded but installed only on the owner's Restart and update (unverified on Windows and Linux); macOS and Windows builds are unsigned; Windows and Linux builds have had little testing on real machines.",
+      "Alpha limits to tell the owner plainly: one owner, who can use several installations by pairing them; Craft (workflows) and a Library of artifacts are not available; Outlore has no screen for managing MCP servers yet; phone layouts and parts of pairing still need work or checking; updates are checked and downloaded but installed only on the owner's Restart and update (unverified on Windows and Linux); macOS and Windows builds are unsigned; Windows and Linux builds have had little testing on real machines.",
       "Bugs and requests go to GitHub Issues, with the operating system, Outlore version, harness, steps to reproduce, and logs with private information removed.",
     ].join("\n"),
     id: "limits",

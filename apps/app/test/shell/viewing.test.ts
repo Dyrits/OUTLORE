@@ -5,12 +5,12 @@ import { viewingOf } from "../../src/shell/viewing";
 describe("where Chronicler is told the owner is", () => {
   it("names the quest that is open, whatever the place", () => {
     const id = "q1" as MissionId;
-    expect(viewingOf("Guildmaster", id, null)).toEqual({ missionId: id, screen: "Quest" });
+    expect(viewingOf("Realms", id, null)).toEqual({ missionId: id, screen: "Quest" });
     expect(viewingOf("Settings", id, null)).toEqual({ missionId: id, screen: "Quest" });
   });
 
   it("names the screen otherwise, as the owner knows it", () => {
-    expect(viewingOf("Guildmaster", null, null)).toEqual({ screen: "Guild Hall" });
+    expect(viewingOf("Realms", null, null)).toEqual({ screen: "Realms" });
     expect(viewingOf("Settings", null, null)).toEqual({ screen: "Settings" });
     expect(viewingOf("Archived", null, null)).toEqual({ screen: "Archive" });
   });

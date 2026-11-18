@@ -125,7 +125,7 @@ It asks GitHub's public release list for newer releases and sends nothing about 
 On macOS Outlore replaces its own app after checking the download against the release's `SHA512SUMS.txt`; on Windows and Linux it uses `electron-updater`, which has not been run on those systems yet.
 A development run (`bun run dev`) never updates.
 
-Before uploading a macOS installer, the workflow verifies and mounts its DMG, copies the app to a fresh location, and checks the rendered Guild Hall screen, service bridge, and native terminal on temporary data.
+Before uploading a macOS installer, the workflow verifies and mounts its DMG, copies the app to a fresh location, and checks the rendered sidebar, service bridge, and native terminal on temporary data.
 Run that same application check locally with `bun apps/desktop/scripts/check-package.ts /Applications/Outlore.app`.
 This check proves packaged startup; Apple trust checks on other computers still require Developer ID signing and notarization.
 

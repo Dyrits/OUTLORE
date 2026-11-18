@@ -2,7 +2,6 @@ import type { MissionEnding, MissionSummary } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, type StyleProp, Text, TextInput, type TextStyle, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
-import { promptQuestionOf } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { useEnding } from "../foundation/useEnding";
 import { Button } from "../ui/button";
@@ -72,50 +71,6 @@ export function MissionEndingActions({
             </Pressable>
           ),
         )}
-      </View>
-      <EndingConfirmation ending={ending} />
-      {ending.error !== null && <Text style={styles.error}>{ending.error}</Text>}
-    </View>
-  );
-}
-
-/** A dashboard question about one mission: Mark as done after its result, or its inactivity. */
-export function MissionPromptCard({
-  client,
-  inactivityDays,
-  mission,
-  onOpen,
-}: {
-  client: ServiceClient;
-  inactivityDays: number;
-  mission: MissionSummary;
-  onOpen: () => void;
-}) {
-  const ending = useEnding(client, mission);
-  const prompt = mission.prompt;
-  if (prompt === null) return null;
-  const dismiss = () =>
-    ending.run(() => client.request({ _tag: "DismissMissionPrompt", missionId: mission.id, prompt }));
-  return (
-    <View style={styles.failure}>
-      <Pressable onPress={onOpen}>
-        <Text numberOfLines={1} style={styles.title}>
-          {mission.title}
-        </Text>
-      </Pressable>
-      <Text style={styles.body}>{promptQuestionOf(prompt, inactivityDays)}</Text>
-      <View style={styles.inlineRow}>
-        {prompt === "Inactive" && (
-          <Pressable disabled={ending.isBusy} onPress={() => ending.start("Archived")}>
-            <Text style={styles.link}>Archive</Text>
-          </Pressable>
-        )}
-        <Pressable disabled={ending.isBusy} onPress={() => ending.start("Done")}>
-          <Text style={styles.link}>Mark as done</Text>
-        </Pressable>
-        <Pressable disabled={ending.isBusy} onPress={dismiss}>
-          <Text style={styles.link}>Not now</Text>
-        </Pressable>
       </View>
       <EndingConfirmation ending={ending} />
       {ending.error !== null && <Text style={styles.error}>{ending.error}</Text>}

@@ -17,6 +17,7 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Choice } from "../ui/pickers";
 import { AccountBudgetsCard } from "./accountBudgetsCard";
 import { BrowsableRootsCard } from "./browsableRootsCard";
+import { CodeModeCard } from "./codeModeCard";
 import { ComputerNameCard } from "./computerNameCard";
 import { DefaultCompanionCard } from "./defaultCompanionCard";
 import { LookCard } from "./lookCard";
@@ -43,7 +44,7 @@ function Section({ active, children, id }: { active: SettingsSectionId; children
   return id === active ? <View style={local.section}>{children}</View> : null;
 }
 
-/** The Charter (Settings), where the owner chooses how Outlore runs their threads. */
+/** The Workshop (Settings), where the owner chooses how Outlore runs their threads. */
 export function SettingsScreen({
   active,
   client,
@@ -58,7 +59,7 @@ export function SettingsScreen({
   onPermissions: () => void;
 }) {
   const hasSidebar = useHasSidebar();
-  // With a top bar, the sidebar or the narrow window's menu leads away; the page keeps no Back to the Guild Hall.
+  // With a top bar, the sidebar or the narrow window's menu leads away; the page keeps no Back link.
   const hasTopBar = useHasTopBar();
   const { data: settings, error } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -159,6 +160,9 @@ export function SettingsScreen({
                 <DefaultCompanionCard client={client} harnesses={harnesses.data} onSave={save} settings={settings} />
                 <PresetsCard client={client} onSave={save} settings={settings} />
               </WorkshopTabsProvider>
+            </Section>
+            <Section active={active} id="connectors">
+              <CodeModeCard onSave={save} settings={settings} />
             </Section>
             <Section active={active} id="remote">
               <RemoteAccessCard client={client} />
