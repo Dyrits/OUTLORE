@@ -107,4 +107,5 @@ export const local = StyleSheet.create({
   },
   sideQuestText: { fontSize: fontSizes.md },
   spending: { paddingHorizontal: 6, paddingVertical: 4 },
+  workshopButton: { alignItems: "center", borderRadius: radii.md, height: 30, justifyContent: "center", width: 30 },
 });

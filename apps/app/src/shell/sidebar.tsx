@@ -1,6 +1,6 @@
 import type { MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { type ReactNode, useState } from "react";
-import { type DimensionValue, ScrollView, Text, View } from "react-native";
+import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
@@ -10,15 +10,15 @@ import { MoveQuestModal } from "../quests/moveQuestModal";
 import { type Destination, type MoveConfirmation, moveConfirmationOf } from "../quests/questMove";
 import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
-import { ActionMenu } from "../ui/actionMenu";
-import { menuPlaces, type Place } from "./placeCatalog";
+import { SettingsIcon } from "../ui/settingsIcons";
+import type { Place } from "./placeCatalog";
 import { DropTarget, RealmDragSource } from "./questDrag";
 import { placementsOf, type RealmListing, realmGroupsOf, reorderedRealmIds, toggledFold } from "./questTree";
 import { NewQuestIcon, NewRealmIcon } from "./railActions";
 import { railOutlineOf } from "./railOutline";
 import { Quest, RealmHeader } from "./railQuests";
 import { Row, ShowAll } from "./railRows";
-import { local } from "./railStyles";
+import { isHovered, local } from "./railStyles";
 
 export type { Place } from "./placeCatalog";
 
@@ -243,14 +243,17 @@ export function Sidebar({
   );
 }
 
-/** The menu button: Rituals, Lore, Archive, Reserves and Settings. */
+/** The Workshop's gear at the foot: one press opens the Workshop (Settings). */
 export function SidebarMenu({ onPlace }: { onPlace: (place: Place) => void }) {
   return (
-    <ActionMenu
-      accessibilityLabel="Menu"
-      actions={menuPlaces.map((entry) => ({ label: entry.label, onPress: () => onPlace(entry.place) }))}
-      glyph="☰"
-    />
+    <Pressable
+      accessibilityLabel="Open the Workshop"
+      accessibilityRole="button"
+      onPress={() => onPlace("Settings")}
+      style={(state) => [local.workshopButton, (state.pressed || isHovered(state)) && local.rowHovered]}
+    >
+      <SettingsIcon name="gear" size={20} tint={colors.textSecondary} />
+    </Pressable>
   );
 }
 
