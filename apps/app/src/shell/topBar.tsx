@@ -51,7 +51,7 @@ function MenuIcon() {
 }
 
 /**
- * The top bar: the host menu at its start, the Workshop's gear beside it and, at the end, the spending, which the collapsed rail no longer shows,
+ * The top bar: the Workshop's gear at its start, the host menu beside it and, at the end, the spending, which the collapsed rail no longer shows,
  * and Chronicler's button. It names no place: the rail and the screens say where the owner is.
  */
 export function TopBar({
@@ -68,7 +68,7 @@ export function TopBar({
   chronicler: { isOpen: boolean; onToggle: () => void };
   /** The button that opens or closes the full-screen menu, in a window too narrow for the sidebar; none where it shows. */
   menu?: { isOpen: boolean; onToggle: () => void };
-  /** The Workshop's gear, right of the host menu: it stays pressed while the Workshop is shown, and a press then closes it. */
+  /** The Workshop's gear, left of the host menu: it stays pressed while the Workshop is shown, and a press then closes it. */
   workshop: { isOpen: boolean; onToggle: () => void };
 }) {
   const hostMenu = useContext(HostMenuContext);
@@ -86,11 +86,6 @@ export function TopBar({
           {menu.isOpen ? <Text style={local.menuClose}>✕</Text> : <MenuIcon />}
         </Pressable>
       )}
-      {hostMenu !== null && (
-        <View style={noDragRegion}>
-          <HostMenu {...hostMenu} />
-        </View>
-      )}
       <Pressable
         accessibilityLabel={workshop.isOpen ? "Close the Workshop" : "Open the Workshop"}
         accessibilityRole="button"
@@ -100,6 +95,11 @@ export function TopBar({
       >
         <SettingsIcon name="gear" size={18} tint={colors.textSecondary} />
       </Pressable>
+      {hostMenu !== null && (
+        <View style={noDragRegion}>
+          <HostMenu {...hostMenu} />
+        </View>
+      )}
       <View style={local.spacer} />
       <View style={noDragRegion}>
         <UpdateNotice />
