@@ -1,4 +1,4 @@
-import type { MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
+import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
@@ -23,6 +23,9 @@ import { Divider, Row, ShowAll } from "./railRows";
 import { isHovered, local } from "./railStyles";
 
 export type { Place } from "./placeCatalog";
+
+/** The two sections that fold under a heading, named as the heading shows them. */
+type Section = "Realms" | "Borderlands";
 
 /** A set of ids the owner toggles, as the expanded and collapsed rows of the tree. */
 const useToggles = () => {
@@ -70,8 +73,9 @@ export function Sidebar({
   const [isCreating, setIsCreating] = useState(false);
   // Realms start open and quests start closed, so a long list of quests stays short; errands start open.
   const closedRealms = useToggles();
-  // Realms, Borderlands, and The Keep fold under their headings, all the same way.
+  // Realms and Borderlands fold under their headings, each the same way as a realm.
   const foldedSections = useToggles();
+  const isFolded = (section: Section) => foldedSections.set.has(section);
   const openQuests = useToggles();
   // Quests in no realm show five rows until the owner asks for the rest.
   const [isEveryBorderlandShown, setEveryBorderlandShown] = useState(false);
@@ -100,7 +104,7 @@ export function Sidebar({
         const unfold = (current: ReadonlySet<string>) => new Set([...current].filter((id) => id !== groupId));
         closedRealms.setSet(unfold);
         // The section the new quest stands in unfolds too.
-        const section = groupId === "none" ? "Borderlands" : "Realms";
+        const section: Section = groupId === "none" ? "Borderlands" : "Realms";
         foldedSections.setSet((current) => new Set([...current].filter((id) => id !== section)));
         onOpenMission(started.missionId);
       })
@@ -122,7 +126,7 @@ export function Sidebar({
       setPendingMove({ confirmation, destination, missionId: mission.id });
   };
 
-  // A realm dropped on another of its group takes that place; the whole new order is saved.
+  // A realm dropped on another realm takes the place before or after it; the whole new order is saved.
   const dropRealmOn = (targetId: WorkspaceId) => (movedId: string, side: "before" | "after") => {
     const order = reorderedRealmIds(
       placements.realms.map((each) => each.workspace),
@@ -140,13 +144,8 @@ export function Sidebar({
    * A realm: its name with the folder mark when it is tied to a folder, its quests beneath it while it is
    * unfolded, and the button for a new quest.
    */
-  const realmRow = (realm: {
-    id: WorkspaceId;
-    name: string;
-    path: string | null;
-    quests: ReadonlyArray<MissionSummary>;
-    visibleQuests: ReadonlyArray<MissionSummary>;
-  }) => {
+  const realmRow = ({ quests, visibleQuests, workspace }: (typeof outline.realms)[number]) => {
+    const realm = { id: workspace.id, name: workspace.name, path: workspace.path, quests, visibleQuests };
     const isClosed = closedRealms.set.has(realm.id);
     return (
       <DropTarget
@@ -184,16 +183,10 @@ export function Sidebar({
     );
   };
 
-  const rowOf = ({ quests, workspace, visibleQuests }: (typeof outline.realms)[number]) =>
-    realmRow({ id: workspace.id, name: workspace.name, path: workspace.path, quests, visibleQuests });
   return (
     <View style={[local.sidebar, { width }]}>
       <ScrollView contentContainerStyle={local.group} style={local.flex}>
-        <SectionTitle
-          isOpen={!foldedSections.set.has("Realms")}
-          onToggle={() => foldedSections.toggle("Realms")}
-          title="Realms"
-        />
+        <SectionTitle isOpen={!isFolded("Realms")} onToggle={() => foldedSections.toggle("Realms")} title="Realms" />
         <Row
           accessory={<NewRealmIcon color={colors.highlight} />}
           isButton
@@ -201,10 +194,10 @@ export function Sidebar({
           label="Visit a realm"
           onPress={() => setIsCreating(true)}
         />
-        {!foldedSections.set.has("Realms") && outline.realms.map(rowOf)}
+        {!isFolded("Realms") && outline.realms.map(realmRow)}
         <Divider />
         <SectionTitle
-          isOpen={!foldedSections.set.has("Borderlands")}
+          isOpen={!isFolded("Borderlands")}
           onToggle={() => foldedSections.toggle("Borderlands")}
           title="Borderlands"
         />
@@ -216,10 +209,10 @@ export function Sidebar({
           label="Start a quest"
           onPress={() => startQuest("none", null)}
         />
-        {(foldedSections.set.has("Borderlands") ? [] : borderlandQuests).map((mission) => (
+        {(isFolded("Borderlands") ? [] : borderlandQuests).map((mission) => (
           <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
         ))}
-        {!foldedSections.set.has("Borderlands") && placements.borderlands.length > borderlandQuests.length && (
+        {!isFolded("Borderlands") && placements.borderlands.length > borderlandQuests.length && (
           <ShowAll
             count={placements.borderlands.length}
             onPress={() => setEveryBorderlandShown(true)}
@@ -228,7 +221,7 @@ export function Sidebar({
         )}
       </ScrollView>
       <View style={local.footer}>
-        <Spending client={client} isWorkshopOpen={isWorkshopOpen} onWorkshop={onWorkshop} />
+        <SidebarFoot client={client} isWorkshopOpen={isWorkshopOpen} onWorkshop={onWorkshop} />
       </View>
       {pendingMove !== null && (
         <MoveQuestModal
@@ -276,7 +269,7 @@ function SectionTitle({ isOpen, onToggle, title }: { isOpen: boolean; onToggle: 
  * then the Workshop's row, whose gear stays pressed while the Workshop is shown and which, pressed again, goes back to
  * where the owner was before.
  */
-function Spending({
+function SidebarFoot({
   client,
   isWorkshopOpen,
   onWorkshop,

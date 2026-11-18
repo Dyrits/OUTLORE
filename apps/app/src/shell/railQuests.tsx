@@ -162,7 +162,7 @@ export function Quest({
 
 /**
  * A realm's row: its name with the folder mark when it is tied to a folder, its quest count, and its chevron,
- * always; its overview and new-quest buttons only while hovered or focused.
+ * always; its overview and new-quest buttons while hovered or focused, and always on a device that cannot hover (CHG-0497).
  */
 export function RealmHeader({
   isOpen,

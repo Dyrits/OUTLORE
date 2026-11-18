@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the simpler sidebar (all four batches are committed on `worktree/sidebar`; open: the owner's look in a window and on a phone, then merging), read the [current handoff](.agents/handoffs/2026-11-18-0940-sidebar-batch-4.md). Handoffs are shared and committed.
+- To resume the simpler sidebar (merged into `main`, reviewed and refactored; open: the push, and the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-1325-sidebar-review-and-push.md). Handoffs are shared and committed.
 
 - To resume the Android pairing and status-bar fixes or prepare the deferred release, read the [current handoff](.agents/handoffs/2026-11-18-0124-android-pairing-hotfix.md). Handoffs are shared and committed.
 

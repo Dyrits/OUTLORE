@@ -1,7 +1,6 @@
 import type { BudgetScope, MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { FlatList, Pressable, Text, useWindowDimensions, View } from "react-native";
 import { BudgetScreen, BudgetStopCard } from "../editors/budgets";
 import type { ServiceClient } from "../foundation/client";
 import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
@@ -9,7 +8,6 @@ import { countedOf } from "../foundation/labels";
 import { usePageNavigation } from "../foundation/pageNavigation";
 import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
-import { colors, radii } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { JournalScreen } from "../lore/journal";
@@ -23,6 +21,7 @@ import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
 import { ConversationRunner } from "./conversationRunner";
 import type { Entry } from "./entries";
+import { MobileHeader } from "./mobileHeader";
 import { terminalFolderOf } from "./terminalFolder";
 import { ChatterNotices } from "./threadActions";
 import { ThreadPanel } from "./threadPanel";
@@ -43,7 +42,7 @@ function ThreadPane({
   onOpenDetails,
   onBack,
 }: {
-  /** In a narrow window, which has no sidebar: the header's round back arrow, which opens the main menu. */
+  /** In a narrow window, which has no sidebar: the header's back chevron, which opens the main menu. */
   onBack?: () => void;
   /** Whether this thread's header offers the link to the quest's side panel, where no top bar has the icon. */
   canOpenDetails: boolean;
@@ -71,49 +70,22 @@ function ThreadPane({
   const [isOpening, setIsOpening] = useState(false);
   const { canOpenBeneath, canResume, canStop, isInTurn } = thread.actions;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
+  // Only a quest's own thread archives it, and not a Ritual's quest or one already archived.
+  const archive =
+    thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived"
+      ? () => ending.start("Archived")
+      : null;
   return (
     <CommentsProvider value={comments}>
       <View style={[styles.flex, styles.pane]}>
         {onBack !== undefined && (
-          // A phone's header, in the app's own look: a back chevron, the title with its state's dot in the middle, and
-          // the archive button, each control in a square of the same size so the title stays centered.
-          <View style={local.mobileHeader}>
-            <Pressable
-              accessibilityLabel="Back to the menu"
-              accessibilityRole="button"
-              hitSlop={6}
-              onPress={onBack}
-              style={({ pressed }) => [local.control, pressed && local.controlPressed]}
-            >
-              <Svg
-                fill="none"
-                height={20}
-                stroke={colors.textSecondary}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-                width={20}
-              >
-                <Path d="M15 6l-6 6 6 6" />
-              </Svg>
-            </Pressable>
-            <View style={local.mobileTitle}>
-              <Text numberOfLines={1} style={[styles.paneTitle, local.mobileTitleText]}>
-                {thread.title}
-              </Text>
-              <StateIndicator state={thread.state} />
-            </View>
-            <View style={local.control}>
-              {thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived" && (
-                <ArchiveButton
-                  isDisabled={ending.isBusy}
-                  label="Archive quest"
-                  onPress={() => ending.start("Archived")}
-                />
-              )}
-            </View>
-          </View>
+          <MobileHeader
+            isArchiveDisabled={ending.isBusy}
+            onArchive={archive}
+            onBack={onBack}
+            state={thread.state}
+            title={thread.title}
+          />
         )}
         {(onBack === undefined || canResume || canOpenDetails) && (
           <View style={styles.header}>
@@ -123,12 +95,8 @@ function ThreadPane({
                   {thread.title}
                 </Text>
                 <StateIndicator state={thread.state} />
-                {thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived" && (
-                  <ArchiveButton
-                    isDisabled={ending.isBusy}
-                    label="Archive quest"
-                    onPress={() => ending.start("Archived")}
-                  />
+                {archive !== null && (
+                  <ArchiveButton isDisabled={ending.isBusy} label="Archive quest" onPress={archive} />
                 )}
               </>
             )}
@@ -398,11 +366,3 @@ export function Conversation({
     </View>
   );
 }
-
-const local = StyleSheet.create({
-  control: { alignItems: "center", borderRadius: radii.md, height: 32, justifyContent: "center", width: 32 },
-  controlPressed: { backgroundColor: colors.controlHover },
-  mobileHeader: { alignItems: "center", flexDirection: "row", gap: 8, minHeight: 32, paddingBottom: 4 },
-  mobileTitle: { alignItems: "center", flex: 1, flexDirection: "row", gap: 8, justifyContent: "center" },
-  mobileTitleText: { flexShrink: 1 },
-});

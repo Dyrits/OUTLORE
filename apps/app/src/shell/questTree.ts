@@ -36,7 +36,7 @@ export const folderCueOf = (realm: Pick<WorkspaceChoice, "path">): string | null
 
 /**
  * The folded ids after the owner presses a heading, a chevron, or a realm's row: a folded one unfolds, an unfolded one
- * folds, and the others stay as they were. Realms, Borderlands, and The Keep fold this same way (CHG-0161).
+ * folds, and the others stay as they were. Realms and Borderlands fold this same way (CHG-0161, CHG-0472).
  */
 export const toggledFold = (folded: ReadonlySet<string>, id: string): ReadonlySet<string> => {
   const next = new Set(folded);
