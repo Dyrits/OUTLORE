@@ -192,11 +192,6 @@ export function Sidebar({
           onToggle={() => foldedSections.toggle("Realms")}
           title="Realms"
         />
-        {!foldedSections.set.has("Realms") && tied.map(rowOf)}
-        {!foldedSections.set.has("Realms") && tied.length > 0 && untied.length > 0 && (
-          <View style={local.creationDivider} />
-        )}
-        {!foldedSections.set.has("Realms") && untied.map(rowOf)}
         <Row
           accessory={<NewRealmIcon color={colors.highlight} />}
           isButton
@@ -204,6 +199,11 @@ export function Sidebar({
           label="Visit a realm"
           onPress={() => setIsCreating(true)}
         />
+        {!foldedSections.set.has("Realms") && tied.map(rowOf)}
+        {!foldedSections.set.has("Realms") && tied.length > 0 && untied.length > 0 && (
+          <View style={local.creationDivider} />
+        )}
+        {!foldedSections.set.has("Realms") && untied.map(rowOf)}
         <View style={local.creationDivider} />
         <SectionTitle
           isOpen={!foldedSections.set.has("Borderlands")}
