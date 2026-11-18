@@ -180,7 +180,7 @@ function ProposalCard({ client, suggestion }: { client: ServiceClient; suggestio
             {
               isSelected: realmPath === null,
               key: "borderlands",
-              label: "Borderlands",
+              label: "No realm",
               onPress: () => setRealmPath(null),
             },
             ...realms.map((realm) => ({

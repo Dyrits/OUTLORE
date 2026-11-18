@@ -31,7 +31,7 @@ const MIXED_LIMIT = 5;
 
 const questOptionOf = (mentionable: Mentionable): MenuRow => ({
   chip: chipOfMentionable(mentionable),
-  description: mentionable.detail ?? (mentionable.kind === "realm" ? "Tied to no folder" : "Borderlands"),
+  description: mentionable.detail ?? (mentionable.kind === "realm" ? "Tied to no folder" : "No realm"),
   key: `${mentionable.kind}:${mentionable.id}`,
   type: "option",
 });

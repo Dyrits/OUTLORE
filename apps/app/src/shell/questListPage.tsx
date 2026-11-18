@@ -14,7 +14,7 @@ import { QuestTreeLines } from "./questListRows";
 import { type RealmListing, recencyGroupsOf, toggledFold } from "./questTree";
 
 /**
- * The page of a realm's quests or the Borderlands': every one of them, latest first by the quest's own activity, under Today,
+ * The page of a realm's quests: every one of them, latest first by the quest's own activity, under Today,
  * Yesterday, and the months. A realm's page has the realm's panel in the window's side column, as its board has.
  */
 export function QuestListScreen({
@@ -24,8 +24,8 @@ export function QuestListScreen({
   onOpenThread,
 }: {
   client: ServiceClient;
-  /** The realm to list, or null for the Borderlands' quests. */
-  listing: RealmListing | null;
+  /** The realm to list. */
+  listing: RealmListing;
   onOpen: (missionId: MissionId) => void;
   /** Opens a side-quest of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
@@ -35,10 +35,10 @@ export function QuestListScreen({
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const toggle = (id: string) => setCollapsed((current) => toggledFold(current, id));
   const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
-  const quests = (data?.missions ?? []).filter((mission) => mission.workspaceId === (listing?.id ?? null));
+  const quests = (data?.missions ?? []).filter((mission) => mission.workspaceId === listing.id);
   const now = Date.now();
   const hasSidebar = useHasSidebar();
-  const realm = listing === null ? null : (data?.workspaces.find((each) => each.id === listing.id) ?? null);
+  const realm = data?.workspaces.find((each) => each.id === listing.id) ?? null;
   // The realm whose lore is open; showing another realm closes it.
   const [loreId, setLoreId] = useState<WorkspaceId | null>(null);
   useQuestPanel(
@@ -73,9 +73,7 @@ export function QuestListScreen({
         </View>
       )}
       <ScrollView contentContainerStyle={local.content} style={local.page}>
-        {quests.length === 0 && (
-          <EmptyBoard line={listing === null ? "No quest in the Borderlands yet." : "No quest in this realm yet."} />
-        )}
+        {quests.length === 0 && <EmptyBoard line="No quest in this realm yet." />}
         {recencyGroupsOf(quests, now).map((group) => (
           <View key={group.heading} style={local.group}>
             <Text style={local.heading}>{group.heading}</Text>

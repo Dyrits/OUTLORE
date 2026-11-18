@@ -107,8 +107,9 @@ export function RealmArchiveAction({
             <>
               <Text style={styles.body}>
                 {preview.quests.length - moved.size} of its {preview.quests.length} quests will be archived with it.
-                Check a quest to move it to the Borderlands instead. It keeps its conversation, journal, and its own
-                lore, but can no longer see this realm's lore, and restoring the realm does not bring it back.
+                Check a quest to take it out of the realm instead (it will be in no realm). It keeps its conversation,
+                journal, and its own lore, but can no longer see this realm's lore, and restoring the realm does not
+                bring it back.
               </Text>
               <QuestChecklist isBusy={isBusy} moved={moved} onToggle={toggle} quests={preview.quests} />
             </>

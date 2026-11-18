@@ -11,7 +11,7 @@ describe("returning after a quest archive", () => {
     });
     expect(archiveParentOf({ workspaceId: null, workspaceName: null })).toEqual({
       listing: null,
-      place: "Borderlands",
+      place: "Realms",
     });
   });
 });

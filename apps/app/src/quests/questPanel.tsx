@@ -21,6 +21,7 @@ import { RitualControls } from "../rituals/rituals";
 import { ProviderMark } from "../ui/providerMarks";
 import { RowChevron, RowIcon, type RowIconName } from "../ui/rowIcons";
 import { MissionEndingActions, MissionTitle } from "./missionActions";
+import { QuestRealm } from "./questRealm";
 
 /** A labelled group of rows in a rounded card, as in the quest's side panel; the rows are set apart by thin rules. */
 export function Group({ children, label }: { children: ReactNode; label: string }) {
@@ -168,6 +169,15 @@ export function QuestSidebar({
         {thread !== undefined && <Group label="Companions">{thread.companions}</Group>}
         <Group label="Knows">
           <Row icon="book" label="Journal" onPress={onOpenJournal} value="Where it stands" />
+          {thread?.sideQuest == null && mission.ritual === null && (
+            <QuestRealm
+              client={client}
+              mission={mission}
+              renderRow={(onPress) => (
+                <Row icon="state" label="Realm" onPress={onPress} value={mission.workspaceName ?? "None"} />
+              )}
+            />
+          )}
           {thread?.knows}
         </Group>
         <Group label="Does">

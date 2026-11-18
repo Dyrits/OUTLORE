@@ -39,7 +39,7 @@ describe("reading the app guide", () => {
     ["how do I attach an image to a message", "messages"],
     ["How do I pair my phone with Outlore?", "pairing"],
     ["what is a realm", "realms"],
-    ["What is the Borderlands?", "realms"],
+    ["Can a quest be in no realm?", "realms"],
     ["how much will this cost me, can I set a budget", "budgets"],
     ["Why did it ask me to Allow a command", "approvals"],
     ["how do I switch a thread from Claude to Codex", "companions"],

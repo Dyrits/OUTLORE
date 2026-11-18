@@ -64,12 +64,12 @@ describe("saving lore", () => {
     }).pipe(Effect.provide(layer));
   });
 
-  it.live("refuses realm lore for a quest in the Borderlands", () => {
+  it.live("refuses realm lore for a quest in no realm", () => {
     const { layer } = live();
     return Effect.gen(function* () {
       const { threadId } = yield* idle();
       const refusal = yield* save(threadId, "Tests run with bun.", "workspace");
-      expect(refusal).toContain("in the Borderlands and has no realm");
+      expect(refusal).toContain("in no realm");
       expect(refusal).toContain("choose thread (this side-quest) or mission (this quest)");
       expect(refusal).not.toContain("workspace");
       expect((yield* panel()).loreEntries).toEqual([]);

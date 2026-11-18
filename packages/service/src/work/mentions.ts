@@ -121,7 +121,7 @@ type ResolvedMention = {
 
 /** The words for a quest's realm, as the receiving thread reads them. */
 const realmLabelOf = (quest: { readonly workspaceName: string | null }) =>
-  quest.workspaceName === null ? "the Borderlands" : `realm ${quest.workspaceName}`;
+  quest.workspaceName === null ? "no realm" : `realm ${quest.workspaceName}`;
 
 const resolveRealmMention = Effect.fnUntraced(function* (reference: MentionReference) {
   const sql = yield* SqlClient.SqlClient;

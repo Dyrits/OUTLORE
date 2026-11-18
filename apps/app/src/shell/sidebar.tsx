@@ -6,13 +6,13 @@ import { PlanLimitRings } from "../editors/planLimitRings";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { MoveQuestModal } from "../quests/moveQuestModal";
+import { type Destination, type MoveConfirmation, moveConfirmationOf } from "../quests/questMove";
 import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
 import { ActionMenu } from "../ui/actionMenu";
-import { MoveQuestModal } from "./moveQuestModal";
 import { menuPlaces, type Place } from "./placeCatalog";
 import { DropTarget } from "./questDrag";
-import { borderlandsDestination, type Destination, type MoveConfirmation, moveConfirmationOf } from "./questMove";
 import { placementsOf, type RealmListing, realmGroupsOf, toggledFold } from "./questTree";
 import { railOutlineOf } from "./railOutline";
 import { Quest, RealmHeader } from "./railQuests";
@@ -181,18 +181,16 @@ export function Sidebar({
         )}
         {tied.map(rowOf)}
         {untied.map(rowOf)}
-        <DropTarget onDropQuest={dropOn(borderlandsDestination)}>
-          {outline.borderlands.map((mission) => (
-            <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
-          ))}
-          {placements.borderlands.length > borderlandsShown && (
-            <ShowAll
-              count={placements.borderlands.length}
-              onPress={() => onPlace("Borderlands")}
-              subject="quests in no realm"
-            />
-          )}
-        </DropTarget>
+        {outline.borderlands.map((mission) => (
+          <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
+        ))}
+        {placements.borderlands.length > borderlandsShown && (
+          <ShowAll
+            count={placements.borderlands.length}
+            onPress={() => onPlace("Realms")}
+            subject="quests in no realm"
+          />
+        )}
         {failureUnder("none")}
         <View style={local.buttons}>
           <Pressable

@@ -1,8 +1,8 @@
 # Work in progress
 
-## Simpler app · 2026-11-18 · batches 1 and 2 of 4 built and tested on `worktree/sidebar`; the owner's look pending
+## Simpler app · 2026-11-18 · batches 1 to 3 of 4 built and tested on `worktree/sidebar`; the owner's look pending
 
-Batch 1 (CHG-0452): crests removed. Batch 2 (CHG-0453): the Realms title, realms with their quests, quests in no realm as plain rows, Visit a realm and Start a quest buttons, the footer menu, the Guild Hall hub and its places removed, Connectors in Settings, Gild and the nav icons removed. Next: batch 3 (the ungrouped quests in the Realms overview, the Borderlands page and drop zone retired, quest moves), then batch 4 (the errand rename and its guard). Still open: how a quest leaves a realm, budget rings in Reserves, the stored `@side-quest:` token, the Workshop's icons. Not seen in a window or on a phone. [Specification](capabilities/mission-tracking/specifications.md#simplified-left-navigation) · [Blueprint](capabilities/mission-tracking/blueprint.md#simplified-sidebar-errands-and-crest-removal-chg-0449)
+Batch 1 (CHG-0452): crests removed. Batch 2 (CHG-0453) and the phone view (CHG-0454): the Realms title, realms and quests, quests in no realm as plain rows, Visit a realm and Start a quest, the footer menu, the phone's menu screen being the sidebar, the hub, Gild and nav icons removed, Connectors in Settings. Batch 3 (CHG-0455): quests in no realm in the Realms overview, the Borderlands page and drop zone gone, a quest leaves its realm from the quest panel's Realm row (my choice), "Borderlands" worded "no realm". Next: batch 4, the errand rename and its guard test. Open: the owner's look in a window and on a phone, budget rings in Reserves, the stored `@side-quest:` token, the Workshop's icons. [Specification](capabilities/mission-tracking/specifications.md#simplified-left-navigation) · [Blueprint](capabilities/mission-tracking/blueprint.md#simplified-sidebar-errands-and-crest-removal-chg-0449)
 
 ## Voice input · 2026-11-18 · service transcriber on `main`
 

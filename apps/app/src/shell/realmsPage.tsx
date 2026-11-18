@@ -43,7 +43,7 @@ export function RealmsScreen({
       setStarting(null);
     }
   };
-  const groups = placementsOf(data?.missions ?? [], data?.workspaces ?? []).realms;
+  const { borderlands: ungrouped, realms: groups } = placementsOf(data?.missions ?? [], data?.workspaces ?? []);
   return (
     <View accessibilityLabel="Realms overview" style={local.page}>
       <ScrollView contentContainerStyle={local.content}>
@@ -65,8 +65,8 @@ export function RealmsScreen({
           </Text>
         )}
         {data === null && error === null && <Text style={styles.muted}>Loading realms…</Text>}
-        {data !== null && groups.length === 0 && (
-          <Text style={styles.muted}>No active realm yet. Create one to group quests and share lore.</Text>
+        {data !== null && groups.length === 0 && ungrouped.length === 0 && (
+          <Text style={styles.muted}>No realm or quest yet. Create a realm to group quests and share lore.</Text>
         )}
         {groups.map(({ workspace, quests }) => (
           <View key={workspace.id} style={local.group}>
@@ -104,6 +104,24 @@ export function RealmsScreen({
             ))}
           </View>
         ))}
+        {/* Quests in no realm stand after the realms as ordinary rows: no heading, divider, or mark. */}
+        {ungrouped.length > 0 && (
+          <View style={local.group}>
+            {ungrouped.map((mission) => (
+              <QuestTreeLines
+                client={client}
+                collapsed={collapsed}
+                key={mission.id}
+                mission={mission}
+                now={Date.now()}
+                onOpen={onOpen}
+                onOpenThread={onOpenThread}
+                onToggle={(id) => setCollapsed((current) => toggledFold(current, id))}
+                shouldShowAgentThreads={settings?.shouldShowAgentThreads ?? true}
+              />
+            ))}
+          </View>
+        )}
       </ScrollView>
       {isCreating && (
         <NewRealmModal

@@ -49,7 +49,7 @@ const idle = (detail: { thread: { state: string } }) => detail.thread.state === 
 const lastReplyOf = (detail: { messages: ReadonlyArray<{ sender: string; text: string }> }) =>
   detail.messages.filter((message) => message.sender === "agent").at(-1)?.text ?? "";
 
-describe("moving a quest between realms and the Borderlands", () => {
+describe("moving a quest between realms, and out of them", () => {
   it.live("moves the quest and every side-quest, and keeps the conversation", () =>
     withService(({ garden, workshop }) =>
       Effect.gen(function* () {
@@ -164,7 +164,7 @@ describe("moving a quest between realms and the Borderlands", () => {
 
           yield* send(threadId, "context");
           const context = yield* settle(quest.missionId, (detail) => detail.messages.length === 8 && idle(detail));
-          expect(lastReplyOf(context)).toContain("Moved by the user from the Borderlands to Garden");
+          expect(lastReplyOf(context)).toContain("Moved by the user from no realm to Garden");
         }),
       ),
   );

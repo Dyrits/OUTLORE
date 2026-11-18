@@ -54,7 +54,7 @@ export const moveQuest = Effect.fn("moveQuest")(function* (missionId: string, re
   yield* updateJournal(
     missionId,
     { kind: "user" },
-    `Moved by the user from ${source?.name ?? "the Borderlands"} to ${destination.name ?? "the Borderlands"} (${where}). Earlier messages may refer to the former place; the realm lore available now is the destination's.`,
+    `Moved by the user from ${source?.name ?? "no realm"} to ${destination.name ?? "no realm"} (${where}). Earlier messages may refer to the former place; the realm lore available now is the destination's.`,
     null,
   );
   return changed(null, { threadsToWake: held.map((thread) => thread.id) });

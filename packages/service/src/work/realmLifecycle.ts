@@ -110,7 +110,7 @@ export const archiveRealm = Effect.fn("archiveRealm")(function* (
   for (const id of moved) {
     const quest = current.quests.find((each) => each.id === id);
     if (quest === undefined)
-      return yield* invalid("Only an active quest of this realm can be moved to the Borderlands.");
+      return yield* invalid("Only an active quest of this realm can be taken out of this realm.");
     if (quest.isWorking)
       return yield* invalid(`"${quest.title}" is at work. Stop it first, or leave it to be archived with the realm.`);
   }

@@ -31,7 +31,7 @@ interface Navigation {
   closeMission: () => void;
   goTo: (place: Place) => void;
   openMission: (id: MissionId) => void;
-  /** Goes to a quest's parent view: its realm's quests, or the Borderlands. */
+  /** Goes to a quest's parent view: its realm's quests, or the Realms overview for a quest in no realm. */
   openParent: (quest: { workspaceId: string | null; workspaceName: string | null }) => void;
   openRealm: (realm: RealmListing) => void;
   openThread: (missionId: MissionId, threadId: ThreadId) => void;
@@ -65,7 +65,7 @@ export function AppScreen({
         selectedThreadId={view.openThread}
       />
     );
-  const quests = (listing: RealmListing | null) => (
+  const quests = (listing: RealmListing) => (
     <QuestListScreen
       client={client}
       listing={listing}
@@ -73,19 +73,19 @@ export function AppScreen({
       onOpenThread={navigation.openThread}
     />
   );
+  const realms = (
+    <RealmsScreen
+      client={client}
+      onOpen={navigation.openMission}
+      onOpenRealm={navigation.openRealm}
+      onOpenThread={navigation.openThread}
+    />
+  );
   const screens = {
     Archived: <ArchiveScreen client={client} onOpen={navigation.openMission} />,
-    Borderlands: quests(null),
     Lore: <LoreScreen client={client} onBack={() => navigation.goTo("Realms")} threadId={null} title="All lore" />,
-    RealmQuests: quests(view.listedRealm),
-    Realms: (
-      <RealmsScreen
-        client={client}
-        onOpen={navigation.openMission}
-        onOpenRealm={navigation.openRealm}
-        onOpenThread={navigation.openThread}
-      />
-    ),
+    RealmQuests: view.listedRealm === null ? realms : quests(view.listedRealm),
+    Realms: realms,
     Reserves: <UsageScreen client={client} />,
     Rituals: <RitualsScreen client={client} onOpen={navigation.openMission} />,
     Settings: view.isPermissionsOpen ? (
