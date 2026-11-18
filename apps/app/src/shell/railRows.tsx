@@ -59,7 +59,8 @@ export function Row({
         !canHover && local.rowTouch,
         { paddingLeft: 6 + indent },
         isButton && local.buttonRest,
-        (state.pressed || isHovered(state)) && (isButton ? local.buttonHovered : local.rowHovered),
+        // A creation row keeps its fill under the pointer and the finger; an ordinary row fills softly.
+        !isButton && (state.pressed || isHovered(state)) && local.rowHovered,
         isSelected && local.rowSelected,
       ]}
     >

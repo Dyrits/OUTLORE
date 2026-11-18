@@ -22,9 +22,8 @@ export const local = StyleSheet.create({
     width: 28,
   },
   addHovered: { backgroundColor: colors.controlActive },
-  buttonHovered: { backgroundColor: colors.controlHover },
   // A creation row reads as an action by a thin rounded border on the page's own fill, the one the conversation has,
-  // with no change of type; it fills softly on hover.
+  // with no change of type and no fill under the pointer (CHG-0504).
   buttonRest: {
     backgroundColor: colors.page,
     borderColor: colors.border,

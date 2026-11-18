@@ -14,7 +14,7 @@ CHG-0459 uses flat creation rows with the castle and sword-and-plus icons at the
 
 CHG-0463 removes the Realms title and overview page (home screen instead), reduces quest indentation, adds a separator above quests in no realm, and caps lists at five quests plus running ones.
 
-CHG-0503 gives the two creation rows **Visit a realm** and **Start a quest** the conversation's own fill at rest, in place of the sidebar tone they showed inside their border.
+CHG-0503 gives the two creation rows **Visit a realm** and **Start a quest** the conversation's own fill at rest, in place of the sidebar tone they showed inside their border; CHG-0504 drops their hover fill, so they stay white under the pointer.
 
 CHG-0462 adds a plus to the castle, a leading folder icon on folder-backed realms, and a divider above the sidebar's two creation rows. Browser verification confirmed that the global **Start a quest** action creates a quest in no realm even from a realm view. The backup editor uses **Add a backup companion** in both layouts.
 
