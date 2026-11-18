@@ -50,7 +50,16 @@ const finish = (status, text) => {
     note("item/completed", { item: { id: itemId, text, type: "agentMessage" }, threadId, turnId: turn.id });
   }
   const last = { cachedInputTokens: 30, cacheWriteInputTokens: 1, inputTokens: 100, outputTokens: 7, totalTokens: 107 };
-  note("thread/tokenUsage/updated", { threadId, tokenUsage: { last, total: last }, turnId: turn.id });
+  // STAND_IN_CONTEXT_WINDOW: the window Codex reports beside the counts (`modelContextWindow`).
+  const modelContextWindow =
+    process.env.STAND_IN_CONTEXT_WINDOW === undefined
+      ? {}
+      : { modelContextWindow: Number(process.env.STAND_IN_CONTEXT_WINDOW) };
+  note("thread/tokenUsage/updated", {
+    threadId,
+    tokenUsage: { last, ...modelContextWindow, total: last },
+    turnId: turn.id,
+  });
   note("turn/completed", {
     threadId,
     turn: { error: status === "failed" ? { message: "stand-in: the turn failed" } : null, id: turn.id, status },

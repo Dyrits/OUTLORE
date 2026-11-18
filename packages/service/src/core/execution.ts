@@ -175,6 +175,12 @@ export type TurnOutcome = {
    */
   readonly context?: number | null;
   /**
+   * The context window, in tokens, the harness reported for the model that ran the turn (Claude Code's
+   * `modelUsage[model].contextWindow`, Codex's `modelContextWindow`); absent or null when it reported none, as OpenCode
+   * does, which keeps the fallback (thread-panel, The context gauge).
+   */
+  readonly contextWindow?: number | null;
+  /**
    * The turn's API-key cost when the harness reports one; null counts the turn's tokens as subscription
    * spending (budget-control, Budgets; provisional, work-in-progress Batch 11).
    */

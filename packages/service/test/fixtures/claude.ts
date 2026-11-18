@@ -18,6 +18,8 @@ afterEach(() => {
   delete process.env.STAND_IN_MCP_STATUS;
   delete process.env.STAND_IN_MODEL;
   delete process.env.STAND_IN_INPUT;
+  delete process.env.STAND_IN_CONTEXT_WINDOW;
+  delete process.env.STAND_IN_COMPACT;
 });
 
 /** A service whose Claude Code adapter runs the stand-in on the current runtime. */

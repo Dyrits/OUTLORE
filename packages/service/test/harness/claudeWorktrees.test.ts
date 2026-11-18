@@ -122,6 +122,40 @@ it.live("takes the thread's context from the latest call, not the turn's summed 
   }).pipe(Effect.provide(layer));
 });
 
+it.live("takes the thread's window from the result's model usage, for the model that wrote the replies", () => {
+  process.env.STAND_IN_CONTEXT_WINDOW = "1000000";
+  const { layer } = withClaude();
+  return Effect.gen(function* () {
+    const started = yield* startMission({ effort: "low", model: "claude-sonnet-5-5", text: "One" });
+    yield* settle(started.missionId, idleWith(1));
+    // The helper model beside it reports 150,000; the thread's own model reports 1,000,000, held to the soft limit.
+    const panel = yield* call({ _tag: "ReadThreadPanel", threadId: started.threadId });
+    expect(panel.context).toMatchObject({ isSoftLimit: true, windowTokens: 272_000 });
+  }).pipe(Effect.provide(layer));
+});
+
+it.live("counts 200,000 tokens when the result names no window", () => {
+  const { layer } = withClaude();
+  return Effect.gen(function* () {
+    const started = yield* startMission({ effort: "low", model: "claude-sonnet-5-5", text: "One" });
+    yield* settle(started.missionId, idleWith(1));
+    const panel = yield* call({ _tag: "ReadThreadPanel", threadId: started.threadId });
+    expect(panel.context).toMatchObject({ windowTokens: 200_000 });
+  }).pipe(Effect.provide(layer));
+});
+
+it.live("shows Claude Code's compaction as a line in the thread", () => {
+  process.env.STAND_IN_COMPACT = "245000";
+  const { layer } = withClaude();
+  return Effect.gen(function* () {
+    const started = yield* startMission({ effort: "low", model: "haiku", text: "One" });
+    const detail = yield* settle(started.missionId, idleWith(1));
+    expect(detail.handovers.map((line) => line.text)).toEqual([
+      "Context compacted automatically, from 245,000 tokens to 12,000.",
+    ]);
+  }).pipe(Effect.provide(layer));
+});
+
 it.live("shows the reply's own call under it, and the rest of the turn's usage with it, so the lines add up", () => {
   const { layer } = withClaude();
   return Effect.gen(function* () {

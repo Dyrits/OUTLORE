@@ -31,6 +31,30 @@ describe("running Codex threads", () => {
     }).pipe(Effect.provide(layer));
   });
 
+  it.live("takes the thread's window from the token usage Codex reports, held to the soft limit", () => {
+    process.env.STAND_IN_CONTEXT_WINDOW = "258400";
+    const { layer } = withHarnesses();
+    return Effect.gen(function* () {
+      const started = yield* startMission({ harness: "codex", model: "gpt-x", text: "Hello" });
+      yield* settle(started.missionId, idleWith(1));
+      expect((yield* call({ _tag: "ReadThreadPanel", threadId: started.threadId })).context).toMatchObject({
+        isSoftLimit: false,
+        windowTokens: 258_400,
+      });
+    }).pipe(Effect.provide(layer));
+  });
+
+  it.live("counts 200,000 tokens when Codex reports no window", () => {
+    const { layer } = withHarnesses();
+    return Effect.gen(function* () {
+      const started = yield* startMission({ harness: "codex", model: "gpt-x", text: "Hello" });
+      yield* settle(started.missionId, idleWith(1));
+      expect((yield* call({ _tag: "ReadThreadPanel", threadId: started.threadId })).context?.windowTokens).toBe(
+        200_000,
+      );
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("runs a thread through the app server with its model, effort, tools, and no Outlore secrets", () => {
     const { layer, logged, requests } = withHarnesses();
     return Effect.gen(function* () {

@@ -25,9 +25,11 @@ import {
 } from "./claudeArgs.ts";
 import {
   billingOf,
+  compactionNoticeOf,
   contextOf,
   failureReasonOf,
   reportedModelOf,
+  reportedWindowOf,
   textOf,
   toolCallsOf,
   toolServerFailureOf,
@@ -162,6 +164,8 @@ const claudeProtocolOf = (
     let reportedError: string | null = null;
     // The latest call's own usage is the context then; the result's usage sums every call of the turn.
     let context: number | null = null;
+    // The model that wrote the latest reply, which names its entry in the result's `modelUsage`.
+    let replyModel: string | null = null;
     for (;;) {
       const item = yield* Queue.take(connection.process.incoming);
       if (item._tag === "Exit") return yield* new HarnessFailure({ reason: item.reason });
@@ -172,6 +176,10 @@ const claudeProtocolOf = (
         // Without its thread tools the turn could not reach Outlore: it fails, with Retry, instead of running blind.
         const toolFailure = toolServerFailureOf(event, toolServerName);
         if (toolFailure !== null) return yield* new HarnessFailure({ reason: toolFailure });
+      } else if (type === "system" && textFieldOf(event, "subtype") === "compact_boundary") {
+        // Claude Code compacted the conversation: a line in the thread says so, where the context then falls.
+        const notice = compactionNoticeOf(event);
+        if (notice !== null) yield* request.onEvent({ _tag: "Notice", text: notice });
       } else if (type === "control_request") {
         // Inside the enforced sandbox a blocked host is allowed (CHG-0208): the sandbox contains file and process
         // damage, and egress is open. Only that one ask is answered; every other ask, such as a Bash call outside
@@ -209,6 +217,7 @@ const claudeProtocolOf = (
         const message = fieldOf(event, "message");
         const text = textOf(fieldOf(message, "content"));
         const error = fieldOf(event, "error");
+        replyModel = reportedModelOf(message) ?? replyModel;
         const callUsage = usageOf(fieldOf(message, "usage"));
         const callContext = contextOf(callUsage);
         // A synthetic message reports zeros, which are no measure.
@@ -230,10 +239,12 @@ const claudeProtocolOf = (
         // An interrupted turn ends with an error result, which is no failure (probe of 2026-11-06).
         const usage = usageOf(fieldOf(event, "usage"));
         const cost = turnCostOf(connection, fieldOf(event, "total_cost_usd"));
-        if (turn.isInterrupting()) return { billing: connection.billing, context, cost, isInterrupted: true, usage };
+        const contextWindow = reportedWindowOf(fieldOf(event, "modelUsage"), replyModel);
+        if (turn.isInterrupting())
+          return { billing: connection.billing, context, contextWindow, cost, isInterrupted: true, usage };
         if (fieldOf(event, "is_error") === true || reportedError !== null)
           return yield* new HarnessFailure({ reason: failureReasonOf(event, reportedError) });
-        return { billing: connection.billing, context, cost, isInterrupted: false, usage };
+        return { billing: connection.billing, context, contextWindow, cost, isInterrupted: false, usage };
       }
     }
   }),

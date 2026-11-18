@@ -288,6 +288,15 @@ describe("thread panel labels", () => {
     expect(contextUseTextOf({ tokens: 75_000, windowTokens: 200_000 })).toBe("75,000 of 200,000 tokens · 37.5%");
   });
 
+  it("calls a limit that is the soft limit, not the model's window, a soft limit", () => {
+    expect(contextUseTextOf({ isSoftLimit: true, tokens: 68_000, windowTokens: 272_000 })).toBe(
+      "68,000 of 272,000 tokens (soft limit) · 25.0%",
+    );
+    expect(contextUseTextOf({ isSoftLimit: false, tokens: 75_000, windowTokens: 200_000 })).toBe(
+      "75,000 of 200,000 tokens · 37.5%",
+    );
+  });
+
   it("names the part that holds tool calls and their results in words", () => {
     expect(contextPartLabels.ToolsAndResults).toBe("Tools and results");
   });

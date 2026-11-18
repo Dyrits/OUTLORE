@@ -87,3 +87,39 @@ export const failureReasonOf = (event: unknown, reportedError: string | null) =>
     `Claude Code reported ${textFieldOf(event, "subtype") ?? "an error"}.`
   );
 };
+
+/**
+ * The context window a result reports for the model that ran the turn: `modelUsage` names each model the turn used,
+ * with its `contextWindow` (Claude Code's result event, read in its 2.1.323 build's schema; not probed live). The entry
+ * of the model that wrote the replies is taken; with none named, or none matching, the entry used most. Null when the
+ * result reports none, which keeps the fallback.
+ */
+export const reportedWindowOf = (modelUsage: unknown, replyModel: string | null): number | null => {
+  if (typeof modelUsage !== "object" || modelUsage === null) return null;
+  const entries = Object.entries(modelUsage).flatMap(([model, entry]) => {
+    const window = numberFieldOf(entry, "contextWindow");
+    return window > 0
+      ? [{ model, used: numberFieldOf(entry, "inputTokens") + numberFieldOf(entry, "outputTokens"), window }]
+      : [];
+  });
+  const own = entries.find((entry) => entry.model === replyModel);
+  if (own !== undefined) return own.window;
+  return entries.toSorted((current, next) => next.used - current.used)[0]?.window ?? null;
+};
+
+/**
+ * The line a `compact_boundary` system event leaves in the thread, or null for any other event: Claude Code compacted the
+ * conversation, on its own or at the owner's `/compact`, and says how many tokens it held before and after.
+ */
+export const compactionNoticeOf = (event: unknown): string | null => {
+  if (textFieldOf(event, "type") !== "system" || textFieldOf(event, "subtype") !== "compact_boundary") return null;
+  const metadata = fieldOf(event, "compact_metadata");
+  const trigger = textFieldOf(metadata, "trigger") === "manual" ? "at your request" : "automatically";
+  const before = numberFieldOf(metadata, "pre_tokens");
+  const after = numberFieldOf(metadata, "post_tokens");
+  const sizes =
+    before > 0
+      ? `, from ${before.toLocaleString("en-US")} tokens${after > 0 ? ` to ${after.toLocaleString("en-US")}` : ""}`
+      : "";
+  return `Context compacted ${trigger}${sizes}.`;
+};

@@ -2,10 +2,12 @@ import type { BillingKind, TokenUsage } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { PriceTable, type TurnOutcome, touchMission } from "../core/index.ts";
+import { readContextLimit } from "../lore/index.ts";
 import { callDescriptionOf } from "./activities.ts";
 import { fallBackToBackup, resetBackupStep } from "./backups.ts";
 import { enforceBudgets } from "./budgets.ts";
 import { changed, unchanged } from "./commands.ts";
+import { contextLimitLineOf, hasReachedLimit } from "./contextWarning.ts";
 import { insertThreadLine, isRunnerChangedSince, isSessionOfThread } from "./handover.ts";
 import { endTurn, failTurn } from "./lifecycle.ts";
 import { deliverMessages, insertReply, listThreadsWithPending } from "./messaging.ts";
@@ -164,17 +166,26 @@ export const completeTurn = Effect.fnUntraced(function* (threadId: string, turn:
   const sql = yield* SqlClient.SqlClient;
   const prices = yield* PriceTable;
   if (!(yield* isCurrentTurn(turn.turnId))) return unchanged(null);
-  const { billing, context, cost, isInterrupted, sessionId, usage } = outcome;
+  const { billing, context, contextWindow, cost, isInterrupted, sessionId, usage } = outcome;
   const now = yield* Clock.currentTimeMillis;
   if (usage !== null) {
     const endedAt = yield* Clock.currentTimeMillis;
     const model = yield* modelOfTurn(threadId, turn);
     const estimate = yield* estimateCost(prices, model, usage, billing, cost, endedAt);
-    yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, cost, context, billing,
-            harness, model, account_id, estimate, estimate_source, priced_at)
+    const [earlier] = yield* sql<{ context: number }>`
+        SELECT context FROM usage WHERE thread_id = ${threadId} AND context IS NOT NULL
+        ORDER BY ended_at DESC, rowid DESC LIMIT 1`;
+    yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, cost, context, context_window,
+            billing, harness, model, account_id, estimate, estimate_source, priced_at)
           VALUES (${turn.turnId}, ${turn.missionId}, ${threadId}, ${endedAt}, ${usage.input}, ${usage.output},
-            ${usage.cacheRead}, ${usage.cacheCreation}, ${cost}, ${context ?? null}, ${billing},
+            ${usage.cacheRead}, ${usage.cacheCreation}, ${cost}, ${context ?? null}, ${contextWindow ?? null}, ${billing},
             ${turn.harness}, ${model}, ${turn.accountId}, ${estimate?.amount ?? null}, ${estimate?.source ?? null}, ${estimate?.pricedAt ?? null})`;
+    // The context reached the limit this turn: one line says so, and offers the way to compact (not on each turn past it).
+    if (context !== null && context !== undefined) {
+      const limit = yield* readContextLimit(turn.model, threadId);
+      if (hasReachedLimit(earlier?.context ?? null, context, limit.tokens))
+        yield* insertThreadLine(threadId, contextLimitLineOf(limit, turn.harness), endedAt);
+    }
     yield* attachTurnRemainder(threadId, turn, usage, {
       estimate: billing === "ApiKey" && cost !== null ? null : (estimate?.amount ?? null),
       reported: billing === "ApiKey" ? cost : null,

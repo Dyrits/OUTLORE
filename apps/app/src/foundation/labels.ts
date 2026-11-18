@@ -113,9 +113,9 @@ export const contextPartLabels = {
   ToolsAndResults: "Tools and results",
 } as const satisfies Record<ContextPartKind, string>;
 
-/** The gauge in words, for example "75,000 of 200,000 tokens · 37.5%". */
-export const contextUseTextOf = (gauge: Pick<ContextGauge, "tokens" | "windowTokens">) =>
-  `${tokenCountOf(gauge.tokens)} of ${tokenCountOf(gauge.windowTokens)} tokens · ${percentOf(gauge.tokens, gauge.windowTokens)}%`;
+/** The gauge in words, for example "75,000 of 200,000 tokens · 37.5%", or "of 272,000 tokens (soft limit)" when the limit is the soft limit. */
+export const contextUseTextOf = (gauge: Pick<ContextGauge, "isSoftLimit" | "tokens" | "windowTokens">) =>
+  `${tokenCountOf(gauge.tokens)} of ${tokenCountOf(gauge.windowTokens)} tokens${gauge.isSoftLimit === true ? " (soft limit)" : ""} · ${percentOf(gauge.tokens, gauge.windowTokens)}%`;
 
 /** A cost marked as the owner should read it: `$1.20` as the harness reported it, `≈ $1.20` when any of it is estimated; null when nothing is priced. */
 export const costTextOf = (consumption: Pick<Consumption, "estimated" | "reported">) => {

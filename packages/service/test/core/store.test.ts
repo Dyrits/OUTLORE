@@ -49,6 +49,28 @@ describe("migrating pending lore changes", () => {
   });
 });
 
+describe("migrating usage to record the context window", () => {
+  it.effect("keeps old usage rows, whose window no harness reported, with no window", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
+    directories.push(directory);
+    return Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* migrateUntil("0057_realm_order");
+      yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, context, model)
+        VALUES ('turn', 'mission', 'thread', 1, 10, 5, 0, 0, 15, 'claude-sonnet-5-5')`;
+      yield* migrateUntil("0058_usage_context_window");
+      yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, context, model, context_window)
+        VALUES ('later', 'mission', 'thread', 2, 10, 5, 0, 0, 15, 'claude-sonnet-5-5', 1000000)`;
+      expect(
+        yield* sql`SELECT turn_id AS turn, context, context_window AS contextWindow FROM usage ORDER BY ended_at`,
+      ).toEqual([
+        { context: 15, contextWindow: null, turn: "turn" },
+        { context: 15, contextWindow: 1_000_000, turn: "later" },
+      ]);
+    }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
+  });
+});
+
 describe("migrating saved realms to archive support", () => {
   it.effect("reads a realm saved before archive support as active without rewriting it", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));

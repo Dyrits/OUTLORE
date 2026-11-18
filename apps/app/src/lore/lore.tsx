@@ -277,7 +277,8 @@ export function LoreScreen({
       {data?.gauge != null && (
         <Text style={data.gauge.isOverWarning ? styles.error : styles.muted}>
           The lore in this quest or errand's scope takes {data.gauge.tokens} tokens of its model's{" "}
-          {data.gauge.windowTokens.toLocaleString("en-US")}-token context window; the icon turns red past{" "}
+          {data.gauge.windowTokens.toLocaleString("en-US")}-token context{" "}
+          {data.gauge.isSoftLimit === true ? "soft limit" : "window"}; the icon turns red past{" "}
           {data.gauge.warningPercent}%.
         </Text>
       )}

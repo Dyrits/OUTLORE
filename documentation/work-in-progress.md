@@ -4,9 +4,9 @@
 
 The updater is implemented and merged into `main`, pushed (CHG-0460, CHG-0461). On a phone, install a release-signed APK with the updater, decline the install allowance once, then allow it and install a newer APK signed with the same key. Open Outlore again and confirm the host is still paired. The release signing secrets are needed for this check. [Specification](capabilities/app-updates/specifications.md#the-android-app)
 
-## Context window per model · 2026-11-18 · built long ago on `worktree/context-window`, not in `main`
+## Context window per model · 2026-11-18 · redone and built on `mission/choose-the-next-batch-2e9256cc` (CHG-0509), not merged; the owner's merge and look pending
 
-CHG-0328 (commit `e00ffb2`, based on `c9cd372`) counts the context window each harness reports and shows Claude Code compaction; `main` still uses the provisional 200,000 tokens for every model (`contextWindowOf` in `packages/service/src/lore/lore.ts`). A rebase onto `main` conflicts in 13 source files, so it was left alone. Open: the owner decides whether to redo it on the current `main` or drop it. Its migration must take the next free number. [Handoff](../.agents/handoffs/2026-11-18-1404-android-update-landed.md).
+Each turn stores the window its harness reports (Claude Code `modelUsage[model].contextWindow`, Codex `modelContextWindow`; OpenCode none, 200,000), migration `0058_usage_context_window`. The limit is `min(window, 272,000)` for every model (the owner's soft limit, `contextSoftLimit`), read by the thread gauge, the lore gauge, the starting-context warning and the handover allowance. A thread that reaches the limit gets one line offering compaction (an errand for the next part of the work; Outlore has no compaction action). Claude Code's compaction shows as a line. Checked by the full suite (2,123 passed, 55 skipped); not run on a live Claude Code or Codex, not seen in a window. Open: the owner's merge and look, the interpretive choices listed in CHG-0509. [Verification](verification/2026-11-18-context-window.md).
 
 ## Simpler app · 2026-11-18 · all four batches built, tested, merged into `main` and pushed; the owner's look pending
 

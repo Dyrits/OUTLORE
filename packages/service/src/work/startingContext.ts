@@ -10,7 +10,7 @@ import {
   type ThreadPosition,
   threadInstructionsOf,
 } from "../harness/index.ts";
-import { contextWindowOf, loreContextOf, loreInstructions } from "../lore/index.ts";
+import { loreContextOf, loreInstructions, readContextLimit } from "../lore/index.ts";
 import { readApprovalInstructions } from "./approvalTerms.ts";
 import { accountOfThread, budgetLineOf } from "./budgetScopes.ts";
 import { readGuildmasterContext } from "./guildmasterContext.ts";
@@ -200,14 +200,19 @@ export const readStartingContext = Effect.fnUntraced(function* (
     workspace: tokensOf(sections.workspace),
   };
   const tokens = Object.values(parts).reduce((sum, part) => sum + part, 0);
-  const windowTokens = contextWindowOf(choice.model);
+  // The harness's default model has no name: on the parent's own harness it is the model the parent's turns reported.
+  const { tokens: windowTokens } = yield* readContextLimit(choice.model, harness === parent.harness ? parentId : null);
+  const limits = yield* Effect.forEach(
+    catalogModels[harness].map((option) => option.id),
+    (model) => readContextLimit(model).pipe(Effect.map((limit) => ({ model, tokens: limit.tokens }))),
+  );
   return {
     isOverWarning: tokens * 100 > windowTokens * startingContextWarningPercent,
-    // Every model counts the same window until each harness reports its own (work-in-progress, Batch 12).
-    largerModels: catalogModels[harness]
-      .map((option) => option.id)
-      .filter((model) => contextWindowOf(model) > windowTokens)
-      .toSorted((current, next) => contextWindowOf(next) - contextWindowOf(current)),
+    // The models whose limit is larger than the chosen one's, largest first: the soft limit holds all large windows alike.
+    largerModels: limits
+      .filter((limit) => limit.tokens > windowTokens)
+      .toSorted((current, next) => next.tokens - current.tokens)
+      .map((limit) => limit.model),
     parts,
     tokens,
     warningPercent: startingContextWarningPercent,

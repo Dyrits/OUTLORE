@@ -49,7 +49,7 @@ const tokenUsageOf = (match: RegExpExecArray): TokenUsage => ({
 // sandbox (as Codex's escalations do), `folder <tool> <json>` asks the one-time question about a linked thread folder, and `call <tool> <json>` calls any thread tool, each answered before
 // the echo; `wait <millis>` keeps the turn running; `fail <harness> <reason>` fails the turn on that harness; `cwd`, `context`, and `runner` report the working folder, the
 // starting context, and the harness, model, effort, and session; `spend <tokens> [cost]` reports spending at the turn's end,
-// `usage <input> <output> <cacheRead> <cacheWrite>` reports tokens by kind, `callusage <input> <output> <cacheRead> <cacheWrite>` gives the reply's own call its usage, and `billing <Subscription|ApiKey|Unknown>` names how the turn was billed (a turn that reports a cost and names none is API-key, as before).
+// `usage <input> <output> <cacheRead> <cacheWrite>` reports tokens by kind, `window <tokens>` reports the model's context window, `callusage <input> <output> <cacheRead> <cacheWrite>` gives the reply's own call its usage, and `billing <Subscription|ApiKey|Unknown>` names how the turn was billed (a turn that reports a cost and names none is API-key, as before).
 const scriptedCall = (request: TurnRequest, line: string, turn: FakeTurn) => {
   const access = request.access;
   const spend = /^spend (\d+)(?: (\d+(?:\.\d+)?))?$/.exec(line);
@@ -59,6 +59,13 @@ const scriptedCall = (request: TurnRequest, line: string, turn: FakeTurn) => {
       if (spend[2] !== undefined) turn.spent.cost = (turn.spent.cost ?? 0) + Number(spend[2]);
       turn.spent.isReported = true;
       return `spent ${spend[1]}`;
+    });
+  }
+  const window = /^window (\d+)$/.exec(line);
+  if (window !== null) {
+    return Effect.sync(() => {
+      turn.spent.contextWindow = Number(window[1]);
+      return `window ${window[1]}`;
     });
   }
   const call = /^callusage (\d+) (\d+) (\d+) (\d+)$/.exec(line);
@@ -152,6 +159,8 @@ type FakeTurn = {
     billing: BillingKind | null;
     kinds: TokenUsage | null;
     callUsage: TokenUsage | null;
+    /** The context window the turn's `window` line reported. */
+    contextWindow: number | null;
   };
   readonly steered: Array<string>;
 };
@@ -199,7 +208,15 @@ export const fakeHarnessLayer = (
         const turn: FakeTurn = {
           interrupted: yield* Deferred.make<void>(),
           onEvent: request.onEvent,
-          spent: { billing: null, callUsage: null, cost: null, isReported: false, kinds: null, tokens: 0 },
+          spent: {
+            billing: null,
+            callUsage: null,
+            contextWindow: null,
+            cost: null,
+            isReported: false,
+            kinds: null,
+            tokens: 0,
+          },
           steered: [],
         };
         running.set(request.threadId, turn);
@@ -207,7 +224,7 @@ export const fakeHarnessLayer = (
           script(request, turn),
           Deferred.await(turn.interrupted).pipe(Effect.as(true)),
         ).pipe(Effect.ensuring(Effect.sync(() => running.delete(request.threadId))));
-        const { billing, cost, isReported, kinds, tokens } = turn.spent;
+        const { billing, contextWindow, cost, isReported, kinds, tokens } = turn.spent;
         return {
           billing: billing ?? (cost === null ? "Subscription" : "ApiKey"),
           // The fake's context is what it was told to spend: its latest call's whole prompt.
@@ -216,6 +233,7 @@ export const fakeHarnessLayer = (
               ? tokens
               : kinds.input + kinds.cacheRead + kinds.cacheCreation + kinds.output
             : null,
+          contextWindow,
           cost: isReported ? cost : null,
           isInterrupted,
           sessionId: request.sessionId ?? `fake-${request.threadId}`,

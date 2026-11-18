@@ -47,7 +47,9 @@ The exception is the Companions picker explicitly opened for Chronicler. While C
 - **Used** is what the harness reported for the thread's latest model call in its latest turn: input, cached input, and output tokens together. A thread that has not finished a turn, or whose harness reported no usage, shows "Not measured yet"; a number is never guessed.
 - The bar is split into parts: **Instructions** (what every thread receives, the workspace line, the approval rules, and the thread's position), **Lore** (the intel in scope), **Journal** (the quest's briefing and entries), **Messages** (this thread's conversation), and **Tools and results** (everything else the harness reported: tool definitions, tool calls, and their results). The first four are counted from what Outlore sends, about four characters to a token; the last is the remainder of the reported total, never below zero.
 - The bar is orange from 80% and red from 95% of the window. No message is sent at either.
-- The window is the chosen model's, 200,000 tokens until each harness reports its own (see the lore gauge in [scoped-intel](../scoped-intel/specifications.md)).
+- The limit is the chosen model's context window as its harness last reported it in a turn (Claude Code: `modelUsage[model].contextWindow`; Codex: `modelContextWindow`), held to a **soft limit of 272,000 tokens** for every model: a model with a smaller window keeps its own, a model with a larger one (for example 1,000,000) counts 272,000 and the gauge says "soft limit". Until a harness has reported a window for a model, and always for OpenCode, which reports none, the limit is 200,000 (see the lore gauge in [scoped-intel](../scoped-intel/specifications.md)). The starting-context warning and the handover allowance read the same limit.
+- When a turn takes the thread's context from under the limit to at or over it, one line in the conversation says so and says what to do: the thread keeps working past a soft limit, and the way to compact is an errand for the next part of the work, which reads the quest's journal (Outlore has no compaction action of its own). The line is written once per crossing, not on each turn past it.
+- When Claude Code compacts the conversation (on its own or at `/compact`), a line says "Context compacted", with the token counts it reports.
 
 ## Edge cases
 
@@ -60,6 +62,7 @@ The exception is the Companions picker explicitly opened for Chronicler. While C
 ## Acceptance
 
 - A thread that reported usage shows its context gauge with parts whose sum equals the reported total, and the remainder never negative.
+- A model reporting a 1,000,000-token window shows a limit of 272,000 marked as a soft limit; a model reporting 200,000 shows 200,000; a model with no report shows 200,000. A turn that takes the context from under the limit to over it adds one line saying so.
 - A thread with no usage shows "Not measured yet" and no parts.
 - The panel's Spending for a thread counts only that thread's turns, while Budget shows the quest's.
 - The panel lists the thread's harness, model, effort, and realm as the header does.

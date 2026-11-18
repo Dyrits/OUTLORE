@@ -3,7 +3,7 @@ import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { newId, notFound, tokensOf } from "../core/index.ts";
 import { checkAccount, checkBackups, harnessLabels, type Runner } from "../harness/index.ts";
-import { contextWindowOf } from "../lore/index.ts";
+import { readContextLimit } from "../lore/index.ts";
 import { readStoredAttachments } from "./attachments.ts";
 import { changed, unchanged } from "./commands.ts";
 
@@ -158,7 +158,7 @@ export const listHandovers = Effect.fnUntraced(function* (threadId: string) {
 /**
  * The thread's conversation before this turn, to hand to a harness session that starts with none: the owner's
  * and threads' messages delivered to earlier turns and the thread's own replies, oldest first. The oldest are
- * left out, with a line saying how many, when they would take over half the model's context window
+ * left out, with a line saying how many, when they would take over half the model's context limit
  * (provisional: summarizing the oldest part is staged; thread-handover, Long conversations, and ADR 0006). Null when there is no earlier conversation.
  */
 export const readConversationSoFar = Effect.fnUntraced(function* (
@@ -192,7 +192,7 @@ export const readConversationSoFar = Effect.fnUntraced(function* (
     const images = (attachments.get(row.id) ?? []).map((file) => `image: ${file.name}`);
     return [`${speaker}: ${row.text}`, ...images].join("\n");
   });
-  const allowance = Math.floor((contextWindowOf(model) * historyWindowPercent) / 100);
+  const allowance = Math.floor(((yield* readContextLimit(model, threadId)).tokens * historyWindowPercent) / 100);
   let usedTokens = 0;
   let firstKeptIndex = lines.length;
   while (firstKeptIndex > 0 && usedTokens + tokensOf(lines[firstKeptIndex - 1] ?? "") <= allowance) {

@@ -1,4 +1,12 @@
-export { contextWindowOf, loreContextOf, loreInstructions, readGauge } from "./lore.ts";
+export {
+  contextLimitOf,
+  contextSoftLimit,
+  contextWindowFallback,
+  loreContextOf,
+  loreInstructions,
+  readContextLimit,
+  readGauge,
+} from "./lore.ts";
 export { forgetLoreEntry, saveLoreEntry, updateLoreEntry } from "./loreChanges.ts";
 export {
   deleteLoreEntryByOwner,

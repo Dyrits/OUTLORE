@@ -58,5 +58,5 @@ Latest handoffs:
 
 - To resume the sidebar's creation icons (CHG-0507, which removed the creation rows of CHG-0503 to CHG-0506; committed and pushed with this handoff; open: the owner's look in a window and on a phone, and an unrelated uncommitted `shell.tsx` change), read the [current handoff](.agents/handoffs/2026-11-18-1752-creation-icons.md). Handoffs are shared and committed.
 
-- To resume the Android self-update (on `origin/main`; open: a phone check) and the context-window redo (`worktree/context-window-redo`, CHG-0501; open: the owner's merge and look), read the [current handoff](.agents/handoffs/2026-11-18-1435-context-window-redo.md). Handoffs are shared and committed.
+- To resume the context-window redo with the 272K soft limit (CHG-0509, pushed to `origin/main` with this handoff; open: the main rebase past the Vibe edits, a live harness check, the owner's look) and the Android phone check, read the [current handoff](.agents/handoffs/2026-11-18-1853-context-window-soft-limit.md). Handoffs are shared and committed.
 

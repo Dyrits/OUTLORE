@@ -21,10 +21,37 @@ import { type Fading, readFading, stateOfLoreEntry, strengthOf, summaryOf } from
 export const loreLimit = 200;
 
 /**
- * A model's context window in tokens. Provisional (work-in-progress, Batch 12): every model of every harness
- * counts 200,000 until the harness reports its model's window (thread panel and context gauge, backlog).
+ * The soft limit every model is held to, in tokens (thread-panel, The context gauge; CHG-0509): a model that reports a
+ * larger window counts this one, and a thread that reaches it is warned and keeps working. The owner's figure.
  */
-export const contextWindowOf = (_model: ModelChoice) => 200_000;
+export const contextSoftLimit = 272_000;
+
+/** The window counted for a model no harness has reported (thread-panel, The context gauge). */
+export const contextWindowFallback = 200_000;
+
+/** The context limit of a reported window: the window, or the soft limit when the window is larger. */
+export const contextLimitOf = (reportedWindow: number | null) => {
+  const window = reportedWindow ?? contextWindowFallback;
+  return { isSoftLimit: window > contextSoftLimit, tokens: Math.min(window, contextSoftLimit) };
+};
+
+/**
+ * A model's context limit: the window its harness last reported for it in a turn, held to the soft limit, or the
+ * fallback until one has. The harness's default model has no name of its own, so a thread on it takes the window its
+ * own latest turn reported.
+ */
+export const readContextLimit = Effect.fnUntraced(function* (model: ModelChoice, threadId: string | null = null) {
+  const sql = yield* SqlClient.SqlClient;
+  const [latest] =
+    model === "default" && threadId !== null
+      ? yield* sql<{ contextWindow: number }>`
+          SELECT context_window AS contextWindow FROM usage WHERE thread_id = ${threadId} AND context_window IS NOT NULL
+          ORDER BY ended_at DESC, rowid DESC LIMIT 1`
+      : yield* sql<{ contextWindow: number }>`
+          SELECT context_window AS contextWindow FROM usage WHERE model = ${model} AND context_window IS NOT NULL
+          ORDER BY ended_at DESC, rowid DESC LIMIT 1`;
+  return contextLimitOf(latest?.contextWindow ?? null);
+});
 
 /** Where a lore entry sits: a thread (the mission's top thread for the whole mission), a workspace, or everywhere. */
 export type Placement = {
@@ -240,10 +267,11 @@ export const readGauge = Effect.fnUntraced(function* (threadId: string) {
   const { count, tokens } = yield* readLoreSize(threadId);
   const [thread] = yield* sql<{ model: ModelChoice }>`SELECT model FROM threads WHERE id = ${threadId}`;
   const { intelWarningPercent } = yield* readSettings;
-  const windowTokens = contextWindowOf(thread?.model ?? "default");
+  const { isSoftLimit, tokens: windowTokens } = yield* readContextLimit(thread?.model ?? "default", threadId);
   return {
     count,
     isOverWarning: tokens * 100 > windowTokens * intelWarningPercent,
+    isSoftLimit,
     tokens,
     warningPercent: intelWarningPercent,
     windowTokens,

@@ -107,11 +107,13 @@ export const LoreGauge = Schema.Struct({
   count: Schema.Number,
   /** Whether it takes more than the warning share, so the lore icon turns red. */
   isOverWarning: Schema.Boolean,
+  /** Whether `windowTokens` is the soft limit all models are held to, not the model's own window. */
+  isSoftLimit: Schema.optionalKey(Schema.Boolean),
   /** What the lore takes in a turn's context: scoped lore in full and the global index. */
   tokens: Schema.Number,
   /** The share in percent above which the icon turns red (Settings). */
   warningPercent: Schema.Number,
-  /** The chosen model's context window, in tokens. */
+  /** The chosen model's context limit, in tokens: its reported window, or the soft limit when that is smaller. */
   windowTokens: Schema.Number,
 });
 export type LoreGauge = typeof LoreGauge.Type;

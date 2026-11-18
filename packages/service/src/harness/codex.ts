@@ -102,6 +102,15 @@ const usageOf = (calls: ReadonlyArray<unknown>): TokenUsage | null => {
   };
 };
 
+/**
+ * The context window Codex reports beside a token count, `tokenUsage.modelContextWindow` of a `thread/tokenUsage/updated`
+ * notification (a nullable integer in the app-server schema of Codex 0.169.0), or null.
+ */
+const contextWindowOf = (tokenUsage: unknown): number | null => {
+  const window = numberFieldOf(tokenUsage, "modelContextWindow");
+  return window > 0 ? window : null;
+};
+
 /** What the thread's context held after the latest call, whose input includes the cached part. */
 const contextOf = (calls: ReadonlyArray<unknown>): number | null => {
   const last = calls.at(-1);
@@ -238,6 +247,7 @@ const readTurn = Effect.fnUntraced(function* (
   codexTurnId: string,
 ) {
   const calls: Array<unknown> = [];
+  let contextWindow: number | null = null;
   const fileChanges = new Map<string, ReadonlyArray<string>>();
   let draft = "";
   for (;;) {
@@ -280,20 +290,34 @@ const readTurn = Effect.fnUntraced(function* (
       draft = "";
       if (text.trim() !== "") yield* request.onEvent({ _tag: "Reply", text });
     } else if (method === "thread/tokenUsage/updated") {
-      calls.push(fieldOf(fieldOf(params, "tokenUsage"), "last"));
+      const tokenUsage = fieldOf(params, "tokenUsage");
+      calls.push(fieldOf(tokenUsage, "last"));
+      contextWindow = contextWindowOf(tokenUsage) ?? contextWindow;
       turn.reportUsage(usageOf(calls));
     } else if (method === "turn/completed") {
       const completed = fieldOf(params, "turn");
       if (textFieldOf(completed, "id") !== codexTurnId) continue;
       const status = textFieldOf(completed, "status");
       if (status === "interrupted" || turn.isInterrupting())
-        return { billing: connection.billing, context: contextOf(calls), isInterrupted: true, usage: usageOf(calls) };
+        return {
+          billing: connection.billing,
+          context: contextOf(calls),
+          contextWindow,
+          isInterrupted: true,
+          usage: usageOf(calls),
+        };
       if (status === "failed") {
         return yield* new HarnessFailure({
           reason: textFieldOf(fieldOf(completed, "error"), "message") ?? "Codex reported a failed turn.",
         });
       }
-      return { billing: connection.billing, context: contextOf(calls), isInterrupted: false, usage: usageOf(calls) };
+      return {
+        billing: connection.billing,
+        context: contextOf(calls),
+        contextWindow,
+        isInterrupted: false,
+        usage: usageOf(calls),
+      };
     }
   }
 });

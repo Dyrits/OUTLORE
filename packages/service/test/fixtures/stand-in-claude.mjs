@@ -64,6 +64,13 @@ const reply = (text) => {
       type: "stream_event",
     });
   }
+  // STAND_IN_COMPACT: Claude Code compacted the conversation before this call (its `compact_boundary` system event).
+  if (process.env.STAND_IN_COMPACT !== undefined)
+    emit({
+      compact_metadata: { post_tokens: 12000, pre_tokens: Number(process.env.STAND_IN_COMPACT), trigger: "auto" },
+      subtype: "compact_boundary",
+      type: "system",
+    });
   // The latest call's own usage, smaller than the result's sum over the turn's calls.
   emit({
     message: {
@@ -79,6 +86,21 @@ const reply = (text) => {
     result: text,
     subtype: "success",
     ...(process.env.STAND_IN_COST === undefined ? {} : { total_cost_usd: turn / 100 }),
+    // STAND_IN_CONTEXT_WINDOW: the result names each model the turn used with its context window, as Claude Code's
+    // does, the thread's own model beside a helper model with another window.
+    ...(process.env.STAND_IN_CONTEXT_WINDOW === undefined
+      ? {}
+      : {
+          modelUsage: {
+            "claude-haiku-5-5": { contextWindow: 150000, inputTokens: 1, maxOutputTokens: 32000, outputTokens: 1 },
+            [process.env.STAND_IN_MODEL ?? "claude-sonnet-5-5"]: {
+              contextWindow: Number(process.env.STAND_IN_CONTEXT_WINDOW),
+              inputTokens: 2,
+              maxOutputTokens: 64000,
+              outputTokens: 10,
+            },
+          },
+        }),
     type: "result",
     usage: { cache_creation_input_tokens: 50, cache_read_input_tokens: 100, input_tokens: 2, output_tokens: 10 },
   });

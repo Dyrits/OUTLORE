@@ -91,4 +91,11 @@ export const recentStoreMigrations = {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`ALTER TABLE workspaces ADD COLUMN position INTEGER`;
   }),
+  // The context window the turn's harness reported for its model (thread-panel, The context gauge; CHG-0509); null for a
+  // turn whose harness reported none, and for every turn before this, which keep the fallback.
+  "0058_usage_context_window": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE usage ADD COLUMN context_window INTEGER`;
+    yield* sql`CREATE INDEX usage_by_model_window ON usage (model, ended_at) WHERE context_window IS NOT NULL`;
+  }),
 };

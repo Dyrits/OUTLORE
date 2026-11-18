@@ -40,6 +40,8 @@ export type TurnEnd = {
   readonly billing?: BillingKind;
   /** What the thread's context held after the turn's latest model call; absent or null when unreported. */
   readonly context?: number | null;
+  /** The context window the harness reported for the turn's model; absent or null when it reported none. */
+  readonly contextWindow?: number | null;
   /** The turn's own cost in dollars when the harness reported one; absent or null counts its tokens. */
   readonly cost?: number | null;
   readonly isInterrupted: boolean;
@@ -193,10 +195,11 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
       // (CHG-0039, provisional).
       if (turn.untaken.size > 0) close(request.threadId);
       else entry.idleTimer = setTimeout(() => close(request.threadId), idleMillis);
-      const { billing, context, cost, isInterrupted, usage } = ended.success.end;
+      const { billing, context, contextWindow, cost, isInterrupted, usage } = ended.success.end;
       return {
         billing: billing ?? "Unknown",
         context: context ?? null,
+        contextWindow: contextWindow ?? null,
         cost: cost ?? null,
         isInterrupted: isInterrupted || turn.isInterrupting,
         sessionId,

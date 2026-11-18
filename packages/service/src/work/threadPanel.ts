@@ -2,7 +2,7 @@ import { BackupCompanion, type ContextGauge, type ContextPart, type ThreadPanel 
 import { Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { missionLimitsOf, missionSpendingOf, notFound, spendingColumns } from "../core/index.ts";
-import { contextWindowOf } from "../lore/index.ts";
+import { readContextLimit } from "../lore/index.ts";
 import { accountOfThread } from "./budgetScopes.ts";
 import { readThreadConsumption } from "./consumption.ts";
 import { PlanLimits } from "./planLimits.ts";
@@ -35,10 +35,12 @@ const readContextGauge = Effect.fnUntraced(function* (threadId: string, model: s
       SELECT context FROM usage WHERE thread_id = ${threadId} AND context IS NOT NULL
       ORDER BY ended_at DESC, rowid DESC LIMIT 1`;
   if (latest === undefined) return null;
+  const limit = yield* readContextLimit(model, threadId);
   const sent = yield* readSentContextSize(threadId);
   const [{ messageText } = { messageText: 0 }] = yield* sql<{ messageText: number }>`
       SELECT COALESCE(SUM(LENGTH(text)), 0) AS messageText FROM messages WHERE thread_id = ${threadId}`;
   return {
+    isSoftLimit: limit.isSoftLimit,
     parts: contextPartsOf(latest.context, [
       { kind: "Instructions", tokens: sent.instructions },
       { kind: "Lore", tokens: sent.lore },
@@ -46,7 +48,7 @@ const readContextGauge = Effect.fnUntraced(function* (threadId: string, model: s
       { kind: "Messages", tokens: sent.openerMessages + Math.ceil(messageText / 4) },
     ]),
     tokens: latest.context,
-    windowTokens: contextWindowOf(model),
+    windowTokens: limit.tokens,
   } satisfies ContextGauge;
 });
 
