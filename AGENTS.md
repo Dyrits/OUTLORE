@@ -58,4 +58,4 @@ Latest handoffs:
 
 - To resume the Android pairing and status-bar fixes or prepare the deferred release, read the [current handoff](.agents/handoffs/2026-11-18-0124-android-pairing-hotfix.md). Handoffs are shared and committed.
 
-- To resume voice input in the message boxes (whisper.cpp on the owner's device, no vendor receives audio; the service's transcriber is committed on branch `worktree/voice-input`, not merged; open: merge with renumbering of CHG-0447/0448, the desktop microphone button, a phone spike), read the [current handoff](.agents/handoffs/2026-11-18-0109-voice-input.md). Handoffs are shared and committed.
+- To resume voice input, read the [current state](documentation/work-in-progress.md#voice-input--2026-11-18--service-transcriber-on-main) for the transcriber on `main` (CHG-0450 and CHG-0451), then the [original handoff](.agents/handoffs/2026-11-18-0109-voice-input.md) for the desktop microphone and phone spike.
