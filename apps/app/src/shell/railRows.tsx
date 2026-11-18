@@ -21,10 +21,8 @@ export function ShowAll({ count, onPress, subject }: { count: number; onPress: (
 
 /** One row of the sidebar: a label, and at its end a mark such as a state dot or a count. */
 export function Row({
-  accessory,
   hoverAccessory,
   indent = 0,
-  isButton = false,
   leading,
   isSelected,
   fold,
@@ -32,12 +30,9 @@ export function Row({
   onPress,
   textStyle,
 }: {
-  accessory?: ReactNode;
   /** What stands at the end only with the row's marks, on hover or focus, given whether they show. */
   hoverAccessory?: (isShown: boolean) => ReactNode;
   indent?: number;
-  /** Whether the row is an action rather than a place: it has a thin rounded border and fills softly on hover. */
-  isButton?: boolean;
   /** What stands before the label, after the fold mark, such as a state dot. */
   leading?: ReactNode;
   isSelected: boolean;
@@ -58,9 +53,7 @@ export function Row({
         local.row,
         !canHover && local.rowTouch,
         { paddingLeft: 6 + indent },
-        isButton && local.buttonRest,
-        // A creation row keeps its fill under the pointer and the finger; an ordinary row fills softly.
-        !isButton && (state.pressed || isHovered(state)) && local.rowHovered,
+        (state.pressed || isHovered(state)) && local.rowHovered,
         isSelected && local.rowSelected,
       ]}
     >
@@ -69,7 +62,6 @@ export function Row({
       <Text numberOfLines={1} style={[local.rowText, isSelected && local.rowTextSelected, textStyle]}>
         {label}
       </Text>
-      {accessory}
       {hoverAccessory?.(isShown)}
     </Pressable>
   );

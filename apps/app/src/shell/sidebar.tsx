@@ -1,5 +1,5 @@
 import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
 import { PlanLimitRings } from "../editors/planLimitRings";
@@ -16,7 +16,7 @@ import { FoldChevron } from "../ui/foldChevron";
 import { SettingsIcon } from "../ui/settingsIcons";
 import { DropTarget, RealmDragSource } from "./questDrag";
 import { placementsOf, type RealmListing, reorderedRealmIds, toggledFold } from "./questTree";
-import { NewQuestIcon, NewRealmIcon } from "./railActions";
+import { NewQuestIcon, NewRealmIcon, useRowActions } from "./railActions";
 import { railOutlineOf } from "./railOutline";
 import { Quest, RealmHeader } from "./railQuests";
 import { Divider, Row, ShowAll } from "./railRows";
@@ -186,13 +186,15 @@ export function Sidebar({
   return (
     <View style={[local.sidebar, { width }]}>
       <ScrollView contentContainerStyle={local.group} style={local.flex}>
-        <SectionTitle isOpen={!isFolded("Realms")} onToggle={() => foldedSections.toggle("Realms")} title="Realms" />
-        <Row
-          accessory={<NewRealmIcon color={colors.highlight} />}
-          isButton
-          isSelected={false}
-          label="Visit a new realm"
-          onPress={() => setIsCreating(true)}
+        <SectionTitle
+          action={{
+            icon: <NewRealmIcon color={colors.textMuted} />,
+            label: "Visit a new realm",
+            onPress: () => setIsCreating(true),
+          }}
+          isOpen={!isFolded("Realms")}
+          onToggle={() => foldedSections.toggle("Realms")}
+          title="Realms"
         />
         {!isFolded("Realms") && outline.realms.length === 0 && (
           <Text style={local.emptyGroup}>No realm to visit yet.</Text>
@@ -200,18 +202,16 @@ export function Sidebar({
         {!isFolded("Realms") && outline.realms.map(realmRow)}
         <Divider />
         <SectionTitle
+          action={{
+            icon: <NewQuestIcon color={colors.textMuted} />,
+            label: "Start a new quest",
+            onPress: () => startQuest("none", null),
+          }}
           isOpen={!isFolded("Borderlands")}
           onToggle={() => foldedSections.toggle("Borderlands")}
           title="Borderlands"
         />
         {failureUnder("none")}
-        <Row
-          accessory={<NewQuestIcon color={colors.highlight} />}
-          isButton
-          isSelected={false}
-          label="Start a new quest"
-          onPress={() => startQuest("none", null)}
-        />
         {!isFolded("Borderlands") && placements.borderlands.length === 0 && (
           <Text style={local.emptyGroup}>No quest in the Borderlands yet.</Text>
         )}
@@ -250,10 +250,26 @@ export function Sidebar({
   );
 }
 
-/** A quiet label over a group of the sidebar; pressing it folds or unfolds the group. */
-function SectionTitle({ isOpen, onToggle, title }: { isOpen: boolean; onToggle: () => void; title: string }) {
+/**
+ * A quiet label over a group of the sidebar; pressing it folds or unfolds the group. Its creation button (a new realm, a
+ * new quest) stands at the end, shown like a realm's buttons: on hover or keyboard focus, and always on a device that
+ * cannot hover.
+ */
+function SectionTitle({
+  action,
+  isOpen,
+  onToggle,
+  title,
+}: {
+  action: { icon: ReactNode; label: string; onPress: () => void };
+  isOpen: boolean;
+  onToggle: () => void;
+  title: string;
+}) {
+  const { actionsStyle, focusProps, rowProps } = useRowActions();
   return (
     <Pressable
+      {...rowProps}
       accessibilityLabel={`${isOpen ? "Fold" : "Unfold"} ${title}`}
       accessibilityRole="button"
       accessibilityState={{ expanded: isOpen }}
@@ -266,6 +282,19 @@ function SectionTitle({ isOpen, onToggle, title }: { isOpen: boolean; onToggle: 
     >
       <FoldChevron color={colors.textMuted} isOpen={isOpen} size={16} />
       <Text style={local.sectionTitle}>{title}</Text>
+      <View style={local.flex} />
+      <View style={actionsStyle}>
+        <Pressable
+          {...focusProps}
+          accessibilityLabel={action.label}
+          accessibilityRole="button"
+          hitSlop={4}
+          onPress={action.onPress}
+          style={(state) => [local.newQuest, (state.pressed || isHovered(state)) && local.newQuestHovered]}
+        >
+          {action.icon}
+        </Pressable>
+      </View>
     </Pressable>
   );
 }
