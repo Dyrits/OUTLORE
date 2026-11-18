@@ -2,6 +2,7 @@ import type { MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/
 import { type ReactNode, useState } from "react";
 import { type DimensionValue, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
+import { FoldablePlanLimits } from "../editors/planLimitRings";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
@@ -245,8 +246,8 @@ export function Sidebar({
 }
 
 /**
- * The foot of the sidebar: the global budget's meters, when it has limits, above the menu button. The plans' limit rings
- * stand beside the Companion button of the message box.
+ * The foot of the sidebar: the global budget's meters, when it has limits, then the plans' limit rings behind a
+ * foldable Usage row, then the menu button.
  */
 function Spending({ children, client }: { children: ReactNode; client: ServiceClient }) {
   const { data: global } = useServiceQuery(client, { _tag: "ReadBudget", missionId: null }, "budget:global");
@@ -258,6 +259,7 @@ function Spending({ children, client }: { children: ReactNode; client: ServiceCl
           <ReserveRows use={global} />
         </View>
       )}
+      <FoldablePlanLimits client={client} />
       <View style={local.menuRow}>{children}</View>
     </>
   );

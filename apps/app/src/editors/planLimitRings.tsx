@@ -6,6 +6,7 @@ import type { ServiceClient } from "../foundation/client";
 import { meterLevelOf, planLimitTextOf } from "../foundation/labels";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { FoldChevron } from "../ui/foldChevron";
 import { ProviderMark } from "../ui/providerMarks";
 import { currentWindowsOf, leftPercentOf, type Ring, resetsInTextOf, ringStackOf } from "./planRings";
 
@@ -85,18 +86,16 @@ function WindowBar({ now, window }: { now: number; window: PlanLimitWindow }) {
 /** What hovering or focusing a provider's rings opens: a card above them with the provider and each window spelled out. */
 function UsageCard({
   harness,
-  isAtEnd,
   name,
   windows,
 }: {
   harness: HarnessName;
-  isAtEnd: boolean;
   name: string;
   windows: readonly PlanLimitWindow[];
 }) {
   const now = Date.now();
   return (
-    <View pointerEvents="none" style={[local.card, isAtEnd && local.cardAtEnd]}>
+    <View pointerEvents="none" style={local.card}>
       <View style={local.provider}>
         <ProviderMark harness={harness} size={16} />
         <Text style={local.providerName}>{name}</Text>
@@ -109,13 +108,38 @@ function UsageCard({
 }
 
 /**
+ * The plan limits behind a "Usage" row that unfolds them, folded at first, for the foot of the sidebar; nothing shows
+ * while no plan reports a limit.
+ */
+export function FoldablePlanLimits({ client }: { client: ServiceClient }) {
+  const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
+  const [isOpen, setIsOpen] = useState(false);
+  if (!budgets?.some((budget) => budget.planLimits !== null && budget.planLimits.windows.length > 0)) return null;
+  return (
+    <View>
+      <Pressable
+        accessibilityLabel={`${isOpen ? "Fold" : "Unfold"} plan limits`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isOpen }}
+        onPress={() => setIsOpen(!isOpen)}
+        style={local.foldRow}
+      >
+        <FoldChevron color={colors.textMuted} isOpen={isOpen} size={15} />
+        <Text style={local.foldText}>Usage</Text>
+      </Pressable>
+      {isOpen && <PlanLimitRings client={client} />}
+    </View>
+  );
+}
+
+/**
  * The plan limits each subscription's harness reports, as the rail shows them beside the reserves: one ring per
  * window around the provider's logo, the rings of the different providers side by side in a row, green until 80%, orange
  * from 80% and red at 100%. Hovering or focusing a provider lifts its rings and opens a card with each window's share
  * left and time to its reset. An account whose harness reports none shows nothing here (its Charter row says
- * "Limits not reported"), and nothing is shown before a reading arrives. `isAtEnd` lines the rings up at the right.
+ * "Limits not reported"), and nothing is shown before a reading arrives.
  */
-export function PlanLimitRings({ client, isAtEnd = false }: { client: ServiceClient; isAtEnd?: boolean }) {
+export function PlanLimitRings({ client }: { client: ServiceClient }) {
   const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
   const [shown, setShown] = useState<string | null>(null);
   const reported =
@@ -127,12 +151,11 @@ export function PlanLimitRings({ client, isAtEnd = false }: { client: ServiceCli
       {detailed !== undefined && (
         <UsageCard
           harness={detailed.harness}
-          isAtEnd={isAtEnd}
           name={detailed.accountId === null ? detailed.harness : detailed.label}
           windows={currentWindowsOf(detailed.planLimits?.windows ?? [], Date.now())}
         />
       )}
-      <View style={[local.row, isAtEnd && local.rowAtEnd]}>
+      <View style={local.row}>
         {reported.map((budget) => {
           const key = `${budget.harness}:${budget.accountId ?? ""}`;
           const name = budget.accountId === null ? budget.harness : budget.label;
@@ -181,10 +204,10 @@ const local = StyleSheet.create({
     shadowRadius: 14,
     zIndex: 10,
   },
-  // Over a narrow group of rings at the right, the card keeps a width of its own and ends where the rings end.
-  cardAtEnd: { left: "auto", width: 220 },
   circle: { borderRadius: radii.pill, padding: 3 },
   circleLifted: { backgroundColor: colors.controlHover, transform: [{ scale: 1.08 }] },
+  foldRow: { alignItems: "center", flexDirection: "row", gap: 2, minHeight: 26, paddingHorizontal: 4 },
+  foldText: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
   group: { paddingTop: 6 },
   provider: { alignItems: "center", flexDirection: "row", gap: 8 },
   providerName: {
@@ -197,7 +220,6 @@ const local = StyleSheet.create({
   ringBox: { alignItems: "center", height: size, justifyContent: "center", width: size },
   ringSvg: { position: "absolute" },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingHorizontal: 7 },
-  rowAtEnd: { justifyContent: "flex-end" },
   track: { backgroundColor: colors.ground, borderRadius: radii.pill, height: 6, overflow: "hidden" },
   window: { gap: 5 },
   windowLeft: {
