@@ -85,7 +85,7 @@ It finds the quest that already covers the request and offers to continue there,
 - Change a thread's harness, account, model, or effort between turns without discarding its conversation.
 - Pick a Companion by its provider account (two subscriptions of one harness appear as two options), or apply a Light, Balanced, or Heavy preset, which sets a Companion and its backups together.
 - Choose folders with one folder picker, on this computer or on a paired host.
-- Attach a local folder or repository to a realm. Cloning a repository from a link and giving a thread its own Git worktree with a merge button are agreed but not built yet.
+- Attach a local folder or repository to a realm. A thread can work in its own Git worktree that Outlore makes (own copy); cloning a repository from a link and a merge button for an own copy are agreed but not built yet.
 - Keep a shared briefing and journal for each quest, and save lore at thread, workspace, or global scope.
 - Paste, drop, or choose images for a message, and use `!` to open a shell in the desktop composer and send its output as context.
 - Use skills from existing skill folders by typing `/` in a message. Managing MCP servers from Chronicler is not available yet.
@@ -123,6 +123,7 @@ Manual builds are also available from the **Artifacts** section of the [desktop 
 From 0.1.2-Prototype on, the installed app finds new releases and updates itself (earlier releases cannot): it looks at start and every 6 hours, downloads in the background, and installs only when you press **Restart and update** in the notice or in the Workshop's **Updates** section, where you can also turn checking off.
 It asks GitHub's public release list for newer releases and sends nothing about you; a prerelease build follows prereleases, a stable build only stable releases.
 On macOS Outlore replaces its own app after checking the download against the release's `SHA512SUMS.txt`; on Windows and Linux it uses `electron-updater`, which has not been run on those systems yet.
+The Android app updates itself the same way once it carries the updater (built from the release after 0.1.8-Prototype): it checks the same release list, downloads the APK in the background (on mobile data it waits for **Download anyway**), and installs only when you press **Install update**, after which Android asks you to confirm. It checks the download against `SHA512SUMS.txt`, and Android accepts it only when it is signed with the same key as the installed app.
 A development run (`bun run dev`) never updates.
 
 Before uploading a macOS installer, the workflow verifies and mounts its DMG, copies the app to a fresh location, and checks the rendered sidebar, service bridge, and native terminal on temporary data.
