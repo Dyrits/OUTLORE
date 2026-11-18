@@ -166,11 +166,19 @@ export function Sidebar({
         {placements.realms.length === 0 && placements.borderlands.length === 0 && (
           <Text style={local.empty}>No realm or quest yet.</Text>
         )}
+        {placements.realms.length > 0 && (
+          <Text accessibilityRole="header" style={local.sectionTitle}>
+            Realms
+          </Text>
+        )}
         {tied.map(rowOf)}
         {untied.map(rowOf)}
         {borderlandQuests.length > 0 && (
           <>
             {placements.realms.length > 0 && <View style={local.creationDivider} />}
+            <Text accessibilityRole="header" style={local.sectionTitle}>
+              Borderlands
+            </Text>
             {borderlandQuests.map((mission) => (
               <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
             ))}

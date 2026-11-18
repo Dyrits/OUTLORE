@@ -109,7 +109,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "The sidebar, from the top: each realm with its quests and errands; the quests that are in no realm, as ordinary rows after the realms; and two buttons, Visit a realm and Start a quest. A menu button at the foot opens Rituals, Lore, Archive, Reserves, and Settings. On a phone the top bar's menu button opens this same sidebar as a full screen; the other screen is the conversation.",
+      "The sidebar, from the top: a small Realms label over each realm with its quests and errands; a small Borderlands label over the quests that are in no realm, after the realms; and two buttons, Visit a realm and Start a quest. A menu button at the foot opens Rituals, Lore, Archive, Reserves, and Settings. On a phone the top bar's menu button opens this same sidebar as a full screen; the other screen is the conversation.",
       "Realms fold and unfold. Each realm and the quests in no realm show their three newest quests, with a Show all link to the full list.",
       "The top bar shows where the owner is and has the Chronicler button. A quest has its own side panel with its details.",
       "Themes: One or Iskios, each in a dark and a light look, or following the system. The owner chooses them in Settings.",
