@@ -23,8 +23,16 @@ export const local = StyleSheet.create({
   },
   addHovered: { backgroundColor: colors.controlActive },
   buttonHovered: { backgroundColor: colors.controlHover },
-  // A creation row reads as an action by a thin rounded border, with no fill at rest and no change of type.
-  buttonRest: { borderColor: colors.border, borderRadius: radii.md, borderWidth: 1, marginVertical: 2, minHeight: 32 },
+  // A creation row reads as an action by a thin rounded border on the page's own fill, the one the conversation has,
+  // with no change of type; it fills softly on hover.
+  buttonRest: {
+    backgroundColor: colors.page,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginVertical: 2,
+    minHeight: 32,
+  },
   chevron: { alignItems: "center", height: 20, justifyContent: "center", width: chevronWidth },
   count: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   diamond: {
