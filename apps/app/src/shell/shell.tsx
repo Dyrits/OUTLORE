@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
 import { CompanionPanel } from "../editors/companionPicker";
+import { PlanLimitRings } from "../editors/planLimitRings";
 import {
   CompanionDockActions,
   CompanionTabOf,
@@ -216,7 +217,12 @@ export function Shell(
         (companionPicker === null ? (
           <Text style={local.noCompanion}>There is no Companion to choose here.</Text>
         ) : (
-          <CompanionPanel key={pillId} {...companionPicker} />
+          <View style={local.companionPanel}>
+            <CompanionPanel key={pillId} {...companionPicker} />
+            <View style={local.companionFoot}>
+              <PlanLimitRings client={props.client} isAtEnd />
+            </View>
+          </View>
         ))}
     </QuestColumn>
   );
@@ -372,6 +378,9 @@ const local = StyleSheet.create({
   body: { flex: 1, flexDirection: "row" },
   // Chronicler's own mark, as on its button in the top bar.
   chroniclerMark: { color: colors.accentText },
+  // The plans' limit rings at the bottom right of the Companions panel.
+  companionFoot: { paddingBottom: 8, paddingHorizontal: 8 },
+  companionPanel: { flex: 1 },
   // Closed, the handle is the half of a circle against the window's right edge.
   endHandleTab: {
     borderBottomRightRadius: 0,
