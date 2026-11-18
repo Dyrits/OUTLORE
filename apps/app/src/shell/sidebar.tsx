@@ -40,6 +40,7 @@ export function Sidebar({
   onOpenMission,
   onOpenRealmQuests,
   onOpenThread,
+  isMenuOutside = false,
   onPlace,
   openMission,
   openThread,
@@ -52,6 +53,8 @@ export function Sidebar({
   onOpenRealmQuests: (listing: RealmListing) => void;
   /** Opens an errand of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
+  /** Whether the window draws the menu button itself, at this same place, so it stays when the sidebar is hidden. */
+  isMenuOutside?: boolean;
   onPlace: (place: Place) => void;
   openMission: MissionId | null;
   /** The errand open in the open quest, or null for the quest itself. */
@@ -216,11 +219,7 @@ export function Sidebar({
       </ScrollView>
       <View style={local.footer}>
         <Spending client={client}>
-          <ActionMenu
-            accessibilityLabel="Menu"
-            actions={menuPlaces.map((entry) => ({ label: entry.label, onPress: () => onPlace(entry.place) }))}
-            glyph="☰"
-          />
+          {isMenuOutside ? <View style={local.menuPlace} /> : <SidebarMenu onPlace={onPlace} />}
         </Spending>
       </View>
       {pendingMove !== null && (
@@ -241,6 +240,17 @@ export function Sidebar({
         />
       )}
     </View>
+  );
+}
+
+/** The menu button: Rituals, Lore, Archive, Reserves and Settings. */
+export function SidebarMenu({ onPlace }: { onPlace: (place: Place) => void }) {
+  return (
+    <ActionMenu
+      accessibilityLabel="Menu"
+      actions={menuPlaces.map((entry) => ({ label: entry.label, onPress: () => onPlace(entry.place) }))}
+      glyph="☰"
+    />
   );
 }
 

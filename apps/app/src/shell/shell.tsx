@@ -32,7 +32,7 @@ import {
   rememberPaneWidth,
   rememberRailWidth,
 } from "./railStorage";
-import { type Place, Sidebar } from "./sidebar";
+import { type Place, Sidebar, SidebarMenu } from "./sidebar";
 import { type DetailsToggle, PanelIcon, QuestColumn, questColumnWidth, TopBar } from "./topBar";
 import { useCompanionDock } from "./useCompanionDock";
 import { viewingOf } from "./viewing";
@@ -285,6 +285,7 @@ export function Shell(
                     {!isHidden && (
                       <Sidebar
                         {...props}
+                        isMenuOutside
                         onOpenMission={props.onOpenMission}
                         onOpenRealmQuests={props.onOpenRealmQuests}
                         onOpenThread={props.onOpenThread}
@@ -342,6 +343,9 @@ export function Shell(
                     </ChroniclerColumn>
                   )}
                   <UsageEdge client={props.client} />
+                  <View style={local.menuPin}>
+                    <SidebarMenu onPlace={props.onPlace} />
+                  </View>
                   {(hasQuestPanel ? details.isPinned !== true : hasCompanion) && (
                     <Pressable
                       accessibilityLabel={isColumnOpen ? "Hide quest panel" : "Show quest panel"}
@@ -416,6 +420,8 @@ const local = StyleSheet.create({
     width: handleSize * 0.75,
   },
   hidden: { display: "none" },
+  // The menu button's fixed place at the window's bottom left, the same with the sidebar shown or hidden.
+  menuPin: { bottom: 8, left: 12, position: "absolute", zIndex: 5 },
   narrow: { backgroundColor: colors.page, flex: 1 },
   narrowContent: { flex: 1 },
   noCompanion: { color: colors.textMuted, padding: 16 },
