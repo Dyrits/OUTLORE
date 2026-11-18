@@ -20,14 +20,6 @@ export const menuPlaces: ReadonlyArray<Entry> = [
   { label: "Settings", note: "Accounts, Companions, and looks", place: "Settings" },
 ];
 
-/**
- * The phone's menu: the same places, led by Realms, since a phone has no sidebar listing the realms and their quests.
- */
-export const phonePlaces: ReadonlyArray<Entry> = [
-  { label: "Realms", note: "Quests sharing lore, by realm", place: "Realms" },
-  ...menuPlaces,
-];
-
 /** Names used in Chronicler context, including destinations outside the menu. */
 export const screenNames: Record<Place, string> = {
   Archived: "Archive",

@@ -1,6 +1,6 @@
 import type { MissionId, MissionSummary, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
 import { PlanLimitRings } from "../editors/planLimitRings";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
@@ -45,8 +45,8 @@ export function Sidebar({
   place,
 }: {
   client: ServiceClient;
-  /** The open rail's width, as dragged. */
-  width: number;
+  /** The open rail's width, as dragged; the whole width on a phone, where this is the menu screen. */
+  width: DimensionValue;
   onOpenMission: (id: MissionId) => void;
   /** Opens the page that lists all of a realm's quests. */
   onOpenRealmQuests: (listing: RealmListing) => void;

@@ -15,7 +15,6 @@ import type { RightPanel } from "../foundation/useRightPanel";
 import { ChroniclerColumn, chroniclerColumnWidth } from "./chroniclerDock";
 import { EdgeResizer } from "./edgeResizer";
 import type { Location, NavigationEvent } from "./location";
-import { MobileMenu } from "./mobileMenu";
 import type { RealmListing } from "./questTree";
 import {
   chroniclerWidthKey,
@@ -259,7 +258,9 @@ export function Shell(
             />
             <View style={[local.narrowContent, isNarrowCovered && local.hidden]}>{props.children}</View>
             {isMenuOpen && (
-              <MobileMenu onPlace={props.onPlace} place={props.openMission === null ? props.place : null} />
+              <View style={local.narrowContent}>
+                <Sidebar {...props} width="100%" />
+              </View>
             )}
             {isNarrowChroniclerOpen && !isMenuOpen && <View style={local.narrowContent}>{chroniclerChat}</View>}
             {!isMenuOpen && !isNarrowChroniclerOpen && panelColumn}
