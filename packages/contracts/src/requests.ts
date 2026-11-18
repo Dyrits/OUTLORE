@@ -478,8 +478,10 @@ export const InstallHarness = Schema.TaggedStruct("InstallHarness", { harness: H
 export const RemoveAccount = Schema.TaggedStruct("RemoveAccount", { accountId: AccountId });
 
 /**
- * Opens the harness's own sign-in for an account in a terminal window on this computer; Outlore never
- * sees the credentials (requirements, Comply with provider terms). Null signs in the computer's own account.
+ * Runs the harness's own sign-in for an account on this computer; Outlore never sees the credentials (requirements,
+ * Comply with provider terms). Null signs in the computer's own account. A sign-in that needs no terminal runs
+ * in the background, waits for the owner in the browser, and answers with the harnesses listed again; one that needs
+ * a terminal opens a window that closes itself on success and answers null at once.
  */
 export const SignInAccount = Schema.TaggedStruct("SignInAccount", {
   accountId: Schema.NullOr(AccountId),
@@ -695,7 +697,7 @@ export const Results = {
   SetMissionBudget: Schema.Null,
   SetRemoteAccess: RemoteAccessView,
   SetThreadBackups: Schema.Null,
-  SignInAccount: Schema.Null,
+  SignInAccount: Schema.NullOr(HarnessList),
   StartEmptyQuest: StartEmptyQuestResult,
   StartMission: StartMissionResult,
   StopAtBudget: Schema.Null,

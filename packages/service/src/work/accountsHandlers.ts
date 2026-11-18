@@ -25,7 +25,11 @@ export const accountsHandlers = ({ change }: Pick<HandlerDependencies, "change">
     RemoveAccount: (remove) => thenListHarnesses(removeAccount(remove.accountId)),
     RenameAccount: (rename) => thenListHarnesses(renameAccount(rename.accountId, rename.label)),
     RenameOwnAccount: (rename) => thenListHarnesses(renameOwnAccount(rename.harness, rename.label)),
-    SignInAccount: (given) => signInAccount(given.harness, given.accountId).pipe(Effect.as(null)),
+    // Not a command either: a sign-in without a terminal waits minutes for the owner in the browser.
+    SignInAccount: (given) =>
+      signInAccount(given.harness, given.accountId).pipe(
+        Effect.flatMap((outcome) => (outcome === "Finished" ? listHarnesses : Effect.succeed(null))),
+      ),
     // Not a command: the harness's own update runs for minutes and must not hold the command queue.
     UpdateHarness: (given) => updateHarness(given.harness).pipe(Effect.andThen(listHarnesses)),
   } satisfies OwnerHandlers<

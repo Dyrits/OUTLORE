@@ -39,6 +39,11 @@ export type HarnessFacts = {
   readonly packageName: string;
   /** The arguments of the harness's own sign-in command. */
   readonly signInArgs: ReadonlyArray<string>;
+  /**
+   * Whether the sign-in runs without a terminal: it opens the browser itself and ends when the browser's answer reaches
+   * a local port. Otherwise it is an interactive screen that needs a terminal window.
+   */
+  readonly signInNeedsNoTerminal: boolean;
   /** The arguments of the harness's own command that updates it, which knows how it was installed. */
   readonly updateArgs: ReadonlyArray<string>;
 };
@@ -54,6 +59,7 @@ export const harnessFacts = {
     label: "Claude Code",
     packageName: "@anthropic-ai/claude-code",
     signInArgs: ["auth", "login"],
+    signInNeedsNoTerminal: true,
     updateArgs: ["update"],
   },
   codex: {
@@ -64,6 +70,7 @@ export const harnessFacts = {
     label: "Codex",
     packageName: "@openai/codex",
     signInArgs: ["login"],
+    signInNeedsNoTerminal: true,
     updateArgs: ["update"],
   },
   opencode: {
@@ -75,6 +82,7 @@ export const harnessFacts = {
     label: "OpenCode",
     packageName: "opencode-ai",
     signInArgs: ["auth", "login"],
+    signInNeedsNoTerminal: false,
     updateArgs: ["upgrade"],
   },
 } as const satisfies Record<HarnessName, HarnessFacts>;

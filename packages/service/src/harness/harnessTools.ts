@@ -48,8 +48,15 @@ export class HarnessTools extends Context.Service<
       configDirectory: string | null,
       model: string,
     ) => Effect.Effect<ReadonlyArray<EffortChoice>, ServiceFailure>;
-    /** Opens the harness's own sign-in in a terminal window, pointed at the account's folder. */
-    readonly openSignIn: (harness: HarnessName, configDirectory: string | null) => Effect.Effect<void, ServiceFailure>;
+    /**
+     * Runs the harness's own sign-in, pointed at the account's folder. Where the sign-in needs no terminal it runs in
+     * the background, the harness opening the browser itself, and this waits until it ends ("Finished") or fails.
+     * Otherwise it opens a terminal window that closes itself on success and returns at once ("Opened").
+     */
+    readonly openSignIn: (
+      harness: HarnessName,
+      configDirectory: string | null,
+    ) => Effect.Effect<"Finished" | "Opened", ServiceFailure>;
     readonly readSignIn: (harness: HarnessName, configDirectory: string | null) => Effect.Effect<SignInStatus>;
     /** Runs the harness's own update command, which updates it the way it was installed. */
     readonly update: (harness: HarnessName) => Effect.Effect<void, ServiceFailure>;
@@ -61,6 +68,37 @@ export type HarnessCommands = Record<HarnessName, string>;
 
 /** Single-quoted for a POSIX shell. */
 const quoted = (text: string) => `'${text.replaceAll("'", "'\\''")}'`;
+
+/** How long a sign-in that needs no terminal may wait for the owner in the browser before it is ended. */
+export const signInTimeoutMillis = 5 * 60 * 1000;
+
+/**
+ * The script a terminal window runs for a sign-in that needs one. The window closes itself, by the tty it runs on,
+ * only when the sign-in succeeded; a failure leaves it open with the reason. Terminal closes its own window, so no
+ * other application is controlled (not checked on a Mac: the sandbox blocks osascript).
+ */
+export const terminalSignInScript = (options: {
+  readonly command: string;
+  readonly environment: ReadonlyArray<string>;
+  readonly label: string;
+  readonly path: string;
+}) =>
+  [
+    "#!/bin/sh",
+    `echo ${quoted(`Signing in to ${options.label} for Outlore. This window closes when you are signed in.`)}`,
+    ...options.environment.map((line) => `export ${line}`),
+    `rm -f ${quoted(options.path)}`,
+    options.command,
+    "status=$?",
+    'if [ "$status" -eq 0 ]; then',
+    "  tty_name=$(tty)",
+    `  (sleep 1; osascript -e "tell application "Terminal" to close (every window whose tty is "$tty_name")" >/dev/null 2>&1) &`,
+    "else",
+    `  echo ${quoted("Sign-in did not finish. You can close this window.")}`,
+    "fi",
+    'exit "$status"',
+    "",
+  ].join("\n");
 
 /** How long a model list is reused before the harness is asked again. */
 const modelsLifetimeMillis = 10 * 60 * 1000;
@@ -201,31 +239,46 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
       });
 
     const openSignIn = Effect.fnUntraced(function* (harness: HarnessName, configDirectory: string | null) {
-      const command = [quoted(commands[harness]), ...harnessFacts[harness].signInArgs].join(" ");
-      const variable = harnessFacts[harness].configVariable;
+      const facts = harnessFacts[harness];
+      const command = [quoted(commands[harness]), ...facts.signInArgs].join(" ");
+      const variable = facts.configVariable;
       const line = configDirectory === null ? command : `${variable}=${quoted(configDirectory)} ${command}`;
       if (process.platform !== "darwin") return yield* invalid(`Open a terminal on this computer and run: ${line}`);
+      if (facts.signInNeedsNoTerminal) {
+        // No window: the tool opens the browser itself and ends once the browser's answer reaches its local port.
+        const run = yield* runHarnessCommand(
+          commands[harness],
+          facts.signInArgs,
+          accountEnvironmentOf(harness, configDirectory),
+          signInTimeoutMillis,
+        );
+        if (run.code !== 0) {
+          const reason = run.output.trim().split("\n").slice(-3).join(" ");
+          return yield* invalid(
+            `${facts.label} did not sign in${run.code === null ? ` (it timed out after ${signInTimeoutMillis / 60_000} minutes or could not run)` : ""}. ${reason}`.trim(),
+          );
+        }
+        return "Finished" as const;
+      }
       // A .command file opens in Terminal, which runs the harness's own sign-in where the owner answers it.
       const folder = join(tmpdir(), "outlore-sign-in");
       const script = join(folder, `${harness}-${crypto.randomUUID()}.command`);
       yield* Effect.sync(() => {
         mkdirSync(folder, { recursive: true });
-        const exports = configDirectory === null ? [] : [`export ${variable}=${quoted(configDirectory)}`];
         writeFileSync(
           script,
-          [
-            "#!/bin/sh",
-            `echo ${quoted(`Signing in to ${harnessFacts[harness].label} for Outlore. Close this window when done.`)}`,
-            ...exports,
+          terminalSignInScript({
             command,
-            `rm -f ${quoted(script)}`,
-            "",
-          ].join("\n"),
+            environment: configDirectory === null ? [] : [`${variable}=${quoted(configDirectory)}`],
+            label: facts.label,
+            path: script,
+          }),
         );
         chmodSync(script, 0o755);
       });
       const opened = yield* runHarnessCommand("open", [script], {});
       if (opened.code !== 0) return yield* invalid(`Could not open a terminal. Run this yourself: ${line}`);
+      return "Opened" as const;
     });
 
     return {
@@ -269,7 +322,10 @@ export const fakeHarnessToolsLayer = (
         harnessFacts[harness].fixedModels ?? [{ id: `${harness}-fake-model`, label: `${harness} fake model` }],
       ),
     openSignIn: (harness, configDirectory) =>
-      Effect.sync(() => void signIns.push(`${harness}:${configDirectory ?? ""}`)),
+      Effect.sync(() => {
+        signIns.push(`${harness}:${configDirectory ?? ""}`);
+        return harnessFacts[harness].signInNeedsNoTerminal ? ("Finished" as const) : ("Opened" as const);
+      }),
     readSignIn: (_harness, configDirectory) =>
       Effect.succeed({
         detail: configDirectory === null ? "owner" : "added",

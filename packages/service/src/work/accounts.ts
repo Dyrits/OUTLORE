@@ -190,7 +190,10 @@ export const removeAccount = Effect.fnUntraced(function* (accountId: string) {
   yield* Effect.sync(() => rmSync(accountFolderOf(accountsRoot, accountId), { force: true, recursive: true }));
 });
 
-/** Opens the harness's own sign-in for the account, or for the computer's own sign-in when null. */
+/**
+ * Runs the harness's own sign-in for the account, or for the computer's own sign-in when null. "Finished" when it ran
+ * without a terminal and ended; "Opened" when a terminal window has it, which closes itself once it succeeds.
+ */
 export const signInAccount = Effect.fnUntraced(function* (harness: HarnessName, accountId: string | null) {
   const tools = yield* HarnessTools;
   const accountsRoot = yield* AccountsRoot;
@@ -198,5 +201,5 @@ export const signInAccount = Effect.fnUntraced(function* (harness: HarnessName, 
     const account = yield* readAccount(accountId);
     if (account.harness !== harness) return yield* invalid(`That account is not a ${harnessLabels[harness]} account.`);
   }
-  yield* tools.openSignIn(harness, configDirectoryOf(accountsRoot, accountId));
+  return yield* tools.openSignIn(harness, configDirectoryOf(accountsRoot, accountId));
 });

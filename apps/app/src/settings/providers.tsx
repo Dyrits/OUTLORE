@@ -41,17 +41,27 @@ function AccountRow({
   onChanged: (list: HarnessList) => void;
   onError: (message: string | null) => void;
 }) {
-  const [isSigningIn, setIsSigningIn] = useState(false);
+  // "Browser" while a sign-in without a terminal waits for the owner in the browser; "Terminal" once one that needs a
+  // window has opened it, which closes itself on success.
+  const [signingIn, setSigningIn] = useState<"Browser" | "Terminal" | null>(null);
   // The new name while renaming; null when not. A harness's own sign-in may be left blank to take the computer's name.
   const [name, setName] = useState<string | null>(null);
-  const signIn = () =>
-    client.request({ _tag: "SignInAccount", accountId: account.id, harness }).then(
-      () => {
-        setIsSigningIn(true);
+  const signIn = () => {
+    // A second press while the first waits would collide with it on the harness's local port.
+    if (signingIn === "Browser") return;
+    setSigningIn("Browser");
+    return client.request({ _tag: "SignInAccount", accountId: account.id, harness }).then(
+      (list) => {
+        setSigningIn(list === null ? "Terminal" : null);
+        if (list !== null) onChanged(list);
         onError(null);
       },
-      (reason) => onError(messageOf(reason)),
+      (reason) => {
+        setSigningIn(null);
+        onError(messageOf(reason));
+      },
     );
+  };
   const remove = (accountId: AccountId) =>
     client.request({ _tag: "RemoveAccount", accountId }).then(
       (list) => {
@@ -102,9 +112,11 @@ function AccountRow({
         )}
       </View>
       <Text style={[styles.muted, local.accountDetail]}>
-        {isSigningIn
-          ? "Finish signing in in the Terminal window, then press Refresh."
-          : (account.detail ?? signInLabels[account.signIn])}
+        {signingIn === "Browser"
+          ? "Finish signing in in your browser."
+          : signingIn === "Terminal"
+            ? "Finish signing in in the Terminal window, which closes itself; then press Refresh."
+            : (account.detail ?? signInLabels[account.signIn])}
       </Text>
       <StatusPill isGood={account.signIn === "SignedIn"} label={signInLabels[account.signIn]} />
       {name === null ? (
