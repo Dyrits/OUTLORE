@@ -259,7 +259,7 @@ export function Shell(
             />
             <View style={[local.narrowContent, isNarrowCovered && local.hidden]}>{props.children}</View>
             {isMenuOpen && (
-              <View style={local.narrowContent}>
+              <View style={[local.narrowContent, local.menuScreen]}>
                 <Sidebar {...props} width="100%" />
               </View>
             )}
@@ -412,6 +412,9 @@ const local = StyleSheet.create({
     width: handleSize * 0.75,
   },
   hidden: { display: "none" },
+  // The full-screen menu is a row so the sidebar stretches to the window's height, as in the wide frame, and its foot
+  // sits at the bottom of the screen.
+  menuScreen: { flexDirection: "row" },
   narrow: { backgroundColor: colors.page, flex: 1 },
   narrowContent: { flex: 1 },
   noCompanion: { color: colors.textMuted, padding: 16 },
