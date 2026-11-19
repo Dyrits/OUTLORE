@@ -26,6 +26,8 @@ export type AdapterOptions = {
   readonly idleTimeout: Duration.Input;
   /** Why the sandbox cannot run here, or null (CHG-0031). */
   readonly sandboxProblem: string | null;
+  /** The Vault's folder, hidden from every sandbox (ADR 0022); none when left out, in checks. */
+  readonly vaultFolder?: string;
 };
 
 /** One harness: its facts, its turn adapter, and its tool's answers about sign-in and models. */
@@ -96,8 +98,8 @@ const listCodexModels = Effect.fnUntraced(
 
 const claude: HarnessDefinition = {
   ...harnessFacts.claude,
-  makeAdapter: ({ command, idleTimeout, sandboxProblem }) =>
-    makeClaudeHarness({ command, idleTimeout, sandboxProblem }),
+  makeAdapter: ({ command, idleTimeout, sandboxProblem, vaultFolder }) =>
+    makeClaudeHarness({ command, idleTimeout, sandboxProblem, ...(vaultFolder === undefined ? {} : { vaultFolder }) }),
   readModels: () => Effect.succeed(claudeModels),
   readSignIn: Effect.fnUntraced(function* (command: string, env: Record<string, string>) {
     const { stdout } = yield* runHarnessCommand(command, ["auth", "status", "--json"], env);
@@ -119,7 +121,8 @@ const claude: HarnessDefinition = {
 
 const codex: HarnessDefinition = {
   ...harnessFacts.codex,
-  makeAdapter: ({ command, idleTimeout }) => makeCodexHarness({ command, idleTimeout }),
+  makeAdapter: ({ command, idleTimeout, vaultFolder }) =>
+    makeCodexHarness({ command, idleTimeout, ...(vaultFolder === undefined ? {} : { vaultFolder }) }),
   readModels: (command, configDirectory) => listCodexModels(command, configDirectory),
   readSignIn: (command, env) =>
     runHarnessCommand(command, ["login", "status"], env).pipe(
@@ -135,11 +138,12 @@ const codex: HarnessDefinition = {
 
 const opencode: HarnessDefinition = {
   ...harnessFacts.opencode,
-  makeAdapter: ({ command, dataDirectory, idleTimeout, sandboxProblem }) =>
+  makeAdapter: ({ command, dataDirectory, idleTimeout, sandboxProblem, vaultFolder }) =>
     makeOpenCodeHarness({
       command,
       idleTimeout,
       sandbox: detectOpenCodeSandbox({
+        ...(vaultFolder === undefined ? {} : { hidden: [vaultFolder] }),
         platform: process.platform,
         root: join(dataDirectory ?? tmpdir(), "opencode-sandbox"),
         sandboxProblem,

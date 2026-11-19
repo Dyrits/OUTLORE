@@ -12,7 +12,7 @@ Start the connectors with Composio and Apple apps. The owner authorized the buil
 ## State
 
 - **Done and committed (verified now):** Biome clean; `bun run typecheck` passes on all workspaces; `TMPDIR=<repo>/.tmp-test CI=1 bun run test` gives 2,262 passed, 55 skipped, 28 failed (the same 28 that fail on a clean checkout in a thread's sandbox: `git init` cannot copy its hook samples). 135 new tests in `packages/service/test/connectors/`.
-- **Changelog** CHG-0530 in `documentation/changelog/0.1.12-Prototype.md` lists what was built and five departures from the blueprint; the verification note is `documentation/verification/2026-11-19-connector-gateway.md`, with what was not checked.
+- **Changelog** CHG-0532 in `documentation/changelog/0.1.12-Prototype.md` lists what was built and five departures from the blueprint; the verification note is `documentation/verification/2026-11-19-connector-gateway.md`, with what was not checked.
 - **Not linked from `AGENTS.md`:** this handoff is not in its "Latest handoffs" list, so the merge does not conflict with the Vault errand's own edit; whoever merges links it.
 - **Production defaults stand in for what is not built:** `emptyVaultLayer` (holds nothing) and `unbuiltBackendsLayer` (every server unreachable). An installed connector therefore offers no tool and warns once per turn start. The service takes `connectorVault`, `connectorBackends`, `connectorCatalog`, `connectorPlatform` and `connectorGateway` as options.
 - **Assumed, not run:** that a live Claude Code, Codex and OpenCode list their tools when their process starts (so `access.connectorTools` in the restart keys is enough), that Claude Code runs each name in its allow rule without a question of its own, and that a stopped call interrupts a real HTTP request.
@@ -40,4 +40,4 @@ Start the connectors with Composio and Apple apps. The owner authorized the buil
 
 - `documentation/capabilities/connectors/specifications.md`, `blueprint.md`; `documentation/architecture-decision-record/0022-*.md`.
 - `packages/service/src/connectors/` (`connectors.ts`, `connectorCall.ts`, `calls.ts`, `availability.ts`, `catalog*.ts`), `work/connectorHandlers.ts`, `work/approvals.ts` (`askToolUse`), `work/threads.ts` (`beginTurn`).
-- `documentation/changelog/0.1.12-Prototype.md` (CHG-0530).
+- `documentation/changelog/0.1.12-Prototype.md` (CHG-0532).

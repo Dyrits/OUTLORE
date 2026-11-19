@@ -1,5 +1,5 @@
 import { tmpdir } from "node:os";
-import type { ApprovalLevel, BillingKind } from "@outlore/contracts";
+import type { ApprovalLevel, BillingKind, HarnessName } from "@outlore/contracts";
 import { type Duration, Effect, Layer, Queue } from "effect";
 import {
   type Containment,
@@ -50,6 +50,7 @@ import {
 import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
 import { contextOf } from "./tokenUsage.ts";
 import { toolServerName } from "./toolNames.ts";
+import { readClaudeVaultDenial } from "./vaultDenials.ts";
 import { listThreadWorktrees } from "./worktrees.ts";
 
 // Claude Code through `claude -p` in stream-json mode (ADR 0008; CHG-0027): one process per thread.
@@ -368,7 +369,8 @@ export const makeClaudeHarness = Effect.fnUntraced(function* (options: ClaudeOpt
   // (core/sandbox.ts); at "Also commands and edits" it runs without it, and every prompt asks as for an unprotected harness.
   const containmentOf = (_harness: unknown, level: ApprovalLevel): Containment =>
     isSandboxedOf(level, options) ? "Sandboxed" : "Unprotected";
-  return { ...adapter, containmentOf, readPlanLimits } satisfies HarnessAdapter;
+  const readVaultDenial = (harness: HarnessName) => readClaudeVaultDenial(options, harness);
+  return { ...adapter, containmentOf, readPlanLimits, readVaultDenial } satisfies HarnessAdapter;
 });
 
 /** Runs each thread in one long-lived `claude -p` stream-json process (CHG-0027). */

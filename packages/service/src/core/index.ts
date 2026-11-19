@@ -87,4 +87,5 @@ export {
 export { storeLayer } from "./store.ts";
 export { tokensOf } from "./tokens.ts";
 export { type ToolAnswer, toolRefusal, toolText, unknownToolAnswer } from "./toolAnswer.ts";
+export { type VaultDenial, vaultFolderOf } from "./vaultFolder.ts";
 export { wordsOf } from "./words.ts";

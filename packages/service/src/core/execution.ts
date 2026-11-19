@@ -11,6 +11,7 @@ import type {
   TokenUsage,
 } from "@outlore/contracts";
 import { Context, Effect, Schema } from "effect";
+import type { VaultDenial } from "./vaultFolder.ts";
 
 /** What a harness reports while a turn runs. */
 export type HarnessEvent =
@@ -246,6 +247,12 @@ export interface HarnessAdapter {
     harness: HarnessName,
     configDirectory: string | null,
   ) => Effect.Effect<PlanLimitsReport | null, HarnessFailure>;
+  /**
+   * Tries to read a marker file in the Vault's folder from inside this harness's sandbox, with an outside control, and
+   * reports whether the sandbox hides it (ADR 0022). Left out, the harness counts as one that runs no enforced sandbox,
+   * where every action, a read of the folder included, asks the owner.
+   */
+  readonly readVaultDenial?: (harness: HarnessName, folder: string) => Effect.Effect<VaultDenial>;
   readonly runTurn: (request: TurnRequest) => Effect.Effect<TurnOutcome, HarnessFailure>;
   /**
    * Writes a message into the thread's running turn; false when no turn runs or the harness cannot take one
@@ -268,6 +275,9 @@ export const routeHarnesses = (adapters: Record<HarnessName, HarnessAdapter>): H
     containmentOf: (harness, level) => adapters[harness].containmentOf?.(harness, level) ?? "Unprotected",
     interrupt: (threadId) => running.get(threadId)?.interrupt(threadId) ?? Effect.succeed(false),
     readPlanLimits: (harness, configDirectory) => adapters[harness].readPlanLimits(harness, configDirectory),
+    readVaultDenial: (harness, folder) =>
+      adapters[harness].readVaultDenial?.(harness, folder) ??
+      Effect.succeed({ harness, reason: "It runs no enforced sandbox, so every action asks.", status: "AsksFirst" }),
     runTurn: (request) =>
       Effect.suspend(() => {
         const adapter = adapters[request.harness];
