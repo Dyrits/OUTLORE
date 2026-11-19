@@ -54,9 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the 0.1.11-Prototype release, published with its pipeline green and its written note (CHG-0525; open: the owner's look at the notes and the app, the missing 0.1.9 and 0.1.10 notes, and a real update from 0.1.10), read the [current handoff](.agents/handoffs/2026-11-19-0105-release-0-1-11.md). Handoffs are shared and committed.
+- To resume the agent replies' date beside the time, such as `19 Nov 2026 · 11:15 AM` (built and tested, uncommitted when written; open: a look in a window and on a phone, and whether the year always shows), read the [current handoff](.agents/handoffs/2026-11-19-0724-message-date.md). Handoffs are shared and committed.
 
 - To resume the phone app's keyboard fix, so the composer stays above the software keyboard on Android (uncommitted when written; open: a build and a look on a phone, and whether the add-host dialog is also covered), read the [current handoff](.agents/handoffs/2026-11-19-0718-phone-keyboard-composer.md). Handoffs are shared and committed.
 
-- To resume the sidebar's corner marks, a summons in amber and the owner's turn in grey with the teal dot gone (CHG-0524, released in 0.1.11-Prototype; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-19-0038-sidebar-corner-marks.md). Handoffs are shared and committed.
+- To resume the 0.1.11-Prototype release, published with its pipeline green and its written note (CHG-0525; open: the owner's look at the notes and the app, the missing 0.1.9 and 0.1.10 notes, and a real update from 0.1.10), read the [current handoff](.agents/handoffs/2026-11-19-0105-release-0-1-11.md). Handoffs are shared and committed.
 

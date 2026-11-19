@@ -1,5 +1,9 @@
 # Work in progress
 
+## Date beside the time in agent replies · 2026-11-19 · built and tested, on `main` once committed; the owner's look pending
+
+An agent reply's header shows the date and the time (`19 Nov 2026 · 11:15 AM`), through `stampOf` in `apps/app/src/foundation/formatting.ts`. Owner messages still show no time, so no date. Checks: formatting and conversation tests pass (58), Biome clean on the touched files; not seen in a window or on a phone. [Handoff](../.agents/handoffs/2026-11-19-0724-message-date.md)
+
 ## Corner marks in the sidebar · 2026-11-19 · released in 0.1.11-Prototype; the owner's look pending
 
 A summons carries its amber mark in the lower-left corner (75% of the width and height, rounded), and a quest or errand waiting for the owner carries a grey one there (50%). The teal "your turn" dot is gone; the dot keeps its state's color. Sidebar rows have a 1 px bottom margin. Checks: Biome, typecheck and the app's tests pass; not seen in a window or on a phone. The tag `0.1.11-Prototype` carries it, and it is on `origin/main`. [Handoff](../.agents/handoffs/2026-11-19-0038-sidebar-corner-marks.md) · [Changelog](changelog/0.1.11-Prototype.md), CHG-0524

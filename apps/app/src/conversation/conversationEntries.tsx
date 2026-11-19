@@ -4,7 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import { MessageImages } from "../attachments/attachmentViews";
 import type { ServiceClient } from "../foundation/client";
 import { Emblem } from "../foundation/emblems";
-import { clockOf, replyWriterOf } from "../foundation/formatting";
+import { clockOf, replyWriterOf, stampOf } from "../foundation/formatting";
 import { replyUsageTextOf } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { colors } from "../foundation/theme";
@@ -170,7 +170,7 @@ function MessageBubble({
         label={writer.label}
         messageId={message.id}
         text={message.text}
-        time={clockOf(message.sentAt)}
+        time={stampOf(message.sentAt)}
         usage={message.usage}
       />
     );

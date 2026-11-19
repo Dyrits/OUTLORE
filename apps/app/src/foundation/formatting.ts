@@ -114,6 +114,13 @@ export const timeOf = (millis: number) => new Date(millis).toLocaleString();
 export const clockOf = (millis: number) =>
   new Date(millis).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+/** A moment as its day, month and year, in the owner's locale. */
+export const dateOf = (millis: number) =>
+  new Date(millis).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+
+/** A moment as its date and then its time, such as `19 Nov 2026 · 11:15 AM`, for a message's header. */
+export const stampOf = (millis: number) => `${dateOf(millis)} · ${clockOf(millis)}`;
+
 /** A count with thousands separators, for an element's accessible label. */
 export const exactCountOf = (count: number) => Math.round(count).toLocaleString("en-US");
 
