@@ -27,9 +27,19 @@ describe("the catalog's entries", () => {
     for (const entry of defaultCatalog) expect(entry.licence).toBe("MIT");
   });
 
-  it("never class a Composio tool as a read, since one call runs any action", () => {
-    for (const tool of Object.values(composioEntry.tools)) expect(tool.class).not.toBe("Read");
-    expect(catalogToolOf(composioEntry, "COMPOSIO_MULTI_EXECUTE_TOOL")).toBeNull();
+  it("classify only Composio's discovery tools as reads, and every tool that runs, connects or waits as a write", () => {
+    expect(catalogToolOf(composioEntry, "COMPOSIO_SEARCH_TOOLS")).toMatchObject({ app: null, class: "Read" });
+    expect(catalogToolOf(composioEntry, "COMPOSIO_GET_TOOL_SCHEMAS")).toMatchObject({ app: null, class: "Read" });
+    expect(catalogToolOf(composioEntry, "COMPOSIO_MULTI_EXECUTE_TOOL")).toMatchObject({ app: null, class: "Write" });
+    for (const name of [
+      "COMPOSIO_MANAGE_CONNECTIONS",
+      "COMPOSIO_REMOTE_BASH_TOOL",
+      "COMPOSIO_REMOTE_WORKBENCH",
+      "COMPOSIO_WAIT_FOR_CONNECTIONS",
+    ])
+      expect(catalogToolOf(composioEntry, name)).toMatchObject({ app: null, class: "Write" });
+    // Every tool the entry does not name still asks, so a meta-tool Composio adds needs no change here.
+    expect(catalogToolOf(composioEntry, "COMPOSIO_SOME_NEW_TOOL")).toBeNull();
   });
 
   it("make every Apple tool they do not name unclassified, and offer apps with Mail, Messages and Safari off by default", () => {

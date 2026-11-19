@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { MissionDetail, Question, Request, ThreadId } from "@outlore/contracts";
 import { Deferred, Effect, type Layer } from "effect";
-import type { CatalogEntry } from "../../src/connectors/index.ts";
+import type { CatalogEntry, ConnectorBackends } from "../../src/connectors/index.ts";
 import type { Harness } from "../../src/core/index.ts";
 import { fakeHarnessLayer, serviceLayer } from "../../src/index.ts";
 import {
@@ -21,6 +21,10 @@ import { call, read, settle, temporary } from "./service.ts";
 /** What a test of connectors stands on: three fake servers, a fake Vault, a gate that holds slow calls, a service over them. */
 export const connectorWorld = (
   options: {
+    /** The service's backends, when a test brings its own instead of the fake servers (the HTTP adapter's tests do). */
+    readonly backends?: Layer.Layer<ConnectorBackends>;
+    /** The whole catalog, when a test brings its own entries; the fake servers' entries by default. */
+    readonly entries?: ReadonlyArray<CatalogEntry>;
     readonly harness?: Layer.Layer<Harness>;
     readonly hasKey?: boolean;
     readonly platform?: NodeJS.Platform;
@@ -42,14 +46,16 @@ export const connectorWorld = (
       vault.put("unnamed_service", "API key", testSecret);
     }
     const directory = temporary("outlore-connectors-");
-    const catalog: ReadonlyArray<CatalogEntry> = [calendarEntry, unclassifiedEntry, appleLikeEntry];
+    const catalog = options.entries ?? [calendarEntry, unclassifiedEntry, appleLikeEntry];
     const build = () =>
       serviceLayer({
-        connectorBackends: fakeBackendsLayer({
-          applefake: apple.backend,
-          calendar: calendar.backend,
-          unnamed_service: unnamed.backend,
-        }),
+        connectorBackends:
+          options.backends ??
+          fakeBackendsLayer({
+            applefake: apple.backend,
+            calendar: calendar.backend,
+            unnamed_service: unnamed.backend,
+          }),
         connectorCatalog: catalog,
         connectorPlatform: options.platform ?? "darwin",
         connectorVault: vault.layer,

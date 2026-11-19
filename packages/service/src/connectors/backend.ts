@@ -1,8 +1,9 @@
-import { Context, Effect, Layer, Schema } from "effect";
+import { Context, type Effect, Schema } from "effect";
 import type { CatalogEntry } from "./catalog.ts";
 
-// What a connector's server must offer the gateway (connectors blueprint, Backends). The HTTP and stdio adapters come with
-// blueprint step 4; every test uses the scripted fake in `test/fixtures/`.
+// What a connector's server must offer the gateway (connectors blueprint, Backends). The Streamable-HTTP adapter
+// lives in `backends/httpMcp.ts`; the stdio one comes with the second half of blueprint step 4; every test until
+// then uses the scripted fake in `test/fixtures/`.
 
 /** One tool as its server lists it; the catalog, not this, decides how it is classified. */
 export type BackendTool = {
@@ -45,18 +46,3 @@ export class ConnectorBackends extends Context.Service<
     readonly open: (entry: CatalogEntry) => Effect.Effect<ConnectorBackend>;
   }
 >()("outlore/connectors/ConnectorBackends") {}
-
-/**
- * The backends until the real adapters are built: every server is unreachable, so an installed connector offers no tool and
- * warns once, which is what the service honestly can do for it.
- */
-export const unbuiltBackendsLayer = Layer.succeed(ConnectorBackends, {
-  open: () =>
-    Effect.succeed({
-      call: () =>
-        Effect.fail(new BackendFailure({ class: "Unreachable", upstream: "No backend is built for this connector." })),
-      close: Effect.void,
-      listTools: () =>
-        Effect.fail(new BackendFailure({ class: "Unreachable", upstream: "No backend is built for this connector." })),
-    } satisfies ConnectorBackend),
-});
