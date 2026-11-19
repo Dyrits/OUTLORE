@@ -4,4 +4,6 @@ Reviewed at `5dbbef92`: four findings accepted. `toolListing.ts` caches only met
 
 The three stdio regressions were run before the fix and each failed: two child starts, and a still-live child after failed or interrupted initialize. The SSE test also failed before the fix because the stream stayed open. The metadata issue was verified from the old code path and the regression checks the full listing; its new test was first run after the fix.
 
+An additional SSE case places a server-initiated request with the same ID ahead of the answer. It failed against the first fix, which treated any matching ID as a reply; the reader now requires a response without a method.
+
 `bun run test packages/service/test/connectors/backends/httpMcp.test.ts packages/service/test/connectors/stdioMcp.test.ts packages/service/test/connectors/toolListingConcurrency.test.ts packages/service/test/connectors/defaultWiring.test.ts`: 27 passed. `bun run check` and `bun run typecheck` pass. `TMPDIR="$PWD/.tmp-test" CI=1 bun run test`: 2,438 passed, 62 skipped, 0 failed (306 files passed, 6 skipped). No real Composio, macOS Automation, Keychain or packaged app was exercised.

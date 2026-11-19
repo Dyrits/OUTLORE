@@ -181,7 +181,7 @@ describe("the Streamable-HTTP MCP backend", () => {
         Effect.gen(function* () {
           fake.reply.current = (message) => ({
             _tag: "Stream",
-            body: `data: ${JSON.stringify({ jsonrpc: "2.0", method: "progress" })}\r\n\r\ndata: ${resultAnswer({ tools: [{ description: "Read", inputSchema: {}, name: "read" }] }, message)}\r\n\r\n`,
+            body: `data: ${JSON.stringify({ jsonrpc: "2.0", method: "progress" })}\r\n\r\ndata: ${JSON.stringify({ id: numberFieldOf(message, "id"), jsonrpc: "2.0", method: "server/request" })}\r\n\r\ndata: ${resultAnswer({ tools: [{ description: "Read", inputSchema: {}, name: "read" }] }, message)}\r\n\r\n`,
           });
           const backend = httpMcpBackend({ _tag: "Http", header: "x-key", url: fake.url });
           const listed = yield* backend.listTools(testKey).pipe(Effect.timeoutOption("500 millis"));

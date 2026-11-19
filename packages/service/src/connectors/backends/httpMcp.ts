@@ -36,7 +36,12 @@ const failureClassOf = (status: number): ConnectorErrorClass =>
 const messageOf = (body: string, id: number) => {
   try {
     const parsed: unknown = JSON.parse(body);
-    return isRecord(parsed) && parsed.id === id ? parsed : null;
+    return isRecord(parsed) &&
+      parsed.id === id &&
+      !Object.hasOwn(parsed, "method") &&
+      (Object.hasOwn(parsed, "result") || Object.hasOwn(parsed, "error"))
+      ? parsed
+      : null;
   } catch {
     return null;
   }
