@@ -188,7 +188,7 @@ export const appleLikeEntry: CatalogEntry = {
     { id: "calendar", isDefault: true, name: "Calendar" },
     { id: "mail", isDefault: false, name: "Mail" },
   ],
-  backend: { _tag: "Stdio", command: ["fake"], version: "1.0.0" },
+  backend: { _tag: "Stdio", server: "fake-server", version: "1.0.0" },
   description: "Mac apps for the tests.",
   id: "applefake",
   name: "Apple apps",

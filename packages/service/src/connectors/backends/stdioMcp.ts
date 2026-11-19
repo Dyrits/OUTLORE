@@ -1,0 +1,234 @@
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { Clock, Effect, Fiber, Option, Queue, Ref } from "effect";
+import { type HarnessFailure, type RpcProcess, reducedEnvironmentOf, startRpcProcess } from "../../core/index.ts";
+import { BackendFailure, type BackendTool, type ConnectorBackend } from "../backend.ts";
+
+// The stdio MCP adapter (connectors blueprint, Backends): a child of the host speaking MCP over its standard
+// streams, built on the shared line transport (core/lineProcess.ts). The child starts on first use, is closed when
+// it has been idle a while, and is started again after a failure. It is given no secret — a stdio entry's secretKind
+// stays null, and the `secret` of a call is never passed on — and an environment reduced to what it needs, so
+// Outlore's own variables (the owner token) never reach it. The child runs in its own process group, and closing ends
+// its whole tree.
+
+/** The protocol revision this client opens with; a server that is older negotiates down from it. */
+const protocolVersion = "2025-11-25";
+
+/** Options for one stdio MCP server. */
+export type StdioMcpOptions = {
+  /** The command that runs the server, such as a system Node and the vendored server file. */
+  readonly command: ReadonlyArray<string>;
+  /** Extra environment for the child, on top of the reduced environment. */
+  readonly env?: Record<string, string>;
+  /** How long without a request the child is closed; the default is a minute. */
+  readonly idleCloseMillis?: number;
+  /** The server's name as the owner reads it, for failures. */
+  readonly label: string;
+  /** How long one request may take before the child is closed and the call fails; the default is a minute. */
+  readonly requestTimeoutMillis?: number;
+};
+
+/** The system Node that runs a vendored server: the first of the usual locations that exists, else `node` on the PATH. */
+export const systemNodePathOf = (): string => {
+  for (const candidate of ["/usr/bin/node", "/usr/local/bin/node", "/opt/homebrew/bin/node"]) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return "node";
+};
+
+/**
+ * The file a vendored server package runs from: the copy bundled into the packaged app (the desktop app passes its
+ * vendor folder in `OUTLORE_VENDOR_DIR`), or the copy vendored with the service (`packages/service/vendor/`) in dev
+ * and tests — this module lives at `src/connectors/backends/`, three levels below the package root.
+ */
+export const vendoredServerFileOf = (server: string): string => {
+  const packaged = process.env.OUTLORE_VENDOR_DIR;
+  if (packaged !== undefined) return join(packaged, `${server}.cjs`);
+  return join(import.meta.dirname, "..", "..", "..", "vendor", `${server}.cjs`);
+};
+
+/** The command a catalog entry's stdio server runs as: a system Node and the vendored file. */
+export const stdioCommandOf = (server: string): ReadonlyArray<string> => [
+  systemNodePathOf(),
+  vendoredServerFileOf(server),
+];
+
+/** The JSON-RPC error codes of a malformed call: the method does not exist, or the params do not fit the schema. */
+const isInvalidArgumentsCode = (code: number | undefined) => code === -32601 || code === -32602;
+
+/** Maps a transport failure to the backend's public class; the server's own words stay in `upstream`, for no one. */
+const failureOf = (failure: HarnessFailure, label: string): BackendFailure =>
+  new BackendFailure({
+    class: isInvalidArgumentsCode(failure.code) ? "InvalidArguments" : "Unreachable",
+    upstream: failure.reason || `${label} could not be reached.`,
+  });
+
+/** The text of a `tools/call` answer: its content blocks joined, which is the tool's answer as the catalog reads it. */
+const answerTextOf = (result: unknown): string => {
+  const content = (result as { content?: unknown }).content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((block) => (typeof (block as { text?: unknown }).text === "string" ? (block as { text: string }).text : ""))
+    .filter((text) => text.length > 0)
+    .join("\n");
+};
+
+/** Whether a `tools/call` answer is the tool's own error rather than its answer. */
+const isErrorAnswerOf = (result: unknown) => (result as { isError?: unknown }).isError === true;
+
+/** One running child with the fiber that answers any request the server sends back. */
+type RunningChild = {
+  readonly drain: Fiber.Fiber<void, never>;
+  readonly rpc: RpcProcess;
+};
+
+/**
+ * One stdio MCP server as a connector backend, started on first use. The idle watcher this starts runs until the
+ * backend's `close`.
+ */
+export const stdioMcpBackend = (options: StdioMcpOptions): Effect.Effect<ConnectorBackend> =>
+  Effect.gen(function* () {
+    const idleCloseMillis = options.idleCloseMillis ?? 60_000;
+    const requestTimeoutMillis = options.requestTimeoutMillis ?? 60_000;
+    const childRef = yield* Ref.make<RunningChild | null>(null);
+    const lastUsedRef = yield* Ref.make(0);
+
+    /** Ends the child if it is running and forgets it, so the next request starts a new one. */
+    const endChild: Effect.Effect<void> = Effect.gen(function* () {
+      const current = yield* Ref.get(childRef);
+      if (current === null) return;
+      yield* Ref.set(childRef, null);
+      yield* Fiber.interrupt(current.drain);
+      current.rpc.close();
+    });
+
+    /** Starts the child and performs the MCP opening exchange; a refusal ends it again and fails as Unreachable. */
+    const startChild: Effect.Effect<RpcProcess, BackendFailure | HarnessFailure> = Effect.gen(function* () {
+      yield* endChild;
+      const script = options.command[1];
+      const rpc = yield* startRpcProcess({
+        args: [...options.command.slice(1)],
+        command: options.command[0] ?? "node",
+        cwd: script !== undefined && existsSync(script) ? dirname(script) : process.cwd(),
+        env: reducedEnvironmentOf(options.env ?? {}),
+        isJsonRpc2: true,
+        isTreeKilled: true,
+        label: options.label,
+      });
+      // The server may ask us things (sampling, roots); answer every request with an error so it never waits on us.
+      const drain = yield* Effect.forkDetach(
+        Effect.gen(function* () {
+          while (!rpc.hasExited()) {
+            const item = yield* Queue.take(rpc.incoming);
+            if (item._tag === "Exit") return;
+            if (item._tag === "Request")
+              rpc.respondError(item.id, "Outlore does not answer a connector server's requests.");
+          }
+        }),
+      );
+      const opened = yield* rpc
+        .request("initialize", {
+          capabilities: {},
+          clientInfo: { name: "Outlore", version: process.env.OUTLORE_RELEASE ?? "dev" },
+          protocolVersion,
+        })
+        .pipe(Effect.timeoutOption(requestTimeoutMillis));
+      if (Option.isNone(opened)) {
+        yield* Ref.set(childRef, null);
+        yield* Fiber.interrupt(drain);
+        rpc.close();
+        return yield* new BackendFailure({
+          class: "Unreachable",
+          upstream: `${options.label} did not answer its opening exchange.`,
+        });
+      }
+      rpc.notify("notifications/initialized", {});
+      yield* Ref.set(childRef, { drain, rpc });
+      return rpc;
+    });
+
+    /** The running child, started when there is none or it has exited. */
+    const child: Effect.Effect<RpcProcess, BackendFailure | HarnessFailure> = Effect.gen(function* () {
+      const current = yield* Ref.get(childRef);
+      if (current !== null && !current.rpc.hasExited()) return current.rpc;
+      return yield* startChild;
+    });
+
+    /** One request to the server, timing out and ending the child so the next request starts a fresh one. */
+    const request = Effect.fnUntraced(function* (method: string, params: unknown) {
+      const rpc = yield* child;
+      const now = yield* Clock.currentTimeMillis;
+      yield* Ref.set(lastUsedRef, now);
+      const answer = yield* rpc.request(method, params).pipe(Effect.timeoutOption(requestTimeoutMillis));
+      if (Option.isNone(answer)) {
+        yield* endChild;
+        return yield* new BackendFailure({
+          class: "Unreachable",
+          upstream: `${options.label} did not answer ${method} within ${requestTimeoutMillis} ms.`,
+        });
+      }
+      return answer.value;
+    });
+
+    /** Closes the child once it has been idle long enough; runs until `close` interrupts it. */
+    const watcher = yield* Effect.forkDetach(
+      Effect.forever(
+        Effect.gen(function* () {
+          yield* Effect.sleep(idleCloseMillis);
+          const lastUsed = yield* Ref.get(lastUsedRef);
+          const now = yield* Clock.currentTimeMillis;
+          if (now - lastUsed >= idleCloseMillis) yield* endChild;
+        }),
+      ),
+    );
+
+    /** Ends any failure the transport reported in the backend's own class. */
+    const classified = <A, R>(effect: Effect.Effect<A, BackendFailure | HarnessFailure, R>) =>
+      effect.pipe(
+        Effect.catch((failure) =>
+          Effect.fail(failure._tag === "BackendFailure" ? failure : failureOf(failure, options.label)),
+        ),
+      );
+
+    const backend: ConnectorBackend = {
+      // The secret a call carries is never given to a stdio child: it is not read here.
+      call: (tool, args) =>
+        classified(
+          request("tools/call", { arguments: args, name: tool }).pipe(
+            Effect.filterOrFail(
+              (result) => !isErrorAnswerOf(result),
+              (result) =>
+                new BackendFailure({
+                  class: "Failed",
+                  upstream: answerTextOf(result) || `${options.label} refused the call.`,
+                }),
+            ),
+            Effect.map(answerTextOf),
+          ),
+        ),
+      close: Effect.gen(function* () {
+        yield* Fiber.interrupt(watcher);
+        yield* endChild;
+      }),
+      listTools: () =>
+        classified(
+          request("tools/list", {}).pipe(
+            Effect.map((result): ReadonlyArray<BackendTool> => {
+              const tools = (result as { tools?: unknown }).tools;
+              if (!Array.isArray(tools)) return [];
+              return tools.map(
+                (tool): BackendTool => ({
+                  description:
+                    typeof (tool as { description?: unknown }).description === "string"
+                      ? (tool as { description: string }).description
+                      : "",
+                  inputSchema: (tool as { inputSchema?: Record<string, unknown> }).inputSchema ?? {},
+                  name: String((tool as { name?: unknown }).name ?? ""),
+                }),
+              );
+            }),
+          ),
+        ),
+    };
+    return backend;
+  });
