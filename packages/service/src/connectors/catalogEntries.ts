@@ -88,7 +88,7 @@ export const appleEntry: CatalogEntry = {
     "Let threads work with this Mac's Calendar, Reminders, Notes and Contacts, and, if you choose, Mail, Messages and Safari.",
   id: "apple",
   licence: "MIT",
-  name: "Apple apps",
+  name: "Apple's applications on macOS",
   notice:
     "What a tool reads, such as an email's text, goes to the model provider of the thread that asks. macOS will ask you to allow each app you choose. Mail, Messages and Safari can read private content and reach other people, so they are off unless you choose them.",
   platform: "macOS",

@@ -1,14 +1,10 @@
-import { Redacted } from "effect";
 import { useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
 import {
-  addedTextOf,
   canVerifyClaude,
   denialResultOf,
   holderLineOf,
-  type SecretSlot,
-  secretFieldNote,
-  secretSlotsOf,
+  leftBehindOf,
   storingRefusalOf,
   vaultStateLabels,
   vaultStateNoteOf,
@@ -16,12 +12,12 @@ import {
 } from "../connectors";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
-import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Button } from "../ui/button";
+import { SecretField } from "./secretField";
 import { SettingsCard, SettingsRule } from "./settingsParts";
 
-/** Secrets enter once and the Vault only returns their metadata. */
+/** The Vault's state and protection, and the secrets no connector panel holds. It only returns their metadata. */
 export function VaultCard({ client }: { client: ServiceClient }) {
   const [revision, setRevision] = useState(0);
   const vault = useServiceQuery(client, { _tag: "ReadVault" }, `vault:${revision}`);
@@ -75,115 +71,22 @@ export function VaultCard({ client }: { client: ServiceClient }) {
             </>
           )}
           {result !== null && <Text style={styles.body}>{result}</Text>}
-          {connectors.data === null ? (
-            <Text style={connectors.error === null ? styles.muted : styles.error}>
-              {connectors.error ?? "Reading connectors…"}
-            </Text>
-          ) : (
-            secretSlotsOf(connectors.data, view.entries).map((slot) => (
-              <Secret
-                client={client}
-                key={`${slot.connectorId}:${slot.kind}`}
-                refusal={storingRefusalOf(view)}
-                slot={slot}
-              />
-            ))
-          )}
+          <Text style={styles.muted}>
+            A connector's own key is entered in that connector's tab. The Vault keeps them, and any secret left behind
+            by a connector that is no longer installed.
+          </Text>
+          {connectors.data !== null &&
+            leftBehindOf(connectors.data, view.entries).map((slot) => (
+              <View key={`${slot.connectorId}:${slot.kind}`} style={{ gap: 8 }}>
+                <SettingsRule />
+                <Text style={styles.body}>{slot.connectorName}</Text>
+                <SecretField client={client} refusal={storingRefusalOf(view)} slot={slot} />
+              </View>
+            ))}
         </>
       )}
       {view !== null && vault.error !== null && <Text style={styles.error}>{vault.error}</Text>}
       {error !== null && <Text style={styles.error}>{error}</Text>}
     </SettingsCard>
-  );
-}
-
-function Secret({ client, refusal, slot }: { client: ServiceClient; refusal: string | null; slot: SecretSlot }) {
-  const [editing, setEditing] = useState(false);
-  const [removing, setRemoving] = useState(false);
-  const [secret, setSecret] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const save = () => {
-    setBusy(true);
-    const request = { connectorId: slot.connectorId, kind: slot.kind, secret: Redacted.make(secret) };
-    client
-      .request(slot.entry === null ? { _tag: "PutSecret", ...request } : { _tag: "ReplaceSecret", ...request })
-      .then(
-        () => {
-          setSecret("");
-          setEditing(false);
-          setError(null);
-        },
-        (reason) => setError(messageOf(reason)),
-      )
-      .finally(() => setBusy(false));
-  };
-  return (
-    <View style={{ gap: 8 }}>
-      <SettingsRule />
-      <Text style={styles.body}>
-        {slot.connectorName} · {slot.kind}
-      </Text>
-      <Text style={styles.muted}>{slot.entry === null ? "Not stored" : addedTextOf(slot.entry)}</Text>
-      {!editing && (
-        <Button
-          isDisabled={refusal !== null || busy}
-          label={slot.entry === null ? "Add secret" : "Replace secret"}
-          onPress={() => setEditing(true)}
-        />
-      )}
-      {editing && (
-        <>
-          <Text style={styles.muted}>{secretFieldNote}</Text>
-          <TextInput
-            accessibilityLabel={`${slot.connectorName} ${slot.kind}`}
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!busy}
-            onChangeText={setSecret}
-            secureTextEntry
-            style={{ borderColor: colors.edge, borderWidth: 1, color: colors.text, padding: 8 }}
-            value={secret}
-          />
-          <Button isDisabled={busy || secret.length === 0 || refusal !== null} label="Save secret" onPress={save} />
-          <Button
-            isDisabled={busy}
-            isPrimary={false}
-            label="Cancel"
-            onPress={() => {
-              setSecret("");
-              setEditing(false);
-            }}
-          />
-        </>
-      )}
-      {slot.entry !== null && !removing && (
-        <Button isDisabled={busy} isPrimary={false} label="Remove secret" onPress={() => setRemoving(true)} />
-      )}
-      {removing && (
-        <>
-          <Text style={styles.muted}>Remove this secret? The connector will need it again.</Text>
-          <Button
-            isDisabled={busy}
-            label="Confirm removal"
-            onPress={() => {
-              setBusy(true);
-              client
-                .request({ _tag: "RemoveSecret", connectorId: slot.connectorId, kind: slot.kind })
-                .then(
-                  () => {
-                    setRemoving(false);
-                    setError(null);
-                  },
-                  (reason) => setError(messageOf(reason)),
-                )
-                .finally(() => setBusy(false));
-            }}
-          />
-          <Button isDisabled={busy} isPrimary={false} label="Cancel" onPress={() => setRemoving(false)} />
-        </>
-      )}
-      {error !== null && <Text style={styles.error}>{error}</Text>}
-    </View>
   );
 }

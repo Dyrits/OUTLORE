@@ -64,6 +64,13 @@ export const secretSlotsOf = (cards: ReadonlyArray<ConnectorCard>, entries: Read
   return slots;
 };
 
+/** The secrets no connector panel holds: those of a connector that is not installed (or is being removed), which the Vault still lists so they can be removed. */
+export const leftBehindOf = (cards: ReadonlyArray<ConnectorCard>, entries: ReadonlyArray<VaultEntry>) =>
+  secretSlotsOf(cards, entries).filter((slot) => {
+    const card = cards.find((each) => each.id === slot.connectorId);
+    return card === undefined || !isInstalledCard(card) || card.state === "Removing";
+  });
+
 /** Why a secret cannot be stored or replaced now, or null when it can: a refusal of the Vault's rule, or a state that stores nothing. */
 export const storingRefusalOf = (view: Pick<VaultView, "protection" | "state" | "stateReason">) => {
   if (view.state === "Locked" || view.state === "Lost" || view.state === "Corrupt") return vaultStateNoteOf(view);

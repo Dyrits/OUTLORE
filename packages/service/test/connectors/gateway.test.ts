@@ -51,7 +51,7 @@ describe("which tools a thread is given", () => {
         const card = yield* install("calendar");
         expect(card).toMatchObject({
           isEnabled: true,
-          needs: "Add your API key in the Vault.",
+          needs: "Add your API key below.",
           state: "NeedsConnecting",
         });
         const quest = yield* startMission({ text: "Hello" });

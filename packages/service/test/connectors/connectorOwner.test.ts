@@ -70,7 +70,7 @@ describe("installing a connector", () => {
       yield* Effect.gen(function* () {
         expect(yield* card("applefake")).toMatchObject({ needs: "Needs a Mac.", state: "NeedsMac" });
         const refused = yield* Effect.flip(install("applefake"));
-        expect(refused).toMatchObject({ kind: "InvalidInput", message: "Apple apps needs a Mac." });
+        expect(refused).toMatchObject({ kind: "InvalidInput", message: "Apple's applications on macOS needs a Mac." });
         expect(yield* rows("connectors")).toEqual([]);
       }).pipe(Effect.provide(world.layer));
     }),

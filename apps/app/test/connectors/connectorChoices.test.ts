@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { choiceOfSwitch, choiceViewOf, globalOffNote } from "../../src/connectors/connectorChoices";
 import { appsAfterToggle, toolGroupsOf } from "../../src/connectors/connectorWords";
-import { canVerifyClaude, storingRefusalOf } from "../../src/connectors/vaultWords";
+import { canVerifyClaude, leftBehindOf, storingRefusalOf } from "../../src/connectors/vaultWords";
 
 describe("choosing connectors in the Charter", () => {
   it("shows an inherited realm choice and permits resetting an explicit choice", () => {
@@ -51,5 +51,17 @@ describe("choosing connectors in the Charter", () => {
     expect(storingRefusalOf({ protection, state: "Absent", stateReason: null })).toBe("Claude Code is unverified");
     expect(canVerifyClaude({ protection })).toBe(true);
     expect(storingRefusalOf({ protection, state: "Locked", stateReason: "Keychain locked" })).toBe("Keychain locked");
+  });
+
+  it("lists in the Vault only the secrets no connector panel holds", () => {
+    const card = (id: string, state: string) =>
+      ({ id, name: id, secretKinds: ["API key"], state }) as unknown as Parameters<typeof leftBehindOf>[0][number];
+    const entry = (connectorId: string) =>
+      ({ addedAt: "2026-11-19T00:00:00Z", connectorId, kind: "API key" }) as unknown as Parameters<
+        typeof leftBehindOf
+      >[1][number];
+    const cards = [card("composio", "Ready"), card("gone", "Removing"), card("other", "NotInstalled")];
+    const slots = leftBehindOf(cards, [entry("composio"), entry("gone"), entry("other"), entry("unknown")]);
+    expect(slots.map((slot) => slot.connectorId)).toEqual(["gone", "other", "unknown"]);
   });
 });

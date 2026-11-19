@@ -16,6 +16,7 @@ export {
   canVerifyClaude,
   denialResultOf,
   holderLineOf,
+  leftBehindOf,
   type SecretSlot,
   secretFieldNote,
   secretSlotsOf,

@@ -191,7 +191,7 @@ export const appleLikeEntry: CatalogEntry = {
   backend: { _tag: "Stdio", server: "fake-server", version: "1.0.0" },
   description: "Mac apps for the tests.",
   id: "applefake",
-  name: "Apple apps",
+  name: "Apple's applications on macOS",
   notice: "What a tool reads goes to the model provider.",
   platform: "macOS",
   secretKind: null,

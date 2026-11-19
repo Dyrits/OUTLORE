@@ -7,12 +7,12 @@ import { codeModeExplanation, codeModeLabel, codeModeStateOf, experimentalLabel 
 import { SettingsCard } from "./settingsParts";
 
 /**
- * The Connectors section: the one global Code Mode switch. It reads and writes `shouldUseCodeMode` like every other
+ * The Borderlands tab's global Code Mode switch. It reads and writes `shouldUseCodeMode` like every other
  * setting, so a change made on another device shows here too.
  */
 export function CodeModeCard({ onSave, settings }: { onSave: (change: SettingsChange) => void; settings: Settings }) {
   return (
-    <SettingsCard icon="code" title="Connectors">
+    <SettingsCard icon="code" title="Code Mode">
       <View style={local.switchRow}>
         <ToggleRow
           label={codeModeLabel}

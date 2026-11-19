@@ -14,9 +14,8 @@ import { ToggleRow } from "../ui/toggleRow";
 import { UsageScreen } from "../usage";
 import { AccountBudgetsCard } from "./accountBudgetsCard";
 import { BrowsableRootsCard } from "./browsableRootsCard";
-import { CodeModeCard } from "./codeModeCard";
 import { ComputerNameCard } from "./computerNameCard";
-import { ConnectorsCard } from "./connectorsCard";
+import { ConnectorsSection } from "./connectorsSection";
 import { DefaultCompanionCard } from "./defaultCompanionCard";
 import { LookCard } from "./lookCard";
 import { NumberField, NumberSetting } from "./numberSetting";
@@ -27,7 +26,6 @@ import { RemoteAccessCard } from "./remoteAccessCard";
 import { SettingsCard, SettingsHeading, SettingsMenu, SettingsRule } from "./settingsParts";
 import type { SettingsSectionId } from "./settingsSections";
 import { UpdatesCard } from "./updatesCard";
-import { VaultCard } from "./vaultCard";
 import { WorkshopTabsProvider } from "./workshopTabs";
 
 // Stored and wire names keep `intel` so existing data and agents still work: settings keys (`intelHalfLives`, `intelWarningPercent`).
@@ -155,9 +153,7 @@ export function SettingsScreen({
               </WorkshopTabsProvider>
             </Section>
             <Section active={active} id="connectors">
-              <ConnectorsCard client={client} />
-              <VaultCard client={client} />
-              <CodeModeCard onSave={save} settings={settings} />
+              <ConnectorsSection client={client} onSave={save} settings={settings} />
             </Section>
             <Section active={active} id="remote">
               <RemoteAccessCard client={client} />

@@ -230,10 +230,12 @@ const make = (options: ConnectorsOptions) =>
             const entry = entryOf(catalog, connectorId);
             if (entry === null) return yield* notFound("Outlore offers no such connector.");
             if (entry.platform === "macOS" && platform !== "darwin")
-              return yield* invalid("Apple apps run on a Mac only, so there is no permission to ask for here.");
+              return yield* invalid(
+                "Apple's applications on macOS run on a Mac only, so there is no permission to ask for here.",
+              );
             const record = yield* readConnectorRecord(connectorId).pipe(provided);
             if (record === null || record.isRemoving || entry.apps.length === 0)
-              return yield* invalid("That Apple apps connector is not installed on this computer.");
+              return yield* invalid("That Apple's applications on macOS connector is not installed on this computer.");
             const apps = record.apps ?? defaultAppsOf(entry);
             const revision = permissionRevision;
             // The probe runs on the backend the connector's calls run on, so macOS is asked by the same child process.

@@ -71,7 +71,7 @@ export const cardOf = Effect.fnUntraced(function* (dependencies: CardDependencie
     entry.apps.length > 0
       ? appleConnectionNeedOf(dependencies, record)
       : (record.needs ??
-        (standing.isConnected || entry.secretKind === null ? null : `Add your ${entry.secretKind} in the Vault.`));
+        (standing.isConnected || entry.secretKind === null ? null : `Add your ${entry.secretKind} below.`));
   return {
     ...base,
     borderlandsChoice: choices.borderlands,
