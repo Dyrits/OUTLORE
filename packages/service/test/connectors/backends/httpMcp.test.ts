@@ -156,6 +156,42 @@ const fakeConnect = () =>
 /** The fake's sockets and their close, kept apart from what a test reads of the fake. */
 const fakeConnectShutdown = new Map<FakeConnect, () => void>();
 
+/**
+ * A server that answers every request with one redirect to `location`, as a server (or something between) that
+ * moves the connector's requests elsewhere would: its status is the test's to choose.
+ */
+const redirectingServer = (status: number, location: string) =>
+  Effect.acquireRelease(
+    Effect.callback<{ readonly taken: number; readonly url: string }, Error>((resume) => {
+      let address = "not-listening";
+      const state = {
+        taken: 0,
+        get url() {
+          return address;
+        },
+      };
+      const server = createServer((_request, response) => {
+        state.taken += 1;
+        response.writeHead(status, { location }).end();
+      });
+      server.once("error", (error) => resume(Effect.fail(error)));
+      server.listen(0, "127.0.0.1", () => {
+        const listening = server.address();
+        if (listening === null || typeof listening === "string") {
+          resume(Effect.fail(new Error("the redirecting server has no listening address")));
+          return;
+        }
+        address = `http://127.0.0.1:${listening.port}/mcp`;
+        resume(Effect.succeed(state));
+      });
+      redirectShutdown.set(state, () => server.close());
+    }),
+    (state) => Effect.sync(() => redirectShutdown.get(state)?.()),
+  );
+
+/** The redirecting servers' close, kept apart from what a test reads of them. */
+const redirectShutdown = new Map<{ readonly url: string; taken: number }, () => void>();
+
 /** A Composio-like catalog entry whose HTTP backend is the fake server's address. */
 const httpServiceEntryOf = (url: string): CatalogEntry => ({
   apps: [],
@@ -339,6 +375,58 @@ describe("the Streamable-HTTP MCP backend", () => {
         }),
       ),
     ),
+  );
+
+  it.live("refuses a redirect, so the key never reaches the other origin", () =>
+    Effect.gen(function* () {
+      // The other origin the redirect names: a second real server, which records anything it is sent.
+      const elsewhere = yield* fakeConnect();
+      for (const status of [301, 307, 308]) {
+        yield* redirectingServer(status, elsewhere.url).pipe(
+          Effect.flatMap((redirector) =>
+            Effect.gen(function* () {
+              elsewhere.forgetTaken();
+              const backend = httpMcpBackend({ _tag: "Http", header: "x-consumer-api-key", url: redirector.url });
+              const failure = yield* Effect.flip(backend.listTools(testKey));
+              expect(failure).toMatchObject({ class: "Failed" });
+              expect(failure.upstream).toBe(
+                "The server redirected the request elsewhere, which the adapter does not follow.",
+              );
+              // The redirect was taken once, answered, and not followed: the key's header went nowhere else.
+              expect(redirector.taken).toBe(1);
+              expect(elsewhere.taken).toHaveLength(0);
+            }),
+          ),
+        );
+      }
+    }),
+  );
+
+  it.live("refuses a redirect to another host spelling and to the same origin alike, key or no key", () =>
+    Effect.gen(function* () {
+      const elsewhere = yield* fakeConnect();
+      const elsewhereByHost = elsewhere.url.replace("127.0.0.1", "localhost");
+      // A different host spelling is a different origin, as a plainer scheme would be; the key must not be re-sent.
+      yield* redirectingServer(302, elsewhereByHost).pipe(
+        Effect.flatMap((redirector) =>
+          Effect.gen(function* () {
+            const backend = httpMcpBackend({ _tag: "Http", header: "x-consumer-api-key", url: redirector.url });
+            expect((yield* Effect.flip(backend.listTools(testKey))).upstream).toContain("does not follow");
+            expect(elsewhere.taken).toHaveLength(0);
+            // Even a redirect the server points at itself, and a keyless listing, are not followed.
+            yield* redirectingServer(301, redirector.url).pipe(
+              Effect.flatMap((selfRedirect) =>
+                Effect.gen(function* () {
+                  const sameOrigin = httpMcpBackend({ _tag: "Http", header: "x-key", url: selfRedirect.url });
+                  expect((yield* Effect.flip(sameOrigin.listTools(null))).class).toBe("Failed");
+                  expect(selfRedirect.taken).toBe(1);
+                }),
+              ),
+            );
+          }),
+        ),
+      );
+    }),
   );
 
   it.live("maps each kind of refusal to its class, with no word of the server's answer anywhere", () =>

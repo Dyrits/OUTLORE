@@ -13,7 +13,7 @@ import {
   reasonOf,
   targetOf,
 } from "../policy/index.ts";
-import { isInsideVaultFolder, VaultFolder } from "../vault/index.ts";
+import { isInsideVaultFolder, searchReachesVaultFolder, VaultFolder } from "../vault/index.ts";
 import type { Decision } from "./approvalContracts.ts";
 import { type Asked, allowingOutcomes, type makeQuestions, textOf } from "./questions.ts";
 import { readAuthorityHarness } from "./turnAdmission.ts";
@@ -23,6 +23,12 @@ import { ScratchRoot, threadFolderOf } from "./workspaces.ts";
 const readTools: ReadonlyArray<string> = ["Read", "Grep", "Glob", "NotebookRead"];
 const pathFields = ["file_path", "path", "notebook_path", "pattern"] as const;
 
+/**
+ * The built-in tools that search a whole tree rather than read one named file: their reach is decided by the root
+ * they start from, which is the `path` they name or, absent that, the thread's own folder.
+ */
+const searchTools: ReadonlyArray<string> = ["Grep", "Glob"];
+
 /** Whether a built-in read tool's input names a path in the Vault's folder, relative paths taken from the thread's folder. */
 const isReadOfVault = (vaultFolder: string, toolName: string, input: unknown, folder: string | null) =>
   readTools.includes(toolName) &&
@@ -30,6 +36,18 @@ const isReadOfVault = (vaultFolder: string, toolName: string, input: unknown, fo
     const path = fieldOf(input, field);
     return typeof path === "string" && isInsideVaultFolder(vaultFolder, path, folder ?? "/");
   });
+
+/**
+ * Whether a search tool would walk into the Vault's folder: its root is the `path` it names, or the thread's own
+ * folder when it names none, and any root that is the folder or lies above it reaches in — a bare `/`, the owner's
+ * home, the Vault's parent, or a link to any of them.
+ */
+const isSearchOfVault = (vaultFolder: string, toolName: string, input: unknown, folder: string | null) => {
+  if (!searchTools.includes(toolName)) return false;
+  const named = fieldOf(input, "path");
+  const root = typeof named === "string" ? named : (folder ?? "/");
+  return searchReachesVaultFolder(vaultFolder, root, folder ?? "/");
+};
 
 interface PromptPolicyDependencies {
   readonly allowedFolderOf: (id: string) => string | undefined;
@@ -109,8 +127,13 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
         return { isAllowed: false, text: "This thread is not at work, so nothing runs." } satisfies Decision;
       const stored = yield* threadFolderOf(threadId).pipe(Effect.provideService(ScratchRoot, scratchRoot));
       // Claude Code's own Read, Grep and Glob run outside its command sandbox, so its denial of the Vault's folder does
-      // not reach them (ADR 0022): a call naming a path in the folder is refused, whatever the level or any grant.
-      if (Option.isSome(vaultFolder) && isReadOfVault(vaultFolder.value, toolName, input, stored))
+      // not reach them (ADR 0022): a call naming a path in the folder is refused, whatever the level or any grant, and
+      // so is a Grep or Glob whose search would walk into the folder from above (work/promptPolicy.ts).
+      if (
+        Option.isSome(vaultFolder) &&
+        (isReadOfVault(vaultFolder.value, toolName, input, stored) ||
+          isSearchOfVault(vaultFolder.value, toolName, input, stored))
+      )
         return { isAllowed: false, text: "The Vault's folder is closed to threads." } satisfies Decision;
       // What an allowance or a grant names: the file or command the action acts on.
       const target = targetOf(toolName, input);

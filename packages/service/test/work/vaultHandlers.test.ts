@@ -6,6 +6,8 @@ import { Effect, Layer, Redacted } from "effect";
 import type { CatalogEntry, ConnectorBackend, ConnectorBackends } from "../../src/connectors/index.ts";
 import { Harness, type HarnessAdapter, vaultFolderOf } from "../../src/core/index.ts";
 import { fakeHarnessLayer } from "../../src/harness/index.ts";
+import type { RunCommand } from "../../src/harness/vaultDenial.ts";
+
 import { readClaudeVaultDenial, runClaudeVaultDenialLive } from "../../src/harness/vaultDenials.ts";
 import { serviceLayer } from "../../src/index.ts";
 import { calendarEntry, failureOf, fakeBackendsLayer } from "../fixtures/connectorBackend.ts";
@@ -79,6 +81,25 @@ const unverifiedHarness = Layer.effect(
     }),
   ),
 ).pipe(Layer.provide(fakeHarnessLayer("10 millis")));
+
+/**
+ * A harness whose stand-in `claude` changes under it mid-run, as an install, an upgrade or a removal would: every
+ * protection read must ask it afresh, not lean on what an earlier probe reported.
+ */
+const switchingClaudeHarness = (claude: { current: RunCommand }) =>
+  Layer.effect(
+    Harness,
+    Effect.map(
+      Harness,
+      (base): HarnessAdapter => ({
+        ...base,
+        readVaultDenial: (harness: HarnessName, folder: string) =>
+          readClaudeVaultDenial({ command: "claude", run: claude.current }, harness, folder),
+        runVaultDenialLive: (harness: HarnessName, folder: string) =>
+          runClaudeVaultDenialLive({ command: "claude", run: claude.current }, harness, folder),
+      }),
+    ),
+  ).pipe(Layer.provide(fakeHarnessLayer("10 millis")));
 
 /** A server that refuses the connector's credentials. */
 const refusingBackend: ConnectorBackend = {
@@ -232,6 +253,52 @@ describe("the protected-or-no-secrets rule over the requests", () => {
       }),
     ),
   );
+
+  it.live(
+    "asks the harnesses afresh at each storing, so a Claude Code installed after an earlier probe counts at once",
+    () => {
+      const claude = { current: fakeClaudeLiveRun("2.1.326", { isNotInstalled: true }) };
+      return inVaultWorld({ harness: switchingClaudeHarness(claude) }, () =>
+        Effect.gen(function* () {
+          // Claude Code absent: nothing is unverified, so a secret may be stored.
+          expect((yield* readVault()).protection.isAllowed).toBe(true);
+          // Claude Code appears, with no verified denial of the folder yet: the next storing asks afresh and refuses.
+          claude.current = fakeClaudeLiveRun("2.1.326");
+          const refused = yield* Effect.flip(put("composio", distinctiveSecret()));
+          expect(refused).toMatchObject({ kind: "AccessRefused" });
+          expect(refused.message).toContain("Not protected from");
+          expect((yield* readVault()).entries).toEqual([]);
+          expect((yield* readVault()).protection.unverified.map((entry) => entry.harness)).toContain("Claude Code");
+          // The owner runs the live probe for it: verified, and storing works again.
+          expect(yield* verify()).toMatchObject({ status: "Verified" });
+          yield* put("composio", distinctiveSecret());
+          expect((yield* readVault()).entries).toHaveLength(1);
+        }),
+      );
+    },
+  );
+
+  it.live("asks afresh after an upgrade: a stamp verified for another version no longer allows a storing", () => {
+    const claude = { current: fakeClaudeLiveRun("2.1.326") };
+    return inVaultWorld({ harness: switchingClaudeHarness(claude) }, () =>
+      Effect.gen(function* () {
+        expect(yield* verify()).toMatchObject({ status: "Verified" });
+        yield* put("composio", distinctiveSecret());
+        // Claude Code upgrades: the stamp names the old version, so the fresh probe reads it stale and refuses.
+        claude.current = fakeClaudeLiveRun("2.1.327");
+        expect(yield* Effect.flip(replace("composio", distinctiveSecret()))).toMatchObject({
+          kind: "AccessRefused",
+        });
+        const between = yield* readVault();
+        expect(between.protection.isAllowed).toBe(false);
+        // The stored secret stays sealed and listed: only new storings wait for a probe of the new version.
+        expect(between.entries).toHaveLength(1);
+        expect(yield* verify()).toMatchObject({ status: "Verified" });
+        yield* replace("composio", distinctiveSecret());
+        expect((yield* readVault()).protection.isAllowed).toBe(true);
+      }),
+    );
+  });
 });
 
 describe("a replaced secret clearing the connector's Needs connecting", () => {

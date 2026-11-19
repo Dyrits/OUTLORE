@@ -6,9 +6,10 @@ import { redactedOf } from "../connectorErrors.ts";
 
 // A Streamable-HTTP MCP client (connectors blueprint, Backends): one POST per request, no session kept, the
 // connector's key in the one header its catalog entry names, and a failure carrying the backend's own fixed words,
-// since an upstream's text may echo the key. Whether `connect.composio.dev/mcp` answers `tools/list` without a prior
-// `initialize` is not checked against the real server (no key); if it refuses, the fallback is one `initialize`
-// request when the backend opens (specification, Composio; CHG-0535).
+// since an upstream's text may echo the key. Redirects are never followed, so the key's header cannot be carried to
+// another origin. Whether `connect.composio.dev/mcp` answers `tools/list` without a prior `initialize` is not
+// checked against the real server (no key); if it refuses, the fallback is one `initialize` request when the
+// backend opens (specification, Composio; CHG-0535).
 
 /** The HTTP transport of one catalog entry. */
 type HttpTransport = Extract<CatalogBackend, { readonly _tag: "Http" }>;
@@ -23,6 +24,12 @@ const failureWordsOf = {
   InvalidArguments: "The server did not accept the call's arguments.",
   Unreachable: "The server could not be reached.",
 } as const satisfies Record<ConnectorErrorClass, string>;
+
+/**
+ * The fixed words of a refused redirect: following one would carry the key's header to whoever the server (or
+ * something between) names, including another origin or a plainer scheme, so no redirect is ever followed.
+ */
+const redirectWords = "The server redirected the request elsewhere, which the adapter does not follow.";
 
 /** The failure with the class's own fixed words: nothing a server said reaches it. */
 const refuse = (errorClass: ConnectorErrorClass) =>
@@ -102,9 +109,15 @@ const ask = (
           "mcp-protocol-version": protocolVersion,
           ...(secret === null ? {} : { [transport.header]: secret }),
         },
+        // Never followed: a redirect would send the key's header to whatever origin the server names (a different
+        // host, or a plainer scheme), so the adapter takes the answer itself and refuses it below.
         method: "POST",
+        redirect: "manual",
         signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMillis)]),
       }).then(async (response) => {
+        // A manual redirect answers with its 3xx status, or as an opaque redirect of status 0; either way the key stops here.
+        if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400))
+          throw new HttpRefusal("Failed", redirectWords);
         if (response.status < 200 || response.status >= 300) throw new HttpRefusal(failureClassOf(response.status));
         // A 2xx answer with no JSON-RPC message in it is the server's failure, not a network one.
         const message = (response.headers.get("content-type") ?? "").includes("text/event-stream")
@@ -119,9 +132,9 @@ const ask = (
 class HttpRefusal extends Error {
   readonly failure: BackendFailure;
 
-  constructor(errorClass: ConnectorErrorClass) {
-    super(failureWordsOf[errorClass]);
-    this.failure = refuse(errorClass);
+  constructor(errorClass: ConnectorErrorClass, words: string = failureWordsOf[errorClass]) {
+    super(words);
+    this.failure = new BackendFailure({ class: errorClass, upstream: words });
   }
 }
 

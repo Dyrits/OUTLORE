@@ -96,8 +96,7 @@ export const vaultHandlers = (commands: CommandRunner, vault: Vault["Service"], 
             reason: "This host's harness has no live probe of the Vault's folder.",
             status: "Unverified",
           } satisfies VaultDenial);
-        // A verified probe wrote a fresh stamp, so the Vault's rule reads the adapters' reports again.
-        if (report.status === "Verified") yield* vault.refreshDenials;
+        // A verified probe wrote a fresh stamp; the rule asks the adapters afresh at each protection read anyway.
         return { reason: report.reason, status: report.status };
       }),
   };

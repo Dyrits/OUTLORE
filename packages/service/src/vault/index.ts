@@ -1,5 +1,5 @@
 export { type CommandResult, CommandRunner, commandRunnerLayer } from "./commandRunner.ts";
-export { isInsideVaultFolder } from "./folderAccess.ts";
+export { isInsideVaultFolder, searchReachesVaultFolder } from "./folderAccess.ts";
 export { custodiesOf } from "./keyCustody/index.ts";
 export type { KeyCustody, KeyRead } from "./keyCustody.ts";
 export { harnessLabelOf, type Protection, protectionOf } from "./protection.ts";
