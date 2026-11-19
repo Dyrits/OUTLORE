@@ -1,6 +1,6 @@
-# Verification: the four connectors branches merged into one (CHG-0537)
+# Verification: the four connectors branches merged into one (CHG-0542)
 
-- **Work:** CHG-0537, on the branch `mission/connectors-composio-and-apple-apps-cd1b5543`, made from `main` at `8d4b767`; merge commits `2f99671` (Vault + gateway + join, branch `-02a36299`), `e6a287c` (HTTP backend, branch `-2f728664`) and `2c42485` (stdio backend, branch `-74a0ea1f`), then the renumbering, the one backends layer, the new test and the documents. Not pushed; `main` untouched.
+- **Work:** CHG-0542, on the branch `mission/connectors-composio-and-apple-apps-cd1b5543`, made from `main` at `8d4b767`; merge commits `2f99671` (Vault + gateway + join, branch `-02a36299`), `e6a287c` (HTTP backend, branch `-2f728664`) and `2c42485` (stdio backend, branch `-74a0ea1f`), then the renumbering, the one backends layer, the new test and the documents. Not pushed; `main` untouched.
 - **Environment:** macOS, inside a thread's sandbox, with `TMPDIR=<repo>/.tmp-test` (no space) and `CI=1`.
 - **Verdict:** the three branches merge with the conflicts resolved as described in the changelog entry; the service's default wiring (the real Vault, `connectorBackendsLayer`) reaches an HTTP connector and a stdio connector in one turn. What the merge did not touch was not rerun beyond the full suite below.
 

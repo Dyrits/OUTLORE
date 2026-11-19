@@ -1,6 +1,6 @@
 # Composio's consumer MCP: the tools Outlore's connector offers (read 2026-11-19)
 
-Primary sources read for the Composio catalog entry and the Streamable-HTTP backend (CHG-0535). Composio is the
+Primary sources read for the Composio catalog entry and the Streamable-HTTP backend (CHG-0540). Composio is the
 connector Outlore's specification names first; the claims below are from Composio's own docs and the ComposioHQ/composio
 repo, never from a third party's summary. Nothing here was checked against the live server: no key was held and no
 request was sent.

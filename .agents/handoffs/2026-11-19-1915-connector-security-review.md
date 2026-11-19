@@ -11,12 +11,12 @@ Fix the three findings of the broader connector security review on the Charter e
 
 ## State
 
-- CHG-0542 fixes all three findings, verified by regressions that first failed against the unfixed or half-fixed code:
+- CHG-0547 fixes all three findings, verified by regressions that first failed against the unfixed or half-fixed code:
   - `httpMcp.ts` sends `redirect: "manual"` and refuses any redirect answer (class `Failed`, its own fixed words), so the key header can never be re-sent to another origin. Two real local servers prove 301, 302, 307 and 308 are refused and the target origin receives nothing.
   - `work/promptPolicy.ts` refuses a Grep or Glob whose search root — the `path` given, or the thread's folder when none is — is the Vault's folder or lies above it, through links (new `searchReachesVaultFolder` in `vault/folderAccess.ts`). The named-path rule for Read and NotebookRead is unchanged.
   - `vault/vault.ts` asks the denial probes afresh at every protection read (serialized on a semaphore, still never at service start); `refreshDenials` is removed from the Vault service and `VerifyClaudeVaultDenial` no longer calls it. A stand-in `claude` installed or upgraded mid-run is refused at the next storing.
 - Checks run in the worktree sandbox, 2026-11-19: the 33 targeted tests over the three regressions pass; `bunx biome check packages/service packages/contracts` clean; `bun run typecheck` passes; the full suite (`TMPDIR=<repo>/.tmp-test CI=1 bun run test`) passes 2,444 tests, 66 skipped, 0 failed (307 files passed, 6 skipped). This run had none of the 28 known sandbox `git init` failures.
-- The Apple permission work of CHG-0541 and the restart constraint recorded in `documentation/research/apple-automation-restart-2026-11-19.md` are unchanged.
+- The Apple permission work of CHG-0546 and the restart constraint recorded in `documentation/research/apple-automation-restart-2026-11-19.md` are unchanged.
 
 ## Decisions
 

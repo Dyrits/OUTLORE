@@ -11,7 +11,7 @@ Integrate the connector quest and verify the Apple permission flow on the owner'
 
 ## State
 
-- CHG-0541 addresses both Apple permission findings. The host tracks selected apps' observed outcomes across screens and returns them to paired devices. The gateway withdraws a denied app's tools and warns without exposing the server's words. See the verification note for the checks run.
+- CHG-0546 addresses both Apple permission findings. The host tracks selected apps' observed outcomes across screens and returns them to paired devices. The gateway withdraws a denied app's tools and warns without exposing the server's words. See the verification note for the checks run.
 - Desktop and paired screen appearance, real Composio, the real Automation prompt, live Claude denial and a real Keychain remain unchecked.
 
 ## Decisions

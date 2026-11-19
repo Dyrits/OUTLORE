@@ -34,5 +34,5 @@ Finish and review the connector Charter, placement controls and live checks, the
 
 ## Sources
 
-- `documentation/capabilities/connectors/specifications.md`, `documentation/capabilities/connectors/blueprint.md`, `documentation/verification/2026-11-19-connector-charter.md`, `documentation/changelog/0.1.12-Prototype.md` (CHG-0538).
+- `documentation/capabilities/connectors/specifications.md`, `documentation/capabilities/connectors/blueprint.md`, `documentation/verification/2026-11-19-connector-charter.md`, `documentation/changelog/0.1.12-Prototype.md` (CHG-0543).
 - `apps/app/src/connectors/`, `apps/app/src/settings/connectorsCard.tsx`, `apps/app/src/settings/vaultCard.tsx`, `apps/app/src/quests/questPanel.tsx`, `packages/service/src/connectors/connectorChoiceCards.ts`.

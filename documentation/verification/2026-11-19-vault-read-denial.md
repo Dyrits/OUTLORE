@@ -1,6 +1,6 @@
 # Verification: the Vault's read denial and the Vault (connectors blueprint, Order steps 1 and 2)
 
-- **Work:** CHG-0531 (the denial in the three adapters, and the probes) and CHG-0532 (the Vault), on `mission/connectors-composio-and-apple-apps-e209fd61`, commits `61f75d3` and `4647aae`.
+- **Work:** CHG-0536 (the denial in the three adapters, and the probes) and CHG-0537 (the Vault), on `mission/connectors-composio-and-apple-apps-e209fd61`, commits `61f75d3` and `4647aae`.
 - **Environment:** macOS 26 (Darwin 25.6.0), Apple silicon, Electron 45.3.1 as Node for the suite, Claude Code 2.1.327, codex-cli 0.170.0, `/usr/bin/sandbox-exec`. Probes that apply a Seatbelt profile, and the real Keychain tests, were run **outside** this thread's sandbox (a process cannot apply a profile inside another sandbox: `sandbox_apply: Operation not permitted`), on disposable files and one disposable Keychain item each, removed afterwards. Nothing real was stored; the Keychain holds no leftover item.
 - **Verdict:** the folder denial works in OpenCode's Seatbelt profile and in a Codex permission profile, on a real run with an outside control. **The Keychain is not a second layer: it is readable from inside the sandboxes of Claude Code, Codex and OpenCode.** Claude Code's denial of the folder was not tried in a live turn.
 

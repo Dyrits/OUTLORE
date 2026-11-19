@@ -9,6 +9,6 @@ Starting point: `ed32a73`, the merged connector service. The choice read and ini
 
 Not checked: the running screen in a desktop window or phone, screen-reader interaction, real Composio, the macOS Automation prompt, the live Claude verification, or a real Keychain. The existing Outlore window was not this worktree's build. The Charter tool list shows how Always allow is granted through a question and points to Permissions, but does not list individual standing grants.
 
-## Thread panel tools · CHG-0539
+## Thread panel tools · CHG-0544
 
 `packages/service/test/connectors/threadPanelTools.test.ts` passes three cases: a usable connector's tools and off marker, unchosen and unnamed Apple apps excluded, and an errand following its realm and a quest move. `bun run typecheck` and `bun run check` pass. `TMPDIR="$PWD/.tmp-test" CI=1 bun run test` passes 2,431 tests, with 62 skipped (305 files passed, 6 skipped). The panel uses the in-memory server listing and current choices without starting a server; a restart or failed listing clears that listing. A running turn may have a narrower snapshot until the next turn. The visual and live checks above remain open.

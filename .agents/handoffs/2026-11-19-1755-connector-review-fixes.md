@@ -12,7 +12,7 @@ Review and integrate the connector quest, including its Charter screens, then pe
 ## State
 
 - Verified by tests: four review findings at `5dbbef92` were fixed: credential-bearing listing metadata, concurrent backend and child startup, child cleanup after failed or interrupted initialize, and HTTP SSE streams that remain open. See the verification note for reproductions and exact results.
-- The Charter and thread panel controls are on this branch (CHG-0538 and CHG-0539). The thread panel shows the last cached connector listing; after a restart or failure it stays empty until a successful listing. Its choices may be broader than an active turn's snapshot.
+- The Charter and thread panel controls are on this branch (CHG-0543 and CHG-0544). The thread panel shows the last cached connector listing; after a restart or failure it stays empty until a successful listing. Its choices may be broader than an active turn's snapshot.
 - Not verified: desktop and phone appearance, screen-reader interaction, real Composio, the macOS Automation prompt, live Claude denial, real Keychain and packaged-app launch. Always allow is granted in the existing approval question and managed in Permissions; the Charter does not list individual grants.
 
 ## Decisions
@@ -32,5 +32,5 @@ Review and integrate the connector quest, including its Charter screens, then pe
 
 ## Sources
 
-- `documentation/verification/2026-11-19-connector-review-fixes.md`, `documentation/verification/2026-11-19-connector-charter.md`, `documentation/changelog/0.1.12-Prototype.md` (CHG-0538 to CHG-0540).
+- `documentation/verification/2026-11-19-connector-review-fixes.md`, `documentation/verification/2026-11-19-connector-charter.md`, `documentation/changelog/0.1.12-Prototype.md` (CHG-0543 to CHG-0545).
 - `packages/service/src/connectors/toolListing.ts`, `packages/service/src/connectors/backends/httpMcp.ts`, `packages/service/src/connectors/backends/stdioMcp.ts` and their tests in `packages/service/test/connectors/`.

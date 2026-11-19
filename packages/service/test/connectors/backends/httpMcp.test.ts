@@ -13,7 +13,7 @@ import { call, startMission } from "../../fixtures/service.ts";
 
 // The Streamable-HTTP adapter over a real HTTP server: every test spins up a fake of Composio's Connect endpoint
 // (JSON-RPC over one POST per request) on loopback — never the real service, never a real key (connectors
-// blueprint, Backends; research note of 2026-11-19; CHG-0535).
+// blueprint, Backends; research note of 2026-11-19; CHG-0540).
 
 const testKey = "ck-live-b7d51e09af/the-key==";
 const use = (name: string, args: object = {}) => `call ${name} ${JSON.stringify(args)}`;

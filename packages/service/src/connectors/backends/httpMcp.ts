@@ -9,7 +9,7 @@ import { redactedOf } from "../connectorErrors.ts";
 // since an upstream's text may echo the key. Redirects are never followed, so the key's header cannot be carried to
 // another origin. Whether `connect.composio.dev/mcp` answers `tools/list` without a prior `initialize` is not
 // checked against the real server (no key); if it refuses, the fallback is one `initialize` request when the
-// backend opens (specification, Composio; CHG-0535).
+// backend opens (specification, Composio; CHG-0540).
 
 /** The HTTP transport of one catalog entry. */
 type HttpTransport = Extract<CatalogBackend, { readonly _tag: "Http" }>;

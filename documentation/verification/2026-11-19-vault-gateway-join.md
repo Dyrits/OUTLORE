@@ -1,6 +1,6 @@
 # Verification: the Vault joined to the gateway, its owner requests, and the Claude Code denial stamp
 
-- **Work:** CHG-0534, on the branch `mission/connectors-composio-and-apple-apps-02a36299` (the merge of the Vault branch and the gateway branch, commit `a061aa0`, plus this change).
+- **Work:** CHG-0539, on the branch `mission/connectors-composio-and-apple-apps-02a36299` (the merge of the Vault branch and the gateway branch, commit `a061aa0`, plus this change).
 - **Environment:** macOS, inside a thread's sandbox, with `TMPDIR=<repo>/.tmp-test` (no space) and `CI=1`. A real SQLite database in a temporary folder per test; the scripted fake harness; a fake key holder (`test/fixtures/vault.ts`); a stand-in `claude` for the live probe (`test/fixtures/fakeClaudeLive.ts`) that answers `--version`, reads with `/bin/cat`, and answers each `-p` turn with what its `--settings` would let the sandbox read.
 - **Verdict:** the Vault serves the gateway's `VaultPort` from the same instance the owner's requests use, the five Vault requests behave as specified on fakes, the stricter protected-or-no-secrets rule holds end to end including the stamp, and a stored secret appears in no file of the service and no plain rendering. No live model turn, real Keychain, real server or screen was run.
 
@@ -26,7 +26,7 @@
 
 ## The one failure, and why it is not this change
 
-`apps/desktop/test/updates/swap.test.ts > staging the app from a disk image` fails with `hdiutil: attach failed - Permission denied`. The suite's probe (`apps/desktop/test/support/environment.ts`) only tests `hdiutil create`, which the sandbox allows; `attach` (mounting) is refused by Seatbelt here. The file and its imports are untouched by CHG-0534 (the change is in `packages/contracts`, `packages/service`, `apps/app/foundation/client.ts`), so this is the sandbox-only disk-image case the workspace's notes already record, not a regression. On the owner's machine or in CI, where a disk image can be mounted, it runs.
+`apps/desktop/test/updates/swap.test.ts > staging the app from a disk image` fails with `hdiutil: attach failed - Permission denied`. The suite's probe (`apps/desktop/test/support/environment.ts`) only tests `hdiutil create`, which the sandbox allows; `attach` (mounting) is refused by Seatbelt here. The file and its imports are untouched by CHG-0539 (the change is in `packages/contracts`, `packages/service`, `apps/app/foundation/client.ts`), so this is the sandbox-only disk-image case the workspace's notes already record, not a regression. On the owner's machine or in CI, where a disk image can be mounted, it runs.
 
 ## Not checked
 
