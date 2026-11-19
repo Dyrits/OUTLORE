@@ -7,3 +7,5 @@ Run `bun run test packages/service/test/connectors`. The readiness tests exercis
 The three focused files `appleReadiness.test.ts`, `applePermission.test.ts` and `stdioMcp.test.ts` passed 25 tests, including a generic file permission error that stays classified as Failed. Biome and typecheck passed. The full suite with `TMPDIR="$PWD/.tmp-test" CI=1 bun run test` passed 2,440 tests with 62 skipped.
 
 The vendor code formats AppleScript errors as text in MCP error content. The classifier recognizes Automation refusal markers and the vendored Messages helper's Full Disk Access error. Live macOS prompts, localized error variants, packaged app attribution and paired screen appearance remain unverified. Access changes in System Settings are observed by the next host check or a tool invocation reporting a refusal. The service does not watch System Settings.
+
+The [restart investigation](../research/apple-automation-restart-2026-11-19.md) traces the packaged sender and explains the limits of the prompt-free macOS API. The existing host-only recheck remains in effect.
