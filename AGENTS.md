@@ -54,12 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the November 19 architecture audit fixes, read the [current handoff](.agents/handoffs/2026-11-19-1350-architecture-audit-fixes.md). Handoffs are shared and committed.
+
 - To resume the working Companion indicator fix (rebased; awaiting publication and a visual check), read the [current handoff](.agents/handoffs/2026-11-19-1015-working-companion-mark.md). Handoffs are shared.
 
 - To resume the nested corner marks in the sidebar and the errand guide's alignment to the quest's left border (CHG-0530; committed and pushed; open: the owner's look in a window or on a phone, whether "error" meant the Failed state, and whether the stacked errand branch lines are acceptable), read the [current handoff](.agents/handoffs/2026-11-19-0940-nested-corner-marks.md). Handoffs are shared and committed.
-
-- To resume the code simplification across the codebase (CHG-0529; merged into `main`; open: the 28 sandbox-only test failures on the owner's machine, and which kept branches can go), read the [current handoff](.agents/handoffs/2026-11-19-0935-code-simplification-merged.md). Handoffs are shared and committed.
-
-- To resume the quest header's Mark as done checkbox and quest icon, with the quest panel's two buttons and the edge handle removed (CHG-0527; committed; open: the owner's look in a window and on a phone, and whether the phone header gets Mark as done), read the [current handoff](.agents/handoffs/2026-11-19-0731-quest-header-buttons.md). Handoffs are shared and committed.
-
-
