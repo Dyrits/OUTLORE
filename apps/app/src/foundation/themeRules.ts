@@ -3,7 +3,7 @@ import type { Theme } from "./themeName";
 export type { Theme };
 
 /** The themes offered in the Workshop, each with a light and a dark look. */
-export const themes = ["one", "iskios"] as const satisfies ReadonlyArray<Theme>;
+export const themes = ["one", "iskios", "mono"] as const satisfies ReadonlyArray<Theme>;
 
 // Fails to compile when a theme is named in `Theme` and missing from the list.
 const everyThemeIsListed: Exclude<Theme, (typeof themes)[number]> extends never ? true : never = true;

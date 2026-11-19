@@ -98,7 +98,7 @@ Whom a thread may message and whose journal it may read beyond its own tree: wha
 _Avoid_: Permission, access, scope
 
 **Theme**:
-The app's look in colors and icons: One, Iskios, or Gild. One is the default. The owner chooses it in the Workshop, and each theme comes in a dark and a light **Look**.
+The app's look in colors and icons: One, Iskios, Black & white, or Gild. One is the default. The owner chooses it in the Workshop, and each theme comes in a dark and a light **Look**.
 _Avoid_: Skin, style
 
 **Look**:
@@ -113,6 +113,9 @@ The theme with brown, gilt, and parchment colors and a hooded figure as the Dock
 
 **One**:
 The neutral theme based on Zed's One Light and One Dark colors. It is the default theme. It keeps the original application icon and the shared sidebar drawings.
+
+**Black & white**:
+The theme of pure greys with no hue: white on black in the dark look, black on white in the light one. State colors differ only by a step of grey. It keeps the original application icon. Called `mono` in code.
 
 **The Keep**:
 The navigation group containing Library, Lore, and Archive.

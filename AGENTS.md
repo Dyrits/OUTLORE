@@ -54,9 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the connector panels in the Workshop (one panel per connector; Apple's applications renamed; CHG-0551; open: the owner's look at the screens), read the [current handoff](.agents/handoffs/2026-11-19-2227-connector-panels.md). Handoffs are shared and committed.
+
+- To resume the black and white theme (CHG-0552; open: the owner's look at it in a window), read the [current handoff](.agents/handoffs/2026-11-19-2230-black-and-white-theme.md). Handoffs are shared and committed.
+
 - To resume the connectors (Composio, Apple apps, the Vault, the Charter screens; CHG-0536 to CHG-0548; merged with `main`; open: the owner's live checks and a look at the screens), read the [current handoff](.agents/handoffs/2026-11-19-2008-connectors-on-main.md). Handoffs are shared and committed.
-
-- To resume a modified file's diff shown in its step, read the [current handoff](.agents/handoffs/2026-11-19-1620-file-diff-rebased.md). Handoffs are shared and committed.
-
-- To resume the choice questions shown as chat bubbles, read the [current handoff](.agents/handoffs/2026-11-19-1610-choice-question-bubbles.md). Handoffs are shared and committed.
 

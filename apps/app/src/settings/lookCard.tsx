@@ -12,7 +12,7 @@ import { type Theme, themes } from "../foundation/themeRules";
 import { Choice } from "../ui/pickers";
 import { SettingsCard, SettingsRule } from "./settingsParts";
 
-const themeLabels = { iskios: "Iskios", one: "One" } as const satisfies Record<Theme, string>;
+const themeLabels = { iskios: "Iskios", mono: "Black & white", one: "One" } as const satisfies Record<Theme, string>;
 const colorSchemeLabels = { dark: "Dark", light: "Light", system: "System" } as const satisfies Record<
   (typeof colorSchemePreferences)[number],
   string

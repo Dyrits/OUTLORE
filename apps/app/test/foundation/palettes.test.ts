@@ -35,7 +35,7 @@ describe.each(themes.flatMap((theme) => (["dark", "light"] as const).map((scheme
       expect(contrast(colors.onAccent, colors.accent)).toBeGreaterThanOrEqual(4.5);
     });
 
-    it.runIf(theme === "one")("reads messages and state labels on their tinted backgrounds", () => {
+    it.runIf(theme !== "iskios")("reads messages and state labels on their tinted backgrounds", () => {
       expect(contrast(colors.accentText, colors.accentSoft)).toBeGreaterThanOrEqual(4.5);
       for (const background of [colors.bubbleUser, colors.accentSoft, colors.controlActive]) {
         expect(contrast(colors.text, background)).toBeGreaterThanOrEqual(4.5);
@@ -51,3 +51,13 @@ describe.each(themes.flatMap((theme) => (["dark", "light"] as const).map((scheme
     });
   },
 );
+
+describe("the black and white theme", () => {
+  const hueless = (hex: string) => hex.slice(1, 3) === hex.slice(3, 5) && hex.slice(3, 5) === hex.slice(5, 7);
+
+  it.each(["dark", "light"] as const)("has no hue in its %s look", (scheme) => {
+    for (const color of Object.values(palettes.mono[scheme])) {
+      if (color.startsWith("#")) expect(hueless(color)).toBe(true);
+    }
+  });
+});
