@@ -14,7 +14,7 @@ import { redactedOf } from "../connectorErrors.ts";
 // connector's key in the one header its catalog entry names, and a failure carrying the backend's own fixed words,
 // since an upstream's text may echo the key. Whether `connect.composio.dev/mcp` answers `tools/list` without a prior
 // `initialize` is not checked against the real server (no key); if it refuses, the fallback is one `initialize`
-// request when the backend opens (specification, Composio; CHG-0532).
+// request when the backend opens (specification, Composio; CHG-0533).
 
 /** The HTTP transport of one catalog entry. */
 type HttpTransport = Extract<CatalogBackend, { readonly _tag: "Http" }>;
