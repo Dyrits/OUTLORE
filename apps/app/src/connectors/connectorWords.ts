@@ -68,10 +68,16 @@ export const appsAfterToggle = (card: Pick<ConnectorCard, "apps">, appId: string
 
 /** What one app's macOS permission says, and where to change a refusal. */
 export const permissionLabels = {
-  Allowed: "Allowed",
+  Allowed: "Allowed at last check",
   NotAllowed: "Not allowed by macOS. Change it in System Settings, Privacy & Security, Automation.",
-  NotAskedYet: "Not asked yet.",
+  NotAskedYet: "Permission not confirmed. Run the check on the computer.",
 } satisfies Record<ApplePermissionStatus, string>;
+
+/** Messages uses the vendored server's imsg helper, which needs Full Disk Access. */
+export const applePermissionLabelOf = (app: string, status: ApplePermissionStatus) =>
+  app === "messages" && status !== "Allowed"
+    ? "Check on the computer. Messages needs the imsg helper and Full Disk Access in System Settings, Privacy & Security."
+    : permissionLabels[status];
 
 /** The words in place of the button that asks macOS, on a paired device: only the host's own window may ask. */
 export const remotePermissionNote =

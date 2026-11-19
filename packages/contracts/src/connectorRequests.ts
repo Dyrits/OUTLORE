@@ -26,11 +26,16 @@ export const ConnectorToolCard = Schema.Struct({
 });
 export type ConnectorToolCard = typeof ConnectorToolCard.Type;
 
+/** One app's macOS permission as last checked on the host. */
+export const ApplePermissionStatus = Schema.Literals(["Allowed", "NotAllowed", "NotAskedYet"]);
+export type ApplePermissionStatus = typeof ApplePermissionStatus.Type;
+
 /** One app of Apple apps and whether the owner chose it. */
 export const ConnectorAppCard = Schema.Struct({
   id: Schema.String,
   isChosen: Schema.Boolean,
   name: Schema.String,
+  permission: Schema.optionalKey(ApplePermissionStatus),
 });
 export type ConnectorAppCard = typeof ConnectorAppCard.Type;
 
@@ -144,10 +149,6 @@ export const ChooseAppleApps = Schema.TaggedStruct("ChooseAppleApps", {
   apps: Schema.Array(Schema.String),
   connectorId: Schema.String,
 });
-
-/** One app's macOS Automation permission, as asked through the connector's own child process. */
-export const ApplePermissionStatus = Schema.Literals(["Allowed", "NotAllowed", "NotAskedYet"]);
-export type ApplePermissionStatus = typeof ApplePermissionStatus.Type;
 
 /** What asking for Apple apps' permission answers: each chosen app and its status. */
 export const ApplePermissionReport = Schema.Struct({

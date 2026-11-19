@@ -35,11 +35,13 @@ describe("the connector tools in a thread's panel", () => {
     inWorld({}, () =>
       Effect.gen(function* () {
         yield* install("applefake", ["calendar"]);
+        yield* call({ _tag: "RequestApplePermission", connectorId: "applefake" });
         const quest = yield* startMission({ text: "Hello" });
         const detail = yield* untilIdle(quest.missionId);
         const panel = yield* call({ _tag: "ReadThreadPanel", threadId: detail.thread.id });
-        expect(panel.connectorTools.map((tool) => tool.name)).toEqual(["list-events"]);
+        expect(panel.connectorTools.map((tool) => tool.name)).toEqual(["list-calendars", "list-events"]);
         yield* call({ _tag: "ChooseAppleApps", apps: ["mail"], connectorId: "applefake" });
+        yield* call({ _tag: "RequestApplePermission", connectorId: "applefake" });
         const updated = yield* call({ _tag: "ReadThreadPanel", threadId: detail.thread.id });
         expect(updated.connectorTools.map((tool) => tool.name)).toEqual(["read-mail", "send-email"]);
       }),

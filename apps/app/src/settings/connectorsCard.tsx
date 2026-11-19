@@ -1,14 +1,14 @@
-import type { ApplePermissionReport, ConnectorCard } from "@outlore/contracts";
+import type { ConnectorCard } from "@outlore/contracts";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import {
+  applePermissionLabelOf,
   appsAfterToggle,
   ConnectorChoicePanel,
   canInstallCard,
   chosenAppsOf,
   connectorStateLabels,
   isInstalledCard,
-  permissionLabels,
   remotePermissionNote,
   removalWarning,
   toolClassLabels,
@@ -46,7 +46,6 @@ function Connector({ card, client, onChanged }: { card: ConnectorCard; client: S
   const [isRemoving, setRemoving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [permission, setPermission] = useState<ApplePermissionReport | null>(null);
   const attempt = (work: () => Promise<unknown>, after?: () => void) => {
     setBusy(true);
     work()
@@ -63,8 +62,7 @@ function Connector({ card, client, onChanged }: { card: ConnectorCard; client: S
       )
       .finally(() => setBusy(false));
   };
-  const askPermission = () =>
-    attempt(() => client.request({ _tag: "RequestApplePermission", connectorId: card.id }).then(setPermission));
+  const askPermission = () => attempt(() => client.request({ _tag: "RequestApplePermission", connectorId: card.id }));
   const installed = isInstalledCard(card);
   return (
     <View style={{ gap: 8 }}>
@@ -101,8 +99,7 @@ function Connector({ card, client, onChanged }: { card: ConnectorCard; client: S
                   });
                   setInstalling(false);
                   if (card.apps.length > 0 && !remote) {
-                    const report = await client.request({ _tag: "RequestApplePermission", connectorId: card.id });
-                    setPermission(report);
+                    await client.request({ _tag: "RequestApplePermission", connectorId: card.id });
                   }
                 },
                 () => {
@@ -154,11 +151,13 @@ function Connector({ card, client, onChanged }: { card: ConnectorCard; client: S
             ) : (
               <Button isDisabled={busy} isPrimary={false} label="Request Apple permission" onPress={askPermission} />
             ))}
-          {permission?.apps.map((app) => (
-            <Text key={app.app} style={styles.muted}>
-              {app.app}: {permissionLabels[app.status]}
-            </Text>
-          ))}
+          {card.apps
+            .filter((app) => app.isChosen)
+            .map((app) => (
+              <Text key={app.id} style={styles.muted}>
+                {app.name}: {applePermissionLabelOf(app.id, app.permission ?? "NotAskedYet")}
+              </Text>
+            ))}
           {toolGroupsOf(card).map((group) => (
             <View key={group.heading ?? "tools"} style={{ gap: 8 }}>
               <Text style={styles.body}>{group.heading ?? "Tools"}</Text>

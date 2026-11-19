@@ -1,3 +1,4 @@
+import type { ApplePermissionStatus } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { isToolOffered, type Standing, type ToolStanding } from "./availability.ts";
@@ -28,6 +29,7 @@ export type OfferedConnectorTool = {
 
 /** What the state reads need. */
 export type StateDependencies = {
+  readonly applePermissionOf: (connectorId: string, app: string) => ApplePermissionStatus;
   readonly catalog: ReadonlyArray<CatalogEntry>;
   readonly listing: ToolListing;
   readonly sql: SqlClient.SqlClient;
@@ -42,6 +44,15 @@ const isConnected = (vault: VaultPort["Service"], entry: CatalogEntry, record: C
       ? Effect.succeed(true)
       : vault.holds(entry.id, entry.secretKind).pipe(Effect.catch(() => Effect.succeed(false)));
 
+/** The actionable card state when any chosen Apple app still needs a check or a grant. */
+export const appleConnectionNeedOf = (dependencies: StateDependencies, record: ConnectorRecord) => {
+  const apps = record.apps ?? [];
+  if (apps.length === 0) return "Choose at least one Apple app.";
+  return apps.some((app) => dependencies.applePermissionOf(record.id, app) !== "Allowed")
+    ? "Some chosen apps need permission on the computer."
+    : null;
+};
+
 /** The standing of one installed connector. */
 export const readStanding = Effect.fnUntraced(function* (
   dependencies: StateDependencies,
@@ -51,7 +62,10 @@ export const readStanding = Effect.fnUntraced(function* (
   const choices = yield* readChoices(record.id).pipe(Effect.provideService(SqlClient.SqlClient, dependencies.sql));
   return {
     choices,
-    isConnected: yield* isConnected(dependencies.vault, entry, record),
+    isConnected:
+      entry.apps.length > 0
+        ? (record.apps ?? []).some((app) => dependencies.applePermissionOf(entry.id, app) === "Allowed")
+        : yield* isConnected(dependencies.vault, entry, record),
     isEnabled: record.isEnabled,
     isInstalled: true,
     isRemoving: record.isRemoving,
@@ -61,7 +75,13 @@ export const readStanding = Effect.fnUntraced(function* (
 /** The extra facts that decide one connector's tools. */
 export const readToolStanding = Effect.fnUntraced(function* (dependencies: StateDependencies, record: ConnectorRecord) {
   const offTools = yield* readOffTools(record.id).pipe(Effect.provideService(SqlClient.SqlClient, dependencies.sql));
-  return { chosenApps: record.apps === null ? null : new Set(record.apps), offTools } satisfies ToolStanding;
+  return {
+    chosenApps:
+      record.apps === null
+        ? null
+        : new Set(record.apps.filter((app) => dependencies.applePermissionOf(record.id, app) === "Allowed")),
+    offTools,
+  } satisfies ToolStanding;
 });
 
 /** The tools the thread is offered now, from what each connector's server last listed. */

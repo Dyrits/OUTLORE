@@ -196,6 +196,7 @@ export const appleLikeEntry: CatalogEntry = {
   platform: "macOS",
   secretKind: null,
   tools: {
+    "list-calendars": { app: "calendar", class: "Read", summary: "List calendars" },
     "list-events": { app: "calendar", class: "Read", summary: "List the events of a day" },
     "read-mail": { app: "mail", class: "Read", summary: "Read a message" },
     "send-email": { app: "mail", class: "Write", summary: "Send an email" },
@@ -204,6 +205,7 @@ export const appleLikeEntry: CatalogEntry = {
 
 /** The tools the Mac-like fake server lists, among them one the catalog names for no app. */
 export const appleLikeToolsOf = (gate: Deferred.Deferred<void>): ReadonlyArray<ScriptedTool> => [
+  { name: "list-calendars", run: () => Effect.succeed("calendars") },
   { name: "list-events", run: gated(gate, "events") },
   { name: "read-mail", run: () => Effect.succeed("mail text") },
   { name: "send-email", run: () => Effect.succeed("sent") },

@@ -1,10 +1,11 @@
 import type {
   ApplePermissionReport,
+  ApplePermissionStatus,
   ConnectorCard,
   ConnectorChoiceCard,
   ConnectorChoiceLevel,
 } from "@outlore/contracts";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Semaphore } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { Changes, invalid, notFound, ServiceFailure } from "../core/index.ts";
 import { applePermissionReportOf } from "./applePermission.ts";
@@ -14,7 +15,14 @@ import { ConnectorBackends } from "./backend.ts";
 import { ConnectorCalls } from "./calls.ts";
 import { type CatalogEntry, catalogToolOf, defaultAppsOf, entryOf } from "./catalog.ts";
 import { defaultCatalog } from "./catalogEntries.ts";
-import { type CallDependencies, listOfferedTools, makeCall, markRefused, recordFailure } from "./connectorCall.ts";
+import {
+  type CallDependencies,
+  listOfferedTools,
+  makeCall,
+  markRefused,
+  narrowPermittedTools,
+  recordFailure,
+} from "./connectorCall.ts";
 import { type CardDependencies, cardOf } from "./connectorCards.ts";
 import { choiceCardsOf } from "./connectorChoiceCards.ts";
 import {
@@ -128,9 +136,22 @@ const make = (options: ConnectorsOptions) =>
     const platform = options.platform ?? process.platform;
     const listing = makeToolListing({ backends, vault });
     const provided = Effect.provideService(SqlClient.SqlClient, sql);
-    const operations: OperationDependencies = { calls, catalog, listing, platform, sql, vault };
-    const cardDependencies: CardDependencies = { catalog, listing, platform, sql, vault };
-    const callDependencies: CallDependencies = { asking, calls, catalog, changes, listing, notices, sql, vault };
+    // macOS remains authoritative. A fresh service starts with no observed grants and never probes from a paired device.
+    const permissions = new Map<string, Map<string, ApplePermissionStatus>>();
+    const permissionChecks = yield* Semaphore.make(1);
+    let permissionRevision = 0;
+    const applePermissionOf = (connectorId: string, app: string) =>
+      permissions.get(connectorId)?.get(app) ?? "NotAskedYet";
+    const revokeApplePermission = (connectorId: string, app: string) => {
+      permissionRevision++;
+      const statuses = permissions.get(connectorId) ?? new Map<string, ApplePermissionStatus>();
+      statuses.set(app, "NotAllowed");
+      permissions.set(connectorId, statuses);
+    };
+    const state = { applePermissionOf, catalog, listing, sql, vault };
+    const operations: OperationDependencies = { ...state, calls, platform };
+    const cardDependencies: CardDependencies = { ...state, platform };
+    const callDependencies: CallDependencies = { ...state, asking, calls, changes, notices, revokeApplePermission };
 
     const card = Effect.fnUntraced(function* (connectorId: string) {
       const entry = entryOf(catalog, connectorId);
@@ -161,6 +182,8 @@ const make = (options: ConnectorsOptions) =>
     }, Effect.orDie);
 
     const finishRemoval = Effect.fnUntraced(function* (connectorId: string) {
+      permissionRevision++;
+      permissions.delete(connectorId);
       yield* sql.withTransaction(deleteConnector(connectorId).pipe(provided));
       yield* listing.forget(connectorId);
       yield* changes.publish;
@@ -226,18 +249,29 @@ const make = (options: ConnectorsOptions) =>
           const record = entry === null ? null : yield* readConnectorRecord(connectorId).pipe(provided);
           if (entry !== null && record !== null) yield* refreshFor(entry, null);
         }),
-      requestApplePermission: Effect.fnUntraced(function* (connectorId: string) {
-        const entry = entryOf(catalog, connectorId);
-        if (entry === null) return yield* notFound("Outlore offers no such connector.");
-        if (entry.platform === "macOS" && platform !== "darwin")
-          return yield* invalid("Apple apps run on a Mac only, so there is no permission to ask for here.");
-        const record = yield* readConnectorRecord(connectorId).pipe(provided);
-        if (record === null) return yield* invalid("That connector is not installed on this computer.");
-        const apps = record.apps ?? defaultAppsOf(entry);
-        // The probe runs on the backend the connector's calls run on, so macOS is asked by the same child process.
-        const backend = yield* listing.backendOf(entry);
-        return yield* applePermissionReportOf(entry, apps, backend);
-      }),
+      requestApplePermission: (connectorId) =>
+        permissionChecks.withPermit(
+          Effect.gen(function* () {
+            const entry = entryOf(catalog, connectorId);
+            if (entry === null) return yield* notFound("Outlore offers no such connector.");
+            if (entry.platform === "macOS" && platform !== "darwin")
+              return yield* invalid("Apple apps run on a Mac only, so there is no permission to ask for here.");
+            const record = yield* readConnectorRecord(connectorId).pipe(provided);
+            if (record === null || record.isRemoving || entry.apps.length === 0)
+              return yield* invalid("That Apple apps connector is not installed on this computer.");
+            const apps = record.apps ?? defaultAppsOf(entry);
+            const revision = permissionRevision;
+            // The probe runs on the backend the connector's calls run on, so macOS is asked by the same child process.
+            const backend = yield* listing.backendOf(entry);
+            const report = yield* applePermissionReportOf(entry, apps, backend);
+            if (revision === permissionRevision) {
+              permissions.set(connectorId, new Map(report.apps.map(({ app, status }) => [app, status])));
+              yield* narrowPermittedTools(callDependencies, null);
+              yield* changes.publish;
+            }
+            return report;
+          }),
+        ),
       resumeRemovals: Effect.gen(function* () {
         for (const record of yield* readConnectorRecords.pipe(provided)) {
           if (!record.isRemoving) continue;

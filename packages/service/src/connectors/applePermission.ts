@@ -16,6 +16,10 @@ import type { CatalogEntry } from "./catalog.ts";
  * app. Listing the calendars, folders or chats asks for nothing more than the app's listing.
  */
 export const probeToolOf = (entry: CatalogEntry, app: string): string | null => {
+  // Prefer listing folders or tabs over reading messages or the active page.
+  const preferred = app === "mail" ? "list-folders" : app === "safari" ? "list-safari-tabs" : null;
+  if (preferred !== null && entry.tools[preferred]?.app === app && entry.tools[preferred]?.class === "Read")
+    return preferred;
   for (const [name, tool] of Object.entries(entry.tools)) if (tool.app === app && tool.class === "Read") return name;
   return null;
 };
@@ -24,7 +28,10 @@ export const probeToolOf = (entry: CatalogEntry, app: string): string | null => 
  * macOS's words when Automation is refused: an Apple event the program may not send (errAEEventNotPermitted, -1743),
  * or a Privacy & Security denial. Matched only to sort the outcome; the words never leave the service.
  */
-const notAllowedPattern = /not authorized|not permitted|automation|permission|denied|errAE|-1743/i;
+export const isApplePermissionDenied = (text: string) =>
+  /(?:^|\D)-1743\b|errAEEventNotPermitted|not authorized to send Apple events|not permitted to send Apple events|Full Disk Access required\. Grant it to the terminal/i.test(
+    text,
+  );
 
 /** One app's status from the outcome of its probe call: allowed when it answered, refused when macOS said no. */
 const statusOf = (outcome: Exit.Exit<string, BackendFailure>): ApplePermissionStatus => {
@@ -33,7 +40,7 @@ const statusOf = (outcome: Exit.Exit<string, BackendFailure>): ApplePermissionSt
   if (Option.isNone(failure)) return "NotAskedYet";
   const error = failure.value;
   if (error.class === "Disconnected") return "NotAllowed";
-  if (error.class === "Failed" && notAllowedPattern.test(error.upstream)) return "NotAllowed";
+  if (error.class === "Failed" && isApplePermissionDenied(error.upstream)) return "NotAllowed";
   // Anything else — the child could not start, the call timed out while the macOS prompt waits — is not a grant.
   return "NotAskedYet";
 };

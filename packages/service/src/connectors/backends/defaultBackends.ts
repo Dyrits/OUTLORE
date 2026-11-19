@@ -15,5 +15,6 @@ export const connectorBackendsLayer = Layer.succeed(ConnectorBackends, {
           command: stdioCommandOf(entry.backend.server),
           ...(entry.backend.env === undefined ? {} : { env: entry.backend.env }),
           label: entry.name,
+          usesAppleAutomation: entry.platform === "macOS" && entry.apps.length > 0,
         }),
 });

@@ -149,6 +149,17 @@ describe("the RequestApplePermission owner request", () => {
           { app: "mail", status: "NotAllowed" },
           { app: "notes", status: "NotAskedYet" },
         ]);
+        const service = yield* Service;
+        expect(yield* service.handle({ _tag: "ListConnectors" }, { isPairedDevice: true })).toMatchObject([
+          {
+            apps: [
+              { id: "calendar", permission: "Allowed" },
+              { id: "mail", permission: "NotAllowed" },
+              { id: "notes", permission: "NotAskedYet" },
+            ],
+            state: "NeedsConnecting",
+          },
+        ]);
       }),
     ),
   );

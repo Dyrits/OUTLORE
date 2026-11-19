@@ -18,6 +18,7 @@ export type CallDependencies = StateDependencies & {
   readonly calls: ConnectorCalls["Service"];
   readonly changes: Changes["Service"];
   readonly notices: ConnectorNotices["Service"];
+  readonly revokeApplePermission: (connectorId: string, app: string) => void;
 };
 
 const maxDetailCharacters = 4_000;
@@ -98,12 +99,37 @@ export const recordFailure = Effect.fnUntraced(function* (
   entry: CatalogEntry,
   threadId: string,
   failure: CredentialedFailure,
+  invocation: Invocation | null = null,
+  app: string | null = null,
 ) {
   const { errorClass, isRefused } = failureOutcomeOf(failure);
-  if (isRefused) yield* markRefused(dependencies, entry);
+  if (isRefused && app !== null) {
+    dependencies.revokeApplePermission(entry.id, app);
+    yield* narrowPermittedTools(dependencies, invocation?.id ?? null);
+    yield* dependencies.changes.publish;
+    const name = entry.apps.find((each) => each.id === app)?.name ?? entry.name;
+    yield* dependencies.notices.warn(threadId, `${name} needs permission again, so this turn goes on without it.`);
+    return toolRefusal(
+      `macOS refused access to ${name}. The connector is marked Needs connecting. Check permissions on the computer.`,
+    );
+  } else if (isRefused) yield* markRefused(dependencies, entry);
   const line = warningOf(entry.name, errorClass);
   if (line !== null) yield* dependencies.notices.warn(threadId, line);
   return toolRefusal(failureSentenceOf[errorClass]);
+});
+
+/** Applies a permission loss to existing turns without cancelling the call that reports it. */
+export const narrowPermittedTools = Effect.fnUntraced(function* (
+  dependencies: CallDependencies,
+  except: string | null,
+) {
+  yield* dependencies.calls.narrowSnapshots((id) =>
+    readOfferedTools(dependencies, id).pipe(
+      Effect.map((tools) => new Set(tools.map((tool) => tool.listedName))),
+      Effect.orDie,
+    ),
+  );
+  yield* dependencies.calls.stopRevokedExcept(except);
 });
 
 /** Hands the call to the connector's server with its secret, which the Vault lends for this call alone. */
@@ -134,7 +160,14 @@ const dispatch = Effect.fnUntraced(function* (
   ).pipe(Effect.result);
   return outcome._tag === "Success"
     ? toolText(outcome.success)
-    : yield* recordFailure(dependencies, entry, invocation.threadId, outcome.failure);
+    : yield* recordFailure(
+        dependencies,
+        entry,
+        invocation.threadId,
+        outcome.failure,
+        invocation,
+        catalogToolOf(entry, tool)?.app ?? null,
+      );
 });
 
 /** The answer for a call a switch stopped. */

@@ -88,6 +88,7 @@ Threads can act only on the computer and on what their harness already reaches. 
 - At install the owner chooses which apps: **Calendar**, **Reminders**, **Notes** and **Contacts** (on by default), and **Mail**, **Messages** and **Safari** (off by default, since they read private content and can reach other people). The choice can be changed later.
 - The notice at install says that what the tools read, such as an email's text, goes to the model provider of the thread, and that macOS will ask for each chosen app.
 - The host's own window asks macOS for each chosen app's permission at install, with a button to ask again. From a paired device the connector shows **Permission needed on the computer** and the toggles work, but the permission cannot be requested there. A refusal shows **Not allowed by macOS** with where to change it (System Settings, Privacy & Security, Automation).
+- The Charter on either device shows the latest permission check for each chosen app. After a host service restart, check again on the computer before a thread can use Apple tools. Unchecked or refused apps are unavailable, and a checked app can still work while another chosen app needs permission. If a tool reports that macOS has refused access, Outlore marks that app as needing permission again and withdraws its tools from active turns. A later successful host check restores them for the next turn. Messages checks access through the vendored server's `imsg` helper and may need Full Disk Access.
 
 ## External contract
 

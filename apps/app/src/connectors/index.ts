@@ -1,11 +1,11 @@
 export { ConnectorChoicePanel } from "./choicePanel";
 export {
+  applePermissionLabelOf,
   appsAfterToggle,
   canInstallCard,
   chosenAppsOf,
   connectorStateLabels,
   isInstalledCard,
-  permissionLabels,
   remotePermissionNote,
   removalWarning,
   toolClassLabels,

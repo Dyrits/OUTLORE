@@ -81,7 +81,7 @@ describe("installing a connector", () => {
       Effect.gen(function* () {
         const installed = yield* install("applefake");
         expect(installed.apps).toEqual([
-          { id: "calendar", isChosen: true, name: "Calendar" },
+          { id: "calendar", isChosen: true, name: "Calendar", permission: "NotAskedYet" },
           { id: "mail", isChosen: false, name: "Mail" },
         ]);
         const refused = yield* Effect.flip(install("applefake", ["spreadsheets"]));
@@ -96,6 +96,7 @@ describe("Apple apps' chosen apps", () => {
     inWorld({}, () =>
       Effect.gen(function* () {
         yield* install("applefake");
+        yield* call({ _tag: "RequestApplePermission", connectorId: "applefake" });
         const started = yield* startMission({ text: "Hello" });
         yield* untilIdle(started.missionId);
         const listed = () => listToolNames(started.threadId);
@@ -105,6 +106,7 @@ describe("Apple apps' chosen apps", () => {
         // The server lists a tool the catalog names for no app: its app cannot be checked, so it is not offered.
         expect(yield* listed()).not.toContain("applefake__stray-tool");
         yield* call({ _tag: "ChooseAppleApps", apps: ["calendar", "mail"], connectorId: "applefake" });
+        yield* call({ _tag: "RequestApplePermission", connectorId: "applefake" });
         expect(yield* listed()).toContain("applefake__read-mail");
         expect(yield* listed()).toContain("applefake__send-email");
         const refused = yield* Effect.flip(call({ _tag: "ChooseAppleApps", apps: ["x"], connectorId: "applefake" }));
@@ -119,6 +121,8 @@ describe("Apple apps' chosen apps", () => {
     inWorld({}, (world) =>
       Effect.gen(function* () {
         yield* install("applefake");
+        yield* call({ _tag: "RequestApplePermission", connectorId: "applefake" });
+        world.received.applefake.length = 0;
         const started = yield* startMission({ text: "call applefake__list-events {}" });
         for (let attempt = 0; attempt < 400 && world.received.applefake.length < 1; attempt++)
           yield* Effect.sleep("10 millis");

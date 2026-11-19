@@ -2,7 +2,7 @@ import type { ConnectorCard, ConnectorToolCard } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { type CatalogEntry, catalogToolOf, isRunnableOn } from "./catalog.ts";
-import { readStanding, readToolStanding, type StateDependencies } from "./connectorState.ts";
+import { appleConnectionNeedOf, readStanding, readToolStanding, type StateDependencies } from "./connectorState.ts";
 import { type ConnectorRecord, readChoices, readConnectorRecord } from "./connectorStore.ts";
 
 // A connector as the Charter shows it (connectors specification, Install, connect, enable; A connector's tools).
@@ -39,6 +39,7 @@ export const cardOf = Effect.fnUntraced(function* (dependencies: CardDependencie
       id: app.id,
       isChosen: record === null ? app.isDefault : (record.apps ?? []).includes(app.id),
       name: app.name,
+      ...(record?.apps?.includes(app.id) ? { permission: dependencies.applePermissionOf(entry.id, app.id) } : {}),
     })),
     description: entry.description,
     id: entry.id,
@@ -60,8 +61,10 @@ export const cardOf = Effect.fnUntraced(function* (dependencies: CardDependencie
   const standing = yield* readStanding(dependencies, entry, record);
   const choices = yield* readChoices(entry.id).pipe(provided);
   const needs =
-    record.needs ??
-    (standing.isConnected || entry.secretKind === null ? null : `Add your ${entry.secretKind} in the Vault.`);
+    entry.apps.length > 0
+      ? appleConnectionNeedOf(dependencies, record)
+      : (record.needs ??
+        (standing.isConnected || entry.secretKind === null ? null : `Add your ${entry.secretKind} in the Vault.`));
   return {
     ...base,
     borderlandsChoice: choices.borderlands,

@@ -4,7 +4,7 @@ import { SqlClient } from "effect/sql";
 import { invalid, notFound } from "../core/index.ts";
 import type { ConnectorChoices, SwitchChoice } from "./availability.ts";
 import { entryOf } from "./catalog.ts";
-import { readStanding, type StateDependencies } from "./connectorState.ts";
+import { appleConnectionNeedOf, readStanding, type StateDependencies } from "./connectorState.ts";
 import { hasRealm, readConnectorRecords, readPlacement } from "./connectorStore.ts";
 
 // What a realm's or a quest's panel reads of the connectors (connectors specification, Where a connector is available):
@@ -50,7 +50,10 @@ export const choiceCardsOf = Effect.fnUntraced(function* (dependencies: StateDep
       connectorId: entry.id,
       isEnabled: record.isEnabled,
       name: entry.name,
-      state: standing.isConnected ? "Ready" : "NeedsConnecting",
+      state:
+        standing.isConnected && (entry.apps.length === 0 || appleConnectionNeedOf(dependencies, record) === null)
+          ? "Ready"
+          : "NeedsConnecting",
     });
   }
   return cards;

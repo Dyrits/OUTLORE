@@ -34,6 +34,8 @@ export class ConnectorCalls extends Context.Service<
     readonly snapshotOf: (threadId: string) => ReadonlySet<string> | null;
     /** Stops every call underway whose listed name is no longer in its thread's snapshot; how many it stopped. */
     readonly stopRevoked: Effect.Effect<number>;
+    /** Stops revoked calls except the call that just reported a revocation. */
+    readonly stopRevokedExcept: (invocationId: string | null) => Effect.Effect<number>;
     /** Takes the thread's snapshot at a turn's start: exactly the names it is offered then. */
     readonly takeSnapshot: (threadId: string, names: ReadonlyArray<string>) => Effect.Effect<void>;
     /** Registers a call before anything about it is read, runs it, and forgets it however it ends. */
@@ -66,6 +68,15 @@ export const connectorCallsLayer = Layer.sync(ConnectorCalls, () => {
       return invocation;
     });
 
+  const stopRevokedExcept = Effect.fnUntraced(function* (invocationId: string | null) {
+    let count = 0;
+    for (const invocation of [...underway.values()]) {
+      if (invocation.id === invocationId || snapshots.get(invocation.threadId)?.has(invocation.listedName) === true)
+        continue;
+      if (yield* Deferred.succeed(invocation.stopped, void 0)) count++;
+    }
+    return count;
+  });
   return {
     dropSnapshot: (threadId) => Effect.sync(() => void snapshots.delete(threadId)),
     narrowSnapshots: (offeredTo) =>
@@ -76,14 +87,8 @@ export const connectorCallsLayer = Layer.sync(ConnectorCalls, () => {
         }
       }),
     snapshotOf: (threadId) => snapshots.get(threadId) ?? null,
-    stopRevoked: Effect.gen(function* () {
-      let count = 0;
-      for (const invocation of [...underway.values()]) {
-        if (snapshots.get(invocation.threadId)?.has(invocation.listedName) === true) continue;
-        if (yield* Deferred.succeed(invocation.stopped, void 0)) count++;
-      }
-      return count;
-    }),
+    stopRevoked: stopRevokedExcept(null),
+    stopRevokedExcept,
     takeSnapshot: (threadId, names) => Effect.sync(() => void snapshots.set(threadId, new Set(names))),
     track: (call, use) =>
       Effect.acquireUseRelease(begin(call), use, (invocation) =>

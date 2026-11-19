@@ -6,7 +6,7 @@
 // (answers with the call's arguments) or "crash" (ends the process). STAND_IN_LOG receives one JSON line per start
 // ({ start: { pid, args, cwd, env } }) and per request ({ request: { method, params } }); STAND_IN_MCP_PID_FILE
 // receives the pid at each start, so a test can see a restart.
-import { appendFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 
 const tools = JSON.parse(
@@ -74,7 +74,7 @@ const handle = async (message) => {
       send({ error: { code: -32602, message: `Unknown tool ${String(params?.name)}` }, id });
       return;
     }
-    const mode = tool.mode ?? "ok";
+    const mode = tool.errorFlag === undefined ? (tool.mode ?? "ok") : existsSync(tool.errorFlag) ? "isError" : "ok";
     if (mode === "rpcError") {
       send({ error: { code: -32602, message: "Invalid params" }, id });
       return;
@@ -90,7 +90,7 @@ const handle = async (message) => {
         ? JSON.stringify(process.env)
         : mode === "echoArgs"
           ? JSON.stringify(params?.arguments ?? null)
-          : (tool.text ?? `done ${tool.name}`);
+          : ((mode === "isError" ? tool.errorText : null) ?? tool.text ?? `done ${tool.name}`);
     send({ id, result: { content: [{ text, type: "text" }], ...(mode === "isError" ? { isError: true } : {}) } });
     return;
   }

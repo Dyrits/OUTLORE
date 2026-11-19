@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Clock, Effect, Fiber, Option, Queue, Ref, Semaphore } from "effect";
 import { type HarnessFailure, type RpcProcess, reducedEnvironmentOf, startRpcProcess } from "../../core/index.ts";
+import { isApplePermissionDenied } from "../applePermission.ts";
 import { BackendFailure, type BackendTool, type ConnectorBackend } from "../backend.ts";
 
 // The stdio MCP adapter (connectors blueprint, Backends): a child of the host speaking MCP over its standard
@@ -16,6 +17,7 @@ const protocolVersion = "2025-11-25";
 
 /** Options for one stdio MCP server. */
 export type StdioMcpOptions = {
+  readonly usesAppleAutomation?: boolean;
   /** The command that runs the server, such as a system Node and the vendored server file. */
   readonly command: ReadonlyArray<string>;
   /** Extra environment for the child, on top of the reduced environment. */
@@ -220,11 +222,18 @@ export const stdioMcpBackend = (options: StdioMcpOptions): Effect.Effect<Connect
           request("tools/call", { arguments: args, name: tool }).pipe(
             Effect.filterOrFail(
               (result) => !isErrorAnswerOf(result),
-              (result) =>
-                new BackendFailure({
+              (result) => {
+                const text = answerTextOf(result);
+                if (options.usesAppleAutomation && isApplePermissionDenied(text))
+                  return new BackendFailure({
+                    class: "Disconnected",
+                    upstream: "macOS refused Automation permission.",
+                  });
+                return new BackendFailure({
                   class: "Failed",
-                  upstream: answerTextOf(result) || `${options.label} refused the call.`,
-                }),
+                  upstream: text || `${options.label} refused the call.`,
+                });
+              },
             ),
             Effect.map(answerTextOf),
           ),
