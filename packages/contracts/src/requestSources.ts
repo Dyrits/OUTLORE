@@ -118,6 +118,7 @@ export const requestSourceRules = {
   ReopenMission: shared,
   ReorderRealms: shared,
   ReplaceSecret: shared,
+  RequestApplePermission: hostOnly,
   ResolveChatter: shared,
   ResolveIntelChange: shared,
   ResolveIntelProposal: shared,

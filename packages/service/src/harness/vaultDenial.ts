@@ -4,8 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { HarnessName } from "@outlore/contracts";
 import { Effect } from "effect";
-import type { VaultDenial } from "../core/index.ts";
-import { type CommandRun, runHarnessCommand } from "./lineProcess.ts";
+import { type CommandRun, runShortCommand, type VaultDenial } from "../core/index.ts";
 
 // The probe behind "Protected, or no secrets" (ADR 0022, connectors blueprint): for one harness, whether a process
 // inside its sandbox can read a marker file in the Vault's folder. The marker is a disposable random string, never a
@@ -16,7 +15,7 @@ import { type CommandRun, runHarnessCommand } from "./lineProcess.ts";
 export type RunCommand = (command: string, args: ReadonlyArray<string>) => Effect.Effect<CommandRun>;
 
 /** The real command runner, with a short limit: a sandbox that starts answers at once. */
-const runReal: RunCommand = (command, args) => runHarnessCommand(command, args, {}, 20_000);
+const runReal: RunCommand = (command, args) => runShortCommand(command, args, {}, 20_000);
 
 /** The marker's file name inside the Vault's folder; the Vault itself reads and writes other names only. */
 export const probeMarkerName = "probe-marker";

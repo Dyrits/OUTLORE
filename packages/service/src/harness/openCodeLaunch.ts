@@ -1,7 +1,12 @@
 import { Effect } from "effect";
-import { HarnessFailure, type TurnRequest } from "../core/index.ts";
+import {
+  HarnessFailure,
+  type RpcProcess,
+  reducedEnvironmentOf,
+  startRpcProcess,
+  type TurnRequest,
+} from "../core/index.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
-import { harnessEnvironmentOf, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
 import {
   type OpenCodeSandbox,
   openCodeEnvironmentOf,
@@ -123,7 +128,7 @@ export const makeOpenCodeLauncher = (options: OpenCodeLaunchOptions) => {
       args: started.args,
       command: started.command,
       cwd: request.cwd,
-      env: harnessEnvironmentOf(env),
+      env: reducedEnvironmentOf(env),
       isJsonRpc2: true,
       // `acp` starts its own `serve`, whose children leave its process group: closing ends the group and the whole
       // tree, and once `acp` has ended, however it ended, any marked OpenCode process it left is ended too.

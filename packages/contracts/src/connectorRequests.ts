@@ -114,6 +114,22 @@ export const ChooseAppleApps = Schema.TaggedStruct("ChooseAppleApps", {
   connectorId: Schema.String,
 });
 
+/** One app's macOS Automation permission, as asked through the connector's own child process. */
+export const ApplePermissionStatus = Schema.Literals(["Allowed", "NotAllowed", "NotAskedYet"]);
+export type ApplePermissionStatus = typeof ApplePermissionStatus.Type;
+
+/** What asking for Apple apps' permission answers: each chosen app and its status. */
+export const ApplePermissionReport = Schema.Struct({
+  apps: Schema.Array(Schema.Struct({ app: Schema.String, status: ApplePermissionStatus })),
+});
+export type ApplePermissionReport = typeof ApplePermissionReport.Type;
+
+/**
+ * Asks macOS, through the connector's own child process, whether each chosen app of Apple apps allows Automation.
+ * Only the host's own window may ask: a paired device gets the report's statuses, never the asking.
+ */
+export const RequestApplePermission = Schema.TaggedStruct("RequestApplePermission", { connectorId: Schema.String });
+
 /** The requests that read or change connectors. */
 export const connectorRequests = [
   ListConnectors,
@@ -122,6 +138,7 @@ export const connectorRequests = [
   SetConnectorSwitch,
   SetConnectorTool,
   ChooseAppleApps,
+  RequestApplePermission,
 ] as const;
 
 /** What each connector request answers: the connector's card after the change, or every card. */
@@ -130,6 +147,7 @@ export const connectorResults = {
   InstallConnector: ConnectorCard,
   ListConnectors: Schema.Array(ConnectorCard),
   RemoveConnector: ConnectorCard,
+  RequestApplePermission: ApplePermissionReport,
   SetConnectorSwitch: ConnectorCard,
   SetConnectorTool: ConnectorCard,
 } as const;

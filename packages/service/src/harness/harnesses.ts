@@ -2,12 +2,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { EffortChoice, HarnessName, ModelOption } from "@outlore/contracts";
 import { type Duration, Effect, Queue, type Scope } from "effect";
-import { fieldOf, type HarnessAdapter, routeHarnesses, type ServiceFailure, textFieldOf } from "../core/index.ts";
+import {
+  fieldOf,
+  type HarnessAdapter,
+  reducedEnvironmentOf,
+  routeHarnesses,
+  runShortCommand,
+  type ServiceFailure,
+  startRpcProcess,
+  textFieldOf,
+} from "../core/index.ts";
 import { makeClaudeHarness } from "./claude.ts";
 import { makeCodexHarness } from "./codex.ts";
 import { accountEnvironmentOf, claudeModels, type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
 import type { SignInStatus } from "./harnessTools.ts";
-import { harnessEnvironmentOf, runHarnessCommand, startRpcProcess } from "./lineProcess.ts";
 import { detectOpenCodeSandbox } from "./openCodeSandbox.ts";
 import { listOpenCodeEfforts, makeOpenCodeHarness } from "./opencode.ts";
 import { makeVibeHarness } from "./vibe.ts";
@@ -70,7 +78,7 @@ const listCodexModels = Effect.fnUntraced(
       args: ["app-server"],
       command,
       cwd: tmpdir(),
-      env: harnessEnvironmentOf(accountEnvironmentOf("codex", configDirectory)),
+      env: reducedEnvironmentOf(accountEnvironmentOf("codex", configDirectory)),
       isJsonRpc2: false,
       label: "Codex",
     });
@@ -102,7 +110,7 @@ const claude: HarnessDefinition = {
     makeClaudeHarness({ command, idleTimeout, sandboxProblem, ...(vaultFolder === undefined ? {} : { vaultFolder }) }),
   readModels: () => Effect.succeed(claudeModels),
   readSignIn: Effect.fnUntraced(function* (command: string, env: Record<string, string>) {
-    const { stdout } = yield* runHarnessCommand(command, ["auth", "status", "--json"], env);
+    const { stdout } = yield* runShortCommand(command, ["auth", "status", "--json"], env);
     let status: unknown = null;
     try {
       status = JSON.parse(stdout);
@@ -125,7 +133,7 @@ const codex: HarnessDefinition = {
     makeCodexHarness({ command, idleTimeout, ...(vaultFolder === undefined ? {} : { vaultFolder }) }),
   readModels: (command, configDirectory) => listCodexModels(command, configDirectory),
   readSignIn: (command, env) =>
-    runHarnessCommand(command, ["login", "status"], env).pipe(
+    runShortCommand(command, ["login", "status"], env).pipe(
       Effect.map(({ code, output }): SignInStatus => {
         const text = output.trim();
         if (code === null) return unknownSignIn;
@@ -151,7 +159,7 @@ const opencode: HarnessDefinition = {
     }),
   readEfforts: listOpenCodeEfforts,
   readModels: (command, configDirectory) =>
-    runHarnessCommand(command, ["models"], accountEnvironmentOf("opencode", configDirectory)).pipe(
+    runShortCommand(command, ["models"], accountEnvironmentOf("opencode", configDirectory)).pipe(
       Effect.map(({ stdout }) =>
         stdout
           .split("\n")
@@ -162,7 +170,7 @@ const opencode: HarnessDefinition = {
     ),
   // OpenCode lists one line per stored sign-in, each naming its provider.
   readSignIn: (command, env) =>
-    runHarnessCommand(command, ["auth", "list"], env).pipe(
+    runShortCommand(command, ["auth", "list"], env).pipe(
       Effect.map(({ code, stdout }): SignInStatus => {
         if (code === null) return unknownSignIn;
         const providers = stdout

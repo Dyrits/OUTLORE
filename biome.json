@@ -22,6 +22,7 @@
     "includes": [
       "**",
       "!**/node_modules",
+      "!**/vendor",
       "!**/dist",
       "!**/.expo",
       "!**/.worktrees",

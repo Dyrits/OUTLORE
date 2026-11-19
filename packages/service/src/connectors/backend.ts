@@ -39,7 +39,7 @@ export interface ConnectorBackend {
   readonly listTools: (secret: string | null) => Effect.Effect<ReadonlyArray<BackendTool>, BackendFailure>;
 }
 
-/** Opens the backend a catalog entry names. */
+/** Opens the backend a catalog entry names; the service's default does this per entry (backends/defaultBackends.ts). */
 export class ConnectorBackends extends Context.Service<
   ConnectorBackends,
   {

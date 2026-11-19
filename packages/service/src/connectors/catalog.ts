@@ -23,7 +23,18 @@ export type CatalogApp = {
 /** How the host reaches a connector's server; the real adapters come with the backends (blueprint, Order step 4). */
 export type CatalogBackend =
   | { readonly _tag: "Http"; readonly header: string; readonly url: string }
-  | { readonly _tag: "Stdio"; readonly command: ReadonlyArray<string>; readonly version: string };
+  | {
+      readonly _tag: "Stdio";
+      /** Extra environment for the child, such as forcing the pinned server's local mode. */
+      readonly env?: Record<string, string>;
+      /**
+       * The pinned server package, by its npm name; the backend resolves it to the copy vendored with the service
+       * (`packages/service/vendor/`) in dev and tests, or bundled into the packaged app, and runs that file with a
+       * system Node, since a packaged Outlore cannot run its own binary as one.
+       */
+      readonly server: string;
+      readonly version: string;
+    };
 
 /** One connector the owner can install. */
 export type CatalogEntry = {

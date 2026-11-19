@@ -3,12 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { EffortChoice, HarnessName, ModelOption, SignInState } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer } from "effect";
-import { fieldOf, invalid, type ServiceFailure, textFieldOf } from "../core/index.ts";
+import { fieldOf, invalid, runShortCommand, type ServiceFailure, textFieldOf } from "../core/index.ts";
 import { accountEnvironmentOf, type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
 import { harnesses } from "./harnesses.ts";
 import { installHarnessPackage, updateTimeoutMillis } from "./harnessInstallation.ts";
 import { updateOf } from "./harnessVersions.ts";
-import { runHarnessCommand } from "./lineProcess.ts";
 
 // What Outlore asks each harness's own command-line tool about itself: its version, who is signed in,
 // and its models; and how the owner signs in, always through the tool's own sign-in (requirements, Comply
@@ -132,7 +131,7 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
     const models = new Map<string, { readonly at: number; readonly options: ReadonlyArray<ModelOption> }>();
 
     const inspect = (harness: HarnessName) =>
-      runHarnessCommand(commands[harness], ["--version"], {}).pipe(
+      runShortCommand(commands[harness], ["--version"], {}).pipe(
         Effect.map(({ code, stdout }): Installation => {
           const version = stdout.trim().split("\n")[0] ?? "";
           return code === 0 && version !== ""
@@ -171,7 +170,7 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
       const facts = harnessFacts[harness];
       const label = facts.label;
       // Vibe's ACP server has no update command; its `vibe` command updates it the way it was installed.
-      const run = yield* runHarnessCommand(
+      const run = yield* runShortCommand(
         facts.updateCommand ?? commands[harness],
         facts.updateArgs,
         {},
@@ -266,7 +265,7 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
       if (process.platform !== "darwin") return yield* invalid(`Open a terminal on this computer and run: ${line}`);
       if (facts.signInNeedsNoTerminal) {
         // No window: the tool opens the browser itself and ends once the browser's answer reaches its local port.
-        const run = yield* runHarnessCommand(
+        const run = yield* runShortCommand(
           commands[harness],
           facts.signInArgs,
           accountEnvironmentOf(harness, configDirectory),
@@ -296,7 +295,7 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
         );
         chmodSync(script, 0o755);
       });
-      const opened = yield* runHarnessCommand("open", [script], {});
+      const opened = yield* runShortCommand("open", [script], {});
       if (opened.code !== 0) return yield* invalid(`Could not open a terminal. Run this yourself: ${line}`);
       return "Opened" as const;
     });

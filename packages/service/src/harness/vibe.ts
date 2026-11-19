@@ -6,7 +6,10 @@ import {
   type HarnessAdapter,
   HarnessFailure,
   numberFieldOf,
+  type RpcIncoming,
+  type RpcProcess,
   readImages,
+  startRpcProcess,
   type ThreadAccess,
   type TurnRequest,
   textFieldOf,
@@ -18,7 +21,6 @@ import {
   makeHarnessProcesses,
   type PooledTurn,
 } from "./harnessProcesses.ts";
-import { type RpcIncoming, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
 import { findFirstOutside, promptOf } from "./openCodePrompts.ts";
 import { toolServerName } from "./toolNames.ts";
 import { billingOf, childEnvironment, initializeParams, readVibePlanLimits } from "./vibeAccount.ts";

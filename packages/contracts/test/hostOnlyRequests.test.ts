@@ -4,7 +4,7 @@ import { hostOnlyRequestTags, Results } from "../src/index.ts";
 // Every request that manages pairing, the relay or other hosts is classified here, so a new request of that kind
 // cannot reach a paired device unnoticed: adding one to the contract means deciding, in this test, which side it is on.
 describe("the requests only a host may answer", () => {
-  it("are exactly the ones that manage pairing, the relay, other hosts or the browsable roots (CHG-0253)", () => {
+  it("are exactly the ones that manage pairing, the relay, other hosts, the browsable roots or Apple apps' permission (CHG-0253)", () => {
     expect([...hostOnlyRequestTags].sort()).toEqual([
       "AddBrowsableRoot",
       "AddHost",
@@ -14,6 +14,7 @@ describe("the requests only a host may answer", () => {
       "ReadRemoteAccess",
       "RemoveBrowsableRoot",
       "RemoveHost",
+      "RequestApplePermission",
       "SetRemoteAccess",
       "UseOwnRelay",
       "UseSharedRelay",

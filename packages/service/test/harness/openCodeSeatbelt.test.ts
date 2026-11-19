@@ -3,8 +3,9 @@ import { existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
+import { readMarkedProcesses } from "../../src/core/index.ts";
 import { writeOwnerMarker } from "../../src/harness/openCodeSandbox.ts";
-import { isOpenCodeCommand, readMarkedProcesses } from "../../src/harness/processTree.ts";
+import { isOpenCodeCommand } from "../../src/harness/processTree.ts";
 import { listOpenCodeEfforts } from "../../src/index.ts";
 import { call, sendTo, settle, startMission, temporary } from "../fixtures/service.ts";
 import {

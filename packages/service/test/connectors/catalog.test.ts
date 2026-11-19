@@ -10,6 +10,7 @@ import {
   unnamedToolsOf,
 } from "../../src/connectors/catalog.ts";
 import { appleEntry, composioEntry, defaultCatalog } from "../../src/connectors/catalogEntries.ts";
+import { recordedAppleToolNames } from "../fixtures/appleServerListing.ts";
 import { appleLikeEntry } from "../fixtures/connectorBackend.ts";
 
 describe("the catalog's entries", () => {
@@ -42,8 +43,8 @@ describe("the catalog's entries", () => {
     expect(catalogToolOf(composioEntry, "COMPOSIO_SOME_NEW_TOOL")).toBeNull();
   });
 
-  it("make every Apple tool they do not name unclassified, and offer apps with Mail, Messages and Safari off by default", () => {
-    expect(catalogToolOf(appleEntry, "delete-event")).toBeNull();
+  it("name every tool the pinned Apple server lists, and offer apps with Mail, Messages and Safari off by default", () => {
+    expect(unnamedToolsOf(appleEntry, recordedAppleToolNames)).toEqual([]);
     expect(defaultAppsOf(appleEntry)).toEqual(["calendar", "reminders", "notes", "contacts"]);
     expect(appleEntry.apps.map((app) => app.id)).toEqual([
       "calendar",

@@ -29,6 +29,9 @@ extraResources:
     to: LICENSE
   - from: ../../packages/channel/NOTICE
     to: channel-NOTICE
+  # The vendored connector servers (packages/service/vendor), run by a system Node: the packaged app cannot run its own binary as one (RunAsNode fuse off).
+  - from: ../../packages/service/vendor
+    to: vendor
 # node-pty's native binary and its spawn helper must run from disk, not from inside the archive.
 asarUnpack:
   - "**/node_modules/node-pty/**"

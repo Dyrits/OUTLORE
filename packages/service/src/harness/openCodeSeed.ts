@@ -1,9 +1,8 @@
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { textFieldOf } from "../core/index.ts";
+import { killProcessTree, reducedEnvironmentOf, textFieldOf } from "../core/index.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
-import { harnessEnvironmentOf } from "./lineProcess.ts";
 import {
   type OpenCodeSandbox,
   openCodeEnvironmentOf,
@@ -12,7 +11,6 @@ import {
   wrappedCommandOf,
   writableRootsOf,
 } from "./openCodeSandbox.ts";
-import { killProcessTree } from "./processTree.ts";
 
 // What a sandboxed OpenCode starts with (CHG-0208): the account's sign-in and the owner's configuration, copied one
 // way from the real folders at each start, so a changed or revoked sign-in follows and nothing flows back.
@@ -106,7 +104,7 @@ const failureOf = (step: string, ran: CommandResult) =>
 const sandboxedOf = (run: SeedRun) => {
   const cwd = join(run.sandbox.root, "tmp");
   const roots = writableRootsOf(run.sandbox, cwd, run.accountDataHome);
-  const env = harnessEnvironmentOf({ ...openCodeEnvironmentOf(run.sandbox, run.accountDataHome), ...run.environment });
+  const env = reducedEnvironmentOf({ ...openCodeEnvironmentOf(run.sandbox, run.accountDataHome), ...run.environment });
   return {
     cwd,
     run: (command: string, args: ReadonlyArray<string>, input = "") => {
@@ -123,7 +121,7 @@ const sandboxedOf = (run: SeedRun) => {
 export const seedOpenCodeSignIn = async (run: SeedRun) => {
   const sandboxed = sandboxedOf(run);
   const exportArgs = [...run.prefixArgs, "auth", "export", "--standalone"];
-  const realEnv = harnessEnvironmentOf({
+  const realEnv = reducedEnvironmentOf({
     ...accountEnvironmentOf("opencode", run.accountDataHome),
     XDG_DATA_HOME: realDataHomeOf(run.sandbox, run.accountDataHome),
   });

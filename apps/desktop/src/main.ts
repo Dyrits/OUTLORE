@@ -64,6 +64,10 @@ const startService = (token: string) => {
       OUTLORE_DATA_DIR: dataDirectory(),
       OUTLORE_RELEASE: appVersionOf(),
       OUTLORE_TOKEN: token,
+      // The vendored connector servers, shipped as a resource in the installed app and vendored in the repo in dev.
+      OUTLORE_VENDOR_DIR: app.isPackaged
+        ? join(process.resourcesPath, "vendor")
+        : join(here, "..", "..", "..", "packages", "service", "vendor"),
     },
     serviceName: "Outlore service",
     stdio: "inherit",

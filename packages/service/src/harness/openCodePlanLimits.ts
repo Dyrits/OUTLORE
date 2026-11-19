@@ -2,9 +2,15 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { Effect } from "effect";
-import { fieldOf, HarnessFailure, numberFieldOf, type PlanLimitReport, type PlanLimitsReport } from "../core/index.ts";
+import {
+  fieldOf,
+  HarnessFailure,
+  numberFieldOf,
+  type PlanLimitReport,
+  type PlanLimitsReport,
+  reducedEnvironmentOf,
+} from "../core/index.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
-import { harnessEnvironmentOf } from "./lineProcess.ts";
 import type { OpenCodeOptions } from "./opencode.ts";
 
 // The plan limits of OpenCode Go, read from the `opencode serve` of an account (ADR 0008; probe of 2026-11-12).
@@ -57,7 +63,7 @@ export const readOpenCodePlanLimits = (
         [...(options.prefixArgs ?? []), "serve", "--hostname", "127.0.0.1", "--port", "0"],
         {
           cwd: tmpdir(),
-          env: harnessEnvironmentOf({
+          env: reducedEnvironmentOf({
             ...accountEnvironmentOf("opencode", configDirectory),
             OPENCODE_SERVER_PASSWORD: password,
           }),

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { HarnessName } from "@outlore/contracts";
 import { Effect } from "effect";
-import type { VaultDenial } from "../core/index.ts";
+import { runShortCommand, type VaultDenial } from "../core/index.ts";
 import { sandboxSettingsOf } from "./claudeArgs.ts";
 import {
   denialStampKeyOf,
@@ -14,7 +14,6 @@ import {
   writeDenialStamp,
 } from "./claudeDenialStamp.ts";
 import { vaultProfileArgsOf, vaultProfileName } from "./codexVaultProfile.ts";
-import { runHarnessCommand } from "./lineProcess.ts";
 import { type OpenCodeSandbox, wrappedCommandOf } from "./openCodeSandbox.ts";
 import { isInstalled, judgeDenial, probeMarkerName, probeVaultDenial, type RunCommand } from "./vaultDenial.ts";
 
@@ -42,10 +41,10 @@ const versionOf = (options: Executable, run: RunCommand) =>
   );
 
 /** The short limit of the start-up probes; `run` stands in for the real commands in a check. */
-const runShort: RunCommand = (command, args) => runHarnessCommand(command, args, {}, 20_000);
+const runShort: RunCommand = (command, args) => runShortCommand(command, args, {}, 20_000);
 
 /** The live probe's own runner: a turn may take minutes, so its limit is far above the short probes'. */
-const runLive: RunCommand = (command, args) => runHarnessCommand(command, args, {}, 180_000, tmpdir());
+const runLive: RunCommand = (command, args) => runShortCommand(command, args, {}, 180_000, tmpdir());
 
 /**
  * Claude Code at start: its sandbox is applied inside a live turn only, and no command of its own runs one without a

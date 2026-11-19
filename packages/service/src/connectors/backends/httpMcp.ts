@@ -167,21 +167,3 @@ export const httpMcpBackend = (transport: HttpTransport): ConnectorBackend => {
       ),
   };
 };
-
-/** A connector's server for which no adapter is built, so every request honestly cannot reach it. */
-const unbuiltBackend = (upstream: string): ConnectorBackend => ({
-  call: () => Effect.fail(new BackendFailure({ class: "Unreachable", upstream })),
-  close: Effect.void,
-  listTools: () => Effect.fail(new BackendFailure({ class: "Unreachable", upstream })),
-});
-
-/** The service's backends: an HTTP entry opens the Streamable-HTTP adapter; the stdio one comes with blueprint step 4's second half. */
-export const connectorBackendsLayer = Layer.succeed(ConnectorBackends, {
-  open: (entry) =>
-    Effect.succeed(
-      entry.backend._tag === "Http"
-        ? httpMcpBackend(entry.backend)
-        : // The Apple apps entry's stdio server is the stdio adapter's to build (blueprint step 4, second half).
-          unbuiltBackend("No stdio backend is built for this connector yet."),
-    ),
-});

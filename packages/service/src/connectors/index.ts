@@ -1,3 +1,7 @@
+export {
+  applePermissionReportOf,
+  probeToolOf,
+} from "./applePermission.ts";
 export { ConnectorAsking, ConnectorNotices, type ToolUse, type ToolUseDecision } from "./asking.ts";
 export {
   BackendFailure,
@@ -6,7 +10,7 @@ export {
   ConnectorBackends,
   type ConnectorErrorClass,
 } from "./backend.ts";
-export { connectorBackendsLayer } from "./backends/httpMcp.ts";
+export { connectorBackendsLayer, type StdioMcpOptions, stdioMcpBackend } from "./backends/index.ts";
 export { ConnectorCalls, connectorCallsLayer } from "./calls.ts";
 export { type CatalogEntry, listedNameOf } from "./catalog.ts";
 export { defaultCatalog } from "./catalogEntries.ts";
