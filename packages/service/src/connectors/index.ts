@@ -9,8 +9,8 @@ export {
   type ConnectorBackend,
   ConnectorBackends,
   type ConnectorErrorClass,
-  unbuiltBackendsLayer,
 } from "./backend.ts";
+export { defaultBackendsLayer, type StdioMcpOptions, stdioMcpBackend } from "./backends/index.ts";
 export { ConnectorCalls, connectorCallsLayer } from "./calls.ts";
 export { type CatalogEntry, listedNameOf } from "./catalog.ts";
 export { defaultCatalog } from "./catalogEntries.ts";

@@ -9,8 +9,8 @@ import {
   Connectors,
   connectorServicesLayer,
   connectorsLayer,
+  defaultBackendsLayer,
   emptyVaultLayer,
-  unbuiltBackendsLayer,
   type VaultPort,
 } from "./connectors/index.ts";
 import {
@@ -216,7 +216,7 @@ export interface ServiceOptions {
   readonly attachmentsRoot?: string;
   /** The computer's name, offered as the host's name until the owner chooses one; the machine's own when left out. */
   readonly computerName?: string;
-  /** The servers of the connectors; none is reachable when left out, until the backends are built (connectors blueprint, Order 4). */
+  /** The servers of the connectors: stdio entries run their pinned vendored server as a child of the host; HTTP entries stay unreachable until that adapter is built (connectors blueprint, Order 4). */
   readonly connectorBackends?: Layer.Layer<ConnectorBackends>;
   /** The catalog of connectors the Charter offers; Composio and Apple apps when left out. */
   readonly connectorCatalog?: ReadonlyArray<CatalogEntry>;
@@ -263,7 +263,7 @@ export const serviceLayer = (options: ServiceOptions) => {
     endpointsLayer,
     connectorsLayer,
     options.connectorVault ?? emptyVaultLayer,
-    options.connectorBackends ?? unbuiltBackendsLayer,
+    options.connectorBackends ?? defaultBackendsLayer,
     options.harness,
     options.harnessTools ?? fakeHarnessToolsLayer(),
     Layer.succeed(ScratchRoot, options.scratchRoot),

@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema } from "effect";
+import { Context, type Effect, Schema } from "effect";
 import type { CatalogEntry } from "./catalog.ts";
 
 // What a connector's server must offer the gateway (connectors blueprint, Backends). The HTTP and stdio adapters come with
@@ -38,25 +38,10 @@ export interface ConnectorBackend {
   readonly listTools: (secret: string | null) => Effect.Effect<ReadonlyArray<BackendTool>, BackendFailure>;
 }
 
-/** Opens the backend a catalog entry names. */
+/** Opens the backend a catalog entry names; the service's default does this per entry (backends/defaultBackends.ts). */
 export class ConnectorBackends extends Context.Service<
   ConnectorBackends,
   {
     readonly open: (entry: CatalogEntry) => Effect.Effect<ConnectorBackend>;
   }
 >()("outlore/connectors/ConnectorBackends") {}
-
-/**
- * The backends until the real adapters are built: every server is unreachable, so an installed connector offers no tool and
- * warns once, which is what the service honestly can do for it.
- */
-export const unbuiltBackendsLayer = Layer.succeed(ConnectorBackends, {
-  open: () =>
-    Effect.succeed({
-      call: () =>
-        Effect.fail(new BackendFailure({ class: "Unreachable", upstream: "No backend is built for this connector." })),
-      close: Effect.void,
-      listTools: () =>
-        Effect.fail(new BackendFailure({ class: "Unreachable", upstream: "No backend is built for this connector." })),
-    } satisfies ConnectorBackend),
-});
