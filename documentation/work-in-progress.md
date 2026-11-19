@@ -1,5 +1,9 @@
 # Work in progress
 
+## Connector Charter controls · 2026-11-19 · built on the Charter errand branch; review pending
+
+CHG-0538 adds the connector catalog, Vault and placement controls on `mission/connectors-composio-and-apple-apps-2aaf91f7`. The tool approval question grants Always allow and Permissions manages it; the thread panel's connector tools line remains unbuilt. No window or phone look, real Composio, real macOS permission prompt or live Claude denial check was made. See the [verification](verification/2026-11-19-connector-charter.md) and [handoff](../.agents/handoffs/2026-11-19-1725-connectors-charter.md).
+
 ## Nested corner marks in the sidebar · 2026-11-19 · released in 0.1.11; the nested look built, tested, on `main` once committed; the owner's look pending
 
 CHG-0530: a quest or errand row nests lower-left corner marks sized by what it waits for — 25% grey (the owner's turn), 50% amber (a summons), 75% red (a failed state) — in one shared `corner` style (`shell/railStyles.ts`), sized per mark and drawn largest first (`shell/railRows.tsx`, `cornersOf` in `shell/railQuests.tsx`); it replaces CHG-0524's 50/75 ring and turn mark. The errand guide's first level now runs along the quest's left border, deeper levels along the errand's border line, so nested branch lines stack on one line. Checks: Biome clean on the touched files, `bun run typecheck` passes, the app's tests pass (78 files, 556 tests, 6 skipped); not seen in a window or on a phone. [Handoff](../.agents/handoffs/2026-11-19-0940-nested-corner-marks.md) · [Changelog](changelog/0.1.12-Prototype.md), CHG-0530

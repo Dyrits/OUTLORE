@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the connectors quest (CHG-0531 to CHG-0537; the Vault and read-denial probes, the gateway, the Vault join, the HTTP backend with Composio and the stdio backend with the Apple apps are merged into `mission/connectors-composio-and-apple-apps-cd1b5543`, not yet into `main`; open: the Charter screens, the owner's live checks, and the merge into `main` with the owner's approval), read the [current handoff](.agents/handoffs/2026-11-19-1630-connectors-merged.md). Handoffs are shared and committed.
+- To resume the connectors quest (CHG-0531 to CHG-0538; Charter controls built on the errand branch; open: review, the thread panel tools line, the owner's live checks and integration), read the [current handoff](.agents/handoffs/2026-11-19-1725-connectors-charter.md). Handoffs are shared and committed.
 
 - To resume the nested corner marks in the sidebar and the errand guide's alignment to the quest's left border (CHG-0530; committed and pushed; open: the owner's look in a window or on a phone, whether "error" meant the Failed state, and whether the stacked errand branch lines are acceptable), read the [current handoff](.agents/handoffs/2026-11-19-0940-nested-corner-marks.md). Handoffs are shared and committed.
 

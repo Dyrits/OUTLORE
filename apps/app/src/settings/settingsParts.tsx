@@ -197,17 +197,19 @@ const local = StyleSheet.create({
 
 /** An on and off switch with its words. */
 export function ToggleRow({
+  isDisabled = false,
   label,
   onChange,
   value,
 }: {
+  isDisabled?: boolean;
   label: string;
   onChange: (value: boolean) => void;
   value: boolean;
 }) {
   return (
     <View style={toggleStyles.row}>
-      <Toggle onValueChange={onChange} value={value} />
+      <Toggle isDisabled={isDisabled} label={label} onValueChange={onChange} value={value} />
       <Text style={[styles.body, toggleStyles.label]}>{label}</Text>
     </View>
   );

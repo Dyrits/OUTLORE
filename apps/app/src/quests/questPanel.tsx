@@ -1,6 +1,7 @@
 import type { HarnessName, MissionDetail, MissionId, MissionSummary, WorkspaceChoice } from "@outlore/contracts";
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ConnectorChoicePanel } from "../connectors";
 import { BudgetMeters } from "../editors/budgets";
 import { boardOf } from "../foundation/boardColumns";
 import type { ServiceClient } from "../foundation/client";
@@ -196,6 +197,10 @@ export function QuestSidebar({
             )
           )}
         </Group>
+        <ConnectorChoicePanel client={client} key={mission.id} level={{ _tag: "Quest", missionId: mission.id }} />
+        {thread?.sideQuest != null && (
+          <Text style={styles.muted}>This errand follows its quest's connector choices.</Text>
+        )}
         <View style={local.spends}>
           <BudgetMeters onPress={onOpenBudget} use={mission.budget} />
           <Text style={styles.muted}>{usageDetail(usage)}</Text>
@@ -328,6 +333,7 @@ export function RealmPanel({
         <Group label="Lore">
           <Row label="What this realm has learned" onPress={onOpenLore} />
         </Group>
+        <ConnectorChoicePanel client={client} key={realm.id} level={{ _tag: "Realm", realmId: realm.id }} />
         <QuestLedger missions={missions} onSelect={onSelect} />
         <RealmArchiveAction client={client} workspaceId={realm.id} />
       </ScrollView>

@@ -24,16 +24,19 @@ const webSwitchColors = { activeThumbColor: colors.canvas };
 /** An on and off switch in the accent color. */
 export function Toggle({
   isDisabled = false,
+  label,
   onValueChange,
   value,
 }: {
   isDisabled?: boolean;
+  label?: string;
   onValueChange: (value: boolean) => void;
   value: boolean;
 }) {
   return (
     <Switch
       {...webSwitchColors}
+      accessibilityLabel={label}
       disabled={isDisabled}
       onValueChange={onValueChange}
       thumbColor={colors.canvas}
