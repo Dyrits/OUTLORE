@@ -1,4 +1,5 @@
 import type { GuildmasterPlace, MissionId, Viewing } from "@outlore/contracts";
+import type { ReactNode } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { BudgetScreen, BudgetStopCard } from "../editors/budgets";
 import type { ServiceClient } from "../foundation/client";
@@ -30,27 +31,22 @@ function RealmNote({ name, onClear }: { name: string; onClear: () => void }) {
 }
 
 /**
- * Chronicler: one permanent conversation that takes any request, looks for a quest that already fits, offers to continue
- * it or proposes a new one as a card for the owner to open, and shows each action as a card (quest coordination). A
- * realm chosen on a realm's page is attached to the next message. It sits in a panel the owner folds (`onFold`).
+ * The Chronicle: Chronicler's one permanent conversation, the first pane of the window (CHG-0564). It takes any request,
+ * looks for a quest that already fits, offers to continue it or proposes a new one as a card for the owner to open, and
+ * shows each quest it opened as a reply line under its message (quest coordination). A realm chosen on a realm's page is
+ * attached to the next message. `chrome` is the buttons at the end of its header: fold, or close on a narrow window.
  */
 export function ChroniclerConversation({
+  chrome,
   client,
-  isFull,
-  onFold,
   onOpenMission,
   onRealm,
-  onToggleFull,
   realmPath,
   viewing,
 }: {
+  /** The buttons at the end of the header, which the pane that holds the conversation chooses. */
+  chrome: ReactNode;
   client: ServiceClient;
-  /** Whether the panel fills the whole content area. */
-  isFull: boolean;
-  /** Folds the panel this conversation sits in; none when the top bar's button folds it, so no ✕ is shown. */
-  onFold: (() => void) | null;
-  /** Fills the content area with the panel, or restores it. */
-  onToggleFull: () => void;
   onOpenMission: (id: MissionId) => void;
   onRealm: (path: string | null) => void;
   realmPath: string | null;
@@ -66,12 +62,10 @@ export function ChroniclerConversation({
     );
   return (
     <ChroniclerChat
+      chrome={chrome}
       client={client}
-      isFull={isFull}
-      onFold={onFold}
       onOpenMission={onOpenMission}
       onRealm={onRealm}
-      onToggleFull={onToggleFull}
       place={place}
       realmPath={realmPath}
       viewing={viewing}
@@ -80,22 +74,18 @@ export function ChroniclerConversation({
 }
 
 function ChroniclerChat({
+  chrome,
   client,
-  isFull,
-  onFold,
   onOpenMission,
   onRealm,
-  onToggleFull,
   place,
   realmPath,
   viewing,
 }: {
+  chrome: ReactNode;
   client: ServiceClient;
-  isFull: boolean;
-  onFold: (() => void) | null;
   onOpenMission: (id: MissionId) => void;
   onRealm: (path: string | null) => void;
-  onToggleFull: () => void;
   place: GuildmasterPlace;
   realmPath: string | null;
   viewing: Viewing;
@@ -140,21 +130,10 @@ function ChroniclerChat({
     <View style={local.page}>
       <View style={styles.header}>
         <Text numberOfLines={1} style={[local.title, styles.flex]}>
-          Chronicler
+          Chronicle
         </Text>
         <StateIndicator state={thread.state} />
-        <Pressable
-          accessibilityLabel={isFull ? "Restore Chronicler" : "Expand Chronicler"}
-          accessibilityRole="button"
-          onPress={onToggleFull}
-        >
-          <Text style={local.link}>{isFull ? "⤡" : "⤢"}</Text>
-        </Pressable>
-        {onFold !== null && (
-          <Pressable accessibilityLabel="Fold Chronicler" accessibilityRole="button" onPress={onFold}>
-            <Text style={local.link}>✕</Text>
-          </Pressable>
-        )}
+        {chrome}
         {canResume && (
           <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
             <Text style={local.link}>Resume</Text>
@@ -180,7 +159,7 @@ function ChroniclerChat({
         </View>
       )}
       <Text numberOfLines={1} style={local.sub}>
-        {harnessLabels[thread.harness]} · {companionLabelOf(thread.harness, null, thread.model)}
+        Chronicler · {harnessLabels[thread.harness]} · {companionLabelOf(thread.harness, null, thread.model)}
       </Text>
       {entries.length === 0 && draft === "" && terminal.panel === null ? (
         <View style={local.empty}>

@@ -77,14 +77,15 @@ export const rememberRailWidth = (width: number) => keep(widthKey, String(width)
 /** The key under which the browser remembers whether Chronicler's panel is open. */
 const chroniclerKey = "outlore:assistant-open";
 
-/** Reads whether Chronicler's panel is open; a platform without browser storage starts with it folded. */
-export const readChroniclerOpen = (): boolean => readStored(chroniclerKey) === "1";
+/** Reads whether the Chronicle, the first pane, is open; it starts open, and only a fold the owner made is remembered. */
+export const readChroniclerOpen = (): boolean => readStored(chroniclerKey) !== "0";
 
 /** Remembers whether Chronicler's panel is open where the platform allows; a refusal only loses the memory. */
 export const rememberChroniclerOpen = (isOpen: boolean) => keep(chroniclerKey, isOpen ? "1" : "0");
 
 /** The key under which the browser remembers the share of each pane of the chain, by depth. */
-const paneWeightsKey = "outlore:pane-weights";
+// The second key: with the Chronicle as the first slot, the depths of the shares moved by one.
+const paneWeightsKey = "outlore:pane-weights-2";
 
 /** Reads the remembered shares of the panes; none stored, bad data or no storage gives equal shares. */
 export const readPaneWeights = (): Array<number> => {

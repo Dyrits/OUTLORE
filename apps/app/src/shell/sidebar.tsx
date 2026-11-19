@@ -45,6 +45,7 @@ export function Sidebar({
   onOpenMission,
   onOpenRealmQuests,
   onOpenThread,
+  hasWorkshopRow,
   isWorkshopOpen,
   onWorkshop,
   openMission,
@@ -58,6 +59,8 @@ export function Sidebar({
   onOpenRealmQuests: (listing: RealmListing) => void;
   /** Opens an errand of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
+  /** Whether the foot has the Workshop's row: not on a wide window, where the top bar's icon opens it (CHG-0563). */
+  hasWorkshopRow: boolean;
   /** Whether the Workshop (Settings) is the screen shown, which its row shows. */
   isWorkshopOpen: boolean;
   /** Opens the Workshop, or from it goes back to where the owner was before. */
@@ -227,7 +230,12 @@ export function Sidebar({
         )}
       </ScrollView>
       <View style={local.footer}>
-        <SidebarFoot client={client} isWorkshopOpen={isWorkshopOpen} onWorkshop={onWorkshop} />
+        <SidebarFoot
+          client={client}
+          hasWorkshopRow={hasWorkshopRow}
+          isWorkshopOpen={isWorkshopOpen}
+          onWorkshop={onWorkshop}
+        />
       </View>
       {pendingMove !== null && (
         <MoveQuestModal
@@ -306,10 +314,12 @@ function SectionTitle({
  */
 function SidebarFoot({
   client,
+  hasWorkshopRow,
   isWorkshopOpen,
   onWorkshop,
 }: {
   client: ServiceClient;
+  hasWorkshopRow: boolean;
   isWorkshopOpen: boolean;
   onWorkshop: () => void;
 }) {
@@ -327,13 +337,15 @@ function SidebarFoot({
         </View>
       )}
       {hasRings && <PlanLimitRings client={client} />}
-      {(hasLimits || hasRings) && <Divider />}
-      <Row
-        isSelected={isWorkshopOpen}
-        label="Workshop"
-        leading={<SettingsIcon name="gear" size={18} tint={colors.textSecondary} />}
-        onPress={onWorkshop}
-      />
+      {(hasLimits || hasRings) && hasWorkshopRow && <Divider />}
+      {hasWorkshopRow && (
+        <Row
+          isSelected={isWorkshopOpen}
+          label="Workshop"
+          leading={<SettingsIcon name="gear" size={18} tint={colors.textSecondary} />}
+          onPress={onWorkshop}
+        />
+      )}
     </>
   );
 }

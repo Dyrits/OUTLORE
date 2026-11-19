@@ -7,6 +7,7 @@ import type { ServiceClient } from "../foundation/client";
 import { QuestTabButtonContext } from "../foundation/shellContext";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { ChronicleContext, ChroniclePane, chronicleId } from "./chronicle";
 import {
   chainOf,
   emptyPaneMemory,
@@ -55,6 +56,9 @@ function PaneTab({
   return <QuestTabButtonContext.Provider value={paneTab}>{children}</QuestTabButtonContext.Provider>;
 }
 
+/** A slot of the chain: the Chronicle, or one thread of the quest. */
+type PaneId = ThreadId | typeof chronicleId;
+
 /**
  * A quest as a chain of panes (CHG-0561): its own conversation, then an errand beside it, then that errand's errand,
  * up to four at once, the earlier ones folded to strips beyond that. The chain is the path in the quest's tree to the
@@ -64,12 +68,18 @@ function PaneTab({
 export function PaneHost({
   client,
   missionId,
+  isParked = false,
+  onCloseMission,
   onOpenMission,
   onOpenThread,
   openThread,
 }: {
   client: ServiceClient;
+  /** Whether the Workshop covers the panes: they stay as they are, out of sight, and take no part in the details panel. */
+  isParked?: boolean;
   missionId: MissionId;
+  /** Closes the quest, which leaves the Chronicle alone: the quest's own pane is the one that closes. */
+  onCloseMission: () => void;
   onOpenMission: (missionId: MissionId) => void;
   /** Makes a thread the open one, which is the deepest pane of the chain. */
   onOpenThread: (threadId: ThreadId) => void;
@@ -88,19 +98,40 @@ export function PaneHost({
   }, [data]);
   const chain = useMemo(() => chainOf(threads, openThread), [threads, openThread]);
   const deepest = chain.at(-1) ?? null;
-  const [memory, setMemory] = useState<PaneMemory<ThreadId>>(() => ({
-    ...emptyPaneMemory<ThreadId>(),
+  // The Chronicle is the first slot of the chain: the first level, ahead of the quest (CHG-0564). The chain's rules know
+  // nothing of what a slot holds, so the channel level of a realm can stand between them later.
+  const chronicle = useContext(ChronicleContext);
+  const hasChronicle = chronicle !== null;
+  const fullChain = useMemo<Array<PaneId>>(
+    () => (hasChronicle ? [chronicleId, ...chain] : chain),
+    [chain, hasChronicle],
+  );
+  const [memory, setMemory] = useState<PaneMemory<PaneId>>(() => ({
+    ...emptyPaneMemory<PaneId>(),
     weights: readPaneWeights(),
   }));
+  // A folded Chronicle is the frame's to remember, since it stays across every screen.
+  const isChronicleFolded = chronicle !== null && !chronicle.isOpen;
+  const shownMemory = useMemo(
+    () => (isChronicleFolded ? foldedPane(memory, chronicleId) : memory),
+    [memory, isChronicleFolded],
+  );
   const [focused, setFocused] = useState<ThreadId | null>(null);
   const [available, setAvailable] = useState(0);
   // Opening a thread focuses its pane; the folds of panes that left the chain are forgotten.
   useEffect(() => {
     setFocused(deepest);
-    setMemory((current) => prunedMemory(current, chain));
-  }, [deepest, chain]);
-  const slots = useMemo(() => layoutOf({ available, chain, memory }), [available, chain, memory]);
-  const openIds = useMemo(() => new Set(slots.filter((slot) => slot.kind === "pane").map((slot) => slot.id)), [slots]);
+    setMemory((current) => prunedMemory(current, fullChain));
+  }, [deepest, fullChain]);
+  const slots = useMemo(
+    () => layoutOf({ available, chain: fullChain, memory: shownMemory }),
+    [available, fullChain, shownMemory],
+  );
+  const openIds = useMemo(
+    () => new Set(slots.flatMap((slot) => (slot.kind === "pane" && slot.id !== chronicleId ? [slot.id] : []))),
+    [slots],
+  );
+  const paneCount = slots.filter((slot) => slot.kind === "pane").length;
   const dragStart = useRef(slots);
   const latest = useRef(memory);
   latest.current = memory;
@@ -113,7 +144,11 @@ export function PaneHost({
     setMemory(equalizedPanes);
     rememberPaneWeights([]);
   };
-  const onLayout = (event: LayoutChangeEvent) => setAvailable(Math.floor(event.nativeEvent.layout.width));
+  // Parked out of sight the row has no width: the panes keep the last they had, so they come back as they were.
+  const onLayout = (event: LayoutChangeEvent) => {
+    const width = Math.floor(event.nativeEvent.layout.width);
+    if (width > 0) setAvailable(width);
+  };
   // The strips between neighboring open panes, on the row above the panes, each at the edge it moves.
   let edge = 0;
   const resizers = slots.flatMap((slot, index) => {
@@ -143,34 +178,49 @@ export function PaneHost({
       <View onLayout={onLayout} style={local.row}>
         {available > 0 &&
           slots.map((slot) => {
-            const summary = summaryOf(slot.id);
-            if (slot.kind === "strip")
+            if (slot.kind === "strip") {
+              const summary = slot.id === chronicleId ? undefined : summaryOf(slot.id);
               return (
                 <PaneStrip
                   key={slot.id}
-                  onReveal={() => setMemory((current) => revealedPane(current, slot.id))}
+                  onReveal={() => {
+                    setMemory((current) => revealedPane(current, slot.id));
+                    if (slot.id === chronicleId) chronicle?.setOpen(true);
+                  }}
                   state={summary?.state ?? "Idle"}
-                  title={summary?.title ?? ""}
+                  title={slot.id === chronicleId ? "Chronicle" : (summary?.title ?? "")}
                 />
               );
-            const parentId = chain[slot.depth - 1];
-            const isFocused = slot.id === focusedId;
+            }
+            if (slot.id === chronicleId)
+              return (
+                <View accessibilityLabel="Chronicle" key={slot.id} style={[local.pane, { width: slot.width }]}>
+                  <ChroniclePane
+                    chrome={
+                      <PaneButton glyph="‹" label="Fold the Chronicle" onPress={() => chronicle?.setOpen(false)} />
+                    }
+                  />
+                </View>
+              );
+            const threadId = slot.id;
+            const parentId = fullChain[slot.depth - 1];
+            const isFocused = !isParked && threadId === focusedId;
             return (
               <View
-                key={slot.id}
+                key={threadId}
                 onPointerDown={() => {
                   pointer.current = { at: Date.now(), followedBefore: focusedId };
-                  setFocused(slot.id);
+                  setFocused(threadId);
                 }}
-                style={[local.pane, { width: slot.width }, isFocused && slots.length > 1 && local.focused]}
+                style={[local.pane, { width: slot.width }, isFocused && paneCount > 1 && local.focused]}
               >
                 <PaneTab
                   isFocused={isFocused}
-                  onFocus={() => setFocused(slot.id)}
+                  onFocus={() => setFocused(threadId)}
                   wasFollowed={() =>
                     wasFollowedAtPress({
                       followedNow: focusedId,
-                      id: slot.id,
+                      id: threadId,
                       now: Date.now(),
                       pointer: pointer.current,
                     })
@@ -179,17 +229,20 @@ export function PaneHost({
                   <PaneThread
                     chrome={
                       <>
-                        {slot.id === deepest && openIds.size > 1 && (
+                        {threadId === deepest && paneCount > 1 && (
                           <PaneButton glyph="↔" label="Equal widths" onPress={equalize} />
                         )}
-                        {slot.id !== deepest && (
+                        {threadId !== deepest && (
                           <PaneButton
                             glyph="‹"
                             label="Fold the pane"
-                            onPress={() => setMemory((current) => foldedPane(current, slot.id))}
+                            onPress={() => setMemory((current) => foldedPane(current, threadId))}
                           />
                         )}
-                        {parentId !== undefined && (
+                        {parentId === chronicleId && (
+                          <PaneButton glyph="✕" label="Close the quest" onPress={onCloseMission} />
+                        )}
+                        {parentId !== undefined && parentId !== chronicleId && (
                           <PaneButton glyph="✕" label="Close the pane" onPress={() => onOpenThread(parentId)} />
                         )}
                       </>
@@ -199,7 +252,7 @@ export function PaneHost({
                     missionId={missionId}
                     onOpenMission={onOpenMission}
                     onOpenThread={onOpenThread}
-                    threadId={slot.id}
+                    threadId={threadId}
                   />
                 </PaneTab>
               </View>

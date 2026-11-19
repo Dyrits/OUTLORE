@@ -38,3 +38,31 @@
 ## Checks run
 
 `bun run check` and `bun run typecheck` clean; `apps/app` tests 83 files, 633 passed, 6 skipped (new: `sidebarMode`, `sidebarPreferenceRules`, `paneChain`, and the storage of the shares); the full suite 307 files passed, 7 failed (29 tests in `packages/service`, all at `git init` copying templates into a folder the sandbox cannot write).
+
+
+# Batch 3 and the fixes after the owner's look (CHG-0562 to CHG-0564)
+
+- **Work:** the fixes and additions of CHG-0562 (the details icon, the pinned sidebar, equal widths), CHG-0563 (the Workshop over the panes) and CHG-0564 (the Chronicle as the first pane), on branch `mission/slack-like-conversation-panes-83921a40`.
+- **Environment:** as above, with a new web export of the worktree on `127.0.0.1:8099` and the throwaway service on the fake harness ([`scratch-serve-chronicle.ts.txt`](2026-11-19-conversation-panes/scratch-serve-chronicle.ts.txt): the same quests, and a quest Chronicler proposed and the owner opened, so the Chronicle holds a reply line). The service was bundled with `bun build --target=node` and run with Electron as Node (`ELECTRON_RUN_AS_NODE=1`), because the service's SQLite module is built for Electron and fails under bun. Drivers: `b3-*.py.txt`, run outside the thread's sandbox (Chromium cannot start inside it). The window was 1500 px wide unless said.
+- **A bug the window found:** the first build looped ("Maximum update depth exceeded", a blank window) when a quest opened: the frame's context for the Chronicle changed on every render, and a pane that hands the frame its panel makes the frame draw again, so the pane host drew its panes again, and so on. The Chronicle's context now changes only when it is folded or unfolded, and the conversation reaches its pane through a second context that only the pane's leaf reads. This is the loop the comment in `paneHost.tsx` warns of; it was not seen by tests.
+
+## Recorded results
+
+| Claim | Observation |
+| --- | --- |
+| The Chronicle is a pane beside Home, with the Chronicler's quest as a reply line | Pane at x = 1, 380 px; the reply line "Opened quest · Dark mode for settings · Resting · your turn" ([screenshot](2026-11-19-conversation-panes/b3-chronicle-home-light.png)) |
+| The top bar has the Workshop's gear at the far right and no Chronicler button | Workshop icon 1, Chronicler button 0 |
+| Pressing the reply line opens the quest in the next pane, marked Open; the quest has a close button | Two panes of 750 px; reply line text "Open"; "Close the quest" present ([screenshot](2026-11-19-conversation-panes/b3-quest-from-reply-line-light.png)); pressing it left "Pick a quest in the sidebar" |
+| A quest with two errand levels, at 1500 px, folds the Chronicle first | Chronicle as a strip, three panes of about 485 px ([screenshot](2026-11-19-conversation-panes/b3-chronicle-strip-light.png)); a fifth level also leaves the Chronicle a strip; pressing the strip reopened the Chronicle and folded the earliest pane |
+| The Chronicle's fold button | Present; folding left the strip "Open Chronicle" (seen in the chain runs) |
+| CHG-0562, the details icon: pressing another pane's icon moves the panel to it at once | In a chain of three: quest icon [Hide, Show]; errand icon pressed once: [Show, Hide] after 30 ms and still after 1.2 s; the same pane's icon again: [Show, Show], panel shut |
+| CHG-0562, equal widths | Edges at 567 and 1133 (1700 px, three panes of about 567); dragging +80 gave 647 and 1133; "Equal widths" gave 567 and 1133, and the stored shares were empty |
+| CHG-0562, the sidebar button pins | Unpinned: Chronicle at x = 1; pinned: x = 289 and the label "Unpin the sidebar (⌘B)"; still pinned after the pointer left, Escape and a press outside; pinned after a reload; ⌘B unpinned it ([screenshot](2026-11-19-conversation-panes/b2-pinned-sidebar-light.png)). A pinned sidebar on the right pushes the panes from the right (a first build did not fill the window's height; fixed, not looked at again) |
+| CHG-0563, the Workshop over the panes and back with the chain as left | At 1800 px with a quest, an errand, a dragged share, the details panel open on the errand, a pinned sidebar and a draft in the errand's composer: in the Workshop the Chronicle and panes were not visible and the gear read "Close the Workshop"; back, the resizer edges [680, 1060], the Chronicle's 391 px, the tabs [Quest, Companions], the pin and the draft were identical ([screenshot](2026-11-19-conversation-panes/b3-workshop-light.png)). The sidebar had no Workshop row |
+
+## Not seen
+
+- A quest the owner started directly in the Chronicle (it has no entry there yet, see CHG-0564), a Chronicler quest that was archived or failed, and a real harness.
+- The pinned sidebar on the right after the height fix; a drag of a quest onto a pinned sidebar; touch; the dark and black and white looks of the Chronicle and the pinned sidebar.
+- A window under 820 px (the narrow Chronicler screen and the menu with the Workshop row were typechecked, not looked at); the Workshop icon's selected look beyond the screenshot.
+- The visuals are for the owner to judge: the Chronicle's weight beside a quest, the strip's label, the Workshop icon at the far right.

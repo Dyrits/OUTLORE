@@ -1,0 +1,27 @@
+import sys; sys.path.insert(0, "/tmp/scratch-panes")
+from common import *
+def pane_widths(page):
+    return page.evaluate("""() => { const out=[]; document.querySelectorAll('[aria-label="Chronicle"]').forEach(e=>out.push(['chronicle',Math.round(e.getBoundingClientRect().width)])); return out; }""")
+with sync_playwright() as p:
+    page = open_page(p)
+    # open the quest from the Chronicle's reply line
+    page.get_by_label(re.compile("^Opened quest")).first.click(); page.wait_for_timeout(2000)
+    print("after reply-line press: chronicle panes", page.get_by_label("Chronicle", exact=True).count(), "close-quest btns", page.get_by_label("Close the quest").count(), "reply line open mark:", page.get_by_label(re.compile("^Opened quest")).first.inner_text().replace("\n"," | "))
+    page.screenshot(path=f"{OUT}/c2-quest-from-reply.png")
+    # close the quest pane
+    page.get_by_label("Close the quest").first.click(); page.wait_for_timeout(1500)
+    print("after close quest: 'Pick a quest' visible:", page.get_by_text("Pick a quest in the sidebar").count())
+    # open Right sidebar quest from the sidebar
+    page.mouse.move(700, 400); page.mouse.move(2, 400); page.wait_for_timeout(500)
+    page.get_by_text("Right sidebar").first.click(); page.wait_for_timeout(2000)
+    page.get_by_label(re.compile("^Errand: Build the component")).first.click(); page.wait_for_timeout(1200)
+    page.get_by_label(re.compile("^Errand: Unit tests")).first.click(); page.wait_for_timeout(1200)
+    page.screenshot(path=f"{OUT}/c3-four-panes.png")
+    print("four panes: resizers widths", widths(page), "chronicle:", page.get_by_label("Chronicle", exact=True).count(), "strips:", page.get_by_label(re.compile("^Open ")).count())
+    page.get_by_label(re.compile("^Errand: Integrate and review")).first.click(); page.wait_for_timeout(1500)
+    page.screenshot(path=f"{OUT}/c4-five-chain.png")
+    print("five chain: chronicle pane", page.get_by_label("Chronicle", exact=True).count(), "strips", [e for e in page.evaluate("[...document.querySelectorAll('[aria-label^=\"Open \"]')].map(e=>e.getAttribute('aria-label'))")], "widths", widths(page))
+    # unfold the Chronicle strip
+    page.get_by_label("Open Chronicle").first.click(); page.wait_for_timeout(1000)
+    print("after pressing Chronicle strip: chronicle", page.get_by_label("Chronicle", exact=True).count(), "strips", page.evaluate("[...document.querySelectorAll('[aria-label^=\"Open \"]')].map(e=>e.getAttribute('aria-label'))"), "widths", widths(page))
+    page.screenshot(path=f"{OUT}/c5-chronicle-revealed.png")

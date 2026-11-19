@@ -1,5 +1,6 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
 import type { ReactNode } from "react";
+import { StyleSheet, View } from "react-native";
 import { Conversation } from "../conversation/conversation";
 import { PermissionsScreen } from "../editors/permissions";
 import type { ServiceClient } from "../foundation/client";
@@ -23,6 +24,8 @@ type Destination = {
   openCount: number;
   openMission: MissionId | null;
   openThread: ThreadId | null;
+  /** The quest the Workshop covers, which keeps its panes as they were while the Workshop shows; null otherwise. */
+  parkedQuest: { openCount: number; openMission: MissionId; openThread: ThreadId | null } | null;
   place: Place;
   selectedMission: MissionId | null;
   settingsSection: SettingsSectionId;
@@ -56,33 +59,6 @@ export function AppScreen({
   navigation: Navigation;
   view: Destination;
 }) {
-  // A wide window shows a quest as a chain of panes; a narrow one keeps one conversation at a time.
-  const hasPanes = useHasSidebar();
-  if (view.openMission !== null && hasPanes)
-    return (
-      <PaneHost
-        client={client}
-        key={`${view.openMission}:${view.openCount}`}
-        missionId={view.openMission}
-        onOpenMission={navigation.openMission}
-        onOpenThread={navigation.selectThread}
-        openThread={view.openThread}
-      />
-    );
-  if (view.openMission !== null)
-    return (
-      <Conversation
-        client={client}
-        key={`${view.openMission}:${view.openCount}`}
-        missionId={view.openMission}
-        // The Back of a quest shows only in a narrow window, which has no sidebar: it goes back to the main menu.
-        onBack={navigation.openMenu}
-        onOpenMission={navigation.openMission}
-        onSelectThread={navigation.selectThread}
-        onSetDetails={navigation.showDetails}
-        selectedThreadId={view.openThread}
-      />
-    );
   const quests = (listing: RealmListing) => (
     <QuestListScreen
       client={client}
@@ -111,5 +87,52 @@ export function AppScreen({
       />
     ),
   } satisfies Record<Place, ReactNode>;
+  // A wide window shows a quest as a chain of panes; a narrow one keeps one conversation at a time.
+  const hasPanes = useHasSidebar();
+  const quest =
+    view.openMission === null
+      ? view.parkedQuest
+      : { openCount: view.openCount, openMission: view.openMission, openThread: view.openThread };
+  if (quest !== null && hasPanes) {
+    // The Workshop covers the whole content area, and the panes wait beneath it as they were, then come back (CHG-0563).
+    const isParked = view.openMission === null;
+    return (
+      <>
+        <View style={isParked ? local.parked : local.fill}>
+          <PaneHost
+            client={client}
+            isParked={isParked}
+            key={`${quest.openMission}:${quest.openCount}`}
+            missionId={quest.openMission}
+            onCloseMission={navigation.closeMission}
+            onOpenMission={navigation.openMission}
+            onOpenThread={navigation.selectThread}
+            openThread={quest.openThread}
+          />
+        </View>
+        {isParked && screens[view.place]}
+      </>
+    );
+  }
+  if (view.openMission !== null)
+    return (
+      <Conversation
+        client={client}
+        key={`${view.openMission}:${view.openCount}`}
+        missionId={view.openMission}
+        // The Back of a quest shows only in a narrow window, which has no sidebar: it goes back to the main menu.
+        onBack={navigation.openMenu}
+        onOpenMission={navigation.openMission}
+        onSelectThread={navigation.selectThread}
+        onSetDetails={navigation.showDetails}
+        selectedThreadId={view.openThread}
+      />
+    );
   return screens[view.place];
 }
+
+const local = StyleSheet.create({
+  fill: { flex: 1 },
+  // Out of sight and out of the layout, but mounted: the panes keep their folds, shares and drafts for the way back.
+  parked: { display: "none" },
+});

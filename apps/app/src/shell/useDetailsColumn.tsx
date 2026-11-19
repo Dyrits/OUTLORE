@@ -17,13 +17,12 @@ import { useCompanionDock } from "./useCompanionDock";
 export function useDetailsColumn(input: {
   details: DetailsToggle | null;
   hasRail: boolean;
-  isChroniclerFull: boolean;
   isChroniclerOpen: boolean;
   /** The quest open in the window; its own header has the panel's icon, so the round handle on the edge is left out. */
   isQuestOpen: boolean;
   rightPanel: RightPanel;
 }) {
-  const { details, hasRail, isChroniclerFull, isChroniclerOpen, isQuestOpen, rightPanel } = input;
+  const { details, hasRail, isChroniclerOpen, isQuestOpen, rightPanel } = input;
   const { width } = useWindowDimensions();
   const [storedWidth, setStoredWidth] = useState(() => readPaneWidth(questPanelWidthKey, questColumnWidth));
   const questWidth = clampPaneWidth(storedWidth, width, questColumnWidth);
@@ -33,7 +32,7 @@ export function useDetailsColumn(input: {
     setQuestPanel(panel);
     setPanelTitle(title);
   }, []);
-  const isPanelShown = !isChroniclerFull && details?.isOpen === true && questPanel !== null;
+  const isPanelShown = details?.isOpen === true && questPanel !== null;
   const edge = (
     <EdgeResizer
       label="Resize the quest panel"
@@ -56,9 +55,9 @@ export function useDetailsColumn(input: {
       {questPanel}
     </QuestColumn>
   );
-  const companions = useCompanionDock(rightPanel, isChroniclerFull, isChroniclerOpen);
+  const companions = useCompanionDock(rightPanel, isChroniclerOpen);
   const { companionPicker, dock, hasCompanion, isCompanionShown, otherPillId, pillId } = companions;
-  const hasQuestPanel = !isChroniclerFull && details !== null && questPanel !== null;
+  const hasQuestPanel = details !== null && questPanel !== null;
   const activeTab = rightPanel.content?.tab ?? "quest";
   const isColumnOpen = isCompanionShown || (hasQuestPanel && details.isOpen);
   const isQuestTabShown = isQuestTabOpen({ activeTab, hasQuestPanel, isColumnOpen });

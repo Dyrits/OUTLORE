@@ -21,7 +21,7 @@ import { commentsOf } from "./comments";
 import { SentComments } from "./commentViews";
 import type { Entry, QuestLink } from "./entries";
 import { Markdown } from "./markdown";
-import { ReplyLine } from "./replyLine";
+import { QuestReplyLine, ReplyLine } from "./replyLine";
 import { StepsGroup } from "./stepsGroup";
 import { SuggestionCard, SuggestionLine } from "./suggestions";
 
@@ -278,16 +278,13 @@ export function EntryView({
     return <StepsGroup client={client} seconds={entry.seconds} steps={entry.steps} threadId={entry.threadId} />;
   if (entry._tag === "QuestLink")
     return (
-      <View style={styles.messageRow}>
-        <View style={[styles.messageCard, styles.messageCardThread, styles.cardWithCorner]}>
-          <View style={styles.senderHeader}>
-            <Text style={styles.senderName}>{entry.label}</Text>
-            <Text style={styles.senderTime}>{clockOf(entry.sentAt)}</Text>
-          </View>
-          <Text style={styles.muted}>{shortened(entry.title)}</Text>
-          <QuestButton link={entry} onOpenMission={onOpenMission} />
-        </View>
-      </View>
+      <QuestReplyLine
+        client={client}
+        label={entry.label}
+        missionId={entry.missionId}
+        onOpen={onOpenMission}
+        title={entry.title}
+      />
     );
   if (entry._tag === "BudgetEvent")
     return (

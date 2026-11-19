@@ -21,6 +21,7 @@ import { useAttentionNotice } from "./src/shell/notifications";
 import type { RealmListing } from "./src/shell/questTree";
 import { Shell } from "./src/shell/shell";
 import type { Place } from "./src/shell/sidebar";
+import { useWorkshopTrip } from "./src/shell/useWorkshopTrip";
 import { HostUpdateOffer, UpdateNotice } from "./src/updates";
 
 export function App() {
@@ -61,6 +62,11 @@ export function App() {
     if (openMission !== null) dispatch({ id, missionId: openMission, type: "thread" });
   };
   const rightPanel = useRightPanel(hostId, panelScopeOf(location));
+  const onWorkshop = useWorkshopTrip({
+    dispatch,
+    isWorkshopOpen: place === "Settings" && openMission === null,
+    panel: rightPanel,
+  });
   useAttentionNotice(client);
   const keyboardHeight = useKeyboardHeight();
 
@@ -187,13 +193,13 @@ export function App() {
       client={client}
       details={details}
       dispatch={dispatch}
-      isWorkshopOpen={place === "Settings" && location.openMission === null && !location.isChroniclerFull}
+      isWorkshopOpen={place === "Settings" && location.openMission === null}
       listedRealm={listedRealm}
       location={location}
       onOpenMission={openMissionFromAnywhere}
       onOpenRealmQuests={openRealm}
       onOpenThread={openSideQuest}
-      onWorkshop={() => dispatch({ type: "workshop" })}
+      onWorkshop={onWorkshop}
       openMission={openMission}
       openThread={openThread}
       place={place}
@@ -221,6 +227,14 @@ export function App() {
           openCount,
           openMission,
           openThread,
+          parkedQuest:
+            place === "Settings" && location.openMission === null && location.workshopReturn?.openMission != null
+              ? {
+                  openCount: location.workshopReturn.openCount,
+                  openMission: location.workshopReturn.openMission,
+                  openThread: location.workshopReturn.openThread,
+                }
+              : null,
           place,
           selectedMission,
           settingsSection,

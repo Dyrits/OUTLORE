@@ -21,7 +21,7 @@ From 2026-11-11 the entity formerly called Guildmaster is **Chronicler**, a jani
 
 ### Place
 
-CHG-0449 removes the Guild Hall hub for now. Chronicler's permanent conversation is available through its own panel. The rules below describe the earlier hub and panel layout. [Simplified left navigation](../mission-tracking/specifications.md#simplified-left-navigation)
+CHG-0449 removes the Guild Hall hub for now. Chronicler's permanent conversation is available through its own panel. Since [conversation panes](../conversation-panes/specifications.md) (CHG-0564) the panel is gone on a wide window: Chronicler's conversation is the Chronicle, the first pane, with a fold button in place of the top bar's "Chronicler" button, no expand control, and quests it opened as reply lines; a narrow window and a phone still open it as a screen from the top bar. The rules below describe the earlier hub and panel layout. [Simplified left navigation](../mission-tracking/specifications.md#simplified-left-navigation)
 
 - Guild Hall contains one permanent thread outside every quest, where the user talks with Guildmaster.
   Its entry is pinned at the top of the dashboard, on the desktop and on the phone, and its thread cannot be deleted, archived, or ended.

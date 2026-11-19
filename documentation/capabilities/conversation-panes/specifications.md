@@ -6,7 +6,7 @@ Outlore's window shows one conversation at a time, with a sidebar of every realm
 
 The owner asked for a Slack-like window (2026-11-19): a conversation that everything unfolds from, where a quest or an errand appears in the conversation it came from and opens beside it as a nested conversation, with the sidebar kept but out of the way until needed, and realms as channels.
 
-Status: **agreed in the owner's answers and comments of 2026-11-19** (CHG-0553 and CHG-0555 to CHG-0557); **built in part**: the overlay sidebar and the pane chain of a quest and its errands (CHG-0560, CHG-0561; the owner has looked at it, and asked for fixes and additions, CHG-0562), nothing else. The owner's goal for this change is the Pre-Alpha release ([backlog](../../backlog.md#conversation-panes-slack-like-layout-toward-pre-alpha)). What the owner has not settled is in the [draft](draft.md), not here. The technical design is the [blueprint](blueprint.md).
+Status: **agreed in the owner's answers and comments of 2026-11-19** (CHG-0553, CHG-0555 to CHG-0559 and CHG-0563); **built in part**: the overlay sidebar and the pane chain of a quest and its errands (CHG-0560, CHG-0561; the owner has looked at it, and asked for fixes and additions, CHG-0562), the Chronicle as the first pane and the Workshop over the panes (CHG-0563, CHG-0564), nothing else. The owner's goal for this change is the Pre-Alpha release ([backlog](../../backlog.md#conversation-panes-slack-like-layout-toward-pre-alpha)). What the owner has not settled is in the [draft](draft.md), not here. The technical design is the [blueprint](blueprint.md).
 
 ## Agreed behavior
 
@@ -15,6 +15,15 @@ Status: **agreed in the owner's answers and comments of 2026-11-19** (CHG-0553 a
 - The window holds, side by side: the sidebar (below), up to four **panes**, and the **details panel**. A pane is one conversation column; the first pane is the Chronicle.
 - The details panel keeps its place, a dedicated column on the right with the Quest and Companions tabs, and its rules, for now (the owner: "they should still be in a dedicated sidebar for now"; [thread-panel](../thread-panel/specifications.md)). It does not count among the four panes.
 - Pane management is expected to change as the owner uses it ("we'll iterate on that").
+
+### The Workshop
+
+The Workshop (Settings) is not a pane and not a sheet: it is the page that takes over the whole content area, every pane included (the owner, 2026-11-19: "the workshop should take over the full panel but the icon should be on the top right, where chronicler is actually", CHG-0563).
+
+- Its icon, the gear, stands at the far right of the top bar, where the Chronicler button was. It shows as selected while the Workshop is open.
+- Pressed, it opens the Workshop over the whole content area, sidebar kept. Pressed again, the Workshop closes and the owner is where they were, with the pane chain exactly as left: the folds, the shares, the pane in focus, the details panel, the drafts, and a pinned sidebar. The panes wait mounted beneath the Workshop, out of sight.
+- The sidebar's foot has no Workshop row on a desktop window; the phone's full-screen menu, which has no top bar, keeps it.
+- The Workshop screen itself is unchanged. No keyboard shortcut for it yet.
 
 ### Main conversations and channels
 

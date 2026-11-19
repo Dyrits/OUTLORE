@@ -1,0 +1,21 @@
+import sys; sys.path.insert(0, "/tmp/scratch-panes")
+from common import *
+def rect(page, sel):
+    return page.evaluate("(s) => { const e=document.querySelector(s); if(!e) return null; const r=e.getBoundingClientRect(); return [Math.round(r.x), Math.round(r.width)]; }", sel)
+with sync_playwright() as p:
+    page = open_page(p)
+    print("unpinned: chronicle", rect(page,'[aria-label="Chronicle"]'), "button label:", page.evaluate("[...document.querySelectorAll('[aria-label*=\"the sidebar\"]')].map(e=>e.getAttribute('aria-label'))"))
+    page.get_by_label("Pin the sidebar (⌘B)").click(); page.wait_for_timeout(800)
+    print("pinned: chronicle", rect(page,'[aria-label="Chronicle"]'), "label now:", page.evaluate("[...document.querySelectorAll('[aria-label*=\"the sidebar\"]')].map(e=>e.getAttribute('aria-label'))"))
+    page.screenshot(path=f"{OUT}/e1-pinned.png")
+    page.mouse.move(900, 400); page.wait_for_timeout(600); page.keyboard.press("Escape"); page.mouse.click(900, 300); page.wait_for_timeout(600)
+    print("pinned after leave/escape/outside press: chronicle", rect(page,'[aria-label="Chronicle"]'), "sidebar still shows 'Realms':", page.get_by_text("Realms").count())
+    page.reload(); page.wait_for_timeout(3000)
+    print("pinned remembered after reload: chronicle", rect(page,'[aria-label="Chronicle"]'))
+    page.keyboard.press("Meta+b"); page.wait_for_timeout(600)
+    print("cmd+B unpins: chronicle", rect(page,'[aria-label="Chronicle"]'), "labels", page.evaluate("[...document.querySelectorAll('[aria-label*=\"the sidebar\"]')].map(e=>e.getAttribute('aria-label'))"))
+    # right edge pinned
+    page.evaluate("localStorage.setItem('outlore:sidebar-side','right')"); page.reload(); page.wait_for_timeout(3000)
+    page.get_by_label("Pin the sidebar (⌘B)").click(); page.wait_for_timeout(800)
+    print("pinned right: chronicle", rect(page,'[aria-label="Chronicle"]'))
+    page.screenshot(path=f"{OUT}/e2-pinned-right.png")

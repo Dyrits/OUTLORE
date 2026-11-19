@@ -24,9 +24,9 @@ describe("choosing the dock's Companion", () => {
     const registry = createCompanionRegistry();
     mount(registry, "first", false, 1);
     mount(registry, "second", false, 0);
-    expect(registry.selected(null, false, true).pillId).toBe("second");
+    expect(registry.selected(null, true).pillId).toBe("second");
     mount(registry, "third", false, 0);
-    expect(registry.selected(null, false, true).pillId).toBe("third");
+    expect(registry.selected(null, true).pillId).toBe("third");
   });
   it("never substitutes a different page picker for an unmounted selected page", () => {
     const registry = createCompanionRegistry();
@@ -34,7 +34,7 @@ describe("choosing the dock's Companion", () => {
     mount(registry, "other");
     const content = registry.choose("page");
     registry.unregister("page");
-    expect(registry.selected(content, false, true).companionPicker).toBeNull();
+    expect(registry.selected(content, true).companionPicker).toBeNull();
   });
   it("follows Chronicler across a remount and scopes out hidden pickers", () => {
     const registry = createCompanionRegistry();
@@ -43,14 +43,14 @@ describe("choosing the dock's Companion", () => {
     const content = registry.choose("chronicler");
     registry.unregister("chronicler");
     mount(registry, "restored", true);
-    expect(registry.selected(content, true, true).pillId).toBe("restored");
-    expect(registry.selected(content, false, false).companionPicker).toBeNull();
-    expect(registry.selected(null, true, true).pillId).toBe("restored");
+    expect(registry.selected(content, true).pillId).toBe("restored");
+    expect(registry.selected(content, false).companionPicker).toBeNull();
+    expect(registry.selected(null, true).pillId).toBe("restored");
   });
   it("routes an already drawn picker's actions to newly published handlers", () => {
     const registry = createCompanionRegistry();
     mount(registry, "page");
-    const drawn = registry.selected(registry.choose("page"), false, true).companionPicker;
+    const drawn = registry.selected(registry.choose("page"), true).companionPicker;
     const calls: string[] = [];
     expect(
       registry.publish(
@@ -70,6 +70,6 @@ describe("choosing the dock's Companion", () => {
     const registry = createCompanionRegistry();
     expect(registry.publish("missing", picker(), 0)).toBe(false);
     expect(registry.choose("missing")).toBeNull();
-    expect(registry.selected(null, false, true).hasCompanion).toBe(false);
+    expect(registry.selected(null, true).hasCompanion).toBe(false);
   });
 });

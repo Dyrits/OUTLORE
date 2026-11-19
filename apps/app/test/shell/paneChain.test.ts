@@ -180,3 +180,50 @@ describe("equal widths", () => {
     expect(equalizedPanes(memory)).toEqual({ ...memory, weights: [] });
   });
 });
+
+describe("the Chronicle as the first level of the chain", () => {
+  const chronicle = "chronicle";
+
+  it("shares the room equally with a quest and two errands: a quarter each", () => {
+    const slots = layoutOf({
+      available: 1600,
+      chain: [chronicle, "quest", "a", "a1"],
+      memory: emptyPaneMemory<string>(),
+    });
+    expect(slots.map((slot) => slot.id)).toEqual([chronicle, "quest", "a", "a1"]);
+    expect(slots.every((slot) => slot.kind === "pane" && slot.width === 400)).toBe(true);
+  });
+
+  it("is the first to fold when the chain is longer than four", () => {
+    const slots = layoutOf({
+      available: 1700,
+      chain: [chronicle, "quest", "a", "a1", "a2"],
+      memory: emptyPaneMemory<string>(),
+    });
+    expect(slots[0]).toMatchObject({ id: chronicle, kind: "strip", reason: "overflow" });
+    expect(slots.slice(1).every((slot) => slot.kind === "pane")).toBe(true);
+  });
+
+  it("is the first to fold when the window is too narrow for the panes", () => {
+    const slots = layoutOf({ available: 1100, chain: [chronicle, "quest", "a"], memory: emptyPaneMemory<string>() });
+    expect(slots[0]).toMatchObject({ id: chronicle, kind: "strip", reason: "narrow" });
+  });
+
+  it("folds when the frame says it is folded, and the quest and its errands share what is left", () => {
+    const slots = layoutOf({
+      available: 1244,
+      chain: [chronicle, "quest", "a"],
+      memory: foldedPane(emptyPaneMemory<string>(), chronicle),
+    });
+    expect(slots.map((slot) => [slot.kind, slot.width])).toEqual([
+      ["strip", stripWidth],
+      ["pane", 600],
+      ["pane", 600],
+    ]);
+  });
+
+  it("leaves a chain with no Chronicle as it was", () => {
+    const slots = layoutOf({ available: 1200, chain: ["quest", "a"], memory: emptyPaneMemory<string>() });
+    expect(slots.map((slot) => slot.width)).toEqual([600, 600]);
+  });
+});

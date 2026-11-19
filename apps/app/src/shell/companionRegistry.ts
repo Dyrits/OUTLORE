@@ -26,10 +26,9 @@ export const createCompanionRegistry = () => {
     const picker = entries.get(id)?.picker;
     return picker == null ? null : { id, isChronicler: picker.isChronicler === true, tab: "companion" };
   };
-  const selected = (content: PanelContent | null, isFull: boolean, isChroniclerOpen: boolean) => {
+  const selected = (content: PanelContent | null, isChroniclerOpen: boolean) => {
     const offered = [...entries].filter(
-      ([, entry]) =>
-        entry.picker !== null && isCompanionOffered(entry.picker.isChronicler === true, isFull, isChroniclerOpen),
+      ([, entry]) => entry.picker !== null && isCompanionOffered(entry.picker.isChronicler === true, isChroniclerOpen),
     );
     offered.sort((current, next) => current[1].rank - next[1].rank || next[1].sequence - current[1].sequence);
     const selection = content?.tab === "companion" ? content : null;

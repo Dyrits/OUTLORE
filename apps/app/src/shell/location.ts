@@ -18,7 +18,6 @@ export type Location = {
   openCount: number;
   page: QuestPage;
   isChroniclerBudgetOpen: boolean;
-  isChroniclerFull: boolean;
   isMenuOpen: boolean;
   isNarrowChroniclerOpen: boolean;
   /** Where the owner was when the Workshop was opened from its icon; pressing the icon again goes back there. */
@@ -41,7 +40,6 @@ export type NavigationEvent =
   | { type: "section"; section: SettingsSectionId }
   | { type: "chroniclerRealm"; path: string | null }
   | { type: "chroniclerBudget"; isOpen: boolean }
-  | { type: "full"; isOpen: boolean }
   | { type: "menu"; isOpen: boolean }
   | { type: "narrowChronicler"; isOpen: boolean };
 
@@ -49,7 +47,6 @@ export type NavigationEvent =
 export const initialLocation = (resumed: string | null): Location => ({
   guildmasterRealm: null,
   isChroniclerBudgetOpen: false,
-  isChroniclerFull: false,
   isMenuOpen: false,
   isNarrowChroniclerOpen: false,
   isPermissionsOpen: false,
@@ -67,7 +64,6 @@ export const initialLocation = (resumed: string | null): Location => ({
 const uncovered = (location: Location): Location => ({
   ...location,
   isChroniclerBudgetOpen: false,
-  isChroniclerFull: false,
   isMenuOpen: false,
   isNarrowChroniclerOpen: false,
   isPermissionsOpen: false,
@@ -153,7 +149,6 @@ const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "w
       ...(event.path === null ? {} : { isMenuOpen: false, isNarrowChroniclerOpen: true }),
     };
   if (event.type === "chroniclerBudget") return { ...location, isChroniclerBudgetOpen: event.isOpen };
-  if (event.type === "full") return { ...location, isChroniclerFull: event.isOpen };
   if (event.type === "menu") return { ...location, isMenuOpen: event.isOpen, isNarrowChroniclerOpen: false };
   return { ...location, isMenuOpen: false, isNarrowChroniclerOpen: event.isOpen };
 };

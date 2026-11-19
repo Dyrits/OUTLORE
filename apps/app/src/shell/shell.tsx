@@ -1,5 +1,5 @@
 import type { Dispatch, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
 import {
@@ -12,22 +12,19 @@ import {
 } from "../foundation/shellContext";
 import { chooseSidebarPinned, useSidebarPreference } from "../foundation/sidebarPreference";
 import type { RightPanel } from "../foundation/useRightPanel";
-import { ChroniclerColumn, chroniclerColumnWidth } from "./chroniclerDock";
+import { type Chronicle, ChronicleBeside, ChronicleContext, ChronicleView } from "./chronicle";
 import { EdgeResizer } from "./edgeResizer";
 import type { Location, NavigationEvent } from "./location";
+import { PaneButton } from "./paneStrip";
 import type { RealmListing } from "./questTree";
 import {
-  chroniclerWidthKey,
-  clampPaneWidth,
   clampRailWidth,
   minRailWidth,
   readChroniclerOpen,
   readHidden,
-  readPaneWidth,
   readRailWidth,
   rememberChroniclerOpen,
   rememberHidden,
-  rememberPaneWidth,
   rememberRailWidth,
 } from "./railStorage";
 import { handleSize, shellStyles as local } from "./shellStyles";
@@ -47,7 +44,7 @@ const sidebarBreakpoint = 820;
  * beside them (CHG-0560), under a top bar over the content; on a narrow one the content alone.
  */
 export function Shell(
-  props: Omit<Parameters<typeof Sidebar>[0], "width"> & {
+  props: Omit<Parameters<typeof Sidebar>[0], "hasWorkshopRow" | "width"> & {
     children: ReactNode;
     location: Location;
     dispatch: Dispatch<NavigationEvent>;
@@ -79,23 +76,15 @@ export function Shell(
     side,
     windowWidth: width,
   });
-  // Chronicler's column, dragged between its own width and a quarter of the window, as the rail.
-  const [storedChroniclerWidth, setChroniclerWidth] = useState(() =>
-    readPaneWidth(chroniclerWidthKey, chroniclerColumnWidth),
-  );
-  const chroniclerWidth = clampPaneWidth(storedChroniclerWidth, width, chroniclerColumnWidth);
   // Chronicler's panel: folded to a pill or open, remembered; a realm chosen for its next message opens it.
   const [isChroniclerOpen, setIsChroniclerOpen] = useState(readChroniclerOpen);
-  const { isChroniclerFull, isMenuOpen, isNarrowChroniclerOpen } = props.location;
-  const setIsChroniclerFull = (isOpen: boolean) => props.dispatch({ isOpen, type: "full" });
+  const { isMenuOpen, isNarrowChroniclerOpen } = props.location;
   const setIsMenuOpen = (isOpen: boolean) => props.dispatch({ isOpen, type: "menu" });
   const setIsNarrowChroniclerOpen = (isOpen: boolean) => props.dispatch({ isOpen, type: "narrowChronicler" });
-  const setChroniclerOpen = (isOpen: boolean) => {
+  const setChroniclerOpen = useCallback((isOpen: boolean) => {
     rememberChroniclerOpen(isOpen);
     setIsChroniclerOpen(isOpen);
-    if (!isOpen) setIsChroniclerFull(false);
-  };
-  const chroniclerToggle = { isOpen: isChroniclerOpen, onToggle: () => setChroniclerOpen(!isChroniclerOpen) };
+  }, []);
   const narrowChroniclerToggle = {
     isOpen: isNarrowChroniclerOpen,
     onToggle: () => {
@@ -113,7 +102,6 @@ export function Shell(
   const column = useDetailsColumn({
     details,
     hasRail,
-    isChroniclerFull,
     isChroniclerOpen,
     isQuestOpen: props.openMission !== null,
     rightPanel,
@@ -138,24 +126,25 @@ export function Shell(
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [hasRail]);
-  // Beside every screen Chronicler is a column; a narrow window gives it the whole content
-  // area instead, and its restore button closes it.
-  // Chronicler's column stands at the window's far right, past the quest panel, which its handle then clears.
-  const isChroniclerColumn = isChroniclerOpen && hasRail && !isChroniclerFull;
-  const chroniclerOffset = isChroniclerColumn ? chroniclerWidth : 0;
-  const chroniclerChat = (
+  // The Chronicle is the first pane beside every screen but the Workshop, which takes the whole content area; a narrow
+  // window gives Chronicler the whole content area instead, and its button closes it.
+  const chronicleView = (chrome: ReactNode) => (
     <ChroniclerConversation
+      chrome={chrome}
       client={props.client}
-      isFull={isChroniclerFull || !hasRail}
-      onFold={null}
       onOpenMission={props.onOpenMission}
       onRealm={props.chronicler.onRealm}
-      onToggleFull={() => (hasRail ? setIsChroniclerFull(!isChroniclerFull) : setIsNarrowChroniclerOpen(false))}
       realmPath={props.chronicler.realmPath}
-      viewing={viewingOf(props.place, props.openMission, props.listedRealm?.name ?? null, isChroniclerFull)}
+      viewing={viewingOf(props.place, props.openMission, props.listedRealm?.name ?? null)}
     />
   );
-  const chroniclerFull = isChroniclerOpen && isChroniclerFull && <View style={local.fill}>{chroniclerChat}</View>;
+  const chronicle = useMemo<Chronicle>(
+    () => ({ isOpen: isChroniclerOpen, setOpen: setChroniclerOpen }),
+    [isChroniclerOpen, setChroniclerOpen],
+  );
+  const chroniclerChat = chronicleView(
+    <PaneButton glyph="✕" label="Close Chronicler" onPress={() => setIsNarrowChroniclerOpen(false)} />,
+  );
   // A narrow window has the top bar over the content alone; its menu button opens a full-screen menu of the places. An
   // open quest panel, the menu, or Chronicler takes the content's place; the content stays mounted, so the open thread
   // is kept.
@@ -178,7 +167,7 @@ export function Shell(
             <View style={[local.narrowContent, isNarrowCovered && local.hidden]}>{props.children}</View>
             {isMenuOpen && (
               <View style={[local.narrowContent, local.menuScreen]}>
-                <Sidebar {...props} width="100%" />
+                <Sidebar {...props} hasWorkshopRow={true} width="100%" />
               </View>
             )}
             {isNarrowChroniclerOpen && !isMenuOpen && <View style={local.narrowContent}>{chroniclerChat}</View>}
@@ -188,14 +177,7 @@ export function Shell(
       </QuestPanelSetter.Provider>
     );
   }
-  const sidebar = (
-    <Sidebar
-      {...props}
-      openMission={isChroniclerFull ? null : props.openMission}
-      openThread={isChroniclerFull ? null : props.openThread}
-      width={railWidth}
-    />
-  );
+  const sidebar = <Sidebar {...props} hasWorkshopRow={false} width={railWidth} />;
   // Choosing something in the floating sidebar puts it away, so the panes are not left covered.
   const choosing = <Args extends unknown[]>(action: (...args: Args) => void) => {
     return (...args: Args) => {
@@ -210,12 +192,11 @@ export function Shell(
     <SidebarOverlay isOpen={overlay.isOpen} side={side} width={railWidth}>
       <Sidebar
         {...props}
+        hasWorkshopRow={false}
         onOpenMission={choosing(props.onOpenMission)}
         onOpenRealmQuests={choosing(props.onOpenRealmQuests)}
         onOpenThread={choosing(props.onOpenThread)}
         onWorkshop={choosing(props.onWorkshop)}
-        openMission={isChroniclerFull ? null : props.openMission}
-        openThread={isChroniclerFull ? null : props.openThread}
         width={railWidth}
       />
       <EdgeResizer
@@ -244,9 +225,9 @@ export function Shell(
               <QuestTabButtonContext.Provider value={column.questTabButton}>
                 <View style={local.window}>
                   <TopBar
-                    chronicler={chroniclerToggle}
                     details={null}
                     sidebar={isOverlay ? { isPinned, onToggle: togglePin, side } : undefined}
+                    workshop={{ isOpen: props.isWorkshopOpen, onToggle: props.onWorkshop }}
                   />
                   <View style={local.body}>
                     <View style={local.frame}>
@@ -277,29 +258,19 @@ export function Shell(
                         </Pressable>
                       )}
                       <View style={local.panel}>
-                        {props.children}
-                        {chroniclerFull}
+                        <ChronicleContext.Provider value={chronicle}>
+                          <ChronicleView.Provider value={chronicleView}>
+                            <ChronicleBeside
+                              chronicle={chronicle}
+                              isShown={props.openMission === null && props.place !== "Settings"}
+                            >
+                              {props.children}
+                            </ChronicleBeside>
+                          </ChronicleView.Provider>
+                        </ChronicleContext.Provider>
                       </View>
                     </View>
                     {column.wideColumn}
-                    {isChroniclerColumn && (
-                      <ChroniclerColumn
-                        edge={
-                          <EdgeResizer
-                            label="Resize Chronicler"
-                            leastWidth={chroniclerColumnWidth}
-                            onChange={setChroniclerWidth}
-                            onRelease={(next) => rememberPaneWidth(chroniclerWidthKey, next)}
-                            side="start"
-                            width={chroniclerWidth}
-                            windowWidth={width}
-                          />
-                        }
-                        width={chroniclerWidth}
-                      >
-                        {chroniclerChat}
-                      </ChroniclerColumn>
-                    )}
                     {column.hasEdgeHandle && (
                       <Pressable
                         accessibilityLabel={column.isColumnOpen ? "Hide quest panel" : "Show quest panel"}
@@ -307,9 +278,7 @@ export function Shell(
                         onPress={column.toggleColumn}
                         style={({ pressed }) => [
                           local.handle,
-                          column.isColumnOpen
-                            ? { right: questWidth - handleSize / 2 + chroniclerOffset }
-                            : [local.endHandleTab, { right: chroniclerOffset }],
+                          column.isColumnOpen ? { right: questWidth - handleSize / 2 } : local.endHandleTab,
                           pressed && local.handlePressed,
                         ]}
                       >
@@ -317,7 +286,8 @@ export function Shell(
                       </Pressable>
                     )}
                     {hasRightRail && (
-                      <View style={{ width: railWidth }}>
+                      // A row, so the sidebar stretches to the window's height as it does in the frame.
+                      <View style={{ flexDirection: "row", width: railWidth }}>
                         {sidebar}
                         <EdgeResizer
                           label="Resize the sidebar"
