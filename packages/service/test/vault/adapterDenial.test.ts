@@ -122,10 +122,12 @@ describe("hiding the Vault's folder in OpenCode's sandbox", () => {
     const folder = join(temporary("outlore-hidden-"), "vault");
     const sandbox = detectOpenCodeSandbox({
       hidden: [folder],
-      platform: "darwin",
+      // The Linux branch reads nothing from the host but what is passed here, so the test runs the same on macOS and Linux.
+      platform: "linux",
       probe: () => true,
       root: temporary("outlore-root-"),
       sandboxProblem: null,
+      which: () => "/usr/bin/bwrap",
     });
     expect(statSync(folder).mode & 0o777).toBe(0o700);
     expect(sandbox?.hidden).toEqual([realpathSync(folder)]);
