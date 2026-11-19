@@ -25,6 +25,7 @@ import {
   seedBrowsableRoots,
   sessionsLayer,
   storeLayer,
+  vaultFolderOf,
 } from "./core/index.ts";
 import { fakeHarnessToolsLayer, type HarnessTools } from "./harness/index.ts";
 import { listOpenQuestions, removePermission, widenPermission } from "./policy/index.ts";
@@ -42,6 +43,7 @@ import {
 } from "./remote/index.ts";
 import { Service } from "./serviceTag.ts";
 import { HostUpdate, type HostUpdater, hostUpdateLayer, noHostUpdaterLayer } from "./update/index.ts";
+import { type KeyCustody, vaultLayer } from "./vault/index.ts";
 import {
   AccountsRoot,
   Approvals,
@@ -213,6 +215,8 @@ export interface ServiceOptions {
   readonly homeFolder: string;
   /** The updater of the app this host runs in, for updating the host from a paired device; none when left out. */
   readonly hostUpdater?: Layer.Layer<HostUpdater>;
+  /** The key holders the Vault tries, in order; the platform's own and the key file when left out (ADR 0022). */
+  readonly keyCustodies?: ReadonlyArray<KeyCustody>;
   /** The Worker's name on the owner's Cloudflare account; "outlore-relay" when left out. */
   readonly ownRelayWorkerName?: string;
   /** Where the model price table is read from; none, so the snapshot alone, when left out (decision record 0014). */
@@ -237,6 +241,8 @@ export const serviceLayer = (options: ServiceOptions) => {
     endpointsLayer,
     connectorsLayer(options.connectorGateway),
     options.harness,
+    // The Vault, made and probed at start; it needs the harness adapters' denial reports (ADR 0022).
+    vaultLayer(vaultFolderOf(dirname(options.filename)), options.keyCustodies).pipe(Layer.provide(options.harness)),
     options.harnessTools ?? fakeHarnessToolsLayer(),
     Layer.succeed(ScratchRoot, options.scratchRoot),
     Layer.succeed(HomeFolder, options.homeFolder),
