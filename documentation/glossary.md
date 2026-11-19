@@ -60,7 +60,7 @@ _Avoid_: Ping, notification
 
 **Comment**:
 A note the owner writes on a message of a quest or errand, on the whole message or on a passage selected in it. Comments wait, per thread, in the browser's storage and go with the owner's next message in that thread, as a block in its text.
-_Avoid_: Annotation, review note, reply (a reply is a message)
+_Avoid_: Annotation, review note
 
 **Attachment**:
 A file the owner adds to a message, kept by Outlore and given to the thread's harness with the message's text. Only images are supported so far.
@@ -88,6 +88,22 @@ The name of Chronicler's permanent conversation outside every quest. CHG-0449 re
 **Chronicler** (the assistant; formerly **Guildmaster**, CHG-0173):
 The app-wide assistant the user talks with in the Guild Hall to learn how the app works and to manage realms and quests. It proposes quests and never opens one without the user's confirmation.
 _Avoid_: Coordinator, dispatcher, orchestrator, main thread, Mission control
+
+**Reply**:
+The action that starts a thread of work from a message: a quest from a message of a main conversation, an errand from a message of a quest or errand. It differs from a Comment, which is only a note held for the next message. Not built. [Conversation panes](capabilities/conversation-panes/specifications.md#reply-and-comment)
+_Avoid_: Sub-thread, fork (alone)
+
+**Chronicle**:
+The app-wide main conversation, first among the panes: where Chronicler describes what is happening in Outlore (a realm or a quest opened, and so on) and reminds the owner of what waits. Each realm has a channel of its own beside it. Not built. [Conversation panes](capabilities/conversation-panes/specifications.md#main-conversations-and-channels)
+_Avoid_: Log, Guild Hall (the retired hub's name, kept for Chronicler's permanent conversation in the older specifications)
+
+**Pane**:
+One conversation column of the window: the main conversation, a quest, an errand. Up to four stand side by side; each can be folded, unfolded, or closed. Not built. [Conversation panes](capabilities/conversation-panes/specifications.md)
+_Avoid_: Panel (the details column and the sidebars are panels), window, tab
+
+**Reply line**:
+What shows, in the conversation it came out of, a quest or an errand, with its state, and opens it in the next pane: a line under a message for a quest, a card of its own for an errand. Not built. [Conversation panes](capabilities/conversation-panes/specifications.md#errands-as-replies)
+_Avoid_: Sub-thread, thread link (a reply is a message, see Comment)
 
 **Mention**:
 A quest, errand, or realm the owner names with `@` in a message, as context for the thread that receives it.

@@ -1,5 +1,9 @@
 # Work in progress
 
+## Conversation panes · 2026-11-19 · specified and planned (CHG-0553 to CHG-0556), nothing built; the owner's word to build awaited
+
+The owner wants a Slack-like window: the Chronicle (Chronicler's overview of everything happening) and a channel per realm, quests and errands opening in up to four panes from Reply, an overlay sidebar on either edge. [Specification](capabilities/conversation-panes/specifications.md) · [blueprint](capabilities/conversation-panes/blueprint.md) (seven batches, approved as the plan, batches 1 and 2 first) · [draft](capabilities/conversation-panes/draft.md) (small open details). Next: the owner's go-ahead to build batches 1 and 2 in a worktree (no throwaway prototype). The goal is Pre-Alpha.
+
 ## Connector Charter controls · 2026-11-19 · built on the Charter errand branch; review pending
 
 CHG-0543 adds the connector catalog, Vault and placement controls on `mission/connectors-composio-and-apple-apps-2aaf91f7`. The tool approval question grants Always allow and Permissions manages it; CHG-0544 adds the thread panel's connector tools line from cached server listings. No window or phone look, real Composio, real macOS permission prompt or live Claude denial check was made. See the [verification](verification/2026-11-19-connector-charter.md) and [handoff](../.agents/handoffs/2026-11-19-1755-connector-review-fixes.md).
