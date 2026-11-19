@@ -31,7 +31,7 @@ export const railOutlineOf = (
   limit = sidebarQuestLimit,
 ) => ({
   borderlands: visibleQuestsOf(placements.borderlands, limit, openMission),
-  isQuestOpen: (id: string) => openQuests.has(id) || id === openMission,
+  isQuestOpen: (id: string) => openQuests.has(id),
   realms: placements.realms.map((realm) => ({
     ...realm,
     visibleQuests: visibleQuestsOf(realm.quests, limit, openMission),

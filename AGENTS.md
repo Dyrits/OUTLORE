@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the quest folding fix, read the [current handoff](.agents/handoffs/2026-11-19-1050-quest-fold.md). Handoffs are shared and committed.
+
 - To resume the nested corner marks in the sidebar and the errand guide's alignment to the quest's left border (CHG-0530; committed and pushed; open: the owner's look in a window or on a phone, whether "error" meant the Failed state, and whether the stacked errand branch lines are acceptable), read the [current handoff](.agents/handoffs/2026-11-19-0940-nested-corner-marks.md). Handoffs are shared and committed.
 
 - To resume the code simplification across the codebase (CHG-0529; merged into `main`; open: the 28 sandbox-only test failures on the owner's machine, and which kept branches can go), read the [current handoff](.agents/handoffs/2026-11-19-0935-code-simplification-merged.md). Handoffs are shared and committed.
-
-- To resume the 2026-11-19 architecture audit (report committed with eight deepening candidates and a top recommendation, none picked yet; open: the owner's choice of candidate), read the [current handoff](.agents/handoffs/2026-11-19-0836-architecture-audit.md). Handoffs are shared and committed.

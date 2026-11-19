@@ -60,12 +60,25 @@ describe("revealing the rail location", () => {
     expect(collapsed.has("parent")).toBe(true);
     expect(threadOutlineOf(tree, collapsed, null, true).rows.map((row) => row.thread.id)).toEqual(["parent"]);
   });
-  it("keeps an open quest past the normal placement limit and expands its branch", () => {
+  it("keeps the selected quest past the normal placement limit without changing its fold", () => {
     const quests = ["first", "second", "selected"].map((id) => quest(id));
     const outline = railOutlineOf({ borderlands: quests, realms: [] }, "selected", new Set(), 1);
     expect(outline.borderlands.map((each) => each.id)).toEqual(["first", "selected"]);
-    expect(outline.isQuestOpen("selected")).toBe(true);
+    expect(outline.isQuestOpen("selected")).toBe(false);
     expect(outline.isQuestOpen("first")).toBe(false);
+  });
+  it("keeps the selected quest folded when the owner folds it", () => {
+    const outline = railOutlineOf({ borderlands: [quest("selected")], realms: [] }, "selected", new Set());
+    expect(outline.isQuestOpen("selected")).toBe(false);
+  });
+  it("keeps one quest open when another quest is selected", () => {
+    const outline = railOutlineOf(
+      { borderlands: [quest("first"), quest("second")], realms: [] },
+      "second",
+      new Set(["first"]),
+    );
+    expect(outline.isQuestOpen("first")).toBe(true);
+    expect(outline.isQuestOpen("second")).toBe(false);
   });
   it("keeps every running quest past the normal placement limit, in its place in the list", () => {
     const quests = [quest("first"), quest("second"), quest("running", "Running"), quest("fourth", "Running")];
