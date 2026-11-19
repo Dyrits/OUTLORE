@@ -58,6 +58,6 @@ Latest handoffs:
 
 - To resume the agent replies' date beside the time, such as `19 Nov 2026 · 11:15 AM` (built and tested, uncommitted when written; open: a look in a window and on a phone, and whether the year always shows), read the [current handoff](.agents/handoffs/2026-11-19-0724-message-date.md). Handoffs are shared and committed.
 
-- To resume the phone app's keyboard fix, so the composer stays above the software keyboard on Android (uncommitted when written; open: a build and a look on a phone, and whether the add-host dialog is also covered), read the [current handoff](.agents/handoffs/2026-11-19-0718-phone-keyboard-composer.md). Handoffs are shared and committed.
+- To resume the phone sidebar's realm names, which the phone showed as a folder mark alone (CHG-0528; fixed by giving the name its own style; open: a build and a look on a phone), read the [current handoff](.agents/handoffs/2026-11-19-0727-phone-realm-name.md). Handoffs are shared and committed.
 
 

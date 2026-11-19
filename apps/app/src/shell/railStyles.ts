@@ -81,7 +81,16 @@ export const local = StyleSheet.create({
   questError: { color: colors.dangerText, fontFamily: fonts.sans, fontSize: fontSizes.sm, paddingVertical: 2 },
   /** The fixed place at the end of a quest row: its state dot, or on hover its archive or delete mark. */
   questMark: { alignItems: "center", height: 18, justifyContent: "center", width: 18 },
-  realmText: { flexBasis: "auto", flexGrow: 0, flexShrink: 1, fontWeight: "600" },
+  // A realm's name takes the width it needs and shrinks when the row is short. It must not be built on `rowText`: that
+  // carries `flex: 1`, and Yoga (the phone's layout) reads `flexBasis: "auto"` as unset and so takes `flex`'s basis of 0,
+  // which left the name no width on a phone while the web build, following CSS, showed it.
+  realmText: {
+    color: colors.onGround,
+    flexShrink: 1,
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.base,
+    fontWeight: "600",
+  },
   realmTextEnd: { flex: 1 },
   // The summons ring: a bottom and left border from the row's lower-left corner, 75% of its width along the bottom and
   // 75% of its height up the left, rounded at the corner.

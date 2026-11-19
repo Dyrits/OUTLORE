@@ -232,7 +232,7 @@ export function RealmHeader({
       ]}
     >
       <FolderCue path={path} />
-      <Text numberOfLines={1} style={[local.rowText, local.realmText]}>
+      <Text numberOfLines={1} style={local.realmText}>
         {name}
       </Text>
       <Chevron focusProps={focusProps} isOpen={isOpen} isShown={isShown} label={name} onPress={onToggle} />
