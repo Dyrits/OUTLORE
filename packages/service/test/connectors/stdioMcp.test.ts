@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
@@ -15,12 +15,14 @@ const standIn = join(import.meta.dirname, "..", "fixtures", "stand-in-mcp-server
 /** One backend over the stand-in, with its script, pid file and log in a temporary folder. */
 const standInBackend = (
   tools: ReadonlyArray<Record<string, unknown>>,
-  extra?: Partial<Omit<StdioMcpOptions, "command" | "env" | "label">>,
+  extra?: Partial<Omit<StdioMcpOptions, "command" | "env" | "label">> & { initMode?: string },
 ) => {
   const folder = temporary("outlore-stdio-");
   const options: StdioMcpOptions = {
     command: [process.execPath, standIn],
     env: {
+      STAND_IN_LOG: join(folder, "starts.jsonl"),
+      STAND_IN_MCP_INIT_MODE: extra?.initMode ?? "normal",
       STAND_IN_MCP_LOG: join(folder, "log.jsonl"),
       STAND_IN_MCP_PID_FILE: join(folder, "pid"),
       STAND_IN_MCP_TOOLS: JSON.stringify(tools),
@@ -40,6 +42,50 @@ const pidOf = (folder: string) => Number(readFileSync(join(folder, "pid"), "utf8
 const failureOf = <A>(effect: Effect.Effect<A, BackendFailure>) => Effect.runPromise(Effect.flip(effect));
 
 describe("the stdio MCP backend", () => {
+  it("starts only one child for concurrent first requests", async () => {
+    const { backend, folder } = standInBackend([{ name: "one" }], { initMode: "slow" });
+    const server = await backend;
+    try {
+      await Promise.all([Effect.runPromise(server.listTools(null)), Effect.runPromise(server.listTools(null))]);
+      const lines = readFileSync(join(folder, "starts.jsonl"), "utf8")
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      expect(lines.filter((line) => line.start !== undefined)).toHaveLength(1);
+    } finally {
+      await Effect.runPromise(server.close);
+    }
+  });
+
+  it("ends a child when initialization fails", async () => {
+    const { backend, folder } = standInBackend([], { initMode: "fail" });
+    const server = await backend;
+    try {
+      expect((await failureOf(server.listTools(null))).class).toBe("Unreachable");
+      const pid = pidOf(folder);
+      await waitFor(() => !isAlive(pid), 3000);
+      expect(isAlive(pid)).toBe(false);
+    } finally {
+      await Effect.runPromise(server.close);
+    }
+  });
+
+  it("ends a child when initialization is interrupted", async () => {
+    const { backend, folder } = standInBackend([], { initMode: "hang" });
+    const server = await backend;
+    try {
+      const controller = new AbortController();
+      const pending = Effect.runPromise(server.listTools(null), { signal: controller.signal }).catch(() => null);
+      await waitFor(() => existsSync(join(folder, "pid")), 3000);
+      const pid = pidOf(folder);
+      controller.abort();
+      await pending;
+      await waitFor(() => !isAlive(pid), 3000);
+      expect(isAlive(pid)).toBe(false);
+    } finally {
+      await Effect.runPromise(server.close);
+    }
+  });
   it("lists the server's tools after the opening exchange", async () => {
     const { backend, folder } = standInBackend([
       { description: "List the events of a day", name: "list-events" },

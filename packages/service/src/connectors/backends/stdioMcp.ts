@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { Clock, Effect, Fiber, Option, Queue, Ref } from "effect";
+import { Clock, Effect, Fiber, Option, Queue, Ref, Semaphore } from "effect";
 import { type HarnessFailure, type RpcProcess, reducedEnvironmentOf, startRpcProcess } from "../../core/index.ts";
 import { BackendFailure, type BackendTool, type ConnectorBackend } from "../backend.ts";
 
@@ -92,6 +92,7 @@ export const stdioMcpBackend = (options: StdioMcpOptions): Effect.Effect<Connect
     const requestTimeoutMillis = options.requestTimeoutMillis ?? 60_000;
     const childRef = yield* Ref.make<RunningChild | null>(null);
     const lastUsedRef = yield* Ref.make(0);
+    const childLock = yield* Semaphore.make(1);
 
     /** Ends the child if it is running and forgets it, so the next request starts a new one. */
     const endChild: Effect.Effect<void> = Effect.gen(function* () {
@@ -103,65 +104,83 @@ export const stdioMcpBackend = (options: StdioMcpOptions): Effect.Effect<Connect
     });
 
     /** Starts the child and performs the MCP opening exchange; a refusal ends it again and fails as Unreachable. */
-    const startChild: Effect.Effect<RpcProcess, BackendFailure | HarnessFailure> = Effect.gen(function* () {
-      yield* endChild;
-      const script = options.command[1];
-      const rpc = yield* startRpcProcess({
-        args: [...options.command.slice(1)],
-        command: options.command[0] ?? "node",
-        cwd: script !== undefined && existsSync(script) ? dirname(script) : process.cwd(),
-        env: reducedEnvironmentOf(options.env ?? {}),
-        isJsonRpc2: true,
-        isTreeKilled: true,
-        label: options.label,
-      });
-      // The server may ask us things (sampling, roots); answer every request with an error so it never waits on us.
-      const drain = yield* Effect.forkDetach(
+    const startChild: Effect.Effect<RpcProcess, BackendFailure | HarnessFailure> = Effect.uninterruptibleMask(
+      (restore) =>
         Effect.gen(function* () {
-          while (!rpc.hasExited()) {
-            const item = yield* Queue.take(rpc.incoming);
-            if (item._tag === "Exit") return;
-            if (item._tag === "Request")
-              rpc.respondError(item.id, "Outlore does not answer a connector server's requests.");
-          }
+          yield* endChild;
+          const script = options.command[1];
+          const rpc = yield* startRpcProcess({
+            args: [...options.command.slice(1)],
+            command: options.command[0] ?? "node",
+            cwd: script !== undefined && existsSync(script) ? dirname(script) : process.cwd(),
+            env: reducedEnvironmentOf(options.env ?? {}),
+            isJsonRpc2: true,
+            isTreeKilled: true,
+            label: options.label,
+          });
+          // The server may ask us things (sampling, roots); answer every request with an error so it never waits on us.
+          const drain = yield* Effect.forkDetach(
+            Effect.gen(function* () {
+              while (!rpc.hasExited()) {
+                const item = yield* Queue.take(rpc.incoming);
+                if (item._tag === "Exit") return;
+                if (item._tag === "Request")
+                  rpc.respondError(item.id, "Outlore does not answer a connector server's requests.");
+              }
+            }),
+          );
+          let transferred = false;
+          return yield* Effect.gen(function* () {
+            const opened = yield* restore(
+              rpc
+                .request("initialize", {
+                  capabilities: {},
+                  clientInfo: { name: "Outlore", version: process.env.OUTLORE_RELEASE ?? "dev" },
+                  protocolVersion,
+                })
+                .pipe(Effect.timeoutOption(requestTimeoutMillis)),
+            );
+            if (Option.isNone(opened))
+              return yield* new BackendFailure({
+                class: "Unreachable",
+                upstream: `${options.label} did not answer its opening exchange.`,
+              });
+            rpc.notify("notifications/initialized", {});
+            yield* Ref.set(childRef, { drain, rpc });
+            transferred = true;
+            return rpc;
+          }).pipe(
+            Effect.ensuring(
+              Effect.gen(function* () {
+                if (transferred) return;
+                yield* Fiber.interrupt(drain);
+                rpc.close();
+              }),
+            ),
+          );
         }),
-      );
-      const opened = yield* rpc
-        .request("initialize", {
-          capabilities: {},
-          clientInfo: { name: "Outlore", version: process.env.OUTLORE_RELEASE ?? "dev" },
-          protocolVersion,
-        })
-        .pipe(Effect.timeoutOption(requestTimeoutMillis));
-      if (Option.isNone(opened)) {
-        yield* Ref.set(childRef, null);
-        yield* Fiber.interrupt(drain);
-        rpc.close();
-        return yield* new BackendFailure({
-          class: "Unreachable",
-          upstream: `${options.label} did not answer its opening exchange.`,
-        });
-      }
-      rpc.notify("notifications/initialized", {});
-      yield* Ref.set(childRef, { drain, rpc });
-      return rpc;
-    });
+    );
 
     /** The running child, started when there is none or it has exited. */
-    const child: Effect.Effect<RpcProcess, BackendFailure | HarnessFailure> = Effect.gen(function* () {
-      const current = yield* Ref.get(childRef);
-      if (current !== null && !current.rpc.hasExited()) return current.rpc;
-      return yield* startChild;
-    });
+    const child: Effect.Effect<RpcProcess, BackendFailure | HarnessFailure> = childLock.withPermit(
+      Effect.gen(function* () {
+        const current = yield* Ref.get(childRef);
+        const rpc = current !== null && !current.rpc.hasExited() ? current.rpc : yield* startChild;
+        yield* Ref.set(lastUsedRef, yield* Clock.currentTimeMillis);
+        return rpc;
+      }),
+    );
 
     /** One request to the server, timing out and ending the child so the next request starts a fresh one. */
     const request = Effect.fnUntraced(function* (method: string, params: unknown) {
       const rpc = yield* child;
-      const now = yield* Clock.currentTimeMillis;
-      yield* Ref.set(lastUsedRef, now);
       const answer = yield* rpc.request(method, params).pipe(Effect.timeoutOption(requestTimeoutMillis));
       if (Option.isNone(answer)) {
-        yield* endChild;
+        yield* childLock.withPermit(
+          Effect.gen(function* () {
+            if ((yield* Ref.get(childRef))?.rpc === rpc) yield* endChild;
+          }),
+        );
         return yield* new BackendFailure({
           class: "Unreachable",
           upstream: `${options.label} did not answer ${method} within ${requestTimeoutMillis} ms.`,
@@ -175,9 +194,13 @@ export const stdioMcpBackend = (options: StdioMcpOptions): Effect.Effect<Connect
       Effect.forever(
         Effect.gen(function* () {
           yield* Effect.sleep(idleCloseMillis);
-          const lastUsed = yield* Ref.get(lastUsedRef);
-          const now = yield* Clock.currentTimeMillis;
-          if (now - lastUsed >= idleCloseMillis) yield* endChild;
+          yield* childLock.withPermit(
+            Effect.gen(function* () {
+              const lastUsed = yield* Ref.get(lastUsedRef);
+              const now = yield* Clock.currentTimeMillis;
+              if (now - lastUsed >= idleCloseMillis) yield* endChild;
+            }),
+          );
         }),
       ),
     );
@@ -208,7 +231,7 @@ export const stdioMcpBackend = (options: StdioMcpOptions): Effect.Effect<Connect
         ),
       close: Effect.gen(function* () {
         yield* Fiber.interrupt(watcher);
-        yield* endChild;
+        yield* childLock.withPermit(endChild);
       }),
       listTools: () =>
         classified(

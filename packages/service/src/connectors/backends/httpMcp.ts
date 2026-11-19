@@ -32,32 +32,60 @@ const refuse = (errorClass: ConnectorErrorClass) =>
 const failureClassOf = (status: number): ConnectorErrorClass =>
   status === 401 || status === 403 ? "Disconnected" : status === 429 || status >= 500 ? "Unreachable" : "Failed";
 
-/** The JSON-RPC message an answer body carried, or null when the body held none the adapter can use. */
-const messageOf = (body: string, contentType: string) => {
-  const frames = contentType.includes("text/event-stream")
-    ? body.split("\n\n").flatMap((frame) =>
-        frame
-          .split("\n")
-          .filter((line) => line.startsWith("data: "))
-          .map((line) => line.slice("data: ".length)),
-      )
-    : [body];
-  for (const frame of frames) {
-    // A body no frame of answers as JSON is the server's failure, not a network one, so it never reaches the catch.
-    try {
-      const parsed: unknown = JSON.parse(frame);
-      if (isRecord(parsed)) return parsed;
-    } catch {}
+/** A matching JSON-RPC reply, excluding notifications and other requests on an event stream. */
+const messageOf = (body: string, id: number) => {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    return isRecord(parsed) && parsed.id === id ? parsed : null;
+  } catch {
+    return null;
   }
-  return null;
 };
 
 /** Whether a value from a server is a record of its fields, not an array or a plain string. */
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+/** Read complete SSE events until this request's reply arrives, even when the server keeps the stream open. */
+const readEventReply = async (response: Response, id: number) => {
+  if (response.body === null) return null;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      buffer += decoder.decode(chunk.value, { stream: !chunk.done });
+      let boundary = /\r?\n\r?\n/.exec(buffer);
+      while (boundary !== null) {
+        const frame = buffer.slice(0, boundary.index);
+        buffer = buffer.slice(boundary.index + boundary[0].length);
+        const data = frame
+          .split(/\r?\n/)
+          .filter((line) => line === "data" || line.startsWith("data:"))
+          .map((line) => line.slice(5).replace(/^ /, ""))
+          .join("\n");
+        const message = messageOf(data, id);
+        if (message !== null) return message;
+        boundary = /\r?\n\r?\n/.exec(buffer);
+      }
+      if (chunk.done) return null;
+      if (buffer.length > 1_000_000) throw new HttpRefusal("Failed");
+    }
+  } finally {
+    void reader.cancel().catch(() => undefined);
+  }
+};
+
 /** One request to the server: its JSON-RPC answer message, or the transport's failure. */
-const ask = (transport: HttpTransport, method: string, params: unknown, secret: string | null, counter: number) =>
+const ask = (
+  transport: HttpTransport,
+  method: string,
+  params: unknown,
+  secret: string | null,
+  counter: number,
+  timeoutMillis: number,
+) =>
   Effect.tryPromise({
     catch: (problem) => (problem instanceof HttpRefusal ? problem.failure : refuse("Unreachable")),
     try: (signal) =>
@@ -70,11 +98,13 @@ const ask = (transport: HttpTransport, method: string, params: unknown, secret: 
           ...(secret === null ? {} : { [transport.header]: secret }),
         },
         method: "POST",
-        signal,
+        signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMillis)]),
       }).then(async (response) => {
         if (response.status < 200 || response.status >= 300) throw new HttpRefusal(failureClassOf(response.status));
         // A 2xx answer with no JSON-RPC message in it is the server's failure, not a network one.
-        const message = messageOf(await response.text(), response.headers.get("content-type") ?? "");
+        const message = (response.headers.get("content-type") ?? "").includes("text/event-stream")
+          ? await readEventReply(response, counter)
+          : messageOf(await response.text(), counter);
         if (message === null) throw new HttpRefusal("Failed");
         return message;
       }),
@@ -127,13 +157,16 @@ const textOf = (result: unknown): string | null => {
  * One HTTP connector's server: each request is one POST with the key in the entry's header, an interrupted or stopped
  * call gives up waiting, and the answer's text has the key's spellings redacted before it leaves.
  */
-export const httpMcpBackend = (transport: HttpTransport): ConnectorBackend => {
+export const httpMcpBackend = (
+  transport: HttpTransport,
+  options: { readonly requestTimeoutMillis?: number } = {},
+): ConnectorBackend => {
   let counter = 0;
   // One request per list or call: the server decides nothing about the next request, so nothing is cached here.
   const askServer = (method: string, params: unknown, secret: string | null) =>
     Effect.gen(function* () {
       counter += 1;
-      const message = yield* ask(transport, method, params, secret, counter);
+      const message = yield* ask(transport, method, params, secret, counter, options.requestTimeoutMillis ?? 60_000);
       const error = fieldOf(message, "error");
       if (error !== void 0)
         return yield* Effect.fail(refuse(numberFieldOf(error, "code") === -32602 ? "InvalidArguments" : "Failed"));

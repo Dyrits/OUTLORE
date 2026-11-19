@@ -2,7 +2,9 @@
 
 ## Connector Charter controls · 2026-11-19 · built on the Charter errand branch; review pending
 
-CHG-0538 adds the connector catalog, Vault and placement controls on `mission/connectors-composio-and-apple-apps-2aaf91f7`. The tool approval question grants Always allow and Permissions manages it; CHG-0539 adds the thread panel's connector tools line from cached server listings. No window or phone look, real Composio, real macOS permission prompt or live Claude denial check was made. See the [verification](verification/2026-11-19-connector-charter.md) and [handoff](../.agents/handoffs/2026-11-19-1735-connector-thread-tools.md).
+CHG-0538 adds the connector catalog, Vault and placement controls on `mission/connectors-composio-and-apple-apps-2aaf91f7`. The tool approval question grants Always allow and Permissions manages it; CHG-0539 adds the thread panel's connector tools line from cached server listings. No window or phone look, real Composio, real macOS permission prompt or live Claude denial check was made. See the [verification](verification/2026-11-19-connector-charter.md) and [handoff](../.agents/handoffs/2026-11-19-1755-connector-review-fixes.md).
+
+CHG-0540 addresses four independent review findings in the same branch: listing metadata redaction, serialized startup, cleanup on interrupted or failed initialization, and bounded incremental SSE. [Verification](verification/2026-11-19-connector-review-fixes.md). Integration and live checks remain open.
 
 ## Nested corner marks in the sidebar · 2026-11-19 · released in 0.1.11; the nested look built, tested, on `main` once committed; the owner's look pending
 

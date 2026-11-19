@@ -38,6 +38,12 @@ const handle = async (message) => {
   const { id, method, params } = message;
   log({ request: { method, params } });
   if (method === "initialize") {
+    if (process.env.STAND_IN_MCP_INIT_MODE === "hang") return;
+    if (process.env.STAND_IN_MCP_INIT_MODE === "fail") {
+      send({ error: { code: -32603, message: "opening refused" }, id });
+      return;
+    }
+    if (process.env.STAND_IN_MCP_INIT_MODE === "slow") await sleep(150);
     send({
       id,
       result: {

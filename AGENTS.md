@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the connectors quest (CHG-0531 to CHG-0538; Charter and thread-panel controls built on the errand branch; open: review, the owner's live checks and integration), read the [current handoff](.agents/handoffs/2026-11-19-1735-connector-thread-tools.md). Handoffs are shared and committed.
+- To resume the connectors quest (CHG-0531 to CHG-0540; Charter, thread-panel and review fixes built on the errand branch; open: review, the owner's live checks and integration), read the [current handoff](.agents/handoffs/2026-11-19-1755-connector-review-fixes.md). Handoffs are shared and committed.
 
 - To resume the nested corner marks in the sidebar and the errand guide's alignment to the quest's left border (CHG-0530; committed and pushed; open: the owner's look in a window or on a phone, whether "error" meant the Failed state, and whether the stacked errand branch lines are acceptable), read the [current handoff](.agents/handoffs/2026-11-19-0940-nested-corner-marks.md). Handoffs are shared and committed.
 

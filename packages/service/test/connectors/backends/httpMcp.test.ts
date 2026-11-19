@@ -8,6 +8,7 @@ import { httpMcpBackend } from "../../../src/connectors/backends/httpMcp.ts";
 import type { CatalogEntry } from "../../../src/connectors/index.ts";
 import { fieldOf, numberFieldOf, textFieldOf } from "../../../src/core/index.ts";
 import { install, inWorld, openQuestionOf, replyOf, untilAsked, untilIdle } from "../../fixtures/connectorWorld.ts";
+import { listTools } from "../../fixtures/mcp.ts";
 import { call, startMission } from "../../fixtures/service.ts";
 
 // The Streamable-HTTP adapter over a real HTTP server: every test spins up a fake of Composio's Connect endpoint
@@ -31,6 +32,7 @@ interface TakenRequest {
 /** How the fake answers a JSON-RPC request: a reply, or holding it as a server that has not answered yet. */
 type FakeReply =
   | { readonly _tag: "Answer"; readonly body: string; readonly contentType?: string; readonly status?: number }
+  | { readonly _tag: "Stream"; readonly body: string }
   | { readonly _tag: "Hold" };
 
 /** What the fake of Composio's Connect endpoint offers a test: its address, what it took, and how it answers. */
@@ -112,6 +114,15 @@ const fakeConnect = () =>
             });
             return;
           }
+          if (reply._tag === "Stream") {
+            response.writeHead(200, { "content-type": "text/event-stream" });
+            const middle = Math.floor(reply.body.length / 2);
+            response.write(reply.body.slice(0, middle));
+            setTimeout(() => {
+              if (!response.destroyed) response.write(reply.body.slice(middle));
+            }, 10);
+            return;
+          }
           response
             .writeHead(reply.status ?? 200, { "content-type": reply.contentType ?? "application/json" })
             .end(reply.body);
@@ -164,6 +175,90 @@ const httpServiceEntryOf = (url: string): CatalogEntry => ({
 });
 
 describe("the Streamable-HTTP MCP backend", () => {
+  it.live("returns the matching SSE reply without waiting for the stream to close", () =>
+    fakeConnect().pipe(
+      Effect.flatMap((fake) =>
+        Effect.gen(function* () {
+          fake.reply.current = (message) => ({
+            _tag: "Stream",
+            body: `data: ${JSON.stringify({ jsonrpc: "2.0", method: "progress" })}\r\n\r\ndata: ${resultAnswer({ tools: [{ description: "Read", inputSchema: {}, name: "read" }] }, message)}\r\n\r\n`,
+          });
+          const backend = httpMcpBackend({ _tag: "Http", header: "x-key", url: fake.url });
+          const listed = yield* backend.listTools(testKey).pipe(Effect.timeoutOption("500 millis"));
+          expect(listed._tag).toBe("Some");
+        }),
+      ),
+    ),
+  );
+
+  it.live("does not expose the credential in tool listing metadata", () =>
+    fakeConnect().pipe(
+      Effect.flatMap((fake) =>
+        Effect.gen(function* () {
+          const encoded = Buffer.from(testKey).toString("base64");
+          const encodedUrl = encodeURIComponent(testKey);
+          const encodedUrlBase64 = Buffer.from(testKey).toString("base64url");
+          fake.reply.current = (message) => ({
+            _tag: "Answer",
+            body: resultAnswer(
+              {
+                tools: [
+                  {
+                    description: `key ${testKey}`,
+                    inputSchema: {
+                      properties: {
+                        token: { default: encoded, examples: [encodedUrl, { nested: encodedUrlBase64 }] },
+                        [testKey]: { description: testKey },
+                      },
+                    },
+                    name: "read",
+                  },
+                  { description: "unsafe name", inputSchema: {}, name: encodedUrlBase64 },
+                ],
+              },
+              message,
+            ),
+          });
+          yield* inWorld(
+            { backends: connectorBackendsLayer, entries: [httpServiceEntryOf(fake.url)], hasKey: false },
+            (world) =>
+              Effect.gen(function* () {
+                world.vault.put("http_service", "API key", testKey);
+                yield* install("http_service");
+                const quest = yield* startMission({ harness: "claude", text: "Hello" });
+                yield* untilIdle(quest.missionId);
+                const tools = yield* listTools(quest.threadId);
+                expect(tools.some((tool) => tool.name === "http_service__read")).toBe(true);
+                expect(JSON.stringify(tools)).toContain("[redacted]");
+                expect(JSON.stringify(tools)).not.toContain(testKey);
+                expect(JSON.stringify(tools)).not.toContain(encoded);
+                expect(JSON.stringify(tools)).not.toContain(encodedUrl);
+                expect(JSON.stringify(tools)).not.toContain(encodedUrlBase64);
+              }),
+          );
+        }),
+      ),
+    ),
+  );
+
+  it.live("times out a stream that never gives the matching answer", () =>
+    fakeConnect().pipe(
+      Effect.flatMap((fake) =>
+        Effect.gen(function* () {
+          fake.reply.current = () => ({
+            _tag: "Stream",
+            body: `data: ${JSON.stringify({ id: 999, jsonrpc: "2.0", result: { tools: [] } })}\n\n`,
+          });
+          const backend = httpMcpBackend(
+            { _tag: "Http", header: "x-key", url: fake.url },
+            { requestTimeoutMillis: 100 },
+          );
+          const failure = yield* Effect.flip(backend.listTools(testKey));
+          expect(failure.class).toBe("Unreachable");
+        }),
+      ),
+    ),
+  );
   it.live("lists a real server's tools in one request, with the key in the entry's header", () =>
     fakeConnect().pipe(
       Effect.flatMap((fake) =>

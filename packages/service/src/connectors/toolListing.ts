@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Semaphore } from "effect";
 import type {
   BackendFailure,
   BackendTool,
@@ -7,6 +7,7 @@ import type {
   ConnectorErrorClass,
 } from "./backend.ts";
 import { type CatalogEntry, isToolName } from "./catalog.ts";
+import { redactedOf } from "./connectorErrors.ts";
 import type { SecretMissing, VaultPort, VaultUnavailable } from "./vaultPort.ts";
 
 // A connector's server and what it last listed (connectors blueprint, Gateway: the listing is "read from the backend's
@@ -35,6 +36,30 @@ const usableNamesOf = (tools: ReadonlyArray<BackendTool>) => {
   });
 };
 
+/** Scrubs keys as well as nested values while the Vault still lends the secret. */
+const redactMetadata = (value: unknown, secret: string): unknown => {
+  if (typeof value === "string") return redactedOf(value, [secret]);
+  if (Array.isArray(value)) return value.map((item) => redactMetadata(item, secret));
+  if (typeof value !== "object" || value === null) return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [redactedOf(key, [secret]), redactMetadata(item, secret)]),
+  );
+};
+
+const redactedTools = (tools: ReadonlyArray<BackendTool>, secret: string | null): ReadonlyArray<BackendTool> =>
+  secret === null
+    ? tools
+    : tools.map((tool) => ({
+        description: redactedOf(tool.description, [secret]),
+        inputSchema: Object.fromEntries(
+          Object.entries(tool.inputSchema).map(([key, value]) => [
+            redactedOf(key, [secret]),
+            redactMetadata(value, secret),
+          ]),
+        ),
+        name: redactedOf(tool.name, [secret]),
+      }));
+
 /** The result of asking a server for its tools. */
 export type Listing =
   | { readonly _tag: "Listed"; readonly tools: ReadonlyArray<BackendTool> }
@@ -48,13 +73,20 @@ export const makeToolListing = (dependencies: {
   const { backends, vault } = dependencies;
   const opened = new Map<string, ConnectorBackend>();
   const cache = new Map<string, ReadonlyArray<BackendTool>>();
+  const opening = Semaphore.makeUnsafe(1);
 
   const backendOf = (entry: CatalogEntry) =>
-    Effect.suspend(() => {
-      const existing = opened.get(entry.id);
-      if (existing !== undefined) return Effect.succeed(existing);
-      return backends.open(entry).pipe(Effect.tap((backend) => Effect.sync(() => void opened.set(entry.id, backend))));
-    });
+    opening.withPermit(
+      Effect.uninterruptibleMask((restore) =>
+        Effect.suspend(() => {
+          const existing = opened.get(entry.id);
+          if (existing !== undefined) return Effect.succeed(existing);
+          return restore(backends.open(entry)).pipe(
+            Effect.tap((backend) => Effect.sync(() => void opened.set(entry.id, backend))),
+          );
+        }),
+      ),
+    );
 
   /** Runs a use of the server with the connector's secret, if it needs one, which the Vault hands over and keeps no copy of. */
   const withCredentials = <A, E, R>(
@@ -69,7 +101,9 @@ export const makeToolListing = (dependencies: {
 
   /** Asks the server for its tools again, keeping them on success and forgetting them on failure. */
   const refresh = (entry: CatalogEntry): Effect.Effect<Listing> =>
-    withCredentials(entry, (backend, secret) => backend.listTools(secret)).pipe(
+    withCredentials(entry, (backend, secret) =>
+      backend.listTools(secret).pipe(Effect.map((tools) => redactedTools(tools, secret))),
+    ).pipe(
       Effect.map((tools): Listing => {
         const usable = usableNamesOf(tools);
         cache.set(entry.id, usable);
@@ -89,12 +123,14 @@ export const makeToolListing = (dependencies: {
     cachedTools: (connectorId: string): ReadonlyArray<BackendTool> => cache.get(connectorId) ?? [],
     /** Closes the server and forgets what it listed, as a connector is removed. */
     forget: (connectorId: string) =>
-      Effect.suspend(() => {
-        const backend = opened.get(connectorId);
-        opened.delete(connectorId);
-        cache.delete(connectorId);
-        return backend === undefined ? Effect.void : backend.close;
-      }),
+      opening.withPermit(
+        Effect.suspend(() => {
+          const backend = opened.get(connectorId);
+          opened.delete(connectorId);
+          cache.delete(connectorId);
+          return backend === undefined ? Effect.void : backend.close;
+        }),
+      ),
     refresh,
     withCredentials,
   };
