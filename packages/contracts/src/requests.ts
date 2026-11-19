@@ -28,6 +28,7 @@ import {
 } from "./budgetRequests.ts";
 import { BudgetLimits } from "./budgets.ts";
 import { BackupCompanions, ModelChoice } from "./companions.ts";
+import { connectorRequests } from "./connectorRequests.ts";
 import { EffortChoice, HarnessName } from "./harnesses.ts";
 import {
   AccountId,
@@ -395,6 +396,7 @@ export const Request = Schema.Union([
   AnswerSuggestion,
   SetMissionBudget,
   ...realmRequests,
+  ...connectorRequests,
   ReadBudget,
   ReadUsage,
   StopAtBudget,
