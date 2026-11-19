@@ -1,62 +1,11 @@
-import { join } from "node:path";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
-import { Changes, removeScratch } from "../core/index.ts";
-import { Approvals } from "./approvals.ts";
 import { recordOnce } from "./commandOutcomes.ts";
-import { Suggestions } from "./suggestions.ts";
-import { Threads } from "./threads.ts";
-import { ScratchRoot } from "./workspaces.ts";
+import type { FollowUps, WithFollowUps } from "./followUps.ts";
 
 // A command is a domain operation and what must follow once its storage work commits. The operation
 // only describes: it writes inside the transaction it is given and returns its follow-ups. The runner
 // alone commits, announces, and applies them, so no caller can forget a wake or announce a rollback.
-
-/** What a command leaves to do once its storage work has committed. */
-export type FollowUps = {
-  /** Whether state the owner sees changed, so open screens refetch. */
-  readonly isChanged: boolean;
-  /** Deleted quests whose service-owned scratch folder can now be removed. */
-  readonly missionsToRemoveScratch: ReadonlyArray<string>;
-  /** Missions whose waiting threads may now run, a running slot having freed. */
-  readonly missionsToWake: ReadonlyArray<string>;
-  /** Threads with messages to deliver. */
-  readonly threadsToWake: ReadonlyArray<string>;
-  /** Threads whose pending owner questions must be withdrawn before any wake. */
-  readonly threadsToWithdraw: ReadonlyArray<string>;
-  /** Threads whose turns the operation invalidated and that must now end. */
-  readonly turnsToCancel: ReadonlyArray<string>;
-};
-
-/** A domain operation's value with its follow-ups. */
-export type WithFollowUps<A> = {
-  readonly followUps: FollowUps;
-  readonly value: A;
-};
-
-/** The follow-ups of an operation that changed nothing the owner sees and leaves nothing to do. */
-export const noFollowUps: FollowUps = {
-  isChanged: false,
-  missionsToRemoveScratch: [],
-  missionsToWake: [],
-  threadsToWake: [],
-  threadsToWithdraw: [],
-  turnsToCancel: [],
-};
-
-type FurtherFollowUps = Partial<Omit<FollowUps, "isChanged">>;
-
-/** A value whose operation changed what the owner sees, with any further follow-ups. */
-export const changed = <A>(value: A, further: FurtherFollowUps = {}): WithFollowUps<A> => ({
-  followUps: { ...noFollowUps, ...further, isChanged: true },
-  value,
-});
-
-/** A value whose operation changed nothing the owner sees, with any further follow-ups. */
-export const unchanged = <A>(value: A, further: FurtherFollowUps = {}): WithFollowUps<A> => ({
-  followUps: { ...noFollowUps, ...further, isChanged: false },
-  value,
-});
 
 /** Runs commands: one transaction, one announcement after commit, then cancels, then wakes. */
 export interface CommandRunner {
@@ -82,7 +31,11 @@ export const makeCommands = (dependencies: {
   readonly removeScratch: (missionId: string) => Effect.Effect<void>;
   readonly sql: SqlClient.SqlClient;
   readonly publish: Effect.Effect<void>;
-  readonly threads: Pick<Threads["Service"], "cancel" | "wake" | "wakeMission">;
+  readonly threads: {
+    readonly cancel: (ids: ReadonlyArray<string>) => Effect.Effect<void>;
+    readonly wake: (threadId: string) => Effect.Effect<void>;
+    readonly wakeMission: (missionId: string) => Effect.Effect<void>;
+  };
 }): CommandRunner => {
   const { publish, sql, threads } = dependencies;
   const apply = Effect.fn("applyFollowUps")(function* (followUps: FollowUps) {
@@ -113,24 +66,3 @@ export const makeCommands = (dependencies: {
 
 /** The runner every owner request and thread tool goes through. */
 export class Commands extends Context.Service<Commands, CommandRunner>()("outlore/Commands") {}
-
-/** The runner over the service's store, change feed, and threads. */
-export const commandsLayer = Layer.effect(
-  Commands,
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const changes = yield* Changes;
-    const threads = yield* Threads;
-    const scratchRoot = yield* ScratchRoot;
-    const approvals = yield* Approvals;
-    const suggestions = yield* Suggestions;
-    return makeCommands({
-      publish: changes.publish,
-      removeScratch: (id) =>
-        removeScratch(join(scratchRoot, id)).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie),
-      sql,
-      threads,
-      withdrawQuestions: (id) => approvals.withdraw(id).pipe(Effect.andThen(suggestions.withdraw(id))),
-    });
-  }),
-);

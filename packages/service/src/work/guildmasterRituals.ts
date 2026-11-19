@@ -1,7 +1,7 @@
 import type { AccountId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { readSettings } from "../core/index.ts";
-import { changed, unchanged } from "./commands.ts";
+import { changed, unchanged } from "./followUps.ts";
 import { recordResolvedCard } from "./guildmasterCards.ts";
 import { companionLineOf, ritualStartOf } from "./guildmasterCompanions.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";

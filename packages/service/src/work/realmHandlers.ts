@@ -8,7 +8,8 @@ import type {
   RestoreRealm,
 } from "@outlore/contracts";
 import { Effect } from "effect";
-import { type CommandRunner, changed } from "./commands.ts";
+import type { CommandRunner } from "./commands.ts";
+import { changed } from "./followUps.ts";
 import { createRealmOutcome } from "./realmCreation.ts";
 import {
   archiveRealm,

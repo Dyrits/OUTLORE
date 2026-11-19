@@ -2,7 +2,8 @@ import type { Settings } from "@outlore/contracts";
 import { Effect } from "effect";
 import { readSettings, writeSettings } from "../core/index.ts";
 import { applyGlobalBudget } from "./budgets.ts";
-import { Commands, changed } from "./commands.ts";
+import { Commands } from "./commands.ts";
+import { changed } from "./followUps.ts";
 
 /** Saves settings from the current row, then applies any change to the global budget. */
 export const saveSettings = Effect.fnUntraced(function* (next: (saved: Settings) => Settings) {

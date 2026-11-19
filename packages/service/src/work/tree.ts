@@ -4,7 +4,7 @@ import { SqlClient } from "effect/sql";
 import { invalid, newId, notFound } from "../core/index.ts";
 import { checkAccount, checkBackups, type Runner, type RunnerChoice, runnerOf } from "../harness/index.ts";
 import { budgetRefusalOf } from "./budgetScopes.ts";
-import { changed, unchanged } from "./commands.ts";
+import { changed, unchanged } from "./followUps.ts";
 import { type JournalAuthor, nothingToRecord, openerMessagesOf, updateJournal } from "./journal.ts";
 import { maxOwnerDepth } from "./lifecycle.ts";
 import { insertMessage } from "./messaging.ts";

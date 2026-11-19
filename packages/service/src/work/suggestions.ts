@@ -4,7 +4,7 @@ import { SqlClient, type SqlError } from "effect/sql";
 import { Changes, invalid, notFound, readSettings, type ServiceFailure, toolText } from "../core/index.ts";
 import { makeOwnerWaits } from "./attention.ts";
 import { setCardBackups } from "./backups.ts";
-import { changed, unchanged, type WithFollowUps } from "./commands.ts";
+import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
 import { recordResolvedCard } from "./guildmasterCards.ts";
 import { isGuildmasterThread, readOptionalRealm } from "./guildmasterPlace.ts";
 import { resumeInTurn } from "./lifecycle.ts";

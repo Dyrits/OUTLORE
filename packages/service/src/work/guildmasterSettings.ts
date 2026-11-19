@@ -1,6 +1,6 @@
 import { Effect, Match } from "effect";
 import { readSettings, type ToolAnswer, toolRefusal, toolText, writeSettings } from "../core/index.ts";
-import { changed, unchanged, type WithFollowUps } from "./commands.ts";
+import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";
 import { readSettingChange } from "./guildmasterPreflight.ts";
 import { consumeReceipt, isStructuralCaller, notAuthorizedText } from "./guildmasterProvenance.ts";

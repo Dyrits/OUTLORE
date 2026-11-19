@@ -23,7 +23,7 @@ import {
   stopWhere,
   threadsWhere,
 } from "./budgetScopes.ts";
-import { changed } from "./commands.ts";
+import { changed } from "./followUps.ts";
 import { haltThreads, holdQuestionHolder, holdThread, releaseThread, waitsInTurn } from "./lifecycle.ts";
 
 // Stopping and releasing work at budget limits, and the owner's budget changes (budget-control, Reaching a limit).

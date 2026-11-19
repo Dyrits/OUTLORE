@@ -5,7 +5,8 @@ import { invalid, notFound, ServiceFailure } from "../core/index.ts";
 import { eraseThreadsLore } from "../lore/index.ts";
 import { forgetAttachmentsOf, removeAttachmentFiles } from "./attachments.ts";
 import { forgetOutcomesOf } from "./commandOutcomes.ts";
-import { Commands, changed, type WithFollowUps } from "./commands.ts";
+import { Commands } from "./commands.ts";
+import { changed, type WithFollowUps } from "./followUps.ts";
 import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
 

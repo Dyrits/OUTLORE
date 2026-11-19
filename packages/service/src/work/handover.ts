@@ -5,7 +5,7 @@ import { newId, notFound, tokensOf } from "../core/index.ts";
 import { checkAccount, checkBackups, harnessLabels, type Runner } from "../harness/index.ts";
 import { readContextLimit } from "../lore/index.ts";
 import { readStoredAttachments } from "./attachments.ts";
-import { changed, unchanged } from "./commands.ts";
+import { changed, unchanged } from "./followUps.ts";
 
 // Handover (thread-handover): the owner changes a thread's harness, account, model, or effort between turns.
 // A harness's own session cannot be resumed by another harness or under another account, so such a change

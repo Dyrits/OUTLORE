@@ -2,7 +2,7 @@ import type { ThreadActions, ThreadState } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound, touchMission } from "../core/index.ts";
-import { changed, unchanged } from "./commands.ts";
+import { changed, unchanged } from "./followUps.ts";
 
 // The thread lifecycle: the one module that writes a thread's state and blocker (thread-tree, Thread
 // states). Callers decide which threads and which transition; each transition keeps the tree's rules,

@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, readSettings } from "../core/index.ts";
 import { claudeCheapestModel } from "../harness/index.ts";
-import { changed, unchanged } from "./commands.ts";
+import { changed, unchanged } from "./followUps.ts";
 import { insertQuest } from "./missions.ts";
 
 // Chronicler, once the Guildmaster (quest coordination): one permanent thread the owner talks to, which looks for a quest

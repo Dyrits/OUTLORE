@@ -54,7 +54,6 @@ import {
   budgetPeriodsLayer,
   Commands,
   changed,
-  commandsLayer,
   guildmasterReportsLayer,
   listMentionables,
   listSkills,
@@ -227,8 +226,8 @@ export interface ServiceOptions {
 
 /**
  * The whole local service over one SQLite file. Approvals and suggestions come before Threads, which
- * withdraws them; the command runner comes after Threads, which it wakes, and the tool server after the
- * runner, which it calls; Threads and the tool server meet at the endpoints.
+ * withdraws them and exposes its command runner; the tool server comes after the runner, which it calls.
+ * Threads and the tool server meet at the endpoints.
  */
 export const serviceLayer = (options: ServiceOptions) => {
   const attachmentsRoot = options.attachmentsRoot ?? join(dirname(options.filename), "attachments");
@@ -285,7 +284,6 @@ export const serviceLayer = (options: ServiceOptions) => {
         toolServerLayer,
       ),
     ),
-    Layer.provideMerge(commandsLayer),
     Layer.provideMerge(running),
   );
   // The host runtime serves paired devices through the service, so it comes after it.

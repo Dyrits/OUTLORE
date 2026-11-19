@@ -1,7 +1,7 @@
 import { Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid } from "../core/index.ts";
-import { unchanged, type WithFollowUps } from "./commands.ts";
+import { unchanged, type WithFollowUps } from "./followUps.ts";
 
 const Wakes = Schema.Struct({
   missionsToWake: Schema.Array(Schema.String),

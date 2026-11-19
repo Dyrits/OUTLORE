@@ -3,7 +3,7 @@ import type { CreateRealm, RealmCreation } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, realFolderOf } from "../core/index.ts";
-import { changed, unchanged } from "./commands.ts";
+import { changed, unchanged } from "./followUps.ts";
 import { findArchivedRealm } from "./realmLifecycle.ts";
 import { createRealm } from "./workspaces.ts";
 
