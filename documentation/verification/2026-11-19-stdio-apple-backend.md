@@ -1,6 +1,6 @@
-# Verification: the stdio MCP backend and Apple apps (CHG-0532)
+# Verification: the stdio MCP backend and Apple apps (CHG-0536)
 
-- **Work:** CHG-0532, on the branch `mission/connectors-composio-and-apple-apps-74a0ea1f` (on top of the merged gateway branch `mission/connectors-composio-and-apple-apps-5906083b`, `ad82c7e`).
+- **Work:** CHG-0536, on the branch `mission/connectors-composio-and-apple-apps-74a0ea1f` (on top of the merged gateway branch `mission/connectors-composio-and-apple-apps-5906083b`, `ad82c7e`).
 - **Environment:** macOS, inside a thread's sandbox, with `TMPDIR=<repo>/.tmp-test` (no space) and `CI=1`. The real vendored server `packages/service/vendor/mcp-icloud.cjs` run by a system Node; a real stand-in MCP server process (`test/fixtures/stand-in-mcp-server.mjs`); the scripted fake backend for the gateway-level tests.
 - **Verdict:** The stdio backend passes against a real stand-in server process and against the real vendored `mcp-icloud` (its listing, which needs no Apple access); the Apple catalog matches that listing exactly; the permission request passes on a fake backend. Apple Events are blocked in this sandbox, so the real macOS prompt is **not** verified here — the owner runs it on their Mac with the command at the end.
 
@@ -21,7 +21,7 @@
 | `RequestApplePermission` answers the report through the service, asks the default apps when none were chosen, refuses a paired device before any handler (`AccessRefused`), and refuses a connector that is not installed (`InvalidInput`) | same, on a real service over a fake backend | Passed |
 | `RequestApplePermission` is in `hostOnlyRequestTags`, so the frames layer refuses it to a paired device without asking the service | `packages/contracts/test/hostOnlyRequests.test.ts`, `test/remote/frames.test.ts` | Passed |
 | The service's default `connectorBackends` opens a stdio child for Stdio entries; HTTP entries stay unreachable | `backends/defaultBackends.ts`, `service.ts` | Typechecked; exercised in dev wiring, not against a live HTTP server (the other half of step 4) |
-| Whole suite | `TMPDIR=<repo>/.tmp-test CI=1 bun run test` | 2,350 passed, 20 skipped, 1 failed: `apps/desktop/test/updates/swap.test.ts` needs `hdiutil attach`, Seatbelt-blocked in a sandbox (the 28 `git init` failures of CHG-0530 pass in this sandbox) |
+| Whole suite | `TMPDIR=<repo>/.tmp-test CI=1 bun run test` | 2,350 passed, 20 skipped, 1 failed: `apps/desktop/test/updates/swap.test.ts` needs `hdiutil attach`, Seatbelt-blocked in a sandbox (the 28 `git init` failures of CHG-0533 pass in this sandbox) |
 | Biome, workspace typecheck | `bunx biome check`, `bun run typecheck` | Clean, passes on all workspaces |
 
 ## Choices recorded

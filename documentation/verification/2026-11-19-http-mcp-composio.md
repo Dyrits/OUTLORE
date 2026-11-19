@@ -1,6 +1,6 @@
-# Verification: the Streamable-HTTP MCP backend and Composio's tools (CHG-0533, 2026-11-19)
+# Verification: the Streamable-HTTP MCP backend and Composio's tools (CHG-0535, 2026-11-19)
 
-What was proved, how, and what was not run. Built on the connector gateway over stored choices (CHG-0530) in the worktree
+What was proved, how, and what was not run. Built on the connector gateway over stored choices (CHG-0533) in the worktree
 `mission/connectors-composio-and-apple-apps-2f728664`.
 
 ## Recorded results (this run, 2026-11-19)
@@ -10,7 +10,7 @@ Commands, from the worktree's root:
 - `bunx biome check packages/service` — clean.
 - `bun run typecheck` — passes on all workspaces.
 - `TMPDIR=<repo>/.tmp-test CI=1 bun run test -- project packages/service/test/connectors` — **12 files, 144 tests passed**,
-  none skipped: the connectors suite after CHG-0530's 135 plus this change's 9 new tests.
+  none skipped: the connectors suite after CHG-0533's 135 plus this change's 9 new tests.
 - `TMPDIR=<repo>/.tmp-test CI=1 bun run test -- project packages/service/test/connectors/backends/httpMcp.test.ts`
   (before the suite run) — **9 passed**. Recorded below test by test.
 - The commit's pre-commit hook (Biome + workspace typecheck + the test files related to the staged change) ran
@@ -18,11 +18,11 @@ Commands, from the worktree's root:
 - `TMPDIR=<repo>/.tmp-test CI=1 bun run test` (full suite) — **2,334 passed, 19 skipped, 1 failed**: the DMG staging test
   `apps/desktop/test/updates/swap.test.ts > staging the app from a disk image`, which runs `hdiutil attach` and needs the
   owner's terminal; it failed identically on all three retries with `Permission denied`. The 28 `git init` failures that
-  CHG-0530's full-suite record carries for a thread's shell sandbox do not occur in this run: the run stood outside a
+  CHG-0533's full-suite record carries for a thread's shell sandbox do not occur in this run: the run stood outside a
   thread sandbox.
 
 This run stood in the errand's own worktree, not inside a thread's shell sandbox. The AGENTS.md note about the few tests
-that need what a sandbox withholds applies to CHG-0530's run; only the DMG staging test failed here.
+that need what a sandbox withholds applies to CHG-0533's run; only the DMG staging test failed here.
 
 ## What the nine new tests prove (test/connectors/backends/httpMcp.test.ts)
 
@@ -55,7 +55,7 @@ fake harness named Claude Code):
    fails once with the fixed `Unreachable` sentence, and the server saw exactly one request. And in the stopping test,
    with the server holding the answer, `SetConnectorSwitch` (global Off) stops the read underway: the thread is told the
    connector is off for it, and **the server sees the client give up on the real HTTP request** — the assumption
-   CHG-0530 left open, checked over real HTTP for the Streamable transport.
+   CHG-0533 left open, checked over real HTTP for the Streamable transport.
 
 The composition follows the gateway's existing retry rule (retry an `Unreachable` once for a catalog `Read`): the adapter
 maps a failed transport to `Unreachable`, and no retry logic lives in the adapter.
@@ -70,7 +70,7 @@ maps a failed transport to `Unreachable`, and no retry logic lives in the adapte
   itself is another errand's. Until it exists, an installed Composio connector has no key to lend and stays not
   connected.
 - **A live Claude Code, Codex or OpenCode** — the gateway tests' harness is the one fake harness under three names; a
-  live harness's re-listing behavior is unchanged from CHG-0530's record.
+  live harness's re-listing behavior is unchanged from CHG-0533's record.
 - **Windows and Linux** — the tests ran on macOS; the transport code itself is platform-free.
 - **The first real 401** — whether Composio answers a wrong key with 401 (mapped to `Disconnected`, Needs connecting)
   or with another code (then `Failed`) is not verified.

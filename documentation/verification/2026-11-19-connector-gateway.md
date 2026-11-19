@@ -1,6 +1,6 @@
 # Verification: connector gateway on a fake backend
 
-- **Work:** CHG-0532, based on `7880ab0`, on the branch `mission/connectors-composio-and-apple-apps-5906083b`.
+- **Work:** CHG-0533, based on `7880ab0`, on the branch `mission/connectors-composio-and-apple-apps-5906083b`.
 - **Environment:** macOS, inside a thread's sandbox, with `TMPDIR=<repo>/.tmp-test` (no space) and `CI=1`. A real SQLite database in a temporary folder per test; the scripted fake harness; the scripted fake backend, fake Vault and test catalog in `test/fixtures/connectorBackend.ts` and `connectorWorld.ts`.
 - **Verdict:** The gateway, the stored choices, the owner's requests and the wiring pass on fakes. No real server, Vault, harness or screen was run.
 

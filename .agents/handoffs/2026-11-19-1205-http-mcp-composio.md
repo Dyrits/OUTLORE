@@ -1,8 +1,8 @@
-# The Streamable-HTTP MCP backend and Composio's tools (CHG-0533, 2026-11-19)
+# The Streamable-HTTP MCP backend and Composio's tools (CHG-0535, 2026-11-19)
 
 To resume the connectors quest's HTTP half. Written by the errand that built it (branch
 `mission/connectors-composio-and-apple-apps-2f728664`, commits `a477c8e` and the docs commit). The branch carries the
-merge of the gateway branch (CHG-0530, the fake backend, the seams) plus this errand's work. Read AGENTS.md's pointers
+merge of the gateway branch (CHG-0533, the fake backend, the seams) plus this errand's work. Read AGENTS.md's pointers
 first: the [changelog entry](../../documentation/changelog/0.1.12-Prototype.md), the
 [verification note](../../documentation/2026-11-19-http-mcp-composio.md) and the
 [research note on Composio's primary sources](../../documentation/research/composio-mcp-2026-11-19.md) are the proof.
@@ -40,7 +40,7 @@ first: the [changelog entry](../../documentation/changelog/0.1.12-Prototype.md),
    already has, so discovery is where the `Read` classification ends; everything that acts asks.
 4. **No server-side narrowing** on the shared Connect URL; read-only sessions are a Composio SDK feature the owner
    would have to adopt as a design decision (research note, "What no session-less narrowing means").
-5. The Composio entry's install notice is unchanged from CHG-0530's own words (Composio's service stores the sign-ins
+5. The Composio entry's install notice is unchanged from CHG-0533's own words (Composio's service stores the sign-ins
    and sees what tools return; the owner's own account and key; apps connect on Composio's page).
 
 ## Verified here
@@ -54,11 +54,10 @@ real local fake of Composio's Connect endpoint.
 
 - **The real Composio server**, once the Vault errand ships and the owner puts their key in: the checklist is in the
   verification note ("What the owner must run"), and the one assumption to check is the stateless listing above.
-- **Renumber at merge**: this branch numbers its entry CHG-0533 because CHG-0532 was already taken on
-  `mission/connectors-composio-and-apple-apps-02a36299` (the merge/Vault-requests errand) when this was written; the
-  stdio errand may pick the same number.
+- **Renumbered at merge**: the branch numbered this entry CHG-0533 (the number the Vault-join branch also took); the
+  merge of the four connectors branches renumbered it CHG-0535, so the references here read as renumbered.
 - **Concurrent edits expected at merge**: the specification's status paragraph, the blueprint's status line and
   `catalogEntries.ts`'s Apple entry are all being touched by the stdio (Apple apps) errand in parallel.
-- **CHG-0530 leftovers that this half does not close**: the read of a realm's or quest's current choice (for the
+- **CHG-0533 leftovers that this half does not close**: the read of a realm's or quest's current choice (for the
   panels), `PutSecret`/`ReplaceSecret`/`RemoveSecret`, the Charter screens, the Steps line for a read on a live
   harness, Windows and Linux.
