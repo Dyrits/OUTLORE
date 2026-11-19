@@ -151,8 +151,13 @@ const runCall = Effect.fnUntraced(function* (
   args: unknown,
 ) {
   const listedName = invocation.listedName;
-  if (!dependencies.listing.cachedTools(entry.id).some((listed) => listed.name === tool))
-    return unknownToolAnswer(listedName);
+  // A tool the catalog names, or the thread was offered this turn, is known even when its connector has since been
+  // forgotten or switched off: the thread is told the connector is off for it, not that the tool does not exist.
+  const isKnown =
+    catalogToolOf(entry, tool) !== null ||
+    dependencies.listing.cachedTools(entry.id).some((listed) => listed.name === tool) ||
+    dependencies.calls.snapshotOf(invocation.threadId)?.has(listedName) === true;
+  if (!isKnown) return unknownToolAnswer(listedName);
   const refused = yield* refusalOf(dependencies, invocation.threadId, listedName);
   if (refused !== null) return refused;
   if (catalogToolOf(entry, tool)?.class !== "Read") {

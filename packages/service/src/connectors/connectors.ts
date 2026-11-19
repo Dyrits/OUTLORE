@@ -200,7 +200,10 @@ const make = (options: ConnectorsOptions) =>
  */
 export const connectorServicesLayer = (options: ConnectorsOptions = {}) =>
   Layer.effectContext(
-    make(options).pipe(
-      Effect.map((made) => Context.make(Connectors, made).pipe(Context.add(ConnectorGateway, made.gateway))),
-    ),
+    Effect.gen(function* () {
+      const made = yield* make(options);
+      // A removal a crash left halfway resumes at its second step, as the service starts.
+      yield* made.resumeRemovals;
+      return Context.make(Connectors, made).pipe(Context.add(ConnectorGateway, made.gateway));
+    }),
   );

@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import type { ConnectorCard, MissionDetail, Question, Request, ThreadId } from "@outlore/contracts";
+import type { MissionDetail, Question, Request, ThreadId } from "@outlore/contracts";
 import { Deferred, Effect, type Layer } from "effect";
 import type { CatalogEntry } from "../../src/connectors/index.ts";
 import type { Harness } from "../../src/core/index.ts";
@@ -43,21 +43,22 @@ export const connectorWorld = (
     }
     const directory = temporary("outlore-connectors-");
     const catalog: ReadonlyArray<CatalogEntry> = [calendarEntry, unclassifiedEntry, appleLikeEntry];
-    const layer = serviceLayer({
-      connectorBackends: fakeBackendsLayer({
-        applefake: apple.backend,
-        calendar: calendar.backend,
-        unnamed_service: unnamed.backend,
-      }),
-      connectorCatalog: catalog,
-      connectorPlatform: options.platform ?? "darwin",
-      connectorVault: vault.layer,
-      filename: join(directory, "store.sqlite"),
-      harness: options.harness ?? fakeHarnessLayer("10 millis"),
-      homeFolder: directory,
-      scratchRoot: join(directory, "missions"),
-    });
-    return { apple, calendar, catalog, directory, gate, layer, received, unnamed, vault };
+    const build = () =>
+      serviceLayer({
+        connectorBackends: fakeBackendsLayer({
+          applefake: apple.backend,
+          calendar: calendar.backend,
+          unnamed_service: unnamed.backend,
+        }),
+        connectorCatalog: catalog,
+        connectorPlatform: options.platform ?? "darwin",
+        connectorVault: vault.layer,
+        filename: join(directory, "store.sqlite"),
+        harness: options.harness ?? fakeHarnessLayer("10 millis"),
+        homeFolder: directory,
+        scratchRoot: join(directory, "missions"),
+      });
+    return { apple, build, calendar, catalog, directory, gate, layer: build(), received, unnamed, vault };
   });
 
 /** The connector tool names a thread lists, or null when the tool server is not reachable yet. */
@@ -68,16 +69,12 @@ export const run = <A, E, R>(world: Effect.Success<ReturnType<typeof connectorWo
 export const owner = <R extends Request>(request: R) => call(request);
 
 /** Installs a connector, confirming its notice. */
-export const install = (
-  connectorId: string,
-  apps?: ReadonlyArray<string>,
-): Effect.Effect<ConnectorCard, unknown, unknown> =>
-  call({
-    _tag: "InstallConnector",
-    ...(apps === undefined ? {} : { apps }),
-    connectorId,
-    hasConfirmedNotice: true,
-  }) as Effect.Effect<ConnectorCard, unknown, unknown>;
+export const install = (connectorId: string, apps?: ReadonlyArray<string>) =>
+  call(
+    apps === undefined
+      ? ({ _tag: "InstallConnector", connectorId, hasConfirmedNotice: true } as const)
+      : ({ _tag: "InstallConnector", apps, connectorId, hasConfirmedNotice: true } as const),
+  );
 
 /** A thread's turn that has ended or is waiting on the owner. */
 export const isIdleOrAsking = (detail: MissionDetail) =>
@@ -104,3 +101,26 @@ export const untilAsked = (missionId: MissionDetail["mission"]["id"], threadId: 
   settle(missionId, (detail) => openQuestionOf(detail) !== null, threadId);
 
 export { read, settle };
+
+/** Runs a test body on a service over the connector world, handing the body the world. */
+export const inWorld = <A, E, R>(
+  options: Parameters<typeof connectorWorld>[0],
+  body: (world: Effect.Success<ReturnType<typeof connectorWorld>>) => Effect.Effect<A, E, R>,
+) =>
+  Effect.gen(function* () {
+    const world = yield* connectorWorld(options);
+    return yield* body(world).pipe(Effect.provide(world.layer));
+  });
+
+/** Waits until the thread has this many agent replies and is idle: its turns have ended. */
+export const untilReplies = (
+  missionId: MissionDetail["mission"]["id"],
+  count: number,
+  threadId: ThreadId | null = null,
+) =>
+  settle(
+    missionId,
+    (detail) =>
+      detail.thread.state === "Idle" && detail.messages.filter((message) => message.sender === "agent").length >= count,
+    threadId,
+  );
