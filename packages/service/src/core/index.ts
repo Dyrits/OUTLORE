@@ -39,6 +39,19 @@ export {
   seedBrowsableRoots,
 } from "./folders.ts";
 export { newId } from "./ids.ts";
+export {
+  type CommandRun,
+  type LineProcessOptions,
+  type RpcIncoming,
+  type RpcOptions,
+  type RpcProcess,
+  reducedEnvironmentOf,
+  runShortCommand,
+  type StreamItem,
+  type StreamJsonProcess,
+  startRpcProcess,
+  startStreamJsonProcess,
+} from "./lineProcess.ts";
 export { modelsDevSourceLayer, noPriceSourceLayer, rowsOfModelsDev } from "./priceSources.ts";
 export {
   PriceReadFailed,
@@ -48,6 +61,13 @@ export {
   priceOf,
   priceTableLayer,
 } from "./prices.ts";
+export {
+  killProcessTree,
+  type MarkedProcess,
+  type ProcessMarker,
+  readMarkedProcesses,
+  readProcessTree,
+} from "./processTree.ts";
 export { fieldOf, numberFieldOf, textFieldOf } from "./records.ts";
 export { sandboxProblem } from "./sandbox.ts";
 export { removeScratch } from "./scratch.ts";

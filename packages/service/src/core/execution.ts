@@ -210,8 +210,14 @@ export const interruptedOutcomeOf = (sessionId: string, usage: TokenUsage | null
   usage,
 });
 
-/** A turn the harness could not run, with the reason the owner reads. */
-export class HarnessFailure extends Schema.TaggedError<HarnessFailure>()("HarnessFailure", { reason: Schema.String }) {}
+/**
+ * A child process or harness could not do what was asked of it, with the reason the owner reads. `code` is the
+ * failure's own code when it came with one (a JSON-RPC error's `code`), absent otherwise.
+ */
+export class HarnessFailure extends Schema.TaggedError<HarnessFailure>()("HarnessFailure", {
+  code: Schema.optional(Schema.Number),
+  reason: Schema.String,
+}) {}
 
 /** One plan limit as a harness reports it: a window of so many minutes, how much is used, and when it resets (seconds). */
 export type PlanLimitReport = {

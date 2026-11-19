@@ -1,13 +1,15 @@
 import { execFile, spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { Deferred, Effect, Queue } from "effect";
-import { fieldOf, HarnessFailure, textFieldOf } from "../core/index.ts";
+import { HarnessFailure } from "./execution.ts";
 import { killProcessTree } from "./processTree.ts";
+import { fieldOf, numberFieldOf, textFieldOf } from "./records.ts";
 
-// A harness process spoken to one JSON message per line on its standard streams (ADR 0008), in one of two
-// framings: Claude Code's stream-json, and JSON-RPC for Codex's app server and the Agent Client Protocol.
+// A child process spoken to one JSON message per line on its standard streams (ADR 0008), in one of two framings:
+// stream-json, and JSON-RPC for an MCP server over stdio, Codex's app server and the Agent Client Protocol. It moved
+// down from harness/ when the connector backends needed the same transport (connectors blueprint, Order step 4).
 
-/** How to start a harness process. */
+/** How to start a child process. */
 export type LineProcessOptions = {
   readonly args: ReadonlyArray<string>;
   readonly command: string;
@@ -18,7 +20,7 @@ export type LineProcessOptions = {
    * whole tree, children that left the group included (processTree.ts), rather than only the process itself.
    */
   readonly isTreeKilled?: boolean;
-  /** The harness's name as the owner reads it, for failures. */
+  /** The child's name as the owner reads it, for failures. */
   readonly label: string;
   /**
    * Run once the process has ended, however it ended: ends what it left behind, such as a child that outlived it and
@@ -27,23 +29,23 @@ export type LineProcessOptions = {
   readonly onEnded?: () => Promise<ReadonlyArray<number>>;
 };
 
-/** The environment of a harness's process: Outlore's own variables, such as the owner token, left out. */
-export const harnessEnvironmentOf = (extra: Record<string, string>) => ({
+/** The environment of a child process the service starts: Outlore's own variables, such as the owner token, left out. */
+export const reducedEnvironmentOf = (extra: Record<string, string>) => ({
   ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("OUTLORE_"))),
   ...extra,
 });
 
-/** What a short command of a harness's tool printed. */
+/** What a short command printed. */
 export type CommandRun = {
-  /** The exit code; null when the tool is missing or timed out. */
+  /** The exit code; null when the command is missing or timed out. */
   readonly code: number | null;
-  /** What the command printed on both streams; Codex prints its login status on standard error. */
+  /** What the command printed on both streams; some tools print their status on standard error. */
   readonly output: string;
   readonly stdout: string;
 };
 
-/** Runs a command of a harness's tool, by default a short one; a missing tool or a timeout reads as exit code null. */
-export const runHarnessCommand = (
+/** Runs a command, by default a short one; a missing command or a timeout reads as exit code null. */
+export const runShortCommand = (
   command: string,
   args: ReadonlyArray<string>,
   env: Record<string, string>,
@@ -54,7 +56,7 @@ export const runHarnessCommand = (
     execFile(
       command,
       [...args],
-      { cwd, env: harnessEnvironmentOf(env), maxBuffer: 4_000_000, timeout: timeoutMillis },
+      { cwd, env: reducedEnvironmentOf(env), maxBuffer: 4_000_000, timeout: timeoutMillis },
       (error, stdout, stderr) => {
         const code = error === null ? 0 : typeof error.code === "number" ? error.code : null;
         resume(Effect.succeed({ code, output: `${stdout}\n${stderr}`, stdout: String(stdout) }));
@@ -132,7 +134,7 @@ export type StreamItem =
   | { readonly _tag: "Message"; readonly message: unknown }
   | { readonly _tag: "Exit"; readonly reason: string };
 
-/** One running harness process in Claude Code's stream-json framing. */
+/** One running stream-json process. */
 export interface StreamJsonProcess {
   readonly close: () => void;
   readonly hasExited: () => boolean;
@@ -156,13 +158,13 @@ export type RpcIncoming =
   | { readonly _tag: "Request"; readonly id: number | string; readonly method: string; readonly params: unknown }
   | { readonly _tag: "Exit"; readonly reason: string };
 
-/** How to start a harness that speaks JSON-RPC over its standard streams. */
+/** How to start a child that speaks JSON-RPC over its standard streams. */
 export type RpcOptions = LineProcessOptions & {
   /** Whether messages carry `"jsonrpc": "2.0"`, which ACP requires and Codex's app server leaves out. */
   readonly isJsonRpc2: boolean;
 };
 
-/** One running harness process and its JSON-RPC exchange. */
+/** One running child process and its JSON-RPC exchange. */
 export interface RpcProcess {
   /** Ends the process; its pending requests fail. */
   readonly close: () => void;
@@ -193,7 +195,11 @@ export const startRpcProcess = Effect.fnUntraced(function* (options: RpcOptions)
       error === undefined
         ? Effect.succeed(fieldOf(message, "result") ?? null)
         : Effect.fail(
-            new HarnessFailure({ reason: textFieldOf(error, "message") ?? `${options.label} refused a request.` }),
+            new HarnessFailure({
+              // 0 reads as no code: JSON-RPC error codes are negative.
+              code: numberFieldOf(error, "code") || void 0,
+              reason: textFieldOf(error, "message") ?? `${options.label} refused a request.`,
+            }),
           ),
     );
   };

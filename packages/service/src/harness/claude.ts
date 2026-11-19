@@ -11,6 +11,10 @@ import {
   type PlanLimitReport,
   type PlanLimitsReport,
   readImages,
+  reducedEnvironmentOf,
+  runShortCommand,
+  type StreamJsonProcess,
+  startStreamJsonProcess,
   type TurnRequest,
   textFieldOf,
   turnMessageOf,
@@ -41,12 +45,6 @@ import {
   makeHarnessProcesses,
   type PooledTurn,
 } from "./harnessProcesses.ts";
-import {
-  harnessEnvironmentOf,
-  runHarnessCommand,
-  type StreamJsonProcess,
-  startStreamJsonProcess,
-} from "./lineProcess.ts";
 import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
 import { contextOf } from "./tokenUsage.ts";
 import { toolServerName } from "./toolNames.ts";
@@ -112,7 +110,7 @@ const turnCostOf = (connection: ClaudeConnection, total: unknown): number | null
 
 /** The child's environment, signed in with the turn's account (provider-accounts). */
 const childEnvironment = (configDirectory: string | null) =>
-  harnessEnvironmentOf({ ...accountEnvironmentOf("claude", configDirectory), MCP_TOOL_TIMEOUT: String(noTimeLimit) });
+  reducedEnvironmentOf({ ...accountEnvironmentOf("claude", configDirectory), MCP_TOOL_TIMEOUT: String(noTimeLimit) });
 
 /** A user message's content: the text alone, or the text then one base64 image block per image (message-attachments). */
 const contentOf = Effect.fnUntraced(function* (text: string, images: ReadonlyArray<ImageAttachment>) {
@@ -319,7 +317,7 @@ const probeArgs = [
  * `rate_limit_event` answers. Null when it reports none. No token or credential is read here.
  */
 const probeClaudePlanLimits = Effect.fnUntraced(function* (options: ClaudeOptions, configDirectory: string | null) {
-  const run = yield* runHarnessCommand(
+  const run = yield* runShortCommand(
     options.command,
     [...(options.prefixArgs ?? []), ...probeArgs],
     accountEnvironmentOf("claude", configDirectory),

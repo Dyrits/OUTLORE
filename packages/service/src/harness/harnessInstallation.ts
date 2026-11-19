@@ -1,8 +1,7 @@
 import type { HarnessName } from "@outlore/contracts";
 import { Effect } from "effect";
-import { invalid } from "../core/index.ts";
+import { invalid, runShortCommand } from "../core/index.ts";
 import { type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
-import { runHarnessCommand } from "./lineProcess.ts";
 
 /** How long a harness's own install or update command may run. */
 export const updateTimeoutMillis = 5 * 60 * 1000;
@@ -32,7 +31,7 @@ const installers = {
 /** Installs an official harness package with the computer's npm (and its configured global prefix) or uv. */
 export const installHarnessPackage = Effect.fnUntraced(function* (
   harness: HarnessName,
-  run: typeof runHarnessCommand = runHarnessCommand,
+  run: typeof runShortCommand = runShortCommand,
   platform: NodeJS.Platform = process.platform,
 ) {
   const facts = harnessFacts[harness];

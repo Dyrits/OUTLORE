@@ -1,16 +1,24 @@
 import { tmpdir } from "node:os";
 import type { BillingKind, EffortChoice, ModelOption } from "@outlore/contracts";
 import { Effect, Result } from "effect";
-import { fieldOf, HarnessFailure, type PlanLimitReport, type PlanLimitsReport, textFieldOf } from "../core/index.ts";
+import {
+  fieldOf,
+  HarnessFailure,
+  type PlanLimitReport,
+  type PlanLimitsReport,
+  type RpcProcess,
+  reducedEnvironmentOf,
+  startRpcProcess,
+  textFieldOf,
+} from "../core/index.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
-import { harnessEnvironmentOf, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
 
 // What Mistral Vibe's `vibe-acp` says about an account (its models, its sign-in, its plan), read in one short
 // session and closed again, and the pieces its turn sessions share (provider-accounts, budget-control).
 
 /** The child's environment, signed in with the turn's account (provider-accounts). */
 export const childEnvironment = (configDirectory: string | null) =>
-  harnessEnvironmentOf(accountEnvironmentOf("vibe", configDirectory));
+  reducedEnvironmentOf(accountEnvironmentOf("vibe", configDirectory));
 
 /** The initialize request: protocol version 1, no filesystem or terminal use, so Vibe's own client tools for them stay off. */
 export const initializeParams = {

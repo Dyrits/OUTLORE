@@ -9,7 +9,11 @@ import {
   type HarnessAdapter,
   HarnessFailure,
   invalid,
+  type RpcIncoming,
+  type RpcProcess,
   readImages,
+  reducedEnvironmentOf,
+  startRpcProcess,
   type ThreadAccess,
   type TurnRequest,
   textFieldOf,
@@ -24,7 +28,6 @@ import {
   type PooledTurn,
 } from "./harnessProcesses.ts";
 import { approvalInstructionsOf } from "./instructions.ts";
-import { harnessEnvironmentOf, type RpcIncoming, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
 import { makeOpenCodeLauncher } from "./openCodeLaunch.ts";
 import { readOpenCodePlanLimits } from "./openCodePlanLimits.ts";
 import { editedPathsOf, findFirstOutside, promptOf, refusalOf } from "./openCodePrompts.ts";
@@ -67,7 +70,7 @@ export const listOpenCodeEfforts = Effect.fnUntraced(
       args: [...prefixArgs, "acp"],
       command,
       cwd: tmpdir(),
-      env: harnessEnvironmentOf(accountEnvironmentOf("opencode", configDirectory)),
+      env: reducedEnvironmentOf(accountEnvironmentOf("opencode", configDirectory)),
       isJsonRpc2: true,
       label: "OpenCode",
     });

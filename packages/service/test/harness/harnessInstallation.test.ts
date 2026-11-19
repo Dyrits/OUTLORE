@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
 import type { HarnessName } from "@outlore/contracts";
 import { Effect } from "effect";
+import type { runShortCommand } from "../../src/core/index.ts";
 import { installHarnessPackage } from "../../src/harness/harnessInstallation.ts";
-import type { runHarnessCommand } from "../../src/harness/lineProcess.ts";
 
 describe("installing harness packages", () => {
   const packages: ReadonlyArray<readonly [HarnessName, string]> = [
@@ -14,7 +14,7 @@ describe("installing harness packages", () => {
     it.effect(`installs ${harness} from its official package`, () =>
       Effect.gen(function* () {
         const calls: Array<unknown> = [];
-        const run: typeof runHarnessCommand = (...args) => {
+        const run: typeof runShortCommand = (...args) => {
           calls.push(args);
           return Effect.succeed({ code: 0, output: "installed", stdout: "installed" });
         };
@@ -26,7 +26,7 @@ describe("installing harness packages", () => {
 
   it.effect("reports npm failures with the last output lines", () =>
     Effect.gen(function* () {
-      const run: typeof runHarnessCommand = () =>
+      const run: typeof runShortCommand = () =>
         Effect.succeed({ code: 1, output: "first\none\ntwo\nEACCES", stdout: "" });
       const failure = yield* installHarnessPackage("codex", run).pipe(Effect.flip);
       expect(failure.message).toContain("global installation permissions");
@@ -36,7 +36,7 @@ describe("installing harness packages", () => {
 
   it.effect("explains the npm prerequisite when the command cannot run", () =>
     Effect.gen(function* () {
-      const run: typeof runHarnessCommand = () => Effect.succeed({ code: null, output: "", stdout: "" });
+      const run: typeof runShortCommand = () => Effect.succeed({ code: null, output: "", stdout: "" });
       const failure = yield* installHarnessPackage("claude", run).pipe(Effect.flip);
       expect(failure.message).toContain("Install Node.js and npm");
     }),
@@ -45,7 +45,7 @@ describe("installing harness packages", () => {
   it.effect("uses the Windows command launcher for npm", () =>
     Effect.gen(function* () {
       const calls: Array<unknown> = [];
-      const run: typeof runHarnessCommand = (...args) => {
+      const run: typeof runShortCommand = (...args) => {
         calls.push(args);
         return Effect.succeed({ code: 0, output: "", stdout: "" });
       };
@@ -59,7 +59,7 @@ describe("installing harness packages", () => {
   it.effect("installs Mistral Vibe with uv, and names uv as the prerequisite", () =>
     Effect.gen(function* () {
       const calls: Array<unknown> = [];
-      const run: typeof runHarnessCommand = (...args) => {
+      const run: typeof runShortCommand = (...args) => {
         calls.push(args);
         return Effect.succeed({ code: null, output: "", stdout: "" });
       };

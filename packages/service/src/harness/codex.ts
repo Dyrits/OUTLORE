@@ -8,7 +8,11 @@ import {
   type ImageAttachment,
   numberFieldOf,
   type PlanLimitsReport,
+  type RpcIncoming,
+  type RpcProcess,
+  reducedEnvironmentOf,
   type SteeredMessage,
+  startRpcProcess,
   type ThreadAccess,
   type TurnRequest,
   textFieldOf,
@@ -24,7 +28,6 @@ import {
   type PooledTurn,
 } from "./harnessProcesses.ts";
 import { approvalInstructionsOf } from "./instructions.ts";
-import { harnessEnvironmentOf, type RpcIncoming, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
 import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
 import { toolServerName } from "./toolNames.ts";
 
@@ -153,7 +156,7 @@ const readCodexPlanLimits = Effect.fnUntraced(function* (options: CodexOptions, 
     args: [...(options.prefixArgs ?? []), "app-server"],
     command: options.command,
     cwd: tmpdir(),
-    env: harnessEnvironmentOf(accountEnvironmentOf("codex", configDirectory)),
+    env: reducedEnvironmentOf(accountEnvironmentOf("codex", configDirectory)),
     isJsonRpc2: false,
     label: "Codex",
   });
@@ -376,7 +379,7 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
       args: [...(options.prefixArgs ?? []), "app-server"],
       command: options.command,
       cwd,
-      env: harnessEnvironmentOf({ ...accountEnvironmentOf("codex", request.configDirectory), PWD: cwd }),
+      env: reducedEnvironmentOf({ ...accountEnvironmentOf("codex", request.configDirectory), PWD: cwd }),
       isJsonRpc2: false,
       label: "Codex",
     });
