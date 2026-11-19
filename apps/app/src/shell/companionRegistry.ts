@@ -1,5 +1,5 @@
-import type { CompanionPickerProps } from "../editors/companionPicker";
 import { isSamePicker } from "../editors/pickerState";
+import type { CompanionPickerProps } from "../foundation/companionPickerProps";
 import type { PanelContent } from "../foundation/panelState";
 import { isCompanionOffered } from "./companionScope";
 

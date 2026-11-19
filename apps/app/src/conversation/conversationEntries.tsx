@@ -15,6 +15,7 @@ import { ChipText } from "../ui/chips";
 import { InterruptIcon, SteerIcon } from "../ui/composerIcons";
 import { ProviderMark } from "../ui/providerMarks";
 import { QuestionCard, QuestionLine } from "../ui/questions";
+import { ChoiceBubbles } from "./choiceBubbleViews";
 import { Commentable } from "./commentable";
 import { commentsOf } from "./comments";
 import { SentComments } from "./commentViews";
@@ -283,7 +284,8 @@ export function EntryView({
       </View>
     );
   }
-  if (entry._tag === "Steps") return <StepsGroup seconds={entry.seconds} steps={entry.steps} />;
+  if (entry._tag === "Steps")
+    return <StepsGroup client={client} seconds={entry.seconds} steps={entry.steps} threadId={entry.threadId} />;
   if (entry._tag === "QuestLink")
     return (
       <View style={styles.messageRow}>
@@ -328,8 +330,10 @@ export function EntryView({
   if (entry._tag === "Question")
     return entry.question.outcome === null ? (
       <QuestionCard client={client} question={entry.question} />
-    ) : (
+    ) : entry.question.choices === null ? (
       <QuestionLine question={entry.question} />
+    ) : (
+      <ChoiceBubbles harness={harness} question={entry.question} />
     );
   return (
     <MessageBubble

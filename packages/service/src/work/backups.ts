@@ -4,7 +4,7 @@ import { SqlClient } from "effect/sql";
 import { notFound, readSettings } from "../core/index.ts";
 import { checkBackups } from "../harness/index.ts";
 import { refuseWaitingImages } from "./admission.ts";
-import { changed, unchanged, type WithFollowUps } from "./commands.ts";
+import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
 import { changeThreadRunner } from "./handover.ts";
 
 // Backup Companions (thread-panel, Backups): the Companions a thread falls back to, in order, when a turn fails.

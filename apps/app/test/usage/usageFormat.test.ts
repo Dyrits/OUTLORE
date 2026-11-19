@@ -10,7 +10,7 @@ import {
   shareTextOf,
   tokenTotalsOf,
   usageCostTextOf,
-} from "../../src/shell/usageFormat";
+} from "../../src/usage/usageFormat";
 
 const amounts = (partial: Partial<UsageAmounts> = {}): UsageAmounts => ({ ...emptyAmounts, ...partial });
 const tokens = (input: number, output = 0, cacheRead = 0, cacheCreation = 0) => ({

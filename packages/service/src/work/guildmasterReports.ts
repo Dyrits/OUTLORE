@@ -1,7 +1,8 @@
 import { Effect, Layer, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
 import { Changes } from "../core/index.ts";
-import { Commands, changed, unchanged } from "./commands.ts";
+import { Commands } from "./commands.ts";
+import { changed, unchanged } from "./followUps.ts";
 import { clip } from "./guildmasterText.ts";
 import { readMissionSummaryMap } from "./matching.ts";
 import { insertMessage } from "./messaging.ts";

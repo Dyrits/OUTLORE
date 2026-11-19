@@ -10,10 +10,10 @@ import { messageOf, type ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { ToggleRow } from "../settings/settingsParts";
 import { Choice } from "../ui/pickers";
 import { questionOriginOf } from "../ui/questionOrigin";
 import { QuestionLine } from "../ui/questions";
+import { ToggleRow } from "../ui/toggleRow";
 
 /** The names of the approval levels (action-approval, Approval level). */
 export const levelLabels = {

@@ -8,9 +8,10 @@ import type {
   MissionId,
   Question,
   Suggestion,
+  ThreadId,
   ThreadSummary,
 } from "@outlore/contracts";
-import { suggestionLabels } from "../foundation/labels";
+import { settledSuggestionLabelOf } from "../foundation/labels";
 
 /** A quest or Ritual the Guildmaster opened, created, or continued, which the conversation draws as a card of its own. */
 export type QuestLink = { key: string; label: string; missionId: MissionId; sentAt: number; title: string };
@@ -19,7 +20,7 @@ export type QuestLink = { key: string; label: string; missionId: MissionId; sent
 export type Entry = { key: string; at: number } & (
   | { _tag: "Message"; message: Message; fromQuest: MissionId | null }
   /** The settled actions of one turn gathered under one collapsible line. */
-  | { _tag: "Steps"; isCurrent: boolean; seconds: number; steps: ReadonlyArray<Step> }
+  | { _tag: "Steps"; isCurrent: boolean; seconds: number; steps: ReadonlyArray<Step>; threadId: ThreadId }
   | { _tag: "Question"; question: Question }
   | { _tag: "Suggestion"; suggestion: Suggestion }
   | { _tag: "BudgetEvent"; event: BudgetEvent }
@@ -32,22 +33,19 @@ export type Entry = { key: string; at: number } & (
 /** A line sits just after the reply that answers what it belongs to. */
 const afterReply = 0.5;
 
-/** What the Guildmaster did with a request it settled. */
-const settledLabelOf = (suggestion: Suggestion) =>
-  suggestion.isRitual
-    ? "Created Ritual"
-    : suggestion.outcome === "MovedToMission"
-      ? "Opened quest"
-      : suggestionLabels[suggestion.outcome ?? "Continued"];
-
 /** One step of a turn, separate from its chat messages: an action the thread ran or was allowed to run, or a tool call its harness reported. */
 export type Step =
   | { _tag: "Action"; at: number; id: string; question: Question }
   | { _tag: "Call"; activity: Activity; at: number; id: string };
 
-/** The outcomes that settle an action with no word from the owner worth a line of its own. */
+/**
+ * The outcomes that settle an action with no word from the owner worth a line of its own. A choice question is never
+ * one: it stays in the conversation, as the agent's bubbles with the owner's answers attached (CHG-0535).
+ */
 const isFoldedAction = (question: Question) =>
-  question.outcome !== null && !["Denied", "Discarded", "Withdrawn"].includes(question.outcome);
+  question.choices === null &&
+  question.outcome !== null &&
+  !["Denied", "Discarded", "Withdrawn"].includes(question.outcome);
 
 /** Settled actions grouped between incoming messages, with elapsed time from the message that began the turn. */
 const stepGroupsOf = (
@@ -112,7 +110,7 @@ export const entriesOf = (detail: MissionDetail, isWorking = false): Array<Entry
         _tag: "QuestLink",
         at: (replyFrom(at)?.sentAt ?? at) + afterReply,
         key: suggestion.id,
-        label: settledLabelOf(suggestion),
+        label: settledSuggestionLabelOf(suggestion),
         missionId: suggestion.targetMissionId,
         sentAt: at,
         title: suggestion.targetTitle ?? "",
@@ -130,6 +128,7 @@ export const entriesOf = (detail: MissionDetail, isWorking = false): Array<Entry
         key: `steps:${group.steps[0]?.id}`,
         seconds: group.seconds,
         steps: group.steps,
+        threadId: detail.thread.id,
       }),
     ),
     ...detail.threads

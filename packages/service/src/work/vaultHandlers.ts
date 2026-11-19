@@ -11,7 +11,8 @@ import { Effect } from "effect";
 import type { Connectors } from "../connectors/index.ts";
 import { Harness, ServiceFailure, type VaultDenial } from "../core/index.ts";
 import { harnessLabelOf, type Vault, type VaultFailure, VaultFolder } from "../vault/index.ts";
-import { type CommandRunner, changed } from "./commands.ts";
+import type { CommandRunner } from "./commands.ts";
+import { changed } from "./followUps.ts";
 
 // The Vault's owner requests (connectors blueprint, Owner requests and the app; ADR 0022). All are the owner's, from
 // the host's window or a paired device: no thread tool reaches them (the specification's External contract), and the

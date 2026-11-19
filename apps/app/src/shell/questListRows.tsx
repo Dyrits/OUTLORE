@@ -6,7 +6,8 @@ import { colors, fontSizes, fonts, radii, stateLabels, stateTones } from "../fou
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { EndingConfirmation } from "../quests/missionActions";
-import { agoOf, questListRowsOf } from "./questTree";
+import { agoOf } from "./questRecency";
+import { questListRowsOf } from "./questTree";
 import { ArchiveIcon, DeleteIcon } from "./railActions";
 
 /** The shared compact quest and errand row, indented beneath its parent. */

@@ -1,22 +1,10 @@
 import type { BackupCompanion, Settings, Tier } from "@outlore/contracts";
 import { TierName } from "@outlore/contracts";
+
+export type { Preset, PresetChoice } from "../foundation/companionPickerProps";
+
+import type { Preset } from "../foundation/companionPickerProps";
 import type { Runner } from "./runners";
-
-/**
- * A Companion preset: one of the Workshop's three tiers that the owner has set, a Companion and the backup Companions that go with it, which choosing it puts in place together (companion-presets).
- */
-export type Preset = {
-  readonly backups: Tier["backups"];
-  readonly name: TierName;
-  readonly runner: Runner;
-};
-
-/** What a Companion picker needs to offer the presets: those the owner set, the backups of the stack in use (null while unread, so none is marked chosen too early), and what choosing one does. */
-export type PresetChoice = {
-  readonly backups: ReadonlyArray<BackupCompanion> | null;
-  readonly onPreset: (preset: Preset) => void;
-  readonly presets: ReadonlyArray<Preset>;
-};
 
 /** Whether two runners are the same Companion: harness, account, model, and effort. */
 export const isSameRunner = (current: Runner, next: Runner) =>

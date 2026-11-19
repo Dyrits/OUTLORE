@@ -282,6 +282,10 @@ export const ThreadView = Schema.Struct({
   parentId: Schema.NullOr(ThreadId),
   state: ThreadState,
   title: Schema.String,
+  /** The harness of the turn the thread is in, as admitted: the owner's later pick does not change it. Null outside a turn. */
+  turnHarness: Schema.NullOr(HarnessName),
+  /** The model of the turn the thread is in, as admitted. Null outside a turn, or for a turn recorded before models were. */
+  turnModel: Schema.NullOr(ModelChoice),
   waitingCount: Schema.Number,
   /** Null when the thread runs in its mission's scratch folder. */
   workspace: Schema.NullOr(Workspace),

@@ -199,7 +199,13 @@ describe("a turn's actions, folded as steps while messages stay visible", () => 
   });
 
   it("folds the actions a turn ran into its steps, keeping a denial visible", () => {
-    const question = (id: string, askedAt: number, outcome: string) => ({ askedAt, id, outcome, summary: `Ran ${id}` });
+    const question = (id: string, askedAt: number, outcome: string) => ({
+      askedAt,
+      choices: null,
+      id,
+      outcome,
+      summary: `Ran ${id}`,
+    });
     const detail = turn([owner(0), agent(1000), agent(20000)]);
     const entries = entriesOf({
       ...detail,
@@ -207,6 +213,39 @@ describe("a turn's actions, folded as steps while messages stay visible", () => 
     } as unknown as MissionDetail);
     expect(entries.map((entry) => entry.key)).toEqual(["owner-0", "agent-1000", "steps:a", "b", "agent-20000"]);
     expect(entries[2]).toMatchObject({ _tag: "Steps", seconds: 2, steps: [{ _tag: "Action", id: "a" }] });
+  });
+
+  it.each(["Answered", "Skipped", "Withdrawn"] as const)(
+    "keeps a choice question that ended %s in the conversation, out of the steps (CHG-0535)",
+    (outcome) => {
+      const detail = turn([owner(0), agent(1000), agent(20000)]);
+      const asked: Question = {
+        ...recordedQuestionOf("pick", 2000),
+        answers: outcome === "Answered" ? [["A"]] : null,
+        choices: [{ allowsOther: true, header: "H", multiple: false, options: [], question: "Which?" }],
+        outcome,
+      };
+      const entries = entriesOf({ ...detail, questions: [asked] } satisfies MissionDetail);
+      expect(entries.map((entry) => entry.key)).toEqual(["owner-0", "agent-1000", "pick", "agent-20000"]);
+      expect(entries[2]).toMatchObject({ _tag: "Question" });
+      expect(entries.some((entry) => entry._tag === "Steps")).toBe(false);
+    },
+  );
+
+  it("leaves an action's line in the steps beside a choice question kept in the conversation", () => {
+    const detail = turn([owner(0), agent(20000)]);
+    const asked: Question = {
+      ...recordedQuestionOf("pick", 3000),
+      answers: [["A"]],
+      choices: [{ allowsOther: false, header: "", multiple: false, options: [], question: "Which?" }],
+      outcome: "Answered",
+    };
+    const entries = entriesOf({
+      ...detail,
+      questions: [recordedQuestionOf("push", 2000), asked],
+    } satisfies MissionDetail);
+    expect(entries.map((entry) => entry.key)).toEqual(["owner-0", "steps:push", "pick", "agent-20000"]);
+    expect(entries[1]).toMatchObject({ _tag: "Steps", steps: [{ _tag: "Action", id: "push" }] });
   });
 
   it("lists the tool calls the harness reported with the actions, in the order they happened", () => {
@@ -229,6 +268,21 @@ describe("a turn's actions, folded as steps while messages stay visible", () => 
     });
   });
 
+  it("keeps a modified file's counts on its step, with the thread to read its diff from, and no diff text", () => {
+    const detail = turn([owner(0), agent(20000)]);
+    const entries = entriesOf({
+      ...detail,
+      activities: [
+        { at: 1000, change: { added: 2, removed: 1 }, detail: "/work/a.ts", id: "edit", summary: "Change a file" },
+      ],
+    } satisfies MissionDetail);
+    expect(entries[1]).toMatchObject({
+      _tag: "Steps",
+      steps: [{ _tag: "Call", activity: { change: { added: 2, removed: 1 } }, id: "call:edit" }],
+      threadId: detail.thread.id,
+    });
+  });
+
   it("marks the group of a working turn as current while only tool calls fill it", () => {
     const detail = turn([owner(0)]);
     const entries = entriesOf(
@@ -244,7 +298,13 @@ describe("a turn's actions, folded as steps while messages stay visible", () => 
   it("does not present a settled approval as current work after a reply", () => {
     const detail = turn([owner(0), agent(1000), agent(4000)]);
     const questions = [
-      { askedAt: 2000, id: "install", outcome: "Allowed", summary: "May I install the project dependencies?" },
+      {
+        askedAt: 2000,
+        choices: null,
+        id: "install",
+        outcome: "Allowed",
+        summary: "May I install the project dependencies?",
+      },
     ];
     const entries = entriesOf({ ...detail, questions } as unknown as MissionDetail, true);
     expect(entries.find((entry) => entry._tag === "Steps")).toMatchObject({ isCurrent: true });

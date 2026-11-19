@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect } from "react";
-import type { CompanionPickerProps } from "../editors/companionPicker";
+import type { CompanionPickerProps } from "./companionPickerProps";
 
 export const SidebarShown = createContext(false);
 

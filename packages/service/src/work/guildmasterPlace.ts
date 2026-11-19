@@ -3,8 +3,9 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, readSettings } from "../core/index.ts";
 import { claudeCheapestModel } from "../harness/index.ts";
-import { changed, unchanged } from "./commands.ts";
+import { changed, unchanged } from "./followUps.ts";
 import { insertQuest } from "./missions.ts";
+import { findRealmMatches } from "./realmResolution.ts";
 
 // Chronicler, once the Guildmaster (quest coordination): one permanent thread the owner talks to, which looks for a quest
 // that fits a request and offers to continue it, or proposes a new one for the owner to open. It is stored as a hidden
@@ -69,17 +70,10 @@ export const refuseGuildmaster = Effect.fnUntraced(function* (missionId: string,
 
 /** A realm the owner or Chronicler named, by its folder or its name; null when none matches. */
 export const findRealm = Effect.fnUntraced(function* (given: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const wanted = given.trim();
-  const [byPath] = yield* sql<{
-    name: string;
-    path: string;
-  }>`SELECT name, path FROM workspaces WHERE (path = ${wanted} OR id = ${wanted}) AND archived_at IS NULL AND path IS NOT NULL`;
-  if (byPath !== undefined) return byPath;
-  const byName = yield* sql<{ name: string; path: string }>`
-      SELECT name, path FROM workspaces WHERE lower(name) = lower(${wanted}) AND path IS NOT NULL AND archived_at IS NULL`;
-  if (byName.length > 1) return yield* invalid("Several active realms have that name. Use the realm's folder or id.");
-  return byName[0] ?? null;
+  const matches = yield* findRealmMatches(given, true);
+  if (matches.length > 1) return yield* invalid("Several active realms have that name. Use the realm's folder or id.");
+  const [realm] = matches;
+  return realm?.path == null ? null : { name: realm.name, path: realm.path };
 });
 
 /**

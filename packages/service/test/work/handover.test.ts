@@ -230,6 +230,33 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
       ),
   );
 
+  it.live("the running turn reports the runner it runs on, not the one the owner picked during it", () =>
+    withService(
+      Effect.gen(function* () {
+        const started = yield* start("wait 400");
+        const running = yield* settle(started.missionId, (detail) => detail.thread.state === "Running");
+        const threadId = running.thread.id;
+        expect(running.thread.turnHarness).toBe(running.thread.harness);
+        expect(running.thread.turnModel).toBe(running.thread.model);
+        yield* call({
+          _tag: "ChangeThreadRunner",
+          accountId: null,
+          effort: "default",
+          harness: "codex",
+          model: "gpt-5",
+          threadId,
+        });
+        const changed = yield* read(started.missionId);
+        expect(changed.thread.harness).toBe("codex");
+        expect(changed.thread.turnHarness).toBe(running.thread.harness);
+        expect(changed.thread.turnModel).toBe(running.thread.model);
+        const idleDetail = yield* settle(started.missionId, idle);
+        expect(idleDetail.thread.turnHarness).toBeNull();
+        expect(idleDetail.thread.turnModel).toBeNull();
+      }),
+    ),
+  );
+
   it.live("a model change in a turn keeps the harness session for the next turn", () =>
     withService(
       Effect.gen(function* () {

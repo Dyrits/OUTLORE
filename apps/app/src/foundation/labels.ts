@@ -18,6 +18,7 @@ import type {
   ReplyUsage,
   StartingContext,
   StartingContextParts,
+  Suggestion,
   SuggestionOutcome,
   ThreadPanel,
 } from "@outlore/contracts";
@@ -95,6 +96,14 @@ export const suggestionLabels = {
   MovedToMission: "Moved to quest",
   Withdrawn: "Off-topic suggestion withdrawn",
 } as const satisfies Record<SuggestionOutcome, string>;
+
+/** Describes a settled suggestion in both the conversation and its quest cards. */
+export const settledSuggestionLabelOf = (suggestion: Suggestion) =>
+  suggestion.isRitual
+    ? "Created Ritual"
+    : suggestion.isFromGuildmaster && suggestion.outcome === "MovedToMission"
+      ? "Opened quest"
+      : suggestionLabels[suggestion.outcome ?? "Continued"];
 
 /** How full a budget meter is: orange from 80%, red at 100% (budget-control, Seeing budget use). */
 export const meterLevelOf = (spent: number, limit: number): "normal" | "warning" | "reached" =>

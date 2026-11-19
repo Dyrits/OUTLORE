@@ -3,13 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { UpdaterStatus } from "@outlore/contracts";
-import {
-  createPairedHosts,
-  type KeyValueStorage,
-  type OpenTransport,
-  openBrowserTransport,
-  pairFromBrowser,
-} from "@outlore/controller";
+import { createPairedHosts, type KeyValueStorage, type OpenTransport } from "@outlore/controller";
+import { openBrowserTransport, pairFromBrowser } from "@outlore/controller/browser";
 import { startNodeRelay } from "@outlore/relay";
 import { Effect, Exit, Layer, Ref, Scope } from "effect";
 import { afterEach } from "vitest";

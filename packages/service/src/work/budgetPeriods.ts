@@ -2,7 +2,8 @@ import { Clock, Effect, Layer } from "effect";
 import { SqlClient } from "effect/sql";
 import { hourMillis, nextStartOf, readGlobalBudget } from "../core/index.ts";
 import { releaseBudgets } from "./budgets.ts";
-import { Commands, changed, unchanged } from "./commands.ts";
+import { Commands } from "./commands.ts";
+import { changed, unchanged } from "./followUps.ts";
 
 /**
  * Releases threads held at the global limit, or an account's, once a new period starts and the spending counted since is

@@ -2,8 +2,8 @@ import { type ReactNode, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { HostMenuContext } from "../foundation/hostContext";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { UpdateNotice } from "../updates";
 import { HostMenu } from "./hostMenu";
-import { UpdateNotice } from "./updateNotice";
 
 // The window's top bar: the host menu, the spending, the quest panel's icon, and the column that
 // holds the quest panel.

@@ -6,7 +6,7 @@ import {
   periodOfRange,
   rangeChoiceOf,
   toggledFiltersOf,
-} from "../../src/shell/usageScale";
+} from "../../src/usage/usageScale";
 
 describe("scaling the graph", () => {
   it("rounds the top up to a tidy step and gives evenly spaced ticks from zero", () => {

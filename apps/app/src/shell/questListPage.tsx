@@ -11,7 +11,8 @@ import { RealmPanel } from "../quests/questPanel";
 import { RealmArchiveAction } from "../realms/realmArchiveAction";
 import { EmptyBoard } from "../ui/brand";
 import { QuestTreeLines } from "./questListRows";
-import { type RealmListing, recencyGroupsOf, toggledFold } from "./questTree";
+import { recencyGroupsOf } from "./questRecency";
+import { type RealmListing, toggledFold } from "./questTree";
 
 /**
  * The page of a realm's quests: every one of them, latest first by the quest's own activity, under Today,

@@ -1,12 +1,13 @@
 import { Effect } from "effect";
 import type { Connectors } from "../connectors/index.ts";
 import { invalid, readStartChoices } from "../core/index.ts";
+import { readFileDiff } from "./activities.ts";
 import { admitOwnerText, admitRunnerChange, runnerOfOpened, runnerOfStarted } from "./admission.ts";
 import { setThreadBackups } from "./backups.ts";
-import { changed } from "./commands.ts";
 import { listMissions } from "./dashboard.ts";
 import { deleteThread, previewDeletion } from "./deleting.ts";
 import { dismissPrompt, endMission, previewEnding, reopenMission } from "./ending.ts";
+import { changed } from "./followUps.ts";
 import { readGuildHallRecap, visitGuildHall } from "./guildHall.ts";
 import { readGuildmaster } from "./guildmasterPlace.ts";
 import { archiveThread, markThreadDone, restoreThread } from "./lifecycle.ts";
@@ -71,6 +72,7 @@ export const questsHandlers = (
     PreviewEnding: (given) => previewEnding(given.missionId, given.ending),
     PreviewStartingContext: (given) =>
       readStartingContext(given.parentThreadId, { harness: given.harness ?? null, model: given.model }, given.text),
+    ReadFileDiff: (read) => readFileDiff(read.threadId, read.activityId),
     ReadGuildHallRecap: (read) => readGuildHallRecap(read.since),
     ReadGuildmaster: () => commands.run(readGuildmaster),
     ReadMission: (read) => readMission(read.missionId, read.threadId),
@@ -149,6 +151,7 @@ export const questsHandlers = (
     | "PreviewDeletion"
     | "PreviewEnding"
     | "PreviewStartingContext"
+    | "ReadFileDiff"
     | "ReadGuildHallRecap"
     | "ReadGuildmaster"
     | "ReadMission"

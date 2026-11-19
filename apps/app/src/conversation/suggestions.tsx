@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { type Runner, RunnerPickers, useHarnesses } from "../editors/runners";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { companionLabelOf, harnessLabels } from "../foundation/formatting";
-import { suggestionLabels } from "../foundation/labels";
+import { settledSuggestionLabelOf } from "../foundation/labels";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -21,11 +21,7 @@ export function SuggestionLine({
   onSelectThread: (threadId: ThreadId) => void;
 }) {
   if (suggestion.outcome === null) return null;
-  const label = suggestion.isRitual
-    ? "Created Ritual"
-    : suggestion.isFromGuildmaster && suggestion.outcome === "MovedToMission"
-      ? "Opened quest"
-      : suggestionLabels[suggestion.outcome];
+  const label = settledSuggestionLabelOf(suggestion);
   const { targetMissionId, targetThreadId } = suggestion;
   const open =
     suggestion.outcome === "KeptAsAside"

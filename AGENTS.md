@@ -54,10 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the connectors quest (CHG-0536 to CHG-0547; open: live checks and integration), read the [current handoff](.agents/handoffs/2026-11-19-1915-connector-security-review.md). Handoffs are shared and committed.
+- To resume the connectors (Composio, Apple apps, the Vault, the Charter screens; CHG-0536 to CHG-0548; merged with `main`; open: the owner's live checks and a look at the screens), read the [current handoff](.agents/handoffs/2026-11-19-2008-connectors-on-main.md). Handoffs are shared and committed.
 
-- To resume the nested corner marks in the sidebar and the errand guide's alignment to the quest's left border (CHG-0530; committed and pushed; open: the owner's look in a window or on a phone, whether "error" meant the Failed state, and whether the stacked errand branch lines are acceptable), read the [current handoff](.agents/handoffs/2026-11-19-0940-nested-corner-marks.md). Handoffs are shared and committed.
+- To resume a modified file's diff shown in its step, read the [current handoff](.agents/handoffs/2026-11-19-1620-file-diff-rebased.md). Handoffs are shared and committed.
 
-- To resume the code simplification across the codebase (CHG-0529; merged into `main`; open: the 28 sandbox-only test failures on the owner's machine, and which kept branches can go), read the [current handoff](.agents/handoffs/2026-11-19-0935-code-simplification-merged.md). Handoffs are shared and committed.
-
+- To resume the choice questions shown as chat bubbles, read the [current handoff](.agents/handoffs/2026-11-19-1610-choice-question-bubbles.md). Handoffs are shared and committed.
 

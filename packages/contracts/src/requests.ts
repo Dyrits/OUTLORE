@@ -10,6 +10,7 @@ import {
   SignInAccount,
   UpdateHarness,
 } from "./accountRequests.ts";
+import { ReadFileDiff } from "./activityRequests.ts";
 import {
   AddAttachment,
   DiscardAttachment,
@@ -347,6 +348,7 @@ export const Request = Schema.Union([
   DiscardAttachment,
   ReadAttachment,
   ReadDictation,
+  ReadFileDiff,
   ReadHostUpdate,
   UpdateHost,
   TranscribeDictation,

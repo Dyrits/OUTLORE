@@ -2,14 +2,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import {
-  createPairedHosts,
-  type KeyValueStorage,
-  type OpenTransport,
-  openBrowserTransport,
-  type PageSettings,
-  pairFromBrowser,
-} from "@outlore/controller";
+import { createPairedHosts, type KeyValueStorage, type OpenTransport } from "@outlore/controller";
+import { openBrowserTransport, type PageSettings, pairFromBrowser } from "@outlore/controller/browser";
 import { startNodeRelay } from "@outlore/relay";
 import { fakeHarnessLayer, Service, serviceLayer } from "@outlore/service";
 import { Effect, Layer } from "effect";

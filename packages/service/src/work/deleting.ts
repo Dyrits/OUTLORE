@@ -5,7 +5,8 @@ import { invalid, notFound, ServiceFailure } from "../core/index.ts";
 import { eraseThreadsLore } from "../lore/index.ts";
 import { forgetAttachmentsOf, removeAttachmentFiles } from "./attachments.ts";
 import { forgetOutcomesOf } from "./commandOutcomes.ts";
-import { Commands, changed, type WithFollowUps } from "./commands.ts";
+import { Commands } from "./commands.ts";
+import { changed, type WithFollowUps } from "./followUps.ts";
 import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
 
@@ -63,6 +64,7 @@ const eraseSubtree = Effect.fn("eraseSubtree")(function* (rows: Subtree, root: S
   yield* sql`DELETE FROM chatter WHERE first_id IN ${sql.in(ids)} OR second_id IN ${sql.in(ids)}`;
   yield* releaseResolvedChatter;
   yield* sql`DELETE FROM questions WHERE thread_id IN ${sql.in(ids)}`;
+  yield* sql`DELETE FROM thread_activity_diffs WHERE thread_id IN ${sql.in(ids)}`;
   yield* sql`DELETE FROM thread_activities WHERE thread_id IN ${sql.in(ids)}`;
   yield* sql`DELETE FROM suggestions WHERE thread_id IN ${sql.in(ids)}`;
   yield* sql`DELETE FROM handovers WHERE thread_id IN ${sql.in(ids)}`;

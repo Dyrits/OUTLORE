@@ -2,9 +2,10 @@ import type { EndingPreview, MissionEnding, MissionPrompt, QuestPlacement } from
 import { Clock, Effect, Layer, Schedule } from "effect";
 import { SqlClient } from "effect/sql";
 import { dayMillis, invalid, notFound, readSettings, ServiceFailure } from "../core/index.ts";
-import { Commands, changed } from "./commands.ts";
+import { Commands } from "./commands.ts";
 import { eraseEmptyQuest } from "./deleting.ts";
 import { emptyQuestCondition } from "./emptyQuest.ts";
+import { changed } from "./followUps.ts";
 import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { updateJournal } from "./journal.ts";
 import { activeStates, haltThreads } from "./lifecycle.ts";

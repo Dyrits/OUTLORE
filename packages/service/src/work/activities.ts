@@ -1,8 +1,9 @@
-import type { Activity } from "@outlore/contracts";
+import type { Activity, FileDiff } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { textFieldOf } from "../core/index.ts";
+import { notFound, textFieldOf } from "../core/index.ts";
 import { plainActionOf, reasonOf } from "../policy/index.ts";
+import { type FileChange, linesOfStoredDiff, storedDiffOf } from "./fileChanges.ts";
 
 // The tool calls a harness reports as they start, shown with a thread's actions as the steps of its turn
 // (action-approval, What a working thread is doing).
@@ -18,8 +19,18 @@ const shortOf = (text: string) => {
 /** Outlore's own tools, which the thread calls through its tool server, as the harness lists them. */
 const chroniclerPrefix = "mcp__outlore__";
 
+/**
+ * Claude Code's choice question: the conversation shows it as the agent's bubbles with the owner's answers (CHG-0535),
+ * so it has no step. Lines recorded before that stay stored and are not listed.
+ */
+const choiceQuestionTool = "AskUserQuestion";
+
 /** Calls that already have a line of their own, or are the harness's own machinery. */
-const leftOut = new Set([`${chroniclerPrefix}request_approval`, `${chroniclerPrefix}answer_prompt`]);
+const leftOut = new Set([
+  `${chroniclerPrefix}request_approval`,
+  `${chroniclerPrefix}answer_prompt`,
+  choiceQuestionTool,
+]);
 
 const kinds: Record<string, string> = {
   Glob: "List files",
@@ -57,12 +68,56 @@ export const callDescriptionOf = (toolName: string, input: unknown): Pick<Activi
   return { detail: detailOf(toolName, input), summary };
 };
 
-/** A thread's tool calls that were not asked about as actions, oldest first. */
+/**
+ * A thread's tool calls that were not asked about as actions, oldest first. A call that modified a file carries its
+ * counts only: its diff is read apart, by `readFileDiff`, so this list stays small.
+ */
 export const listThreadActivities = Effect.fnUntraced(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
-  return yield* sql<Activity>`
-      SELECT id, at, summary, detail FROM thread_activities
-      WHERE thread_id = ${threadId} AND is_prompted = 0 ORDER BY at, rowid`;
+  const rows = yield* sql<
+    Omit<Activity, "change"> & { added: number | null; hasChange: number; removed: number | null }
+  >`
+      SELECT a.id, a.at, a.summary, a.detail, d.added AS added, d.removed AS removed,
+        d.thread_id IS NOT NULL AS hasChange
+      FROM thread_activities a
+      LEFT JOIN thread_activity_diffs d ON d.thread_id = a.thread_id AND d.activity_id = a.id
+      WHERE a.thread_id = ${threadId} AND a.is_prompted = 0 AND a.summary <> ${plainActionOf(choiceQuestionTool)}
+      ORDER BY a.at, a.rowid`;
+  return rows.map(
+    ({ added, hasChange, removed, ...activity }): Activity =>
+      hasChange === 1 ? { ...activity, change: { added, removed } } : activity,
+  );
+});
+
+/**
+ * Keeps the diff of a call that modified a file, replacing an earlier one for the same call. A call that already reached
+ * the permission prompt shows as its action and keeps no diff.
+ */
+export const saveActivityChange = Effect.fnUntraced(function* (
+  threadId: string,
+  activityId: string,
+  change: FileChange,
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const stored = storedDiffOf(change);
+  yield* sql`INSERT OR REPLACE INTO thread_activity_diffs (thread_id, activity_id, added, removed, note, text)
+      SELECT ${threadId}, ${activityId}, ${change.added}, ${change.removed}, ${stored.note}, ${stored.text}
+      WHERE EXISTS (SELECT 1 FROM thread_activities WHERE thread_id = ${threadId} AND id = ${activityId} AND is_prompted = 0)`;
+});
+
+/** The diff of one call that modified a file, in the shape the app draws; not found when the call kept none. */
+export const readFileDiff = Effect.fnUntraced(function* (threadId: string, activityId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ added: number | null; note: string | null; removed: number | null; text: string }>`
+      SELECT added, removed, note, text FROM thread_activity_diffs
+      WHERE thread_id = ${threadId} AND activity_id = ${activityId}`;
+  if (row === undefined) return yield* notFound("That step has no diff.");
+  return {
+    added: row.added,
+    lines: linesOfStoredDiff(row.text),
+    note: row.note,
+    removed: row.removed,
+  } satisfies FileDiff;
 });
 
 /**
@@ -74,4 +129,6 @@ export const markPrompted = Effect.fnUntraced(function* (threadId: string, toolU
   yield* sql`INSERT INTO thread_activities (id, thread_id, at, summary, detail, is_prompted)
       VALUES (${toolUseId}, ${threadId}, ${at}, '', '', 1)
       ON CONFLICT (thread_id, id) DO UPDATE SET is_prompted = 1`;
+  // A call that is asked about may be denied, and its diff would then describe a change that never happened.
+  yield* sql`DELETE FROM thread_activity_diffs WHERE thread_id = ${threadId} AND activity_id = ${toolUseId}`;
 });

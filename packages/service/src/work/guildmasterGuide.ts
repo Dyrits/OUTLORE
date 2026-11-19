@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { type ToolAnswer, toolRefusal, toolText } from "../core/index.ts";
 import { type GuideTopic, guideTopics } from "./appGuideTopics.ts";
-import { unchanged, type WithFollowUps } from "./commands.ts";
+import { unchanged, type WithFollowUps } from "./followUps.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 

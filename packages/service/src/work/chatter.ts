@@ -2,7 +2,8 @@ import type { ChatterNotice } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, newId, readSettings } from "../core/index.ts";
-import { Commands, changed, unchanged } from "./commands.ts";
+import { Commands } from "./commands.ts";
+import { changed, unchanged } from "./followUps.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
 
 const pairOf = (first: string, second: string) =>

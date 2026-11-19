@@ -1,7 +1,7 @@
 import type { MissionId, MissionSummary, ThreadId, ThreadState } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { messageOf, type ServiceClient } from "../foundation/client";
+import type { ServiceClient } from "../foundation/client";
 import { canHover } from "../foundation/inputModality";
 import { colors, stateTones } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
@@ -18,6 +18,7 @@ import {
   useRowActions,
 } from "./railActions";
 import { threadOutlineOf } from "./railOutline";
+import { archiveErrand } from "./railQuestActions";
 import { Count, Row, type RowCorner, StateDot } from "./railRows";
 import { chevronWidth, indentStep, isHovered, local } from "./railStyles";
 
@@ -85,12 +86,7 @@ function SideQuests({
                     accessibilityRole="button"
                     disabled={!isShown}
                     hitSlop={6}
-                    onPress={() =>
-                      client.request({ _tag: "ArchiveThread", threadId: thread.id }).then(
-                        () => setError(null),
-                        (reason) => setError(messageOf(reason)),
-                      )
-                    }
+                    onPress={() => archiveErrand(client, thread.id).then(setError)}
                   >
                     <ArchiveIcon color={colors.textMuted} />
                   </Pressable>

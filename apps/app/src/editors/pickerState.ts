@@ -1,4 +1,4 @@
-import type { CompanionPickerProps } from "./companionPicker";
+import type { CompanionPickerProps } from "../foundation/companionPickerProps";
 import { isSameBackups, isSamePresets } from "./presets";
 
 /** Whether two picker states draw the same: their data, not their handlers, which are new on every render. */

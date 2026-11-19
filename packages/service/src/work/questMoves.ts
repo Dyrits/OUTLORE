@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound } from "../core/index.ts";
-import { changed, unchanged } from "./commands.ts";
+import { changed, unchanged } from "./followUps.ts";
 import { updateJournal } from "./journal.ts";
 import { releaseThread, waitsInTurn } from "./lifecycle.ts";
 import { requireActiveRealm } from "./realmAccess.ts";

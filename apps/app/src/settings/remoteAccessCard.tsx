@@ -7,6 +7,7 @@ import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Button } from "../ui/button";
+import { ToggleRow } from "../ui/toggleRow";
 import { PairingBlock } from "./pairingBlock";
 import {
   cloudflareTokensUrl,
@@ -16,7 +17,7 @@ import {
   relayStatusTextOf,
   webAppLineOf,
 } from "./remoteAccess";
-import { SettingsCard, SettingsRule, ToggleRow } from "./settingsParts";
+import { SettingsCard, SettingsRule } from "./settingsParts";
 
 /**
  * Charter's remote access section: whether other devices may pair with this computer, a pairing

@@ -87,6 +87,7 @@ export const requestSourceRules = {
   ReadBudget: shared,
   ReadConnectorChoices: shared,
   ReadDictation: shared,
+  ReadFileDiff: shared,
   ReadGuildHallRecap: shared,
   ReadGuildmaster: shared,
   ReadHostName: shared,

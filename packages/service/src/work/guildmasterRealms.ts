@@ -2,7 +2,7 @@ import type { WorkspaceId } from "@outlore/contracts";
 import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
 import { type ToolAnswer, toolRefusal, toolText } from "../core/index.ts";
-import { changed, unchanged, type WithFollowUps } from "./commands.ts";
+import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";
 import { consumeReceipt, notAuthorizedText } from "./guildmasterProvenance.ts";
 import { checkRealmCreation, checkRealmRename } from "./realmChecks.ts";

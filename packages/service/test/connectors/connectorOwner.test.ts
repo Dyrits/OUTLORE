@@ -289,7 +289,7 @@ describe("the connectors' tables on a database saved before them", () => {
         });
       yield* migrateUntil("0059_thread_archived");
       yield* sql`INSERT INTO standing_permissions (id, sentence, pattern, created_at) VALUES ('p', 'Run this exact command', 'ls', 1)`;
-      yield* migrateUntil("0060_connectors");
+      yield* migrateUntil("0062_connectors");
       expect(yield* sql`SELECT id FROM standing_permissions`).toEqual([{ id: "p" }]);
       expect(yield* sql`SELECT id FROM connectors`).toEqual([]);
       yield* sql`INSERT INTO connectors (id, installed_at) VALUES ('calendar', 1)`;

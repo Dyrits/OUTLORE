@@ -2,9 +2,9 @@ import type { KnownHost } from "@outlore/contracts";
 import { useEffect, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { messageOf } from "../foundation/client";
+import { type PairingOffer, scannedOfferOf } from "../foundation/pairingOffer";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { Button } from "../ui/button";
-import { type PairingOffer, scannedOfferOf } from "./pairingOffer";
 import { canScanQrCode, QrScanner } from "./qrScanner";
 
 /**

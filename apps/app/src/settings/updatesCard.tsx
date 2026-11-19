@@ -5,9 +5,10 @@ import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, outline, radii } from "../foundation/theme";
 import { canCheckNow, lastCheckedTextOf, statusTextOf } from "../foundation/updateText";
 import { useAppUpdates } from "../foundation/useAppUpdates";
-import { UpdateModal } from "../shell/updateModal";
 import { Button } from "../ui/button";
-import { SettingsCard, ToggleRow } from "./settingsParts";
+import { ToggleRow } from "../ui/toggleRow";
+import { UpdateModal } from "../updates";
+import { SettingsCard } from "./settingsParts";
 
 /**
  * The installed app's updates: the version, whether Outlore looks for new releases, what the last look found, and,

@@ -19,7 +19,8 @@ import { useIsRemoteHost } from "../foundation/hostContext";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Button } from "../ui/button";
-import { SettingsCard, SettingsRule, ToggleRow } from "./settingsParts";
+import { ToggleRow } from "../ui/toggleRow";
+import { SettingsCard, SettingsRule } from "./settingsParts";
 
 /** The connector catalog and the Borderlands' choices in the Charter. */
 export function ConnectorsCard({ client }: { client: ServiceClient }) {

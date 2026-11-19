@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import { FileDiff } from "./activities.ts";
 import { AttachmentCard, AttachmentContent } from "./attachments.ts";
 import { AccountBudget, BudgetWindow, PriceStatus } from "./budgets.ts";
 import { connectorResults } from "./connectorRequests.ts";
@@ -98,6 +99,7 @@ export const Results = {
   ReadAttachment: AttachmentContent,
   ReadBudget: BudgetWindow,
   ReadDictation: DictationStatus,
+  ReadFileDiff: FileDiff,
   ReadGuildHallRecap: GuildHallRecap,
   ReadGuildmaster: GuildmasterPlace,
   ReadHostName: Schema.String,

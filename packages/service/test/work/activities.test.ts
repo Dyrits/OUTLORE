@@ -19,4 +19,8 @@ describe("describing a thread's tool calls", () => {
   it("leaves out the approval tools, which have lines of their own", () => {
     expect(callDescriptionOf("mcp__outlore__request_approval", {})).toBeNull();
   });
+
+  it("leaves out a choice question, which the conversation shows as bubbles with the answers", () => {
+    expect(callDescriptionOf("AskUserQuestion", { questions: [] })).toBeNull();
+  });
 });

@@ -1,4 +1,12 @@
-import type { AttachmentId, MessageDelivery, SendMessage, ThreadId, Viewing } from "@outlore/contracts";
+import type {
+  AttachmentId,
+  HarnessName,
+  MessageDelivery,
+  ModelChoice,
+  SendMessage,
+  ThreadId,
+  Viewing,
+} from "@outlore/contracts";
 import { newRequestId } from "../foundation/client";
 import { type Comment, messageWithComments } from "./comments";
 
@@ -45,6 +53,20 @@ export const sendConversationMessage = async (given: {
   given.clearComments();
   given.sent();
 };
+
+/**
+ * The runner a working thread shows: the one its running turn was admitted on, which the owner's later pick does not
+ * change (thread-handover). Outside a turn, or for a turn recorded before models were, the thread's own choice stands.
+ */
+export const workingRunnerOf = (thread: {
+  readonly harness: HarnessName;
+  readonly model: ModelChoice;
+  readonly turnHarness: HarnessName | null;
+  readonly turnModel: ModelChoice | null;
+}): { harness: HarnessName; model: ModelChoice } =>
+  thread.turnHarness === null
+    ? { harness: thread.harness, model: thread.model }
+    : { harness: thread.turnHarness, model: thread.turnModel ?? "default" };
 
 /** What the feed draws beneath settled entries. */
 export const footerOf = (draft: string, isInTurn: boolean) => (draft !== "" ? "draft" : isInTurn ? "working" : "empty");

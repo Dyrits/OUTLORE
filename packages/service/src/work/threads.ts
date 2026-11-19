@@ -1,14 +1,13 @@
 import { join } from "node:path";
 import { Clock, Context, Effect, FiberMap, FiberSet, Layer, Match, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
-import { ConnectorGateway } from "../connectors/index.ts";
+import { ConnectorGateway, Connectors } from "../connectors/index.ts";
 import {
   Changes,
   Endpoints,
   Harness,
   type HarnessEvent,
   type ImageAttachment,
-  invalid,
   PriceTable,
   readSettings,
   removeScratch,
@@ -18,13 +17,14 @@ import { HarnessTools, qualifiedToolNameOf, removedAccountReasonOf, toolServerNa
 import { Approvals } from "./approvals.ts";
 import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
-import { requireChatterDecision } from "./chatter.ts";
-import { changed, makeCommands } from "./commands.ts";
+import { Commands, makeCommands } from "./commands.ts";
+import { fileChangeOf } from "./fileChanges.ts";
 import { readConversationSoFar } from "./handover.ts";
-import { makeLifecycle, recoverThreadStates, releaseThread, resumeStopped, stopThread } from "./lifecycle.ts";
+import { makeLifecycle, recoverThreadStates, stopThread } from "./lifecycle.ts";
 import { listPending, listThreadsWithPending } from "./messaging.ts";
 import { prepareStartingContext } from "./startingContext.ts";
 import { Suggestions } from "./suggestions.ts";
+import { resumeThread, retryThread } from "./threadRecovery.ts";
 import { unaskedToolNamesOf } from "./threadToolAccess.ts";
 import { askOwnerFor } from "./threadToolHandlers.ts";
 import { type Admitted, admitTurn, isCurrentTurn } from "./turnAdmission.ts";
@@ -74,9 +74,8 @@ type ActiveTurn = {
   readonly written: Set<string>;
 };
 
-/** Threads over the store and the harness adapters. */
-export const threadsLayer = Layer.effect(
-  Threads,
+/** Threads and their shared command runner over the store and the harness adapters. */
+export const threadsLayer = Layer.effectContext(
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     const harness = yield* Harness;
@@ -91,6 +90,8 @@ export const threadsLayer = Layer.effect(
       files.map((file) => ({ mediaType: file.mediaType, name: file.name, path: join(attachmentsRoot, file.file) }));
     const approvals = yield* Approvals;
     const connectorGateway = yield* ConnectorGateway;
+    // The connectors are the service's own; a runner built without them stops no connector call.
+    const connectors = yield* Effect.serviceOption(Connectors);
     const suggestions = yield* Suggestions;
     /** Withdraws everything the thread waits on the owner for: questions and suggestions. */
     const withdrawAll = (threadId: string) =>
@@ -182,9 +183,12 @@ export const threadsLayer = Layer.effect(
               .run(local(saveTurnReply(threadId, turn, reply.text, reply.model ?? null, reply.usage ?? null)))
               .pipe(Effect.andThen(publishDraft(threadId, "")), Effect.orDie),
           ToolCall: (call) =>
-            commands
-              .run(local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input)))
-              .pipe(Effect.orDie),
+            Effect.gen(function* () {
+              // The previous text of a file a call writes whole is read before the call can have run, where the harness
+              // reports it first; only Claude Code's tool names are known (action-approval, A modified file's diff).
+              const change = turn.harness === "claude" ? yield* fileChangeOf(call.toolName, call.input, cwd) : null;
+              yield* commands.run(local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input, change)));
+            }).pipe(Effect.orDie),
         });
       if (!(yield* isCurrent(turn.turnId))) return;
       // The tool server answers under the setting this turn starts with, as its harness lists the tools (CHG-0446).
@@ -272,11 +276,12 @@ export const threadsLayer = Layer.effect(
       withdraw: withdrawAll,
     });
     const wakeMission = (missionId: string) => wakeWaiting(missionId, "");
-    // Commands on a single thread; the service's own runner (commands.ts) is built over this layer.
+    // Turn events, owner requests, and tools share the runner over these same thread callbacks.
     const commands = makeCommands({
       publish: changes.publish,
       removeScratch: (id) => local(removeScratch(join(scratchRoot, id))).pipe(Effect.orDie),
       sql,
+      ...(connectors._tag === "Some" ? { stopConnectorCalls: connectors.value.stopRevokedCalls } : {}),
       threads: { cancel, wake, wakeMission },
       withdrawQuestions: withdrawAll,
     });
@@ -284,49 +289,20 @@ export const threadsLayer = Layer.effect(
     const stop = (threadId: string) => commands.run(stopThread(threadId)).pipe(Effect.orDie);
 
     const resume = (threadId: string) =>
-      commands
-        .run(
-          Effect.gen(function* () {
-            const [thread] = yield* sql<{
-              state: string;
-            }>`SELECT state FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
-            if (thread?.state !== "Stopped") return yield* invalid("This thread is not stopped.");
-            yield* local(requireChatterDecision(threadId));
-            yield* local(resumeStopped(threadId));
-            return changed(null, { threadsToWake: [threadId] });
-          }),
-        )
-        .pipe(Effect.catchTag("SqlError", Effect.die));
-
+      commands.run(local(resumeThread(threadId))).pipe(Effect.catchTag("SqlError", Effect.die));
     const retry = (threadId: string) =>
-      commands
-        .run(
-          Effect.gen(function* () {
-            const [thread] = yield* sql<{ blocker: string | null; failure: string | null; state: string }>`
-              SELECT blocker, failure, state FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
-            // After a failed turn, its messages wait undelivered: Retry runs them again, on the current runner.
-            if (thread !== undefined && thread.blocker === null && thread.failure !== null) {
-              if (thread.state === "Running" || thread.state === "Attention" || thread.state === "Stopped")
-                return yield* invalid("This thread is in a turn or stopped; it cannot retry now.");
-              return changed(null, { threadsToWake: [threadId] });
-            }
-            if (thread?.blocker !== "MissingWorkspace")
-              return yield* invalid("This thread has no failed turn and is not waiting on its workspace folder.");
-            yield* local(releaseThread(threadId));
-            // Still missing: admit sends it back to Attention.
-            return changed(null, { threadsToWake: [threadId] });
-          }),
-        )
-        .pipe(Effect.catchTag("SqlError", Effect.die));
+      commands.run(local(retryThread(threadId))).pipe(Effect.catchTag("SqlError", Effect.die));
 
-    return {
-      cancel,
-      interrupt,
-      resume,
-      retry,
-      stop,
-      wake,
-      wakeMission,
-    };
+    return Context.make(Commands, commands).pipe(
+      Context.add(Threads, {
+        cancel,
+        interrupt,
+        resume,
+        retry,
+        stop,
+        wake,
+        wakeMission,
+      }),
+    );
   }),
 );

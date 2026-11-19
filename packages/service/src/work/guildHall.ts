@@ -2,8 +2,8 @@ import type { GuildHallRecap, MissionId } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { consumptionColumns, dayMillis } from "../core/index.ts";
-import { unchanged } from "./commands.ts";
 import { type ConsumptionRow, consumptionOf } from "./consumption.ts";
+import { unchanged } from "./followUps.ts";
 
 // The Guild Hall hub's recap (quest coordination, Guild Hall as a hub): what happened since the owner's last visit.
 // Recent activity and what waits for the owner come from the quest list the app already reads.

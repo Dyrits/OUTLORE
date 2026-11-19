@@ -3,6 +3,7 @@
 
 export * from "./accountRequests.ts";
 export * from "./activities.ts";
+export * from "./activityRequests.ts";
 export * from "./appUpdateSettings.ts";
 export * from "./attachmentRequests.ts";
 export * from "./attachments.ts";

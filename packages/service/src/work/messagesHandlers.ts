@@ -2,7 +2,7 @@ import { Effect } from "effect";
 import { readDictationStatus, transcribeDictation } from "../voice/index.ts";
 import { admitOwnerText, nonBlank, runnerOfThread } from "./admission.ts";
 import { addAttachment, discardAttachment, readAttachment } from "./attachments.ts";
-import { changed } from "./commands.ts";
+import { changed } from "./followUps.ts";
 import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
 import { insertUserMessage, releaseQueued } from "./messaging.ts";

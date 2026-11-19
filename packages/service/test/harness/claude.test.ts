@@ -2,6 +2,7 @@ import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
+import { SqlClient } from "effect/sql";
 import { markPrompted } from "../../src/work/activities.ts";
 import { unaskedToolNamesOf } from "../../src/work/threadToolAccess.ts";
 import { withClaude, withoutNote } from "../fixtures/claude.ts";
@@ -72,6 +73,23 @@ describe("running Claude Code threads", () => {
       expect(after.activities.map((activity) => activity.summary)).toEqual(["List the folder", "Use an Outlore tool"]);
     }).pipe(Effect.provide(layer));
   });
+
+  it.live(
+    "lists no step for a choice question recorded before the conversation showed it as bubbles (CHG-0535)",
+    () => {
+      const { layer } = withClaude();
+      return Effect.gen(function* () {
+        const started = yield* startMission({ text: "use-tools" });
+        const detail = yield* settle(started.missionId, idleWith(1));
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`INSERT INTO thread_activities (id, thread_id, at, summary, detail)
+        VALUES ('toolu_old_ask', ${detail.thread.id}, 5, 'Use AskUserQuestion', '')`;
+        const after = yield* read(started.missionId);
+        expect(after.activities.map((activity) => activity.summary)).not.toContain("Use AskUserQuestion");
+        expect(after.activities).toHaveLength(detail.activities.length);
+      }).pipe(Effect.provide(layer));
+    },
+  );
 
   it.live("starts Claude Code in the workspace with its instructions in the system prompt", () => {
     const { directory, layer, starts } = withClaude();

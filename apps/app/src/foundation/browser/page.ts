@@ -1,4 +1,4 @@
-import type { PageSettings } from "@outlore/controller";
+import type { PageSettings } from "@outlore/controller/browser";
 import { Platform } from "react-native";
 import { version } from "../../../package.json";
 

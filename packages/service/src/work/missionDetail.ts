@@ -76,10 +76,15 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
   const selected = threads.find((thread) => thread.id === (threadId ?? summary.topThreadId));
   if (selected === undefined) return yield* notFound("No such thread in this mission.");
   const [thread] = yield* sql<
-    Pick<MissionDetail["thread"], "id" | "model" | "effort" | "failure" | "blocker" | "harness" | "accountId"> & {
+    Pick<
+      MissionDetail["thread"],
+      "id" | "model" | "effort" | "failure" | "blocker" | "harness" | "accountId" | "turnHarness" | "turnModel"
+    > & {
       accountLabel: string | null;
     }
-  >`SELECT t.id, t.model, t.effort, t.failure, t.blocker, t.harness, t.account_id AS accountId, a.label AS accountLabel
+  >`SELECT t.id, t.model, t.effort, t.failure, t.blocker, t.harness, t.account_id AS accountId, a.label AS accountLabel,
+        (SELECT u.harness FROM turns u WHERE u.thread_id = t.id AND u.status = 'running' ORDER BY u.started_at DESC, u.rowid DESC LIMIT 1) AS turnHarness,
+        (SELECT u.model FROM turns u WHERE u.thread_id = t.id AND u.status = 'running' ORDER BY u.started_at DESC, u.rowid DESC LIMIT 1) AS turnModel
       FROM threads t LEFT JOIN accounts a ON a.id = t.account_id WHERE t.id = ${selected.id}`;
   if (thread === undefined) return yield* notFound("No such thread in this mission.");
   const computerName = yield* ownAccountLabelOf(thread.harness);

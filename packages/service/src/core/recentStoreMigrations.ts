@@ -103,10 +103,31 @@ export const recentStoreMigrations = {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`ALTER TABLE threads ADD COLUMN archived_at INTEGER`;
   }),
+  // The model a turn was admitted on, kept as its harness is (0048), so a working thread shows the Companion that runs
+  // it while the owner picks another during the turn (thread-handover). Turns before this change fall back to the thread's.
+  "0060_turn_model": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE turns ADD COLUMN model TEXT`;
+  }),
+  // The diff of a call that modified a file (action-approval, A modified file's diff): its counts, the changed text cut
+  // at a size limit, and a note when it was cut or is not known. Only the diff is kept, never a whole file; the text is
+  // the last column, so the steps list reads the counts without it. Deleted with the thread.
+  "0061_thread_activity_diffs": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`CREATE TABLE thread_activity_diffs (
+      thread_id TEXT NOT NULL REFERENCES threads(id),
+      activity_id TEXT NOT NULL,
+      added INTEGER,
+      removed INTEGER,
+      note TEXT,
+      text TEXT NOT NULL,
+      PRIMARY KEY (thread_id, activity_id)
+    )`;
+  }),
   // Connectors (connectors blueprint, Stored choices): the installed connectors with their global switch, the explicit choices
   // of a realm, the Borderlands and a quest (Inherit is no row; a deleted realm or quest takes its rows with it), and the
   // tools switched off (on is no row). `is_removing` marks the first of a removal's three steps.
-  "0060_connectors": Effect.gen(function* () {
+  "0062_connectors": Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`CREATE TABLE connectors (
       id TEXT PRIMARY KEY,

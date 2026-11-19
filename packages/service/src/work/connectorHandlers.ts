@@ -11,7 +11,8 @@ import { Effect } from "effect";
 import type { SqlError } from "effect/sql";
 import type { Connectors } from "../connectors/index.ts";
 import type { ServiceFailure } from "../core/index.ts";
-import { type CommandRunner, changed } from "./commands.ts";
+import type { CommandRunner } from "./commands.ts";
+import { changed } from "./followUps.ts";
 
 // The owner's connector requests (connectors specification; blueprint, Owner requests). All are the owner's: no thread tool
 // reaches them. A change that can take a tool from a thread says so in its follow-ups, so the calls underway are stopped

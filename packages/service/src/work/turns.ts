@@ -3,11 +3,12 @@ import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { PriceTable, type TurnOutcome, touchMission } from "../core/index.ts";
 import { readContextLimit } from "../lore/index.ts";
-import { callDescriptionOf } from "./activities.ts";
+import { callDescriptionOf, saveActivityChange } from "./activities.ts";
 import { fallBackToBackup, resetBackupStep } from "./backups.ts";
 import { enforceBudgets } from "./budgets.ts";
-import { changed, unchanged } from "./commands.ts";
 import { contextLimitLineOf, hasReachedLimit } from "./contextWarning.ts";
+import type { FileChange } from "./fileChanges.ts";
+import { changed, unchanged } from "./followUps.ts";
 import { insertThreadLine, isRunnerChangedSince, isSessionOfThread } from "./handover.ts";
 import { endTurn, failTurn } from "./lifecycle.ts";
 import { deliverMessages, insertReply, listThreadsWithPending } from "./messaging.ts";
@@ -50,7 +51,14 @@ export const saveTurnReply = (
   );
 
 /** Records a tool call the harness reported as it started, a step of the running turn (action-approval). */
-export const saveTurnActivity = (threadId: string, turn: Admitted, id: string, toolName: string, input: unknown) =>
+export const saveTurnActivity = (
+  threadId: string,
+  turn: Admitted,
+  id: string,
+  toolName: string,
+  input: unknown,
+  change: FileChange | null = null,
+) =>
   recordStep(
     turn,
     Effect.gen(function* () {
@@ -62,6 +70,7 @@ export const saveTurnActivity = (threadId: string, turn: Admitted, id: string, t
       yield* sql`INSERT INTO thread_activities (id, thread_id, at, summary, detail)
         VALUES (${id}, ${threadId}, ${now}, ${described.summary}, ${described.detail})
         ON CONFLICT (thread_id, id) DO UPDATE SET at = excluded.at, summary = excluded.summary, detail = excluded.detail`;
+      if (change !== null) yield* saveActivityChange(threadId, id, change);
     }),
   );
 

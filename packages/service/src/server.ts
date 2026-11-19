@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import type { ServerFrame } from "@outlore/contracts";
 import { linkCodeOf, type ResumeOptions } from "@outlore/controller";
-import { Effect } from "effect";
+import { Effect, FiberSet } from "effect";
 import { SqlClient } from "effect/sql";
 import { WebSocket, WebSocketServer } from "ws";
 import { Sessions } from "./core/index.ts";
@@ -29,8 +29,7 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
     const sessions = yield* Sessions;
     const sql = yield* SqlClient.SqlClient;
     const remote = yield* RemoteConfig;
-    const context = yield* Effect.context<never>();
-    const run = Effect.runPromiseWith(context);
+    const run = yield* FiberSet.makeRuntimePromise();
 
     const wss = yield* Effect.acquireRelease(
       Effect.callback<WebSocketServer, Error>((resume) => {
@@ -122,7 +121,9 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
       const remove = sessions.add(send);
       socket.on("close", remove);
       socket.on("message", (data) => {
-        void run(answerText(service.handle, data.toString(), send, { isPairedDevice: false }));
+        void run(answerText(service.handle, data.toString(), send, { isPairedDevice: false })).catch(() => {
+          if (socket.readyState === WebSocket.OPEN) socket.close(1011, "The local service could not answer.");
+        });
       });
     });
 

@@ -2,6 +2,7 @@ import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
 import type { NamedAction } from "../policy/index.ts";
 import { checkRealmCreation, checkRealmRename } from "./realmChecks.ts";
+import { listRealmCollisions } from "./realmResolution.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 
 type RealmAction = {
@@ -17,14 +18,12 @@ const duplicateNameNoteOf = (hasDuplicateName: boolean) =>
 
 /** Derives a realm creation and its collision warning before provenance authorizes the exact action. */
 export const deriveRealmCreation = Effect.fn("deriveRealmCreation")(function* (args: ArgumentsOf<"create_realm">) {
-  const sql = yield* SqlClient.SqlClient;
   const checked = yield* checkRealmCreation(args);
   // A genuinely refused action must not be offered as a question the owner could approve.
   return yield* Match.valueTags(checked, {
     Clear: (realm) =>
       Effect.gen(function* () {
-        const existing = yield* sql`SELECT id, name, path FROM workspaces
-          WHERE (lower(name) = lower(${realm.name}) OR path = ${realm.real ?? ""}) AND archived_at IS NULL ORDER BY id`;
+        const existing = yield* listRealmCollisions(realm.name, realm.real ?? "");
         return {
           named: { operation: "CreateRealm", targets: [realm.name], value: realm.folder },
           scoped: null,

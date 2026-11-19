@@ -1,5 +1,5 @@
 import type { BillingKind, TokenUsage } from "@outlore/contracts";
-import { Deferred, type Duration, Effect, Option, Queue, Result } from "effect";
+import { type Duration, Effect, Result } from "effect";
 import {
   type Containment,
   fieldOf,
@@ -15,6 +15,8 @@ import {
   textFieldOf,
   turnMessageOf,
 } from "../core/index.ts";
+import { readAcpPrompt } from "./acpPrompt.ts";
+import { acpRestartKeyOf, loadAcpSession, permissionOptionIdOf } from "./acpSession.ts";
 import {
   type HarnessConnection,
   type HarnessProtocol,
@@ -117,11 +119,7 @@ const answerRequest = Effect.fnUntraced(function* (
     (toolCallId === null ? null : connection.toolCalls.get(toolCallId)) ?? fieldOf(incoming.params, "toolCall");
   const answer = yield* request.askOwner(promptOf(toolCall, yield* findFirstOutside(request, toolCall)));
   const wanted = answer.isAllowed ? "allow_once" : "reject_once";
-  const offered = fieldOf(incoming.params, "options");
-  const option = Array.isArray(offered)
-    ? (offered.find((candidate) => textFieldOf(candidate, "kind") === wanted) ?? null)
-    : null;
-  const optionId = textFieldOf(option, "optionId") ?? wanted;
+  const optionId = permissionOptionIdOf(incoming.params, wanted) ?? wanted;
   connection.rpc.respond(incoming.id, { outcome: { optionId, outcome: "selected" } });
 });
 
@@ -140,15 +138,7 @@ const vibeProtocolOf = (options: VibeOptions): HarnessProtocol<VibeConnection> =
     }),
 
   // A changed context, access, account, model, effort, or folder restarts the process, loading its session.
-  restartKeyOf: (request) =>
-    JSON.stringify([
-      request.context,
-      request.access,
-      request.configDirectory,
-      request.model,
-      request.effort,
-      request.cwd,
-    ]),
+  restartKeyOf: acpRestartKeyOf,
 
   runTurn: Effect.fnUntraced(function* (connection: VibeConnection, request: TurnRequest, turn: PooledTurn) {
     // A fresh session's first prompt carries the starting context; a loaded one already holds it.
@@ -165,22 +155,6 @@ const vibeProtocolOf = (options: VibeOptions): HarnessProtocol<VibeConnection> =
         reason:
           "Mistral Vibe's agent does not take images. Send the message without them, or hand the thread to a runner that does.",
       });
-    const answer = yield* Deferred.make<Result.Result<unknown, HarnessFailure>>();
-    yield* Effect.forkChild(
-      connection.rpc
-        .request("session/prompt", {
-          prompt: [
-            { text, type: "text" },
-            ...images.map((image) => ({ data: image.data, mimeType: image.mediaType, type: "image" })),
-          ],
-          sessionId: connection.sessionId,
-        })
-        .pipe(
-          Effect.result,
-          Effect.flatMap((result) => Deferred.succeed(answer, result)),
-        ),
-    );
-
     let draft = "";
     /** A reply is complete once Vibe moves on from writing it, such as to a tool call. */
     const finishDraft = Effect.suspend(() => {
@@ -217,29 +191,17 @@ const vibeProtocolOf = (options: VibeOptions): HarnessProtocol<VibeConnection> =
       }
     });
 
-    for (;;) {
-      const next = yield* Effect.raceFirst(
-        Queue.take(connection.rpc.incoming).pipe(Effect.map(Option.some)),
-        Deferred.await(answer).pipe(Effect.as(Option.none<RpcIncoming>())),
-      );
-      if (Option.isSome(next)) {
-        yield* read(next.value);
-        continue;
-      }
-      // The answer arrives after the updates sent before it, which are read first.
-      for (const incoming of yield* Queue.clear(connection.rpc.incoming)) yield* read(incoming);
-      yield* finishDraft;
-      const result = yield* Deferred.await(answer);
-      if (Result.isFailure(result)) return yield* result.failure;
-      const usage = turnUsageOf(connection, usageOf(fieldOf(result.success, "usage")));
-      turn.reportUsage(usage);
-      return {
-        billing: connection.billing,
-        context: contextTokens,
-        isInterrupted: textFieldOf(result.success, "stopReason") === "cancelled" || turn.isInterrupting(),
-        usage,
-      };
-    }
+    const result = yield* readAcpPrompt(connection.rpc, connection.sessionId, text, images, read);
+    yield* finishDraft;
+    if (Result.isFailure(result)) return yield* result.failure;
+    const usage = turnUsageOf(connection, usageOf(fieldOf(result.success, "usage")));
+    turn.reportUsage(usage);
+    return {
+      billing: connection.billing,
+      context: contextTokens,
+      isInterrupted: textFieldOf(result.success, "stopReason") === "cancelled" || turn.isInterrupting(),
+      usage,
+    };
   }),
 
   start: Effect.fnUntraced(function* (request: TurnRequest) {
@@ -261,11 +223,7 @@ const vibeProtocolOf = (options: VibeOptions): HarnessProtocol<VibeConnection> =
       const takesImages = typeof advertisesImages === "boolean" ? advertisesImages : null;
       const mcpServers = mcpServersOf(request.access);
       if (request.sessionId !== null) {
-        const loaded = yield* rpc
-          .request("session/load", { cwd: request.cwd, mcpServers, sessionId: request.sessionId })
-          .pipe(Effect.result);
-        // Loading replays the conversation as updates, which are not this turn's: they are dropped.
-        yield* Queue.clear(rpc.incoming);
+        const loaded = yield* loadAcpSession(rpc, request.cwd, request.sessionId, mcpServers);
         if (Result.isSuccess(loaded))
           return { created: loaded.success, handoverNotes: null, isNew: false, takesImages };
         // A session Vibe cannot load is replaced by a new one, given the thread's conversation and starting context.
