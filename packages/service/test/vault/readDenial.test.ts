@@ -91,10 +91,14 @@ describe("a harness that is not installed, or whose sandbox cannot be tried at s
     "says Claude Code's denial is unverified, for want of a probe that needs no model, or that it is not installed",
     () =>
       Effect.gen(function* () {
-        expect(yield* readClaudeVaultDenial({ command: "claude", run: run(0) }, "claude")).toMatchObject({
-          status: "Unverified",
-        });
-        expect(yield* readClaudeVaultDenial({ command: "claude", run: run(null) }, "claude")).toMatchObject({
+        expect(yield* readClaudeVaultDenial({ command: "claude", run: run(0) }, "claude", "/data/vault")).toMatchObject(
+          {
+            status: "Unverified",
+          },
+        );
+        expect(
+          yield* readClaudeVaultDenial({ command: "claude", run: run(null) }, "claude", "/data/vault"),
+        ).toMatchObject({
           status: "NotInstalled",
         });
       }),

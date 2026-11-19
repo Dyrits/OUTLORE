@@ -29,6 +29,7 @@ import { DeletionPreview, type RequestTag } from "./requests.ts";
 import { CreateRitualResult, Ritual } from "./rituals.ts";
 import { Skill } from "./skills.ts";
 import { UsageReport } from "./usage.ts";
+import { vaultResults } from "./vaultRequests.ts";
 import { WorkspaceEntry } from "./workspaceEntries.ts";
 import { Folder, FolderListing } from "./workspaces.ts";
 
@@ -49,6 +50,7 @@ export type OpenThreadResult = typeof OpenThreadResult.Type;
 export const Results = {
   ...realmResults,
   ...connectorResults,
+  ...vaultResults,
   AddAccount: HarnessList,
   AddAttachment: AttachmentCard,
   AddBrowsableRoot: FolderListing,

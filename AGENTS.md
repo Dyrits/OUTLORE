@@ -54,10 +54,10 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the connectors quest (CHG-0530 to CHG-0532; the Vault and read-denial probes merged with the connector gateway on `mission/connectors-composio-and-apple-apps-02a36299`; open: the Vault's owner requests and the Claude denial stamp, then the HTTP and stdio backends), read the [current handoff](.agents/handoffs/2026-11-19-1100-connector-gateway.md). Handoffs are shared and committed.
+
 - To resume the code simplification across the codebase (CHG-0529; merged into `main`; open: the 28 sandbox-only test failures on the owner's machine, and which kept branches can go), read the [current handoff](.agents/handoffs/2026-11-19-0935-code-simplification-merged.md). Handoffs are shared and committed.
 
 - To resume the quest header's Mark as done checkbox and quest icon, with the quest panel's two buttons and the edge handle removed (CHG-0527; committed; open: the owner's look in a window and on a phone, and whether the phone header gets Mark as done), read the [current handoff](.agents/handoffs/2026-11-19-0731-quest-header-buttons.md). Handoffs are shared and committed.
-
-- To resume the phone sidebar's realm names, which the phone showed as a folder mark alone (CHG-0528; fixed by giving the name its own style; open: a build and a look on a phone), read the [current handoff](.agents/handoffs/2026-11-19-0727-phone-realm-name.md). Handoffs are shared and committed.
 
 

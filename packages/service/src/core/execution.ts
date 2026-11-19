@@ -255,6 +255,13 @@ export interface HarnessAdapter {
   readonly readVaultDenial?: (harness: HarnessName, folder: string) => Effect.Effect<VaultDenial>;
   readonly runTurn: (request: TurnRequest) => Effect.Effect<TurnOutcome, HarnessFailure>;
   /**
+   * Runs the live probe of the Vault's folder denial, the one only a live model turn can verify (Claude Code), and
+   * keeps its result as the stamp readVaultDenial then reads (ADR 0022). Left out, the harness has no such probe and
+   * its denial stays whatever readVaultDenial reports. Only the owner asks for it: it spends a little of their own
+   * account.
+   */
+  readonly runVaultDenialLive?: (harness: HarnessName, folder: string) => Effect.Effect<VaultDenial>;
+  /**
    * Writes a message into the thread's running turn; false when no turn runs or the harness cannot take one
    * mid-turn. Its `Delivered` event follows once the turn takes it in; one not taken in by the turn's end is
    * left for the next turn.
@@ -284,6 +291,13 @@ export const routeHarnesses = (adapters: Record<HarnessName, HarnessAdapter>): H
         running.set(request.threadId, adapter);
         return adapter.runTurn(request);
       }).pipe(Effect.ensuring(Effect.sync(() => running.delete(request.threadId)))),
+    runVaultDenialLive: (harness, folder) =>
+      adapters[harness].runVaultDenialLive?.(harness, folder) ??
+      Effect.succeed({
+        harness,
+        reason: "This harness has no live probe of the Vault's folder.",
+        status: "Unverified",
+      }),
     steer: (threadId, message) => running.get(threadId)?.steer(threadId, message) ?? Effect.succeed(false),
   };
 };

@@ -14,7 +14,7 @@ const listOf = (names: ReadonlyArray<string>) =>
   names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
 /** The harness's name as the owner reads it. */
-const labelOf = (harness: string) =>
+export const harnessLabelOf = (harness: string) =>
   ({ claude: "Claude Code", codex: "Codex", opencode: "OpenCode", vibe: "Mistral Vibe" })[harness] ?? harness;
 
 /**
@@ -32,7 +32,7 @@ export const protectionOf = (holder: HolderInfo, denials: ReadonlyArray<VaultDen
   return {
     isAllowed: false,
     reason:
-      `Not protected from ${listOf(unverified.map(({ harness }) => labelOf(harness)))}: ${unverified[0]?.reason ?? ""}`.trim(),
+      `Not protected from ${listOf(unverified.map(({ harness }) => harnessLabelOf(harness)))}: ${unverified[0]?.reason ?? ""}`.trim(),
     unverified,
   };
 };

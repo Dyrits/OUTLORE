@@ -59,5 +59,6 @@ export * from "./rituals.ts";
 export * from "./settingsRequests.ts";
 export * from "./skills.ts";
 export * from "./usage.ts";
+export * from "./vaultRequests.ts";
 export * from "./workspaceEntries.ts";
 export * from "./workspaces.ts";

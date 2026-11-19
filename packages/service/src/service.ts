@@ -9,7 +9,6 @@ import {
   Connectors,
   connectorServicesLayer,
   connectorsLayer,
-  emptyVaultLayer,
   unbuiltBackendsLayer,
   type VaultPort,
 } from "./connectors/index.ts";
@@ -53,7 +52,7 @@ import {
 } from "./remote/index.ts";
 import { Service } from "./serviceTag.ts";
 import { HostUpdate, type HostUpdater, hostUpdateLayer, noHostUpdaterLayer } from "./update/index.ts";
-import { type KeyCustody, vaultLayer } from "./vault/index.ts";
+import { type KeyCustody, Vault, vaultLayer } from "./vault/index.ts";
 import {
   AccountsRoot,
   Approvals,
@@ -101,6 +100,8 @@ import {
   Threads,
   threadsLayer,
   toolServerLayer,
+  vaultHandlers,
+  vaultPortLayer,
 } from "./work/index.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...).
@@ -119,6 +120,7 @@ const make = Effect.gen(function* () {
   const commands = yield* Commands;
   const approvals = yield* Approvals;
   const connectors = yield* Connectors;
+  const vault = yield* Vault;
   const suggestions = yield* Suggestions;
   const prices = yield* PriceTable;
   const hostUpdate = yield* HostUpdate;
@@ -151,6 +153,7 @@ const make = Effect.gen(function* () {
           ...questsHandlers(dependencies),
           ...ritualsHandlers(dependencies),
           ...connectorHandlers(commands, connectors),
+          ...vaultHandlers(commands, vault, connectors),
           AddBrowsableRoot: (add) => change(addBrowsableRoot(add.path)),
           AddCredit: (given) =>
             commands.run(addCredit({ accountId: given.accountId, harness: given.harness }, given.amount)),
@@ -229,7 +232,7 @@ export interface ServiceOptions {
   readonly connectorGateway?: Layer.Layer<ConnectorGateway>;
   /** The platform the host runs on, which Apple apps needs to be macOS; the process's own when left out. */
   readonly connectorPlatform?: NodeJS.Platform;
-  /** The Vault, which the connectors read secrets from; one holding nothing when left out, until the Vault is wired in. */
+  /** The Vault, which the connectors read secrets from; the service's own, adapted to the gateway's port, when left out. */
   readonly connectorVault?: Layer.Layer<VaultPort>;
   /** Deploys the relay to the Cloudflare account a token reaches (device-pairing, own relay); the real deployment when left out. */
   readonly deployOwnRelay?: (token: string) => Promise<DeployResult>;
@@ -262,15 +265,23 @@ export interface ServiceOptions {
  */
 export const serviceLayer = (options: ServiceOptions) => {
   const attachmentsRoot = options.attachmentsRoot ?? join(dirname(options.filename), "attachments");
+  // The Vault, made and probed at start; it needs the harness adapters' denial reports (ADR 0022). The connectors'
+  // port over it is built from this one instance, so a stand-in given as `connectorVault` replaces only the port.
+  const vault = vaultLayer(vaultFolderOf(dirname(options.filename)), options.keyCustodies).pipe(
+    Layer.provide(options.harness),
+  );
+  const vaultFoundation =
+    options.connectorVault === undefined
+      ? // One build of the Vault feeds both its own service and the gateway's port.
+        vaultPortLayer.pipe(Layer.provideMerge(vault))
+      : Layer.mergeAll(vault, options.connectorVault);
   const foundation = Layer.mergeAll(
     changesLayer,
     endpointsLayer,
     connectorsLayer,
-    options.connectorVault ?? emptyVaultLayer,
+    vaultFoundation,
     options.connectorBackends ?? unbuiltBackendsLayer,
     options.harness,
-    // The Vault, made and probed at start; it needs the harness adapters' denial reports (ADR 0022).
-    vaultLayer(vaultFolderOf(dirname(options.filename)), options.keyCustodies).pipe(Layer.provide(options.harness)),
     options.harnessTools ?? fakeHarnessToolsLayer(),
     Layer.succeed(ScratchRoot, options.scratchRoot),
     Layer.succeed(HomeFolder, options.homeFolder),

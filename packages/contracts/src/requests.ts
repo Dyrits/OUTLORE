@@ -84,6 +84,7 @@ import { CreateRitual, DeleteRitual, ListRituals, ReadRitual, RunRitual, UpdateR
 import { ChangeSettings, UpdateSettings } from "./settingsRequests.ts";
 import { OwnerMessageText } from "./texts.ts";
 import { UsageFilter, UsagePeriod } from "./usage.ts";
+import { vaultRequests } from "./vaultRequests.ts";
 
 // Requests
 
@@ -397,6 +398,7 @@ export const Request = Schema.Union([
   SetMissionBudget,
   ...realmRequests,
   ...connectorRequests,
+  ...vaultRequests,
   ReadBudget,
   ReadUsage,
   StopAtBudget,

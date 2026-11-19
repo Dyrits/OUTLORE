@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { Clock, Context, Effect, Layer, Schema, Semaphore } from "effect";
+import { Clock, Context, Effect, Layer, Option, Ref, Schema, Semaphore } from "effect";
 import * as Secret from "effect/Redacted";
 import type { VaultDenial } from "../core/index.ts";
 import { Harness } from "../core/index.ts";
@@ -69,6 +69,8 @@ export class Vault extends Context.Service<
       kind: string,
       use: (secret: Secret.Redacted<string>) => Effect.Effect<A, E, R>,
     ) => Effect.Effect<A, E | VaultFailure, R>;
+    /** Forgets the probed denial reports, so the next protection read asks the adapters again (a fresh live-probe stamp). */
+    readonly refreshDenials: Effect.Effect<void>;
   }
 >()("outlore/Vault") {}
 
@@ -78,9 +80,11 @@ export class VaultFolder extends Context.Service<VaultFolder, string>()("outlore
 /** What a Vault is made from; a check passes fakes for all of it. */
 export type VaultOptions = {
   readonly custodies: ReadonlyArray<KeyCustody>;
-  /** The probe report: one denial per harness, as the adapters gave them. */
+  /** The probe report: one denial per harness, as the adapters gave them; read afresh at each protection check. */
   readonly denials: Effect.Effect<ReadonlyArray<VaultDenial>>;
   readonly folder: string;
+  /** Forgets the layer's memoized probe report, so the next protection read asks the adapters again; a check leaves it out. */
+  readonly refreshDenials?: Effect.Effect<void>;
   /** Replaces the whole-file write, so a check can fail it at one step. */
   readonly writeFile?: WriteFile;
 };
@@ -105,10 +109,11 @@ const keepsKey = (custody: KeyCustody, keyId: string, key: Buffer) =>
 /** The Vault over a folder, a set of key holders and a probe report. */
 export const makeVault = (options: VaultOptions) =>
   Effect.gen(function* () {
-    const { custodies, denials, folder } = options;
+    const { custodies, folder } = options;
     const write = options.writeFile ?? writeFileWhole;
     const writer = yield* Semaphore.make(1);
     const looked = writer.withPermit(inspect(folder, custodies));
+    const denials = options.denials;
 
     const writeRecords = (header: Header, records: RecordsFile) =>
       write(join(folder, recordsFileNameOf(header.keyId)), JSON.stringify(records));
@@ -289,6 +294,7 @@ export const makeVault = (options: VaultOptions) =>
           : yield* protectionFor(holder);
       }),
       put: (request) => store(request, true),
+      refreshDenials: options.refreshDenials ?? Effect.void,
       remove: (connectorId, kind) =>
         removeWhere((record) => record.connectorId === connectorId && record.kind === kind),
       removeAllOf: (connectorId) => removeWhere((record) => record.connectorId === connectorId),
@@ -297,6 +303,21 @@ export const makeVault = (options: VaultOptions) =>
       withSecret: (connectorId, kind, use) => Effect.flatMap(secretOf(connectorId, kind), use),
     });
   });
+
+/** Asks each harness's adapter whether its sandbox hides the Vault's folder, all at once. */
+const probeAll = (harness: Harness["Service"], folder: string) =>
+  Effect.all(
+    harnessNames.map(
+      (name): Effect.Effect<VaultDenial> =>
+        harness.readVaultDenial?.(name, folder) ??
+        Effect.succeed({
+          harness: name,
+          reason: "It runs no enforced sandbox, so every action asks.",
+          status: "AsksFirst",
+        }),
+    ),
+    { concurrency: "unbounded" },
+  );
 
 /**
  * The Vault in the service: its folder made (mode 0700) at start, the platform's key holders (or those given, in
@@ -309,18 +330,15 @@ export const vaultLayer = (folder: string, holders?: ReadonlyArray<KeyCustody>) 
       const harness = yield* Harness;
       const runner = yield* CommandRunner;
       yield* Effect.orDie(prepareVaultFolder(folder));
-      const denials = yield* Effect.cached(
-        Effect.all(
-          harnessNames.map(
-            (name): Effect.Effect<VaultDenial> =>
-              harness.readVaultDenial?.(name, folder) ??
-              Effect.succeed({
-                harness: name,
-                reason: "It runs no enforced sandbox, so every action asks.",
-                status: "AsksFirst",
-              }),
-          ),
-          { concurrency: "unbounded" },
+      // The probe report is asked once and kept, so a protection read does not start each harness's probe again; the
+      // owner can forget it (the Vault's refreshDenials) after running the live probe, whose stamp the Claude adapter
+      // then reads afresh.
+      const probed = yield* Ref.make<Option.Option<ReadonlyArray<VaultDenial>>>(Option.none());
+      const denials = Ref.get(probed).pipe(
+        Effect.flatMap((cached) =>
+          cached._tag === "Some"
+            ? Effect.succeed(cached.value)
+            : probeAll(harness, folder).pipe(Effect.tap((report) => Ref.set(probed, Option.some(report)))),
         ),
       );
       // Asked when first needed (a first secret, or the Vault's section), not at start: a probe starts each installed
@@ -329,6 +347,7 @@ export const vaultLayer = (folder: string, holders?: ReadonlyArray<KeyCustody>) 
         custodies: holders ?? custodiesOf(process.platform, folder, runner.run),
         denials,
         folder,
+        refreshDenials: Ref.set(probed, Option.none()),
       });
     }),
   ).pipe(Layer.merge(Layer.succeed(VaultFolder, folder)), Layer.provide(commandRunnerLayer));

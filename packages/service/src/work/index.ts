@@ -38,5 +38,7 @@ export { AccountsRoot, Threads, threadsLayer } from "./threads.ts";
 export { openThreadByAgent, reportResult } from "./tree.ts";
 export { readAuthorityHarness } from "./turnAdmission.ts";
 export { readUsage } from "./usageReport.ts";
+export { vaultHandlers } from "./vaultHandlers.ts";
+export { vaultPortLayer } from "./vaultWiring.ts";
 export { listWorkspaceEntries } from "./workspaceEntries.ts";
 export { ScratchRoot } from "./workspaces.ts";
