@@ -132,7 +132,7 @@ describe.each(harnesses)("a thread on %s calling a connector's tools", (harness)
     ),
   );
 
-  it.live("asks about every call of a connector whose tools the catalog names none of, as Composio's", () =>
+  it.live("asks about every call of a connector whose tools the catalog names none of, as Composio once did", () =>
     inWorld({}, (world) =>
       Effect.gen(function* () {
         yield* install("unnamed_service");

@@ -5,8 +5,8 @@ export {
   type ConnectorBackend,
   ConnectorBackends,
   type ConnectorErrorClass,
-  unbuiltBackendsLayer,
 } from "./backend.ts";
+export { connectorBackendsLayer } from "./backends/httpMcp.ts";
 export { ConnectorCalls, connectorCallsLayer } from "./calls.ts";
 export { type CatalogEntry, listedNameOf } from "./catalog.ts";
 export { defaultCatalog } from "./catalogEntries.ts";

@@ -7,10 +7,10 @@ import {
   type ConnectorBackends,
   type ConnectorGateway,
   Connectors,
+  connectorBackendsLayer,
   connectorServicesLayer,
   connectorsLayer,
   emptyVaultLayer,
-  unbuiltBackendsLayer,
   type VaultPort,
 } from "./connectors/index.ts";
 import {
@@ -263,7 +263,7 @@ export const serviceLayer = (options: ServiceOptions) => {
     endpointsLayer,
     connectorsLayer,
     options.connectorVault ?? emptyVaultLayer,
-    options.connectorBackends ?? unbuiltBackendsLayer,
+    options.connectorBackends ?? connectorBackendsLayer,
     options.harness,
     options.harnessTools ?? fakeHarnessToolsLayer(),
     Layer.succeed(ScratchRoot, options.scratchRoot),
