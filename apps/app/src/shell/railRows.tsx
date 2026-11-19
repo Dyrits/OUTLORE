@@ -19,18 +19,20 @@ export function ShowAll({ count, onPress, subject }: { count: number; onPress: (
   );
 }
 
+/** A mark at a row's lower-left corner: its color, and its size as a share of the row's width and height. */
+export type RowCorner = { readonly color: string; readonly share: number };
+
 /** One row of the sidebar: a label, and at its end a mark such as a state dot or a count. */
 export function Row({
+  corners,
   hoverAccessory,
   indent = 0,
   leading,
   isSelected,
   fold,
   label,
-  ringColor,
   onPress,
   textStyle,
-  turnColor,
 }: {
   /** What stands at the end only with the row's marks, on hover or focus, given whether they show. */
   hoverAccessory?: (isShown: boolean) => ReactNode;
@@ -43,13 +45,10 @@ export function Row({
   fold?: { isOpen: boolean; label: string; onPress: (() => void) | null };
   onPress: () => void;
   /**
-   * The color of the row's ring: a summons rings its row in the color of its dot, so it is hard to miss. The ring is the
-   * bottom edge for three quarters of the width and the left edge for three quarters of the height, from the lower-left
-   * corner, rounded there; a border cannot cover part of a side, so it is drawn over the row.
+   * The marks at the row's lower-left corner, drawn in order so a smaller one sits over a larger one. A border cannot
+   * cover part of a side, so each mark is drawn over the row.
    */
-  ringColor?: string;
-  /** The color of the row's your-turn mark: a half-size corner at the bottom left, for a quest or errand waiting for the owner. */
-  turnColor?: string;
+  corners?: readonly RowCorner[];
   textStyle?: object;
 }) {
   const { focusProps, isShown, rowProps } = useRowActions();
@@ -74,8 +73,13 @@ export function Row({
         {label}
       </Text>
       {hoverAccessory?.(isShown)}
-      {ringColor !== undefined && <View pointerEvents="none" style={[local.ring, { borderColor: ringColor }]} />}
-      {turnColor !== undefined && <View pointerEvents="none" style={[local.turnMark, { borderColor: turnColor }]} />}
+      {corners?.map(({ color, share }) => (
+        <View
+          key={share}
+          pointerEvents="none"
+          style={[local.corner, { borderColor: color, height: `${share}%`, width: `${share}%` }]}
+        />
+      ))}
     </Pressable>
   );
 }

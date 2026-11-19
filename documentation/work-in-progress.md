@@ -1,5 +1,9 @@
 # Work in progress
 
+## Nested corner marks in the sidebar · 2026-11-19 · released in 0.1.11; the nested look built, tested, on `main` once committed; the owner's look pending
+
+CHG-0530: a quest or errand row nests lower-left corner marks sized by what it waits for — 25% grey (the owner's turn), 50% amber (a summons), 75% red (a failed state) — in one shared `corner` style (`shell/railStyles.ts`), sized per mark and drawn largest first (`shell/railRows.tsx`, `cornersOf` in `shell/railQuests.tsx`); it replaces CHG-0524's 50/75 ring and turn mark. The errand guide's first level now runs along the quest's left border, deeper levels along the errand's border line, so nested branch lines stack on one line. Checks: Biome clean on the touched files, `bun run typecheck` passes, the app's tests pass (78 files, 556 tests, 6 skipped); not seen in a window or on a phone. [Handoff](../.agents/handoffs/2026-11-19-0940-nested-corner-marks.md) · [Changelog](changelog/0.1.12-Prototype.md), CHG-0530
+
 ## Date beside the time in agent replies · 2026-11-19 · built and tested, on `main` once committed; the owner's look pending
 
 An agent reply's header shows the date and the time (`19 Nov 2026 · 11:15 AM`), through `stampOf` in `apps/app/src/foundation/formatting.ts`. Owner messages still show no time, so no date. Checks: formatting and conversation tests pass (58), Biome clean on the touched files; not seen in a window or on a phone. [Handoff](../.agents/handoffs/2026-11-19-0724-message-date.md)

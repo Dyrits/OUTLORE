@@ -23,6 +23,16 @@ export const local = StyleSheet.create({
   },
   addHovered: { backgroundColor: colors.controlActive },
   chevron: { alignItems: "center", height: 20, justifyContent: "center", width: chevronWidth },
+  // A corner mark: a bottom and left border at the row's lower-left corner, rounded there. Its size, a share of the
+  // row's width and height, is set where it is drawn.
+  corner: {
+    borderBottomLeftRadius: radii.md,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+  },
   count: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   diamond: {
     backgroundColor: colors.edge,
@@ -92,18 +102,6 @@ export const local = StyleSheet.create({
     fontWeight: "600",
   },
   realmTextEnd: { flex: 1 },
-  // The summons ring: a bottom and left border from the row's lower-left corner, 75% of its width along the bottom and
-  // 75% of its height up the left, rounded at the corner.
-  ring: {
-    borderBottomLeftRadius: radii.md,
-    borderBottomWidth: 1,
-    borderLeftWidth: 1,
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    top: "25%",
-    width: "75%",
-  },
   row: {
     alignItems: "center",
     borderRadius: radii.md,
@@ -142,16 +140,4 @@ export const local = StyleSheet.create({
   },
   sideQuestText: { fontSize: fontSizes.md },
   spending: { paddingHorizontal: 6, paddingVertical: 4 },
-  // The your-turn mark: a bottom and left border at the lower-left corner, 50% of the width and of the height, rounded at
-  // the corner, in the same corner as the summons ring and in the grey of the row's dot.
-  turnMark: {
-    borderBottomLeftRadius: radii.md,
-    borderBottomWidth: 1,
-    borderLeftWidth: 1,
-    bottom: 0,
-    height: "50%",
-    left: 0,
-    position: "absolute",
-    width: "50%",
-  },
 });

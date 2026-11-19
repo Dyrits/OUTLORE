@@ -18,16 +18,18 @@ import {
   useRowActions,
 } from "./railActions";
 import { threadOutlineOf } from "./railOutline";
-import { Count, Row, StateDot } from "./railRows";
+import { Count, Row, type RowCorner, StateDot } from "./railRows";
 import { chevronWidth, indentStep, isHovered, local } from "./railStyles";
 
-/** A summons rings its row in the color of its state dot; any other state leaves the row plain. */
-const ringOf = (state: MissionSummary["state"] | ThreadState) =>
-  state === "Attention" ? stateTones.Attention.color : undefined;
-
-/** A quest or errand waiting for the owner's turn is marked in its dot's color, the grey it reads in its state. */
-const turnOf = (isYourTurn: boolean, state: MissionSummary["state"] | ThreadState) =>
-  isYourTurn ? stateTones[state].color : undefined;
+/**
+ * The corner marks of a quest or errand row, largest first so each nests in the one before: a failure at three
+ * quarters, a summons at half, and the owner's turn at a quarter, each in its state's color (the grey of a resting row).
+ */
+const cornersOf = (isYourTurn: boolean, state: MissionSummary["state"] | ThreadState): RowCorner[] => [
+  ...(state === "Failed" ? [{ color: stateTones.Failed.color, share: 75 }] : []),
+  ...(state === "Attention" ? [{ color: stateTones.Attention.color, share: 50 }] : []),
+  ...(isYourTurn ? [{ color: stateTones[state].color, share: 25 }] : []),
+];
 
 /** A quest's errands, nested beneath it with their branch guides; each can collapse its own errands. */
 function SideQuests({
@@ -62,10 +64,13 @@ function SideQuests({
               // biome-ignore lint/suspicious/noArrayIndexKey: the guides of a row are told apart by their level
               key={level}
               pointerEvents="none"
-              style={[local.guide, { left: chevronWidth / 2 + level * indentStep }]}
+              // A guide runs down the left border of the row it branches from: the quest's border at the first level,
+              // and an errand's (a 1 px inset from its row's edge) at the levels beneath.
+              style={[local.guide, { left: level === 0 ? 1 - chevronWidth : 1 }]}
             />
           ))}
           <Row
+            corners={cornersOf(thread.isYourTurn === true, thread.state)}
             fold={{
               isOpen: !outline.collapsed.has(thread.id),
               label: thread.title,
@@ -97,9 +102,7 @@ function SideQuests({
             label={foldedCount > 0 ? `${thread.title} +${foldedCount}` : thread.title}
             leading={<StateDot state={thread.state} />}
             onPress={() => onOpenThread(missionId, thread.id)}
-            ringColor={ringOf(thread.state)}
             textStyle={local.sideQuestText}
-            turnColor={turnOf(thread.isYourTurn === true, thread.state)}
           />
         </View>
       ))}
@@ -143,6 +146,7 @@ export function Quest({
       {/* Only the quest's own row is picked up; its errands go with it. */}
       <DragSource missionId={mission.id}>
         <Row
+          corners={cornersOf(mission.isYourTurn === true, mission.state)}
           fold={{
             isOpen,
             label: mission.title,
@@ -169,8 +173,6 @@ export function Quest({
           label={mission.title}
           leading={<StateDot state={mission.state} />}
           onPress={() => onOpenMission(mission.id)}
-          ringColor={ringOf(mission.state)}
-          turnColor={turnOf(mission.isYourTurn === true, mission.state)}
         />
       </DragSource>
       {(ending.pending !== null || ending.error !== null) && (
