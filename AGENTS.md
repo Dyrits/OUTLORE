@@ -54,9 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume Mistral Vibe as a fourth harness (CHG-0520 and the MCP server shape fix CHG-0522, pushed to `origin/main` with this handoff; open: a full thread on a real `vibe-acp` in the app, and the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-18-2351-mistral-vibe-mcp-shape-fix.md). Handoffs are shared and committed.
+- To resume the 0.1.11-Prototype release, published with its pipeline green and its written note (CHG-0525; open: the owner's look at the notes and the app, the missing 0.1.9 and 0.1.10 notes, and a real update from 0.1.10), read the [current handoff](.agents/handoffs/2026-11-19-0105-release-0-1-11.md). Handoffs are shared and committed.
 
 - To resume queueing by default with Steer and Interrupt on a queued message, now without a delivery setting and with icons (CHG-0519, CHG-0523, pushed to `origin/main` with this handoff once the owner approves; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-19-0020-remove-delivery-setting.md). Handoffs are shared and committed.
 
-- To resume the sidebar's corner marks, a summons in amber and the owner's turn in grey with the teal dot gone (CHG-0524, committed with this handoff, not pushed: the push needs the owner's decision; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-19-0038-sidebar-corner-marks.md). Handoffs are shared and committed.
+- To resume the sidebar's corner marks, a summons in amber and the owner's turn in grey with the teal dot gone (CHG-0524, released in 0.1.11-Prototype; open: the owner's look in a window and on a phone), read the [current handoff](.agents/handoffs/2026-11-19-0038-sidebar-corner-marks.md). Handoffs are shared and committed.
 

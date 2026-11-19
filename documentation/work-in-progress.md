@@ -1,8 +1,8 @@
 # Work in progress
 
-## Corner marks in the sidebar · 2026-11-19 · committed as CHG-0524, not pushed; the owner's look pending
+## Corner marks in the sidebar · 2026-11-19 · released in 0.1.11-Prototype; the owner's look pending
 
-A summons carries its amber mark in the lower-left corner (75% of the width and height, rounded), and a quest or errand waiting for the owner carries a grey one there (50%). The teal "your turn" dot is gone; the dot keeps its state's color. Sidebar rows have a 1 px bottom margin. Checks: Biome, typecheck and the app's tests pass; not seen in a window or on a phone. The push to `main` is refused by the pre-push guard and waits for the owner's decision. [Handoff](../.agents/handoffs/2026-11-19-0038-sidebar-corner-marks.md) · [Changelog](changelog/0.1.11-Prototype.md), CHG-0524
+A summons carries its amber mark in the lower-left corner (75% of the width and height, rounded), and a quest or errand waiting for the owner carries a grey one there (50%). The teal "your turn" dot is gone; the dot keeps its state's color. Sidebar rows have a 1 px bottom margin. Checks: Biome, typecheck and the app's tests pass; not seen in a window or on a phone. The tag `0.1.11-Prototype` carries it, and it is on `origin/main`. [Handoff](../.agents/handoffs/2026-11-19-0038-sidebar-corner-marks.md) · [Changelog](changelog/0.1.11-Prototype.md), CHG-0524
 
 ## Queue by default, Steer or Interrupt a queued message · 2026-11-18 · on `main`; the owner's look pending
 
