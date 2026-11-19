@@ -10,6 +10,8 @@ export { setMissionBudget, stopAtBudget, switchAtBudget } from "./budgets.ts";
 export { readBudgetWindow } from "./budgetViews.ts";
 export { resolveChatter } from "./chatter.ts";
 export { Commands, changed, commandsLayer, makeCommands, noFollowUps, unchanged } from "./commands.ts";
+export { connectorHandlers } from "./connectorHandlers.ts";
+export { connectorAskingLayer, connectorNoticesLayer } from "./connectorWiring.ts";
 export { autoArchiveLayer } from "./ending.ts";
 export { guildmasterReportsLayer } from "./guildmasterReports.ts";
 export { readMissionIdOf, stopThread } from "./lifecycle.ts";

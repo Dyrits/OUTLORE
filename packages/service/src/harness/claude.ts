@@ -149,6 +149,8 @@ const claudeProtocolOf = (
       accessArgsOf(request.access, request.context, options, listThreadWorktrees(request)),
       // The tools are listed when the process starts, so a change of Code Mode restarts it.
       request.access.usesCodeMode,
+      // So are the connector tools it may run unasked and lists (connectors blueprint, Open: tool listing at a turn's start).
+      request.access.connectorTools,
       request.configDirectory,
       request.cwd,
       // Where the folder really points: a link pointed elsewhere restarts the process, whose start checks it again.

@@ -21,7 +21,14 @@ export type ConnectorTool = {
 export class ConnectorGateway extends Context.Service<
   ConnectorGateway,
   {
-    /** The usable, switched-on connector tools of the thread. */
+    /**
+     * A turn starts: the thread's connectors list their tools again, one that fails warns and is left out, and the
+     * thread's snapshot of the tools it is offered for the turn is taken. Answers the listed names in the snapshot.
+     */
+    readonly beginTurn: (threadId: string) => Effect.Effect<ReadonlyArray<string>>;
+    /** The thread's turn ends: its snapshot is forgotten. */
+    readonly endTurn: (threadId: string) => Effect.Effect<void>;
+    /** The usable, switched-on connector tools of the thread, those its turn's snapshot holds. */
     readonly listingFor: (threadId: string) => Effect.Effect<ReadonlyArray<ConnectorTool>>;
     /** Calls one connector tool for the thread; a refusal or a failure is an error answer, never a failure. */
     readonly call: (threadId: string, name: string, args: unknown) => Effect.Effect<ToolAnswer>;
@@ -29,10 +36,12 @@ export class ConnectorGateway extends Context.Service<
 >()("outlore/ConnectorGateway") {}
 
 /**
- * The gateway while no connector can be installed: it offers no tool. The real gateway replaces it with the
- * connectors' slice 3 (connectors blueprint, Order), and Code Mode then reaches its tools unchanged (CHG-0441).
+ * A gateway that offers no tool, for a service built to test without connectors. The service's own gateway is the one
+ * over the stored connectors (`connectors.ts`), and Code Mode reaches its tools unchanged (CHG-0441).
  */
 export const noConnectorsLayer = Layer.succeed(ConnectorGateway, {
+  beginTurn: () => Effect.succeed([]),
   call: (_threadId, name) => Effect.succeed(unknownToolAnswer(name)),
+  endTurn: () => Effect.void,
   listingFor: () => Effect.succeed([]),
 });
