@@ -66,7 +66,10 @@ describe("hiding the Vault's folder in Codex's sandbox", () => {
         .trim()
         .split("\n")
         .map((line) => JSON.parse(line));
-      return lines.find((entry) => entry.method === "thread/start")?.params;
+      return {
+        ...lines.find((entry) => entry.method === "thread/start")?.params,
+        startArgs: lines.find((entry) => entry.args !== undefined)?.args as ReadonlyArray<string>,
+      };
     }).pipe(Effect.scoped);
 
   it.live("starts a thread on the named profile instead of workspace-write, never both", () =>
@@ -74,7 +77,10 @@ describe("hiding the Vault's folder in Codex's sandbox", () => {
       const params = yield* startedWith(vault);
       expect(params.permissions).toBe("outlore");
       expect(params).not.toHaveProperty("sandbox");
-      expect(params.config).toMatchObject(vaultProfileConfigOf(vault));
+      expect(JSON.stringify(params.config)).not.toContain("permissions.outlore");
+      // The profile is on the process, with the default it needs, so a later turn still finds it.
+      expect(params.startArgs).toContain('default_permissions="outlore"');
+      expect(params.startArgs).toContain(`permissions.outlore.filesystem={${JSON.stringify(vault)}="deny"}`);
       expect(JSON.stringify(params)).not.toContain("danger-full-access");
     }),
   );
@@ -84,6 +90,7 @@ describe("hiding the Vault's folder in Codex's sandbox", () => {
       const params = yield* startedWith();
       expect(params.sandbox).toBe("workspace-write");
       expect(params).not.toHaveProperty("permissions");
+      expect(params.startArgs.join(" ")).not.toContain("permissions");
     }),
   );
 });

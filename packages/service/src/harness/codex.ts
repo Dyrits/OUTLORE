@@ -20,7 +20,7 @@ import {
 } from "../core/index.ts";
 import { noTimeLimit } from "./claudeArgs.ts";
 import { codexAnswersOf, codexChoicesOf } from "./codexChoices.ts";
-import { vaultProfileConfigOf, vaultProfileName } from "./codexVaultProfile.ts";
+import { vaultProfileArgsOf, vaultProfileName } from "./codexVaultProfile.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
   type HarnessConnection,
@@ -84,7 +84,6 @@ const inputOf = (text: string, images: ReadonlyArray<ImageAttachment>) => [
 const threadSettingsOf = (request: TurnRequest, cwd: string, vaultFolder: string | null) => ({
   ...policyOf(request.access, vaultFolder),
   config: {
-    ...(vaultFolder === null ? {} : vaultProfileConfigOf(vaultFolder)),
     // One thread is one Codex conversation; threads open threads with open_thread instead (ADR 0007).
     "features.multi_agent": false,
     [`mcp_servers.${toolServerName}.tool_timeout_sec`]: noTimeLimitSeconds,
@@ -382,8 +381,16 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
     // folder and its thread's, so its workspace sandbox writes there (threadFolder.ts). Codex 0.167.2 refuses a
     // writable root holding a link, and treats its process folder, resolved by the system, as writable (CHG-0208).
     const cwd = yield* resolveStartFolder(request, "Codex");
+    // The Vault's profile is defined on the process, not in `thread/start`'s `config`: a turn reloads the settings
+    // without that thread's overrides, finds no such profile, and fails with "failed to load workspace
+    // requirements: invalid input parameter" (Codex 0.170.0, 2026-11-20). A profile in the process settings also
+    // needs `default_permissions`.
+    const profileArgs =
+      options.vaultFolder === undefined
+        ? []
+        : ["-c", `default_permissions=${JSON.stringify(vaultProfileName)}`, ...vaultProfileArgsOf(options.vaultFolder)];
     const rpc = yield* startRpcProcess({
-      args: [...(options.prefixArgs ?? []), "app-server"],
+      args: [...(options.prefixArgs ?? []), "app-server", ...profileArgs],
       command: options.command,
       cwd,
       env: reducedEnvironmentOf({ ...accountEnvironmentOf("codex", request.configDirectory), PWD: cwd }),

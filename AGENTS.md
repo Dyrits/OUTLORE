@@ -58,5 +58,5 @@ Latest handoffs:
 
 - To resume the black and white theme (CHG-0552; open: the owner's look at it in a window), read the [current handoff](.agents/handoffs/2026-11-19-2230-black-and-white-theme.md). Handoffs are shared and committed.
 
-- To resume the connectors (Composio, Apple apps, the Vault, the Charter screens; CHG-0536 to CHG-0548; merged with `main`; open: the owner's live checks and a look at the screens), read the [current handoff](.agents/handoffs/2026-11-19-2008-connectors-on-main.md). Handoffs are shared and committed.
+- To resume the Codex turn failure on the Vault's permission profile (CHG-0559; open: the owner's retry of a Codex turn in the window), read the [current handoff](.agents/handoffs/2026-11-20-0044-codex-vault-profile.md). Handoffs are shared and committed.
 
