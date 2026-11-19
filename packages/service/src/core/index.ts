@@ -68,7 +68,7 @@ export {
   readMarkedProcesses,
   readProcessTree,
 } from "./processTree.ts";
-export { fieldOf, numberFieldOf, textFieldOf } from "./records.ts";
+export { fieldOf, isRecord, numberFieldOf, textFieldOf } from "./records.ts";
 export { sandboxProblem } from "./sandbox.ts";
 export { removeScratch } from "./scratch.ts";
 export { Sessions, sessionsLayer } from "./sessions.ts";

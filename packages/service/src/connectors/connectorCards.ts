@@ -1,9 +1,16 @@
 import type { ConnectorCard, ConnectorToolCard } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { type CatalogEntry, catalogToolOf, isRunnableOn } from "./catalog.ts";
+import { isUsableBy } from "./availability.ts";
+import { type CatalogEntry, catalogToolOf, entryOf, isRunnableOn } from "./catalog.ts";
 import { appleConnectionNeedOf, readStanding, readToolStanding, type StateDependencies } from "./connectorState.ts";
-import { type ConnectorRecord, readChoices, readConnectorRecord } from "./connectorStore.ts";
+import {
+  type ConnectorRecord,
+  readChoices,
+  readConnectorRecord,
+  readConnectorRecords,
+  readSubject,
+} from "./connectorStore.ts";
 
 // A connector as the Charter shows it (connectors specification, Install, connect, enable; A connector's tools).
 
@@ -73,4 +80,36 @@ export const cardOf = Effect.fnUntraced(function* (dependencies: CardDependencie
     state: record.isRemoving ? "Removing" : needs === null ? "Ready" : "NeedsConnecting",
     tools: yield* toolCardsOf(dependencies, entry, record),
   } satisfies ConnectorCard;
+});
+
+/** One tool of a usable connector as a thread's panel lists it. */
+export type PanelTool = {
+  readonly connectorId: string;
+  readonly connectorName: string;
+  readonly isOn: boolean;
+  readonly name: string;
+};
+
+/** The last-listed tools of the connectors the thread can use, those switched off included and marked as off. */
+export const panelToolsOf = Effect.fnUntraced(function* (dependencies: CardDependencies, threadId: string) {
+  const provided = Effect.provideService(SqlClient.SqlClient, dependencies.sql);
+  const subject = yield* readSubject(threadId).pipe(provided);
+  const tools: Array<PanelTool> = [];
+  if (subject === null) return tools;
+  for (const record of yield* readConnectorRecords.pipe(provided)) {
+    const entry = entryOf(dependencies.catalog, record.id);
+    if (entry === null || !isUsableBy(yield* readStanding(dependencies, entry, record), subject)) continue;
+    const standing = yield* readToolStanding(dependencies, record);
+    for (const tool of dependencies.listing.cachedTools(entry.id)) {
+      const app = catalogToolOf(entry, tool.name)?.app ?? null;
+      if (standing.chosenApps !== null && (app === null || !standing.chosenApps.has(app))) continue;
+      tools.push({
+        connectorId: entry.id,
+        connectorName: entry.name,
+        isOn: !standing.offTools.has(tool.name),
+        name: tool.name,
+      });
+    }
+  }
+  return tools;
 });

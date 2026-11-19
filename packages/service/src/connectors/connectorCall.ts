@@ -69,6 +69,23 @@ const refusalOf = Effect.fnUntraced(function* (dependencies: CallDependencies, t
 });
 
 /**
+ * Takes from every thread's snapshot what the stored choices no longer offer it, and stops the calls underway that
+ * lost their tool, except the call that reports the loss (null: none is spared).
+ */
+export const narrowPermittedTools = Effect.fnUntraced(function* (
+  dependencies: CallDependencies,
+  except: string | null,
+) {
+  yield* dependencies.calls.narrowSnapshots((id) =>
+    readOfferedTools(dependencies, id).pipe(
+      Effect.map((tools) => new Set(tools.map((tool) => tool.listedName))),
+      Effect.orDie,
+    ),
+  );
+  yield* dependencies.calls.stopRevokedExcept(except);
+});
+
+/**
  * A server refused the connector's credentials: it is marked Needs connecting for everyone, and what it offered is taken
  * from every thread, those underway stopped.
  */
@@ -81,13 +98,7 @@ export const markRefused = Effect.fnUntraced(function* (dependencies: CallDepend
       .pipe(Effect.andThen(dependencies.changes.publish));
   }
   yield* dependencies.listing.forget(entry.id);
-  yield* dependencies.calls.narrowSnapshots((id) =>
-    readOfferedTools(dependencies, id).pipe(
-      Effect.map((tools) => new Set(tools.map((tool) => tool.listedName))),
-      Effect.orDie,
-    ),
-  );
-  yield* dependencies.calls.stopRevoked;
+  yield* narrowPermittedTools(dependencies, null);
 });
 
 /**
@@ -116,20 +127,6 @@ export const recordFailure = Effect.fnUntraced(function* (
   const line = warningOf(entry.name, errorClass);
   if (line !== null) yield* dependencies.notices.warn(threadId, line);
   return toolRefusal(failureSentenceOf[errorClass]);
-});
-
-/** Applies a permission loss to existing turns without cancelling the call that reports it. */
-export const narrowPermittedTools = Effect.fnUntraced(function* (
-  dependencies: CallDependencies,
-  except: string | null,
-) {
-  yield* dependencies.calls.narrowSnapshots((id) =>
-    readOfferedTools(dependencies, id).pipe(
-      Effect.map((tools) => new Set(tools.map((tool) => tool.listedName))),
-      Effect.orDie,
-    ),
-  );
-  yield* dependencies.calls.stopRevokedExcept(except);
 });
 
 /** Hands the call to the connector's server with its secret, which the Vault lends for this call alone. */

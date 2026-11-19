@@ -13,7 +13,7 @@ import { ConnectorAsking, ConnectorNotices } from "./asking.ts";
 import { isUsableBy } from "./availability.ts";
 import { ConnectorBackends } from "./backend.ts";
 import { ConnectorCalls } from "./calls.ts";
-import { type CatalogEntry, catalogToolOf, defaultAppsOf, entryOf } from "./catalog.ts";
+import { type CatalogEntry, defaultAppsOf, entryOf } from "./catalog.ts";
 import { defaultCatalog } from "./catalogEntries.ts";
 import {
   type CallDependencies,
@@ -23,7 +23,7 @@ import {
   narrowPermittedTools,
   recordFailure,
 } from "./connectorCall.ts";
-import { type CardDependencies, cardOf } from "./connectorCards.ts";
+import { type CardDependencies, cardOf, type PanelTool, panelToolsOf } from "./connectorCards.ts";
 import { choiceCardsOf } from "./connectorChoiceCards.ts";
 import {
   chooseApps,
@@ -33,7 +33,7 @@ import {
   setConnectorTool,
   startRemoval,
 } from "./connectorOperations.ts";
-import { type OfferedConnectorTool, readOfferedTools, readStanding, readToolStanding } from "./connectorState.ts";
+import { type OfferedConnectorTool, readOfferedTools, readStanding } from "./connectorState.ts";
 import {
   deleteConnector,
   readConnectorRecord,
@@ -97,12 +97,7 @@ export class Connectors extends Context.Service<
     /** Stops the calls underway whose tool a committed change took from their thread. */
     readonly stopRevokedCalls: Effect.Effect<void>;
     /** Last-listed tools of usable connectors, including switched-off tools, for a thread's panel. */
-    readonly panelTools: (
-      threadId: string,
-    ) => Effect.Effect<
-      ReadonlyArray<{ connectorId: string; connectorName: string; isOn: boolean; name: string }>,
-      SqlError.SqlError
-    >;
+    readonly panelTools: (threadId: string) => Effect.Effect<ReadonlyArray<PanelTool>, SqlError.SqlError>;
   }
 >()("outlore/connectors/Connectors") {}
 
@@ -222,27 +217,7 @@ const make = (options: ConnectorsOptions) =>
           ),
       },
       install: (request) => installConnector(operations, request),
-      panelTools: Effect.fnUntraced(function* (threadId: string) {
-        const subject = yield* readSubject(threadId).pipe(provided);
-        if (subject === null) return [];
-        const result: Array<{ connectorId: string; connectorName: string; isOn: boolean; name: string }> = [];
-        for (const record of yield* readConnectorRecords.pipe(provided)) {
-          const entry = entryOf(catalog, record.id);
-          if (entry === null || !isUsableBy(yield* readStanding(cardDependencies, entry, record), subject)) continue;
-          const standing = yield* readToolStanding(cardDependencies, record);
-          for (const tool of listing.cachedTools(entry.id)) {
-            const app = catalogToolOf(entry, tool.name)?.app ?? null;
-            if (standing.chosenApps !== null && (app === null || !standing.chosenApps.has(app))) continue;
-            result.push({
-              connectorId: entry.id,
-              connectorName: entry.name,
-              isOn: !standing.offTools.has(tool.name),
-              name: tool.name,
-            });
-          }
-        }
-        return result;
-      }),
+      panelTools: (threadId) => panelToolsOf(cardDependencies, threadId),
       refresh: (connectorId) =>
         Effect.gen(function* () {
           const entry = entryOf(catalog, connectorId);

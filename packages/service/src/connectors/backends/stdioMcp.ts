@@ -1,7 +1,15 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Clock, Effect, Fiber, Option, Queue, Ref, Semaphore } from "effect";
-import { type HarnessFailure, type RpcProcess, reducedEnvironmentOf, startRpcProcess } from "../../core/index.ts";
+import {
+  fieldOf,
+  type HarnessFailure,
+  isRecord,
+  type RpcProcess,
+  reducedEnvironmentOf,
+  startRpcProcess,
+  textFieldOf,
+} from "../../core/index.ts";
 import { isApplePermissionDenied } from "../applePermission.ts";
 import { BackendFailure, type BackendTool, type ConnectorBackend } from "../backend.ts";
 
@@ -67,16 +75,16 @@ const failureOf = (failure: HarnessFailure, label: string): BackendFailure =>
 
 /** The text of a `tools/call` answer: its content blocks joined, which is the tool's answer as the catalog reads it. */
 const answerTextOf = (result: unknown): string => {
-  const content = (result as { content?: unknown }).content;
+  const content = fieldOf(result, "content");
   if (!Array.isArray(content)) return "";
   return content
-    .map((block) => (typeof (block as { text?: unknown }).text === "string" ? (block as { text: string }).text : ""))
+    .map((block) => textFieldOf(block, "text") ?? "")
     .filter((text) => text.length > 0)
     .join("\n");
 };
 
 /** Whether a `tools/call` answer is the tool's own error rather than its answer. */
-const isErrorAnswerOf = (result: unknown) => (result as { isError?: unknown }).isError === true;
+const isErrorAnswerOf = (result: unknown) => fieldOf(result, "isError") === true;
 
 /** One running child with the fiber that answers any request the server sends back. */
 type RunningChild = {
@@ -246,18 +254,16 @@ export const stdioMcpBackend = (options: StdioMcpOptions): Effect.Effect<Connect
         classified(
           request("tools/list", {}).pipe(
             Effect.map((result): ReadonlyArray<BackendTool> => {
-              const tools = (result as { tools?: unknown }).tools;
+              const tools = fieldOf(result, "tools");
               if (!Array.isArray(tools)) return [];
-              return tools.map(
-                (tool): BackendTool => ({
-                  description:
-                    typeof (tool as { description?: unknown }).description === "string"
-                      ? (tool as { description: string }).description
-                      : "",
-                  inputSchema: (tool as { inputSchema?: Record<string, unknown> }).inputSchema ?? {},
-                  name: String((tool as { name?: unknown }).name ?? ""),
-                }),
-              );
+              return tools.map((tool): BackendTool => {
+                const schema = fieldOf(tool, "inputSchema");
+                return {
+                  description: textFieldOf(tool, "description") ?? "",
+                  inputSchema: isRecord(schema) ? schema : {},
+                  name: String(fieldOf(tool, "name") ?? ""),
+                };
+              });
             }),
           ),
         ),

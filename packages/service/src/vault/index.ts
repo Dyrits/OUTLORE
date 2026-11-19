@@ -5,4 +5,5 @@ export type { KeyCustody, KeyRead } from "./keyCustody.ts";
 export { harnessLabelOf, type Protection, protectionOf } from "./protection.ts";
 export type { HolderInfo, HolderName, VaultEntry, VaultState } from "./types.ts";
 export { VaultFailure } from "./types.ts";
-export { makeVault, type SecretRequest, Vault, VaultFolder, type VaultOptions, vaultLayer } from "./vault.ts";
+export { makeVault, type SecretRequest, Vault, VaultFolder, type VaultOptions } from "./vault.ts";
+export { vaultLayer } from "./vaultLayer.ts";

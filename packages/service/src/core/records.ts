@@ -17,3 +17,7 @@ export const numberFieldOf = (value: unknown, key: string) => {
   const field = fieldOf(value, key);
   return typeof field === "number" ? field : 0;
 };
+
+/** Whether a value from outside is a record of its fields, not an array, a string or null. */
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);

@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { fieldOf, numberFieldOf, textFieldOf } from "../../core/index.ts";
+import { fieldOf, isRecord, numberFieldOf, textFieldOf } from "../../core/index.ts";
 import { BackendFailure, type BackendTool, type ConnectorBackend, type ConnectorErrorClass } from "../backend.ts";
 import type { CatalogBackend } from "../catalog.ts";
 import { redactedOf } from "../connectorErrors.ts";
@@ -53,10 +53,6 @@ const messageOf = (body: string, id: number) => {
     return null;
   }
 };
-
-/** Whether a value from a server is a record of its fields, not an array or a plain string. */
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** Read complete SSE events until this request's reply arrives, even when the server keeps the stream open. */
 const readEventReply = async (response: Response, id: number) => {
