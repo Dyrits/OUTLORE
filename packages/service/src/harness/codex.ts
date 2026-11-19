@@ -16,6 +16,7 @@ import {
 } from "../core/index.ts";
 import { noTimeLimit } from "./claudeArgs.ts";
 import { codexAnswersOf, codexChoicesOf } from "./codexChoices.ts";
+import { vaultProfileConfigOf, vaultProfileName } from "./codexVaultProfile.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
   type HarnessConnection,
@@ -27,6 +28,7 @@ import { approvalInstructionsOf } from "./instructions.ts";
 import { harnessEnvironmentOf, type RpcIncoming, type RpcProcess, startRpcProcess } from "./lineProcess.ts";
 import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
 import { toolServerName } from "./toolNames.ts";
+import { readCodexVaultDenial } from "./vaultDenials.ts";
 
 // Codex through its app server (ADR 0008; protocol of codex-cli 0.160.1, probed 2026-11-07): one
 // `codex app-server` process per thread, one Codex thread per Outlore thread.
@@ -39,6 +41,8 @@ export type CodexOptions = {
   readonly idleTimeout: Duration.Input;
   /** Arguments placed before the app server's own, used to run a stand-in script in checks. */
   readonly prefixArgs?: ReadonlyArray<string>;
+  /** The Vault's folder, hidden from the sandbox by a permission profile (ADR 0022); `workspace-write` when left out. */
+  readonly vaultFolder?: string;
 };
 
 interface CodexConnection extends HarnessConnection {
@@ -60,9 +64,11 @@ const effortOf = (effort: EffortChoice) => (effort === "default" ? null : effort
  * its full-access mode. At the default level they ask only to leave it, and every such request asks the owner with
  * the exact command. At "Also commands and edits" every command it does not trust asks.
  */
-const policyOf = (access: ThreadAccess) => ({
+const policyOf = (access: ThreadAccess, vaultFolder: string | null) => ({
   approvalPolicy: access.approvalLevel === "RiskyOnly" ? "on-request" : "untrusted",
-  sandbox: "workspace-write",
+  // With a Vault folder to hide, the named profile that keeps `workspace-write`'s rules and denies reading the folder
+  // (codexVaultProfile.ts); the two cannot be combined in a request.
+  ...(vaultFolder === null ? { sandbox: "workspace-write" } : { permissions: vaultProfileName }),
 });
 
 /** A turn's input: the text, then one `localImage` item per image, by the stored path (message-attachments). */
@@ -72,9 +78,10 @@ const inputOf = (text: string, images: ReadonlyArray<ImageAttachment>) => [
 ];
 
 /** The thread's settings: its tools at its own endpoint, no native subagents, and Outlore's context. */
-const threadSettingsOf = (request: TurnRequest, cwd: string) => ({
-  ...policyOf(request.access),
+const threadSettingsOf = (request: TurnRequest, cwd: string, vaultFolder: string | null) => ({
+  ...policyOf(request.access, vaultFolder),
   config: {
+    ...(vaultFolder === null ? {} : vaultProfileConfigOf(vaultFolder)),
     // One thread is one Codex conversation; threads open threads with open_thread instead (ADR 0007).
     "features.multi_agent": false,
     [`mcp_servers.${toolServerName}.tool_timeout_sec`]: noTimeLimitSeconds,
@@ -82,7 +89,7 @@ const threadSettingsOf = (request: TurnRequest, cwd: string) => ({
     // The starting context already holds the folder's own instructions (workspaces.ts).
     project_doc_max_bytes: 0,
     // The sandbox contains file and process damage, not data: its network is open, so a command can reach any host
-    // (verified with command/exec on Codex 0.167.2, 2026-11-12).
+    // (verified with command/exec on Codex 0.167.2, 2026-11-12); the Vault profile opens it the same way.
     "sandbox_workspace_write.network_access": true,
   },
   cwd,
@@ -342,7 +349,7 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
   // Where the folder really points too: a link pointed elsewhere restarts the process, whose start checks it again.
   restartKeyOf: (request) =>
     JSON.stringify([
-      threadSettingsOf(request, request.cwd),
+      threadSettingsOf(request, request.cwd, options.vaultFolder ?? null),
       // The tools are listed when the process starts, so a change of Code Mode restarts it.
       request.access.usesCodeMode,
       request.configDirectory,
@@ -386,7 +393,7 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
         clientInfo: { name: "outlore", title: "Outlore", version: "0.0.0" },
       });
       rpc.notify("initialized", {});
-      const settings = threadSettingsOf(request, cwd);
+      const settings = threadSettingsOf(request, cwd, options.vaultFolder ?? null);
       billing = yield* billingOf(rpc);
       return request.sessionId === null
         ? yield* rpc.request("thread/start", settings)
@@ -434,5 +441,6 @@ export const makeCodexHarness = (options: CodexOptions) =>
       containmentOf: (): Containment => "Sandboxed",
       readPlanLimits: (_harness: HarnessName, configDirectory: string | null) =>
         readCodexPlanLimits(options, configDirectory),
+      readVaultDenial: (harness: HarnessName, folder: string) => readCodexVaultDenial(options, harness, folder),
     })),
   );

@@ -23,6 +23,8 @@ export type OpenCodeSandbox = {
   readonly computerConfigHome: string;
   /** The folder holding OpenCode's own data on this computer (`$XDG_DATA_HOME`): the "This computer" account's. */
   readonly computerDataHome: string;
+  /** Folders no process inside may read, by real path: the Vault's (ADR 0022). */
+  readonly hidden: ReadonlyArray<string>;
   readonly kind: "seatbelt" | "bwrap";
   /**
    * The service's folder for OpenCode's state, configuration, cache, temporary files and data copies, each in a folder
@@ -60,6 +62,8 @@ export const detectOpenCodeSandbox = (host: {
   readonly root: string;
   readonly sandboxProblem: string | null;
   readonly caches?: ReadonlyArray<string>;
+  /** Folders to hide from reading, such as the Vault's; each is made (mode 0700) if missing, so bubblewrap can cover it. */
+  readonly hidden?: ReadonlyArray<string>;
   readonly which?: (name: string) => string | null;
   readonly probe?: (command: string, args: ReadonlyArray<string>) => boolean;
 }): OpenCodeSandbox | null => {
@@ -68,6 +72,7 @@ export const detectOpenCodeSandbox = (host: {
     caches: host.caches ?? packageCachesOf(homedir()),
     computerConfigHome: process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"),
     computerDataHome: process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"),
+    hidden: (host.hidden ?? []).map((folder) => makeRealFolder(folder, 0o700)),
     root: host.root,
   };
   const probe = host.probe ?? probeCommand;
@@ -111,8 +116,8 @@ export const openCodeEnvironmentOf = (sandbox: OpenCodeSandbox, accountDataHome:
 });
 
 /** A folder made if missing, by its real path, which Seatbelt matches (`/var` is `/private/var` on macOS). */
-const makeRealFolder = (path: string) => {
-  mkdirSync(path, { recursive: true });
+const makeRealFolder = (path: string, mode = 0o755) => {
+  mkdirSync(path, { mode, recursive: true });
   return realpathSync(path);
 };
 
@@ -173,7 +178,7 @@ export const writeOwnerMarker = (sandbox: OpenCodeSandbox) => {
  * documentation/verification/2026-11-14-token-isolation.md). Claude Code's and Codex's own sandboxes already allow
  * process information only within themselves.
  */
-const seatbeltProfileOf = (count: number) =>
+const seatbeltProfileOf = (count: number, hiddenCount: number) =>
   [
     "(version 1)",
     "(allow default)",
@@ -184,6 +189,8 @@ const seatbeltProfileOf = (count: number) =>
     "(allow signal (target same-sandbox))",
     "(deny file-write*)",
     `(allow file-write* ${Array.from({ length: count }, (_, index) => `(subpath (param "W${index}"))`).join(" ")} (literal "/dev/null") (literal "/dev/tty") (regex #"^/dev/(fd|ttys)"))`,
+    // Last, so no allow above reaches it: a hidden folder (the Vault's) can be neither read nor listed from inside.
+    ...Array.from({ length: hiddenCount }, (_, index) => `(deny file-read* (subpath (param "H${index}")))`),
   ].join("\n");
 
 /** The command line that starts `command` inside the sandbox, writing only to the given folders. */
@@ -198,8 +205,9 @@ export const wrappedCommandOf = (
         args: [
           // Paths go in as parameters, so no path needs quoting inside the profile.
           ...writable.flatMap((path, index) => ["-D", `W${index}=${path}`]),
+          ...sandbox.hidden.flatMap((path, index) => ["-D", `H${index}=${path}`]),
           "-p",
-          seatbeltProfileOf(writable.length),
+          seatbeltProfileOf(writable.length, sandbox.hidden.length),
           command,
           ...args,
         ],
@@ -217,6 +225,8 @@ export const wrappedCommandOf = (
           "--tmpfs",
           "/tmp",
           ...writable.flatMap((path) => ["--bind", path, path]),
+          // An empty folder over each hidden one, after the binds, so a writable folder inside it cannot reopen it.
+          ...sandbox.hidden.flatMap((path) => ["--tmpfs", path]),
           "--share-net",
           "--unshare-pid",
           "--die-with-parent",

@@ -15,6 +15,8 @@ export type AccessOptions = {
   readonly sandboxProblem: string | null;
   /** The owner's Claude Code settings file, whose allow and deny rules apply at "Also commands and edits". */
   readonly userSettingsPath?: string;
+  /** The Vault's folder, which no sandboxed command may read (ADR 0022); none when left out, in checks. */
+  readonly vaultFolder?: string;
 };
 
 // Tools behind approval (CHG-0031): built-in tools only, none of the owner's MCP
@@ -158,7 +160,7 @@ const threadSandbox = {
  * Claude Code's sandbox settings: always on, commands unasked inside it, and never run unsandboxed on a warning
  * (`failIfUnavailable`, in the 2.1.322 settings schema): a sandbox that cannot start stops Claude Code instead.
  */
-const sandboxSettingsOf = (worktrees: ReadonlyArray<string>) => ({
+export const sandboxSettingsOf = (worktrees: ReadonlyArray<string>, vaultFolder: string | null) => ({
   env: threadSandbox.env,
   sandbox: {
     autoAllowBashIfSandboxed: true,
@@ -167,7 +169,12 @@ const sandboxSettingsOf = (worktrees: ReadonlyArray<string>) => ({
     ...threadSandbox.sandbox,
     // The git worktrees of the workspace's repository count as the workspace (CHG-0273), so work on a branch beside the
     // checkout runs without asking; the list is part of the restart key, so a new worktree takes effect at the next start.
-    filesystem: { allowWrite: [...threadSandbox.sandbox.filesystem.allowWrite, ...worktrees] },
+    // The Vault's folder is denied to commands (ADR 0022); Claude Code's own Read, Grep and Glob run outside this
+    // sandbox, which Outlore's prompt policy covers (work/promptPolicy.ts).
+    filesystem: {
+      allowWrite: [...threadSandbox.sandbox.filesystem.allowWrite, ...worktrees],
+      ...(vaultFolder === null ? {} : { denyRead: [vaultFolder] }),
+    },
   },
 });
 
@@ -206,7 +213,12 @@ export const accessArgsOf = (
   // The adapter decided the containment once, through `containmentOf` (claude.ts), when the turn's terms were read.
   const levelArgs =
     access.containment === "Sandboxed"
-      ? ["--permission-mode", "acceptEdits", "--settings", JSON.stringify(sandboxSettingsOf(worktrees))]
+      ? [
+          "--permission-mode",
+          "acceptEdits",
+          "--settings",
+          JSON.stringify(sandboxSettingsOf(worktrees, options.vaultFolder ?? null)),
+        ]
       : [
           "--permission-mode",
           "default",
