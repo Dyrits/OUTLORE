@@ -268,6 +268,21 @@ describe("a turn's actions, folded as steps while messages stay visible", () => 
     });
   });
 
+  it("keeps a modified file's counts on its step, with the thread to read its diff from, and no diff text", () => {
+    const detail = turn([owner(0), agent(20000)]);
+    const entries = entriesOf({
+      ...detail,
+      activities: [
+        { at: 1000, change: { added: 2, removed: 1 }, detail: "/work/a.ts", id: "edit", summary: "Change a file" },
+      ],
+    } satisfies MissionDetail);
+    expect(entries[1]).toMatchObject({
+      _tag: "Steps",
+      steps: [{ _tag: "Call", activity: { change: { added: 2, removed: 1 } }, id: "call:edit" }],
+      threadId: detail.thread.id,
+    });
+  });
+
   it("marks the group of a working turn as current while only tool calls fill it", () => {
     const detail = turn([owner(0)]);
     const entries = entriesOf(

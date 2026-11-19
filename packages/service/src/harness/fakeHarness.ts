@@ -44,9 +44,12 @@ const tokenUsageOf = (match: RegExpExecArray): TokenUsage => ({
   output: Number(match[2]),
 });
 
+/** Counts the calls a `tooluse` line reports, so each has its own id. */
+let reportedCalls = 0;
+
 // The fake's script: a line `ask <json>` calls request_approval, `prompt <tool> <json input>` asks the
 // owner about a harness action, `escape <tool> <json input>` asks about one the harness would run outside its
-// sandbox (as Codex's escalations do), `folder <tool> <json>` asks the one-time question about a linked thread folder, and `call <tool> <json>` calls any thread tool, each answered before
+// sandbox (as Codex's escalations do), `folder <tool> <json>` asks the one-time question about a linked thread folder, and `call <tool> <json>` calls any thread tool, `tooluse <tool> <json>` reports a harness tool call as it starts, each answered before
 // the echo; `wait <millis>` keeps the turn running; `fail <harness> <reason>` fails the turn on that harness; `cwd`, `context`, and `runner` report the working folder, the
 // starting context, and the harness, model, effort, and session; `spend <tokens> [cost]` reports spending at the turn's end,
 // `usage <input> <output> <cacheRead> <cacheWrite>` reports tokens by kind, `window <tokens>` reports the model's context window, `callusage <input> <output> <cacheRead> <cacheWrite>` gives the reply's own call its usage, and `billing <Subscription|ApiKey|Unknown>` names how the turn was billed (a turn that reports a cost and names none is API-key, as before).
@@ -104,6 +107,19 @@ const scriptedCall = (request: TurnRequest, line: string, turn: FakeTurn) => {
     return Effect.succeed([request.context, request.note].filter((part) => part !== null).join("\n\n"));
   const wait = /^wait (\d+)$/.exec(line);
   if (wait !== null) return Effect.sleep(Number(wait[1])).pipe(Effect.as(`waited ${wait[1]}`));
+  // `tooluse <tool> <json>` reports a harness tool call as it starts, as Claude Code's assistant message does, and runs nothing.
+  const reported = /^tooluse (\S+) (.*)$/.exec(line);
+  if (reported !== null) {
+    const toolName = reported[1] ?? "";
+    return request
+      .onEvent({
+        _tag: "ToolCall",
+        id: `toolu_fake_${++reportedCalls}`,
+        input: JSON.parse(reported[2] ?? "{}"),
+        toolName,
+      })
+      .pipe(Effect.as(`reported ${toolName}`));
+  }
   const tool = /^call (\S+) (.*)$/.exec(line);
   if (tool !== null) return callThreadTool(access.mcpUrl, tool[1] ?? "", JSON.parse(tool[2] ?? "{}"));
   if (line.startsWith("ask ")) return callThreadTool(access.mcpUrl, "request_approval", JSON.parse(line.slice(4)));

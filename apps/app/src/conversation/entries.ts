@@ -8,6 +8,7 @@ import type {
   MissionId,
   Question,
   Suggestion,
+  ThreadId,
   ThreadSummary,
 } from "@outlore/contracts";
 import { settledSuggestionLabelOf } from "../foundation/labels";
@@ -19,7 +20,7 @@ export type QuestLink = { key: string; label: string; missionId: MissionId; sent
 export type Entry = { key: string; at: number } & (
   | { _tag: "Message"; message: Message; fromQuest: MissionId | null }
   /** The settled actions of one turn gathered under one collapsible line. */
-  | { _tag: "Steps"; isCurrent: boolean; seconds: number; steps: ReadonlyArray<Step> }
+  | { _tag: "Steps"; isCurrent: boolean; seconds: number; steps: ReadonlyArray<Step>; threadId: ThreadId }
   | { _tag: "Question"; question: Question }
   | { _tag: "Suggestion"; suggestion: Suggestion }
   | { _tag: "BudgetEvent"; event: BudgetEvent }
@@ -127,6 +128,7 @@ export const entriesOf = (detail: MissionDetail, isWorking = false): Array<Entry
         key: `steps:${group.steps[0]?.id}`,
         seconds: group.seconds,
         steps: group.steps,
+        threadId: detail.thread.id,
       }),
     ),
     ...detail.threads

@@ -20,6 +20,8 @@
 - **Local data**: missions, threads, intel, and workspace contents stay on the user's computer; nothing leaves it except what a harness, provider, or connected service needs for the work, and the encrypted traffic to a paired device.
   Source: the user. Reason: product decision.
   Hosted multiplayer exception (CHG-0021): invited guests may receive shared mission conversations and results. The first hosted version keeps mission documents and data on the host. Future guest local copies require a separate design for their scope, synchronization, and retention. Removing access cannot erase information a guest has already saved or copied.
+- **A diff is changed text kept locally**: the diff of a file a thread modified (action-approval, A modified file's diff) is text from the owner's files, so it stays on the user's computer, capped in size per file, never sent to a harness or a provider, read by a paired device only over the encrypted connection, and deleted with its thread; a whole file is never kept for it.
+  Source: the user, 2026-11-19 (CHG-0531). Reason: Local data keeps workspace contents on the computer; a diff is a piece of them, kept only to show the owner what changed.
 - **Price table read carries no owner data**: the local service's read of the model price table sends nothing about missions, workspaces, accounts, or the owner, and the owner can switch it off, leaving the price table shipped with Outlore.
   Source: the user, 2026-11-10 (CHG-0126). Reason: Local data allows only what a harness, provider, or connected service needs for the work; a price lookup is not needed for the work.
   Check: a test on the request the service sends for the price table, and the Workshop switch.

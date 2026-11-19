@@ -54,9 +54,10 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the choice questions shown as chat bubbles with the owner's answers attached (CHG-0535; committed and pushed to `main`; open: the owner's look in a window and on a phone, and whether the answer should be a separate owner bubble or unchosen options hidden), read the [current handoff](.agents/handoffs/2026-11-19-1610-choice-question-bubbles.md). Handoffs are shared and committed.
+- To resume a modified file's diff shown in its step, read the [current handoff](.agents/handoffs/2026-11-19-1615-file-diff-in-steps.md). Handoffs are shared and committed.
+
+- To resume the choice questions shown as chat bubbles, read the [current handoff](.agents/handoffs/2026-11-19-1610-choice-question-bubbles.md). Handoffs are shared and committed.
 
 - To resume the November 19 architecture audit fixes, read the [current handoff](.agents/handoffs/2026-11-19-1350-architecture-audit-fixes.md). Handoffs are shared and committed.
 
-- To resume the working Companion indicator fix (rebased; awaiting publication and a visual check), read the [current handoff](.agents/handoffs/2026-11-19-1015-working-companion-mark.md). Handoffs are shared.
 

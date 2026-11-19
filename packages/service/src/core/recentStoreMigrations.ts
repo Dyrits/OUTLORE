@@ -109,4 +109,19 @@ export const recentStoreMigrations = {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`ALTER TABLE turns ADD COLUMN model TEXT`;
   }),
+  // The diff of a call that modified a file (action-approval, A modified file's diff): its counts, the changed text cut
+  // at a size limit, and a note when it was cut or is not known. Only the diff is kept, never a whole file; the text is
+  // the last column, so the steps list reads the counts without it. Deleted with the thread.
+  "0061_thread_activity_diffs": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`CREATE TABLE thread_activity_diffs (
+      thread_id TEXT NOT NULL REFERENCES threads(id),
+      activity_id TEXT NOT NULL,
+      added INTEGER,
+      removed INTEGER,
+      note TEXT,
+      text TEXT NOT NULL,
+      PRIMARY KEY (thread_id, activity_id)
+    )`;
+  }),
 };

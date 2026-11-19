@@ -284,7 +284,8 @@ export function EntryView({
       </View>
     );
   }
-  if (entry._tag === "Steps") return <StepsGroup seconds={entry.seconds} steps={entry.steps} />;
+  if (entry._tag === "Steps")
+    return <StepsGroup client={client} seconds={entry.seconds} steps={entry.steps} threadId={entry.threadId} />;
   if (entry._tag === "QuestLink")
     return (
       <View style={styles.messageRow}>

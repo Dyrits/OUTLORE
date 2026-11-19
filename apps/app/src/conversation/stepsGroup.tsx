@@ -1,14 +1,26 @@
+import type { ThreadId } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import type { ServiceClient } from "../foundation/client";
 import { spanOf } from "../foundation/formatting";
 import { countedOf } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { QuestionLine } from "../ui/questions";
+import { CallStep } from "./callStep";
 import type { Step } from "./entries";
-import { callTextOf } from "./stepLabels";
 
 /** A turn's settled actions and reported tool calls, folded under "2 steps · 16s" and listed when opened. */
-export function StepsGroup({ seconds, steps }: { seconds: number; steps: ReadonlyArray<Step> }) {
+export function StepsGroup({
+  client,
+  seconds,
+  steps,
+  threadId,
+}: {
+  client: ServiceClient;
+  seconds: number;
+  steps: ReadonlyArray<Step>;
+  threadId: ThreadId;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <View>
@@ -29,9 +41,7 @@ export function StepsGroup({ seconds, steps }: { seconds: number; steps: Readonl
             step._tag === "Action" ? (
               <QuestionLine key={step.id} question={step.question} />
             ) : (
-              <View key={step.id} style={styles.questionLine}>
-                <Text style={styles.muted}>{callTextOf(step.activity, step.at)}</Text>
-              </View>
+              <CallStep activity={step.activity} at={step.at} client={client} key={step.id} threadId={threadId} />
             ),
           )}
         </View>

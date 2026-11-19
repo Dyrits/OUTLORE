@@ -17,6 +17,7 @@ import { Approvals } from "./approvals.ts";
 import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
 import { Commands, makeCommands } from "./commands.ts";
+import { fileChangeOf } from "./fileChanges.ts";
 import { readConversationSoFar } from "./handover.ts";
 import { makeLifecycle, recoverThreadStates, stopThread } from "./lifecycle.ts";
 import { listPending, listThreadsWithPending } from "./messaging.ts";
@@ -178,9 +179,12 @@ export const threadsLayer = Layer.effectContext(
               .run(local(saveTurnReply(threadId, turn, reply.text, reply.model ?? null, reply.usage ?? null)))
               .pipe(Effect.andThen(publishDraft(threadId, "")), Effect.orDie),
           ToolCall: (call) =>
-            commands
-              .run(local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input)))
-              .pipe(Effect.orDie),
+            Effect.gen(function* () {
+              // The previous text of a file a call writes whole is read before the call can have run, where the harness
+              // reports it first; only Claude Code's tool names are known (action-approval, A modified file's diff).
+              const change = turn.harness === "claude" ? yield* fileChangeOf(call.toolName, call.input, cwd) : null;
+              yield* commands.run(local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input, change)));
+            }).pipe(Effect.orDie),
         });
       if (!(yield* isCurrent(turn.turnId))) return;
       // The tool server answers under the setting this turn starts with, as its harness lists the tools (CHG-0446).
