@@ -42,6 +42,7 @@ export function TopBar({
   details,
   chronicler,
   menu,
+  sidebar,
 }: {
   /** The icon that shows or hides the quest's side panel; none outside a quest. */
   details: DetailsToggle | null;
@@ -49,11 +50,25 @@ export function TopBar({
   chronicler: { isOpen: boolean; onToggle: () => void };
   /** The button that opens or closes the full-screen menu, in a window too narrow for the sidebar; none where it shows. */
   menu?: { isOpen: boolean; onToggle: () => void };
+  /** The button that shows the overlay sidebar, on the side the sidebar belongs to; none when the sidebar is docked. */
+  sidebar?: { isOpen: boolean; onToggle: () => void; side: "left" | "right" };
 }) {
   const hostMenu = useContext(HostMenuContext);
+  const sidebarButton = sidebar !== undefined && (
+    <Pressable
+      accessibilityLabel={sidebar.isOpen ? "Hide sidebar (⌘B)" : "Show sidebar (⌘B)"}
+      accessibilityRole="button"
+      accessibilityState={{ expanded: sidebar.isOpen }}
+      onPress={sidebar.onToggle}
+      style={({ pressed }) => [local.topIcon, (pressed || sidebar.isOpen) && local.topIconActive, noDragRegion]}
+    >
+      <PanelIcon side={sidebar.side} />
+    </Pressable>
+  );
   return (
     // As the macOS title bar the bar drags the window, and leaves room for the traffic lights at its start.
     <View style={[local.topBar, hasOwnTitleBar && local.topBarTitle, hasOwnTitleBar && dragRegion]}>
+      {sidebar?.side === "left" && sidebarButton}
       {menu !== undefined && (
         <Pressable
           accessibilityLabel={menu.isOpen ? "Close the menu" : "Open the menu"}
@@ -93,6 +108,7 @@ export function TopBar({
       >
         <Text style={local.chroniclerMark}>✦</Text>
       </Pressable>
+      {sidebar?.side === "right" && sidebarButton}
     </View>
   );
 }
