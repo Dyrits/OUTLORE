@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 import { AttachmentCard, AttachmentContent } from "./attachments.ts";
 import { AccountBudget, BudgetWindow, PriceStatus } from "./budgets.ts";
+import { connectorResults } from "./connectorRequests.ts";
 import { DictationStatus, Transcript } from "./dictation.ts";
 import { EffortChoice, HarnessList } from "./harnesses.ts";
 import { HostUpdate } from "./hostUpdate.ts";
@@ -47,6 +48,7 @@ export type OpenThreadResult = typeof OpenThreadResult.Type;
 /** The result schema of each request, used by both sides to encode and decode. */
 export const Results = {
   ...realmResults,
+  ...connectorResults,
   AddAccount: HarnessList,
   AddAttachment: AttachmentCard,
   AddBrowsableRoot: FolderListing,

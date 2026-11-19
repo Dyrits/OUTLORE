@@ -9,6 +9,7 @@ export * from "./attachments.ts";
 export * from "./budgetRequests.ts";
 export * from "./budgets.ts";
 export * from "./companions.ts";
+export * from "./connectorRequests.ts";
 export * from "./dictation.ts";
 export * from "./frames.ts";
 export * from "./harnesses.ts";

@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { Clock, Context, Effect, FiberMap, FiberSet, Layer, Match, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
+import { ConnectorGateway } from "../connectors/index.ts";
 import {
   Changes,
   Endpoints,
@@ -13,7 +14,7 @@ import {
   removeScratch,
   type ServiceFailure,
 } from "../core/index.ts";
-import { HarnessTools, removedAccountReasonOf, toolServerName } from "../harness/index.ts";
+import { HarnessTools, qualifiedToolNameOf, removedAccountReasonOf, toolServerName } from "../harness/index.ts";
 import { Approvals } from "./approvals.ts";
 import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
@@ -89,6 +90,7 @@ export const threadsLayer = Layer.effect(
     const imagesOf = (files: ReadonlyArray<StoredAttachment>): ReadonlyArray<ImageAttachment> =>
       files.map((file) => ({ mediaType: file.mediaType, name: file.name, path: join(attachmentsRoot, file.file) }));
     const approvals = yield* Approvals;
+    const connectorGateway = yield* ConnectorGateway;
     const suggestions = yield* Suggestions;
     /** Withdraws everything the thread waits on the owner for: questions and suggestions. */
     const withdrawAll = (threadId: string) =>
@@ -187,14 +189,23 @@ export const threadsLayer = Layer.effect(
       if (!(yield* isCurrent(turn.turnId))) return;
       // The tool server answers under the setting this turn starts with, as its harness lists the tools (CHG-0446).
       yield* endpoints.holdCodeMode(threadId, shouldUseCodeMode);
+      // The connectors list their tools again, and the thread's snapshot of the tools it is offered for this turn is taken;
+      // with Code Mode on the harness lists none of them, they are reached by code (connectors specification).
+      const snapshot = yield* connectorGateway.beginTurn(threadId);
+      const connectorTools = shouldUseCodeMode ? [] : snapshot;
       active.set(threadId, { turnId: turn.turnId, written: new Set() });
       const outcome = yield* harness
         .runTurn({
           access: {
             ...terms,
+            connectorTools,
             isInWorkspace,
             mcpUrl,
-            unaskedTools: unaskedToolNamesOf(toolServerName, shouldUseCodeMode),
+            unaskedTools: [
+              ...unaskedToolNamesOf(toolServerName, shouldUseCodeMode),
+              // Claude Code runs only the tools it is told; each connector tool asks for itself in the gateway.
+              ...connectorTools.map((name) => qualifiedToolNameOf(toolServerName, name)),
+            ],
             usesCodeMode: shouldUseCodeMode,
           },
           askOwner: askOwnerFor(approvals, sql, threadId),
@@ -216,7 +227,12 @@ export const threadsLayer = Layer.effect(
         .pipe(
           Effect.result,
           // However the turn ends, what was allowed once in it is spent (action-approval, CHG-0063).
-          Effect.ensuring(Effect.sync(() => active.delete(threadId)).pipe(Effect.andThen(approvals.endTurn(threadId)))),
+          Effect.ensuring(
+            Effect.sync(() => active.delete(threadId)).pipe(
+              Effect.andThen(approvals.endTurn(threadId)),
+              Effect.andThen(connectorGateway.endTurn(threadId)),
+            ),
+          ),
         );
       yield* publishDraft(threadId, "");
       if (outcome._tag === "Failure") {

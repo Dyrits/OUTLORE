@@ -345,6 +345,7 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
       threadSettingsOf(request, request.cwd),
       // The tools are listed when the process starts, so a change of Code Mode restarts it.
       request.access.usesCodeMode,
+      request.access.connectorTools,
       request.configDirectory,
       resolvedFolderOf(request.cwd),
     ]),

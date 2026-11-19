@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { Context, Effect, Layer } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
+import { Connectors } from "../connectors/index.ts";
 import { Changes, removeScratch } from "../core/index.ts";
 import { Approvals } from "./approvals.ts";
 import { recordOnce } from "./commandOutcomes.ts";
@@ -20,6 +21,8 @@ export type FollowUps = {
   readonly missionsToRemoveScratch: ReadonlyArray<string>;
   /** Missions whose waiting threads may now run, a running slot having freed. */
   readonly missionsToWake: ReadonlyArray<string>;
+  /** Whether a connector's switch changed in a way that may take a tool from a thread: calls underway are stopped. */
+  readonly shouldStopConnectorCalls: boolean;
   /** Threads with messages to deliver. */
   readonly threadsToWake: ReadonlyArray<string>;
   /** Threads whose pending owner questions must be withdrawn before any wake. */
@@ -39,6 +42,7 @@ export const noFollowUps: FollowUps = {
   isChanged: false,
   missionsToRemoveScratch: [],
   missionsToWake: [],
+  shouldStopConnectorCalls: false,
   threadsToWake: [],
   threadsToWithdraw: [],
   turnsToCancel: [],
@@ -80,6 +84,8 @@ export interface CommandRunner {
 export const makeCommands = (dependencies: {
   readonly withdrawQuestions: (threadId: string) => Effect.Effect<void>;
   readonly removeScratch: (missionId: string) => Effect.Effect<void>;
+  /** Stops the connector calls whose tool a committed change took from their thread; none stop when left out. */
+  readonly stopConnectorCalls?: Effect.Effect<void>;
   readonly sql: SqlClient.SqlClient;
   readonly publish: Effect.Effect<void>;
   readonly threads: Pick<Threads["Service"], "cancel" | "wake" | "wakeMission">;
@@ -87,6 +93,9 @@ export const makeCommands = (dependencies: {
   const { publish, sql, threads } = dependencies;
   const apply = Effect.fn("applyFollowUps")(function* (followUps: FollowUps) {
     if (followUps.isChanged) yield* publish;
+    // Once committed, so a call a rolled-back change would have stopped is never stopped.
+    if (followUps.shouldStopConnectorCalls && dependencies.stopConnectorCalls !== undefined)
+      yield* dependencies.stopConnectorCalls;
     // Cancelled before any wake, so a woken thread never races a turn that is still ending.
     if (followUps.turnsToCancel.length > 0) yield* threads.cancel(followUps.turnsToCancel);
     for (const id of followUps.threadsToWithdraw) yield* dependencies.withdrawQuestions(id);
@@ -124,11 +133,14 @@ export const commandsLayer = Layer.effect(
     const scratchRoot = yield* ScratchRoot;
     const approvals = yield* Approvals;
     const suggestions = yield* Suggestions;
+    // The connectors are the service's own; a runner built without them stops no connector call.
+    const connectors = yield* Effect.serviceOption(Connectors);
     return makeCommands({
       publish: changes.publish,
       removeScratch: (id) =>
         removeScratch(join(scratchRoot, id)).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie),
       sql,
+      ...(connectors._tag === "Some" ? { stopConnectorCalls: connectors.value.stopRevokedCalls } : {}),
       threads,
       withdrawQuestions: (id) => approvals.withdraw(id).pipe(Effect.andThen(suggestions.withdraw(id))),
     });
