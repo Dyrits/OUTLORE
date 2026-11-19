@@ -114,6 +114,7 @@ export const requestSourceRules = {
   RenameRealm: shared,
   ReopenMission: shared,
   ReorderRealms: shared,
+  RequestApplePermission: hostOnly,
   ResolveChatter: shared,
   ResolveIntelChange: shared,
   ResolveIntelProposal: shared,

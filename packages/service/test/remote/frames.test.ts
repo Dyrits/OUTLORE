@@ -16,6 +16,7 @@ const requests = {
   RemoveBrowsableRoot: { path: "/tmp" },
   RemoveHost: { hostId: "h" },
   RenameHost: { name: "Studio" },
+  RequestApplePermission: { connectorId: "apple" },
   SetRemoteAccess: { isEnabled: false },
   UseOwnRelay: { token: "a-token" },
   UseSharedRelay: {},

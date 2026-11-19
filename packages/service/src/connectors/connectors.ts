@@ -1,12 +1,13 @@
-import type { ConnectorCard } from "@outlore/contracts";
+import type { ApplePermissionReport, ConnectorCard } from "@outlore/contracts";
 import { Context, Effect, Layer } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
-import { Changes, notFound, ServiceFailure } from "../core/index.ts";
+import { Changes, invalid, notFound, ServiceFailure } from "../core/index.ts";
+import { applePermissionReportOf } from "./applePermission.ts";
 import { ConnectorAsking, ConnectorNotices } from "./asking.ts";
 import { isUsableBy } from "./availability.ts";
 import { ConnectorBackends } from "./backend.ts";
 import { ConnectorCalls } from "./calls.ts";
-import { type CatalogEntry, entryOf } from "./catalog.ts";
+import { type CatalogEntry, defaultAppsOf, entryOf } from "./catalog.ts";
 import { defaultCatalog } from "./catalogEntries.ts";
 import { type CallDependencies, listOfferedTools, makeCall, markRefused, recordFailure } from "./connectorCall.ts";
 import { type CardDependencies, cardOf } from "./connectorCards.ts";
@@ -52,6 +53,13 @@ export class Connectors extends Context.Service<
     readonly install: (
       request: Parameters<typeof installConnector>[1],
     ) => Effect.Effect<void, ServiceFailure | SqlError.SqlError>;
+    /**
+     * Asks macOS, through the connector's own child process, whether each chosen app allows Automation. The host's
+     * own window only (RequestApplePermission is host-only).
+     */
+    readonly requestApplePermission: (
+      connectorId: string,
+    ) => Effect.Effect<ApplePermissionReport, ServiceFailure | SqlError.SqlError>;
     /** Asks a connector's server for its tools again, marking it Needs connecting when it refuses. */
     readonly refresh: (connectorId: string) => Effect.Effect<void, SqlError.SqlError>;
     /** The second step of a removal: the connector's secrets in the Vault, which fails when the Vault cannot answer. */
@@ -179,6 +187,18 @@ const make = (options: ConnectorsOptions) =>
           const record = entry === null ? null : yield* readConnectorRecord(connectorId).pipe(provided);
           if (entry !== null && record !== null) yield* refreshFor(entry, null);
         }),
+      requestApplePermission: Effect.fnUntraced(function* (connectorId: string) {
+        const entry = entryOf(catalog, connectorId);
+        if (entry === null) return yield* notFound("Outlore offers no such connector.");
+        if (entry.platform === "macOS" && platform !== "darwin")
+          return yield* invalid("Apple apps run on a Mac only, so there is no permission to ask for here.");
+        const record = yield* readConnectorRecord(connectorId).pipe(provided);
+        if (record === null) return yield* invalid("That connector is not installed on this computer.");
+        const apps = record.apps ?? defaultAppsOf(entry);
+        // The probe runs on the backend the connector's calls run on, so macOS is asked by the same child process.
+        const backend = yield* listing.backendOf(entry);
+        return yield* applePermissionReportOf(entry, apps, backend);
+      }),
       resumeRemovals: Effect.gen(function* () {
         for (const record of yield* readConnectorRecords.pipe(provided)) {
           if (!record.isRemoving) continue;

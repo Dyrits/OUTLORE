@@ -2,6 +2,7 @@ import type {
   ChooseAppleApps,
   InstallConnector,
   RemoveConnector,
+  RequestApplePermission,
   SetConnectorSwitch,
   SetConnectorTool,
 } from "@outlore/contracts";
@@ -49,6 +50,9 @@ export const connectorHandlers = (commands: CommandRunner, connectors: Connector
         Effect.andThen(commands.run(connectors.finishRemoval(given.connectorId).pipe(Effect.map(() => changed(null))))),
         Effect.andThen(connectors.card(given.connectorId)),
       ),
+    // Host-only by the request's source rule: a paired device is refused before this handler runs.
+    RequestApplePermission: (given: typeof RequestApplePermission.Type) =>
+      connectors.requestApplePermission(given.connectorId),
     SetConnectorSwitch: (given: typeof SetConnectorSwitch.Type) =>
       stopping(
         given.connectorId,

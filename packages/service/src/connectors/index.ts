@@ -1,3 +1,7 @@
+export {
+  applePermissionReportOf,
+  probeToolOf,
+} from "./applePermission.ts";
 export { ConnectorAsking, ConnectorNotices, type ToolUse, type ToolUseDecision } from "./asking.ts";
 export {
   BackendFailure,
