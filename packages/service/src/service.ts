@@ -2,7 +2,16 @@ import { dirname, join } from "node:path";
 import type { Request, RequestSource } from "@outlore/contracts";
 import { Effect, Layer, Match, Semaphore } from "effect";
 import type { SqlError } from "effect/sql";
-import { type ConnectorGateway, connectorsLayer } from "./connectors/index.ts";
+import {
+  type CatalogEntry,
+  type ConnectorBackends,
+  type ConnectorGateway,
+  Connectors,
+  connectorServicesLayer,
+  connectorsLayer,
+  unbuiltBackendsLayer,
+  type VaultPort,
+} from "./connectors/index.ts";
 import {
   addBrowsableRoot,
   browseFolders,
@@ -25,6 +34,7 @@ import {
   seedBrowsableRoots,
   sessionsLayer,
   storeLayer,
+  vaultFolderOf,
 } from "./core/index.ts";
 import { fakeHarnessToolsLayer, type HarnessTools } from "./harness/index.ts";
 import { listOpenQuestions, removePermission, widenPermission } from "./policy/index.ts";
@@ -42,6 +52,7 @@ import {
 } from "./remote/index.ts";
 import { Service } from "./serviceTag.ts";
 import { HostUpdate, type HostUpdater, hostUpdateLayer, noHostUpdaterLayer } from "./update/index.ts";
+import { type KeyCustody, Vault, vaultLayer } from "./vault/index.ts";
 import {
   AccountsRoot,
   Approvals,
@@ -55,6 +66,9 @@ import {
   Commands,
   changed,
   commandsLayer,
+  connectorAskingLayer,
+  connectorHandlers,
+  connectorNoticesLayer,
   guildmasterReportsLayer,
   listMentionables,
   listSkills,
@@ -86,6 +100,8 @@ import {
   Threads,
   threadsLayer,
   toolServerLayer,
+  vaultHandlers,
+  vaultPortLayer,
 } from "./work/index.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...).
@@ -103,6 +119,8 @@ const make = Effect.gen(function* () {
   const homeFolder = yield* HomeFolder;
   const commands = yield* Commands;
   const approvals = yield* Approvals;
+  const connectors = yield* Connectors;
+  const vault = yield* Vault;
   const suggestions = yield* Suggestions;
   const prices = yield* PriceTable;
   const hostUpdate = yield* HostUpdate;
@@ -134,6 +152,8 @@ const make = Effect.gen(function* () {
           ...messagesHandlers(dependencies),
           ...questsHandlers(dependencies),
           ...ritualsHandlers(dependencies),
+          ...connectorHandlers(commands, connectors),
+          ...vaultHandlers(commands, vault, connectors),
           AddBrowsableRoot: (add) => change(addBrowsableRoot(add.path)),
           AddCredit: (given) =>
             commands.run(addCredit({ accountId: given.accountId, harness: given.harness }, given.amount)),
@@ -201,8 +221,19 @@ export interface ServiceOptions {
   readonly attachmentsRoot?: string;
   /** The computer's name, offered as the host's name until the owner chooses one; the machine's own when left out. */
   readonly computerName?: string;
-  /** The connector gateway; one that offers no connector when left out, until the connectors are built (CHG-0441). */
+  /** The servers of the connectors; none is reachable when left out, until the backends are built (connectors blueprint, Order 4). */
+  readonly connectorBackends?: Layer.Layer<ConnectorBackends>;
+  /** The catalog of connectors the Charter offers; Composio and Apple apps when left out. */
+  readonly connectorCatalog?: ReadonlyArray<CatalogEntry>;
+  /**
+   * The connector gateway, replacing the service's own over the stored connectors: a stand-in for a test of what stands
+   * on the gateway, such as Code Mode (CHG-0441). Left out, threads use the connectors the owner installed.
+   */
   readonly connectorGateway?: Layer.Layer<ConnectorGateway>;
+  /** The platform the host runs on, which Apple apps needs to be macOS; the process's own when left out. */
+  readonly connectorPlatform?: NodeJS.Platform;
+  /** The Vault, which the connectors read secrets from; the service's own, adapted to the gateway's port, when left out. */
+  readonly connectorVault?: Layer.Layer<VaultPort>;
   /** Deploys the relay to the Cloudflare account a token reaches (device-pairing, own relay); the real deployment when left out. */
   readonly deployOwnRelay?: (token: string) => Promise<DeployResult>;
   readonly filename: string;
@@ -213,6 +244,8 @@ export interface ServiceOptions {
   readonly homeFolder: string;
   /** The updater of the app this host runs in, for updating the host from a paired device; none when left out. */
   readonly hostUpdater?: Layer.Layer<HostUpdater>;
+  /** The key holders the Vault tries, in order; the platform's own and the key file when left out (ADR 0022). */
+  readonly keyCustodies?: ReadonlyArray<KeyCustody>;
   /** The Worker's name on the owner's Cloudflare account; "outlore-relay" when left out. */
   readonly ownRelayWorkerName?: string;
   /** Where the model price table is read from; none, so the snapshot alone, when left out (decision record 0014). */
@@ -232,10 +265,22 @@ export interface ServiceOptions {
  */
 export const serviceLayer = (options: ServiceOptions) => {
   const attachmentsRoot = options.attachmentsRoot ?? join(dirname(options.filename), "attachments");
+  // The Vault, made and probed at start; it needs the harness adapters' denial reports (ADR 0022). The connectors'
+  // port over it is built from this one instance, so a stand-in given as `connectorVault` replaces only the port.
+  const vault = vaultLayer(vaultFolderOf(dirname(options.filename)), options.keyCustodies).pipe(
+    Layer.provide(options.harness),
+  );
+  const vaultFoundation =
+    options.connectorVault === undefined
+      ? // One build of the Vault feeds both its own service and the gateway's port.
+        vaultPortLayer.pipe(Layer.provideMerge(vault))
+      : Layer.mergeAll(vault, options.connectorVault);
   const foundation = Layer.mergeAll(
     changesLayer,
     endpointsLayer,
-    connectorsLayer(options.connectorGateway),
+    connectorsLayer,
+    vaultFoundation,
+    options.connectorBackends ?? unbuiltBackendsLayer,
     options.harness,
     options.harnessTools ?? fakeHarnessToolsLayer(),
     Layer.succeed(ScratchRoot, options.scratchRoot),
@@ -249,7 +294,18 @@ export const serviceLayer = (options: ServiceOptions) => {
     Layer.provideMerge(priceTableLayer.pipe(Layer.provide(options.priceSource ?? noPriceSourceLayer))),
     Layer.provideMerge(storeLayer(options.filename)),
   );
+  // The connectors come after the approvals, which they ask through, and before the threads, whose turns take each
+  // thread's snapshot of its connector tools from them.
+  const connectorServices = connectorServicesLayer({
+    ...(options.connectorCatalog === undefined ? {} : { catalog: options.connectorCatalog }),
+    ...(options.connectorPlatform === undefined ? {} : { platform: options.connectorPlatform }),
+  }).pipe(Layer.provide(Layer.mergeAll(connectorAskingLayer, connectorNoticesLayer)));
+  const gateway =
+    options.connectorGateway === undefined
+      ? connectorServices
+      : Layer.mergeAll(connectorServices, options.connectorGateway);
   const running = threadsLayer.pipe(
+    Layer.provideMerge(gateway),
     Layer.provideMerge(Layer.mergeAll(approvalsLayer, suggestionsLayer)),
     Layer.provideMerge(foundation),
   );

@@ -1,0 +1,21 @@
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+
+/** A path resolved through links as far as it exists; the rest is taken as written. */
+const realOf = (path: string): string => {
+  try {
+    return realpathSync(path);
+  } catch {
+    const parent = dirname(path);
+    return parent === path ? path : join(realOf(parent), path.slice(parent.length).replace(/^[\\/]+/, ""));
+  }
+};
+
+/**
+ * Whether a path lies in the Vault's folder, after resolving links: Claude Code's own Read, Grep and Glob run outside
+ * its command sandbox, so Outlore's prompt policy refuses any whose path is here (ADR 0022).
+ */
+export const isInsideVaultFolder = (folder: string, path: string, cwd: string) => {
+  const inside = relative(realOf(resolve(folder)), realOf(resolve(cwd, path)));
+  return inside === "" || (!inside.startsWith("..") && !isAbsolute(inside));
+};

@@ -33,6 +33,7 @@ import { addUsage, usageOf } from "./openCodeUsage.ts";
 import { sweepOrphans } from "./processTree.ts";
 import { contextOf } from "./tokenUsage.ts";
 import { toolServerName } from "./toolNames.ts";
+import { readOpenCodeVaultDenial } from "./vaultDenials.ts";
 
 // OpenCode through the Agent Client Protocol (ADR 0008; `opencode acp` of OpenCode 2.2.0, probed 2026-11-07):
 // one process per thread, one ACP session per Outlore thread.
@@ -438,5 +439,6 @@ export const makeOpenCodeHarness = (options: OpenCodeOptions) =>
         ...adapter,
         containmentOf: (): Containment => (options.sandbox === null ? "Unprotected" : "Sandboxed"),
         readPlanLimits: (_harness, configDirectory) => readOpenCodePlanLimits(options, configDirectory),
+        readVaultDenial: (harness, folder) => readOpenCodeVaultDenial(options, harness, folder),
       }) satisfies HarnessAdapter,
   );

@@ -56,6 +56,8 @@ Latest handoffs:
 
 - To resume the nested corner marks in the sidebar and the errand guide's alignment to the quest's left border (CHG-0530; committed and pushed; open: the owner's look in a window or on a phone, whether "error" meant the Failed state, and whether the stacked errand branch lines are acceptable), read the [current handoff](.agents/handoffs/2026-11-19-0940-nested-corner-marks.md). Handoffs are shared and committed.
 
+- To resume the connectors quest (CHG-0530 to CHG-0532; the Vault and read-denial probes merged with the connector gateway on `mission/connectors-composio-and-apple-apps-02a36299`; open: the Vault's owner requests and the Claude denial stamp, then the HTTP and stdio backends), read the [current handoff](.agents/handoffs/2026-11-19-1100-connector-gateway.md). Handoffs are shared and committed.
+
 - To resume the code simplification across the codebase (CHG-0529; merged into `main`; open: the 28 sandbox-only test failures on the owner's machine, and which kept branches can go), read the [current handoff](.agents/handoffs/2026-11-19-0935-code-simplification-merged.md). Handoffs are shared and committed.
 
 - To resume the quest header's Mark as done checkbox and quest icon, with the quest panel's two buttons and the edge handle removed (CHG-0527; committed; open: the owner's look in a window and on a phone, and whether the phone header gets Mark as done), read the [current handoff](.agents/handoffs/2026-11-19-0731-quest-header-buttons.md). Handoffs are shared and committed.

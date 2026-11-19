@@ -69,6 +69,7 @@ export const seatbeltIn = (real: string) => (root: string) =>
     command: "/usr/bin/sandbox-exec",
     computerConfigHome: join(real, "config"),
     computerDataHome: join(real, "share"),
+    hidden: [],
     kind: "seatbelt",
     root: join(root, "opencode-sandbox"),
   }) as const;
@@ -79,6 +80,7 @@ export const seatbelt: OpenCodeSandbox = {
   command: "/usr/bin/sandbox-exec",
   computerConfigHome: "/home/me/.config",
   computerDataHome: "/home/me/.local/share",
+  hidden: [],
   kind: "seatbelt",
   root: "/state/opencode",
 };

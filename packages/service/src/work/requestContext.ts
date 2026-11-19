@@ -4,6 +4,7 @@ import type { SqlClient, SqlError } from "effect/sql";
 import type { Changes, Harness, ServiceFailure } from "../core/index.ts";
 import type { HarnessTools } from "../harness/index.ts";
 import type { makeHostControl, RemoteConfig } from "../remote/index.ts";
+import type { VaultFolder } from "../vault/index.ts";
 import type { AttachmentsRoot } from "./attachments.ts";
 import type { CommandRunner, Commands } from "./commands.ts";
 import type { PlanLimits } from "./planLimits.ts";
@@ -20,6 +21,7 @@ export type RequestServices =
   | AttachmentsRoot
   | RemoteConfig
   | PlanLimits
+  | VaultFolder
   | Commands;
 
 /** A typed request table whose environments are supplied by the router. */

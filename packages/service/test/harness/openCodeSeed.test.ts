@@ -55,6 +55,7 @@ describe.skipIf(!canApplySeatbelt)("seeding a sandboxed OpenCode's own data copy
       command: "/usr/bin/sandbox-exec",
       computerConfigHome: join(root, "config"),
       computerDataHome: join(root, "share"),
+      hidden: [],
       kind: "seatbelt",
       root: join(root, "service", "opencode-sandbox"),
     };

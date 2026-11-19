@@ -1,4 +1,5 @@
 import {
+  ClientFrameJson,
   type Request,
   type RequestTag,
   type ResultOf,
@@ -210,7 +211,9 @@ export class ServiceClient {
     const id = String(++this.nextId);
     return new Promise((resolve, reject) => {
       this.pending.set(id, { reject, resolve: resolve as (value: unknown) => void, tag: request._tag });
-      socket.send(JSON.stringify({ id, request }));
+      // Encoded through the frame codec, not plain JSON: a Redacted field (a Vault secret) then travels as what was
+      // typed, for the service's decoder to wrap again, instead of as its "<redacted>" placeholder.
+      socket.send(Schema.encodeSync(ClientFrameJson)({ id, request }));
     });
   }
 }

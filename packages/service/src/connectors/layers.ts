@@ -1,7 +1,6 @@
 import { Layer } from "effect";
+import { connectorCallsLayer } from "./calls.ts";
 import { codeExecutorLayer } from "./codeExecutor.ts";
-import { type ConnectorGateway, noConnectorsLayer } from "./gateway.ts";
 
-/** The Code Mode executor and the service's connector gateway. */
-export const connectorsLayer = (gateway?: Layer.Layer<ConnectorGateway>) =>
-  Layer.mergeAll(codeExecutorLayer, gateway ?? noConnectorsLayer);
+/** What the connectors share before any thread runs: the Code Mode executor and the registry of calls underway. */
+export const connectorsLayer = Layer.mergeAll(codeExecutorLayer, connectorCallsLayer);

@@ -1,6 +1,6 @@
 import { dirname, resolve as resolvePath } from "node:path";
 import type { ApprovalLevel } from "@outlore/contracts";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { fieldOf, Harness, readSettings } from "../core/index.ts";
 import { folderEscapeOf, resolvedFolderOf, workspaceWorktreesOf } from "../harness/index.ts";
@@ -13,10 +13,23 @@ import {
   reasonOf,
   targetOf,
 } from "../policy/index.ts";
+import { isInsideVaultFolder, VaultFolder } from "../vault/index.ts";
 import type { Decision } from "./approvalContracts.ts";
 import { type Asked, allowingOutcomes, type makeQuestions, textOf } from "./questions.ts";
 import { readAuthorityHarness } from "./turnAdmission.ts";
 import { ScratchRoot, threadFolderOf } from "./workspaces.ts";
+
+/** The built-in tools that read files and name a path in one of these fields. */
+const readTools: ReadonlyArray<string> = ["Read", "Grep", "Glob", "NotebookRead"];
+const pathFields = ["file_path", "path", "notebook_path", "pattern"] as const;
+
+/** Whether a built-in read tool's input names a path in the Vault's folder, relative paths taken from the thread's folder. */
+const isReadOfVault = (vaultFolder: string, toolName: string, input: unknown, folder: string | null) =>
+  readTools.includes(toolName) &&
+  pathFields.some((field) => {
+    const path = fieldOf(input, field);
+    return typeof path === "string" && isInsideVaultFolder(vaultFolder, path, folder ?? "/");
+  });
 
 interface PromptPolicyDependencies {
   readonly allowedFolderOf: (id: string) => string | undefined;
@@ -41,6 +54,8 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
   const sql = yield* SqlClient.SqlClient;
   const harness = yield* Harness;
   const scratchRoot = yield* ScratchRoot;
+  // Absent in checks that build no Vault; then no path is refused for lying in it.
+  const vaultFolder = yield* Effect.serviceOption(VaultFolder);
   /**
    * The folders a file change must lie in one of to count as inside the thread's: its own, unless it is a link or
    * resolves outside its root (harness/threadFolder.ts), together with the git worktrees git lists for the
@@ -92,6 +107,11 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
       // A prompt from a harness still exiting after Stop runs nothing and asks nobody.
       if ((yield* readTurnId(threadId)) === null)
         return { isAllowed: false, text: "This thread is not at work, so nothing runs." } satisfies Decision;
+      const stored = yield* threadFolderOf(threadId).pipe(Effect.provideService(ScratchRoot, scratchRoot));
+      // Claude Code's own Read, Grep and Glob run outside its command sandbox, so its denial of the Vault's folder does
+      // not reach them (ADR 0022): a call naming a path in the folder is refused, whatever the level or any grant.
+      if (Option.isSome(vaultFolder) && isReadOfVault(vaultFolder.value, toolName, input, stored))
+        return { isAllowed: false, text: "The Vault's folder is closed to threads." } satisfies Decision;
       // What an allowance or a grant names: the file or command the action acts on.
       const target = targetOf(toolName, input);
       const isEscape =

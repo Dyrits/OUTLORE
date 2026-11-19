@@ -11,6 +11,7 @@ import type {
   TokenUsage,
 } from "@outlore/contracts";
 import { Context, Effect, Schema } from "effect";
+import type { VaultDenial } from "./vaultFolder.ts";
 
 /** What a harness reports while a turn runs. */
 export type HarnessEvent =
@@ -68,6 +69,12 @@ export type ApprovalTerms = {
 
 /** What a thread may use in a turn, and how its actions are approved (CHG-0031). */
 export type ThreadAccess = ApprovalTerms & {
+  /**
+   * The connector tools the thread's harness lists this turn, by the name it lists them under (`<connector>__<tool>`);
+   * none under Code Mode. A harness lists its tools when its process starts, so a change of them restarts the process:
+   * they are part of every restart key.
+   */
+  readonly connectorTools: ReadonlyArray<string>;
   /** Whether the thread works in a workspace, whose sandbox may fetch dependencies (CHG-0034). */
   readonly isInWorkspace: boolean;
   /** The thread's own MCP endpoint serving the thread tools, and Claude Code's permission prompt tool (ADR 0005). */
@@ -240,7 +247,20 @@ export interface HarnessAdapter {
     harness: HarnessName,
     configDirectory: string | null,
   ) => Effect.Effect<PlanLimitsReport | null, HarnessFailure>;
+  /**
+   * Tries to read a marker file in the Vault's folder from inside this harness's sandbox, with an outside control, and
+   * reports whether the sandbox hides it (ADR 0022). Left out, the harness counts as one that runs no enforced sandbox,
+   * where every action, a read of the folder included, asks the owner.
+   */
+  readonly readVaultDenial?: (harness: HarnessName, folder: string) => Effect.Effect<VaultDenial>;
   readonly runTurn: (request: TurnRequest) => Effect.Effect<TurnOutcome, HarnessFailure>;
+  /**
+   * Runs the live probe of the Vault's folder denial, the one only a live model turn can verify (Claude Code), and
+   * keeps its result as the stamp readVaultDenial then reads (ADR 0022). Left out, the harness has no such probe and
+   * its denial stays whatever readVaultDenial reports. Only the owner asks for it: it spends a little of their own
+   * account.
+   */
+  readonly runVaultDenialLive?: (harness: HarnessName, folder: string) => Effect.Effect<VaultDenial>;
   /**
    * Writes a message into the thread's running turn; false when no turn runs or the harness cannot take one
    * mid-turn. Its `Delivered` event follows once the turn takes it in; one not taken in by the turn's end is
@@ -262,12 +282,22 @@ export const routeHarnesses = (adapters: Record<HarnessName, HarnessAdapter>): H
     containmentOf: (harness, level) => adapters[harness].containmentOf?.(harness, level) ?? "Unprotected",
     interrupt: (threadId) => running.get(threadId)?.interrupt(threadId) ?? Effect.succeed(false),
     readPlanLimits: (harness, configDirectory) => adapters[harness].readPlanLimits(harness, configDirectory),
+    readVaultDenial: (harness, folder) =>
+      adapters[harness].readVaultDenial?.(harness, folder) ??
+      Effect.succeed({ harness, reason: "It runs no enforced sandbox, so every action asks.", status: "AsksFirst" }),
     runTurn: (request) =>
       Effect.suspend(() => {
         const adapter = adapters[request.harness];
         running.set(request.threadId, adapter);
         return adapter.runTurn(request);
       }).pipe(Effect.ensuring(Effect.sync(() => running.delete(request.threadId)))),
+    runVaultDenialLive: (harness, folder) =>
+      adapters[harness].runVaultDenialLive?.(harness, folder) ??
+      Effect.succeed({
+        harness,
+        reason: "This harness has no live probe of the Vault's folder.",
+        status: "Unverified",
+      }),
     steer: (threadId, message) => running.get(threadId)?.steer(threadId, message) ?? Effect.succeed(false),
   };
 };

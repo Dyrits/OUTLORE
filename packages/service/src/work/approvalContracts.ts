@@ -1,6 +1,7 @@
 import type { Answer, Choice, Question } from "@outlore/contracts";
 import { Context, type Effect } from "effect";
 import type { SqlError } from "effect/sql";
+import type { ToolUse } from "../connectors/index.ts";
 import type { HarnessPrompt, ServiceFailure } from "../core/index.ts";
 
 /** What a thread passes to `request_approval`: one action, said in plain language, with its exact target. */
@@ -69,6 +70,11 @@ export class Approvals extends Context.Service<
       toolUseId?: string | null,
     ) => Effect.Effect<Decision>;
     readonly requestApproval: (threadId: string, request: ApprovalRequest) => Effect.Effect<Decision>;
+    /**
+     * Asks about one call to a connector's tool that is not read-only, or is not classified: a standing permission of the
+     * capability `useConnectorTool` for that tool of that connector answers it, else Allow, Always allow or Deny.
+     */
+    readonly askToolUse: (threadId: string, use: ToolUse) => Effect.Effect<Decision>;
     /**
      * Asks once, Allow or Deny, before a harness starts in a thread folder that is a link: never saves a standing
      * permission, and none answers it. Allowed with `startsIn`, the edit check counts that real path as the thread's

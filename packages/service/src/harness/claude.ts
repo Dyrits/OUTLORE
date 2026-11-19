@@ -1,5 +1,5 @@
 import { tmpdir } from "node:os";
-import type { ApprovalLevel, BillingKind } from "@outlore/contracts";
+import type { ApprovalLevel, BillingKind, HarnessName } from "@outlore/contracts";
 import { type Duration, Effect, Layer, Queue } from "effect";
 import {
   type Containment,
@@ -50,6 +50,7 @@ import {
 import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
 import { contextOf } from "./tokenUsage.ts";
 import { toolServerName } from "./toolNames.ts";
+import { readClaudeVaultDenial, runClaudeVaultDenialLive } from "./vaultDenials.ts";
 import { listThreadWorktrees } from "./worktrees.ts";
 
 // Claude Code through `claude -p` in stream-json mode (ADR 0008; CHG-0027): one process per thread.
@@ -149,6 +150,8 @@ const claudeProtocolOf = (
       accessArgsOf(request.access, request.context, options, listThreadWorktrees(request)),
       // The tools are listed when the process starts, so a change of Code Mode restarts it.
       request.access.usesCodeMode,
+      // So are the connector tools it may run unasked and lists (connectors blueprint, Open: tool listing at a turn's start).
+      request.access.connectorTools,
       request.configDirectory,
       request.cwd,
       // Where the folder really points: a link pointed elsewhere restarts the process, whose start checks it again.
@@ -366,7 +369,10 @@ export const makeClaudeHarness = Effect.fnUntraced(function* (options: ClaudeOpt
   // (core/sandbox.ts); at "Also commands and edits" it runs without it, and every prompt asks as for an unprotected harness.
   const containmentOf = (_harness: unknown, level: ApprovalLevel): Containment =>
     isSandboxedOf(level, options) ? "Sandboxed" : "Unprotected";
-  return { ...adapter, containmentOf, readPlanLimits } satisfies HarnessAdapter;
+  const readVaultDenial = (harness: HarnessName, folder: string) => readClaudeVaultDenial(options, harness, folder);
+  const runVaultDenialLive = (harness: HarnessName, folder: string) =>
+    runClaudeVaultDenialLive(options, harness, folder);
+  return { ...adapter, containmentOf, readPlanLimits, readVaultDenial, runVaultDenialLive } satisfies HarnessAdapter;
 });
 
 /** Runs each thread in one long-lived `claude -p` stream-json process (CHG-0027). */

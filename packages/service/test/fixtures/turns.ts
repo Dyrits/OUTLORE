@@ -7,6 +7,7 @@ export const turnRequestOf = (fields: Partial<TurnRequest> = {}): TurnRequest =>
   access: {
     approvalLevel: "RiskyOnly",
     canWorkOutsideSandbox: false,
+    connectorTools: [],
     containment: "Sandboxed",
     isInWorkspace: false,
     mcpUrl: "http://127.0.0.1:9/mcp/none",
