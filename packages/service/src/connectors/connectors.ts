@@ -1,4 +1,9 @@
-import type { ApplePermissionReport, ConnectorCard } from "@outlore/contracts";
+import type {
+  ApplePermissionReport,
+  ConnectorCard,
+  ConnectorChoiceCard,
+  ConnectorChoiceLevel,
+} from "@outlore/contracts";
 import { Context, Effect, Layer } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { Changes, invalid, notFound, ServiceFailure } from "../core/index.ts";
@@ -11,6 +16,7 @@ import { type CatalogEntry, defaultAppsOf, entryOf } from "./catalog.ts";
 import { defaultCatalog } from "./catalogEntries.ts";
 import { type CallDependencies, listOfferedTools, makeCall, markRefused, recordFailure } from "./connectorCall.ts";
 import { type CardDependencies, cardOf } from "./connectorCards.ts";
+import { choiceCardsOf } from "./connectorChoiceCards.ts";
 import {
   chooseApps,
   installConnector,
@@ -41,6 +47,10 @@ export class Connectors extends Context.Service<
     readonly card: (connectorId: string) => Effect.Effect<ConnectorCard, ServiceFailure | SqlError.SqlError>;
     /** Every connector the catalog offers, as cards. */
     readonly cards: Effect.Effect<ReadonlyArray<ConnectorCard>, SqlError.SqlError>;
+    /** Every installed connector's own choice at one level, and what Inherit gives there: a realm's or a quest's panel. */
+    readonly choicesAt: (
+      level: ConnectorChoiceLevel,
+    ) => Effect.Effect<ReadonlyArray<ConnectorChoiceCard>, ServiceFailure | SqlError.SqlError>;
     /** Chooses which apps are on. Runs in the command's transaction. */
     readonly chooseApps: (
       request: Parameters<typeof chooseApps>[1],
@@ -166,6 +176,7 @@ const make = (options: ConnectorsOptions) =>
       beginTurn,
       card,
       cards: Effect.forEach(catalog, (entry) => cardOf(cardDependencies, entry)),
+      choicesAt: (level) => choiceCardsOf(cardDependencies, level),
       chooseApps: (request) => chooseApps(operations, request),
       clearNeeds: (connectorId) => writeNeeds(connectorId, null).pipe(provided, Effect.andThen(changes.publish)),
       eraseSecrets,

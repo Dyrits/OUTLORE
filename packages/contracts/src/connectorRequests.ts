@@ -88,6 +88,37 @@ export const ConnectorSwitchLevel = Schema.Union([
 ]);
 export type ConnectorSwitchLevel = typeof ConnectorSwitchLevel.Type;
 
+/** Where a panel reads the choices: the Borderlands, a realm or a quest (an errand follows its quest). */
+export const ConnectorChoiceLevel = Schema.Union([
+  Schema.TaggedStruct("Borderlands", {}),
+  Schema.TaggedStruct("Realm", { realmId: WorkspaceId }),
+  Schema.TaggedStruct("Quest", { missionId: MissionId }),
+]);
+export type ConnectorChoiceLevel = typeof ConnectorChoiceLevel.Type;
+
+/** An installed connector's choice at one level, as the realm's and the quest's panels show it. */
+export const ConnectorChoiceCard = Schema.Struct({
+  /** The level's own choice, or null for Inherit. */
+  choice: Schema.NullOr(ConnectorChoice),
+  connectorId: Schema.String,
+  /** What Inherit gives at this level, ignoring the global switch: the placement's choice, else On. */
+  inherited: ConnectorChoice,
+  /** Where an inherited choice comes from when one is stored there, or null when nothing is stored above and it is On. */
+  inheritedFrom: Schema.NullOr(Schema.Literals(["Borderlands", "Realm"])),
+  /** The global switch: off, the connector is unavailable everywhere whatever the level says. */
+  isEnabled: Schema.Boolean,
+  name: Schema.String,
+  /** Ready, or Needs connecting: a choice can be made for a connector that is not yet connected. */
+  state: ConnectorState,
+});
+export type ConnectorChoiceCard = typeof ConnectorChoiceCard.Type;
+
+/**
+ * Reads every installed connector's choice at one level: what a realm's panel and a quest's panel list. A connector being
+ * removed is left out.
+ */
+export const ReadConnectorChoices = Schema.TaggedStruct("ReadConnectorChoices", { level: ConnectorChoiceLevel });
+
 /**
  * Sets a connector's switch at one level: On or Off, or Reset to Inherit. The global switch has no Inherit. Off stops
  * the connector's calls at once; On and Reset apply from a thread's next turn.
@@ -133,6 +164,7 @@ export const RequestApplePermission = Schema.TaggedStruct("RequestApplePermissio
 /** The requests that read or change connectors. */
 export const connectorRequests = [
   ListConnectors,
+  ReadConnectorChoices,
   InstallConnector,
   RemoveConnector,
   SetConnectorSwitch,
@@ -146,6 +178,7 @@ export const connectorResults = {
   ChooseAppleApps: ConnectorCard,
   InstallConnector: ConnectorCard,
   ListConnectors: Schema.Array(ConnectorCard),
+  ReadConnectorChoices: Schema.Array(ConnectorChoiceCard),
   RemoveConnector: ConnectorCard,
   RequestApplePermission: ApplePermissionReport,
   SetConnectorSwitch: ConnectorCard,

@@ -193,3 +193,15 @@ export const readSubject = Effect.fnUntraced(function* (threadId: string) {
     ? ({ _tag: "Chronicler" } satisfies Subject)
     : ({ _tag: "Quest", missionId: row.missionId, realmId: row.realmId } satisfies Subject);
 });
+
+/**
+ * Where a quest stands now: its top thread's realm (null for the Borderlands) and whether it is Chronicler's, read at the
+ * time of asking so a quest's move needs no migration. Null when the quest does not exist.
+ */
+export const readPlacement = Effect.fnUntraced(function* (missionId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [row] = yield* sql<{ isGuildmaster: number; realmId: string | null }>`
+    SELECT m.is_guildmaster AS isGuildmaster, top.workspace_id AS realmId
+    FROM missions m JOIN threads top ON top.id = m.top_thread_id WHERE m.id = ${missionId}`;
+  return row === undefined ? null : { isChronicler: row.isGuildmaster === 1, realmId: row.realmId };
+});

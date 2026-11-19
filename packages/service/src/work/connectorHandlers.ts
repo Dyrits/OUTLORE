@@ -1,6 +1,7 @@
 import type {
   ChooseAppleApps,
   InstallConnector,
+  ReadConnectorChoices,
   RemoveConnector,
   RequestApplePermission,
   SetConnectorSwitch,
@@ -43,6 +44,7 @@ export const connectorHandlers = (commands: CommandRunner, connectors: Connector
           Effect.andThen(connectors.card(given.connectorId)),
         ),
     ListConnectors: () => connectors.cards,
+    ReadConnectorChoices: (given: typeof ReadConnectorChoices.Type) => connectors.choicesAt(given.level),
     RemoveConnector: (given: typeof RemoveConnector.Type) =>
       // Three steps that resume after a crash: unusable at once, then the Vault, then the rows and the permissions.
       stopping(given.connectorId, connectors.startRemoval(given.connectorId)).pipe(
