@@ -184,11 +184,12 @@ export function QuestSidebar({
           {thread?.spends}
           <Row icon="wallet" label="Quest budget" onPress={onOpenBudget} value={budgetValueOf(mission.budget)} />
           <Row icon="chart" label="Quest usage" value={usedTextOf(mission.consumption)} />
-          {/* A Ritual is never marked done or archived: it is switched off or deleted from its controls above. */}
+          {/* Mark as done and Archive are in the quest's header; only an archived quest's Reopen stays here. A Ritual is never marked done or archived: it is switched off or deleted from its controls above. */}
           {thread?.sideQuest != null ? (
             <View style={local.does}>{thread.sideQuest.action}</View>
           ) : (
-            mission.ritual === null && (
+            mission.ritual === null &&
+            mission.state === "Archived" && (
               <View style={local.does}>
                 <MissionEndingActions client={client} isButtons={true} mission={mission} />
               </View>

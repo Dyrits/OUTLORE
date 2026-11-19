@@ -12,6 +12,13 @@ export const TopBarShown = createContext(false);
 /** Whether the window has a top bar, so a screen can leave out what the bar's icons already offer. */
 export const useHasTopBar = () => useContext(TopBarShown);
 
+/**
+ * The quest icon of a quest's header: whether the right-hand column shows the quest's own tab, and how a press shows or
+ * hides it. Null where the window has no such column (a narrow one, whose top bar has the panel's icon).
+ */
+export type QuestTabButton = { isOpen: boolean; onPress: () => void };
+export const QuestTabButtonContext = createContext<QuestTabButton | null>(null);
+
 export const QuestPanelSetter = createContext<(panel: ReactNode, title: string) => void>(() => {});
 
 /**

@@ -7,6 +7,7 @@ import {
   CompanionDockActions,
   CompanionTabOf,
   QuestPanelSetter,
+  QuestTabButtonContext,
   SidebarShown,
   TopBarShown,
 } from "../foundation/shellContext";
@@ -15,6 +16,7 @@ import type { RightPanel } from "../foundation/useRightPanel";
 import { ChroniclerColumn, chroniclerColumnWidth } from "./chroniclerDock";
 import { EdgeResizer } from "./edgeResizer";
 import type { Location, NavigationEvent } from "./location";
+import { isQuestTabOpen, panelAfterQuestIcon } from "./questTab";
 import type { RealmListing } from "./questTree";
 import {
   chroniclerWidthKey,
@@ -158,6 +160,12 @@ export function Shell(
   const hasQuestPanel = !isChroniclerFull && details !== null && questPanel !== null;
   const activeTab = rightPanel.content?.tab ?? "quest";
   const isColumnOpen = isCompanionShown || (hasQuestPanel && details.isOpen);
+  const isQuestTabShown = isQuestTabOpen({ activeTab, hasQuestPanel, isColumnOpen });
+  const questTabButton = hasQuestPanel
+    ? { isOpen: isQuestTabShown, onPress: () => rightPanel.show(panelAfterQuestIcon(isQuestTabShown)) }
+    : null;
+  // An open quest has its own icon in its header, so the round handle on the column's edge is left out there.
+  const hasEdgeHandle = hasQuestPanel ? details.isPinned !== true && props.openMission === null : hasCompanion;
   const toggleColumn = () => {
     if (isColumnOpen) rightPanel.show(null);
     else if (hasQuestPanel) rightPanel.show({ tab: "quest" });
@@ -276,86 +284,88 @@ export function Shell(
         <CompanionDockActions.Provider value={companionDock}>
           <CompanionTabOf.Provider value={isCompanionShown ? pillId : null}>
             <TopBarShown.Provider value={true}>
-              <View style={local.window}>
-                <TopBar chronicler={chroniclerToggle} details={null} />
-                <View style={local.body}>
-                  <View style={local.frame}>
-                    {!isHidden && (
-                      <Sidebar
-                        {...props}
-                        onOpenMission={props.onOpenMission}
-                        onOpenRealmQuests={props.onOpenRealmQuests}
-                        onOpenThread={props.onOpenThread}
-                        openMission={isChroniclerFull ? null : props.openMission}
-                        openThread={isChroniclerFull ? null : props.openThread}
-                        width={railWidth}
-                      />
-                    )}
-                    {!isHidden && (
-                      <EdgeResizer
-                        label="Resize the sidebar"
-                        leastWidth={minRailWidth}
-                        onChange={setRailWidth}
-                        onRelease={rememberRailWidth}
-                        side="end"
-                        width={railWidth}
-                        windowWidth={width}
-                      />
-                    )}
-                    <Pressable
-                      accessibilityLabel={isHidden ? "Show sidebar (⌘B)" : "Hide sidebar (⌘B)"}
-                      accessibilityRole="button"
-                      onPress={toggle}
-                      style={({ pressed }) => [
-                        local.handle,
-                        isHidden ? local.handleTab : { left: railWidth - handleSize / 2 },
-                        pressed && local.handlePressed,
-                      ]}
-                    >
-                      <PanelIcon />
-                    </Pressable>
-                    <View style={local.panel}>
-                      {props.children}
-                      {chroniclerFull}
-                    </View>
-                  </View>
-                  {wideColumn}
-                  {isChroniclerColumn && (
-                    <ChroniclerColumn
-                      edge={
+              <QuestTabButtonContext.Provider value={questTabButton}>
+                <View style={local.window}>
+                  <TopBar chronicler={chroniclerToggle} details={null} />
+                  <View style={local.body}>
+                    <View style={local.frame}>
+                      {!isHidden && (
+                        <Sidebar
+                          {...props}
+                          onOpenMission={props.onOpenMission}
+                          onOpenRealmQuests={props.onOpenRealmQuests}
+                          onOpenThread={props.onOpenThread}
+                          openMission={isChroniclerFull ? null : props.openMission}
+                          openThread={isChroniclerFull ? null : props.openThread}
+                          width={railWidth}
+                        />
+                      )}
+                      {!isHidden && (
                         <EdgeResizer
-                          label="Resize Chronicler"
-                          leastWidth={chroniclerColumnWidth}
-                          onChange={setChroniclerWidth}
-                          onRelease={(next) => rememberPaneWidth(chroniclerWidthKey, next)}
-                          side="start"
-                          width={chroniclerWidth}
+                          label="Resize the sidebar"
+                          leastWidth={minRailWidth}
+                          onChange={setRailWidth}
+                          onRelease={rememberRailWidth}
+                          side="end"
+                          width={railWidth}
                           windowWidth={width}
                         />
-                      }
-                      width={chroniclerWidth}
-                    >
-                      {chroniclerChat}
-                    </ChroniclerColumn>
-                  )}
-                  {(hasQuestPanel ? details.isPinned !== true : hasCompanion) && (
-                    <Pressable
-                      accessibilityLabel={isColumnOpen ? "Hide quest panel" : "Show quest panel"}
-                      accessibilityRole="button"
-                      onPress={toggleColumn}
-                      style={({ pressed }) => [
-                        local.handle,
-                        isColumnOpen
-                          ? { right: questWidth - handleSize / 2 + chroniclerOffset }
-                          : [local.endHandleTab, { right: chroniclerOffset }],
-                        pressed && local.handlePressed,
-                      ]}
-                    >
-                      <PanelIcon side="right" />
-                    </Pressable>
-                  )}
+                      )}
+                      <Pressable
+                        accessibilityLabel={isHidden ? "Show sidebar (⌘B)" : "Hide sidebar (⌘B)"}
+                        accessibilityRole="button"
+                        onPress={toggle}
+                        style={({ pressed }) => [
+                          local.handle,
+                          isHidden ? local.handleTab : { left: railWidth - handleSize / 2 },
+                          pressed && local.handlePressed,
+                        ]}
+                      >
+                        <PanelIcon />
+                      </Pressable>
+                      <View style={local.panel}>
+                        {props.children}
+                        {chroniclerFull}
+                      </View>
+                    </View>
+                    {wideColumn}
+                    {isChroniclerColumn && (
+                      <ChroniclerColumn
+                        edge={
+                          <EdgeResizer
+                            label="Resize Chronicler"
+                            leastWidth={chroniclerColumnWidth}
+                            onChange={setChroniclerWidth}
+                            onRelease={(next) => rememberPaneWidth(chroniclerWidthKey, next)}
+                            side="start"
+                            width={chroniclerWidth}
+                            windowWidth={width}
+                          />
+                        }
+                        width={chroniclerWidth}
+                      >
+                        {chroniclerChat}
+                      </ChroniclerColumn>
+                    )}
+                    {hasEdgeHandle && (
+                      <Pressable
+                        accessibilityLabel={isColumnOpen ? "Hide quest panel" : "Show quest panel"}
+                        accessibilityRole="button"
+                        onPress={toggleColumn}
+                        style={({ pressed }) => [
+                          local.handle,
+                          isColumnOpen
+                            ? { right: questWidth - handleSize / 2 + chroniclerOffset }
+                            : [local.endHandleTab, { right: chroniclerOffset }],
+                          pressed && local.handlePressed,
+                        ]}
+                      >
+                        <PanelIcon side="right" />
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
-              </View>
+              </QuestTabButtonContext.Provider>
             </TopBarShown.Provider>
           </CompanionTabOf.Provider>
         </CompanionDockActions.Provider>

@@ -81,6 +81,7 @@ Sidebar drag-and-drop and confirmation were agreed on 2026-11-10 (CHG-0133) and 
 - An archived mission leaves the main list and appears in the Archived view, from which the user can reopen it.
 - Writing in a thread of an archived mission brings the mission back to the active list and the state worked out from its threads.
 - Archiving a mission adds an entry to its journal (see [mission-journal](../mission-journal/specifications.md#when-a-mission-ends)), and `find_missions` still matches archived missions.
+- Update, 2026-11-19 (CHG-0527): on a wide window the quest's header, after its title and state dot, has **Archive**, **Mark as done** (a checkbox; ticked once done, and pressing it again reopens the quest), a vertical separator, and the quest icon, which opens the right-hand column on its Quest tab and closes it when pressed again. The column's round edge handle is not shown while a quest is open, and the quest panel no longer repeats Mark as done and Archive (an archived quest's panel keeps Reopen).
 - After the owner's quest-archive action succeeds, the interface returns to that quest's realm overview, or the Borderlands for a quest with no realm. Cancel and failure leave the current view unchanged.
 
 ### Creating a realm

@@ -1,12 +1,12 @@
 import type { BudgetScope, MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { FlatList, Pressable, Text, useWindowDimensions, View } from "react-native";
 import { BudgetScreen, BudgetStopCard } from "../editors/budgets";
 import type { ServiceClient } from "../foundation/client";
 import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
 import { countedOf } from "../foundation/labels";
 import { usePageNavigation } from "../foundation/pageNavigation";
-import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
+import { QuestTabButtonContext, useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -16,6 +16,7 @@ import { EndingConfirmation } from "../quests/missionActions";
 import { MissingFolderNotice } from "../realms/workspaces";
 import { ArchiveButton } from "../ui/archiveButton";
 import { Composer, StateIndicator } from "../ui/controls";
+import { DoneButton, HeaderSeparator, QuestPanelButton } from "../ui/questHeaderButtons";
 import { CommentTray } from "./commentViews";
 import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
@@ -71,10 +72,17 @@ function ThreadPane({
   const { canOpenBeneath, canResume, canStop, isInTurn } = thread.actions;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
   // Only a quest's own thread archives it, and not a Ritual's quest or one already archived.
-  const archive =
-    thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived"
-      ? () => ending.start("Archived")
-      : null;
+  const isOwnQuest = thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived";
+  const archive = isOwnQuest ? () => ending.start("Archived") : null;
+  // Mark as done is a checkbox: pressing it again takes the mark back (ReopenMission, as the Archive's Reopen does).
+  const isDone = detail.mission.state === "Done";
+  const markDone = isOwnQuest
+    ? () =>
+        isDone
+          ? ending.run(() => client.request({ _tag: "ReopenMission", missionId: detail.mission.id }))
+          : ending.start("Done")
+    : null;
+  const questTab = useContext(QuestTabButtonContext);
   return (
     <CommentsProvider value={comments}>
       <View style={[styles.flex, styles.pane]}>
@@ -95,12 +103,24 @@ function ThreadPane({
                   {thread.title}
                 </Text>
                 <StateIndicator state={thread.state} />
+                {canResume && (
+                  <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
+                    <Text style={styles.link}>Resume</Text>
+                  </Pressable>
+                )}
                 {archive !== null && (
                   <ArchiveButton isDisabled={ending.isBusy} label="Archive quest" onPress={archive} />
                 )}
+                {markDone !== null && <DoneButton isDisabled={ending.isBusy} isDone={isDone} onPress={markDone} />}
+                {questTab !== null && (
+                  <>
+                    <HeaderSeparator />
+                    <QuestPanelButton isOpen={questTab.isOpen} onPress={questTab.onPress} />
+                  </>
+                )}
               </>
             )}
-            {canResume && (
+            {onBack !== undefined && canResume && (
               <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
                 <Text style={styles.link}>Resume</Text>
               </Pressable>
