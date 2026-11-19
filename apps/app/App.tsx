@@ -5,6 +5,7 @@ import { startAndroidUpdates } from "./src/foundation/androidUpdates/platform";
 import { ArchiveNavigation } from "./src/foundation/archiveNavigation";
 import { applyAppearance, rememberPlace, resumedPlace } from "./src/foundation/colorScheme";
 import { ActiveHostContext, HostMenuContext } from "./src/foundation/hostContext";
+import { useKeyboardHeight } from "./src/foundation/keyboardHeight";
 import { PageNavigation } from "./src/foundation/pageNavigation";
 import { colors } from "./src/foundation/theme";
 import { useHostConnection } from "./src/foundation/useHostConnection";
@@ -62,6 +63,7 @@ export function App() {
   };
   const rightPanel = useRightPanel(hostId, panelScopeOf(location));
   useAttentionNotice(client);
+  const keyboardHeight = useKeyboardHeight();
 
   useEffect(() => rememberPlace(place), [place]);
   useEffect(startAndroidUpdates, []);
@@ -230,7 +232,7 @@ export function App() {
   return (
     <ActiveHostContext.Provider value={activeHost}>
       <HostMenuContext.Provider value={hostMenu}>
-        <View style={styles.screen}>
+        <View style={[styles.screen, { paddingBottom: keyboardHeight }]}>
           <AppStatusBar />
           {status.failure !== null && (
             <View accessibilityRole="alert" style={styles.banner}>
