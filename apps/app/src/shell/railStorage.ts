@@ -82,3 +82,19 @@ export const readChroniclerOpen = (): boolean => readStored(chroniclerKey) === "
 
 /** Remembers whether Chronicler's panel is open where the platform allows; a refusal only loses the memory. */
 export const rememberChroniclerOpen = (isOpen: boolean) => keep(chroniclerKey, isOpen ? "1" : "0");
+
+/** The key under which the browser remembers the share of each pane of the chain, by depth. */
+const paneWeightsKey = "outlore:pane-weights";
+
+/** Reads the remembered shares of the panes; none stored, bad data or no storage gives equal shares. */
+export const readPaneWeights = (): Array<number> => {
+  try {
+    const stored: unknown = JSON.parse(readStored(paneWeightsKey) ?? "[]");
+    return Array.isArray(stored) ? stored.map((weight) => (typeof weight === "number" && weight > 0 ? weight : 0)) : [];
+  } catch {
+    return [];
+  }
+};
+
+/** Remembers the shares of the panes where the platform allows; a refusal only loses the memory. */
+export const rememberPaneWeights = (weights: ReadonlyArray<number>) => keep(paneWeightsKey, JSON.stringify(weights));

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Conversation } from "../conversation/conversation";
 import { PermissionsScreen } from "../editors/permissions";
 import type { ServiceClient } from "../foundation/client";
+import { useHasSidebar } from "../foundation/shellContext";
 import { LoreScreen } from "../lore/lore";
 import { RitualsScreen } from "../rituals/rituals";
 import { SettingsScreen } from "../settings/settings";
@@ -10,6 +11,7 @@ import type { SettingsSectionId } from "../settings/settingsSections";
 import { UsageScreen } from "../usage";
 import { ArchiveScreen } from "./archivePage";
 import { HomeScreen } from "./homeScreen";
+import { PaneHost } from "./paneHost";
 import { QuestListScreen } from "./questListPage";
 import type { RealmListing } from "./questTree";
 import type { Place } from "./sidebar";
@@ -54,6 +56,19 @@ export function AppScreen({
   navigation: Navigation;
   view: Destination;
 }) {
+  // A wide window shows a quest as a chain of panes; a narrow one keeps one conversation at a time.
+  const hasPanes = useHasSidebar();
+  if (view.openMission !== null && hasPanes)
+    return (
+      <PaneHost
+        client={client}
+        key={`${view.openMission}:${view.openCount}`}
+        missionId={view.openMission}
+        onOpenMission={navigation.openMission}
+        onOpenThread={navigation.selectThread}
+        openThread={view.openThread}
+      />
+    );
   if (view.openMission !== null)
     return (
       <Conversation

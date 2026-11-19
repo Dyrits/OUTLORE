@@ -127,3 +127,17 @@ export const exactCountOf = (count: number) => Math.round(count).toLocaleString(
 /** Seconds as a short span: `16s`, `1m 4s`. */
 export const spanOf = (seconds: number) =>
   seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+
+/** How long ago something happened, in the coarsest unit that fits: "just now", "8 minutes ago", "3 days ago". */
+export const agoOf = (millis: number, now: number): string => {
+  const minutes = Math.floor(Math.max(0, now - millis) / 60000);
+  if (minutes < 1) return "just now";
+  const unit = (count: number, name: string) => `${count} ${name}${count === 1 ? "" : "s"} ago`;
+  if (minutes < 60) return unit(minutes, "minute");
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return unit(hours, "hour");
+  const days = Math.floor(hours / 24);
+  if (days < 7) return unit(days, "day");
+  if (days < 60) return unit(Math.floor(days / 7), "week");
+  return unit(Math.floor(days / 30), "month");
+};

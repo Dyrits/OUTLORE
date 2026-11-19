@@ -1,5 +1,7 @@
 import type { MissionSummary } from "@outlore/contracts";
 
+export { agoOf } from "../foundation/formatting";
+
 /** The quests, the one with the latest activity first; `[...]` copies the list, since sorting changes it in place. */
 export const latestFirstOf = (missions: ReadonlyArray<MissionSummary>): Array<MissionSummary> =>
   [...missions].sort((current, next) => next.lastActivityAt - current.lastActivityAt);
@@ -35,18 +37,4 @@ export const recencyGroupsOf = (missions: ReadonlyArray<MissionSummary>, now: nu
     else groups.push({ heading, quests: [mission] });
   }
   return groups;
-};
-
-/** How long ago something happened, in the coarsest unit that fits: "just now", "8 minutes ago", "3 days ago". */
-export const agoOf = (millis: number, now: number): string => {
-  const minutes = Math.floor(Math.max(0, now - millis) / 60000);
-  if (minutes < 1) return "just now";
-  const unit = (count: number, name: string) => `${count} ${name}${count === 1 ? "" : "s"} ago`;
-  if (minutes < 60) return unit(minutes, "minute");
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return unit(hours, "hour");
-  const days = Math.floor(hours / 24);
-  if (days < 7) return unit(days, "day");
-  if (days < 60) return unit(Math.floor(days / 7), "week");
-  return unit(Math.floor(days / 30), "month");
 };

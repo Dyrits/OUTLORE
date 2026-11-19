@@ -6,7 +6,7 @@ Outlore's window shows one conversation at a time, with a sidebar of every realm
 
 The owner asked for a Slack-like window (2026-11-19): a conversation that everything unfolds from, where a quest or an errand appears in the conversation it came from and opens beside it as a nested conversation, with the sidebar kept but out of the way until needed, and realms as channels.
 
-Status: **agreed in the owner's answers and comments of 2026-11-19** (CHG-0553 to CHG-0556), **not built**. The owner's goal for this change is the Pre-Alpha release ([backlog](../../backlog.md#conversation-panes-slack-like-layout-toward-pre-alpha)). What the owner has not settled is in the [draft](draft.md), not here. The technical design is the [blueprint](blueprint.md).
+Status: **agreed in the owner's answers and comments of 2026-11-19** (CHG-0553 to CHG-0556); **built in part**: the overlay sidebar and the pane chain of a quest and its errands (CHG-0557, CHG-0558; the owner's look is awaited), nothing else. The owner's goal for this change is the Pre-Alpha release ([backlog](../../backlog.md#conversation-panes-slack-like-layout-toward-pre-alpha)). What the owner has not settled is in the [draft](draft.md), not here. The technical design is the [blueprint](blueprint.md).
 
 ## Agreed behavior
 

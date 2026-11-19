@@ -1,8 +1,8 @@
 # Work in progress
 
-## Conversation panes · 2026-11-19 · specified and planned (CHG-0553 to CHG-0556), nothing built; the owner's word to build awaited
+## Conversation panes · 2026-11-19 · batches 1 and 2 built (CHG-0557, CHG-0558) on branch `mission/delineate-specify-i-d-like-to-have-more-b606ee66`; the owner's look awaited
 
-The owner wants a Slack-like window: the Chronicle (Chronicler's overview of everything happening) and a channel per realm, quests and errands opening in up to four panes from Reply, an overlay sidebar on either edge. [Specification](capabilities/conversation-panes/specifications.md) · [blueprint](capabilities/conversation-panes/blueprint.md) (seven batches, approved as the plan, batches 1 and 2 first) · [draft](capabilities/conversation-panes/draft.md) (small open details). Next: the owner's go-ahead to build batches 1 and 2 in a worktree (no throwaway prototype). The goal is Pre-Alpha.
+The owner wants a Slack-like window: the Chronicle (Chronicler's overview of everything happening) and a channel per realm, quests and errands opening in up to four panes from Reply, an overlay sidebar on either edge. [Specification](capabilities/conversation-panes/specifications.md) · [blueprint](capabilities/conversation-panes/blueprint.md) · [draft](capabilities/conversation-panes/draft.md) · [verification](verification/2026-11-19-conversation-panes.md) · [handoff](../.agents/handoffs/2026-11-19-2330-conversation-panes-batches-1-2.md). Built and committed on the branch, not merged: the overlay sidebar (batch 1) and the pane chain for a quest and its errands on a wide window (batch 2). Next: the owner looks at it and redirects the pane choices (CHG-0558); then batch 3 (the Chronicle as the first pane), then 4 (Reply and the agent-opened errand card). The goal is Pre-Alpha.
 
 ## Connector Charter controls · 2026-11-19 · built on the Charter errand branch; review pending
 

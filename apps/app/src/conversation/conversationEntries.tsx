@@ -21,6 +21,7 @@ import { commentsOf } from "./comments";
 import { SentComments } from "./commentViews";
 import type { Entry, QuestLink } from "./entries";
 import { Markdown } from "./markdown";
+import { ReplyLine } from "./replyLine";
 import { StepsGroup } from "./stepsGroup";
 import { SuggestionCard, SuggestionLine } from "./suggestions";
 
@@ -272,18 +273,7 @@ export function EntryView({
   onOpenMission: (missionId: MissionId) => void;
   onSelectThread: (threadId: ThreadId) => void;
 }) {
-  if (entry._tag === "ThreadOpened") {
-    const { thread } = entry;
-    return (
-      <View style={styles.questionLine}>
-        <Pressable onPress={() => onSelectThread(thread.id)}>
-          <Text style={styles.link}>
-            {thread.isOpenedByAgent ? "Companion opened an errand" : "Opened an errand"}: {shortened(thread.title)}
-          </Text>
-        </Pressable>
-      </View>
-    );
-  }
+  if (entry._tag === "ThreadOpened") return <ReplyLine onOpen={onSelectThread} thread={entry.thread} />;
   if (entry._tag === "Steps")
     return <StepsGroup client={client} seconds={entry.seconds} steps={entry.steps} threadId={entry.threadId} />;
   if (entry._tag === "QuestLink")
