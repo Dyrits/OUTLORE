@@ -103,4 +103,10 @@ export const recentStoreMigrations = {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`ALTER TABLE threads ADD COLUMN archived_at INTEGER`;
   }),
+  // The model a turn was admitted on, kept as its harness is (0048), so a working thread shows the Companion that runs
+  // it while the owner picks another during the turn (thread-handover). Turns before this change fall back to the thread's.
+  "0060_turn_model": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE turns ADD COLUMN model TEXT`;
+  }),
 };

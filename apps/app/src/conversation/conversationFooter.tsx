@@ -4,7 +4,7 @@ import { View } from "react-native";
 import { companionLabelOf } from "../foundation/formatting";
 import { AgentReply, WorkingIndicator } from "./conversationEntries";
 import { workingLabel } from "./entries";
-import { footerOf } from "./threadConversation";
+import { footerOf, workingRunnerOf } from "./threadConversation";
 
 /** The shared live reply or working indicator, followed by the thread's terminal. */
 export function ConversationFooter({
@@ -17,14 +17,16 @@ export function ConversationFooter({
   panel: ReactNode;
 }) {
   const footer = footerOf(draft, thread.actions.isInTurn);
+  // The Companion that runs the turn, not the one the owner picked during it (thread-handover).
+  const runner = workingRunnerOf(thread);
   return (
     <View>
-      {footer === "working" && <WorkingIndicator harness={thread.harness} label={workingLabel} />}
+      {footer === "working" && <WorkingIndicator harness={runner.harness} label={workingLabel} />}
       {footer === "draft" && (
         <AgentReply
-          harness={thread.harness}
+          harness={runner.harness}
           isDraft
-          label={`${companionLabelOf(thread.harness, null, thread.model)} · writing…`}
+          label={`${companionLabelOf(runner.harness, null, runner.model)} · writing…`}
           text={draft}
           time={null}
         />

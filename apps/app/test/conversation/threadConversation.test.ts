@@ -1,6 +1,11 @@
 import type { SendMessage, ThreadId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
-import { conversationStateOf, footerOf, sendConversationMessage } from "../../src/conversation/threadConversation";
+import {
+  conversationStateOf,
+  footerOf,
+  sendConversationMessage,
+  workingRunnerOf,
+} from "../../src/conversation/threadConversation";
 
 const setup = (isRefused = false, isChronicler = false) => {
   const events: string[] = [];
@@ -71,5 +76,17 @@ describe("sending a conversation message", () => {
     expect(footerOf("", false)).toBe("empty");
     expect(footerOf("", true)).toBe("working");
     expect(footerOf("reply", true)).toBe("draft");
+  });
+  it("shows the runner of the running turn, not the one the owner picked during it", () => {
+    const picked = { harness: "codex", model: "gpt-5" } as const;
+    expect(workingRunnerOf({ ...picked, turnHarness: "claude", turnModel: "opus" })).toEqual({
+      harness: "claude",
+      model: "opus",
+    });
+    expect(workingRunnerOf({ ...picked, turnHarness: null, turnModel: null })).toEqual(picked);
+    expect(workingRunnerOf({ ...picked, turnHarness: "claude", turnModel: null })).toEqual({
+      harness: "claude",
+      model: "default",
+    });
   });
 });

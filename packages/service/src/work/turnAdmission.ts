@@ -93,8 +93,8 @@ export const admitTurn = Effect.fnUntraced(function* (threadId: string) {
       // A runner change is recorded when it actually runs, not while messages wait for admission.
       yield* recordPendingHandover(threadId, now);
       const turnId = yield* newId;
-      yield* sql`INSERT INTO turns (id, thread_id, status, started_at, harness)
-          VALUES (${turnId}, ${threadId}, 'running', ${now}, ${thread.harness})`;
+      yield* sql`INSERT INTO turns (id, thread_id, status, started_at, harness, model)
+          VALUES (${turnId}, ${threadId}, 'running', ${now}, ${thread.harness}, ${thread.model})`;
       yield* deliverMessages(
         pending.map((message) => message.id),
         turnId,
