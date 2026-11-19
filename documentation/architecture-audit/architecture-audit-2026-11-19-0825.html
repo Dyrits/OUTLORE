@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture review for Outlore, 2026-11-19</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+      mermaid.initialize({ securityLevel: "loose", startOnLoad: true, theme: "neutral" });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 4 4; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .badge-strong { background: #059669; }
+      .badge-explore { background: #d97706; }
+      .badge-speculative { background: #64748b; }
+      pre.mermaid { margin: 0; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
+      <header class="space-y-4">
+        <h1 class="font-serif text-4xl">Architecture review for Outlore</h1>
+        <p class="text-slate-600">2026-11-19 · scoped by commit history: <code class="font-mono text-sm">packages/service/src/work/</code> (104 modules) and <code class="font-mono text-sm">apps/app/src/shell/</code> are the recent hot spots, with <code class="font-mono text-sm">packages/service/src/harness/</code>, <code class="font-mono text-sm">remote/</code> and <code class="font-mono text-sm">apps/app/src/foundation/</code> scanned for seam leakage.</p>
+        <div class="flex flex-wrap gap-4 text-xs uppercase tracking-wider text-slate-500 border border-slate-200 rounded-lg bg-white px-4 py-3">
+          <span class="flex items-center gap-2"><span class="inline-block w-4 h-3 border border-slate-500 bg-white"></span> module</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-4 h-0 border-t-2 border-dashed border-slate-500"></span> seam</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-4 h-3 deep"></span> deep module</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-4 h-0 border-t-2 border-red-600"></span> leakage / ring edge</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-4 h-0 border-t-2 border-emerald-600"></span> one-way dependency</span>
+        </div>
+      </header>
+
+      <section class="space-y-10" id="candidates" >
+
+        <!-- 1 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c1" >
+          <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="font-serif text-2xl mr-2">1 · One Chronicler structural-action module</h2>
+            <span class="badge-strong text-white text-xs font-semibold px-2 py-0.5 rounded-full">Strong</span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 border border-slate-300 rounded px-1.5 py-0.5">in-process</span>
+          </div>
+          <div class="font-mono text-sm text-slate-700 space-y-0.5">
+            <div>packages/service/src/work/guildmaster.ts (93) · guildmasterProvenance.ts (297) · guildmasterPreflight.ts (58)</div>
+            <div>guildmasterPlace/Context/Guide/Realms/Reports/Rituals/Settings/Companions/Cards/SettingNames/Text (11 more, ~640 lines)</div>
+            <div>packages/service/test/work/guildmaster*.test.ts (18 files)</div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-red-200 bg-red-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-red-700 mb-2">Before — one concept in 14 modules</div>
+              <pre class="mermaid text-xs">flowchart LR
+  TT[threadToolHandlers.ts<br/>makeToolHandlers] --> GP[guildmasterProvenance.ts<br/>derive → authority → receipt]
+  GP --> A[approvals] & B[ending] & C[guildmasterPlace] & D[guildmasterPreflight] & E[messageProvenance] & F[realmActions] & G[ritualScope] & H[turnAdmission] & I[guildmasterCompanions] & J[guildmasterText] & K[titles] & L[threadTools]
+  GMR[guildmasterRealms.ts<br/>wires consumeReceipt by hand] --> GP
+  GMS[guildmasterSettings.ts<br/>wires consumeReceipt by hand] --> GP
+  GMRU[guildmasterRituals.ts<br/>wires consumeReceipt by hand] --> GP
+  GM[guildmaster.ts<br/>wires consumeReceipt by hand] --> GP
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class GMR,GMS,GMRU,GM leak</pre>
+            </div>
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex flex-col justify-center">
+              <div class="text-xs uppercase tracking-wider text-emerald-700 mb-2">After — one deep module, thin tool adapters</div>
+              <div class="flex items-center justify-center gap-3">
+                <div class="text-center text-xs text-slate-500">guildmasterRealms.ts<br/>guildmasterSettings.ts<br/>guildmasterRituals.ts<br/>guildmaster.ts<br/><span class="text-slate-400">thin adapters: call withProvenance</span></div>
+                <div class="deep text-white rounded-lg px-5 py-6 text-center shadow">
+                  <div class="text-xs uppercase tracking-wider text-slate-300">chroniclerActions (deep)</div>
+                  <div class="mt-2 text-sm">withProvenance(caller, tool, args)<br/>+ StructuralTool union<br/><span class="text-slate-400 text-xs">derivations &amp; receipts internal</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p><strong>Problem:</strong> "Chronicler takes a structural action" is one concept bounced across 14 source and 18 test files; each of the four tool handlers re-wires <code class="font-mono text-sm">isStructuralCaller → readQuestAction → consumeReceipt</code> by hand, and the split adds interface surface (<code class="font-mono text-sm">deriveAction</code> is exported "for the test that pins the receipt's fingerprint") without depth.</p>
+          <p><strong>Solution:</strong> make <code class="font-mono text-sm">guildmasterProvenance.ts</code> the single module for structural actions — derivations and receipt logic internal, one <code class="font-mono text-sm">withProvenance</code> at the interface — and fold the text/name/card fragments into it or one support file; the four handlers become thin adapters.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>locality: authorization rules live in one module, not four hand-wired call sites</li>
+            <li>leverage: one interface, 4 tool handlers + 18 test files</li>
+            <li>deletion test: deleting the core concentrates receipt logic across callers — the fragments around it do not pass</li>
+            <li>tests hit one interface instead of pinning internal key order</li>
+          </ul>
+        </article>
+
+        <!-- 2 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c2" >
+          <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="font-serif text-2xl mr-2">2 · Break the work folder's import ring at the commands seam</h2>
+            <span class="badge-strong text-white text-xs font-semibold px-2 py-0.5 rounded-full">Strong</span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 border border-slate-300 rounded px-1.5 py-0.5">in-process</span>
+          </div>
+          <div class="font-mono text-sm text-slate-700 space-y-0.5">
+            <div>packages/service/src/work/commands.ts (mixes FollowUps data constructors :16-56 with commandsLayer :118-136)</div>
+            <div>…threads.ts:259-267 builds a second CommandRunner inside threadsLayer · threadToolHandlers.ts imports 15 local modules · mcp.ts</div>
+            <div>Import graph: one 43-file strongly-connected component out of 104 modules (379 intra-folder edges)</div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-red-200 bg-red-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-red-700 mb-2">Before — one 43-file ring</div>
+              <pre class="mermaid text-xs">flowchart LR
+  C[commands.ts<br/>data + runner layer] --> T[threads.ts] --> TH[threadToolHandlers.ts] --> M[mcp.ts] --> C
+  C --> S[suggestions.ts] --> T
+  C --> A[approvals.ts] --> TH
+  T -. "second CommandRunner" .-> C
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class C,T,TH,M,S,A leak</pre>
+            </div>
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-emerald-700 mb-2">After — leaf data, injected runner</div>
+              <pre class="mermaid text-xs">flowchart TD
+  CO[commandOutcomes.ts<br/>FollowUps · changed · unchanged<br/>leaf, imported by all] --> CR[commands.ts<br/>CommandRunner only]
+  TH[threads.ts · approvals.ts · suggestions.ts] -->|layer inputs, not imports| CR
+  CR --> CL[commandsLayer]
+  M[mcp.ts] --> CL
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class CR deep</pre>
+            </div>
+          </div>
+          <p><strong>Problem:</strong> the work folder is one 43-file strongly-connected component: 20 modules import only the <code class="font-mono text-sm">changed</code>/<code class="font-mono text-sm">unchanged</code> constructors from <code class="font-mono text-sm">commands.ts</code>, while <code class="font-mono text-sm">commandsLayer</code> in the same file needs <code class="font-mono text-sm">Threads</code>, which imports <code class="font-mono text-sm">commands.ts</code> back. No file in the ring is a stable seam, so locality fails at folder scale.</p>
+          <p><strong>Solution:</strong> move the <code class="font-mono text-sm">FollowUps</code> data constructors to a leaf module next to <code class="font-mono text-sm">commandOutcomes.ts</code>, and have the runner receive <code class="font-mono text-sm">Threads</code>/<code class="font-mono text-sm">Approvals</code>/<code class="font-mono text-sm">Suggestions</code> as layer inputs rather than imports (shrinks the ring 43 → 36 and removes the double-runner workaround in <code class="font-mono text-sm">threads.ts:259-267</code>). Keeps the folder whole, per architecture.md, while its seams settle.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>locality: one ring edge becomes a designed layer input</li>
+            <li>leverage: 20 modules keep importing one small leaf</li>
+            <li>tests can build the runner over fakes instead of the full layer graph</li>
+          </ul>
+        </article>
+
+        <!-- 3 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c3" >
+          <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="font-serif text-2xl mr-2">3 · One realm-resolution module owns name collisions and lookup</h2>
+            <span class="badge-strong text-white text-xs font-semibold px-2 py-0.5 rounded-full">Strong</span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 border border-slate-300 rounded px-1.5 py-0.5">local-substitutable</span>
+          </div>
+          <div class="font-mono text-sm text-slate-700 space-y-0.5">
+            <div>packages/service/src/work/realmNames.ts:16 · realmCreation.ts:24 · realmChecks.ts:17,44,64 · realmActions.ts:27 · guildmasterPlace.ts:80</div>
+            <div>Two lookup variants: guildmasterPlace.ts:71-84 findRealm (folder-tied only, errors on ties) vs realmChecks.ts:9-21 findRealmOfAnyKind (null on ties)</div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-red-200 bg-red-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-red-700 mb-2">Before — the rule in six places</div>
+              <div class="space-y-1.5 text-xs font-mono">
+                <div class="border border-red-300 bg-white rounded px-2 py-1">realmNames.ts:16 — lower(name) = lower(…)</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">realmCreation.ts:24 — lower(name) = lower(…)</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">realmChecks.ts:17,44,64 — lower(name) = lower(…) ×3</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">realmActions.ts:27 — lower(name) = lower(…)</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">guildmasterPlace.ts:80 — lower(name) = lower(…)</div>
+                <div class="text-slate-500 pt-1">plus two findRealm variants with different tie behavior</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex flex-col justify-center">
+              <div class="text-xs uppercase tracking-wider text-emerald-700 mb-2">After — one module at the seam</div>
+              <div class="flex items-center justify-center gap-3">
+                <div class="text-center text-xs text-slate-500">realmCreation · realmActions<br/>guildmasterRealms · guildmasterPlace<br/><span class="text-slate-400">five callers, one import</span></div>
+                <div class="deep text-white rounded-lg px-5 py-6 text-center shadow">
+                  <div class="text-xs uppercase tracking-wider text-slate-300">realmResolution (deep)</div>
+                  <div class="mt-2 text-sm">findRealm (all kinds, one tie rule)<br/>isActiveNameCollision<br/><span class="text-slate-400 text-xs">the invariant lives once</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p><strong>Problem:</strong> "what counts as a duplicate realm name" is one rule copied into six SQL sites across five files, and realm lookup exists twice with subtly different tie behavior — a fix to either must be applied in six places, and the two variants can drift (the difference is only documented in a comment).</p>
+          <p><strong>Solution:</strong> one <code class="font-mono text-sm">realmResolution</code> module owning <code class="font-mono text-sm">findRealm</code> (all kinds, one tie rule) and the collision check; creation, rename, and Chronicler's tools call it.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>locality: the collision invariant is stated and enforced in one place</li>
+            <li>leverage: five callers learn two names</li>
+            <li>deletion test: deleting realmChecks.ts today moves its checks into callers — complexity moves, confirming the rule is scattered, not owned</li>
+            <li>tests hit the rule through one interface, including the tie cases</li>
+          </ul>
+        </article>
+
+        <!-- 4 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c4" >
+          <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="font-serif text-2xl mr-2">4 · One ACP session module behind the harness seam</h2>
+            <span class="badge-strong text-white text-xs font-semibold px-2 py-0.5 rounded-full">Strong</span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 border border-slate-300 rounded px-1.5 py-0.5">ports &amp; adapters</span>
+          </div>
+          <div class="font-mono text-sm text-slate-700 space-y-0.5">
+            <div>packages/service/src/harness/opencode.ts (548) vs vibe.ts (335) — both re-implement the ACP session layer</div>
+            <div>permission answering opencode.ts:199-226 vs vibe.ts:109-124 · lost-session recovery :335-338 vs :127-130 · prompt read loop :314-330 vs :217-232 · restartKeyOf :404-412 vs :141-150</div>
+            <div>seam already deep: core/execution.ts HarnessAdapter :229-252 · routeHarnesses :259-274 · harnessProcesses.ts pool · lineProcess.ts transport</div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4 items-stretch">
+            <div class="rounded-lg border border-red-200 bg-red-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-red-700 mb-2">Before — two shallow adapters duplicating ACP</div>
+              <div class="flex gap-3 justify-center">
+                <div class="border-2 border-red-400 rounded-lg bg-white px-3 py-2 text-xs text-center w-40">
+                  <div class="font-semibold">opencode.ts</div>
+                  <div class="mt-1 space-y-0.5 text-slate-600">session open/load/new<br/>prompt read loop<br/>permission options<br/>restart key<br/>sandbox deltas</div>
+                </div>
+                <div class="border-2 border-red-400 rounded-lg bg-white px-3 py-2 text-xs text-center w-40">
+                  <div class="font-semibold">vibe.ts</div>
+                  <div class="mt-1 space-y-0.5 text-slate-600">session open/load/new<br/>prompt read loop<br/>permission options<br/>restart key<br/>account deltas</div>
+                </div>
+              </div>
+              <div class="text-center text-xs text-red-700 mt-2">four blocks of identical ACP session knowledge</div>
+            </div>
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-emerald-700 mb-2">After — one dialect module, thin adapters</div>
+              <div class="flex gap-3 justify-center items-center">
+                <div class="deep text-white rounded-lg px-4 py-3 text-xs text-center w-44 shadow">
+                  <div class="text-xs uppercase tracking-wider text-slate-300">acp.ts (deep)</div>
+                  <div class="mt-1">session open/load-with-fallback · prompt loop · permission answering · restart key</div>
+                </div>
+                <div class="space-y-1.5 text-xs text-center">
+                  <div class="border border-emerald-500 bg-white rounded px-2 py-1">opencode.ts — sandbox/usage deltas</div>
+                  <div class="border border-emerald-500 bg-white rounded px-2 py-1">vibe.ts — account deltas</div>
+                </div>
+              </div>
+              <div class="text-center text-xs text-emerald-700 mt-2">a fifth ACP harness copies nothing</div>
+            </div>
+          </div>
+          <p><strong>Problem:</strong> the <code class="font-mono text-sm">HarnessAdapter</code> seam is deep, but the two ACP adapters each re-implement the ACP session skeleton (open/load/new with fallback, the prompt read loop, permission-option picking, lost-session recovery) — common behavior lives in two shallow adapters instead of one module behind the seam. <code class="font-mono text-sm">openCodePrompts.ts</code> is already shared by both but named for one harness.</p>
+          <p><strong>Solution:</strong> extract one <code class="font-mono text-sm">acp.ts</code> module in <code class="font-mono text-sm">harness/</code> owning the session skeleton as a <code class="font-mono text-sm">HarnessProtocol</code> dialect; <code class="font-mono text-sm">opencode.ts</code>/<code class="font-mono text-sm">vibe.ts</code> keep only their dialect deltas, and the shared prompts file is renamed to match.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>locality: ACP session knowledge in one module, not two adapters</li>
+            <li>leverage: the seam already routes four adapters; the dialect layer pays back per ACP harness</li>
+            <li>tests exercise the session loop once, through the dialect module</li>
+            <li>no decision-record conflict: ADR 0008 settles driving tools directly, not per-adapter duplication</li>
+          </ul>
+        </article>
+
+        <!-- 5 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c5" >
+          <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="font-serif text-2xl mr-2">5 · Folder seams in the app: index.ts per folder, five upward imports fixed</h2>
+            <span class="badge-strong text-white text-xs font-semibold px-2 py-0.5 rounded-full">Strong</span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 border border-slate-300 rounded px-1.5 py-0.5">in-process</span>
+          </div>
+          <div class="font-mono text-sm text-slate-700 space-y-0.5">
+            <div>No index.ts anywhere under apps/app/src, though conventions make each folder's index.ts its interface</div>
+            <div>foundation/shellContext.tsx:3 ↔ editors/companionPicker.tsx:5 — module ring over CompanionPickerProps (14 fields)</div>
+            <div>foundation/useHostConnection.ts:4 → shell/pairingOffer.ts (pure, tested — belongs at the bottom) · editors/permissions.tsx:13 → settings/settingsParts · settings/settings.tsx:17 → shell/usagePage · settings/updatesCard.tsx:8 → shell/updateModal</div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-red-200 bg-red-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-red-700 mb-2">Before — upward edges break the documented chain</div>
+              <pre class="mermaid text-xs">flowchart TD
+  F[foundation] -->|ring| E[editors]
+  E -->|ring back| F
+  F -.->|upward| S[shell]
+  E -.->|upward| ST[settings]
+  ST -.->|upward| S
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class F,E,S,ST leak</pre>
+            </div>
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-emerald-700 mb-2">After — one-way chain, index.ts at every seam</div>
+              <pre class="mermaid text-xs">flowchart TD
+  F[foundation/index.ts] --> UI[ui/index.ts] --> ED[editors/index.ts] --> CO[conversation/index.ts] --> ST[settings/index.ts] --> SH[shell/index.ts]
+  P[pairingOffer.ts → foundation] --> F
+  CP[CompanionPickerProps → foundation] --> F
+  classDef ok stroke:#059669,stroke-width:2px;
+  class F,UI,ED,CO,ST,SH,P,CP ok</pre>
+            </div>
+          </div>
+          <p><strong>Problem:</strong> with no seam file in any folder, every cross-folder import reaches into a file's internals, and five upward edges break the chain architecture.md documents — including a true ring: the Companion-picker contract (a pure data interface) is defined inside <code class="font-mono text-sm">editors/companionPicker.tsx</code> while <code class="font-mono text-sm">foundation/shellContext.tsx</code> imports it and the picker imports the context back.</p>
+          <p><strong>Solution:</strong> give each folder an <code class="font-mono text-sm">index.ts</code> exporting only what other folders import; move <code class="font-mono text-sm">CompanionPickerProps</code> down to foundation, <code class="font-mono text-sm">pairingOffer.ts</code> down to foundation, shared controls like <code class="font-mono text-sm">ToggleRow</code> to <code class="font-mono text-sm">ui/</code>, and the usage/update pages out of <code class="font-mono text-sm">shell/</code> into their own folder.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>locality: the folder chain becomes checkable from the import graph, per conventions</li>
+            <li>leverage: callers learn one name per folder instead of file paths</li>
+            <li>the ring disappears: editors can change its props without breaking foundation</li>
+          </ul>
+        </article>
+
+        <!-- 6 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c6" >
+          <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="font-serif text-2xl mr-2">6 · The sidebar hot spot: actions into a tested module, questTree split by job</h2>
+            <span class="badge-explore text-white text-xs font-semibold px-2 py-0.5 rounded-full">Worth exploring</span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 border border-slate-300 rounded px-1.5 py-0.5">in-process · mock</span>
+          </div>
+          <div class="font-mono text-sm text-slate-700 space-y-0.5">
+            <div>apps/app/src/shell/sidebar.tsx (339 — the commit hot spot: 35 touches in the last 300 commits) mixes queries, four toggle states, startQuest/dropOn/dropRealmOn actions with inline failure state, and rendering</div>
+            <div>apps/app/src/shell/questTree.ts (201) holds three jobs: placements, full-list rows, recency grouping</div>
+            <div>shell.tsx (443) holds frame layout plus rail-width state, Chronicler open/full state, ⌘B shortcut, and two render branches</div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-red-200 bg-red-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-red-700 mb-2">Before — logic and rendering in one band</div>
+              <div class="space-y-1">
+                <div class="h-10 border-l-4 border-red-400 bg-white px-3 flex items-center text-xs font-mono">queries + useServiceQuery</div>
+                <div class="h-10 border-l-4 border-red-400 bg-white px-3 flex items-center text-xs font-mono">4 toggle states + drag/drop + startQuest inline</div>
+                <div class="h-10 border-l-4 border-red-400 bg-white px-3 flex items-center text-xs font-mono">realmRow / SectionTitle / SidebarFoot rendering</div>
+                <div class="h-10 border-l-4 border-red-400 bg-white px-3 flex items-center text-xs font-mono">questTree.ts: placements + list rows + recency</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-emerald-700 mb-2">After — one thick band of pure logic, thin view</div>
+              <div class="space-y-1">
+                <div class="deep text-white rounded px-3 h-16 flex items-center text-xs font-mono shadow">railQuestActions.ts — startQuest/drop/reorder as pure functions (unit-tested)</div>
+                <div class="h-8 border-l-4 border-emerald-500 bg-white px-3 flex items-center text-xs font-mono">sidebar.tsx — rendering only</div>
+                <div class="h-8 border-l-4 border-emerald-500 bg-white px-3 flex items-center text-xs font-mono">railPlacements.ts · questListTree.ts · recency.ts</div>
+              </div>
+            </div>
+          </div>
+          <p><strong>Problem:</strong> the sidebar is the most-changed area in recent history, yet its action logic (start a quest, drop a quest on a realm, reorder realms) is inline in JSX with failure state, testable only by rendering; <code class="font-mono text-sm">questTree.ts</code> carries three unrelated jobs in one file.</p>
+          <p><strong>Solution:</strong> move the action logic to a plain <code class="font-mono text-sm">railQuestActions.ts</code> next to <code class="font-mono text-sm">questTree.ts</code> (pure functions over the client, unit-tested like <code class="font-mono text-sm">location.ts</code>), split <code class="font-mono text-sm">questTree.ts</code> into placements / list-tree / recency, and extract the pane-width and tab state out of <code class="font-mono text-sm">shell.tsx</code>.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>locality: the hot spot's behavior concentrates in testable modules instead of the tsx</li>
+            <li>leverage: the next sidebar change touches one small module</li>
+            <li>deletion test: deleting the action module pushes request/error handling into JSX — it passes</li>
+          </ul>
+        </article>
+
+        <!-- 7 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c7" >
+          <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="font-serif text-2xl mr-2">7 · Label derivations composed inline in tsx → deep modules in foundation</h2>
+            <span class="badge-explore text-white text-xs font-semibold px-2 py-0.5 rounded-full">Worth exploring</span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 border border-slate-300 rounded px-1.5 py-0.5">in-process · mock</span>
+          </div>
+          <div class="font-mono text-sm text-slate-700 space-y-0.5">
+            <div>"what this thread runs on" line composed inline in conversation/conversation.tsx:131-140, conversation/threadPanel.tsx:117-120, shell/questListRows.tsx:78 — foundation/formatting.ts runnerSummaryOf exists but none of the three uses it</div>
+            <div>state-dot color rule (your-turn override) duplicated in shell/railRows.tsx:77 and shell/questListRows.tsx:41; suggestion outcome→label mapping duplicated in conversation/entries.ts:36-41 vs conversation/suggestions.tsx:24-27 (the two can disagree)</div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-red-200 bg-red-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-red-700 mb-2">Before — three copies in tsx, untestable</div>
+              <div class="space-y-1.5 text-xs font-mono">
+                <div class="border border-red-300 bg-white rounded px-2 py-1">conversation.tsx:131-140 — harness + account + model + effort + realm inline</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">threadPanel.tsx:117-120 — same fields, different composition</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">questListRows.tsx:78 — harness · model · ago</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">state color rule ×2 · suggestion label ×2 (divergent)</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex flex-col justify-center">
+              <div class="text-xs uppercase tracking-wider text-emerald-700 mb-2">After — one deep label module</div>
+              <div class="flex items-center justify-center gap-3">
+                <div class="text-center text-xs text-slate-500">three tsx callers</div>
+                <div class="deep text-white rounded-lg px-5 py-5 text-center shadow">
+                  <div class="text-xs uppercase tracking-wider text-slate-300">foundation/labels.ts (deep)</div>
+                  <div class="mt-1 text-sm">threadRunnerLineOf(thread)<br/>stateColorOf(state, isYourTurn)<br/>settledSuggestionLabelOf(s)<span class="text-slate-400 text-xs block mt-1">+ unit tests in test/foundation/</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p><strong>Problem:</strong> the label mapping for one domain concept (what a thread runs on; the your-turn dot color; a settled suggestion's label) is derived in three tsx files with three different compositions — poor locality, and a wrong-color or wrong-label bug needs N fixes. The deep modules exist (<code class="font-mono text-sm">foundation/labels.ts</code>, <code class="font-mono text-sm">formatting.ts</code>, both tested) but callers don't use them.</p>
+          <p><strong>Solution:</strong> add the three derivations to <code class="font-mono text-sm">foundation/labels.ts</code>/<code class="font-mono text-sm">formatting.ts</code> behind one name each and switch all callers; the two divergent suggestion-label copies merge into one.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>locality: one phrasing per concept, in one tested module</li>
+            <li>leverage: one interface, N call sites across three folders</li>
+            <li>deletion test: deleting a derivation leaves each tsx its own copy — it passes</li>
+          </ul>
+        </article>
+
+        <!-- 8 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c8" >
+          <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="font-serif text-2xl mr-2">8 · One run-in-scope module for the six Effect escape hatches</h2>
+            <span class="badge-explore text-white text-xs font-semibold px-2 py-0.5 rounded-full">Worth exploring</span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 border border-slate-300 rounded px-1.5 py-0.5">in-process</span>
+          </div>
+          <div class="font-mono text-sm text-slate-700 space-y-0.5">
+            <div>server.ts:32-33 · work/mcp.ts:65-66 · remote/hostRuntime.ts:50-52 · remote/controller.ts:26-33 (orDie turns SqlError into a defect) · connectors/codeExecutor.ts:36,44 · remote/ownRelay.ts:140</div>
+            <div>each site hand-rolls "capture the ambient context, run outside the fiber tree"</div>
+            <div>related: remote/ownRelay.ts (276) is plain promises with a thrown Stop class as control flow inside the Effect host</div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-red-200 bg-red-50/40 p-4">
+              <div class="text-xs uppercase tracking-wider text-red-700 mb-2">Before — six copies of the same wiring</div>
+              <div class="grid grid-cols-2 gap-1.5 text-xs font-mono">
+                <div class="border border-red-300 bg-white rounded px-2 py-1">server.ts — context + runPromiseWith</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">mcp.ts — context + runPromiseWith</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">hostRuntime.ts — runPlain/runFork</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">controller.ts — runPromise + orDie</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">codeExecutor.ts — runForkWith ×2</div>
+                <div class="border border-red-300 bg-white rounded px-2 py-1">ownRelay.ts — runPromise in promises</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex flex-col justify-center">
+              <div class="text-xs uppercase tracking-wider text-emerald-700 mb-2">After — one module owns the bridge</div>
+              <div class="flex items-center justify-center gap-3">
+                <div class="text-center text-xs text-slate-500">six callback seams</div>
+                <div class="deep text-white rounded-lg px-5 py-5 text-center shadow">
+                  <div class="text-xs uppercase tracking-wider text-slate-300">core/run.ts (deep)</div>
+                  <div class="mt-1 text-sm">forkInScope(effect): void<br/>runInScope(effect): Promise<br/><span class="text-slate-400 text-xs">ties the fork to the current scope; failures route to the top</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p><strong>Problem:</strong> six sites each re-implement "run an Effect from a plain callback": capture everything, run outside the fiber tree. Work so launched is not supervised by the caller's scope — interrupting the loopback server or relay loop does not cancel in-flight handling — and <code class="font-mono text-sm">remote/controller.ts:28</code>'s <code class="font-mono text-sm">orDie</code> turns an expected storage failure into a defect. Six copies of one wiring is a locality failure.</p>
+          <p><strong>Solution:</strong> one small <code class="font-mono text-sm">core/run.ts</code> offering <code class="font-mono text-sm">forkInScope</code>/<code class="font-mono text-sm">runInScope</code> that tie the fork to the current scope and route failures upward; separately, bring <code class="font-mono text-sm">ownRelay.ts</code>'s thrown-<code class="font-mono text-sm">Stop</code> control flow into typed Effect failures with <code class="font-mono text-sm">CloudflareApi</code> as the single plain I/O seam.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>locality: the callback bridge is written once, supervised everywhere</li>
+            <li>leverage: six call sites learn two names</li>
+            <li>applies ADR 0010's "Effect wherever possible" to the one large non-Effect module — closes a gap, does not reopen the record</li>
+          </ul>
+          <div class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+            Decision-record note: applies ADR 0010 (CHG-0361) rather than contradicting it — its plain-by-nature list names the carrier/channel/browser seams these sites bridge, not these six Effect-escape sites.
+          </div>
+        </article>
+
+      </section>
+
+      <section class="rounded-xl border-2 border-emerald-600 bg-white p-6 shadow-sm space-y-3" id="top-recommendation" >
+        <h2 class="font-serif text-2xl">Top recommendation</h2>
+        <p class="text-lg"><a class="text-emerald-700 font-semibold underline" href="#c2" >Candidate 2 — break the work folder's import ring at the commands seam.</a></p>
+        <p class="text-slate-700 text-sm">The service's largest folder (104 modules, ~15.5k lines) is one 43-file strongly-connected component, so no file inside it is a stable seam — every other service-side deepening (candidates 1 and 3 included) assumes seams the ring undermines. Moving the <code class="font-mono text-sm">FollowUps</code> constructors to a leaf and injecting the runner's collaborators as layer inputs is the smallest change that starts making the graph acyclic, and it removes the double-runner workaround in <code class="font-mono text-sm">threads.ts:259-267</code>. Runner-up on the app side: candidate 5 (folder index.ts seams), which unblocks the sidebar hot spot work in candidate 6.</p>
+      </section>
+
+      <section class="rounded-xl border border-slate-200 bg-white p-6 space-y-3 shadow-sm" id="checked" >
+        <h2 class="font-serif text-xl">Checked, not proposed</h2>
+        <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+          <li><code class="font-mono">core/store.ts</code> (675 lines) is deep, not a grab-bag: two exports (<code class="font-mono">migrations</code>, <code class="font-mono">storeLayer</code>) over a 47-migration ledger — size debt only (ADR 0002 untouched).</li>
+          <li><code class="font-mono">core/execution.ts</code> is the harness seam done right: small <code class="font-mono">HarnessAdapter</code> interface, dependencies as function fields, <code class="font-mono">routeHarnesses</code> router. The duplication is inside two adapters (candidate 4), not at the seam.</li>
+          <li><code class="font-mono">packages/relay/</code> is the positive example: one deep <code class="font-mono">roomCore.ts</code> over a <code class="font-mono">RoomPorts</code> seam with two adapters, browser code behind <code class="font-mono">@outlore/relay/browser</code>. Mirroring that <code class="font-mono">/browser</code> split in <code class="font-mono">@outlore/controller</code> (root index currently re-exports <code class="font-mono">browserLink.ts</code>) is a small worth-doing fix noted under candidate 5's spirit.</li>
+          <li><code class="font-mono">lore/</code> keeps good locality: <code class="font-mono">loreStore.ts</code> is the only writer and stays behind the folder seam.</li>
+          <li>Folder-level import chain holds across packages (<code class="font-mono">contracts</code> does not leak downward; <code class="font-mono">work/</code> imports <code class="font-mono">harness/</code>/<code class="font-mono">lore/</code> only through their index).</li>
+          <li>Minor notes, not candidates: logging in four library modules against conventions.md (lineProcess.ts:84, opencode.ts:538, hostSession.ts:242, hostRuntime.ts:142); <code class="font-mono">contracts/src/requests.ts</code> at 761 lines (hard-limit debt); <code class="font-mono">serviceTag.ts</code> root↔remote file-level ring (12 lines); <code class="font-mono">rituals/rituals.tsx</code> at 767 lines (hard-limit debt, needs its own pass).</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

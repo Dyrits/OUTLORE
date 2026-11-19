@@ -58,6 +58,4 @@ Latest handoffs:
 
 - To resume the code simplification across the codebase (CHG-0529; merged into `main`; open: the 28 sandbox-only test failures on the owner's machine, and which kept branches can go), read the [current handoff](.agents/handoffs/2026-11-19-0935-code-simplification-merged.md). Handoffs are shared and committed.
 
-- To resume the quest header's Mark as done checkbox and quest icon, with the quest panel's two buttons and the edge handle removed (CHG-0527; committed; open: the owner's look in a window and on a phone, and whether the phone header gets Mark as done), read the [current handoff](.agents/handoffs/2026-11-19-0731-quest-header-buttons.md). Handoffs are shared and committed.
-
-
+- To resume the 2026-11-19 architecture audit (report committed with eight deepening candidates and a top recommendation, none picked yet; open: the owner's choice of candidate), read the [current handoff](.agents/handoffs/2026-11-19-0836-architecture-audit.md). Handoffs are shared and committed.
