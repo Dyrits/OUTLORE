@@ -103,4 +103,33 @@ export const recentStoreMigrations = {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`ALTER TABLE threads ADD COLUMN archived_at INTEGER`;
   }),
+  // Connectors (connectors blueprint, Stored choices): the installed connectors with their global switch, the explicit choices
+  // of a realm, the Borderlands and a quest (Inherit is no row; a deleted realm or quest takes its rows with it), and the
+  // tools switched off (on is no row). `is_removing` marks the first of a removal's three steps.
+  "0060_connectors": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`CREATE TABLE connectors (
+      id TEXT PRIMARY KEY,
+      installed_at INTEGER NOT NULL,
+      is_enabled INTEGER NOT NULL DEFAULT 1,
+      is_removing INTEGER NOT NULL DEFAULT 0,
+      options TEXT NOT NULL DEFAULT '{}',
+      needs TEXT
+    )`;
+    yield* sql`CREATE TABLE connector_choices (
+      connector_id TEXT NOT NULL REFERENCES connectors(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE,
+      mission_id TEXT REFERENCES missions(id) ON DELETE CASCADE,
+      choice TEXT NOT NULL
+    )`;
+    yield* sql`CREATE UNIQUE INDEX connector_choices_borderlands ON connector_choices (connector_id) WHERE kind = 'Borderlands'`;
+    yield* sql`CREATE UNIQUE INDEX connector_choices_realm ON connector_choices (connector_id, workspace_id) WHERE kind = 'Realm'`;
+    yield* sql`CREATE UNIQUE INDEX connector_choices_quest ON connector_choices (connector_id, mission_id) WHERE kind = 'Quest'`;
+    yield* sql`CREATE TABLE connector_tools (
+      connector_id TEXT NOT NULL REFERENCES connectors(id) ON DELETE CASCADE,
+      tool TEXT NOT NULL,
+      PRIMARY KEY (connector_id, tool)
+    )`;
+  }),
 };

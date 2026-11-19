@@ -79,6 +79,11 @@ export const capabilities = {
   outsideSandbox: "Run outside the sandbox",
   /** Any action of a harness that runs with no enforced sandbox here. */
   unsandboxed: "Run without a sandbox",
+  /**
+   * One tool of a connector that is not read-only (connectors specification, Asking). Its pattern is the connector's id,
+   * a `/` and the tool's exact name, so a permission for one tool never covers another, nor a command.
+   */
+  useConnectorTool: "Use a connector's tool",
   /** Codex's request to widen its sandbox for the turn. */
   widenSandbox: "Widen the sandbox",
 } as const;
@@ -94,6 +99,8 @@ export const consequences = {
     "This changes a file outside the workspace that other programs on this computer may rely on.",
   [capabilities.widenSandbox]: "This widens what the sandbox allows for the rest of the turn.",
   [capabilities.unsandboxed]: "No sandbox protects this computer here, so this runs with your full access.",
+  [capabilities.useConnectorTool]:
+    "This uses a connected service or app with your sign-in, and can change things there or reach other people.",
 } as const satisfies Record<Capability, string>;
 
 const capabilityNames = new Set<string>(Object.values(capabilities));

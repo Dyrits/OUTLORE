@@ -53,12 +53,14 @@ export const fakeGateway = Effect.gen(function* () {
       Effect.succeed({ isError: false, text: JSON.stringify([{ day: args, id: "e1", title: "Standup" }]) }),
   };
   const layer = Layer.succeed(ConnectorGateway, {
+    beginTurn: () => Effect.succeed(fakeConnectorTools.map((tool) => tool.name)),
     call: (threadId, name, args) =>
       Effect.suspend(() => {
         calls.push({ args, name, threadId });
         const answered = Object.hasOwn(answers, name) ? (answers[name] ?? null) : null;
         return answered === null ? Effect.succeed(unknownToolAnswer(name)) : answered(args);
       }),
+    endTurn: () => Effect.void,
     listingFor: () => Effect.succeed(fakeConnectorTools),
   });
   return { answer, asked, calls, layer };

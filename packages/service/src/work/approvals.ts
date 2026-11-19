@@ -1,6 +1,7 @@
 import type { Choice } from "@outlore/contracts";
 import { Clock, Effect, Layer } from "effect";
 import { SqlClient } from "effect/sql";
+import type { ToolUse } from "../connectors/index.ts";
 import { Changes } from "../core/index.ts";
 import { capabilities, findCoveringPermission } from "../policy/index.ts";
 import {
@@ -17,6 +18,8 @@ export { type ApprovalRequest, Approvals, type Decision, type FolderQuestion } f
 
 import { markPrompted } from "./activities.ts";
 import { type Asked, allowingOutcomes, makeQuestions, type Resolution, textOf } from "./questions.ts";
+
+const connectorAllowedText = "Allowed. The call runs now.";
 
 import { readRunningTurnId } from "./turnAdmission.ts";
 
@@ -106,6 +109,38 @@ export const approvalsLayer = Layer.effect(
       return { isAllowed, text: textOf(resolution, outsideSandbox) } satisfies Decision;
     }, Effect.orDie);
 
+    /**
+     * One question per call to a connector's tool, in words built from the catalog: the thread waits in Attention with no
+     * time limit. A standing permission of this tool of this connector, and no other, answers it unasked.
+     */
+    const askToolUse = Effect.fnUntraced(function* (threadId: string, use: ToolUse) {
+      const missionId = yield* missionOf(threadId);
+      if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
+      if ((yield* readTurnId(threadId)) === null)
+        return { isAllowed: false, text: "This thread is not at work, so nothing runs." } satisfies Decision;
+      // The connector's id has no `/`, so the pattern splits one way only; a permission for one tool never covers another.
+      const pattern = `${use.connector}/${use.tool}`;
+      const asked: Asked = {
+        details: use.details,
+        kind: "Approval",
+        missionId,
+        pattern,
+        permission: capabilities.useConnectorTool,
+        source: "Thread",
+        summary: use.summary,
+        threadId,
+      };
+      const covering = yield* findCoveringPermission(threadId, pattern, capabilities.useConnectorTool);
+      if (covering !== null) {
+        yield* record(asked, { message: covering.sentence, outcome: "AllowedByPermission" });
+        return { isAllowed: true, text: connectorAllowedText } satisfies Decision;
+      }
+      const resolution = yield* ask(asked);
+      return allowingOutcomes.includes(resolution.outcome)
+        ? ({ isAllowed: true, text: connectorAllowedText } satisfies Decision)
+        : ({ isAllowed: false, text: textOf(resolution) } satisfies Decision);
+    }, Effect.orDie);
+
     /** Holds the turn on the owner's choices, then tells the thread what was chosen, or that it was skipped. */
     const askChoices = Effect.fnUntraced(function* (threadId: string, choices: ReadonlyArray<Choice>) {
       const missionId = yield* missionOf(threadId);
@@ -180,6 +215,7 @@ export const approvalsLayer = Layer.effect(
           Effect.provideService(SqlClient.SqlClient, sql),
           Effect.orDie,
         ),
+      askToolUse: (threadId, use) => askToolUse(threadId, use).pipe(Effect.provideService(SqlClient.SqlClient, sql)),
       confirmAction: Effect.fnUntraced(
         function* (threadId, summary, details) {
           const missionId = yield* missionOf(threadId);

@@ -1,5 +1,6 @@
 import { Effect, Exit, Match, Schema } from "effect";
 import { type ToolAnswer, toolRefusal } from "../core/index.ts";
+import { splitListedName } from "./catalog.ts";
 import type { CodeExecutor } from "./codeExecutor.ts";
 import { CodeCallFailure, type CodeFunction, type CodeFunctions, type CodeRun, defaultCodeLimits } from "./codeRun.ts";
 import { type Binding, declarationOf, identifierOf, type OwnTool, ownDeclarationOf } from "./codeTypes.ts";
@@ -227,9 +228,12 @@ export const answerCodeModeCall = (
       return call.shouldUseCodeMode
         ? toolRefusal(`Code Mode is on: call ${call.name} from code, with ${codeToolName}.`)
         : null;
-    const tools = yield* gateway.listingFor(call.threadId);
-    if (!tools.some((tool) => tool.name === call.name)) return null;
+    const isListed = (yield* gateway.listingFor(call.threadId)).some((tool) => tool.name === call.name);
     if (call.shouldUseCodeMode)
-      return toolRefusal(`Code Mode is on: call ${call.name} from code, with ${codeToolName}.`);
-    return yield* gateway.call(call.threadId, call.name, call.args);
+      return isListed ? toolRefusal(`Code Mode is on: call ${call.name} from code, with ${codeToolName}.`) : null;
+    // A name that reads as a connector's tool goes to the gateway even when the thread is no longer offered it, so the
+    // thread is told the connector is off for it, not that the tool is unknown (connectors specification).
+    return isListed || splitListedName(call.name) !== null
+      ? yield* gateway.call(call.threadId, call.name, call.args)
+      : null;
   });
