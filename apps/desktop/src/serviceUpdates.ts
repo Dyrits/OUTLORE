@@ -1,3 +1,4 @@
+import { isRecord } from "../../../packages/contracts/src/objects.ts";
 import type { UpdateStatus } from "../../app/src/foundation/updateState.ts";
 
 // The host's service runs in a utility process and cannot reach the updater, which lives here (app-updates, Updating a
@@ -23,22 +24,16 @@ export interface ServiceUpdates {
 }
 
 export const serviceStatusOf = (status: UpdateStatus): ServiceUpdateStatus => {
-  switch (status._tag) {
-    case "Ready":
-      return { _tag: "Ready", version: status.version };
-    case "Failed":
-      return { _tag: "Failed", message: status.message };
-    case "Available":
-      // Only the phone's updater waits for a download choice; a host never sees it, and downloading is what it does.
-      return { _tag: "Idle", note: null };
-    default:
-      return status;
-  }
+  if (status._tag === "Ready") return { _tag: "Ready", version: status.version };
+  if (status._tag === "Failed") return { _tag: "Failed", message: status.message };
+  // Only the phone's updater waits for a download choice; a host never sees it, and downloading is what it does.
+  if (status._tag === "Available") return { _tag: "Idle", note: null };
+  return status;
 };
 
 const callOf = (message: unknown): { call: string; id: string } | null => {
-  if (typeof message !== "object" || message === null) return null;
-  const { call, id, type } = message as Record<string, unknown>;
+  if (!isRecord(message)) return null;
+  const { call, id, type } = message;
   if (type !== "updater" || typeof id !== "string" || typeof call !== "string") return null;
   return { call, id };
 };

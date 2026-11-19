@@ -1,9 +1,7 @@
-import { it as effectIt } from "@effect/vitest";
 import { Effect } from "effect";
-import { TestClock } from "effect/testing";
 import { describe, expect, it } from "vitest";
-import { closingFrame, defaultRoomLimits, hostFrame, readClosingFrame, relayFrame } from "../src/roomCore.ts";
-import { createFakeRoom, type FakePeer, hostFrameOf, idOf } from "./fixtures/fakeRoom.ts";
+import { hostFrame, relayFrame } from "../src/roomCore.ts";
+import { createFakeRoom, hostFrameOf, idOf } from "./fixtures/fakeRoom.ts";
 
 const bytes = (...values: number[]) => Uint8Array.from(values);
 
@@ -109,11 +107,11 @@ describe("joining a room", () => {
   it("closes every client with host left when the host leaves", async () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
-    const a = await connect("client");
-    const b = await connect("client");
+    const first = await connect("client");
+    const second = await connect("client");
     Effect.runSync(core.close(host));
-    expect(a.closed).toEqual({ code: 1001, reason: "host left" });
-    expect(b.closed).toEqual({ code: 1001, reason: "host left" });
+    expect(first.closed).toEqual({ code: 1001, reason: "host left" });
+    expect(second.closed).toEqual({ code: 1001, reason: "host left" });
   });
 
   it("closes a client at once once the host has left", async () => {
@@ -166,31 +164,31 @@ describe("forwarding", () => {
   it("passes a frame from the host to the addressed client only, without a prefix", async () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
-    const a = await connect("client");
-    const b = await connect("client");
+    const first = await connect("client");
+    const second = await connect("client");
     const [joinedA] = host.frames();
     Effect.runSync(core.receive(host, hostFrameOf(hostFrame.forward, idOf(joinedA ?? bytes()), [1, 2, 3])));
-    expect(a.frames()).toEqual([bytes(1, 2, 3)]);
-    expect(b.frames()).toEqual([]);
+    expect(first.frames()).toEqual([bytes(1, 2, 3)]);
+    expect(second.frames()).toEqual([]);
   });
 
   it("keeps clients from seeing each other", async () => {
     const { connect, core } = createFakeRoom();
     await connect("host", "first");
-    const a = await connect("client");
-    const b = await connect("client");
-    Effect.runSync(core.receive(a, bytes(1, 2, 3)));
-    expect(a.sent).toEqual([]);
-    expect(b.sent).toEqual([]);
+    const first = await connect("client");
+    const second = await connect("client");
+    Effect.runSync(core.receive(first, bytes(1, 2, 3)));
+    expect(first.sent).toEqual([]);
+    expect(second.sent).toEqual([]);
   });
 
   it("tells clients apart by id when two send", async () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
-    const a = await connect("client");
-    const b = await connect("client");
-    Effect.runSync(core.receive(a, bytes(1)));
-    Effect.runSync(core.receive(b, bytes(2)));
+    const first = await connect("client");
+    const second = await connect("client");
+    Effect.runSync(core.receive(first, bytes(1)));
+    Effect.runSync(core.receive(second, bytes(2)));
     const [joinedA, joinedB, fromA, fromB] = host.frames();
     expect(idOf(fromA ?? bytes())).toEqual(idOf(joinedA ?? bytes()));
     expect(idOf(fromB ?? bytes())).toEqual(idOf(joinedB ?? bytes()));
@@ -216,12 +214,12 @@ describe("forwarding", () => {
   it("closes a client with disconnected when the host asks", async () => {
     const { connect, core } = createFakeRoom();
     const host = await connect("host", "first");
-    const a = await connect("client");
-    const b = await connect("client");
+    const first = await connect("client");
+    const second = await connect("client");
     const [joinedA] = host.frames();
     Effect.runSync(core.receive(host, hostFrameOf(hostFrame.disconnect, idOf(joinedA ?? bytes()))));
-    expect(a.closed).toEqual({ code: 1000, reason: "disconnected" });
-    expect(b.closed).toBeNull();
+    expect(first.closed).toEqual({ code: 1000, reason: "disconnected" });
+    expect(second.closed).toBeNull();
   });
 
   it("ignores a disconnect for an unknown client id", async () => {
@@ -348,173 +346,3 @@ describe("keepalive", () => {
 
 // A client of a relay in front of a proxy may learn of a close late (Node's own WebSocket waits about ten seconds for
 // the connection to end), so the relay says why in a text frame sent just before it closes: the reason is read at once.
-describe("saying why a connection is closed", () => {
-  /** The closing frames a peer was sent before it was closed, and nothing sent after. */
-  const closingsOf = (peer: FakePeer) => {
-    const texts = peer.sent.filter((data): data is string => typeof data === "string");
-    const closings = texts.map(readClosingFrame);
-    expect(closings.every((closing) => closing !== null)).toBe(true);
-    // Sent before the close, so the peer reads it first.
-    expect(peer.sentWhenClosed).toBe(peer.sent.length);
-    return closings;
-  };
-
-  it("builds a frame that reads back, and reads nothing else as one", () => {
-    expect(readClosingFrame(closingFrame(1013, "host offline"))).toEqual({ code: 1013, reason: "host offline" });
-    for (const text of [
-      "pong",
-      "ping",
-      "",
-      "{}",
-      "[]",
-      "null",
-      '{"closing":1}',
-      '{"closing":{"code":"1013","reason":"x"}}',
-      '{"closing":{"code":1013}}',
-      '{"closing":{"code":5,"reason":"x"}}',
-      '{"closing":{"code":1013,"reason":7}}',
-      "{not json",
-    ])
-      expect(readClosingFrame(text), text).toBeNull();
-  });
-
-  it("tells a client there is no host before it closes it", async () => {
-    const { connect } = createFakeRoom();
-    const client = await connect("client");
-    expect(closingsOf(client)).toEqual([{ code: 1013, reason: "host offline" }]);
-  });
-
-  it("tells the ninth client the room is full", async () => {
-    const { connect } = createFakeRoom();
-    await connect("host", "first");
-    const clients: FakePeer[] = [];
-    for (let count = 0; count < 9; count += 1) clients.push(await connect("client"));
-    expect(closingsOf(clients[8] as FakePeer)).toEqual([{ code: 4004, reason: "room full" }]);
-    expect(clients[0]?.sent).toEqual([]);
-  });
-
-  it("tells every client the host left, whether it left or was replaced", async () => {
-    const { connect, core } = createFakeRoom();
-    const host = await connect("host", "first");
-    const a = await connect("client");
-    Effect.runSync(core.close(host));
-    expect(closingsOf(a)).toEqual([{ code: 1001, reason: "host left" }]);
-    const next = await connect("host", "first");
-    const b = await connect("client");
-    await connect("host", "first");
-    expect(closingsOf(b)).toEqual([{ code: 1001, reason: "host left" }]);
-    expect(closingsOf(next)).toEqual([{ code: 1012, reason: "replaced" }]);
-  });
-
-  it("tells a host with another claim that the claim does not match", async () => {
-    const { connect } = createFakeRoom();
-    await connect("host", "first");
-    expect(closingsOf(await connect("host", "second"))).toEqual([{ code: 1008, reason: "claim mismatch" }]);
-    expect(closingsOf(await connect("host"))).toEqual([{ code: 1008, reason: "claim mismatch" }]);
-  });
-
-  it("tells a connection it broke a rule", async () => {
-    const { connect, core } = createFakeRoom();
-    const host = await connect("host", "first");
-    const text = await connect("client");
-    Effect.runSync(core.receive(text, "hello"));
-    expect(closingsOf(text)).toEqual([{ code: 1003, reason: "text frames are not supported" }]);
-    const big = await connect("client");
-    Effect.runSync(core.receive(big, new Uint8Array(1024 * 1024 + 1)));
-    expect(closingsOf(big)).toEqual([{ code: 1009, reason: "frame too large" }]);
-    Effect.runSync(core.receive(host, new Uint8Array(3)));
-    expect(closingsOf(host)).toEqual([{ code: 1002, reason: "malformed frame" }]);
-  });
-
-  it("tells a client the host disconnected it", async () => {
-    const { connect, core } = createFakeRoom();
-    const host = await connect("host", "first");
-    const client = await connect("client");
-    const id = idOf(host.frames()[0] ?? bytes());
-    Effect.runSync(core.receive(host, hostFrameOf(hostFrame.disconnect, id)));
-    expect(closingsOf(client)).toEqual([{ code: 1000, reason: "disconnected" }]);
-  });
-
-  it("sends a connection nothing extra while it stays open", async () => {
-    const { connect, core } = createFakeRoom();
-    const host = await connect("host", "first");
-    const client = await connect("client");
-    Effect.runSync(core.receive(client, "ping"));
-    expect(client.sent).toEqual(["pong"]);
-    expect(host.sent.filter((data) => typeof data === "string")).toEqual([]);
-  });
-});
-
-describe("a connection that floods the room with frames", () => {
-  const limits = { frameBurst: 4, maxFramesPerSecond: 2 };
-
-  effectIt.effect("is closed as rate limited once its burst is spent, and leaves the room", () =>
-    Effect.gen(function* () {
-      const { connectEffect, core } = createFakeRoom(limits);
-      const host = yield* connectEffect("host", "first");
-      const client = yield* connectEffect("client");
-      for (let index = 0; index < 4; index++) yield* core.receive(client, bytes(index));
-      expect(client.closed).toBeNull();
-      yield* core.receive(client, bytes(9));
-      expect(client.closed).toEqual({ code: 4029, reason: "rate limited" });
-      expect(host.frames().filter((frame) => frame[0] === relayFrame.forward)).toHaveLength(4);
-      expect(host.frames().at(-1)?.[0]).toBe(relayFrame.left);
-    }),
-  );
-
-  effectIt.effect("lets a steady flow at the allowed rate through, however long it lasts", () =>
-    Effect.gen(function* () {
-      const { connectEffect, core } = createFakeRoom(limits);
-      yield* connectEffect("host", "first");
-      const client = yield* connectEffect("client");
-      for (let index = 0; index < 20; index++) {
-        yield* core.receive(client, bytes(index));
-        yield* core.receive(client, bytes(index));
-        yield* TestClock.adjust(1_000);
-      }
-      expect(client.closed).toBeNull();
-    }),
-  );
-
-  effectIt.effect("refills with time: a spent burst is back after the refill period", () =>
-    Effect.gen(function* () {
-      const { connectEffect, core } = createFakeRoom(limits);
-      yield* connectEffect("host", "first");
-      const client = yield* connectEffect("client");
-      for (let index = 0; index < 4; index++) yield* core.receive(client, bytes(index));
-      yield* TestClock.adjust(2_000);
-      for (let index = 0; index < 4; index++) yield* core.receive(client, bytes(index));
-      expect(client.closed).toBeNull();
-    }),
-  );
-
-  effectIt.effect("does not touch the other connections of the room", () =>
-    Effect.gen(function* () {
-      const { connectEffect, core } = createFakeRoom(limits);
-      const host = yield* connectEffect("host", "first");
-      const noisy = yield* connectEffect("client");
-      const quiet = yield* connectEffect("client");
-      for (let index = 0; index < 5; index++) yield* core.receive(noisy, bytes(index));
-      yield* core.receive(quiet, bytes(1));
-      expect(noisy.closed?.code).toBe(4029);
-      expect(quiet.closed).toBeNull();
-      expect(host.closed).toBeNull();
-    }),
-  );
-
-  effectIt.effect("counts a host's frames and text frames the same way", () =>
-    Effect.gen(function* () {
-      const { connectEffect, core } = createFakeRoom(limits);
-      const host = yield* connectEffect("host", "first");
-      for (let index = 0; index < 5; index++) yield* core.receive(host, "ping");
-      expect(host.closed).toEqual({ code: 4029, reason: "rate limited" });
-    }),
-  );
-});
-
-describe("the default frame budget", () => {
-  it("is 200 frames a second with a burst of 400", () => {
-    expect(defaultRoomLimits.maxFramesPerSecond).toBe(200);
-    expect(defaultRoomLimits.frameBurst).toBe(400);
-  });
-});

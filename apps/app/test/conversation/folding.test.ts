@@ -34,7 +34,9 @@ describe("projecting the folded side tree", () => {
     expect(folded.map((row) => row.depth)).toEqual([0, 1, 1, 1]);
   });
   it("unfolds the selected opener's whole hidden branch", () => {
-    expect(foldThreads(tree, false, new Set(["top"])).map((row) => row.thread.id)).toEqual(tree.map((t) => t.id));
+    expect(foldThreads(tree, false, new Set(["top"])).map((row) => row.thread.id)).toEqual(
+      tree.map((candidate) => candidate.id),
+    );
     expect(foldThreads(tree, true, new Set()).every((row) => row.foldedCount === 0)).toBe(true);
   });
 });

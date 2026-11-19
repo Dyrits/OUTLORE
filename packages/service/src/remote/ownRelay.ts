@@ -1,4 +1,5 @@
 import { newRoomName } from "@outlore/channel";
+import { isRecord } from "@outlore/contracts";
 import { closeCodes, connectClient, relayWorkerBundle, relayWorkerCompatibilityDate } from "@outlore/relay";
 import { Effect } from "effect";
 
@@ -113,22 +114,24 @@ class Stop {
 
 const stop = (failure: DeployFailureKind, message: string) => new Stop({ failure, message, ok: false });
 
+/** The first of the `errors` Cloudflare lists in a reply, or null when the reply lists none. */
+const firstErrorOf = (json: unknown): Record<string, unknown> | null => {
+  if (!isRecord(json) || !Array.isArray(json.errors)) return null;
+  const first: unknown = json.errors[0];
+  return isRecord(first) ? first : null;
+};
+
 const errorTextOf = (json: unknown): string => {
-  const errors = typeof json === "object" && json !== null && "errors" in json ? json.errors : null;
-  const first = Array.isArray(errors) ? (errors[0] as unknown) : null;
-  const message = typeof first === "object" && first !== null && "message" in first ? first.message : null;
+  const message = firstErrorOf(json)?.message;
   return typeof message === "string" ? message : "no reason given";
 };
 
 const errorCodeOf = (json: unknown): number | null => {
-  const errors = typeof json === "object" && json !== null && "errors" in json ? json.errors : null;
-  const first = Array.isArray(errors) ? (errors[0] as unknown) : null;
-  const code = typeof first === "object" && first !== null && "code" in first ? first.code : null;
+  const code = firstErrorOf(json)?.code;
   return typeof code === "number" ? code : null;
 };
 
-const resultOf = (json: unknown): unknown =>
-  typeof json === "object" && json !== null && "result" in json ? json.result : null;
+const resultOf = (json: unknown): unknown => (isRecord(json) ? (json.result ?? null) : null);
 
 const hexOf = (length: number) =>
   Array.from(crypto.getRandomValues(new Uint8Array(length)), (byte) => byte.toString(16).padStart(2, "0")).join("");

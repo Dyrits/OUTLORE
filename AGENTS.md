@@ -54,9 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the quest header's Mark as done checkbox and quest icon, with the quest panel's two buttons and the edge handle removed (CHG-0527; committed; open: the owner's look in a window and on a phone, and whether the phone header gets Mark as done), read the [current handoff](.agents/handoffs/2026-11-19-0731-quest-header-buttons.md). Handoffs are shared and committed.
+- To resume the code simplification across the codebase (CHG-0529; shared helpers, `switch` removed, files past 512 lines split, single-letter names replaced; committed on the branch `code-simplification` and pushed; open: the owner's review and merge, and the 28 sandbox-only test failures on the owner's machine), read the [current handoff](.agents/handoffs/2026-11-19-0900-code-simplification.md). Handoffs are shared and committed.
 
-- To resume the agent replies' date beside the time, such as `19 Nov 2026 · 11:15 AM` (built and tested, uncommitted when written; open: a look in a window and on a phone, and whether the year always shows), read the [current handoff](.agents/handoffs/2026-11-19-0724-message-date.md). Handoffs are shared and committed.
+- To resume the quest header's Mark as done checkbox and quest icon, with the quest panel's two buttons and the edge handle removed (CHG-0527; committed; open: the owner's look in a window and on a phone, and whether the phone header gets Mark as done), read the [current handoff](.agents/handoffs/2026-11-19-0731-quest-header-buttons.md). Handoffs are shared and committed.
 
 - To resume the phone sidebar's realm names, which the phone showed as a folder mark alone (CHG-0528; fixed by giving the name its own style; open: a build and a look on a phone), read the [current handoff](.agents/handoffs/2026-11-19-0727-phone-realm-name.md). Handoffs are shared and committed.
 

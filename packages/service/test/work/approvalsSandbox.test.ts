@@ -122,7 +122,10 @@ describe("harness prompts inside and outside the sandbox", () => {
     Effect.gen(function* () {
       const started = yield* start(`${ask(push)}\n${prompt(push.command, true)}`);
       yield* answer(openQuestion(yield* settle(started.missionId, isAsking)), "Allow");
-      const detail = yield* settle(started.missionId, (d) => d.questions.length === 2 || isReplied(d));
+      const detail = yield* settle(
+        started.missionId,
+        (current) => current.questions.length === 2 || isReplied(current),
+      );
       expect(detail.questions[1]).toMatchObject({ outcome: null, permission: "Run outside the sandbox" });
     }).pipe(Effect.provide(live())),
   );
@@ -139,7 +142,7 @@ describe("harness prompts inside and outside the sandbox", () => {
       expect(lastReply(detail)).toContain("prompt allowed | prompt denied: ");
 
       yield* send(started.threadId, prompt(push.command, true));
-      const later = yield* settle(started.missionId, (d) => d.questions.length === 3 && isAsking(d));
+      const later = yield* settle(started.missionId, (current) => current.questions.length === 3 && isAsking(current));
       expect(openQuestion(later)).toMatchObject({ details: push.command, source: "Harness" });
     }).pipe(Effect.provide(live())),
   );
@@ -171,7 +174,7 @@ describe("harness prompts inside and outside the sandbox", () => {
   it.live("changes a file inside the thread's folder unasked and asks about one outside it", () =>
     Effect.gen(function* () {
       const inside = yield* start(`prompt Edit ${JSON.stringify({ file_path: "notes/plan.md" })}`);
-      expect((yield* settle(inside.missionId, isReplied)).questions.map((q) => q.outcome)).toEqual([
+      expect((yield* settle(inside.missionId, isReplied)).questions.map((question) => question.outcome)).toEqual([
         "AllowedAutomatically",
       ]);
       for (const file_path of ["../elsewhere/plan.md", "plan.md, /etc/hosts"]) {

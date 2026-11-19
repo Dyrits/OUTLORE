@@ -45,14 +45,14 @@ describe("folding threads opened by agents", () => {
     Effect.gen(function* () {
       const started = yield* start("wait 5000");
       yield* tool(started.threadId, "open_thread", { request: "wait 5000", title: "Agent opened" });
-      const detail = yield* settle(started.missionId, (d) => d.threads.length === 2);
-      const agent = detail.threads.find((t) => t.parentId === started.threadId);
+      const detail = yield* settle(started.missionId, (current) => current.threads.length === 2);
+      const agent = detail.threads.find((thread) => thread.parentId === started.threadId);
       if (agent === undefined) return yield* Effect.die("Missing thread");
       const owner = yield* open(agent.id, 'ask {"action":"Push","command":"git push"}');
       const settings = yield* call({ _tag: "ReadSettings" });
       yield* call({ _tag: "UpdateSettings", settings: { ...settings, shouldShowAgentThreads: false } });
-      const folded = yield* settle(started.missionId, (d) =>
-        d.threads.some((t) => t.id === owner.threadId && t.state === "Attention"),
+      const folded = yield* settle(started.missionId, (current) =>
+        current.threads.some((thread) => thread.id === owner.threadId && thread.state === "Attention"),
       );
       expect(folded.threads).toEqual(
         expect.arrayContaining([
@@ -73,7 +73,9 @@ describe("folding threads opened by agents", () => {
         ]),
       );
       yield* tool(started.threadId, "send_thread_message", { text: "Still reachable", to: agent.id });
-      expect((yield* read(started.missionId, agent.id)).messages.some((m) => m.text === "Still reachable")).toBe(true);
+      expect(
+        (yield* read(started.missionId, agent.id)).messages.some((message) => message.text === "Still reachable"),
+      ).toBe(true);
     }).pipe(Effect.provide(live())),
   );
 });

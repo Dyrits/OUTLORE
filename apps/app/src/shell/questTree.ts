@@ -11,6 +11,10 @@ export interface Placements {
   }>;
 }
 
+/** The quests, the one with the latest activity first; `[...]` copies the list, since sorting changes it in place. */
+const latestFirstOf = (missions: ReadonlyArray<MissionSummary>): Array<MissionSummary> =>
+  [...missions].sort((current, next) => next.lastActivityAt - current.lastActivityAt);
+
 /**
  * Sorts every quest into its placement (mission-tracking, Left navigation structure): realms by name, whether tied to a
  * folder or not, and quests of each placement by latest activity. A realm with no quest is kept, so it can be found.
@@ -19,7 +23,7 @@ export const placementsOf = (
   missions: ReadonlyArray<MissionSummary>,
   workspaces: ReadonlyArray<WorkspaceChoice>,
 ): Placements => {
-  const latestFirst = [...missions].sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+  const latestFirst = latestFirstOf(missions);
   return {
     borderlands: latestFirst.filter((mission) => mission.workspaceId === null),
     // The service lists realms in the owner's order (dragged in the sidebar), by name for those never placed.
@@ -152,7 +156,7 @@ export const recencyGroupsOf = (missions: ReadonlyArray<MissionSummary>, now: nu
     return date.getFullYear() === thisYear ? month : `${month} ${date.getFullYear()}`;
   };
   const groups: Array<{ heading: string; quests: MissionSummary[] }> = [];
-  for (const mission of [...missions].sort((a, b) => b.lastActivityAt - a.lastActivityAt)) {
+  for (const mission of latestFirstOf(missions)) {
     const heading = headingOf(mission.lastActivityAt);
     const last = groups[groups.length - 1];
     if (last?.heading === heading) last.quests.push(mission);

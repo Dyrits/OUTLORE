@@ -122,7 +122,7 @@ describe("no grant from prose", () => {
   it.live("asks even when the owner's message names the action and the thread quotes it", () =>
     Effect.gen(function* () {
       const started = yield* start(`Looks good, push it.\n${ask({ ...push, quote: "push it" })}`);
-      const detail = yield* settle(started.missionId, (d) => isAsking(d) || isReplied(d));
+      const detail = yield* settle(started.missionId, (current) => isAsking(current) || isReplied(current));
       expect(detail.questions[0]).toMatchObject({ details: push.command, outcome: null });
       yield* answer(openQuestion(detail), "Allow");
       expect(lastReply(yield* settle(started.missionId, isReplied))).toContain("Allowed.");
@@ -134,7 +134,7 @@ describe("no grant from prose", () => {
       const started = yield* start(
         `Run it outside the sandbox.\n${ask({ ...push, outsideSandbox: true, quote: "Run it outside the sandbox" })}`,
       );
-      const detail = yield* settle(started.missionId, (d) => isAsking(d) || isReplied(d));
+      const detail = yield* settle(started.missionId, (current) => isAsking(current) || isReplied(current));
       expect(detail.questions[0]).toMatchObject({ outcome: null, permission: "Run outside the sandbox" });
     }).pipe(Effect.provide(live())),
   );

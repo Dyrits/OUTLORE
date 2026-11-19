@@ -22,7 +22,7 @@ describe("reading a thread's panel", () => {
     const { layer } = live();
     return Effect.gen(function* () {
       const { missionId, threadId } = yield* start("Hello");
-      yield* settle(missionId, (d) => d.thread.state === "Idle");
+      yield* settle(missionId, (current) => current.thread.state === "Idle");
       expect(yield* panelOf(threadId)).toMatchObject({
         context: null,
         spending: { cost: 0, tokens: 0 },
@@ -35,7 +35,7 @@ describe("reading a thread's panel", () => {
     const { layer } = live();
     return Effect.gen(function* () {
       const { missionId, threadId } = yield* start("spend 100000");
-      yield* settle(missionId, (d) => d.thread.state === "Idle");
+      yield* settle(missionId, (current) => current.thread.state === "Idle");
       const { context } = yield* panelOf(threadId);
       expect(context).not.toBeNull();
       expect(context?.tokens).toBe(100_000);
@@ -52,7 +52,7 @@ describe("reading a thread's panel", () => {
     const { layer } = live();
     return Effect.gen(function* () {
       const { missionId, threadId } = yield* start("spend 10");
-      yield* settle(missionId, (d) => d.thread.state === "Idle");
+      yield* settle(missionId, (current) => current.thread.state === "Idle");
       const { context } = yield* panelOf(threadId);
       expect(context?.tokens).toBe(10);
       expect(context?.parts.reduce((sum, part) => sum + part.tokens, 0)).toBe(10);
@@ -64,9 +64,9 @@ describe("reading a thread's panel", () => {
     const { layer } = live();
     return Effect.gen(function* () {
       const { missionId, threadId } = yield* start("spend 5000");
-      yield* settle(missionId, (d) => d.thread.state === "Idle");
+      yield* settle(missionId, (current) => current.thread.state === "Idle");
       yield* send(threadId, "spend 7000");
-      yield* settle(missionId, (d) => d.thread.state === "Idle" && d.messages.length >= 4);
+      yield* settle(missionId, (current) => current.thread.state === "Idle" && current.messages.length >= 4);
       const panel = yield* panelOf(threadId);
       expect(panel.context?.tokens).toBe(7000);
       expect(panel.turnCount).toBe(2);
@@ -77,9 +77,9 @@ describe("reading a thread's panel", () => {
     const { layer } = live();
     return Effect.gen(function* () {
       const { missionId, threadId } = yield* start("spend 1000 1.5");
-      yield* settle(missionId, (d) => d.thread.state === "Idle");
+      yield* settle(missionId, (current) => current.thread.state === "Idle");
       const opened = yield* open(threadId, "spend 400");
-      yield* settle(missionId, (d) => d.thread.state === "Idle", opened.threadId);
+      yield* settle(missionId, (current) => current.thread.state === "Idle", opened.threadId);
       const parent = yield* panelOf(threadId);
       const side = yield* panelOf(opened.threadId);
       expect(parent.spending).toEqual({ cost: 1.5, tokens: 0 });

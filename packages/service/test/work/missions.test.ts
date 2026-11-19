@@ -39,7 +39,7 @@ const failureOf = <R extends Request>(request: R) =>
 const advance = (duration: Parameters<typeof TestClock.adjust>[0]) =>
   Effect.gen(function* () {
     yield* TestClock.adjust(duration);
-    for (let i = 0; i < 20; i++) yield* Effect.yieldNow;
+    for (let index = 0; index < 20; index++) yield* Effect.yieldNow;
   });
 
 const realmList = () => call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null });
@@ -74,7 +74,9 @@ describe("starting a mission", () => {
 
       const detail = yield* read(started.missionId);
       expect(detail.thread).toMatchObject({ id: started.threadId, state: "Running" });
-      expect(detail.messages.map((m) => [m.sender, m.text])).toEqual([["user", "Plan the trip\nwith details"]]);
+      expect(detail.messages.map((message) => [message.sender, message.text])).toEqual([
+        ["user", "Plan the trip\nwith details"],
+      ]);
       // Each thread of the tree carries what the full quest list shows beside it: harness, model, latest activity.
       const [top] = detail.threads;
       expect(top).toMatchObject({ harness: "claude", model: "default" });
@@ -96,7 +98,7 @@ describe("starting a mission", () => {
 
       const detail = yield* read(started.missionId);
       expect(detail.thread.state).toBe("Idle");
-      expect(detail.messages.map((m) => [m.sender, m.text])).toEqual([
+      expect(detail.messages.map((message) => [message.sender, message.text])).toEqual([
         ["user", "Hello"],
         ["agent", "Echo: Hello"],
       ]);
@@ -237,14 +239,14 @@ describe("follow-up messages", () => {
       yield* advance(REPLY_DELAY);
 
       const detail = yield* read(started.missionId);
-      expect(detail.messages.map((m) => [m.sender, m.text])).toEqual([
+      expect(detail.messages.map((message) => [message.sender, message.text])).toEqual([
         ["user", "First"],
         ["user", "Second"],
         ["user", "Third"],
         ["agent", "Echo: First"],
         ["agent", "Echo: Second\n\nThird"],
       ]);
-      expect(detail.messages.map((m) => m.sequence)).toEqual([1, 2, 3, 4, 5]);
+      expect(detail.messages.map((message) => message.sequence)).toEqual([1, 2, 3, 4, 5]);
       expect(detail.thread.state).toBe("Idle");
     }).pipe(Effect.provide(live(databaseFile()))),
   );
@@ -304,7 +306,7 @@ describe("persisting missions", () => {
 
       const detail = yield* read(started.missionId).pipe(Effect.provide(Layer.fresh(live(filename))));
       expect(detail.mission.title).toBe("Remember me");
-      expect(detail.messages.map((m) => m.text)).toEqual(["Remember me", "Echo: Remember me"]);
+      expect(detail.messages.map((message) => message.text)).toEqual(["Remember me", "Echo: Remember me"]);
       expect(detail.thread.state).toBe("Idle");
     }),
   );

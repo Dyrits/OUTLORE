@@ -37,7 +37,7 @@ export const ringStackOf = (
   gap: number,
 ): RingStack => {
   const outward = [...windows].sort(
-    (a, b) => (a.windowMinutes ?? 0) - (b.windowMinutes ?? 0) || a.resetsAt - b.resetsAt,
+    (current, next) => (current.windowMinutes ?? 0) - (next.windowMinutes ?? 0) || current.resetsAt - next.resetsAt,
   );
   const rings = outward.map((window, index): Ring => {
     const radius = size / 2 - stroke / 2 - index * (stroke + gap);

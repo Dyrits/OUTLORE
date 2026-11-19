@@ -1,4 +1,4 @@
-import type { HostId, KnownHost } from "@outlore/contracts";
+import { type HostId, isRecord, type KnownHost } from "@outlore/contracts";
 
 // The hosts a browser is paired with, kept in the browser's own storage (browser access, 0019). A browser has no local
 // service, so this is where the host's key, room and device token live; the page's code can read them, which is why
@@ -29,8 +29,6 @@ const hostsKey = "outlore.browserHosts";
 const activeKey = "outlore.browserHost";
 
 const isText = (value: unknown): value is string => typeof value === "string" && value !== "";
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 const isStoredHost = (value: unknown): value is StoredHost => {
   if (!isRecord(value)) return false;

@@ -1,9 +1,9 @@
+import type { AppUpdateSettings } from "@outlore/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   type AndroidInstaller,
   AndroidUpdateController,
   checkIntervalMilliseconds,
-  type UpdateSettings,
 } from "../../../src/foundation/androidUpdates/controller";
 
 const hash = "a".repeat(128);
@@ -35,7 +35,7 @@ const harness = (
     isMetered?: boolean;
     isStoreInstall?: boolean;
     listings?: unknown;
-    settings?: UpdateSettings;
+    settings?: AppUpdateSettings;
     sums?: string;
     version?: string;
   } = {},
@@ -100,54 +100,54 @@ describe("the phone's app updates", () => {
   });
 
   it("finds a newer release, downloads its APK on Wi-Fi, and checks it against the release's checksums", async () => {
-    const h = harness();
-    await h.controller.check();
-    expect(h.calls).toEqual([`download ${apk("0.1.9-Prototype")}`]);
-    expect(statusOf(h)).toEqual({
+    const fakes = harness();
+    await fakes.controller.check();
+    expect(fakes.calls).toEqual([`download ${apk("0.1.9-Prototype")}`]);
+    expect(statusOf(fakes)).toEqual({
       _tag: "Ready",
       notes: "Notes of 0.1.9-Prototype",
       pageUrl: "https://example.test/releases/0.1.9-Prototype",
       version: "0.1.9-Prototype",
     });
-    expect(h.controller.state().lastCheckedAt).toBe(1_000);
-    expect(h.saved.current.lastCheckedAt).toBe(1_000);
+    expect(fakes.controller.state().lastCheckedAt).toBe(1_000);
+    expect(fakes.saved.current.lastCheckedAt).toBe(1_000);
   });
 
   it("asks GitHub with the app's name and version and nothing about the owner", async () => {
-    const h = harness();
-    await h.controller.check();
-    expect(h.requests[0]).toEqual({
+    const fakes = harness();
+    await fakes.controller.check();
+    expect(fakes.requests[0]).toEqual({
       headers: { Accept: "application/vnd.github+json", "User-Agent": "Outlore/0.1.8-Prototype" },
       url: "https://example.test/releases",
     });
-    expect(h.requests[1]?.headers).toEqual({ "User-Agent": "Outlore/0.1.8-Prototype" });
+    expect(fakes.requests[1]?.headers).toEqual({ "User-Agent": "Outlore/0.1.8-Prototype" });
   });
 
   it("offers a release on mobile data without downloading it, until the owner chooses", async () => {
-    const h = harness({ isMetered: true });
-    await h.controller.check();
-    expect(h.calls).toEqual([]);
-    expect(h.requests).toHaveLength(1);
-    expect(statusOf(h)).toMatchObject({ _tag: "Available", sizeBytes: 34_000_000, version: "0.1.9-Prototype" });
-    await h.controller.download();
-    expect(h.calls).toEqual([`download ${apk("0.1.9-Prototype")}`]);
-    expect(statusOf(h)).toMatchObject({ _tag: "Ready" });
+    const fakes = harness({ isMetered: true });
+    await fakes.controller.check();
+    expect(fakes.calls).toEqual([]);
+    expect(fakes.requests).toHaveLength(1);
+    expect(statusOf(fakes)).toMatchObject({ _tag: "Available", sizeBytes: 34_000_000, version: "0.1.9-Prototype" });
+    await fakes.controller.download();
+    expect(fakes.calls).toEqual([`download ${apk("0.1.9-Prototype")}`]);
+    expect(statusOf(fakes)).toMatchObject({ _tag: "Ready" });
   });
 
   it("downloads an offered release by itself at the next check once the phone is on Wi-Fi", async () => {
-    const h = harness({ isMetered: true });
-    await h.controller.check();
-    expect(statusOf(h)).toMatchObject({ _tag: "Available" });
-    h.network.isMetered = false;
-    await h.controller.check();
-    expect(statusOf(h)).toMatchObject({ _tag: "Ready" });
+    const fakes = harness({ isMetered: true });
+    await fakes.controller.check();
+    expect(statusOf(fakes)).toMatchObject({ _tag: "Available" });
+    fakes.network.isMetered = false;
+    await fakes.controller.check();
+    expect(statusOf(fakes)).toMatchObject({ _tag: "Ready" });
   });
 
   it("deletes a download whose hash differs and reports it with the release page", async () => {
-    const h = harness({ downloadedHash: "b".repeat(128) });
-    await h.controller.check();
-    expect(h.calls).toContain(`discard ${apk("0.1.9-Prototype")}`);
-    expect(statusOf(h)).toMatchObject({
+    const fakes = harness({ downloadedHash: "b".repeat(128) });
+    await fakes.controller.check();
+    expect(fakes.calls).toContain(`discard ${apk("0.1.9-Prototype")}`);
+    expect(statusOf(fakes)).toMatchObject({
       _tag: "Failed",
       message: expect.stringContaining("does not match"),
       pageUrl: "https://example.test/releases/0.1.9-Prototype",
@@ -180,62 +180,62 @@ describe("the phone's app updates", () => {
   });
 
   it("is up to date when nothing is newer, and never offers the running version to itself", async () => {
-    const h = harness({ listings: [release("0.1.8-Prototype"), release("0.1.7-Prototype")] });
-    await h.controller.check();
-    expect(statusOf(h)).toEqual({ _tag: "Idle", note: null });
-    expect(h.calls).toEqual([]);
+    const fakes = harness({ listings: [release("0.1.8-Prototype"), release("0.1.7-Prototype")] });
+    await fakes.controller.check();
+    expect(statusOf(fakes)).toEqual({ _tag: "Idle", note: null });
+    expect(fakes.calls).toEqual([]);
   });
 
   it("shows a failed request with its reason and leaves the next check to try again", async () => {
-    const h = harness();
-    h.fetchFn.mockRejectedValueOnce(new Error("offline"));
-    await h.controller.check();
-    expect(statusOf(h)).toMatchObject({ _tag: "Failed", message: expect.stringContaining("offline") });
-    await h.controller.check();
-    expect(statusOf(h)).toMatchObject({ _tag: "Ready" });
+    const fakes = harness();
+    fakes.fetchFn.mockRejectedValueOnce(new Error("offline"));
+    await fakes.controller.check();
+    expect(statusOf(fakes)).toMatchObject({ _tag: "Failed", message: expect.stringContaining("offline") });
+    await fakes.controller.check();
+    expect(statusOf(fakes)).toMatchObject({ _tag: "Ready" });
   });
 
   it("makes no request while the switch is off, and checks at once when it is turned on", async () => {
-    const h = harness({ settings: { isEnabled: false, lastCheckedAt: null } });
-    h.controller.start();
-    await h.controller.check();
-    expect(h.fetchFn).not.toHaveBeenCalled();
-    expect(h.repeats).toEqual([]);
-    await h.controller.setEnabled(true);
-    expect(h.fetchFn).toHaveBeenCalled();
-    expect(h.saved.current.isEnabled).toBe(true);
-    expect(h.repeats[0]?.milliseconds).toBe(checkIntervalMilliseconds);
+    const fakes = harness({ settings: { isEnabled: false, lastCheckedAt: null } });
+    fakes.controller.start();
+    await fakes.controller.check();
+    expect(fakes.fetchFn).not.toHaveBeenCalled();
+    expect(fakes.repeats).toEqual([]);
+    await fakes.controller.setEnabled(true);
+    expect(fakes.fetchFn).toHaveBeenCalled();
+    expect(fakes.saved.current.isEnabled).toBe(true);
+    expect(fakes.repeats[0]?.milliseconds).toBe(checkIntervalMilliseconds);
   });
 
   it("checks at start and then on a schedule, and stops the schedule when the switch goes off", async () => {
-    const h = harness();
-    h.controller.start();
-    await h.controller.check();
-    expect(h.fetchFn).toHaveBeenCalled();
-    expect(h.repeats).toHaveLength(1);
-    await h.controller.setEnabled(false);
-    expect(h.repeats).toHaveLength(0);
-    expect(h.saved.current.isEnabled).toBe(false);
+    const fakes = harness();
+    fakes.controller.start();
+    await fakes.controller.check();
+    expect(fakes.fetchFn).toHaveBeenCalled();
+    expect(fakes.repeats).toHaveLength(1);
+    await fakes.controller.setEnabled(false);
+    expect(fakes.repeats).toHaveLength(0);
+    expect(fakes.saved.current.isEnabled).toBe(false);
   });
 
   it("keeps a downloaded update ready while the switch is off and never checks again over it", async () => {
-    const h = harness();
-    await h.controller.check();
-    h.fetchFn.mockClear();
-    await h.controller.setEnabled(false);
-    await h.controller.check();
-    expect(h.fetchFn).not.toHaveBeenCalled();
-    expect(statusOf(h)).toMatchObject({ _tag: "Ready" });
+    const fakes = harness();
+    await fakes.controller.check();
+    fakes.fetchFn.mockClear();
+    await fakes.controller.setEnabled(false);
+    await fakes.controller.check();
+    expect(fakes.fetchFn).not.toHaveBeenCalled();
+    expect(statusOf(fakes)).toMatchObject({ _tag: "Ready" });
   });
 
   it("stops before requesting checksums if checking is disabled while the release list is loading", async () => {
-    const h = harness();
-    const check = h.controller.check();
-    await h.controller.setEnabled(false);
+    const fakes = harness();
+    const check = fakes.controller.check();
+    await fakes.controller.setEnabled(false);
     await check;
-    expect(h.requests).toHaveLength(1);
-    expect(h.calls).toEqual([]);
-    await expect(h.controller.download()).rejects.toThrow("nothing to download");
+    expect(fakes.requests).toHaveLength(1);
+    expect(fakes.calls).toEqual([]);
+    await expect(fakes.controller.download()).rejects.toThrow("nothing to download");
   });
 
   it("installs only a ready update, and only once Android allows this app to install", async () => {
@@ -256,10 +256,10 @@ describe("the phone's app updates", () => {
   });
 
   it("shows why Android refused an install, with the release page, and keeps the version running", async () => {
-    const h = harness({ installerFails: "It is signed with another key than the installed app." });
-    await h.controller.check();
-    await expect(h.controller.install()).rejects.toThrow("another key");
-    expect(statusOf(h)).toMatchObject({
+    const fakes = harness({ installerFails: "It is signed with another key than the installed app." });
+    await fakes.controller.check();
+    await expect(fakes.controller.install()).rejects.toThrow("another key");
+    expect(statusOf(fakes)).toMatchObject({
       _tag: "Failed",
       message: "It is signed with another key than the installed app.",
       pageUrl: "https://example.test/releases/0.1.9-Prototype",
@@ -267,7 +267,7 @@ describe("the phone's app updates", () => {
   });
 
   it("refuses to download when nothing was offered", async () => {
-    const h = harness();
-    await expect(h.controller.download()).rejects.toThrow("nothing to download");
+    const fakes = harness();
+    await expect(fakes.controller.download()).rejects.toThrow("nothing to download");
   });
 });

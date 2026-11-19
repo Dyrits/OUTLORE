@@ -6,7 +6,7 @@ import { version } from "../../../package.json";
 import type { AndroidUpdatesBridge } from "../updateState";
 import { androidBridgeOf } from "./bridge";
 import { type AndroidInstaller, AndroidUpdateController } from "./controller";
-import { textOfUpdateSettings, updateSettingsOf } from "./settings";
+import { appUpdateSettingsOfText, textOfAppUpdateSettings } from "./settings";
 
 /** What the app's native module (modules/outlore-installer) offers; absent in a build that does not carry it. */
 type InstallerModule = {
@@ -71,8 +71,8 @@ const updater = () => {
       return () => clearInterval(timer);
     },
     settings: {
-      read: () => updateSettingsOf(getItem(settingsKey)),
-      write: (settings) => setItem(settingsKey, textOfUpdateSettings(settings)),
+      read: () => appUpdateSettingsOfText(getItem(settingsKey)),
+      write: (settings) => setItem(settingsKey, textOfAppUpdateSettings(settings)),
     },
   });
   current = { bridge: androidBridgeOf(controller, (url) => Linking.openURL(url)), controller };

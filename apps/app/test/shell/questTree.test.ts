@@ -96,7 +96,9 @@ describe("the placements of quests", () => {
   });
 
   it("lists realms in the order the service gave, with their own quests latest first, and keeps a realm with none", () => {
-    expect(placements.realms.map((each) => [each.workspace.name, each.quests.map((q) => q.id)])).toEqual([
+    expect(
+      placements.realms.map((each) => [each.workspace.name, each.quests.map((candidate) => candidate.id)]),
+    ).toEqual([
       ["Zeta", ["q3", "q1"]],
       ["Alpha", []],
       ["Middle", ["q5"]],

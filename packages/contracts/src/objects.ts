@@ -1,0 +1,3 @@
+/** Whether a value read from outside (JSON, a message, storage) is a plain object, whose fields can then be checked one by one. */
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);

@@ -15,7 +15,11 @@ import {
 } from "../../src/attachments/attachmentRules";
 
 const bytesOf = (...parts: ReadonlyArray<number | string>) =>
-  new Uint8Array(parts.flatMap((part) => (typeof part === "string" ? [...part].map((c) => c.charCodeAt(0)) : [part])));
+  new Uint8Array(
+    parts.flatMap((part) =>
+      typeof part === "string" ? [...part].map((character) => character.charCodeAt(0)) : [part],
+    ),
+  );
 
 describe("signatureOf", () => {
   it("tells a PNG from its eight signature bytes", () => {

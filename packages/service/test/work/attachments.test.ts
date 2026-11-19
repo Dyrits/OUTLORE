@@ -218,7 +218,7 @@ describe("message attachments: images added to the owner's messages", () => {
         const card = yield* add("shot.png", png());
         const second = yield* add("two.png", png(8));
         yield* sendWith(first.thread.id, "", [card.id, second.id]);
-        const after = yield* settle(started.missionId, (d) => d.messages.length === 4 && idle(d));
+        const after = yield* settle(started.missionId, (current) => current.messages.length === 4 && idle(current));
         const sent = after.messages.find((message) => message.sender === "user" && message.attachments.length > 0);
         expect(sent?.attachments.map((attachment) => attachment.name)).toEqual(["shot.png", "two.png"]);
         expect(after.messages.at(-1)?.text).toContain("[images: shot.png, two.png]");
@@ -253,7 +253,11 @@ describe("message attachments: images added to the owner's messages", () => {
           shouldStartAnyway: false,
           text: "",
         });
-        const child = yield* settle(started.missionId, (d) => d.messages.length === 2 && idle(d), opened.threadId);
+        const child = yield* settle(
+          started.missionId,
+          (current) => current.messages.length === 2 && idle(current),
+          opened.threadId,
+        );
         expect(child.messages.at(-1)?.text).toContain("[images: child.png]");
       }),
     ),
@@ -331,7 +335,7 @@ describe("message attachments: images added to the owner's messages", () => {
           threadId: first.thread.id,
         });
         yield* sendWith(first.thread.id, "see", [card.id]);
-        const after = yield* settle(started.missionId, (d) => d.messages.length === 4 && idle(d));
+        const after = yield* settle(started.missionId, (current) => current.messages.length === 4 && idle(current));
         expect(after.messages.at(-1)?.text).toContain("[images: shot.png]");
       }),
       codexModelsLayer,
@@ -389,7 +393,7 @@ describe("message attachments: images added to the owner's messages", () => {
         const first = yield* settle(started.missionId, idle);
         const card = yield* add("shot.png", png());
         yield* sendWith(first.thread.id, "see this", [card.id]);
-        yield* settle(started.missionId, (d) => d.messages.length === 4 && idle(d));
+        yield* settle(started.missionId, (current) => current.messages.length === 4 && idle(current));
         yield* call({
           _tag: "ChangeThreadRunner",
           accountId: null,
@@ -399,7 +403,7 @@ describe("message attachments: images added to the owner's messages", () => {
           threadId: first.thread.id,
         });
         yield* sendWith(first.thread.id, "context", []);
-        const after = yield* settle(started.missionId, (d) => d.messages.length === 6 && idle(d));
+        const after = yield* settle(started.missionId, (current) => current.messages.length === 6 && idle(current));
         const history = after.messages.at(-1)?.text.split("Conversation so far")[1] ?? "";
         expect(history).toContain("The owner: see this\nimage: shot.png");
       }),

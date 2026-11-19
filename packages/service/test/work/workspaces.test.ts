@@ -1,76 +1,10 @@
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionDetail, Request } from "@outlore/contracts";
 import { Effect } from "effect";
-import { SqlClient } from "effect/sql";
-import { afterEach } from "vitest";
 import { isInsideFolder } from "../../src/core/index.ts";
-import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
 import { call, read, settle } from "../fixtures/service.ts";
-
-const directories: string[] = [];
-afterEach(() => {
-  for (const directory of directories.splice(0)) rmSync(directory, { force: true, recursive: true });
-});
-
-/** A service with folders to choose as workspaces, and its data beside them. */
-const setUp = () => {
-  const base = realpathSync(mkdtempSync(join(tmpdir(), "outlore-workspaces-")));
-  directories.push(base);
-  const home = join(base, "home");
-  const outside = join(base, "outside");
-  for (const folder of [home, join(home, "app"), join(home, "app", "lib"), join(home, ".hidden"), outside]) {
-    mkdirSync(folder, { recursive: true });
-  }
-  const layer = serviceLayer({
-    filename: join(base, "outlore.sqlite"),
-    harness: fakeHarnessLayer("10 millis"),
-    homeFolder: home,
-    scratchRoot: join(base, "data", "missions"),
-  });
-  return { base, home, layer, outside };
-};
-
-const failureOf = <R extends Request>(request: R) =>
-  Effect.gen(function* () {
-    const service = yield* Service;
-    return yield* Effect.flip(service.handle(request));
-  });
-
-/** A failure as a paired device meets it: its folder requests reach only the browsable roots (CHG-0253). */
-const failureOfPairedDevice = <R extends Request>(request: R) =>
-  Effect.gen(function* () {
-    const service = yield* Service;
-    return yield* Effect.flip(service.handle(request, { isPairedDevice: true }));
-  });
-
-const repliedWith = (count: number) => (detail: MissionDetail) =>
-  detail.messages.filter((message) => message.sender === "agent").length === count &&
-  (detail.thread.state === "Idle" || detail.thread.state === "Failed");
-const isAsking = (detail: MissionDetail) => detail.questions.some((question) => question.outcome === null);
-const lastReply = (detail: MissionDetail) => detail.messages.at(-1)?.text ?? "";
-
-let requestCount = 0;
-const start = (text: string, workspacePath: string | null) =>
-  call({
-    _tag: "StartMission",
-    effort: "default",
-    model: "default",
-    requestId: `start-${++requestCount}`,
-    text,
-    workspacePath,
-  });
-
-const push = {
-  action: "Push the branch",
-  command: "git push origin main",
-  pattern: "git push *",
-  permission: "Push code",
-};
-const ask = `ask ${JSON.stringify(push)}`;
+import { ask, failureOf, isAsking, lastReply, repliedWith, setUp, start } from "../fixtures/workspaces.ts";
 
 describe("telling edits inside a workspace from edits outside it", () => {
   it.effect("counts a new file below the folder as inside, and a climb out with `..` as outside", () => {
@@ -106,92 +40,6 @@ describe("telling edits inside a workspace from edits outside it", () => {
       expect(yield* isInsideFolder(app, "chained")).toBe(false);
       expect(yield* isInsideFolder(app, "inside-link")).toBe(true);
     });
-  });
-});
-
-describe("browsing folders for the phone", () => {
-  it.live("starts the browsable roots with the home folder", () => {
-    const { home, layer } = setUp();
-    return Effect.gen(function* () {
-      const roots = yield* call({ _tag: "BrowseFolders", path: null, shouldIncludeHidden: false });
-      expect(roots.folders.map((folder) => folder.path)).toEqual([home]);
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("lists a folder's visible subfolders and its parent below the root", () => {
-    const { home, layer } = setUp();
-    return Effect.gen(function* () {
-      const listing = yield* call({ _tag: "BrowseFolders", path: home, shouldIncludeHidden: false });
-      expect(listing).toMatchObject({ parent: null, path: home });
-      expect(listing.folders.map((folder) => folder.name)).toEqual(["app"]);
-
-      const inner = yield* call({ _tag: "BrowseFolders", path: join(home, "app"), shouldIncludeHidden: false });
-      expect(inner.parent).toBe(home);
-      expect(inner.folders.map((folder) => folder.name)).toEqual(["lib"]);
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("lists hidden folders only when asked", () => {
-    const { home, layer } = setUp();
-    return Effect.gen(function* () {
-      const listing = yield* call({ _tag: "BrowseFolders", path: home, shouldIncludeHidden: true });
-      expect(listing.folders.map((folder) => folder.name)).toEqual([".hidden", "app"]);
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("refuses a paired device folders outside the roots, including through a link", () => {
-    const { home, layer, outside } = setUp();
-    symlinkSync(outside, join(home, "shortcut"));
-    return Effect.gen(function* () {
-      const refused = yield* failureOfPairedDevice({
-        _tag: "BrowseFolders",
-        path: outside,
-        shouldIncludeHidden: false,
-      });
-      expect(refused.kind).toBe("InvalidInput");
-      const linked = yield* failureOfPairedDevice({
-        _tag: "BrowseFolders",
-        path: join(home, "shortcut"),
-        shouldIncludeHidden: false,
-      });
-      expect(linked.message).toContain("outside the browsable roots");
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("adds a root, after which its folders can be browsed", () => {
-    const { home, layer, outside } = setUp();
-    return Effect.gen(function* () {
-      const roots = yield* call({ _tag: "AddBrowsableRoot", path: outside });
-      expect(roots.folders.map((folder) => folder.path)).toEqual([home, outside]);
-      const listing = yield* call({ _tag: "BrowseFolders", path: outside, shouldIncludeHidden: false });
-      expect(listing.path).toBe(outside);
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("refuses to add a root that is not an existing folder", () => {
-    const { layer, outside } = setUp();
-    return Effect.gen(function* () {
-      const missing = yield* failureOf({ _tag: "AddBrowsableRoot", path: join(outside, "nothing") });
-      expect(missing.kind).toBe("InvalidInput");
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("makes a new folder under a root", () => {
-    const { home, layer } = setUp();
-    return Effect.gen(function* () {
-      const made = yield* call({ _tag: "CreateFolder", name: "notes", parent: home });
-      expect(made).toEqual({ name: "notes", path: join(home, "notes") });
-      const listing = yield* call({ _tag: "BrowseFolders", path: home, shouldIncludeHidden: false });
-      expect(listing.folders.map((folder) => folder.name)).toEqual(["app", "notes"]);
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("refuses a new folder name with a slash", () => {
-    const { home, layer } = setUp();
-    return Effect.gen(function* () {
-      const refused = yield* failureOf({ _tag: "CreateFolder", name: "../escape", parent: home });
-      expect(refused.kind).toBe("InvalidInput");
-    }).pipe(Effect.provide(layer));
   });
 });
 
@@ -298,7 +146,7 @@ describe("starting a mission in a workspace", () => {
       expect(detail.thread.workspace?.isMissing).toBe(true);
       expect(detail.mission.state).toBe("Attention");
       yield* Effect.sleep("50 millis");
-      expect((yield* read(started.missionId)).messages.filter((m) => m.sender === "agent")).toHaveLength(1);
+      expect((yield* read(started.missionId)).messages.filter((message) => message.sender === "agent")).toHaveLength(1);
     }).pipe(Effect.provide(layer));
   });
 
@@ -346,7 +194,7 @@ describe("starting a mission in a workspace", () => {
       yield* call({ _tag: "RetryThread", threadId: started.threadId });
       const detail = yield* settle(started.missionId, (current) => current.thread.state === "Attention");
       expect(detail.thread.blocker).toBe("MissingWorkspace");
-      expect(detail.messages.filter((m) => m.sender === "agent")).toHaveLength(1);
+      expect(detail.messages.filter((message) => message.sender === "agent")).toHaveLength(1);
     }).pipe(Effect.provide(layer));
   });
 
@@ -448,186 +296,6 @@ describe("standing permissions in a workspace", () => {
       expect((yield* settle(nested.missionId, isAsking)).questions[0]?.outcome).toBeNull();
       const scratch = yield* start(ask, null);
       expect((yield* settle(scratch.missionId, isAsking)).questions[0]?.outcome).toBeNull();
-    }).pipe(Effect.provide(layer));
-  });
-});
-
-describe("naming a realm", () => {
-  const listed = call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null });
-
-  it.live("names a new realm when its first quest starts, and ignores the name for an existing realm", () => {
-    const { home, layer } = setUp();
-    const app = join(home, "app");
-    return Effect.gen(function* () {
-      yield* call({
-        _tag: "StartMission",
-        effort: "default",
-        model: "default",
-        realm: { name: "The Orchard" },
-        requestId: crypto.randomUUID(),
-        text: "Begin",
-        workspacePath: app,
-      });
-      const first = yield* listed;
-      expect(first.workspaces[0]).toMatchObject({ name: "The Orchard", path: app });
-      yield* call({
-        _tag: "StartMission",
-        effort: "default",
-        model: "default",
-        realm: { name: "Other" },
-        requestId: crypto.randomUUID(),
-        text: "Again",
-        workspacePath: app,
-      });
-      expect((yield* listed).workspaces[0]).toMatchObject({ name: "The Orchard" });
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("ignores a crest an earlier version stored on a realm", () => {
-    const { home, layer } = setUp();
-    return Effect.gen(function* () {
-      yield* start("Fix the build", join(home, "app"));
-      const sql = yield* SqlClient.SqlClient;
-      yield* sql`UPDATE workspaces SET crest = '{"plate":"Shield"}'`;
-      const after = yield* listed;
-      expect(after.workspaces[0]).toEqual({
-        id: after.workspaces[0]?.id,
-        name: "app",
-        path: join(home, "app"),
-      });
-      expect(after.missions[0]).not.toHaveProperty("workspaceCrest");
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("renames a realm, and refuses a blank name", () => {
-    const { home, layer } = setUp();
-    return Effect.gen(function* () {
-      yield* start("Fix the build", join(home, "app"));
-      const workspaceId = (yield* listed).workspaces[0]?.id;
-      if (workspaceId === undefined) return yield* Effect.die(new Error("no realm"));
-      yield* call({ _tag: "RenameRealm", name: "  The Orchard ", workspaceId });
-      const after = yield* listed;
-      expect(after.workspaces[0]?.name).toBe("The Orchard");
-      expect(after.missions[0]?.workspaceName).toBe("The Orchard");
-      const failure = yield* failureOf({ _tag: "RenameRealm", name: "   ", workspaceId });
-      expect(JSON.stringify(failure)).toContain("needs a name");
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("lists a realm imported from a folder before any quest starts in it", () => {
-    const { home, layer } = setUp();
-    const app = join(home, "app");
-    return Effect.gen(function* () {
-      yield* call({ _tag: "CreateRealm", name: "The Orchard", path: app });
-      const imported = yield* listed;
-      expect(imported.missions).toEqual([]);
-      expect(imported.workspaces[0]).toMatchObject({ name: "The Orchard", path: app });
-      const failure = yield* failureOf({ _tag: "CreateRealm", name: "Nope", path: join(home, "missing") });
-      expect(JSON.stringify(failure)).toContain("No folder");
-    }).pipe(Effect.provide(layer));
-  });
-});
-
-describe("naming files and folders of a workspace with @", () => {
-  const entries = (workspacePath: string, query: string) =>
-    call({ _tag: "ListWorkspaceEntries", query, workspacePath }).pipe(
-      Effect.map((found) => found.map((entry) => entry.path)),
-    );
-
-  it.live("lists the top level first, then matches a name or a path, folders ending with a slash", () => {
-    const { home, layer } = setUp();
-    return Effect.gen(function* () {
-      const app = join(home, "app");
-      mkdirSync(join(app, "src", "deep"), { recursive: true });
-      mkdirSync(join(app, "node_modules", "left-pad"), { recursive: true });
-      writeFileSync(join(app, "README.md"), "");
-      writeFileSync(join(app, "src", "index.ts"), "");
-      writeFileSync(join(app, "src", "deep", "readme-notes.md"), "");
-      writeFileSync(join(app, "node_modules", "left-pad", "index.js"), "");
-      expect(yield* entries(app, "")).toEqual(["src/", "README.md"]);
-      expect(yield* entries(app, "read")).toEqual(["README.md", "src/deep/readme-notes.md"]);
-      expect(yield* entries(app, "src/d")).toEqual(["src/deep/", "src/deep/readme-notes.md"]);
-      expect(yield* entries(app, "index")).toEqual(["src/index.ts"]);
-      // A name starting with the query comes before a shorter path that only contains it.
-      mkdirSync(join(app, "deeper", "folder"), { recursive: true });
-      mkdirSync(join(app, "a"), { recursive: true });
-      writeFileSync(join(app, "deeper", "folder", "note.txt"), "");
-      writeFileSync(join(app, "a", "xnote.txt"), "");
-      expect(yield* entries(app, "note")).toEqual([
-        "deeper/folder/note.txt",
-        "a/xnote.txt",
-        "src/deep/readme-notes.md",
-      ]);
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("follows .gitignore in a git workspace", () => {
-    const { home, layer } = setUp();
-    return Effect.gen(function* () {
-      const app = join(home, "app");
-      execFileSync("git", ["init", "-q"], { cwd: app });
-      writeFileSync(join(app, ".gitignore"), "secret.txt\ndist/\n");
-      mkdirSync(join(app, "dist"));
-      writeFileSync(join(app, "dist", "out.js"), "");
-      writeFileSync(join(app, "secret.txt"), "");
-      writeFileSync(join(app, "notes.txt"), "");
-      expect(yield* entries(app, "")).toEqual([".gitignore", "notes.txt"]);
-      expect(yield* entries(app, "secret")).toEqual([]);
-      expect(yield* entries(app, "out")).toEqual([]);
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("refuses a path that is not a folder", () => {
-    const { home, layer } = setUp();
-    return Effect.gen(function* () {
-      writeFileSync(join(home, "file.txt"), "");
-      const refusal = yield* failureOf({
-        _tag: "ListWorkspaceEntries",
-        query: "",
-        workspacePath: join(home, "file.txt"),
-      });
-      expect(JSON.stringify(refusal)).toContain("No folder");
-    }).pipe(Effect.provide(layer));
-  });
-});
-
-describe("realms with no folder", () => {
-  const realms = () =>
-    call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null }).pipe(
-      Effect.map((list) => list.workspaces),
-    );
-
-  it.live("makes a realm with a name and no folder, and lists it among the realms", () => {
-    const { home, layer } = setUp();
-    return Effect.gen(function* () {
-      yield* call({ _tag: "CreateRealm", name: "  Game Design ", path: null });
-      yield* call({ _tag: "CreateRealm", name: "Archive of ideas", path: null });
-      yield* call({ _tag: "CreateRealm", name: "App", path: join(home, "app") });
-      const listed = yield* realms();
-      expect(listed.map(({ name, path }) => ({ name, path })).sort((a, b) => a.name.localeCompare(b.name))).toEqual([
-        { name: "App", path: join(home, "app") },
-        { name: "Archive of ideas", path: null },
-        { name: "Game Design", path: null },
-      ]);
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("renames a realm with no folder", () => {
-    const { layer } = setUp();
-    return Effect.gen(function* () {
-      yield* call({ _tag: "CreateRealm", name: "Game Design", path: null });
-      const [realm] = yield* realms();
-      yield* call({ _tag: "RenameRealm", name: "Level Design", workspaceId: realm?.id as never });
-      expect(yield* realms()).toEqual([{ id: realm?.id, name: "Level Design", path: null }]);
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("refuses a blank name", () => {
-    const { layer } = setUp();
-    return Effect.gen(function* () {
-      const failure = yield* failureOf({ _tag: "CreateRealm", name: "   ", path: null });
-      expect(JSON.stringify(failure)).toContain("needs a name");
-      expect(yield* realms()).toEqual([]);
     }).pipe(Effect.provide(layer));
   });
 });

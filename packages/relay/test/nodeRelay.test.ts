@@ -127,12 +127,12 @@ describe("joining a room", () => {
 
   it("closes the clients with host left when the host disconnects", async () => {
     const host = await track(relay.port, hostPath());
-    const a = await track(relay.port, clientPath());
-    const b = await track(relay.port, clientPath());
+    const first = await track(relay.port, clientPath());
+    const second = await track(relay.port, clientPath());
     await host.messagesAfter(2);
     host.socket.close();
-    expect(await a.closed).toEqual({ code: 1001, reason: "host left" });
-    expect(await b.closed).toEqual({ code: 1001, reason: "host left" });
+    expect(await first.closed).toEqual({ code: 1001, reason: "host left" });
+    expect(await second.closed).toEqual({ code: 1001, reason: "host left" });
   });
 
   it("closes the ninth client as room full", async () => {
@@ -168,28 +168,28 @@ describe("forwarding", () => {
 
   it("delivers the host's bytes to the addressed client only, identically and without prefix", async () => {
     const host = await track(relay.port, hostPath());
-    const a = await track(relay.port, clientPath());
-    const b = await track(relay.port, clientPath());
+    const first = await track(relay.port, clientPath());
+    const second = await track(relay.port, clientPath());
     await host.messagesAfter(2);
     const payload = randomBytes(500);
     host.socket.send(Buffer.concat([Buffer.from([1]), joinedId(host, 1), payload]));
-    expect((await b.messagesAfter(1))[0]?.data).toEqual(payload);
+    expect((await second.messagesAfter(1))[0]?.data).toEqual(payload);
     host.socket.send(Buffer.concat([Buffer.from([1]), joinedId(host, 0), Buffer.from("for a")]));
-    expect((await a.messagesAfter(1))[0]?.data.toString()).toBe("for a");
-    expect(b.messages).toHaveLength(1);
+    expect((await first.messagesAfter(1))[0]?.data.toString()).toBe("for a");
+    expect(second.messages).toHaveLength(1);
   });
 
   it("keeps clients from seeing each other", async () => {
     const host = await track(relay.port, hostPath());
-    const a = await track(relay.port, clientPath());
-    const b = await track(relay.port, clientPath());
+    const first = await track(relay.port, clientPath());
+    const second = await track(relay.port, clientPath());
     await host.messagesAfter(2);
-    a.socket.send(Buffer.from("secret"));
+    first.socket.send(Buffer.from("secret"));
     await host.messagesAfter(3);
-    b.socket.send("ping");
-    await b.messagesAfter(1);
-    expect(a.messages).toHaveLength(0);
-    expect(b.messages.map((message) => message.data.toString())).toEqual(["pong"]);
+    second.socket.send("ping");
+    await second.messagesAfter(1);
+    expect(first.messages).toHaveLength(0);
+    expect(second.messages.map((message) => message.data.toString())).toEqual(["pong"]);
   });
 
   it("carries a 300 KiB frame in both directions", async () => {

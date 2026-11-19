@@ -27,7 +27,10 @@ describe("standing permissions", () => {
         sentence: "Run this exact command",
       });
       yield* send(first.threadId, ask({ ...push, command: "git push evil other" }));
-      const next = yield* settle(first.missionId, (d) => isAsking(d) || (d.questions.length === 2 && isReplied(d)));
+      const next = yield* settle(
+        first.missionId,
+        (current) => isAsking(current) || (current.questions.length === 2 && isReplied(current)),
+      );
       expect(next.questions[1]?.outcome).toBeNull();
     }).pipe(Effect.provide(live())),
   );
@@ -89,7 +92,7 @@ describe("standing permissions", () => {
       yield* answer(openQuestion(yield* settle(started.missionId, isAsking)), "AlwaysAllow");
       yield* settle(started.missionId, isReplied);
       yield* send(started.threadId, `${leave("./setup-hooks.sh")}\n${leave("./setup-hooks.sh --force")}`);
-      const next = yield* settle(started.missionId, (d) => d.questions.length === 3 && isAsking(d));
+      const next = yield* settle(started.missionId, (current) => current.questions.length === 3 && isAsking(current));
       expect(next.questions[1]?.outcome).toBe("AllowedByPermission");
       expect(openQuestion(next).details).toBe("./setup-hooks.sh --force");
     }).pipe(Effect.provide(live())),

@@ -37,7 +37,7 @@ const memoryStorage = (): KeyValueStorage & { readonly values: Map<string, strin
 
 const until = <A>(check: () => A | undefined | Promise<A | undefined>) =>
   Effect.gen(function* () {
-    for (let i = 0; i < 300; i++) {
+    for (let index = 0; index < 300; index++) {
       const value = yield* Effect.promise(async () => check());
       if (value !== undefined) return value;
       yield* Effect.sleep("20 millis");
@@ -160,12 +160,12 @@ describe("a browser pairing with a running host and using it", () => {
   it.live("pairs with a code, keeps the pairing across a reload, and steers the host", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const browser = w.browser();
-        const host = yield* Effect.promise(async () => browser.pair(await Effect.runPromise(w.newCode())));
+        const scene = yield* world;
+        yield* scene.allowPairing;
+        const browser = scene.browser();
+        const host = yield* Effect.promise(async () => browser.pair(await Effect.runPromise(scene.newCode())));
         expect(host).toMatchObject({ name: "Host Mac" });
-        expect(yield* w.host({ _tag: "ReadRemoteAccess" })).toMatchObject({ devices: [{ kind: "browser" }] });
+        expect(yield* scene.host({ _tag: "ReadRemoteAccess" })).toMatchObject({ devices: [{ kind: "browser" }] });
         expect(browser.hosts.known()).toMatchObject([{ id: host.id, name: "Host Mac" }]);
 
         // A reload: a new page over the same storage still knows the host and resumes without a new code.
@@ -183,7 +183,7 @@ describe("a browser pairing with a running host and using it", () => {
           workspacePath: null,
         });
         expect(started).toMatchObject({ _tag: "Success", value: { missionId: expect.any(String) } });
-        const missions = yield* w.host({
+        const missions = yield* scene.host({
           _tag: "ListMissions",
           isArchived: false,
           search: null,
@@ -221,25 +221,25 @@ describe("a browser pairing with a running host and using it", () => {
   it.live("pairs from the web link the host shows, as the page does when it opens one, and not twice", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const made = (yield* w.host({ _tag: "CreatePairingCode" })) as { appLink: string; webLink: string };
+        const scene = yield* world;
+        yield* scene.allowPairing;
+        const made = (yield* scene.host({ _tag: "CreatePairingCode" })) as { appLink: string; webLink: string };
         // The page hands the browser what the address bar held after the `#`, as a link or a bare code.
         const fragment = new URL(made.webLink).hash;
         expect(fragment).toMatch(/^#outlore1-/);
-        const browser = w.browser();
+        const browser = scene.browser();
         const host = yield* Effect.promise(() => browser.pair(made.webLink));
         expect(host).toMatchObject({ name: "Host Mac" });
         expect(browser.hosts.known()).toMatchObject([{ id: host.id }]);
         const again = yield* Effect.promise(() =>
-          w
+          scene
             .browser()
             .pair(made.webLink)
             .catch((error: Error) => error),
         );
         expect(String((again as Error).message)).toContain("already used");
-        const second = (yield* w.host({ _tag: "CreatePairingCode" })) as { appLink: string };
-        expect(yield* Effect.promise(() => w.browser().pair(second.appLink))).toMatchObject({ name: "Host Mac" });
+        const second = (yield* scene.host({ _tag: "CreatePairingCode" })) as { appLink: string };
+        expect(yield* Effect.promise(() => scene.browser().pair(second.appLink))).toMatchObject({ name: "Host Mac" });
       }),
     ),
   );
@@ -247,16 +247,16 @@ describe("a browser pairing with a running host and using it", () => {
   it.live("lets the browser search the host's folders and not its own", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const browser = w.browser();
-        const host = yield* Effect.promise(async () => browser.pair(await Effect.runPromise(w.newCode())));
+        const scene = yield* world;
+        yield* scene.allowPairing;
+        const browser = scene.browser();
+        const host = yield* Effect.promise(async () => browser.pair(await Effect.runPromise(scene.newCode())));
         const link = browser.link(host.id);
         // A folder on the host's computer, under its home folder, the first browsable root.
-        mkdirSync(join(w.directory, "Projects"));
+        mkdirSync(join(scene.directory, "Projects"));
         expect(yield* link.ask({ _tag: "SearchFolders", query: "Projects" })).toMatchObject({
           _tag: "Success",
-          value: [{ path: join(realpathSync(w.directory), "Projects") }],
+          value: [{ path: join(realpathSync(scene.directory), "Projects") }],
         });
         link.close();
       }),
@@ -266,28 +266,30 @@ describe("a browser pairing with a running host and using it", () => {
   it.live("refuses a code used twice, a garbled code, and a local relay from a page elsewhere", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const browser = w.browser();
-        const code = yield* w.newCode();
+        const scene = yield* world;
+        yield* scene.allowPairing;
+        const browser = scene.browser();
+        const code = yield* scene.newCode();
         yield* Effect.promise(() => browser.pair(code));
         const again = yield* Effect.promise(() =>
-          w
+          scene
             .browser()
             .pair(code)
             .catch((error: Error) => error),
         );
         expect(String((again as Error).message)).toContain("already used");
-        const garbled = yield* Effect.promise(() => browser.pair(`${code.slice(0, -4)}AAAA`).catch((e: Error) => e));
+        const garbled = yield* Effect.promise(() =>
+          browser.pair(`${code.slice(0, -4)}AAAA`).catch((error: Error) => error),
+        );
         expect(String((garbled as Error).message)).toContain("not valid");
-        const fresh = yield* w.newCode();
+        const fresh = yield* scene.newCode();
         const elsewhere = createPairedHosts(memoryStorage());
         const refused = yield* Effect.promise(() =>
           pairFromBrowser(fresh, "Firefox", elsewhere, {
             allowLocalRelay: false,
             kind: "browser",
             release: hostRelease,
-          }).catch((e: Error) => e),
+          }).catch((error: Error) => error),
         );
         expect(String((refused as Error).message)).toContain("relay on this computer");
         expect(elsewhere.known()).toEqual([]);
@@ -298,12 +300,12 @@ describe("a browser pairing with a running host and using it", () => {
   it.live("refuses an expired code", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const code = yield* w.newCode();
-        yield* w.hostSql((sql) => sql`UPDATE pairing_codes SET expires_at = 1 WHERE used_at IS NULL`);
+        const scene = yield* world;
+        yield* scene.allowPairing;
+        const code = yield* scene.newCode();
+        yield* scene.hostSql((sql) => sql`UPDATE pairing_codes SET expires_at = 1 WHERE used_at IS NULL`);
         const expired = yield* Effect.promise(() =>
-          w
+          scene
             .browser()
             .pair(code)
             .catch((error: Error) => error),
@@ -316,21 +318,21 @@ describe("a browser pairing with a running host and using it", () => {
   it.live("refuses a host of another release, at pairing and later, and says which releases", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const mismatched = w.browser({ release: "0.1.9-Prototype" });
+        const scene = yield* world;
+        yield* scene.allowPairing;
+        const mismatched = scene.browser({ release: "0.1.9-Prototype" });
         const refused = yield* Effect.promise(async () =>
-          mismatched.pair(await Effect.runPromise(w.newCode())).catch((error: Error) => error),
+          mismatched.pair(await Effect.runPromise(scene.newCode())).catch((error: Error) => error),
         );
         expect(String((refused as Error).message)).toContain("0.1.9-Prototype");
         expect(String((refused as Error).message)).toContain(hostRelease);
         expect(mismatched.hosts.known()).toEqual([]);
         // The host turned it away before keeping a device: nothing is listed there either.
-        expect(((yield* w.host({ _tag: "ReadRemoteAccess" })) as { devices: unknown[] }).devices).toEqual([]);
+        expect(((yield* scene.host({ _tag: "ReadRemoteAccess" })) as { devices: unknown[] }).devices).toEqual([]);
 
         // A pairing made by a web app of the right release, opened by one of another release.
-        const matching = w.browser();
-        const host = yield* Effect.promise(async () => matching.pair(await Effect.runPromise(w.newCode())));
+        const matching = scene.browser();
+        const host = yield* Effect.promise(async () => matching.pair(await Effect.runPromise(scene.newCode())));
         const link = driven(
           openBrowserTransport(createPairedHosts(matching.storage), host.id, {
             allowLocalRelay: true,
@@ -349,15 +351,15 @@ describe("a browser pairing with a running host and using it", () => {
   it.live("tells an offline host from a disconnected browser, and uses the same pairing when the host is back", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const w = yield* world;
-        yield* w.allowPairing;
-        const browser = w.browser();
-        const host = yield* Effect.promise(async () => browser.pair(await Effect.runPromise(w.newCode())));
+        const scene = yield* world;
+        yield* scene.allowPairing;
+        const browser = scene.browser();
+        const host = yield* Effect.promise(async () => browser.pair(await Effect.runPromise(scene.newCode())));
         const link = browser.link(host.id);
         expect(yield* link.ask({ _tag: "ReadHostName" })).toMatchObject({ value: "Host Mac" });
 
         // The host stops accepting devices: the link ends, and a new try says the host is not reachable (4000).
-        yield* w.host({ _tag: "SetRemoteAccess", isEnabled: false });
+        yield* scene.host({ _tag: "SetRemoteAccess", isEnabled: false });
         expect((yield* until(() => link.closed ?? undefined)).code).toBe(4001);
         const offline = browser.link(host.id);
         const notReached = yield* until(() => offline.closed ?? undefined);
@@ -365,13 +367,13 @@ describe("a browser pairing with a running host and using it", () => {
         expect(notReached.reason).toContain("not connected");
         expect(browser.hosts.known()).toHaveLength(1);
 
-        yield* w.allowPairing;
+        yield* scene.allowPairing;
         const back = browser.link(host.id);
         expect(yield* back.ask({ _tag: "ReadHostName" })).toMatchObject({ value: "Host Mac" });
 
         // The host disconnects this browser: it refuses for good (4002).
-        const access = (yield* w.host({ _tag: "ReadRemoteAccess" })) as { devices: Array<{ id: string }> };
-        yield* w.host({ _tag: "DisconnectDevice", deviceId: access.devices[0]?.id });
+        const access = (yield* scene.host({ _tag: "ReadRemoteAccess" })) as { devices: Array<{ id: string }> };
+        yield* scene.host({ _tag: "DisconnectDevice", deviceId: access.devices[0]?.id });
         const refused = browser.link(host.id);
         const closed = yield* until(() => refused.closed ?? undefined);
         expect(closed.code).toBe(4002);

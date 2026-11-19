@@ -40,7 +40,7 @@ const connect = (url: string) =>
 
 const until = <A>(check: () => A | undefined) =>
   Effect.gen(function* () {
-    for (let i = 0; i < 200; i++) {
+    for (let index = 0; index < 200; index++) {
       const value = check();
       if (value !== undefined) return value;
       yield* Effect.sleep("10 millis");
@@ -77,9 +77,9 @@ describe("serving the owner over a loopback WebSocket", () => {
         }),
       );
 
-      const reply = yield* until(() => frames.find((f) => (f as { id?: string }).id === "1"));
+      const reply = yield* until(() => frames.find((frame) => (frame as { id?: string }).id === "1"));
       expect(reply).toMatchObject({ _tag: "Success", value: { missionId: expect.any(String) } });
-      yield* until(() => frames.find((f) => (f as { _tag: string })._tag === "Changed"));
+      yield* until(() => frames.find((frame) => (frame as { _tag: string })._tag === "Changed"));
 
       socket.send(
         JSON.stringify({
@@ -87,7 +87,7 @@ describe("serving the owner over a loopback WebSocket", () => {
           request: { _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null },
         }),
       );
-      const list = yield* until(() => frames.find((f) => (f as { id?: string }).id === "2"));
+      const list = yield* until(() => frames.find((frame) => (frame as { id?: string }).id === "2"));
       expect(list).toMatchObject({ _tag: "Success", value: { missions: [{ title: "Over the wire" }] } });
       socket.close();
     }).pipe(Effect.provide(fresh())),
@@ -98,7 +98,7 @@ describe("serving the owner over a loopback WebSocket", () => {
       const port = yield* running;
       const { socket, frames } = yield* connect(`ws://127.0.0.1:${port}/?token=${TOKEN}`);
       socket.send(JSON.stringify({ id: "9", request: { _tag: "DropTables" } }));
-      const reply = yield* until(() => frames.find((f) => (f as { id?: string }).id === "9"));
+      const reply = yield* until(() => frames.find((frame) => (frame as { id?: string }).id === "9"));
       expect(reply).toMatchObject({ _tag: "Failure", error: { kind: "InvalidInput" } });
       socket.close();
     }).pipe(Effect.provide(fresh())),

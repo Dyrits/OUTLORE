@@ -65,8 +65,8 @@ function CreationIcon({ color, paths, plus }: { color: string; paths: readonly s
       viewBox="0 0 24 24"
       width={18}
     >
-      {paths.map((d) => (
-        <Path d={d} key={d} />
+      {paths.map((path) => (
+        <Path d={path} key={path} />
       ))}
       {plus !== undefined && <Path d={plus} />}
     </Svg>

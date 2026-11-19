@@ -26,7 +26,6 @@ import {
 import {
   billingOf,
   compactionNoticeOf,
-  contextOf,
   failureReasonOf,
   reportedModelOf,
   reportedWindowOf,
@@ -49,6 +48,7 @@ import {
   startStreamJsonProcess,
 } from "./lineProcess.ts";
 import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
+import { contextOf } from "./tokenUsage.ts";
 import { toolServerName } from "./toolNames.ts";
 import { listThreadWorktrees } from "./worktrees.ts";
 

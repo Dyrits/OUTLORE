@@ -249,7 +249,9 @@ describe("stopping and resuming", () => {
 describe("limiting threads", () => {
   it.live("refuses open_thread with the reason once 8 threads run in the mission", () =>
     Effect.gen(function* () {
-      const opens = Array.from({ length: 8 }, (_, i) => tool("open_thread", { request: `wait 600\nTask ${i}` }));
+      const opens = Array.from({ length: 8 }, (_, index) =>
+        tool("open_thread", { request: `wait 600\nTask ${index}` }),
+      );
       const started = yield* start(opens.join("\n"));
       const detail = yield* settle(started.missionId, (current) => lastText(current).startsWith("Echo:"));
       expect(childrenOf(detail, started.threadId)).toHaveLength(7);
@@ -261,7 +263,9 @@ describe("limiting threads", () => {
     Effect.gen(function* () {
       // An escape from the sandbox asks the owner; a sandboxed command would run unasked (CHG-0208).
       const push = `prompt Bash ${JSON.stringify({ command: "git push origin main", dangerouslyDisableSandbox: true })}`;
-      const asking = Array.from({ length: 7 }, (_, i) => tool("open_thread", { request: `${push}\nTask ${i}` }));
+      const asking = Array.from({ length: 7 }, (_, index) =>
+        tool("open_thread", { request: `${push}\nTask ${index}` }),
+      );
       const started = yield* start([...asking, "wait 300", tool("open_thread", { request: "One more" })].join("\n"));
       const detail = yield* settle(started.missionId, (current) => lastText(current).startsWith("Echo:"));
       expect(detail.threads.filter((thread) => thread.state === "Attention")).toHaveLength(7);
@@ -278,7 +282,9 @@ describe("limiting threads", () => {
       const held = yield* open(started.threadId, "Also ready");
       yield* settle(started.missionId, (detail) => detail.threads.every((thread) => thread.state === "Idle"));
 
-      const opens = Array.from({ length: 6 }, (_, i) => tool("open_thread", { request: `wait 400\nTask ${i}` }));
+      const opens = Array.from({ length: 6 }, (_, index) =>
+        tool("open_thread", { request: `wait 400\nTask ${index}` }),
+      );
       yield* send(started.threadId, `${opens.join("\n")}\nwait 400`);
       yield* send(busy.threadId, "wait 400");
       yield* settle(
@@ -316,7 +322,7 @@ describe("offering the owner a thread's actions", () => {
   it.live("offers Stop and in-turn sending while a thread works, and Resume once it is Stopped", () =>
     Effect.gen(function* () {
       const started = yield* start("wait 60000");
-      const running = yield* settle(started.missionId, (d) => d.thread.state === "Running");
+      const running = yield* settle(started.missionId, (current) => current.thread.state === "Running");
       expect(running.thread.actions).toEqual({ canOpenBeneath: true, canResume: false, canStop: true, isInTurn: true });
       yield* call({ _tag: "StopThread", threadId: started.threadId });
       const stopped = yield* read(started.missionId);

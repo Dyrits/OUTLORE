@@ -1,18 +1,38 @@
 import { Schema } from "effect";
-import { AttachmentCard, AttachmentContent, maxAttachmentsPerMessage } from "./attachments.ts";
-import { AccountBudget, BudgetLimits, BudgetPeriod, BudgetWindow, PriceStatus } from "./budgets.ts";
+import {
+  AddAccount,
+  InstallHarness,
+  ListHarnesses,
+  ListModelEfforts,
+  RemoveAccount,
+  RenameAccount,
+  RenameOwnAccount,
+  SignInAccount,
+  UpdateHarness,
+} from "./accountRequests.ts";
+import {
+  AddAttachment,
+  DiscardAttachment,
+  ReadAttachment,
+  ReadDictation,
+  TranscribeDictation,
+} from "./attachmentRequests.ts";
+import { maxAttachmentsPerMessage } from "./attachments.ts";
+import {
+  AddCredit,
+  ReadAccountBudgets,
+  ReadPriceStatus,
+  RefreshPrices,
+  SetAccountBudget,
+  SwitchAtBudget,
+} from "./budgetRequests.ts";
+import { BudgetLimits } from "./budgets.ts";
 import { BackupCompanions, ModelChoice } from "./companions.ts";
-import { DictationStatus, maxDictationBytes, Transcript } from "./dictation.ts";
-import { EffortChoice, HarnessList, HarnessName } from "./harnesses.ts";
-import { HostUpdate } from "./hostUpdate.ts";
+import { EffortChoice, HarnessName } from "./harnesses.ts";
 import {
   AccountId,
   AttachmentId,
   BudgetStopId,
-  LoreChangeId,
-  LoreEntryId,
-  LoreHistoryEntryId,
-  LoreProposalId,
   MessageId,
   MissionId,
   PermissionId,
@@ -21,62 +41,48 @@ import {
   ThreadId,
   WorkspaceId,
 } from "./ids.ts";
-import { JournalView } from "./journal.ts";
-import { LoreHistory, LoreScope, LoreStateFilter, LoreView } from "./lore.ts";
-import { Mentionable } from "./mentions.ts";
-import { ChoiceAnswers, PermissionsView, Question } from "./questions.ts";
-import { NewRealmAppearance, QuestPlacement, realmRequests, realmResults } from "./realmRequests.ts";
+import { AddJournalEntry, ReadJournal, RewriteBriefing } from "./journalRequests.ts";
 import {
-  EndingPreview,
-  GuildHallRecap,
-  GuildmasterPlace,
-  MessageDelivery,
-  MissionDetail,
-  MissionEnding,
-  MissionList,
-  MissionPrompt,
-  MissionState,
-  RequestId,
-  Settings,
-  StartChoices,
-  StartingContext,
-  Suggestion,
-  ThreadPanel,
-  ThreadSummary,
-  Viewing,
-} from "./records.ts";
+  DeleteLoreEntry,
+  EditLoreEntry,
+  ListLore,
+  PinLoreEntry,
+  ReadLoreHistory,
+  ResolveLoreChange,
+  ResolveLoreProposal,
+  RestoreLoreEntry,
+  UndoLoreChange,
+} from "./loreRequests.ts";
+import {
+  AddBrowsableRoot,
+  BrowseFolders,
+  CreateFolder,
+  ListMentionables,
+  ListSkills,
+  ListWorkspaceEntries,
+  RemoveBrowsableRoot,
+  SearchFolders,
+} from "./pickerRequests.ts";
+import { ChoiceAnswers } from "./questions.ts";
+import { NewRealmAppearance, realmRequests } from "./realmRequests.ts";
+import { MessageDelivery, MissionEnding, MissionPrompt, MissionState, RequestId, Viewing } from "./records.ts";
 import {
   AddHost,
   CreatePairingCode,
   DisconnectDevice,
-  KnownHost,
   ListHosts,
-  PairingCode,
   ReadHostName,
   ReadRemoteAccess,
-  RemoteAccessView,
   RemoveHost,
   RenameHost,
   SetRemoteAccess,
   UseOwnRelay,
   UseSharedRelay,
 } from "./remote.ts";
-import {
-  CreateRitual,
-  CreateRitualResult,
-  DeleteRitual,
-  ListRituals,
-  ReadRitual,
-  Ritual,
-  RunRitual,
-  UpdateRitual,
-} from "./rituals.ts";
+import { CreateRitual, DeleteRitual, ListRituals, ReadRitual, RunRitual, UpdateRitual } from "./rituals.ts";
 import { ChangeSettings, UpdateSettings } from "./settingsRequests.ts";
-import { Skill } from "./skills.ts";
-import { MessageText, NameText, OwnerMessageText } from "./texts.ts";
-import { UsageFilter, UsagePeriod, UsageReport } from "./usage.ts";
-import { WorkspaceEntry } from "./workspaceEntries.ts";
-import { Folder, FolderListing } from "./workspaces.ts";
+import { OwnerMessageText } from "./texts.ts";
+import { UsageFilter, UsagePeriod } from "./usage.ts";
 
 // Requests
 
@@ -84,25 +90,6 @@ import { Folder, FolderListing } from "./workspaces.ts";
 const AttachmentIds = Schema.optionalKey(
   Schema.Array(AttachmentId).check(Schema.isMaxLength(maxAttachmentsPerMessage)),
 );
-
-/** Adds a file to the message the owner is writing: it is checked, stored as a draft, and answered as a card. */
-export const AddAttachment = Schema.TaggedStruct("AddAttachment", {
-  /** The file's bytes, base64. */
-  data: Schema.String,
-  name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(255)),
-});
-/** Removes a draft the owner took out of the message before sending it. */
-export const DiscardAttachment = Schema.TaggedStruct("DiscardAttachment", { attachmentId: AttachmentId });
-/** Reads an attached file's bytes; they never ride inside a conversation. */
-export const ReadAttachment = Schema.TaggedStruct("ReadAttachment", { attachmentId: AttachmentId });
-
-/** Asks whether the host can transcribe a dictation now, before the owner starts speaking. */
-export const ReadDictation = Schema.TaggedStruct("ReadDictation", {});
-/** Transcribes one dictated recording on the host; the recording is not kept. */
-export const TranscribeDictation = Schema.TaggedStruct("TranscribeDictation", {
-  /** The recording's bytes, base64: a 16 kHz, mono, 16-bit WAV file. */
-  data: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(Math.ceil(maxDictationBytes / 3) * 4)),
-});
 
 /** Reads the host's release and where updating it stands; a paired device of another release may ask it. */
 export const ReadHostUpdate = Schema.TaggedStruct("ReadHostUpdate", {});
@@ -254,83 +241,6 @@ export const ResolveChatter = Schema.TaggedStruct("ResolveChatter", {
 
 /** Reads the owner's settings. */
 export const ReadSettings = Schema.TaggedStruct("ReadSettings", {});
-/** Every provider account's use and budget (budget-control, Account budgets and credits). */
-export const ReadAccountBudgets = Schema.TaggedStruct("ReadAccountBudgets", {});
-/**
- * Sets, changes, or removes an account's budget: limits over a period, or with no period (credits) counted from
- * `since`, a time on the day they were bought; null counts from now.
- */
-export const SetAccountBudget = Schema.TaggedStruct("SetAccountBudget", {
-  accountId: Schema.NullOr(AccountId),
-  harness: HarnessName,
-  limits: BudgetLimits,
-  period: Schema.NullOr(BudgetPeriod),
-  since: Schema.NullOr(Schema.Number),
-});
-/** Adds credit to an account's cost limit, which has no period. */
-export const AddCredit = Schema.TaggedStruct("AddCredit", {
-  accountId: Schema.NullOr(AccountId),
-  amount: Schema.Number.check(Schema.isGreaterThan(0)),
-  harness: HarnessName,
-});
-/** At an account's budget, hands the held thread to its next backup Companion. */
-export const SwitchAtBudget = Schema.TaggedStruct("SwitchAtBudget", { stopId: BudgetStopId });
-/** The model price table in use and where it came from (budget-control, The price table). */
-export const ReadPriceStatus = Schema.TaggedStruct("ReadPriceStatus", {});
-/** Reads the public price table now, as Refresh now in the Workshop does. */
-export const RefreshPrices = Schema.TaggedStruct("RefreshPrices", {});
-
-/** Reads a mission's journal. */
-export const ReadJournal = Schema.TaggedStruct("ReadJournal", { missionId: MissionId });
-/** The owner rewrites the briefing; refused when another rewrite came after `basedOn` (mission-journal, The user). */
-export const RewriteBriefing = Schema.TaggedStruct("RewriteBriefing", {
-  basedOn: Schema.Number,
-  briefing: Schema.String,
-  /** The entry recorded with the rewrite; null records "Rewrote the briefing". */
-  entry: Schema.NullOr(Schema.String),
-  missionId: MissionId,
-  requestId: RequestId,
-});
-/** The owner adds a change log entry. */
-export const AddJournalEntry = Schema.TaggedStruct("AddJournalEntry", {
-  missionId: MissionId,
-  requestId: RequestId,
-  text: MessageText,
-});
-
-// Request tags such as "ListIntel" are wire names kept as `intel`; the constants follow the code.
-/** The lore panel: the lore in a thread's scope, most specific first, or all lore; filtered by scope and state. */
-export const ListLore = Schema.TaggedStruct("ListIntel", {
-  scope: Schema.NullOr(LoreScope),
-  state: Schema.NullOr(LoreStateFilter),
-  threadId: Schema.NullOr(ThreadId),
-  /** Only the lore of this realm's own scope; absent shows the lore the other filters give. */
-  workspaceId: Schema.optionalKey(Schema.NullOr(WorkspaceId)),
-});
-/** The owner pins a lore entry so it never fades, or unpins it. */
-export const PinLoreEntry = Schema.TaggedStruct("PinIntel", { isPinned: Schema.Boolean, loreEntryId: LoreEntryId });
-/** The owner makes a dormant or archived lore entry active again, at full strength. */
-export const RestoreLoreEntry = Schema.TaggedStruct("RestoreIntel", { loreEntryId: LoreEntryId });
-/** The owner corrects a lore entry's text. */
-export const EditLoreEntry = Schema.TaggedStruct("EditIntel", { loreEntryId: LoreEntryId, text: MessageText });
-/** The owner deletes a lore entry. */
-export const DeleteLoreEntry = Schema.TaggedStruct("DeleteIntel", { loreEntryId: LoreEntryId });
-/** A lore entry's history, newest first, deleted lore included (scoped-intel, History and undo). */
-export const ReadLoreHistory = Schema.TaggedStruct("ReadIntelHistory", { loreEntryId: LoreEntryId });
-/** The owner undoes one change in a lore entry's history; undoing a deletion restores the lore. */
-export const UndoLoreChange = Schema.TaggedStruct("UndoIntelChange", { entryId: LoreHistoryEntryId });
-/** The owner approves or declines a thread's change awaiting approval: a global save, change, or deletion, or a widening. */
-export const ResolveLoreChange = Schema.TaggedStruct("ResolveIntelChange", {
-  changeId: LoreChangeId,
-  isApproved: Schema.Boolean,
-});
-
-/** The owner approves or declines a widening or narrowing the service proposed from evidence. */
-export const ResolveLoreProposal = Schema.TaggedStruct("ResolveIntelProposal", {
-  isApproved: Schema.Boolean,
-  proposalId: LoreProposalId,
-});
-
 /** The owner's answer to one open question. */
 export const Answer = Schema.Literals(["Allow", "AlwaysAllow", "Deny"]);
 export type Answer = typeof Answer.Type;
@@ -429,83 +339,6 @@ export const ReadPermissions = Schema.TaggedStruct("ReadPermissions", { missionI
 export const WidenPermission = Schema.TaggedStruct("WidenPermission", { permissionId: PermissionId });
 /** Removes a standing permission. */
 export const RemovePermission = Schema.TaggedStruct("RemovePermission", { permissionId: PermissionId });
-// The folder picker (CHG-0253): browsing, searching, and making folders. A paired device reaches only the browsable roots the host set in the Workshop; the host's own window may reach any folder.
-/** Lists a folder's subfolders (under the browsable roots for a paired device); null lists the roots. */
-export const BrowseFolders = Schema.TaggedStruct("BrowseFolders", {
-  path: Schema.NullOr(Schema.String),
-  /** Whether folders whose names start with a dot are listed too (Show hidden). */
-  shouldIncludeHidden: Schema.Boolean,
-});
-/** The skills a message in a workspace (or none) can name with a slash; the workspace's win over global ones. */
-export const ListSkills = Schema.TaggedStruct("ListSkills", { workspacePath: Schema.NullOr(Schema.String) });
-/** The files and folders of a workspace that a typed `@` can name, best matches first; refused for a folder that is not a workspace. */
-export const ListWorkspaceEntries = Schema.TaggedStruct("ListWorkspaceEntries", {
-  /** What follows the `@`: part of a name or of a path inside the workspace; empty lists the top level. */
-  query: Schema.String,
-  workspacePath: Schema.String,
-});
-/** The quests, errands, and realms a typed `@` can name: none archived, and never Chronicler's own (CHG-0181). */
-export const ListMentionables = Schema.TaggedStruct("ListMentionables", {});
-/** Makes a folder inside a browsable folder (New folder). */
-export const CreateFolder = Schema.TaggedStruct("CreateFolder", { name: Schema.String, parent: Schema.String });
-/** Adds an existing folder to the browsable roots (Add root); only the host itself may. */
-export const AddBrowsableRoot = Schema.TaggedStruct("AddBrowsableRoot", { path: Schema.String });
-/** Removes a folder from the browsable roots (Remove root); only the host itself may. */
-export const RemoveBrowsableRoot = Schema.TaggedStruct("RemoveBrowsableRoot", { path: Schema.String });
-/**
- * Folders matching what was typed, best first: a typed path that exists, then names that match exactly, by prefix, by
- * part, and loosely. An empty query lists the folders quests already used, newest first.
- */
-export const SearchFolders = Schema.TaggedStruct("SearchFolders", { query: Schema.String });
-
-/** Every harness with its accounts, sign-in states, and models (provider-accounts). */
-export const ListHarnesses = Schema.TaggedStruct("ListHarnesses", {});
-/**
- * The effort levels the provider offers for one model, lowest first, without "default"; empty when it offers none.
- * OpenCode says them only for a model once chosen, so its pickers ask when a model is picked; the service reads them ahead when it lists the models.
- */
-export const ListModelEfforts = Schema.TaggedStruct("ListModelEfforts", {
-  /** The provider account, or null for the harness's own sign-in on this computer. */
-  accountId: Schema.NullOr(AccountId),
-  harness: HarnessName,
-  model: ModelChoice,
-});
-
-/** Adds a provider account to a harness, with its own folder; it is signed out until the owner signs in. */
-export const AddAccount = Schema.TaggedStruct("AddAccount", { harness: HarnessName, label: NameText });
-
-/** Renames a provider account added in Outlore. */
-export const RenameAccount = Schema.TaggedStruct("RenameAccount", { accountId: AccountId, label: NameText });
-
-/**
- * Names a harness's own sign-in on this computer, apart from the computer's name; a blank name returns it to the
- * computer's.
- */
-export const RenameOwnAccount = Schema.TaggedStruct("RenameOwnAccount", {
-  harness: HarnessName,
-  label: Schema.String.check(Schema.isMaxLength(80)),
-});
-
-/** Updates a harness to its latest version through the harness's own update command, then lists the harnesses again. */
-export const UpdateHarness = Schema.TaggedStruct("UpdateHarness", { harness: HarnessName });
-
-/** Installs a missing harness from its official npm package, then lists the harnesses again. */
-export const InstallHarness = Schema.TaggedStruct("InstallHarness", { harness: HarnessName });
-
-/** Removes a provider account and its folder; refused while a thread that is not ended uses it. */
-export const RemoveAccount = Schema.TaggedStruct("RemoveAccount", { accountId: AccountId });
-
-/**
- * Runs the harness's own sign-in for an account on this computer; Outlore never sees the credentials (requirements,
- * Comply with provider terms). Null signs in the computer's own account. A sign-in that needs no terminal runs
- * in the background, waits for the owner in the browser, and answers with the harnesses listed again; one that needs
- * a terminal opens a window that closes itself on success and answers null at once.
- */
-export const SignInAccount = Schema.TaggedStruct("SignInAccount", {
-  accountId: Schema.NullOr(AccountId),
-  harness: HarnessName,
-});
-
 /** Every request the app can make of the service. */
 export const Request = Schema.Union([
   AddAttachment,
@@ -618,131 +451,6 @@ export const Request = Schema.Union([
 export type Request = typeof Request.Type;
 /** The name of one kind of request. */
 export type RequestTag = Request["_tag"];
-
-/** A started mission's identifiers. */
-export const StartMissionResult = Schema.Struct({ messageId: MessageId, missionId: MissionId, threadId: ThreadId });
-export type StartMissionResult = typeof StartMissionResult.Type;
-/** A quest started without a message: where it and its top thread are. */
-export const StartEmptyQuestResult = Schema.Struct({ missionId: MissionId, threadId: ThreadId });
-export type StartEmptyQuestResult = typeof StartEmptyQuestResult.Type;
-/** A sent message's identifier. */
-export const SendMessageResult = Schema.Struct({ messageId: MessageId });
-export type SendMessageResult = typeof SendMessageResult.Type;
-/** An opened thread's identifier and its first message's. */
-export const OpenThreadResult = Schema.Struct({ messageId: MessageId, threadId: ThreadId });
-export type OpenThreadResult = typeof OpenThreadResult.Type;
-
-/** The result schema of each request, used by both sides to encode and decode. */
-export const Results = {
-  ...realmResults,
-  AddAccount: HarnessList,
-  AddAttachment: AttachmentCard,
-  AddBrowsableRoot: FolderListing,
-  AddCredit: Schema.Null,
-  AddHost: KnownHost,
-  AddJournalEntry: JournalView,
-  AnswerChoices: Question,
-  AnswerQuestion: Question,
-  AnswerSuggestion: Suggestion,
-  ArchiveThread: Schema.Null,
-  BrowseFolders: FolderListing,
-  ChangeSettings: Settings,
-  ChangeThreadRunner: Schema.Null,
-  CreateFolder: Folder,
-  CreatePairingCode: PairingCode,
-  CreateRitual: CreateRitualResult,
-  DeleteIntel: Schema.Null,
-  DeleteRitual: Schema.Null,
-  DeleteThread: Schema.Null,
-  DiscardAttachment: Schema.Null,
-  DisconnectDevice: RemoteAccessView,
-  DismissMissionPrompt: Schema.Null,
-  EditIntel: Schema.Null,
-  EndMission: QuestPlacement,
-  InstallHarness: HarnessList,
-  InterruptThread: Schema.Null,
-  ListHarnesses: HarnessList,
-  ListHosts: Schema.Array(KnownHost),
-  ListIntel: LoreView,
-  ListMentionables: Schema.Array(Mentionable),
-  ListMissions: MissionList,
-  ListModelEfforts: Schema.Array(EffortChoice),
-  ListOpenQuestions: Schema.Array(Question),
-  ListRituals: Schema.Array(Ritual),
-  ListSkills: Schema.Array(Skill),
-  ListWorkspaceEntries: Schema.Array(WorkspaceEntry),
-  MarkThreadDone: Schema.Null,
-  MoveQuest: Schema.Null,
-  OpenThread: OpenThreadResult,
-  PinIntel: Schema.Null,
-  PreviewDeletion: DeletionPreview,
-  PreviewEnding: EndingPreview,
-  PreviewStartingContext: StartingContext,
-  ReadAccountBudgets: Schema.Array(AccountBudget),
-  ReadAttachment: AttachmentContent,
-  ReadBudget: BudgetWindow,
-  ReadDictation: DictationStatus,
-  ReadGuildHallRecap: GuildHallRecap,
-  ReadGuildmaster: GuildmasterPlace,
-  ReadHostName: Schema.String,
-  ReadHostUpdate: HostUpdate,
-  ReadIntelHistory: LoreHistory,
-  ReadJournal: JournalView,
-  ReadMission: MissionDetail,
-  ReadPermissions: PermissionsView,
-  ReadPriceStatus: PriceStatus,
-  ReadRemoteAccess: RemoteAccessView,
-  ReadRitual: Schema.NullOr(Ritual),
-  ReadSettings: Settings,
-  ReadStartChoices: StartChoices,
-  ReadThreadPanel: ThreadPanel,
-  ReadThreadTree: Schema.Array(ThreadSummary),
-  ReadUsage: UsageReport,
-  RefreshPrices: PriceStatus,
-  RemoveAccount: HarnessList,
-  RemoveBrowsableRoot: FolderListing,
-  RemoveHost: Schema.Array(KnownHost),
-  RemovePermission: Schema.Null,
-  RenameAccount: HarnessList,
-  RenameHost: Schema.String,
-  RenameMission: Schema.Null,
-  RenameOwnAccount: HarnessList,
-  ReopenMission: Schema.Null,
-  ResolveChatter: Schema.Null,
-  ResolveIntelChange: Schema.Null,
-  ResolveIntelProposal: Schema.Null,
-  RestoreIntel: Schema.Null,
-  RestoreThread: Schema.Null,
-  ResumeThread: Schema.Null,
-  RetryThread: Schema.Null,
-  RewriteBriefing: JournalView,
-  RunRitual: Schema.Null,
-  SearchFolders: Schema.Array(Folder),
-  SendMessage: SendMessageResult,
-  SetAccountBudget: Schema.Null,
-  SetMissionBudget: Schema.Null,
-  SetRemoteAccess: RemoteAccessView,
-  SetThreadBackups: Schema.Null,
-  SignInAccount: Schema.NullOr(HarnessList),
-  StartEmptyQuest: StartEmptyQuestResult,
-  StartMission: StartMissionResult,
-  SteerQueuedMessage: Schema.Null,
-  StopAtBudget: Schema.Null,
-  StopThread: Schema.Null,
-  SwitchAtBudget: Schema.Null,
-  TranscribeDictation: Transcript,
-  UndoIntelChange: Schema.Null,
-  UpdateHarness: HarnessList,
-  UpdateHost: HostUpdate,
-  UpdateRitual: Schema.Null,
-  UpdateSettings: Settings,
-  UseOwnRelay: RemoteAccessView,
-  UseSharedRelay: RemoteAccessView,
-  VisitGuildHall: Schema.Null,
-  WidenPermission: Schema.Null,
-} as const;
-/** What the service answers to one kind of request. */
-export type ResultOf<Tag extends RequestTag> = (typeof Results)[Tag]["Type"];
 
 /** The kinds of failure the app tells apart. */
 export const ErrorKind = Schema.Literals([

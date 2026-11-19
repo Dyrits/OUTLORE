@@ -7,8 +7,8 @@ import { modelsDevUrl, rowsOfModelsDev } from "../src/core/priceSources.ts";
 
 const response = await fetch(modelsDevUrl, { headers: { accept: "application/json" } });
 if (!response.ok) throw new Error(`models.dev answered ${response.status}`);
-const rows = rowsOfModelsDev(await response.json()).toSorted((a, b) =>
-  `${a.provider}/${a.model}`.localeCompare(`${b.provider}/${b.model}`),
+const rows = rowsOfModelsDev(await response.json()).toSorted((current, next) =>
+  `${current.provider}/${current.model}`.localeCompare(`${next.provider}/${next.model}`),
 );
 const lines = rows.map(
   (row) =>

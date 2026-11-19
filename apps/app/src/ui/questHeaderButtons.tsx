@@ -72,8 +72,8 @@ export function QuestPanelButton({ isOpen, onPress }: { isOpen: boolean; onPress
       style={({ pressed }) => [local.panel, (pressed || isOpen) && local.panelActive]}
     >
       <HeaderIcon color={isOpen ? colors.accentText : colors.textSecondary}>
-        {emblemPaths.sword.map((d) => (
-          <Path d={d} key={d} />
+        {emblemPaths.sword.map((path) => (
+          <Path d={path} key={path} />
         ))}
       </HeaderIcon>
     </Pressable>

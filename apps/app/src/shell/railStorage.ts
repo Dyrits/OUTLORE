@@ -11,24 +11,30 @@ export const minRailWidth = 284;
 /** The most the open rail can have: a quarter of the window, so the conversation and the right panel stay usable. */
 const maxRailShare = 0.25;
 
+/** What the browser kept under a key; null with nothing kept, no browser storage, or storage that refuses to answer. */
+const readStored = (key: string): string | null => {
+  try {
+    return globalThis.localStorage?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+};
+
+/** Keeps text under a key where the platform allows; a refusal only loses the memory. */
+const keep = (key: string, text: string) => {
+  try {
+    globalThis.localStorage?.setItem(key, text);
+  } catch {}
+};
+
 /** The key under which the browser remembers whether the sidebar is hidden. */
 const hiddenKey = "outlore:sidebar-hidden";
 
 /** Reads whether the sidebar is hidden; a platform without browser storage starts with it shown. */
-export const readHidden = (): boolean => {
-  try {
-    return globalThis.localStorage?.getItem(hiddenKey) === "1";
-  } catch {
-    return false;
-  }
-};
+export const readHidden = (): boolean => readStored(hiddenKey) === "1";
 
 /** Remembers whether the sidebar is hidden where the platform allows; a refusal only loses the memory. */
-export const rememberHidden = (isHidden: boolean) => {
-  try {
-    globalThis.localStorage?.setItem(hiddenKey, isHidden ? "1" : "0");
-  } catch {}
-};
+export const rememberHidden = (isHidden: boolean) => keep(hiddenKey, isHidden ? "1" : "0");
 
 /** The key under which the browser remembers how wide the open rail is. */
 const widthKey = "outlore:sidebar-width";
@@ -50,55 +56,29 @@ export const chroniclerWidthKey = "outlore:assistant-width";
 
 /** Reads a remembered pane width, or `fallback` (the pane's default, and its least) with none stored or no storage. */
 export const readPaneWidth = (key: string, fallback: number): number => {
-  try {
-    const stored = Number(globalThis.localStorage?.getItem(key));
-    // The window's quarter is applied where the width is used, since the window can change size after this.
-    return Number.isFinite(stored) && stored > 0 ? Math.max(fallback, Math.round(stored)) : fallback;
-  } catch {
-    return fallback;
-  }
+  const stored = Number(readStored(key));
+  // The window's quarter is applied where the width is used, since the window can change size after this.
+  return Number.isFinite(stored) && stored > 0 ? Math.max(fallback, Math.round(stored)) : fallback;
 };
 
 /** Remembers a pane's width where the platform allows; a refusal only loses the memory. */
-export const rememberPaneWidth = (key: string, width: number) => {
-  try {
-    globalThis.localStorage?.setItem(key, String(width));
-  } catch {}
-};
+export const rememberPaneWidth = (key: string, width: number) => keep(key, String(width));
 
 /** Reads the remembered rail width; a platform without browser storage starts at the default. */
 export const readRailWidth = (): number => {
-  try {
-    const stored = Number(globalThis.localStorage?.getItem(widthKey));
-    // The window's quarter is applied where the width is used, since the window can change size after this.
-    return Number.isFinite(stored) && stored > 0 ? Math.max(minRailWidth, Math.round(stored)) : expandedWidth;
-  } catch {
-    return expandedWidth;
-  }
+  const stored = Number(readStored(widthKey));
+  // The window's quarter is applied where the width is used, since the window can change size after this.
+  return Number.isFinite(stored) && stored > 0 ? Math.max(minRailWidth, Math.round(stored)) : expandedWidth;
 };
 
 /** Remembers the rail width where the platform allows; a refusal only loses the memory. */
-export const rememberRailWidth = (width: number) => {
-  try {
-    globalThis.localStorage?.setItem(widthKey, String(width));
-  } catch {}
-};
+export const rememberRailWidth = (width: number) => keep(widthKey, String(width));
 
 /** The key under which the browser remembers whether Chronicler's panel is open. */
 const chroniclerKey = "outlore:assistant-open";
 
 /** Reads whether Chronicler's panel is open; a platform without browser storage starts with it folded. */
-export const readChroniclerOpen = (): boolean => {
-  try {
-    return globalThis.localStorage?.getItem(chroniclerKey) === "1";
-  } catch {
-    return false;
-  }
-};
+export const readChroniclerOpen = (): boolean => readStored(chroniclerKey) === "1";
 
 /** Remembers whether Chronicler's panel is open where the platform allows; a refusal only loses the memory. */
-export const rememberChroniclerOpen = (isOpen: boolean) => {
-  try {
-    globalThis.localStorage?.setItem(chroniclerKey, isOpen ? "1" : "0");
-  } catch {}
-};
+export const rememberChroniclerOpen = (isOpen: boolean) => keep(chroniclerKey, isOpen ? "1" : "0");

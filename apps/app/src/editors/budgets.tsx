@@ -347,7 +347,12 @@ export function BudgetScreen({
           {data.period !== null && (
             <View style={styles.section}>
               <Text style={styles.label}>Period</Text>
-              <Choice label={(p) => p} onChange={savePeriod} options={BudgetPeriods.literals} value={data.period} />
+              <Choice
+                label={(period) => period}
+                onChange={savePeriod}
+                options={BudgetPeriods.literals}
+                value={data.period}
+              />
               {data.nextStart !== null && <Text style={styles.muted}>Starts over {timeOf(data.nextStart)}</Text>}
             </View>
           )}

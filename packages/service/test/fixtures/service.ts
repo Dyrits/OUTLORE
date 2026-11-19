@@ -104,7 +104,7 @@ export const settle = (
   threadId: ThreadId | null = null,
 ) =>
   Effect.gen(function* () {
-    for (let i = 0; i < 400; i++) {
+    for (let index = 0; index < 400; index++) {
       const detail = yield* read(missionId, threadId);
       if (check(detail)) return detail;
       yield* Effect.sleep("10 millis");

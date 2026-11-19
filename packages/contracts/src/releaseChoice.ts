@@ -1,6 +1,8 @@
 // Choosing a release to update to, shared by the desktop's updater and the phone's: versions, GitHub's release list, and
 // which release a running version moves to. Pure and free of platform APIs, so both read it (app-updates).
 
+import { isRecord } from "./objects.ts";
+
 /** A version split into its semantic-version parts; `null` when the text is not a version. */
 export type Version = { readonly core: readonly [number, number, number]; readonly prerelease: readonly string[] };
 
@@ -73,8 +75,6 @@ export type FoundRelease = {
 
 /** The file of checksums the release workflow publishes beside the installers. */
 export const sumsFileName = "SHA512SUMS.txt";
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
 /** Reads GitHub's release list, leaving out anything that does not have the expected shape. */
 export const listingsOf = (json: unknown): ReleaseListing[] => {

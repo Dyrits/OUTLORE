@@ -54,7 +54,7 @@ describe("a thread folder that is a link", () => {
       yield* settle(first.missionId, isReplied);
       expect((yield* call({ _tag: "ReadPermissions", missionId: null })).permissions).toHaveLength(1);
       yield* send(first.threadId, folder(linked));
-      const asking = yield* settle(first.missionId, (d) => d.questions.length === 2 && isAsking(d));
+      const asking = yield* settle(first.missionId, (current) => current.questions.length === 2 && isAsking(current));
       expect(openQuestion(asking)).toMatchObject({ outcome: null, pattern: null, permission: null });
     }).pipe(Effect.provide(unprotected())),
   );

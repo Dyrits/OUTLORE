@@ -20,15 +20,15 @@ afterEach(() => {
 const advance = (millis: number) =>
   Effect.gen(function* () {
     yield* TestClock.adjust(millis);
-    for (let i = 0; i < 40; i++) yield* Effect.yieldNow;
+    for (let index = 0; index < 40; index++) yield* Effect.yieldNow;
   });
 const settleTurns = Effect.gen(function* () {
-  for (let i = 0; i < 5; i++) yield* advance(20);
+  for (let index = 0; index < 5; index++) yield* advance(20);
 });
 const list = (filters: Partial<Omit<Extract<Parameters<typeof call>[0], { _tag: "ListMissions" }>, "_tag">> = {}) =>
   call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null, ...filters });
-const titlesOf = (missions: MissionList) => missions.missions.map((m) => m.title);
-const titleOf = (missions: MissionList, id: MissionId) => missions.missions.find((m) => m.id === id)?.title;
+const titlesOf = (missions: MissionList) => missions.missions.map((mission) => mission.title);
+const titleOf = (missions: MissionList, id: MissionId) => missions.missions.find((mission) => mission.id === id)?.title;
 
 describe("naming a mission", () => {
   it.effect("takes the top thread's proposed title", () =>
@@ -82,14 +82,14 @@ describe("naming a mission", () => {
       const first = yield* start("context");
       yield* settleTurns;
       const top = yield* call({ _tag: "ReadMission", missionId: first.missionId, threadId: null });
-      expect(top.messages.find((m) => m.sender === "agent")?.text).toContain(asking);
+      expect(top.messages.find((message) => message.sender === "agent")?.text).toContain(asking);
       // A child of a top thread that never echoed its context, so the opener's messages cannot carry the line.
       const { missionId, threadId } = yield* start("Hello");
       yield* settleTurns;
       const child = yield* open(threadId, "context");
       yield* settleTurns;
       const beneath = yield* call({ _tag: "ReadMission", missionId, threadId: child.threadId });
-      expect(beneath.messages.find((m) => m.sender === "agent")?.text).not.toContain(asking);
+      expect(beneath.messages.find((message) => message.sender === "agent")?.text).not.toContain(asking);
     }).pipe(Effect.provide(make().layer)),
   );
 });
@@ -156,7 +156,7 @@ describe("listing missions on the dashboard", () => {
       yield* start("Third");
       yield* settleTurns;
       const missions = yield* list();
-      expect(missions.missions.map((m) => m.state)).toEqual(["Attention", "Idle", "Idle"]);
+      expect(missions.missions.map((mission) => mission.state)).toEqual(["Attention", "Idle", "Idle"]);
       expect(titlesOf(missions).slice(1)).toEqual(["Third", "First"]);
     }).pipe(Effect.provide(make().layer)),
   );
@@ -181,9 +181,9 @@ describe("listing missions on the dashboard", () => {
       yield* start("Scratch");
       yield* settleTurns;
       const all = yield* list();
-      expect(all.workspaces.map((w) => w.name)).toEqual(["project"]);
+      expect(all.workspaces.map((workspace) => workspace.name)).toEqual(["project"]);
       // Its folder too, so a mission started from the workspace's board starts there.
-      expect(all.workspaces.map((w) => w.path)).toEqual([realpathSync(folder)]);
+      expect(all.workspaces.map((workspace) => workspace.path)).toEqual([realpathSync(folder)]);
       const workspaceId = all.workspaces[0]?.id ?? null;
       expect(titlesOf(yield* list({ workspaceId }))).toEqual(["In the project"]);
     }).pipe(Effect.provide(value.layer));

@@ -70,41 +70,27 @@ export const nextHostUpdate = (
 
 const turnsOf = (count: number) => `${count} running turn${count === 1 ? "" : "s"}`;
 
-const progressTextOf = (status: HostUpdate["status"]) => {
-  switch (status._tag) {
-    case "Checking":
-      return "Looking for the new release…";
-    case "Downloading":
-      return `Downloading ${Math.round(status.percent)}%`;
-    case "Ready":
-      return "Downloaded. Starting the install…";
-    case "WaitingForTurns":
-      return `Waiting for ${turnsOf(status.runningCount)} to finish`;
-    case "Installing":
-      return "Installing";
-    case "Failed":
-      return status.message;
-    case "Idle":
-      return status.note ?? "The host found no newer release. Update it on the host.";
-    case "Unsupported":
-      return `The host cannot update itself: ${status.reason}`;
-  }
+const progressTextOf = (status: HostUpdate["status"]): string => {
+  if (status._tag === "Checking") return "Looking for the new release…";
+  if (status._tag === "Downloading") return `Downloading ${Math.round(status.percent)}%`;
+  if (status._tag === "Ready") return "Downloaded. Starting the install…";
+  if (status._tag === "WaitingForTurns") return `Waiting for ${turnsOf(status.runningCount)} to finish`;
+  if (status._tag === "Installing") return "Installing";
+  if (status._tag === "Failed") return status.message;
+  if (status._tag === "Idle") return status.note ?? "The host found no newer release. Update it on the host.";
+  return `The host cannot update itself: ${status.reason}`;
 };
 
 /** The words for what the device shows about updating its host; null when it shows nothing of it. */
 export const hostUpdateTextOf = (state: HostUpdateState): string | null => {
-  switch (state._tag) {
-    case "TooOld":
-      return "This host is too old to update from here; update it on the host once, then this works.";
-    case "NotOffered":
-      return state.reason;
-    case "Updating":
-      if (state.isReconnecting) return "Reconnecting…";
-      return state.update === null ? "Telling the host to update…" : progressTextOf(state.update.status);
-    case "Updated":
-      return `The host runs release ${state.release}. Reconnecting…`;
-    case "Probing":
-    case "Offered":
-      return null;
+  if (state._tag === "TooOld") {
+    return "This host is too old to update from here; update it on the host once, then this works.";
   }
+  if (state._tag === "NotOffered") return state.reason;
+  if (state._tag === "Updated") return `The host runs release ${state.release}. Reconnecting…`;
+  if (state._tag === "Updating") {
+    if (state.isReconnecting) return "Reconnecting…";
+    return state.update === null ? "Telling the host to update…" : progressTextOf(state.update.status);
+  }
+  return null;
 };

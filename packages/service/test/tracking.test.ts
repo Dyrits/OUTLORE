@@ -25,19 +25,21 @@ const reportLine = 'call report_result {"result":"All done.","journal":"nothing 
 const advance = (millis: number) =>
   Effect.gen(function* () {
     yield* TestClock.adjust(millis);
-    for (let i = 0; i < 40; i++) yield* Effect.yieldNow;
+    for (let index = 0; index < 40; index++) yield* Effect.yieldNow;
   });
 /** Lets a fake turn (10 millis) and its tool calls finish. */
 const settleTurns = Effect.gen(function* () {
-  for (let i = 0; i < 5; i++) yield* advance(20);
+  for (let index = 0; index < 5; index++) yield* advance(20);
 });
 
 const list = (filters: Partial<Omit<Extract<Parameters<typeof call>[0], { _tag: "ListMissions" }>, "_tag">> = {}) =>
   call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null, ...filters });
-const summaryOf = (missions: MissionList, id: MissionId) => missions.missions.find((m) => m.id === id);
+const summaryOf = (missions: MissionList, id: MissionId) => missions.missions.find((mission) => mission.id === id);
 /** The journal's entries, oldest first (the Journal view lists them newest first). */
 const entriesOf = (missionId: MissionId) =>
-  call({ _tag: "ReadJournal", missionId }).pipe(Effect.map((view) => view.entries.map((e) => e.text).toReversed()));
+  call({ _tag: "ReadJournal", missionId }).pipe(
+    Effect.map((view) => view.entries.map((entry) => entry.text).toReversed()),
+  );
 const end = (missionId: MissionId, ending: MissionEnding) =>
   Effect.gen(function* () {
     const preview = yield* call({ _tag: "PreviewEnding", ending, missionId });
@@ -190,7 +192,10 @@ describe("ending a mission", () => {
       expect(preview.question).toBe("2 threads are still running. Stop them and mark as done?");
       yield* call({ _tag: "EndMission", ending: "Done", missionId, snapshot: preview.snapshot });
       const detail = yield* read(missionId, first.threadId);
-      expect(detail.threads.filter((t) => t.depth === 1).map((t) => t.state)).toEqual(["Stopped", "Stopped"]);
+      expect(detail.threads.filter((thread) => thread.depth === 1).map((thread) => thread.state)).toEqual([
+        "Stopped",
+        "Stopped",
+      ]);
       expect(yield* call({ _tag: "ListOpenQuestions" })).toEqual([]);
       expect(detail.mission.state).toBe("Done");
     }).pipe(Effect.provide(live())),

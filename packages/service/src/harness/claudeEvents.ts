@@ -54,10 +54,6 @@ export const usageOf = (usage: unknown): TokenUsage | null =>
         output: numberFieldOf(usage, "output_tokens"),
       };
 
-/** What a model call's prompt and reply held, or null when the call reported no usage. */
-export const contextOf = (usage: TokenUsage | null) =>
-  usage === null ? null : usage.input + usage.cacheRead + usage.cacheCreation + usage.output;
-
 /** Plain text blocks joined from a Claude Code assistant message's content. */
 export const textOf = (content: unknown) =>
   Array.isArray(content)

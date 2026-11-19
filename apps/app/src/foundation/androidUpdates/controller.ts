@@ -1,11 +1,16 @@
-import { checksumsOf, chooseReleaseFor, type FoundRelease, listingsOf, plainNotesOf } from "@outlore/contracts";
+import {
+  type AppUpdateSettings,
+  checksumsOf,
+  chooseReleaseFor,
+  type FoundRelease,
+  listingsOf,
+  plainNotesOf,
+} from "@outlore/contracts";
+import { messageOf } from "../client";
 import type { UpdateState, UpdateStatus } from "../updateState";
 
 /** How often a running app looks for a new release, as on the desktop. */
 export const checkIntervalMilliseconds = 6 * 60 * 60 * 1000;
-
-/** What the app keeps about updates on this phone: the owner's switch and when it last checked. */
-export type UpdateSettings = { readonly isEnabled: boolean; readonly lastCheckedAt: number | null };
 
 /** What the phone's own system does for the updater; the native module answers it, and tests supply their own. */
 export type AndroidInstaller = {
@@ -43,7 +48,7 @@ export type AndroidUpdateOptions = {
   readonly releasesUrl: string;
   /** Runs `run` every `milliseconds` until the returned function is called. */
   readonly repeat: (run: () => void, milliseconds: number) => () => void;
-  readonly settings: { readonly read: () => UpdateSettings; readonly write: (settings: UpdateSettings) => void };
+  readonly settings: { readonly read: () => AppUpdateSettings; readonly write: (settings: AppUpdateSettings) => void };
 };
 
 const hostOf = (url: string) => /^https?:\/\/([^/]+)/.exec(url)?.[1] ?? url;
@@ -63,7 +68,7 @@ export class AndroidUpdateController {
   /** Why a newer release could not be used, from the last check. */
   private note: string | null = null;
   private running: Promise<void> | null = null;
-  private settings: UpdateSettings;
+  private settings: AppUpdateSettings;
   private status: UpdateStatus;
   private stopRepeating: (() => void) | null = null;
 
@@ -293,5 +298,3 @@ const availableOf = (release: FoundRelease): UpdateStatus => ({
   sizeBytes: release.installer.size,
   version: release.version,
 });
-
-const messageOf = (reason: unknown) => (reason instanceof Error ? reason.message : String(reason));

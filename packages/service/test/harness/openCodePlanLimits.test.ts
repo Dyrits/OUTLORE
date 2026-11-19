@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { openCodePlanLimitsOf } from "../../src/harness/opencode.ts";
+import { openCodePlanLimitsOf } from "../../src/harness/openCodePlanLimits.ts";
 
 // The usage.limits answer as OpenCode 2.2.0 served it (probe of 2026-11-12): data.go holds the Go plan's three
 // windows, each with a used percent and a reset time in milliseconds.
