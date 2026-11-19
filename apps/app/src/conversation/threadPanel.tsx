@@ -110,9 +110,14 @@ export function ThreadPanel({
   onOpenQuest: () => void;
 }) {
   const { thread } = detail;
-  const { data: panel } = useServiceQuery(client, { _tag: "ReadThreadPanel", threadId: thread.id }, thread.id);
+  const { data: panel, error: panelError } = useServiceQuery(
+    client,
+    { _tag: "ReadThreadPanel", threadId: thread.id },
+    thread.id,
+  );
   const skills = useSkills(client, thread.workspace?.path ?? null);
   const [isShowingSkills, setIsShowingSkills] = useState(false);
+  const [isShowingTools, setIsShowingTools] = useState(false);
   const modelValue = `${modelLabelOf(thread.model)} · ${effortLabel(thread.effort)}`;
   const harnessValue =
     thread.accountId === null
@@ -147,6 +152,36 @@ export function ThreadPanel({
         value={skills.length === 0 ? "None found" : `${skills.length} available`}
       />
       {isShowingSkills && <Text style={local.skills}>{skills.map((skill) => `/${skill.name}`).join("  ")}</Text>}
+      <Row
+        icon="puzzle"
+        label="Tools"
+        onPress={panel === null ? undefined : () => setIsShowingTools(!isShowingTools)}
+        value={
+          panel === null
+            ? (panelError ?? "Reading…")
+            : `${panel.outloreTools.length + panel.connectorTools.filter((tool) => tool.isOn).length} on`
+        }
+      />
+      {isShowingTools && panel !== null && (
+        <View style={local.toolList}>
+          <Text style={local.toolHeading}>Outlore</Text>
+          {panel.outloreTools.map((tool) => (
+            <Text key={tool} style={local.toolName}>
+              {tool}
+            </Text>
+          ))}
+          {panel.connectorTools.map((tool) => (
+            <Text key={`${tool.connectorId}/${tool.name}`} style={local.toolName}>
+              {tool.connectorName} · {tool.name}
+              {tool.isOn ? "" : " · Off"}
+            </Text>
+          ))}
+          <Text style={local.toolName}>
+            Connector tools reflect the last server listing and current choices. Turning one on takes effect next turn;
+            turning one off takes effect at once. Harness built-in tools are not reported.
+          </Text>
+        </View>
+      )}
     </>
   );
   const spends = panel !== null && <Row icon="coins" label="This thread" value={threadSpendingTextOf(panel)} />;
@@ -209,4 +244,7 @@ const local = StyleSheet.create({
     padding: 12,
   },
   swatch: { borderRadius: 2, height: 10, width: 10 },
+  toolHeading: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.sm, fontWeight: "700" },
+  toolList: { borderTopColor: colors.border, borderTopWidth: 1, gap: 4, padding: 12 },
+  toolName: { color: colors.textSecondary, fontFamily: fonts.sans, fontSize: fontSizes.sm },
 });

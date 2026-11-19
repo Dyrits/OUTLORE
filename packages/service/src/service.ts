@@ -150,7 +150,7 @@ const make = Effect.gen(function* () {
           ...accountsHandlers(dependencies),
           ...remoteHandlers(dependencies),
           ...messagesHandlers(dependencies),
-          ...questsHandlers(dependencies),
+          ...questsHandlers(dependencies, connectors),
           ...ritualsHandlers(dependencies),
           ...connectorHandlers(commands, connectors),
           ...vaultHandlers(commands, vault, connectors),

@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import type { Connectors } from "../connectors/index.ts";
 import { invalid, readStartChoices } from "../core/index.ts";
 import { admitOwnerText, admitRunnerChange, runnerOfOpened, runnerOfStarted } from "./admission.ts";
 import { setThreadBackups } from "./backups.ts";
@@ -18,11 +19,10 @@ import { readThreadPanel } from "./threadPanel.ts";
 import { newQuestTitle, renameMission } from "./titles.ts";
 import { openThreadByOwner } from "./tree.ts";
 /** Requests for quests share the service request context. */
-export const questsHandlers = ({
-  commands,
-  change,
-  threads,
-}: Pick<HandlerDependencies, "commands" | "change" | "threads">) =>
+export const questsHandlers = (
+  { commands, change, threads }: Pick<HandlerDependencies, "commands" | "change" | "threads">,
+  connectors: Connectors["Service"],
+) =>
   ({
     ArchiveThread: (given) => commands.run(archiveThread(given.threadId)),
     ChangeThreadRunner: (given) => commands.run(admitRunnerChange(given)),
@@ -74,7 +74,7 @@ export const questsHandlers = ({
     ReadGuildHallRecap: (read) => readGuildHallRecap(read.since),
     ReadGuildmaster: () => commands.run(readGuildmaster),
     ReadMission: (read) => readMission(read.missionId, read.threadId),
-    ReadThreadPanel: (read) => readThreadPanel(read.threadId),
+    ReadThreadPanel: (read) => readThreadPanel(read.threadId, connectors),
     ReadThreadTree: (read) => readThreadTree(read.missionId),
     RenameMission: (rename) => change(renameMission(rename.missionId, rename.title)),
     ReopenMission: (reopen) => commands.run(reopenMission(reopen.missionId)),

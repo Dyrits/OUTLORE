@@ -1,12 +1,16 @@
 import { BackupCompanion, type ContextGauge, type ContextPart, type ThreadPanel } from "@outlore/contracts";
 import { Effect, Schema } from "effect";
 import { SqlClient } from "effect/sql";
+import type { Connectors } from "../connectors/index.ts";
 import { missionLimitsOf, missionSpendingOf, notFound, spendingColumns } from "../core/index.ts";
+import { harnessFacts } from "../harness/index.ts";
 import { readContextLimit } from "../lore/index.ts";
 import { accountOfThread } from "./budgetScopes.ts";
 import { readThreadConsumption } from "./consumption.ts";
 import { PlanLimits } from "./planLimits.ts";
 import { readSentContextSize } from "./startingContext.ts";
+import { toolListingOf } from "./threadTools.ts";
+import { readAuthorityHarness } from "./turnAdmission.ts";
 
 // What the thread panel shows beyond the thread itself (thread-panel).
 
@@ -59,18 +63,21 @@ const readThreadPlanLimits = Effect.fnUntraced(function* (threadId: string) {
 });
 
 /** What the panel shows of a thread: its context gauge, its own spending, and its quest's budget. */
-export const readThreadPanel = Effect.fnUntraced(function* (threadId: string) {
+export const readThreadPanel = Effect.fnUntraced(function* (threadId: string, connectors: Connectors["Service"]) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{ backups: string; missionId: string; model: string }>`
       SELECT mission_id AS missionId, model, backups FROM threads WHERE id = ${threadId}`;
   if (thread === undefined) return yield* notFound("No such thread.");
+  const harness = yield* readAuthorityHarness(threadId);
   const [spent] = yield* sql<{ cost: number; tokens: number; turnCount: number }>`
       SELECT ${sql.literal(spendingColumns)}, COUNT(*) AS turnCount FROM usage u WHERE u.thread_id = ${threadId}`;
   return {
     backups: decodeBackups(JSON.parse(thread.backups)),
     budget: { limits: yield* missionLimitsOf(thread.missionId), spent: yield* missionSpendingOf(thread.missionId) },
+    connectorTools: yield* connectors.panelTools(threadId),
     consumption: yield* readThreadConsumption(threadId),
     context: yield* readContextGauge(threadId, thread.model),
+    outloreTools: toolListingOf(harness !== null && harnessFacts[harness].hasPromptTool).map((tool) => tool.name),
     planLimits: yield* readThreadPlanLimits(threadId),
     spending: { cost: spent?.cost ?? 0, tokens: spent?.tokens ?? 0 },
     turnCount: spent?.turnCount ?? 0,

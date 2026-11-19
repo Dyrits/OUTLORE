@@ -298,6 +298,7 @@ export function Conversation({
       <ThreadPanel
         client={client}
         detail={shown}
+        key={shown.thread.id}
         onOpenBudget={() => setBudgetScope("Mission")}
         onOpenJournal={() => setIsJournalOpen(true)}
         onOpenLore={() => setLoreThread({ id: shown.thread.id, title: shown.thread.title })}
