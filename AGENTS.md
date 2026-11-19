@@ -54,8 +54,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the choice questions shown as chat bubbles with the owner's answers attached (CHG-0535; committed and pushed to `main`; open: the owner's look in a window and on a phone, and whether the answer should be a separate owner bubble or unchosen options hidden), read the [current handoff](.agents/handoffs/2026-11-19-1610-choice-question-bubbles.md). Handoffs are shared and committed.
+
 - To resume the November 19 architecture audit fixes, read the [current handoff](.agents/handoffs/2026-11-19-1350-architecture-audit-fixes.md). Handoffs are shared and committed.
 
 - To resume the working Companion indicator fix (rebased; awaiting publication and a visual check), read the [current handoff](.agents/handoffs/2026-11-19-1015-working-companion-mark.md). Handoffs are shared.
 
-- To resume the nested corner marks in the sidebar and the errand guide's alignment to the quest's left border (CHG-0530; committed and pushed; open: the owner's look in a window or on a phone, whether "error" meant the Failed state, and whether the stacked errand branch lines are acceptable), read the [current handoff](.agents/handoffs/2026-11-19-0940-nested-corner-marks.md). Handoffs are shared and committed.
