@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CompanionPickerProps } from "../../src/editors/companionPicker";
+import type { CompanionPickerProps } from "../../src/foundation/companionPickerProps";
 import { createCompanionRegistry } from "../../src/shell/companionRegistry";
 
 const picker = (isChronicler = false): CompanionPickerProps => ({

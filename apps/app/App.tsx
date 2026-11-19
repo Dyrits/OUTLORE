@@ -15,14 +15,13 @@ import { AddHostModal } from "./src/shell/addHostModal";
 import { AppScreen } from "./src/shell/appScreen";
 import { AppStatusBar } from "./src/shell/appStatusBar";
 import { appStyles as styles } from "./src/shell/appStyles";
-import { HostUpdateOffer } from "./src/shell/hostUpdateOffer";
 import { initialLocation, navigate, panelScopeOf } from "./src/shell/location";
 import { detailsModeOf } from "./src/shell/navigation";
 import { useAttentionNotice } from "./src/shell/notifications";
 import type { RealmListing } from "./src/shell/questTree";
 import { Shell } from "./src/shell/shell";
 import type { Place } from "./src/shell/sidebar";
-import { UpdateNotice } from "./src/shell/updateNotice";
+import { HostUpdateOffer, UpdateNotice } from "./src/updates";
 
 export function App() {
   const {

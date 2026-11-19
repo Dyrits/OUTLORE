@@ -1,6 +1,6 @@
 import type { AccountBudget, BudgetWindow, UsageDay, UsageGaps, UsageRecord, UsageRow } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
-import { emptyAmounts } from "../../src/shell/usageFormat";
+import { emptyAmounts } from "../../src/usage/usageFormat";
 import {
   allowanceLinesOf,
   dayCaptionOf,
@@ -10,7 +10,7 @@ import {
   noticeOf,
   recordDetailOf,
   rowLabelOf,
-} from "../../src/shell/usageLabels";
+} from "../../src/usage/usageLabels";
 
 const row = (key: string, name: string | null = null): UsageRow => ({
   amounts: emptyAmounts,

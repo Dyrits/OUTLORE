@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { EffortChoice, TokenUsage } from "@outlore/contracts";
-import { Deferred, type Duration, Effect, Option, Queue, Result } from "effect";
+import { type Duration, Effect, Result } from "effect";
 import {
   type Containment,
   fieldOf,
@@ -15,6 +15,8 @@ import {
   textFieldOf,
   turnMessageOf,
 } from "../core/index.ts";
+import { readAcpPrompt } from "./acpPrompt.ts";
+import { acpRestartKeyOf, loadAcpSession, permissionOptionIdOf } from "./acpSession.ts";
 import { noTimeLimit } from "./claudeArgs.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
@@ -188,11 +190,7 @@ const answerRequest = Effect.fnUntraced(function* (
   const isAllowed = answer.isAllowed;
   if (!isAllowed) refusals.push(refusalOf(prompt, answer));
   const wanted = isAllowed ? "allow_once" : "reject_once";
-  const offered = fieldOf(incoming.params, "options");
-  const option = Array.isArray(offered)
-    ? (offered.find((candidate) => textFieldOf(candidate, "kind") === wanted) ?? null)
-    : null;
-  const optionId = textFieldOf(option, "optionId");
+  const optionId = permissionOptionIdOf(incoming.params, wanted);
   connection.rpc.respond(
     incoming.id,
     optionId === null ? { outcome: { outcome: "cancelled" } } : { outcome: { optionId, outcome: "selected" } },
@@ -238,7 +236,6 @@ const readPrompt = Effect.fnUntraced(function* (
   isFirst: boolean,
   refusals: Array<string>,
 ) {
-  const answer = yield* Deferred.make<Result.Result<unknown, HarnessFailure>>();
   // The turn's images go with its first prompt only: a later prompt carries the refusals as text.
   const images = isFirst ? yield* readImages(request.images) : [];
   // An agent that said it takes no images is not sent any (message-attachments): the turn says why it cannot run.
@@ -247,21 +244,6 @@ const readPrompt = Effect.fnUntraced(function* (
       reason:
         "OpenCode's agent does not take images. Send the message without them, or hand the thread to a runner that does.",
     });
-  yield* Effect.forkChild(
-    connection.rpc
-      .request("session/prompt", {
-        prompt: [
-          { text, type: "text" },
-          ...images.map((image) => ({ data: image.data, mimeType: image.mediaType, type: "image" })),
-        ],
-        sessionId: connection.sessionId,
-      })
-      .pipe(
-        Effect.result,
-        Effect.flatMap((result) => Deferred.succeed(answer, result)),
-      ),
-  );
-
   let draft = "";
   /** A reply is complete once OpenCode moves on from writing it, such as to a tool call. */
   const finishDraft = Effect.suspend(() => {
@@ -284,23 +266,11 @@ const readPrompt = Effect.fnUntraced(function* (
     }
   });
 
-  for (;;) {
-    const next = yield* Effect.raceFirst(
-      Queue.take(connection.rpc.incoming).pipe(Effect.map(Option.some)),
-      Deferred.await(answer).pipe(Effect.as(Option.none<RpcIncoming>())),
-    );
-    if (Option.isSome(next)) {
-      yield* read(next.value);
-      continue;
-    }
-    // The answer arrives after the updates sent before it, which are read first.
-    for (const incoming of yield* Queue.clear(connection.rpc.incoming)) yield* read(incoming);
-    yield* finishDraft;
-    const result = yield* Deferred.await(answer);
-    if (Result.isFailure(result)) return yield* result.failure;
-    const stopReason = textFieldOf(result.success, "stopReason");
-    return { isCancelled: stopReason === "cancelled", usage: usageOf(fieldOf(result.success, "usage")) };
-  }
+  const result = yield* readAcpPrompt(connection.rpc, connection.sessionId, text, images, read);
+  yield* finishDraft;
+  if (Result.isFailure(result)) return yield* result.failure;
+  const stopReason = textFieldOf(result.success, "stopReason");
+  return { isCancelled: stopReason === "cancelled", usage: usageOf(fieldOf(result.success, "usage")) };
 });
 
 /** The line a thread shows when OpenCode, now in its sandbox, could not pick up the thread's earlier session. */
@@ -347,11 +317,7 @@ const openCodeProtocolOf = (options: OpenCodeOptions): HarnessProtocol<OpenCodeC
     const advertisesImages = fieldOf(fieldOf(fieldOf(initialized, "agentCapabilities"), "promptCapabilities"), "image");
     const takesImages = typeof advertisesImages === "boolean" ? advertisesImages : null;
     if (request.sessionId !== null) {
-      const loaded = yield* rpc
-        .request("session/load", { cwd: request.cwd, mcpServers: [], sessionId: request.sessionId })
-        .pipe(Effect.result);
-      // Loading replays the conversation as updates, which are not this turn's: they are dropped.
-      yield* Queue.clear(rpc.incoming);
+      const loaded = yield* loadAcpSession(rpc, request.cwd, request.sessionId, []);
       if (Result.isSuccess(loaded)) return { handoverNotes: null, sessionId: request.sessionId, takesImages };
       if (!isSandboxed || rpc.hasExited()) return yield* loaded.failure;
       const created = yield* rpc.request("session/new", { cwd: request.cwd, mcpServers: [] });
@@ -373,15 +339,7 @@ const openCodeProtocolOf = (options: OpenCodeOptions): HarnessProtocol<OpenCodeC
 
     // A changed level, set of permissions, context, model, effort, folder, or account restarts the process,
     // loading its session.
-    restartKeyOf: (request) =>
-      JSON.stringify([
-        request.context,
-        request.access,
-        request.configDirectory,
-        request.model,
-        request.effort,
-        request.cwd,
-      ]),
+    restartKeyOf: acpRestartKeyOf,
 
     runTurn: runPrompts,
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import type { CompanionPickerProps } from "../editors/companionPicker";
+import type { CompanionPickerProps } from "../foundation/companionPickerProps";
 import type { CompanionDock } from "../foundation/shellContext";
 import type { RightPanel } from "../foundation/useRightPanel";
 import { createCompanionRegistry } from "./companionRegistry";

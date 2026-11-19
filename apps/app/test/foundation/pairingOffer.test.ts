@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pairingOfferOf, scannedOfferOf } from "../../src/shell/pairingOffer";
+import { pairingOfferOf, scannedOfferOf } from "../../src/foundation/pairingOffer";
 
 // A real code, made by the host, naming the shared relay; the offer reads it only to name the relay.
 const code =

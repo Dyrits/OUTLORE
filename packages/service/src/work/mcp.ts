@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { Effect, Exit, Layer, Schema } from "effect";
+import { Effect, Exit, FiberSet, Layer, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import {
   answerCodeModeCall,
@@ -60,10 +60,8 @@ export const toolServerLayer = Layer.effectDiscard(
     const endpoints = yield* Endpoints;
     const gateway = yield* ConnectorGateway;
     const executor = yield* CodeExecutor;
-    const context = yield* Effect.context<never>();
-
     const handlers = makeToolHandlers({ approvals, commands, suggestions, threads });
-    const run = Effect.runPromiseWith(context);
+    const run = yield* FiberSet.makeRuntimePromise();
 
     const readShouldUseCodeMode = readSettings.pipe(
       Effect.map((settings) => settings.shouldUseCodeMode),

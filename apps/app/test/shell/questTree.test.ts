@@ -1,14 +1,13 @@
 import { type MissionSummary, ThreadSummary, type WorkspaceChoice } from "@outlore/contracts";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
+import { agoOf, recencyGroupsOf } from "../../src/shell/questRecency";
 import {
-  agoOf,
   ancestorIdsOf,
   areActionsShown,
   folderCueOf,
   placementsOf,
   questListRowsOf,
-  recencyGroupsOf,
   reorderedRealmIds,
   sideQuestRowsOf,
   toggledFold,

@@ -1,6 +1,6 @@
-import type { AccountId, EffortChoice, HarnessList, HarnessName, ModelChoice } from "@outlore/contracts";
 import { type ReactElement, useContext, useEffect, useId, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { CompanionPickerProps } from "../foundation/companionPickerProps";
 import { effortName, modelLabelOf, runnerSummaryOf } from "../foundation/formatting";
 import { CompanionDockActions, CompanionTabOf } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
@@ -9,32 +9,9 @@ import { Fold, FoldGroup } from "../ui/fold";
 import { ProviderMark } from "../ui/providerMarks";
 import { CompanionBody } from "./companionBody";
 import { PresetChooser } from "./presetChooser";
-import type { PresetChoice } from "./presets";
 
 /** The width of the picker's panel in a window with no right-hand column to hold it: a mini sidebar. */
 const miniWidth = 288;
-
-/** What the picker shows and can change; `RunnerPickers` owns the rules for each change. */
-export type CompanionPickerProps = {
-  accountId: AccountId | null;
-  effort: EffortChoice;
-  effortOptions: ReadonlyArray<EffortChoice>;
-  /** A fold at the foot of the panel for what belongs to the thread alone: its backup Companions. Keyed by the thread. */
-  extra?: ReactElement;
-  harness: HarnessName;
-  harnesses: HarnessList | null;
-  /** Whether each harness has a tab for every account; the Workshop's default Companion has its own sign-in only. */
-  isAccountShown: boolean;
-  /** Whether this is Chronicler's own Companion, which the Companions tab marks with Chronicler's ✦. */
-  isChronicler?: boolean;
-  model: ModelChoice;
-  onEffort: (effort: EffortChoice) => void;
-  onModel: (harness: HarnessName, accountId: AccountId | null, model: ModelChoice) => void;
-  /** Replaces the tab's own folds altogether, for a page whose Companions are several (the Workshop's). Keyed by what it shows. */
-  panel?: ReactElement;
-  /** The presets the owner has set, offered in their own card above the thread's Companion; none, and the tab has no such card. */
-  presetChoice?: PresetChoice | null;
-};
 
 /**
  * The Companions tab: the presets in a card of their own when there are any, then a fold for the thread's own Companion, unfolded first, and under it what belongs to the thread alone (`extra`: its backup Companions, one fold each).

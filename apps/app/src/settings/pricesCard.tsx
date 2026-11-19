@@ -6,7 +6,8 @@ import { priceStatusTextOf } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Button } from "../ui/button";
-import { SettingsCard, ToggleRow } from "./settingsParts";
+import { ToggleRow } from "../ui/toggleRow";
+import { SettingsCard } from "./settingsParts";
 
 /**
  * The model price table behind estimated costs: whether Outlore reads the public table, where the prices in use came

@@ -2,8 +2,9 @@ import type { Settings, SettingsChange } from "@outlore/contracts";
 import { StyleSheet, Text, View } from "react-native";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { ToggleRow } from "../ui/toggleRow";
 import { codeModeExplanation, codeModeLabel, codeModeStateOf, experimentalLabel } from "./codeMode";
-import { SettingsCard, ToggleRow } from "./settingsParts";
+import { SettingsCard } from "./settingsParts";
 
 /**
  * The Connectors section: the one global Code Mode switch. It reads and writes `shouldUseCodeMode` like every other

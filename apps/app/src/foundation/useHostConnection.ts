@@ -1,12 +1,13 @@
 import type { KnownHost } from "@outlore/contracts";
-import { createPairedHosts, openBrowserTransport, pairFromBrowser } from "@outlore/controller";
+import { createPairedHosts } from "@outlore/controller";
+import { openBrowserTransport, pairFromBrowser } from "@outlore/controller/browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PairingOffer } from "../shell/pairingOffer";
-import { pairingOfferOf } from "../shell/pairingOffer";
 import { isMobileApp, isRemoteOnly, pageSettings } from "./browser/page";
 import { ServiceClient } from "./client";
 import { type HostLink, hostStatusOf } from "./hostStatus";
 import { pairingStorage } from "./native/pairingStorage";
+import type { PairingOffer } from "./pairingOffer";
+import { pairingOfferOf } from "./pairingOffer";
 import { usePairingLinks } from "./usePairingLinks";
 
 /**
