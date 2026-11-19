@@ -10,7 +10,7 @@ import { questPanelOf } from "./questPanelOf";
 import { ThreadPane } from "./threadPane";
 
 /**
- * One thread's conversation in a pane (CHG-0558): it reads its own thread, so panes side by side each stay current,
+ * One thread's conversation in a pane (CHG-0561): it reads its own thread, so panes side by side each stay current,
  * and it hands the details panel its thread only while it is the pane pressed last. A page the panel opens (the
  * journal, lore, a budget) replaces the conversation of that pane alone.
  */

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   chainOf,
   emptyPaneMemory,
+  equalizedPanes,
   foldedPane,
   layoutOf,
   maxPanes,
@@ -153,5 +154,29 @@ describe("dragging the edge between two panes", () => {
 describe("the limits", () => {
   it("allows four panes", () => {
     expect(maxPanes).toBe(4);
+  });
+});
+
+describe("equal widths", () => {
+  const chain = ["quest", "a", "a1"];
+  const dragged: PaneMemory<string> = { ...emptyPaneMemory<string>(), weights: [600, 500, 400] };
+
+  it("gives the open panes the same share again, a third each with three", () => {
+    const widths = layoutOf({ available: 1500, chain, memory: dragged }).map((slot) => slot.width);
+    expect(widths).toEqual([600, 500, 400]);
+    const equal = layoutOf({ available: 1500, chain, memory: equalizedPanes(dragged) }).map((slot) => slot.width);
+    expect(equal).toEqual([500, 500, 500]);
+  });
+
+  it("keeps the folded panes folded and shares what they leave", () => {
+    const folded = foldedPane({ ...dragged, weights: [700, 300, 500] }, "a");
+    const slots = layoutOf({ available: 1244, chain, memory: equalizedPanes(folded) });
+    expect(slots.map((slot) => slot.kind)).toEqual(["pane", "strip", "pane"]);
+    expect(slots.map((slot) => slot.width)).toEqual([600, stripWidth, 600]);
+  });
+
+  it("forgets the dragged shares, and nothing else", () => {
+    const memory = foldedPane(dragged, "a");
+    expect(equalizedPanes(memory)).toEqual({ ...memory, weights: [] });
   });
 });

@@ -1,4 +1,4 @@
-// The rules of the pane chain (CHG-0558): which threads the window shows as panes, how the room is shared, and how a
+// The rules of the pane chain (CHG-0561): which threads the window shows as panes, how the room is shared, and how a
 // pane is folded, brought back or resized. The window only draws what these return, so they run in plain Node.
 
 /** The most panes shown at once. */
@@ -63,6 +63,12 @@ export const revealedPane = <Id extends string>(memory: PaneMemory<Id>, id: Id):
   ...memory,
   folded: new Set([...memory.folded].filter((each) => each !== id)),
   shown: new Set([...memory.shown, id]),
+});
+
+/** The memory with the dragged shares forgotten: the open panes share the room equally again, and folds stay as they are. */
+export const equalizedPanes = <Id extends string>(memory: PaneMemory<Id>): PaneMemory<Id> => ({
+  ...memory,
+  weights: [],
 });
 
 /** The memory without the panes that left the chain, so a pane opened again later starts open. */

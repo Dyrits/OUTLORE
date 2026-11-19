@@ -1,8 +1,8 @@
 # Verification: Conversation panes, batches 1 and 2
 
-- **Work:** CHG-0557 (the overlay sidebar) and CHG-0558 (the pane chain), on branch `mission/delineate-specify-i-d-like-to-have-more-b606ee66`, based on `8fea7f53`.
+- **Work:** CHG-0560 (the overlay sidebar) and CHG-0561 (the pane chain), on branch `mission/delineate-specify-i-d-like-to-have-more-b606ee66`, based on `8fea7f53`.
 - **Environment:** macOS, Expo web export of the worktree served on `127.0.0.1:8099`, a throwaway service on the fake harness with a fresh data folder under `/tmp` ([`scratch-serve.ts.txt`](2026-11-19-conversation-panes/scratch-serve.ts.txt): three realm quests, one with errands nested to three levels, one in no realm), shown in a bare Electron window with a debug port ([`electron-window.js.txt`](2026-11-19-conversation-panes/electron-window.js.txt), `--no-sandbox`, which the thread's sandbox needs) and driven with Playwright over that port. The window was 1500 px wide unless said; the owner's own data was never touched. Run outside the thread's sandbox, because Chromium cannot start inside it.
-- **Verdict:** The behavior below was seen. The owner's look at the design, and the choices listed in CHG-0558, are open.
+- **Verdict:** The behavior below was seen. The owner's look at the design, and the choices listed in CHG-0561, are open.
 
 ## Recorded results (the drivers beside this file print them)
 

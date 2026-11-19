@@ -10,7 +10,7 @@ import {
   SidebarShown,
   TopBarShown,
 } from "../foundation/shellContext";
-import { useSidebarPreference } from "../foundation/sidebarPreference";
+import { chooseSidebarPinned, useSidebarPreference } from "../foundation/sidebarPreference";
 import type { RightPanel } from "../foundation/useRightPanel";
 import { ChroniclerColumn, chroniclerColumnWidth } from "./chroniclerDock";
 import { EdgeResizer } from "./edgeResizer";
@@ -32,6 +32,7 @@ import {
 } from "./railStorage";
 import { handleSize, shellStyles as local } from "./shellStyles";
 import { type Place, Sidebar } from "./sidebar";
+import { sidebarPlacementOf } from "./sidebarMode";
 import { SidebarOverlay } from "./sidebarOverlay";
 import { type DetailsToggle, PanelIcon, TopBar } from "./topBar";
 import { useDetailsColumn } from "./useDetailsColumn";
@@ -43,7 +44,7 @@ const sidebarBreakpoint = 820;
 
 /**
  * The window's frame: on a wide window the sidebar, floating over the panes until the pointer asks for it or docked
- * beside them (CHG-0557), under a top bar over the content; on a narrow one the content alone.
+ * beside them (CHG-0560), under a top bar over the content; on a narrow one the content alone.
  */
 export function Shell(
   props: Omit<Parameters<typeof Sidebar>[0], "width"> & {
@@ -62,14 +63,18 @@ export function Shell(
 ) {
   const { width } = useWindowDimensions();
   const hasRail = width >= sidebarBreakpoint;
-  const { mode, side } = useSidebarPreference();
+  const { isPinned, mode, side } = useSidebarPreference();
+  const placement = sidebarPlacementOf({ isPinned, mode });
+  // The overlay's own pointer, button and key rules apply in both of its states; a pinned sidebar stands in the frame.
   const isOverlay = mode === "overlay";
+  const isFloating = placement === "floating";
+  const togglePin = () => chooseSidebarPinned(!isPinned);
   const [isHidden, setIsHidden] = useState(readHidden);
   const [storedRailWidth, setRailWidth] = useState(readRailWidth);
   // Held to a quarter of the window again whenever the window changes size; the remembered width stays as dragged.
   const railWidth = clampRailWidth(storedRailWidth, width);
   const overlay = useSidebarOverlay({
-    isEnabled: hasRail && isOverlay,
+    isEnabled: hasRail && isFloating,
     panelWidth: railWidth,
     side,
     windowWidth: width,
@@ -118,10 +123,10 @@ export function Shell(
     rememberHidden(!isHidden);
     setIsHidden(!isHidden);
   };
-  // Command or Control with B shows or hides the sidebar, as in editors: it opens the overlay, or hides the docked rail;
-  // the browser's own handling is kept elsewhere.
+  // Command or Control with B shows or hides the sidebar, as in editors: it pins or unpins the overlay, as the top bar's
+  // button does, or hides the docked rail; the browser's own handling is kept elsewhere.
   const toggleRef = useRef(toggle);
-  toggleRef.current = isOverlay ? overlay.toggle : toggle;
+  toggleRef.current = isOverlay ? togglePin : toggle;
   useEffect(() => {
     if (!hasRail || typeof document === "undefined") return;
     const onKey = (event: KeyboardEvent) => {
@@ -198,6 +203,9 @@ export function Shell(
       action(...args);
     };
   };
+  // A docked or pinned sidebar stands in the frame, at the left, or at the window's right edge when pinned there.
+  const hasLeftRail = placement === "docked" ? !isHidden : placement === "pinned" && side === "left";
+  const hasRightRail = placement === "pinned" && side === "right";
   const floatingSidebar = (
     <SidebarOverlay isOpen={overlay.isOpen} side={side} width={railWidth}>
       <Sidebar
@@ -238,12 +246,12 @@ export function Shell(
                   <TopBar
                     chronicler={chroniclerToggle}
                     details={null}
-                    sidebar={isOverlay ? { isOpen: overlay.isOpen, onToggle: overlay.toggle, side } : undefined}
+                    sidebar={isOverlay ? { isPinned, onToggle: togglePin, side } : undefined}
                   />
                   <View style={local.body}>
                     <View style={local.frame}>
-                      {!isOverlay && !isHidden && sidebar}
-                      {!isOverlay && !isHidden && (
+                      {hasLeftRail && sidebar}
+                      {hasLeftRail && (
                         <EdgeResizer
                           label="Resize the sidebar"
                           leastWidth={minRailWidth}
@@ -254,7 +262,7 @@ export function Shell(
                           windowWidth={width}
                         />
                       )}
-                      {!isOverlay && (
+                      {placement === "docked" && (
                         <Pressable
                           accessibilityLabel={isHidden ? "Show sidebar (⌘B)" : "Hide sidebar (⌘B)"}
                           accessibilityRole="button"
@@ -308,7 +316,21 @@ export function Shell(
                         <PanelIcon side="right" />
                       </Pressable>
                     )}
-                    {isOverlay && floatingSidebar}
+                    {hasRightRail && (
+                      <View style={{ width: railWidth }}>
+                        {sidebar}
+                        <EdgeResizer
+                          label="Resize the sidebar"
+                          leastWidth={minRailWidth}
+                          onChange={setRailWidth}
+                          onRelease={rememberRailWidth}
+                          side="start"
+                          width={railWidth}
+                          windowWidth={width}
+                        />
+                      </View>
+                    )}
+                    {isFloating && floatingSidebar}
                   </View>
                 </View>
               </QuestTabButtonContext.Provider>

@@ -1,6 +1,6 @@
-import type { SidebarSide } from "../foundation/sidebarPreferenceRules";
+import type { SidebarMode, SidebarSide } from "../foundation/sidebarPreferenceRules";
 
-// The rules of the overlay sidebar (CHG-0557): when the pointer asks it to open or close, and how long it waits. The
+// The rules of the overlay sidebar (CHG-0560): when the pointer asks it to open or close, and how long it waits. The
 // frame only listens to the pointer and does what these say, so the rules run in plain Node.
 
 /** How far from the window's edge the pointer opens the sidebar, in pixels. */
@@ -43,4 +43,16 @@ export const overlayWishOf = (
   }
   if (x === null) return "stay";
   return distanceFromEdge({ ...input, x }) < hotZoneWidth ? "open" : "stay";
+};
+
+/**
+ * Where the sidebar stands (CHG-0562): floating over the panes until the pointer asks for it, pinned in the frame beside
+ * them, or docked there for good. Pinning is the overlay's own choice, made with the top bar's button; the Docked mode
+ * is a sidebar that is pinned all the time, with its own handle to hide it.
+ */
+export type SidebarPlacement = "docked" | "floating" | "pinned";
+
+export const sidebarPlacementOf = (input: { isPinned: boolean; mode: SidebarMode }): SidebarPlacement => {
+  if (input.mode === "docked") return "docked";
+  return input.isPinned ? "pinned" : "floating";
 };

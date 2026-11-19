@@ -1,5 +1,11 @@
 import { useSyncExternalStore } from "react";
-import { type SidebarMode, type SidebarSide, sidebarModeOf, sidebarSideOf } from "./sidebarPreferenceRules";
+import {
+  type SidebarMode,
+  type SidebarSide,
+  sidebarModeOf,
+  sidebarPinnedOf,
+  sidebarSideOf,
+} from "./sidebarPreferenceRules";
 
 // The owner's choice of the sidebar's mode and side, kept in the browser's storage. It lives here, below the shell,
 // because the Workshop's Look card sets it and the window's frame reads it; a platform without storage keeps the
@@ -7,6 +13,7 @@ import { type SidebarMode, type SidebarSide, sidebarModeOf, sidebarSideOf } from
 
 const modeKey = "outlore:sidebar-mode";
 const sideKey = "outlore:sidebar-side";
+const pinnedKey = "outlore:sidebar-pinned";
 
 /** What the browser kept under a key; null with nothing kept, no browser storage, or storage that refuses to answer. */
 const readStored = (key: string): string | null => {
@@ -23,9 +30,13 @@ const keep = (key: string, text: string) => {
   } catch {}
 };
 
-type Preference = { readonly mode: SidebarMode; readonly side: SidebarSide };
+type Preference = { readonly isPinned: boolean; readonly mode: SidebarMode; readonly side: SidebarSide };
 
-let current: Preference = { mode: sidebarModeOf(readStored(modeKey)), side: sidebarSideOf(readStored(sideKey)) };
+let current: Preference = {
+  isPinned: sidebarPinnedOf(readStored(pinnedKey)),
+  mode: sidebarModeOf(readStored(modeKey)),
+  side: sidebarSideOf(readStored(sideKey)),
+};
 const listeners = new Set<() => void>();
 
 const subscribe = (listener: () => void) => {
@@ -52,5 +63,11 @@ export const chooseSidebarSide = (side: SidebarSide) => {
   change({ ...current, side });
 };
 
-/** The owner's sidebar mode and side; the component draws again when either is chosen. */
+/** Keeps whether the overlay sidebar is pinned open and shows it at once. */
+export const chooseSidebarPinned = (isPinned: boolean) => {
+  keep(pinnedKey, String(isPinned));
+  change({ ...current, isPinned });
+};
+
+/** The owner's sidebar mode, side and pin; the component draws again when any is chosen. */
 export const useSidebarPreference = (): Preference => useSyncExternalStore(subscribe, () => current);

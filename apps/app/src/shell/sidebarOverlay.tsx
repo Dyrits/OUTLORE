@@ -8,7 +8,7 @@ import { colors } from "../foundation/theme";
 const slide = { transitionDuration: "140ms", transitionProperty: "transform" } as object;
 
 /**
- * The sidebar as an overlay (CHG-0557): it floats over the panes along the window's edge without moving them, over
+ * The sidebar as an overlay (CHG-0560): it floats over the panes along the window's edge without moving them, over
  * the quest panel and Chronicler's column too. `children` is the sidebar itself, sized to `width`; the frame decides,
  * with `useSidebarOverlay`, when it is `isOpen`.
  */

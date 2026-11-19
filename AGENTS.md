@@ -58,5 +58,5 @@ Latest handoffs:
 
 - To resume the black and white theme (CHG-0552; open: the owner's look at it in a window), read the [current handoff](.agents/handoffs/2026-11-19-2230-black-and-white-theme.md). Handoffs are shared and committed.
 
-- To resume the conversation panes (the overlay sidebar and the pane chain; CHG-0557, CHG-0558; open: the owner's look and the pane choices), read the [current handoff](.agents/handoffs/2026-11-19-2330-conversation-panes-batches-1-2.md). Handoffs are shared and committed.
+- To resume the conversation panes (the overlay sidebar and the pane chain; CHG-0560, CHG-0561; open: the owner's look and the pane choices), read the [current handoff](.agents/handoffs/2026-11-19-2330-conversation-panes-batches-1-2.md). Handoffs are shared and committed.
 

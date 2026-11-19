@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { dragCarriesQuest } from "../../src/shell/questDragTypes";
-import { hotZoneWidth, isOutsideOverlay, overlayDelays, overlayWishOf } from "../../src/shell/sidebarMode";
+import {
+  hotZoneWidth,
+  isOutsideOverlay,
+  overlayDelays,
+  overlayWishOf,
+  sidebarPlacementOf,
+} from "../../src/shell/sidebarMode";
 
 const base = {
   isDragging: false,
@@ -97,5 +103,17 @@ describe("a drag that carries a quest", () => {
   it("is not a realm's or a file's drag", () => {
     expect(dragCarriesQuest(["application/x-outlore-realm"])).toBe(false);
     expect(dragCarriesQuest(["Files"])).toBe(false);
+  });
+});
+
+describe("where the sidebar stands", () => {
+  it("floats until it is pinned, and then takes its place in the frame", () => {
+    expect(sidebarPlacementOf({ isPinned: false, mode: "overlay" })).toBe("floating");
+    expect(sidebarPlacementOf({ isPinned: true, mode: "overlay" })).toBe("pinned");
+  });
+
+  it("is docked in the docked mode, pinned or not", () => {
+    expect(sidebarPlacementOf({ isPinned: false, mode: "docked" })).toBe("docked");
+    expect(sidebarPlacementOf({ isPinned: true, mode: "docked" })).toBe("docked");
   });
 });

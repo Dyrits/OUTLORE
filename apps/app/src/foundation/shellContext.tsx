@@ -32,7 +32,7 @@ export const useQuestPanel = (panel: ReactNode, title = "Quest") => {
 };
 
 /**
- * The quest panel of one pane among several (CHG-0558): only the pane the owner pressed last hands the frame its
+ * The quest panel of one pane among several (CHG-0561): only the pane the owner pressed last hands the frame its
  * panel, and takes it back when focus moves on, so panes beside each other do not overwrite one another's.
  */
 export const usePaneQuestPanel = (isFocused: boolean, panel: ReactNode, title = "Quest") => {

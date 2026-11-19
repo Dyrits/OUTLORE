@@ -3,15 +3,12 @@ import type { SidebarSide } from "../foundation/sidebarPreferenceRules";
 import { dragCarriesQuest, dragCarriesRealm } from "./questDragTypes";
 import { isOutsideOverlay, overlayDelays, overlayWishOf } from "./sidebarMode";
 
-/** What the frame needs of the overlay sidebar: whether it shows, how to show, hide and toggle it, and the resize flag. */
+/** What the frame needs of the overlay sidebar: whether it shows, how to put it away, and the resize flag. */
 export type SidebarOverlay = {
   close: () => void;
   isOpen: boolean;
-  /** Shows the panel and keeps it until the pointer has been over it and left, a press lands outside it, or Escape. */
-  open: () => void;
   /** Set while the panel's own edge is dragged, so the pointer running ahead of the panel does not close it. */
   setIsResizing: (isResizing: boolean) => void;
-  toggle: () => void;
 };
 
 /**
@@ -53,9 +50,7 @@ export function useSidebarOverlay(input: {
     },
     [set],
   );
-  const open = useCallback(() => set(true), [set]);
   const close = useCallback(() => set(false), [set]);
-  const toggle = useCallback(() => set(!state.current.isOpen), [set]);
   const setIsResizing = useCallback((isResizing: boolean) => {
     state.current.isResizing = isResizing;
   }, []);
@@ -118,5 +113,5 @@ export function useSidebarOverlay(input: {
     };
   }, [clear, isEnabled, schedule, set]);
 
-  return { close, isOpen, open, setIsResizing, toggle };
+  return { close, isOpen, setIsResizing };
 }

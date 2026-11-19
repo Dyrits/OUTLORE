@@ -11,14 +11,14 @@ The owner asked for a Slack-like window ([specification](../../documentation/cap
 
 ## State
 
-- Built and committed on the branch (CHG-0557, CHG-0558), app only: `shell/sidebarMode.ts`, `useSidebarOverlay.ts`, `sidebarOverlay.tsx`, `foundation/sidebarPreference*.ts`, the top bar button and the Look card choices; `shell/paneChain.ts`, `paneHost.tsx`, `paneStrip.tsx`, `paneResizer.tsx`, `conversation/paneThread.tsx`, `threadPane.tsx`, `questPages.tsx`, `questPanelOf.tsx`, `replyLine.tsx`; `shell.tsx` split (`shellStyles.ts`, `useDetailsColumn.tsx`). Verified: Biome and `bun run typecheck` clean; `apps/app` tests 633 passed; the full suite's 29 failures are all `git init` template copies in `packages/service` (sandbox). Behavior seen in a throwaway window: [verification note](../../documentation/verification/2026-11-19-conversation-panes.md).
-- The first commit on the branch is the specification itself (CHG-0553 to CHG-0556), copied from the main checkout's uncommitted files; the main checkout still has those as uncommitted edits, so take the branch's copy and drop the main checkout's when merging.
-- Deviations from the blueprint, all in CHG-0557 and CHG-0558: the sidebar's mode and side live in `foundation/` (`settings/` may not import `shell/`); `location.ts` and `navigation.ts` did not change, because the chain is the path to `openThread`; the pane widths are remembered as shares by depth.
+- Built and committed on the branch (CHG-0560, CHG-0561), app only: `shell/sidebarMode.ts`, `useSidebarOverlay.ts`, `sidebarOverlay.tsx`, `foundation/sidebarPreference*.ts`, the top bar button and the Look card choices; `shell/paneChain.ts`, `paneHost.tsx`, `paneStrip.tsx`, `paneResizer.tsx`, `conversation/paneThread.tsx`, `threadPane.tsx`, `questPages.tsx`, `questPanelOf.tsx`, `replyLine.tsx`; `shell.tsx` split (`shellStyles.ts`, `useDetailsColumn.tsx`). Verified: Biome and `bun run typecheck` clean; `apps/app` tests 633 passed; the full suite's 29 failures are all `git init` template copies in `packages/service` (sandbox). Behavior seen in a throwaway window: [verification note](../../documentation/verification/2026-11-19-conversation-panes.md).
+- The first commit on the branch is the specification itself (CHG-0553 and CHG-0555 to CHG-0557), copied from the main checkout's uncommitted files; the main checkout still has those as uncommitted edits, so take the branch's copy and drop the main checkout's when merging.
+- Deviations from the blueprint, all in CHG-0560 and CHG-0561: the sidebar's mode and side live in `foundation/` (`settings/` may not import `shell/`); `location.ts` and `navigation.ts` did not change, because the chain is the path to `openThread`; the pane widths are remembered as shares by depth.
 - Assumed, not seen: the owner's judgement of the look; a real drag with the panel open; touch; the black and white theme.
 
 ## Decisions
 
-- Equal sharing when a pane folds, reply line with title, state, waiting count and age, the details panel following the pane pressed last, close on every pane but the first, fold on every pane but the deepest: built as the draft recommended and listed in CHG-0558 for the owner to redirect.
+- Equal sharing when a pane folds, reply line with title, state, waiting count and age, the details panel following the pane pressed last, close on every pane but the first, fold on every pane but the deepest: built as the draft recommended and listed in CHG-0561 for the owner to redirect.
 - The panel is slid away, not unmounted, so the sidebar keeps its state and its dialogs.
 
 ## Next
@@ -36,4 +36,4 @@ The owner asked for a Slack-like window ([specification](../../documentation/cap
 
 ## Sources
 
-`documentation/changelog/0.1.13-Prototype.md` (CHG-0557, CHG-0558), `documentation/capabilities/conversation-panes/`, `documentation/verification/2026-11-19-conversation-panes.md`, the commits on the branch.
+`documentation/changelog/0.1.13-Prototype.md` (CHG-0560, CHG-0561), `documentation/capabilities/conversation-panes/`, `documentation/verification/2026-11-19-conversation-panes.md`, the commits on the branch.

@@ -125,6 +125,7 @@ The interface presents idle, running, or Summons; waiting, failure, and stopped 
 ### Limits
 
 - The user can open threads down to 4 levels deep; agents can open threads at any depth.
+- Once [conversation panes](../conversation-panes/specifications.md#the-four-levels) is built (agreed, not built; CHG-0558), the owner opens errands only from a quest, one level beneath it; only agents open errands beneath an errand.
 - At most 8 threads run at once in a mission, and threads draw on the mission's budget.
 - When a limit or the budget is reached, `open_thread` is refused with the reason shown in the thread, and the thread can wait or ask the user.
 - All three limits are adjustable in settings.

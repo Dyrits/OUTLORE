@@ -10,6 +10,7 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import {
   chainOf,
   emptyPaneMemory,
+  equalizedPanes,
   foldedPane,
   layoutOf,
   type PaneMemory,
@@ -19,6 +20,7 @@ import {
 } from "./paneChain";
 import { PaneResizer } from "./paneResizer";
 import { PaneButton, PaneStrip } from "./paneStrip";
+import { type PanePointer, paneIconPress, wasFollowedAtPress } from "./questTab";
 import { readPaneWeights, rememberPaneWeights } from "./railStorage";
 
 /**
@@ -26,7 +28,18 @@ import { readPaneWeights, rememberPaneWeights } from "./railStorage";
  * it if it was shut, rather than closing it. This reads the frame's context in a component of its own: the frame draws
  * again whenever a pane hands it a panel, and a host that read it would draw its panes again each time, and so loop.
  */
-function PaneTab({ children, isFocused, onFocus }: { children: ReactNode; isFocused: boolean; onFocus: () => void }) {
+function PaneTab({
+  children,
+  isFocused,
+  onFocus,
+  wasFollowed,
+}: {
+  children: ReactNode;
+  isFocused: boolean;
+  onFocus: () => void;
+  /** Whether the panel followed this pane when the press began: the pane takes focus as the pointer goes down. */
+  wasFollowed: () => boolean;
+}) {
   const questTab = useContext(QuestTabButtonContext);
   const paneTab =
     questTab === null
@@ -34,15 +47,16 @@ function PaneTab({ children, isFocused, onFocus }: { children: ReactNode; isFocu
       : {
           isOpen: questTab.isOpen && isFocused,
           onPress: () => {
+            const action = paneIconPress({ isOpen: questTab.isOpen, wasFollowed: wasFollowed() });
             onFocus();
-            if (isFocused || !questTab.isOpen) questTab.onPress();
+            if (action === "toggle") questTab.onPress();
           },
         };
   return <QuestTabButtonContext.Provider value={paneTab}>{children}</QuestTabButtonContext.Provider>;
 }
 
 /**
- * A quest as a chain of panes (CHG-0558): its own conversation, then an errand beside it, then that errand's errand,
+ * A quest as a chain of panes (CHG-0561): its own conversation, then an errand beside it, then that errand's errand,
  * up to four at once, the earlier ones folded to strips beyond that. The chain is the path in the quest's tree to the
  * open thread, so opening a reply line drops the panes to its right, closing a pane drops it with what hangs from it,
  * and the sidebar's choice of an errand builds its whole chain. The pane pressed last is the one the details panel shows.
@@ -91,7 +105,14 @@ export function PaneHost({
   const latest = useRef(memory);
   latest.current = memory;
   const focusedId = focused !== null && openIds.has(focused) ? focused : deepest;
+  // Where the panel stood when the pointer last went down in a pane, for the press on the icon that follows.
+  const pointer = useRef<PanePointer | null>(null);
   const summaryOf = (id: ThreadId) => threads.find((thread) => thread.id === id);
+  // Every open pane gets the same share again, and the dragged shares are forgotten with the memory of them.
+  const equalize = () => {
+    setMemory(equalizedPanes);
+    rememberPaneWeights([]);
+  };
   const onLayout = (event: LayoutChangeEvent) => setAvailable(Math.floor(event.nativeEvent.layout.width));
   // The strips between neighboring open panes, on the row above the panes, each at the edge it moves.
   let edge = 0;
@@ -137,13 +158,30 @@ export function PaneHost({
             return (
               <View
                 key={slot.id}
-                onPointerDown={() => setFocused(slot.id)}
+                onPointerDown={() => {
+                  pointer.current = { at: Date.now(), followedBefore: focusedId };
+                  setFocused(slot.id);
+                }}
                 style={[local.pane, { width: slot.width }, isFocused && slots.length > 1 && local.focused]}
               >
-                <PaneTab isFocused={isFocused} onFocus={() => setFocused(slot.id)}>
+                <PaneTab
+                  isFocused={isFocused}
+                  onFocus={() => setFocused(slot.id)}
+                  wasFollowed={() =>
+                    wasFollowedAtPress({
+                      followedNow: focusedId,
+                      id: slot.id,
+                      now: Date.now(),
+                      pointer: pointer.current,
+                    })
+                  }
+                >
                   <PaneThread
                     chrome={
                       <>
+                        {slot.id === deepest && openIds.size > 1 && (
+                          <PaneButton glyph="↔" label="Equal widths" onPress={equalize} />
+                        )}
                         {slot.id !== deepest && (
                           <PaneButton
                             glyph="‹"

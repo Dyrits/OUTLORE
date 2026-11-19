@@ -50,17 +50,17 @@ export function TopBar({
   chronicler: { isOpen: boolean; onToggle: () => void };
   /** The button that opens or closes the full-screen menu, in a window too narrow for the sidebar; none where it shows. */
   menu?: { isOpen: boolean; onToggle: () => void };
-  /** The button that shows the overlay sidebar, on the side the sidebar belongs to; none when the sidebar is docked. */
-  sidebar?: { isOpen: boolean; onToggle: () => void; side: "left" | "right" };
+  /** The button that pins or unpins the overlay sidebar, on the side the sidebar belongs to; none when it is docked. */
+  sidebar?: { isPinned: boolean; onToggle: () => void; side: "left" | "right" };
 }) {
   const hostMenu = useContext(HostMenuContext);
   const sidebarButton = sidebar !== undefined && (
     <Pressable
-      accessibilityLabel={sidebar.isOpen ? "Hide sidebar (⌘B)" : "Show sidebar (⌘B)"}
+      accessibilityLabel={sidebar.isPinned ? "Unpin the sidebar (⌘B)" : "Pin the sidebar (⌘B)"}
       accessibilityRole="button"
-      accessibilityState={{ expanded: sidebar.isOpen }}
+      accessibilityState={{ selected: sidebar.isPinned }}
       onPress={sidebar.onToggle}
-      style={({ pressed }) => [local.topIcon, (pressed || sidebar.isOpen) && local.topIconActive, noDragRegion]}
+      style={({ pressed }) => [local.topIcon, (pressed || sidebar.isPinned) && local.topIconActive, noDragRegion]}
     >
       <PanelIcon side={sidebar.side} />
     </Pressable>

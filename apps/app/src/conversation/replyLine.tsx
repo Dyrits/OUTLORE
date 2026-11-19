@@ -11,7 +11,7 @@ export const OpenPanes = createContext<ReadonlySet<ThreadId>>(new Set());
 const shortened = (title: string) => (title.length > 60 ? `${title.slice(0, 59)}…` : title);
 
 /**
- * The reply line under the message an errand hangs from (CHG-0558): who opened it, its title, its state and how long
+ * The reply line under the message an errand hangs from (CHG-0561): who opened it, its title, its state and how long
  * ago it last moved. Pressing it opens the errand's conversation in the next pane, as a thread opens in Slack; it is
  * marked while that pane is open.
  */
