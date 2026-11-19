@@ -18,8 +18,18 @@ const shortOf = (text: string) => {
 /** Outlore's own tools, which the thread calls through its tool server, as the harness lists them. */
 const chroniclerPrefix = "mcp__outlore__";
 
+/**
+ * Claude Code's choice question: the conversation shows it as the agent's bubbles with the owner's answers (CHG-0535),
+ * so it has no step. Lines recorded before that stay stored and are not listed.
+ */
+const choiceQuestionTool = "AskUserQuestion";
+
 /** Calls that already have a line of their own, or are the harness's own machinery. */
-const leftOut = new Set([`${chroniclerPrefix}request_approval`, `${chroniclerPrefix}answer_prompt`]);
+const leftOut = new Set([
+  `${chroniclerPrefix}request_approval`,
+  `${chroniclerPrefix}answer_prompt`,
+  choiceQuestionTool,
+]);
 
 const kinds: Record<string, string> = {
   Glob: "List files",
@@ -62,7 +72,8 @@ export const listThreadActivities = Effect.fnUntraced(function* (threadId: strin
   const sql = yield* SqlClient.SqlClient;
   return yield* sql<Activity>`
       SELECT id, at, summary, detail FROM thread_activities
-      WHERE thread_id = ${threadId} AND is_prompted = 0 ORDER BY at, rowid`;
+      WHERE thread_id = ${threadId} AND is_prompted = 0 AND summary <> ${plainActionOf(choiceQuestionTool)}
+      ORDER BY at, rowid`;
 });
 
 /**

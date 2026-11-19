@@ -37,9 +37,14 @@ export type Step =
   | { _tag: "Action"; at: number; id: string; question: Question }
   | { _tag: "Call"; activity: Activity; at: number; id: string };
 
-/** The outcomes that settle an action with no word from the owner worth a line of its own. */
+/**
+ * The outcomes that settle an action with no word from the owner worth a line of its own. A choice question is never
+ * one: it stays in the conversation, as the agent's bubbles with the owner's answers attached (CHG-0535).
+ */
 const isFoldedAction = (question: Question) =>
-  question.outcome !== null && !["Denied", "Discarded", "Withdrawn"].includes(question.outcome);
+  question.choices === null &&
+  question.outcome !== null &&
+  !["Denied", "Discarded", "Withdrawn"].includes(question.outcome);
 
 /** Settled actions grouped between incoming messages, with elapsed time from the message that began the turn. */
 const stepGroupsOf = (
