@@ -1,5 +1,9 @@
 # Work in progress
 
+## Connector gateway on a fake backend · 2026-11-19 · built and tested on fakes, on `mission/connectors-composio-and-apple-apps-5906083b`, not merged; the owner's review pending
+
+CHG-0530 (blueprint step 3): the catalog (Composio, Apple apps), migration `0060_connectors`, pure availability, the gateway (listing, calls, asking through `Approvals.askToolUse` and the new capability `useConnectorTool`, per-turn snapshots, stopping at once, error classes, secret redaction, removal in three steps), the owner's requests, and the wiring into the tool server and the harnesses. Proved on a scripted fake backend and the fake harness under the three harness names. Not built: the real HTTP and stdio backends and the Apple tool names (step 4), the Vault (a port holding nothing stands in), the Vault's and the macOS permission's requests, every screen. Until the backends exist an installed connector offers no tool. The departures from the blueprint are in the changelog entry. [Verification](verification/2026-11-19-connector-gateway.md).
+
 ## Date beside the time in agent replies · 2026-11-19 · built and tested, on `main` once committed; the owner's look pending
 
 An agent reply's header shows the date and the time (`19 Nov 2026 · 11:15 AM`), through `stampOf` in `apps/app/src/foundation/formatting.ts`. Owner messages still show no time, so no date. Checks: formatting and conversation tests pass (58), Biome clean on the touched files; not seen in a window or on a phone. [Handoff](../.agents/handoffs/2026-11-19-0724-message-date.md)

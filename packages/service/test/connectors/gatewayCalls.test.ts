@@ -94,7 +94,12 @@ describe.each(harnesses)("a thread on %s calling a connector's tools", (harness)
         yield* untilIdle(started.missionId);
         const permissions = (yield* call({ _tag: "ReadPermissions", missionId: started.missionId })).permissions;
         expect(permissions).toHaveLength(1);
-        expect(permissions[0]).toMatchObject({ pattern: "calendar/create-event", sentence: "Use a connector's tool" });
+        expect(permissions[0]).toMatchObject({
+          missionId: started.missionId,
+          pattern: "calendar/create-event",
+          sentence: "Use a connector's tool",
+          workspaceId: null,
+        });
         // The same tool runs unasked from now on.
         yield* send(started.threadId, use("calendar__create-event", { day: "d", title: "Two" }));
         yield* untilReplies(started.missionId, 2);

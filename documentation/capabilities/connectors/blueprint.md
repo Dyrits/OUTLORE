@@ -2,6 +2,10 @@
 
 Status: proposed technical design, 2026-11-16, revised the same day after a second opinion (CHG-0330), for the owner's review, under the [first slice design](../../first-slice-design.md) and the [connectors specification](specifications.md) (CHG-0321 to CHG-0327). Nothing is built. Read from source on 2026-11-16: `work/mcp.ts`, `work/threadTools.ts`, `core/endpoints.ts`, `work/approvals.ts`, `policy/permissions.ts`, `policy/patterns.ts`, `harness/claudeArgs.ts`, `harness/codex.ts`, `harness/opencode.ts`, `harness/openCodeSandbox.ts`, `core/store.ts`. No harness was run. The Vault's storage is decided in [ADR 0022](../../architecture-decision-record/0022-the-vault-encrypts-secrets-and-hides-its-folder-from-sandboxes.md) (proposed).
 
+## Implementation status · 2026-11-19
+
+Order step 3 is built (CHG-0530, [verification](../../verification/2026-11-19-connector-gateway.md)): `connectors/` holds the catalog, the stored choices, `availability.ts`, the gateway and its seams (`ConnectorBackend`, `VaultPort`, `ConnectorAsking`, `ConnectorNotices`), with a scripted fake backend in `test/fixtures/`. Steps 1, 2, 4 and 5 are not. It departs from the text below in five places, each listed in the changelog entry: policy revisions became the narrowing of the turn snapshots inside a switch's transaction; "connected" is computed from the Vault at each read; `VaultPort` also has `holds`; an Apple tool whose app the catalog does not name is not offered; the listing is asked again at each turn start. It also answers three of the Open items: the warning line is the thread line a lost session leaves (`insertThreadLine`); the connector tool names join the Claude Code and Codex restart keys (`access.connectorTools`), assuming a harness lists its tools when its process starts, which is not run on a live harness; Claude Code's allow rule names each tool of the turn's snapshot.
+
 ## Shape
 
 Two new folders in `packages/service/src`, after `policy/` and before `work/` (a folder depends only on folders before it, [conventions](../../conventions.md#layout)):
