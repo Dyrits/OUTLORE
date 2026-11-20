@@ -56,6 +56,6 @@ Latest handoffs:
 
 - To resume the window review for Missives, reply-line samples, realm Quests, or Chronicle rows (CHG-0571), read the [current handoff](.agents/handoffs/2026-11-20-0908-missives-realm-panes-review.md). Handoffs are shared and committed.
 
-- To resume the Codex turn failure on the Vault's permission profile (CHG-0559; open: the owner's retry of a Codex turn in the window), read the [current handoff](.agents/handoffs/2026-11-20-0044-codex-vault-profile.md). Handoffs are shared and committed.
-
 - To resume conversation pane changes, desktop review, or Chronicle follow-up, read the [current handoff](.agents/handoffs/2026-11-20-1141-conversation-pane-folding.md). Handoffs are shared and committed.
+
+- To resume worktree cleanup, read the [current handoff](.agents/handoffs/2026-11-20-1203-worktree-cleanup.md). Handoffs are shared and committed.
