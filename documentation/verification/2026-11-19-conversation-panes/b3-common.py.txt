@@ -1,0 +1,20 @@
+import re, json, sys
+from playwright.sync_api import sync_playwright
+endpoint = re.search(r"ENDPOINT (\S+)", open("/tmp/scratch-panes/serve.log").read()).group(1)
+OUT = "/tmp/claude-501/shots"
+
+def open_page(p, scheme="light", W=1500, H=900):
+    b = p.chromium.connect_over_cdp("http://127.0.0.1:9347")
+    page = b.contexts[0].pages[0]
+    page.add_init_script(f"window.outlore = {{ endpoint: async () => {json.dumps(endpoint)}, chooseFolder: async () => null, hasOwnTitleBar: false, pairingLinks: {{ listen: () => () => {{}}, take: async () => null }}, updates: null }};")
+    page.set_viewport_size({"width": W, "height": H})
+    page.goto("http://localhost:8099/")
+    page.evaluate("(s) => { localStorage.clear(); localStorage.setItem('outlore.colorScheme', s); }", scheme)
+    page.reload(); page.wait_for_timeout(3500)
+    return page
+
+def pane_boxes(page):
+    return page.evaluate("""() => [...document.querySelectorAll('[aria-label="Chronicle"], [aria-label^="Close the"], [aria-label="Fold the pane"], [aria-label="Resize the panes"]')].length""")
+
+def widths(page):
+    return page.evaluate("[...document.querySelectorAll('[aria-label=\"Resize the panes\"]')].map(e => Math.round(e.parentElement.getBoundingClientRect().width))")

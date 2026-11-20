@@ -10,7 +10,9 @@ import { isGuildmasterThread, readOptionalRealm } from "./guildmasterPlace.ts";
 import { resumeInTurn } from "./lifecycle.ts";
 import { findMissions, findMissionsTextOf, maxMatches } from "./matching.ts";
 import { insertSuggestedMessage } from "./messageProvenance.ts";
+import { insertErrandReply } from "./messaging.ts";
 import { insertMission } from "./missions.ts";
+import { placeQuestOrigin } from "./questOrigins.ts";
 import { readSuggestion } from "./suggestionStore.ts";
 import type { ArgumentsOf, ToolHandlers } from "./threadTools.ts";
 import { proposeTitle, titleOf } from "./titles.ts";
@@ -100,8 +102,9 @@ export const suggestionsLayer = Layer.effect(
       choice: Parameters<typeof insertMission>[1],
       realmPath: string | null = null,
       isFromGuildmaster = false,
+      realmId?: string | null,
     ) {
-      const started = yield* insertMission(text, choice, realmPath, false);
+      const started = yield* insertMission(text, choice, realmPath, false, null, [], realmId);
       // Chronicler hears of this quest's result, Summons, and failure from now on (hearing back).
       if (isFromGuildmaster) yield* sql`UPDATE missions SET opened_by_guildmaster = 1 WHERE id = ${started.missionId}`;
       if (titleOf(title) !== "") yield* proposeTitle(started.missionId, title);
@@ -145,7 +148,18 @@ export const suggestionsLayer = Layer.effect(
         }),
         NewMission: Effect.fnUntraced(function* (chosen) {
           // The realm the owner chose on the card (null for the Borderlands) over the one proposed.
-          const chosenPath = chosen.realmPath === undefined ? suggestion.realmPath : chosen.realmPath;
+          const [source] = yield* sql<{ channel: string | null; realmId: string | null }>`
+            SELECT m.chronicler_channel AS channel, t.workspace_id AS realmId
+            FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${suggestion.threadId}`;
+          const isChannel = source?.channel != null;
+          const realmId =
+            chosen.realmId !== undefined
+              ? chosen.realmId
+              : chosen.realmPath === undefined && isChannel
+                ? source.realmId
+                : undefined;
+          const chosenPath =
+            realmId !== undefined ? null : chosen.realmPath === undefined ? suggestion.realmPath : chosen.realmPath;
           if (chosenPath !== null && (yield* sql`SELECT id FROM workspaces WHERE path = ${chosenPath}`).length === 0)
             return yield* invalid("No realm is tied to that folder.");
           // Left out, the harness and account are the suggesting thread's, as Open as new mission prefills them.
@@ -162,7 +176,8 @@ export const suggestionsLayer = Layer.effect(
               model: chosen.model,
             },
             chosenPath,
-            suggestion.isFromGuildmaster,
+            suggestion.isFromGuildmaster && !isChannel,
+            realmId,
           ).pipe(Effect.tap((opened) => setCardBackups(opened.targetThreadId, chosen.backups)));
         }),
       });
@@ -174,7 +189,22 @@ export const suggestionsLayer = Layer.effect(
         if (suggestion.outcome !== null) return yield* invalid("This suggestion was already answered.");
         if (!waits.isWaiting(suggestionId)) return yield* invalid("This suggestion is no longer waiting.");
         const resolution = yield* sql.withTransaction(
-          carryOut(suggestion, given).pipe(Effect.tap((done) => resolve(suggestionId, suggestion.threadId, done))),
+          Effect.gen(function* () {
+            const done = yield* carryOut(suggestion, given);
+            if (suggestion.isFromGuildmaster && given._tag === "NewMission" && done.targetThreadId !== null) {
+              const [row] = yield* sql<{
+                proposal: string | null;
+                channel: string | null;
+              }>`SELECT s.proposal_message_id AS proposal, m.chronicler_channel AS channel FROM suggestions s
+                  JOIN missions m ON m.id = s.mission_id WHERE s.id = ${suggestionId}`;
+              if (row?.proposal != null) {
+                yield* sql`UPDATE threads SET anchor_message_id = ${row.proposal} WHERE id = ${done.targetThreadId}`;
+                if (row.channel !== null) yield* placeQuestOrigin(done.targetThreadId);
+              }
+            }
+            yield* resolve(suggestionId, suggestion.threadId, done);
+            return done;
+          }),
         );
         yield* waits.settle(suggestionId, resolution);
         const answered = (yield* readSuggestion(suggestionId)) ?? suggestion;
@@ -195,16 +225,18 @@ export const suggestionsLayer = Layer.effect(
       matches: ReadonlyArray<string>,
       realmPath: string | null,
       tier: string | null,
+      isGuildmaster: boolean,
     ) =>
       waits.ask({
         // A caller that gave up leaves nobody to carry on: the suggestion is withdrawn.
         abandon: (id) => withdrawOne(id, threadId),
         missionId,
         record: (id, now) =>
-          sql`INSERT INTO suggestions (id, mission_id, thread_id, text, title, matches, asked_at, realm_path, tier)
-            VALUES (${id}, ${missionId}, ${threadId}, ${text}, ${title}, ${JSON.stringify(matches)}, ${now}, ${realmPath}, ${tier})`.pipe(
-            Effect.asVoid,
-          ),
+          Effect.gen(function* () {
+            const proposal = isGuildmaster ? yield* insertErrandReply(threadId, text, null).pipe(Effect.orDie) : null;
+            yield* sql`INSERT INTO suggestions (id, mission_id, thread_id, text, title, matches, asked_at, realm_path, tier, proposal_message_id)
+              VALUES (${id}, ${missionId}, ${threadId}, ${text}, ${title}, ${JSON.stringify(matches)}, ${now}, ${realmPath}, ${tier}, ${proposal})`;
+          }),
         threadId,
       });
 
@@ -286,6 +318,7 @@ export const suggestionsLayer = Layer.effect(
           matches,
           realm?.path ?? null,
           isGuildmaster ? (args.tier ?? null) : null,
+          isGuildmaster,
         );
         return unchanged<Suggested>(resolution === null ? { _tag: "NotAsked" } : { _tag: "Resolved", resolution });
       }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie);

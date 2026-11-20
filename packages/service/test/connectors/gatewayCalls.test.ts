@@ -11,7 +11,7 @@ import {
   untilIdle,
   untilReplies,
 } from "../fixtures/connectorWorld.ts";
-import { call, read, send, startMission } from "../fixtures/service.ts";
+import { call, read, send, settle, startMission } from "../fixtures/service.ts";
 
 const harnesses: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode"];
 const day = { day: "2026-11-19" };
@@ -307,7 +307,8 @@ describe.each(harnesses)("switching a connector off while a thread on %s is usin
           yield* install("calendar");
           // Off at the turn's start: the snapshot lacks the tool, and switching on during the turn does not add it.
           yield* call({ _tag: "SetConnectorTool", connectorId: "calendar", isOn: false, tool: "list-events" });
-          const started = yield* startOn(harness, `wait 300\n${use("calendar__list-events", day)}`);
+          const started = yield* startOn(harness, `tooluse ready {}\nwait 300\n${use("calendar__list-events", day)}`);
+          yield* settle(started.missionId, (detail) => detail.activities.length > 0);
           yield* call({ _tag: "SetConnectorTool", connectorId: "calendar", isOn: true, tool: "list-events" });
           const first = yield* untilIdle(started.missionId);
           expect(replyOf(first)).toContain("This connector is off for this thread.");

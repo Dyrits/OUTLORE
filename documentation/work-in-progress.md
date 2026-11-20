@@ -1,5 +1,10 @@
 # Work in progress
 
+## Conversation panes · 2026-11-20 · desktop revision
+
+The desktop build (CHG-0565 to CHG-0567) is integrated on `main`. The [verification note](verification/2026-11-19-conversation-panes.md) records the automated checks and the blocked window check. The [Chronicle follow-up](capabilities/conversation-panes/specifications.md#main-conversations-and-channels) adds an unread badge, filters, direct links, and History (CHG-0569). Phone navigation and pane identity are deferred. See the [handoff](../.agents/handoffs/2026-11-20-0130-conversation-panes.md).
+
+
 ## Connector Charter controls · 2026-11-19 · built on the Charter errand branch; review pending
 
 CHG-0543 adds the connector catalog, Vault and placement controls on `mission/connectors-composio-and-apple-apps-2aaf91f7`. The tool approval question grants Always allow and Permissions manages it; CHG-0544 adds the thread panel's connector tools line from cached server listings. No window or phone look, real Composio, real macOS permission prompt or live Claude denial check was made. See the [verification](verification/2026-11-19-connector-charter.md) and [handoff](../.agents/handoffs/2026-11-19-1755-connector-review-fixes.md).

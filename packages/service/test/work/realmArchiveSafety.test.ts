@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
+import { seedLegacyErrand } from "../fixtures/legacyErrands.ts";
 import { call, fixture, open, read, send, settle, withService } from "../fixtures/service.ts";
 
 const list = () => call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null });
@@ -80,7 +81,7 @@ describe("confirming a realm archive safely", () => {
         const quest = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: "new" });
         const preview = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
         const side = yield* open(quest.threadId, "wait 5000");
-        const deep = yield* open(side.threadId, "wait 5000");
+        const deep = yield* seedLegacyErrand(side.threadId, "wait 5000");
         yield* settle(quest.missionId, (detail) => detail.thread.state === "Running", deep.threadId);
         expect(
           yield* Effect.flip(call({ _tag: "ArchiveRealm", snapshot: preview.snapshot, workspaceId: realm.id })),

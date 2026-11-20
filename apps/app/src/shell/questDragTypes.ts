@@ -34,3 +34,9 @@ export interface DropTargetProps {
    */
   readonly onDropRealm?: (realmId: string, side: "before" | "after") => void;
 }
+
+/** Whether a drag in progress carries a quest, read from the types its data transfer lists. */
+export const dragCarriesQuest = (types: ReadonlyArray<string>): boolean => types.includes(questDragType);
+
+/** Whether a drag in progress carries a realm, read from the types its data transfer lists. */
+export const dragCarriesRealm = (types: ReadonlyArray<string>): boolean => types.includes(realmDragType);

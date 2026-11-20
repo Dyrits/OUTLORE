@@ -59,7 +59,7 @@ export const admitOwnerText = Effect.fnUntraced(function* (
 export const refuseWaitingImages = Effect.fnUntraced(function* (threadId: string, runner: Readable) {
   const sql = yield* SqlClient.SqlClient;
   const waiting = yield* sql<{ id: string }>`SELECT a.id FROM attachments a JOIN messages m ON m.id = a.message_id
-      WHERE m.thread_id = ${threadId} AND m.delivered_turn_id IS NULL AND m.sender_kind != 'agent' LIMIT 1`;
+      WHERE m.thread_id = ${threadId} AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0 AND m.sender_kind IN ('user', 'thread') LIMIT 1`;
   yield* refuseUnreadableImages(
     waiting.map((row) => row.id),
     Effect.succeed(runner),

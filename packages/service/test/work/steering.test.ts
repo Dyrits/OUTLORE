@@ -48,7 +48,9 @@ const interrupt = (threadId: ThreadId) => call({ _tag: "InterruptThread", thread
 const tool = (name: string, args: object) => `call ${name} ${JSON.stringify(args)}`;
 
 const repliesOf = (detail: MissionDetail) =>
-  detail.messages.filter((message) => message.sender === "agent").map((message) => message.text);
+  detail.messages
+    .filter((message) => message.sender === "agent" && message.replyToMessageId == null)
+    .map((message) => message.text);
 const isRunning = (detail: MissionDetail) => detail.thread.state === "Running";
 const isIdleWith = (count: number) => (detail: MissionDetail) =>
   detail.thread.state === "Idle" && repliesOf(detail).length === count;

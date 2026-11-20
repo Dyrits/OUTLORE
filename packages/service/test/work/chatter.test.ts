@@ -6,6 +6,7 @@ import { afterEach } from "vitest";
 import { resolveChatter } from "../../src/work/chatter.ts";
 import { Commands, makeCommands } from "../../src/work/commands.ts";
 import { readTurnReach } from "../../src/work/mentions.ts";
+import { seedLegacyErrand } from "../fixtures/legacyErrands.ts";
 import { call, fixture, open, read, send, sendTo, settle, start, tool } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
@@ -251,17 +252,16 @@ describe("stopping both threads of a chatter pause", () => {
       const settings = yield* call({ _tag: "ReadSettings" });
       yield* call({ _tag: "UpdateSettings", settings: { ...settings, chatterThreshold: 2 } });
       const opening = (request: string) => `call open_thread ${JSON.stringify({ request })}`;
-      // The top thread's turn ends with a child at work, so it is left Waiting; the child opens a grandchild.
-      const started = yield* start(opening(`${opening("wait 60000")}\nwait 60000`));
+      // Keep a legacy parent-child pair to exercise the existing reach and chatter rules.
+      const started = yield* start(opening("wait 60000"));
       const waiting = yield* settle(
         started.missionId,
-        (detail) =>
-          detail.thread.state === "Waiting" &&
-          detail.threads.length === 3 &&
-          detail.threads.slice(1).every((thread) => thread.state === "Running"),
+        (detail) => detail.thread.state === "Waiting" && detail.threads.some((thread) => thread.state === "Running"),
       );
-      const [first, second] = waiting.threads.slice(1).map((thread) => thread.id);
-      if (first === undefined || second === undefined) return yield* Effect.die("Missing children");
+      const first = waiting.threads.find((thread) => thread.parentId === started.threadId)?.id;
+      if (first === undefined) return yield* Effect.die("Missing errand");
+      const { threadId: second } = yield* seedLegacyErrand(first, "wait 60000");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Running", second);
       yield* message(first, second);
       yield* message(second, first);
       const notice = (yield* read(started.missionId, first)).chatter[0];

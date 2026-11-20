@@ -143,7 +143,7 @@ export const makeToolHandlers = (dependencies: {
 
   const openThread = (
     threadId: string,
-    { effort, harness, model, ownCopy, request, title }: ArgumentsOf<"open_thread">,
+    { effort, harness, model, ownCopy, replyToMessageId, request, title }: ArgumentsOf<"open_thread">,
   ) =>
     runTool(
       openThreadByAgent(
@@ -152,6 +152,7 @@ export const makeToolHandlers = (dependencies: {
         title ?? null,
         { effort: effort ?? null, harness: harness ?? null, model: model ?? null },
         ownCopy === true,
+        replyToMessageId ?? null,
       ).pipe(
         // A refused account, or an own copy git refused, comes back to the thread as a refusal.
         Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refusedOf(failure.message))),
@@ -159,6 +160,7 @@ export const makeToolHandlers = (dependencies: {
     ).pipe(
       Effect.map((outcome) =>
         Match.valueTags(outcome, {
+          FollowUp: () => toolText("Posted your follow-up in the quest. The owner can Reply to open an errand."),
           Opened: (opened) => toolText(`Opened thread ${opened.threadId}. Its result will come to you as a message.`),
           Refused: (refused) => toolRefusal(refused.reason),
         }),

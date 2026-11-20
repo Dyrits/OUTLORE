@@ -124,7 +124,7 @@ The interface presents idle, running, or Summons; waiting, failure, and stopped 
 
 ### Limits
 
-- The user can open threads down to 4 levels deep; agents can open threads at any depth.
+- New errands open directly beneath the quest. An errand agent can post an attributed follow-up in the quest for the owner to open with Reply. Existing descendants keep their parents and history. See [the three levels](../conversation-panes/specifications.md#the-three-levels).
 - At most 8 threads run at once in a mission, and threads draw on the mission's budget.
 - When a limit or the budget is reached, `open_thread` is refused with the reason shown in the thread, and the thread can wait or ask the user.
 - All three limits are adjustable in settings.

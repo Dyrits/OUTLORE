@@ -1,0 +1,36 @@
+import sys; sys.path.insert(0, "/tmp/scratch-panes")
+from common import *
+def snap(page):
+    return page.evaluate("""() => ({
+      edges: [...document.querySelectorAll('[aria-label="Resize the panes"]')].map(e=>Math.round(e.getBoundingClientRect().x+4)),
+      chronicle: (()=>{const e=document.querySelector('[aria-label="Chronicle"]'); return e? Math.round(e.getBoundingClientRect().width):null})(),
+      strips: [...document.querySelectorAll('[role=button][aria-label^="Open "]')].map(e=>e.getAttribute('aria-label')).filter(l=>/Chronicle|Right sidebar|Build the component/.test(l) && e_visible(l)),
+      tabs: [...document.querySelectorAll('[role=tab]')].map(e=>e.innerText),
+      pin: [...document.querySelectorAll('[aria-label*="the sidebar"]')].map(e=>e.getAttribute('aria-label'))[0],
+      composer: [...document.querySelectorAll('textarea,[contenteditable]')].map(e=>e.value||e.innerText).filter(Boolean).length,
+    })""".replace("&& e_visible(l)",""))
+with sync_playwright() as p:
+    page = open_page(p, W=1800)
+    page.mouse.move(700, 400); page.mouse.move(2, 400); page.wait_for_timeout(500)
+    page.get_by_text("Right sidebar").first.click(); page.wait_for_timeout(2000)
+    page.get_by_label(re.compile("^Errand: Build the component")).first.click(); page.wait_for_timeout(1500)
+    # type a draft in the errand pane's composer
+    page.get_by_role("textbox").last.click(); page.keyboard.type("a draft that must survive"); page.wait_for_timeout(300)
+    r = page.get_by_label("Resize the panes").first.bounding_box()
+    page.mouse.move(r["x"]+4, 400); page.mouse.down(); page.mouse.move(r["x"]+84, 400, steps=8); page.mouse.up(); page.wait_for_timeout(400)
+    page.locator('[aria-label="Show quest panel"]').nth(1).click(); page.wait_for_timeout(1000)  # details panel on the errand
+    page.get_by_label("Pin the sidebar (⌘B)").click(); page.wait_for_timeout(800)
+    before = snap(page); print("before Workshop:", before)
+    page.screenshot(path=f"{OUT}/w1-before.png")
+    page.get_by_label("Open the Workshop").click(); page.wait_for_timeout(1500)
+    print("in Workshop: icon label:", page.evaluate("[...document.querySelectorAll('[aria-label$=\"the Workshop\"]')].map(e=>e.getAttribute('aria-label'))"), "selected:", page.evaluate("document.querySelector('[aria-label=\"Close the Workshop\"]')?.getAttribute('aria-selected') ?? document.querySelector('[aria-label=\"Close the Workshop\"]')?.getAttribute('aria-pressed')"),
+          "| Chronicle visible:", page.get_by_label("Chronicle", exact=True).filter(visible=True).count(), "| settings text:", page.get_by_text("Permissions").filter(visible=True).count())
+    page.screenshot(path=f"{OUT}/w2-workshop.png")
+    page.get_by_label("Close the Workshop").click(); page.wait_for_timeout(2000)
+    after = snap(page); print("after Workshop: ", after)
+    print("same:", before == after)
+    page.screenshot(path=f"{OUT}/w3-after.png")
+    print("draft kept:", page.get_by_text("a draft that must survive").count())
+    # sidebar's own Workshop row is gone on desktop
+    page.get_by_label("Unpin the sidebar (⌘B)").click(); page.wait_for_timeout(500)
+    print("sidebar Workshop row present:", page.get_by_text("Workshop", exact=True).count())

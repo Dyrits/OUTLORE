@@ -5,10 +5,10 @@ import type { RightPanel } from "../foundation/useRightPanel";
 import { createCompanionRegistry } from "./companionRegistry";
 
 /** Binds the plain picker registry to the window's panel and React redraws. */
-export function useCompanionDock(panel: RightPanel, isChroniclerFull: boolean, isChroniclerOpen: boolean) {
+export function useCompanionDock(panel: RightPanel, isChroniclerOpen: boolean) {
   const [registry] = useState(createCompanionRegistry);
   const [, redraw] = useReducer((count: number) => count + 1, 0);
-  const selected = registry.selected(panel.content, isChroniclerFull, isChroniclerOpen);
+  const selected = registry.selected(panel.content, isChroniclerOpen);
   const latest = useRef({ ...selected, panel });
   latest.current = { ...selected, panel };
   const dock = useMemo(() => {

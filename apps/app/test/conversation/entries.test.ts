@@ -1,4 +1,5 @@
 import {
+  MessageId,
   type MissionDetail,
   MissionId,
   type Question,
@@ -168,6 +169,74 @@ describe("links from the Guildmaster's conversation, beside its replies", () => 
   it("gives a report a button only when it names a quest of its own", () => {
     const entries = entriesOf(guildmasterDetail([report(10), report(40, null)]));
     expect(entries.map((entry) => (entry._tag === "Message" ? entry.fromQuest : "other"))).toEqual(["quest-1", null]);
+  });
+});
+
+describe("what hangs from a message, as reply lines", () => {
+  const anchoredDetail = (messages: ReadonlyArray<object>, threads: ReadonlyArray<ThreadSummary>) =>
+    ({
+      activities: [],
+      budgetEvents: [],
+      handovers: [],
+      loreChanges: [],
+      messages,
+      mission: { id: "mission" },
+      questions: [],
+      suggestions: [],
+      thread: { id: "top" },
+      threads,
+    }) as unknown as MissionDetail;
+  const note = (id: string, sentAt: number, sender: "user" | "agent" | "system" = "user") => ({
+    id,
+    sender,
+    sentAt,
+    text: id,
+  });
+  const anchor = (messageId: string, threadId: string, missionId = "mission") => ({
+    messageId: MessageId.make(messageId),
+    missionId: MissionId.make(missionId),
+    threadId: ThreadId.make(threadId),
+    title: `Title of ${threadId}`,
+  });
+  const shapeOf = (entries: ReturnType<typeof entriesOf>) => entries.map((entry) => entry.key);
+
+  it("hangs an errand the owner replied into under the message replied to, wherever it was opened", () => {
+    const detail = anchoredDetail(
+      [note("first", 10), note("second", 30)],
+      [summary("top", null, 0), summary("child", "top", 35)],
+    );
+    const entries = entriesOf(detail, false, [anchor("first", "child")]);
+    expect(shapeOf(entries)).toEqual(["first", "opened:child", "second"]);
+  });
+
+  it("draws an agent-opened errand's card as its reply line, where the card stands, and nowhere else", () => {
+    const detail = anchoredDetail(
+      [note("first", 10), note("card", 20, "system"), note("second", 30)],
+      [summary("top", null, 0), { ...summary("child", "top", 25), isOpenedByAgent: true }],
+    );
+    const entries = entriesOf(detail, false, [anchor("card", "child")]);
+    // The card itself is no message: the reply line stands in its place, between the messages around it.
+    expect(shapeOf(entries)).toEqual(["first", "opened:child", "second"]);
+  });
+
+  it("stands a quest a Reply started as a card under the message replied to", () => {
+    const detail = anchoredDetail([note("first", 10), note("second", 30)], [summary("top", null, 0)]);
+    const entries = entriesOf(detail, false, [anchor("second", "quest-9", "quest-9")]);
+    expect(shapeOf(entries)).toEqual(["first", "second", "anchored:quest-9"]);
+    expect(entries.at(-1)).toMatchObject({
+      _tag: "QuestLink",
+      label: "Opened a quest",
+      missionId: "quest-9",
+      title: "Title of quest-9",
+    });
+  });
+
+  it("keeps a thread opened the old way at its opening place, and leaves foreign anchors to their quest cards", () => {
+    const detail = anchoredDetail(
+      [note("first", 10), note("second", 30)],
+      [summary("top", null, 0), summary("child", "top", 20)],
+    );
+    expect(shapeOf(entriesOf(detail, false, []))).toEqual(["first", "opened:child", "second"]);
   });
 });
 

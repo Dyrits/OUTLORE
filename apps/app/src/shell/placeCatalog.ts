@@ -1,5 +1,14 @@
 /** The places the sidebar leads to; a quest is opened from its own row instead, a realm's quests from its own list. */
-export type Place = "Home" | "RealmQuests" | "Rituals" | "Lore" | "Archived" | "Reserves" | "Settings";
+export type Place =
+  | "Home"
+  | "Chronicle"
+  | "Channel"
+  | "RealmQuests"
+  | "Rituals"
+  | "Lore"
+  | "Archived"
+  | "Reserves"
+  | "Settings";
 
 type Entry = { label: string; note: string; place: Place };
 
@@ -15,6 +24,8 @@ export const menuPlaces: ReadonlyArray<Entry> = [
 /** Names used in Chronicler context, including destinations outside the menu. */
 export const screenNames: Record<Place, string> = {
   Archived: "Archive",
+  Channel: "Channel",
+  Chronicle: "Chronicle",
   Home: "Home",
   Lore: "Lore",
   RealmQuests: "Realm quests",

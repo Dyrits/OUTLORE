@@ -1,0 +1,7 @@
+const { app, BrowserWindow } = require("electron");
+app.commandLine.appendSwitch("remote-debugging-port", "9347");
+app.commandLine.appendSwitch("no-sandbox");
+app.whenReady().then(() => {
+  const win = new BrowserWindow({ width: 1500, height: 900, show: true, webPreferences: { backgroundThrottling: false } });
+  win.loadURL("about:blank");
+});

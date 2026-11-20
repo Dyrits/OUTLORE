@@ -275,7 +275,9 @@ describe("keeping a mission's journal", () => {
       yield* call({ _tag: "DeleteThread", confirmation: preview.confirmation, threadId });
       const sql = yield* SqlClient.SqlClient;
       const [entries] = yield* sql<{ count: number }>`SELECT COUNT(*) AS count FROM journal_entries`;
-      const [journals] = yield* sql<{ count: number }>`SELECT COUNT(*) AS count FROM journals`;
+      const [journals] = yield* sql<{
+        count: number;
+      }>`SELECT COUNT(*) AS count FROM journals WHERE mission_id = ${missionId}`;
       expect([entries?.count, journals?.count]).toEqual([0, 0]);
       expect((yield* Effect.flip(journal(missionId))).kind).toBe("NotFound");
     }).pipe(Effect.provide(live())),

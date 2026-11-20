@@ -298,11 +298,10 @@ describe("limiting threads", () => {
     }).pipe(Effect.provide(live())),
   );
 
-  it.live("lets the owner open threads down to 4 levels beneath the top thread", () =>
+  it.live("opens an errand from the quest and refuses nested errands", () =>
     Effect.gen(function* () {
       const started = yield* start("Top");
-      let parent = started.threadId;
-      for (let level = 1; level <= 4; level++) parent = (yield* open(parent, `Level ${level}`)).threadId;
+      const { threadId: parent } = yield* open(started.threadId, "Errand");
       const failure = yield* failureOf({
         _tag: "OpenThread",
         effort: "default",
@@ -310,10 +309,10 @@ describe("limiting threads", () => {
         parentThreadId: parent,
         requestId: "too-deep",
         shouldStartAnyway: false,
-        text: "Level 5",
+        text: "Nested errand",
       });
       expect(failure).toMatchObject({ kind: "InvalidInput" });
-      expect(failure.message).toContain("4 levels");
+      expect(failure.message).toContain("quest conversation");
     }).pipe(Effect.provide(live())),
   );
 });

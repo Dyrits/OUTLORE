@@ -6,6 +6,7 @@ import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import type { CommentableProps } from "./commentable";
 import { excerptOf, selectionQuoteOf } from "./comments";
 import { CommentBox } from "./commentViews";
+import { useReplies } from "./replies";
 import { useComments } from "./useComments";
 
 // The same column a React Native view is on the web, so wrapping a card in a plain element changes no layout.
@@ -33,18 +34,20 @@ const buttonLook = {
 } as const;
 
 // Plain elements hold their words as values: the React Native rules refuse text written inside a tag.
-const labels = { message: "Comment", selection: "Comment on selection" } as const;
+const labels = { message: "Comment", reply: "Reply", selection: "Comment on selection" } as const;
 
 /** A passage the owner selected inside the card, and where its button goes, measured from the card's corner. */
 type Selected = { left: number; quote: string; top: number };
 
 /**
- * A message's card that can be commented on: a button on its corner while the pointer is on it or it has focus, and a
- * button beside any passage the owner selects in it. Either opens a small field under the card; the comment then waits
- * in the tray above the message box. Without comments from the conversation, the card is drawn as it is.
+ * A message's card that can be commented on and replied to: buttons on its corner while the pointer is on it or it has
+ * focus — Comment where comments are offered, Reply where a Reply starts something (a quest in the Chronicle, an errand
+ * in a quest) — and a button beside any passage the owner selects in it. A comment opens a small field under the card;
+ * a Reply opens the reply composer in place of the message box. Without either, the card is drawn as it is.
  */
 export function Commentable({ about, children, messageId, text }: CommentableProps) {
   const comments = useComments();
+  const replies = useReplies();
   const container = useRef<HTMLDivElement>(null);
   const [isShown, setIsShown] = useState(false);
   const [selected, setSelected] = useState<Selected | null>(null);
@@ -59,8 +62,8 @@ export function Commentable({ about, children, messageId, text }: CommentablePro
     document.addEventListener("selectionchange", onChange);
     return () => document.removeEventListener("selectionchange", onChange);
   }, [hasSelection]);
-  if (comments === null) return <>{children}</>;
-  const waiting = comments.countOf(messageId);
+  if (comments === null && replies === null) return <>{children}</>;
+  const waiting = comments?.countOf(messageId) ?? 0;
   const readSelection = () => {
     const selection = window.getSelection();
     const card = container.current;
@@ -78,6 +81,7 @@ export function Commentable({ about, children, messageId, text }: CommentablePro
     setSelected(null);
     window.getSelection()?.removeAllRanges();
   };
+  const isCornerShown = isShown && writing === null;
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: hovering and selecting have no semantic element; the buttons inside are the way to comment, with the keyboard too.
     <div
@@ -90,21 +94,43 @@ export function Commentable({ about, children, messageId, text }: CommentablePro
       style={column}
     >
       {children}
-      <button
-        aria-label="Comment on this message"
-        onClick={() => open(false, excerptOf(text))}
-        style={{
-          ...buttonLook,
-          opacity: isShown && writing === null ? 1 : 0,
-          // Unseen, it must not catch the pointer: it hangs over the neighbouring card's edge.
-          pointerEvents: isShown && writing === null ? "auto" : "none",
-          right: 10,
-          top: -12,
-        }}
-        type="button"
-      >
-        {labels.message}
-      </button>
+      {/* The corner holds both buttons in a row, so Reply stands beside Comment where both are offered. */}
+      {(comments !== null || replies !== null) && (
+        <div
+          style={{
+            ...buttonLook,
+            background: colors.control,
+            display: "flex",
+            gap: 6,
+            opacity: isCornerShown ? 1 : 0,
+            // Unseen, it must not catch the pointer: it hangs over the neighbouring card's edge.
+            pointerEvents: isCornerShown ? "auto" : "none",
+            right: 10,
+            top: -12,
+          }}
+        >
+          {replies !== null && (
+            <button
+              aria-label="Reply to this message"
+              onClick={() => replies.start({ id: messageId, text })}
+              style={{ ...buttonLook, background: "transparent", border: "none", padding: 0, position: "static" }}
+              type="button"
+            >
+              {labels.reply}
+            </button>
+          )}
+          {comments !== null && (
+            <button
+              aria-label="Comment on this message"
+              onClick={() => open(false, excerptOf(text))}
+              style={{ ...buttonLook, background: "transparent", border: "none", padding: 0, position: "static" }}
+              type="button"
+            >
+              {labels.message}
+            </button>
+          )}
+        </div>
+      )}
       {selected !== null && (
         <button
           // The selection must outlive the press, so the pointer going down on the button does not clear it.
@@ -120,7 +146,7 @@ export function Commentable({ about, children, messageId, text }: CommentablePro
         <CommentBox
           onCancel={() => setWriting(null)}
           onSave={(note) => {
-            comments.add({ about, isSelection: writing.isSelection, messageId, note, quote: writing.quote });
+            comments?.add({ about, isSelection: writing.isSelection, messageId, note, quote: writing.quote });
             setWriting(null);
           }}
           quote={writing.quote}

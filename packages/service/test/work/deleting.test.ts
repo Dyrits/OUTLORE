@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
+import { seedLegacyErrand } from "../fixtures/legacyErrands.ts";
 import { call, fixture, open, read, settle, start, tool } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
@@ -20,7 +21,7 @@ describe("deleting threads", () => {
     Effect.gen(function* () {
       const started = yield* start("wait 5000");
       const branch = yield* open(started.threadId, "wait 5000");
-      const leaf = yield* open(branch.threadId, 'ask {"action":"Push","command":"git push"}');
+      const leaf = yield* seedLegacyErrand(branch.threadId, 'ask {"action":"Push","command":"git push"}');
       yield* settle(started.missionId, (current) => current.thread.state === "Attention", leaf.threadId);
       yield* tool(started.threadId, "send_thread_message", { text: "Erase with receiver", to: branch.threadId });
       const preview = yield* call({ _tag: "PreviewDeletion", threadId: branch.threadId });

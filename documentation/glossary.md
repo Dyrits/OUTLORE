@@ -33,8 +33,8 @@ Journal, briefing, harness, effort, budget, approval, and archive keep their mea
 Done is the ending a quest reaches when the owner marks it done, and a thread state; its former interface name Fulfilled is retired. Otherwise work remains idle, running, or asking for the owner until the quest is archived.
 Companion means the selected model doing the work, not a conversation or a distinct saved agent definition; selectors say Companion (model) to make this explicit.
 Craft and Ritual are the agreed names for the future automation interfaces.
-Waystones, Spoils, and Chronicle remain mockup suggestions for devices, changes, and traces.
-An errand (formerly a side-quest, CHG-0449) may contain further errands; the name covers every child thread, including an aside, whose off-topic behavior stays distinct. The app, Chronicler's guide, the tool descriptions and the specifications say errand; code identifiers (`sideQuest`) and the stored mention token `@side-quest:` keep the old word, and dated records and the changelog keep what they were written with.
+Waystones and Spoils remain mockup suggestions for devices and changes.
+An existing errand may contain legacy descendants; the name covers every child thread, including an aside, whose off-topic behavior stays distinct. The app, Chronicler's guide, the tool descriptions and the specifications say errand; code identifiers (`sideQuest`) and the stored mention token `@side-quest:` keep the old word, and dated records and the changelog keep what they were written with.
 
 ## Work
 
@@ -60,7 +60,7 @@ _Avoid_: Ping, notification
 
 **Comment**:
 A note the owner writes on a message of a quest or errand, on the whole message or on a passage selected in it. Comments wait, per thread, in the browser's storage and go with the owner's next message in that thread, as a block in its text.
-_Avoid_: Annotation, review note, reply (a reply is a message)
+_Avoid_: Annotation, review note
 
 **Attachment**:
 A file the owner adds to a message, kept by Outlore and given to the thread's harness with the message's text. Only images are supported so far.
@@ -88,6 +88,22 @@ The name of Chronicler's permanent conversation outside every quest. CHG-0449 re
 **Chronicler** (the assistant; formerly **Guildmaster**, CHG-0173):
 The app-wide assistant the user talks with in the Guild Hall to learn how the app works and to manage realms and quests. It proposes quests and never opens one without the user's confirmation.
 _Avoid_: Coordinator, dispatcher, orchestrator, main thread, Mission control
+
+**Reply**:
+The action that starts a quest from a channel message or an errand from a quest message. Comment holds a note for the next message. [Conversation panes](capabilities/conversation-panes/specifications.md#reply-and-comment)
+_Avoid_: Sub-thread, fork (alone)
+
+**Chronicle**:
+The desktop sidebar destination for updates and reminders across realms and the Borderlands. The attention feed and History split are specified in CHG-0569. [Conversation panes](capabilities/conversation-panes/specifications.md#main-conversations-and-channels)
+_Avoid_: Log, Guild Hall (the retired hub's name, kept for Chronicler's permanent conversation in the older specifications)
+
+**Pane**:
+One conversation column. Desktop shows up to three, in channel, quest, and errand order. [Conversation panes](capabilities/conversation-panes/specifications.md)
+_Avoid_: Panel (the details column and the sidebars are panels), window, tab
+
+**Reply line**:
+A link on the originating message that shows the quest or errand and opens its conversation. [Conversation panes](capabilities/conversation-panes/specifications.md#errands-as-replies)
+_Avoid_: Sub-thread, thread link (a reply is a message, see Comment)
 
 **Mention**:
 A quest, errand, or realm the owner names with `@` in a message, as context for the thread that receives it.

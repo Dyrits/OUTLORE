@@ -1,0 +1,64 @@
+import { realpathSync } from "node:fs";
+import { join } from "node:path";
+import { Effect, Layer } from "effect";
+import { fakeHarnessLayer, fakeHarnessToolsLayer, Service, serveLoopback, serviceLayer } from "./src/index.ts";
+
+// Throwaway service on the fake harness for looking at the panes; never committed.
+const dir = process.env.SCRATCH_DIR ?? "/tmp/scratch";
+const layer = serviceLayer({
+  accountsRoot: join(dir, "accounts"),
+  filename: join(dir, "scratch.sqlite"),
+  harness: fakeHarnessLayer("300 millis"),
+  harnessTools: fakeHarnessToolsLayer(),
+  homeFolder: dir,
+  scratchRoot: join(dir, "missions"),
+});
+const tool = (name: string, args: object) => `call ${name} ${JSON.stringify(args)}`;
+console.log('starting');
+const program = Effect.gen(function* () {
+  const service = yield* Service;
+  const start = (title: string, text: string, workspace: string | null) =>
+    service.handle({
+      _tag: "StartMission",
+      accountId: null,
+      effort: "default",
+      harness: "claude",
+      model: "default",
+      requestId: crypto.randomUUID(),
+      text: `${tool("set_mission_title", { title })}\n${text}`,
+      workspacePath: workspace === null ? null : join(dir, workspace),
+    });
+  const child = (title: string, request: string) => tool("open_thread", { request, title });
+  yield* start("Merge menus into sidebar", "hello", "atlas");
+  yield* start("Right sidebar", `${child("Design the layout", "Sketch it")}\n${child("Build the component", child("Unit tests", child("Integrate and review", "Check it")))}`, "atlas");
+  yield* start("Card artwork", "hello", "harbor");
+  yield* start("Explore new ideas", "wait 600000", null);
+  // Chronicler proposes a quest, and the owner opens it from the card: the quest hangs in the Chronicle as a reply line.
+  const place = yield* service.handle({ _tag: "ReadGuildmaster" });
+  yield* service.handle({
+    _tag: "SendMessage",
+    attachmentIds: [],
+    delivery: null,
+    requestId: crypto.randomUUID(),
+    text: `call suggest_mission ${JSON.stringify({ missions: [], text: "Add dark mode to the settings page", title: "Dark mode for settings" })}`,
+    threadId: place.threadId,
+  });
+  let suggestionId: string | null = null;
+  for (let tries = 0; tries < 40 && suggestionId === null; tries += 1) {
+    yield* Effect.sleep("300 millis");
+    const detail = yield* service.handle({ _tag: "ReadMission", missionId: place.missionId, threadId: null });
+    suggestionId = detail.suggestions.find((offered) => offered.outcome === null)?.id ?? null;
+  }
+  if (suggestionId !== null)
+    yield* service.handle({
+      _tag: "AnswerSuggestion",
+      answer: { _tag: "NewMission", effort: "low", model: "haiku", realmPath: realpathSync(join(dir, "atlas")) },
+      suggestionId: suggestionId as never,
+    });
+  console.log("suggestion", suggestionId);
+  yield* Effect.sleep("6000 millis");
+  const { port } = yield* serveLoopback({ port: 0, token: "t" });
+  console.log(`ENDPOINT ws://127.0.0.1:${port}/?token=t`);
+  return yield* Effect.never;
+}).pipe(Effect.scoped, Effect.provide(Layer.fresh(layer)));
+Effect.runPromise(program).catch((error) => { console.log("FAILED", String(error), JSON.stringify(error)); process.exit(1); });

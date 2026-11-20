@@ -10,8 +10,8 @@ import { changed, unchanged } from "./followUps.ts";
 // the caller's transaction; the command that calls one returns what follows it (commands.ts), and
 // `makeLifecycle` owns cancelling a thread's turn outside any transaction.
 
-/** The owner opens threads down to this many levels beneath the top thread; agents have no depth limit. */
-export const maxOwnerDepth = 4;
+/** New errands are opened directly beneath the quest. */
+export const maxOwnerDepth = 1;
 
 /** States in which a thread beneath keeps its parent Waiting. */
 export const activeStates = ["Running", "Waiting", "Attention"];

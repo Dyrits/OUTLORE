@@ -1,4 +1,4 @@
-import type { MissionId, Suggestion, SuggestionAnswer, ThreadId, Tier } from "@outlore/contracts";
+import type { MissionId, Suggestion, SuggestionAnswer, ThreadId, Tier, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { type Runner, RunnerPickers, useHarnesses } from "../editors/runners";
@@ -8,7 +8,7 @@ import { settledSuggestionLabelOf } from "../foundation/labels";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { companionChoicesOf, hasTiers, realmOptionsOf, selectedChoiceOf } from "./suggestionChoices";
+import { companionChoicesOf, hasTiers, selectedChoiceOf } from "./suggestionChoices";
 
 /** The line a resolved suggestion leaves in its thread, opening where the request went. */
 export function SuggestionLine({
@@ -117,11 +117,23 @@ const suggestionRunnerOf = (suggestion: Suggestion): Runner => ({
 });
 
 /** An open suggestion: Chronicler's proposal of a new quest, or where a thread's off-topic message should go. */
-export function SuggestionCard({ client, suggestion }: { client: ServiceClient; suggestion: Suggestion }) {
+type Channel = { id: WorkspaceId | null; name: string };
+
+export function SuggestionCard({
+  canOpenAside = true,
+  channel,
+  client,
+  suggestion,
+}: {
+  canOpenAside?: boolean;
+  channel?: Channel | undefined;
+  client: ServiceClient;
+  suggestion: Suggestion;
+}) {
   return suggestion.isFromGuildmaster ? (
-    <ProposalCard client={client} suggestion={suggestion} />
+    <ProposalCard channel={channel} client={client} suggestion={suggestion} />
   ) : (
-    <OffTopicCard client={client} suggestion={suggestion} />
+    <OffTopicCard canOpenAside={canOpenAside} client={client} suggestion={suggestion} />
   );
 }
 
@@ -129,7 +141,15 @@ export function SuggestionCard({ client, suggestion }: { client: ServiceClient; 
  * Chronicler's proposal: the realm and the Companion as rows of chips, the Companion offered by the tiers the owner set in
  * the Workshop (or only the default, stated), and the pickers behind "Customize the Companion" (CHG-0179).
  */
-function ProposalCard({ client, suggestion }: { client: ServiceClient; suggestion: Suggestion }) {
+function ProposalCard({
+  channel,
+  client,
+  suggestion,
+}: {
+  channel: Channel | undefined;
+  client: ServiceClient;
+  suggestion: Suggestion;
+}) {
   const { data: harnesses } = useHarnesses(client);
   const { error, send } = useSuggestionAnswer(client, suggestion);
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
@@ -137,7 +157,7 @@ function ProposalCard({ client, suggestion }: { client: ServiceClient; suggestio
   const [runner, setRunner] = useState<Tier>({ ...suggestionRunnerOf(suggestion), backups: suggestion.backups });
   const [isCustomizing, setIsCustomizing] = useState(false);
   // The proposed realm until the owner picks another, or the Borderlands.
-  const [realmPath, setRealmPath] = useState<string | null>(suggestion.realmPath);
+  const [chosenRealm, setChosenRealm] = useState<WorkspaceId | null | undefined>(undefined);
   const pickers = (
     <RunnerPickers
       client={client}
@@ -150,7 +170,10 @@ function ProposalCard({ client, suggestion }: { client: ServiceClient; suggestio
   const choices =
     settings === null ? [] : companionChoicesOf(settings, (tier) => companionLabelOf(tier.harness, null, tier.model));
   const selected = selectedChoiceOf(choices, runner);
-  const realms = realmOptionsOf(known?.workspaces ?? []);
+  const realms = known?.workspaces ?? [];
+  const proposedRealm = realms.find((realm) => suggestion.realmPath !== null && realm.path === suggestion.realmPath);
+  const defaultRealm = proposedRealm?.id ?? channel?.id ?? null;
+  const realmId = chosenRealm === undefined ? defaultRealm : chosenRealm;
   const hasMatches = suggestion.matches.length > 0;
   return (
     <View style={styles.question}>
@@ -163,7 +186,7 @@ function ProposalCard({ client, suggestion }: { client: ServiceClient; suggestio
       <MatchButtons onContinue={(missionId) => send({ _tag: "Continue", missionId })} suggestion={suggestion} />
       <View style={styles.details}>
         <Pressable
-          onPress={() => send({ _tag: "NewMission", ...runner, realmPath })}
+          onPress={() => send({ _tag: "NewMission", ...runner, realmId })}
           style={[styles.answer, styles.answerPrimary]}
         >
           <Text style={[styles.answerText, styles.answerTextPrimary]}>
@@ -174,16 +197,16 @@ function ProposalCard({ client, suggestion }: { client: ServiceClient; suggestio
           label="Realm"
           options={[
             {
-              isSelected: realmPath === null,
+              isSelected: realmId === null,
               key: "borderlands",
               label: "No realm",
-              onPress: () => setRealmPath(null),
+              onPress: () => setChosenRealm(null),
             },
             ...realms.map((realm) => ({
-              isSelected: realmPath === realm.path,
+              isSelected: realmId === realm.id,
               key: realm.id,
-              label: realm.label,
-              onPress: () => setRealmPath(realm.path),
+              label: realm.name,
+              onPress: () => setChosenRealm(realm.id),
             })),
           ]}
         />
@@ -214,7 +237,15 @@ function ProposalCard({ client, suggestion }: { client: ServiceClient; suggestio
 }
 
 /** A thread's off-topic message: continue in a matching quest, open a new one, or keep it as an aside. */
-function OffTopicCard({ client, suggestion }: { client: ServiceClient; suggestion: Suggestion }) {
+function OffTopicCard({
+  canOpenAside,
+  client,
+  suggestion,
+}: {
+  canOpenAside: boolean;
+  client: ServiceClient;
+  suggestion: Suggestion;
+}) {
   const { data: harnesses } = useHarnesses(client);
   const { error, send } = useSuggestionAnswer(client, suggestion);
   const [runner, setRunner] = useState<Runner>(suggestionRunnerOf(suggestion));
@@ -232,9 +263,11 @@ function OffTopicCard({ client, suggestion }: { client: ServiceClient; suggestio
         </Pressable>
         <RunnerPickers client={client} harnesses={harnesses} isCompact={false} onChange={setRunner} value={runner} />
       </View>
-      <Pressable onPress={() => send({ _tag: "Aside" })} style={styles.answer}>
-        <Text style={styles.answerText}>Keep as aside</Text>
-      </Pressable>
+      {canOpenAside && (
+        <Pressable onPress={() => send({ _tag: "Aside" })} style={styles.answer}>
+          <Text style={styles.answerText}>Keep as aside</Text>
+        </Pressable>
+      )}
       {error !== null && <Text style={styles.error}>{error}</Text>}
     </View>
   );

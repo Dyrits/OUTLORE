@@ -6,6 +6,7 @@ import { changed } from "./followUps.ts";
 import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
 import { insertUserMessage, releaseQueued } from "./messaging.ts";
+import { recordFirstQuestMessage } from "./questOrigins.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 import { nameNewQuest } from "./titles.ts";
 /** Requests for writing and reading messages, dictation included, share the service request context. */
@@ -60,6 +61,7 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
             viewing,
           ).pipe(
             Effect.tap(() => nameNewQuest(send.threadId, text)),
+            Effect.tap((sent) => recordFirstQuestMessage(send.threadId, sent.messageId, text)),
             Effect.map((sent) => changed(sent, { threadsToWake: [send.threadId] })),
           ),
         ),

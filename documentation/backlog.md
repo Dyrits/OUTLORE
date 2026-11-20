@@ -1,5 +1,7 @@
 # Backlog
 
+- **Conversation panes toward Pre-Alpha.** Desktop panes, Reply and the initial Chronicle are built. The window review and the [Chronicle attention feed and History](capabilities/conversation-panes/specifications.md#main-conversations-and-channels) remain. Phone navigation and pane identity are deferred.
+
 - **Android install confirmation spike** (2026-11-18). Try whether Android can skip its own confirmation after the owner presses **Install update**. The updater keeps both confirmations while this is open. [Draft](capabilities/app-updates/draft.md)
 
 - **Terminals in the mobile app**. Add a terminal view to the mobile app for the host's existing terminal service. [Same features in every app](requirements.md) and [device pairing](capabilities/device-pairing/specifications.md).

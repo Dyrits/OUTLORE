@@ -18,14 +18,11 @@ describe("opening the window", () => {
 });
 
 describe("navigating the window", () => {
-  it("uncovers a quest opened from expanded or narrow Chronicler", () => {
-    for (const type of ["full", "narrowChronicler"] as const) {
-      const covered = navigate(initialLocation(null), { isOpen: true, type });
-      const next = navigate(covered, { id: quest, type: "quest" });
-      expect(next.openMission).toBe(quest);
-      expect(next.isChroniclerFull).toBe(false);
-      expect(next.isNarrowChroniclerOpen).toBe(false);
-    }
+  it("uncovers a quest opened from the narrow window's Chronicler", () => {
+    const covered = navigate(initialLocation(null), { isOpen: true, type: "narrowChronicler" });
+    const next = navigate(covered, { id: quest, type: "quest" });
+    expect(next.openMission).toBe(quest);
+    expect(next.isNarrowChroniclerOpen).toBe(false);
   });
   it("closes Journal, Lore and Budget when choosing an errand without remounting the quest", () => {
     const opened = navigate(initialLocation(null), { id: quest, type: "quest" });
@@ -66,7 +63,6 @@ describe("navigating the window", () => {
       {
         ...initialLocation(null),
         guildmasterRealm: "/realm",
-        isChroniclerFull: true,
         openMission: quest,
         openThread: thread,
       },
@@ -74,14 +70,13 @@ describe("navigating the window", () => {
     );
     expect(next).toMatchObject({
       guildmasterRealm: null,
-      isChroniclerFull: false,
       openMission: null,
       openThread: null,
     });
   });
   it("scopes the panel to its page without changing scope for a covering layer", () => {
     const initial = initialLocation(null);
-    expect(panelScopeOf(navigate(initial, { isOpen: true, type: "full" }))).toEqual(panelScopeOf(initial));
+    expect(panelScopeOf(navigate(initial, { isOpen: true, type: "narrowChronicler" }))).toEqual(panelScopeOf(initial));
     expect(panelScopeOf(navigate(initial, { page: { kind: "journal" }, type: "page" }))).not.toEqual(
       panelScopeOf(initial),
     );

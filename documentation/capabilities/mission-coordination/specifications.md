@@ -21,7 +21,7 @@ From 2026-11-11 the entity formerly called Guildmaster is **Chronicler**, a jani
 
 ### Place
 
-CHG-0449 removes the Guild Hall hub for now. Chronicler's permanent conversation is available through its own panel. The rules below describe the earlier hub and panel layout. [Simplified left navigation](../mission-tracking/specifications.md#simplified-left-navigation)
+On desktop, the [conversation panes](../conversation-panes/specifications.md#main-conversations-and-channels) put Chronicler in each realm and Borderlands chat. Chronicle is a separate cross-realm destination. A narrow window and a phone still open the original Chronicler conversation from the top bar. The rules below describe the earlier hub and panel layout.
 
 - Guild Hall contains one permanent thread outside every quest, where the user talks with Guildmaster.
   Its entry is pinned at the top of the dashboard, on the desktop and on the phone, and its thread cannot be deleted, archived, or ended.

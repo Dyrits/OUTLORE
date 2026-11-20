@@ -50,9 +50,8 @@ export const clampPaneWidth = (width: number, windowWidth: number, leastWidth: n
 /** The rail's own bounds: the least width that keeps its longest heading whole, and a quarter of the window. */
 export const clampRailWidth = (width: number, windowWidth: number) => clampPaneWidth(width, windowWidth, minRailWidth);
 
-/** The keys under which the browser remembers how wide the quest panel and Chronicler's column are. */
+/** The key under which the browser remembers the width of the details panel. */
 export const questPanelWidthKey = "outlore:quest-panel-width";
-export const chroniclerWidthKey = "outlore:assistant-width";
 
 /** Reads a remembered pane width, or `fallback` (the pane's default, and its least) with none stored or no storage. */
 export const readPaneWidth = (key: string, fallback: number): number => {
@@ -74,11 +73,19 @@ export const readRailWidth = (): number => {
 /** Remembers the rail width where the platform allows; a refusal only loses the memory. */
 export const rememberRailWidth = (width: number) => keep(widthKey, String(width));
 
-/** The key under which the browser remembers whether Chronicler's panel is open. */
-const chroniclerKey = "outlore:assistant-open";
+/** The key under which the browser remembers the share of each pane of the chain, by depth. */
+// The second key: with the Chronicle as the first slot, the depths of the shares moved by one.
+const paneWeightsKey = "outlore:pane-weights-2";
 
-/** Reads whether Chronicler's panel is open; a platform without browser storage starts with it folded. */
-export const readChroniclerOpen = (): boolean => readStored(chroniclerKey) === "1";
+/** Reads the remembered shares of the panes; none stored, bad data or no storage gives equal shares. */
+export const readPaneWeights = (): Array<number> => {
+  try {
+    const stored: unknown = JSON.parse(readStored(paneWeightsKey) ?? "[]");
+    return Array.isArray(stored) ? stored.map((weight) => (typeof weight === "number" && weight > 0 ? weight : 0)) : [];
+  } catch {
+    return [];
+  }
+};
 
-/** Remembers whether Chronicler's panel is open where the platform allows; a refusal only loses the memory. */
-export const rememberChroniclerOpen = (isOpen: boolean) => keep(chroniclerKey, isOpen ? "1" : "0");
+/** Remembers the shares of the panes where the platform allows; a refusal only loses the memory. */
+export const rememberPaneWeights = (weights: ReadonlyArray<number>) => keep(paneWeightsKey, JSON.stringify(weights));

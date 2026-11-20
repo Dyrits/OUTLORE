@@ -50,9 +50,17 @@ export const insertMission = Effect.fnUntraced(function* (
   shouldRememberChoices = true,
   realm: { name: string } | null = null,
   attachmentIds: ReadonlyArray<string> = [],
+  realmId?: string | null,
 ) {
   const started = yield* insertQuest(
-    { attachmentIds, firstMessage: text, realm, shouldRememberChoices, title: titleOf(text) || attachmentsTitle },
+    {
+      attachmentIds,
+      firstMessage: text,
+      realm,
+      ...(realmId === undefined ? {} : { realmId }),
+      shouldRememberChoices,
+      title: titleOf(text) || attachmentsTitle,
+    },
     choice,
     workspacePath,
   );
@@ -78,6 +86,7 @@ export const insertQuest = Effect.fnUntraced(function* (
      * gives the quest its lore and no folder to work in. Null with a null path places the quest in the Borderlands.
      */
     readonly realmId?: string | null;
+    readonly isChannel?: boolean;
     readonly isTitleByOwner?: boolean;
     readonly realm: { name: string } | null;
     readonly shouldRememberChoices: boolean;
@@ -90,7 +99,7 @@ export const insertQuest = Effect.fnUntraced(function* (
   const sql = yield* SqlClient.SqlClient;
   const global = yield* readGlobalBudget;
   // A reached global budget refuses new missions (budget-control, Reaching a limit).
-  if (isReached(global.limits, global.spent))
+  if (quest.isChannel !== true && isReached(global.limits, global.spent))
     return yield* invalid("The global budget is reached. Raise it in the Workshop to start a mission.");
   const settings = yield* readSettings;
   const runner = yield* checkAccount(
@@ -99,7 +108,7 @@ export const insertQuest = Effect.fnUntraced(function* (
   const { accountId, effort, harness, model } = runner;
   // A reached account budget refuses a quest started on that account (budget-control, Reaching a limit).
   const accountBudgetRefusal = yield* budgetRefusalOf(null, { accountId, harness }, "Account");
-  if (accountBudgetRefusal !== null) return yield* invalid(accountBudgetRefusal);
+  if (quest.isChannel !== true && accountBudgetRefusal !== null) return yield* invalid(accountBudgetRefusal);
   const realmId = quest.realmId ?? null;
   if (realmId !== null) {
     yield* requireActiveRealm(realmId);

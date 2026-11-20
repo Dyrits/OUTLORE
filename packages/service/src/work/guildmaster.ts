@@ -84,6 +84,7 @@ export const readControlHistory = Effect.fnUntraced(function* (
   if (rows.length === 0) return toolText("No such messages.");
   const who: Readonly<Record<string, string | undefined>> = {
     agent: "You",
+    system: "Outlore",
     thread: "A quest",
     user: "The owner",
   } satisfies Record<SenderKind, string>;

@@ -2,6 +2,7 @@ import { Schema } from "effect";
 import { FileDiff } from "./activities.ts";
 import { AttachmentCard, AttachmentContent } from "./attachments.ts";
 import { AccountBudget, BudgetWindow, PriceStatus } from "./budgets.ts";
+import { ChronicleItem } from "./chronicle.ts";
 import { connectorResults } from "./connectorRequests.ts";
 import { DictationStatus, Transcript } from "./dictation.ts";
 import { EffortChoice, HarnessList } from "./harnesses.ts";
@@ -29,6 +30,7 @@ import { KnownHost, PairingCode, RemoteAccessView } from "./remote.ts";
 import { DeletionPreview, type RequestTag } from "./requests.ts";
 import { CreateRitualResult, Ritual } from "./rituals.ts";
 import { Skill } from "./skills.ts";
+import { threadAnchorResults } from "./threadAnchors.ts";
 import { UsageReport } from "./usage.ts";
 import { vaultResults } from "./vaultRequests.ts";
 import { WorkspaceEntry } from "./workspaceEntries.ts";
@@ -51,6 +53,7 @@ export type OpenThreadResult = typeof OpenThreadResult.Type;
 export const Results = {
   ...realmResults,
   ...connectorResults,
+  ...threadAnchorResults,
   ...vaultResults,
   AddAccount: HarnessList,
   AddAttachment: AttachmentCard,
@@ -98,6 +101,7 @@ export const Results = {
   ReadAccountBudgets: Schema.Array(AccountBudget),
   ReadAttachment: AttachmentContent,
   ReadBudget: BudgetWindow,
+  ReadChronicle: Schema.Array(ChronicleItem),
   ReadDictation: DictationStatus,
   ReadFileDiff: FileDiff,
   ReadGuildHallRecap: GuildHallRecap,

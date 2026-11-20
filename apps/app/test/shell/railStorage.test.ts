@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampPaneWidth, clampRailWidth } from "../../src/shell/railStorage";
+import { clampPaneWidth, clampRailWidth, readPaneWeights } from "../../src/shell/railStorage";
 
 describe("the width the open sidebar can be dragged to", () => {
   it("goes up to a quarter of the window", () => {
@@ -34,5 +34,11 @@ describe("the width the quest panel and Chronicler's column can be dragged to", 
   it("lets a quarter of a 2176 px window, as the owner's, hold each pane wider than it opens", () => {
     expect(clampPaneWidth(540, 2176, 380)).toBe(540);
     expect(clampPaneWidth(700, 2176, 380)).toBe(544);
+  });
+});
+
+describe("the remembered shares of the panes", () => {
+  it("are equal when the platform has no storage", () => {
+    expect(readPaneWeights()).toEqual([]);
   });
 });

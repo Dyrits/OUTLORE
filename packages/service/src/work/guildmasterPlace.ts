@@ -5,11 +5,11 @@ import { invalid, readSettings } from "../core/index.ts";
 import { claudeCheapestModel } from "../harness/index.ts";
 import { changed, unchanged } from "./followUps.ts";
 import { insertQuest } from "./missions.ts";
+import { requireActiveRealm } from "./realmAccess.ts";
 import { findRealmMatches } from "./realmResolution.ts";
 
-// Chronicler, once the Guildmaster (quest coordination): one permanent thread the owner talks to, which looks for a quest
-// that fits a request and offers to continue it, or proposes a new one for the owner to open. It is stored as a hidden
-// quest so its turns, messages, usage, and cards are the quests' own; every list, search, and ending leaves it out.
+// Each Chronicler chat uses a hidden quest for turns, messages, usage and cards. The original chat keeps its existing
+// thread ID and history, and each channel has its own place.
 // This file is the place itself, a leaf the other Chronicler files and the quest endings build on.
 
 /** Chronicler's title, in its thread tree and its usage; data made as Guildmaster is renamed by migrations 0041 and 0050. */
@@ -22,31 +22,43 @@ export const guildmasterTitle = "Chronicler";
 const cheapestModelOf = (harness: HarnessName): ModelChoice => (harness === "claude" ? claudeCheapestModel : "default");
 
 /** Chronicler's quest and thread, made on first use. Callers run it in a transaction. */
-export const ensureGuildmaster = Effect.gen(function* () {
+export const ensureGuildmaster = Effect.fnUntraced(function* (channelId?: string | null) {
+  const realmId = channelId ?? null;
+  const channel = channelId === undefined ? null : (channelId ?? "borderlands");
   const sql = yield* SqlClient.SqlClient;
   const [existing] = yield* sql<{ missionId: string; threadId: string }>`
-    SELECT id AS missionId, top_thread_id AS threadId FROM missions WHERE is_guildmaster = 1`;
+    SELECT id AS missionId, top_thread_id AS threadId FROM missions WHERE is_guildmaster = 1 AND chronicler_channel IS ${channel}`;
   if (existing !== undefined) return { ...existing, isCreated: false } as const;
+  if (realmId !== null) yield* requireActiveRealm(realmId);
   const settings = yield* readSettings;
   const started = yield* insertQuest(
-    { firstMessage: null, isTitleByOwner: true, realm: null, shouldRememberChoices: false, title: guildmasterTitle },
+    {
+      firstMessage: null,
+      isChannel: channel !== null,
+      isTitleByOwner: true,
+      realm: null,
+      realmId,
+      shouldRememberChoices: false,
+      title: guildmasterTitle,
+    },
     { effort: "default", harness: settings.defaultHarness, model: cheapestModelOf(settings.defaultHarness) },
     null,
   );
   // The default quest budget is for quests; Chronicler's own is the owner's to set (budget-control).
-  yield* sql`UPDATE missions SET is_guildmaster = 1, budget_cost = NULL, budget_tokens = NULL WHERE id = ${started.missionId}`;
+  yield* sql`UPDATE missions SET is_guildmaster = 1, chronicler_channel = ${channel}, budget_cost = NULL, budget_tokens = NULL WHERE id = ${started.missionId}`;
   return { isCreated: true, missionId: started.missionId, threadId: started.threadId } as const;
 });
 
 /** Where Chronicler's conversation is, made when it is not there yet. */
-export const readGuildmaster = ensureGuildmaster.pipe(
-  // Only making the place announces a change: a read that always did made every screen that follows changes reload
-  // it at once, a loop that froze the Guild Hall.
-  Effect.map(({ isCreated, missionId, threadId }) => {
-    const place = { missionId, threadId } as GuildmasterPlace;
-    return isCreated ? changed(place) : unchanged(place);
-  }),
-);
+export const readGuildmaster = (channelId?: string | null) =>
+  ensureGuildmaster(channelId).pipe(
+    // Only making the place announces a change: a read that always did made every screen that follows changes reload
+    // it at once, a loop that froze the Guild Hall.
+    Effect.map(({ isCreated, missionId, threadId }) => {
+      const place = { missionId, threadId } as GuildmasterPlace;
+      return isCreated ? changed(place) : unchanged(place);
+    }),
+  );
 
 /** Whether the thread belongs to Chronicler. */
 export const isGuildmasterThread = Effect.fnUntraced(function* (threadId: string) {

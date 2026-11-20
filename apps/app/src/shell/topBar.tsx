@@ -2,6 +2,7 @@ import { type ReactNode, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { HostMenuContext } from "../foundation/hostContext";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { SettingsIcon } from "../ui/settingsIcons";
 import { UpdateNotice } from "../updates";
 import { HostMenu } from "./hostMenu";
 
@@ -42,18 +43,36 @@ export function TopBar({
   details,
   chronicler,
   menu,
+  sidebar,
+  workshop,
 }: {
   /** The icon that shows or hides the quest's side panel; none outside a quest. */
   details: DetailsToggle | null;
-  /** The button that opens or folds Chronicler's panel (quest coordination, Chronicler everywhere). */
-  chronicler: { isOpen: boolean; onToggle: () => void };
+  /** The button that opens or folds Chronicler's screen in a window too narrow for panes; where the Chronicle is a pane, none. */
+  chronicler?: { isOpen: boolean; onToggle: () => void };
+  /** The Workshop's icon, furthest right: it opens the Workshop over the whole content area, and pressed again goes back. */
+  workshop?: { isOpen: boolean; onToggle: () => void };
   /** The button that opens or closes the full-screen menu, in a window too narrow for the sidebar; none where it shows. */
   menu?: { isOpen: boolean; onToggle: () => void };
+  /** The button that pins or unpins the overlay sidebar, on the side the sidebar belongs to; none when it is docked. */
+  sidebar?: { isPinned: boolean; onToggle: () => void; side: "left" | "right" };
 }) {
   const hostMenu = useContext(HostMenuContext);
+  const sidebarButton = sidebar !== undefined && (
+    <Pressable
+      accessibilityLabel={sidebar.isPinned ? "Unpin the sidebar (⌘B)" : "Pin the sidebar (⌘B)"}
+      accessibilityRole="button"
+      accessibilityState={{ selected: sidebar.isPinned }}
+      onPress={sidebar.onToggle}
+      style={({ pressed }) => [local.topIcon, (pressed || sidebar.isPinned) && local.topIconActive, noDragRegion]}
+    >
+      <PanelIcon side={sidebar.side} />
+    </Pressable>
+  );
   return (
     // As the macOS title bar the bar drags the window, and leaves room for the traffic lights at its start.
     <View style={[local.topBar, hasOwnTitleBar && local.topBarTitle, hasOwnTitleBar && dragRegion]}>
+      {sidebar?.side === "left" && sidebarButton}
       {menu !== undefined && (
         <Pressable
           accessibilityLabel={menu.isOpen ? "Close the menu" : "Open the menu"}
@@ -84,15 +103,29 @@ export function TopBar({
           <PanelIcon side="right" />
         </Pressable>
       )}
-      <Pressable
-        accessibilityLabel={chronicler.isOpen ? "Fold Chronicler" : "Ask Chronicler"}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: chronicler.isOpen }}
-        onPress={chronicler.onToggle}
-        style={({ pressed }) => [local.topIcon, (pressed || chronicler.isOpen) && local.topIconActive, noDragRegion]}
-      >
-        <Text style={local.chroniclerMark}>✦</Text>
-      </Pressable>
+      {chronicler !== undefined && (
+        <Pressable
+          accessibilityLabel={chronicler.isOpen ? "Fold Chronicler" : "Ask Chronicler"}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: chronicler.isOpen }}
+          onPress={chronicler.onToggle}
+          style={({ pressed }) => [local.topIcon, (pressed || chronicler.isOpen) && local.topIconActive, noDragRegion]}
+        >
+          <Text style={local.chroniclerMark}>✦</Text>
+        </Pressable>
+      )}
+      {workshop !== undefined && (
+        <Pressable
+          accessibilityLabel={workshop.isOpen ? "Close the Workshop" : "Open the Workshop"}
+          accessibilityRole="button"
+          accessibilityState={{ selected: workshop.isOpen }}
+          onPress={workshop.onToggle}
+          style={({ pressed }) => [local.topIcon, (pressed || workshop.isOpen) && local.topIconActive, noDragRegion]}
+        >
+          <SettingsIcon name="gear" size={18} tint={colors.textSecondary} />
+        </Pressable>
+      )}
+      {sidebar?.side === "right" && sidebarButton}
     </View>
   );
 }

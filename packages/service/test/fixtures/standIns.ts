@@ -172,7 +172,9 @@ export const withHarnesses = (
 
 /** The stand-in harness's replies to the owner, in order. */
 export const replies = (detail: MissionDetail) =>
-  detail.messages.filter((message) => message.sender === "agent").map((message) => message.text);
+  detail.messages
+    .filter((message) => message.sender === "agent" && message.replyToMessageId == null)
+    .map((message) => message.text);
 
 /** A file that starts like a PNG, which is all the service checks. */
 export const pngBytes = () =>

@@ -4,6 +4,7 @@ import { invalid, notFound } from "../core/index.ts";
 import { changed, unchanged } from "./followUps.ts";
 import { updateJournal } from "./journal.ts";
 import { releaseThread, waitsInTurn } from "./lifecycle.ts";
+import { placeQuestOrigin } from "./questOrigins.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 
 // Quest moves (mission-tracking, Quest placement and moves): a quest's realm is its top thread's workspace, inherited
@@ -25,7 +26,9 @@ import { requireActiveRealm } from "./realmAccess.ts";
  */
 export const moveQuest = Effect.fn("moveQuest")(function* (missionId: string, realmId: string | null) {
   const sql = yield* SqlClient.SqlClient;
-  const [mission] = yield* sql<{ id: string }>`SELECT id FROM missions WHERE id = ${missionId}`;
+  const [mission] = yield* sql<{
+    topThreadId: string;
+  }>`SELECT top_thread_id AS topThreadId FROM missions WHERE id = ${missionId} AND is_guildmaster = 0`;
   if (mission === undefined) return yield* notFound("No such quest.");
   if (realmId !== null) yield* requireActiveRealm(realmId);
   const [destination] =
@@ -47,6 +50,7 @@ export const moveQuest = Effect.fn("moveQuest")(function* (missionId: string, re
     JOIN threads top ON top.id = m.top_thread_id LEFT JOIN workspaces w ON w.id = top.workspace_id
     WHERE m.id = ${missionId}`;
   yield* sql`UPDATE threads SET workspace_id = ${realmId} WHERE mission_id = ${missionId}`;
+  yield* placeQuestOrigin(mission.topThreadId);
   const held = yield* sql<{ id: string }>`SELECT id FROM threads
     WHERE mission_id = ${missionId} AND state = 'Attention' AND blocker = 'MissingWorkspace' AND is_deleting = 0`;
   for (const thread of held) yield* releaseThread(thread.id);

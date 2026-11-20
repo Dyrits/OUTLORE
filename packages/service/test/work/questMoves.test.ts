@@ -5,6 +5,7 @@ import type { MissionId, Request } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { Service } from "../../src/index.ts";
+import { seedLegacyErrand } from "../fixtures/legacyErrands.ts";
 import { call, fixture, open, read, send, settle, start } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
@@ -59,7 +60,7 @@ describe("moving a quest between realms, and out of them", () => {
         yield* send(quest.threadId, "Hello");
         const before = yield* settle(quest.missionId, (detail) => detail.messages.length === 2 && idle(detail));
         const side = yield* open(quest.threadId, "Side");
-        const grandchild = yield* open(side.threadId, "Deeper");
+        const grandchild = yield* seedLegacyErrand(side.threadId, "Deeper");
         yield* settle(quest.missionId, idle, grandchild.threadId);
         yield* settle(quest.missionId, idle, side.threadId);
         yield* settle(quest.missionId, idle);

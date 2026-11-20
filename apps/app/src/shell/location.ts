@@ -18,7 +18,6 @@ export type Location = {
   openCount: number;
   page: QuestPage;
   isChroniclerBudgetOpen: boolean;
-  isChroniclerFull: boolean;
   isMenuOpen: boolean;
   isNarrowChroniclerOpen: boolean;
   /** Where the owner was when the Workshop was opened from its icon; pressing the icon again goes back there. */
@@ -33,6 +32,7 @@ export type NavigationEvent =
   | { type: "thread"; missionId: MissionId; id: ThreadId | null }
   | { type: "select"; id: MissionId | null }
   | { type: "realm"; listing: RealmListing }
+  | { type: "channel"; listing: RealmListing | null }
   | { type: "parent"; quest: { workspaceId: string | null; workspaceName: string | null } }
   | { type: "close" }
   | { type: "host" }
@@ -41,7 +41,6 @@ export type NavigationEvent =
   | { type: "section"; section: SettingsSectionId }
   | { type: "chroniclerRealm"; path: string | null }
   | { type: "chroniclerBudget"; isOpen: boolean }
-  | { type: "full"; isOpen: boolean }
   | { type: "menu"; isOpen: boolean }
   | { type: "narrowChronicler"; isOpen: boolean };
 
@@ -49,7 +48,6 @@ export type NavigationEvent =
 export const initialLocation = (resumed: string | null): Location => ({
   guildmasterRealm: null,
   isChroniclerBudgetOpen: false,
-  isChroniclerFull: false,
   isMenuOpen: false,
   isNarrowChroniclerOpen: false,
   isPermissionsOpen: false,
@@ -67,7 +65,6 @@ export const initialLocation = (resumed: string | null): Location => ({
 const uncovered = (location: Location): Location => ({
   ...location,
   isChroniclerBudgetOpen: false,
-  isChroniclerFull: false,
   isMenuOpen: false,
   isNarrowChroniclerOpen: false,
   isPermissionsOpen: false,
@@ -82,6 +79,7 @@ const leavingEvents: ReadonlyArray<NavigationEvent["type"]> = [
   "close",
   "host",
   "realm",
+  "channel",
   "parent",
 ];
 
@@ -136,6 +134,8 @@ const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "w
       openThread: null,
       selectedMission: null,
     };
+  if (event.type === "channel")
+    return { ...resolved(location, { place: "Channel", type: "place" }), listedRealm: event.listing };
   if (event.type === "realm")
     return { ...resolved(location, { place: "RealmQuests", type: "place" }), listedRealm: event.listing };
   if (event.type === "parent") {
@@ -153,7 +153,6 @@ const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "w
       ...(event.path === null ? {} : { isMenuOpen: false, isNarrowChroniclerOpen: true }),
     };
   if (event.type === "chroniclerBudget") return { ...location, isChroniclerBudgetOpen: event.isOpen };
-  if (event.type === "full") return { ...location, isChroniclerFull: event.isOpen };
   if (event.type === "menu") return { ...location, isMenuOpen: event.isOpen, isNarrowChroniclerOpen: false };
   return { ...location, isMenuOpen: false, isNarrowChroniclerOpen: event.isOpen };
 };
@@ -166,6 +165,6 @@ export const panelScopeOf = (location: Location) => ({
   openThread: location.openThread,
   page: location.page,
   place: location.place,
-  realm: location.place === "RealmQuests" ? (location.listedRealm?.id ?? null) : null,
+  realm: location.place === "RealmQuests" || location.place === "Channel" ? (location.listedRealm?.id ?? null) : null,
   section: location.place === "Settings" ? location.settingsSection : null,
 });

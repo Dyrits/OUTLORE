@@ -54,9 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the connector panels in the Workshop (one panel per connector; Apple's applications renamed; CHG-0551; open: the owner's look at the screens), read the [current handoff](.agents/handoffs/2026-11-19-2227-connector-panels.md). Handoffs are shared and committed.
-
 - To resume the black and white theme (CHG-0552; open: the owner's look at it in a window), read the [current handoff](.agents/handoffs/2026-11-19-2230-black-and-white-theme.md). Handoffs are shared and committed.
 
 - To resume the Codex turn failure on the Vault's permission profile (CHG-0559; open: the owner's retry of a Codex turn in the window), read the [current handoff](.agents/handoffs/2026-11-20-0044-codex-vault-profile.md). Handoffs are shared and committed.
 
+- To resume the desktop conversation panes, window review, or the Chronicle attention feed, read the [current handoff](.agents/handoffs/2026-11-20-0130-conversation-panes.md). Handoffs are shared and committed.

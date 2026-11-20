@@ -41,7 +41,9 @@ export const insertEvent = Effect.fnUntraced(function* (missionId: string, text:
 /** Records a line about the global budget in the Guildmaster's quest, where the owner reads it; nothing is recorded before the Guildmaster exists. */
 const insertGlobalEvent = Effect.fnUntraced(function* (text: string) {
   const sql = yield* SqlClient.SqlClient;
-  const [guildmaster] = yield* sql<{ id: string }>`SELECT id FROM missions WHERE is_guildmaster = 1`;
+  const [guildmaster] = yield* sql<{
+    id: string;
+  }>`SELECT id FROM missions WHERE is_guildmaster = 1 AND chronicler_channel IS NULL`;
   if (guildmaster !== undefined) yield* insertEvent(guildmaster.id, text);
 });
 

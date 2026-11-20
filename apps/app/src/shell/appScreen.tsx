@@ -1,15 +1,20 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
 import type { ReactNode } from "react";
+import { StyleSheet, View } from "react-native";
 import { Conversation } from "../conversation/conversation";
 import { PermissionsScreen } from "../editors/permissions";
 import type { ServiceClient } from "../foundation/client";
+import { useHasSidebar } from "../foundation/shellContext";
 import { LoreScreen } from "../lore/lore";
 import { RitualsScreen } from "../rituals/rituals";
 import { SettingsScreen } from "../settings/settings";
 import type { SettingsSectionId } from "../settings/settingsSections";
 import { UsageScreen } from "../usage";
 import { ArchiveScreen } from "./archivePage";
+import { ChannelPane } from "./channelPane";
+import { ChronicleActivity } from "./chronicleActivity";
 import { HomeScreen } from "./homeScreen";
+import { PaneHost } from "./paneHost";
 import { QuestListScreen } from "./questListPage";
 import type { RealmListing } from "./questTree";
 import type { Place } from "./sidebar";
@@ -21,6 +26,9 @@ type Destination = {
   openCount: number;
   openMission: MissionId | null;
   openThread: ThreadId | null;
+  /** The quest the Workshop covers, which keeps its panes as they were while the Workshop shows; null otherwise. */
+  parkedChannel: { id: string | null; name: string } | null;
+  parkedQuest: { openCount: number; openMission: MissionId; openThread: ThreadId | null } | null;
   place: Place;
   selectedMission: MissionId | null;
   settingsSection: SettingsSectionId;
@@ -28,8 +36,8 @@ type Destination = {
 
 /** Navigation operations exposed to the selected page, with top-level state kept in App. */
 interface Navigation {
-  closeMission: () => void;
   goTo: (place: Place) => void;
+  openChannel: (listing: RealmListing | null) => void;
   /** Shows the narrow window's main menu: the sidebar as a full screen. */
   openMenu: () => void;
   openMission: (id: MissionId) => void;
@@ -54,20 +62,6 @@ export function AppScreen({
   navigation: Navigation;
   view: Destination;
 }) {
-  if (view.openMission !== null)
-    return (
-      <Conversation
-        client={client}
-        key={`${view.openMission}:${view.openCount}`}
-        missionId={view.openMission}
-        // The Back of a quest shows only in a narrow window, which has no sidebar: it goes back to the main menu.
-        onBack={navigation.openMenu}
-        onOpenMission={navigation.openMission}
-        onSelectThread={navigation.selectThread}
-        onSetDetails={navigation.showDetails}
-        selectedThreadId={view.openThread}
-      />
-    );
   const quests = (listing: RealmListing) => (
     <QuestListScreen
       client={client}
@@ -79,6 +73,15 @@ export function AppScreen({
   const home = <HomeScreen client={client} onOpen={navigation.openMission} />;
   const screens = {
     Archived: <ArchiveScreen client={client} onOpen={navigation.openMission} />,
+    Channel: home,
+    Chronicle: (
+      <ChronicleActivity
+        client={client}
+        onOpenChannel={navigation.openChannel}
+        onOpenMission={navigation.openMission}
+        onOpenThread={navigation.openThread}
+      />
+    ),
     Home: home,
     Lore: <LoreScreen client={client} onBack={() => navigation.goTo("Home")} threadId={null} title="All lore" />,
     RealmQuests: view.listedRealm === null ? home : quests(view.listedRealm),
@@ -96,5 +99,66 @@ export function AppScreen({
       />
     ),
   } satisfies Record<Place, ReactNode>;
+  // A wide window shows a quest as a chain of panes; a narrow one keeps one conversation at a time.
+  const hasPanes = useHasSidebar();
+  const quest =
+    view.openMission === null
+      ? view.parkedQuest
+      : { openCount: view.openCount, openMission: view.openMission, openThread: view.openThread };
+  if (quest !== null && hasPanes) {
+    // The Workshop covers the whole content area, and the panes wait beneath it as they were, then come back (CHG-0563).
+    const isParked = view.openMission === null;
+    return (
+      <>
+        <View style={isParked ? local.parked : local.fill}>
+          <PaneHost
+            client={client}
+            isParked={isParked}
+            key={`${quest.openMission}:${quest.openCount}`}
+            missionId={quest.openMission}
+            onCloseMission={(channel) =>
+              navigation.openChannel(channel.id === null ? null : { id: channel.id, name: channel.name })
+            }
+            onOpenMission={navigation.openMission}
+            onOpenThread={navigation.selectThread}
+            openThread={quest.openThread}
+          />
+        </View>
+        {isParked && screens[view.place]}
+      </>
+    );
+  }
+  if (view.openMission !== null)
+    return (
+      <Conversation
+        client={client}
+        key={`${view.openMission}:${view.openCount}`}
+        missionId={view.openMission}
+        // The Back of a quest shows only in a narrow window, which has no sidebar: it goes back to the main menu.
+        onBack={navigation.openMenu}
+        onOpenMission={navigation.openMission}
+        onSelectThread={navigation.selectThread}
+        onSetDetails={navigation.showDetails}
+        selectedThreadId={view.openThread}
+      />
+    );
+  const channel =
+    view.place === "Channel" ? (view.listedRealm ?? { id: null, name: "Borderlands" }) : view.parkedChannel;
+  if (hasPanes && channel !== null) {
+    return (
+      <>
+        <View style={view.place === "Channel" ? local.fill : local.parked}>
+          <ChannelPane channel={channel} client={client} onOpenMission={navigation.openMission} />
+        </View>
+        {view.place !== "Channel" && screens[view.place]}
+      </>
+    );
+  }
   return screens[view.place];
 }
+
+const local = StyleSheet.create({
+  fill: { flex: 1 },
+  // Out of sight and out of the layout, but mounted: the panes keep their folds, shares and drafts for the way back.
+  parked: { display: "none" },
+});

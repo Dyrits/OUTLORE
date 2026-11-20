@@ -4,6 +4,7 @@ import { invalid, readStartChoices } from "../core/index.ts";
 import { readFileDiff } from "./activities.ts";
 import { admitOwnerText, admitRunnerChange, runnerOfOpened, runnerOfStarted } from "./admission.ts";
 import { setThreadBackups } from "./backups.ts";
+import { readChronicle } from "./chronicle.ts";
 import { listMissions } from "./dashboard.ts";
 import { deleteThread, previewDeletion } from "./deleting.ts";
 import { dismissPrompt, endMission, previewEnding, reopenMission } from "./ending.ts";
@@ -14,6 +15,8 @@ import { archiveThread, markThreadDone, restoreThread } from "./lifecycle.ts";
 import { readMission, readThreadTree } from "./missionDetail.ts";
 import { insertMission, insertQuest } from "./missions.ts";
 import { moveQuest } from "./questMoves.ts";
+import { placeQuestOrigin } from "./questOrigins.ts";
+import { readThreadAnchors, replyToMessage } from "./replies.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 import { readStartingContext } from "./startingContext.ts";
 import { readThreadPanel } from "./threadPanel.ts";
@@ -72,14 +75,32 @@ export const questsHandlers = (
     PreviewEnding: (given) => previewEnding(given.missionId, given.ending),
     PreviewStartingContext: (given) =>
       readStartingContext(given.parentThreadId, { harness: given.harness ?? null, model: given.model }, given.text),
+    ReadChronicle: () => readChronicle,
     ReadFileDiff: (read) => readFileDiff(read.threadId, read.activityId),
     ReadGuildHallRecap: (read) => readGuildHallRecap(read.since),
-    ReadGuildmaster: () => commands.run(readGuildmaster),
+    ReadGuildmaster: ({ channelId }) => commands.run(readGuildmaster(channelId)),
     ReadMission: (read) => readMission(read.missionId, read.threadId),
+    ReadThreadAnchors: (read) => readThreadAnchors(read.threadId),
     ReadThreadPanel: (read) => readThreadPanel(read.threadId, connectors),
     ReadThreadTree: (read) => readThreadTree(read.missionId),
     RenameMission: (rename) => change(renameMission(rename.missionId, rename.title)),
     ReopenMission: (reopen) => commands.run(reopenMission(reopen.missionId)),
+    ReplyToMessage: (reply) =>
+      Effect.gen(function* () {
+        const text = yield* admitOwnerText(reply.text, [], Effect.succeed(null));
+        return yield* commands.run(
+          commands.once(
+            reply.requestId,
+            reply._tag,
+            replyToMessage({
+              choice: { accountId: reply.accountId, effort: reply.effort, harness: reply.harness, model: reply.model },
+              messageId: reply.messageId,
+              realmPath: reply.realmPath ?? null,
+              text,
+            }),
+          ),
+        );
+      }),
     RestoreThread: (given) => commands.run(restoreThread(given.threadId)),
     ResumeThread: (resume) => threads.resume(resume.threadId).pipe(Effect.as(null)),
     RetryThread: (retry) => threads.retry(retry.threadId).pipe(Effect.as(null)),
@@ -130,7 +151,10 @@ export const questsHandlers = (
               true,
               start.realm ?? null,
               attachmentIds,
-            ).pipe(Effect.map((started) => changed(started, { threadsToWake: [started.threadId] }))),
+            ).pipe(
+              Effect.tap((started) => placeQuestOrigin(started.threadId, text)),
+              Effect.map((started) => changed(started, { threadsToWake: [started.threadId] })),
+            ),
           ),
         );
       }),
@@ -154,11 +178,14 @@ export const questsHandlers = (
     | "ReadFileDiff"
     | "ReadGuildHallRecap"
     | "ReadGuildmaster"
+    | "ReadChronicle"
     | "ReadMission"
+    | "ReadThreadAnchors"
     | "ReadThreadPanel"
     | "ReadThreadTree"
     | "RenameMission"
     | "ReopenMission"
+    | "ReplyToMessage"
     | "ResumeThread"
     | "RetryThread"
     | "SetThreadBackups"

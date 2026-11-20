@@ -33,8 +33,8 @@ export const RequestId = Schema.String.check(Schema.isMinLength(1), Schema.isMax
 export const ThreadState = Schema.Literals(["Running", "Waiting", "Attention", "Idle", "Done", "Failed", "Stopped"]);
 export type ThreadState = typeof ThreadState.Type;
 
-/** Who wrote a message: the owner, the thread's own agent, or another thread of the mission (thread-messaging). */
-export const SenderKind = Schema.Literals(["user", "agent", "thread"]);
+/** Who wrote a message: the owner, the thread's own agent, another thread of the mission, or Outlore (an errand's card). */
+export const SenderKind = Schema.Literals(["user", "agent", "thread", "system"]);
 export type SenderKind = typeof SenderKind.Type;
 
 /** The model a new quest starts on until the owner picks another (Claude Code's Sonnet 5.5). */
@@ -201,6 +201,8 @@ export const Message = Schema.Struct({
   isResult: Schema.Boolean,
   /** The model that wrote an agent reply, as its harness named it (such as `claude-sonnet-5-5`); null when unreported. */
   model: Schema.NullOr(Schema.String),
+  /** Message this agent reply answers, when it creates an anchor. */
+  replyToMessageId: Schema.optionalKey(Schema.NullOr(MessageId)),
   sender: SenderKind,
   sentAt: Schema.Number,
   sequence: Schema.Number,
