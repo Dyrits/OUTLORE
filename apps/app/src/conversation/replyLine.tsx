@@ -78,10 +78,11 @@ function ReplyCard({
   origin: string;
   /** The last exchange to quote, or null while the work's quest or errand is not loaded. */
   sample: LastExchange | null;
-  state: ThreadState | MissionState;
+  /** The state it was opened with, or none when it cannot be known while the quest is not loaded (or archived). */
+  state?: ThreadState | MissionState;
   title: string;
 }) {
-  const tone = stateTones[state];
+  const tone = state === undefined ? null : stateTones[state];
   return (
     <Pressable
       accessibilityLabel={label}
@@ -91,7 +92,7 @@ function ReplyCard({
     >
       <Text style={local.origin}>{origin}</Text>
       <View style={local.row}>
-        <View style={[local.dot, { backgroundColor: tone.color }]} />
+        {tone !== null && <View style={[local.dot, { backgroundColor: tone.color }]} />}
         <Text numberOfLines={1} style={local.title}>
           {shortened(title)}
         </Text>
@@ -114,7 +115,7 @@ function ReplyCard({
         </View>
       )}
       <Text style={local.meta}>
-        <Text style={{ color: tone.color }}>{stateLabels[state]}</Text>
+        {state !== undefined && <Text style={{ color: stateTones[state].color }}>{stateLabels[state]}</Text>}
         {meta}
       </Text>
     </Pressable>
@@ -204,7 +205,6 @@ export function QuestReplyLine({
       onPress={() => onOpen(missionId)}
       origin={label}
       sample={null}
-      state="Resting"
       title={title}
     />
   );

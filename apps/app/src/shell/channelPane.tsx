@@ -10,7 +10,8 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { LoreScreen } from "../lore/lore";
 import { RealmPanel } from "../quests/questPanel";
 import { ChannelQuests } from "./channelQuests";
-import { notchWidth, PaneNotches } from "./paneStrip";
+import { childNotchesOf } from "./childNotches";
+import { type NotchPart, notchWidth, PaneNotches } from "./paneStrip";
 
 export const channelId = "channel" as const;
 
@@ -42,7 +43,8 @@ export function ChannelPane({
 
 /**
  * A realm's pane on its own, with no quest open. While the realm has no quest, a notch on its right edge, a sword with
- * a "+", starts one (conversation-panes, CHG-0604).
+ * a "+", starts one (conversation-panes, CHG-0604). While it has quests, they show there instead: one notch for each
+ * active quest, as on any realm pane (CHG-0598).
  */
 export function StandaloneChannel({
   channel,
@@ -55,8 +57,10 @@ export function StandaloneChannel({
 }) {
   const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
   const [failure, setFailure] = useState<string | null>(null);
-  const isEmpty =
-    data !== undefined && data !== null && !data.missions.some((mission) => mission.workspaceId === channel.id);
+  // A "+N" notch asks the pane to open its Quests tab; a new object each press, so a second press asks again.
+  const [listRequest, setListRequest] = useState<{ id: string } | null>(null);
+  const quests = (data?.missions ?? []).filter((mission) => mission.workspaceId === channel.id);
+  const isEmpty = data !== undefined && data !== null && quests.length === 0;
   const start = () => {
     setFailure(null);
     client
@@ -68,15 +72,44 @@ export function StandaloneChannel({
       .then((started) => onOpenMission(started.missionId))
       .catch((reason) => setFailure(messageOf(reason)));
   };
+  const children = childNotchesOf(quests, new Set());
+  const parts: Array<NotchPart> = [
+    ...children.shown.map((child) => ({
+      id: `quest:${child.id}`,
+      kind: "quest" as const,
+      onReveal: () => onOpenMission(child.id),
+      state: child.state,
+      title: quests.find((mission) => mission.id === child.id)?.title ?? "",
+    })),
+    ...(children.more === null
+      ? []
+      : [
+          {
+            count: children.more.count,
+            id: "more-quests",
+            kind: "more" as const,
+            onReveal: () => setListRequest({ id: "quests" }),
+            state: children.more.state,
+            title: `Show ${children.more.count} more quests`,
+          },
+        ]),
+  ];
   return (
-    <View style={[local.fill, isEmpty && { paddingRight: notchWidth }]}>
-      <ChannelPane channel={channel} client={client} onOpenMission={onOpenMission} />
+    <View style={[local.fill, (parts.length > 0 || isEmpty) && { paddingRight: notchWidth }]}>
+      <ChannelPane
+        channel={channel}
+        client={client}
+        listRequest={listRequest ?? undefined}
+        onOpenMission={onOpenMission}
+      />
       {failure !== null && <Text style={local.failure}>{failure}</Text>}
-      {isEmpty && (
+      {isEmpty ? (
         <PaneNotches
           parts={[{ id: "new-quest", isNew: true, kind: "quest", onReveal: start, state: null, title: "New quest" }]}
           side="right"
         />
+      ) : (
+        parts.length > 0 && <PaneNotches parts={parts} side="right" />
       )}
     </View>
   );

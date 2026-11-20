@@ -224,7 +224,7 @@ export const threadsLayer = Layer.effectContext(
           folderRoot: isInWorkspace ? cwd : scratchRoot,
           harness: turn.harness,
           images: imagesOf(turn.attachments),
-          ...(turn.isResumed ? { isResuming: true } : {}),
+          ...(turn.isBackgroundWake ? { isResuming: true } : {}),
           model: turn.model,
           note: history === null ? note : `${history}\n\n${note}`,
           onEvent,
@@ -272,7 +272,7 @@ export const threadsLayer = Layer.effectContext(
      * work runs as a turn of the thread, so its replies are recorded and its commands may be allowed. Answers whether
      * the work is taken; a thread that may not work now (Stopped, held, over budget) refuses, and the process closes.
      */
-    const resumeWork = (threadId: string): Effect.Effect<boolean> =>
+    const admitBackgroundWake = (threadId: string): Effect.Effect<boolean> =>
       Effect.suspend(() => {
         if (active.has(threadId)) return Effect.succeed(true);
         return Effect.gen(function* () {
@@ -284,7 +284,7 @@ export const threadsLayer = Layer.effectContext(
           return true;
         }).pipe(Effect.orDie);
       });
-    harness.onResume?.(resumeWork);
+    harness.onResume?.(admitBackgroundWake);
 
     const interrupt = Effect.fnUntraced(function* (threadId: string) {
       if (!active.has(threadId) || !(yield* harness.interrupt(threadId))) return false;

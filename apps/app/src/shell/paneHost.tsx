@@ -110,6 +110,14 @@ export function PaneHost({
       ),
     [slots],
   );
+  // A conversation shown in a pane is read (CHG-0569): its replies, results and requests are no longer unread, and
+  // rereading after each change follows the stream while it stays on show. Parked panes are out of sight, so wait.
+  const shownKey = [...openIds].join("\0");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the key names the open panes whose read state changes.
+  useEffect(() => {
+    if (isParked) return;
+    for (const id of openIds) client.request({ _tag: "MarkThreadRead", threadId: id }).catch(() => {});
+  }, [client, isParked, shownKey, data]);
   const openSlots = slots.filter((slot) => slot.kind === "pane");
   const paneCount = openSlots.length;
   const dragStart = useRef(slots);
@@ -128,7 +136,8 @@ export function PaneHost({
     });
   };
   const revealThread = (threadId: ThreadId) => {
-    setExpanded((current) => (current === null ? null : threadId));
+    // Opening a thread, from a notch or a list, exits the expanded layout: its pane is revealed instead.
+    setExpanded(null);
     setMemory((current) => (current.folded.has(threadId) ? revealedPane(current, threadId) : current));
     onOpenThread(threadId);
   };
@@ -373,7 +382,7 @@ export function PaneHost({
                     </>
                   }
                   client={client}
-                  errands={threads.filter((thread) => thread.parentId !== null)}
+                  errands={threads.filter((thread) => thread.parentId !== null && thread.isArchived !== true)}
                   onOpened={revealThread}
                   parent={data !== null && data.thread.id === quest ? data.thread : null}
                 />,

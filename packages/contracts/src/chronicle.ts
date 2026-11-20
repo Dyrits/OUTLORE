@@ -1,10 +1,25 @@
 import { Schema } from "effect";
-import { MissionId, ThreadId, WorkspaceId } from "./ids.ts";
+import { MessageId, MissionId, ThreadId, WorkspaceId } from "./ids.ts";
 
 export const ChronicleItem = Schema.Struct({
   at: Schema.Number,
+  /** How many unread messages one update covers; one for every entry that is not a group of replies. */
+  count: Schema.Number,
   id: Schema.String,
-  kind: Schema.Literals(["RealmOpened", "QuestOpened", "Finished", "Archived", "Waiting", "Failed"]),
+  /** Whether the owner has not read this update yet: reading clears the indicator, while a request stays until answered. */
+  isUnread: Schema.Boolean,
+  kind: Schema.Literals([
+    "RealmOpened",
+    "QuestOpened",
+    "Finished",
+    "Archived",
+    "Waiting",
+    "Failed",
+    "Replies",
+    "Moved",
+  ]),
+  /** The latest message of an unread update, to read it in its conversation; null for what is not one message. */
+  messageId: Schema.NullOr(MessageId),
   missionId: Schema.NullOr(MissionId),
   realmId: Schema.NullOr(WorkspaceId),
   threadId: Schema.NullOr(ThreadId),

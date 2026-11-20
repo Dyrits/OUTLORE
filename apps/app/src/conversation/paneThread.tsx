@@ -5,11 +5,15 @@ import type { ServiceClient } from "../foundation/client";
 import type { QuestPage } from "../foundation/pageNavigation";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { urgencyOf } from "../shell/childNotches";
 import { PaneTabs } from "./paneTabs";
 import { useQuestPages } from "./questPages";
 import { questPanelOf } from "./questPanelOf";
 import { NewReplyCard, ReplyLine } from "./replyLine";
 import { ThreadPane } from "./threadPane";
+
+/** Where work that is over sits in the tab's list: after the active errands, which read by urgency. */
+const last = 99;
 
 /**
  * One thread's conversation in a pane (CHG-0561): it reads its own thread, so panes side by side each stay current,
@@ -74,7 +78,12 @@ export function PaneThread({
                     onPress={onStartErrand}
                   />
                   {detail.threads
-                    .filter((thread) => thread.parentId === threadId)
+                    .filter((thread) => thread.parentId === threadId && thread.isArchived !== true)
+                    .sort(
+                      (current, next) =>
+                        (urgencyOf(current.shownState) ?? last) - (urgencyOf(next.shownState) ?? last) ||
+                        next.lastActivityAt - current.lastActivityAt,
+                    )
                     .map((thread) => (
                       <ReplyLine key={thread.id} onOpen={onOpenThread} thread={thread} />
                     ))}

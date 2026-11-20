@@ -129,7 +129,7 @@ export const listPending = Effect.fnUntraced(function* (threadId: string, isStee
         m.is_result AS isResult, (${isOwnerMessageOf(sql)}) AS isOwner,
         m.realm_path AS realmPath, w.name AS realmName, m.viewing AS viewing
       FROM messages m LEFT JOIN threads s ON s.id = m.sender_thread_id LEFT JOIN workspaces w ON w.path = m.realm_path
-      WHERE m.thread_id = ${threadId} AND m.sender_kind IN ('user', 'thread') AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0
+      WHERE m.thread_id = ${threadId} AND ${isPendingDeliveryOf(sql)}
         AND ${isSteering ? sql`m.is_queued = 0` : sql`1 = 1`}
       ORDER BY m.sequence`;
   // The owner's slash-names become pointers to the skills' instructions, as the thread's workspace sees them.
@@ -157,12 +157,20 @@ export const listPending = Effect.fnUntraced(function* (threadId: string, isStee
   );
 });
 
+/**
+ * What makes a message a delivery still waiting for a turn (thread-messaging): an owner or thread message that no
+ * turn has delivered and that is not conversation-only. One fragment for every reading, so a new sender kind or
+ * flag changes here alone.
+ */
+export const isPendingDeliveryOf = (sql: SqlClient.SqlClient) =>
+  sql`m.sender_kind IN ('user', 'thread') AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0`;
+
 /** The mission's threads, other than `exceptThreadId`, with messages waiting that could start a turn. */
 export const listThreadsWithPending = Effect.fnUntraced(function* (missionId: string, exceptThreadId: string) {
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql<{ threadId: string }>`
       SELECT DISTINCT m.thread_id AS threadId FROM messages m JOIN threads t ON t.id = m.thread_id
-      WHERE m.mission_id = ${missionId} AND m.sender_kind IN ('user', 'thread') AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0
+      WHERE m.mission_id = ${missionId} AND ${isPendingDeliveryOf(sql)}
         AND t.state NOT IN ('Underway', 'Attention', 'Stopped', 'Failed') AND t.id != ${exceptThreadId}`;
   return rows.map((row) => row.threadId);
 });

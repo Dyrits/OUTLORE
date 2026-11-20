@@ -19,7 +19,7 @@ export type Admitted = {
   readonly effort: EffortChoice;
   readonly harness: HarnessName;
   /** Whether the turn has no message: the harness woke itself, and its work is run and recorded as a turn. */
-  readonly isResumed: boolean;
+  readonly isBackgroundWake: boolean;
   readonly messages: ReadonlyArray<string>;
   readonly missionId: string;
   readonly model: ModelChoice;
@@ -57,11 +57,11 @@ export const readRunningTurnId = Effect.fnUntraced(function* (threadId: string) 
 });
 
 /**
- * Admits pending messages only when the thread, realm, workspace, budget, and running limit permit work. A resumed turn
+ * Admits pending messages only when the thread, realm, workspace, budget, and running limit permit work. A background wake
  * is admitted under the same limits with no message: its harness began work on its own, such as Claude Code when a
  * background command ended, and messages that wait are left for the turn after it.
  */
-export const admitTurn = Effect.fnUntraced(function* (threadId: string, isResumed = false) {
+export const admitTurn = Effect.fnUntraced(function* (threadId: string, isBackgroundWake = false) {
   const sql = yield* SqlClient.SqlClient;
   const changes = yield* Changes;
   return yield* sql.withTransaction(
@@ -74,13 +74,15 @@ export const admitTurn = Effect.fnUntraced(function* (threadId: string, isResume
         effort: EffortChoice;
         harness: HarnessName;
         accountId: string | null;
-      }>`SELECT state, mission_id AS missionId, session_id AS sessionId, model, effort, harness,
-            account_id AS accountId FROM threads WHERE id = ${threadId}`;
+      }>`SELECT t.state, t.mission_id AS missionId, t.session_id AS sessionId, t.model, t.effort, t.harness,
+            t.account_id AS accountId FROM threads t JOIN missions m ON m.id = t.mission_id
+          WHERE t.id = ${threadId} AND t.archived_at IS NULL AND t.is_deleting = 0
+            AND (${!isBackgroundWake} OR m.ending IS NULL)`;
       // Attention can hold a turn still running in its harness; Stopped always needs an explicit resume.
       if (thread === undefined || ["Underway", "Attention", "Stopped"].includes(thread.state)) return null;
       if (yield* isQuestRealmArchived(thread.missionId)) return null;
       const pending = yield* listPending(threadId, false);
-      if (pending.length === 0 && !isResumed) return null;
+      if (pending.length === 0 && !isBackgroundWake) return null;
       if ((yield* runningCountOf(thread.missionId)) >= maxRunning) return null;
       const now = yield* Clock.currentTimeMillis;
       const workspace = yield* readThreadWorkspace(threadId);
@@ -97,11 +99,11 @@ export const admitTurn = Effect.fnUntraced(function* (threadId: string, isResume
         return null;
       }
       // A runner change is recorded when it actually runs, not while messages wait for admission.
-      if (!isResumed) yield* recordPendingHandover(threadId, now);
+      if (!isBackgroundWake) yield* recordPendingHandover(threadId, now);
       const turnId = yield* newId;
       yield* sql`INSERT INTO turns (id, thread_id, status, started_at, harness, model)
           VALUES (${turnId}, ${threadId}, 'running', ${now}, ${thread.harness}, ${thread.model})`;
-      const taken = isResumed ? [] : pending;
+      const taken = isBackgroundWake ? [] : pending;
       yield* deliverMessages(
         taken.map((message) => message.id),
         turnId,
@@ -114,7 +116,7 @@ export const admitTurn = Effect.fnUntraced(function* (threadId: string, isResume
         attachments: taken.flatMap((message) => message.attachments),
         effort: thread.effort,
         harness: thread.harness,
-        isResumed,
+        isBackgroundWake,
         messages: taken.map((message) => message.text),
         missionId: thread.missionId,
         model: thread.model,

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 /**
@@ -10,9 +10,6 @@ import { dirname, join, resolve } from "node:path";
  * Verified with `codex sandbox` on codex-cli 0.171.0, 2026-11-20.
  */
 export type GitGrants = Readonly<Record<string, "read" | "write">>;
-
-/** How deep below `modules` a submodule's Git folder is looked for. */
-const moduleDepth = 4;
 
 const isDirectory = (path: string) => {
   try {
@@ -57,14 +54,15 @@ const gitFoldersOf = (dotGit: string): { readonly own: string; readonly shared: 
 };
 
 /** The Git folders of the submodules under `modules`, which hold their own `hooks` and `config`. */
-const moduleFoldersOf = (modules: string, depth: number): ReadonlyArray<string> => {
-  if (depth === 0 || !isDirectory(modules)) return [];
+const moduleFoldersOf = (modules: string): ReadonlyArray<string> => {
   try {
-    return readdirSync(modules).flatMap((name) => {
-      const folder = join(modules, name);
-      if (!isDirectory(folder)) return [];
-      const isGitFolder = existsSync(join(folder, "HEAD"));
-      return [...(isGitFolder ? [folder] : []), ...moduleFoldersOf(join(folder, "modules"), depth - 1)];
+    if (!lstatSync(modules).isDirectory()) return [];
+    return readdirSync(modules, { withFileTypes: true }).flatMap((entry) => {
+      if (!entry.isDirectory()) return [];
+      const folder = join(modules, entry.name);
+      // A slash in a submodule name adds a directory before its Git folder.
+      if (!existsSync(join(folder, "HEAD"))) return moduleFoldersOf(folder);
+      return [folder, ...moduleFoldersOf(join(folder, "modules"))];
     });
   } catch {
     return [];
@@ -80,7 +78,8 @@ export const gitGrantsOf = (folder: string): GitGrants => {
   const shared = realOf(folders.shared);
   const grants: Record<string, "read" | "write"> = { [own]: "write", [shared]: "write" };
   // Later entries are narrower paths, and a narrower entry wins over the folder that holds it.
-  for (const gitFolder of new Set([own, shared, ...moduleFoldersOf(join(shared, "modules"), moduleDepth)])) {
+  const gitFolders = new Set([own, shared].flatMap((root) => [root, ...moduleFoldersOf(join(root, "modules"))]));
+  for (const gitFolder of gitFolders) {
     grants[join(gitFolder, "hooks")] = "read";
     grants[join(gitFolder, "config")] = "read";
   }

@@ -92,6 +92,7 @@ export const Results = {
   ListSkills: Schema.Array(Skill),
   ListWorkspaceEntries: Schema.Array(WorkspaceEntry),
   MarkThreadDone: Schema.Null,
+  MarkThreadRead: Schema.Null,
   MoveQuest: Schema.Null,
   OpenThread: OpenThreadResult,
   PinIntel: Schema.Null,

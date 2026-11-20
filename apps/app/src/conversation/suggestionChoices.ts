@@ -1,8 +1,7 @@
-import { type Settings, type Tier, TierName, type WorkspaceChoice } from "@outlore/contracts";
+import { type Settings, type Tier, TierName, type WorkspaceChoice, type WorkspaceId } from "@outlore/contracts";
 import { isSameStack } from "../editors/presets";
 import type { Runner } from "../editors/runners";
 import { realmLabelOf } from "../realms/realmLabels";
-import { tiedRealmsOf } from "../realms/tiedRealms";
 
 /** One Companion the proposal card offers: the owner's default, or a tier the owner set in the Workshop. */
 export type CompanionChoice = {
@@ -43,17 +42,17 @@ export const hasTiers = (choices: ReadonlyArray<CompanionChoice>) => choices.len
 
 /** One realm the proposal card offers: the folder a new quest is placed by, and its label. */
 export type RealmOption = {
-  readonly id: string;
+  readonly id: WorkspaceId;
   readonly label: string;
-  readonly path: string;
+  readonly path: string | null;
 };
 
 /**
- * The realms the proposal card offers, by name: only realms tied to a folder, labelled by the shared rule that adds the
- * parent folder when two active realms share a name (mission-tracking, Realm names).
+ * The realms the proposal card offers, every active realm, labelled by the shared rule that adds the parent folder
+ * when two active realms share a name (mission-tracking, Realm names).
  */
 export const realmOptionsOf = (realms: ReadonlyArray<WorkspaceChoice>): ReadonlyArray<RealmOption> =>
-  tiedRealmsOf(realms)
+  realms
     .map((realm) => ({ id: realm.id, label: realmLabelOf(realm, realms), path: realm.path }))
     // Realms sharing a name are told apart, and ordered, by their labels.
     .sort((current, next) => current.label.localeCompare(next.label));

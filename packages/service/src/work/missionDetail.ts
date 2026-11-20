@@ -12,6 +12,7 @@ import { readChatter } from "./chatter.ts";
 import { lastSampleOf } from "./exchangeSamples.ts";
 import { listHandovers } from "./handover.ts";
 import { threadActionsOf } from "./lifecycle.ts";
+import { isPendingDeliveryOf } from "./messaging.ts";
 import { shownStatesOf } from "./missionStates.ts";
 import { listMissionSummaries } from "./missions.ts";
 import { readOwnCopy } from "./ownCopies.ts";
@@ -43,8 +44,7 @@ const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId:
         (SELECT COALESCE(MIN(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS openedAt,
         (SELECT COALESCE(MAX(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS lastActivityAt,
         t.harness, t.model,
-        (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id AND m.sender_kind IN ('user', 'thread')
-          AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0) AS waitingCount,
+        (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id AND ${isPendingDeliveryOf(sql)}) AS waitingCount,
         ${sql.literal(lastSampleOf("t.id", "user"))} AS lastOwnerText, ${sql.literal(lastSampleOf("t.id", "agent"))} AS lastReplyText
       FROM tree JOIN threads t ON t.id = tree.id
       WHERE t.mission_id = ${missionId} AND (${includeArchived ? 1 : 0} = 1 OR t.archived_at IS NULL)

@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "@effect/vitest";
 import { gitGrantsOf } from "../../src/harness/codexGitGrants.ts";
-import { vaultProfileArgsOf, vaultProfileName } from "../../src/harness/codexVaultProfile.ts";
+import { vaultProfileArgsOf, vaultProfileConfigOf, vaultProfileName } from "../../src/harness/codexVaultProfile.ts";
 import { temporary } from "../fixtures/service.ts";
 import { canApplySeatbelt } from "../support/environment.ts";
 
@@ -69,6 +69,28 @@ describe("the Git grants of Codex's permission profile (ADR 0025)", () => {
     expect(gitGrantsOf(root)).toMatchObject({
       [join(module, "hooks")]: "read",
       [join(module, "config")]: "read",
+    });
+  });
+
+  it("keeps Git rules read-only for multi-component and nested submodule names", () => {
+    const root = realpathSync(temporary("outlore-git-"));
+    const shared = join(root, ".git");
+    const library = join(shared, "modules", "vendor", "shared", "library");
+    const nested = join(library, "modules", "tools", "format");
+    mkdirSync(nested, { recursive: true });
+    writeFileSync(join(library, "HEAD"), "ref: refs/heads/main\n");
+    writeFileSync(join(nested, "HEAD"), "ref: refs/heads/main\n");
+
+    const profile = vaultProfileConfigOf(null, gitGrantsOf(root));
+
+    expect(profile[`permissions.${vaultProfileName}.filesystem`]).toEqual({
+      [shared]: "write",
+      [join(shared, "hooks")]: "read",
+      [join(shared, "config")]: "read",
+      [join(library, "hooks")]: "read",
+      [join(library, "config")]: "read",
+      [join(nested, "hooks")]: "read",
+      [join(nested, "config")]: "read",
     });
   });
 });

@@ -1,8 +1,8 @@
 // The rules of the pane chain (CHG-0561): which threads the window shows as panes, how the room is shared, and how a
 // pane is folded, brought back or resized. The window only draws what these return, so they run in plain Node.
 
-/** The most panes shown at once. */
-export const maxPanes = 4;
+/** The most panes shown at once (conversation-panes, CHG-0566): the channel, the quest and one errand. */
+export const maxPanes = 3;
 /** The least width of an open pane, in pixels. */
 export const minPaneWidth = 380;
 

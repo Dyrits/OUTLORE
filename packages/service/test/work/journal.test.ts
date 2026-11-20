@@ -287,7 +287,7 @@ describe("keeping a mission's journal", () => {
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       const child = yield* open(threadId, "Child");
-      yield* rename(missionId, child.threadId, "Child");
+      yield* rename(child.threadId, "Child");
       yield* settle(missionId, (detail) => detail.thread.state === "Resting", child.threadId);
       yield* record(child.threadId, { entry: "Child's decision." });
       const preview = yield* call({ _tag: "PreviewDeletion", threadId: child.threadId });

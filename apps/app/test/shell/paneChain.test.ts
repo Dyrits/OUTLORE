@@ -62,23 +62,26 @@ describe("how the panes share the window", () => {
     expect(layout(["quest"])).toEqual([{ depth: 0, id: "quest", kind: "pane", width: wide }]);
   });
 
-  it("gives four panes a quarter each", () => {
-    const slots = layout(["quest", "a", "a1", "a2"]);
-    expect(panes(slots).map((slot) => slot.width)).toEqual([500, 500, 500, 500]);
+  it("gives three panes a third each", () => {
+    const slots = layout(["quest", "a", "a1"], {}, 1500);
+    expect(panes(slots).map((slot) => slot.width)).toEqual([500, 500, 500]);
   });
 
-  it("never shows more than four panes and folds the earlier ones of a longer chain to strips", () => {
+  it("never shows more than three panes and folds the earlier ones of a longer chain to strips", () => {
     const slots = layout(["quest", "a", "a1", "a2", "a3"]);
-    expect(panes(slots).map((slot) => slot.id)).toEqual(["a", "a1", "a2", "a3"]);
-    expect(strips(slots)).toEqual([{ depth: 0, id: "quest", kind: "strip", reason: "overflow", width: 0 }]);
+    expect(panes(slots).map((slot) => slot.id)).toEqual(["a1", "a2", "a3"]);
+    expect(strips(slots)).toEqual([
+      { depth: 0, id: "quest", kind: "strip", reason: "overflow", width: 0 },
+      { depth: 1, id: "a", kind: "strip", reason: "overflow", width: 0 },
+    ]);
     expect(slots.reduce((sum, slot) => sum + slot.width, 0)).toBe(wide);
   });
 
-  it("shows fewer panes in a window too narrow for four, folding the earliest to strips", () => {
+  it("shows fewer panes in a window too narrow for three, folding the earliest to strips", () => {
     const slots = layout(["quest", "a", "a1", "a2"], {}, 1100);
     expect(panes(slots).map((slot) => slot.id)).toEqual(["a1", "a2"]);
     expect(strips(slots).map((slot) => [slot.id, slot.reason])).toEqual([
-      ["quest", "narrow"],
+      ["quest", "overflow"],
       ["a", "narrow"],
     ]);
     for (const slot of panes(slots)) expect(slot.width).toBeGreaterThanOrEqual(minPaneWidth);
@@ -162,11 +165,11 @@ describe("folding and unfolding a pane", () => {
     expect([...revealedPane(folded, "a").folded]).toEqual([]);
   });
 
-  it("brings a strip back from the overflow by folding the next pane that fits least", () => {
+  it("brings a strip back from the overflow by folding the next panes that fit least", () => {
     const chain = ["quest", "a", "a1", "a2", "a3"];
     const slots = layout(chain, revealedPane(memory, "quest"));
-    expect(panes(slots).map((slot) => slot.id)).toEqual(["quest", "a1", "a2", "a3"]);
-    expect(strips(slots).map((slot) => slot.id)).toEqual(["a"]);
+    expect(panes(slots).map((slot) => slot.id)).toEqual(["quest", "a2", "a3"]);
+    expect(strips(slots).map((slot) => slot.id)).toEqual(["a", "a1"]);
   });
 
   it("brings a narrow strip back by folding the panes next to it that are not shown", () => {
@@ -207,8 +210,8 @@ describe("dragging the edge between two panes", () => {
 });
 
 describe("the limits", () => {
-  it("allows four panes", () => {
-    expect(maxPanes).toBe(4);
+  it("allows three panes", () => {
+    expect(maxPanes).toBe(3);
   });
 });
 
@@ -236,39 +239,39 @@ describe("equal widths", () => {
   });
 });
 
-describe("the Chronicle as the first level of the chain", () => {
-  const chronicle = "chronicle";
+describe("the channel as the first level of the chain", () => {
+  const channel = "channel";
 
-  it("shares the room equally with a quest and two errands: a quarter each", () => {
+  it("shares the room equally with a quest and an errand: a third each", () => {
     const slots = layoutOf({
-      available: 1600,
-      chain: [chronicle, "quest", "a", "a1"],
+      available: 1500,
+      chain: [channel, "quest", "a"],
       memory: emptyPaneMemory<string>(),
     });
-    expect(slots.map((slot) => slot.id)).toEqual([chronicle, "quest", "a", "a1"]);
-    expect(slots.every((slot) => slot.kind === "pane" && slot.width === 400)).toBe(true);
+    expect(slots.map((slot) => slot.id)).toEqual([channel, "quest", "a"]);
+    expect(slots.every((slot) => slot.kind === "pane" && slot.width === 500)).toBe(true);
   });
 
-  it("is the first to fold when the chain is longer than four", () => {
+  it("is the first to fold when the chain outgrows three", () => {
     const slots = layoutOf({
-      available: 1700,
-      chain: [chronicle, "quest", "a", "a1", "a2"],
+      available: 1600,
+      chain: [channel, "quest", "a", "a1"],
       memory: emptyPaneMemory<string>(),
     });
-    expect(slots[0]).toMatchObject({ id: chronicle, kind: "strip", reason: "overflow" });
+    expect(slots[0]).toMatchObject({ id: channel, kind: "strip", reason: "overflow" });
     expect(slots.slice(1).every((slot) => slot.kind === "pane")).toBe(true);
   });
 
   it("is the first to fold when the window is too narrow for the panes", () => {
-    const slots = layoutOf({ available: 1100, chain: [chronicle, "quest", "a"], memory: emptyPaneMemory<string>() });
-    expect(slots[0]).toMatchObject({ id: chronicle, kind: "strip", reason: "narrow" });
+    const slots = layoutOf({ available: 1100, chain: [channel, "quest", "a"], memory: emptyPaneMemory<string>() });
+    expect(slots[0]).toMatchObject({ id: channel, kind: "strip", reason: "narrow" });
   });
 
   it("folds when the frame says it is folded, and the quest and its errands share what is left", () => {
     const slots = layoutOf({
       available: 1244,
-      chain: [chronicle, "quest", "a"],
-      memory: foldedPane(emptyPaneMemory<string>(), chronicle),
+      chain: [channel, "quest", "a"],
+      memory: foldedPane(emptyPaneMemory<string>(), channel),
     });
     expect(slots.map((slot) => [slot.kind, slot.width])).toEqual([
       ["strip", 0],
@@ -277,7 +280,7 @@ describe("the Chronicle as the first level of the chain", () => {
     ]);
   });
 
-  it("leaves a chain with no Chronicle as it was", () => {
+  it("leaves a chain with no channel as it was", () => {
     const slots = layoutOf({ available: 1200, chain: ["quest", "a"], memory: emptyPaneMemory<string>() });
     expect(slots.map((slot) => slot.width)).toEqual([600, 600]);
   });

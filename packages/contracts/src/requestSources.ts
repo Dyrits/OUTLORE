@@ -74,6 +74,7 @@ export const requestSourceRules = {
   ListSkills: rule(false, (given) => given.workspacePath),
   ListWorkspaceEntries: rule(false, (given) => given.workspacePath),
   MarkThreadDone: shared,
+  MarkThreadRead: shared,
   MoveQuest: shared,
   OpenThread: shared,
   PinIntel: shared,

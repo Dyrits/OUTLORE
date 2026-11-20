@@ -14,6 +14,7 @@ import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
 import { FoldChevron } from "../ui/foldChevron";
 import { SettingsIcon } from "../ui/settingsIcons";
+import { unreadCountOf } from "./chronicleFeed";
 import { DropTarget, RealmDragSource } from "./questDrag";
 import { placementsOf, type RealmListing, reorderedRealmIds, toggledFold } from "./questTree";
 import { NewQuestIcon, NewRealmIcon, useRowActions } from "./railActions";
@@ -77,6 +78,9 @@ export function Sidebar({
 }) {
   const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
+  // What the Chronicle's badge counts: the updates the owner has not read (CHG-0569).
+  const { data: chronicle } = useServiceQuery(client, { _tag: "ReadChronicle" }, "chronicle-badge");
+  const unreadCount = unreadCountOf(chronicle ?? []);
   const placements = placementsOf(data?.missions ?? [], data?.workspaces ?? []);
   // The menu that makes a realm, tied to a folder or to none.
   const [isCreating, setIsCreating] = useState(false);
@@ -219,6 +223,11 @@ export function Sidebar({
               style={(state) => [local.chronicleRow, (state.pressed || isHovered(state)) && local.rowHovered]}
             >
               <Text style={local.chronicleTitle}>Chronicle</Text>
+              {unreadCount > 0 && (
+                <View style={local.chronicleBadge}>
+                  <Text style={local.chronicleBadgeText}>{unreadCount}</Text>
+                </View>
+              )}
             </Pressable>
             <Divider />
           </>

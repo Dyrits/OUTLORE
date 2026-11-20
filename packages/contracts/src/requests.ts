@@ -156,6 +156,8 @@ export const ListMissions = Schema.TaggedStruct("ListMissions", {
 });
 /** Where the Chronicler's conversation is; the service makes it on first use. */
 export const ReadChronicle = Schema.TaggedStruct("ReadChronicle", {});
+/** Records that the owner is reading a thread's conversation now, so its replies, results and requests are no longer unread. */
+export const MarkThreadRead = Schema.TaggedStruct("MarkThreadRead", { threadId: ThreadId });
 export const ReadGuildmaster = Schema.TaggedStruct("ReadGuildmaster", {
   channelId: Schema.optional(Schema.NullOr(WorkspaceId)),
 });
@@ -372,6 +374,7 @@ export const Request = Schema.Union([
   ReadStartChoices,
   ReadGuildmaster,
   ReadChronicle,
+  MarkThreadRead,
   ReadGuildHallRecap,
   VisitGuildHall,
   RenameMission,

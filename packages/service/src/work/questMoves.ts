@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound } from "../core/index.ts";
 import { changed, unchanged } from "./followUps.ts";
@@ -46,10 +46,15 @@ export const moveQuest = Effect.fn("moveQuest")(function* (missionId: string, re
   const [misplaced] = yield* sql<{ count: number }>`SELECT COUNT(*) AS count FROM threads
     WHERE mission_id = ${missionId} AND workspace_id IS NOT ${realmId}`;
   if ((misplaced?.count ?? 0) === 0) return unchanged(null);
-  const [source] = yield* sql<{ name: string | null }>`SELECT w.name FROM missions m
+  const [source] = yield* sql<{ workspaceId: string | null; name: string | null }>`SELECT w.id AS workspaceId,
+    w.name FROM missions m
     JOIN threads top ON top.id = m.top_thread_id LEFT JOIN workspaces w ON w.id = top.workspace_id
     WHERE m.id = ${missionId}`;
   yield* sql`UPDATE threads SET workspace_id = ${realmId} WHERE mission_id = ${missionId}`;
+  // The move goes to History as a routine event (CHG-0569): where the quest came from and went, once per move.
+  const at = yield* Clock.currentTimeMillis;
+  yield* sql`INSERT INTO quest_moves (id, mission_id, from_workspace_id, to_workspace_id, at)
+    VALUES (${crypto.randomUUID()}, ${missionId}, ${source?.workspaceId ?? null}, ${realmId}, ${at})`;
   yield* placeQuestOrigin(mission.topThreadId);
   const held = yield* sql<{ id: string }>`SELECT id FROM threads
     WHERE mission_id = ${missionId} AND state = 'Attention' AND blocker = 'MissingWorkspace' AND is_deleting = 0`;

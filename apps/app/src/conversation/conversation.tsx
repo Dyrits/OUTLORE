@@ -1,5 +1,5 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
@@ -54,6 +54,11 @@ export function Conversation({
   // The quest's side panel is shown by the window's frame, beside the top bar's icon, not by this screen. It holds
   // the open thread's groups too: while another thread loads, the one before stays.
   const shown = detail ?? data;
+  // The conversation on show is read (CHG-0569): its replies, results and requests are no longer unread.
+  const shownId = shown?.thread.id ?? null;
+  useEffect(() => {
+    if (shownId !== null) client.request({ _tag: "MarkThreadRead", threadId: shownId }).catch(() => {});
+  }, [client, shownId]);
   const hasSideQuests = data?.threads.some((thread) => thread.parentId !== null) ?? false;
   useQuestPanel(shown && questPanelOf({ client, detail: shown, onSelectThread: setSelectedId, pages }));
   if (pages.screen !== null) return pages.screen;

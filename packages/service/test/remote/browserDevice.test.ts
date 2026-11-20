@@ -184,7 +184,10 @@ describe("a browser pairing with a running host and using it", () => {
           state: null,
           workspaceId: null,
         });
-        expect(missions).toMatchObject({ missions: [{ title: "Quest" }] });
+        // The quest read back is the one the browser started: its id names it even before its title's first turn.
+        expect(missions).toMatchObject({
+          missions: [{ id: (started.value as { missionId: string }).missionId, title: "Quest" }],
+        });
         link.close();
       }),
     ),

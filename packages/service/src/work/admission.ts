@@ -3,6 +3,7 @@ import { SqlClient, type SqlError } from "effect/sql";
 import { invalid, readSettings, type ServiceFailure } from "../core/index.ts";
 import { type Runner, type RunnerChoice, runnerOf } from "../harness/index.ts";
 import { chooseThreadRunner } from "./handover.ts";
+import { isPendingDeliveryOf } from "./messaging.ts";
 import { imageRefusalOf, readThreadRunner } from "./vision.ts";
 
 // Admitting an owner's message (message-attachments): the text must say something unless files come with it, and a
@@ -59,7 +60,7 @@ export const admitOwnerText = Effect.fnUntraced(function* (
 export const refuseWaitingImages = Effect.fnUntraced(function* (threadId: string, runner: Readable) {
   const sql = yield* SqlClient.SqlClient;
   const waiting = yield* sql<{ id: string }>`SELECT a.id FROM attachments a JOIN messages m ON m.id = a.message_id
-      WHERE m.thread_id = ${threadId} AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0 AND m.sender_kind IN ('user', 'thread') LIMIT 1`;
+      WHERE m.thread_id = ${threadId} AND ${isPendingDeliveryOf(sql)} LIMIT 1`;
   yield* refuseUnreadableImages(
     waiting.map((row) => row.id),
     Effect.succeed(runner),

@@ -82,8 +82,11 @@ describe("offering realms on a quest proposal", () => {
     expect(options.map((option) => option.path)).toEqual(["/client-a/app", "/client-b/app"]);
   });
 
-  it("keeps a unique name as it is and leaves out a realm tied to no folder", () => {
+  it("keeps a unique name as it is and offers a realm tied to no folder too", () => {
     const options = realmOptionsOf([realm("g", "Garden", "/home/garden"), realm("n", "Notes", null)]);
-    expect(options).toEqual([{ id: "g", label: "Garden", path: "/home/garden" }]);
+    expect(options).toEqual([
+      { id: "g", label: "Garden", path: "/home/garden" },
+      { id: "n", label: "Notes", path: null },
+    ]);
   });
 });

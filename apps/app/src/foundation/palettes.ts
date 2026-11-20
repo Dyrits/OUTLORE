@@ -50,8 +50,6 @@ const iskiosDark = {
   successSoft: "#1d3a2b",
   successText: "#7fd49a",
   surface: "#1c2a3b",
-  teal: "#4fc3c0",
-  tealSoft: "#1b3a42",
   /** A terminal snapshot in a message. */
   terminal: "#2a4562",
   text: "#e8edf4",
@@ -105,8 +103,6 @@ const iskiosLight: Palette = {
   successSoft: "#d9eddf",
   successText: "#2a7a47",
   surface: "#f8f4ee",
-  teal: "#1f8a8a",
-  tealSoft: "#d6ecea",
   terminal: "#e1e8f1",
   text: "#1c2838",
   textDim: "#9a9086",

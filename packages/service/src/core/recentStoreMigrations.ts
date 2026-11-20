@@ -196,4 +196,30 @@ export const recentStoreMigrations = {
     yield* sql`UPDATE threads SET state = 'Fulfilled' WHERE state = 'Done'`;
     yield* sql`UPDATE missions SET ending = 'Fulfilled' WHERE ending = 'Done'`;
   }),
+  // The Chronicle's unread (CHG-0569, conversation-panes): when the owner last read a thread's conversation. Every
+  // message in it newer than that is unread: agent replies, results, and an open request's indicator, which a later
+  // read clears while the request itself stays until answered or withdrawn. No row means the conversation was never
+  // read after this change; its existing messages are old news, so they start read.
+  "0068_thread_reads": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`CREATE TABLE thread_reads (
+      thread_id TEXT PRIMARY KEY REFERENCES threads(id) ON DELETE CASCADE,
+      read_at INTEGER NOT NULL
+    )`;
+    yield* sql`INSERT INTO thread_reads (thread_id, read_at)
+      SELECT t.id, m.last_activity_at FROM threads t JOIN missions m ON m.id = t.mission_id`;
+  }),
+  // A quest's realm changes have no place of their own, yet History shows them as routine events (CHG-0569): one row
+  // per move, naming where the quest came from and went.
+  "0069_quest_moves": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`CREATE TABLE quest_moves (
+      id TEXT NOT NULL,
+      mission_id TEXT NOT NULL REFERENCES missions(id) ON DELETE CASCADE,
+      from_workspace_id TEXT,
+      to_workspace_id TEXT,
+      at INTEGER NOT NULL,
+      PRIMARY KEY (mission_id, id)
+    )`;
+  }),
 };

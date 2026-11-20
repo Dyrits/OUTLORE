@@ -8,7 +8,7 @@ import { settledSuggestionLabelOf } from "../foundation/labels";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { companionChoicesOf, hasTiers, selectedChoiceOf } from "./suggestionChoices";
+import { companionChoicesOf, hasTiers, realmOptionsOf, selectedChoiceOf } from "./suggestionChoices";
 
 /** The line a resolved suggestion leaves in its thread, opening where the request went. */
 export function SuggestionLine({
@@ -116,9 +116,10 @@ const suggestionRunnerOf = (suggestion: Suggestion): Runner => ({
   model: suggestion.model,
 });
 
-/** An open suggestion: Chronicler's proposal of a new quest, or where a thread's off-topic message should go. */
+/** The channel a suggestion names: the realm it proposes for a quest, or the realm and Borderlands for an off-topic message. */
 type Channel = { id: WorkspaceId | null; name: string };
 
+/** An open suggestion card: Chronicler's proposal of a new quest, or where a thread's off-topic message should go. */
 export function SuggestionCard({
   canOpenAside = true,
   channel,
@@ -202,10 +203,10 @@ function ProposalCard({
               label: "No realm",
               onPress: () => setChosenRealm(null),
             },
-            ...realms.map((realm) => ({
+            ...realmOptionsOf(realms).map((realm) => ({
               isSelected: realmId === realm.id,
               key: realm.id,
-              label: realm.name,
+              label: realm.label,
               onPress: () => setChosenRealm(realm.id),
             })),
           ]}

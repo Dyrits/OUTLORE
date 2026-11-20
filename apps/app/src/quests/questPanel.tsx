@@ -247,7 +247,7 @@ export function QuestSidebar({
 const ledgerColumns = [
   { color: colors.danger, column: "Attention" },
   { color: colors.accent, column: "Underway" },
-  { color: colors.teal, column: "Resting" },
+  { color: stateTones.Resting.color, column: "Resting" },
   { color: colors.success, column: "Fulfilled" },
 ] as const;
 

@@ -99,7 +99,7 @@ export function ThreadTitle({
   return (
     <TitleMenu
       choices={detail.threads
-        .filter((thread) => thread.parentId !== null)
+        .filter((thread) => thread.parentId !== null && thread.isArchived !== true)
         .map((thread) => ({ ...thread, state: thread.shownState }))}
       current={{
         ...detail.thread,

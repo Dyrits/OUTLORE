@@ -80,18 +80,17 @@ export const start = (text = "Hello", workspacePath: string | null = null) =>
     workspacePath,
   });
 /** Names a quest or an errand the way its thread would have, with `set_mission_title`, so a test can tell them apart. */
-export const rename = (missionId: string, threadId: string, title: string) =>
+export const rename = (threadId: string, title: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`UPDATE threads SET title = ${title} WHERE id = ${threadId}`;
     yield* sql`UPDATE missions SET title = ${title} WHERE top_thread_id = ${threadId}`;
-    return missionId;
   });
 /** Starts a mission and names it after the first line of its text, as its top thread would on its first turn. */
 export const startNamed = (text = "Hello", workspacePath: string | null = null) =>
   Effect.gen(function* () {
     const started = yield* start(text, workspacePath);
-    yield* rename(started.missionId, started.threadId, text.split("\n", 1)[0] ?? text);
+    yield* rename(started.threadId, text.split("\n", 1)[0] ?? text);
     return started;
   });
 /** Starts a mission with chosen fields and a unique command identifier, as harness tests need. */

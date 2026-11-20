@@ -4,7 +4,7 @@ import { invalid, readStartChoices } from "../core/index.ts";
 import { readFileDiff } from "./activities.ts";
 import { admitOwnerText, admitRunnerChange, runnerOfOpened, runnerOfStarted } from "./admission.ts";
 import { setThreadBackups } from "./backups.ts";
-import { readChronicle } from "./chronicle.ts";
+import { markThreadRead, readChronicle } from "./chronicle.ts";
 import { listMissions } from "./dashboard.ts";
 import { deleteThread, previewDeletion } from "./deleting.ts";
 import { dismissPrompt, endMission, previewEnding, reopenMission } from "./ending.ts";
@@ -43,6 +43,7 @@ export const questsHandlers = (
         ),
     ListMissions: (filters) => listMissions(filters),
     MarkThreadDone: (given) => commands.run(markThreadDone(given.threadId)),
+    MarkThreadRead: (given) => commands.run(markThreadRead(given.threadId)),
     MoveQuest: (move) => commands.run(moveQuest(move.missionId, move.realmId)),
     OpenThread: (open) =>
       Effect.gen(function* () {
@@ -169,6 +170,7 @@ export const questsHandlers = (
     | "InterruptThread"
     | "ListMissions"
     | "MarkThreadDone"
+    | "MarkThreadRead"
     | "ReopenThread"
     | "ArchiveThread"
     | "RestoreThread"

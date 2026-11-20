@@ -61,7 +61,7 @@ export function ThreadPane({
   alternateBody?: ReactNode;
   companions?: { isSelected: boolean; onOpen: () => void };
   tabs?: ReactNode;
-  /** Whether the thread shows in a pane beside others: its parent is the pane to its left, so the link back is left out. */
+  /** Whether the thread shows in a pane beside others: its link back to the quest is left out, but a legacy sub-errand keeps its return to its own parent. */
   isInPane?: boolean;
   /** Whether this thread's header offers the link to the quest's side panel, where no top bar has the icon. */
   canOpenDetails: boolean;
@@ -186,7 +186,9 @@ export function ThreadPane({
           )}
           <EndingConfirmation ending={ending} />
           {ending.error !== null && <Text style={styles.error}>{ending.error}</Text>}
-          {parent !== undefined && !isInPane && (
+          {/* A legacy sub-errand's parent is not the quest pane to its left, so the link back stays: it is the offered
+              return its pane owes it. */}
+          {parent !== undefined && (!isInPane || parent.parentId !== null) && (
             <Pressable onPress={() => onSelect(parent.id)}>
               <Text numberOfLines={1} style={styles.link}>
                 Opened from: {parent.title}

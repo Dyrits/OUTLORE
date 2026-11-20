@@ -19,7 +19,7 @@ export function ErrandStarter({
 }: {
   chrome: ReactNode;
   client: ServiceClient;
-  errands: ReadonlyArray<Pick<ThreadSummary, "id" | "title">>;
+  errands: ReadonlyArray<Pick<ThreadSummary, "id" | "title" | "shownState">>;
   onOpened: (threadId: ThreadId) => void;
   parent: ThreadView | null;
 }) {
@@ -38,6 +38,7 @@ export function ErrandStarter({
                 if (id !== null) onOpened(id);
               }}
               options={errands.map((errand) => errand.id)}
+              state={(id) => errands.find((errand) => errand.id === id)?.shownState}
               value={null}
             />
           ) : (

@@ -23,7 +23,28 @@ export const local = StyleSheet.create({
   },
   addHovered: { backgroundColor: colors.controlActive },
   chevron: { alignItems: "center", height: 20, justifyContent: "center", width: chevronWidth },
-  chronicleRow: { borderRadius: radii.md, justifyContent: "center", minHeight: 32, paddingHorizontal: 8 },
+  // The Chronicle's unread count (CHG-0569): one badge naming how many updates wait unread.
+  chronicleBadge: {
+    alignItems: "center",
+    backgroundColor: colors.marker,
+    borderColor: colors.accentText,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    justifyContent: "center",
+    minWidth: 18,
+    paddingHorizontal: 5,
+    paddingVertical: 0,
+  },
+  chronicleBadgeText: { color: colors.accentText, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
+  chronicleRow: {
+    alignItems: "center",
+    borderRadius: radii.md,
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    minHeight: 32,
+    paddingHorizontal: 8,
+  },
   chronicleTitle: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.base, fontWeight: "500" },
   // A corner mark: a bottom and left border at the row's lower-left corner, rounded there. Its size, a share of the
   // row's width and height, is set where it is drawn.

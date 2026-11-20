@@ -40,7 +40,9 @@ describe("controlling one installation from another through the relay", () => {
           state: null,
           workspaceId: null,
         });
-        expect(missions).toMatchObject({ missions: [{ title: "Quest" }] });
+        // The quest read back is the one the paired device started: its id names it even before its title's first turn.
+        const missionId = started._tag === "Success" ? (started.value as { missionId: string }).missionId : null;
+        expect(missions).toMatchObject({ missions: [{ id: missionId, title: "Quest" }] });
 
         expect(yield* world.ask(link, "2", { _tag: "RenameHost", name: "Studio" })).toMatchObject({
           _tag: "Success",
