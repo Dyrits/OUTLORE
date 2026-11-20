@@ -1,10 +1,9 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 import { PaneThread } from "../conversation/paneThread";
 import { OpenPanes } from "../conversation/replyLine";
 import type { ServiceClient } from "../foundation/client";
-import { QuestTabButtonContext } from "../foundation/shellContext";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { FoldPaneButton } from "../ui/questHeaderButtons";
@@ -24,40 +23,7 @@ import {
 } from "./paneChain";
 import { PaneResizer } from "./paneResizer";
 import { type NotchKind, type NotchPart, PaneButton, PaneNotches } from "./paneStrip";
-import { type PanePointer, paneIconPress, wasFollowedAtPress } from "./questTab";
 import { readPaneWeights, rememberPaneWeights } from "./railStorage";
-
-/**
- * The panel's button in a pane's header. Pressed in a pane that is not the focused one, it moves the panel there, opening
- * it if it was shut, rather than closing it. This reads the frame's context in a component of its own: the frame draws
- * again whenever a pane hands it a panel, and a host that read it would draw its panes again each time, and so loop.
- */
-function PaneTab({
-  children,
-  isFocused,
-  onFocus,
-  wasFollowed,
-}: {
-  children: ReactNode;
-  isFocused: boolean;
-  onFocus: () => void;
-  /** Whether the panel followed this pane when the press began: the pane takes focus as the pointer goes down. */
-  wasFollowed: () => boolean;
-}) {
-  const questTab = useContext(QuestTabButtonContext);
-  const paneTab =
-    questTab === null
-      ? null
-      : {
-          isOpen: questTab.isOpen && isFocused,
-          onPress: () => {
-            const action = paneIconPress({ isOpen: questTab.isOpen, wasFollowed: wasFollowed() });
-            onFocus();
-            if (action === "toggle") questTab.onPress();
-          },
-        };
-  return <QuestTabButtonContext.Provider value={paneTab}>{children}</QuestTabButtonContext.Provider>;
-}
 
 /** One channel slot and up to two threads of the quest. */
 const starterId = "errand-starter";
@@ -133,8 +99,6 @@ export function PaneHost({
   const latest = useRef(memory);
   latest.current = memory;
   const focusedId = focused !== null && openIds.has(focused) ? focused : ([...openIds].at(-1) ?? null);
-  // Where the panel stood when the pointer last went down in a pane, for the press on the icon that follows.
-  const pointer = useRef<PanePointer | null>(null);
   const summaryOf = (id: ThreadId) => threads.find((thread) => thread.id === id);
   const fold = (id: PaneId) => {
     setExpanded(null);
@@ -308,46 +272,29 @@ export function PaneHost({
             const isFocused = !isParked && threadId === focusedId;
             return wrap(
               <View
-                onPointerDown={() => {
-                  pointer.current = { at: Date.now(), followedBefore: focusedId };
-                  setFocused(threadId);
-                }}
+                onPointerDown={() => setFocused(threadId)}
                 style={[local.content, isFocused && paneCount > 1 && local.focused]}
               >
-                <PaneTab
-                  isFocused={isFocused}
-                  onFocus={() => setFocused(threadId)}
-                  wasFollowed={() =>
-                    wasFollowedAtPress({
-                      followedNow: focusedId,
-                      id: threadId,
-                      now: Date.now(),
-                      pointer: pointer.current,
-                    })
+                <PaneThread
+                  chrome={
+                    <>
+                      {threadId !== quest && quest !== undefined && (
+                        <PaneButton glyph="+" label="New errand" onPress={() => startErrand(quest)} />
+                      )}
+                      {expandButton(threadId)}
+                      <FoldPaneButton
+                        label={threadId === quest ? "Fold the quest" : "Fold the errand"}
+                        onPress={() => fold(threadId)}
+                      />
+                    </>
                   }
-                >
-                  <PaneThread
-                    chrome={
-                      <>
-                        {threadId !== quest && quest !== undefined && (
-                          <PaneButton glyph="+" label="New errand" onPress={() => startErrand(quest)} />
-                        )}
-                        {expandButton(threadId)}
-                        <FoldPaneButton
-                          label={threadId === quest ? "Fold the quest" : "Fold the errand"}
-                          onPress={() => fold(threadId)}
-                        />
-                      </>
-                    }
-                    client={client}
-                    isFocused={isFocused}
-                    missionId={missionId}
-                    onOpenMission={onOpenMission}
-                    onOpenThread={revealThread}
-                    onStartErrand={() => startErrand(threadId)}
-                    threadId={threadId}
-                  />
-                </PaneTab>
+                  client={client}
+                  missionId={missionId}
+                  onOpenMission={onOpenMission}
+                  onOpenThread={revealThread}
+                  onStartErrand={() => startErrand(threadId)}
+                  threadId={threadId}
+                />
               </View>,
             );
           })}

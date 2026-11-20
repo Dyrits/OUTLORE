@@ -91,6 +91,7 @@ export function Shell(
     rightPanel,
   });
   const { companionDock, isCompanionShown, pillId, questWidth } = column;
+  const hasConversationPanes = props.place === "Channel" || props.openMission !== null;
   const toggle = () => {
     rememberHidden(!isHidden);
     setIsHidden(!isHidden);
@@ -247,8 +248,8 @@ export function Shell(
                       )}
                       <View style={[local.panel, hasLeftRail && local.panelDivider]}>{props.children}</View>
                     </View>
-                    {column.wideColumn}
-                    {column.hasEdgeHandle && (
+                    {!hasConversationPanes && column.wideColumn}
+                    {!hasConversationPanes && column.hasEdgeHandle && (
                       <Pressable
                         accessibilityLabel={column.isColumnOpen ? "Hide quest panel" : "Show quest panel"}
                         accessibilityRole="button"

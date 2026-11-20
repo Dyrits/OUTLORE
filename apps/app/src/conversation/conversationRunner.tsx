@@ -10,11 +10,15 @@ export function ConversationRunner({
   thread,
   conversation,
   isChronicler = false,
+  isFullPanel = false,
+  onOpenTab,
 }: {
   client: ServiceClient;
   thread: MissionDetail["thread"];
   conversation: ReturnType<typeof useThreadConversation>;
   isChronicler?: boolean;
+  isFullPanel?: boolean;
+  onOpenTab?: (() => void) | undefined;
 }) {
   return (
     <RunnerPickers
@@ -24,9 +28,11 @@ export function ConversationRunner({
       harnesses={conversation.harnesses}
       isChronicler={isChronicler}
       isCompact
+      isFullPanel={isFullPanel}
       onChange={(next) =>
         conversation.act(client.request({ _tag: "ChangeThreadRunner", ...next, threadId: thread.id }))
       }
+      onOpenTab={onOpenTab}
       presetChoice={conversation.presetChoice}
       value={thread}
     />

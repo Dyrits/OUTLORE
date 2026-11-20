@@ -42,6 +42,7 @@ export function ChroniclerConversation({
   channel,
   chrome,
   client,
+  companions,
   onOpenMission,
   onRealm,
   realmPath,
@@ -54,6 +55,7 @@ export function ChroniclerConversation({
   channel?: { id: WorkspaceId | null; name: string } | undefined;
   chrome: ReactNode;
   client: ServiceClient;
+  companions?: { isSelected: boolean; onOpen: () => void } | undefined;
   onOpenMission: (id: MissionId) => void;
   onRealm: (path: string | null) => void;
   realmPath: string | null;
@@ -79,6 +81,7 @@ export function ChroniclerConversation({
       channel={channel}
       chrome={chrome}
       client={client}
+      companions={companions}
       key={place.threadId}
       onOpenMission={onOpenMission}
       onRealm={onRealm}
@@ -95,6 +98,7 @@ function ChroniclerChat({
   channel,
   chrome,
   client,
+  companions,
   onOpenMission,
   onRealm,
   place,
@@ -106,6 +110,7 @@ function ChroniclerChat({
   channel?: { id: WorkspaceId | null; name: string } | undefined;
   chrome: ReactNode;
   client: ServiceClient;
+  companions?: { isSelected: boolean; onOpen: () => void } | undefined;
   onOpenMission: (id: MissionId) => void;
   onRealm: (path: string | null) => void;
   place: GuildmasterPlace;
@@ -194,68 +199,80 @@ function ChroniclerChat({
             Chronicler · {harnessLabels[thread.harness]} · {companionLabelOf(thread.harness, null, thread.model)}
           </Text>
         )}
-        {alternateBody !== undefined ? (
-          <View style={local.body}>{alternateBody}</View>
-        ) : entries.length === 0 && draft === "" && terminal.panel === null ? (
-          <View style={local.empty}>
-            <Text style={local.emptyTitle}>Tell Chronicler what you need.</Text>
-            <Text style={local.emptyText}>
-              It looks for a quest that already covers it and offers to continue that one, or proposes a new quest for
-              you to open.
-            </Text>
-          </View>
-        ) : (
-          <FlatList<Entry>
-            {...followNewest.listPropsOf(<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />)}
-            contentContainerStyle={styles.feed}
-            keyExtractor={(entry) => entry.key}
-            renderItem={({ item }) => (
-              <EntryView
-                channel={channel}
-                client={client}
-                entry={item}
-                harness={thread.harness}
-                isInTurn={isInTurn}
-                onInterrupt={conversation.interrupt}
-                onOpenMission={onOpenMission}
-                onSelectThread={() => {}}
-                onSteer={conversation.steer}
-                skills={skills}
-                workspacePath={realm?.path ?? null}
-              />
-            )}
-            style={styles.flex}
-          />
+        {alternateBody !== undefined && <View style={local.body}>{alternateBody}</View>}
+        {companions?.isSelected && (
+          <ConversationRunner client={client} conversation={conversation} isChronicler isFullPanel thread={thread} />
         )}
-        {channel === undefined && realm !== null && <RealmNote name={realm.name} onClear={() => onRealm(null)} />}
-        {alternateBody !== undefined ? null : replyTo !== null ? (
-          <ReplyForm
-            client={client}
-            message={replyTo}
-            onCancel={() => setReplyTo(null)}
-            onStarted={(started) => {
-              setReplyTo(null);
-              onOpenMission(started.missionId);
-            }}
-            placeholder="The quest's first message…"
-            realmPath={realm?.path ?? null}
-            runner={replyRunnerOf(thread)}
-          />
-        ) : (
-          <Composer
-            draftKey={channel === undefined ? "chronicler" : place.threadId}
-            hasContent={terminal.hasContent}
-            {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
-            accessory={<ConversationRunner client={client} conversation={conversation} isChronicler thread={thread} />}
-            attachments={{ client, refusal: conversation.refusal }}
-            dictation={{ client }}
-            mentions={{ client, workspacePath: realm?.path ?? null }}
-            onSend={conversation.send}
-            {...(canStop ? { onStop: conversation.stop } : {})}
-            placeholder={conversation.placeholder}
-            skills={skills}
-          />
-        )}
+        <View style={alternateBody !== undefined || companions?.isSelected ? local.hidden : local.chat}>
+          {entries.length === 0 && draft === "" && terminal.panel === null ? (
+            <View style={local.empty}>
+              <Text style={local.emptyTitle}>Tell Chronicler what you need.</Text>
+              <Text style={local.emptyText}>
+                It looks for a quest that already covers it and offers to continue that one, or proposes a new quest for
+                you to open.
+              </Text>
+            </View>
+          ) : (
+            <FlatList<Entry>
+              {...followNewest.listPropsOf(<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />)}
+              contentContainerStyle={styles.feed}
+              keyExtractor={(entry) => entry.key}
+              renderItem={({ item }) => (
+                <EntryView
+                  channel={channel}
+                  client={client}
+                  entry={item}
+                  harness={thread.harness}
+                  isInTurn={isInTurn}
+                  onInterrupt={conversation.interrupt}
+                  onOpenMission={onOpenMission}
+                  onSelectThread={() => {}}
+                  onSteer={conversation.steer}
+                  skills={skills}
+                  workspacePath={realm?.path ?? null}
+                />
+              )}
+              style={styles.flex}
+            />
+          )}
+          {channel === undefined && realm !== null && <RealmNote name={realm.name} onClear={() => onRealm(null)} />}
+          {replyTo !== null ? (
+            <ReplyForm
+              client={client}
+              message={replyTo}
+              onCancel={() => setReplyTo(null)}
+              onStarted={(started) => {
+                setReplyTo(null);
+                onOpenMission(started.missionId);
+              }}
+              placeholder="The quest's first message…"
+              realmPath={realm?.path ?? null}
+              runner={replyRunnerOf(thread)}
+            />
+          ) : (
+            <Composer
+              draftKey={channel === undefined ? "chronicler" : place.threadId}
+              hasContent={terminal.hasContent}
+              {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
+              accessory={
+                <ConversationRunner
+                  client={client}
+                  conversation={conversation}
+                  isChronicler
+                  onOpenTab={companions?.onOpen}
+                  thread={thread}
+                />
+              }
+              attachments={{ client, refusal: conversation.refusal }}
+              dictation={{ client }}
+              mentions={{ client, workspacePath: realm?.path ?? null }}
+              onSend={conversation.send}
+              {...(canStop ? { onStop: conversation.stop } : {})}
+              placeholder={conversation.placeholder}
+              skills={skills}
+            />
+          )}
+        </View>
       </View>
     </RepliesProvider>
   );
@@ -263,6 +280,7 @@ function ChroniclerChat({
 
 const local = StyleSheet.create({
   body: { flex: 1 },
+  chat: { flex: 1, gap: 8 },
   empty: { alignItems: "center", flex: 1, gap: 8, justifyContent: "center", paddingHorizontal: 24 },
   emptyText: {
     color: colors.textMuted,
@@ -273,6 +291,7 @@ const local = StyleSheet.create({
   },
   emptyTitle: { color: colors.onGround, fontFamily: fonts.sans, fontSize: fontSizes.lg, fontWeight: "700" },
   handoff: { gap: 6 },
+  hidden: { display: "none" },
   link: { color: colors.highlight, fontFamily: fonts.sans, fontSize: fontSizes.md },
   note: { alignItems: "center", flexDirection: "row", gap: 8 },
   noteClear: { color: colors.highlight, fontFamily: fonts.sans, fontSize: fontSizes.lg, paddingHorizontal: 4 },

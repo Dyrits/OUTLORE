@@ -67,10 +67,13 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
  * state; in a narrow window, with no such column, it opens the picker as a panel over the window's right edge.
  */
 export function CompanionPicker({
+  onOpenTab,
   rank = 0,
   trigger,
   ...props
 }: CompanionPickerProps & {
+  /** Opens the Companions tab in the composer’s own pane. */
+  onOpenTab?: (() => void) | undefined;
   rank?: number;
   /** Another control in place of the runner button, such as a card's "Change"; it opens and closes the same tab. */
   trigger?: (control: { isOpen: boolean; onPress: () => void }) => ReactElement;
@@ -92,7 +95,7 @@ export function CompanionPicker({
     model,
     harnesses?.harnesses.find((candidate) => candidate.name === harness)?.models,
   );
-  const press = () => (dock === null ? setIsOverlayOpen(!isOverlayOpen) : dock.open(id));
+  const press = onOpenTab ?? (() => (dock === null ? setIsOverlayOpen(!isOverlayOpen) : dock.open(id)));
   return (
     <View style={[styles.menu, trigger !== undefined && local.triggerFrame]}>
       {trigger === undefined ? (
@@ -112,7 +115,7 @@ export function CompanionPicker({
       ) : (
         trigger({ isOpen, onPress: press })
       )}
-      {dock === null && (
+      {dock === null && onOpenTab === undefined && (
         <Modal animationType="none" onRequestClose={() => setIsOverlayOpen(false)} transparent visible={isOverlayOpen}>
           <Pressable
             accessibilityLabel="Close the menu"

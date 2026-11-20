@@ -32,21 +32,6 @@ export const useQuestPanel = (panel: ReactNode, title = "Quest") => {
 };
 
 /**
- * The quest panel of one pane among several (CHG-0561): only the pane the owner pressed last hands the frame its
- * panel, and takes it back when focus moves on, so panes beside each other do not overwrite one another's.
- */
-export const usePaneQuestPanel = (isFocused: boolean, panel: ReactNode, title = "Quest") => {
-  const set = useContext(QuestPanelSetter);
-  useEffect(() => {
-    if (isFocused) set(panel, title);
-  });
-  useEffect(() => {
-    if (!isFocused) return;
-    return () => set(null, "Quest");
-  }, [isFocused, set]);
-};
-
-/**
  * What a Companion button asks of the window: the Companion tab of the right-hand column (beside the quest's own tab)
  * shows the picker for the button that opened it. A button registers while it is mounted, hands over its latest
  * picker state after every render, and asks to open the tab. Null where the window has no such column (a narrow one).

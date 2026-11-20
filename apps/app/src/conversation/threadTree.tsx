@@ -120,11 +120,13 @@ function TreeState({ state }: { state: ThreadSummary["state"] }) {
  */
 export function OpenThreadForm({
   client,
+  companions,
   onCancel,
   onOpened,
   parent,
 }: {
   client: ServiceClient;
+  companions?: { isSelected: boolean; onOpen: () => void };
   onCancel?: () => void;
   onOpened: (threadId: ThreadId) => void;
   parent: ThreadView;
@@ -176,94 +178,106 @@ export function OpenThreadForm({
     onOpened(opened.threadId);
   };
   const isOverWarning = context?.isOverWarning === true;
+  const picker = (isFullPanel: boolean) => (
+    <RunnerPickers
+      client={client}
+      // Offered once the parent's list is read, so an edit never starts from an empty list standing in for it.
+      {...(parentPanel === null
+        ? {}
+        : {
+            extra: (
+              <BackupsEditor
+                backups={backups ?? parentPanel.backups}
+                harnesses={harnesses}
+                isCompact={false}
+                isFolded
+                onChange={setBackups}
+              />
+            ),
+          })}
+      harnesses={harnesses}
+      isCompact
+      isFullPanel={isFullPanel}
+      onChange={setRunner}
+      onOpenTab={companions?.onOpen}
+      presetChoice={
+        settings === null
+          ? null
+          : {
+              backups: backups ?? parentPanel?.backups ?? null,
+              onPreset: (preset) => {
+                setRunner(preset.runner);
+                setBackups(preset.backups);
+              },
+              presets: presetsOf(settings.tiers),
+            }
+      }
+      value={runner}
+    />
+  );
   return (
-    <View style={styles.pane}>
-      {onCancel !== undefined && (
-        <View style={styles.header}>
-          <Text numberOfLines={1} style={[styles.label, styles.flex]}>
-            New errand beneath "{parent.title}"
-          </Text>
-          <Pressable accessibilityLabel="Cancel new errand" accessibilityRole="button" hitSlop={8} onPress={onCancel}>
-            <Text style={styles.error}>✕</Text>
-          </Pressable>
-        </View>
-      )}
-      {context != null && isOverWarning && (
-        <View style={styles.failure}>
-          <Text style={styles.error}>{startingContextWarningOf(context)}</Text>
-          <Text style={styles.muted}>{startingContextPartsOf(context.parts)}</Text>
-          <View style={styles.inlineRow}>
-            {context.largerModels.length === 0 ? (
-              <Text style={styles.muted}>No model has a larger context window.</Text>
-            ) : (
-              context.largerModels.map((larger) => (
-                <Pressable key={larger} onPress={() => setModel(larger)} style={styles.answer}>
-                  <Text style={styles.answerText}>Use {modelLabelOf(larger)}</Text>
-                </Pressable>
-              ))
-            )}
-            <Pressable onPress={() => setIsTrimming(true)} style={styles.answer}>
-              <Text style={styles.answerText}>Trim lore</Text>
+    <View style={companions === undefined ? styles.pane : styles.flex}>
+      {companions?.isSelected && picker(true)}
+      <View
+        style={
+          companions?.isSelected
+            ? { display: "none" }
+            : [styles.pane, companions !== undefined && { marginTop: "auto" }]
+        }
+      >
+        {onCancel !== undefined && (
+          <View style={styles.header}>
+            <Text numberOfLines={1} style={[styles.label, styles.flex]}>
+              New errand beneath "{parent.title}"
+            </Text>
+            <Pressable accessibilityLabel="Cancel new errand" accessibilityRole="button" hitSlop={8} onPress={onCancel}>
+              <Text style={styles.error}>✕</Text>
             </Pressable>
           </View>
-        </View>
-      )}
-      {isTrimming && (
-        // The panel opens inside the form, so the request typed so far stays.
-        <View style={styles.trimPanel}>
-          <LoreScreen
-            client={client}
-            onBack={() => setIsTrimming(false)}
-            threadId={parent.id}
-            title={`Trim lore · ${parent.title}`}
-          />
-        </View>
-      )}
-      <Composer
-        accessory={
-          <RunnerPickers
-            client={client}
-            // Offered once the parent's list is read, so an edit never starts from an empty list standing in for it.
-            {...(parentPanel === null
-              ? {}
-              : {
-                  extra: (
-                    <BackupsEditor
-                      backups={backups ?? parentPanel.backups}
-                      harnesses={harnesses}
-                      isCompact={false}
-                      isFolded
-                      onChange={setBackups}
-                    />
-                  ),
-                })}
-            harnesses={harnesses}
-            isCompact
-            onChange={setRunner}
-            presetChoice={
-              settings === null
-                ? null
-                : {
-                    backups: backups ?? parentPanel?.backups ?? null,
-                    onPreset: (preset) => {
-                      setRunner(preset.runner);
-                      setBackups(preset.backups);
-                    },
-                    presets: presetsOf(settings.tiers),
-                  }
-            }
-            value={runner}
-          />
-        }
-        attachments={{ client, refusal: imageRefusalOf(harnesses, runner.harness, model) }}
-        dictation={{ client }}
-        mentions={{ client, workspacePath: parent.workspace?.path ?? null }}
-        skills={skills}
-        {...(isOverWarning ? { alternative: { label: "Start anyway", onSend: openWith(true) } } : {})}
-        onChangeText={request.change}
-        onSend={openWith(false)}
-        placeholder="The errand's first message…"
-      />
+        )}
+        {context != null && isOverWarning && (
+          <View style={styles.failure}>
+            <Text style={styles.error}>{startingContextWarningOf(context)}</Text>
+            <Text style={styles.muted}>{startingContextPartsOf(context.parts)}</Text>
+            <View style={styles.inlineRow}>
+              {context.largerModels.length === 0 ? (
+                <Text style={styles.muted}>No model has a larger context window.</Text>
+              ) : (
+                context.largerModels.map((larger) => (
+                  <Pressable key={larger} onPress={() => setModel(larger)} style={styles.answer}>
+                    <Text style={styles.answerText}>Use {modelLabelOf(larger)}</Text>
+                  </Pressable>
+                ))
+              )}
+              <Pressable onPress={() => setIsTrimming(true)} style={styles.answer}>
+                <Text style={styles.answerText}>Trim lore</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+        {isTrimming && (
+          // The panel opens inside the form, so the request typed so far stays.
+          <View style={styles.trimPanel}>
+            <LoreScreen
+              client={client}
+              onBack={() => setIsTrimming(false)}
+              threadId={parent.id}
+              title={`Trim lore · ${parent.title}`}
+            />
+          </View>
+        )}
+        <Composer
+          accessory={picker(false)}
+          attachments={{ client, refusal: imageRefusalOf(harnesses, runner.harness, model) }}
+          dictation={{ client }}
+          mentions={{ client, workspacePath: parent.workspace?.path ?? null }}
+          skills={skills}
+          {...(isOverWarning ? { alternative: { label: "Start anyway", onSend: openWith(true) } } : {})}
+          onChangeText={request.change}
+          onSend={openWith(false)}
+          placeholder="The errand's first message…"
+        />
+      </View>
     </View>
   );
 }

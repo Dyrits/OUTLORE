@@ -7,7 +7,7 @@ import { styles } from "../foundation/styles";
 import { Choice, Menu, Steps } from "../ui/pickers";
 import { harnessNames, harnessOfAccount } from "./accountModels";
 import { CompanionBody } from "./companionBody";
-import { CompanionPicker } from "./companionPicker";
+import { CompanionPanel, CompanionPicker } from "./companionPicker";
 import type { PresetChoice } from "./presets";
 import { changedHarnessOf, companionOf, keptOptionsOf } from "./runnerChoices";
 import { effortsOf, useModelEfforts } from "./useModelEfforts";
@@ -100,9 +100,11 @@ export function RunnerPickers({
   harnesses,
   isAccountShown = true,
   isCompact,
+  isFullPanel = false,
   isChronicler = false,
   isPanel = false,
   onChange,
+  onOpenTab,
   panel,
   presetChoice,
   trigger,
@@ -123,6 +125,9 @@ export function RunnerPickers({
   isChronicler?: boolean;
   /** The picker's own content, as drawn in a fold of the Companions tab; `isCompact` is then ignored. */
   isPanel?: boolean;
+  /** Shows the full Companions panel inside a conversation pane. */
+  isFullPanel?: boolean;
+  onOpenTab?: (() => void) | undefined;
   onChange: (runner: Runner) => void;
   /** The Companions tab's own content in place of its folds; see `CompanionPickerProps`. */
   panel?: ReactElement;
@@ -163,7 +168,7 @@ export function RunnerPickers({
     models.map((model) => model.id),
     value.model,
   );
-  if (isCompact || isPanel) {
+  if (isCompact || isPanel || isFullPanel) {
     const picker = {
       accountId: value.accountId,
       effort: value.effort,
@@ -180,14 +185,19 @@ export function RunnerPickers({
     // In a fold of the Companions tab, the picker's own content; in a composer, one button for the whole runner,
     // which opens that tab with harness tabs, a model search, and effort.
     if (isPanel) return <CompanionBody {...picker} />;
+    const content = {
+      ...picker,
+      ...(extra === undefined ? {} : { extra }),
+      ...(panel === undefined ? {} : { panel }),
+      ...(isChronicler ? { isChronicler } : {}),
+    };
+    if (isFullPanel) return <CompanionPanel {...content} />;
     return (
       <CompanionPicker
         {...(dockRank === undefined ? {} : { rank: dockRank })}
-        {...(extra === undefined ? {} : { extra })}
-        {...(panel === undefined ? {} : { panel })}
-        {...(isChronicler ? { isChronicler } : {})}
+        onOpenTab={onOpenTab}
         {...(trigger === undefined ? {} : { trigger })}
-        {...picker}
+        {...content}
       />
     );
   }

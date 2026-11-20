@@ -33,6 +33,7 @@ export function ThreadPane({
   canOpenDetails,
   alternateBody,
   chrome,
+  companions,
   tabs,
   isInPane = false,
   client,
@@ -49,6 +50,7 @@ export function ThreadPane({
   /** The buttons at the end of the header of a pane among several: fold and close; none in the quest's own screen. */
   chrome?: ReactNode;
   alternateBody?: ReactNode;
+  companions?: { isSelected: boolean; onOpen: () => void };
   tabs?: ReactNode;
   /** Whether the thread shows in a pane beside others: its parent is the pane to its left, so the link back is left out. */
   isInPane?: boolean;
@@ -93,7 +95,8 @@ export function ThreadPane({
           : ending.start("Done")
     : null;
   const errandActions = <ErrandHeaderActions act={act} client={client} detail={detail} />;
-  const questTab = useContext(QuestTabButtonContext);
+  const windowQuestTab = useContext(QuestTabButtonContext);
+  const questTab = isInPane ? null : windowQuestTab;
   return (
     <CommentsProvider value={comments}>
       <RepliesProvider value={canReply ? { start: (message) => setReplyTo(message) } : null}>
@@ -202,7 +205,12 @@ export function ThreadPane({
           )}
           {tabs}
           {alternateBody}
-          <View style={alternateBody == null ? [styles.flex, styles.pane] : { display: "none" }}>
+          {companions?.isSelected && (
+            <ConversationRunner client={client} conversation={conversation} isFullPanel thread={thread} />
+          )}
+          <View
+            style={alternateBody == null && !companions?.isSelected ? [styles.flex, styles.pane] : { display: "none" }}
+          >
             <FlatList<Entry>
               {...followNewest.listPropsOf(<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />)}
               contentContainerStyle={styles.feed}
@@ -257,7 +265,14 @@ export function ThreadPane({
                   // The harness, account, Companion, and effort can change at any time, in a turn too: a handover
                   // (thread-handover). It starts no turn: the running turn finishes as it was, and the next message, or Retry
                   // after a failed turn, runs on it.
-                  accessory={<ConversationRunner client={client} conversation={conversation} thread={thread} />}
+                  accessory={
+                    <ConversationRunner
+                      client={client}
+                      conversation={conversation}
+                      onOpenTab={companions?.onOpen}
+                      thread={thread}
+                    />
+                  }
                   attachments={{ client, refusal: conversation.refusal }}
                   dictation={{ client }}
                   mentions={{ client, workspacePath: thread.workspace?.path ?? null }}

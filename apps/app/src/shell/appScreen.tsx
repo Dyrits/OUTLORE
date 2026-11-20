@@ -4,7 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { Conversation } from "../conversation/conversation";
 import { PermissionsScreen } from "../editors/permissions";
 import type { ServiceClient } from "../foundation/client";
-import { useHasSidebar } from "../foundation/shellContext";
+import { CompanionDockActions, useHasSidebar } from "../foundation/shellContext";
 import { LoreScreen } from "../lore/lore";
 import { RitualsScreen } from "../rituals/rituals";
 import { SettingsScreen } from "../settings/settings";
@@ -111,15 +111,17 @@ export function AppScreen({
     return (
       <>
         <View style={isParked ? local.parked : local.fill}>
-          <PaneHost
-            client={client}
-            isParked={isParked}
-            key={`${quest.openMission}:${quest.openCount}`}
-            missionId={quest.openMission}
-            onOpenMission={navigation.openMission}
-            onOpenThread={navigation.selectThread}
-            openThread={quest.openThread}
-          />
+          <CompanionDockActions.Provider value={null}>
+            <PaneHost
+              client={client}
+              isParked={isParked}
+              key={`${quest.openMission}:${quest.openCount}`}
+              missionId={quest.openMission}
+              onOpenMission={navigation.openMission}
+              onOpenThread={navigation.selectThread}
+              openThread={quest.openThread}
+            />
+          </CompanionDockActions.Provider>
         </View>
         {isParked && screens[view.place]}
       </>
@@ -145,7 +147,9 @@ export function AppScreen({
     return (
       <>
         <View style={view.place === "Channel" ? local.fill : local.parked}>
-          <ChannelPane channel={channel} client={client} onOpenMission={navigation.openMission} />
+          <CompanionDockActions.Provider value={null}>
+            <ChannelPane channel={channel} client={client} onOpenMission={navigation.openMission} />
+          </CompanionDockActions.Provider>
         </View>
         {view.place !== "Channel" && screens[view.place]}
       </>

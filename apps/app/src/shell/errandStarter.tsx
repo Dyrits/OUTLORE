@@ -1,6 +1,7 @@
 import type { ThreadId, ThreadSummary, ThreadView } from "@outlore/contracts";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { PaneTabs } from "../conversation/paneTabs";
 import { OpenThreadForm } from "../conversation/threadTree";
 import type { ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
@@ -20,6 +21,7 @@ export function ErrandStarter({
   onOpened: (threadId: ThreadId) => void;
   parent: ThreadView | null;
 }) {
+  const [tab, setTab] = useState<"Request" | "Companions">("Request");
   return (
     <View style={local.pane}>
       <View style={local.header}>
@@ -41,15 +43,20 @@ export function ErrandStarter({
         </View>
         {chrome}
       </View>
-      {parent !== null && (
-        <View style={local.composer}>
-          {parent.actions.canOpenBeneath ? (
-            <OpenThreadForm client={client} onOpened={onOpened} parent={parent} />
-          ) : (
-            <Text style={styles.muted}>This quest cannot start an errand right now.</Text>
-          )}
-        </View>
-      )}
+      {parent !== null &&
+        (parent.actions.canOpenBeneath ? (
+          <>
+            <PaneTabs names={["Request", "Companions"]} onSelect={setTab} selected={tab} />
+            <OpenThreadForm
+              client={client}
+              companions={{ isSelected: tab === "Companions", onOpen: () => setTab("Companions") }}
+              onOpened={onOpened}
+              parent={parent}
+            />
+          </>
+        ) : (
+          <Text style={[styles.muted, local.composer]}>This quest cannot start an errand right now.</Text>
+        ))}
     </View>
   );
 }

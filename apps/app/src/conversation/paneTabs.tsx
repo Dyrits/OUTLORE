@@ -3,8 +3,7 @@ import { styles } from "../foundation/styles";
 import { colors } from "../foundation/theme";
 
 /**
- * The tabs under a pane's header (conversation panes): one name is selected and its body shows beneath. A quest shows
- * Missives and Errands, a realm's channel Missives and Quests; a tab opens nothing of its own, it changes the pane's body.
+ * The tabs under a pane's header select the body shown within that pane.
  */
 export function PaneTabs<Name extends string>({
   names,
@@ -16,7 +15,7 @@ export function PaneTabs<Name extends string>({
   selected: Name;
 }) {
   return (
-    <View accessibilityRole="tablist" style={local.tabs}>
+    <View accessibilityLabel="Pane views" accessibilityRole="tablist" style={local.tabs}>
       {names.map((name) => (
         <Pressable
           accessibilityRole="tab"
@@ -25,7 +24,7 @@ export function PaneTabs<Name extends string>({
           onPress={() => onSelect(name)}
           style={[local.tab, selected === name && local.selected]}
         >
-          <Text style={[styles.muted, selected === name && local.selectedLabel]}>{name}</Text>
+          <Text style={styles.muted}>{name}</Text>
         </Pressable>
       ))}
     </View>
@@ -34,7 +33,6 @@ export function PaneTabs<Name extends string>({
 
 const local = StyleSheet.create({
   selected: { borderBottomColor: colors.highlight },
-  selectedLabel: { fontWeight: "700" },
-  tab: { borderBottomColor: colors.edge, borderBottomWidth: 1, paddingHorizontal: 8, paddingVertical: 6 },
+  tab: { borderBottomColor: "transparent", borderBottomWidth: 2, paddingHorizontal: 8, paddingVertical: 6 },
   tabs: { flexDirection: "row" },
 });

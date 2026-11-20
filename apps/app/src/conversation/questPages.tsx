@@ -2,17 +2,22 @@ import type { BudgetScope, MissionId, ThreadId } from "@outlore/contracts";
 import type { ReactNode } from "react";
 import { BudgetScreen } from "../editors/budgets";
 import type { ServiceClient } from "../foundation/client";
-import { usePageNavigation } from "../foundation/pageNavigation";
+import { type QuestPage, usePageNavigation } from "../foundation/pageNavigation";
 import { JournalScreen } from "../lore/journal";
 import { LoreScreen } from "../lore/lore";
 
 /**
  * The pages that can stand over a quest's conversation (its journal, a thread's lore, a budget), owned by the window's
- * location: how to open each, and the screen to draw instead of the conversation while one is open, or null. A pane
- * among several draws it in place of its own conversation when it is the one the owner pressed last.
+ * location in the single-conversation layout and by the conversation pane on desktop.
  */
-export function useQuestPages(client: ServiceClient, missionId: MissionId, title: string) {
-  const { page, onPage } = usePageNavigation();
+export function useQuestPages(
+  client: ServiceClient,
+  missionId: MissionId,
+  title: string,
+  pane?: { page: QuestPage; onPage: (page: QuestPage) => void },
+) {
+  const navigation = usePageNavigation();
+  const { page, onPage } = pane ?? navigation;
   const close = () => onPage(null);
   const screen: ReactNode =
     page?.kind === "budget" ? (

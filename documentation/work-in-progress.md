@@ -4,6 +4,12 @@
 
 CHG-0592 replaces folded strips with centered icon notches (realm, quest, errand, with the state dot) on the open pane's edge. Checks pass; not seen in a window. [Handoff](../.agents/handoffs/2026-11-20-1345-pane-notches.md)
 
+## In-pane Quest and Companions tabs · 2026-11-20 · checks pass, window review pending
+
+CHG-0591 is committed and rebased onto the pane notches (CHG-0592) on `main`.
+Biome, the workspace typecheck, and the app, channel, contracts, and controller test suites passed on 2026-11-20; see the [verification note](verification/2026-11-20-in-pane-details.md).
+Still unchecked in a desktop window: Companion editing in each pane, preserved drafts, and opening and closing a pane's Journal, Lore, and Budget independently.
+
 ## Desktop sidebar refresh · 2026-11-20 · window review pending
 
 CHG-0587 aligns the sidebar with the conversation panes and starts empty realms closed.

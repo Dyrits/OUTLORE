@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume desktop review of the sidebar and conversation panes, read the [current handoff](.agents/handoffs/2026-11-20-1233-desktop-pane-review.md). Handoffs are shared and committed.
-
 - To resume the quest and errand mention icons, read the [current handoff](.agents/handoffs/2026-11-20-1330-mention-icons.md). Handoffs are shared and committed.
+
+- To resume the in-pane Quest and Companions tabs (landed; window review pending), read the [current handoff](.agents/handoffs/2026-11-20-1337-in-pane-details-landing.md). Handoffs are shared and committed.
 
 - To resume folded-pane notches and the folding review, read the [current handoff](.agents/handoffs/2026-11-20-1345-pane-notches.md). Handoffs are shared and committed.

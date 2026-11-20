@@ -44,7 +44,7 @@ function ChannelBody({
   client: ServiceClient;
   onOpenMission: (id: MissionId) => void;
 }) {
-  const [tab, setTab] = useState<"Missives" | "Quests">("Missives");
+  const [tab, setTab] = useState<"Missives" | "Quests" | "Companions">("Missives");
   const id = channel.id === null ? null : WorkspaceId.make(channel.id);
   return (
     <ChroniclerConversation
@@ -54,10 +54,11 @@ function ChannelBody({
       channel={{ id, name: channel.name }}
       chrome={chrome}
       client={client}
+      companions={{ isSelected: tab === "Companions", onOpen: () => setTab("Companions") }}
       onOpenMission={onOpenMission}
       onRealm={() => {}}
       realmPath={null}
-      tabs={<PaneTabs names={["Missives", "Quests"]} onSelect={setTab} selected={tab} />}
+      tabs={<PaneTabs names={["Missives", "Quests", "Companions"]} onSelect={setTab} selected={tab} />}
       viewing={{ screen: "Channel" }}
     />
   );

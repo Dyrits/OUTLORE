@@ -12,8 +12,11 @@ Status: **desktop design agreed on 2026-11-20**, including agent-authored anchor
 
 ### The window
 
-- The window holds, side by side: the sidebar (below), up to three **panes**, and the **details panel**. A pane is one conversation column; the first pane is the realm or Borderlands chat. The owner agreed to this desktop layout on 2026-11-20.
-- The details panel keeps its place, a dedicated column on the right with the Quest and Companions tabs, and its rules, for now (the owner: "they should still be in a dedicated sidebar for now"; [thread-panel](../thread-panel/specifications.md)). It does not count among the three panes.
+- The desktop conversation window holds the navigation sidebar and up to three conversation panes.
+- A channel has **Missives**, **Quests**, and **Companions**; a quest has **Missives**, **Errands**, **Quest**, and **Companions**; an errand has **Missives**, **Quest**, and **Companions**.
+- The **Quest** tab holds the [thread details](../thread-panel/specifications.md), and **Companions** edits the pane’s own conversation or the draft errand in the new-errand pane.
+- The model button in the conversation composer opens its own pane’s **Companions** tab.
+- Tab switches preserve drafts, and each pane selects its own tab independently.
 - Pane management is expected to change as the owner uses it ("we'll iterate on that").
 
 ### The Workshop
@@ -21,7 +24,7 @@ Status: **desktop design agreed on 2026-11-20**, including agent-authored anchor
 The Workshop (Settings) is not a pane and not a sheet: it is the page that takes over the whole content area, every pane included (the owner, 2026-11-19: "the workshop should take over the full panel but the icon should be on the top right, where chronicler is actually", CHG-0563).
 
 - Its icon, the gear, stands at the far right of the top bar, where the Chronicler button was. It shows as selected while the Workshop is open.
-- Pressed, it opens the Workshop over the whole content area, sidebar kept. Pressed again, the Workshop closes and the owner is where they were, with the pane chain exactly as left: the folds, the shares, the pane in focus, the details panel, the drafts, and a pinned sidebar. The panes wait mounted beneath the Workshop, out of sight.
+- Pressed, it opens the Workshop over the whole content area, sidebar kept. Pressed again, the Workshop closes and the owner is where they were, with the pane chain exactly as left: the folds, the shares, the pane in focus, the selected tabs, the drafts, and a pinned sidebar. The panes wait mounted beneath the Workshop, out of sight.
 - The sidebar's foot has no Workshop row on a desktop window; the phone's full-screen menu, which has no top bar, keeps it.
 - The Workshop screen itself is unchanged. No keyboard shortcut for it yet.
 
@@ -109,7 +112,7 @@ Realm and Borderlands channels omit the Chronicler, harness, and model line on b
 ## Edge cases
 
 - An archived errand keeps its card, and opens read-only as [today](../thread-tree/specifications.md#archiving-an-errand).
-- The details panel shows the pane in focus; moving focus follows the [panel ownership rule](../thread-panel/specifications.md#panel-ownership-across-navigation).
+- Journal, lore, and budget pages opened from a pane replace that pane’s contents until Back.
 
 ## Acceptance and validation
 
@@ -117,7 +120,9 @@ Realm and Borderlands channels omit the Chronicler, harness, and model line on b
 - Open an errand from its channel and quest, then open a legacy sub-errand and return to its parent within the same pane.
 - Check persisted Reply anchors, including proposal messages, duplicate Replies and the errand brief. An errand agent's follow-up appears in the quest, and only the owner's Reply starts it.
 - Open the Chronicle from the sidebar and verify that the attention feed is the default and routine events appear under History. Open an unread approval request from the feed, check that its unread indicator clears and it remains in Needs attention, then answer it and check that it leaves the filter. Check that reminders are deduplicated. Move a quest and check that the other channel receives its originating message.
-- Check sidebar pinning and Workshop return in a desktop window. Preserve phone access until the phone batch.
+- Check the in-pane tabs and composer model buttons with a channel, quest, and errand open together.
+- Check draft preservation, pane-local Journal, Lore, and Budget, sidebar pinning, and return from the Workshop in a desktop window.
+- Preserve phone access until the phone batch.
 
 ## Requirements
 
