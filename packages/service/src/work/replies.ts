@@ -1,8 +1,9 @@
-import type { ReplyToMessageResult, ThreadAnchor } from "@outlore/contracts";
+import type { ReplyToMessageResult } from "@outlore/contracts";
 import {
   type AccountId,
   type EffortChoice,
   type HarnessName,
+  MessageId,
   MissionId,
   type ModelChoice,
   ThreadId,
@@ -25,7 +26,12 @@ export const readThreadAnchors = Effect.fnUntraced(function* (threadId: string) 
       FROM threads t JOIN messages m ON m.id = t.anchor_message_id
       WHERE m.thread_id = ${threadId} AND t.is_deleting = 0
       ORDER BY m.sequence, t.rowid`;
-  return rows.map((row) => row as unknown as ThreadAnchor);
+  return rows.map((row) => ({
+    messageId: MessageId.make(row.messageId),
+    missionId: MissionId.make(row.missionId),
+    threadId: ThreadId.make(row.threadId),
+    title: row.title,
+  }));
 });
 
 /** The runner the owner chose for the reply: what it leaves out comes from what is started. */

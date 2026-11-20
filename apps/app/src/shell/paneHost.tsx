@@ -10,7 +10,7 @@ import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { FoldPaneButton } from "../ui/questHeaderButtons";
 import { ChannelPane, channelId } from "./channelPane";
-import { childNotchesOf } from "./childNotches";
+import { childNotchesOf, urgencyOf } from "./childNotches";
 import { ErrandStarter } from "./errandStarter";
 import {
   chainOf,
@@ -180,8 +180,11 @@ export function PaneHost({
       return missionList?.missions.find((mission) => mission.id === missionId)?.state ?? summary?.shownState ?? null;
     return summary?.shownState ?? null;
   };
-  const notchOf = (id: PaneId): NotchPart => {
+  const notchOf = (id: PaneId): NotchPart | null => {
     const summary = id === channelId || id === starterId ? undefined : summaryOf(id);
+    // An inactive errand remains readable in its pane or from the Errands tab, but has no edge shortcut.
+    if (id !== quest && summary !== undefined && (summary.isArchived || urgencyOf(summary.shownState) === null))
+      return null;
     const kind: NotchKind =
       id === channelId
         ? channel.id === null
@@ -261,7 +264,8 @@ export function PaneHost({
     const left: Array<NotchPart> = [];
     for (let each = depth - 1; slots[each]?.kind === "strip"; each -= 1) {
       const id = slots[each]?.id;
-      if (id !== undefined) left.unshift(notchOf(id));
+      const notch = id === undefined ? null : notchOf(id);
+      if (notch !== null) left.unshift(notch);
     }
     const right: Array<NotchPart> = [];
     const own = slots[depth]?.id;
@@ -270,7 +274,8 @@ export function PaneHost({
     if (slots.slice(depth + 1).every((slot) => slot.kind === "strip")) {
       for (let each = depth + 1; slots[each]?.kind === "strip"; each += 1) {
         const id = slots[each]?.id;
-        if (id !== undefined) right.push(notchOf(id));
+        const notch = id === undefined ? null : notchOf(id);
+        if (notch !== null) right.push(notch);
       }
       // The realm's edge lists quests only: the errands folded after its quest are not its own, so they show no notch there.
       const shownRight = own === channelId ? right.filter((part) => part.kind === "quest") : right;

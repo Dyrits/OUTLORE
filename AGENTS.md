@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the review and refactor since 0.1.12, read the [current handoff](.agents/handoffs/2026-11-20-1950-review-since-0-1-12.md). Handoffs are shared and committed.
+
 - To resume the Mistral Vibe update fix and its live verification, read the [current handoff](.agents/handoffs/2026-11-20-1903-vibe-update.md). Handoffs are shared and committed.
 
 - To resume pane notches, the status list, titles and the folding review, read the [current handoff](.agents/handoffs/2026-11-20-1844-pane-status-follow-up.md). Handoffs are shared and committed.
-
-- To resume turns woken by a background command (committed; live check pending), read the [current handoff](.agents/handoffs/2026-11-20-1447-background-wake-turns.md). Handoffs are shared and committed.
