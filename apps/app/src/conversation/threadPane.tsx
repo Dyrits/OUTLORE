@@ -19,6 +19,7 @@ import {
   NewQuestButton,
   QuestPanelButton,
 } from "../ui/questHeaderButtons";
+import { ChronicleTargetContext } from "./chronicleTarget";
 import { CommentTray } from "./commentViews";
 import { type CompanionsTab, CompanionsTabLayout } from "./companionsTabLayout";
 import { EntryView } from "./conversationEntries";
@@ -75,6 +76,7 @@ export function ThreadPane({
   onSelect: (threadId: ThreadId) => void;
 }) {
   const { thread } = detail;
+  const target = useContext(ChronicleTargetContext);
   const ending = useEnding(client, detail.mission);
   const work = thread.parentId === null ? "quest" : "errand";
   const conversation = useThreadConversation(
@@ -84,6 +86,9 @@ export function ThreadPane({
     thread.workspace?.path ?? null,
     { isChronicler: false, realmPath: null, viewing: null },
     terminalFolderOf(thread),
+    target !== null && (target.threadId === thread.id || (target.threadId === null && thread.parentId === null))
+      ? target
+      : null,
   );
   const { draft, skills, actionError, terminal, followNewest, comments, act } = conversation;
   const [isOpening, setIsOpening] = useState(false);

@@ -1,6 +1,7 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { type ChronicleTarget, ChronicleTargetContext } from "../conversation/chronicleTarget";
 import { Conversation } from "../conversation/conversation";
 import { PermissionsScreen } from "../editors/permissions";
 import type { ServiceClient } from "../foundation/client";
@@ -62,6 +63,40 @@ export function AppScreen({
   navigation: Navigation;
   view: Destination;
 }) {
+  const [selection, setSelection] = useState<{ missionId: MissionId; target: ChronicleTarget } | null>(null);
+  const opened = useRef<typeof selection>(null);
+  useEffect(() => {
+    if (selection === null) return;
+    if (view.openMission === selection.missionId) opened.current = selection;
+    else if (opened.current === selection) {
+      opened.current = null;
+      setSelection(null);
+    }
+  }, [selection, view.openMission]);
+  const target = selection !== null && selection.missionId === view.openMission ? selection.target : null;
+  return (
+    <ChronicleTargetContext.Provider value={target}>
+      <AppScreenContent
+        client={client}
+        navigation={navigation}
+        onTarget={(missionId, target) => setSelection(target === null ? null : { missionId, target })}
+        view={view}
+      />
+    </ChronicleTargetContext.Provider>
+  );
+}
+
+function AppScreenContent({
+  client,
+  navigation,
+  view,
+  onTarget,
+}: {
+  client: ServiceClient;
+  navigation: Navigation;
+  view: Destination;
+  onTarget: (missionId: MissionId, target: ChronicleTarget | null) => void;
+}) {
   const quests = (listing: RealmListing) => (
     <QuestListScreen
       client={client}
@@ -78,8 +113,14 @@ export function AppScreen({
       <ChronicleActivity
         client={client}
         onOpenChannel={navigation.openChannel}
-        onOpenMission={navigation.openMission}
-        onOpenThread={navigation.openThread}
+        onOpenMission={(missionId, target) => {
+          onTarget(missionId, target);
+          navigation.openMission(missionId);
+        }}
+        onOpenThread={(missionId, threadId, target) => {
+          onTarget(missionId, target);
+          navigation.openThread(missionId, threadId);
+        }}
       />
     ),
     Home: home,

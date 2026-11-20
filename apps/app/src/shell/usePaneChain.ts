@@ -1,5 +1,6 @@
 import type { ThreadId, ThreadSummary } from "@outlore/contracts";
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { ChronicleTargetContext } from "../conversation/chronicleTarget";
 import {
   chainOf,
   desktopThreadsOf,
@@ -35,6 +36,14 @@ export function usePaneChain(
   const [focused, setFocused] = useState<ThreadId | null>(null);
   const [expanded, setExpanded] = useState<PaneId | null>(null);
   const [available, setAvailable] = useState(0);
+  const target = useContext(ChronicleTargetContext);
+  useEffect(() => {
+    const id = target?.threadId ?? (target === null ? null : (quest ?? null));
+    if (id === null || (target?.threadId !== null && id !== openThread)) return;
+    setExpanded(null);
+    setFocused(id);
+    setMemory((current) => revealedPane(current, id));
+  }, [target, openThread, quest]);
   // A "+N" notch asks a pane to open its list of children; a new object each press, so a second press asks again.
   const [listRequest, setListRequest] = useState<{ id: PaneId } | null>(null);
   // Opening a thread focuses its pane; the folds of panes that left the chain are forgotten.

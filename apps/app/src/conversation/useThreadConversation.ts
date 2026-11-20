@@ -8,6 +8,7 @@ import type { ServiceClient } from "../foundation/client";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { useSkills } from "../foundation/useSkills";
 import { useTerminal } from "../terminal/useTerminal";
+import type { ChronicleTarget } from "./chronicleTarget";
 import { entriesOf } from "./entries";
 import { type ConversationOptions, conversationStateOf, sendConversationMessage } from "./threadConversation";
 import { useThreadComments } from "./useComments";
@@ -22,12 +23,13 @@ export function useThreadConversation(
   options: ConversationOptions,
   /** Where the `!` terminal starts; the thread's working folder, which an own copy makes differ from `path`. */
   terminalPath: string | null = path,
+  target: ChronicleTarget | null = null,
 ) {
   const draft = useDraft(client, threadId);
   // What hangs from the messages of this conversation, so their reply lines stand under them (conversation panes).
   const { data: anchors } = useServiceQuery(client, { _tag: "ReadThreadAnchors", threadId }, `anchors:${threadId}`);
   const entries = detail === null ? [] : entriesOf(detail, detail.thread.actions.isInTurn, anchors ?? []);
-  const followNewest = useFollowNewest(entries);
+  const followNewest = useFollowNewest(entries, target);
   const skills = useSkills(client, path);
   const terminal = useTerminal(threadId, terminalPath);
   const comments = useThreadComments(threadId);

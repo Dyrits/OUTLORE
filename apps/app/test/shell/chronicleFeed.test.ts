@@ -26,6 +26,7 @@ const entry = (
   kind,
   messageId: null,
   missionId: null,
+  questionId: null,
   realmId: null,
   threadId: null,
   title: id,

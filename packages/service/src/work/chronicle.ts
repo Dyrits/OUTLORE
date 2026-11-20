@@ -64,7 +64,10 @@ export const readChronicle = Effect.gen(function* () {
           AND t.archived_at IS NULL
         GROUP BY t.id
     )
-    SELECT * FROM items ORDER BY at DESC, id LIMIT 150`;
+    SELECT items.*, CASE WHEN kind = 'Waiting' THEN
+      (SELECT q.id FROM questions q WHERE q.thread_id = items.threadId AND q.outcome IS NULL
+        ORDER BY q.asked_at DESC, q.id ASC LIMIT 1) ELSE NULL END AS questionId
+    FROM items ORDER BY at DESC, id LIMIT 150`;
   return rows.map((row): ChronicleItem => ({ ...row, isUnread: row.isUnread === 1 }));
 });
 

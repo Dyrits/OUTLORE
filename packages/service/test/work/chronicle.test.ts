@@ -27,19 +27,26 @@ describe("the Chronicle's attention feed and reads (CHG-0569)", () => {
     ),
   );
 
-  it.live("keeps a read request waiting for the owner's answer", () =>
+  it.live.each(["Allow", "AlwaysAllow", "Deny"] as const)("keeps a read request until the owner answers %s", (answer) =>
     withService(
       Effect.gen(function* () {
         const quest = yield* start('ask {"action":"Push the code","command":"git push"}');
-        yield* settle(quest.missionId, (detail) => detail.thread.state === "Attention");
+        const detail = yield* settle(quest.missionId, (current) => current.thread.state === "Attention");
+        const question = detail.questions.find((asked) => asked.outcome === null);
+        if (question === undefined) return yield* Effect.die("Missing approval question");
         const unread = yield* chronicle();
         expect(unread.find((each) => each.kind === "Waiting" && each.threadId === quest.threadId)).toMatchObject({
           isUnread: true,
+          questionId: question.id,
         });
         yield* call({ _tag: "MarkThreadRead", threadId: quest.threadId });
         const after = yield* chronicle();
         const waiting = after.find((each) => each.kind === "Waiting" && each.threadId === quest.threadId);
         expect(waiting).toMatchObject({ isUnread: false });
+        expect(after.filter((each) => each.kind === "Waiting" && each.threadId === quest.threadId)).toHaveLength(1);
+        yield* call({ _tag: "AnswerQuestion", answer, message: null, questionId: question.id });
+        const answered = yield* chronicle();
+        expect(answered.find((each) => each.kind === "Waiting" && each.threadId === quest.threadId)).toBeUndefined();
       }),
     ),
   );

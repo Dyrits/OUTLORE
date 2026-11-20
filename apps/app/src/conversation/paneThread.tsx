@@ -1,11 +1,12 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useContext, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import type { QuestPage } from "../foundation/pageNavigation";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { urgencyOf } from "../shell/childNotches";
+import { ChronicleTargetContext } from "./chronicleTarget";
 import { PaneTabs } from "./paneTabs";
 import { useQuestPages } from "./questPages";
 import { questPanelOf } from "./questPanelOf";
@@ -55,6 +56,14 @@ export function PaneThread({
   useEffect(() => {
     if (listRequest !== undefined) setTab("Errands");
   }, [listRequest]);
+  const target = useContext(ChronicleTargetContext);
+  useEffect(() => {
+    if (
+      target !== null &&
+      (target.threadId === threadId || (target.threadId === null && detail?.thread.parentId === null))
+    )
+      setTab("Missives");
+  }, [target, threadId, detail?.thread.parentId]);
   const isQuest = detail?.thread.parentId === null;
   // The details tab is named for what the pane holds: the quest's own thread, or one of its errands.
   const detailsName = isQuest ? "Quest" : "Errand";

@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { MessageId, MissionId, ThreadId, WorkspaceId } from "./ids.ts";
+import { MessageId, MissionId, QuestionId, ThreadId, WorkspaceId } from "./ids.ts";
 
 export const ChronicleItem = Schema.Struct({
   at: Schema.Number,
@@ -21,6 +21,8 @@ export const ChronicleItem = Schema.Struct({
   /** The latest message of an unread update, to read it in its conversation; null for what is not one message. */
   messageId: Schema.NullOr(MessageId),
   missionId: Schema.NullOr(MissionId),
+  /** The unanswered request selected for a waiting entry. */
+  questionId: Schema.optional(Schema.NullOr(QuestionId)),
   realmId: Schema.NullOr(WorkspaceId),
   threadId: Schema.NullOr(ThreadId),
   title: Schema.String,
