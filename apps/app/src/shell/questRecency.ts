@@ -14,24 +14,25 @@ export interface RecencyGroup {
 
 const dayMillis = 24 * 60 * 60 * 1000;
 
+/** The heading a moment falls under: Today, Yesterday, This week, then its month (with the year when not the current one). */
+export const recencyHeadingOf = (millis: number, now: number): string => {
+  const startOfToday = new Date(now).setHours(0, 0, 0, 0);
+  if (millis >= startOfToday) return "Today";
+  if (millis >= startOfToday - dayMillis) return "Yesterday";
+  if (millis >= startOfToday - 6 * dayMillis) return "This week";
+  const date = new Date(millis);
+  const month = date.toLocaleString("en", { month: "long" });
+  return date.getFullYear() === new Date(now).getFullYear() ? month : `${month} ${date.getFullYear()}`;
+};
+
 /**
  * Groups quests, latest first, under Today, Yesterday, This week, then one heading per month (with the year when it is
  * not the current one), as the quest list pages list them.
  */
 export const recencyGroupsOf = (missions: ReadonlyArray<MissionSummary>, now: number): ReadonlyArray<RecencyGroup> => {
-  const startOfToday = new Date(now).setHours(0, 0, 0, 0);
-  const thisYear = new Date(now).getFullYear();
-  const headingOf = (millis: number) => {
-    if (millis >= startOfToday) return "Today";
-    if (millis >= startOfToday - dayMillis) return "Yesterday";
-    if (millis >= startOfToday - 6 * dayMillis) return "This week";
-    const date = new Date(millis);
-    const month = date.toLocaleString("en", { month: "long" });
-    return date.getFullYear() === thisYear ? month : `${month} ${date.getFullYear()}`;
-  };
   const groups: Array<{ heading: string; quests: MissionSummary[] }> = [];
   for (const mission of latestFirstOf(missions)) {
-    const heading = headingOf(mission.lastActivityAt);
+    const heading = recencyHeadingOf(mission.lastActivityAt, now);
     const last = groups[groups.length - 1];
     if (last?.heading === heading) last.quests.push(mission);
     else groups.push({ heading, quests: [mission] });

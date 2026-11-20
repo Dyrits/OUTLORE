@@ -32,4 +32,4 @@ Batches 1–3 are historical deliveries. Batch 4 now stores agent-authored repli
 
 Verify the first two increments with focused automated tests and a desktop window, alongside Biome, typecheck and the full suite.
 
-The later Chronicle Activity agreement adds unread tracking, filters, direct message and request links, and a separate History tab. The activity list in this increment is a first view of recorded quest and realm events and current reminders. The richer Activity behavior remains open for implementation.
+The later Chronicle Activity agreement adds unread tracking, filters, direct message and request links, and a separate History tab. The activity list in this increment is a first view of recorded quest and realm events and current reminders. The screen's first slice (CHG-0571) reads it as two views — Needs attention and History — shaped to their urgency; the unread badge, the Unread filter, read-clearing and the direct links remain open for implementation.
