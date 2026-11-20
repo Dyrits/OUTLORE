@@ -20,6 +20,7 @@ import {
 } from "../core/index.ts";
 import { noTimeLimit } from "./claudeArgs.ts";
 import { codexAnswersOf, codexChoicesOf } from "./codexChoices.ts";
+import { type GitGrants, gitGrantsOf } from "./codexGitGrants.ts";
 import { vaultProfileArgsOf, vaultProfileName } from "./codexVaultProfile.ts";
 import { codexFileEditsOf } from "./fileEditEvents.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
@@ -45,7 +46,7 @@ export type CodexOptions = {
   readonly idleTimeout: Duration.Input;
   /** Arguments placed before the app server's own, used to run a stand-in script in checks. */
   readonly prefixArgs?: ReadonlyArray<string>;
-  /** The Vault's folder, hidden from the sandbox by a permission profile (ADR 0022); `workspace-write` when left out. */
+  /** The Vault's folder, hidden from the sandbox by a permission profile (ADR 0022); `workspace-write` when left out and outside a Git repository. */
   readonly vaultFolder?: string;
 };
 
@@ -68,12 +69,22 @@ const effortOf = (effort: EffortChoice) => (effort === "default" ? null : effort
  * its full-access mode. At the default level they ask only to leave it, and every such request asks the owner with
  * the exact command. At "Also commands and edits" every command it does not trust asks.
  */
-const policyOf = (access: ThreadAccess, vaultFolder: string | null) => ({
+const policyOf = (access: ThreadAccess, profile: CodexProfile | null) => ({
   approvalPolicy: access.approvalLevel === "RiskyOnly" ? "on-request" : "untrusted",
-  // With a Vault folder to hide, the named profile that keeps `workspace-write`'s rules and denies reading the folder
-  // (codexVaultProfile.ts); the two cannot be combined in a request.
-  ...(vaultFolder === null ? { sandbox: "workspace-write" } : { permissions: vaultProfileName }),
+  // With a Vault folder to hide or a Git repository to commit in, the named profile that keeps `workspace-write`'s
+  // rules, denies reading the folder and lets Git write its folder except its hooks and config (codexVaultProfile.ts);
+  // the two cannot be combined in a request.
+  ...(profile === null ? { sandbox: "workspace-write" } : { permissions: vaultProfileName }),
 });
+
+/** What the named profile holds for a thread: the Vault's folder to hide and the Git grants for its repository. */
+type CodexProfile = { readonly grants: GitGrants; readonly vaultFolder: string | null };
+
+/** The thread's profile; null when there is neither a folder to hide nor a repository, so `workspace-write` serves. */
+const profileOf = (cwd: string, vaultFolder: string | null): CodexProfile | null => {
+  const grants = gitGrantsOf(cwd);
+  return vaultFolder === null && Object.keys(grants).length === 0 ? null : { grants, vaultFolder };
+};
 
 /** A turn's input: the text, then one `localImage` item per image, by the stored path (message-attachments). */
 const inputOf = (text: string, images: ReadonlyArray<ImageAttachment>) => [
@@ -82,8 +93,8 @@ const inputOf = (text: string, images: ReadonlyArray<ImageAttachment>) => [
 ];
 
 /** The thread's settings: its tools at its own endpoint, no native subagents, and Outlore's context. */
-const threadSettingsOf = (request: TurnRequest, cwd: string, vaultFolder: string | null) => ({
-  ...policyOf(request.access, vaultFolder),
+const threadSettingsOf = (request: TurnRequest, cwd: string, profile: CodexProfile | null) => ({
+  ...policyOf(request.access, profile),
   config: {
     // One thread is one Codex conversation; threads open threads with open_thread instead (ADR 0007).
     "features.multi_agent": false,
@@ -358,7 +369,9 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
   // Where the folder really points too: a link pointed elsewhere restarts the process, whose start checks it again.
   restartKeyOf: (request) =>
     JSON.stringify([
-      threadSettingsOf(request, request.cwd, options.vaultFolder ?? null),
+      threadSettingsOf(request, request.cwd, profileOf(request.cwd, options.vaultFolder ?? null)),
+      // The Git grants, which a repository's worktrees and submodules change.
+      gitGrantsOf(request.cwd),
       // The tools are listed when the process starts, so a change of Code Mode restarts it.
       request.access.usesCodeMode,
       request.access.connectorTools,
@@ -388,14 +401,19 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
     // folder and its thread's, so its workspace sandbox writes there (threadFolder.ts). Codex 0.167.2 refuses a
     // writable root holding a link, and treats its process folder, resolved by the system, as writable (CHG-0208).
     const cwd = yield* resolveStartFolder(request, "Codex");
-    // The Vault's profile is defined on the process, not in `thread/start`'s `config`: a turn reloads the settings
+    // The named profile is defined on the process, not in `thread/start`'s `config`: a turn reloads the settings
     // without that thread's overrides, finds no such profile, and fails with "failed to load workspace
     // requirements: invalid input parameter" (Codex 0.170.0, 2026-11-20). A profile in the process settings also
     // needs `default_permissions`.
+    const profile = profileOf(cwd, options.vaultFolder ?? null);
     const profileArgs =
-      options.vaultFolder === undefined
+      profile === null
         ? []
-        : ["-c", `default_permissions=${JSON.stringify(vaultProfileName)}`, ...vaultProfileArgsOf(options.vaultFolder)];
+        : [
+            "-c",
+            `default_permissions=${JSON.stringify(vaultProfileName)}`,
+            ...vaultProfileArgsOf(profile.vaultFolder, profile.grants),
+          ];
     const rpc = yield* startRpcProcess({
       args: [...(options.prefixArgs ?? []), "app-server", ...profileArgs],
       command: options.command,
@@ -411,7 +429,7 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
         clientInfo: { name: "outlore", title: "Outlore", version: "0.0.0" },
       });
       rpc.notify("initialized", {});
-      const settings = threadSettingsOf(request, cwd, options.vaultFolder ?? null);
+      const settings = threadSettingsOf(request, cwd, profile);
       billing = yield* billingOf(rpc);
       return request.sessionId === null
         ? yield* rpc.request("thread/start", settings)
