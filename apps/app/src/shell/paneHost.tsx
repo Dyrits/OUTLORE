@@ -142,8 +142,12 @@ export function PaneHost({
     setMemory(equalizedPanes);
     rememberPaneWeights([]);
   };
+  const isExpandedPane = (id: PaneId) => paneCount === 1 && openSlots[0]?.id === id;
+  // A pane in full view has nothing to fold into: its fold button is not shown.
+  const foldButton = (id: PaneId, label: string) =>
+    isExpandedPane(id) ? null : <FoldPaneButton label={label} onPress={() => fold(id)} />;
   const expandButton = (id: PaneId) => {
-    const isExpanded = paneCount === 1 && openSlots[0]?.id === id;
+    const isExpanded = isExpandedPane(id);
     return (
       <PaneButton
         glyph={isExpanded ? "⊡" : "⛶"}
@@ -190,6 +194,7 @@ export function PaneHost({
           : "errand";
     return {
       id,
+      isNew: id === starterId,
       kind,
       onReveal: () => {
         setExpanded(null);
@@ -345,7 +350,7 @@ export function PaneHost({
                   chrome={
                     <>
                       {expandButton(id)}
-                      <FoldPaneButton label="Fold the channel" onPress={() => fold(id)} />
+                      {foldButton(id, "Fold the channel")}
                     </>
                   }
                   client={client}
@@ -359,7 +364,7 @@ export function PaneHost({
                   chrome={
                     <>
                       {expandButton(id)}
-                      <FoldPaneButton label="Fold the errand" onPress={() => fold(id)} />
+                      {foldButton(id, "Fold the errand")}
                     </>
                   }
                   client={client}
@@ -379,19 +384,14 @@ export function PaneHost({
                 <PaneThread
                   chrome={
                     <>
-                      {threadId !== quest && quest !== undefined && (
-                        <PaneButton glyph="+" label="New errand" onPress={() => startErrand(quest)} />
-                      )}
                       {expandButton(threadId)}
-                      <FoldPaneButton
-                        label={threadId === quest ? "Fold the quest" : "Fold the errand"}
-                        onPress={() => fold(threadId)}
-                      />
+                      {foldButton(threadId, threadId === quest ? "Fold the quest" : "Fold the errand")}
                     </>
                   }
                   client={client}
                   listRequest={listRequest?.id === id ? listRequest : undefined}
                   missionId={missionId}
+                  onNewErrand={threadId !== quest && quest !== undefined ? () => startErrand(quest) : undefined}
                   onOpenMission={onOpenMission}
                   onOpenThread={revealThread}
                   onStartErrand={() => startErrand(threadId)}

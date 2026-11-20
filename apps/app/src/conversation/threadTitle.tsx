@@ -1,9 +1,10 @@
 import type { MissionDetail, MissionId, MissionState, ThreadId, ThreadState } from "@outlore/contracts";
-import { Text } from "react-native";
+import { Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { ChipIcon } from "../ui/chips";
 import { Menu } from "../ui/pickers";
 
 function TitleMenu<Id extends string>({
@@ -22,22 +23,27 @@ function TitleMenu<Id extends string>({
   titles.set(current.id, currentTitle);
   const states = new Map(choices.map((choice) => [choice.id, choice.state]));
   if (current.state !== undefined) states.set(current.id, current.state);
-  return titles.size === 1 ? (
-    <Text numberOfLines={1} style={[styles.paneTitle, { flexShrink: 1 }]}>
-      {currentTitle}
-    </Text>
-  ) : (
-    <Menu
-      accessibilityLabel={`${currentTitle}, switch ${kind}`}
-      isTitle
-      label={(id) => titles.get(id) ?? currentTitle}
-      onChange={(id) => {
-        if (id !== current.id) onSelect(id);
-      }}
-      options={Array.from(titles.keys())}
-      state={(id) => states.get(id)}
-      value={current.id}
-    />
+  return (
+    <View style={{ alignItems: "center", flexDirection: "row", gap: 6, minWidth: 0 }}>
+      <ChipIcon kind={kind} />
+      {titles.size === 1 ? (
+        <Text numberOfLines={1} style={[styles.paneTitle, { flexShrink: 1 }]}>
+          {currentTitle}
+        </Text>
+      ) : (
+        <Menu
+          accessibilityLabel={`${currentTitle}, switch ${kind}`}
+          isTitle
+          label={(id) => titles.get(id) ?? currentTitle}
+          onChange={(id) => {
+            if (id !== current.id) onSelect(id);
+          }}
+          options={Array.from(titles.keys())}
+          state={(id) => states.get(id)}
+          value={current.id}
+        />
+      )}
+    </View>
   );
 }
 

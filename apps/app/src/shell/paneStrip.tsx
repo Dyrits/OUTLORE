@@ -26,6 +26,8 @@ export const notchWidth = 26;
 export type NotchPart = {
   count?: number;
   id: string;
+  /** The notch starts a new object (an errand of the quest, a quest of the realm): its icon carries a small "+". */
+  isNew?: boolean;
   kind: NotchKind;
   onReveal: () => void;
   state: ThreadState | MissionState | null;
@@ -72,6 +74,7 @@ export function PaneNotches({
           ) : (
             <Emblem name={emblems[part.kind]} size={16} tint={colors.textSecondary} />
           )}
+          {part.isNew === true && <PlusMark />}
           {part.state !== null && (
             <View
               accessibilityLabel={stateLabels[part.state]}
@@ -81,6 +84,24 @@ export function PaneNotches({
         </Pressable>
       ))}
     </View>
+  );
+}
+
+/** The small "+" on the corner of a notch that starts something new. */
+function PlusMark() {
+  return (
+    <Svg
+      fill="none"
+      height={9}
+      stroke={colors.textSecondary}
+      strokeLinecap="round"
+      strokeWidth={1.8}
+      style={local.plus}
+      viewBox="0 0 10 10"
+      width={9}
+    >
+      <Path d="M5 1v8M1 5h8" />
+    </Svg>
   );
 }
 
@@ -146,5 +167,6 @@ const local = StyleSheet.create({
   notchOnLine: { borderRadius: radii.md },
   notchRight: { borderBottomLeftRadius: radii.md, borderRightWidth: 0, borderTopLeftRadius: radii.md },
   onLine: { left: -notchWidth / 2 },
+  plus: { bottom: 3, position: "absolute", right: 3 },
   pressed: { backgroundColor: colors.controlActive },
 });

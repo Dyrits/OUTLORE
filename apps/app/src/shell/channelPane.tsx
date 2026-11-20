@@ -1,13 +1,16 @@
 import { type MissionId, WorkspaceId } from "@outlore/contracts";
 import { type ReactNode, useEffect, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
 import { PaneTabs } from "../conversation/paneTabs";
-import type { ServiceClient } from "../foundation/client";
+import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
+import { colors, fontSizes } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { LoreScreen } from "../lore/lore";
 import { RealmPanel } from "../quests/questPanel";
 import { ChannelQuests } from "./channelQuests";
+import { notchWidth, PaneNotches } from "./paneStrip";
 
 export const channelId = "channel" as const;
 
@@ -36,6 +39,53 @@ export function ChannelPane({
     />
   );
 }
+
+/**
+ * A realm's pane on its own, with no quest open. While the realm has no quest, a notch on its right edge, a sword with
+ * a "+", starts one (conversation-panes, CHG-0604).
+ */
+export function StandaloneChannel({
+  channel,
+  client,
+  onOpenMission,
+}: {
+  channel: { id: string | null; name: string };
+  client: ServiceClient;
+  onOpenMission: (id: MissionId) => void;
+}) {
+  const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
+  const [failure, setFailure] = useState<string | null>(null);
+  const isEmpty =
+    data !== undefined && data !== null && !data.missions.some((mission) => mission.workspaceId === channel.id);
+  const start = () => {
+    setFailure(null);
+    client
+      .request({
+        _tag: "StartEmptyQuest",
+        realmId: channel.id === null ? null : WorkspaceId.make(channel.id),
+        requestId: newRequestId(),
+      })
+      .then((started) => onOpenMission(started.missionId))
+      .catch((reason) => setFailure(messageOf(reason)));
+  };
+  return (
+    <View style={[local.fill, isEmpty && { paddingRight: notchWidth }]}>
+      <ChannelPane channel={channel} client={client} onOpenMission={onOpenMission} />
+      {failure !== null && <Text style={local.failure}>{failure}</Text>}
+      {isEmpty && (
+        <PaneNotches
+          parts={[{ id: "new-quest", isNew: true, kind: "quest", onReveal: start, state: null, title: "New quest" }]}
+          side="right"
+        />
+      )}
+    </View>
+  );
+}
+
+const local = StyleSheet.create({
+  failure: { bottom: 8, color: colors.dangerText, fontSize: fontSizes.xs, left: 12, position: "absolute" },
+  fill: { flex: 1 },
+});
 
 /**
  * A channel's pane (conversation panes): Missives is its conversation, Quests lists the realm's quests in the same

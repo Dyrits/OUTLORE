@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
 import { emblemPaths } from "../foundation/emblems";
 import { colors, radii } from "../foundation/theme";
+import { errandIconPath } from "./composerIcons";
 
 // The icons at the right of a quest's header, after its title: Archive, Mark as done, a separator, the quest's panel.
 
@@ -55,6 +56,32 @@ export function DoneButton({
   );
 }
 
+/** Starts a new errand: the errand's branch with a small plus, as the notch that starts one. */
+export function NewErrandButton({ label = "New errand", onPress }: { label?: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [local.panel, pressed && local.panelActive]}
+    >
+      <Svg
+        fill="none"
+        height={20}
+        stroke={colors.textSecondary}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.6}
+        viewBox="0 0 20 20"
+        width={20}
+      >
+        <Path d={errandIconPath} />
+        <Path d="M15.5 13v5M13 15.5h5" />
+      </Svg>
+    </Pressable>
+  );
+}
+
 /** A thin vertical line between groups of actions in the pane header. */
 export function HeaderSeparator() {
   return <View style={local.separator} />;
@@ -82,7 +109,7 @@ export function QuestPanelButton({ isOpen, onPress }: { isOpen: boolean; onPress
   );
 }
 
-/** Folds a pane to its strip: the bar sits on the left and the arrow points left, as on every pane. */
+/** Folds a pane toward its strip, shown as a bar and inward chevrons. */
 export function FoldPaneButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
@@ -93,8 +120,7 @@ export function FoldPaneButton({ label, onPress }: { label: string; onPress: () 
       style={({ pressed }) => [local.panel, pressed && local.panelActive]}
     >
       <HeaderIcon color={colors.textSecondary}>
-        <Rect height={16} rx={3} width={18} x={3} y={4} />
-        <Path d="M8 4v16m2.5-8H17m-4-3-3 3 3 3" />
+        <Path d="M5 5v14m7-12-5 5 5 5m6-10-5 5 5 5" />
       </HeaderIcon>
     </Pressable>
   );

@@ -12,7 +12,7 @@ import { EndingConfirmation } from "../quests/missionActions";
 import { MissingFolderNotice } from "../realms/workspaces";
 import { ArchiveButton } from "../ui/archiveButton";
 import { Composer, StateIndicator } from "../ui/controls";
-import { DoneButton, HeaderSeparator, QuestPanelButton } from "../ui/questHeaderButtons";
+import { DoneButton, HeaderSeparator, NewErrandButton, QuestPanelButton } from "../ui/questHeaderButtons";
 import { CommentTray } from "./commentViews";
 import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
@@ -44,7 +44,10 @@ export function ThreadPane({
   onOpenBudget,
   onOpenDetails,
   onBack,
+  onNewErrand,
 }: {
+  /** Starts an errand of the quest: an icon among the header's actions, before the separator. */
+  onNewErrand?: () => void;
   /** In a narrow window, which has no sidebar: the header's back chevron, which opens the main menu. */
   onBack?: () => void;
   /** The buttons at the end of the header of a pane among several: fold and close; none in the quest's own screen. */
@@ -98,7 +101,7 @@ export function ThreadPane({
     : null;
   const errandActions = <ErrandHeaderActions act={act} client={client} detail={detail} />;
   // The actions (archive, done) are kept apart from the layout controls that follow them by a separator.
-  const hasActions = archive !== null || hasErrandActions(detail);
+  const hasActions = archive !== null || hasErrandActions(detail) || onNewErrand !== undefined;
   const windowQuestTab = useContext(QuestTabButtonContext);
   const questTab = isInPane ? null : windowQuestTab;
   return (
@@ -133,6 +136,7 @@ export function ThreadPane({
                   )}
                   {markDone !== null && <DoneButton isDisabled={ending.isBusy} isDone={isDone} onPress={markDone} />}
                   {errandActions}
+                  {onNewErrand !== undefined && <NewErrandButton onPress={onNewErrand} />}
                   {hasActions && (questTab !== null || chrome != null) && <HeaderSeparator />}
                   {questTab !== null && <QuestPanelButton isOpen={questTab.isOpen} onPress={questTab.onPress} />}
                   {questTab !== null && chrome != null && <HeaderSeparator />}

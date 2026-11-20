@@ -11,7 +11,7 @@ import { SettingsScreen } from "../settings/settings";
 import type { SettingsSectionId } from "../settings/settingsSections";
 import { UsageScreen } from "../usage";
 import { ArchiveScreen } from "./archivePage";
-import { ChannelPane } from "./channelPane";
+import { StandaloneChannel } from "./channelPane";
 import { ChronicleActivity } from "./chronicleActivity";
 import { HomeScreen } from "./homeScreen";
 import { PaneHost } from "./paneHost";
@@ -148,7 +148,7 @@ export function AppScreen({
       <>
         <View style={view.place === "Channel" ? local.fill : local.parked}>
           <CompanionDockActions.Provider value={null}>
-            <ChannelPane channel={channel} client={client} onOpenMission={navigation.openMission} />
+            <StandaloneChannel channel={channel} client={client} onOpenMission={navigation.openMission} />
           </CompanionDockActions.Provider>
         </View>
         {view.place !== "Channel" && screens[view.place]}

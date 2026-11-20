@@ -9,6 +9,7 @@ import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { ChipIcon } from "../ui/chips";
 import { Composer, StateIndicator } from "../ui/controls";
 import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
@@ -164,7 +165,8 @@ function ChroniclerChat({
     <RepliesProvider value={{ start: (message) => setReplyTo(message) }}>
       <View style={local.page}>
         <View style={styles.header}>
-          <Text numberOfLines={1} style={[local.title, styles.flex]}>
+          <ChipIcon kind="realm" />
+          <Text numberOfLines={1} style={[styles.paneTitle, styles.flex]}>
             {channel?.name ?? "Chronicle"}
           </Text>
           <StateIndicator state={thread.state} />
@@ -304,5 +306,4 @@ const local = StyleSheet.create({
   noteText: { color: colors.onGround, fontFamily: fonts.sans, fontSize: fontSizes.md },
   page: { backgroundColor: colors.page, flex: 1, gap: 8, paddingBottom: 14, paddingHorizontal: 16, paddingTop: 12 },
   sub: { color: colors.onGround, fontFamily: fonts.sans, fontSize: fontSizes.md, opacity: 0.8 },
-  title: { color: colors.onGround, fontFamily: fonts.sans, fontSize: fontSizes.lg, fontWeight: "700" },
 });

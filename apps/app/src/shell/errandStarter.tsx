@@ -5,6 +5,7 @@ import { PaneTabs } from "../conversation/paneTabs";
 import { OpenThreadForm } from "../conversation/threadTree";
 import type { ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
+import { ChipIcon } from "../ui/chips";
 import { Menu } from "../ui/pickers";
 
 /** Starts a new errand or switches the pane to an existing one. */
@@ -26,6 +27,7 @@ export function ErrandStarter({
     <View style={local.pane}>
       <View style={local.header}>
         <View style={local.title}>
+          <ChipIcon kind="errand" />
           {errands.length > 1 ? (
             <Menu<ThreadId | null>
               accessibilityLabel="New errand, switch errand"
@@ -38,7 +40,7 @@ export function ErrandStarter({
               value={null}
             />
           ) : (
-            <Text style={styles.label}>New errand</Text>
+            <Text style={styles.paneTitle}>New errand</Text>
           )}
         </View>
         {chrome}
@@ -68,5 +70,5 @@ const local = StyleSheet.create({
   composer: { marginTop: "auto" },
   header: { alignItems: "center", flexDirection: "row", gap: 4 },
   pane: { flex: 1, gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
-  title: { alignItems: "flex-start", flex: 1, minWidth: 0 },
+  title: { alignItems: "center", flex: 1, flexDirection: "row", gap: 6, minWidth: 0 },
 });

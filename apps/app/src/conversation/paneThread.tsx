@@ -21,6 +21,7 @@ export function PaneThread({
   listRequest,
   missionId,
   onOpenMission,
+  onNewErrand,
   onOpenThread,
   onStartErrand,
   threadId,
@@ -32,6 +33,8 @@ export function PaneThread({
   listRequest?: object | undefined;
   missionId: MissionId;
   onOpenMission: (missionId: MissionId) => void;
+  /** The header's icon that starts an errand of the quest; none on the quest's own pane. */
+  onNewErrand?: (() => void) | undefined;
   /** Opens another thread of the quest: a reply line here opens its errand in the pane beside this one. */
   onOpenThread: (threadId: ThreadId) => void;
   onStartErrand: () => void;
@@ -91,6 +94,7 @@ export function PaneThread({
             isCompact={true}
             isInPane
             key={detail.thread.id}
+            onNewErrand={onNewErrand}
             onOpenBudget={() => pages.openBudget(detail.budgetStop?.scope ?? "Mission")}
             onOpenDetails={() => {}}
             onOpenMission={onOpenMission}
