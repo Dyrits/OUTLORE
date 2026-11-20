@@ -95,7 +95,10 @@ describe("the Git grants of Codex's permission profile (ADR 0025)", () => {
   });
 });
 
-const hasCodex = canApplySeatbelt && spawnSync("codex", ["--version"], { timeout: 20_000 }).status === 0;
+const hasCodex =
+  process.env.OUTLORE_LIVE_CODEX === "1" &&
+  canApplySeatbelt &&
+  spawnSync("codex", ["--version"], { timeout: 20_000 }).status === 0;
 // Not under /tmp or the temporary folder, which the profile writes anyway, so a write to `.git` proves the grant.
 const home = hasCodex ? mkdtempSync(join(homedir(), ".outlore-codex-git-")) : "";
 afterAll(() => {

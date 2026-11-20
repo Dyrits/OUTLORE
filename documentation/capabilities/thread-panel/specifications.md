@@ -26,7 +26,7 @@ The panel details below describe the controls regardless of their placement.
 - The Connectors panel uses quest-wide switches and offers Reset to inherit where applicable. Errands share those choices.
 - **An errand's panel** is headed with the errand's own title, and a **Quest** row that names its quest and opens it.
   Errands use the same Archive and Mark as done icons as quests in the conversation header.
-  A completed errand keeps a checked, disabled completion icon.
+  A Fulfilled errand can be reopened with the checked completion icon, labelled **Mark as not done**.
   An archived errand offers Restore errand in its details panel.
 
 ### Backup companions

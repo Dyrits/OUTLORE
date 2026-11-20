@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Deferred, Effect, Fiber } from "effect";
+import { vi } from "vitest";
 import { HarnessFailure, type TurnRequest } from "../../src/core/index.ts";
 import {
   type HarnessConnection,
@@ -255,6 +256,8 @@ describe("a process that wakes itself between turns", () => {
 
   /** A fake protocol whose process can be stirred and can run background work; `held` keeps a turn running. */
   const wakingProtocolOf = (held: Deferred.Deferred<void> | null = null) => {
+    const started = Deferred.makeUnsafe<void>();
+    const closed = Deferred.makeUnsafe<void>();
     const connections: Array<WakingConnection> = [];
     const signals: Array<ProcessSignals> = [];
     const resumed: Array<TurnRequest> = [];
@@ -264,7 +267,10 @@ describe("a process that wakes itself between turns", () => {
       runTurn: (connection, request) =>
         Effect.gen(function* () {
           if (request.isResuming === true) resumed.push(request);
-          else if (held !== null) yield* Deferred.await(held);
+          else {
+            yield* Deferred.succeed(started, void 0);
+            if (held !== null) yield* Deferred.await(held);
+          }
           connection.isStirredNow = false;
           return { isInterrupted: false, usage: null } satisfies TurnEnd;
         }),
@@ -273,6 +279,7 @@ describe("a process that wakes itself between turns", () => {
           const connection: WakingConnection = {
             close: () => {
               connection.isClosed = true;
+              Deferred.doneUnsafe(closed, Effect.void);
             },
             hasBackground: false,
             hasBackgroundWork: () => connection.hasBackground,
@@ -288,22 +295,25 @@ describe("a process that wakes itself between turns", () => {
         }),
       steer: () => Effect.succeed(true),
     };
-    return { connections, protocol, resumed, signals };
+    return { closed, connections, protocol, resumed, signals, started };
   };
 
-  it.live("asks its listener for a turn and runs it on the same process", () =>
+  it.effect("asks its listener for a turn and runs it on the same process", () =>
     Effect.gen(function* () {
       const { connections, protocol, resumed, signals } = wakingProtocolOf();
       const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
+      const finished = yield* Deferred.make<void>();
       const asked: Array<string> = [];
       pool.onResume((threadId) => {
         asked.push(threadId);
-        return pool.runTurn(turnRequestOf({ isResuming: true, text: "" })).pipe(Effect.as(true), Effect.orDie);
+        return pool
+          .runTurn(turnRequestOf({ isResuming: true, text: "" }))
+          .pipe(Effect.andThen(Deferred.succeed(finished, void 0)), Effect.as(true), Effect.orDie);
       });
       yield* pool.runTurn(turnRequestOf());
       stir(connections);
       signal(signals);
-      yield* Effect.sleep("50 millis");
+      yield* Deferred.await(finished);
       expect(asked).toEqual(["thread-1"]);
       expect(resumed).toHaveLength(1);
       expect(connections).toHaveLength(1);
@@ -311,38 +321,46 @@ describe("a process that wakes itself between turns", () => {
     }).pipe(Effect.scoped),
   );
 
-  it.live("asks once when the process signals again before a turn begins", () =>
+  it.effect("asks once when the process signals again before a turn begins", () =>
     Effect.gen(function* () {
       const { connections, protocol, signals } = wakingProtocolOf();
       const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
-      let asked = 0;
-      pool.onResume(() => {
-        asked += 1;
-        return Effect.sleep("30 millis").pipe(Effect.as(true));
-      });
+      const asked = yield* Deferred.make<string>();
+      const release = yield* Deferred.make<void>();
+      let calls = 0;
+      pool.onResume((threadId) =>
+        Effect.gen(function* () {
+          calls += 1;
+          yield* Deferred.succeed(asked, threadId);
+          yield* Deferred.await(release);
+          return true;
+        }),
+      );
       yield* pool.runTurn(turnRequestOf());
       stir(connections);
       signal(signals);
+      expect(yield* Deferred.await(asked)).toBe("thread-1");
       signal(signals);
-      yield* Effect.sleep("80 millis");
-      expect(asked).toBe(1);
+      yield* Effect.yieldNow;
+      expect(calls).toBe(1);
+      yield* Deferred.succeed(release, void 0);
     }).pipe(Effect.scoped),
   );
 
-  it.live("closes the process when its wake is refused, which would otherwise run unseen", () =>
+  it.effect("closes the process when its wake is refused, which would otherwise run unseen", () =>
     Effect.gen(function* () {
-      const { connections, protocol, signals } = wakingProtocolOf();
+      const { closed, connections, protocol, signals } = wakingProtocolOf();
       const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
       pool.onResume(() => Effect.succeed(false));
       yield* pool.runTurn(turnRequestOf());
       stir(connections);
       signal(signals);
-      yield* Effect.sleep("50 millis");
+      yield* Deferred.await(closed);
       expect(connections[0]?.isClosed).toBe(true);
     }).pipe(Effect.scoped),
   );
 
-  it.live("ignores a process that is not stirred", () =>
+  it.effect("ignores a process that is not stirred", () =>
     Effect.gen(function* () {
       const { connections, protocol, signals } = wakingProtocolOf();
       const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
@@ -353,16 +371,16 @@ describe("a process that wakes itself between turns", () => {
       });
       yield* pool.runTurn(turnRequestOf());
       signal(signals);
-      yield* Effect.sleep("30 millis");
+      yield* Effect.yieldNow;
       expect(asked).toBe(0);
       expect(connections[0]?.isClosed).toBe(false);
     }).pipe(Effect.scoped),
   );
 
-  it.live("leaves a wake that arrives during a turn to that turn, and asks for none after it", () =>
+  it.effect("leaves a wake that arrives during a turn to that turn, and asks for none after it", () =>
     Effect.gen(function* () {
       const held = yield* Deferred.make<void>();
-      const { connections, protocol, signals } = wakingProtocolOf(held);
+      const { connections, protocol, signals, started } = wakingProtocolOf(held);
       const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
       let asked = 0;
       pool.onResume(() => {
@@ -370,45 +388,45 @@ describe("a process that wakes itself between turns", () => {
         return Effect.succeed(true);
       });
       const turn = yield* Effect.forkChild(pool.runTurn(turnRequestOf()));
-      yield* Effect.sleep("30 millis");
+      yield* Deferred.await(started);
       stir(connections);
       signal(signals);
       expect(asked).toBe(0);
       yield* Deferred.succeed(held, void 0);
       yield* Fiber.join(turn);
       // The turn read the wake, as Claude Code's does with a notification that comes during it.
-      yield* Effect.sleep("30 millis");
+      yield* Effect.yieldNow;
       expect(asked).toBe(0);
     }).pipe(Effect.scoped),
   );
 
-  it.live("asks after a turn that ended with a wake it never read", () =>
+  it.effect("asks after a turn that ended with a wake it never read", () =>
     Effect.gen(function* () {
       const held = yield* Deferred.make<void>();
-      const { connections, protocol, signals } = wakingProtocolOf();
+      const { connections, protocol, signals, started } = wakingProtocolOf();
       // A turn that never reads the wake: its end leaves `isStirredNow` set.
       const unread: HarnessProtocol<WakingConnection> = {
         ...protocol,
-        runTurn: () => Deferred.await(held).pipe(Effect.as({ isInterrupted: false, usage: null } satisfies TurnEnd)),
+        runTurn: () =>
+          Deferred.succeed(started, void 0).pipe(
+            Effect.andThen(Deferred.await(held)),
+            Effect.as({ isInterrupted: false, usage: null } satisfies TurnEnd),
+          ),
       };
       const pool = yield* makeHarnessProcesses(unread, { idleTimeout: "10 minutes" });
-      let asked = 0;
-      pool.onResume(() => {
-        asked += 1;
-        return Effect.succeed(true);
-      });
+      const asked = yield* Deferred.make<string>();
+      pool.onResume((id) => Deferred.succeed(asked, id).pipe(Effect.as(true)));
       const turn = yield* Effect.forkChild(pool.runTurn(turnRequestOf()));
-      yield* Effect.sleep("30 millis");
+      yield* Deferred.await(started);
       stir(connections);
       signal(signals);
       yield* Deferred.succeed(held, void 0);
       yield* Fiber.join(turn);
-      yield* Effect.sleep("30 millis");
-      expect(asked).toBe(1);
+      expect(yield* Deferred.await(asked)).toBe("thread-1");
     }).pipe(Effect.scoped),
   );
 
-  it.live("keeps a process with background work longer than an idle one", () =>
+  it.effect("keeps a process with background work longer than an idle one", () =>
     Effect.gen(function* () {
       const { connections, protocol } = wakingProtocolOf();
       // The turn of the thread "busy" leaves a background command running.
@@ -419,12 +437,17 @@ describe("a process that wakes itself between turns", () => {
           return protocol.runTurn(connection, request, turn);
         },
       };
+      // The pool uses native timers for process retention, so control those timers directly.
+      yield* Effect.acquireRelease(
+        Effect.sync(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })),
+        () => Effect.sync(() => vi.useRealTimers()),
+      );
       const pool = yield* makeHarnessProcesses(running, { backgroundHold: "400 millis", idleTimeout: "20 millis" });
       yield* pool.runTurn(turnRequestOf({ threadId: "idle" }));
       yield* pool.runTurn(turnRequestOf({ threadId: "busy" }));
-      yield* Effect.sleep("150 millis");
+      vi.advanceTimersByTime(20);
       expect(connections.map((connection) => connection.isClosed)).toEqual([true, false]);
-      yield* Effect.sleep("500 millis");
+      vi.advanceTimersByTime(380);
       expect(connections[1]?.isClosed).toBe(true);
     }).pipe(Effect.scoped),
   );

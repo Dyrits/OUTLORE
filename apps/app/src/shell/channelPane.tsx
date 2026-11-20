@@ -10,10 +10,8 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { LoreScreen } from "../lore/lore";
 import { RealmPanel } from "../quests/questPanel";
 import { ChannelQuests } from "./channelQuests";
-import { childNotchesOf } from "./childNotches";
-import { type NotchPart, notchWidth, PaneNotches } from "./paneStrip";
-
-export const channelId = "channel" as const;
+import { childPartsOf } from "./paneNotches";
+import { notchWidth, PaneNotches } from "./paneStrip";
 
 export function ChannelPane({
   channel,
@@ -72,28 +70,7 @@ export function StandaloneChannel({
       .then((started) => onOpenMission(started.missionId))
       .catch((reason) => setFailure(messageOf(reason)));
   };
-  const children = childNotchesOf(quests, new Set());
-  const parts: Array<NotchPart> = [
-    ...children.shown.map((child) => ({
-      id: `quest:${child.id}`,
-      kind: "quest" as const,
-      onReveal: () => onOpenMission(child.id),
-      state: child.state,
-      title: quests.find((mission) => mission.id === child.id)?.title ?? "",
-    })),
-    ...(children.more === null
-      ? []
-      : [
-          {
-            count: children.more.count,
-            id: "more-quests",
-            kind: "more" as const,
-            onReveal: () => setListRequest({ id: "quests" }),
-            state: children.more.state,
-            title: `Show ${children.more.count} more quests`,
-          },
-        ]),
-  ];
+  const parts = childPartsOf(quests, new Set(), "quest", onOpenMission, () => setListRequest({ id: "quests" }));
   return (
     <View style={[local.fill, (parts.length > 0 || isEmpty) && { paddingRight: notchWidth }]}>
       <ChannelPane

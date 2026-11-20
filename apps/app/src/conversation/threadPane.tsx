@@ -20,9 +20,9 @@ import {
   QuestPanelButton,
 } from "../ui/questHeaderButtons";
 import { CommentTray } from "./commentViews";
+import { type CompanionsTab, CompanionsTabLayout } from "./companionsTabLayout";
 import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
-import { ConversationRunner } from "./conversationRunner";
 import type { Entry } from "./entries";
 import { ErrandHeaderActions, hasErrandActions } from "./errandHeaderActions";
 import { MobileHeader } from "./mobileHeader";
@@ -59,7 +59,7 @@ export function ThreadPane({
   /** The buttons at the end of the header of a pane among several: fold and close; none in the quest's own screen. */
   chrome?: ReactNode;
   alternateBody?: ReactNode;
-  companions?: { isSelected: boolean; onOpen: () => void };
+  companions?: CompanionsTab;
   tabs?: ReactNode;
   /** Whether the thread shows in a pane beside others: its link back to the quest is left out, but a legacy sub-errand keeps its return to its own parent. */
   isInPane?: boolean;
@@ -241,95 +241,85 @@ export function ThreadPane({
           {tabs}
           {alternateBody}
           <View style={alternateBody == null ? [styles.flex, styles.pane] : { display: "none" }}>
-            {companions?.isSelected && (
-              <ConversationRunner client={client} conversation={conversation} isFullPanel thread={thread} />
-            )}
-            <FlatList<Entry>
-              {...followNewest.listPropsOf(<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />)}
-              contentContainerStyle={styles.feed}
-              keyExtractor={(entry) => entry.key}
-              renderItem={({ item }) => (
-                <EntryView
-                  canOpenAside={thread.parentId === null}
-                  client={client}
-                  entry={item}
-                  harness={thread.harness}
-                  isInTurn={isInTurn}
-                  onInterrupt={conversation.interrupt}
-                  onOpenMission={onOpenMission}
-                  onSelectThread={onSelect}
-                  onSteer={conversation.steer}
-                  skills={skills}
-                  workspacePath={thread.workspace?.path ?? null}
-                />
-              )}
-              style={companions?.isSelected ? { display: "none" } : styles.flex}
-            />
-            {companions?.isSelected && (
-              <View style={styles.composerAccessory}>
-                <ConversationRunner
-                  client={client}
-                  conversation={conversation}
-                  isTabOpen
-                  onOpenTab={companions.onOpen}
-                  thread={thread}
-                />
-              </View>
-            )}
-            <View style={companions?.isSelected ? { display: "none" } : undefined}>
-              {replyTo !== null ? (
-                <ReplyForm
-                  client={client}
-                  message={replyTo}
-                  onCancel={() => setReplyTo(null)}
-                  onStarted={(started) => {
-                    setReplyTo(null);
-                    onSelect(started.threadId);
-                  }}
-                  placeholder="The errand's first message…"
-                  runner={replyRunnerOf(thread)}
-                />
-              ) : isOpening ? (
-                <OpenThreadForm
-                  client={client}
-                  onCancel={() => setIsOpening(false)}
-                  onOpened={(threadId) => {
-                    setIsOpening(false);
-                    onSelect(threadId);
-                  }}
-                  parent={thread}
-                />
-              ) : (
+            <CompanionsTabLayout
+              client={client}
+              companions={companions}
+              composer={(accessory) => (
                 <>
-                  <CommentTray />
-                  <Composer
-                    draftKey={`thread:${thread.id}`}
-                    {...(canOpenBeneath && !isInPane ? { onOpenSideQuest: () => setIsOpening(true) } : {})}
-                    hasContent={terminal.hasContent || comments.items.length > 0}
-                    {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
-                    // The harness, account, Companion, and effort can change at any time, in a turn too: a handover
-                    // (thread-handover). It starts no turn: the running turn finishes as it was, and the next message, or Retry
-                    // after a failed turn, runs on it.
-                    accessory={
-                      <ConversationRunner
-                        client={client}
-                        conversation={conversation}
-                        isTabOpen={companions?.isSelected === true}
-                        onOpenTab={companions?.onOpen}
-                        thread={thread}
+                  {replyTo !== null ? (
+                    <ReplyForm
+                      client={client}
+                      message={replyTo}
+                      onCancel={() => setReplyTo(null)}
+                      onStarted={(started) => {
+                        setReplyTo(null);
+                        onSelect(started.threadId);
+                      }}
+                      placeholder="The errand's first message…"
+                      runner={replyRunnerOf(thread)}
+                    />
+                  ) : isOpening ? (
+                    <OpenThreadForm
+                      client={client}
+                      onCancel={() => setIsOpening(false)}
+                      onOpened={(threadId) => {
+                        setIsOpening(false);
+                        onSelect(threadId);
+                      }}
+                      parent={thread}
+                    />
+                  ) : (
+                    <>
+                      <CommentTray />
+                      <Composer
+                        draftKey={`thread:${thread.id}`}
+                        {...(canOpenBeneath && !isInPane ? { onOpenSideQuest: () => setIsOpening(true) } : {})}
+                        hasContent={terminal.hasContent || comments.items.length > 0}
+                        {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
+                        // The harness, account, Companion, and effort can change at any time, in a turn too: a handover
+                        // (thread-handover). It starts no turn: the running turn finishes as it was, and the next message, or Retry
+                        // after a failed turn, runs on it.
+                        accessory={accessory}
+                        attachments={{ client, refusal: conversation.refusal }}
+                        dictation={{ client }}
+                        mentions={{ client, workspacePath: thread.workspace?.path ?? null }}
+                        skills={skills}
+                        {...(canStop ? { onStop: conversation.stop } : {})}
+                        onSend={conversation.send}
+                        placeholder={conversation.placeholder}
                       />
-                    }
-                    attachments={{ client, refusal: conversation.refusal }}
-                    dictation={{ client }}
-                    mentions={{ client, workspacePath: thread.workspace?.path ?? null }}
-                    skills={skills}
-                    {...(canStop ? { onStop: conversation.stop } : {})}
-                    onSend={conversation.send}
-                    placeholder={conversation.placeholder}
-                  />
+                    </>
+                  )}
                 </>
               )}
-            </View>
+              conversation={conversation}
+              feed={
+                <FlatList<Entry>
+                  {...followNewest.listPropsOf(
+                    <ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />,
+                  )}
+                  contentContainerStyle={styles.feed}
+                  keyExtractor={(entry) => entry.key}
+                  renderItem={({ item }) => (
+                    <EntryView
+                      canOpenAside={thread.parentId === null}
+                      client={client}
+                      entry={item}
+                      harness={thread.harness}
+                      isInTurn={isInTurn}
+                      onInterrupt={conversation.interrupt}
+                      onOpenMission={onOpenMission}
+                      onSelectThread={onSelect}
+                      onSteer={conversation.steer}
+                      skills={skills}
+                      workspacePath={thread.workspace?.path ?? null}
+                    />
+                  )}
+                  style={styles.flex}
+                />
+              }
+              thread={thread}
+            />
           </View>
         </View>
       </RepliesProvider>

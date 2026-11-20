@@ -13,7 +13,7 @@ Status: **desktop design agreed on 2026-11-20**, including agent-authored anchor
 ### The window
 
 - The desktop conversation window holds the navigation sidebar and up to three conversation panes.
-- A channel has **Missives**, **Quests**, and **Companions**; a quest has **Missives**, **Errands**, **Quest**, and **Companions**; an errand has **Missives**, **Quest**, and **Companions**.
+- A channel has **Missives**, **Quests**, and **Companions**; a quest has **Missives**, **Quest**, **Errands**, and **Companions**; an errand has **Missives**, **Errand**, and **Companions**.
 - The **Quest** tab holds the [thread details](../thread-panel/specifications.md), and **Companions** edits the pane’s own conversation or the draft errand in the new-errand pane.
 - The model button in the conversation composer opens its own pane’s **Companions** tab.
 - Tab switches preserve drafts, and each pane selects its own tab independently.
@@ -39,7 +39,7 @@ The Workshop (Settings) is not a pane and not a sheet: it is the page that takes
 
 The pane chain is **channel → quest → errand**. The desktop sidebar opens the channel or a quest. A quest defaults to its **Missives** tab (its messages, where anchored Reply lines open errands; formerly Messages, CHG-0571). Its Errands tab lists the quest’s errands with their state and attention indicators and opens the same third pane. A realm's channel has a Missives tab (its conversation) and a **Quests** tab that lists the realm's quests in the same pane, not a pane of its own (the owner, 2026-11-20); the Borderlands has both tabs over the quests in no realm. The sidebar shows attention at quest level. The existing phone sidebar keeps its errand rows. Narrow desktop windows can fold earlier panes to notches.
 
-The quest title in the conversation header switches to another non-archived quest across realms and the Borderlands.
+The quest title in the conversation header switches to another non-archived quest in the current realm or, for a Borderlands quest, in the Borderlands.
 The errand title switches to another errand in the same quest, including existing sub-errands.
 The New errand title also opens this picker when the quest has two or more errands.
 The switchers also appear in the narrow header when another conversation of the same kind is available.

@@ -12,9 +12,9 @@ import { colors, fontSizes, fonts, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ChipIcon } from "../ui/chips";
 import { Composer } from "../ui/controls";
+import { type CompanionsTab, CompanionsTabLayout } from "./companionsTabLayout";
 import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
-import { ConversationRunner } from "./conversationRunner";
 import type { Entry } from "./entries";
 import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
 import { useThreadConversation } from "./useThreadConversation";
@@ -57,7 +57,7 @@ export function ChroniclerConversation({
   channel?: { id: WorkspaceId | null; name: string } | undefined;
   chrome: ReactNode;
   client: ServiceClient;
-  companions?: { isSelected: boolean; onOpen: () => void } | undefined;
+  companions?: CompanionsTab | undefined;
   onOpenMission: (id: MissionId) => void;
   onRealm: (path: string | null) => void;
   realmPath: string | null;
@@ -112,7 +112,7 @@ function ChroniclerChat({
   channel?: { id: WorkspaceId | null; name: string } | undefined;
   chrome: ReactNode;
   client: ServiceClient;
-  companions?: { isSelected: boolean; onOpen: () => void } | undefined;
+  companions?: CompanionsTab | undefined;
   onOpenMission: (id: MissionId) => void;
   onRealm: (path: string | null) => void;
   place: GuildmasterPlace;
@@ -217,96 +217,83 @@ function ChroniclerChat({
         )}
         {alternateBody !== undefined && <View style={local.body}>{alternateBody}</View>}
         <View style={alternateBody !== undefined ? local.hidden : local.chat}>
-          {companions?.isSelected && (
-            <ConversationRunner client={client} conversation={conversation} isChronicler isFullPanel thread={thread} />
-          )}
-          <View style={companions?.isSelected ? local.hidden : local.body}>
-            {entries.length === 0 && draft === "" && terminal.panel === null ? (
-              <View style={local.empty}>
-                <Text style={local.emptyTitle}>Tell Chronicler what you need.</Text>
-                <Text style={local.emptyText}>
-                  It looks for a quest that already covers it and offers to continue that one, or proposes a new quest
-                  for you to open.
-                </Text>
-              </View>
-            ) : (
-              <FlatList<Entry>
-                {...followNewest.listPropsOf(
-                  <ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />,
+          <CompanionsTabLayout
+            client={client}
+            companions={companions}
+            composer={(accessory) => (
+              <>
+                {channel === undefined && realm !== null && (
+                  <RealmNote name={realm.name} onClear={() => onRealm(null)} />
                 )}
-                contentContainerStyle={styles.feed}
-                keyExtractor={(entry) => entry.key}
-                renderItem={({ item }) => (
-                  <EntryView
-                    channel={channel}
+                {replyTo !== null ? (
+                  <ReplyForm
                     client={client}
-                    entry={item}
-                    harness={thread.harness}
-                    isInTurn={isInTurn}
-                    onInterrupt={conversation.interrupt}
-                    onOpenMission={onOpenMission}
-                    onSelectThread={() => {}}
-                    onSteer={conversation.steer}
+                    message={replyTo}
+                    onCancel={() => setReplyTo(null)}
+                    onStarted={(started) => {
+                      setReplyTo(null);
+                      onOpenMission(started.missionId);
+                    }}
+                    placeholder="The quest's first message…"
+                    realmPath={realm?.path ?? null}
+                    runner={replyRunnerOf(thread)}
+                  />
+                ) : (
+                  <Composer
+                    draftKey={channel === undefined ? "chronicler" : place.threadId}
+                    hasContent={terminal.hasContent}
+                    {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
+                    accessory={accessory}
+                    attachments={{ client, refusal: conversation.refusal }}
+                    dictation={{ client }}
+                    mentions={{ client, workspacePath: realm?.path ?? null }}
+                    onSend={conversation.send}
+                    {...(canStop ? { onStop: conversation.stop } : {})}
+                    placeholder={conversation.placeholder}
                     skills={skills}
-                    workspacePath={realm?.path ?? null}
                   />
                 )}
-                style={styles.flex}
-              />
+              </>
             )}
-          </View>
-          {companions?.isSelected && (
-            <View style={styles.composerAccessory}>
-              <ConversationRunner
-                client={client}
-                conversation={conversation}
-                isChronicler
-                isTabOpen
-                onOpenTab={companions.onOpen}
-                thread={thread}
-              />
-            </View>
-          )}
-          <View style={companions?.isSelected ? local.hidden : undefined}>
-            {channel === undefined && realm !== null && <RealmNote name={realm.name} onClear={() => onRealm(null)} />}
-            {replyTo !== null ? (
-              <ReplyForm
-                client={client}
-                message={replyTo}
-                onCancel={() => setReplyTo(null)}
-                onStarted={(started) => {
-                  setReplyTo(null);
-                  onOpenMission(started.missionId);
-                }}
-                placeholder="The quest's first message…"
-                realmPath={realm?.path ?? null}
-                runner={replyRunnerOf(thread)}
-              />
-            ) : (
-              <Composer
-                draftKey={channel === undefined ? "chronicler" : place.threadId}
-                hasContent={terminal.hasContent}
-                {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
-                accessory={
-                  <ConversationRunner
-                    client={client}
-                    conversation={conversation}
-                    isChronicler
-                    isTabOpen={companions?.isSelected === true}
-                    onOpenTab={companions?.onOpen}
-                    thread={thread}
-                  />
-                }
-                attachments={{ client, refusal: conversation.refusal }}
-                dictation={{ client }}
-                mentions={{ client, workspacePath: realm?.path ?? null }}
-                onSend={conversation.send}
-                {...(canStop ? { onStop: conversation.stop } : {})}
-                placeholder={conversation.placeholder}
-                skills={skills}
-              />
-            )}
-          </View>
+            conversation={conversation}
+            feed={
+              entries.length === 0 && draft === "" && terminal.panel === null ? (
+                <View style={local.empty}>
+                  <Text style={local.emptyTitle}>Tell Chronicler what you need.</Text>
+                  <Text style={local.emptyText}>
+                    It looks for a quest that already covers it and offers to continue that one, or proposes a new quest
+                    for you to open.
+                  </Text>
+                </View>
+              ) : (
+                <FlatList<Entry>
+                  {...followNewest.listPropsOf(
+                    <ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />,
+                  )}
+                  contentContainerStyle={styles.feed}
+                  keyExtractor={(entry) => entry.key}
+                  renderItem={({ item }) => (
+                    <EntryView
+                      channel={channel}
+                      client={client}
+                      entry={item}
+                      harness={thread.harness}
+                      isInTurn={isInTurn}
+                      onInterrupt={conversation.interrupt}
+                      onOpenMission={onOpenMission}
+                      onSelectThread={() => {}}
+                      onSteer={conversation.steer}
+                      skills={skills}
+                      workspacePath={realm?.path ?? null}
+                    />
+                  )}
+                  style={styles.flex}
+                />
+              )
+            }
+            isChronicler
+            thread={thread}
+          />
         </View>
       </View>
     </RepliesProvider>
