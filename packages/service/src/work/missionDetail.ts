@@ -43,7 +43,7 @@ const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId:
         (SELECT COALESCE(MAX(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS lastActivityAt,
         t.harness, t.model,
         (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id AND m.sender_kind IN ('user', 'thread')
-          AND m.delivered_turn_id IS NULL) AS waitingCount
+          AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0) AS waitingCount
       FROM tree JOIN threads t ON t.id = tree.id
       WHERE t.mission_id = ${missionId} AND (${includeArchived ? 1 : 0} = 1 OR t.archived_at IS NULL)
       ORDER BY tree.path`;
@@ -103,10 +103,10 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
       usageReported: number | null;
     }
   >`
-      SELECT m.id, m.thread_id AS threadId, m.sender_kind AS sender, m.model, m.harness, m.text, m.sequence, m.sent_at AS sentAt,
+      SELECT m.id, m.thread_id AS threadId, m.reply_to_message_id AS replyToMessageId, m.sender_kind AS sender, m.model, m.harness, m.text, m.sequence, m.sent_at AS sentAt,
         m.sender_thread_id AS fromThreadId, COALESCE(s.title, m.sender_title) AS fromTitle, m.is_result AS isResult,
         CASE WHEN sm.is_guildmaster = 0 THEN s.mission_id END AS fromMissionId,
-        (m.is_queued = 1 AND m.delivered_turn_id IS NULL) AS isQueued, (m.delivered_turn_id IS NOT NULL) AS isDelivered,
+        (m.is_queued = 1 AND m.delivered_turn_id IS NULL) AS isQueued, (m.delivered_turn_id IS NOT NULL OR m.is_conversation_only = 1) AS isDelivered,
         ru.input AS usageInput, ru.output AS usageOutput, ru.cache_read AS usageCacheRead,
         ru.cache_creation AS usageCacheCreation, ru.estimate AS usageEstimate, ru.reported AS usageReported
       FROM messages m LEFT JOIN reply_usage ru ON ru.message_id = m.id LEFT JOIN threads s ON s.id = m.sender_thread_id LEFT JOIN missions sm ON sm.id = s.mission_id

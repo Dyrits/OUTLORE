@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   chainOf,
+  desktopThreadsOf,
   emptyPaneMemory,
   equalizedPanes,
   foldedPane,
@@ -35,6 +36,13 @@ describe("the chain of panes for the open thread", () => {
 
   it("holds an errand of the quest after the quest", () => {
     expect(chainOf(threads, "b")).toEqual(["quest", "b"]);
+  });
+
+  it("gives a legacy descendant the single errand slot and retains its tree path for Back", () => {
+    const path = chainOf(threads, "a2");
+    expect(desktopThreadsOf(path)).toEqual(["quest", "a2"]);
+    expect(path.at(-2)).toBe("a1");
+    expect(desktopThreadsOf(chainOf(threads, "quest"))).toEqual(["quest"]);
   });
 
   it("falls back to the quest's thread when the open thread is not in the tree", () => {

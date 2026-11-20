@@ -32,6 +32,7 @@ export type NavigationEvent =
   | { type: "thread"; missionId: MissionId; id: ThreadId | null }
   | { type: "select"; id: MissionId | null }
   | { type: "realm"; listing: RealmListing }
+  | { type: "channel"; listing: RealmListing | null }
   | { type: "parent"; quest: { workspaceId: string | null; workspaceName: string | null } }
   | { type: "close" }
   | { type: "host" }
@@ -78,6 +79,7 @@ const leavingEvents: ReadonlyArray<NavigationEvent["type"]> = [
   "close",
   "host",
   "realm",
+  "channel",
   "parent",
 ];
 
@@ -132,6 +134,8 @@ const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "w
       openThread: null,
       selectedMission: null,
     };
+  if (event.type === "channel")
+    return { ...resolved(location, { place: "Channel", type: "place" }), listedRealm: event.listing };
   if (event.type === "realm")
     return { ...resolved(location, { place: "RealmQuests", type: "place" }), listedRealm: event.listing };
   if (event.type === "parent") {
@@ -161,6 +165,6 @@ export const panelScopeOf = (location: Location) => ({
   openThread: location.openThread,
   page: location.page,
   place: location.place,
-  realm: location.place === "RealmQuests" ? (location.listedRealm?.id ?? null) : null,
+  realm: location.place === "RealmQuests" || location.place === "Channel" ? (location.listedRealm?.id ?? null) : null,
   section: location.place === "Settings" ? location.settingsSection : null,
 });

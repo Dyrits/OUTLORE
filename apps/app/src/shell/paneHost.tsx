@@ -7,9 +7,10 @@ import type { ServiceClient } from "../foundation/client";
 import { QuestTabButtonContext } from "../foundation/shellContext";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { ChronicleContext, ChroniclePane, chronicleId } from "./chronicle";
+import { ChannelPane, channelId } from "./channelPane";
 import {
   chainOf,
+  desktopThreadsOf,
   emptyPaneMemory,
   equalizedPanes,
   foldedPane,
@@ -56,15 +57,10 @@ function PaneTab({
   return <QuestTabButtonContext.Provider value={paneTab}>{children}</QuestTabButtonContext.Provider>;
 }
 
-/** A slot of the chain: the Chronicle, or one thread of the quest. */
-type PaneId = ThreadId | typeof chronicleId;
+/** One channel slot and up to two threads of the quest. */
+type PaneId = ThreadId | typeof channelId;
 
-/**
- * A quest as a chain of panes (CHG-0561): its own conversation, then an errand beside it, then that errand's errand,
- * up to four at once, the earlier ones folded to strips beyond that. The chain is the path in the quest's tree to the
- * open thread, so opening a reply line drops the panes to its right, closing a pane drops it with what hangs from it,
- * and the sidebar's choice of an errand builds its whole chain. The pane pressed last is the one the details panel shows.
- */
+/** Shows the channel, quest and selected errand. An older nested errand uses the same third slot. */
 export function PaneHost({
   client,
   missionId,
@@ -78,8 +74,8 @@ export function PaneHost({
   /** Whether the Workshop covers the panes: they stay as they are, out of sight, and take no part in the details panel. */
   isParked?: boolean;
   missionId: MissionId;
-  /** Closes the quest, which leaves the Chronicle alone: the quest's own pane is the one that closes. */
-  onCloseMission: () => void;
+  /** Closes the quest and returns to its channel. */
+  onCloseMission: (channel: { id: import("@outlore/contracts").WorkspaceId | null; name: string }) => void;
   onOpenMission: (missionId: MissionId) => void;
   /** Makes a thread the open one, which is the deepest pane of the chain. */
   onOpenThread: (threadId: ThreadId) => void;
@@ -96,26 +92,18 @@ export function PaneHost({
   useEffect(() => {
     if (data !== null) setThreads(data.threads);
   }, [data]);
-  const chain = useMemo(() => chainOf(threads, openThread), [threads, openThread]);
-  const deepest = chain.at(-1) ?? null;
-  // The Chronicle is the first slot of the chain: the first level, ahead of the quest (CHG-0564). The chain's rules know
-  // nothing of what a slot holds, so the channel level of a realm can stand between them later.
-  const chronicle = useContext(ChronicleContext);
-  const hasChronicle = chronicle !== null;
-  const fullChain = useMemo<Array<PaneId>>(
-    () => (hasChronicle ? [chronicleId, ...chain] : chain),
-    [chain, hasChronicle],
-  );
+  const path = useMemo(() => chainOf(threads, openThread), [threads, openThread]);
+  const quest = path[0];
+  const deepest = path.at(-1) ?? null;
+  const fullChain = useMemo<Array<PaneId>>(() => {
+    const chosen = desktopThreadsOf(quest === undefined || deepest === null ? [] : [quest, deepest]);
+    return chosen.length === 0 ? [] : [channelId, ...chosen];
+  }, [quest, deepest]);
+  const channel = { id: data?.mission.workspaceId ?? null, name: data?.mission.workspaceName ?? "Borderlands" };
   const [memory, setMemory] = useState<PaneMemory<PaneId>>(() => ({
     ...emptyPaneMemory<PaneId>(),
     weights: readPaneWeights(),
   }));
-  // A folded Chronicle is the frame's to remember, since it stays across every screen.
-  const isChronicleFolded = chronicle !== null && !chronicle.isOpen;
-  const shownMemory = useMemo(
-    () => (isChronicleFolded ? foldedPane(memory, chronicleId) : memory),
-    [memory, isChronicleFolded],
-  );
   const [focused, setFocused] = useState<ThreadId | null>(null);
   const [available, setAvailable] = useState(0);
   // Opening a thread focuses its pane; the folds of panes that left the chain are forgotten.
@@ -123,12 +111,9 @@ export function PaneHost({
     setFocused(deepest);
     setMemory((current) => prunedMemory(current, fullChain));
   }, [deepest, fullChain]);
-  const slots = useMemo(
-    () => layoutOf({ available, chain: fullChain, memory: shownMemory }),
-    [available, fullChain, shownMemory],
-  );
+  const slots = useMemo(() => layoutOf({ available, chain: fullChain, memory }), [available, fullChain, memory]);
   const openIds = useMemo(
-    () => new Set(slots.flatMap((slot) => (slot.kind === "pane" && slot.id !== chronicleId ? [slot.id] : []))),
+    () => new Set(slots.flatMap((slot) => (slot.kind === "pane" && slot.id !== channelId ? [slot.id] : []))),
     [slots],
   );
   const paneCount = slots.filter((slot) => slot.kind === "pane").length;
@@ -179,31 +164,37 @@ export function PaneHost({
         {available > 0 &&
           slots.map((slot) => {
             if (slot.kind === "strip") {
-              const summary = slot.id === chronicleId ? undefined : summaryOf(slot.id);
+              const summary = slot.id === channelId ? undefined : summaryOf(slot.id);
               return (
                 <PaneStrip
                   key={slot.id}
                   onReveal={() => {
                     setMemory((current) => revealedPane(current, slot.id));
-                    if (slot.id === chronicleId) chronicle?.setOpen(true);
                   }}
                   state={summary?.state ?? "Idle"}
-                  title={slot.id === chronicleId ? "Chronicle" : (summary?.title ?? "")}
+                  title={slot.id === channelId ? channel.name : (summary?.title ?? "")}
                 />
               );
             }
-            if (slot.id === chronicleId)
+            if (slot.id === channelId)
               return (
-                <View accessibilityLabel="Chronicle" key={slot.id} style={[local.pane, { width: slot.width }]}>
-                  <ChroniclePane
+                <View accessibilityLabel={channel.name} key={slot.id} style={[local.pane, { width: slot.width }]}>
+                  <ChannelPane
+                    channel={channel}
                     chrome={
-                      <PaneButton glyph="‹" label="Fold the Chronicle" onPress={() => chronicle?.setOpen(false)} />
+                      <PaneButton
+                        glyph="‹"
+                        label="Fold the channel"
+                        onPress={() => setMemory((current) => foldedPane(current, channelId))}
+                      />
                     }
+                    client={client}
+                    onOpenMission={onOpenMission}
                   />
                 </View>
               );
             const threadId = slot.id;
-            const parentId = fullChain[slot.depth - 1];
+            const parentId = threadId === quest ? channelId : path.at(-2);
             const isFocused = !isParked && threadId === focusedId;
             return (
               <View
@@ -239,10 +230,10 @@ export function PaneHost({
                             onPress={() => setMemory((current) => foldedPane(current, threadId))}
                           />
                         )}
-                        {parentId === chronicleId && (
-                          <PaneButton glyph="✕" label="Close the quest" onPress={onCloseMission} />
+                        {parentId === channelId && (
+                          <PaneButton glyph="✕" label="Close the quest" onPress={() => onCloseMission(channel)} />
                         )}
-                        {parentId !== undefined && parentId !== chronicleId && (
+                        {parentId !== undefined && parentId !== channelId && (
                           <PaneButton glyph="✕" label="Close the pane" onPress={() => onOpenThread(parentId)} />
                         )}
                       </>

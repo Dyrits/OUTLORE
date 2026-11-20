@@ -16,8 +16,9 @@ import { readThreadWorkspace } from "./workspaces.ts";
 const appendMessage = (message: {
   readonly missionId: string;
   readonly threadId: string;
-  readonly senderKind: "user" | "agent" | "thread";
+  readonly senderKind: "user" | "agent" | "thread" | "system";
   readonly fromThreadId: string | null;
+  readonly isConversationOnly?: boolean;
   readonly isResult: boolean;
   readonly isQueued: boolean;
   /** The harness that wrote an agent reply; null otherwise. */
@@ -37,11 +38,11 @@ const appendMessage = (message: {
     const [next] = yield* sql<{ sequence: number }>`
       SELECT COALESCE(MAX(sequence), 0) + 1 AS sequence FROM messages WHERE thread_id = ${message.threadId}`;
     yield* sql`INSERT INTO messages
-        (id, mission_id, thread_id, sender_kind, sender_thread_id, is_result, is_queued, text, sequence, sent_at, sender_title, model, harness, realm_path, viewing)
+        (id, mission_id, thread_id, sender_kind, sender_thread_id, is_result, is_queued, text, sequence, sent_at, sender_title, model, harness, realm_path, viewing, is_conversation_only)
       VALUES (${messageId}, ${message.missionId}, ${message.threadId}, ${message.senderKind}, ${message.fromThreadId},
         ${message.isResult ? 1 : 0}, ${message.isQueued ? 1 : 0}, ${message.text}, ${next?.sequence ?? 1}, ${message.now},
         (SELECT title FROM threads WHERE id = ${message.fromThreadId}), ${message.model ?? null}, ${message.harness ?? null},
-        ${message.realmPath ?? null}, ${message.viewing ?? null})`;
+        ${message.realmPath ?? null}, ${message.viewing ?? null}, ${message.isConversationOnly === true ? 1 : 0})`;
     yield* touchMission(message.missionId, message.now);
     return messageId;
   });
@@ -66,6 +67,37 @@ export const insertReply = Effect.fnUntraced(function* (
     text,
     threadId,
   });
+});
+
+/** Records the agent reply that anchors an errand, without queuing it for delivery. */
+export const insertErrandReply = Effect.fnUntraced(function* (
+  openerId: string,
+  brief: string,
+  replyToId: string | null,
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const [opener] = yield* sql<{ missionId: string; harness: HarnessName; model: string | null }>`
+    SELECT mission_id AS missionId, harness, model FROM threads WHERE id = ${openerId}`;
+  if (opener === undefined) return yield* notFound("No such thread.");
+  const [target] =
+    replyToId === null
+      ? yield* sql<{ id: string }>`SELECT id FROM messages WHERE thread_id = ${openerId} ORDER BY sequence DESC LIMIT 1`
+      : yield* sql<{ id: string }>`SELECT id FROM messages WHERE thread_id = ${openerId} AND id = ${replyToId}`;
+  if (replyToId !== null && target === undefined) return yield* invalid("No such message in this conversation.");
+  const id = yield* appendMessage({
+    fromThreadId: null,
+    harness: opener.harness,
+    isQueued: false,
+    isResult: false,
+    missionId: opener.missionId,
+    model: opener.model,
+    now: yield* Clock.currentTimeMillis,
+    senderKind: "agent",
+    text: brief,
+    threadId: openerId,
+  });
+  if (target !== undefined) yield* sql`UPDATE messages SET reply_to_message_id = ${target.id} WHERE id = ${id}`;
+  return id;
 });
 
 /** A message waiting to be delivered, as its receiver's harness reads it. */
@@ -97,7 +129,7 @@ export const listPending = Effect.fnUntraced(function* (threadId: string, isStee
         m.is_result AS isResult, (${isOwnerMessageOf(sql)}) AS isOwner,
         m.realm_path AS realmPath, w.name AS realmName, m.viewing AS viewing
       FROM messages m LEFT JOIN threads s ON s.id = m.sender_thread_id LEFT JOIN workspaces w ON w.path = m.realm_path
-      WHERE m.thread_id = ${threadId} AND m.sender_kind IN ('user', 'thread') AND m.delivered_turn_id IS NULL
+      WHERE m.thread_id = ${threadId} AND m.sender_kind IN ('user', 'thread') AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0
         AND ${isSteering ? sql`m.is_queued = 0` : sql`1 = 1`}
       ORDER BY m.sequence`;
   // The owner's slash-names become pointers to the skills' instructions, as the thread's workspace sees them.
@@ -130,7 +162,7 @@ export const listThreadsWithPending = Effect.fnUntraced(function* (missionId: st
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql<{ threadId: string }>`
       SELECT DISTINCT m.thread_id AS threadId FROM messages m JOIN threads t ON t.id = m.thread_id
-      WHERE m.mission_id = ${missionId} AND m.sender_kind IN ('user', 'thread') AND m.delivered_turn_id IS NULL
+      WHERE m.mission_id = ${missionId} AND m.sender_kind IN ('user', 'thread') AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0
         AND t.state NOT IN ('Running', 'Attention', 'Stopped', 'Failed') AND t.id != ${exceptThreadId}`;
   return rows.map((row) => row.threadId);
 });
@@ -164,6 +196,7 @@ type NewMessage = {
   /** The sending thread, for a thread message. */
   readonly fromThreadId: string | null;
   /** Whether it waits for the receiver's next turn instead of joining a running one (CHG-0039). */
+  readonly isConversationOnly?: boolean;
   readonly isQueued: boolean;
   /** Whether it is a result reported by a thread beneath (thread-tree, Results). */
   readonly isResult: boolean;

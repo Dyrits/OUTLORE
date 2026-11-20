@@ -11,6 +11,8 @@ import { SettingsScreen } from "../settings/settings";
 import type { SettingsSectionId } from "../settings/settingsSections";
 import { UsageScreen } from "../usage";
 import { ArchiveScreen } from "./archivePage";
+import { ChannelPane } from "./channelPane";
+import { ChronicleActivity } from "./chronicleActivity";
 import { HomeScreen } from "./homeScreen";
 import { PaneHost } from "./paneHost";
 import { QuestListScreen } from "./questListPage";
@@ -25,6 +27,7 @@ type Destination = {
   openMission: MissionId | null;
   openThread: ThreadId | null;
   /** The quest the Workshop covers, which keeps its panes as they were while the Workshop shows; null otherwise. */
+  parkedChannel: { id: string | null; name: string } | null;
   parkedQuest: { openCount: number; openMission: MissionId; openThread: ThreadId | null } | null;
   place: Place;
   selectedMission: MissionId | null;
@@ -33,8 +36,8 @@ type Destination = {
 
 /** Navigation operations exposed to the selected page, with top-level state kept in App. */
 interface Navigation {
-  closeMission: () => void;
   goTo: (place: Place) => void;
+  openChannel: (listing: RealmListing | null) => void;
   /** Shows the narrow window's main menu: the sidebar as a full screen. */
   openMenu: () => void;
   openMission: (id: MissionId) => void;
@@ -70,6 +73,15 @@ export function AppScreen({
   const home = <HomeScreen client={client} onOpen={navigation.openMission} />;
   const screens = {
     Archived: <ArchiveScreen client={client} onOpen={navigation.openMission} />,
+    Channel: home,
+    Chronicle: (
+      <ChronicleActivity
+        client={client}
+        onOpenChannel={navigation.openChannel}
+        onOpenMission={navigation.openMission}
+        onOpenThread={navigation.openThread}
+      />
+    ),
     Home: home,
     Lore: <LoreScreen client={client} onBack={() => navigation.goTo("Home")} threadId={null} title="All lore" />,
     RealmQuests: view.listedRealm === null ? home : quests(view.listedRealm),
@@ -104,7 +116,9 @@ export function AppScreen({
             isParked={isParked}
             key={`${quest.openMission}:${quest.openCount}`}
             missionId={quest.openMission}
-            onCloseMission={navigation.closeMission}
+            onCloseMission={(channel) =>
+              navigation.openChannel(channel.id === null ? null : { id: channel.id, name: channel.name })
+            }
             onOpenMission={navigation.openMission}
             onOpenThread={navigation.selectThread}
             openThread={quest.openThread}
@@ -128,6 +142,18 @@ export function AppScreen({
         selectedThreadId={view.openThread}
       />
     );
+  const channel =
+    view.place === "Channel" ? (view.listedRealm ?? { id: null, name: "Borderlands" }) : view.parkedChannel;
+  if (hasPanes && channel !== null) {
+    return (
+      <>
+        <View style={view.place === "Channel" ? local.fill : local.parked}>
+          <ChannelPane channel={channel} client={client} onOpenMission={navigation.openMission} />
+        </View>
+        {view.place !== "Channel" && screens[view.place]}
+      </>
+    );
+  }
   return screens[view.place];
 }
 

@@ -7,7 +7,7 @@ import { budgetRefusalOf } from "./budgetScopes.ts";
 import { changed, unchanged } from "./followUps.ts";
 import { type JournalAuthor, nothingToRecord, openerMessagesOf, updateJournal } from "./journal.ts";
 import { maxOwnerDepth } from "./lifecycle.ts";
-import { insertMessage } from "./messaging.ts";
+import { insertErrandReply, insertMessage } from "./messaging.ts";
 import { ownCopyForChild } from "./ownCopies.ts";
 import { readStartingContext, startingContextRefusalOf } from "./startingContext.ts";
 import { attachmentsTitle, titleOf } from "./titles.ts";
@@ -20,7 +20,10 @@ type Opening = {
   readonly backups: ReadonlyArray<BackupCompanion> | null;
   /** The opener's choices; what it leaves out comes from the parent (runnerOf). */
   readonly choice: RunnerChoice;
+  /** The message this thread hangs from: the one the owner replied to. Null for an agent's errand, which gets an agent reply of its own. */
+  readonly anchorMessageId?: string | null;
   /** An off-topic request the owner kept beneath the thread (thread-tree, Off-topic requests). */
+  readonly replyToMessageId?: string | null;
   readonly isAside: boolean;
   readonly isOpenedByAgent: boolean;
   /** Whether the thread gets an own copy of its own (workspace-attachment); otherwise it shares its parent's, if any. */
@@ -46,7 +49,7 @@ const readParent = Effect.fnUntraced(function* (parentId: string) {
  * account, model, effort, and backup Companions, and its first message: the opener's request. The command that opens it wakes
  * it.
  */
-const insertThread = Effect.fnUntraced(function* (opening: Opening) {
+export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
   const sql = yield* SqlClient.SqlClient;
   const parent = yield* readParent(opening.parentId);
   if (parent === undefined) return yield* notFound("No such thread.");
@@ -61,6 +64,13 @@ const insertThread = Effect.fnUntraced(function* (opening: Opening) {
       VALUES (${threadId}, ${parent.missionId}, ${opening.parentId}, 'Idle', ${runner.harness}, ${runner.accountId},
         ${runner.model}, ${runner.effort}, ${parent.workspaceId}, ${titleOf(opening.title ?? opening.text) || attachmentsTitle}, ${opening.isOpenedByAgent ? 1 : 0},
         ${openerMessages}, ${opening.isAside ? 1 : 0}, ${backups}, ${ownCopy?.path ?? null}, ${ownCopy?.branch ?? null})`;
+  // The errand's anchor: the message the owner replied to, or the agent reply recorded where the agent opened it.
+  const anchorId =
+    opening.anchorMessageId ??
+    (opening.isOpenedByAgent && !opening.isAside
+      ? yield* insertErrandReply(opening.parentId, opening.text, opening.replyToMessageId ?? null)
+      : null);
+  if (anchorId !== null) yield* sql`UPDATE threads SET anchor_message_id = ${anchorId} WHERE id = ${threadId}`;
   const messageId = yield* insertMessage({
     fromThreadId: opening.isOpenedByAgent ? opening.parentId : null,
     isQueued: false,
@@ -73,7 +83,7 @@ const insertThread = Effect.fnUntraced(function* (opening: Opening) {
 });
 
 /**
- * The owner opens a thread beneath any thread, down to the depth limit. One whose starting context is over
+ * The owner opens an errand directly beneath a quest. One whose starting context is over
  * the warning starts only when the owner chose to start it anyway; the new thread is then woken.
  */
 export const openThreadByOwner = Effect.fnUntraced(function* (
@@ -83,9 +93,10 @@ export const openThreadByOwner = Effect.fnUntraced(function* (
   shouldStartAnyway: boolean,
   attachmentIds: ReadonlyArray<string> = [],
   backups: ReadonlyArray<BackupCompanion> | null = null,
+  anchorMessageId: string | null = null,
 ) {
   if ((yield* depthOf(parentId)) + 1 > maxOwnerDepth) {
-    return yield* invalid(`Threads you open can go down to ${maxOwnerDepth} levels beneath the top thread.`);
+    return yield* invalid("Open an errand from the quest conversation.");
   }
   if (!shouldStartAnyway) {
     const refusal = startingContextRefusalOf(
@@ -94,6 +105,7 @@ export const openThreadByOwner = Effect.fnUntraced(function* (
     if (refusal !== null) return yield* invalid(refusal);
   }
   const opened = yield* insertThread({
+    anchorMessageId,
     attachmentIds,
     backups,
     choice,
@@ -111,8 +123,9 @@ export const openThreadByOwner = Effect.fnUntraced(function* (
  * Keeps an off-topic request as an aside beneath the thread: its first message is the owner's request, and
  * the aside is then woken.
  */
-export const openAside = (parentId: string, text: string, title: string) =>
-  insertThread({
+export const openAside = Effect.fnUntraced(function* (parentId: string, text: string, title: string) {
+  if ((yield* depthOf(parentId)) > 0) return yield* invalid("Open an aside from the quest conversation.");
+  const opened = yield* insertThread({
     backups: null,
     choice: {},
     isAside: true,
@@ -121,7 +134,9 @@ export const openAside = (parentId: string, text: string, title: string) =>
     parentId,
     text,
     title: title.trim() === "" ? null : title,
-  }).pipe(Effect.map((opened) => changed(opened, { threadsToWake: [opened.threadId] })));
+  });
+  return changed(opened, { threadsToWake: [opened.threadId] });
+});
 
 /** Whether the thread is an aside, which leaves the journal to its parent. */
 export const isAside = Effect.fnUntraced(function* (threadId: string) {
@@ -133,6 +148,7 @@ export const isAside = Effect.fnUntraced(function* (threadId: string) {
 /** What `open_thread` came to: the new thread, or why it was refused. */
 export type OpenedByAgent =
   | { readonly _tag: "Opened"; readonly threadId: ThreadId }
+  | { readonly _tag: "FollowUp" }
   | { readonly _tag: "Refused"; readonly reason: string };
 
 /** A refused `open_thread`, which changes nothing. */
@@ -148,15 +164,36 @@ export const openThreadByAgent = Effect.fnUntraced(function* (
   title: string | null,
   choice: RunnerChoice & { readonly harness: HarnessName | null },
   isOwnCopyAsked = false,
+  replyToMessageId: string | null = null,
 ) {
   const sql = yield* SqlClient.SqlClient;
   const [caller] = yield* sql<{
     accountId: string | null;
+    questThreadId: string;
+    parentId: string | null;
     harness: HarnessName;
     missionId: string;
-  }>`SELECT mission_id AS missionId, harness, account_id AS accountId FROM threads WHERE id = ${callerId} AND is_deleting = 0`;
+  }>`SELECT t.mission_id AS missionId, t.harness, t.account_id AS accountId, t.parent_id AS parentId, m.top_thread_id AS questThreadId
+    FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${callerId} AND t.is_deleting = 0`;
   if (caller === undefined) return refusedOf("Unknown thread.");
   if (request.trim() === "") return refusedOf("The request is empty.");
+  if (replyToMessageId !== null) {
+    const [message] = yield* sql<{
+      id: string;
+    }>`SELECT id FROM messages WHERE id = ${replyToMessageId} AND thread_id = ${callerId}`;
+    if (message === undefined) return refusedOf("No such message in this conversation.");
+  }
+  if (caller.parentId !== null) {
+    yield* insertMessage({
+      fromThreadId: callerId,
+      isConversationOnly: true,
+      isQueued: false,
+      isResult: false,
+      text: request.trim(),
+      threadId: caller.questThreadId,
+    });
+    return changed<OpenedByAgent>({ _tag: "FollowUp" });
+  }
   const target = runnerOf(
     { accountId: caller.accountId, effort: "default", harness: caller.harness, model: "default" },
     choice,
@@ -177,6 +214,7 @@ export const openThreadByAgent = Effect.fnUntraced(function* (
     isOpenedByAgent: true,
     isOwnCopyAsked,
     parentId: callerId,
+    replyToMessageId,
     text: request,
     title: title !== null && title.trim() !== "" ? title : null,
   });

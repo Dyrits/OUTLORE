@@ -1,5 +1,5 @@
 import type { Dispatch, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
 import {
@@ -12,7 +12,6 @@ import {
 } from "../foundation/shellContext";
 import { chooseSidebarPinned, useSidebarPreference } from "../foundation/sidebarPreference";
 import type { RightPanel } from "../foundation/useRightPanel";
-import { type Chronicle, ChronicleBeside, ChronicleContext, ChronicleView } from "./chronicle";
 import { EdgeResizer } from "./edgeResizer";
 import type { Location, NavigationEvent } from "./location";
 import { PaneButton } from "./paneStrip";
@@ -20,10 +19,8 @@ import type { RealmListing } from "./questTree";
 import {
   clampRailWidth,
   minRailWidth,
-  readChroniclerOpen,
   readHidden,
   readRailWidth,
-  rememberChroniclerOpen,
   rememberHidden,
   rememberRailWidth,
 } from "./railStorage";
@@ -76,33 +73,20 @@ export function Shell(
     side,
     windowWidth: width,
   });
-  // Chronicler's panel: folded to a pill or open, remembered; a realm chosen for its next message opens it.
-  const [isChroniclerOpen, setIsChroniclerOpen] = useState(readChroniclerOpen);
   const { isMenuOpen, isNarrowChroniclerOpen } = props.location;
   const setIsMenuOpen = (isOpen: boolean) => props.dispatch({ isOpen, type: "menu" });
   const setIsNarrowChroniclerOpen = (isOpen: boolean) => props.dispatch({ isOpen, type: "narrowChronicler" });
-  const setChroniclerOpen = useCallback((isOpen: boolean) => {
-    rememberChroniclerOpen(isOpen);
-    setIsChroniclerOpen(isOpen);
-  }, []);
   const narrowChroniclerToggle = {
     isOpen: isNarrowChroniclerOpen,
     onToggle: () => {
       setIsNarrowChroniclerOpen(!isNarrowChroniclerOpen);
     },
   };
-  const { realmPath: chroniclerRealmPath } = props.chronicler;
-  useEffect(() => {
-    if (chroniclerRealmPath !== null) {
-      rememberChroniclerOpen(true);
-      setIsChroniclerOpen(true);
-    }
-  }, [chroniclerRealmPath]);
   const { details, rightPanel } = props;
   const column = useDetailsColumn({
     details,
     hasRail,
-    isChroniclerOpen,
+    isChroniclerOpen: hasRail ? props.place === "Channel" || props.openMission !== null : isNarrowChroniclerOpen,
     isQuestOpen: props.openMission !== null,
     rightPanel,
   });
@@ -138,10 +122,6 @@ export function Shell(
       viewing={viewingOf(props.place, props.openMission, props.listedRealm?.name ?? null)}
     />
   );
-  const chronicle = useMemo<Chronicle>(
-    () => ({ isOpen: isChroniclerOpen, setOpen: setChroniclerOpen }),
-    [isChroniclerOpen, setChroniclerOpen],
-  );
   const chroniclerChat = chronicleView(
     <PaneButton glyph="✕" label="Close Chronicler" onPress={() => setIsNarrowChroniclerOpen(false)} />,
   );
@@ -167,7 +147,13 @@ export function Shell(
             <View style={[local.narrowContent, isNarrowCovered && local.hidden]}>{props.children}</View>
             {isMenuOpen && (
               <View style={[local.narrowContent, local.menuScreen]}>
-                <Sidebar {...props} hasWorkshopRow={true} width="100%" />
+                <Sidebar
+                  {...props}
+                  hasWorkshopRow={true}
+                  onOpenChannel={undefined}
+                  onOpenChronicle={undefined}
+                  width="100%"
+                />
               </View>
             )}
             {isNarrowChroniclerOpen && !isMenuOpen && <View style={local.narrowContent}>{chroniclerChat}</View>}
@@ -193,6 +179,8 @@ export function Shell(
       <Sidebar
         {...props}
         hasWorkshopRow={false}
+        {...(props.onOpenChannel === undefined ? {} : { onOpenChannel: choosing(props.onOpenChannel) })}
+        {...(props.onOpenChronicle === undefined ? {} : { onOpenChronicle: choosing(props.onOpenChronicle) })}
         onOpenMission={choosing(props.onOpenMission)}
         onOpenRealmQuests={choosing(props.onOpenRealmQuests)}
         onOpenThread={choosing(props.onOpenThread)}
@@ -257,18 +245,7 @@ export function Shell(
                           <PanelIcon />
                         </Pressable>
                       )}
-                      <View style={local.panel}>
-                        <ChronicleContext.Provider value={chronicle}>
-                          <ChronicleView.Provider value={chronicleView}>
-                            <ChronicleBeside
-                              chronicle={chronicle}
-                              isShown={props.openMission === null && props.place !== "Settings"}
-                            >
-                              {props.children}
-                            </ChronicleBeside>
-                          </ChronicleView.Provider>
-                        </ChronicleContext.Provider>
-                      </View>
+                      <View style={local.panel}>{props.children}</View>
                     </View>
                     {column.wideColumn}
                     {column.hasEdgeHandle && (

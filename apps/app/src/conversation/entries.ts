@@ -8,6 +8,7 @@ import type {
   MissionId,
   Question,
   Suggestion,
+  ThreadAnchor,
   ThreadId,
   ThreadSummary,
 } from "@outlore/contracts";
@@ -18,7 +19,7 @@ export type QuestLink = { key: string; label: string; missionId: MissionId; sent
 
 /** One entry of a thread's conversation, with the key the list keeps it by. */
 export type Entry = { key: string; at: number } & (
-  | { _tag: "Message"; message: Message; fromQuest: MissionId | null }
+  | { _tag: "Message"; message: Message; fromQuest: MissionId | null; replyToText?: string }
   /** The settled actions of one turn gathered under one collapsible line. */
   | { _tag: "Steps"; isCurrent: boolean; seconds: number; steps: ReadonlyArray<Step>; threadId: ThreadId }
   | { _tag: "Question"; question: Question }
@@ -94,16 +95,39 @@ export const newestFirstOf = (entries: ReadonlyArray<Entry>): Array<Entry> => [.
  * Messages, questions, off-topic suggestions, budget lines, handovers, lore changes, and the threads opened beneath, in the order they happened.
  * An aside is left out: its suggestion line already leads to it.
  * In the Guildmaster's conversation what it opened, created, or continued, becomes a card standing just after its confirmation. A report from a quest carries its own small button.
+ * What hangs from a message (its `anchors`) stands as a reply line there: an errand the owner replied into under the
+ * message replied to, an agent-opened errand under its agent reply, and a quest a Reply started under the message replied to.
  */
-export const entriesOf = (detail: MissionDetail, isWorking = false): Array<Entry> => {
-  const replies = detail.messages.filter((message) => message.sender === "agent");
+export const entriesOf = (
+  detail: MissionDetail,
+  isWorking = false,
+  anchors: ReadonlyArray<ThreadAnchor> = [],
+): Array<Entry> => {
+  // Earlier builds wrote internal system cards, which are represented by their reply line.
+  const messages = detail.messages.filter((message) => message.sender !== "system");
+  const replies = messages.filter((message) => message.sender === "agent");
+  /** The message an anchor names, if it is one of this conversation's. */
+  const anchorCard = new Map(messages.map((message) => [message.id, message]));
+  const anchorOf = new Map(anchors.map((anchor) => [anchor.threadId, anchor]));
+  /** Where a thread's reply line stands: under the message replied to, in a card's place, or where it was opened. */
+  const replyLineAt = (thread: ThreadSummary): number => {
+    const card = anchorOf.get(thread.id);
+    const message = card === undefined ? undefined : anchorCard.get(card.messageId);
+    if (message === undefined) return thread.openedAt;
+    return message.sender === "system" ? message.sentAt : message.sentAt + afterReply;
+  };
   /** The first reply written at or after the time. */
   const replyFrom = (time: number) => replies.find((reply) => reply.sentAt >= time);
   const isSettledByGuildmaster = (suggestion: Suggestion) =>
     suggestion.isFromGuildmaster && suggestion.outcome !== null && suggestion.outcome !== "Withdrawn";
   /** Each quest the Guildmaster settled, as a card that stands just after the reply confirming it. */
   const questLinks = detail.suggestions.flatMap((suggestion): Array<Entry> => {
-    if (!isSettledByGuildmaster(suggestion) || suggestion.targetMissionId === null) return [];
+    if (
+      !isSettledByGuildmaster(suggestion) ||
+      suggestion.targetMissionId === null ||
+      anchors.some((anchor) => anchor.threadId === suggestion.targetThreadId)
+    )
+      return [];
     const at = suggestion.resolvedAt ?? suggestion.askedAt;
     return [
       {
@@ -117,7 +141,7 @@ export const entriesOf = (detail: MissionDetail, isWorking = false): Array<Entry
       },
     ];
   });
-  const stepGroups = stepGroupsOf(detail.messages, detail.questions, detail.activities, isWorking);
+  const stepGroups = stepGroupsOf(messages, detail.questions, detail.activities, isWorking);
   const stepIds = new Set(stepGroups.flatMap((group) => group.steps.map((step) => step.id)));
   return [
     ...stepGroups.map(
@@ -133,8 +157,8 @@ export const entriesOf = (detail: MissionDetail, isWorking = false): Array<Entry
     ),
     ...detail.threads
       .filter((thread) => thread.parentId === detail.thread.id && !thread.isAside)
-      .map((thread): Entry => ({ _tag: "ThreadOpened", at: thread.openedAt, key: `opened:${thread.id}`, thread })),
-    ...detail.messages.map(
+      .map((thread): Entry => ({ _tag: "ThreadOpened", at: replyLineAt(thread), key: `opened:${thread.id}`, thread })),
+    ...messages.map(
       (message): Entry => ({
         _tag: "Message",
         at: message.sentAt,
@@ -142,8 +166,28 @@ export const entriesOf = (detail: MissionDetail, isWorking = false): Array<Entry
           message.sender === "thread" && message.fromMissionId !== detail.mission.id ? message.fromMissionId : null,
         key: message.id,
         message,
+        ...(message.replyToMessageId == null
+          ? {}
+          : { replyToText: anchorCard.get(message.replyToMessageId)?.text ?? "" }),
       }),
     ),
+    // A quest a Reply started, as a card under the message replied to; its own mission's threads stand above.
+    ...anchors.flatMap((anchor): Array<Entry> => {
+      if (anchor.missionId === detail.mission.id) return [];
+      const message = anchorCard.get(anchor.messageId);
+      if (message === undefined) return [];
+      return [
+        {
+          _tag: "QuestLink",
+          at: message.sentAt + afterReply,
+          key: `anchored:${anchor.threadId}`,
+          label: "Opened a quest",
+          missionId: anchor.missionId,
+          sentAt: message.sentAt,
+          title: anchor.title,
+        },
+      ];
+    }),
     ...questLinks,
     ...detail.questions
       .filter((question) => !stepIds.has(question.id))

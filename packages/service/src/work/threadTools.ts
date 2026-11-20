@@ -144,7 +144,7 @@ export const threadTools = {
   }),
   open_thread: definitionOf({
     description:
-      "Open a thread beneath you to work on one request on its own, in parallel with you. It starts with your request, in your working folder, with your harness, account, model, and effort unless you choose others, and reports its result to you as a message. Use it instead of subagents. A harness other than yours (claude for Claude Code, codex, opencode) runs on its own sign-in and default model unless you name one of its models.",
+      "From a quest, open an errand for one request to work in parallel with you. From an errand, post the request in the quest as an attributed follow-up for the owner to open by Reply. This starts no new errand. It starts with your request, in your working folder, with your harness, account, model, and effort unless you choose others, and reports its result to you as a message. Use it instead of subagents. A harness other than yours (claude for Claude Code, codex, opencode) runs on its own sign-in and default model unless you name one of its models.",
     invalid: toolRefusal("Invalid arguments: give request."),
     isUnasked: true,
     schema: Schema.Struct({
@@ -168,6 +168,9 @@ export const threadTools = {
           description:
             "True to give the new thread its own copy of your git workspace: Outlore makes a git worktree in .worktrees/ on a new branch from the commit you work on, and the thread and those beneath it work and commit there without asking the owner. It reports its branch for you to merge. Left out, it works in your folder.",
         }),
+      ),
+      replyToMessageId: optionalText(
+        "The id of the message that prompted this errand; absent uses the latest message.",
       ),
       request: text("Everything the new thread needs to know: it sees none of your conversation."),
       title: optionalText("A short title for the new thread, a few words, shown to the owner."),

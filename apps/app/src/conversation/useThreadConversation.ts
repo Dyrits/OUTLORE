@@ -5,6 +5,7 @@ import { useHarnesses } from "../editors/runners";
 import { useThreadPresets } from "../editors/useThreadPresets";
 import { actWith } from "../foundation/acting";
 import type { ServiceClient } from "../foundation/client";
+import { useServiceQuery } from "../foundation/useServiceQuery";
 import { useSkills } from "../foundation/useSkills";
 import { useTerminal } from "../terminal/useTerminal";
 import { entriesOf } from "./entries";
@@ -23,7 +24,9 @@ export function useThreadConversation(
   terminalPath: string | null = path,
 ) {
   const draft = useDraft(client, threadId);
-  const entries = detail === null ? [] : entriesOf(detail, detail.thread.actions.isInTurn);
+  // What hangs from the messages of this conversation, so their reply lines stand under them (conversation panes).
+  const { data: anchors } = useServiceQuery(client, { _tag: "ReadThreadAnchors", threadId }, `anchors:${threadId}`);
+  const entries = detail === null ? [] : entriesOf(detail, detail.thread.actions.isInTurn, anchors ?? []);
   const followNewest = useFollowNewest(entries);
   const skills = useSkills(client, path);
   const terminal = useTerminal(threadId, terminalPath);

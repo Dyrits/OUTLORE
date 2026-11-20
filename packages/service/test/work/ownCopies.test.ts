@@ -7,6 +7,7 @@ import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { ownCopyNameOf } from "../../src/work/ownCopies.ts";
 import { prepareStartingContext } from "../../src/work/startingContext.ts";
+import { seedLegacyErrand } from "../fixtures/legacyErrands.ts";
 import { fixture, read, settle, start, temporary, tool } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
@@ -87,8 +88,7 @@ describe("opening a thread with an own copy", () => {
       const started = yield* idleIn(folder);
       const childId = openedIdOf(yield* tool(started.threadId, "open_thread", { ownCopy: true, request: "Branch." }));
       if (childId === null) return yield* Effect.die(new Error("not opened"));
-      const grandchildId = openedIdOf(yield* tool(childId, "open_thread", { request: "Help on the branch." }));
-      if (grandchildId === null) return yield* Effect.die(new Error("not opened"));
+      const { threadId: grandchildId } = yield* seedLegacyErrand(childId, "Help on the branch.");
       expect((yield* prepareStartingContext(grandchildId)).cwd).toBe((yield* prepareStartingContext(childId)).cwd);
       expect((yield* prepareStartingContext(started.threadId)).cwd).toBe(folder);
     }).pipe(Effect.provide(layer));
@@ -101,8 +101,7 @@ describe("opening a thread with an own copy", () => {
       const started = yield* idleIn(folder);
       const childId = openedIdOf(yield* tool(started.threadId, "open_thread", { ownCopy: true, request: "Branch." }));
       if (childId === null) return yield* Effect.die(new Error("not opened"));
-      const grandchildId = openedIdOf(yield* tool(childId, "open_thread", { request: "Help on the branch." }));
-      if (grandchildId === null) return yield* Effect.die(new Error("not opened"));
+      const { threadId: grandchildId } = yield* seedLegacyErrand(childId, "Help on the branch.");
       const { cwd } = yield* prepareStartingContext(childId);
       const branch = git(cwd, "branch", "--show-current");
       // The thread in the copy and the thread sharing it both show it; the quest's top thread shows none.

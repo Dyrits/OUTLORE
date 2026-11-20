@@ -120,6 +120,7 @@ export function Quest({
   openMission,
   openThread,
   shouldShowAgentThreads,
+  showErrands,
 }: {
   client: ServiceClient;
   collapsed: ReadonlySet<string>;
@@ -132,6 +133,7 @@ export function Quest({
   openMission: MissionId | null;
   openThread: ThreadId | null;
   shouldShowAgentThreads: boolean;
+  showErrands: boolean;
 }) {
   const isHere = openMission === mission.id;
   // An archive from the sidebar leaves the current view alone unless this quest is the one open.
@@ -146,7 +148,7 @@ export function Quest({
           fold={{
             isOpen,
             label: mission.title,
-            onPress: mission.threadCount > 1 ? () => onToggle(mission.id) : null,
+            onPress: showErrands && mission.threadCount > 1 ? () => onToggle(mission.id) : null,
           }}
           // On hover or focus the archive or delete mark shows at the row's end, in a place kept while unseen. A device that
           // cannot hover has none: there the quest's header holds the archive button.
@@ -165,7 +167,7 @@ export function Quest({
               </View>
             )
           }
-          isSelected={isHere && (openThread === null || openThread === mission.topThreadId)}
+          isSelected={isHere && (!showErrands || openThread === null || openThread === mission.topThreadId)}
           label={mission.title}
           leading={<StateDot state={mission.state} />}
           onPress={() => onOpenMission(mission.id)}
@@ -177,7 +179,7 @@ export function Quest({
           {ending.error !== null && <Text style={local.questError}>{ending.error}</Text>}
         </View>
       )}
-      {isOpen && mission.threadCount > 1 && (
+      {showErrands && isOpen && mission.threadCount > 1 && (
         <View style={{ paddingLeft: chevronWidth }}>
           <SideQuests
             client={client}
@@ -201,6 +203,7 @@ export function Quest({
 export function RealmHeader({
   isOpen,
   name,
+  onOpenChannel,
   onNewQuest,
   onOverview,
   onToggle,
@@ -209,6 +212,7 @@ export function RealmHeader({
 }: {
   isOpen: boolean;
   name: string;
+  onOpenChannel?: () => void;
   onNewQuest: () => void;
   onOverview: () => void;
   onToggle: () => void;
@@ -221,7 +225,7 @@ export function RealmHeader({
       {...rowProps}
       accessibilityLabel={name}
       accessibilityRole="button"
-      onPress={onToggle}
+      onPress={onOpenChannel ?? onToggle}
       style={(state) => [
         local.row,
         !canHover && local.rowTouch,
@@ -233,7 +237,13 @@ export function RealmHeader({
       <Text numberOfLines={1} style={local.realmText}>
         {name}
       </Text>
-      <Chevron focusProps={focusProps} isOpen={isOpen} isShown={isShown} label={name} onPress={onToggle} />
+      <Chevron
+        focusProps={focusProps}
+        isOpen={isOpen}
+        isShown={isShown || onOpenChannel !== undefined}
+        label={name}
+        onPress={onToggle}
+      />
       <View style={local.realmTextEnd} />
       <Count isShown={isShown} value={questCount} />
       <View style={actionsStyle}>

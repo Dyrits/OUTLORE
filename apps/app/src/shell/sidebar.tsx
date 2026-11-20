@@ -44,6 +44,8 @@ export function Sidebar({
   width,
   onOpenMission,
   onOpenRealmQuests,
+  onOpenChannel,
+  onOpenChronicle,
   onOpenThread,
   hasWorkshopRow,
   isWorkshopOpen,
@@ -57,6 +59,8 @@ export function Sidebar({
   onOpenMission: (id: MissionId) => void;
   /** Opens the page that lists all of a realm's quests. */
   onOpenRealmQuests: (listing: RealmListing) => void;
+  onOpenChannel?: ((listing: RealmListing | null) => void) | undefined;
+  onOpenChronicle?: (() => void) | undefined;
   /** Opens an errand of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   /** Whether the foot has the Workshop's row: not on a wide window, where the top bar's icon opens it (CHG-0563). */
@@ -95,6 +99,7 @@ export function Sidebar({
     openMission,
     openThread,
     shouldShowAgentThreads: settings?.shouldShowAgentThreads ?? true,
+    showErrands: onOpenChannel === undefined,
   };
 
   // Starts an empty quest and opens it; its realm unfolds to show it, and a refusal shows under the realm.
@@ -161,6 +166,9 @@ export function Sidebar({
             <RealmHeader
               isOpen={!isClosed}
               name={realmLabelOf(realm, data?.workspaces ?? [])}
+              {...(onOpenChannel === undefined
+                ? {}
+                : { onOpenChannel: () => onOpenChannel({ id: realm.id, name: realm.name }) })}
               onNewQuest={() => startQuest(realm.id, realm.id)}
               onOverview={() => onOpenRealmQuests({ id: realm.id, name: realm.name })}
               onToggle={() => closedRealms.toggle(realm.id)}
@@ -189,6 +197,11 @@ export function Sidebar({
   return (
     <View style={[local.sidebar, { width }]}>
       <ScrollView contentContainerStyle={local.group} style={local.flex}>
+        {onOpenChronicle !== undefined && (
+          <Pressable accessibilityRole="button" onPress={onOpenChronicle} style={local.sectionRow}>
+            <Text style={local.sectionTitle}>Chronicle</Text>
+          </Pressable>
+        )}
         <SectionTitle
           action={{
             icon: <NewRealmIcon color={colors.textMuted} />,
@@ -214,6 +227,11 @@ export function Sidebar({
           onToggle={() => foldedSections.toggle("Borderlands")}
           title="Borderlands"
         />
+        {onOpenChannel !== undefined && (
+          <Pressable accessibilityRole="button" onPress={() => onOpenChannel(null)}>
+            <Text style={local.emptyGroup}>Borderlands chat</Text>
+          </Pressable>
+        )}
         {failureUnder("none")}
         {!isFolded("Borderlands") && placements.borderlands.length === 0 && (
           <Text style={local.emptyGroup}>No quest in the Borderlands yet.</Text>

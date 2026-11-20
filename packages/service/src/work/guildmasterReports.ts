@@ -41,7 +41,7 @@ export const reportToGuildmaster = Effect.gen(function* () {
     WHERE m.opened_by_guildmaster = 1 AND top.is_deleting = 0`;
   if (opened.length === 0) return unchanged(null);
   const [guildmaster] = yield* sql<{ threadId: string }>`
-    SELECT top_thread_id AS threadId FROM missions WHERE is_guildmaster = 1`;
+    SELECT top_thread_id AS threadId FROM missions WHERE is_guildmaster = 1 AND chronicler_channel IS NULL`;
   if (guildmaster === undefined) return unchanged(null);
   const summaries = yield* readMissionSummaryMap(opened.map((quest) => quest.id));
   let isTold = false;

@@ -84,6 +84,7 @@ import {
 import { CreateRitual, DeleteRitual, ListRituals, ReadRitual, RunRitual, UpdateRitual } from "./rituals.ts";
 import { ChangeSettings, UpdateSettings } from "./settingsRequests.ts";
 import { OwnerMessageText } from "./texts.ts";
+import { threadAnchorRequests } from "./threadAnchors.ts";
 import { UsageFilter, UsagePeriod } from "./usage.ts";
 import { vaultRequests } from "./vaultRequests.ts";
 
@@ -154,7 +155,10 @@ export const ListMissions = Schema.TaggedStruct("ListMissions", {
   workspaceId: Schema.NullOr(WorkspaceId),
 });
 /** Where the Chronicler's conversation is; the service makes it on first use. */
-export const ReadGuildmaster = Schema.TaggedStruct("ReadGuildmaster", {});
+export const ReadChronicle = Schema.TaggedStruct("ReadChronicle", {});
+export const ReadGuildmaster = Schema.TaggedStruct("ReadGuildmaster", {
+  channelId: Schema.optional(Schema.NullOr(WorkspaceId)),
+});
 /** The Guild Hall's recap since `since`, or since the last visit when null (24 hours before the first). */
 export const ReadGuildHallRecap = Schema.TaggedStruct("ReadGuildHallRecap", { since: Schema.NullOr(Schema.Number) });
 /** Records that the owner is at the Guild Hall now, so the next recap starts here. */
@@ -289,6 +293,8 @@ export const SuggestionAnswer = Schema.Union([
     effort: EffortChoice,
     harness: Schema.optionalKey(HarnessName),
     model: ModelChoice,
+    /** The realm identity chosen on the card, including realms without a folder. */
+    realmId: Schema.optionalKey(Schema.NullOr(WorkspaceId)),
     /** The folder of the realm to open it in, or null for the Borderlands; absent keeps the realm proposed. */
     realmPath: Schema.optionalKey(Schema.NullOr(Schema.String)),
   }),
@@ -362,6 +368,7 @@ export const Request = Schema.Union([
   ListMissions,
   ReadStartChoices,
   ReadGuildmaster,
+  ReadChronicle,
   ReadGuildHallRecap,
   VisitGuildHall,
   RenameMission,
@@ -400,6 +407,7 @@ export const Request = Schema.Union([
   SetMissionBudget,
   ...realmRequests,
   ...connectorRequests,
+  ...threadAnchorRequests,
   ...vaultRequests,
   ReadBudget,
   ReadUsage,

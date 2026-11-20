@@ -30,6 +30,7 @@ const shortened = (title: string) => (title.length > 60 ? `${title.slice(0, 59)}
 /** Each sender's card. */
 const cardStyles = {
   agent: styles.messageCardAgent,
+  system: styles.messageCardThread,
   thread: styles.messageCardThread,
   user: styles.messageCardUser,
 } satisfies Record<Message["sender"], unknown>;
@@ -64,6 +65,7 @@ export function AgentReply({
   isDraft = false,
   label,
   messageId = null,
+  replyToText,
   text,
   time,
   usage = null,
@@ -72,7 +74,8 @@ export function AgentReply({
   isDraft?: boolean;
   label: string;
   /** The message this reply is, which the owner can comment on; null for a draft, which is not a message yet. */
-  messageId?: string | null;
+  messageId?: MessageId | null;
+  replyToText?: string;
   text: string;
   time: string | null;
   /** What the model call behind the reply used, with its cost, shown small under it; null shows nothing. */
@@ -89,6 +92,7 @@ export function AgentReply({
             <Text style={styles.senderName}>{label}</Text>
             {time !== null && <Text style={styles.senderTime}>{time}</Text>}
           </View>
+          {replyToText ? <Text style={styles.muted}>Replying to: {shortened(replyToText)}</Text> : null}
           <Markdown text={text} />
           {usage !== null && <Text style={styles.muted}>{replyUsageTextOf(usage)}</Text>}
         </View>
@@ -106,7 +110,7 @@ function CommentableCard({
 }: {
   about: Message["sender"];
   children: ReactNode;
-  messageId: string | null;
+  messageId: MessageId | null;
   text: string;
 }) {
   return messageId === null ? (
@@ -131,6 +135,7 @@ export function WorkingIndicator({ harness, label }: { harness: HarnessName; lab
 /** The label above a message: none for the owner's own, whose faint card says it waits. */
 const senderLabelOf = (message: Message) => {
   if (message.sender === "user") return null;
+  if (message.sender === "system") return "Outlore";
   return `${message.isResult ? "Result from" : "From"} "${shortened(message.fromTitle ?? "a quest")}"`;
 };
 
@@ -144,6 +149,7 @@ function MessageBubble({
   onInterrupt,
   onOpenMission,
   onSteer,
+  replyToText,
   skills,
   workspacePath,
 }: {
@@ -158,6 +164,7 @@ function MessageBubble({
   fromQuest: MissionId | null;
   harness: HarnessName;
   message: Message;
+  replyToText?: string;
   onOpenMission: (missionId: MissionId) => void;
   skills: ReadonlyArray<Skill>;
   workspacePath: string | null;
@@ -171,6 +178,7 @@ function MessageBubble({
         harness={writer.harness}
         label={writer.label}
         messageId={message.id}
+        replyToText={replyToText}
         text={message.text}
         time={stampOf(message.sentAt)}
         usage={message.usage}
@@ -248,6 +256,8 @@ function MessageBubble({
 
 /** One conversation entry: an open question or suggestion as a card, a settled one as a line. */
 export function EntryView({
+  canOpenAside = true,
+  channel,
   client,
   entry,
   harness,
@@ -259,6 +269,8 @@ export function EntryView({
   skills,
   workspacePath,
 }: {
+  canOpenAside?: boolean;
+  channel?: { id: import("@outlore/contracts").WorkspaceId | null; name: string } | undefined;
   client: ServiceClient;
   entry: Entry;
   /** Whether the thread is at work. */
@@ -310,7 +322,7 @@ export function EntryView({
     );
   if (entry._tag === "Suggestion")
     return entry.suggestion.outcome === null ? (
-      <SuggestionCard client={client} suggestion={entry.suggestion} />
+      <SuggestionCard canOpenAside={canOpenAside} channel={channel} client={client} suggestion={entry.suggestion} />
     ) : (
       <SuggestionLine onOpenMission={onOpenMission} onSelectThread={onSelectThread} suggestion={entry.suggestion} />
     );
@@ -332,6 +344,7 @@ export function EntryView({
       onInterrupt={onInterrupt}
       onOpenMission={onOpenMission}
       onSteer={onSteer}
+      replyToText={entry.replyToText}
       skills={skills}
       workspacePath={workspacePath}
     />

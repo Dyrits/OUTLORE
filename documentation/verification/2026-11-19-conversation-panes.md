@@ -66,3 +66,20 @@
 - The pinned sidebar on the right after the height fix; a drag of a quest onto a pinned sidebar; touch; the dark and black and white looks of the Chronicle and the pinned sidebar.
 - A window under 820 px (the narrow Chronicler screen and the menu with the Workshop row were typechecked, not looked at); the Workshop icon's selected look beyond the screenshot.
 - The visuals are for the owner to judge: the Chronicle's weight beside a quest, the strip's label, the Workshop icon at the far right.
+
+
+# Batch 4: initial anchor persistence checks (2026-11-20)
+
+These checks ran before the three-pane desktop implementation below.
+
+- `TMPDIR=<worktree>/.tmp-test CI=1 bun run test`: 315 files passed, 6 skipped; 2,584 tests passed, 62 skipped. This run preceded the added restart test.
+- The focused reply test (14 tests) passed after adding the restart case: a new service on the same SQLite store reads the agent reply, its triggering message, the child anchor, the unchanged tree parent and the child brief. Named invalid triggers leave the tree unchanged; separate calls create separate anchors. The steering and harness tests pass with helpers adjusted for the additional agent messages.
+- `bun run typecheck` passes. Biome checked the touched source files; `bun run check` also picked up temporary test fixture files in `.tmp-test` and failed on their formatting.
+- The revised agent-reply UI and the three-level layout were not seen in a window. An earlier session drove the prior system-card implementation in an Electron fake-harness window; that does not validate this revision.
+
+
+# Three-pane desktop revision (2026-11-20)
+
+- Workspace typecheck, Biome on staged files and the full suite passed. The suite reported 2,588 passing tests and 62 skips. Reproduce with `TMPDIR="$PWD/.tmp-test" CI=1 bun run test`. The fake-harness cases in `packages/service/test/work/replies.test.ts` exercise distinct folderless realm and Borderlands chats, realm lore scoping, quest placement, stable anchor identity after moving a quest, opening messages for empty quests, Chronicle realm and quest links, agent-attributed follow-ups, and SQLite restart. `apps/app/test/shell/paneChain.test.ts` verifies that a legacy descendant takes the third slot and retains a route to its actual parent. Legacy fixture tests cover deletion, archive, own-copy access and message reach at the preserved depth.
+- The Expo web export succeeded and the isolated fake service started. Electron exited with SIGABRT and the Chromium fallback failed to register its macOS Mach port. Aside could not authenticate to its local browser process because the keychain was unavailable. The revised desktop interaction and appearance remain unverified in a window, including sidebar chevrons, switching quest tabs, and the Workshop round trip.
+- Chronicle currently shows recent stored activity and one reminder per waiting conversation. The later unread badge, attention filters, message and request links, and separate History tab require a subsequent implementation.

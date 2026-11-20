@@ -196,6 +196,8 @@ export function App() {
       isWorkshopOpen={place === "Settings" && location.openMission === null}
       listedRealm={listedRealm}
       location={location}
+      onOpenChannel={(listing) => dispatch({ listing, type: "channel" })}
+      onOpenChronicle={() => goTo("Chronicle")}
       onOpenMission={openMissionFromAnywhere}
       onOpenRealmQuests={openRealm}
       onOpenThread={openSideQuest}
@@ -208,8 +210,8 @@ export function App() {
       <AppScreen
         client={client}
         navigation={{
-          closeMission: () => dispatch({ type: "close" }),
           goTo,
+          openChannel: (listing) => dispatch({ listing, type: "channel" }),
           openMenu: () => dispatch({ isOpen: true, type: "menu" }),
           openMission: openMissionFromAnywhere,
           openParent,
@@ -227,6 +229,10 @@ export function App() {
           openCount,
           openMission,
           openThread,
+          parkedChannel:
+            place === "Settings" && location.workshopReturn?.place === "Channel"
+              ? (location.workshopReturn.listedRealm ?? { id: null, name: "Borderlands" })
+              : null,
           parkedQuest:
             place === "Settings" && location.openMission === null && location.workshopReturn?.openMission != null
               ? {

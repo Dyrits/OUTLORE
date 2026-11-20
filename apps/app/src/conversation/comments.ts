@@ -23,6 +23,7 @@ export type SentComment = Pick<Comment, "about" | "isSelection" | "note" | "quot
 /** How the harness is told whose message a comment is about. */
 export const aboutLabels = {
   agent: "the Companion's reply",
+  system: "a card of Outlore",
   thread: "a message from another quest",
   user: "your message",
 } as const satisfies Record<Message["sender"], string>;

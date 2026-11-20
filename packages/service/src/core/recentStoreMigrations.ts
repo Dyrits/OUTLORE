@@ -153,4 +153,23 @@ export const recentStoreMigrations = {
       PRIMARY KEY (connector_id, tool)
     )`;
   }),
+  // Where a thread hangs from (conversation panes): the message of the conversation it came out of. Old rows have none.
+  // A message has at most one thread hanging from it, which the index keeps.
+  "0063_thread_anchors": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE threads ADD COLUMN anchor_message_id TEXT`;
+    yield* sql`CREATE UNIQUE INDEX threads_anchor_message ON threads (anchor_message_id) WHERE anchor_message_id IS NOT NULL`;
+  }),
+  // An agent-authored anchor reply retains the message that prompted it.
+  "0064_message_reply_to": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE messages ADD COLUMN reply_to_message_id TEXT`;
+    yield* sql`ALTER TABLE suggestions ADD COLUMN proposal_message_id TEXT`;
+  }),
+  "0065_chronicler_channels": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE missions ADD COLUMN chronicler_channel TEXT`;
+    yield* sql`ALTER TABLE messages ADD COLUMN is_conversation_only INTEGER NOT NULL DEFAULT 0`;
+    yield* sql`CREATE UNIQUE INDEX missions_chronicler_channel ON missions (chronicler_channel) WHERE chronicler_channel IS NOT NULL`;
+  }),
 };

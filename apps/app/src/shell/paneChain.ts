@@ -31,6 +31,14 @@ export const chainOf = <Id extends string>(
   return chain;
 };
 
+/** One slot for the quest and one for the selected errand, including an old nested errand. */
+export const desktopThreadsOf = <Id extends string>(path: ReadonlyArray<Id>): ReadonlyArray<Id> => {
+  const quest = path[0];
+  const selected = path.at(-1);
+  if (quest === undefined) return [];
+  return selected === undefined || selected === quest ? [quest] : [quest, selected];
+};
+
 /** What the owner did to the panes, kept between renders: the folds, the panes pressed back open, and the shares. */
 export type PaneMemory<Id extends string> = {
   /** The panes the owner folded to strips. */
