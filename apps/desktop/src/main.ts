@@ -13,6 +13,7 @@ import { answerServiceUpdates, type ServiceUpdates } from "./serviceUpdates.ts";
 import { mergedPathOf, readLoginPath } from "./shellPath.ts";
 import { Terminals } from "./terminals.ts";
 import { setUpUpdates } from "./updateSetup.ts";
+import { whisperExecutable } from "./whisper.ts";
 import { createWindowHandlers } from "./windowCalls.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -62,6 +63,7 @@ const startService = (token: string) => {
     env: {
       ...process.env,
       OUTLORE_DATA_DIR: dataDirectory(),
+      ...(app.isPackaged && { OUTLORE_BUNDLED_WHISPER_CLI: join(process.resourcesPath, "whisper", whisperExecutable) }),
       OUTLORE_RELEASE: appVersionOf(),
       OUTLORE_TOKEN: token,
       // The vendored connector servers, shipped as a resource in the installed app and vendored in the repo in dev.

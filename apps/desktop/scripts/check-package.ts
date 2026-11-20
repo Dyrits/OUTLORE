@@ -1,9 +1,10 @@
 // Exercises a packaged desktop app on isolated data: bun apps/desktop/scripts/check-package.ts /path/to/Outlore.app.
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { whisperExecutable } from "../src/whisper.ts";
 
 // Bun does not see the named exports of this CommonJS package, so both it and the policy load through `require`;
 // the package does not re-export its state constants, which its `dist/` carries beside the rest.
@@ -85,6 +86,11 @@ const check = async () => {
   const target = resolve(argument);
   const executable = target.endsWith(".app") ? join(target, "Contents", "MacOS", "Outlore") : target;
   await checkFuses(target);
+  if (target.endsWith(".app")) {
+    const whisper = join(target, "Contents", "Resources", "whisper", whisperExecutable);
+    const result = spawnSync(whisper, ["--help"], { stdio: "ignore" });
+    if (result.status !== 0) throw new Error("The packaged Whisper engine did not start.");
+  }
   const folder = await mkdtemp(join(tmpdir(), "outlore-package-check-"));
   const child = spawn(executable, ["--remote-debugging-port=0"], {
     env: { ...process.env, OUTLORE_DATA_DIR: folder, OUTLORE_HARNESS: "fake" },

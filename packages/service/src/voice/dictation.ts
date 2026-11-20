@@ -3,42 +3,65 @@ import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type DictationStatus, maxDictationBytes, type Transcript } from "@outlore/contracts";
-import { Effect } from "effect";
+import { Config, Effect } from "effect";
 import { invalid, ServiceFailure } from "../core/index.ts";
 import { checkWav, readTranscriberSettings, type TranscriberSettings, transcribeWav } from "./transcribe.ts";
+import { bundledModelPath, ensureBundledModel } from "./whisperModel.ts";
 
 // The owner's dictation requests (voice-input): whether the host can transcribe now, and one recording turned into
 // text. The recording is written to a private temporary folder only for the engine to read, and erased right after,
 // whatever the outcome: Outlore keeps no audio (ADR 0024).
 
-/** Why dictation cannot run while the engine's settings are missing; the variables are the only way to set it up yet. */
 const notSetUpReason =
-  "Voice input is not set up on this computer: set OUTLORE_WHISPER_CLI to whisper.cpp's whisper-cli and OUTLORE_WHISPER_MODEL to a model file such as ggml-base.bin, then restart Outlore.";
+  "Voice input needs the bundled Whisper engine or custom paths in OUTLORE_WHISPER_CLI and OUTLORE_WHISPER_MODEL.";
 
-/** The engine's settings, or null when the environment does not name the engine and its model. */
-const readSettingsOrNull = readTranscriberSettings.pipe(Effect.orElseSucceed(() => null));
+const readBundledSettings = Effect.gen(function* () {
+  const binary = yield* Config.NonEmptyString("OUTLORE_BUNDLED_WHISPER_CLI");
+  const dataDirectory = yield* Config.NonEmptyString("OUTLORE_DATA_DIR");
+  const language = yield* Config.String("OUTLORE_WHISPER_LANGUAGE").pipe(Config.withDefault("auto"));
+  return { binary, language, model: bundledModelPath(dataDirectory), useGpu: false } satisfies TranscriberSettings;
+});
 
-/** Why the engine named by the settings cannot run, or null when its tool and model are both there. */
-const unavailableReasonOf = (settings: TranscriberSettings) =>
-  Effect.promise(async () => {
-    const isReachable = (path: string, mode: number) =>
-      access(path, mode).then(
-        () => true,
-        () => false,
-      );
-    if (!(await isReachable(settings.binary, constants.X_OK)))
-      return `Voice input cannot find whisper.cpp's tool at ${settings.binary}.`;
-    if (!(await isReachable(settings.model, constants.R_OK)))
-      return `Voice input cannot find its model at ${settings.model}.`;
-    return null;
-  });
+const canAccess = (path: string, mode: number) =>
+  Effect.promise(() =>
+    access(path, mode).then(
+      () => true,
+      () => false,
+    ),
+  );
+
+const missingDependency = (message: string) => new ServiceFailure({ kind: "MissingDependency", message });
+
+/** Resolves the manual override or prepares the bundled engine and model before audio is recorded. */
+const prepareDictation = Effect.gen(function* () {
+  const manual = yield* readTranscriberSettings.pipe(Effect.orElseSucceed(() => null));
+  const settings = manual ?? (yield* readBundledSettings.pipe(Effect.orElseSucceed(() => null)));
+  if (settings === null) return yield* missingDependency(notSetUpReason);
+  if (!(yield* canAccess(settings.binary, constants.X_OK)))
+    return yield* missingDependency(`Voice input cannot find whisper.cpp's tool at ${settings.binary}.`);
+  if (manual === null) {
+    yield* Effect.tryPromise({
+      catch: () =>
+        new ServiceFailure({
+          kind: "ExecutionFailure",
+          message:
+            "Could not download the voice model. Check your internet connection and available disk space, then try dictation again.",
+        }),
+      try: () => ensureBundledModel(settings.model),
+    });
+  }
+  if (!(yield* canAccess(settings.model, constants.R_OK)))
+    return yield* missingDependency(`Voice input cannot find its model at ${settings.model}.`);
+  return settings;
+});
 
 /** Whether the host can transcribe a dictation now, with the reason when it cannot. */
-export const readDictationStatus: Effect.Effect<DictationStatus> = Effect.gen(function* () {
-  const settings = yield* readSettingsOrNull;
-  if (settings === null) return { unavailableReason: notSetUpReason };
-  return { unavailableReason: yield* unavailableReasonOf(settings) };
-});
+export const readDictationStatus = prepareDictation.pipe(
+  Effect.match({
+    onFailure: (failure): DictationStatus => ({ unavailableReason: failure.message }),
+    onSuccess: (): DictationStatus => ({ unavailableReason: null }),
+  }),
+);
 
 /** A private folder holding the recording for the engine, erased when the transcription ends. */
 const temporaryFolder = Effect.acquireRelease(
@@ -55,8 +78,7 @@ export const transcribeDictation = Effect.fnUntraced(function* (data: string) {
   if (bytes.length > maxDictationBytes) return yield* invalid("The recording is longer than dictation allows.");
   // A recording the engine cannot read is the owner's to redo, so it is refused before anything runs.
   yield* checkWav(bytes).pipe(Effect.mapError((failure) => invalid(failure.reason)));
-  const settings = yield* readSettingsOrNull;
-  if (settings === null) return yield* new ServiceFailure({ kind: "MissingDependency", message: notSetUpReason });
+  const settings = yield* prepareDictation;
   const text = yield* Effect.scoped(
     Effect.gen(function* () {
       const folder = yield* temporaryFolder;

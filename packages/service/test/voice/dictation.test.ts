@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
@@ -78,6 +78,27 @@ describe("reading whether dictation can run", () => {
     ),
   );
 
+  it.live("uses the bundled engine and cached model without custom settings", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const engine = yield* standInEngine;
+        const model = join(engine.folder, "voice", "ggml-base.bin");
+        yield* Effect.promise(async () => {
+          await mkdir(join(engine.folder, "voice"));
+          await writeFile(model, "");
+          await truncate(model, 147_951_465);
+        });
+        const variables = withVariables({
+          OUTLORE_BUNDLED_WHISPER_CLI: engine.binary,
+          OUTLORE_DATA_DIR: engine.folder,
+        });
+        expect((yield* readDictationStatus.pipe(variables)).unavailableReason).toBeNull();
+        const transcript = yield* transcribeDictation(base64Of(wavOf(3200))).pipe(variables);
+        expect(transcript.text).toMatch(/^heard .+recording\.wav$/);
+      }),
+    ),
+  );
+
   it.live("is ready when the engine and the model are both there", () =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -99,7 +120,7 @@ describe("transcribing a dictation", () => {
         const transcript = yield* transcribeDictation(base64Of(wavOf(3200))).pipe(
           withVariables({ OUTLORE_WHISPER_CLI: engine.binary, OUTLORE_WHISPER_MODEL: engine.model }),
         );
-        expect(transcript.text).toMatch(/^heard \S+recording\.wav$/);
+        expect(transcript.text).toMatch(/^heard .+recording\.wav$/);
         const recording = transcript.text.slice("heard ".length);
         expect(existsSync(recording)).toBe(false);
       }),

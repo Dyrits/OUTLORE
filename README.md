@@ -277,6 +277,10 @@ bun run package
 
 This builds an installer for the current platform in `apps/desktop/release`.
 It bundles the interface and service, so the installed app needs no development server.
+Packaging requires Git, CMake, and the platform's C and C++ compiler to build the bundled whisper.cpp executable.
+In the installed desktop app, the first press of the composer microphone downloads the multilingual Whisper model (141 MiB), verifies it, and starts recording.
+Later dictations reuse the model and work offline.
+Development runs and custom engines can set `OUTLORE_WHISPER_CLI` and `OUTLORE_WHISPER_MODEL` before starting Outlore.
 
 Pushes to `main` and pull requests targeting it run lint, typechecking, tests, and the web app's build through the [desktop workflow](.github/workflows/package.yml).
 Push a version tag such as `0.1.0-Prototype` (no `v` prefix) to build macOS arm64 and x64, Windows x64, and Linux x64 installers and publish them on [GitHub Releases](https://github.com/Dyrits/OUTLORE/releases).

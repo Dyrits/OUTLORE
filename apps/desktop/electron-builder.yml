@@ -21,10 +21,13 @@ directories:
   output: release
 files:
   - dist/**
+  - "!dist/whisper/**"
   - assets/icon.png
   - assets/one.LICENSE
   - package.json
 extraResources:
+  - from: dist/whisper
+    to: whisper
   - from: ../../LICENSE
     to: LICENSE
   - from: ../../packages/channel/NOTICE

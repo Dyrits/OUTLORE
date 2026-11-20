@@ -131,10 +131,15 @@ export const transcribeWav = (
         }),
       try: () =>
         new Promise<string>((resolve, reject) => {
-          execFile(settings.binary, args, { maxBuffer: 1024 * 1024, timeout: transcribeTimeoutMs }, (error, out) => {
-            if (error === null) resolve(out);
-            else reject(error);
-          });
+          execFile(
+            settings.binary,
+            args,
+            { maxBuffer: 1024 * 1024, timeout: transcribeTimeoutMs, windowsHide: true },
+            (error, out) => {
+              if (error === null) resolve(out);
+              else reject(error);
+            },
+          );
         }),
     });
     return stdout.trim();
