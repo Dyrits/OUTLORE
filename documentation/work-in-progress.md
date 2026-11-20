@@ -2,7 +2,7 @@
 
 ## Conversation panes · 2026-11-20 · desktop revision
 
-The desktop build (CHG-0565 to CHG-0567) is integrated on `main`. The [verification note](verification/2026-11-19-conversation-panes.md) records the automated checks and the blocked window check. The [Chronicle follow-up](capabilities/conversation-panes/specifications.md#main-conversations-and-channels) adds an unread badge, filters, direct links, and History (CHG-0569). Phone navigation and pane identity are deferred. See the [handoff](../.agents/handoffs/2026-11-20-0130-conversation-panes.md).
+The desktop build (CHG-0565 to CHG-0567) is integrated on `main`; CHG-0570 repairs a development store that left the panes blank. The [verification note](verification/2026-11-19-conversation-panes.md) records the automated checks and the blocked window check. The [Chronicle follow-up](capabilities/conversation-panes/specifications.md#main-conversations-and-channels) adds an unread badge, filters, direct links, and History (CHG-0569). Phone navigation and pane identity are deferred. See the [handoff](../.agents/handoffs/2026-11-20-0847-conversation-panes-blank-panel-fix.md).
 
 
 ## Connector Charter controls · 2026-11-19 · built on the Charter errand branch; review pending

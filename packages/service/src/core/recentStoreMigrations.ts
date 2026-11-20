@@ -172,4 +172,19 @@ export const recentStoreMigrations = {
     yield* sql`ALTER TABLE messages ADD COLUMN is_conversation_only INTEGER NOT NULL DEFAULT 0`;
     yield* sql`CREATE UNIQUE INDEX missions_chronicler_channel ON missions (chronicler_channel) WHERE chronicler_channel IS NOT NULL`;
   }),
+  // 0064 and 0065 each gained a column after a development store had recorded them, and a recorded migration is not run
+  // again: that store had no `messages.is_conversation_only` or `suggestions.proposal_message_id`, so reading a quest
+  // failed ("no such column") and its panes drew nothing. Each column is added only where it is missing, so a store
+  // that ran the migrations in their final form is untouched.
+  "0066_repair_pane_columns": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    const has = (table: string, column: string) =>
+      sql<{ name: string }>`SELECT name FROM pragma_table_info(${table}) WHERE name = ${column}`.pipe(
+        Effect.map((rows) => rows.length > 0),
+      );
+    if (!(yield* has("messages", "is_conversation_only")))
+      yield* sql`ALTER TABLE messages ADD COLUMN is_conversation_only INTEGER NOT NULL DEFAULT 0`;
+    if (!(yield* has("suggestions", "proposal_message_id")))
+      yield* sql`ALTER TABLE suggestions ADD COLUMN proposal_message_id TEXT`;
+  }),
 };

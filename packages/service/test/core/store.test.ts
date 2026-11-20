@@ -196,3 +196,37 @@ describe("migrating saved questions to explicit kinds", () => {
     }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
   });
 });
+
+describe("migrating a store that applied an earlier form of the conversation-pane migrations", () => {
+  it.effect("adds the columns the earlier form of 0064 and 0065 left out, and reads a quest again", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
+    directories.push(directory);
+    return Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* migrateUntil("0065_chronicler_channels");
+      // The shape a development store was left in: both migrations recorded, their later columns never added.
+      yield* sql`ALTER TABLE messages DROP COLUMN is_conversation_only`;
+      yield* sql`ALTER TABLE suggestions DROP COLUMN proposal_message_id`;
+      yield* migrateUntil("9999");
+      const columns = (table: string) =>
+        sql<{ name: string }>`SELECT name FROM pragma_table_info(${table})`.pipe(
+          Effect.map((rows) => rows.map((row) => row.name)),
+        );
+      expect(yield* columns("messages")).toContain("is_conversation_only");
+      expect(yield* columns("suggestions")).toContain("proposal_message_id");
+      // What the quest's read selects: it failed with "no such column" on the earlier form.
+      expect(yield* sql`SELECT COUNT(*) AS count FROM messages WHERE is_conversation_only = 0`).toEqual([{ count: 0 }]);
+    }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
+  });
+
+  it.effect("leaves a store migrated in one run with each column once", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
+    directories.push(directory);
+    return Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* migrateUntil("9999");
+      const names = yield* sql<{ name: string }>`SELECT name FROM pragma_table_info('messages')`;
+      expect(names.filter((row) => row.name === "is_conversation_only")).toHaveLength(1);
+    }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
+  });
+});

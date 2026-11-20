@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { MessageId, ThreadId } from "@outlore/contracts";
@@ -275,7 +275,7 @@ describe("replying to a message", () => {
       if (message === undefined) return yield* Effect.die("Chronicler wrote nothing");
       const started = yield* reply(message.id, "Add dark mode", realm);
       const quest = yield* settle(started.missionId, isIdle);
-      expect(quest.thread.workspace?.path).toBe(realm);
+      expect(quest.thread.workspace?.path).toBe(realpathSync(realm));
     }).pipe(Effect.provide(value.layer));
   });
 
