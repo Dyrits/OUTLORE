@@ -4,10 +4,10 @@ import { invalid, notFound, toolRefusal, toolText } from "../core/index.ts";
 import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import type { ToolHandlers } from "./threadTools.ts";
 
-/** The title of a quest until its top thread names it; the app shows its id before it (`[Q-1D4E5F] Quest`). */
+/** The title of a quest until its top thread names it. */
 export const newQuestTitle = "Quest";
 
-/** The title of an errand until it names itself; the app shows its id before it (`[E-1D4E5F] Errand`). */
+/** The title of an errand until it names itself. */
 export const newErrandTitle = "Errand";
 
 /** A title from a text: its first line, trimmed, at most 200 characters. */

@@ -21,7 +21,7 @@ export function ErrandStarter({
   onOpened: (threadId: ThreadId) => void;
   parent: ThreadView | null;
 }) {
-  const [tab, setTab] = useState<"Request" | "Companions">("Request");
+  const [tab, setTab] = useState<"Missives" | "Companions">("Missives");
   return (
     <View style={local.pane}>
       <View style={local.header}>
@@ -46,12 +46,12 @@ export function ErrandStarter({
       {parent !== null &&
         (parent.actions.canOpenBeneath ? (
           <>
-            <PaneTabs names={["Request", "Companions"]} onSelect={setTab} selected={tab} />
+            <PaneTabs names={["Missives", "Companions"]} onSelect={setTab} selected={tab} />
             <OpenThreadForm
               client={client}
               companions={{
                 isSelected: tab === "Companions",
-                onOpen: () => setTab(tab === "Companions" ? "Request" : "Companions"),
+                onOpen: () => setTab(tab === "Companions" ? "Missives" : "Companions"),
               }}
               onOpened={onOpened}
               parent={parent}

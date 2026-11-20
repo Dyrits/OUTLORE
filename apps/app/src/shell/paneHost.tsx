@@ -4,7 +4,6 @@ import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 import { PaneThread } from "../conversation/paneThread";
 import { OpenPanes } from "../conversation/replyLine";
 import type { ServiceClient } from "../foundation/client";
-import { nameWithId } from "../foundation/displayId";
 import { allMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -87,6 +86,17 @@ export function PaneHost({
     setMemory((current) => prunedMemory(current, fullChain));
     setExpanded((current) => (current !== null && fullChain.includes(current) ? current : null));
   }, [deepest, fullChain]);
+  // The starter is folded again whenever another quest opens: its pane stays in the chain from one quest to the next, so
+  // the pressed-open memory of the last quest would otherwise carry over to the new one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the quest opening is what resets the starter.
+  useEffect(() => {
+    setMemory((current) =>
+      current.shown.has(starterId)
+        ? { ...current, shown: new Set([...current.shown].filter((each) => each !== starterId)) }
+        : current,
+    );
+    setExpanded((current) => (current === starterId ? null : current));
+  }, [quest]);
   const slots = useMemo(
     () => layoutOf({ available, chain: fullChain, expanded, memory, starter: starterId }),
     [available, expanded, fullChain, memory],
@@ -187,14 +197,7 @@ export function PaneHost({
         setMemory((current) => revealedPane(current, id));
       },
       state: notchStateOf(id, summary),
-      title:
-        id === channelId
-          ? channel.name
-          : id === starterId
-            ? "New errand"
-            : id === quest
-              ? nameWithId("quest", missionId, summary?.title ?? "")
-              : nameWithId("errand", id, summary?.title ?? ""),
+      title: id === channelId ? channel.name : id === starterId ? "New errand" : (summary?.title ?? ""),
     };
   };
   // The active errands of the quest and the active quests of the realm that have no pane or notch yet, as notches on the
@@ -217,7 +220,7 @@ export function PaneHost({
           kind: "quest",
           onReveal: () => onOpenMission(child.id),
           state: child.state,
-          title: nameWithId("quest", child.id, title),
+          title,
         });
       }
     } else {
@@ -233,7 +236,7 @@ export function PaneHost({
           kind: "errand",
           onReveal: () => revealThread(child.id),
           state: child.state,
-          title: nameWithId("errand", child.id, title),
+          title,
         });
       }
     }
@@ -308,6 +311,12 @@ export function PaneHost({
             const { id } = slot;
             const isStrip = slot.kind === "strip";
             const notches = isStrip ? { left: [], right: [] } : notchesAt(slot.depth);
+            // Between two open panes the notches of the folded panes sit across the line: half in each pane. Against
+            // the edge of the row they sit inside the pane.
+            const isStraddling =
+              notches.left.length > 0 && slots.slice(0, slot.depth).some((before) => before.kind === "pane");
+            const nextOpen = isStrip ? undefined : slots.slice(slot.depth + 1).find((after) => after.kind === "pane");
+            const nextStraddles = nextOpen !== undefined && notchesAt(nextOpen.depth).left.length > 0;
             const wrap = (pane: ReactNode) => (
               <View
                 key={id}
@@ -315,13 +324,17 @@ export function PaneHost({
                   local.pane,
                   slot.depth > firstOpen && !isStrip && local.paneDivider,
                   { width: isStrip ? 0 : slot.width },
-                  notches.left.length > 0 && { paddingLeft: notchWidth },
-                  notches.right.length > 0 && { paddingRight: notchWidth },
+                  notches.left.length > 0 && { paddingLeft: isStraddling ? notchWidth / 2 : notchWidth },
+                  (notches.right.length > 0 || nextStraddles) && {
+                    paddingRight: notches.right.length > 0 ? notchWidth : notchWidth / 2,
+                  },
                   isStrip && local.hidden,
                 ]}
               >
                 {pane}
-                {notches.left.length > 0 && <PaneNotches parts={notches.left} side="left" />}
+                {notches.left.length > 0 && (
+                  <PaneNotches isStraddling={isStraddling} parts={notches.left} side="left" />
+                )}
                 {notches.right.length > 0 && <PaneNotches parts={notches.right} side="right" />}
               </View>
             );

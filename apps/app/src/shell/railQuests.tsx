@@ -2,7 +2,6 @@ import type { MissionId, MissionSummary, ThreadId, ThreadState } from "@outlore/
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
-import { nameWithId } from "../foundation/displayId";
 import { canHover } from "../foundation/inputModality";
 import { colors, stateTones } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
@@ -75,7 +74,7 @@ function SideQuests({
             corners={cornersOf(thread.shownState)}
             fold={{
               isOpen: !outline.collapsed.has(thread.id),
-              label: nameWithId("errand", thread.id, thread.title),
+              label: thread.title,
               onPress: hasChildren ? () => onToggle(thread.id) : null,
             }}
             // On hover or focus the archive mark shows at the row's end; a device that cannot hover has the errand's panel.
@@ -83,7 +82,7 @@ function SideQuests({
               canHover && (
                 <View style={[local.questMark, !isShown && local.actionsHidden]}>
                   <Pressable
-                    accessibilityLabel={`Archive ${nameWithId("errand", thread.id, thread.title)}`}
+                    accessibilityLabel={`Archive ${thread.title}`}
                     accessibilityRole="button"
                     disabled={!isShown}
                     hitSlop={6}
@@ -96,11 +95,7 @@ function SideQuests({
             }
             indent={depth * indentStep}
             isSelected={selectedThread === thread.id}
-            label={
-              foldedCount > 0
-                ? `${nameWithId("errand", thread.id, thread.title)} +${foldedCount}`
-                : nameWithId("errand", thread.id, thread.title)
-            }
+            label={foldedCount > 0 ? `${thread.title} +${foldedCount}` : thread.title}
             leading={<StateDot state={thread.shownState} />}
             onPress={() => onOpenThread(missionId, thread.id)}
             textStyle={local.sideQuestText}
@@ -143,7 +138,7 @@ export function Quest({
   const isHere = openMission === mission.id;
   // An archive from the sidebar leaves the current view alone unless this quest is the one open.
   const ending = useEnding(client, mission, isHere);
-  const questName = nameWithId("quest", mission.id, mission.title);
+  const questName = mission.title;
   const label = mission.isEmpty ? `Delete ${questName}` : `Archive ${questName}`;
   return (
     <>

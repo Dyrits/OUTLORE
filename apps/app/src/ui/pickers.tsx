@@ -1,7 +1,7 @@
 import { type ComponentRef, useRef, useState } from "react";
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { styles } from "../foundation/styles";
-import { colors, fontSizes, fonts, outline, radii, round } from "../foundation/theme";
+import { colors, fontSizes, fonts, outline, radii, round, stateTones } from "../foundation/theme";
 import { FoldChevron } from "./foldChevron";
 import { type MenuPlacement, menuPlacementOf } from "./menuPlacement";
 
@@ -73,6 +73,7 @@ export function Menu<T extends string | null>({
   options,
   value,
   label,
+  state,
   onChange,
 }: {
   accessibilityLabel: string;
@@ -81,6 +82,8 @@ export function Menu<T extends string | null>({
   options: ReadonlyArray<T>;
   value: T;
   label: (option: T) => string;
+  /** An option's state, shown as a dot before its name in the open list. */
+  state?: (option: T) => keyof typeof stateTones | undefined;
   onChange: (option: T) => void;
 }) {
   // Where the open list stands in the window, or null while closed.
@@ -139,6 +142,9 @@ export function Menu<T extends string | null>({
                   isTitle && option === value && local.titleHighlight,
                 ]}
               >
+                {state?.(option) !== undefined && (
+                  <View style={[styles.badgeDot, { backgroundColor: stateTones[state(option) ?? "Fresh"].color }]} />
+                )}
                 <Text numberOfLines={1} style={[styles.menuItemText, option === value && styles.chipTextSelected]}>
                   {label(option)}
                 </Text>

@@ -1,7 +1,6 @@
-import type { MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
+import type { MissionDetail, MissionId, MissionState, ThreadId, ThreadState } from "@outlore/contracts";
 import { Text } from "react-native";
 import type { ServiceClient } from "../foundation/client";
-import { nameWithId } from "../foundation/displayId";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -14,13 +13,15 @@ function TitleMenu<Id extends string>({
   onSelect,
 }: {
   kind: "quest" | "errand";
-  current: { id: Id; title: string };
-  choices: ReadonlyArray<{ id: Id; title: string }>;
+  current: { id: Id; title: string; state?: ThreadState | MissionState };
+  choices: ReadonlyArray<{ id: Id; title: string; state?: ThreadState | MissionState }>;
   onSelect: (id: Id) => void;
 }) {
-  const titles = new Map(choices.map((choice) => [choice.id, nameWithId(kind, choice.id, choice.title)]));
-  const currentTitle = nameWithId(kind, current.id, current.title);
+  const titles = new Map(choices.map((choice) => [choice.id, choice.title]));
+  const currentTitle = current.title;
   titles.set(current.id, currentTitle);
+  const states = new Map(choices.map((choice) => [choice.id, choice.state]));
+  if (current.state !== undefined) states.set(current.id, current.state);
   return titles.size === 1 ? (
     <Text numberOfLines={1} style={[styles.paneTitle, { flexShrink: 1 }]}>
       {currentTitle}
@@ -34,6 +35,7 @@ function TitleMenu<Id extends string>({
         if (id !== current.id) onSelect(id);
       }}
       options={Array.from(titles.keys())}
+      state={(id) => states.get(id)}
       value={current.id}
     />
   );
@@ -49,7 +51,11 @@ function QuestTitle({
   onOpenMission: (id: MissionId) => void;
 }) {
   const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
-  const current = { id: detail.mission.id, title: detail.thread.title };
+  const current = {
+    id: detail.mission.id,
+    state: data?.missions.find((mission) => mission.id === detail.mission.id)?.state ?? detail.thread.state,
+    title: detail.thread.title,
+  };
   return <TitleMenu choices={data?.missions ?? []} current={current} kind="quest" onSelect={onOpenMission} />;
 }
 
@@ -69,8 +75,13 @@ export function ThreadTitle({
   }
   return (
     <TitleMenu
-      choices={detail.threads.filter((thread) => thread.parentId !== null)}
-      current={detail.thread}
+      choices={detail.threads
+        .filter((thread) => thread.parentId !== null)
+        .map((thread) => ({ ...thread, state: thread.shownState }))}
+      current={{
+        ...detail.thread,
+        state: detail.threads.find((thread) => thread.id === detail.thread.id)?.shownState ?? detail.thread.state,
+      }}
       kind="errand"
       onSelect={onSelect}
     />

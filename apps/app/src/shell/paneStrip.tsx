@@ -37,9 +37,21 @@ export type NotchPart = {
  * notches on its left or right edge, each the icon of what it is (realm, quest or errand) with its state dot, one press
  * from open. A notch takes no room from the open pane.
  */
-export function PaneNotches({ parts, side }: { parts: ReadonlyArray<NotchPart>; side: "left" | "right" }) {
+export function PaneNotches({
+  isStraddling = false,
+  parts,
+  side,
+}: {
+  /** On the left edge of a pane that has an open pane before it: the notch sits across the line between the two. */
+  isStraddling?: boolean;
+  parts: ReadonlyArray<NotchPart>;
+  side: "left" | "right";
+}) {
   return (
-    <View pointerEvents="box-none" style={[local.notches, side === "left" ? local.atLeft : local.atRight]}>
+    <View
+      pointerEvents="box-none"
+      style={[local.notches, side === "left" ? (isStraddling ? local.onLine : local.atLeft) : local.atRight]}
+    >
       {parts.map((part) => (
         <Pressable
           accessibilityLabel={part.kind === "more" ? part.title : `Open ${part.title}`}
@@ -49,7 +61,7 @@ export function PaneNotches({ parts, side }: { parts: ReadonlyArray<NotchPart>; 
           onPress={part.onReveal}
           style={({ pressed }) => [
             local.notch,
-            side === "left" ? local.notchLeft : local.notchRight,
+            side === "left" ? (isStraddling ? local.notchOnLine : local.notchLeft) : local.notchRight,
             pressed && local.pressed,
           ]}
         >
@@ -131,6 +143,8 @@ const local = StyleSheet.create({
   },
   notches: { bottom: 0, gap: 6, justifyContent: "center", position: "absolute", top: 0, zIndex: 2 },
   notchLeft: { borderBottomRightRadius: radii.md, borderLeftWidth: 0, borderTopRightRadius: radii.md },
+  notchOnLine: { borderRadius: radii.md },
   notchRight: { borderBottomLeftRadius: radii.md, borderRightWidth: 0, borderTopLeftRadius: radii.md },
+  onLine: { left: -notchWidth / 2 },
   pressed: { backgroundColor: colors.controlActive },
 });
