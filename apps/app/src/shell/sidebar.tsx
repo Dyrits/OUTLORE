@@ -47,6 +47,7 @@ export function Sidebar({
   onOpenChannel,
   onOpenChronicle,
   onOpenThread,
+  hasLeftDivider,
   hasWorkshopRow,
   isWorkshopOpen,
   onWorkshop,
@@ -65,6 +66,7 @@ export function Sidebar({
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   /** Whether the foot has the Workshop's row: not on a wide window, where the top bar's icon opens it (CHG-0563). */
   hasWorkshopRow: boolean;
+  hasLeftDivider?: boolean;
   /** Whether the Workshop (Settings) is the screen shown, which its row shows. */
   isWorkshopOpen: boolean;
   /** Opens the Workshop, or from it goes back to where the owner was before. */
@@ -197,19 +199,29 @@ export function Sidebar({
   };
 
   return (
-    <View style={[local.sidebar, !hasWorkshopRow && local.sidebarDesktop, { width }]}>
+    <View
+      style={[
+        local.sidebar,
+        !hasWorkshopRow && local.sidebarDesktop,
+        hasLeftDivider && local.sidebarLeftDivider,
+        { width },
+      ]}
+    >
       <ScrollView
         contentContainerStyle={[local.group, onOpenChronicle !== undefined && local.groupWithChronicle]}
         style={local.flex}
       >
         {onOpenChronicle !== undefined && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onOpenChronicle}
-            style={(state) => [local.chronicleRow, (state.pressed || isHovered(state)) && local.rowHovered]}
-          >
-            <Text style={local.chronicleTitle}>Chronicle</Text>
-          </Pressable>
+          <>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onOpenChronicle}
+              style={(state) => [local.chronicleRow, (state.pressed || isHovered(state)) && local.rowHovered]}
+            >
+              <Text style={local.chronicleTitle}>Chronicle</Text>
+            </Pressable>
+            <Divider />
+          </>
         )}
         <SectionTitle
           action={{

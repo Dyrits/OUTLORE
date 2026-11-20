@@ -1,7 +1,8 @@
 import type { MissionId, WorkspaceId } from "@outlore/contracts";
+import { useState } from "react";
 import { ScrollView, StyleSheet, Text } from "react-native";
-import { QuestCard } from "../conversation/replyLine";
-import type { ServiceClient } from "../foundation/client";
+import { NewReplyCard, QuestCard } from "../conversation/replyLine";
+import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -12,22 +13,41 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
  * list is part of the channel's own pane, not a pane of its own.
  */
 export function ChannelQuests({
-  channel,
   client,
   onOpen,
+  realmId,
 }: {
-  channel: { id: WorkspaceId | null; name: string };
   client: ServiceClient;
   onOpen: (missionId: MissionId) => void;
+  realmId: WorkspaceId | null;
 }) {
   const { data, error } = useServiceQuery(client, allMissions.request, allMissions.key);
+  const [isStarting, setStarting] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const start = async () => {
+    setStarting(true);
+    setFailure(null);
+    try {
+      const quest = await client.request({ _tag: "StartEmptyQuest", realmId, requestId: newRequestId() });
+      onOpen(quest.missionId);
+    } catch (reason) {
+      setFailure(messageOf(reason));
+    } finally {
+      setStarting(false);
+    }
+  };
   const quests = (data?.missions ?? [])
-    .filter((mission) => mission.workspaceId === channel.id)
+    .filter((mission) => mission.workspaceId === realmId)
     .sort((current, next) => next.lastActivityAt - current.lastActivityAt);
   return (
     <ScrollView contentContainerStyle={local.list} style={local.page}>
+      <NewReplyCard isDisabled={isStarting} label="New quest" onPress={() => void start()} />
+      {failure !== null && (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {failure}
+        </Text>
+      )}
       {error !== null && <Text style={styles.error}>{error}</Text>}
-      {data !== null && quests.length === 0 && <Text style={styles.muted}>No quest in {channel.name} yet.</Text>}
       {quests.map((quest) => (
         <QuestCard key={quest.id} label="Quest" onOpen={() => onOpen(quest.id)} origin="Quest" quest={quest} />
       ))}

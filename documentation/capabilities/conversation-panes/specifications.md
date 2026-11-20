@@ -61,6 +61,10 @@ The switchers also appear in the narrow header when another conversation of the 
 - The reply line shows the quest's title, its state, and its latest activity. Pressing it opens the quest's conversation in the next pane.
 - A reply line, and each quest in the Quests tab, is a **block** that quotes a sample of the last exchange, as a Slack thread quotes its last reply: the owner's latest message ("You") and the companion's latest reply ("Companion"), each cut to 160 characters. Errands' reply lines quote their own last exchange the same way (CHG-0571).
 
+The Errands tab starts with a **New errand** block which opens the existing errand composer in the next pane.
+The Quests tab starts with a **New quest** block which creates and opens an empty quest in the current realm or in the Borderlands.
+The blocks appear whether or not the lists already have entries.
+
 ### Errands as replies
 
 - An errand is a fork of its parent's conversation. It has an **anchor** message in that conversation, which carries its reply line (title, state, what is new); pressing the reply line opens the errand's conversation in the next pane, as a thread opens in Slack. The errand's result lands in that thread.
@@ -88,9 +92,12 @@ The switchers also appear in the narrow header when another conversation of the 
 - When only one pane is visible, its header shows **Restore pane layout** automatically.
   If the owner folded the panes without using Expand, Restore clears those folds and keeps the pane widths, subject to the space available.
 
+Realm and Borderlands channels omit the Chronicler, harness, and model line on both Missives and Quests.
+
 ### The sidebar
 
 - The sidebar uses the conversation pane background and aligns the Chronicle entry with the pane headers.
+- A single one-pixel rule separates the desktop sidebar from the content, and the section divider appears between Chronicle and Realms.
 - Fold controls sit before their row labels, and quest highlights are inset within the list.
 - An empty realm starts collapsed and shows **No quests yet** when expanded.
 - The desktop sidebar shows Chronicle, the realms and Borderlands, their quests, and the existing creation and footer controls. A realm’s chevron expands or collapses its quest rows in place. The realm name opens its chat and a quest row opens its conversation directly.

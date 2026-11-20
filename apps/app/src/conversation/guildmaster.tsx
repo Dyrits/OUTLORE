@@ -189,9 +189,11 @@ function ChroniclerChat({
             )}
           </View>
         )}
-        <Text numberOfLines={1} style={local.sub}>
-          Chronicler · {harnessLabels[thread.harness]} · {companionLabelOf(thread.harness, null, thread.model)}
-        </Text>
+        {channel === undefined && (
+          <Text numberOfLines={1} style={local.sub}>
+            Chronicler · {harnessLabels[thread.harness]} · {companionLabelOf(thread.harness, null, thread.model)}
+          </Text>
+        )}
         {alternateBody !== undefined ? (
           <View style={local.body}>{alternateBody}</View>
         ) : entries.length === 0 && draft === "" && terminal.panel === null ? (

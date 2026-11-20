@@ -56,12 +56,7 @@ export const shellStyles = StyleSheet.create({
   menuScreen: { flexDirection: "row" },
   narrow: { backgroundColor: colors.page, flex: 1 },
   narrowContent: { flex: 1 },
-  panel: {
-    backgroundColor: colors.page,
-    borderColor: colors.borderStrong,
-    borderLeftWidth: 1.5,
-    flex: 1,
-    overflow: "hidden",
-  },
+  panel: { backgroundColor: colors.page, flex: 1, overflow: "hidden" },
+  panelDivider: { borderColor: colors.edge, borderLeftWidth: 1 },
   window: { backgroundColor: colors.ground, flex: 1 },
 });

@@ -72,7 +72,7 @@ export const styles = StyleSheet.create({
   chipTextSelected: { color: colors.accentText, fontWeight: "600" },
   code: { color: colors.textSecondary, fontFamily: fonts.mono, fontSize: fontSizes.md },
   /** The message box: one pill-shaped row that holds the text, the accessories, and the send button, and grows only as the text gains lines. */
-  composer: { gap: 4 },
+  composer: { gap: 4, paddingBottom: 8 },
   /** The pickers under the message box, at its right. */
   composerAccessory: {
     alignItems: "center",
@@ -224,13 +224,6 @@ export const styles = StyleSheet.create({
   messageRowUser: { alignSelf: "flex-end" },
   missionRowMain: { gap: 2 },
   muted: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.md },
-  openForm: {
-    ...outline,
-    ...round,
-    backgroundColor: colors.canvas,
-    gap: 10,
-    padding: 14,
-  },
   pane: { gap: 10 },
   paneTitle: { color: colors.text, fontFamily: fonts.sans, fontSize: 18, lineHeight: 26 },
   questButtonPressed: { backgroundColor: colors.sidebar },

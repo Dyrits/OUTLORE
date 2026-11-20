@@ -149,7 +149,8 @@ export const local = StyleSheet.create({
     borderRightWidth: 1,
     width: expandedWidth,
   },
-  sidebarDesktop: { backgroundColor: colors.page },
+  sidebarDesktop: { backgroundColor: colors.page, borderRightWidth: 0 },
+  sidebarLeftDivider: { borderLeftColor: colors.edge, borderLeftWidth: 1 },
   sideQuestText: { fontSize: fontSizes.md },
   spending: { paddingHorizontal: 6, paddingVertical: 4 },
 });

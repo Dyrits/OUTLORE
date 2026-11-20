@@ -49,9 +49,7 @@ function ChannelBody({
   return (
     <ChroniclerConversation
       alternateBody={
-        tab === "Quests" ? (
-          <ChannelQuests channel={{ id, name: channel.name }} client={client} onOpen={onOpenMission} />
-        ) : undefined
+        tab === "Quests" ? <ChannelQuests client={client} onOpen={onOpenMission} realmId={id} /> : undefined
       }
       channel={{ id, name: channel.name }}
       chrome={chrome}

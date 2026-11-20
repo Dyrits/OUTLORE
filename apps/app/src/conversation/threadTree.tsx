@@ -177,7 +177,7 @@ export function OpenThreadForm({
   };
   const isOverWarning = context?.isOverWarning === true;
   return (
-    <View style={styles.openForm}>
+    <View style={styles.pane}>
       {onCancel !== undefined && (
         <View style={styles.header}>
           <Text numberOfLines={1} style={[styles.label, styles.flex]}>

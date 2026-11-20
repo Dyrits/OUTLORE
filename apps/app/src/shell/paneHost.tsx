@@ -239,11 +239,20 @@ export function PaneHost({
             const isStrip = slot.kind === "strip";
             // A run of neighboring strips is one strip in parts, drawn where the run starts.
             const run = isStrip && slots[slot.depth - 1]?.kind !== "strip" ? stripRunFrom(slot.depth) : [];
-            const strip = run.length > 0 && <PaneStrip parts={run} />;
+            const strip = run.length > 0 && <PaneStrip hasDivider={slot.depth > 0} parts={run} />;
             const wrap = (pane: ReactNode) => (
               <Fragment key={id}>
                 {strip}
-                <View style={[local.pane, { width: isStrip ? 0 : slot.width }, isStrip && local.hidden]}>{pane}</View>
+                <View
+                  style={[
+                    local.pane,
+                    slot.depth > 0 && local.paneDivider,
+                    { width: isStrip ? 0 : slot.width },
+                    isStrip && local.hidden,
+                  ]}
+                >
+                  {pane}
+                </View>
               </Fragment>
             );
             if (id === channelId)
@@ -316,6 +325,7 @@ export function PaneHost({
                     missionId={missionId}
                     onOpenMission={onOpenMission}
                     onOpenThread={revealThread}
+                    onStartErrand={() => startErrand(threadId)}
                     threadId={threadId}
                   />
                 </PaneTab>
@@ -332,7 +342,8 @@ const local = StyleSheet.create({
   content: { flex: 1 },
   focused: { backgroundColor: colors.page },
   hidden: { display: "none" },
-  pane: { backgroundColor: colors.page, borderColor: colors.edge, borderLeftWidth: 1 },
+  pane: { backgroundColor: colors.page },
+  paneDivider: { borderColor: colors.edge, borderLeftWidth: 1 },
   row: { backgroundColor: colors.page, flex: 1, flexDirection: "row" },
   toolbar: {
     alignItems: "flex-end",

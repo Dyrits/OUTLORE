@@ -8,7 +8,7 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { PaneTabs } from "./paneTabs";
 import { useQuestPages } from "./questPages";
 import { questPanelOf } from "./questPanelOf";
-import { ReplyLine } from "./replyLine";
+import { NewReplyCard, ReplyLine } from "./replyLine";
 import { ThreadPane } from "./threadPane";
 
 /**
@@ -23,6 +23,7 @@ export function PaneThread({
   missionId,
   onOpenMission,
   onOpenThread,
+  onStartErrand,
   threadId,
 }: {
   /** The fold and close buttons of the pane's header. */
@@ -33,6 +34,7 @@ export function PaneThread({
   onOpenMission: (missionId: MissionId) => void;
   /** Opens another thread of the quest: a reply line here opens its errand in the pane beside this one. */
   onOpenThread: (threadId: ThreadId) => void;
+  onStartErrand: () => void;
   threadId: ThreadId;
 }) {
   const { data, error } = useServiceQuery(
@@ -55,14 +57,16 @@ export function PaneThread({
           alternateBody={
             isQuest && tab === "Errands" ? (
               <ScrollView contentContainerStyle={local.list} style={local.page}>
-                {detail?.threads
+                <NewReplyCard
+                  isDisabled={!detail.thread.actions.canOpenBeneath}
+                  label="New errand"
+                  onPress={onStartErrand}
+                />
+                {detail.threads
                   .filter((thread) => thread.parentId === threadId)
                   .map((thread) => (
                     <ReplyLine key={thread.id} onOpen={onOpenThread} thread={thread} />
                   ))}
-                {detail?.threads.every((thread) => thread.parentId !== threadId) && (
-                  <Text style={styles.muted}>No errands yet.</Text>
-                )}
               </ScrollView>
             ) : null
           }

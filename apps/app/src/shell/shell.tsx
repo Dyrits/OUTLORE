@@ -41,7 +41,7 @@ const sidebarBreakpoint = 820;
  * beside them (CHG-0560), under a top bar over the content; on a narrow one the content alone.
  */
 export function Shell(
-  props: Omit<Parameters<typeof Sidebar>[0], "hasWorkshopRow" | "width"> & {
+  props: Omit<Parameters<typeof Sidebar>[0], "hasLeftDivider" | "hasWorkshopRow" | "width"> & {
     children: ReactNode;
     location: Location;
     dispatch: Dispatch<NavigationEvent>;
@@ -163,7 +163,6 @@ export function Shell(
       </QuestPanelSetter.Provider>
     );
   }
-  const sidebar = <Sidebar {...props} hasWorkshopRow={false} width={railWidth} />;
   // Choosing something in the floating sidebar puts it away, so the panes are not left covered.
   const choosing = <Args extends unknown[]>(action: (...args: Args) => void) => {
     return (...args: Args) => {
@@ -174,6 +173,7 @@ export function Shell(
   // A docked or pinned sidebar stands in the frame, at the left, or at the window's right edge when pinned there.
   const hasLeftRail = placement === "docked" ? !isHidden : placement === "pinned" && side === "left";
   const hasRightRail = placement === "pinned" && side === "right";
+  const sidebar = <Sidebar {...props} hasLeftDivider={hasRightRail} hasWorkshopRow={false} width={railWidth} />;
   const floatingSidebar = (
     <SidebarOverlay isOpen={overlay.isOpen} side={side} width={railWidth}>
       <Sidebar
@@ -245,7 +245,7 @@ export function Shell(
                           <PanelIcon />
                         </Pressable>
                       )}
-                      <View style={local.panel}>{props.children}</View>
+                      <View style={[local.panel, hasLeftRail && local.panelDivider]}>{props.children}</View>
                     </View>
                     {column.wideColumn}
                     {column.hasEdgeHandle && (

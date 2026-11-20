@@ -14,6 +14,7 @@ import { agoOf } from "../foundation/formatting";
 import { allMissions } from "../foundation/queries";
 import { colors, fontSizes, radii, stateLabels, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { handCursor, isHovered } from "../ui/pointer";
 
 /** The threads open as panes beside the one drawing, so a reply line can show that its errand is already open. */
 export const OpenPanes = createContext<ReadonlySet<ThreadId>>(new Set());
@@ -23,6 +24,36 @@ const shortened = (title: string) => (title.length > 60 ? `${title.slice(0, 59)}
 
 /** A sample of a message on one line, with its line breaks and runs of spaces collapsed. */
 const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
+
+/** A creation action that sits alongside the cards for existing quests and errands. */
+export function NewReplyCard({
+  isDisabled = false,
+  label,
+  onPress,
+}: {
+  isDisabled?: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={isDisabled}
+      onPress={onPress}
+      style={(state) => [
+        local.line,
+        local.lineNew,
+        !isDisabled && isHovered(state) && local.lineActive,
+        state.pressed && local.linePressed,
+        isDisabled && local.lineDisabled,
+      ]}
+    >
+      <View style={local.row}>
+        <Text style={local.title}>+ {label}</Text>
+      </View>
+    </Pressable>
+  );
+}
 
 /**
  * The block of a reply line: who opened the work, its title, a sample of its last exchange (the owner's latest message
@@ -194,6 +225,9 @@ const local = StyleSheet.create({
     paddingVertical: 8,
   },
   lineActive: { backgroundColor: colors.accentSoft, borderLeftColor: colors.accentText },
+  lineDisabled: { opacity: 0.5 },
+  lineNew: { borderLeftWidth: 1, borderStyle: "dashed", justifyContent: "center", minHeight: 40, ...handCursor },
+  linePressed: { opacity: 0.8 },
   meta: { color: colors.textMuted, fontSize: fontSizes.sm },
   origin: { color: colors.textMuted, fontSize: fontSizes.sm },
   row: { alignItems: "center", flexDirection: "row", gap: 8 },

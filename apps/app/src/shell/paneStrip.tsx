@@ -13,9 +13,9 @@ export type StripPart = { id: string; onReveal: () => void; state: ThreadState; 
  * Folded panes next to each other: one slim strip, split in as many equal parts, each with its state and its title along
  * it and one press from open again. Panes the chain has too many of, or the window is too narrow for, wait here as well.
  */
-export function PaneStrip({ parts }: { parts: ReadonlyArray<StripPart> }) {
+export function PaneStrip({ hasDivider, parts }: { hasDivider: boolean; parts: ReadonlyArray<StripPart> }) {
   return (
-    <View style={local.strip}>
+    <View style={[local.strip, hasDivider && local.stripDivider]}>
       {parts.map((part, index) => (
         <Pressable
           accessibilityLabel={`Open ${part.title}`}
@@ -60,7 +60,8 @@ const local = StyleSheet.create({
   glyph: { color: colors.textSecondary, fontSize: fontSizes.lg },
   part: { alignItems: "center", flex: 1, gap: 10, minHeight: 0, paddingVertical: 10 },
   pressed: { backgroundColor: colors.controlActive },
-  strip: { backgroundColor: colors.sidebar, borderColor: colors.edge, borderLeftWidth: 1, width: stripWidth },
+  strip: { backgroundColor: colors.sidebar, width: stripWidth },
+  stripDivider: { borderColor: colors.edge, borderLeftWidth: 1 },
   title: { color: colors.textSecondary, flexShrink: 1, fontSize: fontSizes.base },
   unfold: { color: colors.accentText, fontSize: fontSizes.lg },
 });
