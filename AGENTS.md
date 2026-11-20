@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the black and white theme (CHG-0552; open: the owner's look at it in a window), read the [current handoff](.agents/handoffs/2026-11-19-2230-black-and-white-theme.md). Handoffs are shared and committed.
+- To resume the window review for Missives, reply-line samples, realm Quests, or Chronicle rows (CHG-0571), read the [current handoff](.agents/handoffs/2026-11-20-0908-missives-realm-panes-review.md). Handoffs are shared and committed.
 
 - To resume the Codex turn failure on the Vault's permission profile (CHG-0559; open: the owner's retry of a Codex turn in the window), read the [current handoff](.agents/handoffs/2026-11-20-0044-codex-vault-profile.md). Handoffs are shared and committed.
 

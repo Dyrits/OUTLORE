@@ -1,4 +1,12 @@
-import type { MissionId, MissionState, ThreadId, ThreadState, ThreadSummary } from "@outlore/contracts";
+import type {
+  LastExchange,
+  MissionId,
+  MissionState,
+  MissionSummary,
+  ThreadId,
+  ThreadState,
+  ThreadSummary,
+} from "@outlore/contracts";
 import { createContext, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
@@ -13,13 +21,21 @@ export const OpenPanes = createContext<ReadonlySet<ThreadId>>(new Set());
 /** A thread title cut for a one-line label. */
 const shortened = (title: string) => (title.length > 60 ? `${title.slice(0, 59)}…` : title);
 
-/** The card of a reply line: who opened the work, its title, its state and what is new, and the press that opens its pane. */
+/** A sample of a message on one line, with its line breaks and runs of spaces collapsed. */
+const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
+
+/**
+ * The block of a reply line: who opened the work, its title, a sample of its last exchange (the owner's latest message
+ * and the companion's latest reply, as a thread summary quotes them in Slack), its state and how long ago it moved, and
+ * the press that opens its pane.
+ */
 function ReplyCard({
   isOpen,
   label,
   meta,
   onPress,
   origin,
+  sample,
   state,
   title,
 }: {
@@ -29,6 +45,8 @@ function ReplyCard({
   meta: string;
   onPress: () => void;
   origin: string;
+  /** The last exchange to quote, or null while the work's quest or errand is not loaded. */
+  sample: LastExchange | null;
   state: ThreadState | MissionState;
   title: string;
 }) {
@@ -48,6 +66,22 @@ function ReplyCard({
         </Text>
         <Text style={local.go}>{isOpen ? "Open" : "Open ›"}</Text>
       </View>
+      {sample !== null && (sample.owner !== null || sample.reply !== null) && (
+        <View style={local.sample}>
+          {sample.owner !== null && (
+            <Text numberOfLines={1} style={local.sampleLine}>
+              <Text style={local.speaker}>You </Text>
+              {oneLine(sample.owner)}
+            </Text>
+          )}
+          {sample.reply !== null && (
+            <Text numberOfLines={2} style={local.sampleLine}>
+              <Text style={local.speaker}>Companion </Text>
+              {oneLine(sample.reply)}
+            </Text>
+          )}
+        </View>
+      )}
       <Text style={local.meta}>
         <Text style={{ color: tone.color }}>{stateLabels[state]}</Text>
         {meta}
@@ -57,9 +91,9 @@ function ReplyCard({
 }
 
 /**
- * The reply line under the message an errand hangs from (CHG-0561): who opened it, its title, its state and how long
- * ago it last moved. Pressing it opens the errand's conversation in the next pane, as a thread opens in Slack; it is
- * marked while that pane is open.
+ * The reply line under the message an errand hangs from (CHG-0561): who opened it, its title, a sample of its last
+ * exchange, its state and how long ago it last moved. Pressing it opens the errand's conversation in the next pane, as a
+ * thread opens in Slack; it is marked while that pane is open.
  */
 export function ReplyLine({ onOpen, thread }: { onOpen: (threadId: ThreadId) => void; thread: ThreadSummary }) {
   const isOpen = useContext(OpenPanes).has(thread.id);
@@ -70,8 +104,40 @@ export function ReplyLine({ onOpen, thread }: { onOpen: (threadId: ThreadId) => 
       meta={`${thread.waitingCount > 0 ? ` · ${thread.waitingCount} waiting` : ""} · ${agoOf(thread.lastActivityAt, Date.now())}`}
       onPress={() => onOpen(thread.id)}
       origin={thread.isOpenedByAgent ? "Companion opened an errand" : "Opened an errand"}
+      sample={thread.lastExchange}
       state={thread.state}
       title={thread.title}
+    />
+  );
+}
+
+/**
+ * A quest as a block (conversation panes): what Chronicler or the owner made of it, its state, a sample of its last
+ * exchange and how long ago it last moved. Pressing it opens the quest in the next pane; it is marked while that pane is
+ * open. The reply line in a realm's conversation and the realm's Quests tab both show quests this way.
+ */
+export function QuestCard({
+  label,
+  onOpen,
+  origin,
+  quest,
+}: {
+  label: string;
+  onOpen: () => void;
+  origin: string;
+  quest: MissionSummary;
+}) {
+  const isOpen = useContext(OpenPanes).has(quest.topThreadId);
+  return (
+    <ReplyCard
+      isOpen={isOpen}
+      label={`${label}: ${quest.title}`}
+      meta={`${quest.isYourTurn === true ? " · your turn" : ""} · ${agoOf(quest.lastActivityAt, Date.now())}`}
+      onPress={onOpen}
+      origin={origin}
+      sample={quest.lastExchange}
+      state={quest.state}
+      title={quest.title}
     />
   );
 }
@@ -98,21 +164,17 @@ export function QuestReplyLine({
 }) {
   const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
   const quest = data?.missions.find((mission) => mission.id === missionId) ?? null;
-  const isOpen = useContext(OpenPanes).has(quest?.topThreadId ?? ("" as ThreadId));
-  const state = quest?.state ?? "Idle";
+  if (quest !== null) return <QuestCard label={label} onOpen={() => onOpen(missionId)} origin={label} quest={quest} />;
   return (
     <ReplyCard
-      isOpen={isOpen}
-      label={`${label}: ${quest?.title ?? title}`}
-      meta={
-        quest === null
-          ? ""
-          : `${quest.isYourTurn === true ? " · your turn" : ""} · ${agoOf(quest.lastActivityAt, Date.now())}`
-      }
+      isOpen={false}
+      label={`${label}: ${title}`}
+      meta=""
       onPress={() => onOpen(missionId)}
       origin={label}
-      state={state}
-      title={quest?.title ?? title}
+      sample={null}
+      state="Idle"
+      title={title}
     />
   );
 }
@@ -126,7 +188,7 @@ const local = StyleSheet.create({
     borderLeftWidth: 3,
     borderRadius: radii.md,
     borderWidth: 1,
-    gap: 3,
+    gap: 4,
     marginLeft: 18,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -135,5 +197,9 @@ const local = StyleSheet.create({
   meta: { color: colors.textMuted, fontSize: fontSizes.sm },
   origin: { color: colors.textMuted, fontSize: fontSizes.sm },
   row: { alignItems: "center", flexDirection: "row", gap: 8 },
+  // The sample is quoted the way Slack quotes a thread's last reply: a rule at its left, the speakers in bold.
+  sample: { borderLeftColor: colors.edge, borderLeftWidth: 2, gap: 2, paddingLeft: 8 },
+  sampleLine: { color: colors.textSecondary, fontSize: fontSizes.sm },
+  speaker: { color: colors.text, fontWeight: "600" },
   title: { color: colors.text, flex: 1, fontSize: fontSizes.base, fontWeight: "600" },
 });

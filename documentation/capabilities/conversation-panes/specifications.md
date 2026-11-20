@@ -34,7 +34,7 @@ The Workshop (Settings) is not a pane and not a sheet: it is the page that takes
 
 ### The three levels
 
-The pane chain is **channel → quest → errand**. The desktop sidebar opens the channel or a quest. A quest defaults to Messages, where anchored Reply lines open errands. Its Errands tab lists the quest’s errands with their state and attention indicators and opens the same third pane. The sidebar shows attention at quest level. The existing phone sidebar keeps its errand rows. Narrow desktop windows can fold earlier panes to strips.
+The pane chain is **channel → quest → errand**. The desktop sidebar opens the channel or a quest. A quest defaults to its **Missives** tab (its messages, where anchored Reply lines open errands; formerly Messages, CHG-0571). Its Errands tab lists the quest’s errands with their state and attention indicators and opens the same third pane. A realm's channel has a Missives tab (its conversation) and a **Quests** tab that lists the realm's quests in the same pane, not a pane of its own (the owner, 2026-11-20); the Borderlands has both tabs over the quests in no realm. The sidebar shows attention at quest level. The existing phone sidebar keeps its errand rows. Narrow desktop windows can fold earlier panes to strips.
 
 The quest title in the conversation header switches to another non-archived quest across realms and the Borderlands.
 The errand title switches to another errand in the same quest, including existing sub-errands.
@@ -59,6 +59,7 @@ The switchers also appear in the narrow header when another conversation of the 
   - Moving a quest to another realm moves the message it came from with it, into that realm's channel, under the existing [move confirmation](../mission-tracking/specifications.md#quest-placement-and-moves).
   - A quest's results, Summons, and failures arrive as replies in that thread, in place of the buttons beside Chronicler's replies.
 - The reply line shows the quest's title, its state, and its latest activity. Pressing it opens the quest's conversation in the next pane.
+- A reply line, and each quest in the Quests tab, is a **block** that quotes a sample of the last exchange, as a Slack thread quotes its last reply: the owner's latest message ("You") and the companion's latest reply ("Companion"), each cut to 160 characters. Errands' reply lines quote their own last exchange the same way (CHG-0571).
 
 ### Errands as replies
 

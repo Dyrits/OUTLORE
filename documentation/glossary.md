@@ -97,6 +97,10 @@ _Avoid_: Sub-thread, fork (alone)
 The desktop sidebar destination for updates and reminders across realms and the Borderlands. The attention feed and History split are specified in CHG-0569. [Conversation panes](capabilities/conversation-panes/specifications.md#main-conversations-and-channels)
 _Avoid_: Log, Guild Hall (the retired hub's name, kept for Chronicler's permanent conversation in the older specifications)
 
+**Missive**:
+A message in a quest's, an errand's or a channel's conversation, as the Missives tab of a pane lists them (formerly the Messages tab, CHG-0571). The service and the contracts keep the word message. [Conversation panes](capabilities/conversation-panes/specifications.md#the-three-levels)
+_Avoid_: Message (for the tab's name)
+
 **Pane**:
 One conversation column. Desktop shows up to three, in channel, quest, and errand order. [Conversation panes](capabilities/conversation-panes/specifications.md)
 _Avoid_: Panel (the details column and the sidebars are panels), window, tab
