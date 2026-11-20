@@ -64,7 +64,7 @@ describe("offering what an @ names", () => {
     expect(chips).toContainEqual({ kind: "realm", label: "Outlore", token: "@realm:r1" });
     const side = mentionMenuOf({ category: "quests", entries: [], hasFolder: false, mentionables, query: "" })[1];
     expect(side?.type === "option" ? side.chip : null).toEqual({
-      kind: "quest",
+      kind: "errand",
       label: "Fix login › Write tests",
       token: "@side-quest:t1",
     });
@@ -96,7 +96,7 @@ describe("drawing the references of a sent message as chips", () => {
     const chips = chipsOf(text, { entries: new Map([["src/", "folder"]]), mentionables, skills: [] });
     expect(chips.map((chip) => [chip.kind, chip.label])).toEqual([
       ["quest", "Fix login"],
-      ["quest", "Fix login › Write tests"],
+      ["errand", "Fix login › Write tests"],
       ["realm", "Outlore"],
       ["folder", "src/"],
     ]);

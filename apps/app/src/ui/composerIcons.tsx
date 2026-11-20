@@ -29,7 +29,10 @@ export function SendArrow() {
   );
 }
 
-/** The errand icon: a branch leaving the main line, in dim ink. */
+/** The branch that marks an errand, drawn on a 20 by 20 grid. */
+export const errandIconPath = "M5 3v14M5 7h5a5 5 0 0 0 5-5M12 3l3-1 1 3";
+
+/** The errand icon in dim ink. */
 export function SideQuestBranch() {
   return (
     <Svg
@@ -42,7 +45,7 @@ export function SideQuestBranch() {
       viewBox="0 0 20 20"
       width={18}
     >
-      <Path d="M5 3v14M5 7h5a5 5 0 0 0 5-5M12 3l3-1 1 3" />
+      <Path d={errandIconPath} />
     </Svg>
   );
 }

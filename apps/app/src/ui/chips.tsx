@@ -3,32 +3,37 @@ import { type ReactNode, useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import type { ServiceClient } from "../foundation/client";
+import { emblemPaths } from "../foundation/emblems";
 import { styles } from "../foundation/styles";
 import { colors } from "../foundation/theme";
 import { useMentionables } from "../foundation/useMentionables";
 import { chipsOf } from "./chipPlaces";
+import { errandIconPath } from "./composerIcons";
 
 // A chosen skill, workspace path, quest, errand, or realm drawn as a small chip with an icon, in the conversation and
 // in the suggestion list.
 
 const ICON_SIZE = 12;
 
-/** The paths that draw each icon, in a 16-point box. */
-export const iconPaths = {
-  file: ["M3.5 1.5 H9.5 L12.5 4.5 V14.5 H3.5 Z", "M9.5 1.5 V4.5 H12.5"],
-  folder: ["M1.5 3.5 H6 L7.5 5 H14.5 V13 H1.5 Z"],
-  // A pennant on its pole, for a quest or errand.
-  quest: ["M4 14.5 V1.5", "M4 2.5 H12.5 L10.5 5.5 L12.5 8.5 H4"],
-  // A keep with its battlements, for a realm.
-  realm: ["M2.5 14.5 V5.5 H4.5 V7 H6.5 V5.5 H9.5 V7 H11.5 V5.5 H13.5 V14.5 Z", "M7 14.5 V11.5 H9 V14.5"],
-  skill: ["M2.5 5.5 H6 a1.5 1.5 0 0 1 3 0 H11.5 V8 a1.5 1.5 0 0 1 0 3 V13.5 H2.5 Z"],
+/** The drawings shared by the picker, the message editor, and sent message chips. */
+export const chipIcons = {
+  errand: { paths: [errandIconPath], viewBox: "0 0 20 20" },
+  file: { paths: ["M3.5 1.5 H9.5 L12.5 4.5 V14.5 H3.5 Z", "M9.5 1.5 V4.5 H12.5"], viewBox: "0 0 16 16" },
+  folder: { paths: ["M1.5 3.5 H6 L7.5 5 H14.5 V13 H1.5 Z"], viewBox: "0 0 16 16" },
+  quest: { paths: emblemPaths.sword, viewBox: "0 0 24 24" },
+  realm: {
+    paths: ["M2.5 14.5 V5.5 H4.5 V7 H6.5 V5.5 H9.5 V7 H11.5 V5.5 H13.5 V14.5 Z", "M7 14.5 V11.5 H9 V14.5"],
+    viewBox: "0 0 16 16",
+  },
+  skill: { paths: ["M2.5 5.5 H6 a1.5 1.5 0 0 1 3 0 H11.5 V8 a1.5 1.5 0 0 1 0 3 V13.5 H2.5 Z"], viewBox: "0 0 16 16" },
 } as const;
 
 /** The kinds of thing a chip can stand for. */
-export type ChipKind = keyof typeof iconPaths;
+export type ChipKind = keyof typeof chipIcons;
 
-/** A small outline icon: a file, a folder, a puzzle piece for a skill, a pennant for a quest, or a keep for a realm. */
+/** The small outline icon for a chip's kind. */
 export function ChipIcon({ kind }: { kind: ChipKind }) {
+  const { paths, viewBox } = chipIcons[kind];
   return (
     <Svg
       fill="none"
@@ -37,10 +42,10 @@ export function ChipIcon({ kind }: { kind: ChipKind }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={1.5}
-      viewBox="0 0 16 16"
+      viewBox={viewBox}
       width={ICON_SIZE}
     >
-      {iconPaths[kind].map((path) => (
+      {paths.map((path) => (
         <Path d={path} key={path} />
       ))}
     </Svg>

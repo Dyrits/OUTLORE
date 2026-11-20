@@ -1,6 +1,6 @@
 import { colors, radii } from "../foundation/theme";
 import type { Chip, Trigger } from "./chipEditorTypes";
-import { iconPaths } from "./chips";
+import { chipIcons } from "./chips";
 
 // The web message field's document work, apart from the component: chips as elements, the field's text read back,
 // and what is typed before the caret. Imported only by the web field, as it needs a document.
@@ -25,6 +25,7 @@ export const chipElementOf = (chip: Chip) => {
     padding: "0 5px",
     verticalAlign: "middle",
   });
+  const { paths, viewBox } = chipIcons[chip.kind];
   const icon = document.createElementNS(SVG, "svg");
   for (const [name, value] of Object.entries({
     fill: "none",
@@ -33,15 +34,15 @@ export const chipElementOf = (chip: Chip) => {
     "stroke-linecap": "round",
     "stroke-linejoin": "round",
     "stroke-width": "1.5",
-    viewBox: "0 0 16 16",
+    viewBox,
     width: "12",
   })) {
     icon.setAttribute(name, value);
   }
-  for (const d of iconPaths[chip.kind]) {
-    const path = document.createElementNS(SVG, "path");
-    path.setAttribute("d", d);
-    icon.appendChild(path);
+  for (const path of paths) {
+    const element = document.createElementNS(SVG, "path");
+    element.setAttribute("d", path);
+    icon.appendChild(element);
   }
   const label = document.createElement("span");
   label.textContent = chip.label;

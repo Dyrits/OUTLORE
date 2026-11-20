@@ -16,8 +16,8 @@ import type { ChipKind } from "./chips";
 
 // Where the chips of a sent message sit in its text, kept apart from the drawing so it can be checked without a screen.
 
-/** The icon each kind of mention draws; an errand wears its quest's. */
-const chipKinds = { quest: "quest", realm: "realm", "side-quest": "quest" } as const satisfies Record<
+/** The icon each kind of mention draws. */
+const chipKinds = { quest: "quest", realm: "realm", "side-quest": "errand" } as const satisfies Record<
   MentionKind,
   ChipKind
 >;
