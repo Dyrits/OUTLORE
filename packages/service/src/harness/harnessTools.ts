@@ -126,7 +126,7 @@ const releaseRegistries = {
 >;
 
 /** Reads each tool's own status command; nothing here sees a credential. */
-export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
+export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: typeof runShortCommand = runShortCommand) =>
   Layer.sync(HarnessTools, () => {
     const models = new Map<string, { readonly at: number; readonly options: ReadonlyArray<ModelOption> }>();
 
@@ -169,13 +169,7 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands) =>
     const update = Effect.fnUntraced(function* (harness: HarnessName) {
       const facts = harnessFacts[harness];
       const label = facts.label;
-      // Vibe's ACP server has no update command; its `vibe` command updates it the way it was installed.
-      const run = yield* runShortCommand(
-        facts.updateCommand ?? commands[harness],
-        facts.updateArgs,
-        {},
-        updateTimeoutMillis,
-      );
+      const run = yield* runUpdate(facts.updateCommand ?? commands[harness], facts.updateArgs, {}, updateTimeoutMillis);
       if (run.code !== 0) {
         const reason = run.output.trim().split("\n").slice(-3).join(" ");
         return yield* invalid(

@@ -50,7 +50,7 @@ export type HarnessFacts = {
   readonly signInNeedsNoTerminal: boolean;
   /** The arguments of the harness's own command that updates it, which knows how it was installed. */
   readonly updateArgs: ReadonlyArray<string>;
-  /** The executable the update command runs on when it is not the harness's own command (Vibe updates through `vibe`); else null. */
+  /** The executable the update command runs on when it is not the harness's own command; else null. */
   readonly updateCommand: string | null;
 };
 
@@ -106,7 +106,7 @@ export const harnessFacts = {
     configVariable: "VIBE_HOME",
     fixedModels: null,
     hasPromptTool: false,
-    // Vibe is a Python package, installed with uv; its `vibe` command updates it the way it was installed.
+    // Vibe's update command prompts in a terminal, while uv upgrades the package without one.
     installVia: "uv",
     label: "Mistral Vibe",
     packageName: "mistral-vibe",
@@ -114,8 +114,8 @@ export const harnessFacts = {
     signInArgs: ["--setup"],
     // `vibe-acp --setup` is an interactive screen, so it needs a Terminal window (like OpenCode).
     signInNeedsNoTerminal: false,
-    updateArgs: ["update"],
-    updateCommand: "vibe",
+    updateArgs: ["tool", "upgrade", "mistral-vibe"],
+    updateCommand: "uv",
   },
 } as const satisfies Record<HarnessName, HarnessFacts>;
 

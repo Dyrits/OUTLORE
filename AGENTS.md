@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume pane notches, the status list, titles and the folding review, read the [current handoff](.agents/handoffs/2026-11-20-1844-pane-status-follow-up.md). Handoffs are shared and committed.
+- To resume the Mistral Vibe update fix and its live verification, read the [current handoff](.agents/handoffs/2026-11-20-1903-vibe-update.md). Handoffs are shared and committed.
 
-- To resume automatic desktop voice input setup (committed; packaged-app and other-platform checks pending), read the [current handoff](.agents/handoffs/2026-11-20-1425-desktop-voice-setup.md). Handoffs are shared and committed.
+- To resume pane notches, the status list, titles and the folding review, read the [current handoff](.agents/handoffs/2026-11-20-1844-pane-status-follow-up.md). Handoffs are shared and committed.
 
 - To resume turns woken by a background command (committed; live check pending), read the [current handoff](.agents/handoffs/2026-11-20-1447-background-wake-turns.md). Handoffs are shared and committed.
