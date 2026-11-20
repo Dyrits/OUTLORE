@@ -90,6 +90,9 @@ The switchers also appear in the narrow header when another conversation of the 
 
 ### The sidebar
 
+- The sidebar uses the conversation pane background and aligns the Chronicle entry with the pane headers.
+- Fold controls sit before their row labels, and quest highlights are inset within the list.
+- An empty realm starts collapsed and shows **No quests yet** when expanded.
 - The desktop sidebar shows Chronicle, the realms and Borderlands, their quests, and the existing creation and footer controls. A realm’s chevron expands or collapses its quest rows in place. The realm name opens its chat and a quest row opens its conversation directly.
 - By default it is an **overlay**: it floats over the panes without moving them, appears when the pointer reaches the edge of the window it is set to, and hides when the pointer leaves, when the owner chooses something in it, or on Escape. A short delay before opening keeps a stray pointer from opening it, a button and a keyboard shortcut open it for touch and keyboard users, and it stays open while a quest is dragged (the owner: "like the sidebar in some browsers like Arc … exactly").
 - It can be set to the **left** or the **right** edge.

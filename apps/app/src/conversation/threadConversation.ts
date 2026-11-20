@@ -19,7 +19,7 @@ export const conversationStateOf = (state: string, isInTurn: boolean, name: stri
     state === "Stopped"
       ? `Write to ${name}; it waits until you resume it…`
       : isInTurn
-        ? `Write to ${name}; Send waits for its next turn, unless you steer it…`
+        ? "Write for the next turn…"
         : `Write to ${name}…`,
 });
 

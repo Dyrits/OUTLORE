@@ -78,8 +78,7 @@ export function Sidebar({
   const placements = placementsOf(data?.missions ?? [], data?.workspaces ?? []);
   // The menu that makes a realm, tied to a folder or to none.
   const [isCreating, setIsCreating] = useState(false);
-  // Realms start open and quests start closed, so a long list of quests stays short; errands start open.
-  const closedRealms = useToggles();
+  const [realmFolds, setRealmFolds] = useState<ReadonlyMap<WorkspaceId, boolean>>(new Map());
   // Realms and Borderlands fold under their headings, each the same way as a realm.
   const foldedSections = useToggles();
   const isFolded = (section: Section) => foldedSections.set.has(section);
@@ -109,8 +108,7 @@ export function Sidebar({
     client
       .request({ _tag: "StartEmptyQuest", realmId, requestId: newRequestId() })
       .then((started) => {
-        const unfold = (current: ReadonlySet<string>) => new Set([...current].filter((id) => id !== groupId));
-        closedRealms.setSet(unfold);
+        if (realmId !== null) setRealmFolds((current) => new Map(current).set(realmId, false));
         // The section the new quest stands in unfolds too.
         const section: Section = groupId === "none" ? "Borderlands" : "Realms";
         foldedSections.setSet((current) => new Set([...current].filter((id) => id !== section)));
@@ -154,7 +152,7 @@ export function Sidebar({
    */
   const realmRow = ({ quests, visibleQuests, workspace }: (typeof outline.realms)[number]) => {
     const realm = { id: workspace.id, name: workspace.name, path: workspace.path, quests, visibleQuests };
-    const isClosed = closedRealms.set.has(realm.id);
+    const isClosed = realmFolds.get(realm.id) ?? (onOpenChannel !== undefined && quests.length === 0);
     return (
       <DropTarget
         key={realm.id}
@@ -171,13 +169,17 @@ export function Sidebar({
                 : { onOpenChannel: () => onOpenChannel({ id: realm.id, name: realm.name }) })}
               onNewQuest={() => startQuest(realm.id, realm.id)}
               onOverview={() => onOpenRealmQuests({ id: realm.id, name: realm.name })}
-              onToggle={() => closedRealms.toggle(realm.id)}
+              onToggle={() => setRealmFolds((current) => new Map(current).set(realm.id, !isClosed))}
               path={realm.path}
               questCount={realm.quests.length}
             />
           </RealmDragSource>
           {failureUnder(realm.id)}
-          {!isClosed && realm.quests.length === 0 && <Text style={local.emptyGroup}>No quest in this realm yet.</Text>}
+          {!isClosed && realm.quests.length === 0 && (
+            <Text style={onOpenChannel === undefined ? local.emptyGroup : local.emptyRealm}>
+              {onOpenChannel === undefined ? "No quest in this realm yet." : "No quests yet"}
+            </Text>
+          )}
           {!isClosed &&
             realm.visibleQuests.map((mission) => (
               <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
@@ -195,11 +197,18 @@ export function Sidebar({
   };
 
   return (
-    <View style={[local.sidebar, { width }]}>
-      <ScrollView contentContainerStyle={local.group} style={local.flex}>
+    <View style={[local.sidebar, !hasWorkshopRow && local.sidebarDesktop, { width }]}>
+      <ScrollView
+        contentContainerStyle={[local.group, onOpenChronicle !== undefined && local.groupWithChronicle]}
+        style={local.flex}
+      >
         {onOpenChronicle !== undefined && (
-          <Pressable accessibilityRole="button" onPress={onOpenChronicle} style={local.sectionRow}>
-            <Text style={local.sectionTitle}>Chronicle</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenChronicle}
+            style={(state) => [local.chronicleRow, (state.pressed || isHovered(state)) && local.rowHovered]}
+          >
+            <Text style={local.chronicleTitle}>Chronicle</Text>
           </Pressable>
         )}
         <SectionTitle

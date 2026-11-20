@@ -23,6 +23,8 @@ export const local = StyleSheet.create({
   },
   addHovered: { backgroundColor: colors.controlActive },
   chevron: { alignItems: "center", height: 20, justifyContent: "center", width: chevronWidth },
+  chronicleRow: { borderRadius: radii.md, justifyContent: "center", minHeight: 32, paddingHorizontal: 8 },
+  chronicleTitle: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.base, fontWeight: "500" },
   // A corner mark: a bottom and left border at the row's lower-left corner, rounded there. Its size, a share of the
   // row's width and height, is set where it is drawn.
   corner: {
@@ -61,11 +63,19 @@ export const local = StyleSheet.create({
     paddingLeft: 6 + chevronWidth,
     paddingVertical: 4,
   },
+  emptyRealm: {
+    color: colors.textMuted,
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.md,
+    paddingLeft: 6 + chevronWidth + 4,
+    paddingVertical: 4,
+  },
   flex: { flex: 1 },
   folderCue: { alignItems: "center", flexShrink: 0, justifyContent: "center" },
   // The same 1 px between rows as in the scrolling part, so a block's categories are evenly spaced everywhere.
   footer: { gap: 1, paddingBottom: 8, paddingLeft: 8, paddingRight: 16 },
   group: { gap: 1, paddingBottom: 12, paddingLeft: 8, paddingRight: 16, paddingTop: 8 },
+  groupWithChronicle: { paddingTop: 12 },
   guide: { backgroundColor: colors.border, bottom: 0, position: "absolute", top: 0, width: 1 },
   more: {
     alignItems: "center",
@@ -115,6 +125,7 @@ export const local = StyleSheet.create({
   // A row of quests keeps a 1 px outline, clear unless a summons rings it; the padding gives that pixel back. The 1 px
   // margin below keeps a ring from touching the next row.
   rowQuest: { borderColor: "transparent", borderWidth: 1, marginBottom: 1, paddingRight: 7, paddingVertical: 3 },
+  rowQuestInset: { marginHorizontal: 2, paddingLeft: 3, paddingRight: 5 },
   rowSelected: { backgroundColor: colors.controlActive },
   rowText: { color: colors.onGround, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.base },
   rowTextSelected: { color: colors.text, fontWeight: "600" },
@@ -127,7 +138,7 @@ export const local = StyleSheet.create({
     flexDirection: "row",
     gap: 4,
     minHeight: 28,
-    paddingLeft: 4,
+    paddingLeft: 6,
     paddingRight: 8,
     paddingVertical: 4,
   },
@@ -138,6 +149,7 @@ export const local = StyleSheet.create({
     borderRightWidth: 1,
     width: expandedWidth,
   },
+  sidebarDesktop: { backgroundColor: colors.page },
   sideQuestText: { fontSize: fontSizes.md },
   spending: { paddingHorizontal: 6, paddingVertical: 4 },
 });

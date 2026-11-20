@@ -44,7 +44,7 @@ export function SidebarOverlay({
 const local = StyleSheet.create({
   left: { borderRightWidth: 1, left: 0 },
   panel: {
-    backgroundColor: colors.sidebar,
+    backgroundColor: colors.page,
     borderColor: colors.edge,
     bottom: 0,
     // A row, so the sidebar stretches to the window's height as it does in the frame.

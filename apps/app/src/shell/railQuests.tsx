@@ -167,6 +167,7 @@ export function Quest({
               </View>
             )
           }
+          isInset={!showErrands}
           isSelected={isHere && (!showErrands || openThread === null || openThread === mission.topThreadId)}
           label={mission.title}
           leading={<StateDot state={mission.state} />}
@@ -233,10 +234,6 @@ export function RealmHeader({
         (state.pressed || isHovered(state)) && local.rowHovered,
       ]}
     >
-      <FolderCue path={path} />
-      <Text numberOfLines={1} style={local.realmText}>
-        {name}
-      </Text>
       <Chevron
         focusProps={focusProps}
         isOpen={isOpen}
@@ -244,6 +241,10 @@ export function RealmHeader({
         label={name}
         onPress={onToggle}
       />
+      <FolderCue path={path} />
+      <Text numberOfLines={1} style={local.realmText}>
+        {name}
+      </Text>
       <View style={local.realmTextEnd} />
       <Count isShown={isShown} value={questCount} />
       <View style={actionsStyle}>

@@ -28,6 +28,7 @@ export function Row({
   hoverAccessory,
   indent = 0,
   leading,
+  isInset = false,
   isSelected,
   fold,
   label,
@@ -39,6 +40,7 @@ export function Row({
   indent?: number;
   /** What stands before the label, after the fold mark, such as a state dot. */
   leading?: ReactNode;
+  isInset?: boolean;
   isSelected: boolean;
   label: string;
   /** The fold mark before the label of a quest or errand row; null `onPress` keeps its place empty. */
@@ -57,12 +59,14 @@ export function Row({
       {...rowProps}
       accessibilityLabel={label}
       accessibilityRole="button"
+      accessibilityState={{ selected: isSelected }}
       onPress={onPress}
       style={(state) => [
         local.row,
         !canHover && local.rowTouch,
         local.rowQuest,
         { paddingLeft: 5 + indent },
+        isInset && local.rowQuestInset,
         (state.pressed || isHovered(state)) && local.rowHovered,
         isSelected && local.rowSelected,
       ]}

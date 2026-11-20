@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the window review for Missives, reply-line samples, realm Quests, or Chronicle rows (CHG-0571), read the [current handoff](.agents/handoffs/2026-11-20-0908-missives-realm-panes-review.md). Handoffs are shared and committed.
-
 - To resume conversation pane changes, desktop review, or Chronicle follow-up, read the [current handoff](.agents/handoffs/2026-11-20-1141-conversation-pane-folding.md). Handoffs are shared and committed.
 
 - To resume worktree cleanup, read the [current handoff](.agents/handoffs/2026-11-20-1203-worktree-cleanup.md). Handoffs are shared and committed.
+
+- To resume desktop review of the sidebar and running-turn composer, read the [current handoff](.agents/handoffs/2026-11-20-1211-sidebar-and-composer.md). Handoffs are shared and committed.
