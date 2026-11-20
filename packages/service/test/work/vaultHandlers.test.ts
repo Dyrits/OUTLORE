@@ -333,7 +333,8 @@ describe("a thread reaching for the Vault's requests", () => {
         });
         const done = yield* settle(
           started.missionId,
-          (detail) => detail.thread.state === "Idle" && detail.messages.some((message) => message.sender === "agent"),
+          (detail) =>
+            detail.thread.state === "Resting" && detail.messages.some((message) => message.sender === "agent"),
         );
         const reply = done.messages.filter((message) => message.sender === "agent").at(-1)?.text ?? "";
         expect(reply).toBe(

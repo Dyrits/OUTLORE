@@ -34,7 +34,7 @@ describe("the schedule", () => {
         });
         for (let index = 0; index < 5; index++) yield* advance(20);
         const released = yield* read(created.missionId);
-        expect(released.thread.state).toBe("Idle");
+        expect(released.thread.state).toBe("Resting");
         expect(replies(released)).toEqual(["Echo: claude/claude-sonnet-5-5/default/session none"]);
         expect((yield* readRitual(created.missionId))?.lastRunState).toBe("Done");
       }),

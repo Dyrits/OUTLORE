@@ -19,7 +19,7 @@ const withService = <A, E, R>(body: Effect.Effect<A, E, R>) => {
 const lastReplyOf = (detail: { messages: ReadonlyArray<{ sender: string; text: string }> }) =>
   detail.messages.filter((message) => message.sender === "agent").at(-1)?.text ?? "";
 
-const idle = (detail: { thread: { state: string } }) => detail.thread.state === "Idle";
+const idle = (detail: { thread: { state: string } }) => detail.thread.state === "Resting";
 
 describe("handover: changing a thread's harness, account, model, or effort mid-thread", () => {
   it.live("a model and effort change keeps the harness session and applies from the next turn", () =>
@@ -203,7 +203,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
       withService(
         Effect.gen(function* () {
           const started = yield* start("wait 400");
-          const running = yield* settle(started.missionId, (detail) => detail.thread.state === "Running");
+          const running = yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
           const threadId = running.thread.id;
           yield* call({
             _tag: "ChangeThreadRunner",
@@ -215,7 +215,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
           });
           const changed = yield* read(started.missionId);
           expect(changed.thread.harness).toBe("codex");
-          expect(changed.thread.state).toBe("Running");
+          expect(changed.thread.state).toBe("Underway");
           const first = yield* settle(started.missionId, idle);
           // The turn that was running wrote its reply under the runner it ran on.
           expect(first.messages.filter((message) => message.sender === "agent")).toHaveLength(1);
@@ -234,7 +234,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
     withService(
       Effect.gen(function* () {
         const started = yield* start("wait 400");
-        const running = yield* settle(started.missionId, (detail) => detail.thread.state === "Running");
+        const running = yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
         const threadId = running.thread.id;
         expect(running.thread.turnHarness).toBe(running.thread.harness);
         expect(running.thread.turnModel).toBe(running.thread.model);
@@ -261,7 +261,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
     withService(
       Effect.gen(function* () {
         const started = yield* start("wait 400");
-        const running = yield* settle(started.missionId, (detail) => detail.thread.state === "Running");
+        const running = yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
         const threadId = running.thread.id;
         yield* call({
           _tag: "ChangeThreadRunner",
@@ -342,7 +342,7 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
         expect(changed.thread).toMatchObject({ harness: "codex", state: "Failed", waitingCount: 1 });
         expect(changed.handovers).toEqual([]);
         yield* call({ _tag: "RetryThread", threadId: failed.thread.id });
-        const after = yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+        const after = yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
         expect(lastReplyOf(after)).toContain("codex");
         expect(after.handovers.map((handover) => handover.text)).toEqual([
           "Handed over to Codex · default model · default effort",

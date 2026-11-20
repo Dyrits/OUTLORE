@@ -1,9 +1,9 @@
 import type { MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
-import { call, settle, start } from "./service.ts";
+import { call, settle, startNamed } from "./service.ts";
 
 /** Whether the thread is idle. */
-export const isIdle = (detail: MissionDetail) => detail.thread.state === "Idle";
+export const isIdle = (detail: MissionDetail) => detail.thread.state === "Resting";
 /** The text of the last message an agent wrote. */
 export const lastAgentText = (detail: MissionDetail) =>
   detail.messages.filter((message) => message.sender === "agent").at(-1)?.text ?? "";
@@ -11,7 +11,7 @@ export const lastAgentText = (detail: MissionDetail) =>
 /** Starts a mission and waits for its first turn to end. */
 export const startIdle = (text: string, workspacePath: string | null = null) =>
   Effect.gen(function* () {
-    const started = yield* start(text, workspacePath);
+    const started = yield* startNamed(text, workspacePath);
     yield* settle(started.missionId, isIdle);
     return started;
   });

@@ -27,7 +27,7 @@ Thread, Turn, and configuration records live in SQLite. Tree queries return view
 | Fold agent-opened threads, count, reveal Attention/Failed | App tree projection from Threads `readTree`; included in desktop tree design. |
 | Off-topic suggestion, fresh mission, aside, moved link, automatic setting | Proposed routing module over Missions/Threads/Context; staged with journal and mission matching. |
 | Aside informs parent when topic returns | Context instructions plus Messaging `send`; staged with asides. |
-| Match Done/Idle missions, exclude deleted, Continue in wakes | Proposed matching query and Messaging `send`; staged with routing and briefing search. |
+| Match Fulfilled/Resting missions, exclude deleted, Continue in wakes | Proposed matching query and Messaging `send`; staged with routing and briefing search. |
 | Desktop and phone: three levels, two harnesses, message subagent, stop branch | App through Threads/Messaging; desktop full threads on Claude Code included; phone, second harness, and mirrored continuation staged. Stop affects the selected thread only. |
 
 ## Requirements

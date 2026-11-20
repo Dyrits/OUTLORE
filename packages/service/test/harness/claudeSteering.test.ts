@@ -19,7 +19,7 @@ describe("steering and interrupting Claude Code", () => {
     }
   };
   const startSlow = (text: string) => startMission({ effort: "low", model: "haiku", text });
-  const isRunning = (detail: MissionDetail) => detail.thread.state === "Running";
+  const isRunning = (detail: MissionDetail) => detail.thread.state === "Underway";
   /**
    * Waits until the stand-in has been given the turn's message. A thread reads Running while Claude Code still starts,
    * and an interrupt or a steered message sent then finds no turn to act on.
@@ -104,7 +104,7 @@ describe("steering and interrupting Claude Code", () => {
       yield* settle(started.missionId, isRunning);
       yield* untilTurnWritten(directory);
       yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-      const interrupted = yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+      const interrupted = yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
       expect(interrupted.thread.failure).toBeNull();
       expect(interrupted.messages.filter((message) => message.sender === "agent")).toEqual([]);
       expect(inputLines(directory).find((line) => line.type === "control_request")).toMatchObject({

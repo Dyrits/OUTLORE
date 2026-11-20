@@ -128,10 +128,13 @@ describe("folding and unfolding a pane", () => {
     expect(slots.map((slot) => slot.width)).toEqual([0, 1244, 0]);
   });
 
-  it("shows the errand starter where it fits and keeps the quest visible before it is revealed", () => {
+  it("folds the errand starter until it is revealed, and shows it where it fits once it is", () => {
     const input = { chain: ["channel", "quest", "starter"], memory, starter: "starter" };
-    expect(panes(layoutOf({ ...input, available: wide })).map((slot) => slot.id)).toEqual(input.chain);
+    expect(panes(layoutOf({ ...input, available: wide })).map((slot) => slot.id)).toEqual(["channel", "quest"]);
     expect(panes(layoutOf({ ...input, available: 600 })).map((slot) => slot.id)).toEqual(["quest"]);
+    expect(
+      panes(layoutOf({ ...input, available: wide, memory: revealedPane(memory, "starter") })).map((slot) => slot.id),
+    ).toEqual(input.chain);
     expect(
       panes(layoutOf({ ...input, available: 600, memory: revealedPane(memory, "starter") })).map((slot) => slot.id),
     ).toEqual(["starter"]);

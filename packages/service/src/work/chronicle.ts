@@ -15,9 +15,9 @@ export const readChronicle = Effect.gen(function* () {
       SELECT 'quest:' || m.id, 'QuestOpened', m.title, m.created_at, m.id, NULL, top.workspace_id
         FROM missions m JOIN threads top ON top.id = m.top_thread_id WHERE m.is_guildmaster = 0 AND top.is_deleting = 0
       UNION ALL
-      SELECT 'end:' || id, CASE ending WHEN 'Done' THEN 'Finished' ELSE 'Archived' END, title,
+      SELECT 'end:' || id, CASE ending WHEN 'Fulfilled' THEN 'Finished' ELSE 'Archived' END, title,
         COALESCE(done_at, last_activity_at), id, NULL, NULL
-        FROM missions WHERE is_guildmaster = 0 AND ending IN ('Done', 'Archived')
+        FROM missions WHERE is_guildmaster = 0 AND ending IN ('Fulfilled', 'Archived')
       UNION ALL
       SELECT 'state:' || t.id, CASE t.state WHEN 'Failed' THEN 'Failed' ELSE 'Waiting' END,
         t.title, COALESCE((SELECT MAX(sent_at) FROM messages WHERE thread_id = t.id), m.last_activity_at),

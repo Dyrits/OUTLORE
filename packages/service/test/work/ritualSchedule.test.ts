@@ -33,17 +33,17 @@ describe("the next run of a Ritual's schedule", () => {
 
 describe("how a Ritual's latest run stands", () => {
   it("reads a recorded state as it was saved", () => {
-    expect(runStateOf("Done", "Idle")).toBe("Done");
-    expect(runStateOf("Failed", "Idle")).toBe("Failed");
-    expect(runStateOf(null, "Idle")).toBeNull();
+    expect(runStateOf("Done", "Resting")).toBe("Done");
+    expect(runStateOf("Failed", "Resting")).toBe("Failed");
+    expect(runStateOf(null, "Resting")).toBeNull();
   });
 
   it("reads an underway run whose thread was stopped as interrupted", () => {
     expect(runStateOf("Underway", "Stopped")).toBe("Interrupted");
-    expect(runStateOf("Underway", "Running")).toBe("Underway");
+    expect(runStateOf("Underway", "Underway")).toBe("Underway");
   });
 
   it("reads a state saved before by an older version, which no run writes now, as none", () => {
-    expect(runStateOf("Skipped", "Idle")).toBeNull();
+    expect(runStateOf("Skipped", "Resting")).toBeNull();
   });
 });

@@ -71,7 +71,7 @@ export const findMissions = Effect.fnUntraced(function* (callerId: string, reque
   return scored.map((row) => ({
     briefing: row.briefing ?? "",
     id: row.id,
-    state: summaries.get(row.id)?.state ?? "Idle",
+    state: summaries.get(row.id)?.state ?? "Resting",
     title: row.title,
   }));
 });

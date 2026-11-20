@@ -4,10 +4,13 @@ import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 import { PaneThread } from "../conversation/paneThread";
 import { OpenPanes } from "../conversation/replyLine";
 import type { ServiceClient } from "../foundation/client";
+import { nameWithId } from "../foundation/displayId";
+import { allMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { FoldPaneButton } from "../ui/questHeaderButtons";
 import { ChannelPane, channelId } from "./channelPane";
+import { childNotchesOf } from "./childNotches";
 import { ErrandStarter } from "./errandStarter";
 import {
   chainOf,
@@ -22,8 +25,9 @@ import {
   revealedPane,
 } from "./paneChain";
 import { PaneResizer } from "./paneResizer";
-import { type NotchKind, type NotchPart, PaneButton, PaneNotches } from "./paneStrip";
+import { type NotchKind, type NotchPart, notchWidth, PaneButton, PaneNotches } from "./paneStrip";
 import { readPaneWeights, rememberPaneWeights } from "./railStorage";
+import { realmMarkOf } from "./realmMark";
 
 /** One channel slot and up to two threads of the quest. */
 const starterId = "errand-starter";
@@ -54,6 +58,7 @@ export function PaneHost({
     `${missionId}:${openThread ?? "top"}`,
   );
   // The tree comes with the thread's read; while another thread loads, the previous chain stays on show.
+  const { data: missionList } = useServiceQuery(client, allMissions.request, allMissions.key);
   const [threads, setThreads] = useState(data?.threads ?? []);
   useEffect(() => {
     if (data !== null) setThreads(data.threads);
@@ -74,6 +79,8 @@ export function PaneHost({
   const [focused, setFocused] = useState<ThreadId | null>(null);
   const [expanded, setExpanded] = useState<PaneId | null>(null);
   const [available, setAvailable] = useState(0);
+  // A "+N" notch asks a pane to open its list of children; a new object each press, so a second press asks again.
+  const [listRequest, setListRequest] = useState<{ id: PaneId } | null>(null);
   // Opening a thread focuses its pane; the folds of panes that left the chain are forgotten.
   useEffect(() => {
     setFocused(deepest);
@@ -133,6 +140,7 @@ export function PaneHost({
         label={isExpanded ? "Restore pane layout" : "Expand pane"}
         onPress={() => {
           if (id !== channelId && id !== starterId) setFocused(id);
+          if (id === starterId && !isExpanded) setMemory((current) => revealedPane(current, id));
           if (isExpanded && expanded === null) {
             setMemory((current) => ({ ...current, folded: new Set() }));
           }
@@ -145,6 +153,18 @@ export function PaneHost({
   const onLayout = (event: LayoutChangeEvent) => {
     const width = Math.floor(event.nativeEvent.layout.width);
     if (width > 0) setAvailable(width);
+  };
+  // The dot of a folded pane: a realm shows the mark derived from its quests (it has no status), the quest its own
+  // status, and an errand its status rolled up with the errands beneath it.
+  const notchStateOf = (id: PaneId, summary: ReturnType<typeof summaryOf>): NotchPart["state"] => {
+    if (id === channelId)
+      return realmMarkOf(
+        (missionList?.missions ?? []).filter((mission) => mission.workspaceId === channel.id).map(({ state }) => state),
+      );
+    if (id === starterId) return null;
+    if (id === quest)
+      return missionList?.missions.find((mission) => mission.id === missionId)?.state ?? summary?.shownState ?? null;
+    return summary?.shownState ?? null;
   };
   const notchOf = (id: PaneId): NotchPart => {
     const summary = id === channelId || id === starterId ? undefined : summaryOf(id);
@@ -166,9 +186,67 @@ export function PaneHost({
         if (id !== channelId && id !== starterId) setFocused(id);
         setMemory((current) => revealedPane(current, id));
       },
-      state: summary?.state ?? null,
-      title: id === channelId ? channel.name : id === starterId ? "New errand" : (summary?.title ?? ""),
+      state: notchStateOf(id, summary),
+      title:
+        id === channelId
+          ? channel.name
+          : id === starterId
+            ? "New errand"
+            : id === quest
+              ? nameWithId("quest", missionId, summary?.title ?? "")
+              : nameWithId("errand", id, summary?.title ?? ""),
     };
+  };
+  // The active errands of the quest and the active quests of the realm that have no pane or notch yet, as notches on the
+  // right edge of the quest's or the realm's own pane.
+  const childNotchesOfPane = (id: PaneId): Array<NotchPart> => {
+    const isChannel = id === channelId;
+    if (!isChannel && id !== quest) return [];
+    const parts: Array<NotchPart> = [];
+    let more: { count: number; state: NotchPart["state"] } | null;
+    if (isChannel) {
+      const result = childNotchesOf(
+        (missionList?.missions ?? []).filter((mission) => mission.workspaceId === channel.id),
+        new Set<string>([missionId]),
+      );
+      more = result.more;
+      for (const child of result.shown) {
+        const title = missionList?.missions.find((mission) => mission.id === child.id)?.title ?? "";
+        parts.push({
+          id: `child:${child.id}`,
+          kind: "quest",
+          onReveal: () => onOpenMission(child.id),
+          state: child.state,
+          title: nameWithId("quest", child.id, title),
+        });
+      }
+    } else {
+      const result = childNotchesOf(
+        threads.filter((thread) => thread.parentId !== null).map((thread) => ({ ...thread, state: thread.shownState })),
+        new Set<string>(fullChain),
+      );
+      more = result.more;
+      for (const child of result.shown) {
+        const title = threads.find((thread) => thread.id === child.id)?.title ?? "";
+        parts.push({
+          id: `child:${child.id}`,
+          kind: "errand",
+          onReveal: () => revealThread(child.id),
+          state: child.state,
+          title: nameWithId("errand", child.id, title),
+        });
+      }
+    }
+    if (more !== null)
+      parts.push({
+        count: more.count,
+        id: `more:${id}`,
+        kind: "more",
+        onReveal: () => setListRequest({ id }),
+        state: more.state,
+        title: `Show ${more.count} more ${isChannel ? "quests" : "errands"}`,
+      });
+    return parts;
   };
   // A folded pane is a notch on the edge of an open pane: the left edge of the next one, or the right edge of the last.
   const notchesAt = (depth: number): { left: Array<NotchPart>; right: Array<NotchPart> } => {
@@ -178,11 +256,18 @@ export function PaneHost({
       if (id !== undefined) left.unshift(notchOf(id));
     }
     const right: Array<NotchPart> = [];
-    if (slots.slice(depth + 1).every((slot) => slot.kind === "strip"))
+    const own = slots[depth]?.id;
+    // Only the last open pane has a right edge: it lists its folded panes, then its own children (a realm's quests, a
+    // quest's errands). A pane with another open pane after it shows none, since that pane already stands for them.
+    if (slots.slice(depth + 1).every((slot) => slot.kind === "strip")) {
       for (let each = depth + 1; slots[each]?.kind === "strip"; each += 1) {
         const id = slots[each]?.id;
         if (id !== undefined) right.push(notchOf(id));
       }
+      // The realm's edge lists quests only: the errands folded after its quest are not its own, so they show no notch there.
+      const shownRight = own === channelId ? right.filter((part) => part.kind === "quest") : right;
+      return { left, right: [...shownRight, ...(own === undefined ? [] : childNotchesOfPane(own))] };
+    }
     return { left, right };
   };
   const firstOpen = slots.findIndex((slot) => slot.kind === "pane");
@@ -230,6 +315,8 @@ export function PaneHost({
                   local.pane,
                   slot.depth > firstOpen && !isStrip && local.paneDivider,
                   { width: isStrip ? 0 : slot.width },
+                  notches.left.length > 0 && { paddingLeft: notchWidth },
+                  notches.right.length > 0 && { paddingRight: notchWidth },
                   isStrip && local.hidden,
                 ]}
               >
@@ -249,6 +336,7 @@ export function PaneHost({
                     </>
                   }
                   client={client}
+                  listRequest={listRequest?.id === id ? listRequest : undefined}
                   onOpenMission={onOpenMission}
                 />,
               );
@@ -289,6 +377,7 @@ export function PaneHost({
                     </>
                   }
                   client={client}
+                  listRequest={listRequest?.id === id ? listRequest : undefined}
                   missionId={missionId}
                   onOpenMission={onOpenMission}
                   onOpenThread={revealThread}

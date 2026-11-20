@@ -1,34 +1,48 @@
-import type { ThreadState } from "@outlore/contracts";
+import type { MissionState, ThreadState } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Emblem, type EmblemName } from "../foundation/emblems";
 import { colors, fontSizes, radii, stateLabels, stateTones } from "../foundation/theme";
 import { errandIconPath } from "../ui/composerIcons";
 
-/** What a folded pane is: the icon of its notch. */
-export type NotchKind = "borderlands" | "errand" | "quest" | "realm";
+/** What a notch stands for: its icon. "more" has none: it counts the children left without a notch of their own. */
+export type NotchKind = "borderlands" | "errand" | "more" | "quest" | "realm";
 
 /** The emblem that stands for each kind of pane. */
 const emblems = {
   borderlands: "compass",
   quest: "sword",
   realm: "castle",
-} as const satisfies Record<Exclude<NotchKind, "errand">, EmblemName>;
+} as const satisfies Record<Exclude<NotchKind, "errand" | "more">, EmblemName>;
 
-/** One folded pane, as one notch. A pane with no state of its own, such as a channel, shows no dot. */
-export type NotchPart = { id: string; kind: NotchKind; onReveal: () => void; state: ThreadState | null; title: string };
+/** The width of a notch: the room an open pane leaves on the edge that carries one, so the icon covers no text. */
+export const notchWidth = 26;
 
 /**
- * Folded panes next to an open one: a column of small notches on its left or right edge, one per folded pane, each the
- * icon of what it is (realm, quest or errand) with its state dot, one press from open again. A notch takes no room from
- * the open pane.
+ * One notch: a folded pane, or a child of the pane (an errand of a quest, a quest of a realm) that has no pane. A pane
+ * with no state of its own, such as a channel, shows no dot. A "more" notch carries its `count` and its `title` is the
+ * whole label.
+ */
+export type NotchPart = {
+  count?: number;
+  id: string;
+  kind: NotchKind;
+  onReveal: () => void;
+  state: ThreadState | MissionState | null;
+  title: string;
+};
+
+/**
+ * Folded panes next to an open one, and the children of a quest or realm pane that have no pane: a column of small
+ * notches on its left or right edge, each the icon of what it is (realm, quest or errand) with its state dot, one press
+ * from open. A notch takes no room from the open pane.
  */
 export function PaneNotches({ parts, side }: { parts: ReadonlyArray<NotchPart>; side: "left" | "right" }) {
   return (
     <View pointerEvents="box-none" style={[local.notches, side === "left" ? local.atLeft : local.atRight]}>
       {parts.map((part) => (
         <Pressable
-          accessibilityLabel={`Open ${part.title}`}
+          accessibilityLabel={part.kind === "more" ? part.title : `Open ${part.title}`}
           accessibilityRole="button"
           accessibilityState={{ expanded: false }}
           key={part.id}
@@ -39,7 +53,9 @@ export function PaneNotches({ parts, side }: { parts: ReadonlyArray<NotchPart>; 
             pressed && local.pressed,
           ]}
         >
-          {part.kind === "errand" ? (
+          {part.kind === "more" ? (
+            <Text style={local.count}>+{part.count}</Text>
+          ) : part.kind === "errand" ? (
             <ErrandMark />
           ) : (
             <Emblem name={emblems[part.kind]} size={16} tint={colors.textSecondary} />
@@ -92,6 +108,7 @@ const local = StyleSheet.create({
   atLeft: { left: 0 },
   atRight: { right: 0 },
   button: { alignItems: "center", borderRadius: radii.sm, height: 26, justifyContent: "center", width: 26 },
+  count: { color: colors.textSecondary, fontSize: fontSizes.xs, fontWeight: "600" },
   dot: {
     borderColor: colors.sidebar,
     borderRadius: radii.pill,
@@ -110,7 +127,7 @@ const local = StyleSheet.create({
     borderWidth: 1,
     height: 36,
     justifyContent: "center",
-    width: 26,
+    width: notchWidth,
   },
   notches: { bottom: 0, gap: 6, justifyContent: "center", position: "absolute", top: 0, zIndex: 2 },
   notchLeft: { borderBottomRightRadius: radii.md, borderLeftWidth: 0, borderTopRightRadius: radii.md },

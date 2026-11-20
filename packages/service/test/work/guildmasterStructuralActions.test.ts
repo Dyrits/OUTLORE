@@ -35,9 +35,9 @@ describe("taking structural actions the owner's message names", () => {
     Effect.gen(function* () {
       const place = yield* guildmaster;
       const empty = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: "empty" });
-      yield* say(place.threadId, `Please archive New quest.\n${archiveQuest(empty.missionId)}`);
+      yield* say(place.threadId, `Please archive Quest.\n${archiveQuest(empty.missionId)}`);
       const detail = yield* settle(place.missionId, isIdle, place.threadId);
-      expect(lastAgentText(detail)).toContain('Deleted "New quest"');
+      expect(lastAgentText(detail)).toContain('Deleted "Quest"');
       expect((yield* Effect.flip(read(empty.missionId))).kind).toBe("NotFound");
     }).pipe(Effect.provide(setup().layer)),
   );

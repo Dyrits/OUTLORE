@@ -30,7 +30,7 @@ The Workshop (Settings) is not a pane and not a sheet: it is the page that takes
 
 ### Main conversations and channels
 
-- **The Chronicle** opens from one desktop sidebar item with an unread badge. Its default feed groups unread replies and results, open Summons, failures, and reminders by conversation across realms and the Borderlands. It offers **Unread** and **Needs attention** filters. Opening an entry takes the owner to the relevant message or request in its existing pane. Reading an approval request clears its unread indicator, and the request stays in **Needs attention** until answered or withdrawn.
+- **The Chronicle** opens from one desktop sidebar item with an unread badge. Its default feed groups unread replies and results, open Attention requests, failures, and reminders by conversation across realms and the Borderlands. It offers **Unread** and **Needs attention** filters. Opening an entry takes the owner to the relevant message or request in its existing pane. Reading an approval request clears its unread indicator, and the request stays in **Needs attention** until answered or withdrawn.
 - The Chronicle's **History** tab shows routine events such as quest openings and moves. General requests go to Chronicler in the realm or Borderlands chat. The existing phone access remains while phone navigation is deferred.
 - **A realm is a channel**: it has its own main conversation, opened from the sidebar, in which the realm's quests unfold. The Borderlands is one more channel, for the quests in no realm. In a channel the owner talks to Chronicler, scoped to that channel: it has the memory of the realm (its lore); in the Borderlands it has the global memories only. As elsewhere in Outlore, the owner chooses its Companion, so the model is settable for each channel.
 - `#` to name a channel is not built. `@` keeps naming a quest, an errand, a realm or a file as context; telling a citation from a channel reference waits for multiplayer (the owner).
@@ -60,7 +60,7 @@ The switchers also appear in the narrow header when another conversation of the 
   - When the owner creates an empty quest, messages they later send from its composer appear only in the quest.
   - The opening of an empty quest still appears in Chronicle History.
   - Moving a quest to another realm moves the message it came from with it, into that realm's channel, under the existing [move confirmation](../mission-tracking/specifications.md#quest-placement-and-moves).
-  - A quest's results, Summons, and failures arrive as replies in that thread, in place of the buttons beside Chronicler's replies.
+  - A quest's results, Attention requests, and failures arrive as replies in that thread, in place of the buttons beside Chronicler's replies.
 - The reply line shows the quest's title, its state, and its latest activity. Pressing it opens the quest's conversation in the next pane.
 - A reply line, and each quest in the Quests tab, is a **block** that quotes a sample of the last exchange, as a Slack thread quotes its last reply: the owner's latest message ("You") and the companion's latest reply ("Companion"), each cut to 160 characters. Errands' reply lines quote their own last exchange the same way (CHG-0571).
 

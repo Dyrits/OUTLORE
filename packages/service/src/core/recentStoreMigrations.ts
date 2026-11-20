@@ -187,4 +187,13 @@ export const recentStoreMigrations = {
     if (!(yield* has("suggestions", "proposal_message_id")))
       yield* sql`ALTER TABLE suggestions ADD COLUMN proposal_message_id TEXT`;
   }),
+  // CHG-0599: a status and its displayed name are one word. Running becomes Underway, Idle Resting (the owner's turn),
+  // and Done Fulfilled, for a thread's state and a mission's ending; a Ritual's run state keeps its own words.
+  "0067_status_names": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`UPDATE threads SET state = 'Underway' WHERE state = 'Running'`;
+    yield* sql`UPDATE threads SET state = 'Resting' WHERE state = 'Idle'`;
+    yield* sql`UPDATE threads SET state = 'Fulfilled' WHERE state = 'Done'`;
+    yield* sql`UPDATE missions SET ending = 'Fulfilled' WHERE ending = 'Done'`;
+  }),
 };

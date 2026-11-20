@@ -15,11 +15,11 @@ import { requireActiveQuestRealm } from "./realmAccess.ts";
 const journalEntries = {
   Archived: "Archived by the user",
   AutoArchived: "Archived automatically",
-  Done: "Marked done by the user",
+  Fulfilled: "Marked done by the user",
   Reopened: "Reopened by the user",
 } as const;
 
-const questionEndings = { Archived: "archive", Done: "mark as done" } satisfies Record<MissionEnding, string>;
+const questionEndings = { Archived: "archive", Fulfilled: "mark as done" } satisfies Record<MissionEnding, string>;
 
 /**
  * The confirmation naming the threads still at work. Threads in Attention count too, so no question stays open
@@ -70,11 +70,11 @@ const recordEnding = Effect.fnUntraced(function* (missionId: string, ending: Mis
   const sql = yield* SqlClient.SqlClient;
   const now = yield* Clock.currentTimeMillis;
   yield* sql`UPDATE missions SET ending = ${ending}, is_asking_done = 0,
-      done_at = ${ending === "Done" ? now : sql`done_at`} WHERE id = ${missionId}`;
+      done_at = ${ending === "Fulfilled" ? now : sql`done_at`} WHERE id = ${missionId}`;
   yield* updateJournal(missionId, { kind: "user" }, entry, null);
 });
 
-/** Marks a mission Done or archives it, stopping exactly the threads at work the owner's preview named. */
+/** Marks a mission Fulfilled or archives it, stopping exactly the threads at work the owner's preview named. */
 export const endMission = Effect.fn("endMission")(function* (
   missionId: string,
   ending: MissionEnding,
@@ -86,10 +86,10 @@ export const endMission = Effect.fn("endMission")(function* (
     ending: MissionEnding | null;
   }>`SELECT ending FROM missions WHERE id = ${missionId}`;
   if (mission === undefined) return yield* notFound("No such mission.");
-  // An ended mission only moves from Done to Archived; anything else is reopened first.
-  if (mission.ending !== null && !(mission.ending === "Done" && ending === "Archived"))
+  // An ended mission only moves from Fulfilled to Archived; anything else is reopened first.
+  if (mission.ending !== null && !(mission.ending === "Fulfilled" && ending === "Archived"))
     return yield* invalid(
-      mission.ending === "Done" ? "This mission is already done." : "Reopen this mission before marking it done.",
+      mission.ending === "Fulfilled" ? "This mission is already done." : "Reopen this mission before marking it done.",
     );
   const ids = yield* readWorkingIds(missionId);
   if (JSON.stringify(ids) !== snapshot) {
@@ -110,7 +110,7 @@ export const endMission = Effect.fn("endMission")(function* (
     const deleted = yield* eraseEmptyQuest(parent.topThreadId);
     return changed(placement, deleted.followUps);
   }
-  // Auto-archive never stops work: it only files a Done quest away, as before CHG-0304.
+  // Auto-archive never stops work: it only files a Fulfilled quest away, as before CHG-0304.
   const stopped = source === "auto-archive" ? [] : ids;
   yield* haltThreads(stopped, "Stopped");
   yield* recordEnding(
@@ -144,7 +144,7 @@ export const dismissPrompt = Effect.fn("dismissPrompt")(function* (missionId: st
 });
 
 /**
- * Archives the Done missions past the auto-archive delay, when the setting is on. Each run announces a
+ * Archives the Fulfilled missions past the auto-archive delay, when the setting is on. Each run announces a
  * change even with none due: the inactivity question depends on time alone, so open dashboards refetch.
  */
 const archiveDueMissions = Effect.gen(function* () {
@@ -153,7 +153,7 @@ const archiveDueMissions = Effect.gen(function* () {
   if (!settings.shouldAutoArchive) return changed(null);
   const now = yield* Clock.currentTimeMillis;
   const due = yield* sql<{ id: string }>`SELECT id FROM missions
-    WHERE ending = 'Done' AND done_at IS NOT NULL AND done_at <= ${now - settings.autoArchiveDays * dayMillis}`;
+    WHERE ending = 'Fulfilled' AND done_at IS NOT NULL AND done_at <= ${now - settings.autoArchiveDays * dayMillis}`;
   const missionsToRemoveScratch: string[] = [];
   const turnsToCancel: string[] = [];
   for (const { id } of due) {

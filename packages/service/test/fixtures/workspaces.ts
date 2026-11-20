@@ -47,7 +47,7 @@ export const failureOfPairedDevice = <R extends Request>(request: R) =>
 
 export const repliedWith = (count: number) => (detail: MissionDetail) =>
   detail.messages.filter((message) => message.sender === "agent").length === count &&
-  (detail.thread.state === "Idle" || detail.thread.state === "Failed");
+  (detail.thread.state === "Resting" || detail.thread.state === "Failed");
 export const isAsking = (detail: MissionDetail) => detail.questions.some((question) => question.outcome === null);
 export const lastReply = (detail: MissionDetail) => detail.messages.at(-1)?.text ?? "";
 

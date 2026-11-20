@@ -46,11 +46,11 @@ export function Toggle({
   );
 }
 
-/** The glyph before a state that ends: a tick for Done, a cross for Failed; a dot for every other state. */
-const stateGlyphs: Partial<Record<ThreadState | MissionState, string>> = { Done: "✓", Failed: "✕" };
+/** The glyph before a state that ends: a tick for Fulfilled, a cross for Failed; a dot for every other state. */
+const stateGlyphs: Partial<Record<ThreadState | MissionState, string>> = { Failed: "✕", Fulfilled: "✓" };
 
 /**
- * A state as it is marked on paper: Attention highlighted, Done ticked, Failed crossed, the others a dot of their
+ * A state as it is marked on paper: Attention highlighted, Fulfilled ticked, Failed crossed, the others a dot of their
  * ink; no tinted pill.
  */
 export function StateBadge({ state }: { state: ThreadState | MissionState }) {

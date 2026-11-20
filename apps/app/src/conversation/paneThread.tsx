@@ -1,5 +1,5 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import type { QuestPage } from "../foundation/pageNavigation";
@@ -18,6 +18,7 @@ import { ThreadPane } from "./threadPane";
 export function PaneThread({
   chrome,
   client,
+  listRequest,
   missionId,
   onOpenMission,
   onOpenThread,
@@ -27,6 +28,8 @@ export function PaneThread({
   /** The fold and close buttons of the pane's header. */
   chrome: ReactNode;
   client: ServiceClient;
+  /** A press on the "+N" notch: each new object opens the quest's Errands tab. */
+  listRequest?: object | undefined;
   missionId: MissionId;
   onOpenMission: (missionId: MissionId) => void;
   /** Opens another thread of the quest: a reply line here opens its errand in the pane beside this one. */
@@ -41,8 +44,14 @@ export function PaneThread({
   );
   // A query for a newly opened thread answers after the previous one; draw only what matches.
   const detail = data !== null && data.thread.id === threadId ? data : null;
-  const [tab, setTab] = useState<"Missives" | "Errands" | "Quest" | "Companions">("Missives");
+  const [tab, setTab] = useState<"Missives" | "Errands" | "Quest" | "Errand" | "Companions">("Missives");
+  useEffect(() => {
+    if (listRequest !== undefined) setTab("Errands");
+  }, [listRequest]);
   const isQuest = detail?.thread.parentId === null;
+  // The details tab is named for what the pane holds: the quest's own thread, or one of its errands.
+  const detailsName = isQuest ? "Quest" : "Errand";
+  const isDetails = tab === "Quest" || tab === "Errand";
   const [page, setPage] = useState<QuestPage>(null);
   const pages = useQuestPages(client, missionId, data?.mission.title ?? "", { onPage: setPage, page });
 
@@ -67,14 +76,17 @@ export function PaneThread({
                       <ReplyLine key={thread.id} onOpen={onOpenThread} thread={thread} />
                     ))}
                 </ScrollView>
-              ) : tab === "Quest" ? (
+              ) : isDetails ? (
                 questPanelOf({ client, detail, onSelectThread: onOpenThread, pages })
               ) : null
             }
             canOpenDetails={false}
             chrome={chrome}
             client={client}
-            companions={{ isSelected: tab === "Companions", onOpen: () => setTab("Companions") }}
+            companions={{
+              isSelected: tab === "Companions",
+              onOpen: () => setTab(tab === "Companions" ? "Missives" : "Companions"),
+            }}
             detail={detail}
             isCompact={true}
             isInPane
@@ -85,9 +97,9 @@ export function PaneThread({
             onSelect={onOpenThread}
             tabs={
               <PaneTabs
-                names={isQuest ? ["Missives", "Errands", "Quest", "Companions"] : ["Missives", "Quest", "Companions"]}
+                names={isQuest ? ["Missives", "Quest", "Errands", "Companions"] : ["Missives", "Errand", "Companions"]}
                 onSelect={setTab}
-                selected={tab}
+                selected={isDetails ? detailsName : tab}
               />
             }
           />

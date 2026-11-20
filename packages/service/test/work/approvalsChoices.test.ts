@@ -110,7 +110,7 @@ describe("asking the owner to choose (AskUserQuestion)", () => {
       const detail = yield* settle(started.missionId, isReplied);
       expect(lastReply(detail)).toContain('"behavior":"deny"');
       expect(lastReply(detail)).toContain("skipped");
-      expect(detail.thread.state).toBe("Idle");
+      expect(detail.thread.state).toBe("Resting");
     }).pipe(Effect.provide(live())),
   );
 

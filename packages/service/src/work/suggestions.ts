@@ -77,7 +77,7 @@ export const suggestionsLayer = Layer.effect(
     const startedAt = yield* Clock.currentTimeMillis;
     yield* sql`UPDATE suggestions SET outcome = 'Withdrawn', resolved_at = ${startedAt} WHERE outcome IS NULL`;
 
-    /** Records the resolution and returns the thread to Running once nothing else waits on the owner. */
+    /** Records the resolution and returns the thread to Underway once nothing else waits on the owner. */
     const resolve = Effect.fnUntraced(function* (suggestionId: string, threadId: string, resolution: Resolution) {
       const now = yield* Clock.currentTimeMillis;
       yield* sql`UPDATE suggestions SET outcome = ${resolution.outcome}, target_mission_id = ${resolution.targetMissionId},
@@ -105,7 +105,7 @@ export const suggestionsLayer = Layer.effect(
       realmId?: string | null,
     ) {
       const started = yield* insertMission(text, choice, realmPath, false, null, [], realmId);
-      // Chronicler hears of this quest's result, Summons, and failure from now on (hearing back).
+      // Chronicler hears of this quest's result, Attention, and failure from now on (hearing back).
       if (isFromGuildmaster) yield* sql`UPDATE missions SET opened_by_guildmaster = 1 WHERE id = ${started.missionId}`;
       if (titleOf(title) !== "") yield* proposeTitle(started.missionId, title);
       const [mission] = yield* sql<{ title: string }>`SELECT title FROM missions WHERE id = ${started.missionId}`;

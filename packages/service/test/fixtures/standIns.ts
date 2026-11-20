@@ -185,7 +185,7 @@ export const attachedPng = () => call({ _tag: "AddAttachment", data: pngBytes().
 
 /** Settled idle with exactly `count` stand-in replies. */
 export const idleWith = (count: number) => (detail: MissionDetail) =>
-  detail.thread.state === "Idle" && replies(detail).length === count;
+  detail.thread.state === "Resting" && replies(detail).length === count;
 
 /**
  * Waits until the stand-in harness has received `method`. A thread reads Running while its harness process still starts,

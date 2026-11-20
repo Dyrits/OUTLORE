@@ -3,7 +3,7 @@ import type { MissionId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
-import { call, fixture, settle, start } from "../fixtures/service.ts";
+import { call, fixture, settle, start, startNamed } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 afterEach(() => {
@@ -16,12 +16,12 @@ const withService = <A, E, R>(body: Effect.Effect<A, E, R>) => {
 };
 
 const recap = (since: number | null = null) => call({ _tag: "ReadGuildHallRecap", since });
-const isIdle = (detail: { thread: { state: string } }) => detail.thread.state === "Idle";
+const isIdle = (detail: { thread: { state: string } }) => detail.thread.state === "Resting";
 
 const finish = (missionId: MissionId) =>
   Effect.gen(function* () {
-    const preview = yield* call({ _tag: "PreviewEnding", ending: "Done", missionId });
-    yield* call({ _tag: "EndMission", ending: "Done", missionId, snapshot: preview.snapshot });
+    const preview = yield* call({ _tag: "PreviewEnding", ending: "Fulfilled", missionId });
+    yield* call({ _tag: "EndMission", ending: "Fulfilled", missionId, snapshot: preview.snapshot });
   });
 
 const hour = 60 * 60 * 1000;
@@ -78,7 +78,7 @@ describe("the Guild Hall recap", () => {
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient;
         for (let index = 0; index < 7; index++) {
-          const quest = yield* start(`Quest ${index}`);
+          const quest = yield* startNamed(`Quest ${index}`);
           yield* settle(quest.missionId, isIdle);
           yield* finish(quest.missionId);
           yield* sql`UPDATE missions SET done_at = ${Date.now() - (7 - index) * 1000} WHERE id = ${quest.missionId}`;

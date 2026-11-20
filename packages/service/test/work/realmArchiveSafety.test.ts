@@ -47,11 +47,11 @@ describe("confirming a realm archive safely", () => {
         const quest = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: "new" });
         for (let index = 0; index < 8; index++) {
           const side = yield* open(quest.threadId, "wait 10000");
-          yield* settle(quest.missionId, (detail) => detail.thread.state === "Running", side.threadId);
+          yield* settle(quest.missionId, (detail) => detail.thread.state === "Underway", side.threadId);
         }
         const preview = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
         const idle = yield* open(quest.threadId, "Waiting for a running slot");
-        expect((yield* read(quest.missionId, idle.threadId)).thread.state).toBe("Idle");
+        expect((yield* read(quest.missionId, idle.threadId)).thread.state).toBe("Resting");
         expect(
           yield* Effect.flip(call({ _tag: "ArchiveRealm", snapshot: preview.snapshot, workspaceId: realm.id })),
         ).toMatchObject({ kind: "StaleVersion" });
@@ -69,7 +69,7 @@ describe("confirming a realm archive safely", () => {
           yield* Effect.flip(call({ _tag: "ArchiveRealm", snapshot: preview.snapshot, workspaceId: realm.id })),
         ).toMatchObject({ kind: "StaleVersion" });
         expect((yield* list()).workspaces).toHaveLength(1);
-        expect((yield* read(quest.missionId)).mission.state).toBe("Idle");
+        expect((yield* read(quest.missionId)).mission.state).toBe("Fresh");
       }),
     ),
   );
@@ -82,7 +82,7 @@ describe("confirming a realm archive safely", () => {
         const preview = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
         const side = yield* open(quest.threadId, "wait 5000");
         const deep = yield* seedLegacyErrand(side.threadId, "wait 5000");
-        yield* settle(quest.missionId, (detail) => detail.thread.state === "Running", deep.threadId);
+        yield* settle(quest.missionId, (detail) => detail.thread.state === "Underway", deep.threadId);
         expect(
           yield* Effect.flip(call({ _tag: "ArchiveRealm", snapshot: preview.snapshot, workspaceId: realm.id })),
         ).toMatchObject({ kind: "StaleVersion" });
@@ -107,7 +107,7 @@ describe("confirming a realm archive safely", () => {
         if (realm === undefined) return yield* Effect.die("No realm");
         const quest = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: "new" });
         yield* send(quest.threadId, "A saved conversation");
-        yield* settle(quest.missionId, (detail) => detail.thread.state === "Idle" && detail.messages.length === 2);
+        yield* settle(quest.missionId, (detail) => detail.thread.state === "Resting" && detail.messages.length === 2);
         const preview = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
         yield* call({ _tag: "ArchiveRealm", snapshot: preview.snapshot, workspaceId: realm.id });
         return { quest, realm };

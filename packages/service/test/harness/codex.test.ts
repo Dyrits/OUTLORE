@@ -286,7 +286,7 @@ describe("running Codex threads", () => {
     const { layer, requests } = withHarnesses();
     return Effect.gen(function* () {
       const started = yield* startMission({ harness: "codex", text: "slow 600" });
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Running");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
       yield* untilRequested(requests, "turn/start");
       // The adapter learns the turn's id from Codex's answer to `turn/start`, a moment after the stand-in logs the
       // request; a message steered before that waits for the next turn, as designed, which this test is not about.
@@ -302,10 +302,10 @@ describe("running Codex threads", () => {
     const { layer, requests } = withHarnesses();
     return Effect.gen(function* () {
       const started = yield* startMission({ harness: "codex", text: "slow 5000" });
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Running");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
       yield* untilRequested(requests, "turn/start");
       yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Resting");
       expect(replies(detail)).toEqual([]);
       expect(requests("turn/interrupt")).toHaveLength(1);
     }).pipe(Effect.provide(layer));
@@ -318,7 +318,7 @@ describe("running Codex threads", () => {
       const started = yield* startMission({ harness: "codex", text: "slow 5000" });
       yield* untilRequested(requests, "turn/start");
       yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Resting");
       expect(replies(detail)).toEqual([]);
       expect(requests("turn/interrupt")).toHaveLength(1);
     }).pipe(Effect.provide(layer));

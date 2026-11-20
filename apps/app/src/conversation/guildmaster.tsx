@@ -200,41 +200,45 @@ function ChroniclerChat({
           </Text>
         )}
         {alternateBody !== undefined && <View style={local.body}>{alternateBody}</View>}
-        {companions?.isSelected && (
-          <ConversationRunner client={client} conversation={conversation} isChronicler isFullPanel thread={thread} />
-        )}
-        <View style={alternateBody !== undefined || companions?.isSelected ? local.hidden : local.chat}>
-          {entries.length === 0 && draft === "" && terminal.panel === null ? (
-            <View style={local.empty}>
-              <Text style={local.emptyTitle}>Tell Chronicler what you need.</Text>
-              <Text style={local.emptyText}>
-                It looks for a quest that already covers it and offers to continue that one, or proposes a new quest for
-                you to open.
-              </Text>
-            </View>
-          ) : (
-            <FlatList<Entry>
-              {...followNewest.listPropsOf(<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />)}
-              contentContainerStyle={styles.feed}
-              keyExtractor={(entry) => entry.key}
-              renderItem={({ item }) => (
-                <EntryView
-                  channel={channel}
-                  client={client}
-                  entry={item}
-                  harness={thread.harness}
-                  isInTurn={isInTurn}
-                  onInterrupt={conversation.interrupt}
-                  onOpenMission={onOpenMission}
-                  onSelectThread={() => {}}
-                  onSteer={conversation.steer}
-                  skills={skills}
-                  workspacePath={realm?.path ?? null}
-                />
-              )}
-              style={styles.flex}
-            />
+        <View style={alternateBody !== undefined ? local.hidden : local.chat}>
+          {companions?.isSelected && (
+            <ConversationRunner client={client} conversation={conversation} isChronicler isFullPanel thread={thread} />
           )}
+          <View style={companions?.isSelected ? local.hidden : local.body}>
+            {entries.length === 0 && draft === "" && terminal.panel === null ? (
+              <View style={local.empty}>
+                <Text style={local.emptyTitle}>Tell Chronicler what you need.</Text>
+                <Text style={local.emptyText}>
+                  It looks for a quest that already covers it and offers to continue that one, or proposes a new quest
+                  for you to open.
+                </Text>
+              </View>
+            ) : (
+              <FlatList<Entry>
+                {...followNewest.listPropsOf(
+                  <ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />,
+                )}
+                contentContainerStyle={styles.feed}
+                keyExtractor={(entry) => entry.key}
+                renderItem={({ item }) => (
+                  <EntryView
+                    channel={channel}
+                    client={client}
+                    entry={item}
+                    harness={thread.harness}
+                    isInTurn={isInTurn}
+                    onInterrupt={conversation.interrupt}
+                    onOpenMission={onOpenMission}
+                    onSelectThread={() => {}}
+                    onSteer={conversation.steer}
+                    skills={skills}
+                    workspacePath={realm?.path ?? null}
+                  />
+                )}
+                style={styles.flex}
+              />
+            )}
+          </View>
           {channel === undefined && realm !== null && <RealmNote name={realm.name} onClear={() => onRealm(null)} />}
           {replyTo !== null ? (
             <ReplyForm
@@ -259,6 +263,7 @@ function ChroniclerChat({
                   client={client}
                   conversation={conversation}
                   isChronicler
+                  isTabOpen={companions?.isSelected === true}
                   onOpenTab={companions?.onOpen}
                   thread={thread}
                 />

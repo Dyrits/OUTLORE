@@ -46,7 +46,7 @@ Agreed 2026-11-11 (CHG-0195); built in CHG-0196.
 - **A queued message** is drawn fainter than the others until a turn takes it in, with no text label. While the thread runs, two actions sit under it: **Steer** lets it join the running turn, and **Interrupt** stops the turn and sends the message in one go, so it starts the next turn at once. A thread's composer has no Interrupt and no second send button; its only extra control is Stop.
 - **Stopping with a message queued.** The message stays queued and faint, with no actions, and is delivered when the owner resumes the thread, as for any message a Stopped thread keeps.
 - **A background command's end** can wake a Claude Code thread that stopped its turn to wait for it. Outlore runs the work Claude Code then does as a turn of the thread: its replies and steps are recorded, a line says which command ended, and the thread reads Running while it works (CHG-0595). A Stopped thread, or one held for a budget or a missing folder, does not run it. A thread with a background command pending keeps its harness process for an hour instead of the idle timeout.
-- A thread that is Waiting, Idle, or Done is woken by any message addressed to it, so two threads waiting on each other never stay stuck.
+- A thread that is Waiting, Resting, or Fulfilled is woken by any message addressed to it, so two threads waiting on each other never stay stuck.
 - A Stopped thread keeps its messages and is not woken (see [thread-tree](../thread-tree/specifications.md#stopping)).
 
 ### Position in a conversation
@@ -57,7 +57,7 @@ When the owner opens a quest, an errand, or Chronicler's conversation, the lates
 
 - The user can interrupt any thread.
 - A thread can interrupt the threads directly beneath it.
-- An interrupted thread ends its current turn and becomes Idle, or Waiting while threads beneath it are Running or Waiting (CHG-0039). Messages that had not yet reached the turn stay undelivered and start its next turn.
+- An interrupted thread ends its current turn and becomes Resting, or Waiting while threads beneath it are Underway or Waiting (CHG-0039). Messages that had not yet reached the turn stay undelivered and start its next turn.
 
 ### Chatter guard
 
@@ -81,7 +81,7 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
   - a mentioned quest in another mission receiving a message and replying directly; the access ending with the turn; no access for an archived quest (built, `packages/service/test/work/mentions.test.ts`);
   - delivery into a running turn and at the next turn, for harnesses with and without mid-turn input;
   - steering and queuing user messages;
-  - waking Waiting, Idle, and Done threads, and two threads waiting on each other;
+  - waking Waiting, Resting, and Fulfilled threads, and two threads waiting on each other;
   - keeping messages for a Stopped thread;
   - interruptions by the user and by a parent;
   - the chatter guard pausing both threads at the limit.

@@ -3,6 +3,14 @@ import type { ServiceClient } from "../foundation/client";
 import { ArchiveButton } from "../ui/archiveButton";
 import { DoneButton } from "../ui/questHeaderButtons";
 
+/** Whether the errand shows its archive and completion controls: not on a quest's own thread, nor once archived. */
+export function hasErrandActions(detail: MissionDetail): boolean {
+  const { thread } = detail;
+  return (
+    thread.parentId !== null && detail.threads.find((candidate) => candidate.id === thread.id)?.isArchived !== true
+  );
+}
+
 /** Shows the active errand's own archive and completion controls using the quest header icons. */
 export function ErrandHeaderActions({
   act,
@@ -13,11 +21,9 @@ export function ErrandHeaderActions({
   client: ServiceClient;
   detail: MissionDetail;
 }) {
+  if (!hasErrandActions(detail)) return null;
   const { thread } = detail;
-  if (thread.parentId === null || detail.threads.find((candidate) => candidate.id === thread.id)?.isArchived === true) {
-    return null;
-  }
-  const isDone = thread.state === "Done";
+  const isDone = thread.state === "Fulfilled";
   return (
     <>
       <ArchiveButton

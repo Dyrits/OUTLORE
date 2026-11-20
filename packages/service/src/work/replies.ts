@@ -87,7 +87,7 @@ export const replyToMessage = Effect.fnUntraced(function* (input: {
       [],
       message.workspaceId,
     );
-    // Chronicler hears of this quest's result, Summons, and failure, as of a quest it opened.
+    // Chronicler hears of this quest's result, Attention, and failure, as of a quest it opened.
     if (message.channel === null)
       yield* sql`UPDATE missions SET opened_by_guildmaster = 1 WHERE id = ${started.missionId}`;
     yield* sql`UPDATE threads SET anchor_message_id = ${input.messageId} WHERE id = ${started.threadId}`;

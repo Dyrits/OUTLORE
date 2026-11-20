@@ -131,12 +131,12 @@ export function ReplyLine({ onOpen, thread }: { onOpen: (threadId: ThreadId) => 
   return (
     <ReplyCard
       isOpen={isOpen}
-      label={`Errand: ${thread.title}, ${stateLabels[thread.state]}`}
+      label={`Errand: ${thread.title}, ${stateLabels[thread.shownState]}`}
       meta={`${thread.waitingCount > 0 ? ` · ${thread.waitingCount} waiting` : ""} · ${agoOf(thread.lastActivityAt, Date.now())}`}
       onPress={() => onOpen(thread.id)}
       origin={thread.isOpenedByAgent ? "Companion opened an errand" : "Opened an errand"}
       sample={thread.lastExchange}
-      state={thread.state}
+      state={thread.shownState}
       title={thread.title}
     />
   );
@@ -163,7 +163,7 @@ export function QuestCard({
     <ReplyCard
       isOpen={isOpen}
       label={`${label}: ${quest.title}`}
-      meta={`${quest.isYourTurn === true ? " · your turn" : ""} · ${agoOf(quest.lastActivityAt, Date.now())}`}
+      meta={`${quest.state === "Resting" ? " · your turn" : ""} · ${agoOf(quest.lastActivityAt, Date.now())}`}
       onPress={onOpen}
       origin={origin}
       sample={quest.lastExchange}
@@ -204,7 +204,7 @@ export function QuestReplyLine({
       onPress={() => onOpen(missionId)}
       origin={label}
       sample={null}
-      state="Idle"
+      state="Resting"
       title={title}
     />
   );

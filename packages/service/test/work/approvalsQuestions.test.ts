@@ -202,7 +202,7 @@ describe("withdrawing questions", () => {
         }),
       );
       const detail = yield* read(started.missionId).pipe(Effect.provide(serviceOn(filename)));
-      expect(detail.thread.state).toBe("Idle");
+      expect(detail.thread.state).toBe("Resting");
       expect(detail.questions[0]?.outcome).toBe("Withdrawn");
     }),
   );

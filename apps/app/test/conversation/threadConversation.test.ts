@@ -71,7 +71,7 @@ describe("sending a conversation message", () => {
     expect(fake.requests[0]).toMatchObject({ realmPath: "/realm", text: "hello terminal" });
   });
   it("explains what Send does in a running turn and for stopped threads", () => {
-    expect(conversationStateOf("Running", true, "Chronicler").placeholder).toContain("next turn");
+    expect(conversationStateOf("Underway", true, "Chronicler").placeholder).toContain("next turn");
     expect(conversationStateOf("Stopped", false, "this quest").placeholder).toContain("resume");
     expect(footerOf("", false)).toBe("empty");
     expect(footerOf("", true)).toBe("working");

@@ -3,7 +3,7 @@ import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import { foldThreads } from "../../src/conversation/folding";
 
-const thread = (id: string, parentId: string | null, depth: number, isOpenedByAgent = true, state = "Idle") =>
+const thread = (id: string, parentId: string | null, depth: number, isOpenedByAgent = true, state = "Resting") =>
   Schema.decodeUnknownSync(ThreadSummary)({
     depth,
     harness: "claude",
@@ -15,6 +15,7 @@ const thread = (id: string, parentId: string | null, depth: number, isOpenedByAg
     model: "default",
     openedAt: 0,
     parentId,
+    shownState: state,
     state,
     title: id,
     waitingCount: 0,

@@ -42,7 +42,7 @@ export const create = (
   });
 export const readRitual = (missionId: MissionId) => call({ _tag: "ReadRitual", missionId });
 export const run = (created: CreateRitualResult) => call({ _tag: "RunRitual", ritualId: created.ritualId });
-export const isIdle = (detail: { thread: { state: string } }) => detail.thread.state === "Idle";
+export const isIdle = (detail: { thread: { state: string } }) => detail.thread.state === "Resting";
 
 export const replies = (detail: { messages: ReadonlyArray<{ sender: string; text: string }> }) =>
   detail.messages.filter((message) => message.sender === "agent").map((message) => message.text);

@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 const none: BudgetLimits = { cost: null, tokens: null };
-const isIdle = (detail: MissionDetail) => detail.thread.state === "Idle";
+const isIdle = (detail: MissionDetail) => detail.thread.state === "Resting";
 const isHeldByBudget = (detail: MissionDetail) =>
   detail.thread.state === "Attention" && detail.thread.blocker === "Budget";
 const lastAgentText = (detail: MissionDetail) =>
@@ -47,7 +47,7 @@ const startWithBudget = (limits: BudgetLimits, text = "Hello") =>
 const openRunning = (missionId: MissionId, parentId: ThreadId) =>
   Effect.gen(function* () {
     const child = yield* open(parentId, "wait 60000");
-    yield* settle(missionId, (detail) => detail.thread.state === "Running", child.threadId);
+    yield* settle(missionId, (detail) => detail.thread.state === "Underway", child.threadId);
     return child;
   });
 
@@ -154,8 +154,8 @@ describe("reaching a limit", () => {
       expect(top.budgetEvents.at(-1)?.text).toBe("Stopped at the budget limit: 100 of 100 tokens");
       yield* setBudget(started.missionId, { cost: null, tokens: 150 });
       // The interrupted message runs again: the child is back at work.
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Running", child.threadId);
-      const released = yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Underway", child.threadId);
+      const released = yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
       expect(released.budgetStop).toBeNull();
     }).pipe(Effect.provide(setup().layer)),
   );
@@ -183,7 +183,7 @@ describe("reaching a limit", () => {
     Effect.gen(function* () {
       yield* updateSettings({ globalBudget: { cost: null, tokens: 100 } });
       const other = yield* start("wait 60000");
-      yield* settle(other.missionId, (detail) => detail.thread.state === "Running");
+      yield* settle(other.missionId, (detail) => detail.thread.state === "Underway");
       const spender = yield* start("spend 100");
       yield* settle(spender.missionId, isHeldByBudget);
       yield* settle(other.missionId, isHeldByBudget);
@@ -194,7 +194,7 @@ describe("reaching a limit", () => {
       expect(refused.kind).toBe("InvalidInput");
       expect(refused.message).toContain("global budget");
       yield* updateSettings({ globalBudget: { cost: null, tokens: 1000 } });
-      yield* settle(other.missionId, (detail) => detail.thread.state === "Running");
+      yield* settle(other.missionId, (detail) => detail.thread.state === "Underway");
       expect((yield* call({ _tag: "ReadBudget", missionId: null })).stop).toBeNull();
     }).pipe(Effect.provide(setup().layer)),
   );
@@ -279,7 +279,7 @@ describe("answering Stop at a reached budget", () => {
       const after = yield* settle(started.missionId, (detail) =>
         detail.threads.slice(1).every((thread) => thread.state === "Stopped"),
       );
-      expect(after.thread.state).toBe("Idle");
+      expect(after.thread.state).toBe("Resting");
     }).pipe(Effect.provide(setup().layer)),
   );
 });
@@ -325,7 +325,7 @@ describe("starting a new global period", () => {
       expect(isHeldByBudget(yield* read(started.missionId))).toBe(true);
       yield* advance(25 * 60 * 60 * 1000);
       const released = yield* read(started.missionId);
-      expect(released.thread.state).toBe("Idle");
+      expect(released.thread.state).toBe("Resting");
       expect(released.budgetStop).toBeNull();
     }).pipe(Effect.provide(setup().layer)),
   );

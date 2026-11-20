@@ -14,7 +14,7 @@ import { call, send, settle, start, withService } from "../fixtures/service.ts";
 const promptLine = `call answer_prompt ${JSON.stringify({ input: { command: "ls" }, tool_name: "Bash" })}`;
 const unavailable = "This tool is not available to this thread.";
 
-const isRunning = (detail: MissionDetail) => detail.thread.state === "Running";
+const isRunning = (detail: MissionDetail) => detail.thread.state === "Underway";
 
 const selectHarness = (threadId: ThreadId, harness: HarnessName) =>
   call({ _tag: "ChangeThreadRunner", accountId: null, effort: "default", harness, model: "default", threadId });

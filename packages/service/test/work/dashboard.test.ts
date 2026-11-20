@@ -5,7 +5,7 @@ import type { MissionId, MissionList } from "@outlore/contracts";
 import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { afterEach } from "vitest";
-import { call, fixture, open, start, tool } from "../fixtures/service.ts";
+import { call, fixture, open, start, startNamed, tool } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 const make = () => {
@@ -43,15 +43,17 @@ describe("naming a mission", () => {
     }).pipe(Effect.provide(make().layer)),
   );
 
-  it.effect("refuses a title from a thread other than the top thread", () =>
+  it.effect("names the errand that calls it, and leaves the mission's title alone", () =>
     Effect.gen(function* () {
       const { missionId, threadId } = yield* start("Hello");
       yield* settleTurns;
       const child = yield* open(threadId, "Hi");
       yield* settleTurns;
       const answer = yield* tool(child.threadId, "set_mission_title", { title: "Other" });
-      expect(answer).toContain("Not named");
-      expect(titleOf(yield* list(), missionId)).toBe("Hello");
+      expect(answer).toContain('Named the errand "Other"');
+      expect(titleOf(yield* list(), missionId)).toBe("Quest");
+      const detail = yield* call({ _tag: "ReadMission", missionId, threadId: child.threadId });
+      expect(detail.thread.title).toBe("Other");
     }).pipe(Effect.provide(make().layer)),
   );
 
@@ -76,7 +78,7 @@ describe("naming a mission", () => {
     }).pipe(Effect.provide(make().layer)),
   );
 
-  it.effect("asks the top thread, and only it, to name the mission on its first turn", () =>
+  it.effect("asks the top thread to name the mission on its first turn, and an errand to name itself", () =>
     Effect.gen(function* () {
       const asking = "On your first turn, call set_mission_title";
       const first = yield* start("context");
@@ -89,7 +91,9 @@ describe("naming a mission", () => {
       const child = yield* open(threadId, "context");
       yield* settleTurns;
       const beneath = yield* call({ _tag: "ReadMission", missionId, threadId: child.threadId });
-      expect(beneath.messages.find((message) => message.sender === "agent")?.text).not.toContain(asking);
+      const beneathText = beneath.messages.find((message) => message.sender === "agent")?.text;
+      expect(beneathText).not.toContain(asking);
+      expect(beneathText).toContain('If your title is still "Errand", call set_mission_title on your first turn');
     }).pipe(Effect.provide(make().layer)),
   );
 });
@@ -148,27 +152,27 @@ describe("prefilling a new mission's choices", () => {
 describe("listing missions on the dashboard", () => {
   it.effect("lists missions needing the owner first, then by latest activity", () =>
     Effect.gen(function* () {
-      yield* start("First");
+      yield* startNamed("First");
       yield* settleTurns;
-      yield* start('ask {"action":"Push the code","command":"git push"}');
+      yield* startNamed('ask {"action":"Push the code","command":"git push"}');
       yield* settleTurns;
       yield* advance(1000);
-      yield* start("Third");
+      yield* startNamed("Third");
       yield* settleTurns;
       const missions = yield* list();
-      expect(missions.missions.map((mission) => mission.state)).toEqual(["Attention", "Idle", "Idle"]);
+      expect(missions.missions.map((mission) => mission.state)).toEqual(["Attention", "Resting", "Resting"]);
       expect(titlesOf(missions).slice(1)).toEqual(["Third", "First"]);
     }).pipe(Effect.provide(make().layer)),
   );
 
   it.effect("filters by state", () =>
     Effect.gen(function* () {
-      yield* start("Quiet");
+      yield* startNamed("Quiet");
       yield* settleTurns;
-      yield* start("wait 100000");
+      yield* startNamed("wait 100000");
       yield* advance(20);
-      expect(titlesOf(yield* list({ state: "Running" }))).toEqual(["wait 100000"]);
-      expect(titlesOf(yield* list({ state: "Idle" }))).toEqual(["Quiet"]);
+      expect(titlesOf(yield* list({ state: "Underway" }))).toEqual(["wait 100000"]);
+      expect(titlesOf(yield* list({ state: "Resting" }))).toEqual(["Quiet"]);
     }).pipe(Effect.provide(make().layer)),
   );
 
@@ -177,8 +181,8 @@ describe("listing missions on the dashboard", () => {
     const folder = join(value.directory, "project");
     mkdirSync(folder);
     return Effect.gen(function* () {
-      yield* start("In the project", folder);
-      yield* start("Scratch");
+      yield* startNamed("In the project", folder);
+      yield* startNamed("Scratch");
       yield* settleTurns;
       const all = yield* list();
       expect(all.workspaces.map((workspace) => workspace.name)).toEqual(["project"]);
@@ -191,15 +195,15 @@ describe("listing missions on the dashboard", () => {
 
   it.effect("searches titles and briefings, ignoring case", () =>
     Effect.gen(function* () {
-      yield* start("Plan the trip");
-      const other = yield* start("Something else");
+      yield* startNamed("Plan the trip");
+      const other = yield* startNamed("Something else");
       yield* settleTurns;
       yield* tool(other.threadId, "update_journal", {
         basedOn: 0,
         briefing: "Booking the TRIP hotels.",
         entry: "Wrote the briefing.",
       });
-      yield* start("Unrelated");
+      yield* startNamed("Unrelated");
       yield* settleTurns;
       expect(titlesOf(yield* list({ search: "trip" })).toSorted()).toEqual(["Plan the trip", "Something else"]);
       expect(titlesOf(yield* list({ search: "  " }))).toHaveLength(3);
@@ -208,8 +212,8 @@ describe("listing missions on the dashboard", () => {
 
   it.effect("treats search wildcards as plain text", () =>
     Effect.gen(function* () {
-      yield* start("100% done");
-      yield* start("Other");
+      yield* startNamed("100% done");
+      yield* startNamed("Other");
       yield* settleTurns;
       expect(titlesOf(yield* list({ search: "%" }))).toEqual(["100% done"]);
     }).pipe(Effect.provide(make().layer)),

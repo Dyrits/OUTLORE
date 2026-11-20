@@ -51,9 +51,9 @@ const repliesOf = (detail: MissionDetail) =>
   detail.messages
     .filter((message) => message.sender === "agent" && message.replyToMessageId == null)
     .map((message) => message.text);
-const isRunning = (detail: MissionDetail) => detail.thread.state === "Running";
+const isRunning = (detail: MissionDetail) => detail.thread.state === "Underway";
 const isIdleWith = (count: number) => (detail: MissionDetail) =>
-  detail.thread.state === "Idle" && repliesOf(detail).length === count;
+  detail.thread.state === "Resting" && repliesOf(detail).length === count;
 const childOf = (detail: MissionDetail) => detail.threads.find((thread) => thread.parentId === detail.thread.id);
 
 describe("steering a running thread", () => {
@@ -146,7 +146,7 @@ describe("interrupting a thread", () => {
       const started = yield* start("wait 5000");
       yield* settle(started.missionId, isRunning);
       yield* interrupt(started.threadId);
-      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Resting");
       expect(repliesOf(detail)).toEqual([]);
     }).pipe(Effect.provide(live())),
   );
@@ -165,10 +165,10 @@ describe("interrupting a thread", () => {
   it.live("leaves an interrupted thread Waiting while a thread beneath it runs", () =>
     Effect.gen(function* () {
       const started = yield* start(`${tool("open_thread", { request: "wait 3000" })}\nwait 5000`);
-      yield* settle(started.missionId, (detail) => childOf(detail)?.state === "Running");
+      yield* settle(started.missionId, (detail) => childOf(detail)?.state === "Underway");
       yield* interrupt(started.threadId);
       const detail = yield* settle(started.missionId, (current) => current.thread.state === "Waiting");
-      expect(childOf(detail)?.state).toBe("Running");
+      expect(childOf(detail)?.state).toBe("Underway");
     }).pipe(Effect.provide(live())),
   );
 
@@ -186,13 +186,13 @@ describe("interrupting a thread", () => {
       const started = yield* start(tool("open_thread", { request: "wait 5000" }));
       const opened = yield* settle(
         started.missionId,
-        (detail) => childOf(detail)?.state === "Running" && detail.thread.state !== "Running",
+        (detail) => childOf(detail)?.state === "Underway" && detail.thread.state !== "Underway",
       );
       const childId = childOf(opened)?.id as ThreadId;
       yield* send(started.threadId, tool("interrupt_thread", { thread: childId }));
       const detail = yield* settle(
         started.missionId,
-        (current) => childOf(current)?.state === "Idle" && isIdleWith(2)(current),
+        (current) => childOf(current)?.state === "Resting" && isIdleWith(2)(current),
       );
       expect(repliesOf(detail).at(-1)).toBe("Echo: Interrupted.");
     }).pipe(Effect.provide(live())),
@@ -203,7 +203,7 @@ describe("interrupting a thread", () => {
       const started = yield* start(tool("open_thread", { request: "wait 5000" }));
       const opened = yield* settle(
         started.missionId,
-        (detail) => childOf(detail)?.state === "Running" && detail.thread.state !== "Running",
+        (detail) => childOf(detail)?.state === "Underway" && detail.thread.state !== "Underway",
       );
       const childId = childOf(opened)?.id as ThreadId;
       yield* send(childId, tool("interrupt_thread", { thread: started.threadId }), "Queue");
@@ -220,7 +220,7 @@ describe("interrupting a thread", () => {
       const started = yield* start(tool("open_thread", { request: "Hello" }));
       const opened = yield* settle(
         started.missionId,
-        (detail) => childOf(detail)?.state === "Idle" && detail.thread.state === "Idle",
+        (detail) => childOf(detail)?.state === "Resting" && detail.thread.state === "Resting",
       );
       const childId = childOf(opened)?.id as ThreadId;
       yield* send(started.threadId, tool("interrupt_thread", { thread: childId }));

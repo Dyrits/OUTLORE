@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume folded-pane notches and the folding review, read the [current handoff](.agents/handoffs/2026-11-20-1345-pane-notches.md). Handoffs are shared and committed.
+- To resume pane notches, ids in titles, the status list and the folding review, read the [current handoff](.agents/handoffs/2026-11-20-1527-notches-titles-statuses.md). Handoffs are shared and committed.
 
 - To resume automatic desktop voice input setup (committed; packaged-app and other-platform checks pending), read the [current handoff](.agents/handoffs/2026-11-20-1425-desktop-voice-setup.md). Handoffs are shared and committed.
 

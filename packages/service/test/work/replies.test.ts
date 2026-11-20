@@ -118,7 +118,7 @@ describe("what hangs from a message", () => {
         true,
       );
       // Nothing waits for the thread and its state is not Waiting or Running because of the card.
-      expect(detail.thread.state).toBe("Idle");
+      expect(detail.thread.state).toBe("Resting");
       expect(detail.threads.find((thread) => thread.id === started.threadId)?.waitingCount).toBe(0);
     }).pipe(Effect.provide(setup().layer)),
   );
@@ -229,7 +229,7 @@ describe("replying to a message", () => {
       expect(started.missionId).not.toBe(place.missionId);
       const anchors = yield* anchorsOf(place.threadId);
       expect(anchors).toEqual([
-        { messageId: message.id, missionId: started.missionId, threadId: started.threadId, title: "Add dark mode" },
+        { messageId: message.id, missionId: started.missionId, threadId: started.threadId, title: "Quest" },
       ]);
       const quest = yield* settle(started.missionId, isIdle);
       expect(quest.threads).toHaveLength(1);
@@ -250,7 +250,7 @@ describe("replying to a message", () => {
       expect(detail.thread.parentId).toBe(started.threadId);
       expect(detail.messages[0]?.text).toBe("Check the flights");
       expect(yield* anchorsOf(started.threadId)).toEqual([
-        { messageId: message.id, missionId: started.missionId, threadId: opened.threadId, title: "Check the flights" },
+        { messageId: message.id, missionId: started.missionId, threadId: opened.threadId, title: "Errand" },
       ]);
     }).pipe(Effect.provide(setup().layer)),
   );

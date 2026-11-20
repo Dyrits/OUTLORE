@@ -24,7 +24,7 @@ export const retryThread = Effect.fnUntraced(function* (threadId: string) {
               SELECT blocker, failure, state FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
   // After a failed turn, its messages wait undelivered: Retry runs them again, on the current runner.
   if (thread !== undefined && thread.blocker === null && thread.failure !== null) {
-    if (thread.state === "Running" || thread.state === "Attention" || thread.state === "Stopped")
+    if (thread.state === "Underway" || thread.state === "Attention" || thread.state === "Stopped")
       return yield* invalid("This thread is in a turn or stopped; it cannot retry now.");
     return changed(null, { threadsToWake: [threadId] });
   }

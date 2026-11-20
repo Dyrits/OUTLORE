@@ -110,7 +110,7 @@ export const makeQuestions = (
       })
       .pipe(Effect.map((resolution) => resolution ?? withdrawn));
 
-  /** Ends an open question and returns its thread to Running once no other question is open. */
+  /** Ends an open question and returns its thread to Underway once no other question is open. */
   const resolve = (questionId: string, threadId: string, resolution: Resolution, device: string | null) =>
     sql.withTransaction(
       Effect.gen(function* () {

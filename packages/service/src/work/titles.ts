@@ -4,11 +4,11 @@ import { invalid, notFound, toolRefusal, toolText } from "../core/index.ts";
 import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import type { ToolHandlers } from "./threadTools.ts";
 
-/** The title of a quest or thread whose first message holds only images. */
-export const attachmentsTitle = "Attached images";
+/** The title of a quest until its top thread names it; the app shows its id before it (`[Q-1D4E5F] Quest`). */
+export const newQuestTitle = "Quest";
 
-/** The title of a quest started without a message, until its first message names it. */
-export const newQuestTitle = "New quest";
+/** The title of an errand until it names itself; the app shows its id before it (`[E-1D4E5F] Errand`). */
+export const newErrandTitle = "Errand";
 
 /** A title from a text: its first line, trimmed, at most 200 characters. */
 export const titleOf = (text: string) => text.trim().split("\n", 1)[0]?.trim().slice(0, 200) ?? "";
@@ -25,18 +25,6 @@ const writeTitle = Effect.fnUntraced(function* (missionId: string, title: string
   yield* sql`UPDATE missions SET title = ${title}, is_title_by_user = ${isByUser ? 1 : sql`is_title_by_user`}
       WHERE id = ${missionId}`;
   yield* sql`UPDATE threads SET title = ${title} WHERE id = (SELECT top_thread_id FROM missions WHERE id = ${missionId})`;
-});
-
-/**
- * Names a quest still called "New quest" after the first message sent to its top thread, as a quest started with a message
- * is named. Callers run it in a transaction.
- */
-export const nameNewQuest = Effect.fnUntraced(function* (threadId: string, text: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const [mission] = yield* sql<{ id: string }>`
-      SELECT id FROM missions
-      WHERE top_thread_id = ${threadId} AND title = ${newQuestTitle} AND is_title_by_user = 0 AND is_guildmaster = 0`;
-  if (mission !== undefined) yield* writeTitle(mission.id, titleOf(text) || attachmentsTitle, false);
 });
 
 /** Names a mission with a thread's proposed title, which the top thread may still change. Callers run it in a transaction. */
@@ -66,7 +54,13 @@ export const titleToolsOf = (
         const sql = yield* SqlClient.SqlClient;
         const [mission] = yield* sql<{ id: string; isTitleByUser: number }>`
           SELECT id, is_title_by_user AS isTitleByUser FROM missions WHERE top_thread_id = ${threadId}`;
-        if (mission === undefined) return toolRefusal("Not named: only the mission's top thread names the mission.");
+        if (mission === undefined) {
+          // An errand names itself: its own title, which nothing else follows.
+          const renamed = yield* sql`UPDATE threads SET title = ${title} WHERE id = ${threadId} RETURNING id`;
+          return renamed.length === 0
+            ? toolRefusal("Not named: no such thread.")
+            : toolText(`Named the errand "${title}".`);
+        }
         if (mission.isTitleByUser === 1)
           return toolRefusal("Not named: the owner named this mission, so its title stays.");
         yield* writeTitle(mission.id, title, false);

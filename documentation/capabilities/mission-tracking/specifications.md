@@ -51,10 +51,31 @@ Sidebar drag-and-drop and confirmation were agreed on 2026-11-10 (CHG-0133) and 
 
 ### Title
 
-- The top thread proposes a title on its first turn with `set_mission_title`.
+- A quest is called "Quest" until its top thread proposes a title on its first turn with `set_mission_title`; an errand the owner opens is called "Errand" until it names itself with the same tool. No title comes from the first message (CHG-0597).
+- The app shows the id before the name, `[Q-XXXXXX]` for a quest and `[E-XXXXXX]` for an errand, the first six hexadecimal characters of its identifier in capitals; display only.
 - The user can rename a mission at any time. Once the user has renamed it, `set_mission_title` is refused.
 
 ### Mission state
+
+Update, 2026-11-20 (CHG-0599, owner decisions): the statuses below replace the older list. A status and its displayed name are the same word; the stored values change with them. Where the bullets after this block name idle, running, Summons or Done, read Resting, Underway, Attention and Fulfilled; the roll-up and ordering rules here take precedence over them.
+
+| Status | Meaning | Dot |
+| --- | --- | --- |
+| Fresh | A quest with nothing sent yet: no message and no tokens. An errand is never Fresh, since it starts with its first message. | grey |
+| Underway | A turn is in progress. | accent |
+| Waiting | Its own turn is over and work is still going beneath it (a descendant is Underway or Waiting). | violet |
+| Attention | It waits for the owner: an approval, an answer, a raised budget, a missing workspace folder, or a tool or skill loading problem that prevents a turn. | orange |
+| Failed | Its harness failed; the owner can hand it over to another. | red |
+| Resting | Its last turn ended normally and nothing is underway beneath it, so the next move is the owner's. There is no separate "your turn" flag: Resting is it. | teal |
+| Stopped | The owner stopped it (errands only); it stays stopped until the owner resumes it. | grey |
+| Fulfilled | The owner marked it done (the former Done). | green |
+| Archived | Out of the active list, in the Archived view. | grey |
+
+- Roll-up. The status shown for a quest or an errand is worked out from itself and the active threads beneath it: Failed if it or any of them is Failed; otherwise Attention if it or any of them is Attention; otherwise Waiting if it is Resting or Waiting and any of them is Underway or Waiting; otherwise its own status. Stopped, Fulfilled, Fresh and archived threads add nothing. A quest takes the roll-up of its top thread over the whole tree.
+- A realm has no stored status. Its mark is worked out from its active quests: Failed or Attention when one has it (Failed first), otherwise Underway when one is, otherwise no dot. It is display only and never stored.
+- Order for notches and lists of active work, most urgent first: Failed, Attention, Resting, Underway, Waiting, Stopped, Fresh; equal ranks put the latest activity first. Fulfilled and archived work has no notch.
+- Existing data converts as needed: Idle to Resting, Running to Underway, Done to Fulfilled, an empty quest to Fresh. The older "No migration required" line under CHG-0137 still allows resetting development data instead.
+- The "Mark as done" action keeps its label for now; whether it is renamed to match Fulfilled is open.
 
 - A non-archived quest is idle, running, or asking for the user (Summons).
 - Done, Finished, and Fulfilled are no longer quest or errand statuses (CHG-0135 and CHG-0136, agreed on 2026-11-11; implementation pending).

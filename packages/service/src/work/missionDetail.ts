@@ -12,6 +12,7 @@ import { readChatter } from "./chatter.ts";
 import { lastSampleOf } from "./exchangeSamples.ts";
 import { listHandovers } from "./handover.ts";
 import { threadActionsOf } from "./lifecycle.ts";
+import { shownStatesOf } from "./missionStates.ts";
 import { listMissionSummaries } from "./missions.ts";
 import { readOwnCopy } from "./ownCopies.ts";
 import { listThreadSuggestions } from "./suggestionStore.ts";
@@ -19,11 +20,10 @@ import { readThreadWorkspace } from "./workspaces.ts";
 
 // What the owner reads of one mission: its thread tree and one thread's conversation.
 
-type ThreadRow = Omit<ThreadSummary, "isOpenedByAgent" | "isAside" | "isYourTurn" | "isArchived" | "lastExchange"> & {
+type ThreadRow = Omit<ThreadSummary, "isOpenedByAgent" | "isAside" | "isArchived" | "lastExchange" | "shownState"> & {
   isArchived: number;
   isOpenedByAgent: number;
   isAside: number;
-  isYourTurn: number;
   lastOwnerText: string | null;
   lastReplyText: string | null;
 };
@@ -40,8 +40,6 @@ const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId:
       )
       SELECT t.id, t.parent_id AS parentId, t.title, t.state, tree.depth, tree.path,
         (t.archived_at IS NOT NULL) AS isArchived, t.is_opened_by_agent AS isOpenedByAgent, t.is_aside AS isAside,
-        (t.state = 'Idle' AND (SELECT status FROM turns WHERE thread_id = t.id ORDER BY started_at DESC, rowid DESC LIMIT 1)
-          = 'completed') AS isYourTurn,
         (SELECT COALESCE(MIN(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS openedAt,
         (SELECT COALESCE(MAX(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS lastActivityAt,
         t.harness, t.model,
@@ -51,14 +49,15 @@ const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId:
       FROM tree JOIN threads t ON t.id = tree.id
       WHERE t.mission_id = ${missionId} AND (${includeArchived ? 1 : 0} = 1 OR t.archived_at IS NULL)
       ORDER BY tree.path`;
-  return rows.map(({ lastOwnerText, lastReplyText, path: _path, ...row }) => ({
+  const threads = rows.map(({ lastOwnerText, lastReplyText, path: _path, ...row }) => ({
     ...row,
     isArchived: row.isArchived === 1,
     isAside: row.isAside === 1,
     isOpenedByAgent: row.isOpenedByAgent === 1,
-    isYourTurn: row.isYourTurn === 1,
     lastExchange: { owner: lastOwnerText, reply: lastReplyText },
   }));
+  const shown = shownStatesOf(threads);
+  return threads.map((thread) => ({ ...thread, shownState: shown.get(thread.id) ?? thread.state }));
 });
 
 /** An account's label: the computer's own sign-in reads as the computer's name, and an account removed since says so. */

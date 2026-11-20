@@ -13,7 +13,7 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
       const directory = temporary("outlore-claude-");
       return Effect.gen(function* () {
         const started = yield* startMission({ effort: "low", model: "haiku", text: "Reply with exactly: ok" });
-        const detail = yield* settle(started.missionId, (current) => current.thread.state !== "Running");
+        const detail = yield* settle(started.missionId, (current) => current.thread.state !== "Underway");
         expect(detail.thread.failure).toBeNull();
         expect(detail.messages.at(-1)?.text.toLowerCase()).toContain("ok");
         expect(detail.mission.usage.output).toBeGreaterThan(0);
@@ -59,7 +59,7 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
         // The model may ask through request_approval, or go straight to the command, whose escape from the sandbox
         // then asks (CHG-0031, CHG-0208); allow whatever opens until the turn ends.
         const isSettled = (current: MissionDetail) =>
-          current.thread.state === "Idle" || current.thread.state === "Failed";
+          current.thread.state === "Resting" || current.thread.state === "Failed";
         let detail = yield* settleLong(
           started.missionId,
           (current) => isSettled(current) || current.thread.state === "Attention",
@@ -116,11 +116,11 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
           detail = yield* read(started.missionId);
           const child = detail.threads.find((thread) => thread.parentId === started.threadId);
           const hasResult = detail.messages.some((message) => message.isResult);
-          if (child?.state === "Done" && hasResult && detail.thread.state === "Idle") break;
+          if (child?.state === "Fulfilled" && hasResult && detail.thread.state === "Resting") break;
           yield* Effect.sleep("100 millis");
         }
         const child = detail.threads.find((thread) => thread.parentId === started.threadId);
-        expect(child).toMatchObject({ depth: 1, isOpenedByAgent: true, state: "Done" });
+        expect(child).toMatchObject({ depth: 1, isOpenedByAgent: true, state: "Fulfilled" });
         expect(detail.messages.find((message) => message.isResult)?.text).toContain("42");
         expect(detail.messages.at(-1)).toMatchObject({ sender: "agent" });
         expect(detail.messages.at(-1)?.text).toContain("42");
@@ -173,12 +173,12 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
           model: "haiku",
           text: "Run the bash command `sleep 8` exactly once, then reply with one short sentence.",
         });
-        yield* settleLive(started.missionId, (detail) => detail.thread.state === "Running");
+        yield* settleLive(started.missionId, (detail) => detail.thread.state === "Underway");
         yield* Effect.sleep("4 seconds");
         const steered = yield* sendTo(started.threadId, "Also end your final answer with the word PINEAPPLE.", "Steer");
         const detail = yield* settleLive(
           started.missionId,
-          (current) => current.thread.state === "Idle" || current.thread.state === "Failed",
+          (current) => current.thread.state === "Resting" || current.thread.state === "Failed",
         );
         expect(detail.thread.failure).toBeNull();
         expect(detail.messages.at(-1)?.text).toContain("PINEAPPLE");
@@ -201,18 +201,18 @@ describe.runIf(process.env.OUTLORE_LIVE_CLAUDE === "1")("live Claude Code (uses 
           model: "haiku",
           text: "Run this bash command exactly once in the foreground and wait for it: `for i in $(seq 1 60); do echo tick $i; sleep 1; done`. Then reply with: done.",
         });
-        yield* settleLive(started.missionId, (detail) => detail.thread.state === "Running");
+        yield* settleLive(started.missionId, (detail) => detail.thread.state === "Underway");
         yield* Effect.sleep("5 seconds");
         const before = Date.now();
         yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-        const interrupted = yield* settleLive(started.missionId, (detail) => detail.thread.state !== "Running");
+        const interrupted = yield* settleLive(started.missionId, (detail) => detail.thread.state !== "Underway");
         expect(Date.now() - before).toBeLessThan(15_000);
-        expect(interrupted.thread).toMatchObject({ failure: null, state: "Idle" });
+        expect(interrupted.thread).toMatchObject({ failure: null, state: "Resting" });
 
         yield* sendTo(started.threadId, "Reply with exactly: ok");
         const detail = yield* settleLive(
           started.missionId,
-          (current) => current.thread.state === "Idle" && current.messages.at(-1)?.sender === "agent",
+          (current) => current.thread.state === "Resting" && current.messages.at(-1)?.sender === "agent",
         );
         expect(detail.thread.failure).toBeNull();
         expect(detail.messages.at(-1)?.text.toLowerCase()).toContain("ok");

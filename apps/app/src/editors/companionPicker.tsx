@@ -67,12 +67,15 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
  * state; in a narrow window, with no such column, it opens the picker as a panel over the window's right edge.
  */
 export function CompanionPicker({
+  isTabOpen = false,
   onOpenTab,
   rank = 0,
   trigger,
   ...props
 }: CompanionPickerProps & {
-  /** Opens the Companions tab in the composer’s own pane. */
+  /** Whether the composer's own pane shows the Companions tab; the button is then selected, and pressing it leaves. */
+  isTabOpen?: boolean;
+  /** Opens the Companions tab in the composer’s own pane, or leaves it when it is shown. */
   onOpenTab?: (() => void) | undefined;
   rank?: number;
   /** Another control in place of the runner button, such as a card's "Change"; it opens and closes the same tab. */
@@ -90,7 +93,7 @@ export function CompanionPicker({
   }, [id, register, unregister]);
   // After every render, so the tab shows the runner as it is now.
   useEffect(() => publish?.(id, props, rank));
-  const isOpen = dock === null ? isOverlayOpen : shownFor === id;
+  const isOpen = onOpenTab !== undefined ? isTabOpen : dock === null ? isOverlayOpen : shownFor === id;
   const currentLabel = modelLabelOf(
     model,
     harnesses?.harnesses.find((candidate) => candidate.name === harness)?.models,

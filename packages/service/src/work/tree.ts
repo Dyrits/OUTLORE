@@ -10,7 +10,7 @@ import { maxOwnerDepth } from "./lifecycle.ts";
 import { insertErrandReply, insertMessage } from "./messaging.ts";
 import { ownCopyForChild } from "./ownCopies.ts";
 import { readStartingContext, startingContextRefusalOf } from "./startingContext.ts";
-import { attachmentsTitle, titleOf } from "./titles.ts";
+import { newErrandTitle, titleOf } from "./titles.ts";
 import { depthOf, maxRunning, runningCountOf } from "./treeLimits.ts";
 
 type Opening = {
@@ -30,7 +30,7 @@ type Opening = {
   readonly isOwnCopyAsked: boolean;
   readonly parentId: string;
   readonly text: string;
-  /** A short title; the first line of the text when null. */
+  /** A short title the opener gave; null leaves the errand called "Errand" until it names itself. */
   readonly title: string | null;
 };
 
@@ -61,8 +61,8 @@ export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
   const openerMessages = opening.isAside ? null : yield* openerMessagesOf(opening.parentId);
   const ownCopy = yield* ownCopyForChild(opening.parentId, threadId, opening.isOwnCopyAsked);
   yield* sql`INSERT INTO threads (id, mission_id, parent_id, state, harness, account_id, model, effort, workspace_id, title, is_opened_by_agent, opener_messages, is_aside, backups, own_copy, own_copy_branch)
-      VALUES (${threadId}, ${parent.missionId}, ${opening.parentId}, 'Idle', ${runner.harness}, ${runner.accountId},
-        ${runner.model}, ${runner.effort}, ${parent.workspaceId}, ${titleOf(opening.title ?? opening.text) || attachmentsTitle}, ${opening.isOpenedByAgent ? 1 : 0},
+      VALUES (${threadId}, ${parent.missionId}, ${opening.parentId}, 'Resting', ${runner.harness}, ${runner.accountId},
+        ${runner.model}, ${runner.effort}, ${parent.workspaceId}, ${titleOf(opening.title ?? "") || newErrandTitle}, ${opening.isOpenedByAgent ? 1 : 0},
         ${openerMessages}, ${opening.isAside ? 1 : 0}, ${backups}, ${ownCopy?.path ?? null}, ${ownCopy?.branch ?? null})`;
   // The errand's anchor: the message the owner replied to, or the agent reply recorded where the agent opened it.
   const anchorId =

@@ -1,6 +1,7 @@
 import type { MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
 import { Text } from "react-native";
 import type { ServiceClient } from "../foundation/client";
+import { nameWithId } from "../foundation/displayId";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -17,17 +18,18 @@ function TitleMenu<Id extends string>({
   choices: ReadonlyArray<{ id: Id; title: string }>;
   onSelect: (id: Id) => void;
 }) {
-  const titles = new Map(choices.map((choice) => [choice.id, choice.title]));
-  titles.set(current.id, current.title);
+  const titles = new Map(choices.map((choice) => [choice.id, nameWithId(kind, choice.id, choice.title)]));
+  const currentTitle = nameWithId(kind, current.id, current.title);
+  titles.set(current.id, currentTitle);
   return titles.size === 1 ? (
     <Text numberOfLines={1} style={[styles.paneTitle, { flexShrink: 1 }]}>
-      {current.title}
+      {currentTitle}
     </Text>
   ) : (
     <Menu
-      accessibilityLabel={`${current.title}, switch ${kind}`}
+      accessibilityLabel={`${currentTitle}, switch ${kind}`}
       isTitle
-      label={(id) => titles.get(id) ?? current.title}
+      label={(id) => titles.get(id) ?? currentTitle}
       onChange={(id) => {
         if (id !== current.id) onSelect(id);
       }}

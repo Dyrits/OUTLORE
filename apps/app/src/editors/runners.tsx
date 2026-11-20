@@ -103,6 +103,7 @@ export function RunnerPickers({
   isFullPanel = false,
   isChronicler = false,
   isPanel = false,
+  isTabOpen = false,
   onChange,
   onOpenTab,
   panel,
@@ -127,6 +128,8 @@ export function RunnerPickers({
   isPanel?: boolean;
   /** Shows the full Companions panel inside a conversation pane. */
   isFullPanel?: boolean;
+  /** Whether the pane's Companions tab is shown, so the runner button is selected. */
+  isTabOpen?: boolean;
   onOpenTab?: (() => void) | undefined;
   onChange: (runner: Runner) => void;
   /** The Companions tab's own content in place of its folds; see `CompanionPickerProps`. */
@@ -195,6 +198,7 @@ export function RunnerPickers({
     return (
       <CompanionPicker
         {...(dockRank === undefined ? {} : { rank: dockRank })}
+        isTabOpen={isTabOpen}
         onOpenTab={onOpenTab}
         {...(trigger === undefined ? {} : { trigger })}
         {...content}

@@ -40,15 +40,15 @@ export function MissionCard({
       onPointerLeave={() => setIsHovered(false)}
       style={[
         local.card,
-        mission.state === "Done" && local.cardDone,
+        mission.state === "Fulfilled" && local.cardDone,
         isCircled && local.cardAttention,
         isHovered && local.cardHovered,
         isSelected && local.cardSelected,
       ]}
     >
-      {mission.state === "Done" && column === null && (
+      {mission.state === "Fulfilled" && column === null && (
         <View pointerEvents="none" style={local.ribbon}>
-          <Text style={local.ribbonText}>{stateLabels.Done}</Text>
+          <Text style={local.ribbonText}>{stateLabels.Fulfilled}</Text>
         </View>
       )}
       {isCircled && (
@@ -59,7 +59,7 @@ export function MissionCard({
       <Pressable accessibilityRole="button" onPress={onOpen} style={local.cardMain}>
         <View style={local.titleRow}>
           <Text numberOfLines={3} style={[local.cardTitle, local.titleText]}>
-            {mission.state === "Done" && <Text style={local.tick}>✓ </Text>}
+            {mission.state === "Fulfilled" && <Text style={local.tick}>✓ </Text>}
             {mission.title}
           </Text>
         </View>
@@ -72,7 +72,7 @@ export function MissionCard({
           <Text style={local.tokens}>{tokenCountOf(tokens)} tokens</Text>
         </View>
       </Pressable>
-      {mission.state !== "Done" && (column === null || isStateShownOn(column, mission.state)) && (
+      {mission.state !== "Fulfilled" && (column === null || isStateShownOn(column, mission.state)) && (
         <StateBadge state={mission.state} />
       )}
       <BudgetMeters use={mission.budget} />

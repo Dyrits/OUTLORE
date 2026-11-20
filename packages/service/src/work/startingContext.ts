@@ -16,7 +16,7 @@ import { accountOfThread, budgetLineOf } from "./budgetScopes.ts";
 import { readGuildmasterContext } from "./guildmasterContext.ts";
 import { journalContextOf, journalInstructions, openerContextOf, openerMessagesOf } from "./journal.ts";
 import { readOwnCopy } from "./ownCopies.ts";
-import { titleOf } from "./titles.ts";
+import { newErrandTitle } from "./titles.ts";
 import { prepareWorkingFolder, readThreadWorkspace, ScratchRoot, workingFolderOf } from "./workspaces.ts";
 
 // A thread's starting context (thread-tree, Opening a thread): the system part, the same every turn, and the
@@ -178,7 +178,7 @@ export const readStartingContext = Effect.fnUntraced(function* (
     isAside: false,
     parent: { id: parentId, title: parent.title },
     threadId: unopenedThreadId,
-    title: titleOf(request),
+    title: newErrandTitle,
   };
   const openerMessages = yield* openerMessagesOf(parentId);
   const subject = {

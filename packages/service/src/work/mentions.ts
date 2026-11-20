@@ -1,7 +1,7 @@
 import { type Mentionable, type MentionReference, mentionReferencesOf, mentionTokenOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { workedOutStateOf } from "./missionStates.ts";
+import { readMissionSummaryMap } from "./matching.ts";
 
 // Quests, errands, and realms the owner names with `@` (thread-messaging, Who can message whom; CHG-0181): what the
 // menu offers, the reference appended to the message the harness reads, and what a mention opens for the turn it reaches.
@@ -94,16 +94,14 @@ const readQuest = Effect.fnUntraced(function* (missionId: string) {
   const rows = yield* sql<{
     id: string;
     title: string;
-    ending: string | null;
-    states: string;
     topThreadId: string;
     workspaceName: string | null;
   }>`
-      SELECT m.id, m.title, m.ending, m.top_thread_id AS topThreadId, w.name AS workspaceName,
-        (SELECT group_concat(t.state) FROM threads t WHERE t.mission_id = m.id) AS states
+      SELECT m.id, m.title, m.top_thread_id AS topThreadId, w.name AS workspaceName
       FROM missions m JOIN threads top ON top.id = m.top_thread_id LEFT JOIN workspaces w ON w.id = top.workspace_id
       WHERE m.id = ${missionId} AND ${isOpenQuestOf(sql)} AND top.is_deleting = 0`;
-  return rows.map((row) => ({ ...row, state: row.ending ?? workedOutStateOf(row.states.split(",")) }));
+  const summaries = yield* readMissionSummaryMap(rows.map((row) => row.id));
+  return rows.map((row) => ({ ...row, state: summaries.get(row.id)?.state ?? "Resting" }));
 });
 
 /**

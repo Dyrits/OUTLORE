@@ -6,7 +6,7 @@ import { deriveAction } from "../../src/work/guildmasterProvenance.ts";
 import type { ArgumentsOf } from "../../src/work/threadTools.ts";
 import { readRunningTurnId } from "../../src/work/turnAdmission.ts";
 import { guildmaster, say, startIdle } from "../fixtures/guildmaster.ts";
-import { fixture, settle, start } from "../fixtures/service.ts";
+import { fixture, settle, startNamed } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 const setup = () => {
@@ -27,10 +27,10 @@ describe("fingerprinting a structural action for its authorization receipt", () 
     Effect.gen(function* () {
       const place = yield* guildmaster;
       const idle = yield* startIdle("Weekly report draft");
-      const working = yield* start("wait 5000");
-      yield* settle(working.missionId, (detail) => detail.thread.state === "Running");
+      const working = yield* startNamed("wait 5000");
+      yield* settle(working.missionId, (detail) => detail.thread.state === "Underway");
       yield* say(place.threadId, "wait 5000");
-      yield* settle(place.missionId, (detail) => detail.thread.state === "Running", place.threadId);
+      yield* settle(place.missionId, (detail) => detail.thread.state === "Underway", place.threadId);
       const turnId = yield* readRunningTurnId(place.threadId);
       const callerId = place.threadId;
       const derive = <Tool extends StructuralTool>(tool: Tool, args: ArgumentsOf<Tool>) =>

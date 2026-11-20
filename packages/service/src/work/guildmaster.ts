@@ -51,7 +51,7 @@ export const actOnMission = Effect.fnUntraced(function* (callerId: string, args:
       text: `Stopped ${threadsLineOf(ids.length)} of "${quest.title}".`,
     });
   }
-  const ending = args.action === "Done" ? "Done" : "Archived";
+  const ending = args.action === "Done" ? "Fulfilled" : "Archived";
   // The receipt matched the threads at work the question named, so the snapshot taken now is that one.
   const preview = yield* previewEnding(args.mission, ending);
   const done = yield* endMission(args.mission, ending, preview.snapshot, "Chronicler");
@@ -61,7 +61,7 @@ export const actOnMission = Effect.fnUntraced(function* (callerId: string, args:
       text:
         done.followUps.missionsToRemoveScratch.length > 0
           ? `Deleted "${quest.title}".`
-          : `Marked "${quest.title}" ${ending === "Done" ? "Done" : "Archived"}.`,
+          : `Marked "${quest.title}" ${ending === "Fulfilled" ? "Done" : "Archived"}.`,
     },
     done.followUps,
   );

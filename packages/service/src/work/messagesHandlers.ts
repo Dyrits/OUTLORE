@@ -7,7 +7,6 @@ import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
 import { insertUserMessage, releaseQueued } from "./messaging.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
-import { nameNewQuest } from "./titles.ts";
 /** Requests for writing and reading messages, dictation included, share the service request context. */
 export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "commands">) => {
   /** Writes the owner's journal entry once per request, and shows the owner the journal as it stands. */
@@ -58,10 +57,7 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
             attachmentIds,
             send.realmPath ?? null,
             viewing,
-          ).pipe(
-            Effect.tap(() => nameNewQuest(send.threadId, text)),
-            Effect.map((sent) => changed(sent, { threadsToWake: [send.threadId] })),
-          ),
+          ).pipe(Effect.map((sent) => changed(sent, { threadsToWake: [send.threadId] }))),
         ),
       );
     }),

@@ -3,7 +3,7 @@ import type { MissionId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { approveAll, idOf, panel, save } from "../fixtures/lore.ts";
-import { call, fixture, open, read, register, send, settle, start, tool } from "../fixtures/service.ts";
+import { call, fixture, open, read, register, send, settle, startNamed, tool } from "../fixtures/service.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...), thread tool names (`save_intel`, ...) and settings keys (`intelHalfLives`, `intelWarningPercent`).
 
@@ -11,8 +11,8 @@ const live = () => register(fixture());
 /** A mission whose top thread has finished its first turn, in a workspace or the scratch folder. */
 const idle = (workspacePath: string | null = null, text = "Hello") =>
   Effect.gen(function* () {
-    const started = yield* start(text, workspacePath);
-    yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+    const started = yield* startNamed(text, workspacePath);
+    yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
     return started;
   });
 /** The context a thread's next turn receives, as the fake harness echoes it. */
@@ -23,7 +23,7 @@ const contextOf = (missionId: MissionId, threadId: ThreadId) =>
     const detail = yield* settle(
       missionId,
       (detail) =>
-        detail.thread.state === "Idle" &&
+        detail.thread.state === "Resting" &&
         detail.messages.filter((message) => message.sender === "agent").length > before,
       threadId,
     );
@@ -33,7 +33,7 @@ const contextOf = (missionId: MissionId, threadId: ThreadId) =>
 const child = (missionId: MissionId, parentId: ThreadId) =>
   Effect.gen(function* () {
     const opened = yield* open(parentId, "Hello");
-    yield* settle(missionId, (detail) => detail.thread.state === "Idle", opened.threadId);
+    yield* settle(missionId, (detail) => detail.thread.state === "Resting", opened.threadId);
     return opened.threadId;
   });
 describe("saving lore", () => {
@@ -177,7 +177,7 @@ describe("recalling lore", () => {
         Effect.gen(function* () {
           const started = yield* call({ _tag: "StartEmptyQuest", realmId, requestId: crypto.randomUUID() });
           yield* send(started.threadId);
-          yield* settle(started.missionId, (detail) => detail.thread.state === "Idle" && detail.messages.length > 1);
+          yield* settle(started.missionId, (detail) => detail.thread.state === "Resting" && detail.messages.length > 1);
           return started;
         });
       const first = yield* inRealm();

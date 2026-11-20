@@ -184,7 +184,7 @@ describe("a browser pairing with a running host and using it", () => {
           state: null,
           workspaceId: null,
         });
-        expect(missions).toMatchObject({ missions: [{ title: "Started from a browser" }] });
+        expect(missions).toMatchObject({ missions: [{ title: "Quest" }] });
         link.close();
       }),
     ),

@@ -29,7 +29,7 @@ const createQuest = Effect.gen(function* () {
     text: "see",
     workspacePath: null,
   });
-  const detail = yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+  const detail = yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
   return { card, detail, started };
 });
 

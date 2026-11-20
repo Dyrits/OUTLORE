@@ -157,7 +157,7 @@ describe("running a command", () => {
   );
 });
 
-const isIdle = (detail: MissionDetail) => detail.thread.state === "Idle";
+const isIdle = (detail: MissionDetail) => detail.thread.state === "Resting";
 
 describe("returning a command's follow-ups", () => {
   it.live("a reported result wakes the parent, and a top thread's wakes nothing", () =>

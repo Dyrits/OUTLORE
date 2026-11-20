@@ -15,7 +15,7 @@ const otherPairEdit = { file_path: fileA, file_paths: [fileA, "/outside/outlore-
 const findOpenQuestion = (detail: MissionDetail) => detail.questions.find((question) => question.outcome === null);
 const isAsking = (detail: MissionDetail) => findOpenQuestion(detail) !== undefined;
 const hasReplies = (count: number) => (detail: MissionDetail) =>
-  detail.thread.state === "Idle" && detail.messages.filter((message) => message.sender === "agent").length === count;
+  detail.thread.state === "Resting" && detail.messages.filter((message) => message.sender === "agent").length === count;
 const lastMessageTextOf = (detail: MissionDetail) => detail.messages.at(-1)?.text ?? "";
 
 /** Answers the open question; dies when there is none. */

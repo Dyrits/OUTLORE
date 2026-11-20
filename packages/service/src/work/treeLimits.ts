@@ -19,12 +19,12 @@ export const depthOf = Effect.fnUntraced(function* (threadId: string) {
 });
 
 /**
- * How many of the mission's threads are inside a turn: Running, or in Attention on a question asked during it, whose harness process still runs (thread-tree, Limits).
+ * How many of the mission's threads are inside a turn: Underway, or in Attention on a question asked during it, whose harness process still runs (thread-tree, Limits).
  */
 export const runningCountOf = Effect.fnUntraced(function* (missionId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<{ count: number }>`
       SELECT COUNT(*) AS count FROM threads
-      WHERE mission_id = ${missionId} AND (state = 'Running' OR ${sql.literal(waitsInTurn)})`;
+      WHERE mission_id = ${missionId} AND (state = 'Underway' OR ${sql.literal(waitsInTurn)})`;
   return row?.count ?? 0;
 });

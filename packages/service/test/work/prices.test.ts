@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 const isIdleWithTurn = (detail: MissionDetail) =>
-  detail.thread.state === "Idle" && detail.mission.consumption.turns >= 1;
+  detail.thread.state === "Resting" && detail.mission.consumption.turns >= 1;
 
 /** Waits until the table read at startup is the one in use: the service reads it in the background, so a turn that starts at once can be priced from the snapshot alone. */
 const fetchedTableInUse = Effect.gen(function* () {
@@ -134,7 +134,7 @@ describe("reading the price table", () => {
       yield* send(detail.thread.id, "spend 1000000");
       const next = yield* settle(
         detail.mission.id,
-        (detail) => detail.mission.consumption.turns >= 2 && detail.thread.state === "Idle",
+        (detail) => detail.mission.consumption.turns >= 2 && detail.thread.state === "Resting",
       );
       expect(next.mission.consumption.estimated).toBe(33);
     }).pipe(Effect.provide(layer));
@@ -188,7 +188,7 @@ describe("reading the price table", () => {
       yield* send(first.thread.id, "spend 1000000");
       const detail = yield* settle(
         first.mission.id,
-        (detail) => detail.mission.consumption.turns >= 2 && detail.thread.state === "Idle",
+        (detail) => detail.mission.consumption.turns >= 2 && detail.thread.state === "Resting",
       );
       expect(detail.mission.consumption).toMatchObject({ estimated: 3, unpricedTurns: 1 });
     }).pipe(Effect.provide(layer));
@@ -332,7 +332,7 @@ describe("showing cost on each agent reply", () => {
       });
       const detail = yield* settle(
         started.missionId,
-        (detail) => detail.thread.state === "Idle" && detail.messages.some((message) => message.sender === "agent"),
+        (detail) => detail.thread.state === "Resting" && detail.messages.some((message) => message.sender === "agent"),
       );
       expect(lastReplyOf(detail)?.usage).toBeNull();
       expect(detail.messages.find((message) => message.sender === "user")?.usage).toBeNull();
@@ -346,7 +346,7 @@ describe("showing cost on each agent reply", () => {
       yield* send(first.thread.id, "spend 2000000");
       const second = yield* settle(
         first.mission.id,
-        (detail) => detail.mission.consumption.turns >= 2 && detail.thread.state === "Idle",
+        (detail) => detail.mission.consumption.turns >= 2 && detail.thread.state === "Resting",
       );
       const replies = second.messages.filter((message) => message.sender === "agent");
       expect(replies.map((reply) => reply.usage?.estimated)).toEqual([3, 6]);

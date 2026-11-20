@@ -9,6 +9,8 @@ import { type BubbleOption, bubblesOf, type ChoiceBubble } from "./choiceBubbles
 const local = StyleSheet.create({
   /** An option the owner did not choose, once the choice is settled. */
   unchosen: { opacity: 0.55 },
+  /** A chip never outgrows the bubble: a long label or typed answer wraps inside it. */
+  wrapped: { flexShrink: 1, maxWidth: "100%" },
 });
 
 /** What a bubble says of how its question ended, with the time and the device that answered. */
@@ -26,7 +28,7 @@ function OptionChip({ option }: { option: BubbleOption }) {
     <View
       accessibilityLabel={option.label}
       accessibilityState={{ selected: option.isChosen }}
-      style={[styles.answer, option.isChosen ? styles.answerPrimary : local.unchosen]}
+      style={[styles.answer, local.wrapped, option.isChosen ? styles.answerPrimary : local.unchosen]}
     >
       <Text style={styles.answerText}>{option.label}</Text>
     </View>
@@ -61,7 +63,11 @@ function ChoiceBubbleView({
             <OptionChip key={option.label} option={option} />
           ))}
           {bubble.ownWords.map((text) => (
-            <View accessibilityState={{ selected: true }} key={text} style={[styles.answer, styles.answerPrimary]}>
+            <View
+              accessibilityState={{ selected: true }}
+              key={text}
+              style={[styles.answer, local.wrapped, styles.answerPrimary]}
+            >
               <Text style={styles.answerText}>{text}</Text>
             </View>
           ))}

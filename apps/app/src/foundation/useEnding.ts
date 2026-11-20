@@ -4,7 +4,7 @@ import { ArchiveNavigation } from "./archiveNavigation";
 import type { ServiceClient } from "./client";
 
 /**
- * Marks a mission Done or archives it; when threads are still at work, one confirmation names them first
+ * Marks a mission done (Fulfilled) or archives it; when threads are still at work, one confirmation names them first
  * (mission-tracking, Ending a mission). Archiving goes to the quest's parent view unless `shouldLeave` is false, as for a
  * quest archived from the sidebar while another view is open.
  */

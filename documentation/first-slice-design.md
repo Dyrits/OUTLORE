@@ -81,7 +81,7 @@ The service exposes validated commands, queries, and a sequenced subscription to
 
 On reconnect, the app obtains a snapshot with its sequence, then changes after that sequence. A subscription gap forces a new snapshot. A command carries a request identifier for retries and an expected version where it would overwrite user-visible state. Errors distinguish invalid input, stale version, access refusal, unsupported operation, missing dependency, and execution failure.
 
-The initial screens are a dashboard list, a mission's tree, and a selected thread's conversation. Show Running, Waiting, Attention, Idle, Done, Failed, and Stopped distinctly. Show whether a message was queued or accepted for steering. A Stop action affects one thread; it does not imply stopping a branch. Preserve user message text and sender identity in the conversation.
+The initial screens are a dashboard list, a mission's tree, and a selected thread's conversation. Show Underway, Waiting, Attention, Resting, Fulfilled, Failed, and Stopped distinctly (named Running, Idle and Done before CHG-0599). Show whether a message was queued or accepted for steering. A Stop action affects one thread; it does not imply stopping a branch. Preserve user message text and sender identity in the conversation.
 
 ## Future hosted access
 

@@ -66,6 +66,8 @@ Work with AI agents spreads across disconnected chats, and subagents run out of 
 CHG-0135 and CHG-0136 remove Done from quests and errands, as defined in [mission tracking](../mission-tracking/specifications.md#mission-state). Update, 2026-11-17: the owner decided that Done stays (see the update there); this sentence records the 2026-11-11 agreement.
 The interface presents idle, running, or Summons; waiting, failure, and stopped conditions remain visible details, and a failure needing the owner produces Summons.
 
+Update, 2026-11-20 (CHG-0599): the statuses and their roll-up are agreed in [mission tracking](../mission-tracking/specifications.md#mission-state), where a status and its displayed name are one word: Fresh, Underway, Waiting, Attention, Failed, Resting, Stopped, Fulfilled, Archived. In the table below, read Running as Underway, Idle as Resting (with no separate `isYourTurn` flag: Resting is the owner's turn), and Done as Fulfilled.
+
 | State | Meaning |
 | --- | --- |
 | Running | A turn is in progress. |

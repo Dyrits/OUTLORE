@@ -41,7 +41,7 @@ export const approvalsLayer = Layer.effect(
     // restart ends the harness process behind an open question, so it is withdrawn.
     const startedAt = yield* Clock.currentTimeMillis;
     yield* sql`UPDATE questions SET outcome = 'Withdrawn', resolved_at = ${startedAt} WHERE outcome IS NULL`;
-    // The thread lifecycle returns the threads that waited on them to Idle (lifecycle.ts, recoverThreadStates).
+    // The thread lifecycle returns the threads that waited on them to Resting (lifecycle.ts, recoverThreadStates).
 
     const missionOf = (threadId: string) =>
       readMissionIdOf(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));

@@ -2,6 +2,7 @@ import type { MissionId, MissionSummary, ThreadId, ThreadState } from "@outlore/
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
+import { nameWithId } from "../foundation/displayId";
 import { canHover } from "../foundation/inputModality";
 import { colors, stateTones } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
@@ -24,12 +25,12 @@ import { chevronWidth, indentStep, isHovered, local } from "./railStyles";
 
 /**
  * The corner marks of a quest or errand row, largest first so each nests in the one before: a failure at three
- * quarters, a summons at half, and the owner's turn at a quarter, each in its state's color (the grey of a resting row).
+ * quarters, Attention at half, and the owner's turn (Resting) at a quarter, each in its state's color.
  */
-const cornersOf = (isYourTurn: boolean, state: MissionSummary["state"] | ThreadState): RowCorner[] => [
+const cornersOf = (state: MissionSummary["state"] | ThreadState): RowCorner[] => [
   ...(state === "Failed" ? [{ color: stateTones.Failed.color, share: 75 }] : []),
   ...(state === "Attention" ? [{ color: stateTones.Attention.color, share: 50 }] : []),
-  ...(isYourTurn ? [{ color: stateTones[state].color, share: 25 }] : []),
+  ...(state === "Resting" ? [{ color: stateTones.Resting.color, share: 25 }] : []),
 ];
 
 /** A quest's errands, nested beneath it with their branch guides; each can collapse its own errands. */
@@ -71,10 +72,10 @@ function SideQuests({
             />
           ))}
           <Row
-            corners={cornersOf(thread.isYourTurn === true, thread.state)}
+            corners={cornersOf(thread.shownState)}
             fold={{
               isOpen: !outline.collapsed.has(thread.id),
-              label: thread.title,
+              label: nameWithId("errand", thread.id, thread.title),
               onPress: hasChildren ? () => onToggle(thread.id) : null,
             }}
             // On hover or focus the archive mark shows at the row's end; a device that cannot hover has the errand's panel.
@@ -82,7 +83,7 @@ function SideQuests({
               canHover && (
                 <View style={[local.questMark, !isShown && local.actionsHidden]}>
                   <Pressable
-                    accessibilityLabel={`Archive ${thread.title}`}
+                    accessibilityLabel={`Archive ${nameWithId("errand", thread.id, thread.title)}`}
                     accessibilityRole="button"
                     disabled={!isShown}
                     hitSlop={6}
@@ -95,8 +96,12 @@ function SideQuests({
             }
             indent={depth * indentStep}
             isSelected={selectedThread === thread.id}
-            label={foldedCount > 0 ? `${thread.title} +${foldedCount}` : thread.title}
-            leading={<StateDot state={thread.state} />}
+            label={
+              foldedCount > 0
+                ? `${nameWithId("errand", thread.id, thread.title)} +${foldedCount}`
+                : nameWithId("errand", thread.id, thread.title)
+            }
+            leading={<StateDot state={thread.shownState} />}
             onPress={() => onOpenThread(missionId, thread.id)}
             textStyle={local.sideQuestText}
           />
@@ -138,16 +143,17 @@ export function Quest({
   const isHere = openMission === mission.id;
   // An archive from the sidebar leaves the current view alone unless this quest is the one open.
   const ending = useEnding(client, mission, isHere);
-  const label = mission.isEmpty ? `Delete ${mission.title}` : `Archive ${mission.title}`;
+  const questName = nameWithId("quest", mission.id, mission.title);
+  const label = mission.isEmpty ? `Delete ${questName}` : `Archive ${questName}`;
   return (
     <>
       {/* Only the quest's own row is picked up; its errands go with it. */}
       <DragSource missionId={mission.id}>
         <Row
-          corners={cornersOf(mission.isYourTurn === true, mission.state)}
+          corners={cornersOf(mission.state)}
           fold={{
             isOpen,
-            label: mission.title,
+            label: questName,
             onPress: showErrands && mission.threadCount > 1 ? () => onToggle(mission.id) : null,
           }}
           // On hover or focus the archive or delete mark shows at the row's end, in a place kept while unseen. A device that
@@ -169,7 +175,7 @@ export function Quest({
           }
           isInset={!showErrands}
           isSelected={isHere && (!showErrands || openThread === null || openThread === mission.topThreadId)}
-          label={mission.title}
+          label={questName}
           leading={<StateDot state={mission.state} />}
           onPress={() => onOpenMission(mission.id)}
         />

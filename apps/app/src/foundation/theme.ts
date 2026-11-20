@@ -24,26 +24,28 @@ export const fonts = {
   sans: Platform.OS === "web" ? 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' : "System",
 } as const;
 
-/** Display names preserve the service's stable state values. */
+/** A status is displayed as it is stored (mission-tracking, Mission state; CHG-0599). */
 export const stateLabels = {
   Archived: "Archived",
-  Attention: "Summons",
-  Done: "Done",
+  Attention: "Attention",
   Failed: "Failed",
-  Idle: "Resting",
-  Running: "Underway",
+  Fresh: "Fresh",
+  Fulfilled: "Fulfilled",
+  Resting: "Resting",
   Stopped: "Stopped",
-  Waiting: "Awaiting word",
-} as const;
+  Underway: "Underway",
+  Waiting: "Waiting",
+} as const satisfies Record<ThreadState | MissionState, string>;
 
 /** How each state reads: its ink color and the soft fill behind its mark. */
 export const stateTones: Record<ThreadState | MissionState, { readonly color: string; readonly soft: string }> = {
   Archived: { color: colors.textMuted, soft: colors.controlActive },
   Attention: { color: colors.warningText, soft: colors.marker },
-  Done: { color: colors.successText, soft: colors.successSoft },
   Failed: { color: colors.dangerText, soft: colors.dangerSoft },
-  Idle: { color: colors.textMuted, soft: colors.controlActive },
-  Running: { color: colors.accentText, soft: colors.accentSoft },
+  Fresh: { color: colors.textMuted, soft: colors.controlActive },
+  Fulfilled: { color: colors.successText, soft: colors.successSoft },
+  Resting: { color: colors.teal, soft: colors.tealSoft },
   Stopped: { color: colors.textSecondary, soft: colors.controlActive },
+  Underway: { color: colors.accentText, soft: colors.accentSoft },
   Waiting: { color: colors.violet, soft: colors.violetSoft },
 };

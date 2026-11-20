@@ -1,12 +1,12 @@
 import type { UsageFilter, UsagePeriod } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { call, settle, start } from "./service.ts";
+import { call, settle, startNamed } from "./service.ts";
 
 // The usage page's cases (usageReport.test.ts, usageFilters.test.ts) share one small world: three quests in two realms and
 // the Borderlands, and a month of turns across harnesses, models, billing kinds, and known and unknown prices.
 
-export const isIdle = (detail: { thread: { state: string } }) => detail.thread.state === "Idle";
+export const isIdle = (detail: { thread: { state: string } }) => detail.thread.state === "Resting";
 export const last30: UsagePeriod = { _tag: "Days", days: 30 };
 export const usage = (period: UsagePeriod = last30, filters: UsageFilter[] = []) =>
   call({ _tag: "ReadUsage", filters, period });
@@ -70,7 +70,7 @@ export const quests = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const made = [];
   for (const title of ["Quest A", "Quest B", "Quest C"]) {
-    const quest = yield* start(title);
+    const quest = yield* startNamed(title);
     yield* settle(quest.missionId, isIdle);
     made.push(quest);
   }

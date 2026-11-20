@@ -3,7 +3,7 @@ import type { MissionId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
-import { call, fixture, open, read, send, settle, start, tool } from "../fixtures/service.ts";
+import { call, fixture, open, read, rename, send, settle, start, startNamed, tool } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 const live = () => {
@@ -20,8 +20,8 @@ const record = (threadId: ThreadId, args: object) => tool(threadId, "update_jour
 /** A mission whose top thread has finished its first turn. */
 const idle = (text = "Hello") =>
   Effect.gen(function* () {
-    const started = yield* start(text);
-    yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+    const started = yield* startNamed(text);
+    yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
     return started;
   });
 /** The starting context a new thread beneath `parentId` receives, as the fake harness echoes it. */
@@ -104,7 +104,7 @@ describe("keeping a mission's journal", () => {
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       const child = yield* open(threadId, "Hello");
-      yield* settle(missionId, (detail) => detail.thread.state === "Idle", child.threadId);
+      yield* settle(missionId, (detail) => detail.thread.state === "Resting", child.threadId);
       yield* record(threadId, { basedOn: 0, briefing: "Storage is SQLite.", entry: "Settled storage." });
       const refused = yield* record(child.threadId, { basedOn: 0, briefing: "The UI is React.", entry: "UI." });
       expect(refused).toContain("version 1");
@@ -144,15 +144,15 @@ describe("keeping a mission's journal", () => {
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       const child = yield* open(threadId, "Hello");
-      yield* settle(missionId, (detail) => detail.thread.state === "Idle", child.threadId);
+      yield* settle(missionId, (detail) => detail.thread.state === "Resting", child.threadId);
       const refused = yield* tool(child.threadId, "report_result", { result: "Done." });
       expect(refused).toContain("journal");
       expect((yield* read(missionId)).messages.some((message) => message.isResult)).toBe(false);
       yield* tool(child.threadId, "report_result", { journal: "Counted 42 files.", result: "42 files." });
       const view = yield* journal(missionId);
-      expect(view.entries.map((entry) => [entry.authorTitle, entry.text])).toEqual([["Hello", "Counted 42 files."]]);
+      expect(view.entries.map((entry) => [entry.authorTitle, entry.text])).toEqual([["Errand", "Counted 42 files."]]);
       const other = yield* open(threadId, "Hello");
-      yield* settle(missionId, (detail) => detail.thread.state === "Idle", other.threadId);
+      yield* settle(missionId, (detail) => detail.thread.state === "Resting", other.threadId);
       yield* tool(other.threadId, "report_result", { journal: "Nothing to record.", result: "Nothing found." });
       expect((yield* journal(missionId)).entries).toHaveLength(1);
     }).pipe(Effect.provide(live())),
@@ -177,7 +177,7 @@ describe("keeping a mission's journal", () => {
       const { missionId, threadId } = yield* idle("Before the entry");
       yield* record(threadId, { entry: "Decided the plan." });
       yield* send(threadId, "After the entry");
-      yield* settle(missionId, (detail) => detail.thread.state === "Idle" && detail.messages.length === 4);
+      yield* settle(missionId, (detail) => detail.thread.state === "Resting" && detail.messages.length === 4);
       // The opener's title is the mission's first message, so only the opener's section is read.
       const section = (yield* contextOfChild(missionId, threadId)).split("# Your opener's messages")[1] ?? "";
       expect(section).toContain("Owner:\nAfter the entry");
@@ -193,7 +193,7 @@ describe("keeping a mission's journal", () => {
         yield* send(threadId, `Message ${index}`);
         yield* settle(
           missionId,
-          (detail) => detail.thread.state === "Idle" && detail.messages.length === 2 * (index + 1),
+          (detail) => detail.thread.state === "Resting" && detail.messages.length === 2 * (index + 1),
         );
       }
       const section = (yield* contextOfChild(missionId, threadId)).split("# Your opener's messages")[1] ?? "";
@@ -287,7 +287,8 @@ describe("keeping a mission's journal", () => {
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
       const child = yield* open(threadId, "Child");
-      yield* settle(missionId, (detail) => detail.thread.state === "Idle", child.threadId);
+      yield* rename(missionId, child.threadId, "Child");
+      yield* settle(missionId, (detail) => detail.thread.state === "Resting", child.threadId);
       yield* record(child.threadId, { entry: "Child's decision." });
       const preview = yield* call({ _tag: "PreviewDeletion", threadId: child.threadId });
       yield* call({ _tag: "DeleteThread", confirmation: preview.confirmation, threadId: child.threadId });

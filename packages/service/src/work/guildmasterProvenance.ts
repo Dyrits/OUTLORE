@@ -114,7 +114,7 @@ const deriveQuestAction = Effect.fnUntraced(function* (args: ArgumentsOf<"act_on
       summary: `Stop the ${threadsLineOf(ids.length)} at work in the quest "${quest.title}".`,
     } satisfies Found;
   }
-  const ending = args.action === "Done" ? "Done" : "Archived";
+  const ending = args.action === "Done" ? "Fulfilled" : "Archived";
   const preview = yield* previewEnding(quest.id, ending).pipe(
     Effect.catchTag("ServiceFailure", () => Effect.succeed(null)),
   );

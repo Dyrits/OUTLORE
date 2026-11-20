@@ -188,7 +188,7 @@ const clockOf = (millis: number) =>
   new Date(millis).toLocaleTimeString("en-GB", { hour: "2-digit", hour12: false, minute: "2-digit" });
 
 /** The states in which a Ritual's thread is still at work, so another run would pile onto it. */
-const busyStates = ["Running", "Attention", "Waiting"];
+const busyStates = ["Underway", "Attention", "Waiting"];
 
 /**
  * Starts a run: the thread takes the primary Companion again, then the instruction arrives as a message under its

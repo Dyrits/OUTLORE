@@ -230,3 +230,30 @@ describe("migrating a store that applied an earlier form of the conversation-pan
     }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
   });
 });
+
+describe("migrating saved thread states and mission endings to the status names", () => {
+  it.effect("renames Running, Idle and Done and leaves the other states alone", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
+    directories.push(directory);
+    return Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* migrateUntil("0066_repair_pane_columns");
+      yield* sql`INSERT INTO missions (id, top_thread_id, title, created_at, last_activity_at, ending)
+        VALUES ('done', 'a', 'Quest', 1, 1, 'Done'), ('archived', 'b', 'Quest', 1, 1, 'Archived'), ('open', 'c', 'Quest', 1, 1, NULL)`;
+      yield* sql`INSERT INTO threads (id, mission_id, state) VALUES
+        ('a', 'done', 'Done'), ('b', 'archived', 'Idle'), ('c', 'open', 'Running'), ('d', 'open', 'Failed')`;
+      yield* migrateUntil("0067_status_names");
+      expect(yield* sql`SELECT id, state FROM threads ORDER BY id`).toEqual([
+        { id: "a", state: "Fulfilled" },
+        { id: "b", state: "Resting" },
+        { id: "c", state: "Underway" },
+        { id: "d", state: "Failed" },
+      ]);
+      expect(yield* sql`SELECT id, ending FROM missions ORDER BY id`).toEqual([
+        { ending: "Archived", id: "archived" },
+        { ending: "Fulfilled", id: "done" },
+        { ending: null, id: "open" },
+      ]);
+    }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
+  });
+});

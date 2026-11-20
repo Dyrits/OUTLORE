@@ -18,7 +18,7 @@ import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
 import { ConversationRunner } from "./conversationRunner";
 import type { Entry } from "./entries";
-import { ErrandHeaderActions } from "./errandHeaderActions";
+import { ErrandHeaderActions, hasErrandActions } from "./errandHeaderActions";
 import { MobileHeader } from "./mobileHeader";
 import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
 import { terminalFolderOf } from "./terminalFolder";
@@ -83,18 +83,22 @@ export function ThreadPane({
   const canReply = thread.parentId === null;
   const { canOpenBeneath, canResume, canStop, isInTurn } = thread.actions;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
+  // The header shows the status rolled up with the threads beneath it; a thread the tree no longer lists shows its own.
+  const shownState = detail.threads.find((candidate) => candidate.id === thread.id)?.shownState ?? thread.state;
   // Only a quest's own thread archives it, and not a Ritual's quest or one already archived.
   const isOwnQuest = thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived";
   const archive = isOwnQuest ? () => ending.start("Archived") : null;
   // Mark as done is a checkbox: pressing it again takes the mark back (ReopenMission, as the Archive's Reopen does).
-  const isDone = detail.mission.state === "Done";
+  const isDone = detail.mission.state === "Fulfilled";
   const markDone = isOwnQuest
     ? () =>
         isDone
           ? ending.run(() => client.request({ _tag: "ReopenMission", missionId: detail.mission.id }))
-          : ending.start("Done")
+          : ending.start("Fulfilled")
     : null;
   const errandActions = <ErrandHeaderActions act={act} client={client} detail={detail} />;
+  // The actions (archive, done) are kept apart from the layout controls that follow them by a separator.
+  const hasActions = archive !== null || hasErrandActions(detail);
   const windowQuestTab = useContext(QuestTabButtonContext);
   const questTab = isInPane ? null : windowQuestTab;
   return (
@@ -107,7 +111,7 @@ export function ThreadPane({
               isArchiveDisabled={ending.isBusy}
               onArchive={archive}
               onBack={onBack}
-              state={thread.state}
+              state={shownState}
               title={<ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />}
             />
           )}
@@ -118,7 +122,7 @@ export function ThreadPane({
                   <View style={styles.flex}>
                     <ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />
                   </View>
-                  <StateIndicator state={thread.state} />
+                  <StateIndicator state={shownState} />
                   {canResume && (
                     <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
                       <Text style={styles.link}>Resume</Text>
@@ -129,12 +133,8 @@ export function ThreadPane({
                   )}
                   {markDone !== null && <DoneButton isDisabled={ending.isBusy} isDone={isDone} onPress={markDone} />}
                   {errandActions}
-                  {questTab !== null && (
-                    <>
-                      <HeaderSeparator />
-                      <QuestPanelButton isOpen={questTab.isOpen} onPress={questTab.onPress} />
-                    </>
-                  )}
+                  {hasActions && (questTab !== null || chrome != null) && <HeaderSeparator />}
+                  {questTab !== null && <QuestPanelButton isOpen={questTab.isOpen} onPress={questTab.onPress} />}
                   {questTab !== null && chrome != null && <HeaderSeparator />}
                   {chrome}
                 </>
@@ -205,12 +205,10 @@ export function ThreadPane({
           )}
           {tabs}
           {alternateBody}
-          {companions?.isSelected && (
-            <ConversationRunner client={client} conversation={conversation} isFullPanel thread={thread} />
-          )}
-          <View
-            style={alternateBody == null && !companions?.isSelected ? [styles.flex, styles.pane] : { display: "none" }}
-          >
+          <View style={alternateBody == null ? [styles.flex, styles.pane] : { display: "none" }}>
+            {companions?.isSelected && (
+              <ConversationRunner client={client} conversation={conversation} isFullPanel thread={thread} />
+            )}
             <FlatList<Entry>
               {...followNewest.listPropsOf(<ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />)}
               contentContainerStyle={styles.feed}
@@ -230,7 +228,7 @@ export function ThreadPane({
                   workspacePath={thread.workspace?.path ?? null}
                 />
               )}
-              style={styles.flex}
+              style={companions?.isSelected ? { display: "none" } : styles.flex}
             />
             {replyTo !== null ? (
               <ReplyForm
@@ -269,6 +267,7 @@ export function ThreadPane({
                     <ConversationRunner
                       client={client}
                       conversation={conversation}
+                      isTabOpen={companions?.isSelected === true}
                       onOpenTab={companions?.onOpen}
                       thread={thread}
                     />

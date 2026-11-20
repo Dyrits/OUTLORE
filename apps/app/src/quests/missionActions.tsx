@@ -6,7 +6,10 @@ import { styles } from "../foundation/styles";
 import { useEnding } from "../foundation/useEnding";
 import { Button } from "../ui/button";
 
-const endingLabels = { Archived: "Archive", Done: "Mark as done" } as const satisfies Record<MissionEnding, string>;
+const endingLabels = { Archived: "Archive", Fulfilled: "Mark as done" } as const satisfies Record<
+  MissionEnding,
+  string
+>;
 
 /** The existing ending confirmation, shared with the conversation's archive action. */
 export function EndingConfirmation({ ending }: { ending: ReturnType<typeof useEnding> }) {
@@ -45,11 +48,11 @@ export function MissionEndingActions({
     mission.state === "Archived"
       ? [{ isPrimary: true, label: "Reopen", onPress: reopen }]
       : [
-          ...(mission.state === "Done"
+          ...(mission.state === "Fulfilled"
             ? []
-            : [{ isPrimary: true, label: endingLabels.Done, onPress: () => ending.start("Done") }]),
+            : [{ isPrimary: true, label: endingLabels.Fulfilled, onPress: () => ending.start("Fulfilled") }]),
           {
-            isPrimary: mission.state === "Done",
+            isPrimary: mission.state === "Fulfilled",
             label: endingLabels.Archived,
             onPress: () => ending.start("Archived"),
           },

@@ -16,7 +16,7 @@ describe("archiving and restoring realms", () => {
         const archived = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: "archived" });
         // A quest that used no tokens is deleted when archived, so this one works a turn first.
         yield* send(archived.threadId, "usage 5 5 0 0");
-        yield* settle(archived.missionId, (current) => current.thread.state === "Idle");
+        yield* settle(archived.missionId, (current) => current.thread.state === "Resting");
         const ending = yield* call({ _tag: "PreviewEnding", ending: "Archived", missionId: archived.missionId });
         yield* call({
           _tag: "EndMission",

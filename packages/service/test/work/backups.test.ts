@@ -31,12 +31,12 @@ describe("saving a thread's backup Companions", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         yield* call({ _tag: "SetThreadBackups", backups: [codexBackup], threadId });
         yield* send(threadId, "fail claude Usage limit reached\nrunner");
         const detail = yield* settle(
           missionId,
-          (detail) => replies(detail).length === 2 && detail.thread.state === "Idle",
+          (detail) => replies(detail).length === 2 && detail.thread.state === "Resting",
         );
         expect(replies(detail)[1]).toContain("codex/gpt-5");
         expect(detail.handovers.map((handover) => handover.text)).toEqual([
@@ -50,10 +50,10 @@ describe("saving a thread's backup Companions", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         yield* call({ _tag: "SetThreadBackups", backups: [codexBackup], threadId });
         yield* send(threadId, "wait 300\nfail claude Usage limit reached");
-        yield* settle(missionId, (detail) => detail.thread.state === "Running");
+        yield* settle(missionId, (detail) => detail.thread.state === "Underway");
         yield* call({
           _tag: "ChangeThreadRunner",
           accountId: null,
@@ -86,12 +86,12 @@ describe("marking an errand done", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         const opened = yield* open(threadId, "wait 2000");
         yield* call({ _tag: "MarkThreadDone", threadId: opened.threadId });
         const detail = yield* read(missionId, opened.threadId);
-        expect(detail.thread.state).toBe("Done");
-        expect((yield* read(missionId, threadId)).thread.state).toBe("Idle");
+        expect(detail.thread.state).toBe("Fulfilled");
+        expect((yield* read(missionId, threadId)).thread.state).toBe("Resting");
         const refusal = yield* call({ _tag: "MarkThreadDone", threadId }).pipe(Effect.flip);
         expect(String(refusal)).toContain("mark the quest done");
       }),

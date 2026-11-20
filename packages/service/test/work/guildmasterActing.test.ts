@@ -42,7 +42,7 @@ describe("acting on quests at the owner's request", () => {
       yield* settle(quest.missionId, (detail) => detail.mission.title === "New name");
       yield* settle(place.missionId, isIdle, place.threadId);
       yield* act(place.threadId, { action: "Done", mission: quest.missionId });
-      const ended = yield* settle(quest.missionId, (detail) => detail.mission.state === "Done");
+      const ended = yield* settle(quest.missionId, (detail) => detail.mission.state === "Fulfilled");
       expect(ended.mission.title).toBe("New name");
     }).pipe(Effect.provide(setup().layer)),
   );
@@ -61,7 +61,7 @@ describe("acting on quests at the owner's request", () => {
       );
       expect(lastAgentText(detail)).toContain("Only Chronicler acts on quests.");
       expect(detail.questions).toEqual([]);
-      expect(detail.mission.state).not.toBe("Done");
+      expect(detail.mission.state).not.toBe("Fulfilled");
     }).pipe(Effect.provide(setup().layer)),
   );
 });

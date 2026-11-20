@@ -31,8 +31,16 @@ import { Workspace, WorkspaceChoice } from "./workspaces.ts";
 /** A client-chosen identifier; repeating a command with it returns the original outcome. */
 export const RequestId = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128));
 
-/** A thread's state (thread-tree, Thread states). */
-export const ThreadState = Schema.Literals(["Running", "Waiting", "Attention", "Idle", "Done", "Failed", "Stopped"]);
+/** A thread's state; the displayed name is the stored value (thread-tree, Thread states; CHG-0599). */
+export const ThreadState = Schema.Literals([
+  "Underway",
+  "Waiting",
+  "Attention",
+  "Resting",
+  "Fulfilled",
+  "Failed",
+  "Stopped",
+]);
 export type ThreadState = typeof ThreadState.Type;
 
 /** Who wrote a message: the owner, the thread's own agent, another thread of the mission, or Outlore (an errand's card). */
@@ -102,15 +110,25 @@ export const Settings = Schema.Struct({
 });
 export type Settings = typeof Settings.Type;
 
-/** How a mission ended: marked Done, or archived (mission-tracking, Ending a mission). */
-export const MissionEnding = Schema.Literals(["Done", "Archived"]);
+/** How a mission ended: Fulfilled (marked done), or archived (mission-tracking, Ending a mission). */
+export const MissionEnding = Schema.Literals(["Fulfilled", "Archived"]);
 export type MissionEnding = typeof MissionEnding.Type;
 
 /**
- * The most urgent state among a mission's threads while it is not ended, or how it ended
- * (mission-tracking, Mission state).
+ * A mission's status: how it ended, Fresh while it holds nothing, otherwise the roll-up of its top thread over its
+ * tree (mission-tracking, Mission state; CHG-0599).
  */
-export const MissionState = Schema.Literals(["Attention", "Failed", "Running", "Waiting", "Idle", "Done", "Archived"]);
+export const MissionState = Schema.Literals([
+  "Fresh",
+  "Underway",
+  "Waiting",
+  "Attention",
+  "Failed",
+  "Resting",
+  "Stopped",
+  "Fulfilled",
+  "Archived",
+]);
 export type MissionState = typeof MissionState.Type;
 
 /** What the dashboard asks of a mission: "Mark as done?" after its result, or the inactivity question. */
@@ -130,8 +148,6 @@ export const MissionSummary = Schema.Struct({
   isEmpty: Schema.Boolean,
   /** Whether the owner renamed it, after which `set_mission_title` is refused. */
   isTitleByUser: Schema.Boolean,
-  /** Whether it is Idle after its top thread's turn ended normally, so the next move is the owner's. */
-  isYourTurn: Schema.optionalKey(Schema.Boolean),
   lastActivityAt: Schema.Number,
   /** A sample of the top thread's last exchange, for the realm's reply line. */
   lastExchange: LastExchange,
@@ -140,7 +156,7 @@ export const MissionSummary = Schema.Struct({
   prompt: Schema.NullOr(MissionPrompt),
   /** The Ritual this quest belongs to, or null for an ordinary quest. */
   ritual: Schema.NullOr(RitualCard),
-  /** Threads Running now. */
+  /** Threads Underway now. */
   runningCount: Schema.Number,
   state: MissionState,
   threadCount: Schema.Number,
@@ -234,8 +250,6 @@ export const ThreadSummary = Schema.Struct({
   isAside: Schema.Boolean,
   /** Whether a thread opened it with `open_thread`, rather than the owner. */
   isOpenedByAgent: Schema.Boolean,
-  /** Whether its turn ended normally and it waits for the owner: Idle after a completed turn, not a fresh or interrupted one. */
-  isYourTurn: Schema.optionalKey(Schema.Boolean),
   /** The time of its latest message, or of its opening while it has none. */
   lastActivityAt: Schema.Number,
   /** A sample of its last exchange, for its reply line. */
@@ -244,6 +258,8 @@ export const ThreadSummary = Schema.Struct({
   /** When it was opened: the time of its first message. */
   openedAt: Schema.Number,
   parentId: Schema.NullOr(ThreadId),
+  /** The status shown for it: its own state rolled up with its active descendants' (mission-tracking, Mission state). */
+  shownState: ThreadState,
   state: ThreadState,
   title: Schema.String,
   /** Messages kept for the thread and not yet delivered, such as while it is Stopped. */

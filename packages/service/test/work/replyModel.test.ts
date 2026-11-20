@@ -21,7 +21,7 @@ describe("recording a reply's model", () => {
         text: "Hello",
         workspacePath: null,
       });
-      const detail = yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
       expect(detail.messages.filter((message) => message.sender === "agent").map((message) => message.model)).toEqual([
         "sonnet",
       ]);
@@ -40,7 +40,7 @@ describe("recording a reply's model", () => {
         text: "Hello",
         workspacePath: null,
       });
-      const detail = yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
       expect(detail.messages.filter((message) => message.sender === "agent").map((message) => message.model)).toEqual([
         null,
       ]);

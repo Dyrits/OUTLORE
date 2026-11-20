@@ -40,7 +40,7 @@ export const failureOf = <R extends Request>(request: R) =>
 
 export const isAsking = (detail: MissionDetail) => detail.questions.some((question) => question.outcome === null);
 export const isReplied = (detail: MissionDetail) =>
-  detail.thread.state === "Idle" && detail.messages.at(-1)?.sender === "agent";
+  detail.thread.state === "Resting" && detail.messages.at(-1)?.sender === "agent";
 export const lastReply = (detail: MissionDetail) => detail.messages.at(-1)?.text ?? "";
 export const openQuestion = (detail: MissionDetail) =>
   detail.questions.find((question) => question.outcome === null) as Question;

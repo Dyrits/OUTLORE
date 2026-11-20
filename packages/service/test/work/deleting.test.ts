@@ -29,7 +29,7 @@ describe("deleting threads", () => {
       yield* call({ _tag: "DeleteThread", confirmation: preview.confirmation, threadId: branch.threadId });
       const detail = yield* read(started.missionId);
       expect(detail.threads.map((thread) => thread.id)).toEqual([started.threadId]);
-      expect(detail.thread.state).toBe("Running");
+      expect(detail.thread.state).toBe("Underway");
       expect(yield* call({ _tag: "ListOpenQuestions" })).toEqual([]);
       expect((yield* call({ _tag: "ReadPermissions", missionId: null })).history).toEqual([]);
       expect((yield* Effect.flip(read(started.missionId, leaf.threadId))).kind).toBe("NotFound");
@@ -54,7 +54,7 @@ describe("deleting threads", () => {
         );
         if (permission === undefined) return yield* Effect.die("Missing permission");
         yield* call({ _tag: "WidenPermission", permissionId: permission.id });
-        yield* settle(started.missionId, (current) => current.thread.state === "Idle");
+        yield* settle(started.missionId, (current) => current.thread.state === "Resting");
         const scratch = join(value.directory, "missions", started.missionId);
         expect(existsSync(scratch)).toBe(true);
         const preview = yield* call({ _tag: "PreviewDeletion", threadId: started.threadId });
@@ -88,7 +88,7 @@ describe("deleting threads", () => {
       const question = (yield* settle(started.missionId, (current) => current.questions.length > 0)).questions[0];
       if (question === undefined) return yield* Effect.die("Missing question");
       yield* call({ _tag: "AnswerQuestion", answer: "AlwaysAllow", message: null, questionId: question.id });
-      yield* settle(started.missionId, (current) => current.thread.state === "Idle");
+      yield* settle(started.missionId, (current) => current.thread.state === "Resting");
       const preview = yield* call({ _tag: "PreviewDeletion", threadId: started.threadId });
       yield* call({ _tag: "DeleteThread", confirmation: preview.confirmation, threadId: started.threadId });
       expect(readFileSync(join(workspace, "keep.txt"), "utf8")).toBe("Keep this");
@@ -112,11 +112,11 @@ describe("deleting threads", () => {
     const value = setup();
     return Effect.gen(function* () {
       const started = yield* start();
-      yield* settle(started.missionId, (current) => current.thread.state === "Idle");
+      yield* settle(started.missionId, (current) => current.thread.state === "Resting");
       const scratch = join(value.directory, "missions", started.missionId);
       writeFileSync(join(scratch, "keep.txt"), "Workspace data");
       const other = yield* start("Hello", scratch);
-      yield* settle(other.missionId, (current) => current.thread.state === "Idle");
+      yield* settle(other.missionId, (current) => current.thread.state === "Resting");
       const preview = yield* call({ _tag: "PreviewDeletion", threadId: started.threadId });
       yield* call({ _tag: "DeleteThread", confirmation: preview.confirmation, threadId: started.threadId });
       expect(readFileSync(join(scratch, "keep.txt"), "utf8")).toBe("Workspace data");

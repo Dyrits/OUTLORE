@@ -9,7 +9,7 @@ const sidebarQuestLimit = 5;
  * list (the open quest is kept whatever its state; running quests are kept so the owner always sees what works).
  */
 export const visibleQuestsOf = (quests: readonly MissionSummary[], limit: number, openMission: string | null) =>
-  quests.filter((quest, index) => index < limit || quest.id === openMission || quest.state === "Running");
+  quests.filter((quest, index) => index < limit || quest.id === openMission || quest.state === "Underway");
 
 /** Reveals the location's ancestors without modifying the owner's saved folds. */
 export const threadOutlineOf = (

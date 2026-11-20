@@ -95,7 +95,7 @@ describe("suggesting where an off-topic request goes", () => {
       const { detail, suggestion } = yield* openSuggestion(current.missionId);
       expect(detail.thread.state).toBe("Attention");
       expect(suggestion).toMatchObject({
-        matches: [{ missionId: trip.missionId, state: "Idle", title: "Plan the Lisbon trip" }],
+        matches: [{ missionId: trip.missionId, state: "Resting", title: "Plan the Lisbon trip" }],
         model: "default",
         text: "Book a hotel",
         title: "Hotel booking",
@@ -107,11 +107,11 @@ describe("suggesting where an off-topic request goes", () => {
     Effect.gen(function* () {
       const current = yield* startIdle("Write the report");
       const trip = yield* startIdle("Plan the Lisbon trip");
-      const preview = yield* call({ _tag: "PreviewEnding", ending: "Done", missionId: trip.missionId });
-      yield* call({ _tag: "EndMission", ending: "Done", missionId: trip.missionId, snapshot: preview.snapshot });
+      const preview = yield* call({ _tag: "PreviewEnding", ending: "Fulfilled", missionId: trip.missionId });
+      yield* call({ _tag: "EndMission", ending: "Fulfilled", missionId: trip.missionId, snapshot: preview.snapshot });
       yield* suggest(current.threadId, { missions: [trip.missionId], text: "Book a hotel", title: "Hotel booking" });
       const { suggestion } = yield* openSuggestion(current.missionId);
-      expect(suggestion.matches[0]?.state).toBe("Done");
+      expect(suggestion.matches[0]?.state).toBe("Fulfilled");
       yield* answer(suggestion, { _tag: "Continue", missionId: trip.missionId });
       const target = yield* settle(trip.missionId, (detail) =>
         detail.messages.some((message) => message.text === "Echo: Book a hotel"),
@@ -119,7 +119,7 @@ describe("suggesting where an off-topic request goes", () => {
       expect(target.messages.some((message) => message.sender === "user" && message.text === "Book a hotel")).toBe(
         true,
       );
-      expect(target.mission.state).not.toBe("Done");
+      expect(target.mission.state).not.toBe("Fulfilled");
       const original = yield* settle(
         current.missionId,
         (detail) => isIdle(detail) && lastAgentText(detail).includes("continued it in mission"),

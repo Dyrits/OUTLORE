@@ -109,7 +109,7 @@ describe("offering quests, errands, and realms to the @ menu", () => {
         yield* call({ _tag: "CreateRealm", name: "Garden", path: folder });
         const login = yield* startQuest("Fix login", folder);
         const side = yield* open(login.threadId, "Write the tests");
-        yield* settle(login.missionId, (detail) => detail.threads.every((thread) => thread.state !== "Running"));
+        yield* settle(login.missionId, (detail) => detail.threads.every((thread) => thread.state !== "Underway"));
         const old = yield* startQuest("Old work");
         yield* archive(old.missionId);
 
@@ -146,7 +146,7 @@ describe("resolving the owner's mentions for the receiving thread", () => {
 
         expect(reply).toContain(text);
         expect(reply).toContain(
-          `Quest "Fix login" (id ${login.missionId}, state Idle, realm Garden, top thread id ${login.threadId})`,
+          `Quest "Fix login" (id ${login.missionId}, state Resting, realm Garden, top thread id ${login.threadId})`,
         );
         expect(reply).toContain(`Realm "Garden" (id ${realm?.id}, folder ${folder})`);
         const stored = (yield* read(here.missionId)).messages.find(
@@ -256,7 +256,7 @@ describe("reaching a quest the owner mentioned", () => {
       Effect.gen(function* () {
         const login = yield* startQuest("Fix login");
         const side = yield* open(login.threadId, "Write the tests");
-        yield* settle(login.missionId, (detail) => detail.threads.every((thread) => thread.state !== "Running"));
+        yield* settle(login.missionId, (detail) => detail.threads.every((thread) => thread.state !== "Underway"));
         const here = yield* startQuest("Release notes");
         const reply = yield* say(
           here.missionId,

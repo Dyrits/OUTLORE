@@ -76,15 +76,15 @@ export const readGuildmasterContext = Effect.gen(function* () {
       JOIN threads top ON top.id = m.top_thread_id
       LEFT JOIN journals j ON j.mission_id = m.id
       LEFT JOIN workspaces w ON w.id = top.workspace_id
-    WHERE m.is_guildmaster = 0 AND top.is_deleting = 0 AND (m.ending IS NULL OR m.ending = 'Done')
+    WHERE m.is_guildmaster = 0 AND top.is_deleting = 0 AND (m.ending IS NULL OR m.ending = 'Fulfilled')
       AND NOT EXISTS (SELECT 1 FROM rituals r WHERE r.mission_id = m.id)
     ORDER BY m.last_activity_at DESC LIMIT ${maxListedQuests}`;
-  // The state is the one the dashboard shows: Done once ended, else the most urgent state among the quest's threads.
+  // The state is the one the dashboard shows: Fulfilled or Archived once ended, Fresh while empty, else the roll-up of its top thread.
   const summaries = yield* readMissionSummaryMap(rows.map((row) => row.id));
   const lines = rows.map((row) => {
     const about = firstSentenceOf(row.briefing?.trim() ? row.briefing : (row.opening ?? ""));
     const when = timeOf(row.lastActivityAt);
-    return `- "${row.title}" (id ${row.id}) · ${summaries.get(row.id)?.state ?? "Idle"} · ${row.realm ?? "no realm"} · last active ${when} UTC${about === "" ? "" : ` · ${about}`}`;
+    return `- "${row.title}" (id ${row.id}) · ${summaries.get(row.id)?.state ?? "Resting"} · ${row.realm ?? "no realm"} · last active ${when} UTC${about === "" ? "" : ` · ${about}`}`;
   });
   const omitted = Math.max(0, (rows[0]?.total ?? 0) - rows.length);
   const { tiers } = yield* readSettings;
@@ -96,7 +96,7 @@ export const readGuildmasterContext = Effect.gen(function* () {
     setTierLines.length === 0 ? ["None set: every quest starts on the owner's default Companion."] : setTierLines;
   const rituals = yield* sql<{ isOn: number; schedule: string; title: string }>`
     SELECT m.title, r.schedule, r.is_on AS isOn FROM rituals r JOIN missions m ON m.id = r.mission_id
-    WHERE m.ending IS NULL OR m.ending = 'Done' ORDER BY m.title`;
+    WHERE m.ending IS NULL OR m.ending = 'Fulfilled' ORDER BY m.title`;
   return [
     "# Realms",
     ...(yield* readRealmLines),

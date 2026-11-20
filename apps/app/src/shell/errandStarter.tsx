@@ -49,7 +49,10 @@ export function ErrandStarter({
             <PaneTabs names={["Request", "Companions"]} onSelect={setTab} selected={tab} />
             <OpenThreadForm
               client={client}
-              companions={{ isSelected: tab === "Companions", onOpen: () => setTab("Companions") }}
+              companions={{
+                isSelected: tab === "Companions",
+                onOpen: () => setTab(tab === "Companions" ? "Request" : "Companions"),
+              }}
               onOpened={onOpened}
               parent={parent}
             />

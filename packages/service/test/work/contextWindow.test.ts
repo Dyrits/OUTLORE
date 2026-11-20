@@ -19,7 +19,7 @@ afterEach(() => {
   for (const value of fixtures.splice(0)) value.remove();
 });
 
-const isIdle = (detail: { thread: { state: string } }) => detail.thread.state === "Idle";
+const isIdle = (detail: { thread: { state: string } }) => detail.thread.state === "Resting";
 /** A quest on `model` whose first turn reported `lines`, finished. */
 const quest = (model: string, lines: string) =>
   Effect.gen(function* () {

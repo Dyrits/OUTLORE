@@ -31,7 +31,7 @@ export const makeOwnerWaits = <Resolution>(sql: SqlClient.SqlClient, changes: Ch
           const [thread] = yield* sql<{ state: string; blocker: string | null }>`
             SELECT state, blocker FROM threads WHERE id = ${wait.threadId}`;
           // A thread no longer at work, such as one just stopped whose harness is still exiting, is not asked.
-          if (thread === undefined || thread.blocker !== null || !["Running", "Attention"].includes(thread.state))
+          if (thread === undefined || thread.blocker !== null || !["Underway", "Attention"].includes(thread.state))
             return false;
           waiting.set(id, deferred);
           const now = yield* Clock.currentTimeMillis;

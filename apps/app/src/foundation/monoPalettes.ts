@@ -38,6 +38,9 @@ export const monoPalettes = {
     successSoft: "#1f1f1f",
     successText: "#cccccc",
     surface: "#141414",
+    /** Resting: the owner's turn (CHG-0599). */
+    teal: "#8c8c8c",
+    tealSoft: "#242424",
     terminal: "#1a1a1a",
     text: "#ffffff",
     textDim: "#808080",
@@ -80,6 +83,9 @@ export const monoPalettes = {
     successSoft: "#ebebeb",
     successText: "#333333",
     surface: "#f5f5f5",
+    /** Resting: the owner's turn (CHG-0599). */
+    teal: "#5c5c5c",
+    tealSoft: "#e6e6e6",
     terminal: "#f2f2f2",
     text: "#000000",
     textDim: "#767676",

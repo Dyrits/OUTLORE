@@ -6,7 +6,9 @@ Status: technical design under review. Uses the local-service modules and record
 
 Missions owns mission metadata through `start`, `rename`, `list`, `read`, and `continue`. It stores title ownership separately from generated titles. `set_mission_title` accepts only the mission's top thread and refuses after a user rename. Thread creation and the first message commit with the mission before Execution starts.
 
-Missions queries Threads for state and Usage for spending. The active mission projection uses Attention, Failed, Running, Waiting, then Idle in that order; Done and Stopped threads contribute no greater urgency. Ending a mission is a separate lifecycle change. The proposal uses Idle when no thread has one of the urgent states, without marking the mission Done automatically.
+Missions queries Threads for state and Usage for spending. Update, 2026-11-20 (CHG-0599): the active mission projection is the roll-up of the top thread over its tree (`work/missionStates.ts`): Failed, then Attention, then Waiting for a Resting or Waiting thread with work Underway or Waiting beneath it, otherwise its own state; Fresh for a quest holding nothing, and Fulfilled or Archived only by ending. Stopped and Fulfilled threads beneath contribute nothing. A top thread that reported leaves the quest Resting, without marking it Fulfilled automatically. The text below is the earlier proposal.
+
+The active mission projection used Attention, Failed, Running, Waiting, then Idle in that order; Done and Stopped threads contributed no greater urgency. Ending a mission is a separate lifecycle change. The proposal used Idle when no thread had one of the urgent states, without marking the mission Done automatically.
 
 SQLite is the production persistence adapter; temporary SQLite is the test adapter. A fake clock replaces wall time. Journal and budget behavior remains with its owning capability; Missions does not duplicate it.
 

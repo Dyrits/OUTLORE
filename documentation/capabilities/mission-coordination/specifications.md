@@ -29,7 +29,7 @@ On desktop, the [conversation panes](../conversation-panes/specifications.md#mai
   Every action Guildmaster takes shows in the conversation as a card: the quest or Ritual it opened, created, or continued, with a link, and the Companion it chose.
   A button beside Guildmaster's confirmation names the action and opens the quest or Ritual.
   It wraps below the confirmation in narrow windows and appears on its own until the confirmation is written.
-  Each report from a quest it opened (a result, a Summons, a failure) likewise puts a button that opens that quest on the right of Guildmaster's reply to it.
+  Each report from a quest it opened (a result, Attention, a failure) likewise puts a button that opens that quest on the right of Guildmaster's reply to it.
 - A setting hides Guild Hall, which is shown by default.
   Guildmaster's spending appears on the dashboard like a quest's, and it can have its own [budget](../budget-control/specifications.md).
 

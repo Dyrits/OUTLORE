@@ -45,43 +45,45 @@ const advance = (duration: Parameters<typeof TestClock.adjust>[0]) =>
 const realmList = () => call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null });
 
 describe("starting a mission", () => {
-  it.effect("saves the mission, its top thread, and the first message, titled by the first line", () =>
-    Effect.gen(function* () {
-      const started = yield* call({
-        _tag: "StartMission",
-        effort: "default",
-        model: "default",
-        requestId: "r1",
-        text: "Plan the trip\nwith details",
-        workspacePath: null,
-      });
+  it.effect(
+    "saves the mission, its top thread, and the first message, called Quest until its top thread names it",
+    () =>
+      Effect.gen(function* () {
+        const started = yield* call({
+          _tag: "StartMission",
+          effort: "default",
+          model: "default",
+          requestId: "r1",
+          text: "Plan the trip\nwith details",
+          workspacePath: null,
+        });
 
-      const { missions } = yield* call({
-        _tag: "ListMissions",
-        isArchived: false,
-        search: null,
-        state: null,
-        workspaceId: null,
-      });
-      expect(missions).toHaveLength(1);
-      expect(missions[0]).toMatchObject({
-        harness: "claude",
-        id: started.missionId,
-        model: "default",
-        state: "Running",
-        title: "Plan the trip",
-      });
+        const { missions } = yield* call({
+          _tag: "ListMissions",
+          isArchived: false,
+          search: null,
+          state: null,
+          workspaceId: null,
+        });
+        expect(missions).toHaveLength(1);
+        expect(missions[0]).toMatchObject({
+          harness: "claude",
+          id: started.missionId,
+          model: "default",
+          state: "Underway",
+          title: "Quest",
+        });
 
-      const detail = yield* read(started.missionId);
-      expect(detail.thread).toMatchObject({ id: started.threadId, state: "Running" });
-      expect(detail.messages.map((message) => [message.sender, message.text])).toEqual([
-        ["user", "Plan the trip\nwith details"],
-      ]);
-      // Each thread of the tree carries what the full quest list shows beside it: harness, model, latest activity.
-      const [top] = detail.threads;
-      expect(top).toMatchObject({ harness: "claude", model: "default" });
-      expect(top?.lastActivityAt).toBe(detail.messages[0]?.sentAt);
-    }).pipe(Effect.provide(live(databaseFile()))),
+        const detail = yield* read(started.missionId);
+        expect(detail.thread).toMatchObject({ id: started.threadId, state: "Underway" });
+        expect(detail.messages.map((message) => [message.sender, message.text])).toEqual([
+          ["user", "Plan the trip\nwith details"],
+        ]);
+        // Each thread of the tree carries what the full quest list shows beside it: harness, model, latest activity.
+        const [top] = detail.threads;
+        expect(top).toMatchObject({ harness: "claude", model: "default" });
+        expect(top?.lastActivityAt).toBe(detail.messages[0]?.sentAt);
+      }).pipe(Effect.provide(live(databaseFile()))),
   );
 
   it.effect("gets the fake harness's echo after the delay and becomes Idle", () =>
@@ -97,7 +99,7 @@ describe("starting a mission", () => {
       yield* advance(REPLY_DELAY);
 
       const detail = yield* read(started.missionId);
-      expect(detail.thread.state).toBe("Idle");
+      expect(detail.thread.state).toBe("Resting");
       expect(detail.messages.map((message) => [message.sender, message.text])).toEqual([
         ["user", "Hello"],
         ["agent", "Echo: Hello"],
@@ -105,7 +107,7 @@ describe("starting a mission", () => {
       const {
         missions: [summary],
       } = yield* call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null });
-      expect(summary?.state).toBe("Idle");
+      expect(summary?.state).toBe("Resting");
     }).pipe(Effect.provide(live(databaseFile()))),
   );
 
@@ -155,7 +157,7 @@ describe("starting a mission", () => {
 });
 
 describe("starting an empty quest in a realm", () => {
-  it.effect("is called New quest and sits idle in the realm until its first message names it", () =>
+  it.effect("is called Quest and is Fresh in the realm, and a first message leaves the name to its top thread", () =>
     Effect.gen(function* () {
       const folder = mkdtempSync(join(tmpdir(), "outlore-realm-"));
       directories.push(folder);
@@ -169,7 +171,7 @@ describe("starting an empty quest in a realm", () => {
       const listed = () =>
         call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null });
       const [empty] = (yield* listed()).missions;
-      expect(empty).toMatchObject({ id: started.missionId, state: "Idle", title: "New quest" });
+      expect(empty).toMatchObject({ id: started.missionId, state: "Fresh", title: "Quest" });
       expect(empty?.workspaceId).toBe(realmId);
       expect((yield* read(started.missionId)).thread.workspace?.path).toBe(realm?.path);
       expect((yield* read(started.missionId)).messages).toHaveLength(0);
@@ -183,7 +185,7 @@ describe("starting an empty quest in a realm", () => {
         threadId: started.threadId,
       });
       const [named] = (yield* listed()).missions;
-      expect(named).toMatchObject({ id: started.missionId, title: "Tidy the garden" });
+      expect(named).toMatchObject({ id: started.missionId, title: "Quest" });
     }).pipe(Effect.provide(live(databaseFile()))),
   );
 });
@@ -247,7 +249,7 @@ describe("follow-up messages", () => {
         ["agent", "Echo: Second\n\nThird"],
       ]);
       expect(detail.messages.map((message) => message.sequence)).toEqual([1, 2, 3, 4, 5]);
-      expect(detail.thread.state).toBe("Idle");
+      expect(detail.thread.state).toBe("Resting");
     }).pipe(Effect.provide(live(databaseFile()))),
   );
 
@@ -263,11 +265,11 @@ describe("follow-up messages", () => {
       });
       yield* advance(REPLY_DELAY);
       yield* call({ _tag: "SendMessage", delivery: null, requestId: "r2", text: "Two", threadId: started.threadId });
-      expect((yield* read(started.missionId)).thread.state).toBe("Running");
+      expect((yield* read(started.missionId)).thread.state).toBe("Underway");
       yield* advance(REPLY_DELAY);
       const detail = yield* read(started.missionId);
       expect(detail.messages.at(-1)?.text).toBe("Echo: Two");
-      expect(detail.thread.state).toBe("Idle");
+      expect(detail.thread.state).toBe("Resting");
     }).pipe(Effect.provide(live(databaseFile()))),
   );
 
@@ -305,9 +307,9 @@ describe("persisting missions", () => {
       );
 
       const detail = yield* read(started.missionId).pipe(Effect.provide(Layer.fresh(live(filename))));
-      expect(detail.mission.title).toBe("Remember me");
+      expect(detail.mission.title).toBe("Quest");
       expect(detail.messages.map((message) => message.text)).toEqual(["Remember me", "Echo: Remember me"]);
-      expect(detail.thread.state).toBe("Idle");
+      expect(detail.thread.state).toBe("Resting");
     }),
   );
 });

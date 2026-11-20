@@ -221,10 +221,10 @@ describe("running OpenCode threads", () => {
     const { layer, requests } = withHarnesses();
     return Effect.gen(function* () {
       const started = yield* startMission({ harness: "opencode", text: "slow 5000" });
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Running");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
       yield* untilRequested(requests, "session/prompt");
       yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Resting");
       expect(replies(detail)).toEqual([]);
       expect(detail.mission.usage).toEqual({ cacheCreation: 0, cacheRead: 40, input: 90, output: 8 });
     }).pipe(Effect.provide(layer));

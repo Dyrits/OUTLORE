@@ -115,7 +115,7 @@ export const threadsLayer = Layer.effectContext(
     const active = new Map<string, ActiveTurn>();
 
     // Provisional recovery until the recovery decision is settled: a process that
-    // ended mid-turn leaves no trustworthy Running state, and nothing is replayed.
+    // ended mid-turn leaves no trustworthy Underway state, and nothing is replayed.
     // With nothing running, no thread is left waiting on a thread beneath it.
     const startedAt = yield* Clock.currentTimeMillis;
     yield* sql`UPDATE turns SET status = 'interrupted', ended_at = ${startedAt} WHERE status = 'running'`;

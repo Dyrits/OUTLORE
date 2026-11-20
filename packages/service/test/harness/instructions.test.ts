@@ -78,13 +78,15 @@ describe("telling a thread how the threads around it work", () => {
     title: "Side",
   } as const;
 
-  it("asks the quest's top thread to name the quest, and an errand to report its result to its opener", () => {
+  it("asks the quest's top thread to name the quest, and an errand to report its result to its opener and name itself", () => {
     expect(threadInstructionsOf(top)).toContain("You are the quest's top thread");
     expect(threadInstructionsOf(top)).toContain("call set_mission_title with a short title");
     expect(threadInstructionsOf(child)).toContain(
       "Thread t-top opened you. When your work is done, call report_result",
     );
-    expect(threadInstructionsOf(child)).not.toContain("set_mission_title");
+    expect(threadInstructionsOf(child)).toContain(
+      'If your title is still "Errand", call set_mission_title on your first turn',
+    );
   });
 
   it("uses the quest words for everything written to the owner", () => {

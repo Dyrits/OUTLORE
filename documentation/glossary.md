@@ -23,14 +23,14 @@ User-authored text and historical service messages are not rewritten.
 | Workflow | Craft |
 | Workflow run | Craft run |
 | Routine | Ritual |
-| Attention | Summons |
-| Running | Underway |
-| Idle | Resting |
-| Waiting | Awaiting word |
+| Running (state) | Underway (the stored value is Underway too, CHG-0599) |
+| Idle (state) | Resting (stored value too; it is the owner's turn, CHG-0599) |
+| Done (state) | Fulfilled (stored value too, CHG-0599) |
+| Summons, Awaiting word (state names) | Retired as state names: the state is Attention, or Waiting, as stored (CHG-0599) |
 | Settings | Workshop (formerly Charter, CHG-0146) |
 
 Journal, briefing, harness, effort, budget, approval, and archive keep their meanings and names.
-Done is the ending a quest reaches when the owner marks it done, and a thread state; its former interface name Fulfilled is retired. Otherwise work remains idle, running, or asking for the owner until the quest is archived.
+Fulfilled is the ending a quest reaches when the owner marks it done, and a thread state; CHG-0599 brings the name back and replaces Done with it (the "Mark as done" action keeps its label for now). Fresh is a quest with nothing sent yet. Otherwise work remains Resting, Underway, Waiting, or asking for the owner (Attention) until the quest is archived.
 Companion means the selected model doing the work, not a conversation or a distinct saved agent definition; selectors say Companion (model) to make this explicit.
 Craft and Ritual are the agreed names for the future automation interfaces.
 Waystones and Spoils remain mockup suggestions for devices and changes.

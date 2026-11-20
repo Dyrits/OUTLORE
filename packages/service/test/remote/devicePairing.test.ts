@@ -40,7 +40,7 @@ describe("controlling one installation from another through the relay", () => {
           state: null,
           workspaceId: null,
         });
-        expect(missions).toMatchObject({ missions: [{ title: "Steered from another computer" }] });
+        expect(missions).toMatchObject({ missions: [{ title: "Quest" }] });
 
         expect(yield* world.ask(link, "2", { _tag: "RenameHost", name: "Studio" })).toMatchObject({
           _tag: "Success",

@@ -105,7 +105,7 @@ describe("keeping the Guildmaster's place", () => {
         place.threadId,
       );
       const context = lastAgentText(detail);
-      expect(context).toContain(`(id ${resting.missionId}) · Idle ·`);
+      expect(context).toContain(`(id ${resting.missionId}) · Resting ·`);
       expect(context).toContain(`(id ${asking.missionId}) · Attention ·`);
     }).pipe(Effect.provide(setup().layer)),
   );

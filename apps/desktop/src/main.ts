@@ -227,7 +227,7 @@ app
       app.dock?.setIcon(iconPathOf(theme));
       window.setIcon(iconPathOf(theme));
     });
-    // A summons bounces the Dock icon until the owner comes back; with the window in front there is nothing to call them to.
+    // A thread in Attention bounces the Dock icon until the owner comes back; with the window in front there is nothing to call them to.
     let bounce: number | null = null;
     const stopBounce = () => {
       if (bounce !== null) app.dock?.cancelBounce(bounce);

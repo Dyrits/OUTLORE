@@ -15,14 +15,15 @@ const thread = (id: string, parentId: string | null, depth: number) =>
     model: "default",
     openedAt: 0,
     parentId,
-    state: "Idle",
+    shownState: "Resting",
+    state: "Resting",
     title: id,
     waitingCount: 0,
   });
 const tree = [thread("top", null, 0), thread("parent", "top", 1), thread("child", "parent", 2)];
 
 const usage = { cacheCreation: 0, cacheRead: 0, input: 0, output: 0 };
-const quest = (id: string, state: "Idle" | "Running" = "Idle") =>
+const quest = (id: string, state: "Resting" | "Underway" = "Resting") =>
   Schema.decodeUnknownSync(MissionSummary)({
     budget: { limits: { cost: null, tokens: null }, spent: { cost: 0, tokens: 0 } },
     consumption: { earlierTurns: 0, estimated: 0, reported: 0, tokens: usage, turns: 0, unpricedTurns: 0 },
@@ -35,7 +36,7 @@ const quest = (id: string, state: "Idle" | "Running" = "Idle") =>
     model: "default",
     prompt: null,
     ritual: null,
-    runningCount: state === "Running" ? 1 : 0,
+    runningCount: state === "Underway" ? 1 : 0,
     state,
     threadCount: 1,
     title: id,
@@ -49,7 +50,7 @@ describe("revealing the rail location", () => {
   it("shows the first five quests and any running quest beyond them by default", () => {
     const quests = ["one", "two", "three", "four", "five", "hidden"].map((id) => quest(id));
     const outline = railOutlineOf(
-      { borderlands: [...quests, quest("running", "Running")], realms: [] },
+      { borderlands: [...quests, quest("running", "Underway")], realms: [] },
       null,
       new Set(),
     );
@@ -83,7 +84,7 @@ describe("revealing the rail location", () => {
     expect(outline.isQuestOpen("second")).toBe(false);
   });
   it("keeps every running quest past the normal placement limit, in its place in the list", () => {
-    const quests = [quest("first"), quest("second"), quest("running", "Running"), quest("fourth", "Running")];
+    const quests = [quest("first"), quest("second"), quest("running", "Underway"), quest("fourth", "Underway")];
     const outline = railOutlineOf({ borderlands: quests, realms: [] }, null, new Set(), 1);
     expect(outline.borderlands.map((each) => each.id)).toEqual(["first", "running", "fourth"]);
   });

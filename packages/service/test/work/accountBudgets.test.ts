@@ -41,7 +41,7 @@ const setBudget = (
 ) => call({ _tag: "SetAccountBudget", accountId, harness: "claude", limits, period, since });
 
 const tokens = (count: number): BudgetLimits => ({ cost: null, tokens: count });
-const isIdle = (detail: MissionDetail) => detail.thread.state === "Idle";
+const isIdle = (detail: MissionDetail) => detail.thread.state === "Resting";
 const isHeld = (detail: MissionDetail) => detail.thread.state === "Attention" && detail.thread.blocker === "Budget";
 const accountOf = (accountId: AccountId | null) =>
   Effect.gen(function* () {
@@ -52,7 +52,7 @@ const accountOf = (accountId: AccountId | null) =>
 const startRunning = (accountId: AccountId | null) =>
   Effect.gen(function* () {
     const started = accountId === null ? yield* start("wait 60000") : yield* startOn(accountId, "wait 60000");
-    yield* settle(started.missionId, (detail) => detail.thread.state === "Running");
+    yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
     return started;
   });
 
@@ -72,7 +72,7 @@ describe("enforcing an account's budget", () => {
           scope: "Account",
         });
         expect(isHeld(yield* settle(other.missionId, isHeld))).toBe(true);
-        expect((yield* read(elsewhere.missionId)).thread.state).toBe("Running");
+        expect((yield* read(elsewhere.missionId)).thread.state).toBe("Underway");
       }),
     ),
   );
@@ -89,7 +89,7 @@ describe("enforcing an account's budget", () => {
         yield* setBudget(work, tokens(5000));
         yield* settle(reaching.missionId, isIdle);
         // Its interrupted message runs again, so the other thread is at work once more, no longer held.
-        yield* settle(other.missionId, (detail) => detail.thread.state === "Running");
+        yield* settle(other.missionId, (detail) => detail.thread.state === "Underway");
       }),
     ),
   );

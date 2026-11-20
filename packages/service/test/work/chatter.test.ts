@@ -45,7 +45,7 @@ describe("guarding against chatter", () => {
       const { missionId, threadId, childId } = yield* pair;
       for (let index = 0; index < 19; index++)
         yield* message(index % 2 === 0 ? threadId : childId, index % 2 === 0 ? childId : threadId);
-      expect((yield* read(missionId)).thread.state).toBe("Running");
+      expect((yield* read(missionId)).thread.state).toBe("Underway");
       yield* message(childId, threadId, "Twentieth");
       const detail = yield* read(missionId);
       expect(detail.threads.map((thread) => thread.state)).toEqual(["Attention", "Attention"]);
@@ -122,8 +122,8 @@ describe("guarding against chatter", () => {
       const notice = (yield* read(missionId)).chatter[0];
       if (notice === undefined) return yield* Effect.die("Missing pause");
       yield* call({ _tag: "ResolveChatter", choice: "Continue", id: notice.id });
-      const parent = yield* settle(missionId, (detail) => detail.thread.state === "Idle");
-      const child = yield* settle(missionId, (detail) => detail.thread.state === "Idle", childId);
+      const parent = yield* settle(missionId, (detail) => detail.thread.state === "Resting");
+      const child = yield* settle(missionId, (detail) => detail.thread.state === "Resting", childId);
       expect(parent.chatter).toHaveLength(0);
       expect(parent.messages.some((entry) => entry.sender === "agent" && entry.text.includes("At threshold"))).toBe(
         true,
@@ -156,7 +156,7 @@ describe("guarding against chatter", () => {
       expect(stopped.thread.waitingCount).toBe(1);
       expect(stopped.chatter).toHaveLength(0);
       yield* call({ _tag: "ResumeThread", threadId });
-      const resumed = yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+      const resumed = yield* settle(missionId, (detail) => detail.thread.state === "Resting");
       expect(resumed.messages.some((entry) => entry.sender === "agent" && entry.text.includes("Keep for parent"))).toBe(
         true,
       );
@@ -197,7 +197,7 @@ describe("guarding against chatter", () => {
       expect((yield* read(missionId)).thread.state).toBe("Stopped");
       yield* call({ _tag: "ResolveChatter", choice: "Stop", id: notice.id });
       yield* call({ _tag: "ResumeThread", threadId });
-      const detail = yield* settle(missionId, (polled) => polled.thread.state === "Idle");
+      const detail = yield* settle(missionId, (polled) => polled.thread.state === "Resting");
       expect(detail.messages.some((entry) => entry.sender === "agent" && entry.text.includes("New instructions"))).toBe(
         true,
       );
@@ -241,8 +241,8 @@ describe("stopping both threads of a chatter pause", () => {
         withdrawQuestions: () => Effect.void,
       });
       yield* resolveChatter(notice.id, "Stop").pipe(Effect.provideService(Commands, commands));
-      expect((yield* read(first.missionId)).thread.state).toBe("Idle");
-      expect((yield* read(second.missionId)).thread.state).toBe("Idle");
+      expect((yield* read(first.missionId)).thread.state).toBe("Resting");
+      expect((yield* read(second.missionId)).thread.state).toBe("Resting");
       expect(new Set(woken)).toEqual(new Set([first.missionId, second.missionId]));
     }).pipe(Effect.provide(live())),
   );
@@ -256,18 +256,18 @@ describe("stopping both threads of a chatter pause", () => {
       const started = yield* start(opening("wait 60000"));
       const waiting = yield* settle(
         started.missionId,
-        (detail) => detail.thread.state === "Waiting" && detail.threads.some((thread) => thread.state === "Running"),
+        (detail) => detail.thread.state === "Waiting" && detail.threads.some((thread) => thread.state === "Underway"),
       );
       const first = waiting.threads.find((thread) => thread.parentId === started.threadId)?.id;
       if (first === undefined) return yield* Effect.die("Missing errand");
       const { threadId: second } = yield* seedLegacyErrand(first, "wait 60000");
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Running", second);
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Underway", second);
       yield* message(first, second);
       yield* message(second, first);
       const notice = (yield* read(started.missionId, first)).chatter[0];
       if (notice === undefined) return yield* Effect.die("Missing pause");
       yield* call({ _tag: "ResolveChatter", choice: "Stop", id: notice.id });
-      expect((yield* read(started.missionId)).thread.state).toBe("Idle");
+      expect((yield* read(started.missionId)).thread.state).toBe("Resting");
     }).pipe(Effect.provide(live())),
   );
 });

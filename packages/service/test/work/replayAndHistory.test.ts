@@ -50,7 +50,7 @@ describe("replaying a conversation and reading Chronicler's history", () => {
       const history = yield* readConversationSoFar(started.threadId, "next-turn", "default");
       expect(history).toMatch(/Thread "[^"]+": A note/);
       expect(history).toMatch(/Result from thread "[^"]+": A result/);
-      expect((yield* read(started.missionId)).thread.state).toBe("Idle");
+      expect((yield* read(started.missionId)).thread.state).toBe("Resting");
     }).pipe(Effect.provide(setup())),
   );
 

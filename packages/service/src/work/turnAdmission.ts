@@ -77,7 +77,7 @@ export const admitTurn = Effect.fnUntraced(function* (threadId: string, isResume
       }>`SELECT state, mission_id AS missionId, session_id AS sessionId, model, effort, harness,
             account_id AS accountId FROM threads WHERE id = ${threadId}`;
       // Attention can hold a turn still running in its harness; Stopped always needs an explicit resume.
-      if (thread === undefined || ["Running", "Attention", "Stopped"].includes(thread.state)) return null;
+      if (thread === undefined || ["Underway", "Attention", "Stopped"].includes(thread.state)) return null;
       if (yield* isQuestRealmArchived(thread.missionId)) return null;
       const pending = yield* listPending(threadId, false);
       if (pending.length === 0 && !isResumed) return null;

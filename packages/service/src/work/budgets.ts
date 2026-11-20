@@ -85,7 +85,7 @@ const workingThreadsOf = Effect.fnUntraced(function* (scope: BudgetScope) {
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql<{ id: string }>`
       SELECT id FROM threads
-      WHERE (state = 'Running' OR ${sql.literal(waitsInTurn)})
+      WHERE (state = 'Underway' OR ${sql.literal(waitsInTurn)})
         AND ${threadsWhere(sql, scope)}`;
   return rows.map((row) => row.id);
 });
@@ -137,7 +137,7 @@ export const holdIfReached = Effect.fnUntraced(function* (threadId: string, miss
 });
 
 /**
- * Ends stops whose budget is no longer reached and releases the threads they held, which become Idle.
+ * Ends stops whose budget is no longer reached and releases the threads they held, which become Resting.
  * Returns the released threads, for the command that releases them to wake. Callers run it in a transaction.
  */
 export const releaseBudgets = Effect.gen(function* () {

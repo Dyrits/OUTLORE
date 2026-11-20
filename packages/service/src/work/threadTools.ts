@@ -244,7 +244,7 @@ export const threadTools = {
   }),
   report_result: definitionOf({
     description:
-      "When your work is done, report your result to the thread that opened you, with an entry for the mission's journal. You become Done; a later message continues you.",
+      "When your work is done, report your result to the thread that opened you, with an entry for the mission's journal. You become Fulfilled; a later message continues you.",
     invalid: toolRefusal(
       `Not reported: give result, and journal: an entry for the mission's journal, or exactly "${nothingToRecord}".`,
     ),
@@ -315,7 +315,7 @@ export const threadTools = {
   }),
   set_mission_title: definitionOf({
     description:
-      "Name the mission. Only the mission's top thread uses it, on its first turn, with a short title of a few words.",
+      "Name the mission, from its top thread, or the errand that calls it, on its first turn, with a short title of a few words.",
     invalid: toolRefusal("Not named: give a title."),
     isUnasked: true,
     schema: Schema.Struct({ title: text("A short title of a few words.") }),

@@ -74,7 +74,10 @@ const only = (threads: ReadonlyArray<ThreadSummary>) => {
 describe("opening threads", () => {
   it.live("opens a thread beneath the caller with the opener's model, effort, and workspace", () =>
     Effect.gen(function* () {
-      const started = yield* start(tool("open_thread", { request: "Count the files" }), "sonnet");
+      const started = yield* start(
+        tool("open_thread", { request: "Count the files", title: "Count the files" }),
+        "sonnet",
+      );
       const opened = yield* settle(started.missionId, (detail) => childrenOf(detail, started.threadId).length === 1);
       const child = only(childrenOf(opened, started.threadId));
       expect(child).toMatchObject({ depth: 1, isOpenedByAgent: true, title: "Count the files" });
@@ -94,13 +97,13 @@ describe("opening threads", () => {
     }).pipe(Effect.provide(live())),
   );
 
-  it.live("titles the thread with the opener's short title, or else the request's first line", () =>
+  it.live("titles the thread with the opener's short title, or else calls it Errand", () =>
     Effect.gen(function* () {
       const started = yield* start(
         `${tool("open_thread", { request: "Count every Markdown file under documentation/, recursively", title: "Count docs" })}\n${tool("open_thread", { request: "Count tests\nin packages/" })}`,
       );
       const opened = yield* settle(started.missionId, (detail) => childrenOf(detail, started.threadId).length === 2);
-      expect(childrenOf(opened, started.threadId).map((thread) => thread.title)).toEqual(["Count docs", "Count tests"]);
+      expect(childrenOf(opened, started.threadId).map((thread) => thread.title)).toEqual(["Count docs", "Errand"]);
     }).pipe(Effect.provide(live())),
   );
 
@@ -117,12 +120,12 @@ describe("opening threads", () => {
     Effect.gen(function* () {
       const started = yield* start("Plan the trip");
       const opened = yield* open(started.threadId, "Find hotels", "opus");
-      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle", opened.threadId);
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Resting", opened.threadId);
       expect(detail.thread).toMatchObject({
         depth: 1,
         model: "opus",
         parentId: started.threadId,
-        title: "Find hotels",
+        title: "Errand",
       });
       expect(detail.messages.map((message) => [message.sender, message.text])).toEqual([
         ["user", "Find hotels"],
@@ -143,7 +146,7 @@ describe("results and thread messages", () => {
       );
       const done = yield* settle(started.missionId, (detail) => {
         const child = childrenOf(detail, started.threadId)[0];
-        return child !== undefined && child.state === "Done" && detail.thread.state === "Idle";
+        return child !== undefined && child.state === "Fulfilled" && detail.thread.state === "Resting";
       });
       const result = done.messages.find((message) => message.isResult);
       expect(result).toMatchObject({ sender: "thread", text: "There are 42 files." });
@@ -157,9 +160,9 @@ describe("results and thread messages", () => {
       const started = yield* start(tool("open_thread", { request: "wait 400" }));
       yield* settle(started.missionId, (detail) => detail.thread.state === "Waiting");
       const after = yield* settle(started.missionId, (detail) =>
-        childrenOf(detail, started.threadId).every((child) => child.state === "Idle"),
+        childrenOf(detail, started.threadId).every((child) => child.state === "Resting"),
       );
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
       expect(childrenOf(after, started.threadId)).toHaveLength(1);
     }).pipe(Effect.provide(live())),
   );
@@ -167,13 +170,13 @@ describe("results and thread messages", () => {
   it.live("delivers a message to the parent and to a thread directly beneath, and refuses others", () =>
     Effect.gen(function* () {
       const started = yield* start(
-        `${tool("open_thread", { request: "First" })}\n${tool("open_thread", { request: "Second" })}`,
+        `${tool("open_thread", { request: "First", title: "First" })}\n${tool("open_thread", { request: "Second" })}`,
       );
       const opened = yield* settle(
         started.missionId,
         (detail) =>
           childrenOf(detail, started.threadId).length === 2 &&
-          detail.threads.every((thread) => thread.state === "Idle"),
+          detail.threads.every((thread) => thread.state === "Resting"),
       );
       const [first, second] = childrenOf(opened, started.threadId) as [ThreadSummary, ThreadSummary];
 
@@ -200,10 +203,10 @@ describe("results and thread messages", () => {
   it.live("continues a Done thread when a message reaches it", () =>
     Effect.gen(function* () {
       const started = yield* start(tool("report_result", { journal: "nothing to record", result: "Finished." }));
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Done");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Fulfilled");
       yield* send(started.threadId, "One more thing");
       const detail = yield* settle(started.missionId, (current) => lastText(current) === "Echo: One more thing");
-      expect(detail.thread.state).toBe("Idle");
+      expect(detail.thread.state).toBe("Resting");
     }).pipe(Effect.provide(live())),
   );
 });
@@ -215,7 +218,7 @@ describe("stopping and resuming", () => {
       const running = yield* settle(started.missionId, (detail) => detail.thread.state === "Waiting");
       const child = only(childrenOf(running, started.threadId));
       yield* call({ _tag: "StopThread", threadId: started.threadId });
-      const after = yield* settle(started.missionId, (detail) => stateOf(detail, child.id) === "Idle");
+      const after = yield* settle(started.missionId, (detail) => stateOf(detail, child.id) === "Resting");
       expect(after.thread.state).toBe("Stopped");
     }).pipe(Effect.provide(live())),
   );
@@ -223,7 +226,7 @@ describe("stopping and resuming", () => {
   it.live("keeps messages for a Stopped thread, counts them, and delivers them on Resume", () =>
     Effect.gen(function* () {
       const started = yield* start("Begin");
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
       yield* call({ _tag: "StopThread", threadId: started.threadId });
       yield* send(started.threadId, "Are you there?");
       yield* Effect.sleep("100 millis");
@@ -232,14 +235,14 @@ describe("stopping and resuming", () => {
 
       yield* call({ _tag: "ResumeThread", threadId: started.threadId });
       const resumed = yield* settle(started.missionId, (detail) => lastText(detail) === "Echo: Are you there?");
-      expect(resumed.thread).toMatchObject({ state: "Idle", waitingCount: 0 });
+      expect(resumed.thread).toMatchObject({ state: "Resting", waitingCount: 0 });
     }).pipe(Effect.provide(live())),
   );
 
   it.live("refuses Resume for a thread that is not Stopped", () =>
     Effect.gen(function* () {
       const started = yield* start("Begin");
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
       const failure = yield* failureOf({ _tag: "ResumeThread", threadId: started.threadId });
       expect(failure.kind).toBe("InvalidInput");
     }).pipe(Effect.provide(live())),
@@ -277,10 +280,10 @@ describe("limiting threads", () => {
   it.live("holds a message while 8 threads run and delivers it once one ends", () =>
     Effect.gen(function* () {
       const started = yield* start("Stand by");
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
       const busy = yield* open(started.threadId, "Ready");
       const held = yield* open(started.threadId, "Also ready");
-      yield* settle(started.missionId, (detail) => detail.threads.every((thread) => thread.state === "Idle"));
+      yield* settle(started.missionId, (detail) => detail.threads.every((thread) => thread.state === "Resting"));
 
       const opens = Array.from({ length: 6 }, (_, index) =>
         tool("open_thread", { request: `wait 400\nTask ${index}` }),
@@ -289,11 +292,11 @@ describe("limiting threads", () => {
       yield* send(busy.threadId, "wait 400");
       yield* settle(
         started.missionId,
-        (detail) => detail.threads.filter((thread) => thread.state === "Running").length === 8,
+        (detail) => detail.threads.filter((thread) => thread.state === "Underway").length === 8,
       );
       yield* send(held.threadId, "Queued while full");
       const full = yield* read(started.missionId, held.threadId);
-      expect(full.thread).toMatchObject({ state: "Idle", waitingCount: 1 });
+      expect(full.thread).toMatchObject({ state: "Resting", waitingCount: 1 });
       yield* settle(started.missionId, (detail) => lastText(detail) === "Echo: Queued while full", held.threadId);
     }).pipe(Effect.provide(live())),
   );
@@ -321,7 +324,7 @@ describe("offering the owner a thread's actions", () => {
   it.live("offers Stop and in-turn sending while a thread works, and Resume once it is Stopped", () =>
     Effect.gen(function* () {
       const started = yield* start("wait 60000");
-      const running = yield* settle(started.missionId, (current) => current.thread.state === "Running");
+      const running = yield* settle(started.missionId, (current) => current.thread.state === "Underway");
       expect(running.thread.actions).toEqual({ canOpenBeneath: true, canResume: false, canStop: true, isInTurn: true });
       yield* call({ _tag: "StopThread", threadId: started.threadId });
       const stopped = yield* read(started.missionId);

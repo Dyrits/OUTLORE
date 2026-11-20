@@ -88,7 +88,7 @@ describe("serving the owner over a loopback WebSocket", () => {
         }),
       );
       const list = yield* until(() => frames.find((frame) => (frame as { id?: string }).id === "2"));
-      expect(list).toMatchObject({ _tag: "Success", value: { missions: [{ title: "Over the wire" }] } });
+      expect(list).toMatchObject({ _tag: "Success", value: { missions: [{ title: "Quest" }] } });
       socket.close();
     }).pipe(Effect.provide(fresh())),
   );

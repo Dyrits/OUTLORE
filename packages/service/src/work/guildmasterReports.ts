@@ -9,14 +9,14 @@ import { insertMessage } from "./messaging.ts";
 
 // ----- Hearing back: the quests Chronicler opened tell it when they report, need the owner, or fail -----
 
-/** The report a quest stands in, or null: a failure, a Summons, or a result awaiting "Mark as done?", in that order. */
+/** The report a quest stands in, or null: a failure, Attention, or a result awaiting "Mark as done?", in that order. */
 const reportOf = (summary: { readonly prompt: string | null; readonly state: string }) =>
   summary.state === "Failed"
     ? "Failed"
     : summary.state === "Attention"
       ? "Attention"
       : // Only once the turn that reported has ended, so its closing reply can be passed on.
-        summary.prompt === "MarkDone" && summary.state !== "Running" && summary.state !== "Waiting"
+        summary.prompt === "MarkDone" && summary.state !== "Underway" && summary.state !== "Waiting"
         ? "Reported"
         : null;
 

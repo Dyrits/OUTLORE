@@ -37,6 +37,9 @@ export const onePalettes = {
     successSoft: "#343b3b",
     successText: "#a1c181",
     surface: "#2f343e",
+    /** Resting: the owner's turn (CHG-0599). */
+    teal: "#56b6c2",
+    tealSoft: "#2c3b40",
     terminal: "#282c34",
     text: "#dce0e5",
     textDim: "#878a98",
@@ -80,6 +83,9 @@ export const onePalettes = {
     successSoft: "#dfeadb",
     successText: "#2b6927",
     surface: "#ebebec",
+    /** Resting: the owner's turn (CHG-0599). */
+    teal: "#1a8a8a",
+    tealSoft: "#d6ecec",
     terminal: "#fafafa",
     text: "#242529",
     textDim: "#7e8086",

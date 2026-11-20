@@ -36,7 +36,7 @@ export function useThreadConversation(
   const { data: harnesses } = useHarnesses(client);
   const thread = detail?.thread ?? null;
   const state = conversationStateOf(
-    thread?.state ?? "Idle",
+    thread?.state ?? "Resting",
     thread?.actions.isInTurn ?? false,
     options.isChronicler ? "Chronicler" : thread?.parentId === null ? "this quest" : "this errand",
   );

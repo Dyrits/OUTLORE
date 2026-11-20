@@ -25,7 +25,8 @@ const thread = (id: string, parentId: string | null, depth: number, isOpenedByAg
     model: "default",
     openedAt: 0,
     parentId,
-    state: "Idle",
+    shownState: "Resting",
+    state: "Resting",
     title: id,
     waitingCount: 0,
   });

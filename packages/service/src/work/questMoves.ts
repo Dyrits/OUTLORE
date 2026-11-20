@@ -40,7 +40,7 @@ export const moveQuest = Effect.fn("moveQuest")(function* (missionId: string, re
         }>`SELECT name, path FROM workspaces WHERE id = ${realmId}`;
   if (destination === undefined) return yield* invalid("No such realm.");
   const [running] = yield* sql<{ count: number }>`SELECT COUNT(*) AS count FROM threads
-    WHERE mission_id = ${missionId} AND (state = 'Running' OR ${sql.literal(waitsInTurn)})`;
+    WHERE mission_id = ${missionId} AND (state = 'Underway' OR ${sql.literal(waitsInTurn)})`;
   if ((running?.count ?? 0) > 0)
     return yield* invalid("A thread of this quest is at work. Stop it, then move the quest.");
   const [misplaced] = yield* sql<{ count: number }>`SELECT COUNT(*) AS count FROM threads

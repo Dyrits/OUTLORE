@@ -163,7 +163,7 @@ export const listThreadsWithPending = Effect.fnUntraced(function* (missionId: st
   const rows = yield* sql<{ threadId: string }>`
       SELECT DISTINCT m.thread_id AS threadId FROM messages m JOIN threads t ON t.id = m.thread_id
       WHERE m.mission_id = ${missionId} AND m.sender_kind IN ('user', 'thread') AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0
-        AND t.state NOT IN ('Running', 'Attention', 'Stopped', 'Failed') AND t.id != ${exceptThreadId}`;
+        AND t.state NOT IN ('Underway', 'Attention', 'Stopped', 'Failed') AND t.id != ${exceptThreadId}`;
   return rows.map((row) => row.threadId);
 });
 

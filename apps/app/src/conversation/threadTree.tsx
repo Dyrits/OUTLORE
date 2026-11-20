@@ -70,11 +70,11 @@ export function ThreadTree({
               <Text numberOfLines={1} style={[styles.treeTitle, depth === 0 && styles.treeTitleQuest]}>
                 {thread.title}
               </Text>
-              <TreeState state={thread.state} />
+              <TreeState state={thread.shownState} />
             </View>
             {thread.isAside && <Text style={styles.treeNote}>Aside</Text>}
             {foldedCount > 0 && <Text style={styles.treeNote}>{foldedLabelOf(foldedCount)}</Text>}
-            {thread.waitingCount > 0 && thread.state !== "Running" && (
+            {thread.waitingCount > 0 && thread.state !== "Underway" && (
               <Text style={styles.treeNote}>{countedOf(thread.waitingCount, "message")} waiting</Text>
             )}
           </Pressable>
@@ -107,7 +107,9 @@ function TreeState({ state }: { state: ThreadSummary["state"] }) {
   const { color, soft } = stateTones[state];
   return (
     <View style={[styles.treeState, state === "Attention" && { backgroundColor: soft }]}>
-      <Text style={[styles.treeStateMark, { color }]}>{state === "Done" ? "✓" : state === "Failed" ? "✕" : "◆"}</Text>
+      <Text style={[styles.treeStateMark, { color }]}>
+        {state === "Fulfilled" ? "✓" : state === "Failed" ? "✕" : "◆"}
+      </Text>
       <Text style={[styles.treeStateText, { color }]}>{stateLabels[state]}</Text>
     </View>
   );

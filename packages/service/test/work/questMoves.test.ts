@@ -46,7 +46,7 @@ const realmOf = (missionId: MissionId) =>
     return (yield* listed()).missions.find((mission) => mission.id === missionId)?.workspaceId;
   });
 
-const idle = (detail: { thread: { state: string } }) => detail.thread.state === "Idle";
+const idle = (detail: { thread: { state: string } }) => detail.thread.state === "Resting";
 const lastReplyOf = (detail: { messages: ReadonlyArray<{ sender: string; text: string }> }) =>
   detail.messages.filter((message) => message.sender === "agent").at(-1)?.text ?? "";
 
@@ -104,7 +104,7 @@ describe("moving a quest between realms, and out of them", () => {
         const workshopId = yield* makeRealm("Workshop", workshop);
         const quest = yield* call({ _tag: "StartEmptyQuest", realmId: gardenId, requestId: "q3" });
         yield* send(quest.threadId, "wait 2000");
-        yield* settle(quest.missionId, (detail) => detail.thread.state === "Running");
+        yield* settle(quest.missionId, (detail) => detail.thread.state === "Underway");
 
         const refusal = yield* failureOf({ _tag: "MoveQuest", missionId: quest.missionId, realmId: workshopId });
         expect(refusal).toMatchObject({ kind: "InvalidInput" });

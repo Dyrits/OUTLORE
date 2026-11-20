@@ -47,7 +47,7 @@ export const readGuildHallRecap = Effect.fnUntraced(function* (given: number | n
   // The Guild Hall's own quest and the Rituals' quests are no finished quests: a Ritual's quest never ends.
   const finished = yield* sql<{ missionId: MissionId; title: string }>`
       SELECT id AS missionId, title FROM missions
-      WHERE is_guildmaster = 0 AND ending = 'Done' AND done_at >= ${since} ORDER BY done_at DESC`;
+      WHERE is_guildmaster = 0 AND ending = 'Fulfilled' AND done_at >= ${since} ORDER BY done_at DESC`;
   const [counted] = yield* sql<ConsumptionRow>`
       SELECT ${sql.literal(consumptionColumns)} FROM usage u WHERE u.ended_at >= ${since}`;
   // Each run sends its Ritual's quest a message that starts with "Ritual · " (see `beginRun`).

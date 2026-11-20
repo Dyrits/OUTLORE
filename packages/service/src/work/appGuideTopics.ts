@@ -33,7 +33,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
     body: [
       "A quest is a piece of work and its tree of threads. The first thread is the quest's main thread; an errand is a thread opened beneath another thread, and may have errands of its own.",
       "To start a quest: press the Start a new quest button at the right of the Borderlands label in the sidebar (the quest is then in no realm), or the new-quest button on a realm, or tell Chronicler what you want and choose on the card it shows (Continue in a quest that fits, or Open as new quest). Chronicler never opens a quest on its own.",
-      "States a quest or thread shows: Underway (running), Resting (idle), Awaiting word (waiting for an answer), and Summons (needs the owner: an approval, an answer, a budget reached, a missing folder, or a tool problem). A quest stays open until it is archived; archived quests are in the Archive, under The Keep.",
+      "States a quest or thread shows: Fresh (nothing sent yet), Underway (a turn is in progress), Waiting (its own turn is over and work continues beneath it), Attention (needs the owner: an approval, an answer, a budget reached, a missing folder, or a tool problem), Failed, Resting (the owner's turn), Stopped, and Fulfilled (marked done). A quest or errand shows Failed or Attention when a thread beneath it has it. A quest stays open until it is archived; archived quests are in the Archive, under The Keep.",
       "Each quest has a briefing (where it stands, rewritten as it changes) and a journal (a dated log only ever added to). Every thread in the quest reads them before it starts.",
       "Threads message each other along the tree. When the owner names a quest or errand with @, the receiving thread may reach it for that turn; a realm named with @ is context only and opens no reach. An errand opened by a thread tells its parent when it reports a result.",
     ].join("\n"),
@@ -219,7 +219,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "Each harness runs its commands in a sandbox that limits damage to the computer's files and processes. A thread works on its own at the default approval level and asks before consequential actions: ones that reach people or systems outside the computer or cannot be undone. A sandbox escape asks unless the owner enabled running commands outside the sandbox without asking or granted a matching standing permission; a file change outside the thread's folder still asks.",
-      "An approval question says in plain words what the thread wants to do; Show details reveals the exact command. The buttons are Allow (this once), Always allow (a standing permission for that exact action), and Deny, with an optional message saying what to do instead. A thread with an open question is in Summons.",
+      "An approval question says in plain words what the thread wants to do; Show details reveals the exact command. The buttons are Allow (this once), Always allow (a standing permission for that exact action), and Deny, with an optional message saying what to do instead. A thread with an open question is in Attention.",
       "Standing permissions are listed in the Workshop's Permissions card, where each can be removed.",
       "Words never approve a command: not a quoted message, not a Ritual's instruction, nothing a thread writes.",
     ].join("\n"),

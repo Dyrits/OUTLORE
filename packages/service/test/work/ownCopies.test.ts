@@ -47,7 +47,7 @@ const openedIdOf = (answer: string) => {
 const idleIn = (folder: string | null) =>
   Effect.gen(function* () {
     const started = yield* start("Hello", folder);
-    yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+    yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
     return started;
   });
 

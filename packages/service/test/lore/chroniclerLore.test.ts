@@ -10,16 +10,16 @@ describe("searching lore as Chronicler", () => {
     return Effect.gen(function* () {
       const chronicler = yield* guildmaster;
       const quest = yield* start("Quest", directory);
-      yield* settle(quest.missionId, (detail) => detail.thread.state === "Idle");
+      yield* settle(quest.missionId, (detail) => detail.thread.state === "Resting");
       const realmId = idOf(yield* save(quest.threadId, "Orchid realm detail.", "workspace"));
       const questId = idOf(yield* save(quest.threadId, "Orchid quest detail.", "mission"));
       yield* save(quest.threadId, "Orchid global detail.", "global");
       yield* approveAll();
       const side = yield* open(quest.threadId, "Errand");
-      yield* settle(quest.missionId, (detail) => detail.thread.state === "Idle", side.threadId);
+      yield* settle(quest.missionId, (detail) => detail.thread.state === "Resting", side.threadId);
       const sideId = idOf(yield* save(side.threadId, "Orchid errand detail.", "thread"));
       const other = yield* start("Other quest", null);
-      yield* settle(other.missionId, (detail) => detail.thread.state === "Idle");
+      yield* settle(other.missionId, (detail) => detail.thread.state === "Resting");
       const found = yield* tool(chronicler.threadId, "search_intel", { query: "orchid" });
       expect(found).toContain("Orchid realm detail.");
       expect(found).toContain("Orchid quest detail.");
@@ -36,7 +36,7 @@ describe("searching lore as Chronicler", () => {
       );
       expect(yield* tool(other.threadId, "search_intel", { ids: [realmId, questId, sideId] })).toContain("No lore");
       const helper = yield* open(chronicler.threadId, "Chronicler helper");
-      yield* settle(chronicler.missionId, (detail) => detail.thread.state === "Idle", helper.threadId);
+      yield* settle(chronicler.missionId, (detail) => detail.thread.state === "Resting", helper.threadId);
       expect(yield* tool(helper.threadId, "search_intel", { ids: [questId] })).toContain("No lore");
       expect(yield* tool(chronicler.threadId, "update_intel", { id: questId, text: "Changed." })).toContain(
         "Not changed",
@@ -50,7 +50,7 @@ describe("searching lore as Chronicler", () => {
     return Effect.gen(function* () {
       const chronicler = yield* guildmaster;
       const quest = yield* start("Quest", directory);
-      yield* settle(quest.missionId, (detail) => detail.thread.state === "Idle");
+      yield* settle(quest.missionId, (detail) => detail.thread.state === "Resting");
       const questId = idOf(yield* save(quest.threadId, "Orchid quest detail.", "mission"));
       const before = yield* loreEntryOf(questId);
       expect(yield* tool(chronicler.threadId, "search_intel", { query: "orchid" })).toContain("Orchid quest detail.");

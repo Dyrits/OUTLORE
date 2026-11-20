@@ -102,7 +102,7 @@ describe("choosing what a realm archive does with its quests and Rituals", () =>
           text: "wait 5000",
           threadId: working.threadId,
         });
-        yield* settle(working.missionId, (detail) => detail.thread.state === "Running");
+        yield* settle(working.missionId, (detail) => detail.thread.state === "Underway");
         const stranger = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: "free" });
         const ritual = yield* createRitual(path);
         const preview = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
@@ -115,7 +115,7 @@ describe("choosing what a realm archive does with its quests and Rituals", () =>
           ).toMatchObject({ kind: "InvalidInput" });
         }
         expect((yield* list()).workspaces.map((each) => each.id)).toEqual([realm.id]);
-        expect((yield* read(working.missionId)).thread.state).toBe("Running");
+        expect((yield* read(working.missionId)).thread.state).toBe("Underway");
       }),
     ),
   );
@@ -171,7 +171,7 @@ describe("choosing what a realm archive does with its quests and Rituals", () =>
         const realm = yield* createFolderRealm(path);
         const ritual = yield* createRitual(path, "wait 5000");
         yield* call({ _tag: "RunRitual", ritualId: ritual.ritualId });
-        yield* settle(ritual.missionId, (detail) => detail.thread.state === "Running");
+        yield* settle(ritual.missionId, (detail) => detail.thread.state === "Underway");
         const preview = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
         expect(preview.workingCount).toBe(1);
         yield* call({ _tag: "ArchiveRealm", snapshot: preview.snapshot, workspaceId: realm.id });

@@ -85,13 +85,13 @@ describe("keeping a continued suggestion's words from authorizing a Ritual's str
         const quest = yield* restingQuest;
         const ritual = yield* createEmptyScopeRitual;
         yield* send(ritual.threadId, "wait 600");
-        yield* settle(ritual.missionId, (detail) => detail.thread.state === "Running");
+        yield* settle(ritual.missionId, (detail) => detail.thread.state === "Underway");
         const suggester = yield* continueSuggestion(ritual.missionId, archiveScriptOf(quest.missionId));
         yield* settle(suggester.missionId, isIdle);
         const preview = yield* call({ _tag: "PreviewDeletion", threadId: suggester.threadId });
         yield* call({ _tag: "DeleteThread", confirmation: preview.confirmation, threadId: suggester.threadId });
         // The continued text still waits behind the running turn, so it runs only after its writer is gone.
-        expect((yield* read(ritual.missionId)).thread.state).toBe("Running");
+        expect((yield* read(ritual.missionId)).thread.state).toBe("Underway");
         const asked = yield* settle(ritual.missionId, (detail) => detail.questions.length > 0);
         expect(openOf(asked)[0]?.summary).toBe('Archive the quest "Old notes".');
         yield* deny(openOf(asked)[0]);

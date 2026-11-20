@@ -18,7 +18,7 @@ const summary = (id: string, parentId: string | null, openedAt: number, isAside 
     isOpenedByAgent: false,
     openedAt,
     parentId,
-    state: "Idle",
+    state: "Resting",
     title: id,
     waitingCount: 0,
   }) as ThreadSummary;

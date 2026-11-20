@@ -104,7 +104,7 @@ The interface uses guild names for familiar concepts:
 | Chronicler | The assistant that opens and coordinates quests |
 | Ritual | A recurring instruction on a schedule |
 | Workshop | Settings (permissions, look and feel, providers, Companions, remote access, messaging, limits, updates) |
-| Summons | A thread needs your attention |
+| Attention | A thread needs your attention |
 
 The [glossary](documentation/glossary.md) explains the full vocabulary and the technical names used in the code.
 

@@ -40,7 +40,7 @@ describe("a deletion whose erasing fails", () => {
         text: "see",
         workspacePath: null,
       });
-      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Resting");
       const preview = yield* call({ _tag: "PreviewDeletion", threadId: detail.thread.id });
       // The last record to go, after the attachments' rows and the messages have been deleted.
       yield* sql`CREATE TRIGGER fail_quest_erase BEFORE DELETE ON missions

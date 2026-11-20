@@ -11,6 +11,7 @@ export function ConversationRunner({
   conversation,
   isChronicler = false,
   isFullPanel = false,
+  isTabOpen = false,
   onOpenTab,
 }: {
   client: ServiceClient;
@@ -18,6 +19,7 @@ export function ConversationRunner({
   conversation: ReturnType<typeof useThreadConversation>;
   isChronicler?: boolean;
   isFullPanel?: boolean;
+  isTabOpen?: boolean;
   onOpenTab?: (() => void) | undefined;
 }) {
   return (
@@ -29,6 +31,7 @@ export function ConversationRunner({
       isChronicler={isChronicler}
       isCompact
       isFullPanel={isFullPanel}
+      isTabOpen={isTabOpen}
       onChange={(next) =>
         conversation.act(client.request({ _tag: "ChangeThreadRunner", ...next, threadId: thread.id }))
       }

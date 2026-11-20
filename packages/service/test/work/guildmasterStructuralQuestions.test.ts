@@ -109,7 +109,7 @@ describe("asking before structural actions the owner did not name", () => {
     Effect.gen(function* () {
       const place = yield* guildmaster;
       const busy = yield* start("wait 4000");
-      yield* settle(busy.missionId, (detail) => detail.thread.state === "Running");
+      yield* settle(busy.missionId, (detail) => detail.thread.state === "Underway");
       yield* call({ _tag: "RenameMission", missionId: busy.missionId, title: "Long import job" });
       yield* say(
         place.threadId,
@@ -120,7 +120,7 @@ describe("asking before structural actions the owner did not name", () => {
       yield* settle(busy.missionId, (detail) => detail.thread.state === "Stopped");
 
       const other = yield* start("wait 4000");
-      yield* settle(other.missionId, (detail) => detail.thread.state === "Running");
+      yield* settle(other.missionId, (detail) => detail.thread.state === "Underway");
       yield* call({ _tag: "RenameMission", missionId: other.missionId, title: "Second import job" });
       yield* say(
         place.threadId,
@@ -128,7 +128,7 @@ describe("asking before structural actions the owner did not name", () => {
       );
       const asked = yield* waitUntilAsked(place);
       expect(openQuestions(asked)[0]?.summary).toContain("1 thread is still running");
-      expect((yield* read(other.missionId)).mission.state).toBe("Running");
+      expect((yield* read(other.missionId)).mission.state).toBe("Underway");
     }).pipe(Effect.provide(setup().layer)),
   );
 
@@ -136,7 +136,7 @@ describe("asking before structural actions the owner did not name", () => {
     Effect.gen(function* () {
       const place = yield* guildmaster;
       const quest = yield* start("wait 4000");
-      yield* settle(quest.missionId, (detail) => detail.thread.state === "Running");
+      yield* settle(quest.missionId, (detail) => detail.thread.state === "Underway");
       yield* say(place.threadId, `call act_on_mission ${JSON.stringify({ action: "Done", mission: quest.missionId })}`);
       const asked = yield* waitUntilAsked(place);
       yield* call({ _tag: "RenameMission", missionId: quest.missionId, title: "Changed while reviewing" });
@@ -145,7 +145,7 @@ describe("asking before structural actions the owner did not name", () => {
       yield* call({ _tag: "AnswerQuestion", answer: "Allow", message: null, questionId: question.id });
       const after = yield* settle(place.missionId, isIdle, place.threadId);
       expect(lastAgentText(after)).toContain("changed");
-      expect((yield* read(quest.missionId)).mission.state).toBe("Running");
+      expect((yield* read(quest.missionId)).mission.state).toBe("Underway");
     }).pipe(Effect.provide(setup().layer)),
   );
 

@@ -84,7 +84,7 @@ export const install = (connectorId: string, apps?: ReadonlyArray<string>) =>
 
 /** A thread's turn that has ended or is waiting on the owner. */
 export const isIdleOrAsking = (detail: MissionDetail) =>
-  detail.thread.state === "Idle" || detail.questions.some((question) => question.outcome === null);
+  detail.thread.state === "Resting" || detail.questions.some((question) => question.outcome === null);
 
 /** The question a thread is waiting on, when it is. */
 export const openQuestionOf = (detail: MissionDetail): Question | null =>
@@ -98,7 +98,7 @@ export const replyOf = (detail: MissionDetail) =>
 export const untilIdle = (missionId: MissionDetail["mission"]["id"], threadId: ThreadId | null = null) =>
   settle(
     missionId,
-    (detail) => detail.thread.state === "Idle" && detail.messages.some((message) => message.sender === "agent"),
+    (detail) => detail.thread.state === "Resting" && detail.messages.some((message) => message.sender === "agent"),
     threadId,
   );
 
@@ -127,6 +127,7 @@ export const untilReplies = (
   settle(
     missionId,
     (detail) =>
-      detail.thread.state === "Idle" && detail.messages.filter((message) => message.sender === "agent").length >= count,
+      detail.thread.state === "Resting" &&
+      detail.messages.filter((message) => message.sender === "agent").length >= count,
     threadId,
   );

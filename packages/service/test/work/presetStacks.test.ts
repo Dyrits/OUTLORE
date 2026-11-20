@@ -12,12 +12,12 @@ describe("choosing a preset on a thread", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         yield* call({ _tag: "ChangeThreadRunner", ...heavy, threadId });
         yield* send(threadId, "fail claude Usage limit reached\nrunner");
         const detail = yield* settle(
           missionId,
-          (detail) => detail.thread.harness === "codex" && detail.thread.state === "Idle",
+          (detail) => detail.thread.harness === "codex" && detail.thread.state === "Resting",
         );
         expect(detail.thread.model).toBe(codex.model);
         expect(detail.handovers.some((line) => line.text.startsWith("Fell back to Codex"))).toBe(true);
@@ -29,7 +29,7 @@ describe("choosing a preset on a thread", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         yield* call({ _tag: "SetThreadBackups", backups: [opencode], threadId });
         yield* call({
           _tag: "ChangeThreadRunner",
@@ -50,7 +50,7 @@ describe("choosing a preset on a thread", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        const detail = yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        const detail = yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         yield* call({
           _tag: "ChangeThreadRunner",
           accountId: detail.thread.accountId,
@@ -69,7 +69,7 @@ describe("choosing a preset on a thread", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         yield* call({ _tag: "SetThreadBackups", backups: [opencode], threadId });
         yield* call({
           _tag: "ChangeThreadRunner",
@@ -88,7 +88,7 @@ describe("choosing a preset on a thread", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        const detail = yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        const detail = yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         yield* call({ _tag: "SetThreadBackups", backups: [opencode], threadId });
         yield* call({
           _tag: "ChangeThreadRunner",
@@ -109,7 +109,7 @@ describe("choosing a preset on a thread", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         yield* call({ _tag: "SetThreadBackups", backups: [opencode], threadId });
         const opened = yield* call({
           _tag: "OpenThread",
@@ -129,7 +129,7 @@ describe("choosing a preset on a thread", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         const opened = yield* call({
           _tag: "OpenThread",
           ...heavy,
@@ -148,7 +148,7 @@ describe("choosing a preset on a thread", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         yield* call({ _tag: "SetThreadBackups", backups: [opencode], threadId });
         const opened = yield* call({
           _tag: "OpenThread",
@@ -187,7 +187,7 @@ describe("choosing a preset on a thread", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         yield* call({ _tag: "SetThreadBackups", backups: [opencode], threadId });
         const failure = yield* Effect.flip(
           call({

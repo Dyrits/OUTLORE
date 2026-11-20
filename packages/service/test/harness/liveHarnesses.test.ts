@@ -72,7 +72,7 @@ const titledTurn = (harness: HarnessName, model: string) =>
     const detail = yield* settle(
       started.missionId,
       (current) =>
-        current.thread.state === "Idle" || current.thread.state === "Failed" || current.thread.state === "Attention",
+        current.thread.state === "Resting" || current.thread.state === "Failed" || current.thread.state === "Attention",
     );
     expect(detail.thread.failure).toBeNull();
     expect(detail.mission.title).toBe("Live check");
@@ -112,7 +112,7 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
       const workspace = join(directory, "project");
       mkdirSync(workspace);
       const outside = join(directory, "outside.txt");
-      const isPaused = (current: MissionDetail) => current.thread.state !== "Running";
+      const isPaused = (current: MissionDetail) => current.thread.state !== "Underway";
       return Effect.gen(function* () {
         const started = yield* call({
           _tag: "StartMission",
@@ -139,7 +139,7 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
         });
         const detail = yield* settle(
           started.missionId,
-          (current) => current.thread.state === "Idle" || current.thread.state === "Failed",
+          (current) => current.thread.state === "Resting" || current.thread.state === "Failed",
         );
         expect(detail.questions.map((entry) => entry.outcome)).toEqual(["Denied"]);
         expect(existsSync(outside)).toBe(false);
@@ -184,7 +184,8 @@ describe.runIf(process.env.OUTLORE_LIVE_HARNESSES === "1")("live harnesses (use 
           workspacePath: workspace,
         });
         // Every question is allowed as it opens, so the turn runs to its end.
-        const isDone = (current: MissionDetail) => current.thread.state === "Idle" || current.thread.state === "Failed";
+        const isDone = (current: MissionDetail) =>
+          current.thread.state === "Resting" || current.thread.state === "Failed";
         let detail = yield* settle(
           started.missionId,
           (current) => isDone(current) || current.questions.some((entry) => entry.outcome === null),

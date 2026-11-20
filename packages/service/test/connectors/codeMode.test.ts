@@ -314,7 +314,7 @@ describe("when the setting takes effect", () => {
       expect(textOf(yield* callTool(started.threadId, "run_code", { code: "async () => 1" }))).toBe(
         "Unknown tool: run_code",
       );
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Idle", started.threadId);
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Resting", started.threadId);
       // The next turn starts with Code Mode on.
       yield* send(started.threadId, "wait 2000");
       yield* awaitHeld(started.threadId, true);
@@ -324,7 +324,7 @@ describe("when the setting takes effect", () => {
       // And turning it off again does not reach into the turn underway either.
       yield* turnCodeModeOff;
       expect(yield* listToolNames(started.threadId)).toContain("run_code");
-      expect((yield* read(started.missionId, started.threadId)).thread.state).toBe("Running");
+      expect((yield* read(started.missionId, started.threadId)).thread.state).toBe("Underway");
     }).pipe(Effect.provide(serviceWithGateway(noConnectorsLayer))),
   );
 });

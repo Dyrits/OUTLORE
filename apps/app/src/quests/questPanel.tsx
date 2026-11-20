@@ -246,9 +246,9 @@ export function QuestSidebar({
 
 const ledgerColumns = [
   { color: colors.danger, column: "Attention" },
-  { color: colors.accent, column: "Running" },
-  { color: colors.violet, column: "Idle" },
-  { color: colors.success, column: "Done" },
+  { color: colors.accent, column: "Underway" },
+  { color: colors.teal, column: "Resting" },
+  { color: colors.success, column: "Fulfilled" },
 ] as const;
 
 /** One row of an overview's list: a quest's name and where it stands; pressing it selects the quest. */
@@ -282,7 +282,7 @@ function QuestLedger({
   const board = boardOf(missions);
   const lists = [
     { label: "Needs you", rows: board.Attention },
-    { label: "Underway", rows: board.Running },
+    { label: "Underway", rows: board.Underway },
   ] as const;
   return (
     <>

@@ -12,7 +12,7 @@ An owner message can request Steer or Queue; Queue is the default, with no setti
 
 Track the chatter count per unordered pair of threads. Reset it on a user message to either participant or a result in their exchange. At the configured threshold, default 20, Threads pauses both in Attention and admits no further automatic turn between them until the owner decides. Keep all triggering messages. Tests must exercise simultaneous sends at the threshold.
 
-Interruption requires the owner or the direct parent, ends the active turn, and becomes Idle. Pending messages may then schedule another turn; Stop prevents that until resume. An interruption does not delete messages or approve actions. Lifecycle changes reject stale events by generation as defined in the shared design.
+Interruption requires the owner or the direct parent, ends the active turn, and becomes Resting. Pending messages may then schedule another turn; Stop prevents that until resume. An interruption does not delete messages or approve actions. Lifecycle changes reject stale events by generation as defined in the shared design.
 
 ## Seams
 
@@ -27,7 +27,7 @@ Interruption requires the owner or the direct parent, ends the active turn, and 
 | Cross-mission referenced target and direct reply | Reference resolver plus Messaging `send` and reply-to; staged. |
 | Running-turn and next-turn delivery | Messaging `send`, fake Execution capability modes and event observations; included. Claude Code behavior needs conformance evidence. |
 | Owner Steer/Queue and default setting | Messaging `send` and persisted defaults; included. |
-| Wake Waiting/Idle/Done and mutually waiting threads | Messaging `send` plus Threads state and Execution observation; included. |
+| Wake Waiting/Resting/Fulfilled and mutually waiting threads | Messaging `send` plus Threads state and Execution observation; included. |
 | Retain messages for Stopped | Messaging `send`, `readConversation`, Threads `resume`; included, including sends racing with Stop. |
 | Owner and parent interruptions | Messaging `interrupt`, fake Execution cancellation; included, with refusal for other thread callers. |
 | Chatter guard pauses both at limit | Messaging concurrent sends and Threads states with adjustable threshold; included. |

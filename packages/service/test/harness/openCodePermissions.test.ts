@@ -49,7 +49,7 @@ describe("asking the owner before OpenCode acts", () => {
       const started = yield* startMission({ harness: "opencode", text: "run git push origin main" });
       yield* settle(started.missionId, (detail) => detail.questions.length === 1);
       yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Resting");
       yield* Effect.sleep("200 millis");
       expect(replies(detail)).toEqual([]);
       expect(requests("session/prompt")).toHaveLength(1);
@@ -64,7 +64,7 @@ describe("asking the owner before OpenCode acts", () => {
       for (let attempt = 0; attempt < 100 && requests("session/prompt").length < 2; attempt++)
         yield* Effect.sleep("10 millis");
       yield* call({ _tag: "InterruptThread", threadId: started.threadId });
-      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Idle");
+      const detail = yield* settle(started.missionId, (current) => current.thread.state === "Resting");
       expect(detail.mission.usage).toEqual({ cacheCreation: 0, cacheRead: 40, input: 90, output: 8 });
     }).pipe(Effect.provide(layer));
   });

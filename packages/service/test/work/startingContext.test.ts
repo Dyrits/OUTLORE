@@ -44,7 +44,7 @@ const sumOf = (context: StartingContext) => Object.values(context.parts).reduce(
 const idle = (text = "Hello") =>
   Effect.gen(function* () {
     const started = yield* start(text);
-    yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+    yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
     return started;
   });
 /** A mission whose top thread holds three long owner messages since the journal's latest entry. */
@@ -56,7 +56,7 @@ const crowded = () =>
       yield* send(started.threadId, `${index} ${"x".repeat(80_000)}`);
       yield* settle(
         started.missionId,
-        (detail) => detail.thread.state === "Idle" && detail.messages.length >= before + 2,
+        (detail) => detail.thread.state === "Resting" && detail.messages.length >= before + 2,
         started.threadId,
       );
     }
@@ -79,7 +79,7 @@ describe("previewing a new thread's starting context", () => {
         const question = detail.questions.find((question) => question.outcome === null);
         if (question === undefined) return yield* Effect.die("No question");
         yield* call({ _tag: "AnswerQuestion", answer: "AlwaysAllow", message: null, questionId: question.id });
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         const shown = yield* preview(threadId, "Continue");
         const child = yield* open(threadId, "Continue");
         const received = yield* receivedFor(requests, child.threadId);
@@ -153,7 +153,7 @@ describe("previewing a new thread's starting context", () => {
     writeFileSync(join(app, "AGENTS.md"), "a".repeat(8_000));
     return Effect.gen(function* () {
       const started = yield* start("Hello", app);
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Idle");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
       const shown = yield* preview(started.threadId, "Go on.");
       expect(shown.parts.workspace).toBeGreaterThan(2_000);
       expect(shown.tokens).toBe(sumOf(shown));

@@ -171,7 +171,7 @@ describe("starting a mission in a workspace", () => {
       yield* call({ _tag: "RetryThread", threadId: started.threadId });
       const detail = yield* settle(started.missionId, repliedWith(2));
       expect(lastReply(detail)).toBe("Echo: Again\n\nMore");
-      expect(detail.thread).toMatchObject({ blocker: null, state: "Idle" });
+      expect(detail.thread).toMatchObject({ blocker: null, state: "Resting" });
     }).pipe(Effect.provide(layer));
   });
 

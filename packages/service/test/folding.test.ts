@@ -62,7 +62,7 @@ describe("folding threads opened by agents", () => {
             id: agent.id,
             isOpenedByAgent: true,
             parentId: started.threadId,
-            state: "Running",
+            state: "Underway",
           }),
           expect.objectContaining({
             depth: 2,

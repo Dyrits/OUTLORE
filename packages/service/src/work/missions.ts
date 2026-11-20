@@ -34,10 +34,10 @@ import { emptyQuestCondition } from "./emptyQuest.ts";
 import { lastSampleOf } from "./exchangeSamples.ts";
 import { insertJournal } from "./journal.ts";
 import { insertMessage } from "./messaging.ts";
-import { workedOutStateOf } from "./missionStates.ts";
+import { questStateOf, threadStatesOf } from "./missionStates.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 import { runStateOf, scheduleOf } from "./ritualSchedule.ts";
-import { attachmentsTitle, titleOf } from "./titles.ts";
+import { newQuestTitle } from "./titles.ts";
 import { attachWorkspace } from "./workspaces.ts";
 
 /**
@@ -60,7 +60,7 @@ export const insertMission = Effect.fnUntraced(function* (
       realm,
       ...(realmId === undefined ? {} : { realmId }),
       shouldRememberChoices,
-      title: titleOf(text) || attachmentsTitle,
+      title: newQuestTitle,
     },
     choice,
     workspacePath,
@@ -123,7 +123,7 @@ export const insertQuest = Effect.fnUntraced(function* (
       VALUES (${missionId}, ${threadId}, ${quest.title}, ${now}, ${now}, ${quest.isTitleByOwner === true ? 1 : 0})`;
   // The Charter's backup Companions are the new thread's own from the start (thread-panel, Backup companions).
   yield* sql`INSERT INTO threads (id, mission_id, state, harness, account_id, model, effort, workspace_id, title, backups)
-      VALUES (${threadId}, ${missionId}, 'Idle', ${harness}, ${accountId}, ${model}, ${effort}, ${workspaceId}, ${quest.title}, ${JSON.stringify(settings.backups)})`;
+      VALUES (${threadId}, ${missionId}, 'Resting', ${harness}, ${accountId}, ${model}, ${effort}, ${workspaceId}, ${quest.title}, ${JSON.stringify(settings.backups)})`;
   const messageId =
     quest.firstMessage === null
       ? null
@@ -156,7 +156,7 @@ type MissionRow = {
   harness: HarnessName;
   model: ModelChoice;
   lastActivityAt: number;
-  states: string;
+  otherStates: string | null;
   threadCount: number;
   ending: MissionEnding | null;
   isEmpty: number;
@@ -185,7 +185,6 @@ type MissionRow = {
   ritualNextRunAt: number | null;
   ritualSchedule: string | null;
   topState: string;
-  topYourTurn: number;
   spentCost: number;
   spentTokens: number;
 };
@@ -199,7 +198,8 @@ const promptOf = (row: MissionRow, now: number, settings: Settings): MissionProm
 };
 
 const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSummary => {
-  const states = row.states.split(",");
+  const otherStates = threadStatesOf(row.otherStates);
+  const [topState = "Resting"] = threadStatesOf(row.topState);
   return {
     budget: {
       limits: { cost: row.budgetCost, tokens: row.budgetTokens },
@@ -210,7 +210,6 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
     id: MissionId.make(row.id),
     isEmpty: row.isEmpty === 1,
     isTitleByUser: row.isTitleByUser === 1,
-    isYourTurn: row.ending === null && row.topYourTurn === 1 && workedOutStateOf(states) === "Idle",
     lastActivityAt: row.lastActivityAt,
     lastExchange: { owner: row.lastOwnerText, reply: row.lastReplyText },
     model: row.model,
@@ -226,8 +225,8 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
             nextRunAt: row.ritualNextRunAt,
             schedule: scheduleOf(row.ritualSchedule),
           },
-    runningCount: states.filter((state) => state === "Running").length,
-    state: row.ending ?? workedOutStateOf(states),
+    runningCount: [topState, ...otherStates].filter((state) => state === "Underway").length,
+    state: row.ending ?? questStateOf(topState, otherStates, row.isEmpty === 1),
     threadCount: row.threadCount,
     title: row.title,
     topThreadId: ThreadId.make(row.topThreadId),
@@ -240,7 +239,8 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
 const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
   sql<MissionRow>`
     SELECT m.id, m.title, m.top_thread_id AS topThreadId, top.harness AS harness, top.model AS model, m.last_activity_at AS lastActivityAt,
-      (SELECT group_concat(t.state) FROM threads t WHERE t.mission_id = m.id AND t.archived_at IS NULL) AS states,
+      (SELECT group_concat(t.state) FROM threads t WHERE t.mission_id = m.id AND t.id != m.top_thread_id
+        AND t.archived_at IS NULL) AS otherStates,
       (SELECT COUNT(*) FROM threads t WHERE t.mission_id = m.id AND t.archived_at IS NULL) AS threadCount,
       ${sql.literal(emptyQuestCondition("m.id"))} AS isEmpty,
       m.ending, m.is_title_by_user AS isTitleByUser, m.is_asking_done AS isAskingDone,
@@ -251,9 +251,7 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
       w.id AS workspaceId, w.name AS workspaceName,
       ${sql.literal(lastSampleOf("top.id", "user"))} AS lastOwnerText, ${sql.literal(lastSampleOf("top.id", "agent"))} AS lastReplyText,
       r.id AS ritualId, r.is_on AS ritualIsOn, r.last_run_at AS ritualLastRunAt, r.last_run_state AS ritualLastRunState,
-      r.next_run_at AS ritualNextRunAt, r.schedule AS ritualSchedule, top.state AS topState,
-      (top.state = 'Idle' AND (SELECT status FROM turns WHERE thread_id = top.id ORDER BY started_at DESC, rowid DESC LIMIT 1)
-        = 'completed') AS topYourTurn
+      r.next_run_at AS ritualNextRunAt, r.schedule AS ritualSchedule, top.state AS topState
     FROM missions m
       JOIN threads top ON top.id = m.top_thread_id
       LEFT JOIN rituals r ON r.mission_id = m.id
@@ -283,7 +281,7 @@ export const listViewSummaries = Effect.fnUntraced(function* (isArchived: boolea
     sql,
     isArchived
       ? sql`m.ending = 'Archived' AND r.id IS NULL AND m.is_guildmaster = 0`
-      : sql`(m.ending IS NULL OR m.ending = 'Done') AND r.id IS NULL AND m.is_guildmaster = 0`,
+      : sql`(m.ending IS NULL OR m.ending = 'Fulfilled') AND r.id IS NULL AND m.is_guildmaster = 0`,
   );
   return rows.map((row) => summaryOf(row, now, settings));
 });

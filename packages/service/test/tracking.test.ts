@@ -59,13 +59,14 @@ const idle = (text = "usage 5 5 0 0") =>
   });
 
 describe("working out a mission's state", () => {
-  it.effect("takes the most urgent state among its threads", () =>
+  it.effect("rolls up its top thread over the threads beneath it", () =>
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
-      expect(summaryOf(yield* list(), missionId)?.state).toBe("Idle");
+      expect(summaryOf(yield* list(), missionId)?.state).toBe("Resting");
       yield* open(threadId, "wait 100000");
       yield* advance(20);
-      expect(summaryOf(yield* list(), missionId)).toMatchObject({ runningCount: 1, state: "Running", threadCount: 2 });
+      // The top thread rests and an errand beneath it is underway: the quest shows Waiting.
+      expect(summaryOf(yield* list(), missionId)).toMatchObject({ runningCount: 1, state: "Waiting", threadCount: 2 });
       yield* open(threadId, 'ask {"action":"Push the code","command":"git push"}');
       yield* settleTurns;
       expect(summaryOf(yield* list(), missionId)?.state).toBe("Attention");
@@ -78,7 +79,7 @@ describe("asking to mark a mission done", () => {
     Effect.gen(function* () {
       const { missionId } = yield* idle(reportLine);
       const summary = summaryOf(yield* list(), missionId);
-      expect(summary).toMatchObject({ prompt: "MarkDone", state: "Idle" });
+      expect(summary).toMatchObject({ prompt: "MarkDone", state: "Resting" });
     }).pipe(Effect.provide(live())),
   );
 
@@ -162,7 +163,7 @@ describe("asking about an inactive mission", () => {
   it.effect("does not ask of a Done mission", () =>
     Effect.gen(function* () {
       const { missionId } = yield* idle();
-      yield* end(missionId, "Done");
+      yield* end(missionId, "Fulfilled");
       yield* advance(20 * day);
       expect(summaryOf(yield* list(), missionId)?.prompt).toBeNull();
     }).pipe(Effect.provide(live())),
@@ -173,10 +174,10 @@ describe("ending a mission", () => {
   it.effect("marks a mission Done with its journal entry and clears its question", () =>
     Effect.gen(function* () {
       const { missionId } = yield* idle(reportLine);
-      const preview = yield* call({ _tag: "PreviewEnding", ending: "Done", missionId });
+      const preview = yield* call({ _tag: "PreviewEnding", ending: "Fulfilled", missionId });
       expect(preview).toMatchObject({ question: null, workingCount: 0 });
-      yield* call({ _tag: "EndMission", ending: "Done", missionId, snapshot: preview.snapshot });
-      expect(summaryOf(yield* list(), missionId)).toMatchObject({ prompt: null, state: "Done" });
+      yield* call({ _tag: "EndMission", ending: "Fulfilled", missionId, snapshot: preview.snapshot });
+      expect(summaryOf(yield* list(), missionId)).toMatchObject({ prompt: null, state: "Fulfilled" });
       expect(yield* entriesOf(missionId)).toEqual(["Marked done by the user"]);
     }).pipe(Effect.provide(live())),
   );
@@ -187,17 +188,17 @@ describe("ending a mission", () => {
       const first = yield* open(threadId, "wait 100000");
       yield* open(threadId, 'ask {"action":"Push the code","command":"git push"}');
       yield* settleTurns;
-      const preview = yield* call({ _tag: "PreviewEnding", ending: "Done", missionId });
+      const preview = yield* call({ _tag: "PreviewEnding", ending: "Fulfilled", missionId });
       expect(preview.workingCount).toBe(2);
       expect(preview.question).toBe("2 threads are still running. Stop them and mark as done?");
-      yield* call({ _tag: "EndMission", ending: "Done", missionId, snapshot: preview.snapshot });
+      yield* call({ _tag: "EndMission", ending: "Fulfilled", missionId, snapshot: preview.snapshot });
       const detail = yield* read(missionId, first.threadId);
       expect(detail.threads.filter((thread) => thread.depth === 1).map((thread) => thread.state)).toEqual([
         "Stopped",
         "Stopped",
       ]);
       expect(yield* call({ _tag: "ListOpenQuestions" })).toEqual([]);
-      expect(detail.mission.state).toBe("Done");
+      expect(detail.mission.state).toBe("Fulfilled");
     }).pipe(Effect.provide(live())),
   );
 
@@ -205,7 +206,7 @@ describe("ending a mission", () => {
     Effect.gen(function* () {
       const { missionId } = yield* start("wait 100000");
       yield* advance(20);
-      const preview = yield* call({ _tag: "PreviewEnding", ending: "Done", missionId });
+      const preview = yield* call({ _tag: "PreviewEnding", ending: "Fulfilled", missionId });
       expect(preview.question).toBe("1 thread is still running. Stop it and mark as done?");
     }).pipe(Effect.provide(live())),
   );
@@ -213,14 +214,14 @@ describe("ending a mission", () => {
   it.effect("refuses to end when the threads at work changed since the preview", () =>
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
-      const preview = yield* call({ _tag: "PreviewEnding", ending: "Done", missionId });
+      const preview = yield* call({ _tag: "PreviewEnding", ending: "Fulfilled", missionId });
       yield* open(threadId, "wait 100000");
       yield* advance(20);
       const failure = yield* Effect.flip(
         call({ _tag: "EndMission", ending: "Archived", missionId, snapshot: preview.snapshot }),
       );
       expect(failure.kind).toBe("StaleVersion");
-      expect(summaryOf(yield* list(), missionId)?.state).toBe("Running");
+      expect(summaryOf(yield* list(), missionId)?.state).toBe("Waiting");
     }).pipe(Effect.provide(live())),
   );
 
@@ -269,9 +270,9 @@ describe("archiving done missions automatically", () => {
   it.effect("leaves Done missions alone by default", () =>
     Effect.gen(function* () {
       const { missionId } = yield* idle();
-      yield* end(missionId, "Done");
+      yield* end(missionId, "Fulfilled");
       yield* advance(60 * day);
-      expect(summaryOf(yield* list(), missionId)?.state).toBe("Done");
+      expect(summaryOf(yield* list(), missionId)?.state).toBe("Fulfilled");
     }).pipe(Effect.provide(live())),
   );
 
@@ -279,9 +280,9 @@ describe("archiving done missions automatically", () => {
     Effect.gen(function* () {
       yield* updateSettings({ autoArchiveDays: 30, shouldAutoArchive: true });
       const { missionId } = yield* idle();
-      yield* end(missionId, "Done");
+      yield* end(missionId, "Fulfilled");
       yield* advance(29 * day);
-      expect(summaryOf(yield* list(), missionId)?.state).toBe("Done");
+      expect(summaryOf(yield* list(), missionId)?.state).toBe("Fulfilled");
       yield* advance(2 * day);
       expect(summaryOf(yield* list({ isArchived: true }), missionId)?.state).toBe("Archived");
       expect(yield* entriesOf(missionId)).toEqual(["Marked done by the user", "Archived automatically"]);
@@ -292,7 +293,7 @@ describe("archiving done missions automatically", () => {
     Effect.gen(function* () {
       yield* updateSettings({ autoArchiveDays: 30, shouldAutoArchive: true });
       const empty = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: "empty" });
-      yield* end(empty.missionId, "Done");
+      yield* end(empty.missionId, "Fulfilled");
       yield* advance(31 * day);
       expect(summaryOf(yield* list(), empty.missionId)).toBeUndefined();
       expect(summaryOf(yield* list({ isArchived: true }), empty.missionId)).toBeUndefined();
@@ -308,12 +309,12 @@ describe("archiving done missions automatically", () => {
       // A Done quest with a thread at work: the owner's Done stops threads, so the state is written directly.
       yield* Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient;
-        yield* sql`UPDATE missions SET ending = 'Done', done_at = 0 WHERE id = ${started.missionId}`;
+        yield* sql`UPDATE missions SET ending = 'Fulfilled', done_at = 0 WHERE id = ${started.missionId}`;
       }).pipe(Effect.provide(storeLayer(`${value.directory}/store.sqlite`)));
       yield* advance(31 * day);
       const detail = yield* read(started.missionId);
       expect(detail.mission.state).toBe("Archived");
-      expect(detail.thread.state).toBe("Running");
+      expect(detail.thread.state).toBe("Underway");
     }).pipe(Effect.provide(value.layer));
   });
 });
@@ -324,7 +325,7 @@ describe("continuing an ended mission", () => {
       const { missionId } = yield* idle();
       yield* end(missionId, "Archived");
       yield* call({ _tag: "ReopenMission", missionId });
-      expect(summaryOf(yield* list(), missionId)?.state).toBe("Idle");
+      expect(summaryOf(yield* list(), missionId)?.state).toBe("Resting");
       expect(yield* entriesOf(missionId)).toEqual(["Archived by the user", "Reopened by the user"]);
     }).pipe(Effect.provide(live())),
   );
@@ -340,10 +341,10 @@ describe("continuing an ended mission", () => {
   it.effect("brings a Done mission back when the owner writes in one of its threads", () =>
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle();
-      yield* end(missionId, "Done");
+      yield* end(missionId, "Fulfilled");
       yield* send(threadId, "wait 100000");
       yield* advance(20);
-      expect(summaryOf(yield* list(), missionId)?.state).toBe("Running");
+      expect(summaryOf(yield* list(), missionId)?.state).toBe("Underway");
     }).pipe(Effect.provide(live())),
   );
 
@@ -353,7 +354,7 @@ describe("continuing an ended mission", () => {
       yield* end(missionId, "Archived");
       yield* send(threadId, "Back to it");
       yield* settleTurns;
-      expect(summaryOf(yield* list(), missionId)?.state).toBe("Idle");
+      expect(summaryOf(yield* list(), missionId)?.state).toBe("Resting");
       expect(summaryOf(yield* list({ isArchived: true }), missionId)).toBeUndefined();
     }).pipe(Effect.provide(live())),
   );
@@ -363,10 +364,10 @@ describe("ending an ended mission", () => {
   it.effect("refuses to mark a Done mission done again, or an archived one done", () =>
     Effect.gen(function* () {
       const { missionId } = yield* idle();
-      yield* end(missionId, "Done");
-      expect((yield* Effect.flip(end(missionId, "Done"))).kind).toBe("InvalidInput");
+      yield* end(missionId, "Fulfilled");
+      expect((yield* Effect.flip(end(missionId, "Fulfilled"))).kind).toBe("InvalidInput");
       yield* end(missionId, "Archived");
-      expect((yield* Effect.flip(end(missionId, "Done"))).kind).toBe("InvalidInput");
+      expect((yield* Effect.flip(end(missionId, "Fulfilled"))).kind).toBe("InvalidInput");
       expect(yield* entriesOf(missionId)).toEqual(["Marked done by the user", "Archived by the user"]);
     }).pipe(Effect.provide(live())),
   );

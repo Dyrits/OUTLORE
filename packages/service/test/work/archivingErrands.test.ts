@@ -18,7 +18,7 @@ describe("archiving an errand on its own", () => {
     withService(
       Effect.gen(function* () {
         const { missionId, threadId } = yield* start("Hello");
-        yield* settle(missionId, (detail) => detail.thread.state === "Idle");
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting");
         const opened = yield* open(threadId, "wait 2000");
         yield* call({ _tag: "ArchiveThread", threadId: opened.threadId });
         const tree = yield* call({ _tag: "ReadThreadTree", missionId });
@@ -47,13 +47,15 @@ describe("archiving an errand on its own", () => {
 });
 
 describe("a quest waiting for the owner", () => {
-  it.live("is marked after a completed turn, not before one", () =>
+  it.live("is Resting after a completed turn, and Fresh before anything is sent", () =>
     withService(
       Effect.gen(function* () {
+        const empty = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: "empty" });
+        expect((yield* read(empty.missionId)).mission.state).toBe("Fresh");
         const { missionId } = yield* start("Hello");
-        const detail = yield* settle(missionId, (current) => current.thread.state === "Idle");
-        expect(detail.mission.isYourTurn).toBe(true);
-        expect(detail.threads[0]?.isYourTurn).toBe(true);
+        const detail = yield* settle(missionId, (current) => current.thread.state === "Resting");
+        expect(detail.mission.state).toBe("Resting");
+        expect(detail.threads[0]?.shownState).toBe("Resting");
       }),
     ),
   );

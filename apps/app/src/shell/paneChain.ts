@@ -118,6 +118,7 @@ const sharesOf = (room: number, weights: ReadonlyArray<number>): Array<number> =
  * The row of panes and folded slots for a chain in `available` pixels. At most four panes are open; the earlier ones of a
  * longer chain, the ones the owner folded, and the ones the window is too narrow for are strips.
  * The deepest pane that the owner has left open keeps its space when the window narrows.
+ * The errand starter is a strip until the owner reveals it.
  * The open panes share what the strips leave, equally unless the owner dragged an edge.
  */
 export const layoutOf = <Id extends string>(input: {
@@ -142,7 +143,7 @@ export const layoutOf = <Id extends string>(input: {
     if (index === last) return null;
     if (expandedIndex >= 0) return "folded";
     if (memory.shown.has(id)) return null;
-    if (memory.folded.has(id)) return "folded";
+    if (memory.folded.has(id) || id === starter) return "folded";
     return index < firstOpen ? "overflow" : null;
   });
   const openCount = () => reasons.filter((reason) => reason === null).length;

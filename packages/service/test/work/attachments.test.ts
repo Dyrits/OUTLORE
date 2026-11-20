@@ -72,7 +72,7 @@ const sendWith = (
     threadId,
   });
 
-const idle = (detail: { thread: { state: string } }) => detail.thread.state === "Idle";
+const idle = (detail: { thread: { state: string } }) => detail.thread.state === "Resting";
 
 const attachmentFiles = (directory: string) => {
   const folder = join(directory, "attachments");
@@ -98,15 +98,15 @@ const codexModelsLayer = Layer.effect(
 ).pipe(Layer.provide(fakeHarnessToolsLayer()));
 
 describe("message attachments: images added to the owner's messages", () => {
-  it.live("names an empty quest from its first image-only message", () =>
+  it.live("leaves an empty quest called Quest after its first image-only message", () =>
     withService(
       Effect.gen(function* () {
         const quest = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: crypto.randomUUID() });
         const image = yield* add("shot.png", png());
         yield* sendWith(quest.threadId, "", [image.id]);
         const detail = yield* settle(quest.missionId, idle);
-        expect(detail.mission.title).toBe("Attached images");
-        expect(detail.thread.title).toBe("Attached images");
+        expect(detail.mission.title).toBe("Quest");
+        expect(detail.thread.title).toBe("Quest");
       }),
     ),
   );
@@ -145,7 +145,7 @@ describe("message attachments: images added to the owner's messages", () => {
           workspacePath: null,
         });
         yield* call({ _tag: "RunRitual", ritualId: ritual.ritualId });
-        yield* settle(ritual.missionId, (detail) => detail.thread.state === "Running");
+        yield* settle(ritual.missionId, (detail) => detail.thread.state === "Underway");
         const image = yield* add("shot.png", png());
         yield* sendWith(ritual.threadId, "see", [image.id], "Queue");
         const done = yield* settle(ritual.missionId, (detail) => idle(detail) && detail.handovers.length > 0);
