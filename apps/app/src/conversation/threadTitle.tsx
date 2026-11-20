@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
+import { colors, stateLabels, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ChipIcon } from "../ui/chips";
 import { Menu } from "../ui/pickers";
@@ -25,7 +26,16 @@ function TitleMenu<Id extends string>({
   if (current.state !== undefined) states.set(current.id, current.state);
   return (
     <View style={{ alignItems: "center", flexDirection: "row", gap: 6, minWidth: 0 }}>
-      <ChipIcon kind={kind} />
+      <View
+        accessibilityLabel={current.state === undefined ? kind : `${kind}, ${stateLabels[current.state]}`}
+        accessible
+      >
+        <ChipIcon
+          color={current.state === undefined ? colors.textMuted : stateTones[current.state].color}
+          kind={kind}
+          size={22}
+        />
+      </View>
       {titles.size === 1 ? (
         <Text numberOfLines={1} style={[styles.paneTitle, { flexShrink: 1 }]}>
           {currentTitle}
@@ -62,7 +72,14 @@ function QuestTitle({
     state: data?.missions.find((mission) => mission.id === detail.mission.id)?.state ?? detail.thread.state,
     title: detail.thread.title,
   };
-  return <TitleMenu choices={data?.missions ?? []} current={current} kind="quest" onSelect={onOpenMission} />;
+  return (
+    <TitleMenu
+      choices={(data?.missions ?? []).filter((mission) => mission.workspaceId === detail.mission.workspaceId)}
+      current={current}
+      kind="quest"
+      onSelect={onOpenMission}
+    />
+  );
 }
 
 export function ThreadTitle({

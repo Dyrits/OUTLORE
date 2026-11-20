@@ -5,6 +5,7 @@ import { PaneThread } from "../conversation/paneThread";
 import { OpenPanes } from "../conversation/replyLine";
 import type { ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
+import { realmMarkOf } from "../foundation/realmMark";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { FoldPaneButton } from "../ui/questHeaderButtons";
@@ -26,7 +27,6 @@ import {
 import { PaneResizer } from "./paneResizer";
 import { type NotchKind, type NotchPart, notchWidth, PaneButton, PaneNotches } from "./paneStrip";
 import { readPaneWeights, rememberPaneWeights } from "./railStorage";
-import { realmMarkOf } from "./realmMark";
 
 /** One channel slot and up to two threads of the quest. */
 const starterId = "errand-starter";

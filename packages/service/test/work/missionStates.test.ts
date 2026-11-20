@@ -24,6 +24,11 @@ describe("rolling a status up through a tree", () => {
     expect(rolledUpStateOf("Stopped", ["Underway"])).toBe("Stopped");
   });
 
+  it("shows Resting for a resting descendant when its parent is Stopped", () => {
+    expect(rolledUpStateOf("Stopped", ["Resting"])).toBe("Resting");
+    expect(questStateOf("Stopped", ["Resting"], true)).toBe("Resting");
+  });
+
   it("rolls each thread of a tree up with its own descendants only, leaving archived ones out", () => {
     const shown = shownStatesOf([
       { id: "top", isArchived: false, parentId: null, state: "Resting" },

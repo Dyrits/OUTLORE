@@ -17,13 +17,17 @@ const ICON_SIZE = 12;
 
 /** The drawings shared by the picker, the message editor, and sent message chips. */
 export const chipIcons = {
+  borderlands: {
+    paths: ["M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z", "M15.5 8.5l-2 5-5 2 2-5z", "M12 3v2M12 19v2M3 12h2M19 12h2"],
+    viewBox: "0 0 24 24",
+  },
   errand: { paths: [errandIconPath], viewBox: "0 0 20 20" },
   file: { paths: ["M3.5 1.5 H9.5 L12.5 4.5 V14.5 H3.5 Z", "M9.5 1.5 V4.5 H12.5"], viewBox: "0 0 16 16" },
   folder: { paths: ["M1.5 3.5 H6 L7.5 5 H14.5 V13 H1.5 Z"], viewBox: "0 0 16 16" },
   quest: { paths: emblemPaths.sword, viewBox: "0 0 24 24" },
   realm: {
-    paths: ["M2.5 14.5 V5.5 H4.5 V7 H6.5 V5.5 H9.5 V7 H11.5 V5.5 H13.5 V14.5 Z", "M7 14.5 V11.5 H9 V14.5"],
-    viewBox: "0 0 16 16",
+    paths: ["M3 5h18", "M12 2v3", "M5 5v12l7 5 7-5V5", "M8 8v7l4 3 4-3V8", "M12 9l1.5 3-1.5 2-1.5-2z"],
+    viewBox: "0 0 24 24",
   },
   skill: { paths: ["M2.5 5.5 H6 a1.5 1.5 0 0 1 3 0 H11.5 V8 a1.5 1.5 0 0 1 0 3 V13.5 H2.5 Z"], viewBox: "0 0 16 16" },
 } as const;
@@ -32,18 +36,26 @@ export const chipIcons = {
 export type ChipKind = keyof typeof chipIcons;
 
 /** The small outline icon for a chip's kind. */
-export function ChipIcon({ kind }: { kind: ChipKind }) {
+export function ChipIcon({
+  kind,
+  size = ICON_SIZE,
+  color = colors.accentText,
+}: {
+  kind: ChipKind;
+  size?: number;
+  color?: string;
+}) {
   const { paths, viewBox } = chipIcons[kind];
   return (
     <Svg
       fill="none"
-      height={ICON_SIZE}
-      stroke={colors.accentText}
+      height={size}
+      stroke={color}
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={1.5}
       viewBox={viewBox}
-      width={ICON_SIZE}
+      width={size}
     >
       {paths.map((path) => (
         <Path d={path} key={path} />

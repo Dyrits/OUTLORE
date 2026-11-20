@@ -31,10 +31,9 @@ export function ErrandHeaderActions({
         onPress={() => act(client.request({ _tag: "ArchiveThread", threadId: thread.id }))}
       />
       <DoneButton
-        isDisabled={isDone}
         isDone={isDone}
-        label={isDone ? "Done" : "Mark as done"}
-        onPress={() => act(client.request({ _tag: "MarkThreadDone", threadId: thread.id }))}
+        label={isDone ? "Mark as not done" : "Mark as done"}
+        onPress={() => act(client.request({ _tag: isDone ? "ReopenThread" : "MarkThreadDone", threadId: thread.id }))}
       />
     </>
   );

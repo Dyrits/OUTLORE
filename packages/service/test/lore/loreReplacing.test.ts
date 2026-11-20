@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { dayMillis } from "../../src/core/index.ts";
 import { advance, idle, idOf, loreEntryOf, panel, save, settleTurns } from "../fixtures/lore.ts";
-import { call, fixture, open, read, register, send, tool } from "../fixtures/service.ts";
+import { call, fixture, open, read, register, send, start, tool } from "../fixtures/service.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...) and thread tool names (`save_intel`, ...).
 
@@ -113,11 +113,16 @@ describe("where a lore entry comes from", () => {
 
   it.effect("never records a message the thread has not received", () =>
     Effect.gen(function* () {
-      const { threadId } = yield* idle("Use Bun for scripts.");
-      yield* call({ _tag: "StopThread", threadId });
-      // Kept for the Stopped thread, not delivered.
-      yield* send(threadId, "Unrelated later message.");
-      yield* settleTurns;
+      const { missionId, threadId } = yield* start("Use Bun for scripts.");
+      yield* advance(0);
+      yield* call({
+        _tag: "SendMessage",
+        delivery: "Queue",
+        requestId: crypto.randomUUID(),
+        text: "Unrelated later message.",
+        threadId,
+      });
+      expect((yield* read(missionId)).messages.map(({ isDelivered }) => isDelivered)).toEqual([true, false]);
       const id = idOf(yield* save(threadId, "The owner uses Bun for scripts.", "mission", "preference"));
       expect((yield* loreEntryOf(id))?.origin?.excerpt).toBe("Use Bun for scripts.");
     }).pipe(Effect.provide(live().layer)),

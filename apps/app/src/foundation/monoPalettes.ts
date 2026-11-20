@@ -38,7 +38,6 @@ export const monoPalettes = {
     successSoft: "#1f1f1f",
     successText: "#cccccc",
     surface: "#141414",
-    /** Resting: the owner's turn (CHG-0599). */
     teal: "#8c8c8c",
     tealSoft: "#242424",
     terminal: "#1a1a1a",
@@ -51,6 +50,8 @@ export const monoPalettes = {
     warning: "#999999",
     warningSoft: "#1f1f1f",
     warningText: "#d9d9d9",
+    yellow: "#bdbdbd",
+    yellowSoft: "#292929",
   },
   light: {
     accent: "#000000",
@@ -83,7 +84,6 @@ export const monoPalettes = {
     successSoft: "#ebebeb",
     successText: "#333333",
     surface: "#f5f5f5",
-    /** Resting: the owner's turn (CHG-0599). */
     teal: "#5c5c5c",
     tealSoft: "#e6e6e6",
     terminal: "#f2f2f2",
@@ -96,5 +96,7 @@ export const monoPalettes = {
     warning: "#737373",
     warningSoft: "#ebebeb",
     warningText: "#404040",
+    yellow: "#555555",
+    yellowSoft: "#e5e5e5",
   },
 } as const satisfies Record<ColorScheme, Palette>;

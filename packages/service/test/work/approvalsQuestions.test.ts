@@ -143,13 +143,13 @@ describe("no grant from prose", () => {
 describe("withdrawing questions", () => {
   const escapeInput = { command: "git push origin feature", dangerouslyDisableSandbox: true };
 
-  it.live("Stop withdraws the open question and marks the thread Stopped", () =>
+  it.live("Stop withdraws the open question and returns the thread to Resting", () =>
     Effect.gen(function* () {
       const started = yield* start(ask(push));
       yield* settle(started.missionId, isAsking);
       yield* call({ _tag: "StopThread", threadId: started.threadId });
       const detail = yield* read(started.missionId);
-      expect(detail.thread.state).toBe("Stopped");
+      expect(detail.thread.state).toBe("Resting");
       expect(detail.questions[0]?.outcome).toBe("Withdrawn");
       expect(yield* call({ _tag: "ListOpenQuestions" })).toEqual([]);
     }).pipe(Effect.provide(live())),
@@ -168,7 +168,7 @@ describe("withdrawing questions", () => {
         expect(Option.getOrThrow(late).isAllowed).toBe(false);
       }
       expect(yield* call({ _tag: "ListOpenQuestions" })).toEqual([]);
-      expect((yield* read(started.missionId)).thread.state).toBe("Stopped");
+      expect((yield* read(started.missionId)).thread.state).toBe("Resting");
     }).pipe(Effect.provide(live())),
   );
 

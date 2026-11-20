@@ -194,7 +194,7 @@ describe("guarding against chatter", () => {
       expect((yield* read(missionId)).thread.state).toBe("Attention");
       yield* call({ _tag: "StopThread", threadId });
       expect((yield* Effect.flip(call({ _tag: "ResumeThread", threadId }))).kind).toBe("InvalidInput");
-      expect((yield* read(missionId)).thread.state).toBe("Stopped");
+      expect((yield* read(missionId)).thread).toMatchObject({ blocker: "Chatter", state: "Attention" });
       yield* call({ _tag: "ResolveChatter", choice: "Stop", id: notice.id });
       yield* call({ _tag: "ResumeThread", threadId });
       const detail = yield* settle(missionId, (polled) => polled.thread.state === "Resting");

@@ -75,7 +75,9 @@ Update, 2026-11-20 (CHG-0599): the statuses and their roll-up are agreed in [mis
 | Attention | It waits for an approval, an answer, a raised budget, a missing workspace folder, or a tool or skill loading problem that prevents a turn. Shown prominently and sent as a phone notification. |
 | Idle | No turn in progress and nothing awaited. After a turn that ended normally the thread and its quest also carry `isYourTurn`, shown as a teal dot in the sidebar and the quest list instead of the grey one (CHG-0513); the state stays Idle. |
 | Failed | Its harness failed; the user can hand it over to another. |
-| Stopped | The user stopped it; it stays stopped until the user resumes it. |
+| Stopped | A thread held by an earlier stop or a separate lifecycle operation stays stopped until resumed. |
+
+Update, 2026-11-20: Stop ends the current turn and returns the thread to Resting; a new message starts the next turn without Resume.
 
 ### Off-topic requests
 
@@ -181,3 +183,5 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 - At startup, a surviving deletion marker is cleared and the thread stays Stopped. UUID scratch folders with no surviving quest are removed through the realm-protection guard. File cleanup failures are logged and retried at the next start without blocking use of the app (CHG-0431).
 
 - If scratch removal fails after the records commit, the deletion succeeds, its attachment files are still removed immediately, and the scratch failure is logged for retry on the next startup (CHG-0432).
+
+Update, 2026-11-20: A fulfilled errand can be reopened with its completion checkbox; it returns to Resting without starting a turn.

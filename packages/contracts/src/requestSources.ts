@@ -120,6 +120,7 @@ export const requestSourceRules = {
   RenameOwnAccount: shared,
   RenameRealm: shared,
   ReopenMission: shared,
+  ReopenThread: shared,
   ReorderRealms: shared,
   ReplaceSecret: shared,
   ReplyToMessage: shared,

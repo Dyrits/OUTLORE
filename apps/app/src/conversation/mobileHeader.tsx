@@ -1,10 +1,8 @@
-import type { ThreadState } from "@outlore/contracts";
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { colors, radii } from "../foundation/theme";
 import { ArchiveButton } from "../ui/archiveButton";
-import { StateIndicator } from "../ui/controls";
 
 /** Shows the menu button, conversation title and state, and available conversation actions in a narrow window. */
 export function MobileHeader({
@@ -12,14 +10,12 @@ export function MobileHeader({
   isArchiveDisabled,
   onArchive,
   onBack,
-  state,
   title,
 }: {
   errandActions: ReactNode;
   isArchiveDisabled: boolean;
   onArchive: (() => void) | null;
   onBack: () => void;
-  state: ThreadState;
   title: ReactNode;
 }) {
   return (
@@ -44,10 +40,7 @@ export function MobileHeader({
           <Path d="M15 6l-6 6 6 6" />
         </Svg>
       </Pressable>
-      <View style={local.title}>
-        {title}
-        <StateIndicator state={state} />
-      </View>
+      <View style={local.title}>{title}</View>
       <View style={local.actions}>
         {errandActions}
         {onArchive !== null && (

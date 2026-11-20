@@ -36,7 +36,7 @@ export const makeCommands = (dependencies: {
   readonly threads: {
     readonly cancel: (ids: ReadonlyArray<string>) => Effect.Effect<void>;
     readonly wake: (threadId: string) => Effect.Effect<void>;
-    readonly wakeMission: (missionId: string) => Effect.Effect<void>;
+    readonly wakeMission: (missionId: string, exceptThreadIds?: ReadonlyArray<string>) => Effect.Effect<void>;
   };
 }): CommandRunner => {
   const { publish, sql, threads } = dependencies;
@@ -55,7 +55,7 @@ export const makeCommands = (dependencies: {
         );
     }
     for (const id of followUps.threadsToWake) yield* threads.wake(id);
-    for (const id of new Set(followUps.missionsToWake)) yield* threads.wakeMission(id);
+    for (const id of new Set(followUps.missionsToWake)) yield* threads.wakeMission(id, followUps.turnsToCancel);
     if (followUps.shouldStopConnectorCalls && dependencies.stopConnectorCalls !== undefined)
       yield* dependencies.stopConnectorCalls;
   });

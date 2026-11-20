@@ -298,16 +298,15 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
     ),
   );
 
-  it.live("a message kept for a stopped thread runs on the new runner once it resumes", () =>
+  it.live("runs the next message on the new runner after Stop", () =>
     withService(
       Effect.gen(function* () {
-        const started = yield* start("Hello");
-        const first = yield* settle(started.missionId, idle);
+        const started = yield* start("wait 60000");
+        const first = yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
         yield* call({
           _tag: "StopThread",
           threadId: first.thread.id,
         });
-        yield* send(first.thread.id, "runner");
         yield* call({
           _tag: "ChangeThreadRunner",
           accountId: null,
@@ -316,8 +315,11 @@ describe("handover: changing a thread's harness, account, model, or effort mid-t
           model: "default",
           threadId: first.thread.id,
         });
-        yield* call({ _tag: "ResumeThread", threadId: first.thread.id });
-        const after = yield* settle(started.missionId, (detail) => detail.messages.length === 4 && idle(detail));
+        yield* send(first.thread.id, "runner");
+        const after = yield* settle(
+          started.missionId,
+          (detail) => lastReplyOf(detail)?.includes("codex/default/default/session none") === true && idle(detail),
+        );
         expect(lastReplyOf(after)).toContain("codex/default/default/session none");
       }),
     ),

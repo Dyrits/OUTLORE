@@ -117,7 +117,7 @@ describe("asking before structural actions the owner did not name", () => {
       );
       const stopped = yield* settle(place.missionId, isIdle, place.threadId);
       expect(openQuestions(stopped)).toEqual([]);
-      yield* settle(busy.missionId, (detail) => detail.thread.state === "Stopped");
+      yield* settle(busy.missionId, (detail) => detail.thread.state === "Resting");
 
       const other = yield* start("wait 4000");
       yield* settle(other.missionId, (detail) => detail.thread.state === "Underway");

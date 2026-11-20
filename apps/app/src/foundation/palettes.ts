@@ -50,7 +50,6 @@ const iskiosDark = {
   successSoft: "#1d3a2b",
   successText: "#7fd49a",
   surface: "#1c2a3b",
-  /** Resting: the owner's turn (CHG-0599). */
   teal: "#4fc3c0",
   tealSoft: "#1b3a42",
   /** A terminal snapshot in a message. */
@@ -64,6 +63,8 @@ const iskiosDark = {
   warning: "#e0a537",
   warningSoft: "#3a3220",
   warningText: "#ecc063",
+  yellow: "#efda70",
+  yellowSoft: "#39341d",
 } as const;
 
 /** A palette: every color the app uses, under the same names in each look. */
@@ -104,7 +105,6 @@ const iskiosLight: Palette = {
   successSoft: "#d9eddf",
   successText: "#2a7a47",
   surface: "#f8f4ee",
-  /** Resting: the owner's turn (CHG-0599). */
   teal: "#1f8a8a",
   tealSoft: "#d6ecea",
   terminal: "#e1e8f1",
@@ -117,6 +117,8 @@ const iskiosLight: Palette = {
   warning: "#c98a14",
   warningSoft: "#f7ebcb",
   warningText: "#8f5f0a",
+  yellow: "#806900",
+  yellowSoft: "#f5edc7",
 };
 
 /** Every palette: each theme in its dark and its light look. */

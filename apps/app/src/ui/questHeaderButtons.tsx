@@ -82,6 +82,25 @@ export function NewErrandButton({ label = "New errand", onPress }: { label?: str
   );
 }
 
+/** Starts a new quest in the current realm. */
+export function NewQuestButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel="New quest"
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [local.panel, pressed && local.panelActive]}
+    >
+      <HeaderIcon color={colors.textSecondary}>
+        {emblemPaths.sword.map((path) => (
+          <Path d={path} key={path} />
+        ))}
+        <Path d="M6 2.5v6M3 5.5h6" />
+      </HeaderIcon>
+    </Pressable>
+  );
+}
+
 /** A thin vertical line between groups of actions in the pane header. */
 export function HeaderSeparator() {
   return <View style={local.separator} />;

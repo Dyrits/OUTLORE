@@ -14,6 +14,7 @@ export const rolledUpStateOf = (own: ThreadState, beneath: ReadonlyArray<ThreadS
   const states = [own, ...beneath];
   if (states.includes("Failed")) return "Failed";
   if (states.includes("Attention")) return "Attention";
+  if (own === "Stopped" && beneath.includes("Resting")) return "Resting";
   const isWorkingBeneath = beneath.some((state) => state === "Underway" || state === "Waiting");
   return (own === "Resting" || own === "Waiting") && isWorkingBeneath ? "Waiting" : own;
 };
@@ -24,7 +25,7 @@ export const rolledUpStateOf = (own: ThreadState, beneath: ReadonlyArray<ThreadS
  * Resting, for the owner to mark it done or go on: only the owner's ending makes a quest Fulfilled.
  */
 export const questStateOf = (top: ThreadState, others: ReadonlyArray<ThreadState>, isEmpty: boolean): MissionState =>
-  isEmpty ? "Fresh" : rolledUpStateOf(top === "Fulfilled" ? "Resting" : top, others);
+  isEmpty && others.length === 0 ? "Fresh" : rolledUpStateOf(top === "Fulfilled" ? "Resting" : top, others);
 
 /** The status shown for each thread of a tree: its own, rolled up with its active descendants'. */
 export const shownStatesOf = (

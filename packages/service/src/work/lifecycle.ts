@@ -161,7 +161,7 @@ export const recoverThreadStates = Effect.gen(function* () {
  */
 export const haltThreads = Effect.fn("haltThreads")(function* (
   ids: ReadonlyArray<string>,
-  state: "Stopped" | "Attention",
+  state: "Stopped" | "Attention" | "Resting",
   attentionBlocker: "Chatter" | "Budget" = "Chatter",
 ) {
   const sql = yield* SqlClient.SqlClient;
@@ -171,7 +171,7 @@ export const haltThreads = Effect.fn("haltThreads")(function* (
     WHERE thread_id IN ${sql.in(ids)} AND status = 'running'`;
   yield* sql`UPDATE threads SET state = ${state}, generation = generation + 1,
     blocker = ${state === "Attention" ? attentionBlocker : null} WHERE id IN ${sql.in(ids)}`;
-  if (state === "Stopped") for (const id of ids) yield* relaxAncestors(id);
+  if (state !== "Attention") for (const id of ids) yield* relaxAncestors(id);
 });
 
 /** The mission a thread belongs to, or null for an unknown thread. */
@@ -182,13 +182,18 @@ export const readMissionIdOf = Effect.fnUntraced(function* (threadId: string) {
 });
 
 /**
- * The owner or a harness stops a thread: its turn is invalidated and it becomes Stopped; its turn is then
+ * The owner or a harness stops a thread: its turn is invalidated and it returns to Resting; its turn is then
  * cancelled and the mission's waiting threads may take the freed slot. Nothing follows for an unknown thread.
  */
 export const stopThread = Effect.fn("stopThread")(function* (threadId: string) {
   const missionId = yield* readMissionIdOf(threadId);
   if (missionId === null) return unchanged(null);
-  yield* haltThreads([threadId], "Stopped");
+  const sql = yield* SqlClient.SqlClient;
+  const pauses =
+    yield* sql`SELECT 1 FROM chatter WHERE pause_id IS NOT NULL AND (first_id = ${threadId} OR second_id = ${threadId})`;
+  yield* haltThreads([threadId], pauses.length > 0 ? "Attention" : "Resting");
+  yield* sql`UPDATE rituals SET last_run_state = 'Interrupted'
+    WHERE last_run_state = 'Underway' AND mission_id IN (SELECT id FROM missions WHERE top_thread_id = ${threadId})`;
   yield* touchMission(missionId, yield* Clock.currentTimeMillis);
   return changed(null, { missionsToWake: [missionId], turnsToCancel: [threadId] });
 });
@@ -212,6 +217,23 @@ export const markThreadDone = Effect.fn("markThreadDone")(function* (threadId: s
   yield* relaxAncestors(threadId);
   yield* touchMission(thread.missionId, now);
   return changed(null, { missionsToWake: [thread.missionId], turnsToCancel: [threadId] });
+});
+
+/** Returns a fulfilled errand to the owner's turn. */
+export const reopenThread = Effect.fn("reopenThread")(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [thread] = yield* sql<{
+    missionId: string;
+    parentId: string | null;
+    state: string;
+    archivedAt: number | null;
+  }>`SELECT mission_id AS missionId, parent_id AS parentId, state, archived_at AS archivedAt FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+  if (thread === undefined) return yield* notFound("No such thread.");
+  if (thread.parentId === null || thread.state !== "Fulfilled" || thread.archivedAt !== null)
+    return yield* invalid("This errand cannot be reopened.");
+  yield* sql`UPDATE threads SET state = 'Resting' WHERE id = ${threadId}`;
+  yield* touchMission(thread.missionId, yield* Clock.currentTimeMillis);
+  return changed(null);
 });
 
 /** The errand and the errands beneath it, with their states and whether the owner archived them. */

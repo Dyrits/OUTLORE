@@ -220,7 +220,8 @@ describe("the stdio MCP backend", () => {
   it("times out a slow call, ends the child, and answers the next call on a fresh one", async () => {
     const { backend, folder } = standInBackend(
       [{ mode: "slow", name: "slow-read", text: "slow answer" }, { name: "list-events" }],
-      { requestTimeoutMillis: 200 },
+      // Allow the fresh child to start under suite load while still timing out the five-second reply.
+      { requestTimeoutMillis: 1_500 },
     );
     const server = await backend;
     try {

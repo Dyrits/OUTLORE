@@ -2,7 +2,7 @@ import type { MessageId, MissionDetail, MissionId, ThreadId } from "@outlore/con
 import { type ReactNode, useContext, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { BudgetStopCard } from "../editors/budgets";
-import type { ServiceClient } from "../foundation/client";
+import { newRequestId, type ServiceClient } from "../foundation/client";
 import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
 import { countedOf } from "../foundation/labels";
 import { QuestTabButtonContext } from "../foundation/shellContext";
@@ -11,8 +11,14 @@ import { useEnding } from "../foundation/useEnding";
 import { EndingConfirmation } from "../quests/missionActions";
 import { MissingFolderNotice } from "../realms/workspaces";
 import { ArchiveButton } from "../ui/archiveButton";
-import { Composer, StateIndicator } from "../ui/controls";
-import { DoneButton, HeaderSeparator, NewErrandButton, QuestPanelButton } from "../ui/questHeaderButtons";
+import { Composer } from "../ui/controls";
+import {
+  DoneButton,
+  HeaderSeparator,
+  NewErrandButton,
+  NewQuestButton,
+  QuestPanelButton,
+} from "../ui/questHeaderButtons";
 import { CommentTray } from "./commentViews";
 import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
@@ -86,8 +92,6 @@ export function ThreadPane({
   const canReply = thread.parentId === null;
   const { canOpenBeneath, canResume, canStop, isInTurn } = thread.actions;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
-  // The header shows the status rolled up with the threads beneath it; a thread the tree no longer lists shows its own.
-  const shownState = detail.threads.find((candidate) => candidate.id === thread.id)?.shownState ?? thread.state;
   // Only a quest's own thread archives it, and not a Ritual's quest or one already archived.
   const isOwnQuest = thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived";
   const archive = isOwnQuest ? () => ending.start("Archived") : null;
@@ -100,8 +104,7 @@ export function ThreadPane({
           : ending.start("Fulfilled")
     : null;
   const errandActions = <ErrandHeaderActions act={act} client={client} detail={detail} />;
-  // The actions (archive, done) are kept apart from the layout controls that follow them by a separator.
-  const hasActions = archive !== null || hasErrandActions(detail) || onNewErrand !== undefined;
+  const hasActions = archive !== null || hasErrandActions(detail);
   const windowQuestTab = useContext(QuestTabButtonContext);
   const questTab = isInPane ? null : windowQuestTab;
   return (
@@ -114,7 +117,6 @@ export function ThreadPane({
               isArchiveDisabled={ending.isBusy}
               onArchive={archive}
               onBack={onBack}
-              state={shownState}
               title={<ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />}
             />
           )}
@@ -125,7 +127,6 @@ export function ThreadPane({
                   <View style={styles.flex}>
                     <ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />
                   </View>
-                  <StateIndicator state={shownState} />
                   {canResume && (
                     <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
                       <Text style={styles.link}>Resume</Text>
@@ -136,8 +137,36 @@ export function ThreadPane({
                   )}
                   {markDone !== null && <DoneButton isDisabled={ending.isBusy} isDone={isDone} onPress={markDone} />}
                   {errandActions}
-                  {onNewErrand !== undefined && <NewErrandButton onPress={onNewErrand} />}
-                  {hasActions && (questTab !== null || chrome != null) && <HeaderSeparator />}
+                  {isInPane && thread.parentId === null && (
+                    <>
+                      <HeaderSeparator />
+                      <NewQuestButton
+                        onPress={() =>
+                          void act(
+                            client
+                              .request({
+                                _tag: "StartEmptyQuest",
+                                realmId: detail.mission.workspaceId,
+                                requestId: newRequestId(),
+                              })
+                              .then((started) => onOpenMission(started.missionId)),
+                          )
+                        }
+                      />
+                      <HeaderSeparator />
+                    </>
+                  )}
+                  {onNewErrand !== undefined && (
+                    <>
+                      <HeaderSeparator />
+                      <NewErrandButton onPress={onNewErrand} />
+                      <HeaderSeparator />
+                    </>
+                  )}
+                  {onNewErrand === undefined &&
+                    !(isInPane && thread.parentId === null) &&
+                    hasActions &&
+                    (questTab !== null || chrome != null) && <HeaderSeparator />}
                   {questTab !== null && <QuestPanelButton isOpen={questTab.isOpen} onPress={questTab.onPress} />}
                   {questTab !== null && chrome != null && <HeaderSeparator />}
                   {chrome}
@@ -234,58 +263,71 @@ export function ThreadPane({
               )}
               style={companions?.isSelected ? { display: "none" } : styles.flex}
             />
-            {replyTo !== null ? (
-              <ReplyForm
-                client={client}
-                message={replyTo}
-                onCancel={() => setReplyTo(null)}
-                onStarted={(started) => {
-                  setReplyTo(null);
-                  onSelect(started.threadId);
-                }}
-                placeholder="The errand's first message…"
-                runner={replyRunnerOf(thread)}
-              />
-            ) : isOpening ? (
-              <OpenThreadForm
-                client={client}
-                onCancel={() => setIsOpening(false)}
-                onOpened={(threadId) => {
-                  setIsOpening(false);
-                  onSelect(threadId);
-                }}
-                parent={thread}
-              />
-            ) : (
-              <>
-                <CommentTray />
-                <Composer
-                  draftKey={`thread:${thread.id}`}
-                  {...(canOpenBeneath && !isInPane ? { onOpenSideQuest: () => setIsOpening(true) } : {})}
-                  hasContent={terminal.hasContent || comments.items.length > 0}
-                  {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
-                  // The harness, account, Companion, and effort can change at any time, in a turn too: a handover
-                  // (thread-handover). It starts no turn: the running turn finishes as it was, and the next message, or Retry
-                  // after a failed turn, runs on it.
-                  accessory={
-                    <ConversationRunner
-                      client={client}
-                      conversation={conversation}
-                      isTabOpen={companions?.isSelected === true}
-                      onOpenTab={companions?.onOpen}
-                      thread={thread}
-                    />
-                  }
-                  attachments={{ client, refusal: conversation.refusal }}
-                  dictation={{ client }}
-                  mentions={{ client, workspacePath: thread.workspace?.path ?? null }}
-                  skills={skills}
-                  {...(canStop ? { onStop: conversation.stop } : {})}
-                  onSend={conversation.send}
-                  placeholder={conversation.placeholder}
+            {companions?.isSelected && (
+              <View style={styles.composerAccessory}>
+                <ConversationRunner
+                  client={client}
+                  conversation={conversation}
+                  isTabOpen
+                  onOpenTab={companions.onOpen}
+                  thread={thread}
                 />
-              </>
+              </View>
             )}
+            <View style={companions?.isSelected ? { display: "none" } : undefined}>
+              {replyTo !== null ? (
+                <ReplyForm
+                  client={client}
+                  message={replyTo}
+                  onCancel={() => setReplyTo(null)}
+                  onStarted={(started) => {
+                    setReplyTo(null);
+                    onSelect(started.threadId);
+                  }}
+                  placeholder="The errand's first message…"
+                  runner={replyRunnerOf(thread)}
+                />
+              ) : isOpening ? (
+                <OpenThreadForm
+                  client={client}
+                  onCancel={() => setIsOpening(false)}
+                  onOpened={(threadId) => {
+                    setIsOpening(false);
+                    onSelect(threadId);
+                  }}
+                  parent={thread}
+                />
+              ) : (
+                <>
+                  <CommentTray />
+                  <Composer
+                    draftKey={`thread:${thread.id}`}
+                    {...(canOpenBeneath && !isInPane ? { onOpenSideQuest: () => setIsOpening(true) } : {})}
+                    hasContent={terminal.hasContent || comments.items.length > 0}
+                    {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
+                    // The harness, account, Companion, and effort can change at any time, in a turn too: a handover
+                    // (thread-handover). It starts no turn: the running turn finishes as it was, and the next message, or Retry
+                    // after a failed turn, runs on it.
+                    accessory={
+                      <ConversationRunner
+                        client={client}
+                        conversation={conversation}
+                        isTabOpen={companions?.isSelected === true}
+                        onOpenTab={companions?.onOpen}
+                        thread={thread}
+                      />
+                    }
+                    attachments={{ client, refusal: conversation.refusal }}
+                    dictation={{ client }}
+                    mentions={{ client, workspacePath: thread.workspace?.path ?? null }}
+                    skills={skills}
+                    {...(canStop ? { onStop: conversation.stop } : {})}
+                    onSend={conversation.send}
+                    placeholder={conversation.placeholder}
+                  />
+                </>
+              )}
+            </View>
           </View>
         </View>
       </RepliesProvider>

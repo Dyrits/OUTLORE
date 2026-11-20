@@ -251,7 +251,7 @@ describe("starting a mission in a workspace", () => {
       yield* settle(started.missionId, (current) => current.thread.state === "Attention");
       yield* call({ _tag: "StopThread", threadId: started.threadId });
       const detail = yield* read(started.missionId);
-      expect(detail.thread).toMatchObject({ blocker: null, state: "Stopped" });
+      expect(detail.thread).toMatchObject({ blocker: null, state: "Resting", waitingCount: 1 });
     }).pipe(Effect.provide(layer));
   });
 });

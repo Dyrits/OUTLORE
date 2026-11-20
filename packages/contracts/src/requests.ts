@@ -328,6 +328,9 @@ export const ChangeThreadRunner = Schema.TaggedStruct("ChangeThreadRunner", {
 });
 /** Marks an errand done on the owner's word, without ending its quest; its turn stops (thread-tree, Done). */
 export const MarkThreadDone = Schema.TaggedStruct("MarkThreadDone", { threadId: ThreadId });
+
+/** Reopens a fulfilled errand. */
+export const ReopenThread = Schema.TaggedStruct("ReopenThread", { threadId: ThreadId });
 /**
  * Archives an errand and the errands beneath it on their own, without archiving its quest: their work stops and they
  * leave the lists, and the conversations stay readable from the quest (thread-tree, Archiving an errand).
@@ -421,6 +424,7 @@ export const Request = Schema.Union([
   RunRitual,
   SetThreadBackups,
   MarkThreadDone,
+  ReopenThread,
   ArchiveThread,
   RestoreThread,
   DeleteRitual,

@@ -40,6 +40,24 @@ describe("serving a thread's tools", () => {
 });
 
 describe("installing and updating harnesses", () => {
+  it.live("updates Vibe without starting its interactive interface", () => {
+    const calls: Array<unknown> = [];
+    return Effect.gen(function* () {
+      const tools = yield* HarnessTools;
+      yield* tools.update("vibe");
+      expect(calls).toEqual([["uv", ["tool", "upgrade", "mistral-vibe"], {}, 300000]]);
+    }).pipe(
+      Effect.provide(
+        liveHarnessToolsLayer(
+          { claude: "claude", codex: "codex", opencode: "opencode", vibe: "vibe-acp" },
+          (...args) => {
+            calls.push(args);
+            return Effect.succeed({ code: 0, output: "", stdout: "" });
+          },
+        ),
+      ),
+    );
+  });
   it.live("offers an update only to a harness with a newer version, and updates it", () => {
     const { layer, updates } = withHarnesses();
     updates.available.codex = "0.167.0";

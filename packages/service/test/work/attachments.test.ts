@@ -345,12 +345,11 @@ describe("message attachments: images added to the owner's messages", () => {
   it.live("a handover to a model that cannot read images is refused while a message holding images waits", () =>
     withService(
       Effect.gen(function* () {
-        const started = yield* start("Hello");
-        const first = yield* settle(started.missionId, idle);
+        const started = yield* start("wait 60000");
+        const first = yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
         const threadId = first.thread.id;
-        yield* call({ _tag: "StopThread", threadId });
         const card = yield* add("shot.png", png());
-        yield* sendWith(threadId, "see", [card.id]);
+        yield* sendWith(threadId, "see", [card.id], "Queue");
         const change = (model: string) =>
           call({ _tag: "ChangeThreadRunner", accountId: null, effort: "default", harness: "codex", model, threadId });
         const failure = yield* Effect.flip(change("gpt-blind"));

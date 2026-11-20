@@ -1,5 +1,9 @@
 # Work in progress
 
+## Pane status and errand controls · 2026-11-20 · review pending
+
+CHG-0605 records the current pane and status changes, errand reopening and Stop behavior. Focused checks passed during implementation; the errand reopen service test and full suite have not been run, and the final desktop behavior needs review. See the [handoff](../.agents/handoffs/2026-11-20-1844-pane-status-follow-up.md).
+
 ## Turns woken by a background command · 2026-11-20 · live check pending
 
 CHG-0595 runs what Claude Code does after a background command ends as a turn, on `worktree/resume-after-background`.

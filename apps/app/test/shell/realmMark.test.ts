@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { realmMarkOf } from "../../src/shell/realmMark";
+import { realmMarkOf } from "../../src/foundation/realmMark";
 
 describe("a realm's mark", () => {
   it("shows Failed before Attention, and both before Underway", () => {
@@ -11,8 +11,23 @@ describe("a realm's mark", () => {
     expect(realmMarkOf(["Resting", "Underway", "Stopped"])).toBe("Underway");
   });
 
-  it("shows nothing for Resting, Waiting, Fresh, Stopped, Fulfilled or no quest", () => {
-    expect(realmMarkOf(["Resting", "Waiting", "Fresh", "Stopped", "Fulfilled", "Archived"])).toBeNull();
+  it("shows Resting when a quest rests and none has a higher priority", () => {
+    expect(realmMarkOf(["Resting", "Fresh"])).toBe("Resting");
+  });
+
+  it("shows Waiting above Resting and below Underway", () => {
+    expect(realmMarkOf(["Waiting", "Resting"])).toBe("Waiting");
+    expect(realmMarkOf(["Waiting", "Underway"])).toBe("Underway");
+  });
+
+  it("shows Fulfilled when all unarchived quests are fulfilled", () => {
+    expect(realmMarkOf(["Fulfilled", "Fulfilled", "Archived"])).toBe("Fulfilled");
+    expect(realmMarkOf(["Fulfilled", "Fresh"])).toBeNull();
+    expect(realmMarkOf(["Archived"])).toBeNull();
+  });
+
+  it("shows nothing for Fresh, Stopped or no quest", () => {
+    expect(realmMarkOf(["Fresh", "Stopped", "Fulfilled", "Archived"])).toBeNull();
     expect(realmMarkOf([])).toBeNull();
   });
 });

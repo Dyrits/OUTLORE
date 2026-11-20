@@ -44,7 +44,7 @@ export const stateTones: Record<ThreadState | MissionState, { readonly color: st
   Failed: { color: colors.dangerText, soft: colors.dangerSoft },
   Fresh: { color: colors.textMuted, soft: colors.controlActive },
   Fulfilled: { color: colors.successText, soft: colors.successSoft },
-  Resting: { color: colors.teal, soft: colors.tealSoft },
+  Resting: { color: colors.yellow, soft: colors.yellowSoft },
   Stopped: { color: colors.textSecondary, soft: colors.controlActive },
   Underway: { color: colors.accentText, soft: colors.accentSoft },
   Waiting: { color: colors.violet, soft: colors.violetSoft },

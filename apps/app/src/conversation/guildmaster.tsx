@@ -6,11 +6,12 @@ import type { ServiceClient } from "../foundation/client";
 import { companionLabelOf, harnessLabels } from "../foundation/formatting";
 import { usePageNavigation } from "../foundation/pageNavigation";
 import { allMissions } from "../foundation/queries";
+import { realmMarkOf } from "../foundation/realmMark";
 import { styles } from "../foundation/styles";
-import { colors, fontSizes, fonts } from "../foundation/theme";
+import { colors, fontSizes, fonts, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ChipIcon } from "../ui/chips";
-import { Composer, StateIndicator } from "../ui/controls";
+import { Composer } from "../ui/controls";
 import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
 import { ConversationRunner } from "./conversationRunner";
@@ -161,15 +162,28 @@ function ChroniclerChat({
   }
   const { thread } = detail;
   const { canResume, canStop, isInTurn } = thread.actions;
+  const mark =
+    channel === undefined
+      ? thread.state
+      : realmMarkOf(
+          (known?.missions ?? [])
+            .filter((mission) => mission.workspaceId === channel.id)
+            .map((mission) => mission.state),
+        );
   return (
     <RepliesProvider value={{ start: (message) => setReplyTo(message) }}>
       <View style={local.page}>
         <View style={styles.header}>
-          <ChipIcon kind="realm" />
+          <View style={{ alignItems: "center", height: 26, justifyContent: "center", width: 26 }}>
+            <ChipIcon
+              color={mark === null ? colors.textMuted : stateTones[mark].color}
+              kind={channel?.id === null ? "borderlands" : "realm"}
+              size={22}
+            />
+          </View>
           <Text numberOfLines={1} style={[styles.paneTitle, styles.flex]}>
             {channel?.name ?? "Chronicle"}
           </Text>
-          <StateIndicator state={thread.state} />
           {chrome}
           {canResume && (
             <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
@@ -241,44 +255,58 @@ function ChroniclerChat({
               />
             )}
           </View>
-          {channel === undefined && realm !== null && <RealmNote name={realm.name} onClear={() => onRealm(null)} />}
-          {replyTo !== null ? (
-            <ReplyForm
-              client={client}
-              message={replyTo}
-              onCancel={() => setReplyTo(null)}
-              onStarted={(started) => {
-                setReplyTo(null);
-                onOpenMission(started.missionId);
-              }}
-              placeholder="The quest's first message…"
-              realmPath={realm?.path ?? null}
-              runner={replyRunnerOf(thread)}
-            />
-          ) : (
-            <Composer
-              draftKey={channel === undefined ? "chronicler" : place.threadId}
-              hasContent={terminal.hasContent}
-              {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
-              accessory={
-                <ConversationRunner
-                  client={client}
-                  conversation={conversation}
-                  isChronicler
-                  isTabOpen={companions?.isSelected === true}
-                  onOpenTab={companions?.onOpen}
-                  thread={thread}
-                />
-              }
-              attachments={{ client, refusal: conversation.refusal }}
-              dictation={{ client }}
-              mentions={{ client, workspacePath: realm?.path ?? null }}
-              onSend={conversation.send}
-              {...(canStop ? { onStop: conversation.stop } : {})}
-              placeholder={conversation.placeholder}
-              skills={skills}
-            />
+          {companions?.isSelected && (
+            <View style={styles.composerAccessory}>
+              <ConversationRunner
+                client={client}
+                conversation={conversation}
+                isChronicler
+                isTabOpen
+                onOpenTab={companions.onOpen}
+                thread={thread}
+              />
+            </View>
           )}
+          <View style={companions?.isSelected ? local.hidden : undefined}>
+            {channel === undefined && realm !== null && <RealmNote name={realm.name} onClear={() => onRealm(null)} />}
+            {replyTo !== null ? (
+              <ReplyForm
+                client={client}
+                message={replyTo}
+                onCancel={() => setReplyTo(null)}
+                onStarted={(started) => {
+                  setReplyTo(null);
+                  onOpenMission(started.missionId);
+                }}
+                placeholder="The quest's first message…"
+                realmPath={realm?.path ?? null}
+                runner={replyRunnerOf(thread)}
+              />
+            ) : (
+              <Composer
+                draftKey={channel === undefined ? "chronicler" : place.threadId}
+                hasContent={terminal.hasContent}
+                {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
+                accessory={
+                  <ConversationRunner
+                    client={client}
+                    conversation={conversation}
+                    isChronicler
+                    isTabOpen={companions?.isSelected === true}
+                    onOpenTab={companions?.onOpen}
+                    thread={thread}
+                  />
+                }
+                attachments={{ client, refusal: conversation.refusal }}
+                dictation={{ client }}
+                mentions={{ client, workspacePath: realm?.path ?? null }}
+                onSend={conversation.send}
+                {...(canStop ? { onStop: conversation.stop } : {})}
+                placeholder={conversation.placeholder}
+                skills={skills}
+              />
+            )}
+          </View>
         </View>
       </View>
     </RepliesProvider>

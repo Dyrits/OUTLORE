@@ -145,12 +145,12 @@ export const threadsLayer = Layer.effectContext(
      * Once a turn ends or a thread stops, a running slot frees: wakes the mission's other threads whose
      * messages wait, in the background.
      */
-    const wakeWaiting = (missionId: string, exceptThreadId: string) =>
+    const wakeMission = (missionId: string, exceptThreadIds: ReadonlyArray<string> = []) =>
       FiberSet.run(
         background,
         Effect.gen(function* () {
-          const waiting = yield* local(listThreadsWithPending(missionId, exceptThreadId));
-          for (const threadId of waiting) yield* wake(threadId);
+          const waiting = yield* local(listThreadsWithPending(missionId, ""));
+          for (const threadId of waiting) if (!exceptThreadIds.includes(threadId)) yield* wake(threadId);
         }).pipe(Effect.orDie),
       ).pipe(Effect.asVoid);
 
@@ -298,7 +298,6 @@ export const threadsLayer = Layer.effectContext(
       clearDraft: (id) => publishDraft(id, "").pipe(Effect.asVoid),
       withdraw: withdrawAll,
     });
-    const wakeMission = (missionId: string) => wakeWaiting(missionId, "");
     // Turn events, owner requests, and tools share the runner over these same thread callbacks.
     const commands = makeCommands({
       publish: changes.publish,

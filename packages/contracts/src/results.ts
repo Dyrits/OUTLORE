@@ -130,6 +130,7 @@ export const Results = {
   RenameMission: Schema.Null,
   RenameOwnAccount: HarnessList,
   ReopenMission: Schema.Null,
+  ReopenThread: Schema.Null,
   ResolveChatter: Schema.Null,
   ResolveIntelChange: Schema.Null,
   ResolveIntelProposal: Schema.Null,

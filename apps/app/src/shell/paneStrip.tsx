@@ -3,17 +3,17 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Emblem, type EmblemName } from "../foundation/emblems";
 import { colors, fontSizes, radii, stateLabels, stateTones } from "../foundation/theme";
+import { ChipIcon } from "../ui/chips";
 import { errandIconPath } from "../ui/composerIcons";
+import { NewQuestIcon } from "./railActions";
 
 /** What a notch stands for: its icon. "more" has none: it counts the children left without a notch of their own. */
 export type NotchKind = "borderlands" | "errand" | "more" | "quest" | "realm";
 
 /** The emblem that stands for each kind of pane. */
 const emblems = {
-  borderlands: "compass",
   quest: "sword",
-  realm: "castle",
-} as const satisfies Record<Exclude<NotchKind, "errand" | "more">, EmblemName>;
+} as const satisfies Record<Exclude<NotchKind, "borderlands" | "errand" | "more" | "realm">, EmblemName>;
 
 /** The width of a notch: the room an open pane leaves on the edge that carries one, so the icon covers no text. */
 export const notchWidth = 26;
@@ -69,18 +69,26 @@ export function PaneNotches({
         >
           {part.kind === "more" ? (
             <Text style={local.count}>+{part.count}</Text>
+          ) : part.isNew === true && part.kind === "quest" ? (
+            <NewQuestIcon color={colors.textMuted} />
+          ) : part.kind === "realm" || part.kind === "borderlands" ? (
+            <ChipIcon color={colors.textSecondary} kind={part.kind} size={16} />
           ) : part.kind === "errand" ? (
             <ErrandMark />
           ) : (
             <Emblem name={emblems[part.kind]} size={16} tint={colors.textSecondary} />
           )}
-          {part.isNew === true && <PlusMark />}
-          {part.state !== null && (
-            <View
-              accessibilityLabel={stateLabels[part.state]}
-              style={[local.dot, { backgroundColor: stateTones[part.state].color }]}
-            />
-          )}
+          {part.isNew === true && part.kind !== "quest" && <PlusMark />}
+          {part.isNew !== true &&
+            (part.state !== null || part.kind === "realm" || part.kind === "borderlands" || part.kind === "errand") && (
+              <View
+                accessibilityLabel={part.state === null ? "No active status" : stateLabels[part.state]}
+                style={[
+                  local.dot,
+                  { backgroundColor: part.state === null ? colors.textMuted : stateTones[part.state].color },
+                ]}
+              />
+            )}
         </Pressable>
       ))}
     </View>

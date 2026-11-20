@@ -88,16 +88,17 @@ describe("running a Ritual by hand", () => {
     ),
   );
 
-  it.live("is refused while the Ritual's quest is stopped, and no run is begun", () =>
+  it.live("records an interrupted run and accepts another run after Stop", () =>
     withService(
       Effect.gen(function* () {
-        const created = yield* create("runner");
+        const created = yield* create("wait 60000");
+        yield* run(created);
+        yield* settle(created.missionId, (detail) => detail.thread.state === "Underway");
         yield* call({ _tag: "StopThread", threadId: created.threadId });
-        const refusal = yield* run(created).pipe(Effect.flip);
-        expect(refusal.kind).toBe("InvalidInput");
-        expect(refusal.message).toContain("stopped");
-        expect(yield* readRitual(created.missionId)).toMatchObject({ lastRunAt: null, lastRunState: null });
-        expect((yield* read(created.missionId)).messages).toEqual([]);
+        expect((yield* read(created.missionId)).thread.state).toBe("Resting");
+        expect(yield* readRitual(created.missionId)).toMatchObject({ lastRunState: "Interrupted" });
+        yield* run(created);
+        expect(yield* readRitual(created.missionId)).toMatchObject({ lastRunState: "Underway" });
       }),
     ),
   );

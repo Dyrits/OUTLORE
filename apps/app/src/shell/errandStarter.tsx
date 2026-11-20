@@ -5,6 +5,7 @@ import { PaneTabs } from "../conversation/paneTabs";
 import { OpenThreadForm } from "../conversation/threadTree";
 import type { ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
+import { colors } from "../foundation/theme";
 import { ChipIcon } from "../ui/chips";
 import { Menu } from "../ui/pickers";
 
@@ -27,7 +28,7 @@ export function ErrandStarter({
     <View style={local.pane}>
       <View style={local.header}>
         <View style={local.title}>
-          <ChipIcon kind="errand" />
+          <ChipIcon color={colors.textMuted} kind="errand" size={22} />
           {errands.length > 1 ? (
             <Menu<ThreadId | null>
               accessibilityLabel="New errand, switch errand"

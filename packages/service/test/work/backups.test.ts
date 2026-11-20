@@ -92,6 +92,8 @@ describe("marking an errand done", () => {
         const detail = yield* read(missionId, opened.threadId);
         expect(detail.thread.state).toBe("Fulfilled");
         expect((yield* read(missionId, threadId)).thread.state).toBe("Resting");
+        yield* call({ _tag: "ReopenThread", threadId: opened.threadId });
+        expect((yield* read(missionId, opened.threadId)).thread.state).toBe("Resting");
         const refusal = yield* call({ _tag: "MarkThreadDone", threadId }).pipe(Effect.flip);
         expect(String(refusal)).toContain("mark the quest done");
       }),

@@ -11,7 +11,7 @@ import { dismissPrompt, endMission, previewEnding, reopenMission } from "./endin
 import { changed } from "./followUps.ts";
 import { readGuildHallRecap, visitGuildHall } from "./guildHall.ts";
 import { readGuildmaster } from "./guildmasterPlace.ts";
-import { archiveThread, markThreadDone, restoreThread } from "./lifecycle.ts";
+import { archiveThread, markThreadDone, reopenThread, restoreThread } from "./lifecycle.ts";
 import { readMission, readThreadTree } from "./missionDetail.ts";
 import { insertMission, insertQuest } from "./missions.ts";
 import { moveQuest } from "./questMoves.ts";
@@ -85,6 +85,7 @@ export const questsHandlers = (
     ReadThreadTree: (read) => readThreadTree(read.missionId),
     RenameMission: (rename) => change(renameMission(rename.missionId, rename.title)),
     ReopenMission: (reopen) => commands.run(reopenMission(reopen.missionId)),
+    ReopenThread: (given) => commands.run(reopenThread(given.threadId)),
     ReplyToMessage: (reply) =>
       Effect.gen(function* () {
         const text = yield* admitOwnerText(reply.text, [], Effect.succeed(null));
@@ -168,6 +169,7 @@ export const questsHandlers = (
     | "InterruptThread"
     | "ListMissions"
     | "MarkThreadDone"
+    | "ReopenThread"
     | "ArchiveThread"
     | "RestoreThread"
     | "MoveQuest"

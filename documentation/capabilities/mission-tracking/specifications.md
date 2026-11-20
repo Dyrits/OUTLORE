@@ -66,13 +66,15 @@ Update, 2026-11-20 (CHG-0599, owner decisions): the statuses below replace the o
 | Waiting | Its own turn is over and work is still going beneath it (a descendant is Underway or Waiting). | violet |
 | Attention | It waits for the owner: an approval, an answer, a raised budget, a missing workspace folder, or a tool or skill loading problem that prevents a turn. | orange |
 | Failed | Its harness failed; the owner can hand it over to another. | red |
-| Resting | Its last turn ended normally and nothing is underway beneath it, so the next move is the owner's. There is no separate "your turn" flag: Resting is it. | teal |
-| Stopped | The owner stopped it (errands only); it stays stopped until the owner resumes it. | grey |
+| Resting | Its last turn ended normally and nothing is underway beneath it, so the next move is the owner's. There is no separate "your turn" flag: Resting is it. | yellow |
+| Stopped | A thread held by an earlier stop or a separate lifecycle operation; it stays stopped until resumed. | grey |
 | Fulfilled | The owner marked it done (the former Done). | green |
 | Archived | Out of the active list, in the Archived view. | grey |
 
-- Roll-up. The status shown for a quest or an errand is worked out from itself and the active threads beneath it: Failed if it or any of them is Failed; otherwise Attention if it or any of them is Attention; otherwise Waiting if it is Resting or Waiting and any of them is Underway or Waiting; otherwise its own status. Stopped, Fulfilled, Fresh and archived threads add nothing. A quest takes the roll-up of its top thread over the whole tree.
-- A realm has no stored status. Its mark is worked out from its active quests: Failed or Attention when one has it (Failed first), otherwise Underway when one is, otherwise no dot. It is display only and never stored.
+Update, 2026-11-20: Stop ends the current turn and returns the thread to Resting; a new message can start another turn without Resume.
+
+- Roll-up. The status shown for a quest or an errand is worked out from itself and the active threads beneath it: Failed if it or any of them is Failed; otherwise Attention if it or any of them is Attention; otherwise Waiting if it is Resting or Waiting and any of them is Underway or Waiting; otherwise Resting when a stopped thread has a resting descendant, otherwise its own status. Fulfilled, Fresh and archived threads add nothing. A quest takes the roll-up of its top thread over the whole tree.
+- A realm or Borderlands has no stored status. Its mark follows its quests in priority order: Failed, Attention, Underway, Waiting, Resting; it is Fulfilled when all unarchived quests are fulfilled, and otherwise has no status.
 - Order for notches and lists of active work, most urgent first: Failed, Attention, Resting, Underway, Waiting, Stopped, Fresh; equal ranks put the latest activity first. Fulfilled and archived work has no notch.
 - Existing data converts as needed: Idle to Resting, Running to Underway, Done to Fulfilled, an empty quest to Fresh. The older "No migration required" line under CHG-0137 still allows resetting development data instead.
 - The "Mark as done" action keeps its label for now; whether it is renamed to match Fulfilled is open.

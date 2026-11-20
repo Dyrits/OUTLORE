@@ -37,7 +37,6 @@ export const onePalettes = {
     successSoft: "#343b3b",
     successText: "#a1c181",
     surface: "#2f343e",
-    /** Resting: the owner's turn (CHG-0599). */
     teal: "#56b6c2",
     tealSoft: "#2c3b40",
     terminal: "#282c34",
@@ -50,6 +49,8 @@ export const onePalettes = {
     warning: "#dec184",
     warningSoft: "#3b3b3b",
     warningText: "#dec184",
+    yellow: "#ead16a",
+    yellowSoft: "#3b3724",
   },
   light: {
     // Zed's terminal blue keeps small links and white button labels readable; its UI accent is too light for those.
@@ -83,7 +84,6 @@ export const onePalettes = {
     successSoft: "#dfeadb",
     successText: "#2b6927",
     surface: "#ebebec",
-    /** Resting: the owner's turn (CHG-0599). */
     teal: "#1a8a8a",
     tealSoft: "#d6ecec",
     terminal: "#fafafa",
@@ -97,5 +97,7 @@ export const onePalettes = {
     warningSoft: "#faf2e6",
     // Zed's warning hue, darkened for small text on its pale warning background.
     warningText: "#806a14",
+    yellow: "#806900",
+    yellowSoft: "#f5edc7",
   },
 } as const satisfies Record<ColorScheme, Palette>;

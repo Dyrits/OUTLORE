@@ -219,23 +219,19 @@ describe("stopping and resuming", () => {
       const child = only(childrenOf(running, started.threadId));
       yield* call({ _tag: "StopThread", threadId: started.threadId });
       const after = yield* settle(started.missionId, (detail) => stateOf(detail, child.id) === "Resting");
-      expect(after.thread.state).toBe("Stopped");
+      expect(after.thread.state).toBe("Resting");
     }).pipe(Effect.provide(live())),
   );
 
-  it.live("keeps messages for a Stopped thread, counts them, and delivers them on Resume", () =>
+  it.live("starts a new turn when the owner sends after stopping", () =>
     Effect.gen(function* () {
-      const started = yield* start("Begin");
-      yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
+      const started = yield* start("wait 60000");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
       yield* call({ _tag: "StopThread", threadId: started.threadId });
+      expect((yield* read(started.missionId)).thread.state).toBe("Resting");
       yield* send(started.threadId, "Are you there?");
-      yield* Effect.sleep("100 millis");
-      const kept = yield* read(started.missionId);
-      expect(kept.thread).toMatchObject({ state: "Stopped", waitingCount: 1 });
-
-      yield* call({ _tag: "ResumeThread", threadId: started.threadId });
       const resumed = yield* settle(started.missionId, (detail) => lastText(detail) === "Echo: Are you there?");
-      expect(resumed.thread).toMatchObject({ state: "Resting", waitingCount: 0 });
+      expect(resumed.thread.state).toBe("Resting");
     }).pipe(Effect.provide(live())),
   );
 
@@ -321,7 +317,7 @@ describe("limiting threads", () => {
 });
 
 describe("offering the owner a thread's actions", () => {
-  it.live("offers Stop and in-turn sending while a thread works, and Resume once it is Stopped", () =>
+  it.live("offers Stop and in-turn sending while a thread works, and returns to Resting after Stop", () =>
     Effect.gen(function* () {
       const started = yield* start("wait 60000");
       const running = yield* settle(started.missionId, (current) => current.thread.state === "Underway");
@@ -330,7 +326,7 @@ describe("offering the owner a thread's actions", () => {
       const stopped = yield* read(started.missionId);
       expect(stopped.thread.actions).toEqual({
         canOpenBeneath: true,
-        canResume: true,
+        canResume: false,
         canStop: false,
         isInTurn: false,
       });
