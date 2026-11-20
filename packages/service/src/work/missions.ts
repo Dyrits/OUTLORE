@@ -31,6 +31,7 @@ import { budgetRefusalOf } from "./budgetScopes.ts";
 import { applyDefaultBudget } from "./budgets.ts";
 import { consumptionOf } from "./consumption.ts";
 import { emptyQuestCondition } from "./emptyQuest.ts";
+import { lastSampleOf } from "./exchangeSamples.ts";
 import { insertJournal } from "./journal.ts";
 import { insertMessage } from "./messaging.ts";
 import { workedOutStateOf } from "./missionStates.ts";
@@ -173,6 +174,8 @@ type MissionRow = {
   earlierTurns: number;
   workspaceId: string | null;
   workspaceName: string | null;
+  lastOwnerText: string | null;
+  lastReplyText: string | null;
   budgetCost: number | null;
   budgetTokens: number | null;
   ritualId: string | null;
@@ -209,6 +212,7 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
     isTitleByUser: row.isTitleByUser === 1,
     isYourTurn: row.ending === null && row.topYourTurn === 1 && workedOutStateOf(states) === "Idle",
     lastActivityAt: row.lastActivityAt,
+    lastExchange: { owner: row.lastOwnerText, reply: row.lastReplyText },
     model: row.model,
     prompt: promptOf(row, now, settings),
     ritual:
@@ -245,6 +249,7 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
       m.budget_cost AS budgetCost, m.budget_tokens AS budgetTokens, COALESCE(SUM(${sql.literal(costSum)}), 0) AS spentCost,
       COALESCE(SUM(${sql.literal(tokenSum)}), 0) AS spentTokens,
       w.id AS workspaceId, w.name AS workspaceName,
+      ${sql.literal(lastSampleOf("top.id", "user"))} AS lastOwnerText, ${sql.literal(lastSampleOf("top.id", "agent"))} AS lastReplyText,
       r.id AS ritualId, r.is_on AS ritualIsOn, r.last_run_at AS ritualLastRunAt, r.last_run_state AS ritualLastRunState,
       r.next_run_at AS ritualNextRunAt, r.schedule AS ritualSchedule, top.state AS topState,
       (top.state = 'Idle' AND (SELECT status FROM turns WHERE thread_id = top.id ORDER BY started_at DESC, rowid DESC LIMIT 1)

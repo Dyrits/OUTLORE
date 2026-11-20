@@ -38,14 +38,18 @@ function RealmNote({ name, onClear }: { name: string; onClear: () => void }) {
  * attached to the next message. `chrome` is the buttons at the end of its header: fold, or close on a narrow window.
  */
 export function ChroniclerConversation({
+  alternateBody,
   channel,
   chrome,
   client,
   onOpenMission,
   onRealm,
   realmPath,
+  tabs,
   viewing,
 }: {
+  /** Shown in place of the conversation and its composer, under the tabs (a realm's Quests tab); undefined shows the conversation. */
+  alternateBody?: ReactNode;
   /** The buttons at the end of the header, which the pane that holds the conversation chooses. */
   channel?: { id: WorkspaceId | null; name: string } | undefined;
   chrome: ReactNode;
@@ -53,6 +57,8 @@ export function ChroniclerConversation({
   onOpenMission: (id: MissionId) => void;
   onRealm: (path: string | null) => void;
   realmPath: string | null;
+  /** The tabs under the header, which the pane that holds the conversation chooses. */
+  tabs?: ReactNode;
   /** The screen the panel is open beside, which Chronicler reads with each message. */
   viewing: Viewing;
 }) {
@@ -69,6 +75,7 @@ export function ChroniclerConversation({
     );
   return (
     <ChroniclerChat
+      alternateBody={alternateBody}
       channel={channel}
       chrome={chrome}
       client={client}
@@ -77,12 +84,14 @@ export function ChroniclerConversation({
       onRealm={onRealm}
       place={place}
       realmPath={realmPath}
+      tabs={tabs}
       viewing={viewing}
     />
   );
 }
 
 function ChroniclerChat({
+  alternateBody,
   channel,
   chrome,
   client,
@@ -90,8 +99,10 @@ function ChroniclerChat({
   onRealm,
   place,
   realmPath,
+  tabs,
   viewing,
 }: {
+  alternateBody?: ReactNode;
   channel?: { id: WorkspaceId | null; name: string } | undefined;
   chrome: ReactNode;
   client: ServiceClient;
@@ -99,6 +110,7 @@ function ChroniclerChat({
   onRealm: (path: string | null) => void;
   place: GuildmasterPlace;
   realmPath: string | null;
+  tabs?: ReactNode;
   viewing: Viewing;
 }) {
   const { data: known } = useServiceQuery(client, allMissions.request, allMissions.key);
@@ -158,6 +170,7 @@ function ChroniclerChat({
             </Pressable>
           )}
         </View>
+        {tabs}
         {detail.budgetStop !== null && (
           <BudgetStopCard client={client} onRaise={() => setIsBudgetOpen(true)} stop={detail.budgetStop} />
         )}
@@ -179,7 +192,9 @@ function ChroniclerChat({
         <Text numberOfLines={1} style={local.sub}>
           Chronicler · {harnessLabels[thread.harness]} · {companionLabelOf(thread.harness, null, thread.model)}
         </Text>
-        {entries.length === 0 && draft === "" && terminal.panel === null ? (
+        {alternateBody !== undefined ? (
+          <View style={local.body}>{alternateBody}</View>
+        ) : entries.length === 0 && draft === "" && terminal.panel === null ? (
           <View style={local.empty}>
             <Text style={local.emptyTitle}>Tell Chronicler what you need.</Text>
             <Text style={local.emptyText}>
@@ -211,7 +226,7 @@ function ChroniclerChat({
           />
         )}
         {channel === undefined && realm !== null && <RealmNote name={realm.name} onClear={() => onRealm(null)} />}
-        {replyTo !== null ? (
+        {alternateBody !== undefined ? null : replyTo !== null ? (
           <ReplyForm
             client={client}
             message={replyTo}
@@ -245,6 +260,7 @@ function ChroniclerChat({
 }
 
 const local = StyleSheet.create({
+  body: { flex: 1 },
   empty: { alignItems: "center", flex: 1, gap: 8, justifyContent: "center", paddingHorizontal: 24 },
   emptyText: {
     color: colors.textMuted,

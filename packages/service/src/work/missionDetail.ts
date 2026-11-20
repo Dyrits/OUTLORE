@@ -9,6 +9,7 @@ import { listThreadActivities } from "./activities.ts";
 import { readCards } from "./attachments.ts";
 import { listBudgetEvents, readHeldStop } from "./budgetViews.ts";
 import { readChatter } from "./chatter.ts";
+import { lastSampleOf } from "./exchangeSamples.ts";
 import { listHandovers } from "./handover.ts";
 import { threadActionsOf } from "./lifecycle.ts";
 import { listMissionSummaries } from "./missions.ts";
@@ -18,11 +19,13 @@ import { readThreadWorkspace } from "./workspaces.ts";
 
 // What the owner reads of one mission: its thread tree and one thread's conversation.
 
-type ThreadRow = Omit<ThreadSummary, "isOpenedByAgent" | "isAside" | "isYourTurn" | "isArchived"> & {
+type ThreadRow = Omit<ThreadSummary, "isOpenedByAgent" | "isAside" | "isYourTurn" | "isArchived" | "lastExchange"> & {
   isArchived: number;
   isOpenedByAgent: number;
   isAside: number;
   isYourTurn: number;
+  lastOwnerText: string | null;
+  lastReplyText: string | null;
 };
 
 /** The mission's threads with their depth and kept messages, each parent before the threads beneath it. */
@@ -43,16 +46,18 @@ const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId:
         (SELECT COALESCE(MAX(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS lastActivityAt,
         t.harness, t.model,
         (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id AND m.sender_kind IN ('user', 'thread')
-          AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0) AS waitingCount
+          AND m.delivered_turn_id IS NULL AND m.is_conversation_only = 0) AS waitingCount,
+        ${sql.literal(lastSampleOf("t.id", "user"))} AS lastOwnerText, ${sql.literal(lastSampleOf("t.id", "agent"))} AS lastReplyText
       FROM tree JOIN threads t ON t.id = tree.id
       WHERE t.mission_id = ${missionId} AND (${includeArchived ? 1 : 0} = 1 OR t.archived_at IS NULL)
       ORDER BY tree.path`;
-  return rows.map(({ path: _path, ...row }) => ({
+  return rows.map(({ lastOwnerText, lastReplyText, path: _path, ...row }) => ({
     ...row,
     isArchived: row.isArchived === 1,
     isAside: row.isAside === 1,
     isOpenedByAgent: row.isOpenedByAgent === 1,
     isYourTurn: row.isYourTurn === 1,
+    lastExchange: { owner: lastOwnerText, reply: lastReplyText },
   }));
 });
 

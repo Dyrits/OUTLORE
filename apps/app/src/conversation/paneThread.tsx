@@ -1,11 +1,11 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
 import { type ReactNode, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { usePaneQuestPanel } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
-import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { PaneTabs } from "./paneTabs";
 import { useQuestPages } from "./questPages";
 import { questPanelOf } from "./questPanelOf";
 import { ReplyLine } from "./replyLine";
@@ -42,7 +42,7 @@ export function PaneThread({
   );
   // A query for a newly opened thread answers after the previous one; draw only what matches.
   const detail = data !== null && data.thread.id === threadId ? data : null;
-  const [tab, setTab] = useState<"Messages" | "Errands">("Messages");
+  const [tab, setTab] = useState<"Errands" | "Missives">("Missives");
   const isQuest = detail?.thread.parentId === null;
   const pages = useQuestPages(client, missionId, data?.mission.title ?? "");
   usePaneQuestPanel(isFocused, detail && questPanelOf({ client, detail, onSelectThread: onOpenThread, pages }));
@@ -77,23 +77,7 @@ export function PaneThread({
           onOpenDetails={() => {}}
           onOpenMission={onOpenMission}
           onSelect={onOpenThread}
-          tabs={
-            isQuest ? (
-              <View accessibilityRole="tablist" style={local.tabs}>
-                {(["Messages", "Errands"] as const).map((name) => (
-                  <Pressable
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: tab === name }}
-                    key={name}
-                    onPress={() => setTab(name)}
-                    style={[local.tab, tab === name && local.selected]}
-                  >
-                    <Text style={[styles.muted, tab === name && local.selectedLabel]}>{name}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            ) : null
-          }
+          tabs={isQuest ? <PaneTabs names={["Missives", "Errands"]} onSelect={setTab} selected={tab} /> : null}
         />
       )}
     </View>
@@ -104,8 +88,4 @@ const local = StyleSheet.create({
   list: { gap: 8 },
   page: { flex: 1 },
   pane: { flex: 1, gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
-  selected: { borderBottomColor: colors.highlight },
-  selectedLabel: { fontWeight: "700" },
-  tab: { borderBottomColor: colors.edge, borderBottomWidth: 1, paddingHorizontal: 8, paddingVertical: 6 },
-  tabs: { flexDirection: "row" },
 });

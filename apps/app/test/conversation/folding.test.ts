@@ -11,6 +11,7 @@ const thread = (id: string, parentId: string | null, depth: number, isOpenedByAg
     isAside: false,
     isOpenedByAgent,
     lastActivityAt: 0,
+    lastExchange: { owner: null, reply: null },
     model: "default",
     openedAt: 0,
     parentId,

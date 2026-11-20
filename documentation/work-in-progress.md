@@ -1,5 +1,9 @@
 # Work in progress
 
+## Missives, reply-line samples, the realm's Quests tab, the Chronicle's Activity layout · 2026-11-20 · built and tested, the owner's look pending
+
+CHG-0571 (window review pending): a quest's Messages tab is **Missives**; a reply line and each quest in a realm's **Quests** tab is a block quoting the last exchange (the owner's latest message and the companion's latest reply, 160 characters each), read by the service as `lastExchange` on the summaries; a channel has Missives and Quests tabs in its own pane; the Chronicle's list is laid out as Slack's Activity tab. Checks: typecheck, Biome, the new `exchangeSamples` test (3), the app's tests (651) and the full suite (2,530 passed; 28 sandbox `git init` failures). Not seen in a window or on a phone. The decisions and the open questions are in the [changelog](changelog/0.1.13-Prototype.md), CHG-0571; the [verification](verification/2026-11-20-missives-samples-quests-tab.md) lists what was run. [Handoff](../.agents/handoffs/2026-11-20-0908-missives-realm-panes-review.md)
+
 ## Conversation panes · 2026-11-20 · desktop revision
 
 The desktop build (CHG-0565 to CHG-0567) is integrated on `main`; CHG-0570 repairs a development store that left the panes blank. The [verification note](verification/2026-11-19-conversation-panes.md) records the automated checks and the blocked window check. The [Chronicle follow-up](capabilities/conversation-panes/specifications.md#main-conversations-and-channels) adds an unread badge, filters, direct links, and History (CHG-0569). Phone navigation and pane identity are deferred. See the [handoff](../.agents/handoffs/2026-11-20-0847-conversation-panes-blank-panel-fix.md).
