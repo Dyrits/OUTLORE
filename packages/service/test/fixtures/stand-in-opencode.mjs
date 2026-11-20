@@ -201,6 +201,16 @@ const askPermission = async (prompt, subject, toolCall) => {
 };
 
 const runPrompt = async (prompt, text) => {
+  if (text.endsWith("report file changes")) {
+    update(prompt.sessionId, { kind: "edit", sessionUpdate: "tool_call", status: "pending", toolCallId: "edit-1" });
+    update(prompt.sessionId, {
+      content: [{ newText: "new\n", oldText: "old\n", path: "notes.txt", type: "diff" }],
+      sessionUpdate: "tool_call_update",
+      status: "completed",
+      toolCallId: "edit-1",
+    });
+    return finish("end_turn", "Done");
+  }
   if (isFragile) return;
   const fragile = /^fragile run (.+)$/.exec(text);
   if (fragile !== null) {

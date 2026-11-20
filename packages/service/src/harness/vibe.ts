@@ -17,6 +17,7 @@ import {
 } from "../core/index.ts";
 import { readAcpPrompt } from "./acpPrompt.ts";
 import { acpRestartKeyOf, loadAcpSession, permissionOptionIdOf } from "./acpSession.ts";
+import { acpFileEditsOf } from "./fileEditEvents.ts";
 import {
   type HarnessConnection,
   type HarnessProtocol,
@@ -185,6 +186,7 @@ const vibeProtocolOf = (options: VibeOptions): HarnessProtocol<VibeConnection> =
             toolName: textFieldOf(update, "title") ?? textFieldOf(update, "kind") ?? "tool",
           });
         }
+        for (const event of acpFileEditsOf(update, connection.sessionId, "vibe")) yield* request.onEvent(event);
       } else if (kind === "usage_update") {
         const used = fieldOf(update, "used");
         if (typeof used === "number") contextTokens = used;

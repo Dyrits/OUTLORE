@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 import { type DiffLine, type DiffLineKind, maxDiffBytes } from "@outlore/contracts";
 import { Effect } from "effect";
-import { fieldOf, textFieldOf } from "../core/index.ts";
+import { fieldOf, type ReportedFileEdit, textFieldOf } from "../core/index.ts";
 import { countsOf, lineDiffOf, withContextOf } from "./lineDiffs.ts";
 
 // What a tool call that modifies a file changed, as a diff (action-approval, A modified file's diff). The diff is the
@@ -101,6 +101,49 @@ export const fileChangeOf = Effect.fnUntraced(function* (toolName: string, input
   const before = yield* readPrevious(isAbsolute(path) ? path : resolve(folder, path));
   return "note" in before ? unknownChange(before.note) : writeChangeOf(before.text, content);
 });
+
+/** Converts a native patch or reported before and after text to the stored diff. */
+export const reportedChangeOf = (edit: ReportedFileEdit): FileChange => {
+  if ("pairs" in edit) {
+    if (edit.pairs === null) return unknownChange("The harness did not report the previous file text.");
+    const lines: Array<DiffLine> = [];
+    for (const { previous, next } of edit.pairs) {
+      if (Buffer.byteLength(previous) > maxFileBytes || Buffer.byteLength(next) > maxFileBytes)
+        return unknownChange("The file is too large to show a diff.");
+      if (previous.includes("\u0000") || next.includes("\u0000")) return unknownChange("A binary file: no diff.");
+      const hunk = withContextOf(lineDiffOf(previous, next), contextSize);
+      if (hunk.length === 0) continue;
+      if (lines.length > 0) lines.push({ kind: "Gap", text: "…" });
+      for (const line of hunk) lines.push(line);
+    }
+    return { ...countsOf(lines), lines, note: null };
+  }
+
+  if (Buffer.byteLength(edit.patch) > 2 * maxFileBytes) return unknownChange("The patch is too large to show a diff.");
+  if (edit.patch.includes("\u0000")) return unknownChange("A binary file: no diff.");
+  const lines: Array<DiffLine> = [];
+  let hasHunk = false;
+  let isInHunk = false;
+  for (const row of edit.patch.split("\n")) {
+    if (/^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@/.test(row)) {
+      if (hasHunk) lines.push({ kind: "Gap", text: "…" });
+      hasHunk = true;
+      isInHunk = true;
+    } else if (isInHunk) {
+      const kind = kindOfPrefix.get(row[0] ?? "");
+      if (row === "\\ No newline at end of file" || row === "\\ No newline at end of file\r")
+        lines.push({ kind: "Gap", text: "No newline at end of file" });
+      else if (kind !== undefined && kind !== "Gap") lines.push({ kind, text: row.slice(1) });
+      else isInHunk = false;
+    }
+  }
+  if (!hasHunk && edit.movedTo === null) return unknownChange("The harness did not report a textual patch.");
+  return {
+    ...countsOf(lines),
+    lines: withContextOf(lines, contextSize),
+    note: edit.movedTo === null ? null : `Moved to ${edit.movedTo}`,
+  };
+};
 
 const prefixes = { Added: "+", Context: " ", Gap: "~", Removed: "-" } satisfies Record<DiffLineKind, string>;
 const kindOfPrefix = new Map(

@@ -21,6 +21,7 @@ import {
 import { noTimeLimit } from "./claudeArgs.ts";
 import { codexAnswersOf, codexChoicesOf } from "./codexChoices.ts";
 import { vaultProfileArgsOf, vaultProfileName } from "./codexVaultProfile.ts";
+import { codexFileEditsOf } from "./fileEditEvents.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
   type HarnessConnection,
@@ -291,6 +292,12 @@ const readTurn = Effect.fnUntraced(function* (
       draft = "";
     } else if (method === "item/started" && itemType === "fileChange") {
       fileChanges.set(textFieldOf(item, "id") ?? "", changedPathsOf(item));
+    } else if (
+      method === "item/completed" &&
+      itemType === "fileChange" &&
+      textFieldOf(params, "turnId") === codexTurnId
+    ) {
+      for (const event of codexFileEditsOf(item, codexTurnId)) yield* request.onEvent(event);
     } else if (method === "item/agentMessage/delta") {
       draft += textFieldOf(params, "delta") ?? "";
       yield* request.onEvent({ _tag: "Draft", text: draft });

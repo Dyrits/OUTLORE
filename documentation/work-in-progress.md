@@ -1,5 +1,10 @@
 # Work in progress
 
+## File diffs across harnesses · 2026-11-20 · live checks pending
+
+CHG-0593 adds Steps diffs for completed file edits reported by Codex, OpenCode, and Vibe.
+The 26 focused tests passed with stand-in harnesses, and live harness turns remain unverified. [Verification](verification/2026-11-20-cross-harness-file-diffs.md)
+
 ## Pane notches · 2026-11-20 · window review pending
 
 CHG-0592 replaces folded strips with centered icon notches (realm, quest, errand, with the state dot) on the open pane's edge. Checks pass; not seen in a window. [Handoff](../.agents/handoffs/2026-11-20-1345-pane-notches.md)

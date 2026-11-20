@@ -22,6 +22,7 @@ import {
 import { readAcpPrompt } from "./acpPrompt.ts";
 import { acpRestartKeyOf, loadAcpSession, permissionOptionIdOf } from "./acpSession.ts";
 import { noTimeLimit } from "./claudeArgs.ts";
+import { acpFileEditsOf } from "./fileEditEvents.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
   type HarnessConnection,
@@ -265,8 +266,9 @@ const readPrompt = Effect.fnUntraced(function* (
     if (kind === "agent_message_chunk") {
       draft += textFieldOf(fieldOf(update, "content"), "text") ?? "";
       yield* request.onEvent({ _tag: "Draft", text: draft });
-    } else if (kind === "tool_call") {
-      yield* finishDraft;
+    } else if (kind === "tool_call" || kind === "tool_call_update") {
+      if (kind === "tool_call") yield* finishDraft;
+      for (const event of acpFileEditsOf(update, connection.sessionId, "opencode")) yield* request.onEvent(event);
     }
   });
 

@@ -84,6 +84,18 @@ const callTool = async (name, args) => {
 };
 
 const runTurn = async (turn, text) => {
+  if (text === "report file changes") {
+    const changes = [
+      { diff: "@@ -1,2 +1,2 @@\n-old\n+new\n same\n", kind: { type: "update" }, path: "notes.txt" },
+      { diff: "+literal prefix\n", kind: { type: "add" }, path: "created.txt" },
+      { diff: "removed\n", kind: { type: "delete" }, path: "deleted.txt" },
+    ];
+    const item = { changes, id: "patch-1", type: "fileChange" };
+    note("item/started", { item: { ...item, status: "inProgress" }, threadId, turnId: turn.id });
+    note("item/completed", { item: { ...item, status: "completed" }, threadId, turnId: turn.id });
+    note("item/completed", { item: { ...item, id: "patch-2", status: "failed" }, threadId, turnId: turn.id });
+    return finish("completed", "Done");
+  }
   const tool = /^call (\S+) (.*)$/.exec(text);
   if (tool !== null) return finish("completed", await callTool(tool[1], JSON.parse(tool[2])));
   if (text === "choose") {

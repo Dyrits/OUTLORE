@@ -16,6 +16,7 @@ export {
   type PlanLimitReport,
   type PlanLimitsReport,
   type PromptAnswer,
+  type ReportedFileEdit,
   readImages,
   routeHarnesses,
   type SteeredMessage,

@@ -80,7 +80,7 @@ const finish = (stopReason, text) => {
   });
 };
 
-const askPermission = async (prompt, subject, toolCall) => {
+const askPermission = async (prompt, subject, toolCall, completed = null) => {
   update(prompt.sessionId, {
     kind: toolCall.kind,
     rawInput: toolCall.rawInput,
@@ -99,6 +99,13 @@ const askPermission = async (prompt, subject, toolCall) => {
   });
   if (answer.outcome?.optionId === "reject_once")
     update(prompt.sessionId, { sessionUpdate: "tool_call_update", status: "failed", toolCallId: "call-1" });
+  if (answer.outcome?.optionId === "allow_once" && completed !== null)
+    update(prompt.sessionId, {
+      ...completed,
+      sessionUpdate: "tool_call_update",
+      status: "completed",
+      toolCallId: "call-1",
+    });
   return finish("end_turn", `${subject}: ${answer.outcome?.optionId ?? answer.outcome?.outcome}`);
 };
 
@@ -118,6 +125,19 @@ const modes = [
 ];
 
 const runPrompt = async (prompt, text) => {
+  if (text.endsWith("report file changes"))
+    return askPermission(
+      prompt,
+      "Write notes.txt",
+      {
+        kind: "edit",
+        rawInput: { content: "new\n", filePath: "notes.txt" },
+      },
+      {
+        content: [{ newText: "new\n", path: "notes.txt", type: "diff" }],
+        rawOutput: { content: "new\n", fileExisted: true, filePath: "notes.txt", previousContent: "old\n" },
+      },
+    );
   const run = /(?:^|\n)run (.+)$/.exec(text);
   if (run !== null) return askPermission(prompt, run[1], { kind: "execute", rawInput: { command: run[1] } });
   const edit = /(?:^|\n)edit (.+)$/.exec(text);

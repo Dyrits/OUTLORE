@@ -18,7 +18,7 @@ import { Approvals } from "./approvals.ts";
 import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
 import { Commands, makeCommands } from "./commands.ts";
-import { fileChangeOf } from "./fileChanges.ts";
+import { fileChangeOf, reportedChangeOf } from "./fileChanges.ts";
 import { readConversationSoFar } from "./handover.ts";
 import { makeLifecycle, recoverThreadStates, stopThread } from "./lifecycle.ts";
 import { listPending, listThreadsWithPending } from "./messaging.ts";
@@ -184,9 +184,12 @@ export const threadsLayer = Layer.effectContext(
               .pipe(Effect.andThen(publishDraft(threadId, "")), Effect.orDie),
           ToolCall: (call) =>
             Effect.gen(function* () {
-              // The previous text of a file a call writes whole is read before the call can have run, where the harness
-              // reports it first; only Claude Code's tool names are known (action-approval, A modified file's diff).
-              const change = turn.harness === "claude" ? yield* fileChangeOf(call.toolName, call.input, cwd) : null;
+              const change =
+                call.fileEdit !== undefined
+                  ? reportedChangeOf(call.fileEdit)
+                  : turn.harness === "claude"
+                    ? yield* fileChangeOf(call.toolName, call.input, cwd)
+                    : null;
               yield* commands.run(local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input, change)));
             }).pipe(Effect.orDie),
         });

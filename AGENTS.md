@@ -54,7 +54,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the quest and errand mention icons, read the [current handoff](.agents/handoffs/2026-11-20-1330-mention-icons.md). Handoffs are shared and committed.
+- To resume cross-harness file diffs in Steps, read the [current handoff](.agents/handoffs/2026-11-20-1315-cross-harness-file-diffs.md). Handoffs are shared and committed.
 
 - To resume the in-pane Quest and Companions tabs (landed; window review pending), read the [current handoff](.agents/handoffs/2026-11-20-1337-in-pane-details-landing.md). Handoffs are shared and committed.
 
