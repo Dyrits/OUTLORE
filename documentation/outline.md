@@ -33,11 +33,14 @@ This is the capability map, including agreed future behavior, not a checklist of
 - **workflow-running**: running a workflow, each step as a thread.
 - **[provider-accounts](capabilities/provider-accounts/specifications.md)**: running each thread on the harness and provider account chosen for it, with several accounts per harness, each signed in through the harness's own sign-in.
 - **[tool-and-skill-loading](capabilities/tool-and-skill-loading/specifications.md)**: giving every thread its selected global and workspace MCP servers, required thread tools, and skill names and descriptions, with full instructions loaded when used and harness-specific skill preference.
-- **[connectors](capabilities/connectors/specifications.md)**: installing connectors (first Composio and Apple apps) in the Charter, keeping their secrets in The Vault, and switching each on or off globally and per realm, Borderlands and quest, with read-only tools running unasked and the rest asking (specified, not built).
+- [Connectors](capabilities/connectors/specifications.md) give threads access to services such as Composio and Apple apps.
+  Manage installation and credentials under **Workshop → Connectors**.
+  See the specification for tool permissions and outstanding live checks.
 - **[scoped-intel](capabilities/scoped-intel/specifications.md)**: gathering and recalling lore at thread, realm, or global scope.
 - **[action-approval](capabilities/action-approval/specifications.md)**: asking the user in plain language before a risky action, one approval per action and thread, with standing permissions for what the user always allows.
 - **[budget-control](capabilities/budget-control/specifications.md)**: budgets on each mission, on Outlore, and on all spending over a period, stopping new spending at the limit and shown as rings that fill as they are used.
-- **[device-pairing](capabilities/device-pairing/specifications.md)**: pairing a phone or another Outlore with one pairing code and using a host's Outlore from it on any internet connection, with no account for the user (another Outlore is built; the phone is not).
+- [Device pairing](capabilities/device-pairing/specifications.md) lets the owner use a desktop host from another desktop app, a web browser, or the Android app with one pairing code.
+  See the specification for device checks and remaining work.
 - **[computer-use](capabilities/computer-use/specifications.md)**: Chronicler and threads seeing and operating the host's own desktop through Outlore's `computer_*` tools, with a question per app and another for a really sensitive action, a host-wide lock, a refusal on a locked screen, and a view-only screenshot of the host for a paired device (drafted, not built; [0021](architecture-decision-record/0021-computer-use-in-the-host-behind-computer-tools.md)).
 - **[app-updates](capabilities/app-updates/specifications.md)**: the installed desktop app finds a newer release, downloads it, and replaces itself when the owner says so, with a switch to turn checking off.
 

@@ -1,14 +1,14 @@
 # Outlore
 
-A local-first desktop workspace for working with AI agents across Claude Code, Codex, and OpenCode.
+A local-first desktop workspace for working with AI agents across Claude Code, Codex, OpenCode, and Mistral Vibe.
 
 Keep a piece of work in one quest, delegate parts of it into errands, and choose the harness, model, account, and effort for each thread.
 Follow their conversations, answer approval requests, and hand a thread over to another harness with its history intact.
 
 Outlore is in **alpha** and serves one user.
 Until the first stable release, what you save (settings, quests, accounts) is not guaranteed to carry over from one release to the next; each release's notes list its breaking changes.
-You can pair another Outlore to a computer's Outlore (Workshop → Remote access) and use it from there through an end-to-end encrypted relay; this is built and still under review.
-The phone web app, push notifications, multiplayer, and Craft workflow automation remain planned work.
+Open **Workshop → Remote access → Pair a device** on the host to use it from another desktop app, a web browser, or the Android app through an end-to-end encrypted relay.
+Push notifications, multiplayer, and Craft workflow automation remain planned work.
 See the [work in progress](documentation/work-in-progress.md) for current verification and unfinished acceptance checks.
 
 [Download installers](https://github.com/Dyrits/OUTLORE/releases) · [Report an issue](https://github.com/Dyrits/OUTLORE/issues) · [Documentation](#documentation)
@@ -79,7 +79,7 @@ It finds the quest that already covers the request and offers to continue there,
 
 ## What you can do
 
-- Work with Claude Code, Codex, and OpenCode in the same application, using your own subscriptions or API keys through their command-line tools.
+- Work with Claude Code, Codex, OpenCode, and Mistral Vibe in the same application, using your own subscriptions or API keys through their command-line tools.
 - Start or continue quests through Chronicler, a permanent assistant that routes your requests to the right quest.
 - Open errands beneath a thread, give them different models, and exchange messages along the tree.
 - Change a thread's harness, account, model, or effort between turns without discarding its conversation.
@@ -103,7 +103,7 @@ The interface uses guild names for familiar concepts:
 | Realm | A workspace folder or repository |
 | Chronicler | The assistant that opens and coordinates quests |
 | Ritual | A recurring instruction on a schedule |
-| Workshop | Settings (permissions, look and feel, providers, Companions, remote access, messaging, limits, updates) |
+| Workshop | Application settings, opened from the gear in the desktop top bar or the Workshop row on a narrow screen |
 | Attention | A thread needs your attention |
 
 The [glossary](documentation/glossary.md) explains the full vocabulary and the technical names used in the code.
@@ -121,9 +121,13 @@ Manual builds are also available from the **Artifacts** section of the [desktop 
 | Linux | x64 | `.AppImage` |
 
 From 0.1.2-Prototype on, the installed app finds new releases and updates itself (earlier releases cannot): it looks at start and every 6 hours, downloads in the background, and installs only when you press **Restart and update** in the notice or in the Workshop's **Updates** section, where you can also turn checking off.
-It asks GitHub's public release list for newer releases and sends nothing about you; a prerelease build follows prereleases, a stable build only stable releases.
+The macOS updater checks GitHub's public release list and identifies itself by app name and version.
+On macOS, a prerelease build can find prereleases and a stable build follows stable releases.
 On macOS Outlore replaces its own app after checking the download against the release's `SHA512SUMS.txt`; on Windows and Linux it uses `electron-updater`, which has not been run on those systems yet.
-The Android app updates itself the same way once it carries the updater (built from the release after 0.1.8-Prototype): it checks the same release list, downloads the APK in the background (on mobile data it waits for **Download anyway**), and installs only when you press **Install update**, after which Android asks you to confirm. It checks the download against `SHA512SUMS.txt`, and Android accepts it only when it is signed with the same key as the installed app.
+Since 0.1.9-Prototype, the Android app checks the same release list and downloads the APK in the background.
+On mobile data it waits for **Download anyway**.
+It checks the download against `SHA512SUMS.txt` before offering **Install update**.
+Android then asks you to confirm and accepts the update only when it is signed with the same key as the installed app.
 A development run (`bun run dev`) never updates.
 
 Before uploading a macOS installer, the workflow verifies and mounts its DMG, copies the app to a fresh location, and checks the rendered sidebar, service bridge, and native terminal on temporary data.
@@ -175,8 +179,11 @@ chmod +x Outlore-*.AppImage
 
 ### First launch
 
-The installer includes the interface and local service. In the Workshop, choose Install beside a missing harness, then sign in to it. Installing through the Workshop requires Node.js and npm with a writable global installation folder; you can also install harnesses yourself.
-Outlore looks for `claude`, `codex`, and `opencode` on your `PATH`.
+The desktop installer includes the interface and local service.
+In **Workshop → Providers**, choose **Install** beside a missing harness, then sign in to it.
+Installing Claude Code, Codex, or OpenCode this way requires Node.js and npm with a writable global installation folder.
+Installing Mistral Vibe through the Workshop requires `uv`.
+Outlore looks for `claude`, `codex`, `opencode`, and `vibe-acp` on your `PATH`, so you can also install them yourself.
 You only need the harnesses you intend to use.
 
 1. Open Outlore and visit the Workshop to check harness availability and accounts.
@@ -185,16 +192,16 @@ You only need the harnesses you intend to use.
 4. Choose a Companion, send a message, and open errands as needed.
 
 Rituals run through the local service, so leave Outlore running for scheduled work.
-Runs missed while the app is closed or the computer is asleep are skipped.
+When the service comes back, it skips runs that are more than five minutes overdue.
 
 ## Data and provider use
 
 Outlore stores its application data locally, with a `outlore.sqlite` database in Electron's user-data folder and supporting files alongside it.
 Workspaces remain in their chosen locations.
 The desktop interface communicates with the local service over an authenticated loopback connection.
-When you pair another Outlore to a computer, their traffic passes through a relay Worker that cannot read it: it is end-to-end encrypted, and its keys travel only in the pairing code.
+Traffic between a paired device and its host passes through a relay Worker as ciphertext, with the pairing keys carried in the pairing code.
 
-Looking for a new release is one request to GitHub's public release list, with the app's name and version and nothing about you; the Workshop's Updates section turns it off.
+Use **Workshop → Updates** to turn off automatic update checks.
 Agent requests still send the context needed for the work to your chosen harness, provider, and connected tools.
 You use your own provider accounts and pay for their use directly; Outlore does not resell model access.
 Each harness handles its own sign-in, including accounts added through Outlore.
@@ -229,6 +236,7 @@ In PowerShell, set a variable with `$env:OUTLORE_HARNESS = "fake"` before runnin
 | `OUTLORE_CLAUDE_PATH` | Override the `claude` executable. |
 | `OUTLORE_CODEX_PATH` | Override the `codex` executable. |
 | `OUTLORE_OPENCODE_PATH` | Override the `opencode` executable. |
+| `OUTLORE_VIBE_PATH` | Override the `vibe-acp` executable. |
 | `OUTLORE_HARNESS=fake` | Replace real harnesses with the echo harness. |
 | `OUTLORE_UPDATE_URL` | With `OUTLORE_DATA_DIR` set, the packaged macOS app reads this release list instead of GitHub's; for [checking updates](documentation/verification/2026-11-13-app-updates.md). |
 | `OUTLORE_UPDATE_OPENER` | With `OUTLORE_DATA_DIR` set, the program that starts the new app after an update, in place of `open`. |
@@ -261,7 +269,7 @@ Commits run Biome on staged files; staged code or configuration also triggers th
 | Path | Contents |
 | --- | --- |
 | [`apps/desktop`](apps/desktop/) | Electron shell, development launcher, and installer packaging |
-| [`apps/app`](apps/app/) | Expo / React Native interface, rendered on the web inside Electron |
+| [`apps/app`](apps/app/) | Shared Expo / React Native interface for Electron, browsers, and Android |
 | [`packages/service`](packages/service/) | Local Node service, SQLite storage, harness adapters, scheduling, and MCP thread tools, built with Effect |
 | [`packages/contracts`](packages/contracts/) | Shared records and requests defined with Effect Schema |
 | [`packages/channel`](packages/channel/) | The end-to-end encrypted channel and pairing code used between paired devices |
@@ -293,7 +301,8 @@ After the release is published, the same tag also puts the relay Worker and the 
 Run `bun apps/desktop/scripts/check-update.ts <older Outlore.app> <newer Outlore-…-mac-…dmg>` to watch a packaged app update itself from a local stand-in for GitHub.
 The workflow also supports **Run workflow** manually for test builds, which upload direct installer files to the run's **Artifacts** section without publishing a release.
 Actions artifacts expire after 14 days; release assets remain until removed.
-A release's notes on GitHub are written from its file in [`documentation/changelog/`](documentation/changelog/), which lists what changed and any breaking changes.
+The release workflow asks GitHub to generate release notes.
+The repository's [changelog](documentation/changelog/) records changes and breaking changes by release.
 
 ## License
 

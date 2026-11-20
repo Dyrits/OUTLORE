@@ -59,7 +59,7 @@ Outcome: the installed phone app finds a newer release, downloads its APK, and i
 
 Acceptance, checks an agent can perform: the version, channel and release choices, the switch (no request when off), the Wi-Fi-only rule, the hash check and the states of the Updates section (unsupported, checking, up to date, downloading, ready, failed, turned off) behave as above in tests, sharing the desktop's where the logic is the same. Human acceptance, on the owner's phone: install a release-signed APK, publish a later release, see the notice, install it through Android's confirmation, and find the phone still paired; refuse the allowance and see the release page offered. Not accepted until run on a real device with two release-signed releases.
 
-Dependencies: [device pairing](../device-pairing/specifications.md#the-mobile-app-as-a-paired-device) (the release refusal and the secure store); the release workflow's APK and `SHA512SUMS.txt`; the release key in the repository's secrets.
+Dependencies: [device pairing](../device-pairing/specifications.md#behavior) (the release refusal and the secure store); the release workflow's APK and `SHA512SUMS.txt`; the release key in the repository's secrets.
 
 Not in the Android app: a store listing, iOS, installing without Android's confirmation (a possible later refinement, see the [draft](draft.md)), a choice of channel, a data backup, and a rollback.
 

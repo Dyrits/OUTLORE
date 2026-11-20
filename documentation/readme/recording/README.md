@@ -1,20 +1,11 @@
 # Recording the README media
 
-The GIFs and screenshots in `documentation/readme/` come from the real desktop app at version 0.1.1-Prototype (commit `ae217e4`) on isolated data, driven by Playwright over the Chrome DevTools Protocol.
+The GIFs and screenshots in `documentation/readme/` come from the real desktop app at version 0.1.1-Prototype (commit `ae217e40`) on isolated data, driven by Playwright over the Chrome DevTools Protocol.
 The agents' replies are scripted: a temporary patch lets the echo harness answer from `demo.base.json` and run thread tools (side-quest reports, mentions, Outlore suggestions, a failed turn for the backup).
 The patch is for recording only; never commit it.
 
-Requirements: Bun, Python 3 with `playwright`, `ffmpeg`, and the repository's dependencies installed.
+To reproduce the original recording, check out `ae217e40` in a separate worktree and follow the copy of this guide at that revision.
+Use the patch, environment variable names, and script paths from that same revision.
 
-```sh
-export OUTLORE_REPO="$PWD"                      # the repository root
-git apply documentation/readme/recording/demo-harness.patch
-sh documentation/readme/recording/prepare.sh
-(cd apps/app && BROWSER=none CI=1 bunx expo start --web --port 8123 &)
-bash /tmp/outlore-demo/scripts/all.sh           # every scene, from fresh data, in order
-python3 /tmp/outlore-demo/scripts/hero.py       # light and dark stills, after all.sh
-git apply -R documentation/readme/recording/demo-harness.patch
-```
-
-Results land in `/tmp/outlore-demo/out/`; copy them over the files in `documentation/readme/`.
-Scenes depend on each other's state (the side-quest, the handover, the backup, the mention), so rerun `all.sh` whole after changing one.
+The kit needs Bun, Python 3 with `playwright`, `ffmpeg`, and the dependencies of that revision.
+Its results go to `/tmp/iskios-demo/out/`.
