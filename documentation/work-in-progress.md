@@ -1,5 +1,9 @@
 # Work in progress
 
+## Pane notches · 2026-11-20 · window review pending
+
+CHG-0592 replaces folded strips with centered icon notches (realm, quest, errand, with the state dot) on the open pane's edge. Checks pass; not seen in a window. [Handoff](../.agents/handoffs/2026-11-20-1345-pane-notches.md)
+
 ## Desktop sidebar refresh · 2026-11-20 · window review pending
 
 CHG-0587 aligns the sidebar with the conversation panes and starts empty realms closed.

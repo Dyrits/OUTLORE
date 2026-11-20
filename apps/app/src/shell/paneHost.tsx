@@ -1,5 +1,5 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import { Fragment, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 import { PaneThread } from "../conversation/paneThread";
 import { OpenPanes } from "../conversation/replyLine";
@@ -23,7 +23,7 @@ import {
   revealedPane,
 } from "./paneChain";
 import { PaneResizer } from "./paneResizer";
-import { PaneButton, PaneStrip, type StripPart } from "./paneStrip";
+import { type NotchKind, type NotchPart, PaneButton, PaneNotches } from "./paneStrip";
 import { type PanePointer, paneIconPress, wasFollowedAtPress } from "./questTab";
 import { readPaneWeights, rememberPaneWeights } from "./railStorage";
 
@@ -182,25 +182,46 @@ export function PaneHost({
     const width = Math.floor(event.nativeEvent.layout.width);
     if (width > 0) setAvailable(width);
   };
-  const stripRunFrom = (start: number): Array<StripPart> => {
-    const parts: Array<StripPart> = [];
-    for (let depth = start; slots[depth]?.kind === "strip"; depth += 1) {
-      const id = slots[depth]?.id;
-      if (id === undefined) break;
-      const summary = id === channelId || id === starterId ? undefined : summaryOf(id);
-      parts.push({
-        id,
-        onReveal: () => {
-          setExpanded(null);
-          if (id !== channelId && id !== starterId) setFocused(id);
-          setMemory((current) => revealedPane(current, id));
-        },
-        state: summary?.state ?? "Idle",
-        title: id === channelId ? channel.name : id === starterId ? "New errand" : (summary?.title ?? ""),
-      });
-    }
-    return parts;
+  const notchOf = (id: PaneId): NotchPart => {
+    const summary = id === channelId || id === starterId ? undefined : summaryOf(id);
+    const kind: NotchKind =
+      id === channelId
+        ? channel.id === null
+          ? "borderlands"
+          : "realm"
+        : id === quest || id === starterId
+          ? id === starterId
+            ? "errand"
+            : "quest"
+          : "errand";
+    return {
+      id,
+      kind,
+      onReveal: () => {
+        setExpanded(null);
+        if (id !== channelId && id !== starterId) setFocused(id);
+        setMemory((current) => revealedPane(current, id));
+      },
+      state: summary?.state ?? null,
+      title: id === channelId ? channel.name : id === starterId ? "New errand" : (summary?.title ?? ""),
+    };
   };
+  // A folded pane is a notch on the edge of an open pane: the left edge of the next one, or the right edge of the last.
+  const notchesAt = (depth: number): { left: Array<NotchPart>; right: Array<NotchPart> } => {
+    const left: Array<NotchPart> = [];
+    for (let each = depth - 1; slots[each]?.kind === "strip"; each -= 1) {
+      const id = slots[each]?.id;
+      if (id !== undefined) left.unshift(notchOf(id));
+    }
+    const right: Array<NotchPart> = [];
+    if (slots.slice(depth + 1).every((slot) => slot.kind === "strip"))
+      for (let each = depth + 1; slots[each]?.kind === "strip"; each += 1) {
+        const id = slots[each]?.id;
+        if (id !== undefined) right.push(notchOf(id));
+      }
+    return { left, right };
+  };
+  const firstOpen = slots.findIndex((slot) => slot.kind === "pane");
   // The strips between neighboring open panes, on the row above the panes, each at the edge it moves.
   let edge = 0;
   const resizers = slots.flatMap((slot, index) => {
@@ -237,23 +258,21 @@ export function PaneHost({
           slots.map((slot) => {
             const { id } = slot;
             const isStrip = slot.kind === "strip";
-            // A run of neighboring strips is one strip in parts, drawn where the run starts.
-            const run = isStrip && slots[slot.depth - 1]?.kind !== "strip" ? stripRunFrom(slot.depth) : [];
-            const strip = run.length > 0 && <PaneStrip hasDivider={slot.depth > 0} parts={run} />;
+            const notches = isStrip ? { left: [], right: [] } : notchesAt(slot.depth);
             const wrap = (pane: ReactNode) => (
-              <Fragment key={id}>
-                {strip}
-                <View
-                  style={[
-                    local.pane,
-                    slot.depth > 0 && local.paneDivider,
-                    { width: isStrip ? 0 : slot.width },
-                    isStrip && local.hidden,
-                  ]}
-                >
-                  {pane}
-                </View>
-              </Fragment>
+              <View
+                key={id}
+                style={[
+                  local.pane,
+                  slot.depth > firstOpen && !isStrip && local.paneDivider,
+                  { width: isStrip ? 0 : slot.width },
+                  isStrip && local.hidden,
+                ]}
+              >
+                {pane}
+                {notches.left.length > 0 && <PaneNotches parts={notches.left} side="left" />}
+                {notches.right.length > 0 && <PaneNotches parts={notches.right} side="right" />}
+              </View>
             );
             if (id === channelId)
               return wrap(

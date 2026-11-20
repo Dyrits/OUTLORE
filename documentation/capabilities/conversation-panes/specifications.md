@@ -34,7 +34,7 @@ The Workshop (Settings) is not a pane and not a sheet: it is the page that takes
 
 ### The three levels
 
-The pane chain is **channel → quest → errand**. The desktop sidebar opens the channel or a quest. A quest defaults to its **Missives** tab (its messages, where anchored Reply lines open errands; formerly Messages, CHG-0571). Its Errands tab lists the quest’s errands with their state and attention indicators and opens the same third pane. A realm's channel has a Missives tab (its conversation) and a **Quests** tab that lists the realm's quests in the same pane, not a pane of its own (the owner, 2026-11-20); the Borderlands has both tabs over the quests in no realm. The sidebar shows attention at quest level. The existing phone sidebar keeps its errand rows. Narrow desktop windows can fold earlier panes to strips.
+The pane chain is **channel → quest → errand**. The desktop sidebar opens the channel or a quest. A quest defaults to its **Missives** tab (its messages, where anchored Reply lines open errands; formerly Messages, CHG-0571). Its Errands tab lists the quest’s errands with their state and attention indicators and opens the same third pane. A realm's channel has a Missives tab (its conversation) and a **Quests** tab that lists the realm's quests in the same pane, not a pane of its own (the owner, 2026-11-20); the Borderlands has both tabs over the quests in no realm. The sidebar shows attention at quest level. The existing phone sidebar keeps its errand rows. Narrow desktop windows can fold earlier panes to notches.
 
 The quest title in the conversation header switches to another non-archived quest across realms and the Borderlands.
 The errand title switches to another errand in the same quest, including existing sub-errands.
@@ -80,15 +80,15 @@ The blocks appear whether or not the lists already have entries.
 ### Panes
 
 - At most three panes are shown at once. A window too narrow for three shows fewer; each pane has a minimum width.
-- When the window is too narrow for the whole chain, the last panes are shown and the earlier ones are folded to strips, so the deepest conversation left open keeps its space and each strip is one press away. On a narrow window the channel folds first.
+- When the window is too narrow for the whole chain, the last panes are shown and the earlier ones are folded to notches, so the deepest conversation left open keeps its space and each notch is one press away. On a narrow window the channel folds first.
 - By default the panes share the width equally: one third each with three.
-- A pane can be **folded** to a slim strip and **unfolded**, which is how a pane gives room to its neighbour: the neighbour extends over the space and the folded pane stays one press away (the owner: better than closing is extending a panel over another, "just folding it").
-- Folded panes that sit next to each other are **one strip** of the same width, split in equal parts stacked from top to bottom, each part with its state and title along it and one press from open again (the owner: collapsed elements are "merged into one split in two parts"). Strips that an open pane separates stay two strips.
+- A pane can be **folded** to a notch and **unfolded**, which is how a pane gives room to its neighbour: the neighbour extends over the space and the folded pane stays one press away (the owner: better than closing is extending a panel over another, "just folding it").
+- A folded pane is a **notch** on the edge of the open pane beside it: the left edge of the next open pane, or the right edge of the last one when nothing open follows. A notch shows only the icon of what it is (a realm, a quest or an errand) with its state dot, takes no room from the open pane, and is one press from open again; the full name is its accessibility label. Several folded panes stack as several notches on the same edge (the owner, 2026-11-20: a notch on the left or right of the open pane, with the icons, instead of a strip with the name).
 - The desktop headers offer a **Fold** button with a pane-and-arrow icon, separated from the Quest panel icon by a divider. The quest and errand can fold even when they are the deepest conversation. Folding the last open conversation brings another pane into view.
 - On a phone (a narrow window) one pane shows at a time with a Back chevron, as the [phone view](../mission-tracking/specifications.md#simplified-left-navigation) does today.
 - Panes are resized by dragging their edges; the widths are remembered.
 - **Equal widths** sits above the conversation row and gives the open panes the same share again (a third each with three) and forgets the dragged shares; folded panes stay folded.
-- The **Expand pane** button in each header gives its conversation the available width and folds the other conversation panes to strips. **Restore pane layout** returns to the previous folds and widths. Opening a strip exits the expanded layout and reveals that pane.
+- The **Expand pane** button in each header gives its conversation the available width and folds the other conversation panes to notches. **Restore pane layout** returns to the previous folds and widths. Opening a notch exits the expanded layout and reveals that pane.
 - When only one pane is visible, its header shows **Restore pane layout** automatically.
   If the owner folded the panes without using Expand, Restore clears those folds and keeps the pane widths, subject to the space available.
 

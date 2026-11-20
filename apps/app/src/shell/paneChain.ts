@@ -5,8 +5,6 @@
 export const maxPanes = 4;
 /** The least width of an open pane, in pixels. */
 export const minPaneWidth = 380;
-/** The width of a folded pane's strip, in pixels. */
-export const stripWidth = 44;
 
 /**
  * The chain of threads from the quest's own thread down to the open one, each the parent of the next: the panes, left
@@ -117,7 +115,7 @@ const sharesOf = (room: number, weights: ReadonlyArray<number>): Array<number> =
 };
 
 /**
- * The row of panes and strips for a chain in `available` pixels. At most four panes are open; the earlier ones of a
+ * The row of panes and folded slots for a chain in `available` pixels. At most four panes are open; the earlier ones of a
  * longer chain, the ones the owner folded, and the ones the window is too narrow for are strips.
  * The deepest pane that the owner has left open keeps its space when the window narrows.
  * The open panes share what the strips leave, equally unless the owner dragged an edge.
@@ -158,14 +156,9 @@ export const layoutOf = <Id extends string>(input: {
     return true;
   };
   while (openCount() > maxPanes && foldEarliest("overflow")) {}
-  // Neighboring strips are one strip, split in parts: the run is as wide as one strip.
-  const stripCount = () => reasons.filter((reason, index) => reason !== null && reasons[index - 1] == null).length;
-  while (
-    openCount() > 1 &&
-    available - stripCount() * stripWidth < openCount() * minPaneWidth &&
-    foldEarliest("narrow")
-  ) {}
-  const room = available - stripCount() * stripWidth;
+  // A folded pane takes no room: its notch sits on the edge of the open pane beside it.
+  while (openCount() > 1 && available < openCount() * minPaneWidth && foldEarliest("narrow")) {}
+  const room = available;
   const open = chain.map((_, index) => index).filter((index) => reasons[index] === null);
   const defined = open.map((index) => memory.weights[index] ?? 0).filter((weight) => weight > 0);
   const fallback = defined.length === 0 ? 1 : defined.reduce((sum, weight) => sum + weight, 0) / defined.length;
@@ -178,8 +171,7 @@ export const layoutOf = <Id extends string>(input: {
   if (widths.length > 0) widths[widths.length - 1] = room - widths.slice(0, -1).reduce((sum, width) => sum + width, 0);
   return chain.map((id, depth): PaneSlot<Id> => {
     const reason = reasons[depth] ?? null;
-    if (reason !== null)
-      return { depth, id, kind: "strip", reason, width: reasons[depth - 1] == null ? stripWidth : 0 };
+    if (reason !== null) return { depth, id, kind: "strip", reason, width: 0 };
     return { depth, id, kind: "pane", width: widths[open.indexOf(depth)] ?? room };
   });
 };
