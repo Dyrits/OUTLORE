@@ -27,6 +27,11 @@ export type LineProcessOptions = {
    * so lost its link to the tree (sweepOrphans).
    */
   readonly onEnded?: () => Promise<ReadonlyArray<number>>;
+  /**
+   * Called with each message the moment it is read, whether or not anything has taken it from `incoming` yet: how an
+   * adapter notices what a process says between turns, when no turn reads it.
+   */
+  readonly observe?: (message: unknown) => void;
 };
 
 /** The environment of a child process the service starts: Outlore's own variables, such as the owner token, left out. */
@@ -147,7 +152,10 @@ export const startStreamJsonProcess = Effect.fnUntraced(function* (options: Line
   const incoming = yield* Queue.unbounded<StreamItem>();
   const child = spawnLineProcess(options, {
     onExit: (reason) => Queue.offerUnsafe(incoming, { _tag: "Exit", reason }),
-    onMessage: (message) => Queue.offerUnsafe(incoming, { _tag: "Message", message }),
+    onMessage: (message) => {
+      Queue.offerUnsafe(incoming, { _tag: "Message", message });
+      options.observe?.(message);
+    },
   });
   return { ...child, incoming } satisfies StreamJsonProcess;
 });

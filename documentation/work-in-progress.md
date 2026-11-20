@@ -1,5 +1,10 @@
 # Work in progress
 
+## Turns woken by a background command · 2026-11-20 · live check pending
+
+CHG-0595 runs what Claude Code does after a background command ends as a turn, on `worktree/resume-after-background`.
+Fixes replies that were never logged and commands refused with "This thread is not at work". The new tests pass with stand-in harnesses; a real long-running command in the app is unchecked. [Verification](verification/2026-11-20-background-wake-turns.md)
+
 ## File diffs across harnesses · 2026-11-20 · live checks pending
 
 CHG-0593 adds Steps diffs for completed file edits reported by Codex, OpenCode, and Vibe.

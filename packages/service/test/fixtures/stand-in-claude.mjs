@@ -12,6 +12,9 @@
 // and is echoed with its uuid (--replay-user-messages), unless its text contains "unseen": that one is
 // held, as when it arrives just after the turn ends, and runs as a turn of its own 200 ms after the
 // result, as Claude Code does. An `interrupt` control request ends the running turn.
+// A message "background <millis>" ends its turn at once, with a background command still running, as Claude Code does
+// (`background_tasks_changed`; probe of 2026-11-20, 2.1.328); that many ms later the command ends and Claude Code wakes
+// itself: a `task_notification`, then a turn of its own with no message written to it.
 // A message "ask-net <host>" makes the turn send a `can_use_tool` control request for the blocked host, as Claude Code 2.1.322
 // does for a host outside `allowedDomains` (live probe of 2026-11-12), and reply with the answer it got; "ask-bash-escape"
 // does the same for a Bash call outside the sandbox. A turn waits 300 ms for an answer and reports "unanswered" otherwise.
@@ -123,6 +126,35 @@ const finish = (isInterrupted) => {
   if (ended.held.length > 0) setTimeout(() => ended.held.forEach(startTurn), 200);
 };
 
+/** The command ends: the stand-in is woken and works on its own, with no user message, as Claude Code does. */
+const wake = () => {
+  turn += 1;
+  emit({
+    status: "completed",
+    subtype: "task_notification",
+    summary: 'Background command "Sleep" completed (exit code 0)',
+    task_id: "bg1",
+    type: "system",
+  });
+  emit({ subtype: "background_tasks_changed", tasks: [], type: "system" });
+  emit({ model: option("--model") ?? "default", subtype: "init", tools: [], type: "system" });
+  emit({
+    message: {
+      content: [
+        {
+          id: `toolu_wake_${turn}`,
+          input: { command: "git status", description: "Check" },
+          name: "Bash",
+          type: "tool_use",
+        },
+      ],
+      role: "assistant",
+    },
+    type: "assistant",
+  });
+  reply(`Woken ${turn} (pid ${process.pid}) after the background command`);
+};
+
 const startTurn = (input) => {
   // A message with images carries a list of blocks: the text, then one image block each.
   const content = input.message.content;
@@ -185,6 +217,18 @@ const startTurn = (input) => {
       },
       type: "assistant",
     });
+  }
+  const background = /(?:^|\n---\n\n)background (\d+)$/.exec(text);
+  if (background !== null) {
+    emit({
+      subtype: "background_tasks_changed",
+      tasks: [{ description: "Sleep", task_id: "bg1", task_type: "local_bash" }],
+      type: "system",
+    });
+    current = { held: [], joined: [], text, timer: null, turn };
+    finish(false);
+    setTimeout(wake, Number(background[1]));
+    return;
   }
   const slow = /(?:^|\n---\n\n)slow (\d+)$/.exec(text);
   current = { held: [], joined: [], text, timer: null, turn };

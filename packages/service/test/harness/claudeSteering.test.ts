@@ -118,3 +118,34 @@ describe("steering and interrupting Claude Code", () => {
     }).pipe(Effect.provide(layer));
   });
 });
+
+describe("Claude Code woken by a background command", () => {
+  it.live("runs what it does on waking as a turn: replies recorded, a line says why, the thread idle after", () => {
+    const { layer, starts } = withClaude();
+    return Effect.gen(function* () {
+      const started = yield* startMission({ effort: "low", model: "haiku", text: "background 300" });
+      const detail = yield* settle(started.missionId, idleWith(2));
+      const replies = detail.messages.filter((message) => message.sender === "agent");
+      expect(replies.map((message) => message.text.replace(/ \(pid \d+\)/, ""))).toEqual([
+        expect.stringMatching(/^Reply 1 to: /),
+        "Woken 2 after the background command",
+      ]);
+      expect(detail.handovers.map((line) => line.text)).toEqual(['Background command "Sleep" completed (exit code 0)']);
+      expect(detail.thread.failure).toBeNull();
+      // Its own turn left no message of its own, and the same process ran both.
+      expect(starts()).toHaveLength(1);
+    }).pipe(Effect.provide(layer));
+  });
+
+  it.live("lets a message sent while the thread is idle run its turn after the woken one", () => {
+    const { layer, starts } = withClaude();
+    return Effect.gen(function* () {
+      const started = yield* startMission({ effort: "low", model: "haiku", text: "background 100" });
+      yield* settle(started.missionId, idleWith(2));
+      yield* sendTo(started.threadId, "After");
+      const detail = yield* settle(started.missionId, idleWith(3));
+      expect(withoutNote(detail.messages.at(-1)?.text)).toMatch(/^Reply 3 .* to: After$/);
+      expect(starts()).toHaveLength(1);
+    }).pipe(Effect.provide(layer));
+  });
+});

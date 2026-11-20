@@ -6,6 +6,7 @@ import {
   type HarnessProtocol,
   makeHarnessProcesses,
   type PooledTurn,
+  type ProcessSignals,
   type TurnEnd,
 } from "../../src/harness/harnessProcesses.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
@@ -133,10 +134,10 @@ describe("interrupting and steering a pooled turn", () => {
       });
       const slow: HarnessProtocol<FakeConnection> = {
         ...protocol,
-        start: (request) =>
+        start: (request, signals) =>
           Deferred.succeed(starting, void 0).pipe(
             Effect.andThen(Deferred.await(released)),
-            Effect.andThen(protocol.start(request)),
+            Effect.andThen(protocol.start(request, signals)),
           ),
       };
       const pool = yield* makeHarnessProcesses(slow, { idleTimeout: "10 minutes" });
@@ -238,6 +239,193 @@ describe("interrupting and steering a pooled turn", () => {
         .pipe(Effect.flip);
       expect(failure.reason).toBe("No answer.");
       expect(connections[0]?.isClosed).toBe(true);
+    }).pipe(Effect.scoped),
+  );
+});
+
+describe("a process that wakes itself between turns", () => {
+  type WakingConnection = HarnessConnection & { isClosed: boolean; hasBackground: boolean; isStirredNow: boolean };
+
+  /** Marks the first process as woken, and has it tell the pool so. */
+  const stir = (connections: ReadonlyArray<WakingConnection>) => {
+    const connection = connections[0];
+    if (connection !== undefined) connection.isStirredNow = true;
+  };
+  const signal = (signals: ReadonlyArray<ProcessSignals>) => signals[0]?.resume();
+
+  /** A fake protocol whose process can be stirred and can run background work; `held` keeps a turn running. */
+  const wakingProtocolOf = (held: Deferred.Deferred<void> | null = null) => {
+    const connections: Array<WakingConnection> = [];
+    const signals: Array<ProcessSignals> = [];
+    const resumed: Array<TurnRequest> = [];
+    const protocol: HarnessProtocol<WakingConnection> = {
+      interrupt: () => Effect.succeed(true),
+      restartKeyOf: (request) => request.model,
+      runTurn: (connection, request) =>
+        Effect.gen(function* () {
+          if (request.isResuming === true) resumed.push(request);
+          else if (held !== null) yield* Deferred.await(held);
+          connection.isStirredNow = false;
+          return { isInterrupted: false, usage: null } satisfies TurnEnd;
+        }),
+      start: (_request, startedSignals) =>
+        Effect.sync(() => {
+          const connection: WakingConnection = {
+            close: () => {
+              connection.isClosed = true;
+            },
+            hasBackground: false,
+            hasBackgroundWork: () => connection.hasBackground,
+            hasExited: () => connection.isClosed,
+            isClosed: false,
+            isStirred: () => connection.isStirredNow,
+            isStirredNow: false,
+            sessionId: `session-${connections.length + 1}`,
+          };
+          connections.push(connection);
+          signals.push(startedSignals);
+          return connection;
+        }),
+      steer: () => Effect.succeed(true),
+    };
+    return { connections, protocol, resumed, signals };
+  };
+
+  it.live("asks its listener for a turn and runs it on the same process", () =>
+    Effect.gen(function* () {
+      const { connections, protocol, resumed, signals } = wakingProtocolOf();
+      const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
+      const asked: Array<string> = [];
+      pool.onResume((threadId) => {
+        asked.push(threadId);
+        return pool.runTurn(turnRequestOf({ isResuming: true, text: "" })).pipe(Effect.as(true), Effect.orDie);
+      });
+      yield* pool.runTurn(turnRequestOf());
+      stir(connections);
+      signal(signals);
+      yield* Effect.sleep("50 millis");
+      expect(asked).toEqual(["thread-1"]);
+      expect(resumed).toHaveLength(1);
+      expect(connections).toHaveLength(1);
+      expect(connections[0]?.isClosed).toBe(false);
+    }).pipe(Effect.scoped),
+  );
+
+  it.live("asks once when the process signals again before a turn begins", () =>
+    Effect.gen(function* () {
+      const { connections, protocol, signals } = wakingProtocolOf();
+      const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
+      let asked = 0;
+      pool.onResume(() => {
+        asked += 1;
+        return Effect.sleep("30 millis").pipe(Effect.as(true));
+      });
+      yield* pool.runTurn(turnRequestOf());
+      stir(connections);
+      signal(signals);
+      signal(signals);
+      yield* Effect.sleep("80 millis");
+      expect(asked).toBe(1);
+    }).pipe(Effect.scoped),
+  );
+
+  it.live("closes the process when its wake is refused, which would otherwise run unseen", () =>
+    Effect.gen(function* () {
+      const { connections, protocol, signals } = wakingProtocolOf();
+      const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
+      pool.onResume(() => Effect.succeed(false));
+      yield* pool.runTurn(turnRequestOf());
+      stir(connections);
+      signal(signals);
+      yield* Effect.sleep("50 millis");
+      expect(connections[0]?.isClosed).toBe(true);
+    }).pipe(Effect.scoped),
+  );
+
+  it.live("ignores a process that is not stirred", () =>
+    Effect.gen(function* () {
+      const { connections, protocol, signals } = wakingProtocolOf();
+      const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
+      let asked = 0;
+      pool.onResume(() => {
+        asked += 1;
+        return Effect.succeed(true);
+      });
+      yield* pool.runTurn(turnRequestOf());
+      signal(signals);
+      yield* Effect.sleep("30 millis");
+      expect(asked).toBe(0);
+      expect(connections[0]?.isClosed).toBe(false);
+    }).pipe(Effect.scoped),
+  );
+
+  it.live("leaves a wake that arrives during a turn to that turn, and asks for none after it", () =>
+    Effect.gen(function* () {
+      const held = yield* Deferred.make<void>();
+      const { connections, protocol, signals } = wakingProtocolOf(held);
+      const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
+      let asked = 0;
+      pool.onResume(() => {
+        asked += 1;
+        return Effect.succeed(true);
+      });
+      const turn = yield* Effect.forkChild(pool.runTurn(turnRequestOf()));
+      yield* Effect.sleep("30 millis");
+      stir(connections);
+      signal(signals);
+      expect(asked).toBe(0);
+      yield* Deferred.succeed(held, void 0);
+      yield* Fiber.join(turn);
+      // The turn read the wake, as Claude Code's does with a notification that comes during it.
+      yield* Effect.sleep("30 millis");
+      expect(asked).toBe(0);
+    }).pipe(Effect.scoped),
+  );
+
+  it.live("asks after a turn that ended with a wake it never read", () =>
+    Effect.gen(function* () {
+      const held = yield* Deferred.make<void>();
+      const { connections, protocol, signals } = wakingProtocolOf();
+      // A turn that never reads the wake: its end leaves `isStirredNow` set.
+      const unread: HarnessProtocol<WakingConnection> = {
+        ...protocol,
+        runTurn: () => Deferred.await(held).pipe(Effect.as({ isInterrupted: false, usage: null } satisfies TurnEnd)),
+      };
+      const pool = yield* makeHarnessProcesses(unread, { idleTimeout: "10 minutes" });
+      let asked = 0;
+      pool.onResume(() => {
+        asked += 1;
+        return Effect.succeed(true);
+      });
+      const turn = yield* Effect.forkChild(pool.runTurn(turnRequestOf()));
+      yield* Effect.sleep("30 millis");
+      stir(connections);
+      signal(signals);
+      yield* Deferred.succeed(held, void 0);
+      yield* Fiber.join(turn);
+      yield* Effect.sleep("30 millis");
+      expect(asked).toBe(1);
+    }).pipe(Effect.scoped),
+  );
+
+  it.live("keeps a process with background work longer than an idle one", () =>
+    Effect.gen(function* () {
+      const { connections, protocol } = wakingProtocolOf();
+      // The turn of the thread "busy" leaves a background command running.
+      const running: HarnessProtocol<WakingConnection> = {
+        ...protocol,
+        runTurn: (connection, request, turn) => {
+          connection.hasBackground = request.threadId === "busy";
+          return protocol.runTurn(connection, request, turn);
+        },
+      };
+      const pool = yield* makeHarnessProcesses(running, { backgroundHold: "400 millis", idleTimeout: "20 millis" });
+      yield* pool.runTurn(turnRequestOf({ threadId: "idle" }));
+      yield* pool.runTurn(turnRequestOf({ threadId: "busy" }));
+      yield* Effect.sleep("150 millis");
+      expect(connections.map((connection) => connection.isClosed)).toEqual([true, false]);
+      yield* Effect.sleep("500 millis");
+      expect(connections[1]?.isClosed).toBe(true);
     }).pipe(Effect.scoped),
   );
 });

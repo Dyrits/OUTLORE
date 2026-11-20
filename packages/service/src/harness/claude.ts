@@ -28,6 +28,7 @@ import {
   noTimeLimit,
 } from "./claudeArgs.ts";
 import {
+  backgroundTaskNoticeOf,
   billingOf,
   compactionNoticeOf,
   failureReasonOf,
@@ -44,6 +45,7 @@ import {
   type HarnessProtocol,
   makeHarnessProcesses,
   type PooledTurn,
+  type ProcessSignals,
 } from "./harnessProcesses.ts";
 import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
 import { contextOf } from "./tokenUsage.ts";
@@ -64,6 +66,11 @@ export type ClaudeOptions = AccessOptions & {
 };
 
 interface ClaudeConnection extends HarnessConnection {
+  /**
+   * What the process says between turns (probe of 2026-11-20, Claude Code 2.1.328): the background tasks it still runs,
+   * from `background_tasks_changed`, and whether a `task_notification` woke it and no turn has read that yet.
+   */
+  readonly background: { isStirred: boolean; tasks: number };
   /** How the process was signed in, from the init event; Unknown until it reports (budget-control, Billing kind). */
   billing: BillingKind;
   /** The cost Claude Code last reported for this process, which it adds up across turns (provisional, unprobed). */
@@ -159,10 +166,14 @@ const claudeProtocolOf = (
     ]),
 
   runTurn: Effect.fnUntraced(function* (connection: ClaudeConnection, request: TurnRequest, turn: PooledTurn) {
-    const content = yield* contentOf(turnMessageOf(request), request.images);
-    connection.process.write({ message: { content, role: "user" }, type: "user" });
+    // A turn Claude Code began on its own, woken by a background task, has no message: its events are already coming.
+    if (request.isResuming !== true) {
+      const content = yield* contentOf(turnMessageOf(request), request.images);
+      connection.process.write({ message: { content, role: "user" }, type: "user" });
+    }
     let draft = "";
     let reportedError: string | null = null;
+    let hasNoticedWake = false;
     // The latest call's own usage is the context then; the result's usage sums every call of the turn.
     let context: number | null = null;
     // The model that wrote the latest reply, which names its entry in the result's `modelUsage`.
@@ -177,6 +188,12 @@ const claudeProtocolOf = (
         // Without its thread tools the turn could not reach Outlore: it fails, with Retry, instead of running blind.
         const toolFailure = toolServerFailureOf(event, toolServerName);
         if (toolFailure !== null) return yield* new HarnessFailure({ reason: toolFailure });
+      } else if (type === "system" && textFieldOf(event, "subtype") === "task_notification") {
+        // A turn takes in the wake, whether it began the turn or arrived during it.
+        connection.background.isStirred = false;
+        const notice = request.isResuming === true && !hasNoticedWake ? backgroundTaskNoticeOf(event) : null;
+        if (notice !== null) yield* request.onEvent({ _tag: "Notice", text: notice });
+        hasNoticedWake = true;
       } else if (type === "system" && textFieldOf(event, "subtype") === "compact_boundary") {
         // Claude Code compacted the conversation: a line in the thread says so, where the context then falls.
         const notice = compactionNoticeOf(event);
@@ -250,12 +267,13 @@ const claudeProtocolOf = (
     }
   }),
 
-  start: Effect.fnUntraced(function* (request: TurnRequest) {
+  start: Effect.fnUntraced(function* (request: TurnRequest, signals: ProcessSignals) {
     // A thread folder that is a link asks the owner; allowed, Claude Code starts where it really points, under its
     // own sandbox, which then writes there (threadFolder.ts).
     const cwd = yield* resolveStartFolder(request, "Claude Code");
     const isResuming = request.sessionId !== null;
     const sessionId = request.sessionId ?? crypto.randomUUID();
+    const background = { isStirred: false, tasks: 0 };
     const process = yield* startStreamJsonProcess({
       args: [
         ...(options.prefixArgs ?? []),
@@ -270,11 +288,27 @@ const claudeProtocolOf = (
       // The folder it was started in, as a shell it starts takes it.
       env: { ...childEnvironment(request.configDirectory), PWD: cwd },
       label: "Claude Code",
+      // Between turns nothing reads the process: a background task ending wakes Claude Code, which then works on its
+      // own, and the pool asks for a turn so that work is recorded and its commands may run.
+      observe: (message) => {
+        if (textFieldOf(message, "type") !== "system") return;
+        const subtype = textFieldOf(message, "subtype");
+        if (subtype === "background_tasks_changed") {
+          const tasks = fieldOf(message, "tasks");
+          background.tasks = Array.isArray(tasks) ? tasks.length : 0;
+        } else if (subtype === "task_notification") {
+          background.isStirred = true;
+          signals.resume();
+        }
+      },
     });
     return {
+      background,
       billing: "Unknown",
       close: process.close,
+      hasBackgroundWork: () => background.tasks > 0,
       hasExited: process.hasExited,
+      isStirred: () => background.isStirred,
       lastTotalCost: 0,
       process,
       sessionId,

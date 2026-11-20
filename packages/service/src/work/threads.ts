@@ -27,7 +27,7 @@ import { Suggestions } from "./suggestions.ts";
 import { resumeThread, retryThread } from "./threadRecovery.ts";
 import { unaskedToolNamesOf } from "./threadToolAccess.ts";
 import { askOwnerFor } from "./threadToolHandlers.ts";
-import { type Admitted, admitTurn, isCurrentTurn } from "./turnAdmission.ts";
+import { type Admitted, admitTurn, isCurrentTurn, readRunningTurnId } from "./turnAdmission.ts";
 import {
   completeTurn,
   deliverSteered,
@@ -224,6 +224,7 @@ export const threadsLayer = Layer.effectContext(
           folderRoot: isInWorkspace ? cwd : scratchRoot,
           harness: turn.harness,
           images: imagesOf(turn.attachments),
+          ...(turn.isResumed ? { isResuming: true } : {}),
           model: turn.model,
           note: history === null ? note : `${history}\n\n${note}`,
           onEvent,
@@ -265,6 +266,25 @@ export const threadsLayer = Layer.effectContext(
           Effect.orDie,
         );
       });
+
+    /**
+     * A harness process woke itself with no message to run, as Claude Code does when a background command ends: its
+     * work runs as a turn of the thread, so its replies are recorded and its commands may be allowed. Answers whether
+     * the work is taken; a thread that may not work now (Stopped, held, over budget) refuses, and the process closes.
+     */
+    const resumeWork = (threadId: string): Effect.Effect<boolean> =>
+      Effect.suspend(() => {
+        if (active.has(threadId)) return Effect.succeed(true);
+        return Effect.gen(function* () {
+          // A turn admitted a moment ago takes in what the process began.
+          if ((yield* local(readRunningTurnId(threadId))) !== null) return true;
+          const turn = yield* local(admitTurn(threadId, true));
+          if (turn === null) return false;
+          yield* FiberMap.run(turns, threadId, run(threadId, turn).pipe(Effect.orDie));
+          return true;
+        }).pipe(Effect.orDie);
+      });
+    harness.onResume?.(resumeWork);
 
     const interrupt = Effect.fnUntraced(function* (threadId: string) {
       if (!active.has(threadId) || !(yield* harness.interrupt(threadId))) return false;

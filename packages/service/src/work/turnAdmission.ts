@@ -18,6 +18,8 @@ export type Admitted = {
   readonly attachments: ReadonlyArray<StoredAttachment>;
   readonly effort: EffortChoice;
   readonly harness: HarnessName;
+  /** Whether the turn has no message: the harness woke itself, and its work is run and recorded as a turn. */
+  readonly isResumed: boolean;
   readonly messages: ReadonlyArray<string>;
   readonly missionId: string;
   readonly model: ModelChoice;
@@ -54,8 +56,12 @@ export const readRunningTurnId = Effect.fnUntraced(function* (threadId: string) 
   return turn?.id ?? null;
 });
 
-/** Admits pending messages only when the thread, realm, workspace, budget, and running limit permit work. */
-export const admitTurn = Effect.fnUntraced(function* (threadId: string) {
+/**
+ * Admits pending messages only when the thread, realm, workspace, budget, and running limit permit work. A resumed turn
+ * is admitted under the same limits with no message: its harness began work on its own, such as Claude Code when a
+ * background command ended, and messages that wait are left for the turn after it.
+ */
+export const admitTurn = Effect.fnUntraced(function* (threadId: string, isResumed = false) {
   const sql = yield* SqlClient.SqlClient;
   const changes = yield* Changes;
   return yield* sql.withTransaction(
@@ -74,7 +80,7 @@ export const admitTurn = Effect.fnUntraced(function* (threadId: string) {
       if (thread === undefined || ["Running", "Attention", "Stopped"].includes(thread.state)) return null;
       if (yield* isQuestRealmArchived(thread.missionId)) return null;
       const pending = yield* listPending(threadId, false);
-      if (pending.length === 0) return null;
+      if (pending.length === 0 && !isResumed) return null;
       if ((yield* runningCountOf(thread.missionId)) >= maxRunning) return null;
       const now = yield* Clock.currentTimeMillis;
       const workspace = yield* readThreadWorkspace(threadId);
@@ -91,12 +97,13 @@ export const admitTurn = Effect.fnUntraced(function* (threadId: string) {
         return null;
       }
       // A runner change is recorded when it actually runs, not while messages wait for admission.
-      yield* recordPendingHandover(threadId, now);
+      if (!isResumed) yield* recordPendingHandover(threadId, now);
       const turnId = yield* newId;
       yield* sql`INSERT INTO turns (id, thread_id, status, started_at, harness, model)
           VALUES (${turnId}, ${threadId}, 'running', ${now}, ${thread.harness}, ${thread.model})`;
+      const taken = isResumed ? [] : pending;
       yield* deliverMessages(
-        pending.map((message) => message.id),
+        taken.map((message) => message.id),
         turnId,
       );
       yield* startRunning(threadId);
@@ -104,10 +111,11 @@ export const admitTurn = Effect.fnUntraced(function* (threadId: string) {
       yield* sql.afterCommit(changes.publish);
       return {
         accountId: thread.accountId,
-        attachments: pending.flatMap((message) => message.attachments),
+        attachments: taken.flatMap((message) => message.attachments),
         effort: thread.effort,
         harness: thread.harness,
-        messages: pending.map((message) => message.text),
+        isResumed,
+        messages: taken.map((message) => message.text),
         missionId: thread.missionId,
         model: thread.model,
         sessionId: thread.sessionId,

@@ -119,3 +119,13 @@ export const compactionNoticeOf = (event: unknown): string | null => {
       : "";
   return `Context compacted ${trigger}${sizes}.`;
 };
+
+/**
+ * The line a `task_notification` system event leaves in the thread, or null for any other event: a command or task that
+ * ran in the background ended, which wakes Claude Code, and its own summary says which and how it ended.
+ */
+export const backgroundTaskNoticeOf = (event: unknown): string | null => {
+  if (textFieldOf(event, "type") !== "system" || textFieldOf(event, "subtype") !== "task_notification") return null;
+  const summary = textFieldOf(event, "summary")?.trim();
+  return summary === undefined || summary === "" ? "A background task ended." : summary;
+};
