@@ -97,6 +97,47 @@ describe("how the panes share the window", () => {
 });
 
 describe("folding and unfolding a pane", () => {
+  it("expands a pane while keeping the previous folds and widths available to restore", () => {
+    const chain = ["channel", "quest", "errand"];
+    const remembered = { ...foldedPane(revealedPane(memory, "channel"), "errand"), weights: [500, 700, 0] };
+    const input = { available: 1244, chain, memory: remembered };
+    expect(panes(layoutOf({ ...input, expanded: "quest" }))).toEqual([
+      { depth: 1, id: "quest", kind: "pane", width: 1244 - 2 * stripWidth },
+    ]);
+    expect(layoutOf({ ...input, expanded: null }).map((slot) => slot.width)).toEqual([500, 700, stripWidth]);
+  });
+
+  it("merges neighboring strips into one strip of a single width, the first slot of the run carrying it", () => {
+    const slots = layoutOf({
+      available: 1244,
+      chain: ["channel", "quest", "errand"],
+      memory: foldedPane(foldedPane(emptyPaneMemory<string>(), "channel"), "quest"),
+    });
+    expect(slots.map((slot) => [slot.kind, slot.width])).toEqual([
+      ["strip", stripWidth],
+      ["strip", 0],
+      ["pane", 1244 - stripWidth],
+    ]);
+  });
+
+  it("keeps strips that a pane separates as two strips", () => {
+    const slots = layoutOf({
+      available: 1244,
+      chain: ["channel", "quest", "errand"],
+      memory: foldedPane(foldedPane(emptyPaneMemory<string>(), "channel"), "errand"),
+    });
+    expect(slots.map((slot) => slot.width)).toEqual([stripWidth, 1244 - 2 * stripWidth, stripWidth]);
+  });
+
+  it("shows the errand starter where it fits and keeps the quest visible before it is revealed", () => {
+    const input = { chain: ["channel", "quest", "starter"], memory, starter: "starter" };
+    expect(panes(layoutOf({ ...input, available: wide })).map((slot) => slot.id)).toEqual(input.chain);
+    expect(panes(layoutOf({ ...input, available: 600 })).map((slot) => slot.id)).toEqual(["quest"]);
+    expect(
+      panes(layoutOf({ ...input, available: 600, memory: revealedPane(memory, "starter") })).map((slot) => slot.id),
+    ).toEqual(["starter"]);
+  });
+
   it("shows a folded pane as a strip and lets the others share its room equally", () => {
     const slots = layout(["quest", "a", "a1"], { folded: new Set(["a"]) });
     expect(slots.map((slot) => slot.kind)).toEqual(["pane", "strip", "pane"]);
@@ -104,9 +145,13 @@ describe("folding and unfolding a pane", () => {
     expect(strips(slots)[0]).toMatchObject({ reason: "folded", width: stripWidth });
   });
 
-  it("never folds the deepest pane", () => {
-    const slots = layout(["quest", "a"], { folded: new Set(["a"]) });
-    expect(panes(slots).map((slot) => slot.id)).toEqual(["quest", "a"]);
+  it("gives the channel its space back when the quest is folded in a narrow window", () => {
+    const chain = ["channel", "quest"];
+    const folded = foldedPane(memory, "quest");
+    const slots = layout(chain, folded, 600);
+    expect(panes(slots).map((slot) => slot.id)).toEqual(["channel"]);
+    expect(strips(slots)[0]).toMatchObject({ id: "quest", reason: "folded" });
+    expect(panes(layout(chain, revealedPane(folded, "quest"), 600)).map((slot) => slot.id)).toEqual(["quest"]);
   });
 
   it("remembers a fold in the memory and takes it back on unfolding", () => {

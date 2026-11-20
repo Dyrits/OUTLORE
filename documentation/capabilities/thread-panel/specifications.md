@@ -16,12 +16,15 @@ The original panel and backup-editor layout described below was superseded by CH
 
 - The thread's groups live in the quest panel, the window's one side panel, at any width (the owner asked for one side panel instead of two, 2026-11-10, CHG-0109). The panel has no tabs and no link in the thread's header. Each group is a small label above a card of rows; a row has an icon, a name, a short value, and a chevron when pressing it opens something. Under the quest's heading come **Companions**, **Knows**, and **Does** (the grouping follows OpenBot's agent panel, at the owner's request, CHG-0111). It shows, for the selected thread:
   - **Companions**: the harness (with the account when it is not this computer's; for any account, including this computer's, its plan limits and budget when it has them, [budget-control](../budget-control/specifications.md#plan-limits)); the model and the effort; **Backup companions**, with how many there are, which opens their menu (below); and the context gauge (below).
-  - **Knows**: the quest's journal; the realm (workspace name and folder, or the quest's scratch folder); **Lore** (how many intels are in scope and the share of the context window they take, which opens the lore panel); and **Skills**, one row with how many the owner can name in a message in this thread's folder, which shows their names in a block when pressed.
-  - **Does**: what this thread alone spent (turns, API cost, tokens counted as subscription use, and the estimated cost as `≈ $1.20`, agreed in [budget-control](../budget-control/specifications.md#estimated-cost), CHG-0126), the quest's budget and usage, as the quest panel shows them, and Archive (none on a Ritual).
-- **Tools** (connectors, CHG-0325): the panel also lists the thread's effective tools: Outlore's thread tools and the tools of its usable connectors, those switched off marked off; a harness's own built-in tools only where its adapter reports them ([connectors](../connectors/specifications.md#a-connectors-tools)). It is in the right sidebar (the owner, CHG-0326); which group of the panel holds it is not agreed.
+  - **Knows**: the quest's journal; the realm (workspace name and folder, or the quest's scratch folder); **Lore** (how many intels are in scope and the share of the context window they take, which opens the lore panel); **Skills** (how many the owner can name in a message in this thread's folder); **Tools** (how many are on); and **Connectors** (the quest's installed connector choices).
+  - **Does**: what this thread alone spent (turns, API cost, tokens counted as subscription use, and the estimated cost as `≈ $1.20`, agreed in [budget-control](../budget-control/specifications.md#estimated-cost), CHG-0126), the quest's budget and usage, as the quest panel shows them.
+- **Skills**, **Tools**, and **Connectors** each open a scrollable panel over the Quest sidebar, with a Back button to return to Knows.
+- Tools lists Outlore's thread tools and the tools reported by connectors, with their effective state ([connectors](../connectors/specifications.md#a-connectors-tools)).
+- The Connectors panel uses quest-wide switches and offers Reset to inherit where applicable. Errands share those choices.
 - **An errand's panel** is headed with the errand's own title, and a **Quest** row that names its quest and opens it.
-  Mark as done is removed from both the quest and errand panels (CHG-0135 and CHG-0136).
-  The quest's Archive action is in the quest's own panel.
+  Errands use the same Archive and Mark as done icons as quests in the conversation header.
+  A completed errand keeps a checked, disabled completion icon.
+  An archived errand offers Restore errand in its details panel.
 
 ### Backup companions
 

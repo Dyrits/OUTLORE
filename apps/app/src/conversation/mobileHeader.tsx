@@ -1,28 +1,26 @@
 import type { ThreadState } from "@outlore/contracts";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import type { ReactNode } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { styles } from "../foundation/styles";
 import { colors, radii } from "../foundation/theme";
 import { ArchiveButton } from "../ui/archiveButton";
 import { StateIndicator } from "../ui/controls";
 
-/**
- * A phone's quest header, in the app's own look: a back chevron that opens the main menu, the title with its state's dot
- * in the middle, and the archive button, each control in a square of the same size so the title stays centered.
- * `onArchive` is null where the thread cannot be archived, which leaves the place empty.
- */
+/** Shows the menu button, conversation title and state, and available conversation actions in a narrow window. */
 export function MobileHeader({
+  errandActions,
   isArchiveDisabled,
   onArchive,
   onBack,
   state,
   title,
 }: {
+  errandActions: ReactNode;
   isArchiveDisabled: boolean;
   onArchive: (() => void) | null;
   onBack: () => void;
   state: ThreadState;
-  title: string;
+  title: ReactNode;
 }) {
   return (
     <View style={local.header}>
@@ -47,12 +45,11 @@ export function MobileHeader({
         </Svg>
       </Pressable>
       <View style={local.title}>
-        <Text numberOfLines={1} style={[styles.paneTitle, local.titleText]}>
-          {title}
-        </Text>
+        {title}
         <StateIndicator state={state} />
       </View>
-      <View style={local.control}>
+      <View style={local.actions}>
+        {errandActions}
         {onArchive !== null && (
           <ArchiveButton isDisabled={isArchiveDisabled} label="Archive quest" onPress={onArchive} />
         )}
@@ -62,9 +59,9 @@ export function MobileHeader({
 }
 
 const local = StyleSheet.create({
+  actions: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "center", minWidth: 32 },
   control: { alignItems: "center", borderRadius: radii.md, height: 32, justifyContent: "center", width: 32 },
   controlPressed: { backgroundColor: colors.controlHover },
   header: { alignItems: "center", flexDirection: "row", gap: 8, minHeight: 32, paddingBottom: 4 },
   title: { alignItems: "center", flex: 1, flexDirection: "row", gap: 8, justifyContent: "center" },
-  titleText: { flexShrink: 1 },
 });

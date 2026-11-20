@@ -58,4 +58,4 @@ Latest handoffs:
 
 - To resume the Codex turn failure on the Vault's permission profile (CHG-0559; open: the owner's retry of a Codex turn in the window), read the [current handoff](.agents/handoffs/2026-11-20-0044-codex-vault-profile.md). Handoffs are shared and committed.
 
-- To resume the desktop conversation panes, window review, or the Chronicle attention feed, read the [current handoff](.agents/handoffs/2026-11-20-0847-conversation-panes-blank-panel-fix.md). Handoffs are shared and committed.
+- To resume conversation pane changes, desktop review, or Chronicle follow-up, read the [current handoff](.agents/handoffs/2026-11-20-1141-conversation-pane-folding.md). Handoffs are shared and committed.

@@ -18,10 +18,12 @@ import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
 import { ConversationRunner } from "./conversationRunner";
 import type { Entry } from "./entries";
+import { ErrandHeaderActions } from "./errandHeaderActions";
 import { MobileHeader } from "./mobileHeader";
 import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
 import { terminalFolderOf } from "./terminalFolder";
 import { ChatterNotices } from "./threadActions";
+import { ThreadTitle } from "./threadTitle";
 import { OpenThreadForm } from "./threadTree";
 import { CommentsProvider } from "./useComments";
 import { useThreadConversation } from "./useThreadConversation";
@@ -90,6 +92,7 @@ export function ThreadPane({
           ? ending.run(() => client.request({ _tag: "ReopenMission", missionId: detail.mission.id }))
           : ending.start("Done")
     : null;
+  const errandActions = <ErrandHeaderActions act={act} client={client} detail={detail} />;
   const questTab = useContext(QuestTabButtonContext);
   return (
     <CommentsProvider value={comments}>
@@ -97,20 +100,21 @@ export function ThreadPane({
         <View style={[styles.flex, styles.pane]}>
           {onBack !== undefined && (
             <MobileHeader
+              errandActions={errandActions}
               isArchiveDisabled={ending.isBusy}
               onArchive={archive}
               onBack={onBack}
               state={thread.state}
-              title={thread.title}
+              title={<ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />}
             />
           )}
           {(onBack === undefined || canResume || canOpenDetails) && (
             <View style={styles.header}>
               {onBack === undefined && (
                 <>
-                  <Text numberOfLines={1} style={[styles.paneTitle, styles.flex]}>
-                    {thread.title}
-                  </Text>
+                  <View style={styles.flex}>
+                    <ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />
+                  </View>
                   <StateIndicator state={thread.state} />
                   {canResume && (
                     <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
@@ -121,12 +125,14 @@ export function ThreadPane({
                     <ArchiveButton isDisabled={ending.isBusy} label="Archive quest" onPress={archive} />
                   )}
                   {markDone !== null && <DoneButton isDisabled={ending.isBusy} isDone={isDone} onPress={markDone} />}
+                  {errandActions}
                   {questTab !== null && (
                     <>
                       <HeaderSeparator />
                       <QuestPanelButton isOpen={questTab.isOpen} onPress={questTab.onPress} />
                     </>
                   )}
+                  {questTab !== null && chrome != null && <HeaderSeparator />}
                   {chrome}
                 </>
               )}
@@ -245,9 +251,7 @@ export function ThreadPane({
                 <CommentTray />
                 <Composer
                   draftKey={`thread:${thread.id}`}
-                  {...(canOpenBeneath && (!isInPane || isOwnQuest)
-                    ? { onOpenSideQuest: () => setIsOpening(true) }
-                    : {})}
+                  {...(canOpenBeneath && !isInPane ? { onOpenSideQuest: () => setIsOpening(true) } : {})}
                   hasContent={terminal.hasContent || comments.items.length > 0}
                   {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
                   // The harness, account, Companion, and effort can change at any time, in a turn too: a handover

@@ -6,28 +6,40 @@ import { stripWidth } from "./paneChain";
 // Text runs down the strip, as a book's spine does.
 const spine = { writingMode: "vertical-rl" } as object;
 
+/** One folded pane, as one part of a strip. */
+export type StripPart = { id: string; onReveal: () => void; state: ThreadState; title: string };
+
 /**
- * A folded pane: a slim strip with its state and its title along it, one press from open again. Panes the chain has
- * too many of, or the window is too narrow for, wait here as well.
+ * Folded panes next to each other: one slim strip, split in as many equal parts, each with its state and its title along
+ * it and one press from open again. Panes the chain has too many of, or the window is too narrow for, wait here as well.
  */
-export function PaneStrip({ onReveal, state, title }: { onReveal: () => void; state: ThreadState; title: string }) {
+export function PaneStrip({ parts }: { parts: ReadonlyArray<StripPart> }) {
   return (
-    <Pressable
-      accessibilityLabel={`Open ${title}`}
-      accessibilityRole="button"
-      onPress={onReveal}
-      style={({ pressed }) => [local.strip, pressed && local.pressed]}
-    >
-      <Text style={local.unfold}>›</Text>
-      <View accessibilityLabel={stateLabels[state]} style={[local.dot, { backgroundColor: stateTones[state].color }]} />
-      <Text numberOfLines={1} style={[local.title, spine]}>
-        {title}
-      </Text>
-    </Pressable>
+    <View style={local.strip}>
+      {parts.map((part, index) => (
+        <Pressable
+          accessibilityLabel={`Open ${part.title}`}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: false }}
+          key={part.id}
+          onPress={part.onReveal}
+          style={({ pressed }) => [local.part, index > 0 && local.divided, pressed && local.pressed]}
+        >
+          <Text style={local.unfold}>›</Text>
+          <View
+            accessibilityLabel={stateLabels[part.state]}
+            style={[local.dot, { backgroundColor: stateTones[part.state].color }]}
+          />
+          <Text numberOfLines={1} style={[local.title, spine]}>
+            {part.title}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
-/** A small button in a pane's header: fold it, or close it. */
+/** A small text button in a pane’s header. */
 export function PaneButton({ glyph, label, onPress }: { glyph: string; label: string; onPress: () => void }) {
   return (
     <Pressable
@@ -43,18 +55,12 @@ export function PaneButton({ glyph, label, onPress }: { glyph: string; label: st
 
 const local = StyleSheet.create({
   button: { alignItems: "center", borderRadius: radii.sm, height: 26, justifyContent: "center", width: 26 },
+  divided: { borderColor: colors.edge, borderTopWidth: 1 },
   dot: { borderRadius: radii.pill, height: 8, width: 8 },
   glyph: { color: colors.textSecondary, fontSize: fontSizes.lg },
+  part: { alignItems: "center", flex: 1, gap: 10, minHeight: 0, paddingVertical: 10 },
   pressed: { backgroundColor: colors.controlActive },
-  strip: {
-    alignItems: "center",
-    backgroundColor: colors.sidebar,
-    borderColor: colors.edge,
-    borderLeftWidth: 1,
-    gap: 10,
-    paddingVertical: 10,
-    width: stripWidth,
-  },
+  strip: { backgroundColor: colors.sidebar, borderColor: colors.edge, borderLeftWidth: 1, width: stripWidth },
   title: { color: colors.textSecondary, flexShrink: 1, fontSize: fontSizes.base },
   unfold: { color: colors.accentText, fontSize: fontSizes.lg },
 });

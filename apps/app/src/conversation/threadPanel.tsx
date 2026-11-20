@@ -12,10 +12,11 @@ import {
   threadSpendingTextOf,
   tokenCountOf,
 } from "../foundation/labels";
+import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { useSkills } from "../foundation/useSkills";
-import { QuestSidebar, Row } from "../quests/questPanel";
+import { Group, QuestSidebar, Row } from "../quests/questPanel";
 import { Button } from "../ui/button";
 
 /** The colors the gauge's parts are drawn in, from the part filling the bar first. */
@@ -55,34 +56,19 @@ function ContextMeter({ gauge }: { gauge: ContextGauge }) {
   );
 }
 
-/** The errand's own actions, leaving its quest as it is: "Mark as done", and archiving it or bringing it back. */
-function SideQuestDone({
-  client,
-  isArchived,
-  state,
-  threadId,
-}: {
-  client: ServiceClient;
-  isArchived: boolean;
-  state: string;
-  threadId: ThreadId;
-}) {
+/** Brings an archived errand back and shows any refusal in its details panel. */
+function RestoreErrand({ client, threadId }: { client: ServiceClient; threadId: ThreadId }) {
   const [error, setError] = useState<string | null>(null);
-  const send = (tag: "ArchiveThread" | "MarkThreadDone" | "RestoreThread") =>
-    client.request({ _tag: tag, threadId }).then(
-      () => setError(null),
-      (reason) => setError(messageOf(reason)),
-    );
   return (
-    <View style={local.done}>
+    <View style={local.restore}>
       <Button
-        isDisabled={state === "Done" || isArchived}
-        label={state === "Done" ? "Done" : "Mark as done"}
-        onPress={() => send("MarkThreadDone")}
-      />
-      <Button
-        label={isArchived ? "Restore errand" : "Archive errand"}
-        onPress={() => send(isArchived ? "RestoreThread" : "ArchiveThread")}
+        label="Restore errand"
+        onPress={() =>
+          client.request({ _tag: "RestoreThread", threadId }).then(
+            () => setError(null),
+            (reason) => setError(messageOf(reason)),
+          )
+        }
       />
       {error !== null && <Text style={local.error}>{error}</Text>}
     </View>
@@ -116,8 +102,6 @@ export function ThreadPanel({
     thread.id,
   );
   const skills = useSkills(client, thread.workspace?.path ?? null);
-  const [isShowingSkills, setIsShowingSkills] = useState(false);
-  const [isShowingTools, setIsShowingTools] = useState(false);
   const modelValue = `${modelLabelOf(thread.model)} · ${effortLabel(thread.effort)}`;
   const harnessValue =
     thread.accountId === null
@@ -145,45 +129,46 @@ export function ThreadPanel({
         value={thread.workspace?.isMissing === true ? "Folder missing" : (thread.workspace?.path ?? "The quest's own")}
       />
       <Row icon="library" label="Lore" onPress={onOpenLore} value={loreGaugeValueOf(detail.loreGauge)} />
-      <Row
-        icon="puzzle"
-        label="Skills"
-        onPress={skills.length === 0 ? undefined : () => setIsShowingSkills(!isShowingSkills)}
-        value={skills.length === 0 ? "None found" : `${skills.length} available`}
-      />
-      {isShowingSkills && <Text style={local.skills}>{skills.map((skill) => `/${skill.name}`).join("  ")}</Text>}
-      <Row
-        icon="puzzle"
-        label="Tools"
-        onPress={panel === null ? undefined : () => setIsShowingTools(!isShowingTools)}
-        value={
-          panel === null
-            ? (panelError ?? "Reading…")
-            : `${panel.outloreTools.length + panel.connectorTools.filter((tool) => tool.isOn).length} on`
-        }
-      />
-      {isShowingTools && panel !== null && (
-        <View style={local.toolList}>
-          <Text style={local.toolHeading}>Outlore</Text>
-          {panel.outloreTools.map((tool) => (
-            <Text key={tool} style={local.toolName}>
-              {tool}
-            </Text>
-          ))}
-          {panel.connectorTools.map((tool) => (
-            <Text key={`${tool.connectorId}/${tool.name}`} style={local.toolName}>
-              {tool.connectorName} · {tool.name}
-              {tool.isOn ? "" : " · Off"}
-            </Text>
-          ))}
-          <Text style={local.toolName}>
-            Connector tools reflect the last server listing and current choices. Turning one on takes effect next turn;
-            turning one off takes effect at once. Harness built-in tools are not reported.
-          </Text>
-        </View>
-      )}
     </>
   );
+  const skillList =
+    skills.length === 0 ? (
+      <Text style={styles.muted}>No skills found.</Text>
+    ) : (
+      <Group label="Available skills">
+        {skills.map((skill) => (
+          <Row key={skill.name} label={`/${skill.name}`} />
+        ))}
+      </Group>
+    );
+  const toolCount =
+    panel === null
+      ? (panelError ?? "Reading…")
+      : `${panel.outloreTools.length + panel.connectorTools.filter((tool) => tool.isOn).length} on`;
+  const toolList =
+    panel === null ? (
+      <Text style={panelError === null ? styles.muted : styles.error}>{toolCount}</Text>
+    ) : (
+      <>
+        <Group label="Outlore">
+          {panel.outloreTools.map((tool) => (
+            <Row key={tool} label={tool} />
+          ))}
+        </Group>
+        {panel.connectorTools.length > 0 && (
+          <Group label="Connector tools">
+            {panel.connectorTools.map((tool) => (
+              <Row
+                key={`${tool.connectorId}/${tool.name}`}
+                label={tool.name}
+                value={`${tool.connectorName} · ${tool.isOn ? "On" : "Off"}`}
+              />
+            ))}
+          </Group>
+        )}
+        <Text style={styles.muted}>Connector tools reflect the last server listing and current choices.</Text>
+      </>
+    );
   const spends = panel !== null && <Row icon="coins" label="This thread" value={threadSpendingTextOf(panel)} />;
   return (
     <QuestSidebar
@@ -198,18 +183,16 @@ export function ThreadPanel({
           thread.depth === 0
             ? null
             : {
-                action: (
-                  <SideQuestDone
-                    client={client}
-                    isArchived={detail.threads.find((each) => each.id === thread.id)?.isArchived === true}
-                    state={thread.state}
-                    threadId={thread.id}
-                  />
-                ),
                 onOpenQuest,
+                restore:
+                  detail.threads.find((each) => each.id === thread.id)?.isArchived === true ? (
+                    <RestoreErrand client={client} threadId={thread.id} />
+                  ) : null,
                 title: thread.title,
               },
+        skills: { content: skillList, value: skills.length === 0 ? "None found" : `${skills.length} available` },
         spends,
+        tools: { content: toolList, value: toolCount },
       }}
     />
   );
@@ -224,27 +207,15 @@ const local = StyleSheet.create({
     overflow: "hidden",
   },
   contextRow: { borderTopColor: colors.border, borderTopWidth: 1 },
-  done: { alignItems: "flex-start", gap: 6, padding: 12 },
   empty: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.md, padding: 12 },
   error: { color: colors.dangerText, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   legend: { alignItems: "center", flexDirection: "row", gap: 6 },
   legendLabel: { color: colors.text, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   meter: { gap: 6, padding: 12 },
   meterText: { fontFamily: fonts.sans, fontSize: fontSizes.md },
+  restore: { alignItems: "flex-start", gap: 6, padding: 12 },
   row: { alignItems: "center", flexDirection: "row", gap: 10, minHeight: 42, paddingHorizontal: 12 },
   rowLabel: { color: colors.text, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.md },
   rowValue: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
-  skills: {
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    color: colors.textSecondary,
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.sm,
-    lineHeight: 20,
-    padding: 12,
-  },
   swatch: { borderRadius: 2, height: 10, width: 10 },
-  toolHeading: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.sm, fontWeight: "700" },
-  toolList: { borderTopColor: colors.border, borderTopWidth: 1, gap: 4, padding: 12 },
-  toolName: { color: colors.textSecondary, fontFamily: fonts.sans, fontSize: fontSizes.sm },
 });

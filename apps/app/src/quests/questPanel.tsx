@@ -1,5 +1,5 @@
 import type { HarnessName, MissionDetail, MissionId, MissionSummary, WorkspaceChoice } from "@outlore/contracts";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ConnectorChoicePanel } from "../connectors";
 import { BudgetMeters } from "../editors/budgets";
@@ -19,6 +19,7 @@ import { colors, fontSizes, fonts, outline, radii, stateLabels, stateTones } fro
 import { RealmArchiveAction } from "../realms/realmArchiveAction";
 import { RealmName } from "../realms/realmName";
 import { RitualControls } from "../rituals/rituals";
+import { Button } from "../ui/button";
 import { ProviderMark } from "../ui/providerMarks";
 import { RowChevron, RowIcon, type RowIconName } from "../ui/rowIcons";
 import { MissionEndingActions, MissionTitle } from "./missionActions";
@@ -92,8 +93,10 @@ export type ThreadSections = {
   /** The thread's Companions group: what it runs on, its backups, and its context. */
   companions: ReactNode;
   knows: ReactNode;
+  skills: { content: ReactNode; value: string };
+  tools: { content: ReactNode; value: string };
   /** Given for an errand: it names the quest it belongs to and ends on its own. */
-  sideQuest: { action: ReactNode; onOpenQuest: () => void; title: string } | null;
+  sideQuest: { onOpenQuest: () => void; restore: ReactNode; title: string } | null;
   spends: ReactNode;
 };
 
@@ -121,11 +124,12 @@ export function QuestSidebar({
   /** Given in the quest's conversation: what the open thread adds. */
   thread?: ThreadSections;
 }) {
+  const [section, setSection] = useState<"Skills" | "Tools" | "Connectors" | null>(null);
   const { usage } = mission;
   const tone = stateTones[mission.state];
   return (
     <View style={local.panel}>
-      <ScrollView contentContainerStyle={local.content} style={styles.flex}>
+      <ScrollView contentContainerStyle={local.content} style={[styles.flex, section !== null && local.hidden]}>
         <View style={local.hero}>
           {onBack === undefined ? (
             // A plain quest is already named by the column's Quest tab; only an errand or a Ritual says what it is.
@@ -180,27 +184,28 @@ export function QuestSidebar({
             />
           )}
           {thread?.knows}
+          {thread !== undefined && (
+            <>
+              <Row icon="puzzle" label="Skills" onPress={() => setSection("Skills")} value={thread.skills.value} />
+              <Row icon="puzzle" label="Tools" onPress={() => setSection("Tools")} value={thread.tools.value} />
+            </>
+          )}
+          <Row icon="puzzle" label="Connectors" onPress={() => setSection("Connectors")} />
         </Group>
         <Group label="Does">
           {thread?.spends}
           <Row icon="wallet" label="Quest budget" onPress={onOpenBudget} value={budgetValueOf(mission.budget)} />
           <Row icon="chart" label="Quest usage" value={usedTextOf(mission.consumption)} />
-          {/* Mark as done and Archive are in the quest's header; only an archived quest's Reopen stays here. A Ritual is never marked done or archived: it is switched off or deleted from its controls above. */}
-          {thread?.sideQuest != null ? (
-            <View style={local.does}>{thread.sideQuest.action}</View>
-          ) : (
-            mission.ritual === null &&
-            mission.state === "Archived" && (
-              <View style={local.does}>
-                <MissionEndingActions client={client} isButtons={true} mission={mission} />
-              </View>
-            )
-          )}
+          {/* Archive and completion live in the header, while restore or reopen appears here for archived work. */}
+          {thread?.sideQuest != null
+            ? thread.sideQuest.restore !== null && <View style={local.does}>{thread.sideQuest.restore}</View>
+            : mission.ritual === null &&
+              mission.state === "Archived" && (
+                <View style={local.does}>
+                  <MissionEndingActions client={client} isButtons={true} mission={mission} />
+                </View>
+              )}
         </Group>
-        <ConnectorChoicePanel client={client} key={mission.id} level={{ _tag: "Quest", missionId: mission.id }} />
-        {thread?.sideQuest != null && (
-          <Text style={styles.muted}>This errand follows its quest's connector choices.</Text>
-        )}
         <View style={local.spends}>
           <BudgetMeters onPress={onOpenBudget} use={mission.budget} />
           <Text style={styles.muted}>{usageDetail(usage)}</Text>
@@ -209,6 +214,32 @@ export function QuestSidebar({
           )}
         </View>
       </ScrollView>
+      {section !== null && (
+        <View style={styles.flex}>
+          <View style={local.sectionHeader}>
+            <Text accessibilityRole="header" style={local.sectionTitle}>
+              {section}
+            </Text>
+            <Button isPrimary={false} label="Back" onPress={() => setSection(null)} />
+          </View>
+          <ScrollView contentContainerStyle={local.content} key={section} style={styles.flex}>
+            {section === "Skills" && thread?.skills.content}
+            {section === "Tools" && thread?.tools.content}
+            {section === "Connectors" && (
+              <>
+                {thread?.sideQuest != null && (
+                  <Text style={styles.muted}>These choices apply to the whole quest, including its errands.</Text>
+                )}
+                <ConnectorChoicePanel
+                  client={client}
+                  hasHeading={false}
+                  level={{ _tag: "Quest", missionId: mission.id }}
+                />
+              </>
+            )}
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 }
@@ -364,6 +395,7 @@ const local = StyleSheet.create({
     lineHeight: 27,
   },
   heroRow: { alignItems: "center", flexDirection: "row", gap: 12, paddingRight: 34 },
+  hidden: { display: "none" },
   kicker: {
     color: colors.edge,
     fontFamily: fonts.sans,
@@ -428,5 +460,15 @@ const local = StyleSheet.create({
   },
   rowLabel: { color: colors.text, flexGrow: 1, flexShrink: 1, fontFamily: fonts.sans, fontSize: fontSizes.md },
   rowValue: { color: colors.textMuted, flexShrink: 3, fontFamily: fonts.sans, fontSize: fontSizes.sm },
+  sectionHeader: {
+    alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between",
+    padding: 12,
+  },
+  sectionTitle: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "700" },
   spends: { gap: 10 },
 });

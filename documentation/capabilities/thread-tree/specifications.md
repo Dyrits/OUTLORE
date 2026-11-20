@@ -110,7 +110,7 @@ The interface presents idle, running, or Summons; waiting, failure, and stopped 
 
 ### Archiving an errand
 
-- The owner can archive an errand on its own, from a button on its row in the sidebar and from its panel, without archiving its quest (CHG-0516). The quest's own thread cannot be archived on its own: it ends with its quest.
+- The owner can archive an errand on its own, from its sidebar row or the Archive icon in its conversation header, without archiving its quest (CHG-0516). The quest's own thread cannot be archived on its own: it ends with its quest.
 - Archiving stops the errand and the errands beneath it that are at work, archives them with it, and returns a parent left Waiting with nothing at work beneath it to Idle. No confirmation is asked.
 - Archived errands leave the sidebar, the quest list, the quest's thread count and its state. The quest's conversation tree lists them under **Archived errands**, and their conversations stay readable.
 - **Restore errand** in the errand's panel brings it back with the errands archived beneath it; they stay Stopped until resumed. It is refused while the errand above it is archived.

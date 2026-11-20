@@ -125,7 +125,7 @@ export function OpenThreadForm({
   parent,
 }: {
   client: ServiceClient;
-  onCancel: () => void;
+  onCancel?: () => void;
   onOpened: (threadId: ThreadId) => void;
   parent: ThreadView;
 }) {
@@ -178,14 +178,16 @@ export function OpenThreadForm({
   const isOverWarning = context?.isOverWarning === true;
   return (
     <View style={styles.openForm}>
-      <View style={styles.header}>
-        <Text numberOfLines={1} style={[styles.label, styles.flex]}>
-          New errand beneath "{parent.title}"
-        </Text>
-        <Pressable accessibilityLabel="Cancel new errand" accessibilityRole="button" hitSlop={8} onPress={onCancel}>
-          <Text style={styles.error}>✕</Text>
-        </Pressable>
-      </View>
+      {onCancel !== undefined && (
+        <View style={styles.header}>
+          <Text numberOfLines={1} style={[styles.label, styles.flex]}>
+            New errand beneath "{parent.title}"
+          </Text>
+          <Pressable accessibilityLabel="Cancel new errand" accessibilityRole="button" hitSlop={8} onPress={onCancel}>
+            <Text style={styles.error}>✕</Text>
+          </Pressable>
+        </View>
+      )}
       {context != null && isOverWarning && (
         <View style={styles.failure}>
           <Text style={styles.error}>{startingContextWarningOf(context)}</Text>

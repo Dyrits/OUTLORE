@@ -9,7 +9,15 @@ import { Toggle } from "../ui/controls";
 import { choiceOfSwitch, choiceViewOf, levelKeyOf } from "./connectorChoices";
 
 /** The choices for one placement. Errands share their quest's choice. */
-export function ConnectorChoicePanel({ client, level }: { client: ServiceClient; level: ConnectorChoiceLevel }) {
+export function ConnectorChoicePanel({
+  client,
+  hasHeading = true,
+  level,
+}: {
+  client: ServiceClient;
+  hasHeading?: boolean;
+  level: ConnectorChoiceLevel;
+}) {
   const { data, error } = useServiceQuery(client, { _tag: "ReadConnectorChoices", level }, levelKeyOf(level));
   const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -25,7 +33,7 @@ export function ConnectorChoicePanel({ client, level }: { client: ServiceClient;
   };
   return (
     <View style={{ gap: 8 }}>
-      <Text style={styles.body}>Connectors</Text>
+      {hasHeading && <Text style={styles.body}>Connectors</Text>}
       {data === null && <Text style={error === null ? styles.muted : styles.error}>{error ?? "Reading…"}</Text>}
       {data?.length === 0 && <Text style={styles.muted}>No connectors installed.</Text>}
       {data?.map((card) => {

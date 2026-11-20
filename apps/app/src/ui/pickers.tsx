@@ -1,7 +1,8 @@
 import { type ComponentRef, useRef, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { styles } from "../foundation/styles";
-import { colors, fontSizes, fonts, outline, round } from "../foundation/theme";
+import { colors, fontSizes, fonts, outline, radii, round } from "../foundation/theme";
+import { FoldChevron } from "./foldChevron";
 import { type MenuPlacement, menuPlacementOf } from "./menuPlacement";
 
 /** Past this many options, a choice is a drop-down field rather than a segmented control. */
@@ -68,6 +69,7 @@ export function Choice<T extends string | null>({
 export function Menu<T extends string | null>({
   accessibilityLabel,
   isField = false,
+  isTitle = false,
   options,
   value,
   label,
@@ -75,6 +77,7 @@ export function Menu<T extends string | null>({
 }: {
   accessibilityLabel: string;
   isField?: boolean;
+  isTitle?: boolean;
   options: ReadonlyArray<T>;
   value: T;
   label: (option: T) => string;
@@ -91,18 +94,28 @@ export function Menu<T extends string | null>({
       setPlacement(menuPlacementOf({ height, width, x, y }, window, listWidth)),
     );
   return (
-    <View style={[styles.menu, isField && local.fieldWrap]}>
+    <View style={[styles.menu, isField && local.fieldWrap, isTitle && local.titleWrap]}>
       <Pressable
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
+        accessibilityState={{ expanded: isOpen }}
         onPress={isOpen ? close : open}
         ref={button}
-        style={[isField ? local.field : styles.menuButton, isOpen && styles.menuButtonOpen]}
+        style={[
+          isField ? local.field : styles.menuButton,
+          isTitle && local.titleButton,
+          isOpen && styles.menuButtonOpen,
+          isTitle && isOpen && local.titleHighlight,
+        ]}
       >
-        <Text numberOfLines={1} style={isField ? local.fieldText : local.compactText}>
+        <Text numberOfLines={1} style={isField ? local.fieldText : isTitle ? local.titleText : local.compactText}>
           {label(value)}
         </Text>
-        <Text style={styles.menuCaret}>⌄</Text>
+        {isTitle ? (
+          <FoldChevron color={colors.textSecondary} isOpen size={16} />
+        ) : (
+          <Text style={styles.menuCaret}>⌄</Text>
+        )}
       </Pressable>
       {/* The list opens in its own layer over the whole window, so nothing drawn later covers it, a click
           outside closes it, and only one menu is open at a time. */}
@@ -113,6 +126,7 @@ export function Menu<T extends string | null>({
             {options.map((option) => (
               <Pressable
                 accessibilityRole="menuitem"
+                accessibilityState={{ selected: option === value }}
                 key={String(option)}
                 onPress={() => {
                   onChange(option);
@@ -122,6 +136,7 @@ export function Menu<T extends string | null>({
                   styles.menuItem,
                   pressed && local.itemHovered,
                   option === value && styles.menuItemSelected,
+                  isTitle && option === value && local.titleHighlight,
                 ]}
               >
                 <Text numberOfLines={1} style={[styles.menuItemText, option === value && styles.chipTextSelected]}>
@@ -228,4 +243,8 @@ const local = StyleSheet.create({
   stepText: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs },
   stepTextSelected: { color: colors.accentText, fontWeight: "700" },
   tick: { backgroundColor: colors.borderStrong, height: 12, marginTop: 4, width: 1.5 },
+  titleButton: { paddingHorizontal: 0, paddingVertical: 0 },
+  titleHighlight: { borderRadius: radii.lg, ...(Platform.OS === "web" && { cornerShape: "squircle" }) },
+  titleText: { ...styles.paneTitle, flexShrink: 1 },
+  titleWrap: { flexShrink: 1, minWidth: 0 },
 });

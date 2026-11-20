@@ -30,16 +30,18 @@ function HeaderIcon({ children, color }: { children: ReactNode; color: string })
 export function DoneButton({
   isDisabled = false,
   isDone,
+  label = isDone ? "Mark as not done" : "Mark as done",
   onPress,
 }: {
   isDisabled?: boolean;
   isDone: boolean;
+  label?: string;
   onPress: () => void;
 }) {
   const color = isDone ? colors.accentText : colors.textSecondary;
   return (
     <Pressable
-      accessibilityLabel={isDone ? "Mark as not done" : "Mark as done"}
+      accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ checked: isDone, disabled: isDisabled }}
       disabled={isDisabled}
@@ -53,7 +55,7 @@ export function DoneButton({
   );
 }
 
-/** A thin vertical line between the quest's own actions and the icon of its panel. */
+/** A thin vertical line between groups of actions in the pane header. */
 export function HeaderSeparator() {
   return <View style={local.separator} />;
 }
@@ -75,6 +77,24 @@ export function QuestPanelButton({ isOpen, onPress }: { isOpen: boolean; onPress
         {emblemPaths.sword.map((path) => (
           <Path d={path} key={path} />
         ))}
+      </HeaderIcon>
+    </Pressable>
+  );
+}
+
+/** Folds a pane to its strip: the bar sits on the left and the arrow points left, as on every pane. */
+export function FoldPaneButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ expanded: true }}
+      onPress={onPress}
+      style={({ pressed }) => [local.panel, pressed && local.panelActive]}
+    >
+      <HeaderIcon color={colors.textSecondary}>
+        <Rect height={16} rx={3} width={18} x={3} y={4} />
+        <Path d="M8 4v16m2.5-8H17m-4-3-3 3 3 3" />
       </HeaderIcon>
     </Pressable>
   );

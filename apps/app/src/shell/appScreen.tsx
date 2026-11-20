@@ -116,9 +116,6 @@ export function AppScreen({
             isParked={isParked}
             key={`${quest.openMission}:${quest.openCount}`}
             missionId={quest.openMission}
-            onCloseMission={(channel) =>
-              navigation.openChannel(channel.id === null ? null : { id: channel.id, name: channel.name })
-            }
             onOpenMission={navigation.openMission}
             onOpenThread={navigation.selectThread}
             openThread={quest.openThread}

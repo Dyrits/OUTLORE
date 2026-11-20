@@ -118,19 +118,32 @@ const sharesOf = (room: number, weights: ReadonlyArray<number>): Array<number> =
 
 /**
  * The row of panes and strips for a chain in `available` pixels. At most four panes are open; the earlier ones of a
- * longer chain, the ones the owner folded, and the ones the window is too narrow for are strips. The deepest pane is
- * always open. The open panes share what the strips leave, equally unless the owner dragged an edge.
+ * longer chain, the ones the owner folded, and the ones the window is too narrow for are strips.
+ * The deepest pane that the owner has left open keeps its space when the window narrows.
+ * The open panes share what the strips leave, equally unless the owner dragged an edge.
  */
 export const layoutOf = <Id extends string>(input: {
   available: number;
   chain: ReadonlyArray<Id>;
   memory: PaneMemory<Id>;
+  starter?: Id;
+  expanded?: Id | null;
 }): Array<PaneSlot<Id>> => {
-  const { available, chain, memory } = input;
-  const last = chain.length - 1;
+  const { available, chain, memory, starter, expanded } = input;
+  const expandedIndex = expanded == null ? -1 : chain.indexOf(expanded);
+  const starterIndex = starter !== undefined && memory.shown.has(starter) ? chain.indexOf(starter) : -1;
+  const lastConversation = chain.findLastIndex((id) => id !== starter && !memory.folded.has(id));
+  const last =
+    expandedIndex >= 0
+      ? expandedIndex
+      : starterIndex >= 0
+        ? starterIndex
+        : Math.max(lastConversation >= 0 ? lastConversation : chain.findLastIndex((id) => !memory.folded.has(id)), 0);
   const firstOpen = Math.max(0, chain.length - maxPanes);
   const reasons: Array<StripReason | null> = chain.map((id, index) => {
-    if (index === last || memory.shown.has(id)) return null;
+    if (index === last) return null;
+    if (expandedIndex >= 0) return "folded";
+    if (memory.shown.has(id)) return null;
     if (memory.folded.has(id)) return "folded";
     return index < firstOpen ? "overflow" : null;
   });
@@ -145,7 +158,8 @@ export const layoutOf = <Id extends string>(input: {
     return true;
   };
   while (openCount() > maxPanes && foldEarliest("overflow")) {}
-  const stripCount = () => chain.length - openCount();
+  // Neighboring strips are one strip, split in parts: the run is as wide as one strip.
+  const stripCount = () => reasons.filter((reason, index) => reason !== null && reasons[index - 1] == null).length;
   while (
     openCount() > 1 &&
     available - stripCount() * stripWidth < openCount() * minPaneWidth &&
@@ -164,7 +178,8 @@ export const layoutOf = <Id extends string>(input: {
   if (widths.length > 0) widths[widths.length - 1] = room - widths.slice(0, -1).reduce((sum, width) => sum + width, 0);
   return chain.map((id, depth): PaneSlot<Id> => {
     const reason = reasons[depth] ?? null;
-    if (reason !== null) return { depth, id, kind: "strip", reason, width: stripWidth };
+    if (reason !== null)
+      return { depth, id, kind: "strip", reason, width: reasons[depth - 1] == null ? stripWidth : 0 };
     return { depth, id, kind: "pane", width: widths[open.indexOf(depth)] ?? room };
   });
 };

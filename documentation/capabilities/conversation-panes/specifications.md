@@ -36,6 +36,11 @@ The Workshop (Settings) is not a pane and not a sheet: it is the page that takes
 
 The pane chain is **channel → quest → errand**. The desktop sidebar opens the channel or a quest. A quest defaults to Messages, where anchored Reply lines open errands. Its Errands tab lists the quest’s errands with their state and attention indicators and opens the same third pane. The sidebar shows attention at quest level. The existing phone sidebar keeps its errand rows. Narrow desktop windows can fold earlier panes to strips.
 
+The quest title in the conversation header switches to another non-archived quest across realms and the Borderlands.
+The errand title switches to another errand in the same quest, including existing sub-errands.
+The New errand title also opens this picker when the quest has two or more errands.
+The switchers also appear in the narrow header when another conversation of the same kind is available.
+
 ### Reply and Comment
 
 - A message offers two actions. **Comment** is the existing one: a note held for the owner's next message ([thread-messaging](../thread-messaging/specifications.md#comments-on-messages)). **Reply** is new: it starts a thread of work from the message, whose conversation opens in the next pane.
@@ -45,9 +50,12 @@ The pane chain is **channel → quest → errand**. The desktop sidebar opens th
 
 ### Quests in a main conversation
 
-- Every quest unfolds from a main conversation as a **reply line** under one message:
+- A quest with an originating channel message appears as a **reply line** under that message:
   - A quest Chronicler proposes hangs under Chronicler's proposal message, itself a reply to the owner's message that led to it; the quest's reply line sits under that reply (the owner, 2026-11-20). The confirmation is a simple menu: the realm, and the Companion preset. Nothing starts until the owner confirms, as [today](../mission-coordination/specifications.md#chronicler-the-assistant-chg-0173).
-  - A quest the owner starts directly appears with the owner's opening request as a message of the conversation, and the reply line under it. A quest started by a Reply hangs under the message replied to.
+  - When the owner supplies an opening request as part of creating the quest, the request appears in the channel with the reply line under it.
+  - A quest started by a Reply hangs under the message replied to.
+  - When the owner creates an empty quest, messages they later send from its composer appear only in the quest.
+  - The opening of an empty quest still appears in Chronicle History.
   - Moving a quest to another realm moves the message it came from with it, into that realm's channel, under the existing [move confirmation](../mission-tracking/specifications.md#quest-placement-and-moves).
   - A quest's results, Summons, and failures arrive as replies in that thread, in place of the buttons beside Chronicler's replies.
 - The reply line shows the quest's title, its state, and its latest activity. Pressing it opens the quest's conversation in the next pane.
@@ -56,6 +64,8 @@ The pane chain is **channel → quest → errand**. The desktop sidebar opens th
 
 - An errand is a fork of its parent's conversation. It has an **anchor** message in that conversation, which carries its reply line (title, state, what is new); pressing the reply line opens the errand's conversation in the next pane, as a thread opens in Slack. The errand's result lands in that thread.
 - **Opened by the owner:** by a Reply, the anchor is the message replied to; the reply's text starts the errand.
+- **Started in the Errand pane:** when a desktop quest opens without a selected errand, its third pane holds a composer for a new errand. Sending there starts the errand from the quest's current context using the usual starting-context limits, and opens the new conversation in that pane. The selected errand's New errand button brings the composer back.
+- The Open errand button in the quest's message box is available in the single-conversation layout, which has no Errand pane.
 - **Opened by an agent:** the agent replies, in its own words, to the message that led to the errand, and that reply is the anchor — there is no system card (the owner, 2026-11-20). Outlore writes the reply from the open_thread call itself, so it costs no extra agent turn and looks the same on every harness, but it is attributed to the agent and carries the brief. It is placed as a reply to the message the call names, or to the conversation's latest message when it names none, and the errand's reply line hangs from it. Three errands opened in one turn give three replies, in order, each carrying one; the agent may write ordinary text around them. The anchor only positions the reply line: the tree parent stays the conversation, so anchoring never creates a sub-errand. Pressing the reply line, or replying to the reply, opens the errand's pane, where the brief is the first message (until the pane-identity work restyles it).
 - Opening a reply line from a pane replaces every pane to the right of it.
 - **Follow-up work from an errand:** the agent can post an attributed message about the work in the quest conversation. The owner can Reply to start a quest-level errand from that message. Posting the message starts no errand.
@@ -65,13 +75,17 @@ The pane chain is **channel → quest → errand**. The desktop sidebar opens th
 ### Panes
 
 - At most three panes are shown at once. A window too narrow for three shows fewer; each pane has a minimum width.
-- When the window is too narrow for the whole chain, the last panes are shown and the earlier ones are folded to strips, so the deepest conversation always has a pane and each strip is one press away. On a narrow window the channel folds first.
+- When the window is too narrow for the whole chain, the last panes are shown and the earlier ones are folded to strips, so the deepest conversation left open keeps its space and each strip is one press away. On a narrow window the channel folds first.
 - By default the panes share the width equally: one third each with three.
 - A pane can be **folded** to a slim strip and **unfolded**, which is how a pane gives room to its neighbour: the neighbour extends over the space and the folded pane stays one press away (the owner: better than closing is extending a panel over another, "just folding it").
-- A pane can also be **closed**. Its parent's reply line opens it again, so a closed pane is always easy to bring back.
+- Folded panes that sit next to each other are **one strip** of the same width, split in equal parts stacked from top to bottom, each part with its state and title along it and one press from open again (the owner: collapsed elements are "merged into one split in two parts"). Strips that an open pane separates stay two strips.
+- The desktop headers offer a **Fold** button with a pane-and-arrow icon, separated from the Quest panel icon by a divider. The quest and errand can fold even when they are the deepest conversation. Folding the last open conversation brings another pane into view.
 - On a phone (a narrow window) one pane shows at a time with a Back chevron, as the [phone view](../mission-tracking/specifications.md#simplified-left-navigation) does today.
 - Panes are resized by dragging their edges; the widths are remembered.
-- A button on the deepest pane's header, **Equal widths**, gives the open panes the same share again (a third each with three) and forgets the dragged shares; folded panes stay folded (the owner, CHG-0562).
+- **Equal widths** sits above the conversation row and gives the open panes the same share again (a third each with three) and forgets the dragged shares; folded panes stay folded.
+- The **Expand pane** button in each header gives its conversation the available width and folds the other conversation panes to strips. **Restore pane layout** returns to the previous folds and widths. Opening a strip exits the expanded layout and reveals that pane.
+- When only one pane is visible, its header shows **Restore pane layout** automatically.
+  If the owner folded the panes without using Expand, Restore clears those folds and keeps the pane widths, subject to the space available.
 
 ### The sidebar
 

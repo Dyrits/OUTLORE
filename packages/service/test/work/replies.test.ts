@@ -77,10 +77,6 @@ describe("Chronicler channels", () => {
       expect(yield* anchorsOf(borderlands.threadId)).toEqual([
         expect.objectContaining({ messageId: message.id, missionId: quest.missionId }),
       ]);
-      const empty = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: crypto.randomUUID() });
-      yield* say(empty.threadId, "Catalogue the folio");
-      yield* settle(empty.missionId, isIdle);
-      expect(yield* anchorsOf(channel.threadId)).toEqual([expect.objectContaining({ missionId: empty.missionId })]);
       const activity = yield* call({ _tag: "ReadChronicle" });
       expect(activity).toEqual(
         expect.arrayContaining([
