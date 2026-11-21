@@ -64,3 +64,16 @@ checked against the stand-in `packages/service/test/fixtures/stand-in-vibe.mjs`,
 against a running Vibe. Open: a live probe with a real `vibe-acp` (turn, permission request, cancel, model/thinking
 switch, `_account/read`), and whether `session/set_config_option model` persisting to `config.toml` is acceptable
 for the computer's own sign-in.
+
+## 2026-11-21: live probe of 3.1.3, and where its thinking levels are
+
+`vibe-acp` 3.1.3 is now installed at `~/.local/bin/vibe-acp`. A live probe (`initialize`, one `session/new`, no MCP
+servers) answers `configOptions` with three options: `mode` (`ask`, `accept-edits`, `smart-approve`, `auto-approve`),
+`thinking` (`low`, `high`, `max`, current `high`), and `model` with five options (`mistral-large-4-0`,
+`mistral-medium-latest`, `zai-glm-5-3`, `zai-glm-5-3-flash`, `deepseek-v4-1-flash-1017`) — and **no `_meta` on any
+model**, so the per-model `mistral.ai/thinking` levels above are still not in the release. The levels 3.1.3 offers
+are on the session's own `thinking` option, for every model alike.
+
+Outlore's model list reads that option as a model's effort levels when the model option says none of its own
+(`packages/service/src/harness/vibeAccount.ts`, CHG-0618), which restores the reasoning level in the companion
+menu until a newer build reports each model's own and those take over per model.

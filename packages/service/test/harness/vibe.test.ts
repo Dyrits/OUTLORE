@@ -207,7 +207,13 @@ describe("the Mistral Vibe adapter alone", () => {
           id: "mistral-large-4",
           label: "Mistral Large 4",
         },
-        { id: "mistral-medium-3.5", label: "Mistral Medium 3.5" },
+        // A model that says no levels of its own takes the session's `thinking` option's (a build that reports no
+        // per-model `_meta`, such as the 3.1.3 release, offers them only there, for every model alike).
+        {
+          efforts: ["off", "low", "medium", "high", "xhigh", "max"],
+          id: "mistral-medium-3.5",
+          label: "Mistral Medium 3.5",
+        },
       ]);
     }),
   );

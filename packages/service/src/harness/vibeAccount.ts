@@ -31,34 +31,58 @@ export const initializeParams = {
 export const billingOf = (plan: unknown): BillingKind =>
   textFieldOf(plan, "kind") === "api" ? "ApiKey" : "Subscription";
 
-/** One model of Vibe's `model` config option: its alias, its label, and its thinking levels when it says them. */
-const modelOptionOf = (option: unknown): ModelOption | null => {
+/** The thinking levels a list from Vibe says, as its strings that are not "default"; empty when it says none. */
+const thinkingLevelsOf = (levels: unknown): ReadonlyArray<EffortChoice> =>
+  Array.isArray(levels)
+    ? levels.flatMap(
+        (levelOrOption): Array<EffortChoice> =>
+          typeof levelOrOption === "string" && levelOrOption !== "default" ? [levelOrOption] : [],
+      )
+    : [];
+
+/** The thinking levels the session's own `thinking` config option offers: what a build that reports none per model
+ * (the 3.1.3 release) offers every model alike, so a model without levels of its own takes them. */
+const sessionThinkingLevelsOf = (configOptions: ReadonlyArray<unknown>): ReadonlyArray<EffortChoice> => {
+  for (const option of configOptions) {
+    if (textFieldOf(option, "id") !== "thinking") continue;
+    const options = fieldOf(option, "options");
+    return Array.isArray(options)
+      ? options.flatMap((candidate): Array<EffortChoice> => {
+          const value = textFieldOf(candidate, "value");
+          return value !== null && value !== "default" ? [value] : [];
+        })
+      : [];
+  }
+  return [];
+};
+
+/** One model of Vibe's `model` config option: its alias, its label, and its thinking levels: its own when the model
+ * option says them, else the session's. */
+const modelOptionOf = (option: unknown, sessionLevels: ReadonlyArray<EffortChoice>): ModelOption | null => {
   const value = textFieldOf(option, "value");
   if (value === null) return null;
-  // Newer Vibe carries each model's thinking levels in the option's `_meta` under `mistral.ai/thinking`.
+  // Newer Vibe carries each model's thinking levels in the option's `_meta` under `mistral.ai/thinking`; a build
+  // that says none (the 3.1.3 release) offers them on the session's own `thinking` option, for every model alike.
   const thinking = fieldOf(fieldOf(option, "_meta"), "mistral.ai/thinking");
-  const levels = fieldOf(thinking, "levels");
+  const own = thinkingLevelsOf(fieldOf(thinking, "levels"));
+  const efforts = own.length > 0 ? own : sessionLevels;
   return {
-    ...(Array.isArray(levels)
-      ? {
-          efforts: levels.flatMap(
-            (level): Array<EffortChoice> => (typeof level === "string" && level !== "default" ? [level] : []),
-          ),
-        }
-      : {}),
+    ...(efforts.length > 0 ? { efforts } : {}),
     id: value,
     label: textFieldOf(option, "name") ?? value,
   };
 };
 
-/** The `model` config option of a session's config options, or no models when the answer holds none. */
-const modelOptionListOf = (configOptions: unknown): ReadonlyArray<ModelOption> =>
-  !Array.isArray(configOptions)
-    ? []
-    : configOptions.flatMap((option) => {
-        const options = textFieldOf(option, "id") === "model" ? fieldOf(option, "options") : null;
-        return Array.isArray(options) ? options.flatMap((candidate) => modelOptionOf(candidate) ?? []) : [];
-      });
+/** The `model` config option of a session's config options, or no models when the answer holds none; a model that
+ * says no thinking levels of its own takes the ones the session's `thinking` option offers. */
+const modelOptionListOf = (configOptions: unknown): ReadonlyArray<ModelOption> => {
+  if (!Array.isArray(configOptions)) return [];
+  const sessionLevels = sessionThinkingLevelsOf(configOptions);
+  return configOptions.flatMap((option) => {
+    const options = textFieldOf(option, "id") === "model" ? fieldOf(option, "options") : null;
+    return Array.isArray(options) ? options.flatMap((candidate) => modelOptionOf(candidate, sessionLevels) ?? []) : [];
+  });
+};
 
 /** Vibe's budget resets monthly, so its one plan window is a 30-day one. */
 const budgetWindowMinutes = 30 * 24 * 60;
