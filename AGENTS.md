@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the folded realm channel pane on quest open and its desktop window look, read the [current handoff](.agents/handoffs/2026-11-21-1512-fold-channel-pane-on-quest-open.md). Handoffs are shared and committed.
+
 - To resume live verification of thread permission modes, read the [current handoff](.agents/handoffs/2026-11-21-1227-thread-permission-modes.md). Handoffs are shared and committed.
 
 - To resume the review and refactor since 0.1.12, read the [current handoff](.agents/handoffs/2026-11-20-2251-chronicle-release-review.md). Handoffs are shared and committed.
-
-- To resume the Mistral Vibe update fix and its live verification, read the [current handoff](.agents/handoffs/2026-11-20-1903-vibe-update.md). Handoffs are shared and committed.
