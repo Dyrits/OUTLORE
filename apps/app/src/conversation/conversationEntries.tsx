@@ -12,7 +12,6 @@ import { LoreChangeCard, LoreChangeLine } from "../lore/lore";
 import { TerminalMessage } from "../terminal/terminalMessage";
 import { terminalSnapshotOf } from "../terminal/terminalSnapshot";
 import { ChipText } from "../ui/chips";
-import { InterruptIcon, SteerIcon } from "../ui/composerIcons";
 import { ProviderMark } from "../ui/providerMarks";
 import { QuestionCard, QuestionLine } from "../ui/questions";
 import { ChoiceBubbles } from "./choiceBubbleViews";
@@ -21,6 +20,7 @@ import { commentsOf } from "./comments";
 import { SentComments } from "./commentViews";
 import type { Entry, QuestLink } from "./entries";
 import { Markdown } from "./markdown";
+import { QueuedMessageActions } from "./queuedMessageActions";
 import { QuestReplyLine, ReplyLine } from "./replyLine";
 import { StepsGroup } from "./stepsGroup";
 import { SuggestionCard, SuggestionLine } from "./suggestions";
@@ -228,25 +228,14 @@ function MessageBubble({
               onOpenMission={onOpenMission}
             />
           )}
-          {message.sender === "user" && message.isQueued && isInTurn && (
-            <View style={{ flexDirection: "row", gap: 16 }}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void onSteer(message.id).catch(() => {})}
-                style={{ alignItems: "center", flexDirection: "row", gap: 6 }}
-              >
-                <SteerIcon tint={colors.accentText} />
-                <Text style={styles.link}>Steer</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void onInterrupt().catch(() => {})}
-                style={{ alignItems: "center", flexDirection: "row", gap: 6 }}
-              >
-                <InterruptIcon tint={colors.accentText} />
-                <Text style={styles.link}>Interrupt</Text>
-              </Pressable>
-            </View>
+          {message.sender === "user" && message.isQueued && (
+            <QueuedMessageActions
+              client={client}
+              isInTurn={isInTurn}
+              message={message}
+              onInterrupt={onInterrupt}
+              onSteer={onSteer}
+            />
           )}
         </View>
       </CommentableCard>
@@ -285,6 +274,7 @@ export function EntryView({
   onOpenMission: (missionId: MissionId) => void;
   onSelectThread: (threadId: ThreadId) => void;
 }) {
+  if (entry._tag === "LiveFooter") return null;
   if (entry._tag === "ThreadOpened") return <ReplyLine onOpen={onSelectThread} thread={entry.thread} />;
   if (entry._tag === "Steps")
     return <StepsGroup client={client} seconds={entry.seconds} steps={entry.steps} threadId={entry.threadId} />;

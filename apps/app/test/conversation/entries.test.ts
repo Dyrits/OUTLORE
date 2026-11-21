@@ -62,6 +62,33 @@ const detailOf = (
     threads,
   }) as unknown as MissionDetail;
 
+it("keeps unread owner messages below later replies and steps, including after Steer", () => {
+  const detail = {
+    ...detailOf([summary("top", null, 0)], "top"),
+    messages: [
+      { ...message("queued", 10), isDelivered: false, isQueued: true },
+      { ...message("steered", 20), isDelivered: false, isQueued: false },
+      { ...message("reply", 30), sender: "agent" },
+    ],
+    questions: [recordedQuestionOf("action", 25)],
+  } as unknown as MissionDetail;
+  expect(entriesOf(detail, true).map((entry) => entry.key)).toEqual([
+    "steps:action",
+    "reply",
+    "live-footer",
+    "queued",
+    "steered",
+  ]);
+  const delivered = detail.messages.map((item) => (item.id === "steered" ? { ...item, isDelivered: true } : item));
+  expect(entriesOf({ ...detail, messages: delivered }, true).map((entry) => entry.key)).toEqual([
+    "steered",
+    "steps:action",
+    "reply",
+    "live-footer",
+    "queued",
+  ]);
+});
+
 describe("the threads opened beneath, in their opener's conversation", () => {
   it("places each thread opened beneath where it was opened, leaving out asides and deeper threads", () => {
     const threads = [

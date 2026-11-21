@@ -22,26 +22,36 @@ export function ConversationFeed({
   workspacePath,
   ...navigation
 }: Navigation & { client: ServiceClient; conversation: Conversation; thread: Thread; workspacePath: string | null }) {
+  const footer = <ConversationFooter draft={conversation.draft} thread={thread} />;
+  const hasPendingMessages = conversation.entries.some((entry) => entry._tag === "LiveFooter");
   return (
     <FlatList<Entry>
       {...conversation.followNewest.listPropsOf(
-        <ConversationFooter draft={conversation.draft} panel={conversation.terminal.panel} thread={thread} />,
+        <View>
+          {!hasPendingMessages && footer}
+          {conversation.terminal.panel}
+        </View>,
       )}
       contentContainerStyle={styles.feed}
+      keyboardShouldPersistTaps="handled"
       keyExtractor={(entry) => entry.key}
-      renderItem={({ item }) => (
-        <EntryView
-          {...navigation}
-          client={client}
-          entry={item}
-          harness={thread.harness}
-          isInTurn={thread.actions.isInTurn}
-          onInterrupt={conversation.interrupt}
-          onSteer={conversation.steer}
-          skills={conversation.skills}
-          workspacePath={workspacePath}
-        />
-      )}
+      renderItem={({ item }) =>
+        item._tag === "LiveFooter" ? (
+          footer
+        ) : (
+          <EntryView
+            {...navigation}
+            client={client}
+            entry={item}
+            harness={thread.harness}
+            isInTurn={thread.actions.isInTurn}
+            onInterrupt={conversation.interrupt}
+            onSteer={conversation.steer}
+            skills={conversation.skills}
+            workspacePath={workspacePath}
+          />
+        )
+      }
       style={styles.flex}
     />
   );

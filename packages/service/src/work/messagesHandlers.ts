@@ -6,6 +6,7 @@ import { changed } from "./followUps.ts";
 import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
 import { insertUserMessage, releaseQueued } from "./messaging.ts";
+import { editQueuedMessage, removeQueuedMessage } from "./queuedMessages.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 /** Requests for writing and reading messages, dictation included, share the service request context. */
 export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "commands">) => {
@@ -34,9 +35,12 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
     AddAttachment: (add) => addAttachment(add.name, add.data),
     AddJournalEntry: (add) => nonBlank(add.text).pipe(Effect.andThen((text) => writeOwnerJournal(add, text, null))),
     DiscardAttachment: (given) => discardAttachment(given.attachmentId).pipe(Effect.as(null)),
+    EditQueuedMessage: (given) =>
+      commands.run(editQueuedMessage(given.messageId, given.text).pipe(Effect.as(changed(null)))),
     ReadAttachment: (read) => readAttachment(read.attachmentId),
     ReadDictation: () => readDictationStatus,
     ReadJournal: (read) => readJournalView(read.missionId),
+    RemoveQueuedMessage: (given) => commands.run(removeQueuedMessage(given.messageId).pipe(Effect.as(changed(null)))),
     RewriteBriefing: (rewrite) => {
       const entry = rewrite.entry === null || rewrite.entry.trim() === "" ? "Rewrote the briefing" : rewrite.entry;
       return writeOwnerJournal(rewrite, entry, { basedOn: rewrite.basedOn, briefing: rewrite.briefing });
@@ -70,9 +74,11 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
     | "AddAttachment"
     | "AddJournalEntry"
     | "DiscardAttachment"
+    | "EditQueuedMessage"
     | "ReadAttachment"
     | "ReadDictation"
     | "ReadJournal"
+    | "RemoveQueuedMessage"
     | "RewriteBriefing"
     | "SendMessage"
     | "SteerQueuedMessage"

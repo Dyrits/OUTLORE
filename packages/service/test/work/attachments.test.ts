@@ -98,6 +98,23 @@ const codexModelsLayer = Layer.effect(
 ).pipe(Layer.provide(fakeHarnessToolsLayer()));
 
 describe("message attachments: images added to the owner's messages", () => {
+  it.live("keeps queued attachments on edit and removes their files on withdrawal", () => {
+    const value = fixture();
+    fixtures.push(value);
+    return Effect.gen(function* () {
+      const started = yield* start("wait 1200");
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
+      const image = yield* add("shot.png", png());
+      const sent = yield* sendWith(started.threadId, "Look at this", [image.id]);
+      yield* call({ _tag: "EditQueuedMessage", messageId: sent.messageId, text: "" });
+      const edited = (yield* read(started.missionId)).messages.find((message) => message.id === sent.messageId);
+      expect(edited).toMatchObject({ attachments: [image], isQueued: true, text: "" });
+      expect(attachmentFiles(value.directory)).toHaveLength(1);
+      yield* call({ _tag: "RemoveQueuedMessage", messageId: sent.messageId });
+      expect(attachmentFiles(value.directory)).toEqual([]);
+    }).pipe(Effect.provide(value.layer));
+  });
+
   it.live("leaves an empty quest called Quest after its first image-only message", () =>
     withService(
       Effect.gen(function* () {

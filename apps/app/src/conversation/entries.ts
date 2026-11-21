@@ -23,6 +23,7 @@ export type Entry = { key: string; at: number } & (
   /** The settled actions of one turn gathered under one collapsible line. */
   | { _tag: "Steps"; isCurrent: boolean; seconds: number; steps: ReadonlyArray<Step>; threadId: ThreadId }
   | { _tag: "Question"; question: Question }
+  | { _tag: "LiveFooter" }
   | { _tag: "Suggestion"; suggestion: Suggestion }
   | { _tag: "BudgetEvent"; event: BudgetEvent }
   | { _tag: "Handover"; handover: Handover }
@@ -91,6 +92,8 @@ export const workingLabel = "Working…";
 /** The entries newest first: a feed drawn inverted starts from the bottom of the view, where the newest entry sits. */
 export const newestFirstOf = (entries: ReadonlyArray<Entry>): Array<Entry> => [...entries].reverse();
 
+const isPendingOwnerMessage = (message: Message) => message.sender === "user" && message.isDelivered === false;
+
 /**
  * Messages, questions, off-topic suggestions, budget lines, handovers, lore changes, and the threads opened beneath, in the order they happened.
  * An aside is left out: its suggestion line already leads to it.
@@ -141,9 +144,14 @@ export const entriesOf = (
       },
     ];
   });
-  const stepGroups = stepGroupsOf(messages, detail.questions, detail.activities, isWorking);
+  const stepGroups = stepGroupsOf(
+    messages.filter((message) => !isPendingOwnerMessage(message)),
+    detail.questions,
+    detail.activities,
+    isWorking,
+  );
   const stepIds = new Set(stepGroups.flatMap((group) => group.steps.map((step) => step.id)));
-  return [
+  const entries: Array<Entry> = [
     ...stepGroups.map(
       (group): Entry => ({
         _tag: "Steps",
@@ -210,5 +218,14 @@ export const entriesOf = (
     ...detail.budgetEvents.map((event): Entry => ({ _tag: "BudgetEvent", at: event.at, event, key: event.id })),
     ...detail.handovers.map((handover): Entry => ({ _tag: "Handover", at: handover.at, handover, key: handover.id })),
     ...detail.loreChanges.map((change): Entry => ({ _tag: "LoreChange", at: change.at, change, key: change.id })),
-  ].sort((current, next) => current.at - next.at);
+  ];
+  entries.sort((current, next) => current.at - next.at);
+  const isPending = (entry: Entry) => entry._tag === "Message" && isPendingOwnerMessage(entry.message);
+  const pending = entries.filter(isPending);
+  if (pending.length === 0) return entries;
+  return [
+    ...entries.filter((entry) => !isPending(entry)),
+    { _tag: "LiveFooter", at: 0, key: "live-footer" },
+    ...pending,
+  ];
 };

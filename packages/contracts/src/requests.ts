@@ -146,6 +146,11 @@ export const SendMessage = Schema.TaggedStruct("SendMessage", {
 });
 /** Lets a queued owner message join its thread's running turn instead of waiting for the next one (thread-messaging, Delivery). */
 export const SteerQueuedMessage = Schema.TaggedStruct("SteerQueuedMessage", { messageId: MessageId });
+export const EditQueuedMessage = Schema.TaggedStruct("EditQueuedMessage", {
+  messageId: MessageId,
+  text: Schema.String,
+});
+export const RemoveQueuedMessage = Schema.TaggedStruct("RemoveQueuedMessage", { messageId: MessageId });
 /** The dashboard (not archived) or the Archived view, filtered by state and workspace and searched. */
 export const ListMissions = Schema.TaggedStruct("ListMissions", {
   isArchived: Schema.Boolean,
@@ -374,6 +379,8 @@ export const Request = Schema.Union([
   DeleteThread,
   SendMessage,
   SteerQueuedMessage,
+  EditQueuedMessage,
+  RemoveQueuedMessage,
   ListMissions,
   ReadStartChoices,
   ReadGuildmaster,

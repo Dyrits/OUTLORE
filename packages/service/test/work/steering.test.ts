@@ -57,6 +57,33 @@ const isIdleWith = (count: number) => (detail: MissionDetail) =>
 const childOf = (detail: MissionDetail) => detail.threads.find((thread) => thread.parentId === detail.thread.id);
 
 describe("steering a running thread", () => {
+  it.live("delivers the edited message and skips the removed one when the next turn starts", () =>
+    Effect.gen(function* () {
+      const started = yield* start("wait 1200");
+      yield* settle(started.missionId, isRunning);
+      const kept = yield* send(started.threadId, "Original");
+      const removed = yield* send(started.threadId, "Discard this");
+      const blank = yield* failureOf({ _tag: "EditQueuedMessage", messageId: kept.messageId, text: " " });
+      expect(blank.message).toBe("The message is empty.");
+      yield* call({ _tag: "EditQueuedMessage", messageId: kept.messageId, text: "Edited" });
+      yield* call({ _tag: "RemoveQueuedMessage", messageId: removed.messageId });
+      const queued = yield* read(started.missionId);
+      expect(queued.messages.find((item) => item.id === kept.messageId)).toMatchObject({
+        isQueued: true,
+        text: "Edited",
+      });
+      expect(queued.messages.some((item) => item.id === removed.messageId)).toBe(false);
+
+      const finished = yield* settle(started.missionId, isIdleWith(2));
+      expect(repliesOf(finished)).toEqual(["Echo: waited 1200", "Echo: Edited"]);
+      const lateEdit = yield* failureOf({ _tag: "EditQueuedMessage", messageId: kept.messageId, text: "Too late" });
+      const lateRemove = yield* failureOf({ _tag: "RemoveQueuedMessage", messageId: kept.messageId });
+      expect(lateEdit.message).toBe("This message is no longer queued.");
+      expect(lateRemove.message).toBe("This message is no longer queued.");
+      expect((yield* read(started.missionId)).messages.find((item) => item.id === kept.messageId)?.text).toBe("Edited");
+    }).pipe(Effect.provide(live())),
+  );
+
   it.live("joins the owner's message to the running turn when it is sent as Steer", () =>
     Effect.gen(function* () {
       const started = yield* start("wait 400");
