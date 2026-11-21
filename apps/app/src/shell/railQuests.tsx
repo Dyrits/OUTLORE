@@ -19,7 +19,7 @@ import {
 } from "./railActions";
 import { threadOutlineOf } from "./railOutline";
 import { archiveErrand } from "./railQuestActions";
-import { Count, Row, type RowCorner, StateDot } from "./railRows";
+import { Count, Row, type RowCorner, ShowAll, StateDot } from "./railRows";
 import { chevronWidth, indentStep, isHovered, local } from "./railStyles";
 
 /**
@@ -37,25 +37,30 @@ function SideQuests({
   client,
   collapsed,
   missionId,
+  onOpenErrands,
   onOpenThread,
   onToggle,
   selectedThread,
   shouldShowAgentThreads,
+  title,
 }: {
   client: ServiceClient;
   collapsed: ReadonlySet<string>;
   missionId: MissionId;
+  onOpenErrands: (id: MissionId) => void;
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   onToggle: (id: string) => void;
   /** The thread open in this quest, or null when the quest itself or another quest is open. */
   selectedThread: ThreadId | null;
   shouldShowAgentThreads: boolean;
+  title: string;
 }) {
   const { data: threads } = useServiceQuery(client, { _tag: "ReadThreadTree", missionId }, `${missionId}:tree`);
   const [error, setError] = useState<string | null>(null);
   if (threads === null) return null;
   const outline = threadOutlineOf(threads, collapsed, selectedThread, shouldShowAgentThreads);
   const { rows } = outline;
+  const count = rows.filter(({ depth }) => depth === 1).length;
   return (
     <>
       {rows.map(({ depth, foldedCount, hasChildren, thread }) => (
@@ -102,6 +107,13 @@ function SideQuests({
           />
         </View>
       ))}
+      {count > 0 && (
+        <ShowAll
+          label={`Show ${count} ${count === 1 ? "errand" : "errands"}`}
+          onPress={() => onOpenErrands(missionId)}
+          subject={title}
+        />
+      )}
       {error !== null && <Text style={local.questError}>{error}</Text>}
     </>
   );
@@ -113,6 +125,7 @@ export function Quest({
   collapsed,
   isOpen,
   mission,
+  onOpenErrands,
   onOpenMission,
   onOpenThread,
   onToggle,
@@ -120,12 +133,12 @@ export function Quest({
   openMission,
   openThread,
   shouldShowAgentThreads,
-  showErrands,
 }: {
   client: ServiceClient;
   collapsed: ReadonlySet<string>;
   isOpen: boolean;
   mission: MissionSummary;
+  onOpenErrands: (id: MissionId) => void;
   onOpenMission: (id: MissionId) => void;
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   onToggle: (id: string) => void;
@@ -133,7 +146,6 @@ export function Quest({
   openMission: MissionId | null;
   openThread: ThreadId | null;
   shouldShowAgentThreads: boolean;
-  showErrands: boolean;
 }) {
   const isHere = openMission === mission.id;
   // An archive from the sidebar leaves the current view alone unless this quest is the one open.
@@ -149,7 +161,7 @@ export function Quest({
           fold={{
             isOpen,
             label: questName,
-            onPress: showErrands && mission.threadCount > 1 ? () => onToggle(mission.id) : null,
+            onPress: mission.threadCount > 1 ? () => onToggle(mission.id) : null,
           }}
           // On hover or focus the archive or delete mark shows at the row's end, in a place kept while unseen. A device that
           // cannot hover has none: there the quest's header holds the archive button.
@@ -168,8 +180,7 @@ export function Quest({
               </View>
             )
           }
-          isInset={!showErrands}
-          isSelected={isHere && (!showErrands || openThread === null || openThread === mission.topThreadId)}
+          isSelected={isHere && (openThread === null || openThread === mission.topThreadId)}
           label={questName}
           leading={<StateDot state={mission.state} />}
           onPress={() => onOpenMission(mission.id)}
@@ -181,16 +192,18 @@ export function Quest({
           {ending.error !== null && <Text style={local.questError}>{ending.error}</Text>}
         </View>
       )}
-      {showErrands && isOpen && mission.threadCount > 1 && (
+      {isOpen && mission.threadCount > 1 && (
         <View style={{ paddingLeft: chevronWidth }}>
           <SideQuests
             client={client}
             collapsed={collapsed}
             missionId={mission.id}
+            onOpenErrands={onOpenErrands}
             onOpenThread={onOpenThread}
             onToggle={onToggleThread}
             selectedThread={isHere ? openThread : null}
             shouldShowAgentThreads={shouldShowAgentThreads}
+            title={questName}
           />
         </View>
       )}

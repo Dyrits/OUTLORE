@@ -189,7 +189,9 @@ export function App() {
       location={location}
       onOpenChannel={(listing) => dispatch({ listing, type: "channel" })}
       onOpenChronicle={() => goTo("Chronicle")}
+      onOpenErrands={(id) => dispatch({ id, showErrands: true, type: "quest" })}
       onOpenMission={openMissionFromAnywhere}
+      onOpenQuestsTab={(listing) => dispatch({ listing, showQuests: true, type: "channel" })}
       onOpenRealmQuests={openRealm}
       onOpenThread={openSideQuest}
       onWorkshop={onWorkshop}

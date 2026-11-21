@@ -31,7 +31,7 @@ export function PaneThread({
   /** The fold and close buttons of the pane's header. */
   chrome: ReactNode;
   client: ServiceClient;
-  /** A press on the "+N" notch: each new object opens the quest's Errands tab. */
+  /** Each new request from the sidebar or a notch opens the quest's Errands tab. */
   listRequest?: object | undefined;
   missionId: MissionId;
   onOpenMission: (missionId: MissionId) => void;
@@ -49,7 +49,9 @@ export function PaneThread({
   );
   // A query for a newly opened thread answers after the previous one; draw only what matches.
   const detail = data !== null && data.thread.id === threadId ? data : null;
-  const [tab, setTab] = useState<"Missives" | "Errands" | "Quest" | "Errand" | "Companions">("Missives");
+  const [tab, setTab] = useState<"Missives" | "Errands" | "Quest" | "Errand" | "Companions">(
+    listRequest === undefined ? "Missives" : "Errands",
+  );
   useEffect(() => {
     if (listRequest !== undefined) setTab("Errands");
   }, [listRequest]);

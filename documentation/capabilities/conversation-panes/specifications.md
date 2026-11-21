@@ -54,6 +54,8 @@ The switchers also appear in the narrow header when another conversation of the 
 
 ### Quests in a main conversation
 
+Expand a quest in the desktop sidebar to see its nested errands. Each errand opens its conversation. **Show N errands** beneath the rows opens the quest's **Errands** tab. The number counts the visible direct errands. On a narrow screen, the same action opens the quest with its errand list expanded.
+
 - A quest with an originating channel message appears as a **reply line** under that message:
   - A quest Chronicler proposes hangs under Chronicler's proposal message, itself a reply to the owner's message that led to it; the quest's reply line sits under that reply (the owner, 2026-11-20). The confirmation is a simple menu: the realm, and the Companion preset. Nothing starts until the owner confirms, as [today](../mission-coordination/specifications.md#chronicler-the-assistant-chg-0173).
   - When the owner supplies an opening request as part of creating the quest, the request appears in the channel with the reply line under it.

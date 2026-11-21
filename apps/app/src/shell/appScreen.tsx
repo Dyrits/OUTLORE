@@ -56,13 +56,15 @@ export function AppScreen({
   const opened = useRef<typeof selection>(null);
   useEffect(() => {
     if (selection === null) return;
-    if (view.openMission === selection.missionId) opened.current = selection;
-    else if (opened.current === selection) {
+    if (view.errandsRequest !== null || (opened.current === selection && view.openMission !== selection.missionId)) {
       opened.current = null;
       setSelection(null);
-    }
-  }, [selection, view.openMission]);
-  const target = selection !== null && selection.missionId === view.openMission ? selection.target : null;
+    } else if (view.openMission === selection.missionId) opened.current = selection;
+  }, [selection, view.errandsRequest, view.openMission]);
+  const target =
+    selection !== null && selection.missionId === view.openMission && view.errandsRequest === null
+      ? selection.target
+      : null;
   return (
     <ChronicleTargetContext.Provider value={target}>
       <AppScreenContent
@@ -134,7 +136,12 @@ function AppScreenContent({
   const quest =
     view.openMission === null
       ? view.parkedQuest
-      : { openCount: view.openCount, openMission: view.openMission, openThread: view.openThread };
+      : {
+          errandsRequest: view.errandsRequest,
+          openCount: view.openCount,
+          openMission: view.openMission,
+          openThread: view.openThread,
+        };
   if (quest !== null && hasPanes) {
     // The Workshop covers the whole content area, and the panes wait beneath it as they were, then come back (CHG-0563).
     const isParked = view.openMission === null;
@@ -144,6 +151,7 @@ function AppScreenContent({
           <CompanionDockActions.Provider value={null}>
             <PaneHost
               client={client}
+              errandsRequest={quest.errandsRequest}
               isParked={isParked}
               key={`${quest.openMission}:${quest.openCount}`}
               missionId={quest.openMission}
@@ -161,6 +169,7 @@ function AppScreenContent({
     return (
       <Conversation
         client={client}
+        initiallyShowErrands={view.errandsRequest !== null}
         key={`${view.openMission}:${view.openCount}`}
         missionId={view.openMission}
         // The Back of a quest shows only in a narrow window, which has no sidebar: it goes back to the main menu.
@@ -177,7 +186,13 @@ function AppScreenContent({
       <>
         <View style={view.place === "Channel" ? local.fill : local.parked}>
           <CompanionDockActions.Provider value={null}>
-            <StandaloneChannel channel={channel} client={client} onOpenMission={navigation.openMission} />
+            <StandaloneChannel
+              channel={channel}
+              client={client}
+              key={channel.id ?? "borderlands"}
+              onOpenMission={navigation.openMission}
+              questsRequest={channel.questsRequest}
+            />
           </CompanionDockActions.Provider>
         </View>
         {view.place !== "Channel" && screens[view.place]}

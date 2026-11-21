@@ -44,6 +44,8 @@ export function Sidebar({
   client,
   width,
   onOpenMission,
+  onOpenErrands,
+  onOpenQuestsTab,
   onOpenRealmQuests,
   onOpenChannel,
   onOpenChronicle,
@@ -59,6 +61,8 @@ export function Sidebar({
   /** The open rail's width, as dragged; the whole width on a phone, where this is the menu screen. */
   width: DimensionValue;
   onOpenMission: (id: MissionId) => void;
+  onOpenErrands: (id: MissionId) => void;
+  onOpenQuestsTab: (listing: RealmListing | null) => void;
   /** Opens the page that lists all of a realm's quests. */
   onOpenRealmQuests: (listing: RealmListing) => void;
   onOpenChannel?: ((listing: RealmListing | null) => void) | undefined;
@@ -98,6 +102,7 @@ export function Sidebar({
   const questProps = {
     client,
     collapsed: collapsedThreads.set,
+    onOpenErrands,
     onOpenMission,
     onOpenThread,
     onToggle: openQuests.toggle,
@@ -105,7 +110,6 @@ export function Sidebar({
     openMission,
     openThread,
     shouldShowAgentThreads: settings?.shouldShowAgentThreads ?? true,
-    showErrands: isNarrow,
   };
 
   // Starts an empty quest and opens it; its realm unfolds to show it, and a refusal shows under the realm.
@@ -193,8 +197,8 @@ export function Sidebar({
             ))}
           {!isClosed && realm.quests.length > realm.visibleQuests.length && (
             <ShowAll
-              count={realm.quests.length}
-              onPress={() => onOpenRealmQuests({ id: realm.id, name: realm.name })}
+              label={`Show all ${realm.quests.length} quests`}
+              onPress={() => (isNarrow ? onOpenRealmQuests : onOpenQuestsTab)({ id: realm.id, name: realm.name })}
               subject={realm.name}
             />
           )}
@@ -264,9 +268,9 @@ export function Sidebar({
         ))}
         {!isFolded("Borderlands") && placements.borderlands.length > borderlandQuests.length && (
           <ShowAll
-            count={placements.borderlands.length}
-            onPress={() => setEveryBorderlandShown(true)}
-            subject="quests in no realm"
+            label={`Show all ${placements.borderlands.length} quests`}
+            onPress={() => (isNarrow ? setEveryBorderlandShown(true) : onOpenQuestsTab(null))}
+            subject="the Borderlands"
           />
         )}
       </ScrollView>

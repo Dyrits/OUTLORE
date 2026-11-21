@@ -16,7 +16,14 @@ export const windowViewOf = (location: Location) => {
     location.place === "Settings" && location.openMission === null ? location.workshopReturn : null;
   const channel = location.place === "Channel" ? location : workshopReturn?.place === "Channel" ? workshopReturn : null;
   return {
-    channel: channel === null ? null : channelOf(channel.listedRealm?.id, channel.listedRealm?.name),
+    channel:
+      channel === null
+        ? null
+        : {
+            ...channelOf(channel.listedRealm?.id, channel.listedRealm?.name),
+            questsRequest: channel.listRequest?.tab === "quests" ? channel.listRequest : null,
+          },
+    errandsRequest: location.listRequest?.tab === "errands" ? location.listRequest : null,
     isPermissionsOpen: location.isPermissionsOpen,
     listedRealm: location.listedRealm,
     openCount: location.openCount,
@@ -26,6 +33,7 @@ export const windowViewOf = (location: Location) => {
       workshopReturn?.openMission == null
         ? null
         : {
+            errandsRequest: workshopReturn.listRequest?.tab === "errands" ? workshopReturn.listRequest : null,
             openCount: workshopReturn.openCount,
             openMission: workshopReturn.openMission,
             openThread: workshopReturn.openThread,

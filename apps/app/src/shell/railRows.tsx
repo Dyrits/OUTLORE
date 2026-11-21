@@ -4,16 +4,16 @@ import { canHover } from "../foundation/inputModality";
 import { stateTones } from "../foundation/theme";
 import { Chevron, useRowActions } from "./railActions";
 import { isHovered, local } from "./railStyles";
-/** The link under a group that lists only some of its quests: it leads to the page that lists them all. */
-export function ShowAll({ count, onPress, subject }: { count: number; onPress: () => void; subject: string }) {
+/** Opens the list for a group of quests or errands. */
+export function ShowAll({ label, onPress, subject }: { label: string; onPress: () => void; subject: string }) {
   return (
     <Pressable
-      accessibilityLabel={`Show all ${count} quests of ${subject}`}
+      accessibilityLabel={`${label} · ${subject}`}
       accessibilityRole="button"
       onPress={onPress}
       style={(state) => [local.more, (state.pressed || isHovered(state)) && local.rowHovered]}
     >
-      <Text style={local.moreText}>Show all {count} quests</Text>
+      <Text style={local.moreText}>{label}</Text>
       <Text style={local.moreArrow}>→</Text>
     </Pressable>
   );
@@ -28,7 +28,6 @@ export function Row({
   hoverAccessory,
   indent = 0,
   leading,
-  isInset = false,
   isSelected,
   fold,
   label,
@@ -40,7 +39,6 @@ export function Row({
   indent?: number;
   /** What stands before the label, after the fold mark, such as a state dot. */
   leading?: ReactNode;
-  isInset?: boolean;
   isSelected: boolean;
   label: string;
   /** The fold mark before the label of a quest or errand row; null `onPress` keeps its place empty. */
@@ -66,7 +64,6 @@ export function Row({
         !canHover && local.rowTouch,
         local.rowQuest,
         { paddingLeft: 5 + indent },
-        isInset && local.rowQuestInset,
         (state.pressed || isHovered(state)) && local.rowHovered,
         isSelected && local.rowSelected,
       ]}

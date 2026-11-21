@@ -178,7 +178,9 @@ export function Shell(
         host="overlay"
         {...(props.onOpenChannel === undefined ? {} : { onOpenChannel: choosing(props.onOpenChannel) })}
         {...(props.onOpenChronicle === undefined ? {} : { onOpenChronicle: choosing(props.onOpenChronicle) })}
+        onOpenErrands={choosing(props.onOpenErrands)}
         onOpenMission={choosing(props.onOpenMission)}
+        onOpenQuestsTab={choosing(props.onOpenQuestsTab)}
         onOpenRealmQuests={choosing(props.onOpenRealmQuests)}
         onOpenThread={choosing(props.onOpenThread)}
         onWorkshop={choosing(props.onWorkshop)}

@@ -48,15 +48,18 @@ export function StandaloneChannel({
   channel,
   client,
   onOpenMission,
+  questsRequest,
 }: {
   channel: { id: string | null; name: string };
   client: ServiceClient;
   onOpenMission: (id: MissionId) => void;
+  questsRequest: object | null;
 }) {
   const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
   const [failure, setFailure] = useState<string | null>(null);
   // A "+N" notch asks the pane to open its Quests tab; a new object each press, so a second press asks again.
-  const [listRequest, setListRequest] = useState<{ id: string } | null>(null);
+  const [notchRequest, setNotchRequest] = useState<{ after: object | null } | null>(null);
+  const listRequest = notchRequest?.after === questsRequest ? notchRequest : questsRequest;
   const quests = (data?.missions ?? []).filter((mission) => mission.workspaceId === channel.id);
   const isEmpty = data !== undefined && data !== null && quests.length === 0;
   const start = () => {
@@ -70,13 +73,15 @@ export function StandaloneChannel({
       .then((started) => onOpenMission(started.missionId))
       .catch((reason) => setFailure(messageOf(reason)));
   };
-  const parts = childPartsOf(quests, new Set(), "quest", onOpenMission, () => setListRequest({ id: "quests" }));
+  const parts = childPartsOf(quests, new Set(), "quest", onOpenMission, () =>
+    setNotchRequest({ after: questsRequest }),
+  );
   return (
     <View style={[local.fill, (parts.length > 0 || isEmpty) && { paddingRight: notchWidth }]}>
       <ChannelPane
         channel={channel}
         client={client}
-        listRequest={listRequest ?? undefined}
+        listRequest={listRequest ?? void 0}
         onOpenMission={onOpenMission}
       />
       {failure !== null && <Text style={local.failure}>{failure}</Text>}
@@ -114,7 +119,9 @@ function ChannelBody({
   listRequest?: object | undefined;
   onOpenMission: (id: MissionId) => void;
 }) {
-  const [tab, setTab] = useState<"Missives" | "Quests" | "Realm" | "Companions">("Missives");
+  const [tab, setTab] = useState<"Missives" | "Quests" | "Realm" | "Companions">(
+    listRequest === undefined ? "Missives" : "Quests",
+  );
   useEffect(() => {
     if (listRequest !== undefined) setTab("Quests");
   }, [listRequest]);

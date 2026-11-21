@@ -23,6 +23,7 @@ import { channelOf } from "./windowView";
 /** Shows the channel, quest and selected errand. An older nested errand uses the same third slot. */
 export function PaneHost({
   client,
+  errandsRequest,
   missionId,
   isParked = false,
   onOpenMission,
@@ -30,6 +31,7 @@ export function PaneHost({
   openThread,
 }: {
   client: ServiceClient;
+  errandsRequest: object | null;
   /** Whether the Workshop covers the panes: they stay as they are, out of sight, and take no part in the details panel. */
   isParked?: boolean;
   missionId: MissionId;
@@ -211,7 +213,13 @@ export function PaneHost({
                     </>
                   }
                   client={client}
-                  listRequest={listRequest?.id === id ? listRequest : undefined}
+                  listRequest={
+                    listRequest?.id === id
+                      ? listRequest
+                      : content.kind === "quest"
+                        ? (errandsRequest ?? void 0)
+                        : void 0
+                  }
                   missionId={missionId}
                   onNewErrand={content.kind === "errand" && quest !== undefined ? () => startErrand(quest) : undefined}
                   onOpenMission={onOpenMission}

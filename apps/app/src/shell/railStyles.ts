@@ -146,7 +146,6 @@ export const local = StyleSheet.create({
   // A row of quests keeps a 1 px outline, clear unless a summons rings it; the padding gives that pixel back. The 1 px
   // margin below keeps a ring from touching the next row.
   rowQuest: { borderColor: "transparent", borderWidth: 1, marginBottom: 1, paddingRight: 7, paddingVertical: 3 },
-  rowQuestInset: { marginHorizontal: 2, paddingLeft: 3, paddingRight: 5 },
   rowSelected: { backgroundColor: colors.controlActive },
   rowText: { color: colors.onGround, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.base },
   rowTextSelected: { color: colors.text, fontWeight: "600" },

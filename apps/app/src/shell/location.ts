@@ -16,6 +16,7 @@ export type Location = {
   isPermissionsOpen: boolean;
   guildmasterRealm: string | null;
   openCount: number;
+  listRequest: { tab: "quests" | "errands" } | null;
   page: QuestPage;
   isChroniclerBudgetOpen: boolean;
   isMenuOpen: boolean;
@@ -28,11 +29,11 @@ export type Location = {
 export type NavigationEvent =
   | { type: "place"; place: Place }
   | { type: "workshop" }
-  | { type: "quest"; id: MissionId }
+  | { type: "quest"; id: MissionId; showErrands?: boolean }
   | { type: "thread"; missionId: MissionId; id: ThreadId | null }
   | { type: "select"; id: MissionId | null }
   | { type: "realm"; listing: RealmListing }
-  | { type: "channel"; listing: RealmListing | null }
+  | { type: "channel"; listing: RealmListing | null; showQuests?: boolean }
   | { type: "parent"; quest: { workspaceId: string | null; workspaceName: string | null } }
   | { type: "close" }
   | { type: "host" }
@@ -52,6 +53,7 @@ export const initialLocation = (resumed: string | null): Location => ({
   isNarrowChroniclerOpen: false,
   isPermissionsOpen: false,
   listedRealm: null,
+  listRequest: null,
   openCount: 0,
   openMission: null,
   openThread: null,
@@ -68,6 +70,7 @@ const uncovered = (location: Location): Location => ({
   isMenuOpen: false,
   isNarrowChroniclerOpen: false,
   isPermissionsOpen: false,
+  listRequest: null,
   page: null,
 });
 
@@ -111,6 +114,7 @@ const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "w
   if (event.type === "quest")
     return {
       ...uncovered(location),
+      listRequest: event.showErrands ? { tab: "errands" } : null,
       openCount: location.openCount + 1,
       openMission: event.id,
       openThread: null,
@@ -135,7 +139,11 @@ const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "w
       selectedMission: null,
     };
   if (event.type === "channel")
-    return { ...resolved(location, { place: "Channel", type: "place" }), listedRealm: event.listing };
+    return {
+      ...resolved(location, { place: "Channel", type: "place" }),
+      listedRealm: event.listing,
+      listRequest: event.showQuests ? { tab: "quests" } : null,
+    };
   if (event.type === "realm")
     return { ...resolved(location, { place: "RealmQuests", type: "place" }), listedRealm: event.listing };
   if (event.type === "parent") {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { initialLocation, navigate, panelScopeOf } from "../../src/shell/location";
+import { windowViewOf } from "../../src/shell/windowView";
 
 // Identifiers normally arrive branded from the service.
 const quest = "quest" as import("@outlore/contracts").MissionId;
@@ -18,6 +19,27 @@ describe("opening the window", () => {
 });
 
 describe("navigating the window", () => {
+  it("opens the requested realm or Borderlands on its Quests tab on every press", () => {
+    for (const listing of [{ id: "realm", name: "Realm" }, null]) {
+      const action = { listing, showQuests: true, type: "channel" } as const;
+      const first = navigate(initialLocation(null), action);
+      const second = navigate(first, action);
+      expect(windowViewOf(first).channel?.id).toBe(listing?.id ?? null);
+      expect(windowViewOf(first).channel?.questsRequest).toEqual({ tab: "quests" });
+      expect(windowViewOf(second).channel?.questsRequest).not.toBe(windowViewOf(first).channel?.questsRequest);
+      expect(windowViewOf(navigate(second, { listing, type: "channel" })).channel?.questsRequest).toBeNull();
+    }
+  });
+  it("opens the quest itself on Errands, including when an errand was selected", () => {
+    const before = navigate(initialLocation(null), { id: thread, missionId: quest, type: "thread" });
+    const next = navigate(before, { id: quest, showErrands: true, type: "quest" });
+    expect(windowViewOf(next)).toMatchObject({
+      errandsRequest: { tab: "errands" },
+      openMission: quest,
+      openThread: null,
+    });
+    expect(windowViewOf(navigate(next, { id: quest, type: "quest" })).errandsRequest).toBeNull();
+  });
   it("uncovers a quest opened from the narrow window's Chronicler", () => {
     const covered = navigate(initialLocation(null), { isOpen: true, type: "narrowChronicler" });
     const next = navigate(covered, { id: quest, type: "quest" });
