@@ -66,12 +66,15 @@ describe("Chronicler channels", () => {
       yield* tool(channel.threadId, "save_intel", { kind: "fact", scope: "workspace", text: lore });
       expect((yield* prepareStartingContext(channel.threadId)).note).toContain(lore);
       expect((yield* prepareStartingContext(borderlands.threadId)).note).not.toContain(lore);
+      yield* call({ _tag: "SetThreadPermissionMode", mode: "Supervised", threadId: channel.threadId });
       yield* say(channel.threadId, "Hello");
       const chat = yield* settle(channel.missionId, isIdle);
       const message = chat.messages.find((candidate) => candidate.sender === "user");
       if (message === undefined) return yield* Effect.die("Missing channel message");
       const quest = yield* reply(message.id, "Investigate the folio");
-      expect((yield* settle(quest.missionId, isIdle)).mission.workspaceId).toBe(realm.id);
+      const started = yield* settle(quest.missionId, isIdle);
+      expect(started.mission.workspaceId).toBe(realm.id);
+      expect(started.thread.permissionMode).toBe("Supervised");
       yield* call({ _tag: "MoveQuest", missionId: quest.missionId, realmId: null });
       expect(yield* anchorsOf(channel.threadId)).toEqual([]);
       expect(yield* anchorsOf(borderlands.threadId)).toEqual([
@@ -142,10 +145,11 @@ describe("what hangs from a message", () => {
     }).pipe(Effect.provide(setup().layer)),
   );
 
-  it.live("reads a thread the owner opened with the old way as having no anchor", () =>
+  it.live("inherits the quest mode for owner and agent errands", () =>
     Effect.gen(function* () {
       const started = yield* startIdle("Hello");
-      yield* call({
+      yield* call({ _tag: "SetThreadPermissionMode", mode: "AutoAcceptEdits", threadId: started.threadId });
+      const opened = yield* call({
         _tag: "OpenThread",
         effort: "default",
         model: "default",
@@ -155,6 +159,11 @@ describe("what hangs from a message", () => {
         text: "An errand",
       });
       expect(yield* anchorsOf(started.threadId)).toEqual([]);
+      expect((yield* read(started.missionId, opened.threadId)).thread.permissionMode).toBe("AutoAcceptEdits");
+      yield* tool(started.threadId, "open_thread", { request: "Agent errand" });
+      const [anchor] = yield* anchorsOf(started.threadId);
+      if (anchor === undefined) return yield* Effect.die("Missing agent errand");
+      expect((yield* read(started.missionId, anchor.threadId)).thread.permissionMode).toBe("AutoAcceptEdits");
     }).pipe(Effect.provide(setup().layer)),
   );
 });

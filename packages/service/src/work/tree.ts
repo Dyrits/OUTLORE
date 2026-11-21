@@ -1,4 +1,10 @@
-import type { BackupCompanion, HarnessName, OpenThreadResult, ThreadId } from "@outlore/contracts";
+import type {
+  BackupCompanion,
+  HarnessName,
+  OpenThreadResult,
+  ThreadId,
+  ThreadPermissionMode,
+} from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, newId, notFound } from "../core/index.ts";
@@ -38,8 +44,13 @@ type Opening = {
 const readParent = Effect.fnUntraced(function* (parentId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [parent] = yield* sql<
-    Runner & { backups: string; missionId: string; workspaceId: string | null }
-  >`SELECT mission_id AS missionId, harness, account_id AS accountId, model, effort, workspace_id AS workspaceId, backups
+    Runner & {
+      backups: string;
+      missionId: string;
+      permissionMode: ThreadPermissionMode | null;
+      workspaceId: string | null;
+    }
+  >`SELECT mission_id AS missionId, harness, account_id AS accountId, model, effort, workspace_id AS workspaceId, backups, permission_mode AS permissionMode
       FROM threads WHERE id = ${parentId} AND is_deleting = 0`;
   return parent;
 });
@@ -47,7 +58,7 @@ const readParent = Effect.fnUntraced(function* (parentId: string) {
 /**
  * Records a thread beneath the parent, in the parent's workspace and, unless chosen, with its harness,
  * account, model, effort, and backup Companions, and its first message: the opener's request. The command that opens it wakes
- * it.
+ * it. The errand starts with the parent’s permission setting.
  */
 export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
   const sql = yield* SqlClient.SqlClient;
@@ -60,10 +71,10 @@ export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
   // An aside starts from the off-topic request alone, without its opener's conversation.
   const openerMessages = opening.isAside ? null : yield* openerMessagesOf(opening.parentId);
   const ownCopy = yield* ownCopyForChild(opening.parentId, threadId, opening.isOwnCopyAsked);
-  yield* sql`INSERT INTO threads (id, mission_id, parent_id, state, harness, account_id, model, effort, workspace_id, title, is_opened_by_agent, opener_messages, is_aside, backups, own_copy, own_copy_branch)
+  yield* sql`INSERT INTO threads (id, mission_id, parent_id, state, harness, account_id, model, effort, workspace_id, title, is_opened_by_agent, opener_messages, is_aside, backups, own_copy, own_copy_branch, permission_mode)
       VALUES (${threadId}, ${parent.missionId}, ${opening.parentId}, 'Resting', ${runner.harness}, ${runner.accountId},
         ${runner.model}, ${runner.effort}, ${parent.workspaceId}, ${titleOf(opening.title ?? "") || newErrandTitle}, ${opening.isOpenedByAgent ? 1 : 0},
-        ${openerMessages}, ${opening.isAside ? 1 : 0}, ${backups}, ${ownCopy?.path ?? null}, ${ownCopy?.branch ?? null})`;
+        ${openerMessages}, ${opening.isAside ? 1 : 0}, ${backups}, ${ownCopy?.path ?? null}, ${ownCopy?.branch ?? null}, ${parent.permissionMode})`;
   // The errand's anchor: the message the owner replied to, or the agent reply recorded where the agent opened it.
   const anchorId =
     opening.anchorMessageId ??

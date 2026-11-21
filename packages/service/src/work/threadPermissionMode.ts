@@ -12,6 +12,16 @@ export const readThreadPermissionMode = Effect.fnUntraced(function* (threadId: s
   return thread?.mode ?? null;
 });
 
+/** The mode set on the realm's channel. A realm whose channel has never opened uses the Workshop default. */
+export const readRealmPermissionMode = Effect.fnUntraced(function* (realmId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [channel] = yield* sql<{ mode: ThreadPermissionMode | null }>`
+    SELECT t.permission_mode AS mode FROM missions m JOIN threads t ON t.id = m.top_thread_id
+    WHERE m.is_guildmaster = 1 AND m.chronicler_channel = ${realmId} AND t.is_deleting = 0
+  `;
+  return channel?.mode ?? null;
+});
+
 /** Sets the thread's mode at any time, in a running turn too (CHG-0617): like a runner change, the running turn finishes under the mode it was admitted with and the next turn applies the new one. */
 export const setThreadPermissionMode = Effect.fnUntraced(function* (
   threadId: string,

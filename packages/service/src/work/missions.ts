@@ -37,6 +37,7 @@ import { insertMessage } from "./messaging.ts";
 import { questStateOf, threadStatesOf } from "./missionStates.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 import { runStateOf, scheduleOf } from "./ritualSchedule.ts";
+import { readRealmPermissionMode } from "./threadPermissionMode.ts";
 import { newQuestTitle } from "./titles.ts";
 import { attachWorkspace } from "./workspaces.ts";
 
@@ -59,6 +60,7 @@ export const insertMission = Effect.fnUntraced(function* (
       firstMessage: text,
       realm,
       ...(realmId === undefined ? {} : { realmId }),
+      shouldInheritRealmPermissions: true,
       shouldRememberChoices,
       title: newQuestTitle,
     },
@@ -91,6 +93,7 @@ export const insertQuest = Effect.fnUntraced(function* (
     readonly isChannel?: boolean;
     readonly isTitleByOwner?: boolean;
     readonly realm: { name: string } | null;
+    readonly shouldInheritRealmPermissions?: boolean;
     readonly shouldRememberChoices: boolean;
     readonly title: string;
   },
@@ -117,14 +120,18 @@ export const insertQuest = Effect.fnUntraced(function* (
   }
   const workspaceId =
     realmId !== null ? realmId : workspacePath === null ? null : yield* attachWorkspace(workspacePath, realm);
+  const permissionMode =
+    quest.shouldInheritRealmPermissions === true && workspaceId !== null
+      ? yield* readRealmPermissionMode(workspaceId)
+      : null;
   const now = yield* Clock.currentTimeMillis;
   const missionId = yield* newId;
   const threadId = yield* newId;
   yield* sql`INSERT INTO missions (id, top_thread_id, title, created_at, last_activity_at, is_title_by_user)
       VALUES (${missionId}, ${threadId}, ${quest.title}, ${now}, ${now}, ${quest.isTitleByOwner === true ? 1 : 0})`;
   // The Charter's backup Companions are the new thread's own from the start (thread-panel, Backup companions).
-  yield* sql`INSERT INTO threads (id, mission_id, state, harness, account_id, model, effort, workspace_id, title, backups)
-      VALUES (${threadId}, ${missionId}, 'Resting', ${harness}, ${accountId}, ${model}, ${effort}, ${workspaceId}, ${quest.title}, ${JSON.stringify(settings.backups)})`;
+  yield* sql`INSERT INTO threads (id, mission_id, state, harness, account_id, model, effort, workspace_id, title, backups, permission_mode)
+      VALUES (${threadId}, ${missionId}, 'Resting', ${harness}, ${accountId}, ${model}, ${effort}, ${workspaceId}, ${quest.title}, ${JSON.stringify(settings.backups)}, ${permissionMode})`;
   const opening =
     quest.firstMessage === null
       ? null

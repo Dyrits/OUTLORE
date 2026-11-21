@@ -58,6 +58,6 @@ Latest handoffs:
 
 - To resume checking Mistral Vibe's reasoning levels in the Companion menu after landing (CHG-0618), read the [current handoff](.agents/handoffs/2026-11-21-1745-vibe-thinking-levels.md). Handoffs are shared and committed.
 
-- To resume landing the Workshop and errand permission modes (CHG-0617) and their window, phone, and live checks, read the [current handoff](.agents/handoffs/2026-11-21-1648-workshop-permission-modes.md). Handoffs are shared and committed.
+- To resume launch permission inheritance, read the [current handoff](.agents/handoffs/2026-11-21-1744-launch-permissions.md). Handoffs are shared and committed.
 
-- To resume the Hindsight research for Outlore and its lore follow-ups, read the [current handoff](.agents/handoffs/2026-11-21-1540-hindsight-research-followups.md). Handoffs are shared and committed.
+- To resume landing the Workshop and errand permission modes (CHG-0617) and their window, phone, and live checks, read the [current handoff](.agents/handoffs/2026-11-21-1648-workshop-permission-modes.md). Handoffs are shared and committed.

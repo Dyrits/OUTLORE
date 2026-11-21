@@ -18,7 +18,12 @@ it.live("keeps the first message sent inside an empty quest in that quest", () =
     });
     if (realm === undefined) return yield* Effect.die("Missing realm");
     const channel = yield* call({ _tag: "ReadGuildmaster", channelId: realm.id });
+    yield* call({ _tag: "SetThreadPermissionMode", mode: "Auto", threadId: channel.threadId });
     const quest = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: crypto.randomUUID() });
+    yield* call({ _tag: "SetThreadPermissionMode", mode: null, threadId: channel.threadId });
+    const next = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: crypto.randomUUID() });
+    expect((yield* read(quest.missionId)).thread.permissionMode).toBe("Auto");
+    expect((yield* read(next.missionId)).thread.permissionMode).toBeNull();
     const text = "Catalogue the folio";
     yield* say(quest.threadId, text);
     const detail = yield* settle(quest.missionId, isIdle);

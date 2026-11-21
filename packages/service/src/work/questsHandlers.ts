@@ -121,6 +121,7 @@ export const questsHandlers = (
                 firstMessage: null,
                 realm: null,
                 realmId: start.realmId,
+                shouldInheritRealmPermissions: true,
                 shouldRememberChoices: false,
                 title: newQuestTitle,
               },
