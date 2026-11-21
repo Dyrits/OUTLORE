@@ -41,6 +41,8 @@ Tests run inside a thread's sandbox with no `env -u` and no escape from it; the 
 The [pre-commit hook](.githooks/pre-commit) runs Biome on staged files and runs the workspace typecheck when code or configuration is staged.
 Fix reported issues and stage the corrected files again.
 
+Every commit message ends with a standalone attribution line naming the provider and model that wrote it, in the form `<Provider> - <Model>`, such as `Mistral - Z.ai GLM 5.3` or `Anthropic - Claude Sonnet 5.5` (owner, 2026-11-21).
+
 The [Git guard](.agents/hooks/guard-git.py) asks before, or blocks, pushes to `main`, commands that lose local work, and commands that skip a gate (`commit --no-verify`, `-c core.hooksPath`) or move a branch off its commits (`branch -f`).
 The [pre-push hook](.githooks/pre-push) refuses protected-branch pushes and remote-ref deletion.
 A person can approve a push to `main` with `git push --no-verify`; an agent must obtain the user's approval before bypassing the hook.
@@ -54,8 +56,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume checking Mistral Vibe's reasoning levels in the Companion menu after landing (CHG-0618), read the [current handoff](.agents/handoffs/2026-11-21-1745-vibe-thinking-levels.md). Handoffs are shared and committed.
+
 - To resume landing the Workshop and errand permission modes (CHG-0617) and their window, phone, and live checks, read the [current handoff](.agents/handoffs/2026-11-21-1648-workshop-permission-modes.md). Handoffs are shared and committed.
 
 - To resume the Hindsight research for Outlore and its lore follow-ups, read the [current handoff](.agents/handoffs/2026-11-21-1540-hindsight-research-followups.md). Handoffs are shared and committed.
-
-- To resume desktop verification of editable queued messages, read the [current handoff](.agents/handoffs/2026-11-21-1539-editable-queued-messages.md). Handoffs are shared and committed.
