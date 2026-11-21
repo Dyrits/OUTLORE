@@ -47,7 +47,7 @@ The additional search and management operations still need design, implementatio
 
 ### Rituals
 
-- A request to do something repeatedly on a schedule (every hour, every morning) is a [Ritual](../rituals/specifications.md), not a quest. Guildmaster creates it with `create_ritual`, on a preset schedule, and its reply says what it will do and when. It lists the existing Rituals in its context so it does not make one twice. A Ritual's quest stays in the Rituals place, and Guildmaster does not hear back from its runs.
+- A request to do something repeatedly on a schedule (every hour, every morning) is a [Ritual](../rituals/specifications.md), not a quest. Guildmaster creates it with `create_ritual`, on a preset schedule, and its reply says what it will do and when. It lists the existing Rituals in its context so it does not make one twice. A Ritual lives in its realm beside the quests (an entity of its own since CHG-0616, no longer a quest), and Guildmaster does not hear back from its runs.
 
 ### Opening a quest
 
@@ -58,7 +58,7 @@ The additional search and management operations still need design, implementatio
   The selected realm determines the initial placement; later changes follow the [quest move confirmation](../mission-tracking/specifications.md#quest-placement-and-moves).
 
 - Guildmaster first looks for quests that fit the request with `find_missions`, which searches each quest's title, briefing, and opening request, and weighs an exact ticket key or link above plain words, so two requests about one ticket meet and offers **Continue in** for up to 3 matches, as the [off-topic suggestion](../thread-tree/specifications.md#off-topic-requests) does. When nothing matches, it still proposes a new quest as a card (CHG-0173); it opens none itself.
-- A Ritual's quest is not offered as a matching quest.
+- A Ritual is not offered as a matching quest.
 - Settings hold a default model and up to three optional tiers (Light, Balanced, Heavy), each a harness, model, and effort, and its backup Companions (companion-presets). Guildmaster picks a tier from how complex the request is, or the default when no tiers are set.
 - Guildmaster picks the workspace the request implies, for example "fix the login bug in Outlore" picks the Outlore workspace, or none. Given a repository link, it clones the repository with `clone_repository`, or reuses its earlier clone, and proposes the quest there (see [workspace-attachment](../workspace-attachment/specifications.md#cloning-a-repository)).
 - Its reply says in one sentence what it proposed, naming the tier only when it passed one, for example "Proposed on Balanced"; the card shows the realm and Companion, and the quest links from the card once the owner opened it.
@@ -81,7 +81,7 @@ The additional search and management operations still need design, implementatio
 
 - Guildmaster has no journal.
 - Each turn, Guildmaster starts with its instructions, global intel, the dashboard as text, and its 20 latest messages. The local service summarizes older messages.
-- The dashboard as text lists up to 60 of the most recently active quests that are not archived, one per line: title, state, workspace, the first sentence of its briefing, and last activity. When there are more, a line gives the number of older quests not listed. Ritual quests are listed separately. The local service builds it from stored data; Guildmaster never maintains it.
+- The dashboard as text lists up to 60 of the most recently active quests that are not archived, one per line: title, state, workspace, the first sentence of its briefing, and last activity. When there are more, a line gives the number of older quests not listed. Rituals are listed separately, with their spending like a quest's (CHG-0616). The local service builds it from stored data; Guildmaster never maintains it.
 - Each message the owner writes to Outlore carries where they had it open from (CHG-0193): the quest when a quest is open, named from the stored title, else the screen's name as the sidebar gives it (Guild Hall, Settings, Rituals, the quests of a realm, and so on). Outlore reads it as a note after the message, not shown in the owner's message, so that "this quest" or "this page" means that screen; it reads the quest's journal or the settings only when the answer needs them.
 - Guildmaster can retrieve full journals, conversations, its own older messages, and other app information as needed to answer the owner's request.
   It retrieves information when needed instead of loading all app data into every turn.

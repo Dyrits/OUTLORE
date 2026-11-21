@@ -151,7 +151,7 @@ The page of application settings, accounts, permissions, and defaults, shown one
 Where the owner manages what Outlore connects to: the Connectors and The Vault (CHG-0321). It is not the Workshop, though the Workshop bore its name until CHG-0146; it works like a marketplace for connectors and holds nothing else. Since 2026-11-18 (CHG-0449, CHG-0457) it is no place in the sidebar but the **Connectors** section of the Workshop (Settings).
 
 **The menu**:
-The one button at the foot of the sidebar (CHG-0449, CHG-0457) that opens every place other than Chronicler, the Realms and quests: Rituals, Lore, Archive, Reserves and Settings. On a phone the menu button shows the whole sidebar as a screen, with the same menu at its foot (CHG-0454).
+The one button at the foot of the sidebar (CHG-0449, CHG-0457) that opens every place other than Chronicler, the Realms and quests: Lore, Archive, Reserves and Settings (Rituals have no place of their own since CHG-0616; they live in the realms' lists beside the quests). On a phone the menu button shows the whole sidebar as a screen, with the same menu at its foot (CHG-0454).
 
 **Connector**:
 A named integration that gives threads the tools of one outside service or app, installed once by the owner from the list Outlore offers. It is **installed** (on this computer, global), **connected** (given a key, a sign-in or a permission) and **enabled** (switched on for a realm, the Borderlands or a quest); a thread can use it only when all three hold ([connectors](capabilities/connectors/specifications.md)).
@@ -277,7 +277,7 @@ _Avoid_: Quota, rate limit
 ## Automation
 
 **Routine**:
-A trigger paired with a skill or instruction, running in its own thread or opening new threads on each run. The interface calls it a Ritual: one quest per Ritual, each run a turn in its main thread, with fallback Companions ([rituals](capabilities/rituals/specifications.md)).
+A trigger paired with a skill or instruction, run for the owner on a schedule. The interface calls it a Ritual: an entity of the realm beside the quests, each run an errand beneath it, with fallback Companions ([rituals](capabilities/rituals/specifications.md)).
 _Avoid_: Job, cron, scheduled task
 
 **Trigger**:

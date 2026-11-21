@@ -25,7 +25,7 @@ Threads can act only on the computer and on what their harness already reaches. 
 ### Where a connector is available
 
 - Each realm, the Borderlands, and each quest has a choice per installed connector: **Inherit** (the default), **On** or **Off**. The interface shows an ordinary switch with an "inherited" mark and a **Reset** that goes back to Inherit. A quest inherits from its realm or the Borderlands, a realm and the Borderlands from the global switch; an explicit choice beats the level above it, short of the global switch being off.
-- An errand follows its quest and has no choice of its own. A Ritual's quest follows its realm and its own choices like any other quest.
+- An errand follows its quest and has no choice of its own. A Ritual is a top-level entity of its realm since CHG-0616, and follows its realm's choices like a quest does ([rituals](../rituals/specifications.md)).
 - **Chronicler** follows the global switch alone: it is given every installed, connected connector whose global switch is on.
 - A quest that moves to another placement keeps its own choices; what it inherits follows its new placement. Archiving and restoring a realm keeps its choices; deleting a quest deletes its choices.
 - The realm's panel and the quest's panel each list the installed connectors with their switches. The connector's card in the Charter shows its global switch and the Borderlands' choice. The Borderlands' choice is in the right sidebar, in the Borderlands' panel (CHG-0326), whose contents are otherwise undecided; until it exists the choice is on the connector's card only.
@@ -100,7 +100,7 @@ Threads can act only on the computer and on what their harness already reaches. 
 - **Automated, with a fake connector server and fake harnesses**:
   - installing makes a connector enabled for every quest, realm and Chronicler, once connected; not connected, no thread gets its tools;
   - the global switch off hides it everywhere, even where a quest says On;
-  - Inherit, On, Off and Reset resolve as above for a quest, an errand, a realm, the Borderlands and a Ritual's quest; a moved quest keeps its choices; a deleted quest forgets them;
+  - Inherit, On, Off and Reset resolve as above for a quest, an errand, a realm, the Borderlands and a Ritual; a moved quest keeps its choices; a deleted quest forgets them;
   - switching off stops a call in a turn underway at once; switching on applies at the next turn;
   - a tool switched off is absent from the thread's tools, the connector's Tools list shows it off, a call to it stops at once in a turn underway, and it is absent from generated code; the thread's panel lists tools with the off ones marked;
   - a read-only tool runs unasked and leaves a Steps line; an unclassified tool and a write tool ask once per call; Always allow covers that tool only, in the right scope; a tool that cannot be classified asks every time;
@@ -129,7 +129,7 @@ Threads can act only on the computer and on what their harness already reaches. 
 - [thread-panel](../thread-panel/specifications.md): each thread's effective tools.
 - [tool-and-skill-loading](../tool-and-skill-loading/specifications.md): a failed server warns and the turn goes on; the connector rules here replace its MCP-server rules for installed connectors.
 - [mission-coordination](../mission-coordination/specifications.md): Chronicler.
-- [rituals](../rituals/specifications.md): a Ritual's quest.
+- [rituals](../rituals/specifications.md): a Ritual (a top-level entity of its realm; its runs are errands).
 - **device-pairing**: managing connectors and the Vault from a paired device.
 
 ## Exclusions

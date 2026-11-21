@@ -69,7 +69,7 @@ The tools are named and described here by behavior. Schemas, argument names and 
 **Seeing the whole screen (Proposal).** The tools see only the approved app's window. A capture of the whole display (every app, the menu bar, notifications) is a separate question, "See the whole screen", offered as a tool option and asked once per thread per turn with Allow and Deny only. It is not in the first set of tools unless the owner wants it (Open, 3).
 
 - Answered from the host's window and from any paired device, in the thread, from the dashboard's list of open questions, and from the phone notification, which carries no content, exactly as in [action approval](../action-approval/specifications.md). Nothing a thread or a message says approves a use: a thread's own claim, the owner's message quoted by a thread and a Ritual's instruction never do; a thread's question never answers another's.
-- A Ritual's quest that uses the computer waits in Attention at the question like any thread, with no time limit.
+- A Ritual's run that uses the computer waits in Attention at the question like any thread, with no time limit.
 - Stopping or interrupting the thread withdraws an open question and releases the computer lock (below).
 
 ### One thread at a time
@@ -175,7 +175,7 @@ The tools are named and described here by behavior. Schemas, argument names and 
 - [thread-tree](../thread-tree/specifications.md): thread states, Stop, errands.
 - [tool-and-skill-loading](../tool-and-skill-loading/specifications.md): the tools reach every harness through Outlore's own tool server.
 - [mission-coordination](../mission-coordination/specifications.md): Chronicler uses the tools; `change_setting` refuses these settings.
-- [rituals](../rituals/specifications.md): a Ritual's quest waits at the question.
+- [rituals](../rituals/specifications.md): a Ritual's run waits at the question.
 - [connectors](../connectors/specifications.md): a separate capability; computer use is not a connector, since it acts on this computer's own screen and its approval is per app, not per tool.
 
 ## Exclusions

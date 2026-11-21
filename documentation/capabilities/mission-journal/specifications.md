@@ -20,7 +20,7 @@ Threads in a mission run on different harnesses and start without each other's h
 
 ### Reading
 
-- Every thread in the mission starts with the briefing and the 20 latest entries (see [thread-tree](../thread-tree/specifications.md#opening-a-thread)), and reads older entries with `read_journal`.
+- Every thread in the mission starts with the briefing and the 20 latest entries (see [thread-tree](../thread-tree/specifications.md#opening-a-thread)), and reads older entries with `read_journal`. A Ritual has a journal of its own shared the same way by its runs (CHG-0616, [rituals](../rituals/specifications.md)).
 - An aside starts with the briefing only.
 - `find_missions` matches other missions by their titles and briefings only.
 
