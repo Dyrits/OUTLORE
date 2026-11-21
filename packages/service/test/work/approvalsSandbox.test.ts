@@ -99,21 +99,21 @@ describe("harness prompts inside and outside the sandbox", () => {
     }).pipe(Effect.provide(live())),
   );
 
-  describe("once the owner allowed working outside the sandbox", () => {
-    const allowEscapes = Effect.gen(function* () {
+  describe("when the Workshop's default mode is Full access", () => {
+    const allowEverything = Effect.gen(function* () {
       const settings = yield* call({ _tag: "ReadSettings" });
-      yield* call({ _tag: "UpdateSettings", settings: { ...settings, shouldAllowOutsideSandbox: true } });
+      yield* call({ _tag: "UpdateSettings", settings: { ...settings, defaultPermissionMode: "FullAccess" } });
     });
 
-    it.live("is off until the owner turns it on", () =>
+    it.live("leaves new threads on Auto out of the box", () =>
       Effect.gen(function* () {
-        expect((yield* call({ _tag: "ReadSettings" })).shouldAllowOutsideSandbox).toBe(false);
+        expect((yield* call({ _tag: "ReadSettings" })).defaultPermissionMode).toBe("Auto");
       }).pipe(Effect.provide(live())),
     );
 
-    it.live("runs an escape without a question, naming the command in its line", () =>
+    it.live("approves a new thread's escaped command without a question, naming the command in its line", () =>
       Effect.gen(function* () {
-        yield* allowEscapes;
+        yield* allowEverything;
         const started = yield* start(
           `${prompt("git push origin main", true)}\nescape Bash ${JSON.stringify({ command: "ls" })}`,
         );
@@ -126,10 +126,15 @@ describe("harness prompts inside and outside the sandbox", () => {
       }).pipe(Effect.provide(live())),
     );
 
-    it.live("still asks for every prompt where no sandbox protects the harness", () =>
+    it.live("approves an unprotected harness's commands too, and a Supervised thread still asks", () =>
       Effect.gen(function* () {
-        yield* allowEscapes;
+        yield* allowEverything;
         const started = yield* start(prompt("ls", true));
+        expect((yield* settle(started.missionId, isReplied)).questions.map((question) => question.outcome)).toEqual([
+          "AllowedAutomatically",
+        ]);
+        yield* call({ _tag: "SetThreadPermissionMode", mode: "Supervised", threadId: started.threadId });
+        yield* send(started.threadId, prompt("ls", true));
         expect(openQuestion(yield* settle(started.missionId, isAsking))).toMatchObject({
           permission: "Run without a sandbox",
         });
@@ -138,7 +143,7 @@ describe("harness prompts inside and outside the sandbox", () => {
 
     it.live("still asks when the thread itself asks about a consequential action", () =>
       Effect.gen(function* () {
-        yield* allowEscapes;
+        yield* allowEverything;
         const started = yield* start(ask(push));
         expect(openQuestion(yield* settle(started.missionId, isAsking))).toMatchObject({ source: "Thread" });
       }).pipe(Effect.provide(live())),
@@ -235,10 +240,10 @@ describe("harness prompts inside and outside the sandbox", () => {
     }).pipe(Effect.provide(live())),
   );
 
-  it.live("asks for every prompt at the stricter level, inside the sandbox too", () =>
+  it.live("asks for every prompt at the stricter default mode, inside the sandbox too", () =>
     Effect.gen(function* () {
       const settings = yield* call({ _tag: "ReadSettings" });
-      yield* call({ _tag: "UpdateSettings", settings: { ...settings, approvalLevel: "CommandsAndEdits" } });
+      yield* call({ _tag: "UpdateSettings", settings: { ...settings, defaultPermissionMode: "Supervised" } });
       const commit = yield* start(prompt(`git add hello.txt && git commit -m "Add hello"`));
       expect(openQuestion(yield* settle(commit.missionId, isAsking))).toMatchObject({
         permission: "Run a command",

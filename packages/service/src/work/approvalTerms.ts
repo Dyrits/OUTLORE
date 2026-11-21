@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { type ApprovalTerms, Harness, readSettings } from "../core/index.ts";
 import { approvalInstructionsOf } from "../harness/index.ts";
 import { listThreadPermissions } from "../policy/index.ts";
-import { harnessApprovalLevelOf, readThreadPermissionMode } from "./threadPermissionMode.ts";
+import { effectiveModeOf, harnessApprovalLevelOf, readThreadPermissionMode } from "./threadPermissionMode.ts";
 
 // A thread's approval terms (CHG-0301): read once here for its turn and for the preview of its starting context, so
 // what a thread is told and what the owner is shown before opening one cannot drift apart.
@@ -13,18 +13,20 @@ export const permissionKindsOf = (permissions: ReadonlyArray<StandingPermission>
   [...new Set(permissions.map((permission) => permission.sentence))].toSorted();
 
 /**
- * How the thread's actions are approved on this harness now: the owner's level and escape setting, whether the
- * harness's adapter runs it in an enforced sandbox here, and the kinds of standing permission that apply to it.
+ * How the thread's actions are approved on this harness now: the effective mode of the Workshop's default and the
+ * thread's own choice, whether the harness's adapter runs it in an enforced sandbox here, and the kinds of standing
+ * permission that apply to it.
  */
 export const readApprovalTerms = Effect.fnUntraced(function* (threadId: string, harnessName: HarnessName) {
   const harness = yield* Harness;
-  const { approvalLevel, shouldAllowOutsideSandbox } = yield* readSettings;
+  const { defaultPermissionMode } = yield* readSettings;
   const mode = yield* readThreadPermissionMode(threadId);
-  const level = harnessApprovalLevelOf(mode, approvalLevel);
+  const level = harnessApprovalLevelOf(mode, defaultPermissionMode);
   const permissions = yield* listThreadPermissions(threadId);
   return {
     approvalLevel: level,
-    canWorkOutsideSandbox: mode === null && shouldAllowOutsideSandbox,
+    // Full access also lets a thread's commands leave the sandbox without a question (the folded escape setting).
+    canWorkOutsideSandbox: effectiveModeOf(mode, defaultPermissionMode) === "FullAccess",
     // A harness whose adapter reports nothing counts as unprotected, as Approvals judges it (approvals.ts).
     containment: harness.containmentOf?.(harnessName, level) ?? "Unprotected",
     permissionKinds: permissionKindsOf(permissions),

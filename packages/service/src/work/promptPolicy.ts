@@ -17,7 +17,7 @@ import {
 import { isInsideVaultFolder, searchReachesVaultFolder, VaultFolder } from "../vault/index.ts";
 import type { Decision } from "./approvalContracts.ts";
 import { type Asked, allowingOutcomes, type makeQuestions, textOf } from "./questions.ts";
-import { harnessApprovalLevelOf, readThreadPermissionMode } from "./threadPermissionMode.ts";
+import { effectiveModeOf, harnessApprovalLevelOf, readThreadPermissionMode } from "./threadPermissionMode.ts";
 import { readAuthorityHarness } from "./turnAdmission.ts";
 import { ScratchRoot, threadFolderOf } from "./workspaces.ts";
 
@@ -144,13 +144,15 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
       if (yield* takeAllowance(threadId, target, isEscape)) return { isAllowed: true, text: "" } satisfies Decision;
       const missionId = yield* missionOf(threadId);
       if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
-      const { approvalLevel, shouldAllowOutsideSandbox } = yield* readSettings;
+      const { defaultPermissionMode } = yield* readSettings;
       const mode = yield* readThreadPermissionMode(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
-      const level = harnessApprovalLevelOf(mode, approvalLevel);
+      const effective = effectiveModeOf(mode, defaultPermissionMode);
+      const level = harnessApprovalLevelOf(mode, defaultPermissionMode);
       const capability = yield* readCapability(
         threadId,
         level,
-        mode === null && shouldAllowOutsideSandbox,
+        // Full access also covers a command that leaves the sandbox (the folded escape setting).
+        effective === "FullAccess",
         toolName,
         input,
         isEscape,
@@ -160,8 +162,8 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
       const plain = plainActionOf(toolName);
       // Full access covers individual tool calls. A grant that widens the sandbox for the turn still asks.
       if (
-        (mode === "FullAccess" && toolName !== "Permissions") ||
-        (capability === null && mode === "AutoAcceptEdits" && isFileWriting(toolName)) ||
+        (effective === "FullAccess" && toolName !== "Permissions") ||
+        (capability === null && effective === "AutoAcceptEdits" && isFileWriting(toolName)) ||
         isUnaskedAt(level, capability)
       ) {
         yield* record(

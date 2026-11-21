@@ -162,7 +162,7 @@ describe("a Ritual's reviewed scope", () => {
     Effect.gen(function* () {
       const failureOf = (scope: ReadonlyArray<RitualScopeEntry>) => Effect.flip(withScope("Hello", scope));
       expect(
-        (yield* failureOf([{ operation: "ChangeSetting", payload: '"Never"', target: "approvalLevel" }])).kind,
+        (yield* failureOf([{ operation: "ChangeSetting", payload: '"Never"', target: "defaultPermissionMode" }])).kind,
       ).toBe("InvalidInput");
       expect((yield* failureOf([{ operation: "Rename", payload: null, target: "Old notes" }])).kind).toBe(
         "InvalidInput",

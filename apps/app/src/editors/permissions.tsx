@@ -1,9 +1,4 @@
-import {
-  type ApprovalLevel,
-  ApprovalLevel as ApprovalLevels,
-  type MissionId,
-  type StandingPermission,
-} from "@outlore/contracts";
+import type { MissionId, StandingPermission, ThreadPermissionMode } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
@@ -13,13 +8,16 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Choice } from "../ui/pickers";
 import { questionOriginOf } from "../ui/questionOrigin";
 import { QuestionLine } from "../ui/questions";
-import { ToggleRow } from "../ui/toggleRow";
+import { permissionModeLabels, permissionModeOptions } from "./permissionModes";
 
-/** The names of the approval levels (action-approval, Approval level). */
-export const levelLabels = {
-  CommandsAndEdits: "Also commands and edits",
-  RiskyOnly: "Sensitive actions only",
-} as const satisfies Record<ApprovalLevel, string>;
+/** What each mode means for a thread, shown under the Workshop's choice. */
+const modeDescriptions = {
+  Auto: "Sandbox-covered commands and edits inside the workspace run without asking; everything else asks.",
+  AutoAcceptEdits: "Edits inside the workspace run without asking; commands and everything else asks.",
+  FullAccess:
+    "Every thread you open runs with its harness's requests approved automatically, including errands other threads open, and commands may leave the sandbox. Outlore's own approvals, such as publishing, still ask.",
+  Supervised: "Commands and edits the harness submits for approval each ask.",
+} as const satisfies Record<ThreadPermissionMode, string>;
 
 /** Whether a standing permission was widened to every mission and workspace. */
 const isEverywhere = (permission: StandingPermission) =>
@@ -33,7 +31,7 @@ const scopeOf = (permission: StandingPermission) =>
       ? `In realm ${permission.workspaceName}`
       : `In ${permission.missionTitle}`;
 
-/** The approval level, standing permissions, and the history of answers. */
+/** The default permission mode, standing permissions, and the history of answers. */
 export function PermissionsScreen({ client, onBack }: { client: ServiceClient; onBack: () => void }) {
   const [missionFilter, setMissionFilter] = useState<MissionId | null>(null);
   const { data: view, error } = useServiceQuery(
@@ -41,7 +39,6 @@ export function PermissionsScreen({ client, onBack }: { client: ServiceClient; o
     { _tag: "ReadPermissions", missionId: missionFilter },
     `permissions-${missionFilter ?? "all"}`,
   );
-  const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const { data: list } = useServiceQuery(client, allMissions.request, allMissions.key);
   const missions = list?.missions ?? null;
   const [actionError, setActionError] = useState<string | null>(null);
@@ -62,38 +59,31 @@ export function PermissionsScreen({ client, onBack }: { client: ServiceClient; o
       </View>
       {error !== null && <Text style={styles.error}>{error}</Text>}
       {actionError !== null && <Text style={styles.error}>{actionError}</Text>}
-      {view && settings && (
+      {view && (
         <>
           <View style={styles.section}>
-            <Text style={styles.label}>Approval level</Text>
+            <Text style={styles.label}>Permission mode</Text>
             <Choice
-              label={(level) => levelLabels[level]}
-              onChange={(approvalLevel) => act(client.request({ _tag: "ChangeSettings", change: { approvalLevel } }))}
-              options={ApprovalLevels.literals}
-              value={view.level}
+              label={(mode) => permissionModeLabels[mode]}
+              onChange={(defaultPermissionMode) =>
+                act(client.request({ _tag: "ChangeSettings", change: { defaultPermissionMode } }))
+              }
+              options={permissionModeOptions}
+              value={view.defaultMode}
             />
-            {view.sandboxProblem !== null && view.level === "RiskyOnly" && (
+            <Text style={styles.muted}>{modeDescriptions[view.defaultMode]}</Text>
+            <Text style={styles.muted}>
+              Every thread without a mode of its own runs with this mode, and the composer names it under Default
+              permissions. Only you can change this; a thread cannot.
+            </Text>
+            {view.sandboxProblem !== null && (view.defaultMode === "Auto" || view.defaultMode === "FullAccess") && (
               <Text style={styles.muted}>
-                {view.sandboxProblem} Commands run without it; only sensitive actions ask.
+                {view.sandboxProblem}{" "}
+                {view.defaultMode === "Auto"
+                  ? "Commands run without it; only sensitive actions ask."
+                  : "Commands run without it and without asking."}
               </Text>
             )}
-          </View>
-          <View style={styles.section}>
-            <Text style={styles.label}>Working outside the sandbox</Text>
-            <ToggleRow
-              label="Let threads run commands outside the sandbox without asking"
-              onChange={(shouldAllowOutsideSandbox) =>
-                act(client.request({ _tag: "ChangeSettings", change: { shouldAllowOutsideSandbox } }))
-              }
-              value={settings.shouldAllowOutsideSandbox}
-            />
-            <Text style={styles.muted}>
-              Off by default. When on, a command that needs to leave its sandbox runs with your full access to this
-              computer and leaves a line in the history. Threads still ask before what they judge consequential, such as
-              pushing code, publishing, deleting, or paying, and a thread's file changes outside its folder, a thread
-              running with no sandbox at all, and widening a sandbox still ask. Only you can change this; a thread
-              cannot.
-            </Text>
           </View>
           <View style={styles.section}>
             <Text style={styles.label}>Standing permissions</Text>

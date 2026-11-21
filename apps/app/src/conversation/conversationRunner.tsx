@@ -1,17 +1,12 @@
 import { type MissionDetail, ThreadPermissionMode } from "@outlore/contracts";
+import { permissionModeLabels } from "../editors/permissionModes";
 import { RunnerPickers } from "../editors/runners";
 import type { ServiceClient } from "../foundation/client";
 import { useIsRemoteHost } from "../foundation/hostContext";
+import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Menu } from "../ui/pickers";
 import { ThreadBackups } from "./threadBackups";
 import type { useThreadConversation } from "./useThreadConversation";
-
-const permissionLabels = {
-  Auto: "Auto",
-  AutoAcceptEdits: "Auto-accept edits",
-  FullAccess: "Full access",
-  Supervised: "Supervised",
-} satisfies Record<ThreadPermissionMode, string>;
 
 /** The conversation's current runner, presets and backups, shared by quests and Chronicler. */
 export function ConversationRunner({
@@ -32,12 +27,19 @@ export function ConversationRunner({
   onOpenTab?: (() => void) | undefined;
 }) {
   const isRemote = useIsRemoteHost();
+  const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   return (
     <>
       {!isFullPanel && !isRemote && (
         <Menu
           accessibilityLabel="Thread permissions"
-          label={(mode) => (mode === null ? "Default permissions" : permissionLabels[mode])}
+          label={(mode) =>
+            mode === null
+              ? settings == null
+                ? "Default permissions"
+                : `Default permissions (${permissionModeLabels[settings.defaultPermissionMode]})`
+              : permissionModeLabels[mode]
+          }
           onChange={(mode) =>
             conversation.act(client.request({ _tag: "SetThreadPermissionMode", mode, threadId: thread.id }))
           }

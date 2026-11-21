@@ -215,13 +215,13 @@ it.live("counts a turn as subscription tokens when Claude Code does not report h
   }).pipe(Effect.provide(layer));
 });
 
-it.live("restarts the process, resuming its session, when the approval level changes", () => {
+it.live("restarts the process, resuming its session, when the default permission mode changes", () => {
   const { layer, starts } = withClaude();
   return Effect.gen(function* () {
     const started = yield* startMission({ effort: "low", model: "haiku", text: "One" });
     yield* settle(started.missionId, idleWith(1));
     const settings = yield* call({ _tag: "ReadSettings" });
-    yield* call({ _tag: "UpdateSettings", settings: { ...settings, approvalLevel: "CommandsAndEdits" } });
+    yield* call({ _tag: "UpdateSettings", settings: { ...settings, defaultPermissionMode: "Supervised" } });
     yield* sendTo(started.threadId, "Two");
     yield* settle(started.missionId, idleWith(2));
 
@@ -273,7 +273,7 @@ it.live("asks for every prompt at the default level when the sandbox is unavaila
     const settings = JSON.parse(start?.args[start.args.indexOf("--settings") + 1] ?? "{}");
     expect(settings.sandbox).toBeUndefined();
     const view = yield* call({ _tag: "ReadPermissions", missionId: null });
-    expect(view.level).toBe("RiskyOnly");
+    expect(view.defaultMode).toBe("Auto");
   }).pipe(Effect.provide(layer));
 });
 
@@ -347,7 +347,6 @@ it.live("shows the reply as it is written only while the setting is on", () => {
     yield* call({
       _tag: "UpdateSettings",
       settings: {
-        approvalLevel: "RiskyOnly",
         autoArchiveDays: 30,
         backups: [],
         briefingLimit: 2000,
@@ -356,12 +355,12 @@ it.live("shows the reply as it is written only while the setting is on", () => {
         defaultHarness: "claude",
         defaultMissionBudget: { cost: null, tokens: null },
         defaultModel: "default",
+        defaultPermissionMode: "Auto",
         globalBudget: { cost: null, tokens: null },
         globalBudgetPeriod: "Month",
         inactivityDays: 14,
         intelHalfLives: { decision: 45, fact: 45, preference: 90, temporary: 3 },
         intelWarningPercent: 10,
-        shouldAllowOutsideSandbox: false,
         shouldAutoArchive: false,
         shouldFetchPrices: true,
         shouldOpenOffTopicMissions: false,

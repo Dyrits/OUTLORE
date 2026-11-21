@@ -23,7 +23,6 @@ describe("reading and saving settings", () => {
     return Effect.gen(function* () {
       const defaults = yield* call({ _tag: "ReadSettings" }).pipe(Effect.provide(serviceLayer(options)));
       expect(defaults).toEqual({
-        approvalLevel: "RiskyOnly",
         autoArchiveDays: 30,
         backups: [],
         briefingLimit: 2000,
@@ -32,12 +31,12 @@ describe("reading and saving settings", () => {
         defaultHarness: "claude",
         defaultMissionBudget: { cost: null, tokens: null },
         defaultModel: "claude-sonnet-5-5",
+        defaultPermissionMode: "Auto",
         globalBudget: { cost: null, tokens: null },
         globalBudgetPeriod: "Month",
         inactivityDays: 14,
         intelHalfLives: { decision: 45, fact: 45, preference: 90, temporary: 3 },
         intelWarningPercent: 10,
-        shouldAllowOutsideSandbox: false,
         shouldAutoArchive: false,
         shouldFetchPrices: true,
         shouldOpenOffTopicMissions: false,
@@ -49,7 +48,6 @@ describe("reading and saving settings", () => {
       });
 
       const updated = {
-        approvalLevel: "CommandsAndEdits",
         autoArchiveDays: 10,
         backups: [],
         briefingLimit: 500,
@@ -58,12 +56,12 @@ describe("reading and saving settings", () => {
         defaultHarness: "codex",
         defaultMissionBudget: { cost: null, tokens: null },
         defaultModel: "sonnet",
+        defaultPermissionMode: "Supervised",
         globalBudget: { cost: null, tokens: null },
         globalBudgetPeriod: "Month",
         inactivityDays: 7,
         intelHalfLives: { decision: 30, fact: 60, preference: 120, temporary: 5 },
         intelWarningPercent: 25,
-        shouldAllowOutsideSandbox: false,
         shouldAutoArchive: true,
         shouldFetchPrices: true,
         shouldOpenOffTopicMissions: true,
@@ -82,7 +80,7 @@ describe("reading and saving settings", () => {
     const { layer } = withClaude();
     return Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
-      const saved = { approvalLevel: "CommandsAndEdits", defaultEffort: "high", defaultModel: "sonnet" };
+      const saved = { defaultEffort: "high", defaultModel: "sonnet", defaultPermissionMode: "Supervised" };
       yield* sql`INSERT INTO settings (key, value) VALUES ('settings', ${JSON.stringify({ ...saved, shouldStreamReplies: false })})
         ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
       expect(yield* call({ _tag: "ReadSettings" })).toEqual({
@@ -98,7 +96,6 @@ describe("reading and saving settings", () => {
         inactivityDays: 14,
         intelHalfLives: { decision: 45, fact: 45, preference: 90, temporary: 3 },
         intelWarningPercent: 10,
-        shouldAllowOutsideSandbox: false,
         shouldAutoArchive: false,
         shouldFetchPrices: true,
         shouldOpenOffTopicMissions: false,

@@ -2,7 +2,7 @@ import { BudgetPeriod, type SettingsChange } from "@outlore/contracts";
 import { type ReactNode, useRef, useState } from "react";
 import { Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from "react-native";
 import { BudgetEditor } from "../editors/budgets";
-import { levelLabels } from "../editors/permissions";
+import { permissionModeLabels } from "../editors/permissionModes";
 import { useHarnesses } from "../editors/runners";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { useHasSidebar, useHasTopBar } from "../foundation/shellContext";
@@ -87,7 +87,7 @@ export function SettingsScreen({
               <SettingsCard
                 icon="shield"
                 onPress={onPermissions}
-                summary={levelLabels[settings.approvalLevel]}
+                summary={permissionModeLabels[settings.defaultPermissionMode]}
                 title="Permissions"
               />
             </Section>

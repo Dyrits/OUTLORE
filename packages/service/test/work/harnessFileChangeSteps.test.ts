@@ -42,7 +42,7 @@ describe("file diffs from harness results", () => {
     const folder = temporary("outlore-diff-workspace-");
     return Effect.gen(function* () {
       const settings = yield* call({ _tag: "ReadSettings" });
-      yield* call({ _tag: "UpdateSettings", settings: { ...settings, approvalLevel: "CommandsAndEdits" } });
+      yield* call({ _tag: "UpdateSettings", settings: { ...settings, defaultPermissionMode: "Supervised" } });
       const started = yield* startMission({ harness: "vibe", text: "report file changes", workspacePath: folder });
       yield* answerOpen("Deny");
       const detail = yield* settle(started.missionId, idleWith(1));

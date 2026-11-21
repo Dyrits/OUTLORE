@@ -7,8 +7,8 @@ export const readPermissionsView = (missionId: string | null) =>
   Effect.gen(function* () {
     const settings = yield* readSettings;
     return {
+      defaultMode: settings.defaultPermissionMode,
       history: yield* listQuestionHistory(missionId),
-      level: settings.approvalLevel,
       permissions: yield* listPermissions,
       sandboxProblem: yield* sandboxProblem,
     };

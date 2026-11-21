@@ -110,7 +110,7 @@ describe("standing permissions", () => {
       expect(all.history.map((question) => question.outcome).sort()).toEqual(["Allowed", "Denied"]);
       const one = yield* call({ _tag: "ReadPermissions", missionId: second.missionId });
       expect(one.history.map((question) => question.outcome)).toEqual(["Denied"]);
-      expect(all.level).toBe("RiskyOnly");
+      expect(all.defaultMode).toBe("Auto");
     }).pipe(Effect.provide(live())),
   );
 });

@@ -31,7 +31,26 @@ export const setThreadPermissionMode = Effect.fnUntraced(function* (
   return changed(null);
 });
 
-export const harnessApprovalLevelOf = (mode: ThreadPermissionMode | null, fallback: ApprovalLevel): ApprovalLevel => {
-  if (mode === null) return fallback;
-  return mode === "Supervised" || mode === "AutoAcceptEdits" ? "CommandsAndEdits" : "RiskyOnly";
+/** The mode the thread runs with: its own when it chose one, otherwise the Workshop's default (CHG-0617). */
+export const effectiveModeOf = (
+  mode: ThreadPermissionMode | null,
+  defaultMode: ThreadPermissionMode,
+): ThreadPermissionMode => mode ?? defaultMode;
+
+/**
+ * The level the effective mode derives, which tells the harnesses whether to enforce their sandbox and run their own
+ * prompts (CHG-0031): Supervised and Auto-accept edits show the harnesses' prompts, Auto and Full access lean on the
+ * sandbox and allow each harness request through the mode instead.
+ */
+export const harnessApprovalLevelOf = (
+  mode: ThreadPermissionMode | null,
+  defaultMode: ThreadPermissionMode,
+): ApprovalLevel => {
+  const asking: Record<ThreadPermissionMode, ApprovalLevel> = {
+    Auto: "RiskyOnly",
+    AutoAcceptEdits: "CommandsAndEdits",
+    FullAccess: "RiskyOnly",
+    Supervised: "CommandsAndEdits",
+  };
+  return asking[effectiveModeOf(mode, defaultMode)];
 };

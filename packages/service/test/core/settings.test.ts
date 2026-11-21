@@ -9,8 +9,8 @@ import { afterEach } from "vitest";
 import { defaultSettings, readSettings } from "../../src/core/settings.ts";
 import { migrations } from "../../src/core/store.ts";
 
-// Reading the owner's saved settings (SP-A-07): what no longer decodes falls back field by field, and the approval
-// level falls back to the stricter one, never to the looser default.
+// Reading the owner's saved settings (SP-A-07): what no longer decodes falls back field by field, and the default
+// permission mode falls back to the strictest mode, never to the looser default.
 
 const directories: Array<string> = [];
 afterEach(() => {
@@ -38,38 +38,43 @@ describe("reading saved settings", () => {
 
   it.effect("fills a setting added after the last save with its default and keeps the saved choices", () =>
     Effect.gen(function* () {
-      const { shouldStreamReplies: _added, ...saved } = { ...defaultSettings, approvalLevel: "CommandsAndEdits" };
+      const { shouldStreamReplies: _added, ...saved } = { ...defaultSettings, defaultPermissionMode: "Supervised" };
       expect(yield* readStored(JSON.stringify(saved))).toEqual({
         ...defaultSettings,
-        approvalLevel: "CommandsAndEdits",
+        defaultPermissionMode: "Supervised",
       });
     }),
   );
 
   it.effect("keeps every valid field when another no longer decodes", () =>
     Effect.gen(function* () {
-      const stored = { ...defaultSettings, approvalLevel: "CommandsAndEdits", autoArchiveDays: 7, chatterThreshold: 1 };
+      const stored = {
+        ...defaultSettings,
+        autoArchiveDays: 7,
+        chatterThreshold: 1,
+        defaultPermissionMode: "Supervised",
+      };
       expect(yield* readStored(JSON.stringify(stored))).toEqual({
         ...defaultSettings,
-        approvalLevel: "CommandsAndEdits",
         autoArchiveDays: 7,
+        defaultPermissionMode: "Supervised",
       });
     }),
   );
 
-  it.effect("falls back to the stricter approval level when the saved one is invalid", () =>
+  it.effect("falls back to the strictest mode when the saved one is invalid", () =>
     Effect.gen(function* () {
-      const stored = { ...defaultSettings, approvalLevel: "Everything", autoArchiveDays: 7 };
+      const stored = { ...defaultSettings, autoArchiveDays: 7, defaultPermissionMode: "Everything" };
       const read = yield* readStored(JSON.stringify(stored));
-      expect(read.approvalLevel).toBe("CommandsAndEdits");
+      expect(read.defaultPermissionMode).toBe("Supervised");
       expect(read.autoArchiveDays).toBe(7);
     }),
   );
 
-  it.effect("reads the stricter approval level and the other defaults from a row that is not an object", () =>
+  it.effect("reads the strictest mode and the other defaults from a row that is not an object", () =>
     Effect.gen(function* () {
       for (const stored of ["not json", "null", "[1]"]) {
-        expect(yield* readStored(stored), stored).toEqual({ ...defaultSettings, approvalLevel: "CommandsAndEdits" });
+        expect(yield* readStored(stored), stored).toEqual({ ...defaultSettings, defaultPermissionMode: "Supervised" });
       }
     }),
   );

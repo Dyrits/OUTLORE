@@ -26,7 +26,7 @@ describe("settings at the owner's request", () => {
       const place = yield* guildmaster;
       const text = yield* tool(place.threadId, "read_settings", {});
       expect(text).toContain('"shouldShowFinishedQuests":false');
-      expect(text).toContain("You may not change: approvalLevel");
+      expect(text).toContain("You may not change: defaultPermissionMode");
     }).pipe(Effect.provide(setup().layer)),
   );
 
@@ -75,17 +75,16 @@ describe("settings at the owner's request", () => {
     }).pipe(Effect.provide(setup().layer)),
   );
 
-  it.live("keeps the approval level, working outside the sandbox, the budgets, and price fetching to the owner", () =>
+  it.live("keeps the default permission mode, the budgets, and price fetching to the owner", () =>
     Effect.gen(function* () {
       const place = yield* guildmaster;
       const before = yield* settings;
       for (const [setting, value] of [
-        ["approvalLevel", '"Never"'],
+        ["defaultPermissionMode", '"Never"'],
         ["globalBudget", '{"cost":1,"tokens":null}'],
         ["defaultMissionBudget", '{"cost":1,"tokens":null}'],
         ["globalBudgetPeriod", '"Day"'],
         ["shouldFetchPrices", "false"],
-        ["shouldAllowOutsideSandbox", "true"],
       ] as const) {
         const refused = yield* manage(place, "change_setting", { setting, value });
         expect(refused).toContain("the owner's alone");

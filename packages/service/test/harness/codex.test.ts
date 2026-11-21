@@ -183,7 +183,7 @@ describe("running Codex threads", () => {
       const { layer } = withHarnesses();
       return Effect.gen(function* () {
         const settings = yield* call({ _tag: "ReadSettings" });
-        yield* call({ _tag: "UpdateSettings", settings: { ...settings, approvalLevel: "CommandsAndEdits" } });
+        yield* call({ _tag: "UpdateSettings", settings: { ...settings, defaultPermissionMode: "Supervised" } });
         const started = yield* startMission({ harness: "codex", text: "run ls" });
         const answered = yield* answerOpen("Allow");
         expect(answered).toMatchObject({ details: "ls", permission: "Run a command" });

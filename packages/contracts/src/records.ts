@@ -20,7 +20,7 @@ import { EffortChoice, HarnessName } from "./harnesses.ts";
 import { AccountId, MessageId, MissionId, SuggestionId, ThreadId, WorkspaceId } from "./ids.ts";
 import { LoreChange, LoreGauge } from "./lore.ts";
 import { PositiveInt } from "./positiveInt.ts";
-import { ApprovalLevel, Question, ThreadPermissionMode } from "./questions.ts";
+import { Question, ThreadPermissionMode } from "./questions.ts";
 import { RitualCard } from "./ritualSchedules.ts";
 import { Workspace, WorkspaceChoice } from "./workspaces.ts";
 
@@ -56,7 +56,6 @@ export type MessageDelivery = typeof MessageDelivery.Type;
 
 /** The owner's settings. */
 export const Settings = Schema.Struct({
-  approvalLevel: ApprovalLevel,
   /** Days after a Done mission was marked Done before it is archived, when auto-archive is on. */
   autoArchiveDays: PositiveInt,
   /** The backup Companions a new quest's thread starts with, in the order a failed turn falls back through them; at most five. */
@@ -71,6 +70,11 @@ export const Settings = Schema.Struct({
   /** Copied onto each new mission; empty at first. */
   defaultMissionBudget: BudgetLimits,
   defaultModel: ModelChoice,
+  /**
+   * The default permission mode every thread without a mode of its own runs with (action-approval, Permission modes;
+   * CHG-0617): what the composer's Default permissions means. Full access also lets commands leave the sandbox unasked.
+   */
+  defaultPermissionMode: ThreadPermissionMode,
   /** Covers all missions over its period; empty at first. */
   globalBudget: BudgetLimits,
   globalBudgetPeriod: BudgetPeriod,
@@ -85,11 +89,6 @@ export const Settings = Schema.Struct({
   }),
   /** The share of the chosen model's context window, in percent, past which a thread's lore icon turns red (scoped-intel). */
   intelWarningPercent: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100)),
-  /**
-   * Whether a command may leave its harness's sandbox without a question, off by default (action-approval, Working
-   * outside the sandbox; CHG-0295). A thread still asks about the consequential actions it judges itself.
-   */
-  shouldAllowOutsideSandbox: Schema.Boolean,
   /** Whether Done missions are archived automatically, off by default (mission-tracking, Ending a mission). */
   shouldAutoArchive: Schema.Boolean,
   /** Whether Outlore reads the public model price table; off leaves the snapshot shipped with it (budget-control, The price table). */

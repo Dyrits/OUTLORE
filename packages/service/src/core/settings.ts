@@ -26,7 +26,6 @@ export const noLimits: BudgetLimits = { cost: null, tokens: null };
 
 /** The settings before the owner changes any. */
 export const defaultSettings: Settings = {
-  approvalLevel: "RiskyOnly",
   autoArchiveDays: 30,
   backups: [],
   briefingLimit: 2000,
@@ -35,12 +34,12 @@ export const defaultSettings: Settings = {
   defaultHarness: "claude",
   defaultMissionBudget: noLimits,
   defaultModel: startingModel,
+  defaultPermissionMode: "Auto",
   globalBudget: noLimits,
   globalBudgetPeriod: "Month",
   inactivityDays: 14,
   intelHalfLives: { decision: 45, fact: 45, preference: 90, temporary: 3 },
   intelWarningPercent: 10,
-  shouldAllowOutsideSandbox: false,
   shouldAutoArchive: false,
   shouldFetchPrices: true,
   shouldOpenOffTopicMissions: false,
@@ -69,8 +68,8 @@ export const mergedSettings = (saved: Settings, change: SettingsChange): Setting
   tiers: { ...saved.tiers, ...change.tiers },
 });
 
-/** The level a setting that no longer decodes falls back to: the stricter one, so a lost choice never asks less. */
-const strictestApprovalLevel: Settings["approvalLevel"] = "CommandsAndEdits";
+/** The mode a setting that no longer decodes falls back to: the strictest one, so a lost choice never asks less. */
+const strictestMode: Settings["defaultPermissionMode"] = "Supervised";
 
 /** The saved JSON as an object, or null when it is not one. */
 const savedObjectOf = (text: string): Record<string, unknown> | null => {
@@ -83,8 +82,8 @@ const savedObjectOf = (text: string): Record<string, unknown> | null => {
 };
 
 /**
- * The settings decoded field by field: a field that no longer decodes takes its default, except the approval level,
- * which takes the stricter level (SP-A-07), and a row that is not an object counts as every field invalid.
+ * The settings decoded field by field: a field that no longer decodes takes its default, except the default
+ * permission mode, which takes the strictest mode (SP-A-07), and a row that is not an object counts as every field invalid.
  */
 const settingsOf = (saved: Record<string, unknown> | null): Settings => {
   const defaults: Record<string, unknown> = defaultSettings;
@@ -95,17 +94,17 @@ const settingsOf = (saved: Record<string, unknown> | null): Settings => {
     Object.entries(SavedSettings.fields).map(([key, field]) => {
       const isValid = saved !== null && Exit.isSuccess(Schema.decodeUnknownExit(field)(merged[key]));
       if (isValid) return [key, merged[key]];
-      return [key, key === "approvalLevel" ? strictestApprovalLevel : defaults[key]];
+      return [key, key === "defaultPermissionMode" ? strictestMode : defaults[key]];
     }),
   );
   const decoded = decodeExit(kept);
-  return Exit.isSuccess(decoded) ? decoded.value : { ...defaultSettings, approvalLevel: strictestApprovalLevel };
+  return Exit.isSuccess(decoded) ? decoded.value : { ...defaultSettings, defaultPermissionMode: strictestMode };
 };
 
 /**
  * Reads the owner's settings, or the defaults when none are stored. A setting added after the owner last saved takes
  * its default and the saved choices stay; one that no longer decodes takes its default alone, never dragging the others
- * back, and an invalid approval level takes the stricter level.
+ * back, and an invalid default permission mode takes the strictest mode.
  */
 export const readSettings = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;

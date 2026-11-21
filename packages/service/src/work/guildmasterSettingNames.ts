@@ -7,11 +7,10 @@ import { Settings } from "@outlore/contracts";
  * the Workshop, because a quest's text could otherwise talk Chronicler into widening them.
  */
 export const settingsKeptFromChronicler = [
-  "approvalLevel",
+  "defaultPermissionMode",
   "defaultMissionBudget",
   "globalBudget",
   "globalBudgetPeriod",
-  "shouldAllowOutsideSandbox",
   "shouldFetchPrices",
 ] as const satisfies ReadonlyArray<keyof Settings>;
 

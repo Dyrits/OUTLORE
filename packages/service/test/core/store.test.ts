@@ -257,3 +257,44 @@ describe("migrating saved thread states and mission endings to the status names"
     }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
   });
 });
+
+describe("migrating the settings to the default permission mode", () => {
+  // The row 'settings' holds after a store saved by the version before CHG-0617 migrates in one run.
+  const migratedRowOf = (saved: object) => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
+    directories.push(directory);
+    return Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* migrateUntil("0070_thread_permission_mode");
+      const key = "settings";
+      yield* sql`INSERT INTO settings (key, value) VALUES (${key}, ${JSON.stringify(saved)})`;
+      yield* migrateUntil("9999");
+      const [row] = yield* sql<{ value: string }>`SELECT value FROM settings WHERE key = ${key}`;
+      return row === undefined ? {} : (JSON.parse(row.value) as Record<string, unknown>);
+    }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
+  };
+
+  it.effect("translates the saved level and escape setting into the one default mode and drops the old keys", () =>
+    Effect.gen(function* () {
+      expect(yield* migratedRowOf({ approvalLevel: "RiskyOnly" })).toEqual({ defaultPermissionMode: "Auto" });
+      expect(yield* migratedRowOf({ approvalLevel: "RiskyOnly", shouldAllowOutsideSandbox: true })).toEqual({
+        defaultPermissionMode: "FullAccess",
+      });
+      expect(yield* migratedRowOf({ approvalLevel: "CommandsAndEdits" })).toEqual({
+        defaultPermissionMode: "Supervised",
+      });
+      expect(yield* migratedRowOf({ shouldAllowOutsideSandbox: true })).toEqual({
+        defaultPermissionMode: "FullAccess",
+      });
+      expect(yield* migratedRowOf({})).toEqual({ defaultPermissionMode: "Auto" });
+    }),
+  );
+
+  it.effect("leaves a row that already names its default mode alone", () =>
+    Effect.gen(function* () {
+      expect(yield* migratedRowOf({ defaultPermissionMode: "Supervised" })).toEqual({
+        defaultPermissionMode: "Supervised",
+      });
+    }),
+  );
+});

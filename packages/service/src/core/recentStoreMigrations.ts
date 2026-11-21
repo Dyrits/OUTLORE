@@ -227,4 +227,19 @@ export const recentStoreMigrations = {
     yield* sql`ALTER TABLE threads ADD COLUMN permission_mode TEXT
       CHECK (permission_mode IN ('Supervised', 'AutoAcceptEdits', 'Auto', 'FullAccess'))`;
   }),
+  // CHG-0617: the two Workshop approval levels and the sandbox-escape toggle fold into the four permission modes, so
+  // the Workshop's row becomes the default mode every thread without an override runs with. "Also commands and edits"
+  // maps to Supervised either way; "Sensitive actions only" keeps asking for escapes as Auto unless the owner had
+  // already allowed them, which maps to Full access. Old keys are removed; a row of the new shape is left alone.
+  "0071_settings_permission_mode": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`UPDATE settings SET value = json_remove(
+        json_set(value, '$.defaultPermissionMode', CASE
+          WHEN json_extract(value, '$.approvalLevel') = 'CommandsAndEdits' THEN 'Supervised'
+          WHEN json_extract(value, '$.shouldAllowOutsideSandbox') = 1 THEN 'FullAccess'
+          ELSE 'Auto'
+        END),
+        '$.approvalLevel', '$.shouldAllowOutsideSandbox')
+      WHERE key = 'settings' AND json_type(value, '$.defaultPermissionMode') IS NULL`;
+  }),
 };

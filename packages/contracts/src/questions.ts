@@ -3,8 +3,12 @@ import { MissionId, PermissionId, QuestionId, ThreadId, WorkspaceId } from "./id
 
 // Approval questions and standing permissions (action-approval).
 
-/** How much asks for approval: sensitive actions only, or also commands and edits (action-approval, Approval level; CHG-0035). */
+/**
+ * How much asks for approval inside the service: no longer a setting, but the level the four permission modes derive
+ * (action-approval, Permission modes): the modes that show the harness's own prompts versus the sandboxed ones.
+ */
 export const ApprovalLevel = Schema.Literals(["RiskyOnly", "CommandsAndEdits"]);
+/** How a thread's harness tool requests are handled, the same four modes in the composer and the Workshop (CHG-0617). */
 export const ThreadPermissionMode = Schema.Literals(["Supervised", "AutoAcceptEdits", "Auto", "FullAccess"]);
 export type ThreadPermissionMode = typeof ThreadPermissionMode.Type;
 export type ApprovalLevel = typeof ApprovalLevel.Type;
@@ -101,11 +105,12 @@ export type StandingPermission = typeof StandingPermission.Type;
 
 /** The standing permissions and the answers history, as the Permissions view shows them. */
 export const PermissionsView = Schema.Struct({
+  /** The Workshop's default permission mode, which every thread without a mode of its own runs with. */
+  defaultMode: ThreadPermissionMode,
   /** Answered, discarded, and withdrawn questions, newest first. */
   history: Schema.Array(Question),
-  level: ApprovalLevel,
   permissions: Schema.Array(StandingPermission),
-  /** Why the sandbox is unavailable, so the default level asks for every prompt; null when available. */
+  /** Why the sandbox is unavailable, so the modes that lean on it ask for every prompt; null when available. */
   sandboxProblem: Schema.NullOr(Schema.String),
 });
 export type PermissionsView = typeof PermissionsView.Type;

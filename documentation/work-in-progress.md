@@ -1,5 +1,6 @@
 # Work in progress
 
+<<<<<<< HEAD
 ## Rituals as realm entities · 2026-11-21 · specified; implementation batch next
 
 The owner agreed on the entity model (CHG-0616): a Ritual is a top-level entity of its realm beside the quests, each run an errand beneath it, the Ritual's conversation the run history (no composer), its own journal and budget, origin link from the creating quest, no separate Rituals place, delete permanent in one confirmation, and the existing Rituals migrated in place. The rewritten [specification](capabilities/rituals/specifications.md) is the design of record; not a line of it is built yet — the build still has one quest per Ritual.
@@ -17,6 +18,10 @@ The desktop build succeeded. The development server did not become reachable dur
 ## Architecture audit follow-through · 2026-11-21 · window check pending
 
 The owner approved the relevant findings from the 2026-11-21 audit. The work is on `worktree/audit-follow-through`, based on `eaf8fb69`. The automated checks and the blocked Electron launch are recorded in [verification](verification/2026-11-21-architecture-follow-through.md). The desktop window still needs a pass through pane folding and resizing, narrow and wide sidebars, Workshop return, and opening Chronicle entries.
+
+## One permission vocabulary in the Workshop and the composer · 2026-11-21 · window check pending
+
+CHG-0617 replaces the Workshop's two approval levels and its sandbox-escape toggle with the four permission modes (Supervised, Auto-accept edits, Auto, Full access) as the default every thread without its own mode runs with; the composer's Default permissions names the chosen default. Full access also covers leaving the sandbox, and Outlore's own approvals still ask. Store migrations 0071 and 0072 translate saved choices and snapshot the mode a turn is admitted with. Amended the same day on the owner's ask: the selector shows for quests and errands alike, in the host window and on a paired phone (the mode request left the host-only list), and a mode changes at any time like the runner — the running turn finishes on the mode it was admitted with and the next turn applies the change. Service checks cover the folded escape, the mode-derived sandbox behavior, the migration, and the in-turn change (red first); a window check, the phone composer, and a live harness turn are pending.
 
 ## Fold the channel pane when a quest opens · 2026-11-21 · window check pending
 
