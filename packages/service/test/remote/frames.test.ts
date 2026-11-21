@@ -50,6 +50,8 @@ describe("what a paired device may ask of a host", () => {
   it("is answered the shared requests, and the owner's window every request", async () => {
     expect((await run("RenameHost", true)).isAsked).toBe(true);
     expect((await run("ReadHostName", true)).isAsked).toBe(true);
+    // A paired phone sets a thread's permission mode too: the errand composer's selector reaches the service (CHG-0617).
+    expect((await run("SetThreadPermissionMode", true)).isAsked).toBe(true);
     for (const tag of hostOnlyRequestTags) expect((await run(tag, false)).isAsked, tag).toBe(true);
   });
 

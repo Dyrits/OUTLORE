@@ -242,4 +242,12 @@ export const recentStoreMigrations = {
         '$.approvalLevel', '$.shouldAllowOutsideSandbox')
       WHERE key = 'settings' AND json_type(value, '$.defaultPermissionMode') IS NULL`;
   }),
+  // CHG-0617: a turn is admitted with the effective permission mode it then runs under, so an owner's change during the
+  // turn (allowed like a runner change) leaves the running turn alone and applies from the next one. A turn recorded
+  // before this column reads null, and each prompt then falls back to the thread's and the Workshop's current choice.
+  "0072_turn_permission_mode": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE turns ADD COLUMN permission_mode TEXT
+      CHECK (permission_mode IN ('Supervised', 'AutoAcceptEdits', 'Auto', 'FullAccess'))`;
+  }),
 };

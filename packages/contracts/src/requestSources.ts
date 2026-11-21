@@ -146,7 +146,7 @@ export const requestSourceRules = {
   SetMissionBudget: shared,
   SetRemoteAccess: hostOnly,
   SetThreadBackups: shared,
-  SetThreadPermissionMode: hostOnly,
+  SetThreadPermissionMode: shared,
   SignInAccount: shared,
   StartEmptyQuest: shared,
   StartMission: rule(false, (given) => given.workspacePath),

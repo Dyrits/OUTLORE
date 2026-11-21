@@ -1,6 +1,5 @@
 # Work in progress
 
-<<<<<<< HEAD
 ## Rituals as realm entities · 2026-11-21 · specified; implementation batch next
 
 The owner agreed on the entity model (CHG-0616): a Ritual is a top-level entity of its realm beside the quests, each run an errand beneath it, the Ritual's conversation the run history (no composer), its own journal and budget, origin link from the creating quest, no separate Rituals place, delete permanent in one confirmation, and the existing Rituals migrated in place. The rewritten [specification](capabilities/rituals/specifications.md) is the design of record; not a line of it is built yet — the build still has one quest per Ritual.

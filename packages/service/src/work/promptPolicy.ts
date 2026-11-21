@@ -2,7 +2,7 @@ import { dirname, resolve as resolvePath } from "node:path";
 import type { ApprovalLevel } from "@outlore/contracts";
 import { Effect, Option } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
-import { fieldOf, Harness, readSettings } from "../core/index.ts";
+import { fieldOf, Harness } from "../core/index.ts";
 import { folderEscapeOf, resolvedFolderOf, workspaceWorktreesOf } from "../harness/index.ts";
 import {
   consequences,
@@ -17,7 +17,7 @@ import {
 import { isInsideVaultFolder, searchReachesVaultFolder, VaultFolder } from "../vault/index.ts";
 import type { Decision } from "./approvalContracts.ts";
 import { type Asked, allowingOutcomes, type makeQuestions, textOf } from "./questions.ts";
-import { effectiveModeOf, harnessApprovalLevelOf, readThreadPermissionMode } from "./threadPermissionMode.ts";
+import { approvalLevelOf, readModeOfTurn } from "./threadPermissionMode.ts";
 import { readAuthorityHarness } from "./turnAdmission.ts";
 import { ScratchRoot, threadFolderOf } from "./workspaces.ts";
 
@@ -144,10 +144,9 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
       if (yield* takeAllowance(threadId, target, isEscape)) return { isAllowed: true, text: "" } satisfies Decision;
       const missionId = yield* missionOf(threadId);
       if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
-      const { defaultPermissionMode } = yield* readSettings;
-      const mode = yield* readThreadPermissionMode(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
-      const effective = effectiveModeOf(mode, defaultPermissionMode);
-      const level = harnessApprovalLevelOf(mode, defaultPermissionMode);
+      // The mode the running turn was admitted with (readModeOfTurn), so a change during the turn applies next turn.
+      const effective = yield* readModeOfTurn(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
+      const level = approvalLevelOf(effective);
       const capability = yield* readCapability(
         threadId,
         level,

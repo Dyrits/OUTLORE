@@ -66,7 +66,7 @@ Version 1 serves the installation's owner. In future hosted missions, only the h
 
 ### Thread permission modes
 
-The host window's composer offers the same four modes for a thread, with **Default permissions** first, which runs with the Workshop's default mode (the composer names it, such as "Default permissions (Auto)"). You can switch modes between turns; a thread's mode overrides the Workshop's default for that thread alone. Threads start with Default permissions, including errands opened by a thread with a mode of its own. Only the owner sets the Workshop's default (`change_setting` refuses it); a thread that Iskios started reads it at each turn, and Claude Code's process restarts when it changes, since its instructions change.
+Every composer offers the same four modes for a thread — a quest's and an errand's, in the host window and on a paired phone — with **Default permissions** first, which runs with the Workshop's default mode (the composer names it, such as "Default permissions (Auto)"). A thread's mode overrides the Workshop's default for that thread alone. You can switch modes at any time, in a running turn too, like a runner change (CHG-0617): the running turn finishes under the mode it was admitted with, and the next message, or Retry after a failed turn, runs on the new one. Threads start with Default permissions, including errands opened by a thread with a mode of its own. Only the owner sets the Workshop's default (`change_setting` refuses it); a thread that Iskios started reads it at each turn, and Claude Code's process restarts when it changes, since its instructions change.
 
 | Mode | Harness approvals |
 | --- | --- |

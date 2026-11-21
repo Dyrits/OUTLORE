@@ -1,7 +1,7 @@
-import type { EffortChoice, HarnessName, ModelChoice } from "@outlore/contracts";
+import type { EffortChoice, HarnessName, ModelChoice, ThreadPermissionMode } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { Changes, newId, touchMission } from "../core/index.ts";
+import { Changes, newId, readSettings, touchMission } from "../core/index.ts";
 import type { StoredAttachment } from "./attachments.ts";
 import { holdIfReached } from "./budgets.ts";
 import { recordPendingHandover } from "./handover.ts";
@@ -9,6 +9,7 @@ import { holdThread, startRunning } from "./lifecycle.ts";
 import { deliverMessages, listPending } from "./messaging.ts";
 import { readOwnCopy } from "./ownCopies.ts";
 import { isQuestRealmArchived } from "./realmAccess.ts";
+import { effectiveModeOf } from "./threadPermissionMode.ts";
 import { maxRunning, runningCountOf } from "./treeLimits.ts";
 import { readThreadWorkspace } from "./workspaces.ts";
 
@@ -72,8 +73,9 @@ const admit = Effect.fnUntraced(function* (threadId: string, isBackgroundWake: b
     effort: EffortChoice;
     harness: HarnessName;
     accountId: string | null;
+    permissionMode: ThreadPermissionMode | null;
   }>`SELECT t.state, t.mission_id AS missionId, t.session_id AS sessionId, t.model, t.effort, t.harness,
-            t.account_id AS accountId FROM threads t JOIN missions m ON m.id = t.mission_id
+            t.account_id AS accountId, t.permission_mode AS permissionMode FROM threads t JOIN missions m ON m.id = t.mission_id
           WHERE t.id = ${threadId} AND t.archived_at IS NULL AND t.is_deleting = 0
             AND (${!isBackgroundWake} OR m.ending IS NULL)`;
   // Attention can hold a turn still running in its harness; Stopped always needs an explicit resume.
@@ -99,8 +101,10 @@ const admit = Effect.fnUntraced(function* (threadId: string, isBackgroundWake: b
   // A runner change is recorded when it actually runs, not while messages wait for admission.
   if (!isBackgroundWake) yield* recordPendingHandover(threadId, now);
   const turnId = yield* newId;
-  yield* sql`INSERT INTO turns (id, thread_id, status, started_at, harness, model)
-          VALUES (${turnId}, ${threadId}, 'running', ${now}, ${thread.harness}, ${thread.model})`;
+  // A turn runs under the mode it is admitted with: a change during the turn applies from the next one (CHG-0617).
+  const mode = effectiveModeOf(thread.permissionMode, (yield* readSettings).defaultPermissionMode);
+  yield* sql`INSERT INTO turns (id, thread_id, status, started_at, harness, model, permission_mode)
+          VALUES (${turnId}, ${threadId}, 'running', ${now}, ${thread.harness}, ${thread.model}, ${mode})`;
   const taken = isBackgroundWake ? [] : pending;
   yield* deliverMessages(
     taken.map((message) => message.id),

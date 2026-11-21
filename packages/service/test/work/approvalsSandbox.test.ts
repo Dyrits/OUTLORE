@@ -240,6 +240,26 @@ describe("harness prompts inside and outside the sandbox", () => {
     }).pipe(Effect.provide(live())),
   );
 
+  it.live("changes the mode in a running turn: that turn keeps its mode and the next one applies the change", () =>
+    Effect.gen(function* () {
+      const settings = yield* call({ _tag: "ReadSettings" });
+      yield* call({ _tag: "UpdateSettings", settings: { ...settings, defaultPermissionMode: "Supervised" } });
+      const started = yield* start(`${prompt("git status")}\n${prompt("ls")}`);
+      const first = yield* settle(started.missionId, isAsking);
+      expect(openQuestion(first).details).toBe("git status");
+      // Once refused ("Change permissions when the current turn has ended"); like a runner change it applies next turn.
+      yield* call({ _tag: "SetThreadPermissionMode", mode: "FullAccess", threadId: started.threadId });
+      yield* answer(openQuestion(first), "Allow");
+      const second = yield* settle(started.missionId, isAsking);
+      expect(openQuestion(second)).toMatchObject({ details: "ls", permission: "Run a command" });
+      yield* answer(openQuestion(second), "Deny");
+      yield* settle(started.missionId, isReplied);
+      yield* send(started.threadId, prompt("git status"));
+      const next = yield* settle(started.missionId, (detail) => isReplied(detail) && detail.questions.length === 3);
+      expect(next.questions.at(-1)).toMatchObject({ details: "git status", outcome: "AllowedAutomatically" });
+    }).pipe(Effect.provide(live())),
+  );
+
   it.live("asks for every prompt at the stricter default mode, inside the sandbox too", () =>
     Effect.gen(function* () {
       const settings = yield* call({ _tag: "ReadSettings" });

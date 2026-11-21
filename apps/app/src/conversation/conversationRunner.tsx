@@ -2,7 +2,6 @@ import { type MissionDetail, ThreadPermissionMode } from "@outlore/contracts";
 import { permissionModeLabels } from "../editors/permissionModes";
 import { RunnerPickers } from "../editors/runners";
 import type { ServiceClient } from "../foundation/client";
-import { useIsRemoteHost } from "../foundation/hostContext";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Menu } from "../ui/pickers";
 import { ThreadBackups } from "./threadBackups";
@@ -26,11 +25,10 @@ export function ConversationRunner({
   isTabOpen?: boolean;
   onOpenTab?: (() => void) | undefined;
 }) {
-  const isRemote = useIsRemoteHost();
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   return (
     <>
-      {!isFullPanel && !isRemote && (
+      {!isFullPanel && (
         <Menu
           accessibilityLabel="Thread permissions"
           label={(mode) =>
