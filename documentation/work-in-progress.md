@@ -4,11 +4,14 @@
 
 CHG-0620 restores the errand tree on desktop and opens the Quests and Errands tabs from the sidebar. See the [verification record](verification/2026-11-21-sidebar-errands.md).
 
-## Rituals as realm entities · 2026-11-21 · specified; implementation batch next
+## Rituals as realm entities · 2026-11-21 · built; window check and the owner's look pending
 
-The owner agreed on the entity model (CHG-0616): a Ritual is a top-level entity of its realm beside the quests, each run an errand beneath it, the Ritual's conversation the run history (no composer), its own journal and budget, origin link from the creating quest, no separate Rituals place, delete permanent in one confirmation, and the existing Rituals migrated in place. The rewritten [specification](capabilities/rituals/specifications.md) is the design of record; not a line of it is built yet — the build still has one quest per Ritual.
+The entity model of CHG-0616 is implemented and delivered in three commits (CHG-0619: the specifications pass, the service core, and the app UI) plus the app-guide alignment: runs as persisted errands beneath the Ritual, service-made trigger and result lines, one run at a time, savepoint starts, fallbacks on the run errand, `ListMissions.includeRituals`, `CreateRitual.originMissionId`, whole-tree `DeleteRitual` (ritual rows beside the realm's quests, the Rituals place removed, controls and the origin link in the Ritual's panel, the composer hidden, Schedule as a Ritual on a quest's panel, + Ritual on a realm header). Checks and coverage: [verification](verification/2026-11-21-rituals-as-realm-entities.md); the full suite was green at each commit (2734 passed, 24 skipped at the end). Migration: `0073_ritual_origin_mission` (0071 and 0072 are the permission modes').
 
-Next: implement against that specification, test-first at the service seams (rituals.ts, ritualStart's savepoint, ritualSchedule, the tree), with a guarded store migration for the existing Ritual quests; the ritual row among the quests, the panel controls, and the saved runs' display in the app; the realm archive, `find_missions`, and Chronicler pointers patched as the spec's Acceptance lists. The owner directed errands, if any, to run with full access on the same model.
+Still open:
+- The desktop window pass and the owner's judgment of the look: the ritual row among the quests (moon, schedule, under-way dot, dimmed off), the + Ritual button on a realm header, opening a Ritual (no composer; the Errands tab lists its runs), the panel's controls and "Made from" origin link, Schedule as a Ritual from a quest's panel, the delete confirmation, phone-narrow.
+- A live-harness scheduled run (the fake harness covers the seams; the old model's note said the same).
+- Review points the owner should see: rituals of an archived realm are invisible until the realm is restored (the notice is on the panel); a realm tied to no folder cannot receive a directly created Ritual (pre-existing form limitation); the muted no-message-box line.
 
 ## Editable queued messages · 2026-11-21 · window check pending
 

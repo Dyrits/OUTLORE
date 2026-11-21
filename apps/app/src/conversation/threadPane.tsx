@@ -98,7 +98,7 @@ export function ThreadPane({
   const canReply = thread.parentId === null && takesTurns;
   const { canOpenBeneath, canResume, canStop } = thread.actions;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
-  // Only a quest's own thread archives it, and not a Ritual's quest or one already archived.
+  // Only a quest's own thread archives it, and not a Ritual or one already archived.
   const isOwnQuest = thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived";
   const archive = isOwnQuest ? () => ending.start("Archived") : null;
   // Mark as done is a checkbox: pressing it again takes the mark back (ReopenMission, as the Archive's Reopen does).
