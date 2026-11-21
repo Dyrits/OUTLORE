@@ -17,6 +17,7 @@ Status: **desktop design agreed on 2026-11-20**, including agent-authored anchor
 - The **Quest** tab holds the [thread details](../thread-panel/specifications.md), and **Companions** edits the pane’s own conversation or the draft errand in the new-errand pane.
 - The model button in the conversation composer opens its own pane’s **Companions** tab.
 - Tab switches preserve drafts, and each pane selects its own tab independently.
+- A quest opened from the sidebar starts with only its conversation pane open: the realm's channel pane is folded behind its notch, and one press brings it back (the owner, 2026-11-21; CHG-0613).
 - Pane management is expected to change as the owner uses it ("we'll iterate on that").
 
 ### The Workshop

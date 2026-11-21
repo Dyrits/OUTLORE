@@ -62,6 +62,17 @@ export const foldedPane = <Id extends string>(memory: PaneMemory<Id>, id: Id): P
 });
 
 /**
+ * The memory a quest opens with: its realm's channel folded behind its notch (the owner, 2026-11-21; CHG-0613), so
+ * only the quest's own conversation is open. Pressing the channel's notch on that pane's edge brings it back.
+ * The weights the panes last had are kept, for when another pane is revealed again.
+ */
+export const openedQuestMemory = <Id extends string>(channel: Id, weights: ReadonlyArray<number>): PaneMemory<Id> => ({
+  folded: new Set([channel]),
+  shown: new Set(),
+  weights: [...weights],
+});
+
+/**
  * The memory with a strip pressed back open. The other panes give way to it as the window needs: the earliest ones
  * that were not pressed open themselves fold first.
  */
@@ -77,12 +88,18 @@ export const equalizedPanes = <Id extends string>(memory: PaneMemory<Id>): PaneM
   weights: [],
 });
 
-/** The memory without the panes that left the chain, so a pane opened again later starts open. */
-export const prunedMemory = <Id extends string>(memory: PaneMemory<Id>, chain: ReadonlyArray<Id>): PaneMemory<Id> => ({
-  ...memory,
-  folded: new Set([...memory.folded].filter((id) => chain.includes(id))),
-  shown: new Set([...memory.shown].filter((id) => chain.includes(id))),
-});
+/**
+ * The memory without the panes that left the chain, so a pane opened again later starts open. A chain still waiting
+ * to load is empty and prunes nothing, so the folds a quest opens with survive the read.
+ */
+export const prunedMemory = <Id extends string>(memory: PaneMemory<Id>, chain: ReadonlyArray<Id>): PaneMemory<Id> => {
+  if (chain.length === 0) return memory;
+  return {
+    ...memory,
+    folded: new Set([...memory.folded].filter((id) => chain.includes(id))),
+    shown: new Set([...memory.shown].filter((id) => chain.includes(id))),
+  };
+};
 
 /** Why a pane is a strip: folded by the owner, or older than the last four, or squeezed by the window's width. */
 export type StripReason = "folded" | "overflow" | "narrow";

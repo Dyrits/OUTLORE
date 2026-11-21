@@ -4,10 +4,10 @@ import { ChronicleTargetContext } from "../conversation/chronicleTarget";
 import {
   chainOf,
   desktopThreadsOf,
-  emptyPaneMemory,
   equalizedPanes,
   foldedPane,
   layoutOf,
+  openedQuestMemory,
   type PaneMemory,
   prunedMemory,
   revealedPane,
@@ -29,10 +29,7 @@ export function usePaneChain(
     if (chosen.length === 0) return [];
     return chosen.length === 1 ? [channelId, ...chosen, starterId] : [channelId, ...chosen];
   }, [quest, deepest]);
-  const [memory, setMemory] = useState<PaneMemory<PaneId>>(() => ({
-    ...emptyPaneMemory<PaneId>(),
-    weights: readPaneWeights(),
-  }));
+  const [memory, setMemory] = useState<PaneMemory<PaneId>>(() => openedQuestMemory(channelId, readPaneWeights()));
   const [focused, setFocused] = useState<ThreadId | null>(null);
   const [expanded, setExpanded] = useState<PaneId | null>(null);
   const [available, setAvailable] = useState(0);
