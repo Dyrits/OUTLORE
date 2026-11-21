@@ -227,6 +227,7 @@ export function RitualRow({
   collapsed,
   isOpen,
   mission,
+  onOpenErrands,
   onOpenMission,
   onOpenThread,
   onToggle,
@@ -235,12 +236,12 @@ export function RitualRow({
   openThread,
   realms,
   shouldShowAgentThreads,
-  showErrands,
 }: {
   client: ServiceClient;
   collapsed: ReadonlySet<string>;
   isOpen: boolean;
   mission: MissionSummary;
+  onOpenErrands: (id: MissionId) => void;
   onOpenMission: (id: MissionId) => void;
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   onToggle: (id: string) => void;
@@ -250,7 +251,6 @@ export function RitualRow({
   /** The active realms, from which a missing one means a Ritual's realm is archived. */
   realms: ReadonlyArray<WorkspaceChoice>;
   shouldShowAgentThreads: boolean;
-  showErrands: boolean;
 }) {
   const ritual = mission.ritual;
   const [error, setError] = useState<string | null>(null);
@@ -267,7 +267,7 @@ export function RitualRow({
         fold={{
           isOpen,
           label: mission.title,
-          onPress: showErrands && mission.threadCount > 1 ? () => onToggle(mission.id) : null,
+          onPress: mission.threadCount > 1 ? () => onToggle(mission.id) : null,
         }}
         // Where the quest row's mark archives, a Ritual's only mark deletes: archiving a Ritual is not offered.
         hoverAccessory={(isShown) =>
@@ -285,8 +285,7 @@ export function RitualRow({
             </View>
           )
         }
-        isInset={!showErrands}
-        isSelected={isHere && (!showErrands || openThread === null || openThread === mission.topThreadId)}
+        isSelected={isHere && (openThread === null || openThread === mission.topThreadId)}
         label={mission.title}
         leading={
           <View style={[local.questMark, dim?.moon]}>
@@ -304,16 +303,18 @@ export function RitualRow({
           </View>
         }
       />
-      {showErrands && isOpen && mission.threadCount > 1 && (
+      {isOpen && mission.threadCount > 1 && (
         <View style={{ paddingLeft: chevronWidth }}>
           <SideQuests
             client={client}
             collapsed={collapsed}
             missionId={mission.id}
+            onOpenErrands={onOpenErrands}
             onOpenThread={onOpenThread}
             onToggle={onToggleThread}
             selectedThread={isHere ? openThread : null}
             shouldShowAgentThreads={shouldShowAgentThreads}
+            title={mission.title}
           />
         </View>
       )}

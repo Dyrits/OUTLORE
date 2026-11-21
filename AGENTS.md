@@ -56,8 +56,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume checking the main CI repair, read the [current handoff](.agents/handoffs/2026-11-21-2126-repair-main.md). Handoffs are shared and committed.
+
 - To resume the Rituals as realm entities batch (the window check, the live run, the owner's look), read the [current handoff](.agents/handoffs/2026-11-21-2108-rituals-as-realm-entities.md). Handoffs are shared and committed.
 
 - To resume checking Mistral Vibe's reasoning levels in the Companion menu after landing (CHG-0618), read the [current handoff](.agents/handoffs/2026-11-21-1745-vibe-thinking-levels.md). Handoffs are shared and committed.
-
-- To resume launch permission inheritance, read the [current handoff](.agents/handoffs/2026-11-21-1744-launch-permissions.md). Handoffs are shared and committed.

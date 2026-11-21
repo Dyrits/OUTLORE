@@ -15,6 +15,9 @@
     "test": "ELECTRON_RUN_AS_NODE=1 electron node_modules/vitest/vitest.mjs run",
     "typecheck": "bun run --filter '*' typecheck"
   },
+  "overrides": {
+    "minimatch@>=7.0.0 <11.0.1": "11.0.1"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
     "@effect/vitest": "4.1.4",
