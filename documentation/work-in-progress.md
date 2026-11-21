@@ -1,5 +1,13 @@
 # Work in progress
 
+## Editable queued messages · 2026-11-21 · window check pending
+
+CHG-0615 is on `worktree/editable-queued-messages`, based on `f4fd1116`. Pending messages keep their place below new replies and the live response while waiting for delivery. Edit and Remove act while the host holds the message in its queue. The focused tests cover queue placement after Steer, delivery of edited text, refusal after delivery, and attachment cleanup.
+
+Biome and the workspace typecheck passed. `CI=1 bun run test` passed with 2,682 tests and 64 skips.
+
+The desktop build succeeded. The development server did not become reachable during the window check. The open check is to send two messages during a long turn, edit one, remove the other, then steer the edited message and watch its position through delivery.
+
 ## Architecture audit follow-through · 2026-11-21 · window check pending
 
 The owner approved the relevant findings from the 2026-11-21 audit. The work is on `worktree/audit-follow-through`, based on `eaf8fb69`. The automated checks and the blocked Electron launch are recorded in [verification](verification/2026-11-21-architecture-follow-through.md). The desktop window still needs a pass through pane folding and resizing, narrow and wide sidebars, Workshop return, and opening Chronicle entries.
