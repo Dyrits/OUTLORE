@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume desktop verification of editable queued messages, read the [current handoff](.agents/handoffs/2026-11-21-1539-editable-queued-messages.md). Handoffs are shared and committed.
+
 - To resume desktop verification of the architecture audit follow-through, read the [current handoff](.agents/handoffs/2026-11-21-1517-architecture-audit-follow-through.md). Handoffs are shared and committed.
 
 - To resume the folded realm channel pane on quest open and its desktop window look, read the [current handoff](.agents/handoffs/2026-11-21-1512-fold-channel-pane-on-quest-open.md). Handoffs are shared and committed.
-
-- To resume live verification of thread permission modes, read the [current handoff](.agents/handoffs/2026-11-21-1227-thread-permission-modes.md). Handoffs are shared and committed.

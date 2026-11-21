@@ -2,9 +2,9 @@
 
 ## Editable queued messages · 2026-11-21 · window check pending
 
-CHG-0615 is on `worktree/editable-queued-messages`, based on `f4fd1116`. Pending messages keep their place below new replies and the live response while waiting for delivery. Edit and Remove act while the host holds the message in its queue. The focused tests cover queue placement after Steer, delivery of edited text, refusal after delivery, and attachment cleanup.
+CHG-0615 landed on `main` in `84bb9552`. Pending messages keep their place below new replies and the live response while waiting for delivery. Edit and Remove act while the host holds the message in its queue. The focused tests cover queue placement after Steer, delivery of edited text, refusal after delivery, and attachment cleanup.
 
-Biome and the workspace typecheck passed. `CI=1 bun run test` passed with 2,682 tests and 64 skips.
+On the feature worktree, Biome and the workspace typecheck passed. `CI=1 bun run test` passed with 2,682 tests and 64 skips.
 
 The desktop build succeeded. The development server did not become reachable during the window check. The open check is to send two messages during a long turn, edit one, remove the other, then steer the edited message and watch its position through delivery.
 
