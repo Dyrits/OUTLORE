@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
-import { fixture, settle, start } from "../fixtures/service.ts";
+import { call, fixture, settle, start } from "../fixtures/service.ts";
 import { dayAt, dayText, isIdle, last30, quests, seed, standard, subscriptionRow, usage } from "../fixtures/usage.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
@@ -166,18 +166,30 @@ describe("narrowing the usage page", () => {
     ),
   );
 
-  it.live("does not count a Ritual's scheduled run as a message the owner sent, and counts one run by hand", () =>
+  it.live("never counts a Ritual's run lines as messages the owner sent, and counts the run's reply", () =>
     withService(
       Effect.gen(function* () {
-        const { atlas } = yield* quests;
-        const sql = yield* SqlClient.SqlClient;
-        const before = (yield* usage({ _tag: "Days", days: 7 }, [{ dimension: "Quest", key: atlas.mission }])).messages;
-        const now = Date.now();
-        yield* sql`INSERT INTO messages (id, mission_id, thread_id, sender_kind, text, sequence, sent_at) VALUES
-          ('ritual-scheduled', ${atlas.mission}, ${atlas.thread}, 'user', 'Ritual · scheduled 07:00', 9001, ${now}),
-          ('ritual-by-hand', ${atlas.mission}, ${atlas.thread}, 'user', 'Ritual · run by you', 9002, ${now})`;
-        const after = (yield* usage({ _tag: "Days", days: 7 }, [{ dimension: "Quest", key: atlas.mission }])).messages;
-        expect(after?.user).toBe((before?.user ?? 0) + 1);
+        const ritual = yield* call({
+          _tag: "CreateRitual",
+          fallbacks: [],
+          instruction: "runner",
+          primary: { accountId: null, effort: "default", harness: "claude", model: "claude-sonnet-5-5" },
+          requestId: crypto.randomUUID(),
+          schedule: { _tag: "Daily", time: "07:00" },
+          title: "Morning digest",
+          workspacePath: null,
+        });
+        yield* call({ _tag: "RunRitual", ritualId: ritual.ritualId });
+        // The trigger line, the run's opening request, and the result line are the service's (CHG-0616); only the
+        // errand's reply is a message sent in the Ritual's mission.
+        yield* settle(ritual.missionId, (detail) => {
+          const errand = detail.threads.find(
+            (thread) => thread.parentId === detail.mission.topThreadId && thread.isAside === false,
+          );
+          return errand !== undefined && errand.state === "Resting";
+        });
+        const after = yield* usage(last30, [{ dimension: "Quest", key: ritual.missionId }]);
+        expect(after?.messages).toMatchObject({ assistant: 1, user: 0 });
       }),
     ),
   );

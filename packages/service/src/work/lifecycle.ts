@@ -192,8 +192,6 @@ export const stopThread = Effect.fn("stopThread")(function* (threadId: string) {
   const pauses =
     yield* sql`SELECT 1 FROM chatter WHERE pause_id IS NOT NULL AND (first_id = ${threadId} OR second_id = ${threadId})`;
   yield* haltThreads([threadId], pauses.length > 0 ? "Attention" : "Resting");
-  yield* sql`UPDATE rituals SET last_run_state = 'Interrupted'
-    WHERE last_run_state = 'Underway' AND mission_id IN (SELECT id FROM missions WHERE top_thread_id = ${threadId})`;
   yield* touchMission(missionId, yield* Clock.currentTimeMillis);
   return changed(null, { missionsToWake: [missionId], turnsToCancel: [threadId] });
 });

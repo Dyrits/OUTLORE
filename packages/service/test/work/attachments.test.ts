@@ -162,10 +162,24 @@ describe("message attachments: images added to the owner's messages", () => {
           workspacePath: null,
         });
         yield* call({ _tag: "RunRitual", ritualId: ritual.ritualId });
-        yield* settle(ritual.missionId, (detail) => detail.thread.state === "Underway");
+        // A run works in its errand beneath the Ritual (CHG-0616); the waiting image waits there.
+        const underway = yield* settle(ritual.missionId, (detail) => {
+          const errand = detail.threads.find(
+            (thread) => thread.parentId === detail.mission.topThreadId && thread.isAside === false,
+          );
+          return errand !== undefined && errand.state === "Underway";
+        });
+        const [errand] = underway.threads.filter(
+          (thread) => thread.parentId === underway.mission.topThreadId && thread.isAside === false,
+        );
+        if (errand === undefined) return yield* Effect.die("No run errand");
         const image = yield* add("shot.png", png());
-        yield* sendWith(ritual.threadId, "see", [image.id], "Queue");
-        const done = yield* settle(ritual.missionId, (detail) => idle(detail) && detail.handovers.length > 0);
+        yield* sendWith(errand.id, "see", [image.id], "Queue");
+        const done = yield* settle(
+          ritual.missionId,
+          (detail) => idle(detail) && detail.handovers.length > 0,
+          errand.id,
+        );
         expect(done.thread.model).toBe("gpt-seeing");
         expect(done.handovers).toHaveLength(1);
       }),

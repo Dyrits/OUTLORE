@@ -112,8 +112,15 @@ describe("reading the app guide", () => {
     it("says that a scheduled Ritual run that cannot start fails visibly without blocking the next one", () => {
       const text = body("rituals");
       expect(text).toMatch(/cannot start fails visibly/i);
-      expect(text).toMatch(/Failed with the reason/);
+      expect(text).toMatch(/Failed line with the reason/);
       expect(text).toMatch(/next scheduled run is not blocked/i);
+    });
+
+    it("says that each run is an errand beneath the Ritual, not a turn in its own quest", () => {
+      const text = body("rituals");
+      expect(text).toMatch(/run opens an errand beneath the Ritual/i);
+      expect(text).not.toMatch(/run is a turn in its main thread/i);
+      expect(text).not.toMatch(/Rituals place/i);
     });
 
     it("says that a pairing from another release is refused without spending the code", () => {

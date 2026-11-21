@@ -50,10 +50,14 @@ export const readGuildHallRecap = Effect.fnUntraced(function* (given: number | n
       WHERE is_guildmaster = 0 AND ending = 'Fulfilled' AND done_at >= ${since} ORDER BY done_at DESC`;
   const [counted] = yield* sql<ConsumptionRow>`
       SELECT ${sql.literal(consumptionColumns)} FROM usage u WHERE u.ended_at >= ${since}`;
-  // Each run sends its Ritual's quest a message that starts with "Ritual · " (see `beginRun`).
+  // Each run leaves its trigger line in its Ritual's conversation ("Ritual · …", see `beginRun`); the errand the run
+  // opens carries the same trigger, so only the conversation counts the runs (CHG-0616).
   const [runs] = yield* sql<{ count: number }>`
-      SELECT COUNT(*) AS count FROM messages m JOIN rituals r ON r.mission_id = m.mission_id
-      WHERE m.sent_at >= ${since} AND m.sender_kind = 'user' AND instr(m.text, 'Ritual · ') = 1`;
+      SELECT COUNT(*) AS count FROM messages m
+      JOIN ritual_run_messages r ON r.message_id = m.id
+      JOIN rituals ri ON ri.id = r.ritual_id
+      JOIN missions mi ON mi.id = ri.mission_id
+      WHERE m.sent_at >= ${since} AND m.thread_id = mi.top_thread_id AND instr(m.text, 'Ritual · ') = 1`;
   return {
     consumption: consumptionOf(counted ?? noConsumption),
     finished: finished.slice(0, maxFinishedListed),

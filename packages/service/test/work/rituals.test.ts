@@ -1,38 +1,69 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { MissionDetail, MissionId, RitualScopeEntry } from "@outlore/contracts";
+import type { CreateRitualResult, MissionDetail, MissionId, RitualScopeEntry } from "@outlore/contracts";
 import { Effect } from "effect";
-import { claude, create, daily, isIdle, readRitual, run, withService } from "../fixtures/rituals.ts";
-import { call, read, send, settle, start, tool } from "../fixtures/service.ts";
+import { claude, create, run, runErrandOf, withService } from "../fixtures/rituals.ts";
+import { call, read, settle, start, tool } from "../fixtures/service.ts";
+
+// A Ritual's reviewed scope (CHG-0208) grants its runs — errands beneath the Ritual (CHG-0616) — structural actions
+// without asking. The questions a run asks live in its errand's conversation, not in the Ritual's own.
+
+const openOf = (detail: MissionDetail) => detail.questions.filter((question) => question.outcome === null);
+/** A resting quest named as given, for a Ritual to act on. */
+const restingQuest = (title: string) =>
+  Effect.gen(function* () {
+    const quest = yield* start("Hello");
+    yield* settle(quest.missionId, (detail) => detail.thread.state === "Resting");
+    yield* call({ _tag: "RenameMission", missionId: quest.missionId, title });
+    return quest;
+  });
+
+const withScope = (instruction: string, scope: ReadonlyArray<RitualScopeEntry>) =>
+  call({
+    _tag: "CreateRitual",
+    fallbacks: [],
+    instruction,
+    primary: claude,
+    requestId: crypto.randomUUID(),
+    schedule: { _tag: "Daily", time: "07:00" },
+    scope,
+    title: "Housekeeping",
+    workspacePath: null,
+  });
+
+/** Runs the Ritual and waits until its errand waits in Attention — it asked the owner something. */
+const runUntilAsked = (ritual: CreateRitualResult) =>
+  Effect.gen(function* () {
+    yield* run(ritual);
+    const waiting = yield* settle(ritual.missionId, (detail) => {
+      const errand = runErrandOf(detail);
+      return errand !== null && errand.state === "Attention";
+    });
+    const errand = runErrandOf(waiting);
+    if (errand === null) return yield* Effect.die("No run errand.");
+    return errand.id;
+  });
+
+/** Runs the Ritual and waits until its errand rests; the questions it asked stay recorded among its own. */
+const runErrandDetail = (ritual: CreateRitualResult) =>
+  Effect.gen(function* () {
+    yield* run(ritual);
+    const settled = yield* settle(ritual.missionId, (detail) => {
+      const errand = runErrandOf(detail);
+      return errand !== null && errand.state !== "Underway" && errand.state !== "Attention";
+    });
+    const errand = runErrandOf(settled);
+    if (errand === null) return yield* Effect.die("No run errand.");
+    return yield* read(ritual.missionId, errand.id);
+  });
 
 describe("a Ritual's reviewed scope", () => {
   const archiveCall = (missionId: MissionId) =>
     `call act_on_mission ${JSON.stringify({ action: "Archive", mission: missionId })}`;
-  const openOf = (detail: MissionDetail) => detail.questions.filter((question) => question.outcome === null);
-  /** A resting quest for the Ritual to act on. */
-  const restingQuest = (title: string) =>
-    Effect.gen(function* () {
-      const quest = yield* start("Hello");
-      yield* settle(quest.missionId, isIdle);
-      yield* call({ _tag: "RenameMission", missionId: quest.missionId, title });
-      return quest;
-    });
-  const withScope = (instruction: string, scope: ReadonlyArray<RitualScopeEntry>) =>
-    call({
-      _tag: "CreateRitual",
-      fallbacks: [],
-      instruction,
-      primary: claude,
-      requestId: crypto.randomUUID(),
-      schedule: daily,
-      scope,
-      title: "Housekeeping",
-      workspacePath: null,
-    });
 
   it.live("is empty by default", () =>
     Effect.gen(function* () {
       const created = yield* create("Hello");
-      expect((yield* readRitual(created.missionId))?.scope).toEqual([]);
+      expect((yield* call({ _tag: "ReadRitual", missionId: created.missionId }))?.scope).toEqual([]);
     }).pipe(withService),
   );
 
@@ -43,8 +74,8 @@ describe("a Ritual's reviewed scope", () => {
       const created = yield* withScope(`${archiveCall(inside.missionId)}\n${archiveCall(outside.missionId)}`, [
         { operation: "Archive", payload: null, target: "Old notes" },
       ]);
-      yield* run(created);
-      const asked = yield* settle(created.missionId, (current) => openOf(current).length > 0);
+      const errandId = yield* runUntilAsked(created);
+      const asked = yield* read(created.missionId, errandId);
       expect((yield* read(inside.missionId)).mission.state).toBe("Archived");
       expect(asked.questions[0]).toMatchObject({
         outcome: "AllowedByPermission",
@@ -59,38 +90,39 @@ describe("a Ritual's reviewed scope", () => {
     Effect.gen(function* () {
       const quest = yield* restingQuest("Old notes");
       const created = yield* withScope(`Archive Old notes.\n${archiveCall(quest.missionId)}`, []);
-      yield* run(created);
-      const asked = yield* settle(created.missionId, (current) => openOf(current).length > 0);
+      const errandId = yield* runUntilAsked(created);
+      const asked = yield* read(created.missionId, errandId);
       expect(openOf(asked)[0]?.summary).toBe('Archive the quest "Old notes".');
       expect((yield* read(quest.missionId)).mission.state).not.toBe("Archived");
     }).pipe(withService),
   );
 
-  it.live("applies only in its runs, and asks again once the owner revokes it", () =>
+  it.live("asks again in the next run once the owner revokes the scope", () =>
     Effect.gen(function* () {
       const quest = yield* restingQuest("Old notes");
-      const created = yield* withScope("Hello", [{ operation: "Archive", payload: null, target: quest.missionId }]);
-      // An owner's message in the Ritual's quest is not a run: the scope does not apply.
-      yield* send(created.threadId, archiveCall(quest.missionId));
-      const owner = yield* settle(created.missionId, (current) => openOf(current).length > 0);
-      const question = openOf(owner)[0];
-      if (question === undefined) return yield* Effect.die("No question");
-      yield* call({ _tag: "AnswerQuestion", answer: "Deny", message: null, questionId: question.id });
-      yield* settle(created.missionId, isIdle);
+      const created = yield* withScope(archiveCall(quest.missionId), [
+        { operation: "Archive", payload: null, target: quest.missionId },
+      ]);
+      // The scope covers the archive: the run asks nothing and does it.
+      const unasked = yield* runErrandDetail(created);
+      expect(unasked.questions.some((question) => question.outcome === "AllowedByPermission")).toBe(true);
+      expect((yield* read(quest.missionId)).mission.state).toBe("Archived");
 
-      const ritual = yield* readRitual(created.missionId);
+      const ritual = yield* call({ _tag: "ReadRitual", missionId: created.missionId });
       if (ritual === null) return yield* Effect.die("Missing Ritual");
+      const unfinished = yield* restingQuest("Current plan");
       yield* call({
         _tag: "UpdateRitual",
         ...ritual,
-        instruction: archiveCall(quest.missionId),
+        instruction: archiveCall(unfinished.missionId),
         ritualId: ritual.id,
         scope: [],
       });
-      expect((yield* readRitual(created.missionId))?.scope).toEqual([]);
-      yield* run(created);
-      const asked = yield* settle(created.missionId, (current) => openOf(current).length > 0);
-      expect(openOf(asked)[0]?.summary).toBe('Archive the quest "Old notes".');
+      expect((yield* call({ _tag: "ReadRitual", missionId: created.missionId }))?.scope).toEqual([]);
+      const errandId = yield* runUntilAsked(created);
+      const asked = yield* read(created.missionId, errandId);
+      expect(openOf(asked)[0]?.summary).toBe('Archive the quest "Current plan".');
+      expect((yield* read(unfinished.missionId)).mission.state).not.toBe("Archived");
     }).pipe(withService),
   );
 
@@ -100,22 +132,23 @@ describe("a Ritual's reviewed scope", () => {
       const created = yield* withScope(change, [
         { operation: "ChangeSetting", payload: "true", target: "shouldShowFinishedQuests" },
       ]);
-      yield* run(created);
-      const done = yield* settle(created.missionId, (current) =>
-        current.questions.some((question) => question.outcome === "AllowedByPermission"),
-      );
+      const done = yield* runErrandDetail(created);
       expect(openOf(done)).toEqual([]);
-      const settings = yield* call({ _tag: "ReadSettings" });
-      expect(settings.shouldShowFinishedQuests).toBe(true);
-      yield* settle(created.missionId, isIdle);
+      expect(done.questions.some((question) => question.outcome === "AllowedByPermission")).toBe(true);
+      const after = yield* call({ _tag: "ReadSettings" });
+      expect(after.shouldShowFinishedQuests).toBe(true);
 
       // The owner puts the setting back and takes the entry out of the scope: the same instruction now asks.
-      yield* call({ _tag: "UpdateSettings", settings: { ...settings, shouldShowFinishedQuests: false } });
-      const ritual = yield* readRitual(created.missionId);
+      const settings = yield* call({ _tag: "ReadSettings" });
+      yield* call({
+        _tag: "UpdateSettings",
+        settings: { ...settings, shouldShowFinishedQuests: false },
+      });
+      const ritual = yield* call({ _tag: "ReadRitual", missionId: created.missionId });
       if (ritual === null) return yield* Effect.die("Missing Ritual");
       yield* call({ _tag: "UpdateRitual", ...ritual, ritualId: ritual.id, scope: [] });
-      yield* run(created);
-      const asked = yield* settle(created.missionId, (current) => openOf(current).length > 0);
+      const errandId = yield* runUntilAsked(created);
+      const asked = yield* read(created.missionId, errandId);
       expect(openOf(asked)[0]?.summary).toContain("shouldShowFinishedQuests");
       expect((yield* call({ _tag: "ReadSettings" })).shouldShowFinishedQuests).toBe(false);
     }).pipe(withService),
@@ -129,21 +162,21 @@ describe("a Ritual's reviewed scope", () => {
       const created = yield* withScope(`Archive quest Old notes.\n${archiveCall(named.missionId)}`, [
         { operation: "Archive", payload: null, target: other.missionId },
       ]);
-      yield* run(created);
-      const asked = yield* settle(created.missionId, (current) => openOf(current).length > 0);
+      const errandId = yield* runUntilAsked(created);
+      const asked = yield* read(created.missionId, errandId);
       expect(openOf(asked)[0]?.summary).toBe('Archive the quest "Old notes".');
       expect((yield* read(named.missionId)).mission.state).not.toBe("Archived");
     }).pipe(withService),
   );
 
-  it.live("gives a Ritual's thread no other structural tool, and an ordinary quest's thread none", () =>
+  it.live("gives a run errand no other structural tool, and an ordinary quest's thread none", () =>
     Effect.gen(function* () {
       const quest = yield* restingQuest("Old notes");
       const created = yield* withScope("Hello", [{ operation: "Archive", payload: null, target: quest.missionId }]);
-      expect(yield* tool(created.threadId, "create_realm", { name: "Ideas" })).toContain(
-        "Only Chronicler makes realms",
-      );
-      expect(yield* tool(created.threadId, "rename_realm", { name: "Ideas", realm: "Borderlands" })).toContain(
+      const done = yield* runErrandDetail(created);
+      const errandId = done.thread.id;
+      expect(yield* tool(errandId, "create_realm", { name: "Ideas" })).toContain("Only Chronicler makes realms");
+      expect(yield* tool(errandId, "rename_realm", { name: "Ideas", realm: "Borderlands" })).toContain(
         "Only Chronicler renames realms",
       );
       const settingArgs = { setting: "shouldShowFinishedQuests", value: "true" };

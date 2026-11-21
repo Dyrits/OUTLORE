@@ -269,10 +269,10 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "A Ritual is a request with a schedule: a morning digest, a weekly dependency check. It has a title, an instruction, a schedule, a harness and Companion, backup Companions, an optional realm, and an on/off switch.",
+      "A Ritual is a request with a schedule: a morning digest, a weekly dependency check. It has a title, an instruction, a schedule, a harness and Companion, backup Companions, an on/off switch, and a realm: the realm of the quest it was scheduled from, with a visible link to it, or one chosen when it was made.",
       "Schedules are presets, with no cron: every day at a time, weekdays at a time, every week on a day, every month on a day, or every N hours, in the computer's local time.",
-      "Each Ritual has its own quest; every run is a turn in its main thread, so the quest holds the whole history. Run now on the Ritual's card starts a run at any moment. Rituals live in the sidebar's Rituals place. Outlore can create one on request.",
-      "Rituals run through the local service, so Outlore must be running. A run missed while the app was closed or the computer asleep is skipped, not caught up. A scheduled run that cannot start fails visibly: the Ritual's thread shows Failed with the reason, nothing the failed start wrote is kept, and the next scheduled run is not blocked. A run's commands follow the thread's approval level; a Ritual takes no action on quests or settings unless its scope, set in its form, allows it.",
+      "A Ritual is an entity of its realm, listed among the quests and opened in the middle pane like one. Each run opens an errand beneath the Ritual, and its history stays in the Ritual's own conversation: the trigger line of every run and each run's report, with no place to write in it. Run now on the Ritual's panel starts a run at any moment. Outlore can create one on request.",
+      "Rituals run through the local service, so Outlore must be running. A run missed while the app was closed or the computer asleep is skipped, not caught up. A scheduled run that cannot start fails visibly: the Ritual's conversation holds a Failed line with the reason, nothing the failed start wrote is kept, and the next scheduled run is not blocked. A run's commands follow the thread's approval level; a Ritual takes no action on quests or settings unless its scope, set in its form, allows it.",
     ].join("\n"),
     id: "rituals",
     keywords: [

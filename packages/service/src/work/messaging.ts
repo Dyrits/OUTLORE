@@ -235,6 +235,16 @@ export const insertMessage = Effect.fnUntraced(function* (message: NewMessage) {
     yield* sql`UPDATE missions SET ending = NULL WHERE id = ${thread.missionId} AND ending IS NOT NULL`;
   } else if (message.isResult) yield* resetResultChatter(message.fromThreadId, message.threadId);
   const { attachmentIds = [], ...recorded } = message;
+  if (message.isConversationOnly !== true) {
+    // A Ritual's conversation is its run history (CHG-0616): there is no composer and no thread writes to it. Only
+    // the service's run lines and run errands' reports land there, and those keep to the conversation.
+    const [ritual] = yield* sql<{ id: string }>`SELECT r.id FROM rituals r
+        JOIN missions m ON m.id = r.mission_id WHERE m.top_thread_id = ${message.threadId}`;
+    if (ritual !== undefined)
+      return yield* invalid(
+        "A Ritual's conversation is its runs' history: there is no writing to it. Change the Ritual in its panel, or run it again.",
+      );
+  }
   const messageId = yield* appendMessage({
     ...recorded,
     missionId: thread.missionId,

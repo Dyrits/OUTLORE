@@ -22,6 +22,7 @@ import { Commands, makeCommands } from "./commands.ts";
 import { readConversationSoFar } from "./handover.ts";
 import { makeLifecycle, recoverThreadStates, stopThread } from "./lifecycle.ts";
 import { listPending, listThreadsWithPending } from "./messaging.ts";
+import { finishRitualRun } from "./rituals.ts";
 import { prepareStartingContext } from "./startingContext.ts";
 import { Suggestions } from "./suggestions.ts";
 import { resumeThread, retryThread } from "./threadRecovery.ts";
@@ -302,7 +303,10 @@ export const threadsLayer = Layer.effectContext(
       withdrawQuestions: withdrawAll,
     });
 
-    const stop = (threadId: string) => commands.run(stopThread(threadId)).pipe(Effect.orDie);
+    // Stopping also ends the run when the thread is a Ritual's run errand: the stopped turn completes on its own
+    // when interrupted, but never when stopped, so the stop itself records it (rituals, CHG-0616).
+    const stop = (threadId: string) =>
+      commands.run(Effect.tap(stopThread(threadId), () => finishRitualRun(threadId, "Interrupted"))).pipe(Effect.orDie);
 
     const resume = (threadId: string) =>
       commands.run(local(resumeThread(threadId))).pipe(Effect.catchTag("SqlError", Effect.die));

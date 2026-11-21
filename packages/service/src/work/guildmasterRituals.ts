@@ -20,10 +20,11 @@ export type RitualCreatedByGuildmaster =
 export const refuseRitual = (reason: string) => unchanged<RitualCreatedByGuildmaster>({ _tag: "Refused", reason });
 
 /**
- * `create_ritual`: Chronicler makes a Ritual, an instruction that runs by itself on a schedule in a quest of its
- * own, in a realm it names or none, on its own Companion unless it chooses another, once authorized by provenance. Its
- * reviewed scope starts empty: only the owner sets it, in the Ritual's form. Nothing runs until it is due. The owner sees
- * it as a card with a link. Only Chronicler calls it.
+ * `create_ritual`: Chronicler makes a Ritual, an entity of its realm instead of a quest of its own, in a realm it
+ * names or the realm of a quest it comes from, on its own Companion unless it chooses another, once authorized by
+ * provenance. Its reviewed scope starts empty: only the owner sets it, in the Ritual's form. Nothing runs until it is
+ * due; each run then opens an errand beneath the Ritual, and its history stays in the Ritual's own conversation.
+ * The owner sees it as a card with a link. Only Chronicler calls it.
  */
 export const createRitualByGuildmaster = Effect.fnUntraced(function* (
   callerId: string,
@@ -32,17 +33,19 @@ export const createRitualByGuildmaster = Effect.fnUntraced(function* (
   if (!(yield* isGuildmasterThread(callerId))) return refuseRitual("Only Chronicler creates Rituals.");
   const checked = yield* readRitualPreflight(args);
   if (checked._tag === "Refused") return refuseRitual(checked.text);
-  const { realm, title } = checked;
+  const { originMissionId, realm, title } = checked;
   if (!(yield* consumeReceipt(callerId, "create_ritual", args))) return refuseRitual(notAuthorizedText);
   const { companion: runner, fallbacks } = ritualStartOf(yield* readSettings, args);
   const created = yield* createRitual({
     fallbacks,
     instruction: args.instruction,
+    // An origin quest names the realm the Ritual lives in, keeping a visible link to it (rituals, Creation).
+    originMissionId,
     primary: { ...runner, accountId: runner.accountId as AccountId | null },
-    realm: null,
+    realm: originMissionId === null ? realm : null,
     schedule: args.schedule,
     title,
-    workspacePath: realm?.path ?? null,
+    workspacePath: originMissionId === null ? (realm?.path ?? null) : null,
   });
   yield* recordResolvedCard({
     callerId,
@@ -55,6 +58,6 @@ export const createRitualByGuildmaster = Effect.fnUntraced(function* (
   const where = placeOf(realm);
   return changed<RitualCreatedByGuildmaster>({
     _tag: "Created",
-    text: `Created the Ritual "${title}" ${where}, ${JSON.stringify(args.schedule)}, on ${companionLineOf(args.tier ?? null, runner)}. It runs by itself in its own quest when due and is on. Tell the owner in a sentence what it will do and when; do not repeat the instruction.`,
+    text: `Created the Ritual "${title}" ${where}, ${JSON.stringify(args.schedule)}, on ${companionLineOf(args.tier ?? null, runner)}. It runs by itself when due on its realm's list among the quests, each run an errand beneath the Ritual, and is on. Tell the owner in a sentence what it will do and when; do not repeat the instruction.`,
   });
 });

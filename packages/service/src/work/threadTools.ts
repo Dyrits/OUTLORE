@@ -95,7 +95,7 @@ export const threadTools = {
   }),
   create_ritual: definitionOf({
     description:
-      "Only Chronicler uses it. Create a Ritual: an instruction that runs by itself on a schedule, in a quest of its own, for anything the owner wants done repeatedly (every hour, every morning, weekly). Use it, not a quest, for a repeating request. Pick the preset that fits; there is no cron. Check the Rituals in your context first, so the same one is not made twice. It always asks the owner one Allow or Deny question with its title, schedule, realm, Companion, and instruction, and waits; naming the title in a message is not enough. It starts on and runs when next due. Its runs may take no structural action unasked until the owner sets its scope in the Ritual's form; its instruction never grants any.",
+      "Only Chronicler uses it. Create a Ritual: an instruction that runs by itself on a schedule, an entity of its realm beside the quests, for anything the owner wants done repeatedly (every hour, every morning, weekly). Use it, not a quest, for a repeating request. Pick the preset that fits; there is no cron. Check the Rituals in your context first, so the same one is not made twice. It always asks the owner one Allow or Deny question with its title, schedule, realm, Companion, and instruction, and waits; naming the title in a message is not enough. It starts on and runs when next due; each run is an errand beneath the Ritual, and its whole history shows in the Ritual's own conversation. Its runs may take no structural action unasked until the owner sets its scope in the Ritual's form; its instruction never grants any.",
     invalid: toolRefusal(
       "Invalid arguments: give instruction, title, and schedule (Daily, Weekdays, Weekly, Monthly, or Hourly).",
     ),
@@ -107,7 +107,12 @@ export const threadTools = {
       harness: Schema.optionalKey(HarnessName.annotate({ description: "The harness. Yours when left out." })),
       instruction: text("What each run does, complete enough to act on: a run sees none of your conversation."),
       model: Schema.optionalKey(ModelChoice.annotate({ description: "The model. Yours when left out." })),
-      realm: optionalText("The name or folder of one of the realms in your context, when each run works there."),
+      origin: optionalText(
+        "The id of the quest this Ritual comes from, as your context shows it. The Ritual then lives in that quest's realm, keeping a visible link to the quest. Give origin or realm, not both.",
+      ),
+      realm: optionalText(
+        "The name or folder of one of the realms in your context, when the Ritual lives there. Leave it out when you pass origin, which names the realm instead.",
+      ),
       schedule: RitualSchedule.annotate({
         description:
           'When it runs, in the computer\'s local time, for example {"_tag":"Hourly","hours":1}, {"_tag":"Daily","time":"07:00"}, {"_tag":"Weekly","day":1,"time":"09:00"} (day 0 is Sunday), {"_tag":"Monthly","day":1,"time":"08:00"}, or {"_tag":"Weekdays","time":"08:30"}.',

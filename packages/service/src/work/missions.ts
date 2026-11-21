@@ -191,7 +191,10 @@ type MissionRow = {
   ritualLastRunAt: number | null;
   ritualLastRunState: string | null;
   ritualNextRunAt: number | null;
+  ritualOriginMissionId: string | null;
   ritualSchedule: string | null;
+  /** The state of the latest run errand beneath the top thread, when one ran (rituals). */
+  runThreadState: string | null;
   topState: string;
   spentCost: number;
   spentTokens: number;
@@ -229,8 +232,10 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
             id: RitualId.make(row.ritualId),
             isOn: row.ritualIsOn === 1,
             lastRunAt: row.ritualLastRunAt,
-            lastRunState: runStateOf(row.ritualLastRunState, row.topState),
+            // An unfinished run reads as interrupted when its errand was stopped (rituals).
+            lastRunState: runStateOf(row.ritualLastRunState, row.runThreadState ?? "Resting"),
             nextRunAt: row.ritualNextRunAt,
+            originMissionId: row.ritualOriginMissionId === null ? null : MissionId.make(row.ritualOriginMissionId),
             schedule: scheduleOf(row.ritualSchedule),
           },
     runningCount: [topState, ...otherStates].filter((state) => state === "Underway").length,
@@ -259,7 +264,10 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
       w.id AS workspaceId, w.name AS workspaceName,
       ${sql.literal(lastSampleOf("top.id", "user"))} AS lastOwnerText, ${sql.literal(lastSampleOf("top.id", "agent"))} AS lastReplyText,
       r.id AS ritualId, r.is_on AS ritualIsOn, r.last_run_at AS ritualLastRunAt, r.last_run_state AS ritualLastRunState,
-      r.next_run_at AS ritualNextRunAt, r.schedule AS ritualSchedule, top.state AS topState
+      r.next_run_at AS ritualNextRunAt, r.origin_mission_id AS ritualOriginMissionId,
+      r.schedule AS ritualSchedule, top.state AS topState,
+      (SELECT e.state FROM threads e WHERE e.parent_id = m.top_thread_id AND e.is_deleting = 0
+        AND e.is_aside = 0 ORDER BY e.rowid DESC LIMIT 1) AS runThreadState
     FROM missions m
       JOIN threads top ON top.id = m.top_thread_id
       LEFT JOIN rituals r ON r.mission_id = m.id
@@ -279,17 +287,20 @@ export const listMissionSummaries = Effect.fnUntraced(function* (missionIds: Rea
   return rows.map((row) => summaryOf(row, now, settings));
 });
 
-/** The summaries of the Archived view's missions, or of the dashboard's: not ended, or Done. */
-export const listViewSummaries = Effect.fnUntraced(function* (isArchived: boolean) {
+/**
+ * The summaries of the Archived view's missions, or of the dashboard's: not ended, or Done. The realm's Rituals stay
+ * out unless asked for, when they come with their ritual fields so the app draws them as ritual rows among the quests
+ * (CHG-0616); the Guildmaster's own is in no list.
+ */
+export const listViewSummaries = Effect.fnUntraced(function* (isArchived: boolean, includeRituals = false) {
   const sql = yield* SqlClient.SqlClient;
   const now = yield* Clock.currentTimeMillis;
   const settings = yield* readSettings;
-  // A Ritual's quest is listed with the Rituals, not with the quests (rituals); the Guildmaster's is in no list.
   const rows = yield* missionRowsOf(
     sql,
     isArchived
-      ? sql`m.ending = 'Archived' AND r.id IS NULL AND m.is_guildmaster = 0`
-      : sql`(m.ending IS NULL OR m.ending = 'Fulfilled') AND r.id IS NULL AND m.is_guildmaster = 0`,
+      ? sql`m.ending = 'Archived' AND m.is_guildmaster = 0`
+      : sql`(m.ending IS NULL OR m.ending = 'Fulfilled') AND m.is_guildmaster = 0`,
   );
-  return rows.map((row) => summaryOf(row, now, settings));
+  return rows.filter((row) => includeRituals || row.ritualId === null).map((row) => summaryOf(row, now, settings));
 });

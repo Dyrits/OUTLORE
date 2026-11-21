@@ -250,4 +250,11 @@ export const recentStoreMigrations = {
     yield* sql`ALTER TABLE turns ADD COLUMN permission_mode TEXT
       CHECK (permission_mode IN ('Supervised', 'AutoAcceptEdits', 'Auto', 'FullAccess'))`;
   }),
+  // A Ritual is an entity of its realm instead of a quest of its own (CHG-0616): the quest it was opened from, kept as
+  // the visible origin link on the Ritual's card and panel. Null for every Ritual made before it, or on its own.
+  // Numbered 0073: 0071 and 0072 were taken by the permission modes while this branch was in flight.
+  "0073_ritual_origin_mission": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE rituals ADD COLUMN origin_mission_id TEXT`;
+  }),
 };

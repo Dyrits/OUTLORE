@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { RitualId } from "./ids.ts";
+import { MissionId, RitualId } from "./ids.ts";
 
 // A Ritual's schedule and what the board shows of it (rituals). Kept apart from `rituals.ts` because the mission summary,
 // in `records.ts`, carries the card and `rituals.ts` reads `records.ts`.
@@ -38,6 +38,8 @@ export const RitualCard = Schema.Struct({
   lastRunState: Schema.NullOr(RitualRunState),
   /** The next scheduled run, or null while the Ritual is off. */
   nextRunAt: Schema.NullOr(Schema.Number),
+  /** The quest the Ritual was made from, whose realm it took, or null; a link, nothing else inherited. */
+  originMissionId: Schema.NullOr(MissionId),
   schedule: RitualSchedule,
 });
 export type RitualCard = typeof RitualCard.Type;

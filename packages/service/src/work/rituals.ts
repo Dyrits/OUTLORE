@@ -14,22 +14,28 @@ import { SqlClient } from "effect/sql";
 import { Changes, hourMillis, invalid, newId, notFound } from "../core/index.ts";
 import { refuseWaitingImages } from "./admission.ts";
 import { Commands } from "./commands.ts";
+import { deleteThread, previewDeletion } from "./deleting.ts";
 import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
 import { changeThreadRunner } from "./handover.ts";
-import { failTurn } from "./lifecycle.ts";
 import { insertMessage } from "./messaging.ts";
 import { insertQuest } from "./missions.ts";
 import { nextRunAfter, runStateOf, scheduleOf } from "./ritualSchedule.ts";
+import { insertThread } from "./tree.ts";
 
-// Rituals (rituals): an instruction run on a schedule, or by hand, in a quest of its own. Each run is a message to the quest's
-// main thread; a failed run falls back to the next Companion of the list, through a handover (thread-handover).
+// Rituals (rituals): an instruction run on a schedule, or by hand; an entity of its realm beside the quests
+// (CHG-0616). Its conversation — the mission's top thread — is the run history: each run leaves its trigger line
+// there, then opens an errand beneath the Ritual, and its result line lands when the errand's turn ends. No thread
+// ever takes a turn at the Ritual's top. A failed run falls back through its Ritual's Companion list (thread-handover).
 
 /** The longest the scheduler sleeps, so a Ritual changed behind its back is still found within the hour. */
 const longestSleepMillis = hourMillis;
 /** How late a scheduled run may start: one that is later than this was missed while the service was down, and is skipped. */
 const graceMillis = 5 * 60 * 1000;
-/** The prefix of a scheduled run's message text; usage gaps recognise scheduled runs by it. */
+/** The prefix of a scheduled run's trigger line; usage gaps recognise scheduled runs by it. */
 export const scheduledRunPrefix = "Ritual · scheduled";
+
+/** The states in which a Ritual's run errand is still at work, so another run would pile onto it. */
+const busyStates = ["Underway", "Attention", "Waiting"] as const;
 
 const decodeCompanion = Schema.decodeUnknownSync(RitualCompanionSchema);
 const decodeFallbacks = Schema.decodeUnknownSync(Schema.Array(RitualCompanionSchema));
@@ -44,20 +50,27 @@ type RitualRow = {
   readonly instruction: string;
   readonly isOn: number;
   readonly isRealmArchived: number;
+  /** Whether a run errand beneath the Ritual is still at work, so no other run may start. */
+  readonly isRunUnderway: number;
   readonly lastRunAt: number | null;
   readonly lastRunState: string | null;
   readonly missionId: string;
   readonly nextRunAt: number | null;
+  readonly originMissionId: string | null;
   readonly primaryCompanion: string;
+  /** The state of the latest run errand, when one ran; how an unfinished run is read back. */
+  readonly runThreadState: string | null;
   readonly schedule: string;
   readonly threadId: string;
-  readonly threadState: string;
   readonly title: string;
 };
 
-/** The Rituals matching a condition, with their quest's top thread. */
+/**
+ * The Rituals matching a condition: a Ritual's own identifiers, the mission that holds it, and where its current
+ * run errand stands. The `runThreadId` condition matches the Ritual whose run errand the thread is.
+ */
 const readRows = Effect.fnUntraced(function* (
-  condition: "all" | { readonly id: string } | { readonly missionId: string } | { readonly threadId: string },
+  condition: "all" | { readonly id: string } | { readonly missionId: string } | { readonly runThreadId: string },
 ) {
   const sql = yield* SqlClient.SqlClient;
   const where =
@@ -67,13 +80,18 @@ const readRows = Effect.fnUntraced(function* (
         ? sql`r.id = ${condition.id}`
         : "missionId" in condition
           ? sql`r.mission_id = ${condition.missionId}`
-          : sql`m.top_thread_id = ${condition.threadId}`;
+          : sql`r.mission_id = (SELECT mission_id FROM threads WHERE id = ${condition.runThreadId})
+              AND m.top_thread_id = (SELECT parent_id FROM threads WHERE id = ${condition.runThreadId})`;
   return yield* sql<RitualRow>`
-      SELECT r.id, r.mission_id AS missionId, m.top_thread_id AS threadId, t.state AS threadState, m.title,
+      SELECT r.id, r.mission_id AS missionId, m.top_thread_id AS threadId, m.title,
         r.authority, r.instruction, r.schedule, r.primary_companion AS primaryCompanion, r.fallbacks, r.is_on AS isOn,
         EXISTS (SELECT 1 FROM workspaces w WHERE w.id = t.workspace_id AND w.archived_at IS NOT NULL) AS isRealmArchived,
         r.next_run_at AS nextRunAt, r.last_run_at AS lastRunAt, r.last_run_state AS lastRunState,
-        r.fallback_step AS fallbackStep, r.created_at AS createdAt
+        r.fallback_step AS fallbackStep, r.created_at AS createdAt, r.origin_mission_id AS originMissionId,
+        EXISTS (SELECT 1 FROM threads e WHERE e.parent_id = m.top_thread_id AND e.is_deleting = 0
+          AND e.state IN ${sql.in(busyStates)}) AS isRunUnderway,
+        (SELECT e.state FROM threads e WHERE e.parent_id = m.top_thread_id AND e.is_deleting = 0
+          AND e.is_aside = 0 ORDER BY e.rowid DESC LIMIT 1) AS runThreadState
       FROM rituals r JOIN missions m ON m.id = r.mission_id JOIN threads t ON t.id = m.top_thread_id
       WHERE ${where}`;
 });
@@ -85,9 +103,10 @@ const ritualOf = (row: RitualRow): Ritual => ({
   isOn: row.isOn === 1,
   isRealmArchived: row.isRealmArchived === 1,
   lastRunAt: row.lastRunAt,
-  lastRunState: runStateOf(row.lastRunState, row.threadState),
+  lastRunState: runStateOf(row.lastRunState, row.runThreadState ?? "Resting"),
   missionId: MissionId.make(row.missionId),
   nextRunAt: row.nextRunAt,
+  originMissionId: row.originMissionId === null ? null : MissionId.make(row.originMissionId),
   primary: decodeCompanion(JSON.parse(row.primaryCompanion)),
   schedule: scheduleOf(row.schedule),
   // Stored as `authority` (migration 0044): the owner's reviewed scope, empty by default.
@@ -96,7 +115,7 @@ const ritualOf = (row: RitualRow): Ritual => ({
   title: row.title,
 });
 
-/** The quest's Ritual, or null when the quest is not a Ritual's. */
+/** The mission's Ritual, or null when the mission is not a Ritual's. */
 export const readRitual = Effect.fnUntraced(function* (missionId: string) {
   const [row] = yield* readRows({ missionId });
   return row === undefined ? null : ritualOf(row);
@@ -108,19 +127,34 @@ export const listRituals = Effect.gen(function* () {
   return rows.toSorted((current, next) => next.createdAt - current.createdAt).map(ritualOf);
 });
 
-/** What a Ritual's quest and thread are named. */
-const renameQuest = Effect.fnUntraced(function* (missionId: string, threadId: string, title: string) {
+/** What a Ritual's mission and its conversation thread are named. */
+const renameMission = Effect.fnUntraced(function* (missionId: string, threadId: string, title: string) {
   const sql = yield* SqlClient.SqlClient;
   yield* sql`UPDATE missions SET title = ${title}, is_title_by_user = 1 WHERE id = ${missionId}`;
   yield* sql`UPDATE threads SET title = ${title} WHERE id = ${threadId}`;
 });
 
-/** Creates a Ritual and its quest, whose thread takes the primary Companion. Nothing runs yet. */
+/** The realm and folder a Ritual made from a quest works in: the quest's own, wherever the quest is. */
+const originRealmOf = Effect.fnUntraced(function* (originMissionId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [origin] = yield* sql<{ realmId: string | null }>`
+      SELECT t.workspace_id AS realmId FROM missions m JOIN threads t ON t.id = m.top_thread_id
+      WHERE m.id = ${originMissionId} AND t.is_deleting = 0`;
+  if (origin === undefined) return yield* notFound("No such quest.");
+  return origin.realmId;
+});
+
+/**
+ * Creates a Ritual and the mission that holds it. Nothing runs yet, nothing of the origin quest's comes along
+ * beyond its realm, and nothing is written in the Ritual's conversation until its first run leaves its trigger.
+ */
 export const createRitual = Effect.fnUntraced(function* (input: {
   /** The owner's reviewed scope, already validated (ritualScope.ts); empty when left out. */
   readonly scope?: RitualScope;
   readonly fallbacks: ReadonlyArray<RitualCompanion>;
   readonly instruction: string;
+  /** The quest the Ritual is made from, when there is one; its realm and folder to work in are then taken from it. */
+  readonly originMissionId: string | null;
   readonly primary: RitualCompanion;
   readonly realm: { name: string } | null;
   readonly schedule: RitualSchedule;
@@ -128,22 +162,27 @@ export const createRitual = Effect.fnUntraced(function* (input: {
   readonly workspacePath: string | null;
 }) {
   const sql = yield* SqlClient.SqlClient;
+  const originRealmId = input.originMissionId === null ? undefined : yield* originRealmOf(input.originMissionId);
   const quest = yield* insertQuest(
     {
       firstMessage: null,
+      ...(originRealmId === undefined ? {} : { realmId: originRealmId }),
       isTitleByOwner: true,
-      realm: input.realm,
+      // An origin quest names the realm; folder and realm names matter only when there is none.
+      realm: originRealmId === undefined ? input.realm : null,
       shouldRememberChoices: false,
       title: input.title,
     },
     input.primary,
-    input.workspacePath,
+    originRealmId === undefined ? input.workspacePath : null,
   );
   const now = yield* Clock.currentTimeMillis;
   const ritualId = yield* newId;
-  yield* sql`INSERT INTO rituals (id, mission_id, instruction, schedule, primary_companion, fallbacks, is_on, next_run_at, created_at, authority)
+  yield* sql`INSERT INTO rituals (id, mission_id, instruction, schedule, primary_companion, fallbacks, is_on,
+        next_run_at, created_at, authority, origin_mission_id)
       VALUES (${ritualId}, ${quest.missionId}, ${input.instruction}, ${JSON.stringify(input.schedule)},
-        ${JSON.stringify(input.primary)}, ${JSON.stringify(input.fallbacks)}, 1, ${nextRunAfter(input.schedule, now)}, ${now}, ${JSON.stringify(input.scope ?? [])})`;
+        ${JSON.stringify(input.primary)}, ${JSON.stringify(input.fallbacks)}, 1, ${nextRunAfter(input.schedule, now)},
+        ${now}, ${JSON.stringify(input.scope ?? [])}, ${input.originMissionId})`;
   return changed({ missionId: quest.missionId, ritualId, threadId: quest.threadId });
 });
 
@@ -171,28 +210,30 @@ export const updateRitual = Effect.fnUntraced(function* (input: {
   yield* sql`UPDATE rituals SET authority = ${input.scope === undefined ? row.authority : JSON.stringify(input.scope)}, instruction = ${input.instruction}, schedule = ${schedule},
       primary_companion = ${JSON.stringify(input.primary)}, fallbacks = ${JSON.stringify(input.fallbacks)},
       is_on = ${input.isOn ? 1 : 0}, next_run_at = ${nextRunAt} WHERE id = ${input.ritualId}`;
-  yield* renameQuest(row.missionId, row.threadId, input.title);
+  yield* renameMission(row.missionId, row.threadId, input.title);
   return changed(null);
 });
 
-/** Deletes a Ritual; its quest stays, as an ordinary quest. */
+/**
+ * Deletes the Ritual with everything it holds: its runs' errands, their reports, its conversation, journal, and
+ * history, all permanently (CHG-0616). The service decides the whole tree in one step at this seam; the app's
+ * single confirmation names what is lost.
+ */
 export const deleteRitual = Effect.fnUntraced(function* (ritualId: string) {
-  const sql = yield* SqlClient.SqlClient;
   const [row] = yield* readRows({ id: ritualId });
   if (row === undefined) return yield* notFound("No such Ritual.");
-  yield* sql`DELETE FROM rituals WHERE id = ${ritualId}`;
-  return changed(null);
+  const preview = yield* previewDeletion(row.threadId);
+  return yield* deleteThread(row.threadId, preview.confirmation);
 });
 
 const clockOf = (millis: number) =>
   new Date(millis).toLocaleTimeString("en-GB", { hour: "2-digit", hour12: false, minute: "2-digit" });
 
-/** The states in which a Ritual's thread is still at work, so another run would pile onto it. */
-const busyStates = ["Underway", "Attention", "Waiting"];
-
 /**
- * Starts a run: the thread takes the primary Companion again, then the instruction arrives as a message under its
- * trigger. Returns the inbox wakes. A manual run that cannot start is refused and a scheduled one is skipped.
+ * Starts a run: its trigger line lands in the Ritual's conversation, and the run itself opens an errand beneath the
+ * Ritual, on the Ritual's primary Companion, with no backup list of its own; the returned wake runs it. The Ritual's
+ * top thread is never woken — no thread takes a turn there. A manual run that would pile onto a run still
+ * Underway is refused, and a scheduled one is skipped.
  */
 const beginRun = Effect.fnUntraced(function* (
   row: RitualRow,
@@ -200,28 +241,41 @@ const beginRun = Effect.fnUntraced(function* (
 ) {
   const sql = yield* SqlClient.SqlClient;
   const isManual = trigger.kind === "manual";
-  if (busyStates.includes(row.threadState)) {
+  // One run at a time (CHG-0616): the Ritual waits for the run errand it opened; its own conversation thread gates
+  // nothing and rests for good.
+  if (row.isRunUnderway === 1) {
     if (isManual) return yield* invalid("This Ritual is still running. Wait for it to end or interrupt it.");
     return [];
   }
-  if (row.threadState === "Stopped") {
-    if (isManual) return yield* invalid("This Ritual's quest is stopped. Resume it first.");
-    return [];
-  }
-  yield* changeThreadRunner(row.threadId, decodeCompanion(JSON.parse(row.primaryCompanion)));
   const now = yield* Clock.currentTimeMillis;
   const label = isManual ? "Ritual · run by you" : `${scheduledRunPrefix} ${clockOf(trigger.dueAt)}`;
-  const { messageId, threadsToWake } = yield* insertMessage({
+  // The trigger line stays in the conversation without waking it (conversation-only), and its marking keeps it from
+  // ever counting as the owner's words or granting mention reach (CHG-0208).
+  const { messageId: triggerId } = yield* insertMessage({
     fromThreadId: null,
+    isConversationOnly: true,
     isQueued: false,
     isResult: false,
-    text: `${label}\n\n${row.instruction}`,
+    text: label,
     threadId: row.threadId,
   });
-  // The run's message is the service's, not the owner's: marked so it never counts as the owner's words (CHG-0208).
-  yield* sql`INSERT INTO ritual_run_messages (message_id, ritual_id) VALUES (${messageId}, ${row.id})`;
+  yield* sql`INSERT INTO ritual_run_messages (message_id, ritual_id) VALUES (${triggerId}, ${row.id})`;
+  // The run errand: its opening request wears the trigger and carries the instruction.
+  const opened = yield* insertThread({
+    anchorMessageId: triggerId,
+    // Empty on purpose: a failed run falls back through the Ritual's list, never an errand's own (thread-handover).
+    backups: [],
+    choice: decodeCompanion(JSON.parse(row.primaryCompanion)),
+    isAside: false,
+    isOpenedByAgent: false,
+    isOwnCopyAsked: false,
+    parentId: row.threadId,
+    text: `${label}\n\n${row.instruction}`,
+    title: label,
+  });
+  yield* sql`INSERT INTO ritual_run_messages (message_id, ritual_id) VALUES (${opened.messageId}, ${row.id})`;
   yield* sql`UPDATE rituals SET last_run_at = ${now}, last_run_state = 'Underway', fallback_step = 0 WHERE id = ${row.id}`;
-  return threadsToWake;
+  return [...opened.threadsToWake];
 });
 
 /** Runs a Ritual now, whatever its schedule and switch. */
@@ -234,15 +288,24 @@ export const runRitual = Effect.fnUntraced(function* (ritualId: string) {
 });
 
 /**
- * A scheduled run that could not start is not lost silently: the run fails with the reason, on the Ritual's card and on
- * its quest's thread. The owner runs it again by hand, or the next scheduled run starts as usual.
+ * A scheduled run that could not start is not lost silently: the Ritual's conversation holds a line with the reason,
+ * and the run reads as Failed with no errand (CHG-0616). The owner runs it again by hand, or the next scheduled run
+ * starts as usual.
  */
 const recordFailedStart = Effect.fnUntraced(function* (row: RitualRow, now: number, cause: Cause.Cause<unknown>) {
   const sql = yield* SqlClient.SqlClient;
   const failure = Cause.squash(cause);
   const reason = failure instanceof Error ? failure.message : String(failure);
   yield* sql`UPDATE rituals SET last_run_at = ${now}, last_run_state = 'Failed', fallback_step = 0 WHERE id = ${row.id}`;
-  yield* failTurn(row.threadId, `Could not start the scheduled run: ${reason}`);
+  const { messageId } = yield* insertMessage({
+    fromThreadId: null,
+    isConversationOnly: true,
+    isQueued: false,
+    isResult: false,
+    text: `Could not start the scheduled run: ${reason}`,
+    threadId: row.threadId,
+  });
+  yield* sql`INSERT INTO ritual_run_messages (message_id, ritual_id) VALUES (${messageId}, ${row.id})`;
 });
 
 /**
@@ -269,20 +332,40 @@ export const runDueRituals: Effect.Effect<WithFollowUps<null>, never, SqlClient.
   return rows.length === 0 ? unchanged(null) : changed(null, { threadsToWake: toWake });
 }).pipe(Effect.orDie);
 
-/** A turn of the Ritual's main thread ended: its run is done, or interrupted. Other threads' turns change nothing. */
+/**
+ * A turn of a run errand ended: the run is Done, or Interrupted when the errand was stopped. The Ritual's
+ * conversation gains the run's result line, which names the errand and how it ended. Any other thread's turns
+ * change nothing.
+ */
 export const finishRitualRun = Effect.fnUntraced(function* (threadId: string, state: "Done" | "Interrupted") {
   const sql = yield* SqlClient.SqlClient;
-  yield* sql`UPDATE rituals SET last_run_state = ${state}
-      WHERE last_run_state = 'Underway' AND mission_id IN (SELECT id FROM missions WHERE top_thread_id = ${threadId})`;
+  // The thread is a run errand only while it sits directly beneath its Ritual's conversation thread.
+  const [run] = yield* sql<{ id: string; lastRunState: string | null; title: string; topThreadId: string }>`
+      SELECT r.id, r.last_run_state AS lastRunState, e.title, m.top_thread_id AS topThreadId
+      FROM threads e JOIN missions m ON m.id = e.mission_id AND m.top_thread_id = e.parent_id
+      JOIN rituals r ON r.mission_id = m.id
+      WHERE e.id = ${threadId}`;
+  if (run === undefined || run.lastRunState !== "Underway") return;
+  yield* sql`UPDATE rituals SET last_run_state = ${state} WHERE id = ${run.id}`;
+  const { messageId } = yield* insertMessage({
+    fromThreadId: null,
+    isConversationOnly: true,
+    isQueued: false,
+    isResult: false,
+    text: `Result from thread "${run.title}" (${threadId}): ${state}`,
+    threadId: run.topThreadId,
+  });
+  yield* sql`INSERT INTO ritual_run_messages (message_id, ritual_id) VALUES (${messageId}, ${run.id})`;
 });
 
 /**
- * A turn of the Ritual's main thread failed: its run carries on with the next Companion of the list that differs from the
- * current one, the conversation handed over to it (the line says why), or fails once the list is used up. Other turns change nothing.
+ * A turn of a run errand failed: the run carries on with the next Companion of the Ritual's list that differs from
+ * the errand's, the conversation handed over to it (the line says why), or fails once the list is used up. Any
+ * other thread's turns change nothing.
  */
 export const fallBackAfterFailure = Effect.fnUntraced(function* (threadId: string, reason: string) {
   const sql = yield* SqlClient.SqlClient;
-  const [row] = yield* readRows({ threadId });
+  const [row] = yield* readRows({ runThreadId: threadId });
   if (row === undefined || row.lastRunState !== "Underway") return unchanged(null);
   const fallbacks = decodeFallbacks(JSON.parse(row.fallbacks));
   for (let index = row.fallbackStep; index < fallbacks.length; index++) {
@@ -293,7 +376,7 @@ export const fallBackAfterFailure = Effect.fnUntraced(function* (threadId: strin
         Effect.andThen(changeThreadRunner(threadId, candidate, { fellBackAfter: reason })),
       ),
     );
-    // A Companion that cannot be taken, such as one on a removed account, or that is already the thread's, is passed over.
+    // A Companion that cannot be taken, such as one on a removed account, or that is already the errand's, is passed over.
     if (!Exit.isSuccess(outcome) || !outcome.value.followUps.isChanged) continue;
     yield* sql`UPDATE rituals SET fallback_step = ${index + 1} WHERE id = ${row.id}`;
     return { followUps: outcome.value.followUps, value: null } satisfies WithFollowUps<null>;

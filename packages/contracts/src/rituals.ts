@@ -7,7 +7,8 @@ import { RequestId } from "./records.ts";
 import { RitualRunState, RitualSchedule } from "./ritualSchedules.ts";
 import { MessageText, NameText } from "./texts.ts";
 
-// Rituals: an instruction run on a schedule in a quest of its own, with Companions to fall back on (rituals).
+// Rituals: an instruction run on a schedule, an entity of its realm beside the quests, with Companions to fall back on
+// (rituals). Each run opens an errand beneath the Ritual, and its conversation is the run history.
 
 /** One Companion a Ritual runs on: a harness, its account, a model, and an effort. */
 export const RitualCompanion = Schema.Struct({
@@ -56,20 +57,24 @@ export const Ritual = Schema.Struct({
   lastRunState: Schema.NullOr(RitualRunState),
   missionId: MissionId,
   nextRunAt: Schema.NullOr(Schema.Number),
+  /** The quest the Ritual was made from, whose realm it took, or null; a link, nothing else inherited. */
+  originMissionId: Schema.NullOr(MissionId),
   primary: RitualCompanion,
   schedule: RitualSchedule,
   /** What its runs may do unasked beyond the sandbox; empty unless the owner set it. */
   scope: RitualScope,
-  /** The quest's top thread, where each run happens. */
+  /** The quest's top thread: the Ritual's conversation, where its run history lands. */
   threadId: ThreadId,
   title: NameText,
 });
 export type Ritual = typeof Ritual.Type;
 
-/** Creates a Ritual and the quest its runs happen in; nothing runs until it is due or run by hand. */
+/** Creates a Ritual and the mission that holds it; nothing runs until it is due or run by hand. */
 export const CreateRitual = Schema.TaggedStruct("CreateRitual", {
   fallbacks: Fallbacks,
   instruction: MessageText,
+  /** The origin quest, when the Ritual is made from one; its realm and workspace are then taken from it. */
+  originMissionId: Schema.optionalKey(MissionId),
   primary: RitualCompanion,
   /** The name for a folder that is not a realm yet, as when starting a quest. */
   realm: Schema.optionalKey(NewRealmAppearance),
@@ -78,7 +83,7 @@ export const CreateRitual = Schema.TaggedStruct("CreateRitual", {
   /** The owner's reviewed scope; left out, it is empty. */
   scope: Schema.optionalKey(RitualScope),
   title: NameText,
-  /** An existing folder, or null for the quest's scratch folder. */
+  /** An existing folder, or null for the quest's scratch folder; ignored when an origin quest is given. */
   workspacePath: Schema.NullOr(Schema.String),
 });
 /** Replaces a Ritual's fields; a change applies to the next run. */
@@ -95,9 +100,9 @@ export const UpdateRitual = Schema.TaggedStruct("UpdateRitual", {
 });
 /** Runs a Ritual now, whatever its schedule and switch. */
 export const RunRitual = Schema.TaggedStruct("RunRitual", { ritualId: RitualId });
-/** Deletes a Ritual; its quest stays, as an ordinary quest. */
+/** Deletes the Ritual with its runs and their history, permanently. */
 export const DeleteRitual = Schema.TaggedStruct("DeleteRitual", { ritualId: RitualId });
-/** Lists every Ritual, the latest first; they are not among the quests. */
+/** Lists every Ritual, the latest first; the quest lists keep them until asked to include them. */
 export const ListRituals = Schema.TaggedStruct("ListRituals", {});
 /** Reads the Ritual of a quest, or null when it is not a Ritual's. */
 export const ReadRitual = Schema.TaggedStruct("ReadRitual", { missionId: MissionId });

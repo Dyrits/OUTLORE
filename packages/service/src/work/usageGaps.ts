@@ -1,7 +1,6 @@
 import type { UsageFilter } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { scheduledRunPrefix } from "./rituals.ts";
 import { arePlaceFilters, messageColumns, questJoinsOf, turnColumns, type UsageBounds, whereOf } from "./usageScope.ts";
 
 // What the usage page counts beside the turns' usage (budget-control, Reserves usage page): the messages sent and replies
@@ -10,14 +9,16 @@ import { arePlaceFilters, messageColumns, questJoinsOf, turnColumns, type UsageB
 
 /**
  * Messages sent and replies completed in the period, in the quests the filters select; null when a filter hides which
- * they were. A Ritual's scheduled run is no message the owner sent, so it is not counted; one run by hand is.
+ * they were. A Ritual's run never writes the owner's words (CHG-0616): its trigger, its result line, and its errand's
+ * opening request are the service's, not the owner's, so none is counted.
  */
 export const readMessages = Effect.fnUntraced(function* (bounds: UsageBounds, filters: ReadonlyArray<UsageFilter>) {
   if (!arePlaceFilters(filters)) return null;
   const sql = yield* SqlClient.SqlClient;
   const where = whereOf(bounds, messageColumns, filters);
   const [row] = yield* sql.unsafe<{ assistant: number; user: number }>(
-    `SELECT COALESCE(SUM(CASE WHEN x.sender_kind = 'user' AND x.is_conversation_only = 0 AND instr(x.text, '${scheduledRunPrefix}') != 1 THEN 1 ELSE 0 END), 0) AS user,
+    `SELECT COALESCE(SUM(CASE WHEN x.sender_kind = 'user' AND x.is_conversation_only = 0
+          AND NOT EXISTS (SELECT 1 FROM ritual_run_messages r WHERE r.message_id = x.id) THEN 1 ELSE 0 END), 0) AS user,
         COALESCE(SUM(CASE WHEN x.sender_kind = 'agent' THEN 1 ELSE 0 END), 0) AS assistant
        FROM messages x ${questJoinsOf(messageColumns.mission)}
        WHERE ${where.text}`,

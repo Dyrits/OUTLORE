@@ -48,11 +48,30 @@ export const readQuestAction = Effect.fnUntraced(function* (args: ArgumentsOf<"a
   return { _tag: "Clear", ids, quest } as const;
 });
 
-/** `create_ritual`: the realm it names, or none, and its title as stored, after the refusals every creation shares. */
+/** `create_ritual`: the origin quest it names when there is one, and the realm, and the title as stored, after the shared refusals. */
 export const readRitualPreflight = Effect.fnUntraced(function* (args: ArgumentsOf<"create_ritual">) {
+  const sql = yield* SqlClient.SqlClient;
   if (args.instruction.trim() === "" || titleOf(args.title) === "") return refusal("Give an instruction and a title.");
   const { isNamed, realm } = yield* readOptionalRealm(args.realm);
   if (isNamed && realm === null)
     return refusal(`Not created: no realm "${args.realm}". Name one of the realms in your context, or leave it out.`);
-  return { _tag: "Clear", realm, title: ritualTitleOf(args.title) } as const;
+  // The quest a Ritual is made from names its realm (rituals, Creation); nothing else of the quest comes along.
+  const [origin] =
+    args.origin === undefined || args.origin.trim() === ""
+      ? []
+      : yield* sql<{ missionId: string; realmName: string | null; realmPath: string | null }>`
+          SELECT m.id AS missionId, w.name AS realmName, w.path AS realmPath
+          FROM missions m JOIN threads t ON t.id = m.top_thread_id
+          LEFT JOIN workspaces w ON w.id = t.workspace_id
+          WHERE m.id = ${args.origin} AND m.is_guildmaster = 0 AND t.is_deleting = 0`;
+  if (args.origin !== undefined && args.origin.trim() !== "" && origin === undefined)
+    return refusal(
+      `Not created: no quest "${args.origin}". Give a quest's id as your context shows it, or leave the origin out.`,
+    );
+  return {
+    _tag: "Clear",
+    originMissionId: origin?.missionId ?? null,
+    realm,
+    title: ritualTitleOf(args.title),
+  } as const;
 });

@@ -8,8 +8,10 @@ import { listViewSummaries } from "./missions.ts";
 /** Missions in these states come first: they need the owner. */
 const statesNeedingOwner: ReadonlyArray<MissionState> = ["Attention", "Failed"];
 
-/** The dashboard's filters: the Archived view or not, a state, a workspace, and a search text. */
+/** The dashboard's filters: the Archived view or not, a state, a workspace, a search text, and the realm's Rituals. */
 export type MissionFilters = {
+  /** Whether the realm's Rituals come with the quests, as ritual rows among them (CHG-0616). */
+  readonly includeRituals?: boolean;
   readonly isArchived: boolean;
   readonly search: string | null;
   readonly state: MissionState | null;
@@ -32,7 +34,7 @@ const listSearchMatches = Effect.fnUntraced(function* (search: string) {
  */
 export const listMissions = Effect.fnUntraced(function* (filters: MissionFilters) {
   const sql = yield* SqlClient.SqlClient;
-  const summaries = yield* listViewSummaries(filters.isArchived);
+  const summaries = yield* listViewSummaries(filters.isArchived, filters.includeRituals ?? false);
   const ids = new Set(summaries.flatMap((summary) => (summary.workspaceId === null ? [] : [summary.workspaceId])));
   const known = yield* sql<{
     id: WorkspaceId;

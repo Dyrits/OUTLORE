@@ -14,6 +14,8 @@ export const ritualsHandlers = ({ commands }: Pick<HandlerDependencies, "command
             createRitual({
               fallbacks: create.fallbacks,
               instruction: create.instruction,
+              // The origin quest, when there is one, names the realm the Ritual lives in (rituals, Creation).
+              originMissionId: create.originMissionId ?? null,
               primary: create.primary,
               realm: create.realm ?? null,
               schedule: create.schedule,
@@ -24,7 +26,8 @@ export const ritualsHandlers = ({ commands }: Pick<HandlerDependencies, "command
           ),
         ),
       ),
-    DeleteRitual: (given) => commands.run(deleteRitual(given.ritualId)),
+    // The deletion erases the Ritual's whole tree and posts its own follow-ups; no outer wrap, or it would nest.
+    DeleteRitual: (given) => deleteRitual(given.ritualId),
     ListRituals: () => listRituals,
     ReadRitual: (read) => readRitual(read.missionId),
     RunRitual: (given) => commands.run(runRitual(given.ritualId)),

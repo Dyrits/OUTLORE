@@ -108,6 +108,12 @@ export const openThreadByOwner = Effect.fnUntraced(function* (
   backups: ReadonlyArray<BackupCompanion> | null = null,
   anchorMessageId: string | null = null,
 ) {
+  const sql = yield* SqlClient.SqlClient;
+  // A Ritual opens no errands by hand; its runs are the errands (CHG-0616).
+  const [beneathRitual] = yield* sql<{ id: string }>`SELECT r.id FROM rituals r
+      JOIN missions m ON m.id = r.mission_id WHERE m.top_thread_id = ${parentId}`;
+  if (beneathRitual !== undefined)
+    return yield* invalid("A Ritual opens no errands by hand: its runs are the errands. Run the Ritual again.");
   if ((yield* depthOf(parentId)) + 1 > maxOwnerDepth) {
     return yield* invalid("Open an errand from the quest conversation.");
   }
@@ -272,8 +278,13 @@ export const reportResult = Effect.fnUntraced(function* (threadId: string, resul
     yield* sql`UPDATE missions SET is_asking_done = 1 WHERE id = ${thread.missionId} AND ending IS NULL`;
     return changed(null);
   }
+  // A run errand reports into its Ritual's conversation — the run history no thread takes a turn at (CHG-0616) —
+  // so the report stays in the history without waking the conversation.
+  const [beneathRitual] = yield* sql<{ id: string }>`SELECT r.id FROM rituals r
+      JOIN missions m ON m.id = r.mission_id WHERE m.top_thread_id = ${thread.parentId}`;
   const { threadsToWake } = yield* insertMessage({
     fromThreadId: threadId,
+    isConversationOnly: beneathRitual !== undefined,
     isQueued: false,
     isResult: true,
     text: result,

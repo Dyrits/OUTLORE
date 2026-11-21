@@ -58,7 +58,7 @@ const archive = (missionId: MissionId) =>
   });
 
 describe("reading references in a message", () => {
-  it.live("does not grant reach or claim to grant it from a Ritual run's instruction", () =>
+  it.live("does not grant reach or claim to grant it from a Ritual run's trigger and instruction", () =>
     withService(() =>
       Effect.gen(function* () {
         const target = yield* startQuest("Other work");
@@ -74,18 +74,25 @@ describe("reading references in a message", () => {
           workspacePath: null,
         });
         yield* call({ _tag: "RunRitual", ritualId: ritual.ritualId });
-        const run = yield* settle(ritual.missionId, (detail) => detail.messages.length >= 2 && isIdle(detail));
-        expect(yield* tool(ritual.threadId, "read_journal", { mission: target.missionId })).toContain(
-          "Only Chronicler",
+        const settled = yield* settle(ritual.missionId, (detail) => {
+          const errand = detail.threads.find(
+            (thread) => thread.parentId === detail.mission.topThreadId && thread.isAside === false,
+          );
+          return errand !== undefined && errand.state === "Resting";
+        });
+        const errand = settled.threads.find(
+          (thread) => thread.parentId === settled.mission.topThreadId && thread.isAside === false,
         );
-        expect(yield* tool(ritual.threadId, "send_thread_message", { text: "Hi", to: target.threadId })).toContain(
+        if (errand === undefined) return yield* Effect.die("No run errand");
+        // The errand's opening request wears the touch of the run's trigger: it grants no reach of its own.
+        expect(yield* tool(errand.id, "read_journal", { mission: target.missionId })).toContain("Only Chronicler");
+        expect(yield* tool(errand.id, "send_thread_message", { text: "Hi", to: target.threadId })).toContain(
           "Not sent",
         );
+        const run = yield* read(ritual.missionId, errand.id);
         expect(lastAgentText(run)).not.toContain("This turn you may read its journal");
-        yield* say(ritual.missionId, ritual.threadId, `Ask ${reference}`);
-        expect(yield* tool(ritual.threadId, "read_journal", { mission: target.missionId })).not.toContain(
-          "Only Chronicler",
-        );
+        yield* say(ritual.missionId, errand.id, `Ask ${reference}`);
+        expect(yield* tool(errand.id, "read_journal", { mission: target.missionId })).not.toContain("Only Chronicler");
       }),
     ),
   );

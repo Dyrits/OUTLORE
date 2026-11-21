@@ -41,11 +41,17 @@ type DerivedAction = {
   readonly summary: string;
 };
 
-/** The Ritual whose quest's top thread this is, with its reviewed scope; null for any other thread. */
+/**
+ * The Ritual this thread serves — directly as its conversation thread, or as a run errand directly beneath it — with
+ * its reviewed scope; null for any other thread (CHG-0616: a Ritual's runs are errands).
+ */
 const readRitualOfThread = Effect.fnUntraced(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<{ authority: string }>`
-      SELECT r.authority FROM rituals r JOIN missions m ON m.id = r.mission_id WHERE m.top_thread_id = ${threadId}`;
+      SELECT r.authority FROM rituals r
+      JOIN missions m ON m.id = r.mission_id
+      JOIN threads t ON t.id = ${threadId}
+      WHERE m.top_thread_id = t.id OR (t.parent_id IS NOT NULL AND m.top_thread_id = t.parent_id)`;
   return row === undefined ? null : { scope: Schema.decodeUnknownSync(RitualScopeSchema)(JSON.parse(row.authority)) };
 });
 

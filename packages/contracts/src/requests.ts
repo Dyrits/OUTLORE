@@ -153,6 +153,8 @@ export const EditQueuedMessage = Schema.TaggedStruct("EditQueuedMessage", {
 export const RemoveQueuedMessage = Schema.TaggedStruct("RemoveQueuedMessage", { messageId: MessageId });
 /** The dashboard (not archived) or the Archived view, filtered by state and workspace and searched. */
 export const ListMissions = Schema.TaggedStruct("ListMissions", {
+  /** Whether the realm's Rituals come with the quests, as ritual rows among them; left out they stay apart. */
+  includeRituals: Schema.optionalKey(Schema.Boolean),
   isArchived: Schema.Boolean,
   /** Matched against titles and briefings, ignoring case; null or blank matches all. */
   search: Schema.NullOr(Schema.String),

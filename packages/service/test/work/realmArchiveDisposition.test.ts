@@ -171,11 +171,21 @@ describe("choosing what a realm archive does with its quests and Rituals", () =>
         const realm = yield* createFolderRealm(path);
         const ritual = yield* createRitual(path, "wait 5000");
         yield* call({ _tag: "RunRitual", ritualId: ritual.ritualId });
-        yield* settle(ritual.missionId, (detail) => detail.thread.state === "Underway");
+        // A run works in its errand beneath the Ritual (CHG-0616); the preview counts it among the threads at work.
+        const underway = yield* settle(ritual.missionId, (detail) => {
+          const errand = detail.threads.find(
+            (thread) => thread.parentId === detail.mission.topThreadId && thread.isAside === false,
+          );
+          return errand !== undefined && errand.state === "Underway";
+        });
+        const [errand] = underway.threads.filter(
+          (thread) => thread.parentId === underway.mission.topThreadId && thread.isAside === false,
+        );
+        if (errand === undefined) return yield* Effect.die("No run errand");
         const preview = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
         expect(preview.workingCount).toBe(1);
         yield* call({ _tag: "ArchiveRealm", snapshot: preview.snapshot, workspaceId: realm.id });
-        expect((yield* read(ritual.missionId)).thread.state).toBe("Stopped");
+        expect((yield* read(ritual.missionId, errand.id)).thread.state).toBe("Stopped");
       }),
     ),
   );
