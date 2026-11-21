@@ -18,6 +18,7 @@ import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, outline, radii, stateLabels, stateTones } from "../foundation/theme";
 import { RealmArchiveAction } from "../realms/realmArchiveAction";
 import { RealmName } from "../realms/realmName";
+import { RitualForm } from "../rituals/ritualForm";
 import { RitualControls } from "../rituals/rituals";
 import { Button } from "../ui/button";
 import { ProviderMark } from "../ui/providerMarks";
@@ -109,12 +110,15 @@ export function QuestSidebar({
   mission,
   onOpenBudget,
   onOpenJournal,
+  onOpenMission,
   onBack,
   onOpenQuest,
   thread,
 }: {
   client: ServiceClient;
   mission: MissionDetail["mission"];
+  /** Opens another quest: the origin quest of a Ritual, or the Ritual made from this quest. */
+  onOpenMission: (missionId: MissionId) => void;
   /** Given where the panel previews a quest from the board: returns to the board's overview. */
   onBack?: () => void;
   onOpenBudget: () => void;
@@ -124,7 +128,7 @@ export function QuestSidebar({
   /** Given in the quest's conversation: what the open thread adds. */
   thread?: ThreadSections;
 }) {
-  const [section, setSection] = useState<"Skills" | "Tools" | "Connectors" | null>(null);
+  const [section, setSection] = useState<"Ritual" | "Skills" | "Tools" | "Connectors" | null>(null);
   const { usage } = mission;
   const tone = stateTones[mission.state];
   return (
@@ -156,7 +160,9 @@ export function QuestSidebar({
               .join("")}
           </Text>
         </View>
-        {mission.ritual !== null && <RitualControls client={client} missionId={mission.id} />}
+        {mission.ritual !== null && (
+          <RitualControls client={client} missionId={mission.id} onOpenMission={onOpenMission} />
+        )}
         {onOpenQuest !== undefined && (
           <Pressable
             accessibilityRole="button"
@@ -196,6 +202,10 @@ export function QuestSidebar({
           {thread?.spends}
           <Row icon="wallet" label="Quest budget" onPress={onOpenBudget} value={budgetValueOf(mission.budget)} />
           <Row icon="chart" label="Quest usage" value={usedTextOf(mission.consumption)} />
+          {/* An ordinary quest schedules its work for a Ritual: the form takes the quest's realm and keeps a link (CHG-0616). */}
+          {mission.ritual === null && thread?.sideQuest == null && mission.state !== "Archived" && (
+            <Row icon="moon" label="Schedule as a Ritual" onPress={() => setSection("Ritual")} />
+          )}
           {/* Archive and completion live in the header, while restore or reopen appears here for archived work. */}
           {thread?.sideQuest != null
             ? thread.sideQuest.restore !== null && <View style={local.does}>{thread.sideQuest.restore}</View>
@@ -223,6 +233,19 @@ export function QuestSidebar({
             <Button isPrimary={false} label="Back" onPress={() => setSection(null)} />
           </View>
           <ScrollView contentContainerStyle={local.content} key={section} style={styles.flex}>
+            {section === "Ritual" && (
+              // The ritual form with this quest as origin: its realm is taken, and once made the Ritual opens.
+              <RitualForm
+                client={client}
+                onCancel={() => setSection(null)}
+                onDone={(ritualMissionId) => {
+                  setSection(null);
+                  onOpenMission(ritualMissionId);
+                }}
+                originMissionId={mission.id}
+                ritual={null}
+              />
+            )}
             {section === "Skills" && thread?.skills.content}
             {section === "Tools" && thread?.tools.content}
             {section === "Connectors" && (

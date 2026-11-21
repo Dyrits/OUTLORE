@@ -18,6 +18,7 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { RealmChooser } from "../realms/workspaces";
 import { Toggle } from "../ui/controls";
 import { Menu } from "../ui/pickers";
+import { createRequestOf } from "./ritualCreate";
 import { isTimeValid } from "./ritualLabels";
 import { ritualStyles } from "./ritualStyles";
 import { Part, ScheduleRow, Word } from "./scheduleRow";
@@ -40,18 +41,25 @@ const isScheduleValid = (schedule: RitualSchedule) =>
 
 /**
  * Makes a Ritual, or edits one: its title, instruction, schedule, the Companion it runs on, and the Companions it falls
- * back to, in order, when a run fails. A new Ritual gets a quest of its own, in a realm if one is chosen.
+ * back to, in order, when a run fails. A new Ritual is an entity of its realm, beside the quests; scheduled from an
+ * open quest it takes that quest's realm and keeps a link to it.
  */
 export function RitualForm({
   client,
+  initialWorkspacePath = null,
   onCancel,
   onDone,
+  originMissionId = null,
   ritual,
 }: {
   client: ServiceClient;
+  /** The folder of the realm a "+ Ritual" was pressed in; the form can change it. */
+  initialWorkspacePath?: string | null;
   onCancel: () => void;
-  /** Called once saved, with the Ritual's quest. */
+  /** Called once saved, with the Ritual's own conversation. */
   onDone: (missionId: MissionId) => void;
+  /** The quest the Ritual is scheduled from: its realm is then taken, and no realm is chosen in the form. */
+  originMissionId?: MissionId | null;
   /** The Ritual to edit, or null to make one. */
   ritual: Ritual | null;
 }) {
@@ -68,7 +76,7 @@ export function RitualForm({
   );
   const [fallbacks, setFallbacks] = useState<ReadonlyArray<Runner>>(ritual?.fallbacks ?? []);
   const [isOn, setIsOn] = useState(ritual?.isOn ?? true);
-  const [workspacePath, setWorkspacePath] = useState<string | null>(null);
+  const [workspacePath, setWorkspacePath] = useState<string | null>(initialWorkspacePath);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const canSave =
@@ -105,17 +113,19 @@ export function RitualForm({
     const saved =
       ritual === null
         ? client
-            .request({
-              _tag: "CreateRitual",
-              fallbacks,
-              instruction: instruction.trim(),
-              primary,
-              requestId: newRequestId(),
-              schedule,
-              scope: scopeToSave,
-              title: title.trim(),
-              workspacePath,
-            })
+            .request(
+              createRequestOf({
+                fallbacks,
+                instruction: instruction.trim(),
+                originMissionId,
+                primary,
+                requestId: newRequestId(),
+                schedule,
+                scope: scopeToSave,
+                title: title.trim(),
+                workspacePath,
+              }),
+            )
             .then((created) => created.missionId)
         : client
             .request({
@@ -149,7 +159,7 @@ export function RitualForm({
           value={title}
         />
       </Part>
-      <Part name="Instruction, sent to its quest at each run">
+      <Part name="Instruction, sent on each run">
         <TextInput
           accessibilityLabel="Ritual instruction"
           multiline
@@ -245,7 +255,7 @@ export function RitualForm({
           </Pressable>
         )}
       </Part>
-      {ritual === null ? (
+      {ritual === null && originMissionId === null ? (
         <Part name="Realm">
           <RealmChooser
             client={client}
@@ -253,6 +263,11 @@ export function RitualForm({
             realms={known?.workspaces ?? []}
             value={workspacePath}
           />
+        </Part>
+      ) : ritual === null ? (
+        // The origin quest names the realm the Ritual lives in (CHG-0616, Creation): its realm is already taken.
+        <Part name="Realm">
+          <Text style={styles.muted}>This Ritual takes the realm of the quest it is scheduled from.</Text>
         </Part>
       ) : (
         <View style={ritualStyles.sentence}>

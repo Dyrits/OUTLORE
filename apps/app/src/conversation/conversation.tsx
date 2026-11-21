@@ -61,7 +61,7 @@ export function Conversation({
   const shownId = shown?.thread.id ?? null;
   useShownThreadsRead(client, shownId === null ? [] : [shownId], true);
   const hasSideQuests = data?.threads.some((thread) => thread.parentId !== null) ?? false;
-  useQuestPanel(shown && questPanelOf({ client, detail: shown, onSelectThread: setSelectedId, pages }));
+  useQuestPanel(shown && questPanelOf({ client, detail: shown, onOpenMission, onSelectThread: setSelectedId, pages }));
   if (pages.screen !== null) return pages.screen;
   return (
     <View style={[styles.questLayout, isCompact && styles.questLayoutCompact]}>

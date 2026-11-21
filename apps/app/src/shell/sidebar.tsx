@@ -5,13 +5,14 @@ import { ReserveRows } from "../editors/budgets";
 import { PlanLimitRings } from "../editors/planLimitRings";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { canHover } from "../foundation/inputModality";
-import { allMissions } from "../foundation/queries";
+import { listedMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { MoveQuestModal } from "../quests/moveQuestModal";
 import { type Destination, type MoveConfirmation, moveConfirmationOf } from "../quests/questMove";
 import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
+import { NewRitualModal } from "../rituals/ritualModal";
 import { FoldChevron } from "../ui/foldChevron";
 import { SettingsIcon } from "../ui/settingsIcons";
 import { unreadCountOf } from "./chronicleFeed";
@@ -19,7 +20,7 @@ import { DropTarget, RealmDragSource } from "./questDrag";
 import { placementsOf, type RealmListing, reorderedRealmIds, toggledFold } from "./questTree";
 import { NewQuestIcon, NewRealmIcon, useRowActions } from "./railActions";
 import { railOutlineOf } from "./railOutline";
-import { Quest, RealmHeader } from "./railQuests";
+import { Quest, RealmHeader, RitualRow } from "./railQuests";
 import { Divider, Row, ShowAll } from "./railRows";
 import { isHovered, local } from "./railStyles";
 
@@ -80,7 +81,7 @@ export function Sidebar({
   /** The errand open in the open quest, or null for the quest itself. */
   openThread: ThreadId | null;
 }) {
-  const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
+  const { data } = useServiceQuery(client, listedMissions.request, listedMissions.key);
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   // What the Chronicle's badge counts: the updates the owner has not read (CHG-0569).
   const { data: chronicle } = useServiceQuery(client, { _tag: "ReadChronicle" }, "chronicle-badge");
@@ -111,6 +112,8 @@ export function Sidebar({
     openThread,
     shouldShowAgentThreads: settings?.shouldShowAgentThreads ?? true,
   };
+  // The active realms: a Ritual's realm missing from them is archived, which its row marks.
+  const realms = data?.workspaces ?? [];
 
   // Starts an empty quest and opens it; its realm unfolds to show it, and a refusal shows under the realm.
   const [newQuestFailure, setNewQuestFailure] = useState<{ message: string; groupId: string } | null>(null);
@@ -142,6 +145,9 @@ export function Sidebar({
     if (mission !== undefined && confirmation !== null)
       setPendingMove({ confirmation, destination, missionId: mission.id });
   };
+
+  // A Ritual being scheduled in a realm, until its form is saved or cancelled.
+  const [newRitualRealm, setNewRitualRealm] = useState<{ name: string; path: string | null } | null>(null);
 
   // A realm dropped on another realm takes the place before or after it; the whole new order is saved.
   const dropRealmOn = (targetId: WorkspaceId) => (movedId: string, side: "before" | "after") => {
@@ -179,6 +185,7 @@ export function Sidebar({
                 ? {}
                 : { onOpenChannel: () => onOpenChannel({ id: realm.id, name: realm.name }) })}
               onNewQuest={() => startQuest(realm.id, realm.id)}
+              onNewRitual={() => setNewRitualRealm({ name: realm.name, path: realm.path })}
               onOverview={() => onOpenRealmQuests({ id: realm.id, name: realm.name })}
               onToggle={() => setRealmFolds((current) => new Map(current).set(realm.id, !isClosed))}
               path={realm.path}
@@ -192,9 +199,19 @@ export function Sidebar({
             </Text>
           )}
           {!isClosed &&
-            realm.visibleQuests.map((mission) => (
-              <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
-            ))}
+            realm.visibleQuests.map((mission) =>
+              mission.ritual === null ? (
+                <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
+              ) : (
+                <RitualRow
+                  {...questProps}
+                  isOpen={outline.isQuestOpen(mission.id)}
+                  key={mission.id}
+                  mission={mission}
+                  realms={realms}
+                />
+              ),
+            )}
           {!isClosed && realm.quests.length > realm.visibleQuests.length && (
             <ShowAll
               label={`Show all ${realm.quests.length} quests`}
@@ -263,9 +280,19 @@ export function Sidebar({
         {!isFolded("Borderlands") && placements.borderlands.length === 0 && (
           <Text style={local.emptyGroup}>No quest in the Borderlands yet.</Text>
         )}
-        {(isFolded("Borderlands") ? [] : borderlandQuests).map((mission) => (
-          <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
-        ))}
+        {(isFolded("Borderlands") ? [] : borderlandQuests).map((mission) =>
+          mission.ritual === null ? (
+            <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
+          ) : (
+            <RitualRow
+              {...questProps}
+              isOpen={outline.isQuestOpen(mission.id)}
+              key={mission.id}
+              mission={mission}
+              realms={realms}
+            />
+          ),
+        )}
         {!isFolded("Borderlands") && placements.borderlands.length > borderlandQuests.length && (
           <ShowAll
             label={`Show all ${placements.borderlands.length} quests`}
@@ -297,6 +324,14 @@ export function Sidebar({
           initial={{ name: "", path: "" }}
           isFolderRequired={false}
           onCancel={() => setIsCreating(false)}
+        />
+      )}
+      {newRitualRealm !== null && (
+        <NewRitualModal
+          client={client}
+          onCancel={() => setNewRitualRealm(null)}
+          onDone={onOpenMission}
+          realmPath={newRitualRealm.path}
         />
       )}
     </View>

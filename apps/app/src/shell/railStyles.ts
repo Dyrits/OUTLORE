@@ -133,6 +133,12 @@ export const local = StyleSheet.create({
     fontWeight: "600",
   },
   realmTextEnd: { flex: 1 },
+  // A Ritual's row among the quests (CHG-0616): dimmed while off, its schedule muted at the row's end, and a dot
+  // while a run is underway.
+  ritualOff: { opacity: 0.6 },
+  ritualSchedule: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
+  ritualTrailing: { alignItems: "center", flexDirection: "row", gap: 4 },
+  ritualUnderway: { backgroundColor: colors.accentText, borderRadius: radii.pill, height: 6, width: 6 },
   row: {
     alignItems: "center",
     borderRadius: radii.md,

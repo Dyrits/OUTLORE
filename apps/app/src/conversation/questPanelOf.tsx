@@ -1,4 +1,4 @@
-import type { MissionDetail, ThreadId } from "@outlore/contracts";
+import type { MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
 import type { ServiceClient } from "../foundation/client";
 import type { useQuestPages } from "./questPages";
 import { ThreadPanel } from "./threadPanel";
@@ -7,11 +7,14 @@ import { ThreadPanel } from "./threadPanel";
 export const questPanelOf = ({
   client,
   detail,
+  onOpenMission,
   onSelectThread,
   pages,
 }: {
   client: ServiceClient;
   detail: MissionDetail;
+  /** Opens another quest, such as the origin quest of a Ritual. */
+  onOpenMission: (missionId: MissionId) => void;
   onSelectThread: (threadId: ThreadId) => void;
   pages: ReturnType<typeof useQuestPages>;
 }) => (
@@ -22,6 +25,7 @@ export const questPanelOf = ({
     onOpenBudget={() => pages.openBudget("Mission")}
     onOpenJournal={pages.openJournal}
     onOpenLore={() => pages.openLore({ id: detail.thread.id, title: detail.thread.title })}
+    onOpenMission={onOpenMission}
     onOpenQuest={() => onSelectThread(detail.mission.topThreadId)}
   />
 );

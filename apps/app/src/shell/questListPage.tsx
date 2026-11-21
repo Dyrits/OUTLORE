@@ -2,7 +2,7 @@ import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
-import { allMissions } from "../foundation/queries";
+import { listedMissions } from "../foundation/queries";
 import { useHasSidebar, useQuestPanel } from "../foundation/shellContext";
 import { colors, fontSizes, fonts } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -35,8 +35,10 @@ export function QuestListScreen({
   // Quests start unfolded here, so their errands show; the owner folds any quest or errand.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const toggle = (id: string) => setCollapsed((current) => toggledFold(current, id));
-  const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
-  const quests = (data?.missions ?? []).filter((mission) => mission.workspaceId === listing.id);
+  const { data } = useServiceQuery(client, listedMissions.request, listedMissions.key);
+  // The realm's things: its quests and, beside them, its Rituals (CHG-0616); the realm's panel keeps to the quests.
+  const missions = (data?.missions ?? []).filter((mission) => mission.workspaceId === listing.id);
+  const quests = missions.filter((mission) => mission.ritual === null);
   const now = Date.now();
   const hasSidebar = useHasSidebar();
   const realm = data?.workspaces.find((each) => each.id === listing.id) ?? null;
@@ -74,8 +76,8 @@ export function QuestListScreen({
         </View>
       )}
       <ScrollView contentContainerStyle={local.content} style={local.page}>
-        {quests.length === 0 && <EmptyBoard line="No quest in this realm yet." />}
-        {recencyGroupsOf(quests, now).map((group) => (
+        {missions.length === 0 && <EmptyBoard line="No quest in this realm yet." />}
+        {recencyGroupsOf(missions, now).map((group) => (
           <View key={group.heading} style={local.group}>
             <Text style={local.heading}>{group.heading}</Text>
             {group.quests.map((mission) => (
@@ -88,6 +90,7 @@ export function QuestListScreen({
                 onOpen={onOpen}
                 onOpenThread={onOpenThread}
                 onToggle={toggle}
+                realms={data?.workspaces ?? []}
                 shouldShowAgentThreads={settings?.shouldShowAgentThreads ?? true}
               />
             ))}

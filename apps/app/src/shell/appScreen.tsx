@@ -7,7 +7,6 @@ import { PermissionsScreen } from "../editors/permissions";
 import type { ServiceClient } from "../foundation/client";
 import { CompanionDockActions, useHasSidebar } from "../foundation/shellContext";
 import { LoreScreen } from "../lore/lore";
-import { RitualsScreen } from "../rituals/rituals";
 import { SettingsScreen } from "../settings/settings";
 import type { SettingsSectionId } from "../settings/settingsSections";
 import { UsageScreen } from "../usage";
@@ -118,7 +117,6 @@ function AppScreenContent({
     Lore: <LoreScreen client={client} onBack={() => navigation.goTo("Home")} threadId={null} title="All lore" />,
     RealmQuests: view.listedRealm === null ? home : quests(view.listedRealm),
     Reserves: <UsageScreen client={client} />,
-    Rituals: <RitualsScreen client={client} onOpen={navigation.openMission} />,
     Settings: view.isPermissionsOpen ? (
       <PermissionsScreen client={client} onBack={() => navigation.setPermissions(false)} />
     ) : (

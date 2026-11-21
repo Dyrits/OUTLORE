@@ -1,7 +1,7 @@
 import { StyleSheet } from "react-native";
 import { colors, fontSizes, fonts, outline, round } from "../foundation/theme";
 
-/** The styles the Rituals screen, its form, its cards, and its quest controls share. */
+/** The styles the Ritual's rows and panel, its form, and its controls share. */
 export const ritualStyles = StyleSheet.create({
   actions: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 12 },
   card: {
@@ -28,6 +28,8 @@ export const ritualStyles = StyleSheet.create({
     fontWeight: "700",
   },
   cardTop: { alignItems: "center", flexDirection: "row", gap: 12 },
+  // The one confirmation a Ritual's Delete asks: the question, what is lost, and the pair of presses.
+  confirmation: { gap: 6 },
   content: { gap: 18, paddingHorizontal: 28, paddingVertical: 20 },
   controls: { gap: 8, marginVertical: 10 },
   fact: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.lg },

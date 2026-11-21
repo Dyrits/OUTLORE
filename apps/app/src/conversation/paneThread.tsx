@@ -76,11 +76,14 @@ export function PaneThread({
             alternateBody={
               isQuest && tab === "Errands" ? (
                 <ScrollView contentContainerStyle={local.list} style={local.page}>
-                  <NewReplyCard
-                    isDisabled={!detail.thread.actions.canOpenBeneath}
-                    label="New errand"
-                    onPress={onStartErrand}
-                  />
+                  {/* A Ritual's runs are its only errands (CHG-0616): none is opened by hand, on a quest it still is. */}
+                  {detail.mission.ritual === null && (
+                    <NewReplyCard
+                      isDisabled={!detail.thread.actions.canOpenBeneath}
+                      label="New errand"
+                      onPress={onStartErrand}
+                    />
+                  )}
                   {detail.threads
                     .filter((thread) => thread.parentId === threadId && thread.isArchived !== true)
                     .map((thread) => ({ lastActivityAt: thread.lastActivityAt, state: thread.shownState, thread }))
@@ -90,7 +93,7 @@ export function PaneThread({
                     ))}
                 </ScrollView>
               ) : isDetails ? (
-                questPanelOf({ client, detail, onSelectThread: onOpenThread, pages })
+                questPanelOf({ client, detail, onOpenMission, onSelectThread: onOpenThread, pages })
               ) : null
             }
             canOpenDetails={false}

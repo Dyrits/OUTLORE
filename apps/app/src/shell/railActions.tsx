@@ -53,6 +53,11 @@ export function NewRealmIcon({ color }: { color: string }) {
   return <CreationIcon color={color} paths={["M12 5v14", "M5 12h14"]} />;
 }
 
+/** The moon that marks a Ritual elsewhere, with a plus in its open corner: the mark of scheduling a Ritual (CHG-0616). */
+export function NewRitualIcon({ color }: { color: string }) {
+  return <CreationIcon color={color} paths={emblemPaths.moon} plus="M6 2.5v6M3 5.5h6" />;
+}
+
 function CreationIcon({ color, paths, plus }: { color: string; paths: readonly string[]; plus?: string }) {
   return (
     <Svg

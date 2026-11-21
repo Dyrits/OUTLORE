@@ -1,4 +1,4 @@
-import type { ContextGauge, ContextPartKind, MissionDetail, ThreadId } from "@outlore/contracts";
+import type { ContextGauge, ContextPartKind, MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
@@ -85,6 +85,7 @@ export function ThreadPanel({
   onOpenBudget,
   onOpenJournal,
   onOpenLore,
+  onOpenMission,
   onOpenQuest,
 }: {
   client: ServiceClient;
@@ -92,6 +93,8 @@ export function ThreadPanel({
   onOpenBudget: () => void;
   onOpenJournal: () => void;
   onOpenLore: () => void;
+  /** Opens another quest, such as the origin quest of a Ritual. */
+  onOpenMission: (missionId: MissionId) => void;
   /** Opens the quest's own thread, from an errand's panel. */
   onOpenQuest: () => void;
 }) {
@@ -176,6 +179,7 @@ export function ThreadPanel({
       mission={detail.mission}
       onOpenBudget={onOpenBudget}
       onOpenJournal={onOpenJournal}
+      onOpenMission={onOpenMission}
       thread={{
         companions,
         knows,

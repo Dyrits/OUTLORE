@@ -33,6 +33,7 @@ export function Row({
   label,
   onPress,
   textStyle,
+  trailing,
 }: {
   /** What stands at the end only with the row's marks, on hover or focus, given whether they show. */
   hoverAccessory?: (isShown: boolean) => ReactNode;
@@ -50,6 +51,8 @@ export function Row({
    */
   corners?: readonly RowCorner[];
   textStyle?: object;
+  /** What stands after the label, always in view, such as a Ritual's schedule. */
+  trailing?: ReactNode;
 }) {
   const { focusProps, isShown, rowProps } = useRowActions();
   return (
@@ -73,6 +76,7 @@ export function Row({
       <Text numberOfLines={1} style={[local.rowText, isSelected && local.rowTextSelected, textStyle]}>
         {label}
       </Text>
+      {trailing}
       {hoverAccessory?.(isShown)}
       {corners?.map(({ color, share }) => (
         <View

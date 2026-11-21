@@ -119,8 +119,8 @@ export function RealmArchiveAction({
               {preview.rituals.length === 1
                 ? `The Ritual "${preview.rituals[0]?.title}" will be switched off.`
                 : `${preview.rituals.length} Rituals (${preview.rituals.map((ritual) => `"${ritual.title}"`).join(", ")}) will be switched off.`}{" "}
-              They stay in Rituals with their instructions and history, marked as belonging to an archived realm, and
-              stay off after the realm is restored until you switch them on.
+              They stay in place beside this realm's things, with their instructions and history, marked Realm archived,
+              and stay off after the realm is restored until you switch them on.
             </Text>
           )}
           {preview.workingCount > 0 && (

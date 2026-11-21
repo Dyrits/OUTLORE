@@ -1,9 +1,9 @@
 import type { MissionId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text } from "react-native";
-import { NewReplyCard, QuestCard } from "../conversation/replyLine";
+import { NewReplyCard, QuestCard, RitualReplyCard } from "../conversation/replyLine";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
-import { allMissions } from "../foundation/queries";
+import { listedMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { compareUrgency } from "./childNotches";
@@ -24,7 +24,7 @@ export function ChannelQuests({
   onOpen: (missionId: MissionId) => void;
   realmId: WorkspaceId | null;
 }) {
-  const { data, error } = useServiceQuery(client, allMissions.request, allMissions.key);
+  const { data, error } = useServiceQuery(client, listedMissions.request, listedMissions.key);
   const [isStarting, setStarting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const start = async () => {
@@ -39,8 +39,9 @@ export function ChannelQuests({
       setStarting(false);
     }
   };
-  // The realm's quests read most urgent first (mission-tracking, Mission state), work that is over at the end.
-  const quests = (data?.missions ?? []).filter((mission) => mission.workspaceId === realmId).sort(compareUrgency);
+  // The realm's quests read most urgent first (mission-tracking, Mission state), work that is over at the end; its
+  // Rituals keep their place among them (CHG-0616).
+  const missions = (data?.missions ?? []).filter((mission) => mission.workspaceId === realmId).sort(compareUrgency);
   return (
     <ScrollView contentContainerStyle={local.list} style={local.page}>
       <NewReplyCard isDisabled={isStarting} label="New quest" onPress={() => void start()} />
@@ -50,9 +51,13 @@ export function ChannelQuests({
         </Text>
       )}
       {error !== null && <Text style={styles.error}>{error}</Text>}
-      {quests.map((quest) => (
-        <QuestCard key={quest.id} label="Quest" onOpen={() => onOpen(quest.id)} origin="Quest" quest={quest} />
-      ))}
+      {missions.map((mission) =>
+        mission.ritual === null ? (
+          <QuestCard key={mission.id} label="Quest" onOpen={() => onOpen(mission.id)} origin="Quest" quest={mission} />
+        ) : (
+          <RitualReplyCard key={mission.id} onOpen={() => onOpen(mission.id)} ritual={mission} />
+        ),
+      )}
     </ScrollView>
   );
 }

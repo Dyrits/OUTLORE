@@ -1,11 +1,17 @@
-import type { MissionId, MissionSummary, ThreadId, ThreadSummary } from "@outlore/contracts";
+import type { MissionId, MissionSummary, ThreadId, ThreadSummary, WorkspaceChoice } from "@outlore/contracts";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
+import { Emblem } from "../foundation/emblems";
 import { harnessLabels, modelLabelOf } from "../foundation/formatting";
+import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii, stateLabels, stateTones } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { EndingConfirmation } from "../quests/missionActions";
+import { DeleteRitualButton, realmArchivedNotice } from "../rituals/ritualCard";
+import { nextRunLabelOf, scheduleLabelOf } from "../rituals/ritualLabels";
+import { isRealmArchivedOf } from "../rituals/ritualRow";
 import { agoOf } from "./questRecency";
 import { questListRowsOf } from "./questTree";
 import { ArchiveIcon, DeleteIcon } from "./railActions";
@@ -92,6 +98,109 @@ function QuestLine({
   );
 }
 
+/**
+ * A Ritual's line on a list of a realm's things (CHG-0616): the moon and its schedule, a dot while a run is
+ * underway, dimmed while off, and its runs beneath it as errands. Its only mark is Delete, whose one confirmation
+ * names what is lost; a Ritual archives nothing.
+ */
+function RitualLine({
+  client,
+  collapsed,
+  isRealmArchived,
+  mission,
+  now,
+  onOpen,
+  onOpenThread,
+  onToggle,
+  shouldShowAgentThreads,
+  threads,
+}: {
+  client: ServiceClient;
+  collapsed: ReadonlySet<string>;
+  isRealmArchived: boolean;
+  mission: MissionSummary;
+  now: number;
+  onOpen: (missionId: MissionId) => void;
+  onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
+  onToggle: (id: string) => void;
+  shouldShowAgentThreads: boolean;
+  /** The Ritual's read tree, null until it loads; the runs show beneath the Ritual once it has. */
+  threads: ReadonlyArray<ThreadSummary> | null;
+}) {
+  const ritual = mission.ritual;
+  const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  if (ritual === null) return null;
+  return (
+    <>
+      <Pressable
+        accessibilityLabel={mission.title}
+        accessibilityRole="button"
+        onPress={() => onOpen(mission.id)}
+        style={(pressed: { pressed: boolean; hovered?: boolean }) => [
+          local.line,
+          { paddingLeft: 4 },
+          (pressed.pressed || pressed.hovered) && local.lineHovered,
+        ]}
+      >
+        <View style={local.ritualMoon}>
+          <Emblem name="moon" size={14} tint={colors.highlight} />
+        </View>
+        <View style={styles.flex}>
+          <View style={local.ritualTitleRow}>
+            <Text numberOfLines={1} style={local.ritualTitle}>
+              {mission.title}
+            </Text>
+            {ritual.lastRunState === "Underway" && <View style={local.ritualUnderway} />}
+          </View>
+          <Text numberOfLines={1} style={[local.meta, !ritual.isOn && local.ritualOff]}>
+            {scheduleLabelOf(ritual.schedule)} · {nextRunLabelOf(ritual.isOn ? ritual.nextRunAt : null, now)} ·{" "}
+            {agoOf(mission.lastActivityAt, now)}
+          </Text>
+        </View>
+        <Pressable
+          accessibilityLabel={`Delete ${mission.title}`}
+          accessibilityRole="button"
+          hitSlop={6}
+          onPress={(event) => {
+            event.stopPropagation();
+            setIsDeleting(true);
+          }}
+          style={local.archive}
+        >
+          <DeleteIcon color={colors.textMuted} />
+        </Pressable>
+      </Pressable>
+      {isDeleting && (
+        <View style={{ paddingLeft: 22 }}>
+          <DeleteRitualButton client={client} onError={setError} ritualId={ritual.id} title={mission.title} />
+        </View>
+      )}
+      {isRealmArchived && <Text style={[local.meta, { paddingLeft: 22 }]}>{realmArchivedNotice}</Text>}
+      {questListRowsOf(mission, threads, collapsed, shouldShowAgentThreads)
+        // The Ritual's own row is drawn above; only its runs' errand rows follow beneath it.
+        .filter((row) => row.thread !== null)
+        .map((row) => (
+          <QuestLine
+            depth={row.depth}
+            harness={row.thread?.harness ?? mission.harness}
+            isOpen={!collapsed.has(row.id)}
+            key={row.id}
+            lastActivityAt={row.thread?.lastActivityAt ?? mission.lastActivityAt}
+            model={row.thread?.model ?? mission.model}
+            now={now}
+            onArchive={null}
+            onOpen={() => onOpenThread(mission.id, row.thread?.id as ThreadId)}
+            onToggle={row.hasChildren ? () => onToggle(row.id) : null}
+            state={row.thread?.state ?? mission.state}
+            title={row.thread?.title ?? mission.title}
+          />
+        ))}
+      {error !== null && <Text style={local.error}>{error}</Text>}
+    </>
+  );
+}
+
 /** A quest's tree read at the shared service seam and drawn with the same rows on every overview. */
 export function QuestTreeLines({
   client,
@@ -101,6 +210,7 @@ export function QuestTreeLines({
   onOpen,
   onOpenThread,
   onToggle,
+  realms = [],
   shouldShowAgentThreads,
 }: {
   client: ServiceClient;
@@ -110,16 +220,34 @@ export function QuestTreeLines({
   onOpen: (missionId: MissionId) => void;
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   onToggle: (id: string) => void;
+  /** The active realms, from which a missing one means a Ritual's realm is archived. */
+  realms?: ReadonlyArray<WorkspaceChoice>;
   shouldShowAgentThreads: boolean;
 }) {
+  const ritual = mission.ritual;
   const { data, error } = useServiceQuery(
     client,
     { _tag: "ReadThreadTree", missionId: mission.id },
     `${mission.id}:tree`,
   );
-  const threads: ReadonlyArray<ThreadSummary> | null = mission.threadCount > 1 ? data : null;
   // An archive from the list leaves the open view alone, as from the sidebar.
   const ending = useEnding(client, mission, false);
+  if (ritual !== null)
+    return (
+      <RitualLine
+        client={client}
+        collapsed={collapsed}
+        isRealmArchived={isRealmArchivedOf(mission, realms)}
+        mission={mission}
+        now={now}
+        onOpen={onOpen}
+        onOpenThread={onOpenThread}
+        onToggle={onToggle}
+        shouldShowAgentThreads={shouldShowAgentThreads}
+        threads={mission.threadCount > 1 ? data : null}
+      />
+    );
+  const threads: ReadonlyArray<ThreadSummary> | null = mission.threadCount > 1 ? data : null;
   return (
     <>
       {questListRowsOf(mission, threads, collapsed, shouldShowAgentThreads).map((row) => (
@@ -175,5 +303,11 @@ const local = StyleSheet.create({
   },
   lineHovered: { backgroundColor: colors.controlHover },
   meta: { color: colors.textMuted, flexShrink: 1, fontFamily: fonts.sans, fontSize: fontSizes.sm },
+  // A Ritual's line: the moon in the quest's state-dot place, its dot while a run is underway, dimmed while off.
+  ritualMoon: { alignItems: "center", height: 20, justifyContent: "center", width: 20 },
+  ritualOff: { opacity: 0.75 },
+  ritualTitle: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.base, fontWeight: "600" },
+  ritualTitleRow: { alignItems: "center", flexDirection: "row", gap: 6 },
+  ritualUnderway: { backgroundColor: colors.accentText, borderRadius: radii.pill, height: 6, width: 6 },
   title: { color: colors.text, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.base },
 });

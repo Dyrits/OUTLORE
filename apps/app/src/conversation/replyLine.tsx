@@ -14,6 +14,7 @@ import { agoOf } from "../foundation/formatting";
 import { allMissions } from "../foundation/queries";
 import { colors, fontSizes, radii, stateLabels, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { scheduleLabelOf } from "../rituals/ritualLabels";
 import { handCursor, isHovered } from "../ui/pointer";
 
 /** The threads open as panes beside the one drawing, so a reply line can show that its errand is already open. */
@@ -170,6 +171,32 @@ export function QuestCard({
       sample={quest.lastExchange}
       state={quest.state}
       title={quest.title}
+    />
+  );
+}
+
+/**
+ * A Ritual as a block, as the realm's Quests tab lists it beside the quests (CHG-0616): the moon's meaning carried by
+ * its label, its schedule in place of a quest's last exchange, and its runs openable as errands once pressed.
+ */
+export function RitualReplyCard({ onOpen, ritual }: { onOpen: () => void; ritual: MissionSummary }) {
+  const card = ritual.ritual;
+  const isOpen = useContext(OpenPanes).has(ritual.topThreadId);
+  if (card === null) return null;
+  return (
+    <ReplyCard
+      isOpen={isOpen}
+      label={`Ritual: ${ritual.title}`}
+      meta={[
+        scheduleLabelOf(card.schedule),
+        card.isOn ? "On" : "Off",
+        ...(card.lastRunState === "Underway" ? ["A run is underway"] : []),
+      ].join(" · ")}
+      onPress={onOpen}
+      origin="Ritual"
+      sample={null}
+      state={ritual.state}
+      title={ritual.title}
     />
   );
 }

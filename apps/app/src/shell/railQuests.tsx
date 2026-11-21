@@ -1,12 +1,16 @@
-import type { MissionId, MissionSummary, ThreadId, ThreadState } from "@outlore/contracts";
+import type { MissionId, MissionSummary, ThreadId, ThreadState, WorkspaceChoice } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
+import { Emblem } from "../foundation/emblems";
 import { canHover } from "../foundation/inputModality";
 import { colors, stateTones } from "../foundation/theme";
 import { useEnding } from "../foundation/useEnding";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { EndingConfirmation } from "../quests/missionActions";
+import { DeleteRitualButton, realmArchivedNotice } from "../rituals/ritualCard";
+import { scheduleLabelOf } from "../rituals/ritualLabels";
+import { isRealmArchivedOf, runIsUnderwayOf } from "../rituals/ritualRow";
 import { DragSource } from "./questDrag";
 import {
   ArchiveIcon,
@@ -14,6 +18,7 @@ import {
   DeleteIcon,
   FolderCue,
   NewQuestIcon,
+  NewRitualIcon,
   OverviewButton,
   useRowActions,
 } from "./railActions";
@@ -212,6 +217,122 @@ export function Quest({
 }
 
 /**
+ * One Ritual beside the quests of its placement (CHG-0616): the moon, its schedule, a dot while a run is underway,
+ * dimmed while off, and the realm-archived notice for a Ritual of an archived realm. It opens in the pane like a quest,
+ * and folds the same way to show its runs as errands. Its only mark is Delete: a Ritual archives nothing, and its
+ * one confirmation names what is lost.
+ */
+export function RitualRow({
+  client,
+  collapsed,
+  isOpen,
+  mission,
+  onOpenMission,
+  onOpenThread,
+  onToggle,
+  onToggleThread,
+  openMission,
+  openThread,
+  realms,
+  shouldShowAgentThreads,
+  showErrands,
+}: {
+  client: ServiceClient;
+  collapsed: ReadonlySet<string>;
+  isOpen: boolean;
+  mission: MissionSummary;
+  onOpenMission: (id: MissionId) => void;
+  onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
+  onToggle: (id: string) => void;
+  onToggleThread: (id: string) => void;
+  openMission: MissionId | null;
+  openThread: ThreadId | null;
+  /** The active realms, from which a missing one means a Ritual's realm is archived. */
+  realms: ReadonlyArray<WorkspaceChoice>;
+  shouldShowAgentThreads: boolean;
+  showErrands: boolean;
+}) {
+  const ritual = mission.ritual;
+  const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  if (ritual === null) return null;
+  const isHere = openMission === mission.id;
+  const isRealmArchived = isRealmArchivedOf(mission, realms);
+  // A Ritual dimmed reads off: it runs only when run by hand while its switch is off (rituals).
+  const dim = !ritual.isOn ? { moon: local.ritualOff, schedule: local.ritualOff, title: local.ritualOff } : null;
+  return (
+    <>
+      <Row
+        corners={cornersOf(mission.state)}
+        fold={{
+          isOpen,
+          label: mission.title,
+          onPress: showErrands && mission.threadCount > 1 ? () => onToggle(mission.id) : null,
+        }}
+        // Where the quest row's mark archives, a Ritual's only mark deletes: archiving a Ritual is not offered.
+        hoverAccessory={(isShown) =>
+          canHover && (
+            <View style={[local.questMark, !isShown && local.actionsHidden]}>
+              <Pressable
+                accessibilityLabel={`Delete ${mission.title}`}
+                accessibilityRole="button"
+                disabled={isDeleting || !isShown}
+                hitSlop={6}
+                onPress={() => setIsDeleting(true)}
+              >
+                <DeleteIcon color={colors.textMuted} />
+              </Pressable>
+            </View>
+          )
+        }
+        isInset={!showErrands}
+        isSelected={isHere && (!showErrands || openThread === null || openThread === mission.topThreadId)}
+        label={mission.title}
+        leading={
+          <View style={[local.questMark, dim?.moon]}>
+            <Emblem name="moon" size={13} tint={colors.highlight} />
+          </View>
+        }
+        onPress={() => onOpenMission(mission.id)}
+        textStyle={dim?.title}
+        trailing={
+          <View style={[local.ritualTrailing, dim?.schedule]}>
+            {runIsUnderwayOf(ritual) && <View style={local.ritualUnderway} />}
+            <Text numberOfLines={1} style={local.ritualSchedule}>
+              {scheduleLabelOf(ritual.schedule)}
+            </Text>
+          </View>
+        }
+      />
+      {showErrands && isOpen && mission.threadCount > 1 && (
+        <View style={{ paddingLeft: chevronWidth }}>
+          <SideQuests
+            client={client}
+            collapsed={collapsed}
+            missionId={mission.id}
+            onOpenThread={onOpenThread}
+            onToggle={onToggleThread}
+            selectedThread={isHere ? openThread : null}
+            shouldShowAgentThreads={shouldShowAgentThreads}
+          />
+        </View>
+      )}
+      {isDeleting && (
+        <View style={{ paddingLeft: chevronWidth }}>
+          <DeleteRitualButton client={client} onError={setError} ritualId={ritual.id} title={mission.title} />
+        </View>
+      )}
+      {isRealmArchived && (
+        <View style={{ paddingLeft: chevronWidth }}>
+          <Text style={local.emptyRealm}>{realmArchivedNotice}</Text>
+        </View>
+      )}
+      {error !== null && <Text style={local.questError}>{error}</Text>}
+    </>
+  );
+}
+
+/**
  * A realm's row: its name with the folder mark when it is tied to a folder, its quest count, and its chevron,
  * always; its overview and new-quest buttons while hovered or focused, and always on a device that cannot hover (CHG-0497).
  */
@@ -220,6 +341,7 @@ export function RealmHeader({
   name,
   onOpenChannel,
   onNewQuest,
+  onNewRitual,
   onOverview,
   onToggle,
   path,
@@ -229,6 +351,8 @@ export function RealmHeader({
   name: string;
   onOpenChannel?: () => void;
   onNewQuest: () => void;
+  /** Schedules a new Ritual in this realm (CHG-0616); its form opens with the realm taken. */
+  onNewRitual?: (() => void) | undefined;
   onOverview: () => void;
   onToggle: () => void;
   path: string | null;
@@ -273,6 +397,18 @@ export function RealmHeader({
         >
           <NewQuestIcon color={colors.textMuted} />
         </Pressable>
+        {onNewRitual !== undefined && (
+          <Pressable
+            {...focusProps}
+            accessibilityLabel={`New Ritual in ${name}`}
+            accessibilityRole="button"
+            hitSlop={4}
+            onPress={onNewRitual}
+            style={(state) => [local.newQuest, (state.pressed || isHovered(state)) && local.newQuestHovered]}
+          >
+            <NewRitualIcon color={colors.textMuted} />
+          </Pressable>
+        )}
       </View>
     </Pressable>
   );

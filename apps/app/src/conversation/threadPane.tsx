@@ -10,6 +10,7 @@ import { styles } from "../foundation/styles";
 import { useEnding } from "../foundation/useEnding";
 import { EndingConfirmation } from "../quests/missionActions";
 import { MissingFolderNotice } from "../realms/workspaces";
+import { takesTurnsIn } from "../rituals/ritualRow";
 import { ArchiveButton } from "../ui/archiveButton";
 import { Composer } from "../ui/controls";
 import {
@@ -90,8 +91,11 @@ export function ThreadPane({
   const { skills, actionError, terminal, comments, act } = conversation;
   const [isOpening, setIsOpening] = useState(false);
   // A Reply is offered in a quest's own conversation only: it opens an errand beneath (CHG-0559); an errand's pane has none.
+  // A Ritual's own conversation has no composer at all: no thread takes turns there, and its runs are its only errands
+  // (CHG-0616), so a Reply is not offered there either. Run now, from its panel, is the on-the-spot start.
   const [replyTo, setReplyTo] = useState<{ id: MessageId; text: string } | null>(null);
-  const canReply = thread.parentId === null;
+  const takesTurns = takesTurnsIn(thread, detail.mission.ritual);
+  const canReply = thread.parentId === null && takesTurns;
   const { canOpenBeneath, canResume, canStop } = thread.actions;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
   // Only a quest's own thread archives it, and not a Ritual's quest or one already archived.
@@ -254,7 +258,7 @@ export function ThreadPane({
                       }}
                       parent={thread}
                     />
-                  ) : (
+                  ) : takesTurns ? (
                     <>
                       <CommentTray />
                       <Composer
@@ -275,6 +279,12 @@ export function ThreadPane({
                         placeholder={conversation.placeholder}
                       />
                     </>
+                  ) : (
+                    // No composer in a Ritual's own conversation (CHG-0616): the conversation is its runs' history,
+                    // written by the runs alone; Run now, in its panel, is the on-the-spot start.
+                    <Text style={styles.muted}>
+                      No message box here: this conversation is the Ritual's runs. Run it from its panel.
+                    </Text>
                   )}
                 </>
               )}
