@@ -88,7 +88,7 @@ export function PaneHost({
     const isExpanded = isExpandedPane(id);
     return (
       <PaneButton
-        glyph={isExpanded ? "⊡" : "⛶"}
+        glyph={isExpanded ? "⤡" : "⛶"}
         label={isExpanded ? "Restore pane layout" : "Expand pane"}
         onPress={() => toggleExpanded(id)}
       />
