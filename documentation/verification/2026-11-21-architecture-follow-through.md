@@ -14,6 +14,8 @@ The owner approved the relevant candidates in the [2026-11-21 audit](../architec
 
 C4 stays as assessed. Replies select and count unread messages, while Waiting and Failed retain their entries and compute unread status.
 
-The focused run passed 113 tests across 10 files. The full run passed 2,673 tests, skipped 64 and had no failures. Biome, the workspace typecheck, the Expo web export and the desktop bundle passed. Electron exited with `SIGABRT` before opening the isolated development window, including on the retry outside the sandbox.
+Before merging the channel-fold change from `849774e7`, the focused run passed 113 tests and the full suite passed 2,673 with 64 skipped. Biome, the workspace typecheck, the Expo web export and the desktop bundle passed. Electron exited with `SIGABRT` before opening the isolated development window, including on the retry outside the sandbox.
+
+After the merge, the pane reducer starts with the channel folded and keeps that fold while the quest loads. The full app suite passed 688 tests with 6 skipped. Biome, the app typecheck and a fresh Expo web export passed.
 
 Run `bun run check`, `bun run typecheck`, and `CI=1 bun run test` from the worktree root. For a window check, use an isolated data folder and exercise Chronicle links, pane folds and resizing, narrow and wide sidebars, and a return from the Workshop.

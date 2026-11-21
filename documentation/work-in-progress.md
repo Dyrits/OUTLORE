@@ -4,6 +4,10 @@
 
 The owner approved the relevant findings from the 2026-11-21 audit. The work is on `worktree/audit-follow-through`, based on `eaf8fb69`. The automated checks and the blocked Electron launch are recorded in [verification](verification/2026-11-21-architecture-follow-through.md). The desktop window still needs a pass through pane folding and resizing, narrow and wide sidebars, Workshop return, and opening Chronicle entries.
 
+## Fold the channel pane when a quest opens · 2026-11-21 · window check pending
+
+CHG-0613: a quest opened from the sidebar starts with only its own conversation pane open, the realm's channel pane folded behind its notch. Pressing the notch (or Restore pane layout) reveals the channel, and the folds hold for the rest of the quest. Biome, the app typecheck, and the app suite (681 passed) are green; nothing was seen in a window. See the [verification](verification/2026-11-21-fold-channel-on-quest-open.md).
+
 ## Thread permission modes · 2026-11-21 · window check pending
 
 CHG-0612 adds the host composer's four permission modes on `worktree/thread-permissions`, starting at `42449116`. The owner approved implementation after the T3 Code comparison. Service checks exercise the mode change through the host request and the permission response through the harness. The Vibe check uses an ACP stand-in. Biome, the workspace typecheck, the desktop build and the Expo web export passed. The full suite finished with 2,665 passed and 64 skipped. Chromium could not launch in the verification environment because macOS denied its Mach service registration. A live Vibe turn and the composer in a window remain unchecked.

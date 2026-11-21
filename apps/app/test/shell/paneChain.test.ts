@@ -8,6 +8,7 @@ import {
   layoutOf,
   maxPanes,
   minPaneWidth,
+  openedQuestMemory,
   type PaneMemory,
   prunedMemory,
   resizedWeights,
@@ -283,5 +284,56 @@ describe("the channel as the first level of the chain", () => {
   it("leaves a chain with no channel as it was", () => {
     const slots = layoutOf({ available: 1200, chain: ["quest", "a"], memory: emptyPaneMemory<string>() });
     expect(slots.map((slot) => slot.width)).toEqual([600, 600]);
+  });
+});
+
+describe("a quest opened from the sidebar", () => {
+  const channel = "channel";
+  const starter = "starter";
+
+  it("starts with the realm's channel folded, so the quest's conversation is the only pane open", () => {
+    const slots = layoutOf({
+      available: 1244,
+      chain: [channel, "quest", starter],
+      memory: openedQuestMemory(channel, []),
+      starter,
+    });
+    expect(slots.map((slot) => [slot.id, slot.kind, slot.width])).toEqual([
+      [channel, "strip", 0],
+      ["quest", "pane", 1244],
+      [starter, "strip", 0],
+    ]);
+  });
+
+  it("folds the channel behind a revealed errand too, keeping the quest and its errand open", () => {
+    const slots = layoutOf({
+      available: 1244,
+      chain: [channel, "quest", "errand"],
+      memory: openedQuestMemory(channel, []),
+    });
+    expect(slots.map((slot) => [slot.id, slot.kind, slot.width])).toEqual([
+      [channel, "strip", 0],
+      ["quest", "pane", 622],
+      ["errand", "pane", 622],
+    ]);
+  });
+
+  it("keeps the dragged weights it opens with, for when another pane is revealed again", () => {
+    expect(openedQuestMemory(channel, [800, 444])).toEqual({
+      folded: new Set([channel]),
+      shown: new Set(),
+      weights: [800, 444],
+    });
+  });
+
+  it("brings the channel back beside the quest when its notch is pressed", () => {
+    const revealed = revealedPane(openedQuestMemory(channel, []), channel);
+    expect([...revealed.folded]).toEqual([]);
+    expect([...revealed.shown]).toEqual([channel]);
+  });
+
+  it("keeps the folded channel while the chain waits to load", () => {
+    const opened = openedQuestMemory(channel, []);
+    expect(prunedMemory(opened, [])).toEqual(opened);
   });
 });

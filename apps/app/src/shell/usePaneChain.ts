@@ -1,8 +1,8 @@
 import type { ThreadId, ThreadSummary } from "@outlore/contracts";
 import { useContext, useEffect, useMemo, useReducer, useState } from "react";
 import { ChronicleTargetContext } from "../conversation/chronicleTarget";
-import { chainOf, emptyPaneMemory, equalizedPanes, layoutOf, type PaneMemory } from "./paneChain";
-import { type PaneId, paneContentsOf } from "./paneIds";
+import { chainOf, equalizedPanes, layoutOf, openedQuestMemory, type PaneMemory } from "./paneChain";
+import { channelId, type PaneId, paneContentsOf } from "./paneIds";
 import { paneSessionOf } from "./paneSession";
 import { readPaneWeights, rememberPaneWeights } from "./railStorage";
 
@@ -22,7 +22,7 @@ export function usePaneChain(
     expanded: null,
     focused: null,
     listRequest: null,
-    memory: { ...emptyPaneMemory<PaneId>(), weights: readPaneWeights() },
+    memory: openedQuestMemory<PaneId>(channelId, readPaneWeights()),
   }));
   const [available, setAvailable] = useState(0);
   const target = useContext(ChronicleTargetContext);

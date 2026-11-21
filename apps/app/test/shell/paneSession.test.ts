@@ -1,6 +1,6 @@
 import { ThreadId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
-import { emptyPaneMemory } from "../../src/shell/paneChain";
+import { emptyPaneMemory, openedQuestMemory } from "../../src/shell/paneChain";
 import { channelId, type PaneId, paneContentsOf, starterId } from "../../src/shell/paneIds";
 import { type PaneSession, paneSessionOf } from "../../src/shell/paneSession";
 
@@ -14,6 +14,16 @@ const initial = (): PaneSession => ({
 });
 
 describe("keeping the pane session", () => {
+  it("keeps the channel folded while loading the quest and lets its notch bring it back", () => {
+    const opened = { ...initial(), memory: openedQuestMemory<PaneId>(channelId, [1, 2]) };
+    const loading = paneSessionOf(opened, { chain: [], deepest: null, type: "chain" });
+    const loaded = paneSessionOf(loading, { chain: [channelId, quest, starterId], deepest: quest, type: "chain" });
+    expect(loaded.memory.folded.has(channelId)).toBe(true);
+    const revealed = paneSessionOf(loaded, { id: channelId, type: "reveal" });
+    expect(revealed.memory.folded.has(channelId)).toBe(false);
+    expect(revealed.memory.weights).toEqual([1, 2]);
+  });
+
   it("uses the third slot for the selected errand or the starter", () => {
     expect(paneContentsOf(quest, errand)).toEqual([
       { id: channelId, kind: "channel" },
