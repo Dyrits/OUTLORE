@@ -18,6 +18,7 @@ const requests = {
   RenameHost: { name: "Studio" },
   RequestApplePermission: { connectorId: "apple" },
   SetRemoteAccess: { isEnabled: false },
+  SetThreadPermissionMode: { mode: "FullAccess", threadId: "thread" },
   UseOwnRelay: { token: "a-token" },
   UseSharedRelay: {},
 } as const;

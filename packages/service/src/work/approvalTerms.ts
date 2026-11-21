@@ -3,6 +3,7 @@ import { Effect } from "effect";
 import { type ApprovalTerms, Harness, readSettings } from "../core/index.ts";
 import { approvalInstructionsOf } from "../harness/index.ts";
 import { listThreadPermissions } from "../policy/index.ts";
+import { harnessApprovalLevelOf, readThreadPermissionMode } from "./threadPermissionMode.ts";
 
 // A thread's approval terms (CHG-0301): read once here for its turn and for the preview of its starting context, so
 // what a thread is told and what the owner is shown before opening one cannot drift apart.
@@ -18,12 +19,14 @@ export const permissionKindsOf = (permissions: ReadonlyArray<StandingPermission>
 export const readApprovalTerms = Effect.fnUntraced(function* (threadId: string, harnessName: HarnessName) {
   const harness = yield* Harness;
   const { approvalLevel, shouldAllowOutsideSandbox } = yield* readSettings;
+  const mode = yield* readThreadPermissionMode(threadId);
+  const level = harnessApprovalLevelOf(mode, approvalLevel);
   const permissions = yield* listThreadPermissions(threadId);
   return {
-    approvalLevel,
-    canWorkOutsideSandbox: shouldAllowOutsideSandbox,
+    approvalLevel: level,
+    canWorkOutsideSandbox: mode === null && shouldAllowOutsideSandbox,
     // A harness whose adapter reports nothing counts as unprotected, as Approvals judges it (approvals.ts).
-    containment: harness.containmentOf?.(harnessName, approvalLevel) ?? "Unprotected",
+    containment: harness.containmentOf?.(harnessName, level) ?? "Unprotected",
     permissionKinds: permissionKindsOf(permissions),
   } satisfies ApprovalTerms;
 });

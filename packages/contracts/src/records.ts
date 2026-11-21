@@ -20,7 +20,7 @@ import { EffortChoice, HarnessName } from "./harnesses.ts";
 import { AccountId, MessageId, MissionId, SuggestionId, ThreadId, WorkspaceId } from "./ids.ts";
 import { LoreChange, LoreGauge } from "./lore.ts";
 import { PositiveInt } from "./positiveInt.ts";
-import { ApprovalLevel, Question } from "./questions.ts";
+import { ApprovalLevel, Question, ThreadPermissionMode } from "./questions.ts";
 import { RitualCard } from "./ritualSchedules.ts";
 import { Workspace, WorkspaceChoice } from "./workspaces.ts";
 
@@ -304,6 +304,7 @@ export const ThreadView = Schema.Struct({
   /** The worktree the thread works in, itself or inherited from its parent; null when it works in its workspace's folder. */
   ownCopy: Schema.NullOr(OwnCopyView),
   parentId: Schema.NullOr(ThreadId),
+  permissionMode: Schema.optionalKey(Schema.NullOr(ThreadPermissionMode)),
   state: ThreadState,
   title: Schema.String,
   /** The harness of the turn the thread is in, as admitted: the owner's later pick does not change it. Null outside a turn. */

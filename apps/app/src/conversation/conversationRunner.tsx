@@ -1,8 +1,17 @@
-import type { MissionDetail } from "@outlore/contracts";
+import { type MissionDetail, ThreadPermissionMode } from "@outlore/contracts";
 import { RunnerPickers } from "../editors/runners";
 import type { ServiceClient } from "../foundation/client";
+import { useIsRemoteHost } from "../foundation/hostContext";
+import { Menu } from "../ui/pickers";
 import { ThreadBackups } from "./threadBackups";
 import type { useThreadConversation } from "./useThreadConversation";
+
+const permissionLabels = {
+  Auto: "Auto",
+  AutoAcceptEdits: "Auto-accept edits",
+  FullAccess: "Full access",
+  Supervised: "Supervised",
+} satisfies Record<ThreadPermissionMode, string>;
 
 /** The conversation's current runner, presets and backups, shared by quests and Chronicler. */
 export function ConversationRunner({
@@ -22,22 +31,36 @@ export function ConversationRunner({
   isTabOpen?: boolean;
   onOpenTab?: (() => void) | undefined;
 }) {
+  const isRemote = useIsRemoteHost();
   return (
-    <RunnerPickers
-      client={client}
-      {...(isChronicler ? { dockRank: 1 } : {})}
-      extra={<ThreadBackups client={client} key={thread.id} threadId={thread.id} />}
-      harnesses={conversation.harnesses}
-      isChronicler={isChronicler}
-      isCompact
-      isFullPanel={isFullPanel}
-      isTabOpen={isTabOpen}
-      onChange={(next) =>
-        conversation.act(client.request({ _tag: "ChangeThreadRunner", ...next, threadId: thread.id }))
-      }
-      onOpenTab={onOpenTab}
-      presetChoice={conversation.presetChoice}
-      value={thread}
-    />
+    <>
+      {!isFullPanel && !isRemote && (
+        <Menu
+          accessibilityLabel="Thread permissions"
+          label={(mode) => (mode === null ? "Default permissions" : permissionLabels[mode])}
+          onChange={(mode) =>
+            conversation.act(client.request({ _tag: "SetThreadPermissionMode", mode, threadId: thread.id }))
+          }
+          options={[null, ...ThreadPermissionMode.literals]}
+          value={thread.permissionMode ?? null}
+        />
+      )}
+      <RunnerPickers
+        client={client}
+        {...(isChronicler ? { dockRank: 1 } : {})}
+        extra={<ThreadBackups client={client} key={thread.id} threadId={thread.id} />}
+        harnesses={conversation.harnesses}
+        isChronicler={isChronicler}
+        isCompact
+        isFullPanel={isFullPanel}
+        isTabOpen={isTabOpen}
+        onChange={(next) =>
+          conversation.act(client.request({ _tag: "ChangeThreadRunner", ...next, threadId: thread.id }))
+        }
+        onOpenTab={onOpenTab}
+        presetChoice={conversation.presetChoice}
+        value={thread}
+      />
+    </>
   );
 }

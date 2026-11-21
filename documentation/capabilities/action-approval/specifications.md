@@ -65,6 +65,19 @@ Version 1 serves the installation's owner. In future hosted missions, only the h
 - One approval setting has two levels: **Sensitive actions only** (the default; since CHG-0208 it means escapes from the sandbox and unprotected actions) and **Also commands and edits**, which turns the harnesses' own permission prompts back on, each one answered with the same buttons.
 - At **Also commands and edits**, Outlore follows the allow and deny rules the owner set in the computer's own Claude Code settings (`~/.claude/settings.json`, or the configured path, read at each start; unreadable or invalid rules are ignored). An added account's own settings and a project's settings are never read, and Codex and OpenCode apply no owner rules of their own (amended 2026-11-16).
 
+### Thread permission modes
+
+The host window's composer offers four modes for a thread. You can switch modes between turns. **Default permissions** uses the Workshop settings, including the separate setting for sandbox escapes. Threads start with Default permissions, including errands opened by a thread with a mode of its own.
+
+| Mode | Harness approvals |
+| --- | --- |
+| Supervised | Ask about commands and edits that the harness submits for approval. |
+| Auto-accept edits | Allow edits Outlore can confirm are inside the workspace. Ask about other requests. |
+| Auto | Allow actions covered by the sandbox and edits Outlore can confirm are inside the workspace. Ask about unprotected commands, including Vibe shell commands. |
+| Full access | Automatically approve individual harness tool requests. Vibe commands run with the computer account's access. A request to widen the sandbox for the turn still asks. |
+
+Standing permissions still apply. Full access approvals appear in the history as automatically allowed. The mode does not give the thread authority to approve its own Outlore requests, such as publishing or sending a message, or change the mode of another thread.
+
 ### Permissions page
 
 - Settings has a **Permissions** row showing the current level, for example "Permissions · Sensitive actions only". It opens a page with:

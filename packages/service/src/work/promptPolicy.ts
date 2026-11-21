@@ -7,6 +7,7 @@ import { folderEscapeOf, resolvedFolderOf, workspaceWorktreesOf } from "../harne
 import {
   consequences,
   findCoveringPermission,
+  isFileWriting,
   isUnaskedAt,
   needsOf,
   plainActionOf,
@@ -16,6 +17,7 @@ import {
 import { isInsideVaultFolder, searchReachesVaultFolder, VaultFolder } from "../vault/index.ts";
 import type { Decision } from "./approvalContracts.ts";
 import { type Asked, allowingOutcomes, type makeQuestions, textOf } from "./questions.ts";
+import { harnessApprovalLevelOf, readThreadPermissionMode } from "./threadPermissionMode.ts";
 import { readAuthorityHarness } from "./turnAdmission.ts";
 import { ScratchRoot, threadFolderOf } from "./workspaces.ts";
 
@@ -143,10 +145,12 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
       const missionId = yield* missionOf(threadId);
       if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
       const { approvalLevel, shouldAllowOutsideSandbox } = yield* readSettings;
+      const mode = yield* readThreadPermissionMode(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
+      const level = harnessApprovalLevelOf(mode, approvalLevel);
       const capability = yield* readCapability(
         threadId,
-        approvalLevel,
-        shouldAllowOutsideSandbox,
+        level,
+        mode === null && shouldAllowOutsideSandbox,
         toolName,
         input,
         isEscape,
@@ -154,9 +158,12 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
       );
       const reason = reasonOf(input);
       const plain = plainActionOf(toolName);
-      // At the default level a contained action runs and leaves a line, whatever it does: the sandbox holds the
-      // damage, and no command is judged by its words.
-      if (isUnaskedAt(approvalLevel, capability)) {
+      // Full access covers individual tool calls. A grant that widens the sandbox for the turn still asks.
+      if (
+        (mode === "FullAccess" && toolName !== "Permissions") ||
+        (capability === null && mode === "AutoAcceptEdits" && isFileWriting(toolName)) ||
+        isUnaskedAt(level, capability)
+      ) {
         yield* record(
           {
             details: target,

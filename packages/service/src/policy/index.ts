@@ -5,6 +5,7 @@ export {
   capabilities,
   changedFilesOf,
   consequences,
+  isFileWriting,
   plainActionOf,
   reasonOf,
   targetOf,

@@ -1,5 +1,9 @@
 # Work in progress
 
+## Thread permission modes · 2026-11-21 · window check pending
+
+CHG-0612 adds the host composer's four permission modes on `worktree/thread-permissions`, starting at `42449116`. The owner approved implementation after the T3 Code comparison. Service checks exercise the mode change through the host request and the permission response through the harness. The Vibe check uses an ACP stand-in. Biome, the workspace typecheck, the desktop build and the Expo web export passed. The full suite finished with 2,665 passed and 64 skipped. Chromium could not launch in the verification environment because macOS denied its Mach service registration. A live Vibe turn and the composer in a window remain unchecked.
+
 ## Pane status and errand controls · 2026-11-20 · review pending
 
 CHG-0605 records the current pane and status changes, errand reopening and Stop behavior. Focused checks passed during implementation; the errand reopen service test and full suite have not been run, and the final desktop behavior needs review. See the [handoff](../.agents/handoffs/2026-11-20-1844-pane-status-follow-up.md).

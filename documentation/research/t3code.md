@@ -4,6 +4,10 @@ Researched 2026-11-15 from a clone of [`pingdotgg/t3code`](https://github.com/pi
 
 This is a bounded reading of its own README, user documentation, internals notes and source file names. Nothing was installed or run: no upstream tests, no live provider, no release artifact. A statement that a source path exists does not show the feature works. [The comparison](outlore-t3code-comparison.md) uses these notes.
 
+## Permission modes · 2026-11-21
+
+T3 Code documents four modes selected in the composer for each thread. Its generic ACP integration asks under Supervised, automatically approves edits under Auto-accept edits, and automatically approves all requests under both Auto and Full access. The ACP agent still controls its own sandbox. Outlore's Auto uses its own containment policy, so selecting Auto on Vibe still asks about shell commands. [Permission modes](https://github.com/pingdotgg/t3code/blob/main/docs/user/permission-modes.md) · [ACP permissions](https://github.com/pingdotgg/t3code/blob/main/docs/user/providers-acp.md#permissions-and-terminals)
+
 ## What the project says it is
 
 `README.md`: "The open-source control plane for coding agents." It "runs the coding agents on your machine and gives them one fast interface". Supported: Claude Code, Codex, Cursor, OpenCode, Grok Build, Antigravity, Kiro, Pi, Muse Code, fx, and any ACP agent. Listed features include "Change models in the middle of a thread. Let Claude hand a task to Codex", "Desktop, web, and phone", "Run agents on any machine. Connect over your local network, Tailscale, or T3 Connect", and "Each thread can work in its own worktree. Review the diff, then commit, push, and open a pull request with one button." The repository has `apps/desktop`, `apps/mobile`, `apps/server`, `apps/web`, and many `packages/provider-*` and `packages/source-control-*` packages. iOS and Android store links are in the README.

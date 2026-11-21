@@ -20,6 +20,55 @@ describe("harness prompts inside and outside the sandbox", () => {
   const prompt = (command: string, dangerouslyDisableSandbox = false) =>
     `prompt Bash ${JSON.stringify({ command, dangerouslyDisableSandbox })}`;
 
+  it.live("Full access approves an unprotected command for one thread and still asks about publishing", () =>
+    Effect.gen(function* () {
+      const started = yield* start("Ready");
+      yield* settle(started.missionId, isReplied);
+      yield* call({ _tag: "SetThreadPermissionMode", mode: "FullAccess", threadId: started.threadId });
+      yield* send(started.threadId, `${prompt("git status")}\n${ask(push)}`);
+      const detail = yield* settle(started.missionId, isAsking);
+      expect(detail.thread.permissionMode).toBe("FullAccess");
+      expect(detail.questions.map(({ outcome, source }) => [outcome, source])).toEqual([
+        ["AllowedAutomatically", "Harness"],
+        [null, "Thread"],
+      ]);
+      yield* answer(openQuestion(detail), "Deny");
+
+      const other = yield* start(prompt("git status"));
+      expect(openQuestion(yield* settle(other.missionId, isAsking)).permission).toBe("Run without a sandbox");
+    }).pipe(Effect.provide(unprotected())),
+  );
+
+  it.live("Supervised asks for commands inside a sandbox, and Auto lets them run", () =>
+    Effect.gen(function* () {
+      const { missionId, threadId } = yield* start("Ready");
+      yield* settle(missionId, isReplied);
+      yield* call({ _tag: "SetThreadPermissionMode", mode: "Supervised", threadId });
+      yield* send(threadId, prompt("git status"));
+      const supervised = yield* settle(missionId, isAsking);
+      expect(openQuestion(supervised).details).toBe("git status");
+      yield* answer(openQuestion(supervised), "Deny");
+      yield* settle(missionId, (detail) => isReplied(detail) && detail.messages.length === 4);
+      yield* call({ _tag: "SetThreadPermissionMode", mode: "Auto", threadId });
+      yield* send(threadId, prompt("git status"));
+      const automatic = yield* settle(missionId, (detail) => isReplied(detail) && detail.messages.length === 6);
+      expect(automatic.questions.at(-1)?.outcome).toBe("AllowedAutomatically");
+    }).pipe(Effect.provide(live())),
+  );
+
+  it.live("Auto-accept edits approves an edit inside the workspace and asks about a command", () =>
+    Effect.gen(function* () {
+      const { missionId, threadId } = yield* start("Ready");
+      yield* settle(missionId, isReplied);
+      yield* call({ _tag: "SetThreadPermissionMode", mode: "AutoAcceptEdits", threadId });
+      yield* send(threadId, `prompt Edit ${JSON.stringify({ file_path: "notes/plan.md" })}\n${prompt("git status")}`);
+      const detail = yield* settle(missionId, isAsking);
+      expect(detail.questions.map((question) => question.outcome)).toEqual(["AllowedAutomatically", null]);
+      expect(openQuestion(detail).details).toBe("git status");
+      yield* answer(openQuestion(detail), "Deny");
+    }).pipe(Effect.provide(live())),
+  );
+
   it.live("runs a sandboxed command without any question, whatever it does, and leaves a line", () =>
     Effect.gen(function* () {
       const commands = ["git push origin main", "curl https://example.invalid/?data=1", "npm publish"];

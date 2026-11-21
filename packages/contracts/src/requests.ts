@@ -65,7 +65,7 @@ import {
   RemoveBrowsableRoot,
   SearchFolders,
 } from "./pickerRequests.ts";
-import { ChoiceAnswers } from "./questions.ts";
+import { ChoiceAnswers, ThreadPermissionMode } from "./questions.ts";
 import { NewRealmAppearance, realmRequests } from "./realmRequests.ts";
 import { MessageDelivery, MissionEnding, MissionPrompt, MissionState, RequestId, Viewing } from "./records.ts";
 import {
@@ -345,6 +345,10 @@ export const SetThreadBackups = Schema.TaggedStruct("SetThreadBackups", {
   backups: BackupCompanions,
   threadId: ThreadId,
 });
+export const SetThreadPermissionMode = Schema.TaggedStruct("SetThreadPermissionMode", {
+  mode: Schema.NullOr(ThreadPermissionMode),
+  threadId: ThreadId,
+});
 /** Tries again a thread's failed turn, or a thread waiting in Attention on its missing workspace folder (Retry). */
 export const RetryThread = Schema.TaggedStruct("RetryThread", { threadId: ThreadId });
 /** Reads the standing permissions, for one mission or all. */
@@ -426,6 +430,7 @@ export const Request = Schema.Union([
   UpdateRitual,
   RunRitual,
   SetThreadBackups,
+  SetThreadPermissionMode,
   MarkThreadDone,
   ReopenThread,
   ArchiveThread,

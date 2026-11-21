@@ -20,6 +20,7 @@ import { readThreadAnchors, replyToMessage } from "./replies.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 import { readStartingContext } from "./startingContext.ts";
 import { readThreadPanel } from "./threadPanel.ts";
+import { setThreadPermissionMode } from "./threadPermissionMode.ts";
 import { newQuestTitle, renameMission } from "./titles.ts";
 import { openThreadByOwner } from "./tree.ts";
 /** Requests for quests share the service request context. */
@@ -107,6 +108,7 @@ export const questsHandlers = (
     ResumeThread: (resume) => threads.resume(resume.threadId).pipe(Effect.as(null)),
     RetryThread: (retry) => threads.retry(retry.threadId).pipe(Effect.as(null)),
     SetThreadBackups: (given) => commands.run(setThreadBackups(given.threadId, given.backups)),
+    SetThreadPermissionMode: (given) => commands.run(setThreadPermissionMode(given.threadId, given.mode)),
     StartEmptyQuest: (start) =>
       commands.run(
         commands.once(
@@ -193,6 +195,7 @@ export const questsHandlers = (
     | "ResumeThread"
     | "RetryThread"
     | "SetThreadBackups"
+    | "SetThreadPermissionMode"
     | "StartEmptyQuest"
     | "StartMission"
     | "StopThread"

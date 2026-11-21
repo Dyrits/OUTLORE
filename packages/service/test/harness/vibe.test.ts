@@ -92,6 +92,25 @@ describe("running a Mistral Vibe thread", () => {
     }).pipe(Effect.provide(layer));
   });
 
+  it.live("Full access answers Vibe once per call and Default permissions restores the prompt", () => {
+    const { layer } = withHarnesses();
+    return Effect.gen(function* () {
+      const { missionId, threadId } = yield* startMission({ harness: "vibe", text: "Hello" });
+      yield* settle(missionId, idleWith(1));
+      yield* call({ _tag: "SetThreadPermissionMode", mode: "FullAccess", threadId });
+      yield* send(threadId, "run git status");
+      const automatic = yield* settle(missionId, idleWith(2));
+      expect(replies(automatic).at(-1)).toBe("git status: allow_once ");
+      expect(automatic.questions[0]?.outcome).toBe("AllowedAutomatically");
+
+      yield* call({ _tag: "SetThreadPermissionMode", mode: null, threadId });
+      yield* send(threadId, "run git status");
+      yield* answerOpen("Deny");
+      const supervised = yield* settle(missionId, idleWith(3));
+      expect(replies(supervised).at(-1)).toBe("git status: reject_once ");
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("ends the turn as interrupted when the owner interrupts a running turn", () => {
     const { layer, requests } = withHarnesses();
     return Effect.gen(function* () {

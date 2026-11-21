@@ -5,6 +5,8 @@ import { MissionId, PermissionId, QuestionId, ThreadId, WorkspaceId } from "./id
 
 /** How much asks for approval: sensitive actions only, or also commands and edits (action-approval, Approval level; CHG-0035). */
 export const ApprovalLevel = Schema.Literals(["RiskyOnly", "CommandsAndEdits"]);
+export const ThreadPermissionMode = Schema.Literals(["Supervised", "AutoAcceptEdits", "Auto", "FullAccess"]);
+export type ThreadPermissionMode = typeof ThreadPermissionMode.Type;
 export type ApprovalLevel = typeof ApprovalLevel.Type;
 
 /** Who raised a question: the thread through `request_approval`, or the harness's own permission prompt. */

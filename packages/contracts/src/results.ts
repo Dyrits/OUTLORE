@@ -147,6 +147,7 @@ export const Results = {
   SetMissionBudget: Schema.Null,
   SetRemoteAccess: RemoteAccessView,
   SetThreadBackups: Schema.Null,
+  SetThreadPermissionMode: Schema.Null,
   SignInAccount: Schema.NullOr(HarnessList),
   StartEmptyQuest: StartEmptyQuestResult,
   StartMission: StartMissionResult,

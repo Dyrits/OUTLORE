@@ -222,4 +222,9 @@ export const recentStoreMigrations = {
       PRIMARY KEY (mission_id, id)
     )`;
   }),
+  "0070_thread_permission_mode": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE threads ADD COLUMN permission_mode TEXT
+      CHECK (permission_mode IN ('Supervised', 'AutoAcceptEdits', 'Auto', 'FullAccess'))`;
+  }),
 };
