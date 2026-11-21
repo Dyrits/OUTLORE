@@ -54,8 +54,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume landing the Workshop and errand permission modes (CHG-0617) and their window, phone, and live checks, read the [current handoff](.agents/handoffs/2026-11-21-1648-workshop-permission-modes.md). Handoffs are shared and committed.
+
 - To resume the Hindsight research for Outlore and its lore follow-ups, read the [current handoff](.agents/handoffs/2026-11-21-1540-hindsight-research-followups.md). Handoffs are shared and committed.
 
 - To resume desktop verification of editable queued messages, read the [current handoff](.agents/handoffs/2026-11-21-1539-editable-queued-messages.md). Handoffs are shared and committed.
-
-- To resume desktop verification of the architecture audit follow-through, read the [current handoff](.agents/handoffs/2026-11-21-1517-architecture-audit-follow-through.md). Handoffs are shared and committed.
