@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture review for Outlore, 2026-11-21</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+      mermaid.initialize({ securityLevel: "loose", startOnLoad: true, theme: "neutral" });
+    </script>
+    <style>
+      .leak { color: #dc2626; }
+      .band { border-left: 4px solid #94a3b8; }
+      .deepbox { color: #fff; background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .specbox { background: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 8px, #e2e8f0 8px, #e2e8f0 16px); }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-14">
+
+      <header class="space-y-3">
+        <h1 class="font-serif text-3xl">Architecture review for Outlore</h1>
+        <p class="text-sm text-slate-500">2026-11-21 · main @ 75989f99 (0.2.0-Pre-Alpha) · scoped to what landed after the 2026-11-19 audit: the pane chain and rail (CHG-0553 to CHG-0609), the Chronicle unread and notification targets (CHG-0608, e4ace28f), the wake path (CHG-0595), and the Codex Git grants (CHG-0606).</p>
+        <p class="text-xs text-slate-500 uppercase tracking-wider">Legend — solid box: module · dashed line: seam · red: leakage · thick dark box: deep module</p>
+        <p class="text-xs text-slate-500">The 2026-11-19 audit is not repeated here: its #1 (guildmaster provenance) and #6 (sidebar actions) have <span class="font-medium">landed</span> (guildmasterProvenance.ts, railQuestActions.ts, questRecency.ts); its remaining six stay open. Its #7 (inline label derivations) now also spreads into conversationEntries.tsx:139, replyLine.tsx:135/166 and threadPane.tsx:184-190 — one line of overflow, not re-proposed.</p>
+      </header>
+
+      <!-- ═══════════════ A · THE PANE CHAIN AND RAIL ═══════════════ -->
+
+      <section class="space-y-3">
+        <h2 class="font-serif text-xl">A · The pane chain and rail <span class="text-xs uppercase tracking-wider text-slate-400">apps/app/src/shell</span></h2>
+      </section>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="a1" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">A1 · A pane-session reducer behind the hook</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium">Strong</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">in-process</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">apps/app/src/shell/usePaneChain.ts (138) · paneHost.tsx (258) · paneChain.ts (202 — deep, tested) · no usePaneChain test exists</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">Before — five effects, rendering-only</p>
+            <div class="space-y-1.5">
+              <div class="band bg-slate-50 px-3 py-2 text-xs"><span class="font-mono">useEffect</span> Chronicle target → setExpanded + setFocused + setMemory</div>
+              <div class="band bg-slate-50 px-3 py-2 text-xs"><span class="font-mono">useEffect</span> deepest / fullChain → setFocused + setMemory + setExpanded</div>
+              <div class="band bg-red-50 px-3 py-2 text-xs leak"><span class="font-mono">useEffect</span> quest change → starter reset <span class="italic">(the carryover bug, patched in place)</span></div>
+              <div class="band bg-slate-50 px-3 py-2 text-xs">fold · toggleExpanded · listRequest — three more hand-rolled transitions</div>
+              <div class="text-xs text-slate-500 mt-2">Interface: ~19 returned values. Reached only by rendering.</div>
+            </div>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">After — one thick band of pure logic</p>
+            <div class="rounded-lg deepbox px-3 py-4 text-xs">
+              <p class="uppercase tracking-wider font-medium mb-1">pane session reducer (plain .ts, tested)</p>
+              <p class="opacity-75">state {memory, focused, expanded, listRequest} + one action per gesture: fold · reveal · expand · startErrand · openQuest · chronicleTarget</p>
+            </div>
+            <div class="text-xs text-slate-500 mt-2">usePaneChain keeps only persistence (readPaneWeights) and effect wiring: thin adapters.</div>
+          </div>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> the pane session's transitions are a state machine living inside a React hook — shallow: an interface of 19 values hiding five effects, each bug of the fold/reveal/starter class visible only by rendering (the starter-carryover comment at usePaneChain.ts:60-68 is this class, patched in place).</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> a pure pane-session reducer in a plain .ts module, mirroring how location.ts owns navigate; the hook keeps persistence and effect wiring.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>locality: fold/reveal/starter interplay in one module</li>
+          <li>interface shrinks to state + dispatch; implementation absorbs the effects</li>
+          <li>tests: starter carryover and chronicle-target classes become plain Node tests</li>
+          <li>deletion test passes: the logic concentrates in the reducer</li>
+        </ul>
+      </article>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="a2" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">A2 · Pane identity built once, not re-derived five times</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium">Strong</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">in-process</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">paneIds.ts (13) · usePaneChain.ts:25-31 · paneNotches.ts:61-74,77-97 · paneHost.tsx:185-220 · paneChain.ts:129-139 · paneStrip.tsx NotchKind (a second naming of the same concept)</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">Before — one concept, five id comparisons</p>
+            <pre class="mermaid">
+flowchart TD
+  PI["paneIds.ts — channelId, starterId"]
+  UPC["usePaneChain — chain build"] --> PI
+  PN["paneNotches — kind, state, children"] --> PI
+  PH["paneHost — which body to draw"] --> PI
+  PC["paneChain — starter fold case"] --> PI
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class UPC,PN,PH,PC leak
+            </pre>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">After — kind attached at construction</p>
+            <pre class="mermaid">
+flowchart TD
+  BUILD["chain construction — attaches slot.kind: channel, quest, errand, starter"]
+  BUILD --> PN["paneNotches matches slot.kind"]
+  BUILD --> PH["paneHost matches slot.kind"]
+  BUILD --> PC["paneChain matches slot.kind"]
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class BUILD deep
+            </pre>
+          </div>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> "what each slot is" exists only as comparisons of PaneId against two constants, made independently in five modules — a change to what a slot means must be made in every one; understanding it bounces across them.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> typed pane slots — the one module that builds the chain attaches each slot's kind once; notches, host and layout match the discriminant instead of re-deriving it.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>leverage: one interface feeds notch state, titles, child placement, rendering</li>
+          <li>locality: a new slot kind is one construction site plus matches</li>
+          <li>tests slot kinds directly, in plain Node</li>
+        </ul>
+      </article>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="a3" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">A3 · The notch-edge geometry in one derivation</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Worth exploring</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">in-process</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">paneHost.tsx:150-179 (isStraddling, paddings) · paneStrip.tsx:154-161 (notchWidth 30, onLine styles) · paneNotches.ts:99-130 (edge membership) · nothing covers placement</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">Before — the rule in halves</p>
+            <pre class="mermaid">
+flowchart TD
+  PN["paneNotches — which parts on which edge"]
+  PH["paneHost render loop — isStraddling, half and full paddings"]
+  PS["paneStrip styles — left minus half notchWidth, notchWidth 30"]
+  PN -.-> PH
+  PS -. "coupled by notchWidth" .-> PH
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class PH,PS leak
+            </pre>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">After — a complete edge spec</p>
+            <pre class="mermaid">
+flowchart TD
+  PN["paneNotches — parts + straddle flag + padding, per open pane"]
+  PH["paneHost applies the spec"]
+  PS["paneStrip draws it"]
+  PN --> PH --> PS
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class PN deep
+            </pre>
+          </div>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> where a notch sits — its own edge or across the line between two open panes — is pure derivation, but half lives in the paneHost render loop and half in pixel constants in paneStrip styles; CHG-0601 had to touch paneHost (41 lines), paneStrip (20) and railQuests at once.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> let the notch module return a complete edge spec per open pane (parts, straddle, paddings); the host applies it, the strip draws it.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>locality: edge placement joins edge membership, already in paneNotches</li>
+          <li>straddle becomes testable without rendering</li>
+          <li>leverage for any future notch kind</li>
+        </ul>
+      </article>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="a4" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">A4 · An explicit sidebar host, not absent callbacks</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Worth exploring</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">in-process</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">sidebar.tsx (399): showErrands ← onOpenChannel === undefined (~:106) · six host-dependent branches · shell.tsx:152-167 (narrow) passes neither callback, overlay/docked pass both</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">Before — the host inferred</p>
+            <div class="specbox rounded-md border border-slate-300 p-3 space-y-2 text-xs">
+              <p class="font-mono">shell.tsx (narrow) — passes neither callback</p>
+              <p class="font-mono">shell.tsx (overlay, docked) — passes both</p>
+              <p class="leak font-medium">sidebar infers the host from absence + hasWorkshopRow — the same fact in two encodings, read in six branches</p>
+            </div>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">After — the host named</p>
+            <div class="rounded-md deepbox p-3 text-xs">
+              <p class="font-mono">host: "narrow" | "overlay" | "docked"</p>
+              <p class="opacity-75 mt-1">one visible parameter; the six branches match on it; the callbacks stay callbacks</p>
+            </div>
+          </div>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> which of three hosts the sidebar serves is signalled by optional callbacks' absence plus a parallel boolean — the seam between shell.tsx and sidebar.tsx holds the rule in halves, and deleting a callback argument in one file silently changes row behaviour in the other.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> one explicit host value in the module's interface instead of inference from optional callbacks.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>locality: the host difference becomes one named parameter</li>
+          <li>tests stop imitating shell.tsx's call shape</li>
+          <li>deletion test on the inference itself: it passes</li>
+        </ul>
+      </article>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="a5" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">A5 · One window-view derivation from Location</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">Speculative</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">local-substitutable</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">viewing.ts (18) · shell.tsx:89,94 (the conversation-panes predicate twice) · appScreen.tsx:23-35,165-199 (Destination) · paneHost.tsx:51 and appScreen.tsx:186 (the Borderlands fallback channel, twice)</p>
+        <div class="rounded-lg border border-slate-200 p-4">
+          <pre class="mermaid">
+flowchart TD
+  LOC["location.ts + navigation.ts — deep, tested"]
+  SH["shell.tsx re-derives: are conversation panes showing? x2"]
+  APP["appScreen re-derives: Destination + parked channel"]
+  VIEW["viewingOf"]
+  FB1["paneHost builds the no-realm channel fallback"]
+  FB2["appScreen builds the same fallback"]
+  LOC --> SH
+  LOC --> APP
+  LOC --> VIEW
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class FB1,FB2 leak
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class LOC deep
+          </pre>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> "what the window shows beside Chronicler" is derived three times from the same Location, each module holding half the rule — the duplication is thin today, hence Speculative.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> one pure derivation from Location to the view facts (hasConversationPanes, parked channel, screen name) that shell, appScreen and viewing consume.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>locality for the workshop-parking and narrow-window paths</li>
+          <li>modest leverage: three thin call sites</li>
+        </ul>
+      </article>
+
+      <!-- ═══════════════ B · CHRONICLE, CHANNELS, CONVERSATION ═══════════════ -->
+
+      <section class="space-y-3 pt-4">
+        <h2 class="font-serif text-xl">B · Chronicle, channels, conversation <span class="text-xs uppercase tracking-wider text-slate-400">shell + conversation + service unread</span></h2>
+      </section>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="b1" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">B1 · One chronicleTarget module owning "opens at what it names"</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium">Strong</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">in-process</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">chronicleActivity.tsx:54-66 (open(), waitingAt fallback inline) · chronicleTarget.ts (33 — holds half) · threadPane.tsx:89 + paneThread.tsx:63 (the match rule copied) · usePaneChain.ts:39-46 (a third variant, different fallback) · work/chronicle.ts (the SQL that already made the pick)</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">Before — construction and matching scattered</p>
+            <pre class="mermaid">
+flowchart TD
+  CA["chronicleActivity open — builds the target inline"]
+  UP["usePaneChain — third match variant, its own fallback"]
+  TP["threadPane — match copy"]
+  PT["paneThread — match copy"]
+  TI["targetIndexOf — waitingAt tie-break re-derives the SQL pick"]
+  SQL["work/chronicle.ts — asked_at DESC, id ASC"]
+  CA --> UP
+  TI -.->|re-derives| SQL
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class UP,TP,PT,TI leak
+            </pre>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">After — one deep module at the seam</p>
+            <pre class="mermaid">
+flowchart TD
+  CT["chronicleTarget.ts — targetOf, matchesThread, targetIndexOf"]
+  CA2["chronicleActivity — draws, calls open"]
+  UP2["usePaneChain"]
+  TP2["threadPane"]
+  PT2["paneThread"]
+  CT --> CA2
+  CT --> UP2
+  CT --> TP2
+  CT --> PT2
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class CT deep
+            </pre>
+          </div>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> "a Chronicle entry opens at what it names" has no owner: construction lives in a .tsx, the matching predicate is copy-pasted twice and re-implemented a third time with a different fallback, and the waitingAt tie-break re-derives by timestamp a choice the service SQL already made — two modules each holding half of one rule, tested nowhere (only targetIndexOf is tested).</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> move target construction into a tested targetOf in chronicleTarget.ts and publish one matchesThread consumed by paneThread, threadPane and usePaneChain; the component only draws and calls open.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>locality: the opening rule changes in one module</li>
+          <li>leverage: three call sites share one matcher</li>
+          <li>unread/target bugs become plain Node tests</li>
+          <li>deletion test passes: the fragments concentrate in chronicleTarget</li>
+        </ul>
+      </article>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="b2" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">B2 · One conversation feed shell, not two</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Worth exploring</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">in-process</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">threadPane.tsx:222-238,265-292 · guildmaster.tsx:188-205,246-272 — both already sit on the shared deep seams useThreadConversation and useFollowNewest</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">Before — the shell redrawn, drifted</p>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="specbox rounded-md border border-slate-300 p-2 space-y-1">
+                <p class="uppercase tracking-wider font-medium">threadPane</p>
+                <p>inverted feed + followNewest</p>
+                <p>failed-turn Retry card</p>
+                <p class="leak">canOpenAside, live onSelectThread</p>
+              </div>
+              <div class="specbox rounded-md border border-slate-300 p-2 space-y-1">
+                <p class="uppercase tracking-wider font-medium">guildmaster</p>
+                <p>inverted feed + followNewest</p>
+                <p>near-identical Retry card</p>
+                <p class="leak">channel passed, no-op onSelectThread</p>
+              </div>
+              <p class="col-span-2 text-slate-500">Every feed-behaviour change is made twice and can disagree.</p>
+            </div>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">After — one drawing, two callers</p>
+            <div class="space-y-2 text-xs">
+              <div class="rounded-md deepbox p-2">
+                <p class="uppercase tracking-wider font-medium">ConversationFeed</p>
+                <p class="opacity-75">feed + footer + failed-turn card, differences as props</p>
+              </div>
+              <p class="font-mono">threadPane — passes through</p>
+              <p class="font-mono">guildmaster — passes through</p>
+            </div>
+          </div>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> the conversation shell (feed, footer, failed-turn Retry card) is drawn twice with copies already drifted — a shallow duplication in the drawing, on top of seams that are already deep.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> one ConversationFeed drawing fed by useThreadConversation's result, per-site differences as props.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>leverage: two call sites today, the channel variants later</li>
+          <li>a feed change becomes local; drift disappears</li>
+          <li>deletion test passes: one copy concentrates the drawing</li>
+        </ul>
+      </article>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="b3" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">B3 · One ranking rule for quests and errands</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Worth exploring</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">in-process</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">childNotches.ts:16-32,50-51 (tested) · channelQuests.tsx:45-49 (inline, untested) · paneThread.tsx:88-96 (inline, untested) · the same filter re-derived in channelPane.tsx:61-72 and channelQuests.tsx:32-45 (StartEmptyQuest)</p>
+        <div class="rounded-lg border border-slate-200 p-4">
+          <pre class="mermaid">
+flowchart LR
+  subgraph BEFORE ["Before — one rule, three writers"]
+    CN["childNotches sort — tested"]
+    CQ["channelQuests inline sort"]
+    PT["paneThread inline sort"]
+  end
+  subgraph AFTER ["After"]
+    ONE["childNotches.ts — byUrgencyThenLatest, over-last variant"]
+    CN2["notch order"] --> ONE
+    CQ2["Quests tab"] --> ONE
+    PT2["pane children"] --> ONE
+  end
+  BEFORE ~~~ AFTER
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class CQ,PT leak
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class ONE deep
+          </pre>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> "most urgent first, latest activity next, work that is over last" is written three times; the two .tsx comparators are untested, so a ranking change makes the Quests tab silently disagree with the pane notches drawing the same children — against the convention that a component only draws.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> one byUrgencyThenLatest (with an over-last variant) in childNotches.ts; the tabs and panes consume it.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>locality: the ranking changes once</li>
+          <li>testable in plain Node — childNotches.test already pins the order</li>
+          <li>the StartEmptyQuest duplication folds in</li>
+        </ul>
+      </article>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="b4" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">B4 · "On show means read" fired from one level</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">Speculative</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">in-process</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">paneHost.tsx:69-81 (marks every open pane thread read — under a biome-ignore) · conversation.tsx:58-61 (the quest screen) · work/chronicle.ts markThreadRead (the deep half)</p>
+        <div class="rounded-lg border border-slate-200 p-4">
+          <pre class="mermaid">
+flowchart TD
+  SRV["work/chronicle.ts markThreadRead — deep"]
+  PH["paneHost marks read, its own effect key"]
+  CO["conversation marks read, its own effect"]
+  PH -.->|"a new surface must remember"| SRV
+  CO -.-> SRV
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class PH,CO leak
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class SRV deep
+          </pre>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> the read rule the Chronicle's unread rests on ("a conversation on show is read; a parked pane is not") is fired by each shell level separately — a seam leak, each new surface must remember to call it, and no test catches a missed call.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> one useThreadShownRead level (or marking inside useThreadConversation) so the rule lives at one place. Speculative: two surfaces only, today.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>locality: the read rule joins its unread sibling behind one interface</li>
+        </ul>
+      </article>
+
+      <!-- ═══════════════ C · SERVICE: WAKE, UNREAD, CODEX ═══════════════ -->
+
+      <section class="space-y-3 pt-4">
+        <h2 class="font-serif text-xl">C · Service: wake, unread, Codex <span class="text-xs uppercase tracking-wider text-slate-400">packages/service</span></h2>
+      </section>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm ring-1 ring-emerald-300" id="c1" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">C1 · The inbox declares the wake, not every sender</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium">Strong</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">local-substitutable</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">messaging.ts:166 (isPendingDeliveryOf — the shared predicate), :203 (insertMessage) · commands.ts:38,57 (wake seam) · 16 declaring sites: messagesHandlers, threadToolHandlers:276, tree, threadRecovery, replies, questsHandlers, suggestions ×2, guildmasterReports, rituals ×2, chatter, questMoves, budgets, budgetPeriods, handover, commandOutcomes · pinned order in test/work/commands.test.ts</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">Before — every sender's memory</p>
+            <pre class="mermaid">
+flowchart TD
+  S1["16 sender sites — each must remember threadsToWake"]
+  S1 -->|forget one| MISS["message recorded, receiver asleep"]
+  S2["messaging.ts insertMessage — records, wakes nobody"]
+  S2 -.->|silent, compiles, tests green| MISS
+  SWEEP["sweep only within the quest — turns.ts, threads.ts"]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class S1,MISS,S2 leak
+            </pre>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">After — the property sits with the inbox</p>
+            <pre class="mermaid">
+flowchart TD
+  IN["messaging.ts insertMessage — returns follow-ups waking its receiver"]
+  S["senders keep only their extras: turnsToCancel, missionsToWake"]
+  IN --> CMD["commands seam: commit, announce, cancel, wake — unchanged"]
+  S --> CMD
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class IN deep
+            </pre>
+          </div>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> "a thread that received a deliverable message gets a turn" is a property of the thread inbox — isPendingDeliveryOf already says which message waits — yet every sender must remember to declare threadsToWake; a sender that forgets compiles and tests green and the message sleeps, with no sweep for a send beyond the tree or into an idle quest. Deletion test on one declaration: deleting it merely moves the failure to the moment the quest falls idle — the mark of a missing deep module.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> insertMessage returns follow-ups waking its receiver (a wake with nothing deliverable is already a no-op, turnAdmission.ts:85); senders keep only their extras. The commands seam keeps its pinned order.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>locality: the wake rule lives in messaging.ts, one module</li>
+          <li>leverage: 16 call sites through one interface</li>
+          <li>one test — "a recorded message wakes its receiver" — covers every sender</li>
+          <li>closes a silent failure mode, not just a shape</li>
+        </ul>
+      </article>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c2" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">C2 · One name and one arbitration for the background wake</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Worth exploring</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">ports &amp; adapters</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">threads.ts:256-287 (admitBackgroundWake, three sequential checks) · turnAdmission.ts:22,64-128 (admitTurn) · harnessProcesses.ts:141-165 (closes a process on "not taken") · claude.ts:238-262 (isStirred, cleared mid-turn) · core/execution.ts ResumeListener + TurnRequest.isResuming · pinned only via the stand-in Claude live test (test/harness/claudeSteering.test.ts:122-151)</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">Before — three names, five modules</p>
+            <pre class="mermaid">
+flowchart LR
+  AD["claude.ts — isStirred"]
+  TH["threads.ts renames it isBackgroundWake — 3 pre-checks"]
+  EX["core/execution.ts — isResuming"]
+  PO["harnessProcesses pool — closes on not-taken"]
+  AD --> TH --> EX
+  TH --> PO
+  PO -.->|"running turn answer false and a live process dies"| TH
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class AD,TH,EX,PO leak
+            </pre>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">After — one concept, one arbitration</p>
+            <pre class="mermaid">
+flowchart LR
+  G["glossary: Wake, beside Steer and Queue"]
+  AD2["adapter reports a wake"]
+  AT["admitTurn wake mode — taken by the running turn"]
+  AD2 --> AT
+  PO2["pool trusts the answer, closes only on refusal"]
+  AT --> PO2
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class AT deep
+            </pre>
+          </div>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> "a self-woken process's work becomes a turn, exactly once" wears three names across five modules, and the "already running" arbitration is hand-stitched in threads.ts because the listener interface says only half of the rule — the other half (a running turn counts as taken, or its process is closed) lives across the seam.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> one name for the concept through the three layers, and the arbitration expressed once: admitTurn gains a wake mode answering "taken by the running turn". Not a merge — each hop hides a real translation; this is vocabulary plus one arbitration point.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>locality: the next wake fix lands in one place</li>
+          <li>an arbitration unit test replaces the process dance</li>
+          <li>no ADR exists for the wake; a glossary entry is the only side effect</li>
+        </ul>
+      </article>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c3" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">C3 · The runner stops knowing Claude Code by name</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Worth exploring</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">ports &amp; adapters</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">threads.ts:185-190 (ToolCall handler branches turn.harness === "claude") · core/execution.ts HarnessEvent.ToolCall · work/fileChanges.ts · harness/claude.ts</p>
+        <div class="rounded-lg border border-slate-200 p-4">
+          <pre class="mermaid">
+flowchart LR
+  subgraph BEFORE ["Before — a leak across the adapter seam"]
+    CL["claude.ts"] -->|"ToolCall, no fileEdit"| RU["threads.ts: harness === 'claude' → fileChangeOf"]
+    OC["opencode.ts"] -->|"ToolCall, fileEdit ready"| RU
+    classDef leak stroke:#dc2626,stroke-width:2px;
+    class RU leak
+  end
+  subgraph AFTER ["After"]
+    CL2["claude.ts — supplies fileEdit on its events, or the adapter interface declares it"]
+    RU2["runner records one normalized call"]
+    OC2["opencode.ts"]
+    CL2 --> RU2
+    OC2 --> RU2
+  end
+  BEFORE ~~~ AFTER
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class RU2 deep
+          </pre>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> the runner branches on a harness's name to recover file changes other adapters report normalized — the seam between harness adapter and runner leaks: a new harness must also be named in the runner or its file activity records as nothing.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> the Claude Code adapter supplies fileEdit on its events (or the HarnessAdapter interface declares the capability); the runner records one normalized call.</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>locality: harness quirks stay in the harness folder</li>
+          <li>leverage: the next adapter gets no fourth special case</li>
+          <li>fileChanges testable through the adapter interface</li>
+        </ul>
+      </article>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c4" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">C4 · The unread predicate spelled once in readChronicle</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">Speculative</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">local-substitutable</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">work/chronicle.ts (85) — replies arm :34-41 · waiting arm :43-47 · failed arm :48-52 · tested only whole-feed (test/work/chronicle.test.ts)</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">Before — three spellings</p>
+            <div class="space-y-1.5 font-mono text-[11px] leading-snug">
+              <p class="text-red-700">replies: MAX(ms.sent_at) &gt; COALESCE(r.read_at, 0)</p>
+              <p class="text-red-700">waiting: COALESCE(MAX(r.read_at),0) &lt; MAX(q.asked_at)</p>
+              <p class="text-red-700">failed: read_at &lt; COALESCE(latest message, last_activity)</p>
+            </div>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">After — one fragment beside the query</p>
+            <div class="rounded-md deepbox p-3 font-mono text-[11px]">isUnreadOf(kind): latest-event timestamp vs read_at</div>
+            <p class="text-xs text-slate-500 mt-2">Each attention kind's predicate testable separately. The precedent is isPendingDeliveryOf.</p>
+          </div>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> what counts as unread is derived three different ways inside one UNION ALL — an eighth attention kind or a change to the reading rule rewrites three comparisons; the failed arm is where the next unread bug hides. The module is otherwise deep.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> one shared isUnreadOf SQL fragment (latest-event timestamp per kind) formed beside the query.</p>
+      </article>
+
+      <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm" id="c5" >
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-serif text-lg">C5 · The Codex restart key from one profile walk</h3>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">Speculative</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">local-substitutable</span>
+        </div>
+        <p class="font-mono text-sm text-slate-600">harness/codex.ts:84-86 (profileOf), :370-375 (restartKeyOf), :408-418 (start) · harness/codexGitGrants.ts (87 — deep, pinned by test/harness/codexGitGrants.test.ts, 144 lines, against real git)</p>
+        <div class="rounded-lg border border-slate-200 p-4">
+          <pre class="mermaid">
+flowchart TD
+  RK["restartKeyOf — per admitted turn"]
+  RK --> P1["profileOf(cwd) — dotGit, realpath, submodule walk"]
+  RK --> G1["gitGrantsOf(cwd) — the same walk again"]
+  ST["start — profileOf a third time"]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class P1,G1,ST leak
+          </pre>
+        </div>
+        <p class="text-sm"><span class="font-medium">Problem:</span> "a change to the repository's Git shape restarts the process" is spelled across restartKeyOf (which walks the filesystem twice per key check, run per admitted turn) and start (a third walk) — the redundancy only reads correctly next to its comment. The grant rule itself is deep and correctly placed; gitGrantsOf is also a synchronous platform call used outside Effect.sync.</p>
+        <p class="text-sm"><span class="font-medium">Solution:</span> the restart key built from the profile once (grants included, computed per acquire or cached in the adapter).</p>
+        <ul class="text-sm list-disc list-inside text-slate-600">
+          <li>locality: one place states what restarts a process</li>
+          <li>the walk stops running per turn</li>
+        </ul>
+        <p class="text-xs px-3 py-2 rounded bg-amber-50 border border-amber-200">Refines ADR 0025 (Codex threads may write the Git folder except hooks and config); it does not reopen it.</p>
+      </article>
+
+      <!-- ═══════════════ TOP RECOMMENDATION ═══════════════ -->
+
+      <section class="rounded-xl deepbox p-8 space-y-3" id="top-recommendation" >
+        <p class="text-xs uppercase tracking-wider opacity-70">Top recommendation</p>
+        <h2 class="font-serif text-2xl"><a class="underline decoration-emerald-400 underline-offset-4" href="#c1" >C1 — the inbox declares the wake</a></h2>
+        <p class="text-sm opacity-85">It is the only candidate that closes a silent failure mode, not just a shape: a forgotten wake compiles and passes every test, and the message sleeps in an idle quest with no sweep to rescue it. The predicate that makes it cheap already exists (isPendingDeliveryOf — CHG-0608 built it for exactly this kind of rule), the wake is already a no-op with nothing deliverable, and the commands seam keeps its pinned order and its tests untouched. Sixteen call sites learn one interface; one test then covers every sender the rule exists for.</p>
+        <p class="text-sm opacity-85">Runner-up: <a class="underline underline-offset-4" href="#b1" >B1, the chronicleTarget module</a> — the newest rule in the app (CHG-0608, e4ace28f), already three matching copies and one SQL re-derivation deep in drift; every future Chronicle feature builds on where a target points.</p>
+      </section>
+
+      <!-- ═══════════════ CHECKED, NOT PROPOSED ═══════════════ -->
+
+      <section class="space-y-2 text-sm text-slate-600">
+        <h2 class="font-serif text-lg text-slate-900">Checked, not proposed</h2>
+        <ul class="list-disc list-inside space-y-1">
+          <li><span class="font-mono text-xs">paneChain.ts</span> — pure, small interface hiding layout/fold/weights, 287-line test: deep. <span class="font-mono text-xs">location.ts</span> / <span class="font-mono text-xs">navigation.ts</span> — a pure tested reducer: deep. <span class="font-mono text-xs">sidebarMode.ts</span>, <span class="font-mono text-xs">childNotches.ts</span>, <span class="font-mono text-xs">railStorage.ts</span>, <span class="font-mono text-xs">railOutline.ts</span>, <span class="font-mono text-xs">questTree.ts</span>, <span class="font-mono text-xs">questRecency.ts</span> — pure and tested. <span class="font-mono text-xs">paneIds.ts</span> — thin but connecting: the deletion test moves three constants, nothing gained.</li>
+          <li><span class="font-mono text-xs">chronicleFeed.ts</span>, <span class="font-mono text-xs">entries.ts</span>, <span class="font-mono text-xs">work/chronicle.ts</span>, <span class="font-mono text-xs">replyLine.tsx</span>'s three adapters, <span class="font-mono text-xs">useThreadConversation</span> / <span class="font-mono text-xs">useFollowNewest</span> — deep: unread arrives computed, feed grouping hidden, no re-shaping per renderer.</li>
+          <li><span class="font-mono text-xs">messaging.ts</span> (the inbox), <span class="font-mono text-xs">turnAdmission.ts</span> (admitTurn), <span class="font-mono text-xs">commands.ts</span> + <span class="font-mono text-xs">followUps.ts</span> (the commit/announce/cancel/wake seam), <span class="font-mono text-xs">startingContext.ts</span> (three exports over one readSections), <span class="font-mono text-xs">harness/codexGitGrants.ts</span> — deep, with invariants pinned by tests.</li>
+          <li>Prior-audit follow-through: the 2026-11-19 #1 (guildmaster provenance → <span class="font-mono text-xs">guildmasterProvenance.ts</span>, 297 lines, withProvenance rooting act_on_mission / change_setting / create_realm / rename_realm / create_ritual) and #6 (sidebar actions → <span class="font-mono text-xs">railQuestActions.ts</span>, <span class="font-mono text-xs">questRecency.ts</span>, <span class="font-mono text-xs">questTab.ts</span>) have landed; no leftover friction from either in this scope.</li>
+          <li>Minor notes, not candidates: <span class="font-mono text-xs">threadToolHandlers.ts</span> (305) and <span class="font-mono text-xs">guildmasterProvenance.ts</span> (297) sit past the 256-line soft limit; <span class="font-mono text-xs">sidebar.tsx</span> (399) still holds the startQuest failure and drop-confirmation handling inline in the tsx (the one leftover of the landed #6).</li>
+        </ul>
+      </section>
+
+      <footer class="text-xs text-slate-400 pt-4">Vocabulary per modules.md: module · interface · implementation · depth · deep · shallow · seam · adapter · leverage · locality · deletion test. Domain terms per documentation/glossary.md: quest, errand, Chronicle, pane, rail, Workshop, realm, journal, briefing, steer, wake (proposed, C2). No candidate contradicts a decision record; C5 refines ADR 0025 without reopening it.</footer>
+    </main>
+  </body>
+</html>
