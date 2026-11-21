@@ -6,10 +6,9 @@ import { messageOf, newRequestId, type ServiceClient } from "../foundation/clien
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { urgencyOf } from "./childNotches";
+import { compareUrgency } from "./childNotches";
 
 /** Where work that is over sits in the list: after the active quests, which read by urgency. */
-const last = 99;
 
 /**
  * The Quests tab of a channel (conversation panes): the quests of its realm, or of the Borderlands for the quests in no
@@ -41,13 +40,7 @@ export function ChannelQuests({
     }
   };
   // The realm's quests read most urgent first (mission-tracking, Mission state), work that is over at the end.
-  const quests = (data?.missions ?? [])
-    .filter((mission) => mission.workspaceId === realmId)
-    .sort(
-      (current, next) =>
-        (urgencyOf(current.state) ?? last) - (urgencyOf(next.state) ?? last) ||
-        next.lastActivityAt - current.lastActivityAt,
-    );
+  const quests = (data?.missions ?? []).filter((mission) => mission.workspaceId === realmId).sort(compareUrgency);
   return (
     <ScrollView contentContainerStyle={local.list} style={local.page}>
       <NewReplyCard isDisabled={isStarting} label="New quest" onPress={() => void start()} />

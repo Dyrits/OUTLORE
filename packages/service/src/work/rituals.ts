@@ -192,7 +192,7 @@ const busyStates = ["Underway", "Attention", "Waiting"];
 
 /**
  * Starts a run: the thread takes the primary Companion again, then the instruction arrives as a message under its
- * trigger. Returns whether it started; a manual run that cannot start is refused with the reason, a scheduled one skipped.
+ * trigger. Returns the inbox wakes. A manual run that cannot start is refused and a scheduled one is skipped.
  */
 const beginRun = Effect.fnUntraced(function* (
   row: RitualRow,
@@ -202,16 +202,16 @@ const beginRun = Effect.fnUntraced(function* (
   const isManual = trigger.kind === "manual";
   if (busyStates.includes(row.threadState)) {
     if (isManual) return yield* invalid("This Ritual is still running. Wait for it to end or interrupt it.");
-    return false;
+    return [];
   }
   if (row.threadState === "Stopped") {
     if (isManual) return yield* invalid("This Ritual's quest is stopped. Resume it first.");
-    return false;
+    return [];
   }
   yield* changeThreadRunner(row.threadId, decodeCompanion(JSON.parse(row.primaryCompanion)));
   const now = yield* Clock.currentTimeMillis;
   const label = isManual ? "Ritual · run by you" : `${scheduledRunPrefix} ${clockOf(trigger.dueAt)}`;
-  const messageId = yield* insertMessage({
+  const { messageId, threadsToWake } = yield* insertMessage({
     fromThreadId: null,
     isQueued: false,
     isResult: false,
@@ -221,7 +221,7 @@ const beginRun = Effect.fnUntraced(function* (
   // The run's message is the service's, not the owner's: marked so it never counts as the owner's words (CHG-0208).
   yield* sql`INSERT INTO ritual_run_messages (message_id, ritual_id) VALUES (${messageId}, ${row.id})`;
   yield* sql`UPDATE rituals SET last_run_at = ${now}, last_run_state = 'Underway', fallback_step = 0 WHERE id = ${row.id}`;
-  return true;
+  return threadsToWake;
 });
 
 /** Runs a Ritual now, whatever its schedule and switch. */
@@ -229,8 +229,8 @@ export const runRitual = Effect.fnUntraced(function* (ritualId: string) {
   const [row] = yield* readRows({ id: ritualId });
   if (row === undefined) return yield* notFound("No such Ritual.");
   if (row.isRealmArchived === 1) return yield* invalid("Restore this Ritual's archived realm before running it.");
-  yield* beginRun(row, { kind: "manual" });
-  return changed(null, { threadsToWake: [row.threadId] });
+  const threadsToWake = yield* beginRun(row, { kind: "manual" });
+  return changed(null, { threadsToWake });
 });
 
 /**
@@ -263,7 +263,7 @@ export const runDueRituals: Effect.Effect<WithFollowUps<null>, never, SqlClient.
     // Its own savepoint, so a start that fails halfway leaves none of its writes behind.
     const started = yield* Effect.exit(sql.withTransaction(beginRun(row, { dueAt, kind: "scheduled" })));
     if (Exit.isSuccess(started)) {
-      if (started.value) toWake.push(row.threadId);
+      toWake.push(...started.value);
     } else yield* recordFailedStart(row, now, started.cause);
   }
   return rows.length === 0 ? unchanged(null) : changed(null, { threadsToWake: toWake });

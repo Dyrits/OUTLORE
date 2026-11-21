@@ -367,17 +367,19 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
   // A changed level, set of permissions, context, model, folder, or account restarts the process, resuming
   // its thread; the effort goes with each turn.
   // Where the folder really points too: a link pointed elsewhere restarts the process, whose start checks it again.
-  restartKeyOf: (request) =>
-    JSON.stringify([
-      threadSettingsOf(request, request.cwd, profileOf(request.cwd, options.vaultFolder ?? null)),
-      // The Git grants, which a repository's worktrees and submodules change.
-      gitGrantsOf(request.cwd),
+  restartKeyOf: (request) => {
+    const profile = profileOf(request.cwd, options.vaultFolder ?? null);
+    return JSON.stringify([
+      threadSettingsOf(request, request.cwd, profile),
+      // Worktrees and submodules can change the grants without changing the type of profile.
+      profile?.grants ?? {},
       // The tools are listed when the process starts, so a change of Code Mode restarts it.
       request.access.usesCodeMode,
       request.access.connectorTools,
       request.configDirectory,
       resolvedFolderOf(request.cwd),
-    ]),
+    ]);
+  },
 
   runTurn: Effect.fnUntraced(function* (connection: CodexConnection, request: TurnRequest, turn: PooledTurn) {
     const effort = effortOf(request.effort);
@@ -405,7 +407,8 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
     // without that thread's overrides, finds no such profile, and fails with "failed to load workspace
     // requirements: invalid input parameter" (Codex 0.170.0, 2026-11-20). A profile in the process settings also
     // needs `default_permissions`.
-    const profile = profileOf(cwd, options.vaultFolder ?? null);
+    // Folder approval may have waited on the owner. Read the grants fresh at the actual start.
+    const profile = yield* Effect.sync(() => profileOf(cwd, options.vaultFolder ?? null));
     const profileArgs =
       profile === null
         ? []

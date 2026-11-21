@@ -11,12 +11,14 @@ import type {
   TokenUsage,
 } from "@outlore/contracts";
 import { Context, Effect, Schema } from "effect";
+import type { FileChange } from "./fileChanges.ts";
 import type { VaultDenial } from "./vaultFolder.ts";
 
-/** The text or patch a harness reports for one completed file edit. */
+/** The patch, text or captured change a harness reports for a file edit. */
 export type ReportedFileEdit =
   | { readonly patch: string; readonly movedTo: string | null }
-  | { readonly pairs: ReadonlyArray<{ readonly previous: string; readonly next: string }> | null };
+  | { readonly pairs: ReadonlyArray<{ readonly previous: string; readonly next: string }> | null }
+  | { readonly change: FileChange };
 
 /** What a harness reports while a turn runs. */
 export type HarnessEvent =
@@ -174,7 +176,7 @@ export type TurnRequest = {
    * Set for a turn that has no message of its own: the harness woke itself, such as Claude Code when a background
    * command ended, and Outlore runs what it then does as a turn. `text` is empty and nothing is written to the harness.
    */
-  readonly isResuming?: boolean;
+  readonly isBackgroundWake?: boolean;
   readonly model: ModelChoice;
   /**
    * What changes from turn to turn, such as the budget line, given with the turn's message rather than
@@ -253,7 +255,7 @@ export type PlanLimitsReport = {
 };
 
 /** Takes the work a harness process began on its own; false when the thread may not work now. */
-export type ResumeListener = (threadId: string) => Effect.Effect<boolean>;
+export type BackgroundWakeListener = (threadId: string) => Effect.Effect<boolean>;
 
 /** What one harness adapter offers: one turn of a thread at a time, which can be steered and interrupted. */
 export interface HarnessAdapter {
@@ -266,10 +268,10 @@ export interface HarnessAdapter {
   readonly interrupt: (threadId: string) => Effect.Effect<boolean>;
   /**
    * Registers who is asked when a harness process wakes itself between turns (Claude Code, when a background command
-   * ends): the listener runs the work as a turn through `runTurn` with `isResuming` and answers whether it took it. A
+   * ends): the listener runs the work as a turn through `runTurn` with `isBackgroundWake` and answers whether it took it. A
    * process whose wake is refused and that runs no turn is closed.
    */
-  readonly onResume?: (listener: ResumeListener) => void;
+  readonly onBackgroundWake?: (listener: BackgroundWakeListener) => void;
   /**
    * Asks the harness's own tool for the limits of the plan behind an account (null: the computer's own sign-in): null
    * when this harness reports none, and a failure when it could not answer, which the caller waits out before asking again.
@@ -312,8 +314,8 @@ export const routeHarnesses = (adapters: Record<HarnessName, HarnessAdapter>): H
   return {
     containmentOf: (harness, level) => adapters[harness].containmentOf?.(harness, level) ?? "Unprotected",
     interrupt: (threadId) => running.get(threadId)?.interrupt(threadId) ?? Effect.succeed(false),
-    onResume: (listener) => {
-      for (const adapter of Object.values(adapters)) adapter.onResume?.(listener);
+    onBackgroundWake: (listener) => {
+      for (const adapter of Object.values(adapters)) adapter.onBackgroundWake?.(listener);
     },
     readPlanLimits: (harness, configDirectory) => adapters[harness].readPlanLimits(harness, configDirectory),
     readVaultDenial: (harness, folder) =>

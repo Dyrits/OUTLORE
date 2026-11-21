@@ -1,9 +1,9 @@
 import type { Activity, FileDiff } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
+import { type FileChange, linesOfStoredDiff, storedDiffOf } from "../core/fileChanges.ts";
 import { notFound, textFieldOf } from "../core/index.ts";
 import { plainActionOf, reasonOf } from "../policy/index.ts";
-import { type FileChange, linesOfStoredDiff, storedDiffOf } from "./fileChanges.ts";
 
 // The tool calls a harness reports as they start, shown with a thread's actions as the steps of its turn
 // (action-approval, What a working thread is doing).

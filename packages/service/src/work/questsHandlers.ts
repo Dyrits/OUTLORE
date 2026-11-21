@@ -157,7 +157,7 @@ export const questsHandlers = (
               attachmentIds,
             ).pipe(
               Effect.tap((started) => placeQuestOrigin(started.threadId, text)),
-              Effect.map((started) => changed(started, { threadsToWake: [started.threadId] })),
+              Effect.map(({ threadsToWake, ...started }) => changed(started, { threadsToWake })),
             ),
           ),
         );

@@ -10,8 +10,8 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { LoreScreen } from "../lore/lore";
 import { RealmPanel } from "../quests/questPanel";
 import { ChannelQuests } from "./channelQuests";
-import { childPartsOf } from "./paneNotches";
-import { notchWidth, PaneNotches } from "./paneStrip";
+import { childPartsOf, notchWidth } from "./paneNotches";
+import { PaneNotches } from "./paneStrip";
 
 export function ChannelPane({
   channel,

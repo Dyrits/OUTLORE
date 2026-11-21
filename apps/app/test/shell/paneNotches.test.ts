@@ -1,13 +1,13 @@
 import { MissionId, ThreadId } from "@outlore/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { channelId } from "../../src/shell/paneIds";
-import { paneNotchesOf } from "../../src/shell/paneNotches";
+import { notchWidth, paneNotchesOf } from "../../src/shell/paneNotches";
 
 const quest = ThreadId.make("quest");
 const errand = ThreadId.make("errand");
 const revealPane = vi.fn();
 
-function questEdge(shownState: "Fulfilled" | "Resting", isArchived = false) {
+function edges(shownState: "Fulfilled" | "Resting", isArchived = false, isQuestFolded = false) {
   return paneNotchesOf({
     channel: { id: null, name: "Borderlands" },
     fullChain: [channelId, quest, errand],
@@ -15,19 +15,30 @@ function questEdge(shownState: "Fulfilled" | "Resting", isArchived = false) {
     missions: [],
     onOpenMission: () => {},
     openList: () => {},
-    quest,
     revealPane,
     revealThread: () => {},
     slots: [
-      { depth: 0, id: channelId, kind: "pane", width: 400 },
-      { depth: 1, id: quest, kind: "pane", width: 400 },
-      { depth: 2, id: errand, kind: "strip", reason: "folded", width: 0 },
+      { content: { id: channelId, kind: "channel" }, depth: 0, id: channelId, kind: "pane", width: 400 },
+      isQuestFolded
+        ? { content: { id: quest, kind: "quest" }, depth: 1, id: quest, kind: "strip", reason: "folded", width: 0 }
+        : { content: { id: quest, kind: "quest" }, depth: 1, id: quest, kind: "pane", width: 400 },
+      isQuestFolded
+        ? { content: { id: errand, kind: "errand" }, depth: 2, id: errand, kind: "pane", width: 400 }
+        : { content: { id: errand, kind: "errand" }, depth: 2, id: errand, kind: "strip", reason: "folded", width: 0 },
     ],
     threads: [{ id: errand, isArchived, lastActivityAt: 0, parentId: quest, shownState, title: "Errand" }],
-  })(1).right;
+  });
 }
 
+const questEdge = (shownState: "Fulfilled" | "Resting", isArchived = false) => edges(shownState, isArchived)(1).right;
+
 describe("placing folded errand notches", () => {
+  it("shares the notch padding across both open panes beside a folded quest", () => {
+    const at = edges("Resting", false, true);
+    expect(at(0).paddingRight).toBe(notchWidth / 2);
+    expect(at(2)).toMatchObject({ isStraddling: true, paddingLeft: notchWidth / 2 });
+  });
+
   it("keeps a Fulfilled errand off the pane edge", () => {
     expect(questEdge("Fulfilled")).toEqual([]);
   });

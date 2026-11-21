@@ -271,9 +271,15 @@ export const makeToolHandlers = (dependencies: {
         Effect.gen(function* () {
           // Beyond the tree, the owner's mentions and the messages received in this turn open a way (CHG-0181).
           if (!(yield* mayMessage(threadId, to))) return unchanged(false);
-          yield* insertMessage({ fromThreadId: threadId, isQueued: false, isResult: false, text, threadId: to });
+          const { threadsToWake } = yield* insertMessage({
+            fromThreadId: threadId,
+            isQueued: false,
+            isResult: false,
+            text,
+            threadId: to,
+          });
           // A pause the message set off ends both turns before the receiver is woken.
-          return changed(true, { threadsToWake: [to], turnsToCancel: yield* countChatter(threadId, to) });
+          return changed(true, { threadsToWake, turnsToCancel: yield* countChatter(threadId, to) });
         }),
       ).pipe(
         Effect.map((isSent) =>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { maxDiffBytes } from "@outlore/contracts";
-import { editChangeOf, linesOfStoredDiff, storedDiffOf, writeChangeOf } from "../../src/work/fileChanges.ts";
+import { editChangeOf, linesOfStoredDiff, storedDiffOf, writeChangeOf } from "../../src/core/fileChanges.ts";
 
 describe("what an Edit or a MultiEdit changes", () => {
   it("reads an Edit's old and new text as a diff of its lines", () => {

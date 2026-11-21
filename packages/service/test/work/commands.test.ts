@@ -17,6 +17,7 @@ import {
   stopThread,
   unchanged,
 } from "../../src/work/index.ts";
+import { insertMessage } from "../../src/work/messaging.ts";
 import { fixture, open, send, settle, start } from "../fixtures/service.ts";
 
 const directories: Array<string> = [];
@@ -160,6 +161,35 @@ describe("running a command", () => {
 const isIdle = (detail: MissionDetail) => detail.thread.state === "Resting";
 
 describe("returning a command's follow-ups", () => {
+  it.live("wakes only deliverable inbox inserts, after commit", () =>
+    Effect.gen(function* () {
+      const started = yield* start();
+      yield* settle(started.missionId, isIdle);
+      const { calls, commands, sql } = yield* recordingRunner;
+      const rootCount = yield* countRoots(sql);
+      const insert = (isConversationOnly: boolean) =>
+        insertMessage({
+          fromThreadId: null,
+          isConversationOnly,
+          isQueued: false,
+          isResult: false,
+          text: "A new message",
+          threadId: started.threadId,
+        }).pipe(Effect.map(({ threadsToWake }) => changed(null, { threadsToWake })));
+
+      yield* commands.run(insert(false).pipe(Effect.andThen(Effect.fail("rollback")))).pipe(Effect.exit);
+      expect(calls).toEqual([]);
+      yield* commands.run(insert(true));
+      expect(calls).toEqual([`publish: after the transaction, ${rootCount} row(s)`]);
+      calls.length = 0;
+      yield* commands.run(insert(false));
+      expect(calls).toEqual([
+        `publish: after the transaction, ${rootCount} row(s)`,
+        `wake ${started.threadId}: after the transaction, ${rootCount} row(s)`,
+      ]);
+    }).pipe(Effect.provide(service())),
+  );
+
   it.live("a reported result wakes the parent, and a top thread's wakes nothing", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;

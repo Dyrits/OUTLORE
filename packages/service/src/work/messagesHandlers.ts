@@ -57,7 +57,7 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
             attachmentIds,
             send.realmPath ?? null,
             viewing,
-          ).pipe(Effect.map((sent) => changed(sent, { threadsToWake: [send.threadId] }))),
+          ).pipe(Effect.map(({ value, threadsToWake }) => changed(value, { threadsToWake }))),
         ),
       );
     }),

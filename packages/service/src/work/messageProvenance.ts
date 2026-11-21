@@ -12,8 +12,9 @@ import { insertUserMessage } from "./messaging.ts";
  */
 export const insertSuggestedMessage = Effect.fnUntraced(function* (threadId: string, text: string, isQueued: boolean) {
   const sql = yield* SqlClient.SqlClient;
-  const { messageId } = yield* insertUserMessage(threadId, text, isQueued);
-  yield* sql`INSERT INTO suggested_messages (message_id) VALUES (${messageId})`;
+  const { value, threadsToWake } = yield* insertUserMessage(threadId, text, isQueued);
+  yield* sql`INSERT INTO suggested_messages (message_id) VALUES (${value.messageId})`;
+  return threadsToWake;
 });
 
 /**

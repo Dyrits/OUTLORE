@@ -32,6 +32,7 @@ import { type DetailsToggle, PanelIcon, TopBar } from "./topBar";
 import { useDetailsColumn } from "./useDetailsColumn";
 import { useSidebarOverlay } from "./useSidebarOverlay";
 import { viewingOf } from "./viewing";
+import { hasConversationPanes } from "./windowView";
 
 /** The window width from which the sidebar shows beside the content; narrower windows keep the screens' own links. */
 const sidebarBreakpoint = 820;
@@ -41,7 +42,7 @@ const sidebarBreakpoint = 820;
  * beside them (CHG-0560), under a top bar over the content; on a narrow one the content alone.
  */
 export function Shell(
-  props: Omit<Parameters<typeof Sidebar>[0], "hasLeftDivider" | "hasWorkshopRow" | "width"> & {
+  props: Omit<Parameters<typeof Sidebar>[0], "hasLeftDivider" | "host" | "width"> & {
     children: ReactNode;
     location: Location;
     dispatch: Dispatch<NavigationEvent>;
@@ -83,15 +84,16 @@ export function Shell(
     },
   };
   const { details, rightPanel } = props;
+  const hasPanes = hasConversationPanes(props.location);
   const column = useDetailsColumn({
     details,
     hasRail,
-    isChroniclerOpen: hasRail ? props.place === "Channel" || props.openMission !== null : isNarrowChroniclerOpen,
+    isChroniclerOpen: hasRail ? hasPanes : isNarrowChroniclerOpen,
     isQuestOpen: props.openMission !== null,
     rightPanel,
   });
   const { companionDock, isCompanionShown, pillId, questWidth } = column;
-  const hasConversationPanes = props.place === "Channel" || props.openMission !== null;
+
   const toggle = () => {
     rememberHidden(!isHidden);
     setIsHidden(!isHidden);
@@ -148,13 +150,7 @@ export function Shell(
             <View style={[local.narrowContent, isNarrowCovered && local.hidden]}>{props.children}</View>
             {isMenuOpen && (
               <View style={[local.narrowContent, local.menuScreen]}>
-                <Sidebar
-                  {...props}
-                  hasWorkshopRow={true}
-                  onOpenChannel={undefined}
-                  onOpenChronicle={undefined}
-                  width="100%"
-                />
+                <Sidebar {...props} host="narrow" width="100%" />
               </View>
             )}
             {isNarrowChroniclerOpen && !isMenuOpen && <View style={local.narrowContent}>{chroniclerChat}</View>}
@@ -174,12 +170,12 @@ export function Shell(
   // A docked or pinned sidebar stands in the frame, at the left, or at the window's right edge when pinned there.
   const hasLeftRail = placement === "docked" ? !isHidden : placement === "pinned" && side === "left";
   const hasRightRail = placement === "pinned" && side === "right";
-  const sidebar = <Sidebar {...props} hasLeftDivider={hasRightRail} hasWorkshopRow={false} width={railWidth} />;
+  const sidebar = <Sidebar {...props} hasLeftDivider={hasRightRail} host="docked" width={railWidth} />;
   const floatingSidebar = (
     <SidebarOverlay isOpen={overlay.isOpen} side={side} width={railWidth}>
       <Sidebar
         {...props}
-        hasWorkshopRow={false}
+        host="overlay"
         {...(props.onOpenChannel === undefined ? {} : { onOpenChannel: choosing(props.onOpenChannel) })}
         {...(props.onOpenChronicle === undefined ? {} : { onOpenChronicle: choosing(props.onOpenChronicle) })}
         onOpenMission={choosing(props.onOpenMission)}
@@ -248,8 +244,8 @@ export function Shell(
                       )}
                       <View style={[local.panel, hasLeftRail && local.panelDivider]}>{props.children}</View>
                     </View>
-                    {!hasConversationPanes && column.wideColumn}
-                    {!hasConversationPanes && column.hasEdgeHandle && (
+                    {!hasPanes && column.wideColumn}
+                    {!hasPanes && column.hasEdgeHandle && (
                       <Pressable
                         accessibilityLabel={column.isColumnOpen ? "Hide quest panel" : "Show quest panel"}
                         accessibilityRole="button"

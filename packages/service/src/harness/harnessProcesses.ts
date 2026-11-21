@@ -1,11 +1,11 @@
 import type { BillingKind, TokenUsage } from "@outlore/contracts";
 import { Deferred, Duration, Effect } from "effect";
 import {
+  type BackgroundWakeListener,
   type HarnessAdapter,
   type HarnessFailure,
   interruptedOutcomeOf,
   interruptGraceMillis,
-  type ResumeListener,
   type SteeredMessage,
   type TurnOutcome,
   type TurnRequest,
@@ -20,11 +20,11 @@ import {
 /** A thread's running harness process, as its protocol opened it. */
 export interface HarnessConnection {
   readonly close: () => void;
+  /** Whether the process woke itself and no turn has taken that work in yet; left out, it never wakes itself. */
+  readonly hasBackgroundWake?: () => boolean;
   /** Whether the process still runs work in the background that will wake it when it ends; left out, it never does. */
   readonly hasBackgroundWork?: () => boolean;
   readonly hasExited: () => boolean;
-  /** Whether the process woke itself and no turn has taken that work in yet; left out, it never wakes itself. */
-  readonly isStirred?: () => boolean;
   /** The harness's own conversation, which the thread's next turn continues. */
   readonly sessionId: string;
 }
@@ -57,7 +57,7 @@ export type TurnEnd = {
 
 /** What a process tells the pool on its own. */
 export interface ProcessSignals {
-  /** The process may have woken itself: the pool checks `isStirred` and, if no turn runs, asks for a turn. */
+  /** The process may have woken itself: the pool checks `hasBackgroundWake` and, if no turn runs, asks for a turn. */
   readonly resume: () => void;
 }
 
@@ -107,7 +107,7 @@ type Entry<Connection> = {
   readonly connection: Connection;
   idleTimer: ReturnType<typeof setTimeout> | null;
   /** Whether a turn was asked for to take in what the process began on its own, until a turn begins on it. */
-  isResuming: boolean;
+  isTakingBackgroundWake: boolean;
   readonly key: string;
   turn: RunningTurn | null;
 };
@@ -123,7 +123,7 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
   const idleMillis = Duration.toMillis(Duration.fromInputUnsafe(options.idleTimeout));
   const grace = options.interruptGrace ?? interruptGraceMillis;
   const backgroundMillis = Duration.toMillis(Duration.fromInputUnsafe(options.backgroundHold ?? "1 hour"));
-  const listeners: Array<ResumeListener> = [];
+  const listeners: Array<BackgroundWakeListener> = [];
   const fork = Effect.runForkWith(yield* Effect.context<never>());
   /** How long the process is kept now: longer while it runs work that will wake it. */
   const holdMillisOf = (connection: HarnessConnection) =>
@@ -144,9 +144,10 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
    */
   const resume = (threadId: string) => {
     const entry = entries.get(threadId);
-    if (entry === undefined || entry.turn !== null || entry.isResuming || starting.has(threadId)) return;
-    if (entry.connection.hasExited() || entry.connection.isStirred?.() !== true || listeners.length === 0) return;
-    entry.isResuming = true;
+    if (entry === undefined || entry.turn !== null || entry.isTakingBackgroundWake || starting.has(threadId)) return;
+    if (entry.connection.hasExited() || entry.connection.hasBackgroundWake?.() !== true || listeners.length === 0)
+      return;
+    entry.isTakingBackgroundWake = true;
     fork(
       Effect.gen(function* () {
         const answers = yield* Effect.forEach(listeners, (listener) => listener(threadId));
@@ -158,7 +159,7 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
   };
 
   const acquire = Effect.fnUntraced(function* (request: TurnRequest) {
-    const key = protocol.restartKeyOf(request);
+    const key = yield* Effect.sync(() => protocol.restartKeyOf(request));
     const existing = entries.get(request.threadId);
     if (existing !== undefined && (existing.key !== key || existing.connection.hasExited())) close(request.threadId);
     const kept = entries.get(request.threadId);
@@ -170,7 +171,7 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
     const entry: Entry<Connection> = {
       connection: yield* protocol.start(request, { resume: () => resume(request.threadId) }),
       idleTimer: null,
-      isResuming: false,
+      isTakingBackgroundWake: false,
       key,
       turn: null,
     };
@@ -212,7 +213,7 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
         usage: null,
       };
       entry.turn = turn;
-      entry.isResuming = false;
+      entry.isTakingBackgroundWake = false;
       // An interrupt the harness has not confirmed within the grace period ends the turn regardless.
       const unconfirmed = Deferred.await(turn.interrupted).pipe(
         Effect.andThen(Effect.sleep(grace)),
@@ -294,8 +295,14 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
   });
 
   // A harness reports no plan limits unless its adapter says how to ask (codex.ts).
-  const onResume = (listener: ResumeListener) => {
+  const onBackgroundWake = (listener: BackgroundWakeListener) => {
     listeners.push(listener);
   };
-  return { interrupt, onResume, readPlanLimits: () => Effect.succeed(null), runTurn, steer } satisfies HarnessAdapter;
+  return {
+    interrupt,
+    onBackgroundWake,
+    readPlanLimits: () => Effect.succeed(null),
+    runTurn,
+    steer,
+  } satisfies HarnessAdapter;
 });

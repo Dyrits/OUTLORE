@@ -26,6 +26,8 @@ export type Resolution = {
   readonly targetTitle: string | null;
 };
 
+type ResolutionWithWakes = Resolution & { threadsToWake: ReadonlyArray<string> };
+
 const withdrawn: Resolution = { outcome: "Withdrawn", targetMissionId: null, targetThreadId: null, targetTitle: null };
 
 /** What a thread's off-topic suggestion came to; what the thread is told is the tool's concern. */
@@ -114,7 +116,8 @@ export const suggestionsLayer = Layer.effect(
         targetMissionId: started.missionId,
         targetThreadId: started.threadId,
         targetTitle: mission?.title ?? title,
-      } satisfies Resolution;
+        threadsToWake: started.threadsToWake,
+      } satisfies ResolutionWithWakes;
     });
 
     /** Carries out the owner's choice in the answer's transaction; the request's new home is then woken. */
@@ -123,14 +126,15 @@ export const suggestionsLayer = Layer.effect(
         Aside: Effect.fnUntraced(function* () {
           if (suggestion.isFromGuildmaster)
             return yield* invalid("Chronicler keeps no asides: continue in a quest or open a new one.");
-          const { value: opened } = yield* openAside(suggestion.threadId, suggestion.text, suggestion.title);
+          const { value: opened, followUps } = yield* openAside(suggestion.threadId, suggestion.text, suggestion.title);
           const [row] = yield* sql<{ title: string }>`SELECT title FROM threads WHERE id = ${opened.threadId}`;
           return {
             outcome: "KeptAsAside",
             targetMissionId: null,
             targetThreadId: opened.threadId,
             targetTitle: row?.title ?? suggestion.title,
-          } satisfies Resolution;
+            threadsToWake: followUps.threadsToWake,
+          } satisfies ResolutionWithWakes;
         }),
         Continue: Effect.fnUntraced(function* ({ missionId }) {
           if (!suggestion.matches.some((match) => match.missionId === missionId))
@@ -138,13 +142,14 @@ export const suggestionsLayer = Layer.effect(
           const [mission] = yield* sql<{ title: string; topThreadId: string }>`
               SELECT title, top_thread_id AS topThreadId FROM missions WHERE id = ${missionId}`;
           if (mission === undefined) return yield* notFound("No such mission.");
-          yield* insertSuggestedMessage(mission.topThreadId, suggestion.text, true);
+          const threadsToWake = yield* insertSuggestedMessage(mission.topThreadId, suggestion.text, true);
           return {
             outcome: "Continued",
             targetMissionId: missionId,
             targetThreadId: mission.topThreadId,
             targetTitle: mission.title,
-          } satisfies Resolution;
+            threadsToWake,
+          } satisfies ResolutionWithWakes;
         }),
         NewMission: Effect.fnUntraced(function* (chosen) {
           // The realm the owner chose on the card (null for the Borderlands) over the one proposed.
@@ -206,11 +211,10 @@ export const suggestionsLayer = Layer.effect(
             return done;
           }),
         );
-        yield* waits.settle(suggestionId, resolution);
+        const { threadsToWake, ...answer } = resolution;
+        yield* waits.settle(suggestionId, answer);
         const answered = (yield* readSuggestion(suggestionId)) ?? suggestion;
-        return changed(answered, {
-          threadsToWake: answered.targetThreadId === null ? [] : [answered.targetThreadId],
-        });
+        return changed(answered, { threadsToWake });
       }).pipe(Effect.provideService(SqlClient.SqlClient, sql));
 
     /**
@@ -305,11 +309,10 @@ export const suggestionsLayer = Layer.effect(
           shouldOpenOffTopicMissions && matches.length === 0
             ? yield* openWithoutAsking(threadId, text, title).pipe(Effect.catch(() => Effect.succeed(null)))
             : null;
-        if (opened !== null)
-          return changed<Suggested>(
-            { _tag: "OpenedWithoutAsking", resolution: opened },
-            { threadsToWake: opened.targetThreadId === null ? [] : [opened.targetThreadId] },
-          );
+        if (opened !== null) {
+          const { threadsToWake, ...resolution } = opened;
+          return changed<Suggested>({ _tag: "OpenedWithoutAsking", resolution }, { threadsToWake });
+        }
         const resolution = yield* ask(
           threadId,
           caller.missionId,

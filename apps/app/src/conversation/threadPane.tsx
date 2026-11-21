@@ -1,6 +1,6 @@
 import type { MessageId, MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
 import { type ReactNode, useContext, useState } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { BudgetStopCard } from "../editors/budgets";
 import { newRequestId, type ServiceClient } from "../foundation/client";
 import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
@@ -19,12 +19,11 @@ import {
   NewQuestButton,
   QuestPanelButton,
 } from "../ui/questHeaderButtons";
-import { ChronicleTargetContext } from "./chronicleTarget";
+import { ChronicleTargetContext, matchesThread } from "./chronicleTarget";
 import { CommentTray } from "./commentViews";
 import { type CompanionsTab, CompanionsTabLayout } from "./companionsTabLayout";
-import { EntryView } from "./conversationEntries";
-import { ConversationFooter } from "./conversationFooter";
-import type { Entry } from "./entries";
+import { ConversationFailure, ConversationFeed } from "./conversationFeed";
+
 import { ErrandHeaderActions, hasErrandActions } from "./errandHeaderActions";
 import { MobileHeader } from "./mobileHeader";
 import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
@@ -86,16 +85,14 @@ export function ThreadPane({
     thread.workspace?.path ?? null,
     { isChronicler: false, realmPath: null, viewing: null },
     terminalFolderOf(thread),
-    target !== null && (target.threadId === thread.id || (target.threadId === null && thread.parentId === null))
-      ? target
-      : null,
+    target !== null && matchesThread(target, thread.id, thread.parentId === null) ? target : null,
   );
-  const { draft, skills, actionError, terminal, followNewest, comments, act } = conversation;
+  const { skills, actionError, terminal, comments, act } = conversation;
   const [isOpening, setIsOpening] = useState(false);
   // A Reply is offered in a quest's own conversation only: it opens an errand beneath (CHG-0559); an errand's pane has none.
   const [replyTo, setReplyTo] = useState<{ id: MessageId; text: string } | null>(null);
   const canReply = thread.parentId === null;
-  const { canOpenBeneath, canResume, canStop, isInTurn } = thread.actions;
+  const { canOpenBeneath, canResume, canStop } = thread.actions;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
   // Only a quest's own thread archives it, and not a Ritual's quest or one already archived.
   const isOwnQuest = thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived";
@@ -226,23 +223,7 @@ export function ThreadPane({
           {thread.blocker === "MissingWorkspace" && thread.workspace !== null && (
             <MissingFolderNotice client={client} path={thread.workspace.path} threadId={thread.id} />
           )}
-          {thread.failure != null && (
-            <View style={styles.failure}>
-              <Text style={styles.error}>The last turn failed: {thread.failure}</Text>
-              <Text style={styles.muted}>
-                Retry runs it again on the Companion chosen below; your next message retries it too.
-              </Text>
-              {!isInTurn && thread.state !== "Stopped" && (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => act(client.request({ _tag: "RetryThread", threadId: thread.id }))}
-                  style={styles.button}
-                >
-                  <Text style={styles.buttonText}>Retry</Text>
-                </Pressable>
-              )}
-            </View>
-          )}
+          <ConversationFailure client={client} conversation={conversation} thread={thread} />
           {tabs}
           {alternateBody}
           <View style={alternateBody == null ? [styles.flex, styles.pane] : { display: "none" }}>
@@ -299,28 +280,14 @@ export function ThreadPane({
               )}
               conversation={conversation}
               feed={
-                <FlatList<Entry>
-                  {...followNewest.listPropsOf(
-                    <ConversationFooter draft={draft} panel={terminal.panel} thread={thread} />,
-                  )}
-                  contentContainerStyle={styles.feed}
-                  keyExtractor={(entry) => entry.key}
-                  renderItem={({ item }) => (
-                    <EntryView
-                      canOpenAside={thread.parentId === null}
-                      client={client}
-                      entry={item}
-                      harness={thread.harness}
-                      isInTurn={isInTurn}
-                      onInterrupt={conversation.interrupt}
-                      onOpenMission={onOpenMission}
-                      onSelectThread={onSelect}
-                      onSteer={conversation.steer}
-                      skills={skills}
-                      workspacePath={thread.workspace?.path ?? null}
-                    />
-                  )}
-                  style={styles.flex}
+                <ConversationFeed
+                  canOpenAside={thread.parentId === null}
+                  client={client}
+                  conversation={conversation}
+                  onOpenMission={onOpenMission}
+                  onSelectThread={onSelect}
+                  thread={thread}
+                  workspacePath={thread.workspace?.path ?? null}
                 />
               }
               thread={thread}

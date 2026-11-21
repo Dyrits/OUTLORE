@@ -10,6 +10,7 @@ import {
   textFieldOf,
 } from "../core/index.ts";
 import { claudeChoicesOf } from "./claudeChoices.ts";
+import { claudeToolCallOf } from "./claudeToolCalls.ts";
 
 /** Calls one tool on a thread's MCP endpoint and returns its text, as a harness would; for the fake and checks. */
 export const callThreadTool = (mcpUrl: string, name: string, args: unknown) =>
@@ -111,14 +112,12 @@ const scriptedCall = (request: TurnRequest, line: string, turn: FakeTurn) => {
   const reported = /^tooluse (\S+) (.*)$/.exec(line);
   if (reported !== null) {
     const toolName = reported[1] ?? "";
-    return request
-      .onEvent({
-        _tag: "ToolCall",
-        id: `toolu_fake_${++reportedCalls}`,
-        input: JSON.parse(reported[2] ?? "{}"),
-        toolName,
-      })
-      .pipe(Effect.as(`reported ${toolName}`));
+    const call = { id: `toolu_fake_${++reportedCalls}`, input: JSON.parse(reported[2] ?? "{}"), toolName };
+    return (
+      request.harness === "claude"
+        ? claudeToolCallOf(call, request.cwd)
+        : Effect.succeed({ _tag: "ToolCall" as const, ...call })
+    ).pipe(Effect.flatMap(request.onEvent), Effect.as(`reported ${toolName}`));
   }
   const tool = /^call (\S+) (.*)$/.exec(line);
   if (tool !== null) return callThreadTool(access.mcpUrl, tool[1] ?? "", JSON.parse(tool[2] ?? "{}"));

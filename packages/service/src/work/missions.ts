@@ -70,6 +70,7 @@ export const insertMission = Effect.fnUntraced(function* (
     messageId: started.messageId,
     missionId: MissionId.make(started.missionId),
     threadId: ThreadId.make(started.threadId),
+    threadsToWake: started.threadsToWake,
   };
 });
 
@@ -124,7 +125,7 @@ export const insertQuest = Effect.fnUntraced(function* (
   // The Charter's backup Companions are the new thread's own from the start (thread-panel, Backup companions).
   yield* sql`INSERT INTO threads (id, mission_id, state, harness, account_id, model, effort, workspace_id, title, backups)
       VALUES (${threadId}, ${missionId}, 'Resting', ${harness}, ${accountId}, ${model}, ${effort}, ${workspaceId}, ${quest.title}, ${JSON.stringify(settings.backups)})`;
-  const messageId =
+  const opening =
     quest.firstMessage === null
       ? null
       : yield* insertMessage({
@@ -146,7 +147,7 @@ export const insertQuest = Effect.fnUntraced(function* (
       model,
       workspacePath,
     });
-  return { messageId, missionId, threadId };
+  return { messageId: opening?.messageId ?? null, missionId, threadId, threadsToWake: opening?.threadsToWake ?? [] };
 });
 
 type MissionRow = {

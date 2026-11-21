@@ -31,6 +31,14 @@ const urgency = {
 /** How urgent a state is, 0 being the most urgent; null for work that is over, which has no notch. */
 export const urgencyOf = (state: ThreadState | MissionState): number | null => urgency[state];
 
+/** Orders work by urgency and then activity, with completed work at the end. */
+export const compareUrgency = (
+  current: { state: ThreadState | MissionState; lastActivityAt: number },
+  next: { state: ThreadState | MissionState; lastActivityAt: number },
+): number =>
+  (urgencyOf(current.state) ?? Infinity) - (urgencyOf(next.state) ?? Infinity) ||
+  next.lastActivityAt - current.lastActivityAt;
+
 /** A child that is over or archived has no notch. */
 const isActive = (child: ChildNotch<string>): boolean => urgencyOf(child.state) !== null && child.isArchived !== true;
 
@@ -45,12 +53,7 @@ export const childNotchesOf = <Id extends string>(
 ): { more: { count: number; state: ThreadState | MissionState } | null; shown: Array<ChildNotch<Id>> } => {
   const ranked = children
     .filter((child) => isActive(child) && !visible.has(child.id))
-    .sort(
-      (current, next) =>
-        (urgencyOf(current.state) ?? 0) - (urgencyOf(next.state) ?? 0) ||
-        next.lastActivityAt - current.lastActivityAt ||
-        current.id.localeCompare(next.id),
-    );
+    .sort((current, next) => compareUrgency(current, next) || current.id.localeCompare(next.id));
   const hidden = ranked.slice(maxChildNotches);
   const first = hidden[0];
   return {

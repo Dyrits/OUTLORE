@@ -203,8 +203,9 @@ type NewMessage = {
   readonly attachmentIds?: ReadonlyArray<string>;
   /** The sending thread, for a thread message. */
   readonly fromThreadId: string | null;
-  /** Whether it waits for the receiver's next turn instead of joining a running one (CHG-0039). */
+  /** Whether the message belongs only to the conversation history. */
   readonly isConversationOnly?: boolean;
+  /** Whether the message waits for the receiver's next turn instead of joining a running one (CHG-0039). */
   readonly isQueued: boolean;
   /** Whether it is a result reported by a thread beneath (thread-tree, Results). */
   readonly isResult: boolean;
@@ -216,7 +217,7 @@ type NewMessage = {
   readonly viewing?: string | null;
 };
 
-/** Records a message for a thread, after the thread's existing messages. Callers run it in a transaction. */
+/** Records a message and returns its receiver wake for the caller to apply after commit. */
 export const insertMessage = Effect.fnUntraced(function* (message: NewMessage) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{
@@ -241,7 +242,9 @@ export const insertMessage = Effect.fnUntraced(function* (message: NewMessage) {
     senderKind: message.fromThreadId === null ? "user" : "thread",
   });
   yield* attachToMessage(messageId, attachmentIds);
-  return messageId;
+  // User and thread messages start out undelivered. Conversation-only entries never reach admission.
+  const threadsToWake: ReadonlyArray<string> = message.isConversationOnly === true ? [] : [message.threadId];
+  return { messageId, threadsToWake };
 });
 
 /** Records an owner message for a thread, queued or to steer a running turn. Callers run it in a transaction. */
@@ -262,7 +265,9 @@ export const insertUserMessage = (
     text,
     threadId,
     viewing,
-  }).pipe(Effect.map((messageId) => ({ messageId }) satisfies SendMessageResult));
+  }).pipe(
+    Effect.map(({ messageId, threadsToWake }) => ({ threadsToWake, value: { messageId } satisfies SendMessageResult })),
+  );
 
 /** A message as the receiving thread's harness reads it: a thread message names its sender. */
 const deliveredTextOf = (message: {

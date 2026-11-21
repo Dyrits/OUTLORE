@@ -49,7 +49,7 @@ export function Sidebar({
   onOpenChronicle,
   onOpenThread,
   hasLeftDivider,
-  hasWorkshopRow,
+  host,
   isWorkshopOpen,
   onWorkshop,
   openMission,
@@ -65,8 +65,8 @@ export function Sidebar({
   onOpenChronicle?: (() => void) | undefined;
   /** Opens an errand of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
-  /** Whether the foot has the Workshop's row: not on a wide window, where the top bar's icon opens it (CHG-0563). */
-  hasWorkshopRow: boolean;
+  /** Where the sidebar is shown. */
+  host: "narrow" | "overlay" | "docked";
   hasLeftDivider?: boolean;
   /** Whether the Workshop (Settings) is the screen shown, which its row shows. */
   isWorkshopOpen: boolean;
@@ -82,6 +82,7 @@ export function Sidebar({
   const { data: chronicle } = useServiceQuery(client, { _tag: "ReadChronicle" }, "chronicle-badge");
   const unreadCount = unreadCountOf(chronicle ?? []);
   const placements = placementsOf(data?.missions ?? [], data?.workspaces ?? []);
+  const isNarrow = host === "narrow";
   // The menu that makes a realm, tied to a folder or to none.
   const [isCreating, setIsCreating] = useState(false);
   const [realmFolds, setRealmFolds] = useState<ReadonlyMap<WorkspaceId, boolean>>(new Map());
@@ -104,7 +105,7 @@ export function Sidebar({
     openMission,
     openThread,
     shouldShowAgentThreads: settings?.shouldShowAgentThreads ?? true,
-    showErrands: onOpenChannel === undefined,
+    showErrands: isNarrow,
   };
 
   // Starts an empty quest and opens it; its realm unfolds to show it, and a refusal shows under the realm.
@@ -158,7 +159,7 @@ export function Sidebar({
    */
   const realmRow = ({ quests, visibleQuests, workspace }: (typeof outline.realms)[number]) => {
     const realm = { id: workspace.id, name: workspace.name, path: workspace.path, quests, visibleQuests };
-    const isClosed = realmFolds.get(realm.id) ?? (onOpenChannel !== undefined && quests.length === 0);
+    const isClosed = realmFolds.get(realm.id) ?? (!isNarrow && quests.length === 0);
     return (
       <DropTarget
         key={realm.id}
@@ -170,7 +171,7 @@ export function Sidebar({
             <RealmHeader
               isOpen={!isClosed}
               name={realmLabelOf(realm, data?.workspaces ?? [])}
-              {...(onOpenChannel === undefined
+              {...(isNarrow || onOpenChannel === undefined
                 ? {}
                 : { onOpenChannel: () => onOpenChannel({ id: realm.id, name: realm.name }) })}
               onNewQuest={() => startQuest(realm.id, realm.id)}
@@ -182,8 +183,8 @@ export function Sidebar({
           </RealmDragSource>
           {failureUnder(realm.id)}
           {!isClosed && realm.quests.length === 0 && (
-            <Text style={onOpenChannel === undefined ? local.emptyGroup : local.emptyRealm}>
-              {onOpenChannel === undefined ? "No quest in this realm yet." : "No quests yet"}
+            <Text style={isNarrow ? local.emptyGroup : local.emptyRealm}>
+              {isNarrow ? "No quest in this realm yet." : "No quests yet"}
             </Text>
           )}
           {!isClosed &&
@@ -204,18 +205,10 @@ export function Sidebar({
 
   return (
     <View
-      style={[
-        local.sidebar,
-        !hasWorkshopRow && local.sidebarDesktop,
-        hasLeftDivider && local.sidebarLeftDivider,
-        { width },
-      ]}
+      style={[local.sidebar, !isNarrow && local.sidebarDesktop, hasLeftDivider && local.sidebarLeftDivider, { width }]}
     >
-      <ScrollView
-        contentContainerStyle={[local.group, onOpenChronicle !== undefined && local.groupWithChronicle]}
-        style={local.flex}
-      >
-        {onOpenChronicle !== undefined && (
+      <ScrollView contentContainerStyle={[local.group, !isNarrow && local.groupWithChronicle]} style={local.flex}>
+        {!isNarrow && onOpenChronicle !== undefined && (
           <>
             <Pressable
               accessibilityRole="button"
@@ -257,7 +250,7 @@ export function Sidebar({
           onToggle={() => foldedSections.toggle("Borderlands")}
           title="Borderlands"
         />
-        {onOpenChannel !== undefined && (
+        {!isNarrow && onOpenChannel !== undefined && (
           <Pressable accessibilityRole="button" onPress={() => onOpenChannel(null)}>
             <Text style={local.emptyGroup}>Borderlands chat</Text>
           </Pressable>
@@ -280,7 +273,7 @@ export function Sidebar({
       <View style={local.footer}>
         <SidebarFoot
           client={client}
-          hasWorkshopRow={hasWorkshopRow}
+          hasWorkshopRow={isNarrow}
           isWorkshopOpen={isWorkshopOpen}
           onWorkshop={onWorkshop}
         />

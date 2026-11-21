@@ -61,68 +61,81 @@ export const readRunningTurnId = Effect.fnUntraced(function* (threadId: string) 
  * is admitted under the same limits with no message: its harness began work on its own, such as Claude Code when a
  * background command ended, and messages that wait are left for the turn after it.
  */
-export const admitTurn = Effect.fnUntraced(function* (threadId: string, isBackgroundWake = false) {
+const admit = Effect.fnUntraced(function* (threadId: string, isBackgroundWake: boolean) {
   const sql = yield* SqlClient.SqlClient;
   const changes = yield* Changes;
-  return yield* sql.withTransaction(
-    Effect.gen(function* () {
-      const [thread] = yield* sql<{
-        state: string;
-        missionId: string;
-        sessionId: string | null;
-        model: ModelChoice;
-        effort: EffortChoice;
-        harness: HarnessName;
-        accountId: string | null;
-      }>`SELECT t.state, t.mission_id AS missionId, t.session_id AS sessionId, t.model, t.effort, t.harness,
+  const [thread] = yield* sql<{
+    state: string;
+    missionId: string;
+    sessionId: string | null;
+    model: ModelChoice;
+    effort: EffortChoice;
+    harness: HarnessName;
+    accountId: string | null;
+  }>`SELECT t.state, t.mission_id AS missionId, t.session_id AS sessionId, t.model, t.effort, t.harness,
             t.account_id AS accountId FROM threads t JOIN missions m ON m.id = t.mission_id
           WHERE t.id = ${threadId} AND t.archived_at IS NULL AND t.is_deleting = 0
             AND (${!isBackgroundWake} OR m.ending IS NULL)`;
-      // Attention can hold a turn still running in its harness; Stopped always needs an explicit resume.
-      if (thread === undefined || ["Underway", "Attention", "Stopped"].includes(thread.state)) return null;
-      if (yield* isQuestRealmArchived(thread.missionId)) return null;
-      const pending = yield* listPending(threadId, false);
-      if (pending.length === 0 && !isBackgroundWake) return null;
-      if ((yield* runningCountOf(thread.missionId)) >= maxRunning) return null;
-      const now = yield* Clock.currentTimeMillis;
-      const workspace = yield* readThreadWorkspace(threadId);
-      // A deleted own copy holds the thread as a missing workspace does (workspace-attachment, CHG-0441).
-      if (workspace?.isMissing === true || (yield* readOwnCopy(threadId))?.isMissing === true) {
-        yield* holdThread(threadId, "MissingWorkspace");
-        yield* touchMission(thread.missionId, now);
-        yield* sql.afterCommit(changes.publish);
-        return null;
-      }
-      if (yield* holdIfReached(threadId, thread.missionId)) {
-        yield* touchMission(thread.missionId, now);
-        yield* sql.afterCommit(changes.publish);
-        return null;
-      }
-      // A runner change is recorded when it actually runs, not while messages wait for admission.
-      if (!isBackgroundWake) yield* recordPendingHandover(threadId, now);
-      const turnId = yield* newId;
-      yield* sql`INSERT INTO turns (id, thread_id, status, started_at, harness, model)
+  // Attention can hold a turn still running in its harness; Stopped always needs an explicit resume.
+  if (thread === undefined || ["Underway", "Attention", "Stopped"].includes(thread.state)) return null;
+  if (yield* isQuestRealmArchived(thread.missionId)) return null;
+  const pending = yield* listPending(threadId, false);
+  if (pending.length === 0 && !isBackgroundWake) return null;
+  if ((yield* runningCountOf(thread.missionId)) >= maxRunning) return null;
+  const now = yield* Clock.currentTimeMillis;
+  const workspace = yield* readThreadWorkspace(threadId);
+  // A deleted own copy holds the thread as a missing workspace does (workspace-attachment, CHG-0441).
+  if (workspace?.isMissing === true || (yield* readOwnCopy(threadId))?.isMissing === true) {
+    yield* holdThread(threadId, "MissingWorkspace");
+    yield* touchMission(thread.missionId, now);
+    yield* sql.afterCommit(changes.publish);
+    return null;
+  }
+  if (yield* holdIfReached(threadId, thread.missionId)) {
+    yield* touchMission(thread.missionId, now);
+    yield* sql.afterCommit(changes.publish);
+    return null;
+  }
+  // A runner change is recorded when it actually runs, not while messages wait for admission.
+  if (!isBackgroundWake) yield* recordPendingHandover(threadId, now);
+  const turnId = yield* newId;
+  yield* sql`INSERT INTO turns (id, thread_id, status, started_at, harness, model)
           VALUES (${turnId}, ${threadId}, 'running', ${now}, ${thread.harness}, ${thread.model})`;
-      const taken = isBackgroundWake ? [] : pending;
-      yield* deliverMessages(
-        taken.map((message) => message.id),
-        turnId,
-      );
-      yield* startRunning(threadId);
-      yield* touchMission(thread.missionId, now);
-      yield* sql.afterCommit(changes.publish);
-      return {
-        accountId: thread.accountId,
-        attachments: taken.flatMap((message) => message.attachments),
-        effort: thread.effort,
-        harness: thread.harness,
-        isBackgroundWake,
-        messages: taken.map((message) => message.text),
-        missionId: thread.missionId,
-        model: thread.model,
-        sessionId: thread.sessionId,
-        turnId,
-      } satisfies Admitted;
+  const taken = isBackgroundWake ? [] : pending;
+  yield* deliverMessages(
+    taken.map((message) => message.id),
+    turnId,
+  );
+  yield* startRunning(threadId);
+  yield* touchMission(thread.missionId, now);
+  yield* sql.afterCommit(changes.publish);
+  return {
+    accountId: thread.accountId,
+    attachments: taken.flatMap((message) => message.attachments),
+    effort: thread.effort,
+    harness: thread.harness,
+    isBackgroundWake,
+    messages: taken.map((message) => message.text),
+    missionId: thread.missionId,
+    model: thread.model,
+    sessionId: thread.sessionId,
+    turnId,
+  } satisfies Admitted;
+});
+
+/** Admits the pending inbox messages in one transaction. */
+export const admitTurn = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  return yield* sql.withTransaction(admit(threadId, false));
+});
+
+/** The running turn can take the wake, or admission starts a turn for it. Null allows the pool to close. */
+export const admitBackgroundWake = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  return yield* sql.withTransaction(
+    Effect.gen(function* () {
+      if ((yield* readRunningTurnId(threadId)) !== null) return "taken";
+      return yield* admit(threadId, true);
     }),
   );
 });

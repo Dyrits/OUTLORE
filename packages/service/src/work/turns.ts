@@ -1,13 +1,13 @@
 import type { BillingKind, TokenUsage } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
+import type { FileChange } from "../core/fileChanges.ts";
 import { PriceTable, type TurnOutcome, touchMission } from "../core/index.ts";
 import { readContextLimit } from "../lore/index.ts";
 import { callDescriptionOf, saveActivityChange } from "./activities.ts";
 import { fallBackToBackup, resetBackupStep } from "./backups.ts";
 import { enforceBudgets } from "./budgets.ts";
 import { contextLimitLineOf, hasReachedLimit } from "./contextWarning.ts";
-import type { FileChange } from "./fileChanges.ts";
 import { changed, unchanged } from "./followUps.ts";
 import { insertThreadLine, isRunnerChangedSince, isSessionOfThread } from "./handover.ts";
 import { endTurn, failTurn } from "./lifecycle.ts";

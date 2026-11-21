@@ -1,0 +1,48 @@
+import { ThreadId } from "@outlore/contracts";
+import { describe, expect, it } from "vitest";
+import { emptyPaneMemory } from "../../src/shell/paneChain";
+import { channelId, type PaneId, paneContentsOf, starterId } from "../../src/shell/paneIds";
+import { type PaneSession, paneSessionOf } from "../../src/shell/paneSession";
+
+const quest = ThreadId.make("quest");
+const errand = ThreadId.make("errand");
+const initial = (): PaneSession => ({
+  expanded: null,
+  focused: quest,
+  listRequest: null,
+  memory: emptyPaneMemory<PaneId>(),
+});
+
+describe("keeping the pane session", () => {
+  it("uses the third slot for the selected errand or the starter", () => {
+    expect(paneContentsOf(quest, errand)).toEqual([
+      { id: channelId, kind: "channel" },
+      { id: quest, kind: "quest" },
+      { id: errand, kind: "errand" },
+    ]);
+    expect(paneContentsOf(quest, quest).at(-1)).toEqual({ id: starterId, kind: "starter" });
+  });
+
+  it("folds the starter when opening another quest", () => {
+    const expanded = paneSessionOf(initial(), { id: quest, isExpanded: false, type: "expand" });
+    const started = paneSessionOf(expanded, { type: "starter" });
+    expect(started.expanded).toBe(starterId);
+    expect(started.memory.shown.has(starterId)).toBe(true);
+    const next = paneSessionOf(started, { type: "quest" });
+    expect(next.expanded).toBeNull();
+    expect(next.memory.shown.has(starterId)).toBe(false);
+  });
+
+  it("reveals a folded quest when opening its Chronicle target", () => {
+    const folded = paneSessionOf(initial(), { chain: [channelId, quest, errand], id: quest, type: "fold" });
+    const opened = paneSessionOf(folded, {
+      quest,
+      target: { messageId: null, questionId: null, threadId: null, waitingAt: null },
+      thread: errand,
+      type: "target",
+    });
+    expect(opened.focused).toBe(quest);
+    expect(opened.memory.folded.has(quest)).toBe(false);
+    expect(opened.memory.shown.has(quest)).toBe(true);
+  });
+});

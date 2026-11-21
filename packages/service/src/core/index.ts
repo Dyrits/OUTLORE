@@ -4,6 +4,7 @@ export { Endpoints, endpointsLayer } from "./endpoints.ts";
 export { invalid, notFound, ServiceFailure } from "./errors.ts";
 export {
   type ApprovalTerms,
+  type BackgroundWakeListener,
   type Containment,
   Harness,
   type HarnessAdapter,
@@ -17,7 +18,6 @@ export {
   type PlanLimitsReport,
   type PromptAnswer,
   type ReportedFileEdit,
-  type ResumeListener,
   readImages,
   routeHarnesses,
   type SteeredMessage,

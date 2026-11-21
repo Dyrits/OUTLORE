@@ -71,7 +71,7 @@ export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
       ? yield* insertErrandReply(opening.parentId, opening.text, opening.replyToMessageId ?? null)
       : null);
   if (anchorId !== null) yield* sql`UPDATE threads SET anchor_message_id = ${anchorId} WHERE id = ${threadId}`;
-  const messageId = yield* insertMessage({
+  const { messageId, threadsToWake } = yield* insertMessage({
     fromThreadId: opening.isOpenedByAgent ? opening.parentId : null,
     isQueued: false,
     isResult: false,
@@ -79,7 +79,9 @@ export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
     threadId,
     ...(opening.attachmentIds === undefined ? {} : { attachmentIds: opening.attachmentIds }),
   });
-  return { messageId, threadId: threadId as ThreadId } satisfies OpenThreadResult;
+  return { messageId, threadId: threadId as ThreadId, threadsToWake } satisfies OpenThreadResult & {
+    threadsToWake: ReadonlyArray<string>;
+  };
 });
 
 /**
@@ -116,7 +118,8 @@ export const openThreadByOwner = Effect.fnUntraced(function* (
     text,
     title: null,
   });
-  return changed(opened, { threadsToWake: [opened.threadId] });
+  const { threadsToWake, ...value } = opened;
+  return changed(value, { threadsToWake });
 });
 
 /**
@@ -135,7 +138,8 @@ export const openAside = Effect.fnUntraced(function* (parentId: string, text: st
     text,
     title: title.trim() === "" ? null : title,
   });
-  return changed(opened, { threadsToWake: [opened.threadId] });
+  const { threadsToWake, ...value } = opened;
+  return changed(value, { threadsToWake });
 });
 
 /** Whether the thread is an aside, which leaves the journal to its parent. */
@@ -218,7 +222,7 @@ export const openThreadByAgent = Effect.fnUntraced(function* (
     text: request,
     title: title !== null && title.trim() !== "" ? title : null,
   });
-  return changed<OpenedByAgent>({ _tag: "Opened", threadId: opened.threadId }, { threadsToWake: [opened.threadId] });
+  return changed<OpenedByAgent>({ _tag: "Opened", threadId: opened.threadId }, { threadsToWake: opened.threadsToWake });
 });
 
 /** Whether a thread is directly beneath another, the only threads it may interrupt (thread-messaging). */
@@ -253,16 +257,16 @@ export const reportResult = Effect.fnUntraced(function* (threadId: string, resul
         SELECT id FROM turns WHERE thread_id = ${threadId} AND status = 'running' ORDER BY started_at DESC LIMIT 1)
       WHERE id = ${threadId}`;
   // The top thread's result asks the owner "Mark as done?"; the mission does not end on its own.
-  if (thread.parentId === null)
+  if (thread.parentId === null) {
     yield* sql`UPDATE missions SET is_asking_done = 1 WHERE id = ${thread.missionId} AND ending IS NULL`;
-  else {
-    yield* insertMessage({
-      fromThreadId: threadId,
-      isQueued: false,
-      isResult: true,
-      text: result,
-      threadId: thread.parentId,
-    });
+    return changed(null);
   }
-  return changed(thread.parentId, { threadsToWake: thread.parentId === null ? [] : [thread.parentId] });
+  const { threadsToWake } = yield* insertMessage({
+    fromThreadId: threadId,
+    isQueued: false,
+    isResult: true,
+    text: result,
+    threadId: thread.parentId,
+  });
+  return changed(thread.parentId, { threadsToWake });
 });

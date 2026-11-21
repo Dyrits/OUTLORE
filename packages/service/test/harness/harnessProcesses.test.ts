@@ -245,12 +245,12 @@ describe("interrupting and steering a pooled turn", () => {
 });
 
 describe("a process that wakes itself between turns", () => {
-  type WakingConnection = HarnessConnection & { isClosed: boolean; hasBackground: boolean; isStirredNow: boolean };
+  type WakingConnection = HarnessConnection & { isClosed: boolean; hasBackground: boolean; hasPendingWake: boolean };
 
   /** Marks the first process as woken, and has it tell the pool so. */
   const stir = (connections: ReadonlyArray<WakingConnection>) => {
     const connection = connections[0];
-    if (connection !== undefined) connection.isStirredNow = true;
+    if (connection !== undefined) connection.hasPendingWake = true;
   };
   const signal = (signals: ReadonlyArray<ProcessSignals>) => signals[0]?.resume();
 
@@ -266,12 +266,12 @@ describe("a process that wakes itself between turns", () => {
       restartKeyOf: (request) => request.model,
       runTurn: (connection, request) =>
         Effect.gen(function* () {
-          if (request.isResuming === true) resumed.push(request);
+          if (request.isBackgroundWake === true) resumed.push(request);
           else {
             yield* Deferred.succeed(started, void 0);
             if (held !== null) yield* Deferred.await(held);
           }
-          connection.isStirredNow = false;
+          connection.hasPendingWake = false;
           return { isInterrupted: false, usage: null } satisfies TurnEnd;
         }),
       start: (_request, startedSignals) =>
@@ -282,11 +282,11 @@ describe("a process that wakes itself between turns", () => {
               Deferred.doneUnsafe(closed, Effect.void);
             },
             hasBackground: false,
+            hasBackgroundWake: () => connection.hasPendingWake,
             hasBackgroundWork: () => connection.hasBackground,
             hasExited: () => connection.isClosed,
+            hasPendingWake: false,
             isClosed: false,
-            isStirred: () => connection.isStirredNow,
-            isStirredNow: false,
             sessionId: `session-${connections.length + 1}`,
           };
           connections.push(connection);
@@ -304,10 +304,10 @@ describe("a process that wakes itself between turns", () => {
       const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
       const finished = yield* Deferred.make<void>();
       const asked: Array<string> = [];
-      pool.onResume((threadId) => {
+      pool.onBackgroundWake((threadId) => {
         asked.push(threadId);
         return pool
-          .runTurn(turnRequestOf({ isResuming: true, text: "" }))
+          .runTurn(turnRequestOf({ isBackgroundWake: true, text: "" }))
           .pipe(Effect.andThen(Deferred.succeed(finished, void 0)), Effect.as(true), Effect.orDie);
       });
       yield* pool.runTurn(turnRequestOf());
@@ -328,7 +328,7 @@ describe("a process that wakes itself between turns", () => {
       const asked = yield* Deferred.make<string>();
       const release = yield* Deferred.make<void>();
       let calls = 0;
-      pool.onResume((threadId) =>
+      pool.onBackgroundWake((threadId) =>
         Effect.gen(function* () {
           calls += 1;
           yield* Deferred.succeed(asked, threadId);
@@ -351,7 +351,7 @@ describe("a process that wakes itself between turns", () => {
     Effect.gen(function* () {
       const { closed, connections, protocol, signals } = wakingProtocolOf();
       const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
-      pool.onResume(() => Effect.succeed(false));
+      pool.onBackgroundWake(() => Effect.succeed(false));
       yield* pool.runTurn(turnRequestOf());
       stir(connections);
       signal(signals);
@@ -365,7 +365,7 @@ describe("a process that wakes itself between turns", () => {
       const { connections, protocol, signals } = wakingProtocolOf();
       const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
       let asked = 0;
-      pool.onResume(() => {
+      pool.onBackgroundWake(() => {
         asked += 1;
         return Effect.succeed(true);
       });
@@ -383,7 +383,7 @@ describe("a process that wakes itself between turns", () => {
       const { connections, protocol, signals, started } = wakingProtocolOf(held);
       const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
       let asked = 0;
-      pool.onResume(() => {
+      pool.onBackgroundWake(() => {
         asked += 1;
         return Effect.succeed(true);
       });
@@ -404,7 +404,7 @@ describe("a process that wakes itself between turns", () => {
     Effect.gen(function* () {
       const held = yield* Deferred.make<void>();
       const { connections, protocol, signals, started } = wakingProtocolOf();
-      // A turn that never reads the wake: its end leaves `isStirredNow` set.
+      // A turn that never reads the wake: its end leaves `hasPendingWake` set.
       const unread: HarnessProtocol<WakingConnection> = {
         ...protocol,
         runTurn: () =>
@@ -415,7 +415,7 @@ describe("a process that wakes itself between turns", () => {
       };
       const pool = yield* makeHarnessProcesses(unread, { idleTimeout: "10 minutes" });
       const asked = yield* Deferred.make<string>();
-      pool.onResume((id) => Deferred.succeed(asked, id).pipe(Effect.as(true)));
+      pool.onBackgroundWake((id) => Deferred.succeed(asked, id).pipe(Effect.as(true)));
       const turn = yield* Effect.forkChild(pool.runTurn(turnRequestOf()));
       yield* Deferred.await(started);
       stir(connections);

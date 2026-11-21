@@ -1,4 +1,4 @@
-import type { MessageId, QuestionId, ThreadId } from "@outlore/contracts";
+import type { ChronicleItem, MessageId, QuestionId, ThreadId } from "@outlore/contracts";
 import { createContext } from "react";
 import type { Entry } from "./entries";
 
@@ -12,6 +12,21 @@ export type ChronicleTarget = {
 
 /** Carries a target from the Chronicle to the selected conversation. */
 export const ChronicleTargetContext = createContext<ChronicleTarget | null>(null);
+
+/** Points a Chronicle item at its conversation and, when supplied, its exact entry. */
+export const targetOf = (
+  item: Pick<ChronicleItem, "at" | "kind" | "messageId" | "questionId" | "threadId">,
+): ChronicleTarget => ({
+  messageId: item.threadId === null ? null : item.messageId,
+  questionId: item.threadId === null ? null : (item.questionId ?? null),
+  threadId: item.threadId,
+  // Older hosts omitted the question ID but sent its timestamp.
+  waitingAt: item.threadId !== null && item.kind === "Waiting" && item.questionId === undefined ? item.at : null,
+});
+
+/** A quest-level target belongs to its top thread. */
+export const matchesThread = (target: ChronicleTarget, threadId: ThreadId, isTopThread: boolean): boolean =>
+  target.threadId === null ? isTopThread : target.threadId === threadId;
 
 /** Finds the newest open request or the named message in the inverted conversation list. */
 export const targetIndexOf = (entries: ReadonlyArray<Entry>, target: ChronicleTarget): number => {

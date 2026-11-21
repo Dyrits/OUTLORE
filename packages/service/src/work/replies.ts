@@ -99,7 +99,7 @@ export const replyToMessage = Effect.fnUntraced(function* (input: {
     yield* sql`UPDATE threads SET anchor_message_id = ${input.messageId} WHERE id = ${started.threadId}`;
     return changed<ReplyToMessageResult>(
       { isNew: true, missionId: started.missionId, threadId: started.threadId },
-      { threadsToWake: [started.threadId] },
+      { threadsToWake: started.threadsToWake },
     );
   }
   if (message.parentId !== null)

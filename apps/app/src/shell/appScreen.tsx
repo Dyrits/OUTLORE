@@ -20,20 +20,9 @@ import { QuestListScreen } from "./questListPage";
 import type { RealmListing } from "./questTree";
 import type { Place } from "./sidebar";
 
-/** The selected destination and its page-owned selection, without connection or frame state. */
-type Destination = {
-  isPermissionsOpen: boolean;
-  listedRealm: RealmListing | null;
-  openCount: number;
-  openMission: MissionId | null;
-  openThread: ThreadId | null;
-  /** The quest the Workshop covers, which keeps its panes as they were while the Workshop shows; null otherwise. */
-  parkedChannel: { id: string | null; name: string } | null;
-  parkedQuest: { openCount: number; openMission: MissionId; openThread: ThreadId | null } | null;
-  place: Place;
-  selectedMission: MissionId | null;
-  settingsSection: SettingsSectionId;
-};
+import type { windowViewOf } from "./windowView";
+
+type Destination = ReturnType<typeof windowViewOf>;
 
 /** Navigation operations exposed to the selected page, with top-level state kept in App. */
 interface Navigation {
@@ -182,8 +171,7 @@ function AppScreenContent({
         selectedThreadId={view.openThread}
       />
     );
-  const channel =
-    view.place === "Channel" ? (view.listedRealm ?? { id: null, name: "Borderlands" }) : view.parkedChannel;
+  const { channel } = view;
   if (hasPanes && channel !== null) {
     return (
       <>

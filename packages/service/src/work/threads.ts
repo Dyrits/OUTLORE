@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { Clock, Context, Effect, FiberMap, FiberSet, Layer, Match, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
 import { ConnectorGateway, Connectors } from "../connectors/index.ts";
+import { reportedChangeOf } from "../core/fileChanges.ts";
 import {
   Changes,
   Endpoints,
@@ -18,7 +19,6 @@ import { Approvals } from "./approvals.ts";
 import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
 import { Commands, makeCommands } from "./commands.ts";
-import { fileChangeOf, reportedChangeOf } from "./fileChanges.ts";
 import { readConversationSoFar } from "./handover.ts";
 import { makeLifecycle, recoverThreadStates, stopThread } from "./lifecycle.ts";
 import { listPending, listThreadsWithPending } from "./messaging.ts";
@@ -27,7 +27,7 @@ import { Suggestions } from "./suggestions.ts";
 import { resumeThread, retryThread } from "./threadRecovery.ts";
 import { unaskedToolNamesOf } from "./threadToolAccess.ts";
 import { askOwnerFor } from "./threadToolHandlers.ts";
-import { type Admitted, admitTurn, isCurrentTurn, readRunningTurnId } from "./turnAdmission.ts";
+import { type Admitted, admitBackgroundWake, admitTurn, isCurrentTurn } from "./turnAdmission.ts";
 import {
   completeTurn,
   deliverSteered,
@@ -184,12 +184,7 @@ export const threadsLayer = Layer.effectContext(
               .pipe(Effect.andThen(publishDraft(threadId, "")), Effect.orDie),
           ToolCall: (call) =>
             Effect.gen(function* () {
-              const change =
-                call.fileEdit !== undefined
-                  ? reportedChangeOf(call.fileEdit)
-                  : turn.harness === "claude"
-                    ? yield* fileChangeOf(call.toolName, call.input, cwd)
-                    : null;
+              const change = call.fileEdit === undefined ? null : reportedChangeOf(call.fileEdit);
               yield* commands.run(local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input, change)));
             }).pipe(Effect.orDie),
         });
@@ -224,7 +219,7 @@ export const threadsLayer = Layer.effectContext(
           folderRoot: isInWorkspace ? cwd : scratchRoot,
           harness: turn.harness,
           images: imagesOf(turn.attachments),
-          ...(turn.isBackgroundWake ? { isResuming: true } : {}),
+          ...(turn.isBackgroundWake ? { isBackgroundWake: true } : {}),
           model: turn.model,
           note: history === null ? note : `${history}\n\n${note}`,
           onEvent,
@@ -272,19 +267,18 @@ export const threadsLayer = Layer.effectContext(
      * work runs as a turn of the thread, so its replies are recorded and its commands may be allowed. Answers whether
      * the work is taken; a thread that may not work now (Stopped, held, over budget) refuses, and the process closes.
      */
-    const admitBackgroundWake = (threadId: string): Effect.Effect<boolean> =>
+    const takeBackgroundWake = (threadId: string): Effect.Effect<boolean> =>
       Effect.suspend(() => {
         if (active.has(threadId)) return Effect.succeed(true);
         return Effect.gen(function* () {
-          // A turn admitted a moment ago takes in what the process began.
-          if ((yield* local(readRunningTurnId(threadId))) !== null) return true;
-          const turn = yield* local(admitTurn(threadId, true));
+          const turn = yield* local(admitBackgroundWake(threadId));
           if (turn === null) return false;
+          if (turn === "taken") return true;
           yield* FiberMap.run(turns, threadId, run(threadId, turn).pipe(Effect.orDie));
           return true;
         }).pipe(Effect.orDie);
       });
-    harness.onResume?.(admitBackgroundWake);
+    harness.onBackgroundWake?.(takeBackgroundWake);
 
     const interrupt = Effect.fnUntraced(function* (threadId: string) {
       if (!active.has(threadId) || !(yield* harness.interrupt(threadId))) return false;

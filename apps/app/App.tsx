@@ -22,6 +22,7 @@ import type { RealmListing } from "./src/shell/questTree";
 import { Shell } from "./src/shell/shell";
 import type { Place } from "./src/shell/sidebar";
 import { useWorkshopTrip } from "./src/shell/useWorkshopTrip";
+import { windowViewOf } from "./src/shell/windowView";
 import { HostUpdateOffer, UpdateNotice } from "./src/updates";
 
 export function App() {
@@ -44,17 +45,7 @@ export function App() {
     openUpdateLink,
   } = useHostConnection();
   const [location, dispatch] = useReducer(navigate, resumedPlace, initialLocation);
-  const {
-    openMission,
-    openThread,
-    selectedMission,
-    listedRealm,
-    place,
-    settingsSection,
-    isPermissionsOpen,
-    guildmasterRealm,
-    openCount,
-  } = location;
+  const { openMission, openThread, selectedMission, listedRealm, place, guildmasterRealm } = location;
   const setGuildmasterRealm = (path: string | null) => dispatch({ path, type: "chroniclerRealm" });
   const setIsPermissionsOpen = (isOpen: boolean) => dispatch({ isOpen, type: "permissions" });
   const setSettingsSection = (section: SettingsSectionId) => dispatch({ section, type: "section" });
@@ -223,28 +214,7 @@ export function App() {
           setSettingsSection,
           showDetails: (isOpen) => rightPanel.show(isOpen ? { tab: "quest" } : null),
         }}
-        view={{
-          isPermissionsOpen,
-          listedRealm,
-          openCount,
-          openMission,
-          openThread,
-          parkedChannel:
-            place === "Settings" && location.workshopReturn?.place === "Channel"
-              ? (location.workshopReturn.listedRealm ?? { id: null, name: "Borderlands" })
-              : null,
-          parkedQuest:
-            place === "Settings" && location.openMission === null && location.workshopReturn?.openMission != null
-              ? {
-                  openCount: location.workshopReturn.openCount,
-                  openMission: location.workshopReturn.openMission,
-                  openThread: location.workshopReturn.openThread,
-                }
-              : null,
-          place,
-          selectedMission,
-          settingsSection,
-        }}
+        view={windowViewOf(location)}
       />
     </Shell>
   );

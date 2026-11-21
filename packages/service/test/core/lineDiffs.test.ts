@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { countsOf, lineDiffOf, withContextOf } from "../../src/work/lineDiffs.ts";
+import { countsOf, lineDiffOf, withContextOf } from "../../src/core/lineDiffs.ts";
 
 const kindsOf = (lines: ReadonlyArray<{ kind: string; text: string }>) =>
   lines.map((line) => `${line.kind}:${line.text}`);

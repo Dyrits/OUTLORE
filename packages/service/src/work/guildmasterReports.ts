@@ -44,7 +44,7 @@ export const reportToGuildmaster = Effect.gen(function* () {
     SELECT top_thread_id AS threadId FROM missions WHERE is_guildmaster = 1 AND chronicler_channel IS NULL`;
   if (guildmaster === undefined) return unchanged(null);
   const summaries = yield* readMissionSummaryMap(opened.map((quest) => quest.id));
-  let isTold = false;
+  const receivers = new Set<string>();
   for (const quest of opened) {
     const summary = summaries.get(quest.id);
     const report = summary === undefined ? null : reportOf(summary);
@@ -68,16 +68,16 @@ export const reportToGuildmaster = Effect.gen(function* () {
         : reply !== undefined
           ? ` Its last reply: ${clip(reply.text, 600)}`
           : "";
-    yield* insertMessage({
+    const { threadsToWake } = yield* insertMessage({
       fromThreadId: quest.topThreadId,
       isQueued: false,
       isResult: false,
       text: reportTextOf(quest.title, quest.id, report, detail),
       threadId: guildmaster.threadId,
     });
-    isTold = true;
+    for (const id of threadsToWake) receivers.add(id);
   }
-  return isTold ? changed(null, { threadsToWake: [guildmaster.threadId] }) : unchanged(null);
+  return receivers.size > 0 ? changed(null, { threadsToWake: [...receivers] }) : unchanged(null);
 });
 
 /**

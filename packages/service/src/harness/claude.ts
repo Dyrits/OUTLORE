@@ -1,6 +1,7 @@
 import { tmpdir } from "node:os";
 import type { ApprovalLevel, BillingKind, HarnessName } from "@outlore/contracts";
 import { type Duration, Effect, Layer, Queue } from "effect";
+
 import {
   type Containment,
   fieldOf,
@@ -39,6 +40,7 @@ import {
   toolServerFailureOf,
   usageOf,
 } from "./claudeEvents.ts";
+import { claudeToolCallOf } from "./claudeToolCalls.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
   type HarnessConnection,
@@ -70,7 +72,7 @@ interface ClaudeConnection extends HarnessConnection {
    * What the process says between turns (probe of 2026-11-20, Claude Code 2.1.328): the background tasks it still runs,
    * from `background_tasks_changed`, and whether a `task_notification` woke it and no turn has read that yet.
    */
-  readonly background: { isStirred: boolean; tasks: number };
+  readonly background: { hasBackgroundWake: boolean; tasks: number };
   /** How the process was signed in, from the init event; Unknown until it reports (budget-control, Billing kind). */
   billing: BillingKind;
   /** The cost Claude Code last reported for this process, which it adds up across turns (provisional, unprobed). */
@@ -167,7 +169,7 @@ const claudeProtocolOf = (
 
   runTurn: Effect.fnUntraced(function* (connection: ClaudeConnection, request: TurnRequest, turn: PooledTurn) {
     // A turn Claude Code began on its own, woken by a background task, has no message: its events are already coming.
-    if (request.isResuming !== true) {
+    if (request.isBackgroundWake !== true) {
       const content = yield* contentOf(turnMessageOf(request), request.images);
       connection.process.write({ message: { content, role: "user" }, type: "user" });
     }
@@ -190,8 +192,8 @@ const claudeProtocolOf = (
         if (toolFailure !== null) return yield* new HarnessFailure({ reason: toolFailure });
       } else if (type === "system" && textFieldOf(event, "subtype") === "task_notification") {
         // A turn takes in the wake, whether it began the turn or arrived during it.
-        connection.background.isStirred = false;
-        const notice = request.isResuming === true && !hasNoticedWake ? backgroundTaskNoticeOf(event) : null;
+        connection.background.hasBackgroundWake = false;
+        const notice = request.isBackgroundWake === true && !hasNoticedWake ? backgroundTaskNoticeOf(event) : null;
         if (notice !== null) yield* request.onEvent({ _tag: "Notice", text: notice });
         hasNoticedWake = true;
       } else if (type === "system" && textFieldOf(event, "subtype") === "compact_boundary") {
@@ -242,8 +244,9 @@ const claudeProtocolOf = (
         if (callContext !== null && callContext > 0) context = callContext;
         draft = "";
         // Each tool call is a step of the turn, shown as it starts (action-approval).
-        for (const call of toolCallsOf(fieldOf(message, "content")))
-          yield* request.onEvent({ _tag: "ToolCall", ...call });
+        for (const call of toolCallsOf(fieldOf(message, "content"))) {
+          yield* request.onEvent(yield* claudeToolCallOf(call, request.cwd));
+        }
         // A synthetic assistant message carrying `error` reports a failure, not a reply.
         if (error !== undefined && error !== null) reportedError = text || String(error);
         else if (text.trim() !== "")
@@ -273,7 +276,7 @@ const claudeProtocolOf = (
     const cwd = yield* resolveStartFolder(request, "Claude Code");
     const isResuming = request.sessionId !== null;
     const sessionId = request.sessionId ?? crypto.randomUUID();
-    const background = { isStirred: false, tasks: 0 };
+    const background = { hasBackgroundWake: false, tasks: 0 };
     const process = yield* startStreamJsonProcess({
       args: [
         ...(options.prefixArgs ?? []),
@@ -297,7 +300,7 @@ const claudeProtocolOf = (
           const tasks = fieldOf(message, "tasks");
           background.tasks = Array.isArray(tasks) ? tasks.length : 0;
         } else if (subtype === "task_notification") {
-          background.isStirred = true;
+          background.hasBackgroundWake = true;
           signals.resume();
         }
       },
@@ -306,9 +309,9 @@ const claudeProtocolOf = (
       background,
       billing: "Unknown",
       close: process.close,
+      hasBackgroundWake: () => background.hasBackgroundWake,
       hasBackgroundWork: () => background.tasks > 0,
       hasExited: process.hasExited,
-      isStirred: () => background.isStirred,
       lastTotalCost: 0,
       process,
       sessionId,

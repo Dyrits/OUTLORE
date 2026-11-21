@@ -1,7 +1,7 @@
 import type { ChronicleItem, MissionId, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { ChronicleTarget } from "../conversation/chronicleTarget";
+import { type ChronicleTarget, targetOf } from "../conversation/chronicleTarget";
 import type { ServiceClient } from "../foundation/client";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -53,15 +53,9 @@ export function ChronicleActivity({
   const [filter, setFilter] = useState<Filter>("All");
   const open = (item: ChronicleItem) => {
     if (item.missionId !== null) {
-      if (item.threadId === null)
-        onOpenMission(item.missionId, { messageId: null, questionId: null, threadId: null, waitingAt: null });
-      else
-        onOpenThread(item.missionId, item.threadId, {
-          messageId: item.messageId,
-          questionId: item.questionId ?? null,
-          threadId: item.threadId,
-          waitingAt: item.kind === "Waiting" && item.questionId === undefined ? item.at : null,
-        });
+      const target = targetOf(item);
+      if (item.threadId === null) onOpenMission(item.missionId, target);
+      else onOpenThread(item.missionId, item.threadId, target);
     } else if (item.realmId !== null) onOpenChannel({ id: item.realmId, name: item.title });
   };
   const openConversation = (conversation: ChronicleConversation) => {

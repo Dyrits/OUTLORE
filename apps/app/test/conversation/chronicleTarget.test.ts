@@ -1,6 +1,6 @@
 import { MessageId, MissionId, type Question, QuestionId, ThreadId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
-import { targetIndexOf } from "../../src/conversation/chronicleTarget";
+import { matchesThread, targetIndexOf, targetOf } from "../../src/conversation/chronicleTarget";
 import type { Entry } from "../../src/conversation/entries";
 
 const threadId = ThreadId.make("thread");
@@ -30,6 +30,20 @@ const question = (id: string, at: number, outcome: Question["outcome"]): Entry =
 });
 
 describe("opening a Chronicle target", () => {
+  it("routes a quest-level target to the quest's own thread", () => {
+    const target = targetOf({ at: 2, kind: "QuestOpened", messageId: null, threadId: null });
+    expect(matchesThread(target, threadId, true)).toBe(true);
+    expect(matchesThread(target, threadId, false)).toBe(false);
+  });
+
+  it("uses the timestamp of a waiting item only when the host omitted the question ID", () => {
+    const entries = [question("a", 2, null), question("b", 2, null)];
+    const item = { at: 2, kind: "Waiting", messageId: null, threadId } as const;
+    expect(targetIndexOf(entries, targetOf(item))).toBe(1);
+    expect(targetIndexOf(entries, targetOf({ ...item, questionId: QuestionId.make("b") }))).toBe(0);
+    expect(targetIndexOf(entries, targetOf({ ...item, questionId: null }))).toBe(-1);
+  });
+
   it("finds the newest unanswered request even when later requests are settled", () => {
     const entries = [
       question("old", 1, null),

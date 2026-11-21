@@ -5,6 +5,7 @@ import { Emblem, type EmblemName } from "../foundation/emblems";
 import { colors, fontSizes, radii, stateLabels, stateTones } from "../foundation/theme";
 import { ChipIcon } from "../ui/chips";
 import { errandIconPath } from "../ui/composerIcons";
+import { notchWidth } from "./paneNotches";
 import { NewQuestIcon } from "./railActions";
 
 /** What a notch stands for: its icon. "more" has none: it counts the children left without a notch of their own. */
@@ -14,9 +15,6 @@ export type NotchKind = "borderlands" | "errand" | "more" | "quest" | "realm";
 const emblems = {
   quest: "sword",
 } as const satisfies Record<Exclude<NotchKind, "borderlands" | "errand" | "more" | "realm">, EmblemName>;
-
-/** The width of a notch: the room an open pane leaves on the edge that carries one, so the icon covers no text. */
-export const notchWidth = 26;
 
 /**
  * One notch: a folded pane, or a child of the pane (an errand of a quest, a quest of a realm) that has no pane. A pane

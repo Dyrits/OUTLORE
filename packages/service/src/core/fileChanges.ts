@@ -2,8 +2,9 @@ import { readFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 import { type DiffLine, type DiffLineKind, maxDiffBytes } from "@outlore/contracts";
 import { Effect } from "effect";
-import { fieldOf, type ReportedFileEdit, textFieldOf } from "../core/index.ts";
+import type { ReportedFileEdit } from "./execution.ts";
 import { countsOf, lineDiffOf, withContextOf } from "./lineDiffs.ts";
+import { fieldOf, textFieldOf } from "./records.ts";
 
 // What a tool call that modifies a file changed, as a diff (action-approval, A modified file's diff). The diff is the
 // only thing kept: never a whole file, and it is never sent to a harness. The previous text of a file a call writes
@@ -104,6 +105,7 @@ export const fileChangeOf = Effect.fnUntraced(function* (toolName: string, input
 
 /** Converts a native patch or reported before and after text to the stored diff. */
 export const reportedChangeOf = (edit: ReportedFileEdit): FileChange => {
+  if ("change" in edit) return edit.change;
   if ("pairs" in edit) {
     if (edit.pairs === null) return unknownChange("The harness did not report the previous file text.");
     const lines: Array<DiffLine> = [];

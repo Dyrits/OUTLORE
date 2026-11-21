@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 import { PaneThread } from "../conversation/paneThread";
 import { OpenPanes } from "../conversation/replyLine";
+import { useShownThreadsRead } from "../conversation/useShownThreadsRead";
 import type { ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
@@ -11,12 +12,13 @@ import { FoldPaneButton } from "../ui/questHeaderButtons";
 import { ChannelPane } from "./channelPane";
 import { ErrandStarter } from "./errandStarter";
 import { resizedWeights } from "./paneChain";
-import { channelId, type PaneId, starterId } from "./paneIds";
+import type { PaneId } from "./paneIds";
 import { paneNotchesOf } from "./paneNotches";
 import { PaneResizer } from "./paneResizer";
-import { notchWidth, PaneButton, PaneNotches } from "./paneStrip";
+import { PaneButton, PaneNotches } from "./paneStrip";
 import { rememberPaneWeights } from "./railStorage";
 import { usePaneChain } from "./usePaneChain";
+import { channelOf } from "./windowView";
 
 /** Shows the channel, quest and selected errand. An older nested errand uses the same third slot. */
 export function PaneHost({
@@ -48,7 +50,7 @@ export function PaneHost({
   useEffect(() => {
     if (data !== null) setThreads(data.threads);
   }, [data]);
-  const channel = { id: data?.mission.workspaceId ?? null, name: data?.mission.workspaceName ?? "Borderlands" };
+  const channel = channelOf(data?.mission.workspaceId, data?.mission.workspaceName);
   const {
     available,
     equalize,
@@ -65,7 +67,7 @@ export function PaneHost({
     revealThread,
     setAvailable,
     setFocused,
-    setListRequest,
+    openList,
     setMemory,
     slots,
     startErrand,
@@ -73,12 +75,7 @@ export function PaneHost({
   } = usePaneChain(threads, openThread, onOpenThread);
   // A conversation shown in a pane is read (CHG-0569): its replies, results and requests are no longer unread, and
   // rereading after each change follows the stream while it stays on show. Parked panes are out of sight, so wait.
-  const shownKey = [...openIds].join("\0");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the key names the open panes whose read state changes.
-  useEffect(() => {
-    if (isParked) return;
-    for (const id of openIds) client.request({ _tag: "MarkThreadRead", threadId: id }).catch(() => {});
-  }, [client, isParked, shownKey, data]);
+  useShownThreadsRead(client, openIds, !isParked, data);
   const dragStart = useRef(slots);
   const latest = useRef(memory);
   latest.current = memory;
@@ -106,8 +103,7 @@ export function PaneHost({
     missionId,
     missions: missionList?.missions ?? [],
     onOpenMission,
-    openList: (id) => setListRequest({ id }),
-    quest,
+    openList,
     revealPane,
     revealThread,
     slots,
@@ -148,15 +144,9 @@ export function PaneHost({
       <View onLayout={onLayout} style={local.row}>
         {available > 0 &&
           slots.map((slot) => {
-            const { id } = slot;
+            const { content, id } = slot;
             const isStrip = slot.kind === "strip";
-            const notches = isStrip ? { left: [], right: [] } : notchesAt(slot.depth);
-            // Between two open panes the notches of the folded panes sit across the line: half in each pane. Against
-            // the edge of the row they sit inside the pane.
-            const isStraddling =
-              notches.left.length > 0 && slots.slice(0, slot.depth).some((before) => before.kind === "pane");
-            const nextOpen = isStrip ? undefined : slots.slice(slot.depth + 1).find((after) => after.kind === "pane");
-            const nextStraddles = nextOpen !== undefined && notchesAt(nextOpen.depth).left.length > 0;
+            const notches = notchesAt(slot.depth);
             const wrap = (pane: ReactNode) => (
               <View
                 key={id}
@@ -164,21 +154,18 @@ export function PaneHost({
                   local.pane,
                   slot.depth > firstOpen && !isStrip && local.paneDivider,
                   { width: isStrip ? 0 : slot.width },
-                  notches.left.length > 0 && { paddingLeft: isStraddling ? notchWidth / 2 : notchWidth },
-                  (notches.right.length > 0 || nextStraddles) && {
-                    paddingRight: notches.right.length > 0 ? notchWidth : notchWidth / 2,
-                  },
+                  { paddingLeft: notches.paddingLeft, paddingRight: notches.paddingRight },
                   isStrip && local.hidden,
                 ]}
               >
                 {pane}
                 {notches.left.length > 0 && (
-                  <PaneNotches isStraddling={isStraddling} parts={notches.left} side="left" />
+                  <PaneNotches isStraddling={notches.isStraddling} parts={notches.left} side="left" />
                 )}
                 {notches.right.length > 0 && <PaneNotches parts={notches.right} side="right" />}
               </View>
             );
-            if (id === channelId)
+            if (content.kind === "channel")
               return wrap(
                 <ChannelPane
                   channel={channel}
@@ -193,7 +180,7 @@ export function PaneHost({
                   onOpenMission={onOpenMission}
                 />,
               );
-            if (id === starterId) {
+            if (content.kind === "starter") {
               return wrap(
                 <ErrandStarter
                   chrome={
@@ -209,7 +196,7 @@ export function PaneHost({
                 />,
               );
             }
-            const threadId = id;
+            const threadId = content.id;
             const isFocused = !isParked && threadId === focusedId;
             return wrap(
               <View
@@ -220,13 +207,13 @@ export function PaneHost({
                   chrome={
                     <>
                       {expandButton(threadId)}
-                      {foldButton(threadId, threadId === quest ? "Fold the quest" : "Fold the errand")}
+                      {foldButton(threadId, content.kind === "quest" ? "Fold the quest" : "Fold the errand")}
                     </>
                   }
                   client={client}
                   listRequest={listRequest?.id === id ? listRequest : undefined}
                   missionId={missionId}
-                  onNewErrand={threadId !== quest && quest !== undefined ? () => startErrand(quest) : undefined}
+                  onNewErrand={content.kind === "errand" && quest !== undefined ? () => startErrand(quest) : undefined}
                   onOpenMission={onOpenMission}
                   onOpenThread={revealThread}
                   onStartErrand={() => startErrand(threadId)}

@@ -5,8 +5,8 @@ import { maxDiffBytes } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
+import { editChangeOf } from "../../src/core/fileChanges.ts";
 import { markPrompted, saveActivityChange } from "../../src/work/activities.ts";
-import { editChangeOf } from "../../src/work/fileChanges.ts";
 import { call, fixture, read, settle, start } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];

@@ -12,7 +12,7 @@ export const placeQuestOrigin = Effect.fnUntraced(function* (threadId: string, o
   const channel = yield* ensureGuildmaster(quest.realmId);
   if (quest.messageId === null) {
     if (opening === undefined) return;
-    const id = yield* insertMessage({
+    const { messageId } = yield* insertMessage({
       fromThreadId: null,
       isConversationOnly: true,
       isQueued: false,
@@ -20,7 +20,7 @@ export const placeQuestOrigin = Effect.fnUntraced(function* (threadId: string, o
       text: opening,
       threadId: channel.threadId,
     });
-    yield* sql`UPDATE threads SET anchor_message_id = ${id} WHERE id = ${threadId}`;
+    yield* sql`UPDATE threads SET anchor_message_id = ${messageId} WHERE id = ${threadId}`;
     return;
   }
   yield* sql`UPDATE messages

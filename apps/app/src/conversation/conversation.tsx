@@ -1,5 +1,5 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
@@ -9,6 +9,7 @@ import { useQuestPages } from "./questPages";
 import { questPanelOf } from "./questPanelOf";
 import { ThreadPane } from "./threadPane";
 import { ThreadTree } from "./threadTree";
+import { useShownThreadsRead } from "./useShownThreadsRead";
 
 /** A mission: its thread tree on the side, the selected thread's conversation beside it. */
 export function Conversation({
@@ -56,9 +57,7 @@ export function Conversation({
   const shown = detail ?? data;
   // The conversation on show is read (CHG-0569): its replies, results and requests are no longer unread.
   const shownId = shown?.thread.id ?? null;
-  useEffect(() => {
-    if (shownId !== null) client.request({ _tag: "MarkThreadRead", threadId: shownId }).catch(() => {});
-  }, [client, shownId]);
+  useShownThreadsRead(client, shownId === null ? [] : [shownId], true);
   const hasSideQuests = data?.threads.some((thread) => thread.parentId !== null) ?? false;
   useQuestPanel(shown && questPanelOf({ client, detail: shown, onSelectThread: setSelectedId, pages }));
   if (pages.screen !== null) return pages.screen;
