@@ -102,11 +102,13 @@ describe("reading the app guide", () => {
       expect(body("install")).toMatch(/Restart and update/);
     });
 
-    it("lists the host folder picker as built and only the terminal as unbuilt", () => {
+    it("lists the host folder picker and the host's terminal as built, and only the phone's own terminal as unbuilt", () => {
       const text = body("pairing");
       expect(text).not.toMatch(/Not built yet:[^.]*folder picker/i);
       expect(text).toMatch(/folder picker/i);
-      expect(text).toMatch(/Not built yet:[^.]*terminal/i);
+      expect(text).not.toMatch(/Not built yet:[^.]*the terminal on a host(,|, and | and )/i);
+      expect(text).toMatch(/so is the terminal on a host/i);
+      expect(text).toMatch(/Not built yet:[^.]*the terminal on the phone app itself/i);
     });
 
     it("says that a scheduled Ritual run that cannot start fails visibly without blocking the next one", () => {

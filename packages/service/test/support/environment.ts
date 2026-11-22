@@ -1,11 +1,25 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import { spawn as spawnTerminal } from "node-pty";
 import { readMarkedProcesses } from "../../src/core/index.ts";
+import { prepareTerminalHelper } from "../../src/work/terminals.ts";
 
 // What this environment lets a test do. A test that needs the real thing runs when it is there and is skipped, named
 // as skipped, when it is not, so it never fails for want of a capability the environment withholds on purpose. Inside
 // a Claude Code or Codex thread's sandbox, a process cannot apply a Seatbelt profile of its own or read other
 // processes, and the suite runs there without asking the owner to leave the sandbox.
+
+/** A pseudo-terminal can be opened and a shell started in it. */
+export const canOpenTerminal = (() => {
+  try {
+    prepareTerminalHelper();
+    const terminal = spawnTerminal("/bin/sh", ["-c", "exit 0"], { cols: 80, name: "xterm", rows: 24 });
+    terminal.kill();
+    return true;
+  } catch {
+    return false;
+  }
+})();
 
 /** A process can start `sandbox-exec` with a profile of its own: false on Linux, and inside another sandbox. */
 export const canApplySeatbelt =

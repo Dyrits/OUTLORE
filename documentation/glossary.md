@@ -66,6 +66,10 @@ _Avoid_: Annotation, review note
 A file the owner adds to a message, kept by Outlore and given to the thread's harness with the message's text. Only images are supported so far.
 _Avoid_: Upload, media, file (alone)
 
+**Terminal**:
+The host's shell, opened with `!` on an empty composer line and shown as a bubble in the conversation, whose visible output can be sent as context. The host window runs it plainly; a paired device opens one only while the host's **Allow terminals from paired devices** switch is on, inside the host's sandbox.
+_Avoid_: Console, command line, shell (alone)
+
 **Steer**:
 To deliver a message into a thread's current turn, changing its course without waiting for the turn to end. Its counterpart is to queue the message for the next turn.
 _Avoid_: Inject, nudge

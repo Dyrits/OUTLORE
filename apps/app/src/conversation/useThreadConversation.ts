@@ -31,7 +31,7 @@ export function useThreadConversation(
   const entries = detail === null ? [] : entriesOf(detail, detail.thread.actions.isInTurn, anchors ?? []);
   const followNewest = useFollowNewest(entries, target);
   const skills = useSkills(client, path);
-  const terminal = useTerminal(threadId, terminalPath);
+  const terminal = useTerminal(client, threadId, terminalPath);
   const comments = useThreadComments(threadId);
   const [actionError, setActionError] = useState<string | null>(null);
   const presetChoice = useThreadPresets(client, threadId, setActionError);

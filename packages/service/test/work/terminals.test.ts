@@ -1,0 +1,278 @@
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "@effect/vitest";
+import type { Request, RequestSource, RequestTag, ResultOf, ServerFrame } from "@outlore/contracts";
+import { Effect } from "effect";
+import { afterEach } from "vitest";
+import { wrappedFencedCommandOf } from "../../src/core/index.ts";
+import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
+import {
+  ConversationTerminals,
+  defaultShellOf,
+  shellArgsOf,
+  type TerminalHost,
+  terminalSandboxOf,
+  unpackedPathOf,
+} from "../../src/work/terminals.ts";
+import { canOpenTerminal } from "../support/environment.ts";
+
+// The conversation shells of the host service (conversation-terminal, ADR 0020): the class here, and the requests'
+// admission below, over a stand-in sandbox that runs what the fence would run without applying it. The real fence is
+// the harness sandbox's own, already proven by openCodeSandbox.test.ts on a host that can apply it.
+
+const folders: string[] = [];
+const managers: ConversationTerminals[] = [];
+const folder = () => {
+  // By its real path, the way the fence names folders: what a shell prints as its $PWD is the same string.
+  const path = realpathSync(mkdtempSync(join(tmpdir(), "outlore-terminal-")));
+  folders.push(path);
+  return path;
+};
+/** A shell host over the stand-in fence, used by the checks that must actually run a warm shell. */
+const hostOf = (home: string, hidden: string[] = []): TerminalHost => ({
+  environment: { OUTLORE_TOKEN: "never-out-of-here", PATH: process.env.PATH },
+  hidden,
+  home,
+  sandbox: { command: join(import.meta.dirname, "..", "fixtures", "stand-in-sandbox.sh"), hidden, kind: "seatbelt" },
+  shell: "/bin/sh",
+  tempRoot: join(home, ".terminal-tmp"),
+});
+const manager = (host: TerminalHost) => {
+  const frames: ServerFrame[] = [];
+  const terminals = new ConversationTerminals(host, (frame) => frames.push(frame));
+  managers.push(terminals);
+  return { frames, terminals };
+};
+afterEach(() => {
+  for (const terminals of managers.splice(0)) terminals.dispose();
+  for (const path of folders.splice(0)) rmSync(path, { force: true, recursive: true });
+});
+
+describe.runIf(canOpenTerminal)("conversation shells", () => {
+  it("starts in the home folder without a realm and keeps shell state when reopened", async () => {
+    const home = folder();
+    const { terminals } = manager(hostOf(home));
+    terminals.open("host", "quest", null);
+    terminals.write("host", "quest", "printf 'ROOT=%s\\n' \"$PWD\"; export OUTLORE_TERMINAL_TEST=kept\r");
+    await expect.poll(() => terminals.open("host", "quest", null).output).toContain(`ROOT=${home}`);
+    terminals.write("host", "quest", "printf 'STATE=%s\\n' \"$OUTLORE_TERMINAL_TEST\"\r");
+    await expect.poll(() => terminals.open("host", "quest", null).output).toContain("STATE=kept");
+  });
+
+  it("starts at the realm root and isolates shells belonging to different conversations", async () => {
+    const home = folder();
+    const realm = folder();
+    const { terminals } = manager(hostOf(home));
+    terminals.open("host", "realm", realm);
+    terminals.open("host", "home", null);
+    terminals.write("host", "realm", "printf 'ROOT=%s\\n' \"$PWD\"\r");
+    terminals.write("host", "home", "printf 'ROOT=%s\\n' \"$PWD\"\r");
+    await expect.poll(() => terminals.open("host", "realm", realm).output).toContain(`ROOT=${realm}`);
+    await expect.poll(() => terminals.open("host", "home", null).output).toContain(`ROOT=${home}`);
+    expect(terminals.open("host", "home", null).output).not.toContain(`ROOT=${realm}`);
+  });
+
+  it("keeps the host window's shell and a paired device's separate, whatever asks", async () => {
+    const home = folder();
+    const { frames, terminals } = manager(hostOf(home));
+    terminals.open("host", "quest", null);
+    terminals.open("remote", "quest", null);
+    terminals.write("host", "quest", "printf 'SCOPE=host\\n'\r");
+    terminals.write("remote", "quest", "printf 'SCOPE=remote\\n'\r");
+    await expect.poll(() => terminals.open("host", "quest", null).output).toContain("SCOPE=host");
+    await expect.poll(() => terminals.open("remote", "quest", null).output).toContain("SCOPE=remote");
+    expect(terminals.open("host", "quest", null).output).not.toContain("SCOPE=remote");
+    expect(terminals.open("remote", "quest", null).output).not.toContain("SCOPE=host");
+    // Each scope's frames carry its own key, and the other screen's shell never runs in them.
+    const isData = (id: string) => (frame: ServerFrame) => frame._tag === "TerminalData" && frame.id === id;
+    expect(frames.some(isData("host:quest"))).toBe(true);
+    expect(frames.some(isData("remote:quest"))).toBe(true);
+  });
+
+  it("runs a paired device's shell without the loopback token and inside its temporary folder", async () => {
+    const home = folder();
+    const { terminals } = manager(hostOf(home));
+    terminals.open("remote", "quest", null);
+    terminals.write(
+      "remote",
+      "quest",
+      'test -z "$OUTLORE_TOKEN" && echo "TOKEN=unset" || echo "TOKEN=set"; printf \'TMPDIR=%s\\n\' "$TMPDIR"\r',
+    );
+    await expect
+      .poll(() => terminals.open("remote", "quest", null).output)
+      .toContain(`TMPDIR=${join(home, ".terminal-tmp")}`);
+    expect(terminals.open("remote", "quest", null).output).toContain("TOKEN=unset");
+  });
+
+  it("retains final output after the shell exits and explicitly starts a fresh shell", async () => {
+    const { frames, terminals } = manager(hostOf(folder()));
+    terminals.open("host", "quest", null);
+    terminals.write("host", "quest", "printf 'final-output\\n'; exit\r");
+    await expect.poll(() => terminals.open("host", "quest", null).isRunning).toBe(false);
+    expect(terminals.open("host", "quest", null).output).toContain("final-output");
+    expect(frames.some((frame) => frame._tag === "TerminalExit" && frame.id === "host:quest")).toBe(true);
+    terminals.close("host", "quest");
+    expect(terminals.open("host", "quest", null).isRunning).toBe(true);
+  });
+
+  it("refuses a remote shell on a host with no sandbox, and sizes and folders it cannot take", () => {
+    const home = folder();
+    const { terminals } = manager({ ...hostOf(home), sandbox: null });
+    expect(() => terminals.open("remote", "quest", null)).toThrow(/no sandbox/);
+    terminals.open("host", "quest", null);
+    // The same conversation's shell keeps its folder: a shell already open is returned whatever the new call names.
+    expect(() => terminals.open("host", "other", "/no-such-outlore-terminal-folder")).toThrow();
+    expect(() => terminals.resize("host", "quest", -1, 24)).toThrow();
+    expect(() => terminals.write("host", "quest", "x".repeat(1000001))).toThrow();
+    expect(() => terminals.write("host", "missing", "x")).toThrow(/exited/);
+  });
+});
+
+describe("the fence around a paired device's shell", () => {
+  it("names the conversation's folder and the terminals' temporary folder writable, and the Vault unreadable", () => {
+    const wrapped = wrappedFencedCommandOf(
+      { command: "/usr/bin/sandbox-exec", hidden: ["/data/vault"], kind: "seatbelt" },
+      ["/work/realm", "/data/terminal-tmp"],
+      "/bin/zsh",
+      ["-l"],
+    );
+    expect(wrapped.command).toBe("/usr/bin/sandbox-exec");
+    expect(wrapped.args).toContain("-D");
+    expect(wrapped.args).toContain("W0=/work/realm");
+    expect(wrapped.args).toContain("W1=/data/terminal-tmp");
+    expect(wrapped.args).toContain("H0=/data/vault");
+    const profile = String(wrapped.args[wrapped.args.indexOf("-p") + 1]);
+    expect(profile).toContain("(deny file-write*)");
+    expect(profile).toContain('(allow file-write* (subpath (param "W0")) (subpath (param "W1"))');
+    expect(profile).toContain('(deny file-read* (subpath (param "H0")))');
+    expect(wrapped.args.slice(-2)).toEqual(["/bin/zsh", "-l"]);
+  });
+
+  it("finds no sandbox where none can run, and the one the probes accept", () => {
+    expect(terminalSandboxOf({ hidden: [], platform: "darwin", probe: () => false })).toBeNull();
+    expect(terminalSandboxOf({ hidden: [], platform: "win32", probe: () => true, which: () => "/bwrap" })).toBeNull();
+    expect(terminalSandboxOf({ hidden: [], platform: "linux", probe: () => true, which: () => null })).toBeNull();
+    expect(terminalSandboxOf({ hidden: [], platform: "darwin", probe: () => true })).toMatchObject({
+      command: "/usr/bin/sandbox-exec",
+      kind: "seatbelt",
+    });
+    expect(
+      terminalSandboxOf({ hidden: [], platform: "linux", probe: () => true, which: () => "/usr/bin/bwrap" }),
+    ).toMatchObject({
+      command: "/usr/bin/bwrap",
+      kind: "bwrap",
+    });
+  });
+
+  it("repairs the packaged helper path and opens the owner's login shell on Unix, Windows' command shell", () => {
+    expect(unpackedPathOf("/Applications/Outlore.app/Contents/Resources/app.asar/node_modules/node-pty")).toBe(
+      "/Applications/Outlore.app/Contents/Resources/app.asar.unpacked/node_modules/node-pty",
+    );
+    expect(defaultShellOf("darwin", "/bin/zsh", undefined)).toBe("/bin/zsh");
+    expect(shellArgsOf("darwin")).toEqual(["-l"]);
+    expect(defaultShellOf("win32", "/bin/sh", "C:\\Windows\\System32\\cmd.exe")).toBe("C:\\Windows\\System32\\cmd.exe");
+    expect(shellArgsOf("win32")).toEqual([]);
+  });
+});
+
+// The requests: what a paired device may do, taught by the host's switch.
+
+const pairedDevice: RequestSource = { deviceId: "device", isPairedDevice: true };
+const hostWindow: RequestSource = { isPairedDevice: false };
+
+/** One service over its own store, with the shell host a check chooses. */
+const terminalService = (terminalHost: TerminalHost) => {
+  const directory = folder();
+  return serviceLayer({
+    filename: join(directory, "store.sqlite"),
+    harness: fakeHarnessLayer("10 millis"),
+    homeFolder: directory,
+    scratchRoot: join(directory, "missions"),
+    terminalHost,
+  });
+};
+const callAs = <R extends Request>(request: R, source: RequestSource) =>
+  Effect.gen(function* () {
+    const answer = yield* (yield* Service).handle(request, source);
+    return answer as ResultOf<R["_tag"] & RequestTag>;
+  });
+
+describe("terminals and their requests", () => {
+  it.live("keep a paired device's shells off until the host turns them on, and only the host may turn them on", () =>
+    Effect.gen(function* () {
+      expect(
+        yield* Effect.flip(callAs({ _tag: "OpenTerminal", cwd: null, id: "quest:home" }, pairedDevice)),
+      ).toMatchObject({ kind: "AccessRefused" });
+      // A paired device cannot let itself in, in part or with a full save.
+      expect(
+        yield* Effect.flip(
+          callAs({ _tag: "ChangeSettings", change: { shouldAllowRemoteTerminals: true } }, pairedDevice),
+        ),
+      ).toMatchObject({ kind: "AccessRefused" });
+      expect(
+        yield* Effect.flip(
+          callAs(
+            {
+              _tag: "UpdateSettings",
+              settings: {
+                ...(yield* callAs({ _tag: "ReadSettings" }, pairedDevice)),
+                shouldAllowRemoteTerminals: true,
+              },
+            },
+            pairedDevice,
+          ),
+        ),
+      ).toMatchObject({ kind: "AccessRefused" });
+      // Other settings, and a full save that leaves the switch where it is, still work from a paired device.
+      yield* callAs({ _tag: "ChangeSettings", change: { inactivityDays: 20 } }, pairedDevice);
+      yield* callAs(
+        { _tag: "UpdateSettings", settings: yield* callAs({ _tag: "ReadSettings" }, pairedDevice) },
+        pairedDevice,
+      );
+      // The host's own window changes the switch, and its shell does not need the switch at all.
+      const allowed = yield* callAs(
+        { _tag: "ChangeSettings", change: { shouldAllowRemoteTerminals: false } },
+        hostWindow,
+      );
+      expect(allowed.shouldAllowRemoteTerminals).toBe(false);
+      yield* callAs({ _tag: "ChangeSettings", change: { shouldAllowRemoteTerminals: true } }, hostWindow);
+      // A paired device names folders as every folder request does.
+      expect(
+        yield* Effect.flip(
+          callAs({ _tag: "OpenTerminal", cwd: "/no-such-outlore-terminal-folder", id: "quest:x" }, pairedDevice),
+        ),
+      ).toMatchObject({ kind: "InvalidInput" });
+    }).pipe(Effect.provide(terminalService(hostOf(folder())))),
+  );
+
+  it.live("refuses a paired device's shell where the host offers no sandbox, whatever the switch says", () =>
+    Effect.gen(function* () {
+      yield* callAs({ _tag: "ChangeSettings", change: { shouldAllowRemoteTerminals: true } }, hostWindow);
+      expect(
+        yield* Effect.flip(callAs({ _tag: "OpenTerminal", cwd: null, id: "quest:home" }, pairedDevice)),
+      ).toMatchObject({ kind: "Unsupported" });
+    }).pipe(Effect.provide(terminalService({ ...hostOf(folder()), sandbox: null }))),
+  );
+
+  it.live.runIf(canOpenTerminal)("opens, writes into, and closes the shells of the host's window and its devices", () =>
+    Effect.gen(function* () {
+      // The host's own window shells without the switch.
+      const own = yield* callAs({ _tag: "OpenTerminal", cwd: null, id: "quest:home" }, hostWindow);
+      expect(own).toMatchObject({ isRunning: true });
+      yield* callAs({ _tag: "CloseTerminal", id: "quest:home" }, hostWindow);
+      yield* callAs({ _tag: "ChangeSettings", change: { shouldAllowRemoteTerminals: true } }, hostWindow);
+      const opened = yield* callAs({ _tag: "OpenTerminal", cwd: null, id: "quest:home" }, pairedDevice);
+      expect(opened).toMatchObject({ isRunning: true });
+      yield* callAs({ _tag: "WriteTerminalInput", data: "printf 'DRIVEN\\n'\\r", id: "quest:home" }, pairedDevice);
+      yield* callAs({ _tag: "ResizeTerminal", cols: 120, id: "quest:home", rows: 40 }, pairedDevice);
+      let output = opened.output;
+      for (let attempt = 0; attempt < 100 && !output.includes("DRIVEN"); attempt++) {
+        yield* Effect.sleep(50);
+        output = (yield* callAs({ _tag: "OpenTerminal", cwd: null, id: "quest:home" }, pairedDevice)).output;
+      }
+      expect(output).toContain("DRIVEN");
+      yield* callAs({ _tag: "CloseTerminal", id: "quest:home" }, pairedDevice);
+    }).pipe(Effect.provide(terminalService(hostOf(folder())))),
+  );
+});

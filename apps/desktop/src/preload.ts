@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { DesktopBridge, TerminalSession } from "../../app/src/foundation/desktopBridge.ts";
+import type { DesktopBridge } from "../../app/src/foundation/desktopBridge.ts";
 import type { Theme } from "../../app/src/foundation/themeName.ts";
 import type { UpdateState } from "../../app/src/foundation/updateState.ts";
 
@@ -20,23 +20,6 @@ contextBridge.exposeInMainWorld("outlore", {
   },
   requestAttention: (): Promise<void> => ipcRenderer.invoke("outlore:requestAttention"),
   setTheme: (theme: Theme): Promise<void> => ipcRenderer.invoke("outlore:setTheme", theme),
-  terminalClose: (id: string): Promise<void> => ipcRenderer.invoke("outlore:terminalClose", id),
-  terminalListen: (data: (id: string, text: string, sequence: number) => void, exit: (id: string) => void) => {
-    const onData = (_event: Electron.IpcRendererEvent, id: string, text: string, sequence: number) =>
-      data(id, text, sequence);
-    const onExit = (_event: Electron.IpcRendererEvent, id: string) => exit(id);
-    ipcRenderer.on("outlore:terminalData", onData);
-    ipcRenderer.on("outlore:terminalExit", onExit);
-    return () => {
-      ipcRenderer.removeListener("outlore:terminalData", onData);
-      ipcRenderer.removeListener("outlore:terminalExit", onExit);
-    };
-  },
-  terminalOpen: (id: string, cwd: string | null): Promise<TerminalSession> =>
-    ipcRenderer.invoke("outlore:terminalOpen", id, cwd),
-  terminalResize: (id: string, cols: number, rows: number): Promise<void> =>
-    ipcRenderer.invoke("outlore:terminalResize", id, cols, rows),
-  terminalWrite: (id: string, data: string): Promise<void> => ipcRenderer.invoke("outlore:terminalWrite", id, data),
   updates: {
     check: (): Promise<UpdateState> => ipcRenderer.invoke("outlore:updateCheck"),
     install: (): Promise<void> => ipcRenderer.invoke("outlore:updateInstall"),

@@ -56,15 +56,27 @@ const evaluate = (url: string, expression: string) =>
     };
   });
 
-// The endpoint itself contains an owner token, so only the success verdict leaves the renderer.
+// The endpoint itself contains an owner token, so only the success verdict leaves the renderer. The shell itself
+// opens on the packaged service, so the check proves the whole path: the bridge, the service, and node-pty in it.
 const expression = `(async () => {
   const text = document.body?.innerText ?? "";
   if (!(text.includes("Start a new quest") && text.includes("Realms")) || typeof window.outlore?.endpoint !== "function")
     return "waiting";
-  await window.outlore.endpoint();
-  const session = await window.outlore.terminalOpen("package-check", null);
-  await window.outlore.terminalClose("package-check");
-  return session.isRunning ? "ready" : "terminal-failed";
+  const endpoint = await window.outlore.endpoint();
+  const answer = await new Promise((resolve, reject) => {
+    const socket = new WebSocket(endpoint);
+    socket.onopen = () =>
+      socket.send(JSON.stringify({ id: "t", request: { _tag: "OpenTerminal", cwd: null, id: "package-check" } }));
+    socket.onmessage = (message) => {
+      const frame = JSON.parse(message.data);
+      if (frame.id !== "t") return;
+      socket.close();
+      resolve(frame._tag === "Success" ? frame.value : null);
+    };
+    socket.onerror = () => reject(new Error("The packaged service did not answer."));
+    setTimeout(() => reject(new Error("The packaged terminal did not answer.")), 10000);
+  });
+  return answer && answer.isRunning ? "ready" : "terminal-failed";
 })()`;
 
 /** Every fuse `scripts/fusePolicy.cjs` turns off must read back off from the built app (ST-H-09). */
@@ -118,7 +130,7 @@ const check = async () => {
               continue;
             const result = await evaluate(page.webSocketDebuggerUrl, expression);
             if (result === "ready") {
-              console.log("PASS: packaged sidebar, service bridge, native terminal, and fuses are ready.");
+              console.log("PASS: packaged sidebar, service bridge, terminal, and fuses are ready.");
               return;
             }
             if (result !== "waiting") throw new Error("The packaged terminal did not start.");

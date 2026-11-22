@@ -35,6 +35,15 @@ export { ritualsHandlers } from "./ritualsHandlers.ts";
 export { listSkills } from "./skills.ts";
 export { startupCleanupLayer } from "./startupCleanup.ts";
 export { Suggestions, suggestionsLayer } from "./suggestions.ts";
+export {
+  ConversationTerminals,
+  hostTerminalHost,
+  type TerminalHost,
+  type TerminalScope,
+  Terminals,
+  terminalHandlers,
+  terminalsLayer,
+} from "./terminals.ts";
 export { AccountsRoot, Threads, threadsLayer } from "./threads.ts";
 export { openThreadByAgent, reportResult } from "./tree.ts";
 export { readAuthorityHarness } from "./turnAdmission.ts";

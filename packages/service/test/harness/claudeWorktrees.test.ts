@@ -361,6 +361,7 @@ it.live("shows the reply as it is written only while the setting is on", () => {
         inactivityDays: 14,
         intelHalfLives: { decision: 45, fact: 45, preference: 90, temporary: 3 },
         intelWarningPercent: 10,
+        shouldAllowRemoteTerminals: false,
         shouldAutoArchive: false,
         shouldFetchPrices: true,
         shouldOpenOffTopicMissions: false,

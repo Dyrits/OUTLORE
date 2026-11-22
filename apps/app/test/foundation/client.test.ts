@@ -82,6 +82,25 @@ describe("the service client's reconnection", () => {
     expect(FakeSocket.all).toHaveLength(2);
     expect(FakeSocket.all[1]?.readyState).toBe(3);
   });
+
+  it("carries each open shell's output and exit to the screens that listen", async () => {
+    const client = await connect();
+    const seen: string[] = [];
+    const stopListening = client.subscribeTerminals((frame) =>
+      seen.push(frame._tag === "TerminalData" ? `${frame.id}:${frame.data}:${frame.sequence}` : `${frame.id}:exit`),
+    );
+    FakeSocket.all[0]?.onmessage?.({
+      data: JSON.stringify({ _tag: "TerminalData", data: "sh>", id: "remote:quest:home", sequence: 3 }),
+    });
+    FakeSocket.all[0]?.onmessage?.({ data: JSON.stringify({ _tag: "TerminalExit", id: "remote:quest:home" }) });
+    expect(seen).toEqual(["remote:quest:home:sh>:3", "remote:quest:home:exit"]);
+    stopListening();
+    FakeSocket.all[0]?.onmessage?.({
+      data: JSON.stringify({ _tag: "TerminalData", data: "after", id: "remote:quest:home", sequence: 4 }),
+    });
+    expect(seen).toHaveLength(2);
+    client.close();
+  });
 });
 
 describe("the update link to a host that restarts to install", () => {

@@ -6,6 +6,8 @@ import {
   Results,
   ServerFrameJson,
   type ServiceError,
+  type TerminalData,
+  type TerminalExit,
 } from "@outlore/contracts";
 import { Schema } from "effect";
 import type { DesktopBridge } from "./desktopBridge";
@@ -41,6 +43,7 @@ export class ServiceClient {
   private readonly pending = new Map<string, Pending>();
   private readonly listeners = new Set<() => void>();
   private readonly draftListeners = new Set<(threadId: string, text: string) => void>();
+  private readonly terminalListeners = new Set<(frame: TerminalData | TerminalExit) => void>();
   private readonly failureListeners = new Set<() => void>();
 
   private constructor(
@@ -174,6 +177,10 @@ export class ServiceClient {
       for (const listener of this.draftListeners) listener(frame.threadId, frame.text);
       return;
     }
+    if (frame._tag === "TerminalData" || frame._tag === "TerminalExit") {
+      for (const listener of this.terminalListeners) listener(frame);
+      return;
+    }
     const request = this.pending.get(frame.id);
     if (request === undefined) return;
     this.pending.delete(frame.id);
@@ -199,6 +206,12 @@ export class ServiceClient {
   subscribeDrafts(listener: (threadId: string, text: string) => void) {
     this.draftListeners.add(listener);
     return () => this.draftListeners.delete(listener);
+  }
+
+  /** Calls the listener with each open shell's output and exit, whichever screen it runs on. */
+  subscribeTerminals(listener: (frame: TerminalData | TerminalExit) => void) {
+    this.terminalListeners.add(listener);
+    return () => this.terminalListeners.delete(listener);
   }
 
   request<R extends Request>(request: R): Promise<ResultOf<R["_tag"]>> {

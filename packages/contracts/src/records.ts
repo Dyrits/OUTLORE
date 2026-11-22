@@ -92,6 +92,11 @@ export const Settings = Schema.Struct({
   }),
   /** The share of the chosen model's context window, in percent, past which a thread's lore icon turns red (scoped-intel). */
   intelWarningPercent: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100)),
+  /**
+   * Whether a paired device may open and steer a conversation shell, off by default; only the host's own window can
+   * change it, and a shell it allows runs inside the host's sandbox (conversation-terminal, ADR 0020).
+   */
+  shouldAllowRemoteTerminals: Schema.Boolean,
   /** Whether Done missions are archived automatically, off by default (mission-tracking, Ending a mission). */
   shouldAutoArchive: Schema.Boolean,
   /** Whether Outlore reads the public model price table; off leaves the snapshot shipped with it (budget-control, The price table). */

@@ -83,6 +83,7 @@ import {
 } from "./remote.ts";
 import { CreateRitual, DeleteRitual, ListRituals, ReadRitual, RunRitual, UpdateRitual } from "./rituals.ts";
 import { ChangeSettings, UpdateSettings } from "./settingsRequests.ts";
+import { CloseTerminal, OpenTerminal, ResizeTerminal, WriteTerminalInput } from "./terminalRequests.ts";
 import { OwnerMessageText } from "./texts.ts";
 import { threadAnchorRequests } from "./threadAnchors.ts";
 import { UsageFilter, UsagePeriod } from "./usage.ts";
@@ -459,6 +460,10 @@ export const Request = Schema.Union([
   ListWorkspaceEntries,
   ListMentionables,
   CreateFolder,
+  OpenTerminal,
+  WriteTerminalInput,
+  ResizeTerminal,
+  CloseTerminal,
   AddBrowsableRoot,
   RemoveBrowsableRoot,
   SearchFolders,

@@ -158,7 +158,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "Write to any thread in its message box. Special marks in a message:",
       "- @ names a quest, errand, or realm to give the thread as context. A thread reads only its own tree and what the owner mentioned.",
       "- / lists skills found in the realm's .agents/skills and .claude/skills folders and then the home folder's; pick one and the thread is told to read and follow it. Skills from plugins are not listed.",
-      "- ! (desktop only) opens a shell inside the message; its visible output is sent as context.",
+      "- ! opens a shell inside the message on the host its conversation runs on: the host's own window always, and a paired device's screens while the host's Allow terminals from paired devices switch is on; a paired device's shell runs fenced in the host's sandbox. The shell's visible output is sent as context.",
       "- Images can be pasted, dropped, or chosen and are given to the harness with the message. Only images are supported so far.",
       "- Comment: a Comment button appears on a message when hovered or focused, and one beside selected text. Comments wait in a tray above the message box and go with the next message in that thread.",
       "A message sent while work is underway either steers the running turn or waits for the next one, as the Workshop setting says.",
@@ -329,7 +329,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
     body: [
       "Pairing lets the owner control one Outlore from another app or a browser on a phone or computer, on any internet connection, with no account. It is early work. The computer being controlled is the host; it shows a one-time pairing code, valid for 10 minutes and usable once, which the other device enters. The folder picker works on a paired host, limited to the folders the host allows. The connection is end-to-end encrypted through a shared relay, and a paired device has the owner's full authority over the host. The device and the host must run the same release: a pairing from another release is refused, the code is not spent, and no device is kept.",
       "Paired devices are listed in the Workshop's Remote access card, where each can be disconnected. A host menu is at the top left of the app, and the host can rename itself.",
-      "Not built yet: a QR code for the pairing code, notifications, the terminal on a host, and the direct connection that skips the relay. Browser pairing is built; phone layouts and pairing across another network still need checking.",
+      "Not built yet: a QR code for the pairing code, notifications, the terminal on the phone app itself, and the direct connection that skips the relay. Browser pairing is built, and so is the terminal on a host: a paired device opens and steers the host's shells while the host's Allow terminals from paired devices switch is on, fenced in the host's sandbox. Phone layouts and pairing across another network still need checking.",
     ].join("\n"),
     id: "pairing",
     keywords: [

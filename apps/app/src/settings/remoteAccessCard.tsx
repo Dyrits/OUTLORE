@@ -40,6 +40,7 @@ export function RemoteAccessCard({ client }: { client: ServiceClient }) {
 
 function RemoteAccessOnHost({ client }: { client: ServiceClient }) {
   const { data: view, error: readError } = useServiceQuery(client, { _tag: "ReadRemoteAccess" }, "remote-access");
+  const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const [pairing, setPairing] = useState<PairingCode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -77,6 +78,18 @@ function RemoteAccessOnHost({ client }: { client: ServiceClient }) {
       />
       <Text accessibilityLabel="Relay status" style={styles.muted}>
         {relayStatusTextOf(view.status, view.isEnabled)}
+      </Text>
+      <SettingsRule />
+      <ToggleRow
+        label="Allow terminals from paired devices"
+        onChange={(shouldAllowRemoteTerminals) =>
+          void attempt(client.request({ _tag: "ChangeSettings", change: { shouldAllowRemoteTerminals } }))
+        }
+        value={settings?.shouldAllowRemoteTerminals === true}
+      />
+      <Text style={styles.muted}>
+        A paired device that opens a shell runs it inside this computer's sandbox, writing only in its conversation's
+        folder.
       </Text>
       <SettingsRule />
       <RelayChoice client={client} deviceCount={view.devices.length} view={view} />
