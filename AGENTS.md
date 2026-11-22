@@ -58,6 +58,6 @@ Latest handoffs:
 
 - To check quest and errand tab actions in the desktop window, read the [current handoff](.agents/handoffs/2026-11-22-0237-quest-and-errand-actions.md). Handoffs are shared and committed.
 
-- To resume quest inactivity warnings and verify automatic archiving, read the [current handoff](.agents/handoffs/2026-11-22-0234-quest-auto-archive.md). Handoffs are shared and committed.
+- To verify the errand draft's Companions footer in the desktop window, read the [current handoff](.agents/handoffs/2026-11-22-0235-errand-companion-footer.md). Handoffs are shared and committed.
 
-- To verify quest chevrons and sidebar row limits in the desktop window, read the [current handoff](.agents/handoffs/2026-11-22-0227-sidebar-quest-rows.md). Handoffs are shared and committed.
+- To resume quest inactivity warnings and verify automatic archiving, read the [current handoff](.agents/handoffs/2026-11-22-0234-quest-auto-archive.md). Handoffs are shared and committed.
