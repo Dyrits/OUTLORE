@@ -56,8 +56,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To check quest and errand tab actions in the desktop window, read the [current handoff](.agents/handoffs/2026-11-22-0237-quest-and-errand-actions.md). Handoffs are shared and committed.
+
 - To resume quest inactivity warnings and verify automatic archiving, read the [current handoff](.agents/handoffs/2026-11-22-0234-quest-auto-archive.md). Handoffs are shared and committed.
 
 - To verify quest chevrons and sidebar row limits in the desktop window, read the [current handoff](.agents/handoffs/2026-11-22-0227-sidebar-quest-rows.md). Handoffs are shared and committed.
-
-- To check pane notch titles in the desktop window, read the [current handoff](.agents/handoffs/2026-11-22-0225-pane-notch-titles.md). Handoffs are shared and committed.
