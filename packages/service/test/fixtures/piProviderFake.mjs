@@ -26,11 +26,11 @@ const entry = (fields) => {
 const sessionArgument = args.includes("--session") ? args[args.indexOf("--session") + 1] : null;
 
 if (mode === "probe") {
-  for (const flag of ["--mode", "rpc", "--no-session", "--no-extensions", "--no-mcp", "--no-approve"])
+  for (const flag of ["--mode", "rpc", "--no-session", "--no-extensions", "--no-mcp"])
     if (!args.includes(flag)) process.exit(2);
 } else {
   // A turn process runs with every tool source denied (fail-closed, piTools.ts).
-  for (const flag of ["--mode", "rpc", "--no-tools", "--no-extensions", "--no-mcp", "--no-approve"])
+  for (const flag of ["--mode", "rpc", "--no-tools", "--no-extensions", "--no-mcp"])
     if (!args.includes(flag)) process.exit(2);
   entry({
     configDirectory: env.PI_CODING_AGENT_DIR ?? null,

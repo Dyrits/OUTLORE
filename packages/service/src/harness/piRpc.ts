@@ -143,7 +143,7 @@ export const probePiModels = (options: {
   Effect.gen(function* () {
     const cwd = yield* Effect.sync(() => mkdtempSync(join(tmpdir(), "outlore-pi-probe-")));
     const pi = yield* startPiProcess({
-      args: ["--no-session", "--no-extensions", "--no-mcp", "--no-approve"],
+      args: ["--no-session", "--no-extensions", "--no-mcp"],
       command: options.command,
       cwd,
       env: options.configDirectory === undefined ? {} : { PI_CODING_AGENT_DIR: options.configDirectory },
