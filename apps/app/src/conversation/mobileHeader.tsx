@@ -2,22 +2,9 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { colors, radii } from "../foundation/theme";
-import { ArchiveButton } from "../ui/archiveButton";
 
 /** Shows the menu button, conversation title and state, and available conversation actions in a narrow window. */
-export function MobileHeader({
-  errandActions,
-  isArchiveDisabled,
-  onArchive,
-  onBack,
-  title,
-}: {
-  errandActions: ReactNode;
-  isArchiveDisabled: boolean;
-  onArchive: (() => void) | null;
-  onBack: () => void;
-  title: ReactNode;
-}) {
+export function MobileHeader({ actions, onBack, title }: { actions: ReactNode; onBack: () => void; title: ReactNode }) {
   return (
     <View style={local.header}>
       <Pressable
@@ -41,12 +28,7 @@ export function MobileHeader({
         </Svg>
       </Pressable>
       <View style={local.title}>{title}</View>
-      <View style={local.actions}>
-        {errandActions}
-        {onArchive !== null && (
-          <ArchiveButton isDisabled={isArchiveDisabled} label="Archive quest" onPress={onArchive} />
-        )}
-      </View>
+      <View style={local.actions}>{actions}</View>
     </View>
   );
 }

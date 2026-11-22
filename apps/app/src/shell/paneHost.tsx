@@ -168,6 +168,7 @@ export function PaneHost({
                   client={client}
                   listRequest={listRequest?.id === id ? listRequest : undefined}
                   onOpenMission={onOpenMission}
+                  openMission={missionId}
                 />,
               );
             if (content.kind === "starter") {

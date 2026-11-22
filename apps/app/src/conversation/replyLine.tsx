@@ -7,7 +7,7 @@ import type {
   ThreadState,
   ThreadSummary,
 } from "@outlore/contracts";
-import { createContext, useContext } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { agoOf } from "../foundation/formatting";
@@ -62,6 +62,7 @@ export function NewReplyCard({
  * the press that opens its pane.
  */
 function ReplyCard({
+  actions,
   isOpen,
   label,
   meta,
@@ -71,6 +72,7 @@ function ReplyCard({
   state,
   title,
 }: {
+  actions?: ReactNode;
   isOpen: boolean;
   label: string;
   /** What follows the state on the last line: the waiting count and how long ago it last moved. */
@@ -84,12 +86,14 @@ function ReplyCard({
   title: string;
 }) {
   const tone = state === undefined ? null : stateTones[state];
-  return (
+  const openCard = (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [local.line, (pressed || isOpen) && local.lineActive]}
+      style={({ pressed }) =>
+        actions === undefined ? [local.line, (pressed || isOpen) && local.lineActive] : local.openArea
+      }
     >
       <Text style={local.origin}>{origin}</Text>
       <View style={local.row}>
@@ -121,6 +125,14 @@ function ReplyCard({
       </Text>
     </Pressable>
   );
+  return actions === undefined ? (
+    openCard
+  ) : (
+    <View style={[local.line, local.actionCard, isOpen && local.lineActive]}>
+      {openCard}
+      <View style={local.actions}>{actions}</View>
+    </View>
+  );
 }
 
 /**
@@ -128,10 +140,19 @@ function ReplyCard({
  * exchange, its state and how long ago it last moved. Pressing it opens the errand's conversation in the next pane, as a
  * thread opens in Slack; it is marked while that pane is open.
  */
-export function ReplyLine({ onOpen, thread }: { onOpen: (threadId: ThreadId) => void; thread: ThreadSummary }) {
+export function ReplyLine({
+  actions,
+  onOpen,
+  thread,
+}: {
+  actions?: ReactNode;
+  onOpen: (threadId: ThreadId) => void;
+  thread: ThreadSummary;
+}) {
   const isOpen = useContext(OpenPanes).has(thread.id);
   return (
     <ReplyCard
+      actions={actions}
       isOpen={isOpen}
       label={`Errand: ${thread.title}, ${stateLabels[thread.shownState]}`}
       meta={`${thread.waitingCount > 0 ? ` · ${thread.waitingCount} waiting` : ""} · ${agoOf(thread.lastActivityAt, Date.now())}`}
@@ -150,11 +171,13 @@ export function ReplyLine({ onOpen, thread }: { onOpen: (threadId: ThreadId) => 
  * open. The reply line in a realm's conversation and the realm's Quests tab both show quests this way.
  */
 export function QuestCard({
+  actions,
   label,
   onOpen,
   origin,
   quest,
 }: {
+  actions?: ReactNode;
   label: string;
   onOpen: () => void;
   origin: string;
@@ -163,6 +186,7 @@ export function QuestCard({
   const isOpen = useContext(OpenPanes).has(quest.topThreadId);
   return (
     <ReplyCard
+      actions={actions}
       isOpen={isOpen}
       label={`${label}: ${quest.title}`}
       meta={`${quest.state === "Resting" ? " · your turn" : ""} · ${agoOf(quest.lastActivityAt, Date.now())}`}
@@ -238,6 +262,8 @@ export function QuestReplyLine({
 }
 
 const local = StyleSheet.create({
+  actionCard: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
+  actions: { alignItems: "center", flexDirection: "row", gap: 12 },
   dot: { borderRadius: radii.pill, height: 8, width: 8 },
   go: { color: colors.accentText, fontSize: fontSizes.sm },
   line: {
@@ -256,6 +282,7 @@ const local = StyleSheet.create({
   lineNew: { borderLeftWidth: 1, borderStyle: "dashed", justifyContent: "center", minHeight: 40, ...handCursor },
   linePressed: { opacity: 0.8 },
   meta: { color: colors.textMuted, fontSize: fontSizes.sm },
+  openArea: { flex: 1, gap: 4, minWidth: 0 },
   origin: { color: colors.textMuted, fontSize: fontSizes.sm },
   row: { alignItems: "center", flexDirection: "row", gap: 8 },
   // The sample is quoted the way Slack quotes a thread's last reply: a rule at its left, the speakers in bold.

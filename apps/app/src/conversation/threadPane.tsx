@@ -100,7 +100,14 @@ export function ThreadPane({
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
   // Only a quest's own thread archives it, and not a Ritual or one already archived.
   const isOwnQuest = thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived";
-  const archive = isOwnQuest ? () => ending.start("Archived") : null;
+  const archiveAction = isOwnQuest && (
+    <ArchiveButton
+      isDelete={detail.mission.isEmpty}
+      isDisabled={ending.isBusy}
+      label={detail.mission.isEmpty ? "Delete quest" : "Archive quest"}
+      onPress={() => ending.start("Archived")}
+    />
+  );
   // Mark as done is a checkbox: pressing it again takes the mark back (ReopenMission, as the Archive's Reopen does).
   const isDone = detail.mission.state === "Fulfilled";
   const markDone = isOwnQuest
@@ -110,7 +117,7 @@ export function ThreadPane({
           : ending.start("Fulfilled")
     : null;
   const errandActions = <ErrandHeaderActions act={act} client={client} detail={detail} />;
-  const hasActions = archive !== null || hasErrandActions(detail);
+  const hasActions = isOwnQuest || hasErrandActions(detail);
   const windowQuestTab = useContext(QuestTabButtonContext);
   const questTab = isInPane ? null : windowQuestTab;
   return (
@@ -119,9 +126,7 @@ export function ThreadPane({
         <View style={[styles.flex, styles.pane]}>
           {onBack !== undefined && (
             <MobileHeader
-              errandActions={errandActions}
-              isArchiveDisabled={ending.isBusy}
-              onArchive={archive}
+              actions={archiveAction || errandActions}
               onBack={onBack}
               title={<ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />}
             />
@@ -138,9 +143,7 @@ export function ThreadPane({
                       <Text style={styles.link}>Resume</Text>
                     </Pressable>
                   )}
-                  {archive !== null && (
-                    <ArchiveButton isDisabled={ending.isBusy} label="Archive quest" onPress={archive} />
-                  )}
+                  {archiveAction}
                   {markDone !== null && <DoneButton isDisabled={ending.isBusy} isDone={isDone} onPress={markDone} />}
                   {errandActions}
                   {isInPane && thread.parentId === null && (

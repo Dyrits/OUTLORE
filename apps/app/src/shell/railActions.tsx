@@ -89,16 +89,7 @@ export function ArchiveIcon({ color }: { color: string }) {
   );
 }
 
-/** The mark of deleting an empty quest: a bin. */
-export function DeleteIcon({ color }: { color: string }) {
-  return (
-    <LineIcon color={color}>
-      <Path d="M4 7h16" />
-      <Path d="M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12" />
-      <Path d="M9 7V4h6v3" />
-    </LineIcon>
-  );
-}
+export { DeleteIcon } from "../ui/archiveButton";
 
 function LineIcon({ children, color }: { children: ReactNode; color: string }) {
   return (

@@ -1,4 +1,4 @@
-import type { MissionDetail } from "@outlore/contracts";
+import type { MissionDetail, ThreadId, ThreadState } from "@outlore/contracts";
 import type { ServiceClient } from "../foundation/client";
 import { ArchiveButton } from "../ui/archiveButton";
 import { DoneButton } from "../ui/questHeaderButtons";
@@ -23,17 +23,40 @@ export function ErrandHeaderActions({
 }) {
   if (!hasErrandActions(detail)) return null;
   const { thread } = detail;
-  const isDone = thread.state === "Fulfilled";
+  return (
+    <ErrandEndingButtons act={(work) => void act(work())} client={client} state={thread.state} threadId={thread.id} />
+  );
+}
+
+export function ErrandEndingButtons({
+  act,
+  client,
+  isDisabled = false,
+  state,
+  threadId,
+  title,
+}: {
+  act: (work: () => Promise<unknown>) => void;
+  client: ServiceClient;
+  isDisabled?: boolean;
+  state: ThreadState;
+  threadId: ThreadId;
+  title?: string;
+}) {
+  const isDone = state === "Fulfilled";
+  const doneLabel = isDone ? "Mark as not done" : "Mark as done";
   return (
     <>
       <ArchiveButton
-        label="Archive errand"
-        onPress={() => act(client.request({ _tag: "ArchiveThread", threadId: thread.id }))}
+        isDisabled={isDisabled}
+        label={title === undefined ? "Archive errand" : `Archive errand: ${title}`}
+        onPress={() => act(() => client.request({ _tag: "ArchiveThread", threadId }))}
       />
       <DoneButton
+        isDisabled={isDisabled}
         isDone={isDone}
-        label={isDone ? "Mark as not done" : "Mark as done"}
-        onPress={() => act(client.request({ _tag: isDone ? "ReopenThread" : "MarkThreadDone", threadId: thread.id }))}
+        label={title === undefined ? doneLabel : `${doneLabel}: ${title}`}
+        onPress={() => act(() => client.request({ _tag: isDone ? "ReopenThread" : "MarkThreadDone", threadId }))}
       />
     </>
   );

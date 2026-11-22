@@ -7,6 +7,9 @@ CHG-0635 keeps the fold chevron visible on quests with errands. CHG-0636 preview
 ## Notch titles on hover · 2026-11-22 · window check pending
 
 CHG-0630: hovering or keyboard-focusing a pane notch shows its title in a small card beside the notch — folded panes and child shortcuts alike — so quests and errands that share one icon are told apart without opening them. Biome, the workspace typecheck, and the app suite (704 passed) are green; see the [verification record](verification/2026-11-22-notch-titles.md). The window check is pending: the card's look on both edges, a stack of several notches, long titles, and keyboard focus. Found beside the work: the `tooltipOf` helper never showed a tooltip (backlog).
+## Quest and errand tab actions · 2026-11-22 · window check pending
+
+CHG-0637 is on `worktree/quest-tab-actions`. Check that the archive box, trash icon for empty quests, and done checkbox work from their cards without opening the card. Check the running-quest confirmation in the Quests tab and the empty-quest trash icon in both header layouts.
 
 ## Codex Full access prompts · 2026-11-22 · live check pending
 

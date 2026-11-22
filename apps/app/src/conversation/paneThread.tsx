@@ -1,12 +1,13 @@
-import type { MissionId, ThreadId } from "@outlore/contracts";
+import type { MissionId, ThreadId, ThreadSummary } from "@outlore/contracts";
 import { type ReactNode, useContext, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import type { ServiceClient } from "../foundation/client";
+import { messageOf, type ServiceClient } from "../foundation/client";
 import type { QuestPage } from "../foundation/pageNavigation";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { compareUrgency } from "../shell/childNotches";
 import { ChronicleTargetContext, matchesThread } from "./chronicleTarget";
+import { ErrandEndingButtons } from "./errandHeaderActions";
 import { PaneTabs } from "./paneTabs";
 import { useQuestPages } from "./questPages";
 import { questPanelOf } from "./questPanelOf";
@@ -89,7 +90,7 @@ export function PaneThread({
                     .map((thread) => ({ lastActivityAt: thread.lastActivityAt, state: thread.shownState, thread }))
                     .sort(compareUrgency)
                     .map(({ thread }) => (
-                      <ReplyLine key={thread.id} onOpen={onOpenThread} thread={thread} />
+                      <ListedErrand client={client} key={thread.id} onOpen={onOpenThread} thread={thread} />
                     ))}
                 </ScrollView>
               ) : isDetails ? (
@@ -122,6 +123,53 @@ export function PaneThread({
           />
         )}
       </View>
+    </View>
+  );
+}
+
+function ListedErrand({
+  client,
+  onOpen,
+  thread,
+}: {
+  client: ServiceClient;
+  onOpen: (threadId: ThreadId) => void;
+  thread: ThreadSummary;
+}) {
+  const [failure, setFailure] = useState<string | null>(null);
+  const [isBusy, setBusy] = useState(false);
+  const act = async (work: () => Promise<unknown>) => {
+    setBusy(true);
+    setFailure(null);
+    try {
+      await work();
+    } catch (reason) {
+      setFailure(messageOf(reason));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <View>
+      <ReplyLine
+        actions={
+          <ErrandEndingButtons
+            act={act}
+            client={client}
+            isDisabled={isBusy}
+            state={thread.state}
+            threadId={thread.id}
+            title={thread.title}
+          />
+        }
+        onOpen={onOpen}
+        thread={thread}
+      />
+      {failure !== null && (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {failure}
+        </Text>
+      )}
     </View>
   );
 }

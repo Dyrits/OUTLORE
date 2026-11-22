@@ -69,6 +69,9 @@ Quests with errands show their fold chevron even when collapsed and the pointer 
 
 The Errands tab starts with a **New errand** block which opens the existing errand composer in the next pane.
 The Quests tab starts with a **New quest** block which creates and opens an empty quest in the current realm or in the Borderlands.
+
+Quest and errand cards in these tabs use the conversation header archive box and **Mark as done** checkbox. Pressing a checked box reopens that quest or errand. An empty quest shows the trash icon in the list and in its header because the archive action deletes it. Quest cards keep the existing confirmation when ending a quest stops running threads. The action buttons operate independently of the card’s **Open** action.
+
 The blocks appear whether or not the lists already have entries.
 
 ### Errands as replies

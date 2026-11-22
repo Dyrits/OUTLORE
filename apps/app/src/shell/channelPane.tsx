@@ -19,6 +19,7 @@ export function ChannelPane({
   client,
   listRequest,
   onOpenMission,
+  openMission,
 }: {
   channel: { id: string | null; name: string };
   chrome?: ReactNode;
@@ -26,6 +27,7 @@ export function ChannelPane({
   /** A press on the "+N" notch: each new object opens the Quests tab. */
   listRequest?: object | undefined;
   onOpenMission: (id: MissionId) => void;
+  openMission?: MissionId | undefined;
 }) {
   return (
     <ChannelBody
@@ -35,6 +37,7 @@ export function ChannelPane({
       key={channel.id ?? "borderlands"}
       listRequest={listRequest}
       onOpenMission={onOpenMission}
+      openMission={openMission}
     />
   );
 }
@@ -112,12 +115,14 @@ function ChannelBody({
   client,
   listRequest,
   onOpenMission,
+  openMission,
 }: {
   channel: { id: string | null; name: string };
   chrome?: ReactNode;
   client: ServiceClient;
   listRequest?: object | undefined;
   onOpenMission: (id: MissionId) => void;
+  openMission?: MissionId | undefined;
 }) {
   const [tab, setTab] = useState<"Missives" | "Quests" | "Realm" | "Companions">(
     listRequest === undefined ? "Missives" : "Quests",
@@ -152,7 +157,7 @@ function ChannelBody({
     <ChroniclerConversation
       alternateBody={
         tab === "Quests" ? (
-          <ChannelQuests client={client} onOpen={onOpenMission} realmId={id} />
+          <ChannelQuests client={client} onOpen={onOpenMission} openMission={openMission} realmId={id} />
         ) : tab === "Realm" ? (
           realmPanel
         ) : undefined
