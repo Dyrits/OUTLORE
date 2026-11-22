@@ -17,19 +17,25 @@ const consequentialActions = [
 
 // How to leave the sandbox depends on the harness. Each native escalation goes through its adapter.
 const sandboxAdvice = {
+  // Hermes's ACP adapter, Muse's MSP adapter, Pi's fail-closed adapter, and the five ACP provider adapters
+  // (Antigravity, Cline, Copilot, Cursor, Devin) are Unprotected: no sandbox advice applies (each asks the owner
+  // through its protocol's permission requests, or runs no tools at all).
+  antigravity: null,
   claude: {
     allowed:
       "Your commands run in Claude Code's sandbox, which writes your working folder and the git worktrees git lists for its repository. The owner has allowed you to work outside the sandbox: when it blocks a command you need, run it again with dangerouslyDisableSandbox set to true and it runs without a question. Keep to the sandbox for work in your folder and its worktrees, and still ask before the consequential actions above, which the sandbox does not make safe.",
     asking:
       "Your commands run in Claude Code's sandbox, which writes your working folder and the git worktrees git lists for its repository. Do not run a command outside the sandbox for work in them. When the sandbox blocks a command you need for any other reason, run it again with dangerouslyDisableSandbox set to true: Outlore asks the owner about that exact command and nothing broader. Never chain anything else to it.",
   },
+  cline: null,
   codex: {
     allowed:
       "If the sandbox blocks a local command you need, retry it through Codex's own per-command escalation. Outlore approves that escalation automatically in Full access. Use request_approval for consequential actions listed above. A request to widen the sandbox for the turn still asks.",
     asking: null,
   },
-  // Hermes's ACP adapter, Muse's MSP adapter, and Pi's fail-closed adapter are Unprotected: no sandbox advice
-  // applies (each asks the owner through its protocol's permission requests, or runs no tools at all).
+  copilot: null,
+  cursor: null,
+  devin: null,
   hermes: null,
   muse: null,
   opencode: null,

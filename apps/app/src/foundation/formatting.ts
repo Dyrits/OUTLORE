@@ -10,8 +10,13 @@ import type {
 
 /** Each harness by the name the owner reads. */
 export const harnessLabels = {
+  antigravity: "Gemini",
   claude: "Claude Code",
+  cline: "Cline",
   codex: "Codex",
+  copilot: "GitHub Copilot",
+  cursor: "Cursor",
+  devin: "Devin",
   hermes: "Hermes",
   muse: "Muse",
   opencode: "OpenCode",
@@ -44,10 +49,16 @@ export const runnerSummaryOf = (
 
 /** Each harness's usual model company, when the model's own identifier names none. */
 const harnessProviders = {
+  // Antigravity fronts Google's Gemini models; GitHub Copilot fronts GitHub's; Devin fronts Cognition's.
+  antigravity: "Google",
   claude: "Anthropic",
+  // Hermes, Muse, Pi, Cline, and Cursor front several companies' models behind their own runtime, so each
+  // harness's name stands in for one.
+  cline: "Cline",
   codex: "OpenAI",
-  // Hermes fronts several companies' models behind its own tool and Pi behind its own CLI, so each harness's
-  // name stands in for one; Muse names each model's provider in its own qualified ids, so its name covers the rest.
+  copilot: "GitHub",
+  cursor: "Cursor",
+  devin: "Cognition",
   hermes: "Hermes",
   muse: "Muse",
   opencode: "OpenCode",

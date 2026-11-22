@@ -31,10 +31,16 @@ describe("tabsOf", () => {
       ["codex", null, "Mac"],
       ["opencode", null, "Mac"],
       ["vibe", null, "Mac"],
-      // Hermes, Muse, and Pi are in the roster but not in this list, so each shows as one unread tab.
+      // Hermes, Muse, Pi, and the five ACP providers are in the roster but not in this list, so each shows as one
+      // unread tab.
       ["hermes", null, ""],
       ["muse", null, ""],
       ["pi", null, ""],
+      ["cursor", null, ""],
+      ["copilot", null, ""],
+      ["cline", null, ""],
+      ["devin", null, ""],
+      ["antigravity", null, ""],
     ]);
     expect(tabs[0]?.models.map((option) => option.id)).toEqual(["sonnet"]);
     expect(tabs[1]?.models.map((option) => option.id)).toEqual(["opus"]);
@@ -67,7 +73,7 @@ describe("tabsOf", () => {
   });
 
   it("lists every harness before the host has read its accounts", () => {
-    expect(tabsOf(null, true, { accountId: null, harness: "claude" })).toHaveLength(7);
+    expect(tabsOf(null, true, { accountId: null, harness: "claude" })).toHaveLength(12);
   });
 });
 

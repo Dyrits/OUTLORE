@@ -157,8 +157,13 @@ describe("running OpenCode threads", () => {
     }).pipe(
       Effect.provide(
         liveHarnessToolsLayer({
+          antigravity: "antigravity",
           claude: "claude",
+          cline: "cline",
           codex: "codex",
+          copilot: "copilot",
+          cursor: "cursor",
+          devin: "devin",
           hermes: "hermes",
           muse: "muse",
           opencode: command,

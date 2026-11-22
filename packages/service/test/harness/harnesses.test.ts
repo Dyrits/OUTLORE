@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { AccountId } from "@outlore/contracts";
+import type { AccountId, HarnessName } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach, vi } from "vitest";
 import { computerNameOf } from "../../src/remote/config.ts";
@@ -136,11 +136,29 @@ describe("managing provider accounts", () => {
       yield* call({ _tag: "RenameHost", name: "Studio" });
       const renamed = yield* call({ _tag: "RenameOwnAccount", harness: "claude", label: " Personal " });
       const labelsOf = (list: typeof renamed) => list.harnesses.map((harness) => harness.accounts[0]?.label);
-      expect(labelsOf(renamed)).toEqual(["Personal", "Studio", "Studio", "Studio", "Studio", "Studio", "Studio"]);
+      expect(labelsOf(renamed)).toEqual([
+        "Personal",
+        "Studio",
+        "Studio",
+        "Studio",
+        "Studio",
+        "Studio",
+        "Studio",
+        "Studio",
+        "Studio",
+        "Studio",
+        "Studio",
+        "Studio",
+      ]);
       // A later rename of the computer leaves the sign-in's own name alone.
       yield* call({ _tag: "RenameHost", name: "Laptop" });
       expect(labelsOf(yield* call({ _tag: "ListHarnesses" }))).toEqual([
         "Personal",
+        "Laptop",
+        "Laptop",
+        "Laptop",
+        "Laptop",
+        "Laptop",
         "Laptop",
         "Laptop",
         "Laptop",
@@ -167,6 +185,20 @@ describe("managing provider accounts", () => {
       // sign-in invisibly, so adding one is refused rather than silently unisolated.
       const failure = yield* call({ _tag: "AddAccount", harness: "muse", label: "Work" }).pipe(Effect.flip);
       expect(failure.message).toBe("Muse takes only the computer's own sign-in.");
+      // The five ACP providers take the computer's own sign-in too: none has a verified added-account home
+      // (Antigravity's would pin an unproven env-versus-flag split), so each refusal names its own harness.
+      const five = yield* Effect.all(
+        (["cursor", "copilot", "cline", "devin", "antigravity"] as const satisfies ReadonlyArray<HarnessName>).map(
+          (harness) => call({ _tag: "AddAccount", harness, label: "Work" } as const).pipe(Effect.flip),
+        ),
+      );
+      expect(five.map((failure) => failure.message)).toEqual([
+        "Cursor takes only the computer's own sign-in.",
+        "GitHub Copilot takes only the computer's own sign-in.",
+        "Cline takes only the computer's own sign-in.",
+        "Devin takes only the computer's own sign-in.",
+        "Gemini takes only the computer's own sign-in.",
+      ]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -182,6 +214,11 @@ describe("managing provider accounts", () => {
         "hermes",
         "muse",
         "pi",
+        "cursor",
+        "copilot",
+        "cline",
+        "devin",
+        "antigravity",
       ]);
       for (const harness of harnesses) {
         expect(harness.accounts[0]).toMatchObject({ id: null, label: computerNameOf(), signIn: "SignedIn" });

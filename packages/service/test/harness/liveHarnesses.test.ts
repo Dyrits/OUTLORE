@@ -9,8 +9,13 @@ import {
   Harness,
   liveHarnessToolsLayer,
   makeAcpProviderHarness,
+  makeAntigravityHarness,
   makeClaudeHarness,
+  makeClineHarness,
   makeCodexHarness,
+  makeCopilotProviderHarness,
+  makeCursorProviderHarness,
+  makeDevinHarness,
   makeMuseHarness,
   makeOpenCodeHarness,
   makePiHarness,
@@ -24,8 +29,13 @@ import { call, temporary } from "../fixtures/service.ts";
 // owner's own sign-in: OUTLORE_LIVE_HARNESSES=1, and OUTLORE_LIVE_OPENCODE_MODEL for OpenCode's model.
 
 const commands = {
+  antigravity: process.env.OUTLORE_ANTIGRAVITY_PATH ?? "antigravity",
   claude: process.env.OUTLORE_CLAUDE_PATH ?? "claude",
+  cline: process.env.OUTLORE_CLINE_PATH ?? "cline",
   codex: process.env.OUTLORE_CODEX_PATH ?? "codex",
+  copilot: process.env.OUTLORE_COPILOT_PATH ?? "copilot",
+  cursor: process.env.OUTLORE_CURSOR_PATH ?? "cursor-agent",
+  devin: process.env.OUTLORE_DEVIN_PATH ?? "devin",
   hermes: process.env.OUTLORE_HERMES_PATH ?? "hermes",
   muse: process.env.OUTLORE_MUSE_PATH ?? "muse",
   opencode: process.env.OUTLORE_OPENCODE_PATH ?? "opencode",
@@ -38,8 +48,13 @@ const live = (directory = realpathSync(temporary("outlore-live-"))) => {
     Harness,
     Effect.gen(function* () {
       return routeHarnesses({
+        antigravity: yield* makeAntigravityHarness({ command: commands.antigravity, idleTimeout: "1 minute" }),
         claude: yield* makeClaudeHarness({ command: commands.claude, idleTimeout: "1 minute", sandboxProblem: null }),
+        cline: yield* makeClineHarness({ command: commands.cline, idleTimeout: "1 minute" }),
         codex: yield* makeCodexHarness({ command: commands.codex, idleTimeout: "1 minute" }),
+        copilot: yield* makeCopilotProviderHarness({ command: commands.copilot, idleTimeout: "1 minute" }),
+        cursor: yield* makeCursorProviderHarness({ command: commands.cursor, idleTimeout: "1 minute" }),
+        devin: yield* makeDevinHarness({ command: commands.devin, idleTimeout: "1 minute" }),
         hermes: yield* makeAcpProviderHarness({
           command: commands.hermes,
           idleTimeout: "1 minute",

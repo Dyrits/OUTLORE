@@ -262,16 +262,33 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
 
     const openSignIn = Effect.fnUntraced(function* (harness: HarnessName, configDirectory: string | null) {
       const facts = harnessFacts[harness];
+      if (facts.signInArgs === null)
+        return yield* invalid(
+          `${facts.label} has no sign-in command of its own: its sign-in happens inside the provider's own surface (the pinned upstream carries no CLI sign-in to run). Sign in there yourself, then press Refresh.`,
+        );
       const command = [quoted(commands[harness]), ...facts.signInArgs].join(" ");
       const variable = facts.configVariable;
-      const line = configDirectory === null ? command : `${variable}=${quoted(configDirectory)} ${command}`;
+      // The sign-in's own environment - an auto-update squeeze or a link-flow flag - rides along on both paths,
+      // exactly as the pinned upstream launches the sign-in; a turn never carries it. (Read through the full
+      // facts record: most harnesses pin none, so the per-harness literal types carry no `signInEnv` at all.)
+      const extraEnv = (harnessFacts as Record<HarnessName, HarnessFacts>)[harness].signInEnv ?? {};
+      const envEntries = (directory: string | null): Array<readonly [string, string]> => [
+        ...(directory === null ? [] : ([[variable, directory]] as const)),
+        ...Object.entries(extraEnv),
+      ];
+      const line =
+        configDirectory === null && envEntries(configDirectory).length === 0
+          ? command
+          : `${envEntries(configDirectory)
+              .map(([name, value]) => `${name}=${quoted(value)}`)
+              .join(" ")} ${command}`;
       if (process.platform !== "darwin") return yield* invalid(`Open a terminal on this computer and run: ${line}`);
       if (facts.signInNeedsNoTerminal) {
         // No window: the tool opens the browser itself and ends once the browser's answer reaches its local port.
         const run = yield* runShortCommand(
           commands[harness],
           facts.signInArgs,
-          accountEnvironmentOf(harness, configDirectory),
+          { ...accountEnvironmentOf(harness, configDirectory), ...extraEnv },
           signInTimeoutMillis,
         );
         if (run.code !== 0) {
@@ -291,7 +308,7 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
           script,
           terminalSignInScript({
             command,
-            environment: configDirectory === null ? [] : [`${variable}=${quoted(configDirectory)}`],
+            environment: envEntries(configDirectory).map(([name, value]) => `${name}=${quoted(value)}`),
             label: facts.label,
             path: script,
           }),

@@ -5,6 +5,11 @@ import { type Duration, Effect, Layer } from "effect";
 import { afterEach } from "vitest";
 import { acpProviderProfiles } from "../../src/harness/acpProviderProfiles.ts";
 import { makeAcpProviderHarness } from "../../src/harness/acpProviders.ts";
+import { makeAntigravityHarness } from "../../src/harness/antigravityProvider.ts";
+import { makeClineHarness } from "../../src/harness/clineProvider.ts";
+import { makeCopilotProviderHarness } from "../../src/harness/copilotProvider.ts";
+import { makeCursorProviderHarness } from "../../src/harness/cursorProvider.ts";
+import { makeDevinHarness } from "../../src/harness/devinProvider.ts";
 import { makeMuseHarness } from "../../src/harness/muse.ts";
 import type { OpenCodeSandbox } from "../../src/harness/openCodeSandbox.ts";
 import {
@@ -47,6 +52,16 @@ const standInControls = [
   "PI_FAKE_TOOL_BREACH",
   "PI_FAKE_REFUSE_PROMPT",
   "PI_FAKE_SLOW",
+  "CURSOR_FAKE_LOG",
+  "CURSOR_FAKE_MODE",
+  "COPILOT_FAKE_LOG",
+  "COPILOT_FAKE_MODE",
+  "CLINE_FAKE_LOG",
+  "CLINE_FAKE_MODE",
+  "DEVIN_FAKE_LOG",
+  "DEVIN_FAKE_MODE",
+  "ANTIGRAVITY_FAKE_LOG",
+  "ANTIGRAVITY_FAKE_MODE",
 ];
 afterEach(() => {
   for (const name of standInControls) delete process.env[name];
@@ -133,6 +148,14 @@ export const withHarnesses = (
     Harness,
     Effect.gen(function* () {
       return routeHarnesses({
+        // The registered Antigravity entry, stood in: the antigravity fake as its ACP process (the computer's own
+        // Gemini home; added accounts stay refused pending the live flag-vs-env check).
+        antigravity: yield* makeAntigravityHarness({
+          command: process.execPath,
+          env: { ANTIGRAVITY_FAKE_LOG: log, ANTIGRAVITY_FAKE_MODE: "turn" },
+          idleTimeout,
+          prefixArgs: [join(import.meta.dirname, "antigravityProviderFake.mjs")],
+        }),
         claude: yield* makeClaudeHarness({
           command: process.execPath,
           idleTimeout,
@@ -140,10 +163,38 @@ export const withHarnesses = (
           sandboxProblem: null,
           userSettingsPath: join(directory, "no-settings.json"),
         }),
+        // The registered Cline entry, stood in: the cline fake as its `cline --acp` process.
+        cline: yield* makeClineHarness({
+          command: process.execPath,
+          env: { CLINE_FAKE_LOG: log, CLINE_FAKE_MODE: "turn" },
+          idleTimeout,
+          prefixArgs: [join(import.meta.dirname, "clineProviderFake.mjs")],
+        }),
         codex: yield* makeCodexHarness({
           command: process.execPath,
           idleTimeout,
           prefixArgs: [join(import.meta.dirname, "stand-in-codex.mjs")],
+        }),
+        // The registered Copilot entry, stood in: the copilot fake as its `copilot --acp` process.
+        copilot: yield* makeCopilotProviderHarness({
+          command: process.execPath,
+          env: { COPILOT_FAKE_LOG: log, COPILOT_FAKE_MODE: "turn" },
+          idleTimeout,
+          prefixArgs: [join(import.meta.dirname, "copilotProviderFake.mjs")],
+        }),
+        // The registered Cursor entry, stood in: the cursor fake as its `cursor-agent acp` process.
+        cursor: yield* makeCursorProviderHarness({
+          command: process.execPath,
+          env: { CURSOR_FAKE_LOG: log, CURSOR_FAKE_MODE: "turn" },
+          idleTimeout,
+          prefixArgs: [join(import.meta.dirname, "cursorProviderFake.mjs")],
+        }),
+        // The registered Devin entry, stood in: the devin fake as its `devin acp` process.
+        devin: yield* makeDevinHarness({
+          command: process.execPath,
+          env: { DEVIN_FAKE_LOG: log, DEVIN_FAKE_MODE: "turn" },
+          idleTimeout,
+          prefixArgs: [join(import.meta.dirname, "devinProviderFake.mjs")],
         }),
         // The registered Hermes entry, stood in: the generic ACP fake as the hermes profile's process (its
         // account-home requirement stands, so only threads with an account folder use it).

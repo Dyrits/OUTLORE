@@ -46,8 +46,17 @@ export type HarnessFacts = {
    * been verified, so an added account could only share the computer's sign-in invisibly (Muse, 2026-11-22).
    */
   readonly supportsAddedAccounts?: boolean;
-  /** The arguments of the harness's own sign-in command. */
-  readonly signInArgs: ReadonlyArray<string>;
+  /**
+   * The arguments of the harness's own sign-in command; null when no sign-in command of the harness's own is
+   * verified (its Sign-in explains the provider's own flow instead of running anything).
+   */
+  readonly signInArgs: ReadonlyArray<string> | null;
+  /**
+   * The environment the harness's own sign-in command runs with, such as an auto-update squeeze or the flag that
+   * keeps a link flow from opening a browser itself; left out when the pinned sign-in needs none. Running a turn
+   * never carries it: it belongs to the sign-in surface alone.
+   */
+  readonly signInEnv?: Readonly<Record<string, string>>;
   /**
    * Whether the sign-in runs without a terminal: it opens the browser itself and ends when the browser's answer reaches
    * a local port. Otherwise it is an interactive screen that needs a terminal window.
@@ -61,6 +70,31 @@ export type HarnessFacts = {
 
 /** Each harness's facts, by name. */
 export const harnessFacts = {
+  antigravity: {
+    // A plain ACP server mediated by the generic adapter, so it asks the owner through its protocol's permission
+    // requests and has no `answer_prompt` tool.
+    approvedCommandAdvice: "",
+    // Upstream pins an account's home with GEMINI_HOME and the same value in its --gemini-dir flag, but the pinned
+    // tree never shows the CLI resolving a split between the two, so added accounts stay blocked until a live CLI
+    // check proves which channel wins; the computer's own sign-in is the unredirected ~/.gemini.
+    configVariable: "GEMINI_HOME",
+    fixedModels: null,
+    hasPromptTool: false,
+    // The CLI ships as release archives of google-antigravity/antigravity-cli with SHA-256 checksums, so the
+    // Install explanation covers the download instead of running a registry package.
+    installVia: "manual",
+    label: "Gemini",
+    // The newest version is what the GitHub releases carry; no registry holds one to read.
+    packageName: "",
+    releaseRegistry: "none",
+    // No sign-in command of the CLI's own is verified: its sign-in is the ACP `oauth-personal` flow, so Sign-in
+    // explains and the owner signs in through Google inside the provider's own surface, then presses Refresh.
+    signInArgs: null,
+    signInNeedsNoTerminal: false,
+    supportsAddedAccounts: false,
+    updateArgs: null,
+    updateCommand: null,
+  },
   claude: {
     approvedCommandAdvice:
       "; keep the sandbox for it, unless the owner allowed that exact command outside the sandbox: then set dangerouslyDisableSandbox to true",
@@ -76,6 +110,32 @@ export const harnessFacts = {
     updateArgs: ["update"],
     updateCommand: null,
   },
+  cline: {
+    // A plain ACP server mediated by the generic adapter, so it asks the owner through its protocol's permission
+    // requests and has no `answer_prompt` tool.
+    approvedCommandAdvice: "",
+    // Upstream has no accounts entry for Cline, and CLINE_DIR/CLINE_DATA_DIR only steer its process confinement:
+    // no verified account surface exists, so Cline takes the computer's own sign-in only.
+    configVariable: "CLINE_DATA_DIR",
+    fixedModels: null,
+    hasPromptTool: false,
+    // The CLI ships as the npm registry's platform packages (@cline/cli-<target>, pinned 3.0.68 Apache-2.0), so
+    // the Install explanation covers them instead of running a target-qualified package name.
+    installVia: "manual",
+    label: "Cline",
+    packageName: "",
+    releaseRegistry: "none",
+    // The CLI's device-flow sign-in, with the same environment every spawn carries upstream (self-update
+    // suppressed, local session backend); a live check verifies the code it prints in the terminal.
+    signInArgs: ["auth", "-p", "cline"],
+    signInEnv: { CLINE_NO_AUTO_UPDATE: "1", CLINE_SESSION_BACKEND_MODE: "local" },
+    signInNeedsNoTerminal: false,
+    supportsAddedAccounts: false,
+    // No update command of Cline's own exists upstream; its self-update stays squeezed off by the sign-in and
+    // launch environment, and Update explains instead of running anything.
+    updateArgs: null,
+    updateCommand: null,
+  },
   codex: {
     approvedCommandAdvice: "",
     configVariable: "CODEX_HOME",
@@ -88,6 +148,80 @@ export const harnessFacts = {
     signInArgs: ["login"],
     signInNeedsNoTerminal: true,
     updateArgs: ["update"],
+    updateCommand: null,
+  },
+  copilot: {
+    // A plain ACP server mediated by the generic adapter, so it asks the owner through its protocol's permission
+    // requests and has no `answer_prompt` tool.
+    approvedCommandAdvice: "",
+    // The driver upstream keeps no accounts entry for Copilot and its sign-in sits in the system keychain, so only
+    // the computer's own sign-in is offered and added accounts are refused rather than silently shared.
+    configVariable: "COPILOT_HOME",
+    fixedModels: null,
+    hasPromptTool: false,
+    // The Copilot CLI ships as release archives of github/copilot-cli with SHA-256 checksums, so the Install
+    // explanation covers the download instead of running a registry package.
+    installVia: "manual",
+    label: "GitHub Copilot",
+    packageName: "",
+    releaseRegistry: "none",
+    // `copilot login` opens its browser sign-in; the environment squeezes the CLI's self-update off, exactly as
+    // upstream sets it at every spawn, and a live check verifies the browser flow's completion.
+    signInArgs: ["login"],
+    signInEnv: { COPILOT_AUTO_UPDATE: "false" },
+    signInNeedsNoTerminal: false,
+    supportsAddedAccounts: false,
+    // No update command of Copilot's own exists upstream and its self-update is squeezed off by the environment,
+    // so Update explains instead of running anything.
+    updateArgs: null,
+    updateCommand: null,
+  },
+  cursor: {
+    // A plain ACP server mediated by the generic adapter, so it asks the owner through its protocol's permission
+    // requests and has no `answer_prompt` tool.
+    approvedCommandAdvice: "",
+    // CURSOR_CONFIG_DIR moves Cursor's settings only, never its sign-in (the Keychain keeps one credential per
+    // computer user, and a key account would hand Outlore a credential it must never hold), so an added account
+    // has no home to isolate: only the computer's own sign-in is offered.
+    configVariable: "CURSOR_CONFIG_DIR",
+    fixedModels: null,
+    hasPromptTool: false,
+    // The `cursor-agent` CLI arrives from the ACP registry's pinned descriptor upstream (not a package registry),
+    // so the Install explanation covers it instead of running anything.
+    installVia: "manual",
+    label: "Cursor",
+    packageName: "",
+    releaseRegistry: "none",
+    // `cursor-agent login` never opens its page on its own (NO_OPEN_BROWSER prints the sign-in link for the
+    // owner to open); a live check verifies the link flow.
+    signInArgs: ["login"],
+    signInEnv: { NO_OPEN_BROWSER: "1" },
+    signInNeedsNoTerminal: false,
+    supportsAddedAccounts: false,
+    updateArgs: null,
+    updateCommand: null,
+  },
+  devin: {
+    // A plain ACP server mediated by the generic adapter, so it asks the owner through its protocol's permission
+    // requests and has no `answer_prompt` tool.
+    approvedCommandAdvice: "",
+    // Upstream keeps no accounts entry for Devin and its state sits under the machine-wide XDG data root, so only
+    // the computer's own sign-in is offered and added accounts are refused rather than unisolated.
+    configVariable: "XDG_DATA_HOME",
+    fixedModels: null,
+    hasPromptTool: false,
+    // The CLI ships from Cognition's own manifest with SHA-256 checksums, so the Install explanation covers the
+    // download instead of running a registry package.
+    installVia: "manual",
+    label: "Devin",
+    packageName: "",
+    releaseRegistry: "none",
+    // No sign-in command of the CLI's own is verified: its sign-in is the ACP `devin-browser` flow, so Sign-in
+    // explains and the owner signs in inside the provider's own surface, then presses Refresh.
+    signInArgs: null,
+    signInNeedsNoTerminal: false,
+    supportsAddedAccounts: false,
+    updateArgs: null,
     updateCommand: null,
   },
   hermes: {
@@ -198,8 +332,13 @@ export const harnessFacts = {
 
 /** Each harness's name as the owner reads it. */
 export const harnessLabels = {
+  antigravity: harnessFacts.antigravity.label,
   claude: harnessFacts.claude.label,
+  cline: harnessFacts.cline.label,
   codex: harnessFacts.codex.label,
+  copilot: harnessFacts.copilot.label,
+  cursor: harnessFacts.cursor.label,
+  devin: harnessFacts.devin.label,
   hermes: harnessFacts.hermes.label,
   muse: harnessFacts.muse.label,
   opencode: harnessFacts.opencode.label,
@@ -208,7 +347,20 @@ export const harnessLabels = {
 } as const satisfies Record<HarnessName, string>;
 
 /** Every harness, in the order pickers list them. */
-export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode", "vibe", "hermes", "muse", "pi"];
+export const harnessNames: ReadonlyArray<HarnessName> = [
+  "claude",
+  "codex",
+  "opencode",
+  "vibe",
+  "hermes",
+  "muse",
+  "pi",
+  "cursor",
+  "copilot",
+  "cline",
+  "devin",
+  "antigravity",
+];
 
 /** Whether a harness refuses the accounts the owner adds beside the computer's own sign-in (`supportsAddedAccounts: false`). */
 export const refusesAddedAccounts = (harness: HarnessName): boolean =>

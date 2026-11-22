@@ -14,8 +14,13 @@ import {
 } from "../core/index.ts";
 import { acpProviderProfiles } from "./acpProviderProfiles.ts";
 import { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.ts";
+import { makeAntigravityHarness, probeAntigravityModels } from "./antigravityProvider.ts";
 import { makeClaudeHarness } from "./claude.ts";
+import { makeClineHarness, probeClineModels } from "./clineProvider.ts";
 import { makeCodexHarness } from "./codex.ts";
+import { makeCopilotProviderHarness, probeCopilotModels } from "./copilotProvider.ts";
+import { makeCursorProviderHarness, probeCursorModels } from "./cursorProvider.ts";
+import { makeDevinHarness, probeDevinModels } from "./devinProvider.ts";
 import { accountEnvironmentOf, claudeModels, type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
 import type { SignInStatus } from "./harnessTools.ts";
 import { makeMuseHarness } from "./muse.ts";
@@ -251,18 +256,86 @@ const pi: HarnessDefinition = {
   readSignIn: () => Effect.succeed(unknownSignIn),
 };
 
+// The five ACP provider harnesses (CHG-0645, provider-parity wave 5): each runs one long-lived ACP process of the
+// generic adapter, so every sensitive action reaches the owner as a permission request and any other reverse
+// request fails closed. All five take the computer's own sign-in only (their added-account surfaces are absent or
+// unproven - supportsAddedAccounts stays false), and each models probe catches failure as no models yet.
+
+const antigravity: HarnessDefinition = {
+  ...harnessFacts.antigravity,
+  makeAdapter: ({ command, idleTimeout }) => makeAntigravityHarness({ command, idleTimeout }),
+  // Models come from a short-lived session probe against the computer's own Gemini home; none when the CLI is
+  // absent or not signed in.
+  readModels: (command) =>
+    probeAntigravityModels({ command }).pipe(
+      Effect.map((models): ReadonlyArray<ModelOption> => models),
+      Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([])),
+    ),
+  readSignIn: () => Effect.succeed(unknownSignIn),
+};
+
+const cline: HarnessDefinition = {
+  ...harnessFacts.cline,
+  makeAdapter: ({ command, idleTimeout }) => makeClineHarness({ command, idleTimeout }),
+  readModels: (command) =>
+    probeClineModels({ command }).pipe(Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([]))),
+  readSignIn: () => Effect.succeed(unknownSignIn),
+};
+
+const copilot: HarnessDefinition = {
+  ...harnessFacts.copilot,
+  makeAdapter: ({ command, idleTimeout }) => makeCopilotProviderHarness({ command, idleTimeout }),
+  // A signed-out Copilot answers with no models rather than failing, so the probe failing at all (the CLI absent)
+  // reads as no models yet, exactly as upstream's signed-out shape does.
+  readModels: (command) =>
+    probeCopilotModels({ command }).pipe(Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([]))),
+  readSignIn: () => Effect.succeed(unknownSignIn),
+};
+
+const cursor: HarnessDefinition = {
+  ...harnessFacts.cursor,
+  makeAdapter: ({ command, idleTimeout }) => makeCursorProviderHarness({ command, idleTimeout }),
+  readModels: (command) =>
+    probeCursorModels({ command }).pipe(Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([]))),
+  readSignIn: () => Effect.succeed(unknownSignIn),
+};
+
+const devin: HarnessDefinition = {
+  ...harnessFacts.devin,
+  makeAdapter: ({ command, idleTimeout }) => makeDevinHarness({ command, idleTimeout }),
+  // Devin lists models only when signed in, so both the signed-out probe and any probe failure read as none yet.
+  readModels: (command) =>
+    probeDevinModels({ command }).pipe(Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([]))),
+  readSignIn: () => Effect.succeed(unknownSignIn),
+};
+
 /** Every harness, by name. */
-export const harnesses = { claude, codex, hermes, muse, opencode, pi, vibe } satisfies Record<
-  HarnessName,
-  HarnessDefinition
->;
+export const harnesses = {
+  antigravity,
+  claude,
+  cline,
+  codex,
+  copilot,
+  cursor,
+  devin,
+  hermes,
+  muse,
+  opencode,
+  pi,
+  vibe,
+} satisfies Record<HarnessName, HarnessDefinition>;
 
 /** The adapter the app runs turns through: each harness's own, started from its definition (provider-accounts). */
 export const makeHarnessRouter = (commands: Record<HarnessName, string>, options: Omit<AdapterOptions, "command">) => {
   const adapterOf = (name: HarnessName) => harnesses[name].makeAdapter({ ...options, command: commands[name] });
   return Effect.all({
+    antigravity: adapterOf("antigravity"),
     claude: adapterOf("claude"),
+    cline: adapterOf("cline"),
     codex: adapterOf("codex"),
+    copilot: adapterOf("copilot"),
+    cursor: adapterOf("cursor"),
+    devin: adapterOf("devin"),
     hermes: adapterOf("hermes"),
     muse: adapterOf("muse"),
     opencode: adapterOf("opencode"),

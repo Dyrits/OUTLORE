@@ -51,8 +51,13 @@ describe("installing and updating harnesses", () => {
       Effect.provide(
         liveHarnessToolsLayer(
           {
+            antigravity: "antigravity",
             claude: "claude",
+            cline: "cline",
             codex: "codex",
+            copilot: "copilot",
+            cursor: "cursor",
+            devin: "devin",
             hermes: "hermes",
             muse: "muse",
             opencode: "opencode",
@@ -83,8 +88,13 @@ describe("installing and updating harnesses", () => {
       Effect.provide(
         liveHarnessToolsLayer(
           {
+            antigravity: "antigravity",
             claude: "claude",
+            cline: "cline",
             codex: "codex",
+            copilot: "copilot",
+            cursor: "cursor",
+            devin: "devin",
             hermes: "hermes",
             muse: "muse",
             opencode: "opencode",
@@ -113,10 +123,28 @@ describe("installing and updating harnesses", () => {
         null,
         null,
         null,
+        null,
+        null,
+        null,
+        null,
+        null,
       ]);
       const after = yield* call({ _tag: "UpdateHarness", harness: "codex" });
       expect(updates.updated).toEqual(["codex"]);
-      expect(after.harnesses.map((harness) => harness.update)).toEqual([null, null, null, null, null, null, null]);
+      expect(after.harnesses.map((harness) => harness.update)).toEqual([
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+      ]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -174,6 +202,11 @@ describe("signing in to a harness", () => {
         "hermes",
         "muse",
         "pi",
+        "cursor",
+        "copilot",
+        "cline",
+        "devin",
+        "antigravity",
       ]);
       expect(yield* call({ _tag: "SignInAccount", accountId: null, harness: "opencode" })).toBeNull();
     }).pipe(Effect.provide(layer));
@@ -201,8 +234,13 @@ describe("signing in to a harness", () => {
       }).pipe(
         Effect.provide(
           liveHarnessToolsLayer({
+            antigravity: "antigravity",
             claude: command,
+            cline: "cline",
             codex: "codex",
+            copilot: "copilot",
+            cursor: "cursor",
+            devin: "devin",
             hermes: "hermes",
             muse: "muse",
             opencode: "opencode",
@@ -228,5 +266,35 @@ describe("signing in to a harness", () => {
     expect(failure).toContain("Sign-in did not finish");
     expect(script).toContain("export XDG_DATA_HOME='/accounts/x'");
     expect(script).toContain('exit "$status"');
+  });
+
+  it.live("refuses Sign-in on a harness that has no sign-in command of its own", () => {
+    return Effect.gen(function* () {
+      const tools = yield* HarnessTools;
+      // Devin's and Antigravity's only sign-in rides their ACP flow (upstream pins no CLI sign-in to run), so
+      // Sign-in explains instead of opening a terminal; each message names its own harness.
+      const failure = yield* tools.openSignIn("devin", null).pipe(Effect.flip);
+      expect(failure.message).toContain("Devin has no sign-in command of its own");
+      expect(failure.message).toContain("press Refresh");
+      const gemini = yield* tools.openSignIn("antigravity", null).pipe(Effect.flip);
+      expect(gemini.message).toContain("Gemini has no sign-in command of its own");
+    }).pipe(
+      Effect.provide(
+        liveHarnessToolsLayer({
+          antigravity: "antigravity",
+          claude: "claude",
+          cline: "cline",
+          codex: "codex",
+          copilot: "copilot",
+          cursor: "cursor",
+          devin: "devin",
+          hermes: "hermes",
+          muse: "muse",
+          opencode: "opencode",
+          pi: "pi",
+          vibe: "vibe-acp",
+        }),
+      ),
+    );
   });
 });
