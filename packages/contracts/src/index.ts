@@ -30,6 +30,7 @@ export * from "./questions.ts";
 export {
   ArchiveRealm,
   CreateRealm,
+  CreateRepositoryRealm,
   FindArchivedRealm,
   ListArchivedRealms,
   PreviewRealmArchive,

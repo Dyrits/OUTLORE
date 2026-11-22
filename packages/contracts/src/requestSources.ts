@@ -49,6 +49,7 @@ export const requestSourceRules = {
   CreateFolder: rule(false, (given) => given.parent),
   CreatePairingCode: hostOnly,
   CreateRealm: rule(false, (given) => given.path),
+  CreateRepositoryRealm: rule(false, (given) => given.parent),
   CreateRitual: rule(false, (given) => given.workspacePath),
   DeleteIntel: shared,
   DeleteRitual: shared,

@@ -55,6 +55,17 @@ export const CreateRealm = Schema.TaggedStruct("CreateRealm", {
   path: Schema.NullOr(Schema.String),
   shouldAnswerOutcome: Schema.optional(Schema.Boolean),
 });
+/** Creates a repository under a chosen parent and attaches it to a realm. */
+export const CreateRepositoryRealm = Schema.TaggedStruct("CreateRepositoryRealm", {
+  allowDuplicateName: Schema.Boolean,
+  name: NameText,
+  parent: Schema.String,
+  source: Schema.Union([
+    Schema.TaggedStruct("Project", {}),
+    Schema.TaggedStruct("GitUrl", { url: Schema.String }),
+    Schema.TaggedStruct("GitHub", { repository: Schema.String }),
+  ]),
+});
 /** Renames a realm without treating its name as its identity. */
 export const RenameRealm = Schema.TaggedStruct("RenameRealm", {
   allowDuplicateName: Schema.optional(Schema.Boolean),
@@ -105,6 +116,7 @@ export type RealmCreation = typeof RealmCreation.Type;
 /** Realm lifecycle requests kept together at the transport boundary. */
 export const realmRequests = [
   CreateRealm,
+  CreateRepositoryRealm,
   RenameRealm,
   ReorderRealms,
   PreviewRealmArchive,
@@ -118,6 +130,7 @@ export const realmResults = {
   ArchiveRealm: Schema.Null,
   // Null for an earlier app's request, which does not ask for the outcome, and from an earlier host, which ignores the ask.
   CreateRealm: Schema.NullOr(RealmCreation),
+  CreateRepositoryRealm: RealmCreation,
   FindArchivedRealm: Schema.NullOr(RealmArchivePreview),
   ListArchivedRealms: Schema.Array(RealmArchivePreview),
   PreviewRealmArchive: RealmArchivePreview,

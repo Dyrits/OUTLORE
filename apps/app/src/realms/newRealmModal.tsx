@@ -1,22 +1,21 @@
-import type { RealmArchivePreview } from "@outlore/contracts";
+import type { CreateRepositoryRealm, RealmArchivePreview } from "@outlore/contracts";
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { messageOf } from "../foundation/client";
-import { colors, fontSizes, fonts, outline, radii } from "../foundation/theme";
+import { colors } from "../foundation/theme";
 import { FolderPicker } from "./folderPicker";
 import { folderNameOf } from "./realmLabels";
+import { realmModalStyles as local } from "./realmModalStyles";
 import { proposedRealmOf } from "./realmRecovery";
 import { RealmRecoveryModal } from "./realmRecoveryModal";
+import { type RealmSource, RealmSourceChoices } from "./realmSourceChoices";
 
 /** A realm being made: named. The path is empty until a folder is chosen, and stays so for a realm tied to none. */
 export type NewRealm = { name: string; path: string };
 
 /**
- * The menu that makes a realm: its folder and its name. It opens with a folder chosen, or with none and a
- * button to choose one; the realm is made once a name is given, and a folder where one is required
- * (workspace-attachment; CHG-0035). Where the folder is optional, a realm made without one is tied to no folder (CHG-0161).
- * The folder is chosen in the folder picker, which shows the folders of the computer whose Outlore the window shows.
+ * Names a realm for a selected folder, or offers all sources when opened from the sidebar.
  */
 export function NewRealmModal({
   client,
@@ -26,7 +25,7 @@ export function NewRealmModal({
   onCreated,
 }: {
   client: ServiceClient;
-  /** Whether the realm must be tied to a folder; where it need not, the folder can be chosen, changed, or left out. */
+  /** When opened from a quest, skip the source choice and name the selected folder. */
   isFolderRequired?: boolean;
   initial: NewRealm;
   onCancel: () => void;
@@ -34,13 +33,31 @@ export function NewRealmModal({
   onCreated?: (realm: NewRealm) => void;
 }) {
   const [editing, setEditing] = useState(initial);
+  const [isChoosingSource, setIsChoosingSource] = useState(!isFolderRequired);
+  const [source, setSource] = useState<RealmSource>("Folder");
+  const [repository, setRepository] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPicking, setIsPicking] = useState(false);
   const [isBusy, setBusy] = useState(false);
   const [isDuplicate, setDuplicate] = useState(false);
   const [archived, setArchived] = useState<RealmArchivePreview | null>(null);
-  const proposed = proposedRealmOf(editing);
-  const isReady = proposed.name !== "" && (!isFolderRequired || editing.path !== "") && !isBusy;
+  const isClone = source === "GitHub" || source === "GitUrl";
+  const isRepository = source === "Project" || isClone;
+  const proposed = source === "Folder" ? proposedRealmOf(editing) : { ...editing, name: editing.name.trim() };
+  const repositorySource: (typeof CreateRepositoryRealm.Type)["source"] | null =
+    source === "Project"
+      ? { _tag: "Project" }
+      : source === "GitHub"
+        ? { _tag: "GitHub", repository }
+        : source === "GitUrl"
+          ? { _tag: "GitUrl", url: repository }
+          : null;
+  const isReady =
+    !isChoosingSource &&
+    proposed.name !== "" &&
+    (source === "Empty" || proposed.path !== "") &&
+    (!isClone || repository.trim() !== "") &&
+    !isBusy;
   const complete = () => {
     onCreated?.(proposed);
     onCancel();
@@ -53,13 +70,24 @@ export function NewRealmModal({
     setBusy(true);
     setError(null);
     try {
-      const outcome = await client.request({
-        _tag: "CreateRealm",
-        allowDuplicateName: shouldAllowDuplicateName,
-        name: proposed.name,
-        path: proposed.path === "" ? null : proposed.path,
-        shouldAnswerOutcome: true,
-      });
+      const name = proposed.name;
+      const allowDuplicateName = shouldAllowDuplicateName;
+      const outcome =
+        repositorySource === null
+          ? await client.request({
+              _tag: "CreateRealm",
+              allowDuplicateName,
+              name,
+              path: source === "Empty" ? null : proposed.path,
+              shouldAnswerOutcome: true,
+            })
+          : await client.request({
+              _tag: "CreateRepositoryRealm",
+              allowDuplicateName,
+              name,
+              parent: proposed.path,
+              source: repositorySource,
+            });
       if (outcome?._tag === "ArchivedMatch") {
         setArchived(outcome.archived);
         return;
@@ -78,7 +106,22 @@ export function NewRealmModal({
   const choose = (path: string) => {
     setIsPicking(false);
     setError(null);
-    setEditing({ ...editing, name: editing.name.trim() === "" ? folderNameOf(path) : editing.name, path });
+    setDuplicate(false);
+    setEditing({
+      ...editing,
+      name: source === "Folder" && editing.name.trim() === "" ? folderNameOf(path) : editing.name,
+      path,
+    });
+  };
+  const chooseSource = (next: RealmSource) => {
+    setIsChoosingSource(false);
+    if (next !== source) {
+      setSource(next);
+      setEditing({ ...editing, path: "" });
+      setRepository("");
+      setDuplicate(false);
+      setError(null);
+    }
   };
   if (archived !== null)
     return (
@@ -94,122 +137,117 @@ export function NewRealmModal({
     <Modal animationType="fade" onRequestClose={cancel} transparent visible>
       <View style={local.backdrop}>
         <Pressable accessibilityLabel="Close" disabled={isBusy} onPress={cancel} style={StyleSheet.absoluteFill} />
-        <View style={local.menu}>
+        <ScrollView contentContainerStyle={local.menu} keyboardShouldPersistTaps="handled" style={local.scroll}>
           <Text style={local.menuTitle}>Visit a new realm</Text>
-          <View style={local.folderRow}>
-            <Text numberOfLines={2} style={[local.menuPath, editing.path === "" && local.menuPathEmpty]}>
-              {editing.path !== ""
-                ? editing.path
-                : isFolderRequired
-                  ? "No folder chosen"
-                  : "No folder: optional, the realm's quests then have none"}
-            </Text>
-            <Pressable accessibilityRole="button" onPress={() => setIsPicking(true)} style={local.menuButton}>
-              <Text style={local.menuButtonText}>{editing.path === "" ? "Choose folder…" : "Change folder…"}</Text>
-            </Pressable>
-            {!isFolderRequired && editing.path !== "" && (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setEditing({ ...editing, path: "" })}
-                style={local.menuButton}
-              >
-                <Text style={local.menuButtonText}>No folder</Text>
+          {isChoosingSource ? (
+            <>
+              <RealmSourceChoices onChoose={chooseSource} />
+              <Pressable accessibilityRole="button" onPress={cancel} style={local.menuButton}>
+                <Text style={local.menuButtonText}>Cancel</Text>
               </Pressable>
-            )}
-          </View>
-          <View style={local.namingRow}>
-            <View style={local.menuFields}>
-              <Text style={local.menuLabel}>Name</Text>
-              <TextInput
-                accessibilityLabel="Realm name"
-                autoFocus
-                editable={!isBusy}
-                maxLength={80}
-                onChangeText={(name) => {
-                  setEditing({ ...editing, name });
-                  setDuplicate(false);
-                }}
-                placeholder="Name the realm"
-                placeholderTextColor={colors.placeholder}
-                style={local.nameInput}
-                value={editing.name}
-              />
-            </View>
-          </View>
-          {isDuplicate && (
-            <Text style={local.error}>Another active realm is named "{proposed.name}". Use this name too?</Text>
+            </>
+          ) : (
+            <>
+              {isClone && (
+                <View style={local.menuFields}>
+                  <Text style={local.menuLabel}>
+                    {source === "GitHub" ? "GitHub repository (owner/repo)" : "Git URL"}
+                  </Text>
+                  <TextInput
+                    accessibilityLabel={source === "GitHub" ? "GitHub repository (owner/repo)" : "Git URL"}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoFocus
+                    editable={!isBusy}
+                    onChangeText={(value) => {
+                      setRepository(value);
+                      setDuplicate(false);
+                      setError(null);
+                    }}
+                    placeholder={source === "GitHub" ? "owner/repo" : "https://host/owner/repo.git"}
+                    placeholderTextColor={colors.placeholder}
+                    spellCheck={false}
+                    style={local.nameInput}
+                    value={repository}
+                  />
+                </View>
+              )}
+              {source !== "Empty" && (
+                <View style={local.folderRow}>
+                  <Text numberOfLines={2} style={[local.menuPath, editing.path === "" && local.menuPathEmpty]}>
+                    {editing.path !== ""
+                      ? editing.path
+                      : isRepository
+                        ? "Choose where to create the realm's folder"
+                        : "No folder chosen"}
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={isBusy}
+                    onPress={() => setIsPicking(true)}
+                    style={local.menuButton}
+                  >
+                    <Text style={local.menuButtonText}>
+                      {editing.path !== "" ? "Change folder…" : isRepository ? "Choose destination…" : "Choose folder…"}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+              <View style={local.namingRow}>
+                <View style={local.menuFields}>
+                  <Text style={local.menuLabel}>{isRepository ? "Realm and folder name" : "Realm name"}</Text>
+                  <TextInput
+                    accessibilityLabel={isRepository ? "Realm and folder name" : "Realm name"}
+                    autoFocus={!isClone}
+                    editable={!isBusy}
+                    maxLength={80}
+                    onChangeText={(name) => {
+                      setEditing({ ...editing, name });
+                      setDuplicate(false);
+                      setError(null);
+                    }}
+                    placeholder="Name the realm"
+                    placeholderTextColor={colors.placeholder}
+                    style={local.nameInput}
+                    value={editing.name}
+                  />
+                </View>
+              </View>
+              {isDuplicate && (
+                <Text style={local.error}>Another active realm is named "{proposed.name}". Use this name too?</Text>
+              )}
+              {error !== null && (
+                <Text accessibilityRole="alert" style={local.error}>
+                  {error}
+                </Text>
+              )}
+              <View style={local.menuFooter}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isBusy}
+                  onPress={isFolderRequired ? cancel : () => setIsChoosingSource(true)}
+                  style={local.menuButton}
+                >
+                  <Text style={local.menuButtonText}>{isFolderRequired ? "Cancel" : "Back"}</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={!isReady}
+                  onPress={() => {
+                    void create(isDuplicate);
+                  }}
+                  style={[local.menuDone, !isReady && local.menuDoneOff]}
+                >
+                  <Text accessibilityLiveRegion="polite" style={local.menuDoneText}>
+                    {isBusy ? (isClone ? "Cloning…" : "Creating…") : isDuplicate ? "Use this name" : "Visit the realm"}
+                  </Text>
+                </Pressable>
+              </View>
+            </>
           )}
-          {error !== null && <Text style={local.error}>{error}</Text>}
-          <View style={local.menuFooter}>
-            <Pressable accessibilityRole="button" disabled={isBusy} onPress={cancel} style={local.menuButton}>
-              <Text style={local.menuButtonText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              disabled={!isReady}
-              onPress={() => {
-                void create(isDuplicate);
-              }}
-              style={[local.menuDone, !isReady && local.menuDoneOff]}
-            >
-              <Text style={local.menuDoneText}>{isDuplicate ? "Use this name" : "Visit the realm"}</Text>
-            </Pressable>
-          </View>
-        </View>
+        </ScrollView>
       </View>
       {isPicking && <FolderPicker client={client} onCancel={() => setIsPicking(false)} onChoose={choose} />}
     </Modal>
   );
 }
-
-const local = StyleSheet.create({
-  backdrop: {
-    alignItems: "center",
-    backgroundColor: "rgba(5,10,18,0.7)",
-    flex: 1,
-    justifyContent: "center",
-    padding: 20,
-  },
-  error: { color: colors.dangerText, fontFamily: fonts.sans, fontSize: fontSizes.md },
-  folderRow: { alignItems: "center", flexDirection: "row", gap: 10, justifyContent: "space-between" },
-  menu: {
-    ...outline,
-    backgroundColor: colors.page,
-    borderRadius: radii.xl,
-    gap: 12,
-    maxWidth: 480,
-    padding: 20,
-    width: "100%",
-  },
-  menuButton: {
-    ...outline,
-    alignSelf: "flex-start",
-    backgroundColor: colors.canvas,
-    borderRadius: radii.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  menuButtonText: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.base, fontWeight: "600" },
-  menuDone: { backgroundColor: colors.accent, borderRadius: radii.sm, paddingHorizontal: 18, paddingVertical: 8 },
-  menuDoneOff: { opacity: 0.4 },
-  menuDoneText: { color: colors.onAccent, fontFamily: fonts.sans, fontSize: fontSizes.base, fontWeight: "700" },
-  menuFields: { flex: 1, gap: 8 },
-  menuFooter: { flexDirection: "row", gap: 10, justifyContent: "flex-end" },
-  menuLabel: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: 12 },
-  menuPath: { color: colors.textMuted, flex: 1, fontFamily: fonts.mono, fontSize: fontSizes.sm },
-  menuPathEmpty: { fontFamily: fonts.sans, fontStyle: "italic" },
-  menuTitle: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.xl, fontWeight: "700" },
-  nameInput: {
-    ...outline,
-    backgroundColor: colors.canvas,
-    borderRadius: radii.sm,
-    color: colors.text,
-    flex: 1,
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.base,
-    minWidth: 160,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  namingRow: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 10 },
-});

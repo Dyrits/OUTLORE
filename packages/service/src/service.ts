@@ -195,7 +195,7 @@ const make = Effect.gen(function* () {
           ChangeSettings: (given) =>
             saveSettingsFromSource(isHostWindow, (saved) => mergedSettings(saved, given.change)),
           CreateFolder: (create) => createFolder(create.parent, create.name, folderAccess),
-          ...realmHandlers(commands),
+          ...realmHandlers(commands, folderAccess),
           ListMentionables: () => listMentionables,
           ListOpenQuestions: () => listOpenQuestions,
           ListSkills: (given) => listSkills(given.workspacePath),
