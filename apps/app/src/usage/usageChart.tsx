@@ -8,7 +8,7 @@ import { dayCaptionOf, dayLabelOf } from "./usageLabels";
 import { chartScaleOf } from "./usageScale";
 
 /** The stack's order, top to bottom. */
-const stackOrder = ["claude", "codex", "opencode", "vibe", "hermes", "muse", null] as const;
+const stackOrder = ["claude", "codex", "opencode", "vibe", "hermes", "muse", "pi", null] as const;
 
 const plotHeight = 180;
 const axisWidth = 72;

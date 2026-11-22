@@ -30,6 +30,8 @@ export {
 export { type MuseOptions, makeMuseHarness } from "./muse.ts";
 export { listMuseModels, readMuseSignIn } from "./museAccount.ts";
 export { listOpenCodeEfforts, makeOpenCodeHarness, type OpenCodeOptions } from "./opencode.ts";
+export { makePiHarness, type PiOptions, type PiProvider } from "./pi.ts";
+export { probePiModels } from "./piRpc.ts";
 export {
   checkAccount,
   checkBackups,

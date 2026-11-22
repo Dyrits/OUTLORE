@@ -8,6 +8,8 @@ const harnessColors = {
   hermes: colors.highlight,
   muse: colors.accent,
   opencode: colors.textMuted,
+  // A placeholder color until Pi's own runs read; it only tells this harness's bars apart.
+  pi: colors.yellow,
   vibe: colors.success,
 } as const satisfies Record<HarnessName, string>;
 

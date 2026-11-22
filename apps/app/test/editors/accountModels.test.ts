@@ -31,9 +31,10 @@ describe("tabsOf", () => {
       ["codex", null, "Mac"],
       ["opencode", null, "Mac"],
       ["vibe", null, "Mac"],
-      // Hermes and Muse are in the roster but not in this list, so each shows as one unread tab.
+      // Hermes, Muse, and Pi are in the roster but not in this list, so each shows as one unread tab.
       ["hermes", null, ""],
       ["muse", null, ""],
+      ["pi", null, ""],
     ]);
     expect(tabs[0]?.models.map((option) => option.id)).toEqual(["sonnet"]);
     expect(tabs[1]?.models.map((option) => option.id)).toEqual(["opus"]);
@@ -66,7 +67,7 @@ describe("tabsOf", () => {
   });
 
   it("lists every harness before the host has read its accounts", () => {
-    expect(tabsOf(null, true, { accountId: null, harness: "claude" })).toHaveLength(6);
+    expect(tabsOf(null, true, { accountId: null, harness: "claude" })).toHaveLength(7);
   });
 });
 

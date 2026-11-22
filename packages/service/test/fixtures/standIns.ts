@@ -14,6 +14,7 @@ import {
   makeClaudeHarness,
   makeCodexHarness,
   makeOpenCodeHarness,
+  makePiHarness,
   makeVibeHarness,
   routeHarnesses,
   serviceLayer,
@@ -38,6 +39,14 @@ const standInControls = [
   "STAND_IN_OPENCODE_CHILD",
   "STAND_IN_OPENCODE_EXECUTOR",
   "STAND_IN_OPENCODE_MISSING_SESSIONS",
+  "PI_FAKE_LOG",
+  "PI_FAKE_MODE",
+  "PI_FAKE_SESSION",
+  "PI_FAKE_MISSING_SESSION",
+  "PI_FAKE_UI_QUESTION",
+  "PI_FAKE_TOOL_BREACH",
+  "PI_FAKE_REFUSE_PROMPT",
+  "PI_FAKE_SLOW",
 ];
 afterEach(() => {
   for (const name of standInControls) delete process.env[name];
@@ -160,6 +169,15 @@ export const withHarnesses = (
           instructionsFolder: join(directory, "instructions"),
           prefixArgs: [join(import.meta.dirname, "stand-in-opencode.mjs")],
           sandbox: openCodeSandbox(directory),
+        }),
+        // The registered Pi entry, stood in: the RPC fake as its `pi --mode rpc` process, a turn host from
+        // the start (its models stay a probe the fake answers as when asked).
+        pi: yield* makePiHarness({
+          command: process.execPath,
+          env: { PI_FAKE_LOG: log, PI_FAKE_MODE: "turn" },
+          idleTimeout,
+          prefixArgs: [join(import.meta.dirname, "piProviderFake.mjs")],
+          provider: "pi",
         }),
         vibe: yield* makeVibeHarness({
           command: process.execPath,

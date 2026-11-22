@@ -45,6 +45,8 @@ const liveLayer = Layer.unwrap(
       // Muse runs its own MSP host (`muse serve`) through the official SDK.
       muse: yield* Config.String("OUTLORE_MUSE_PATH").pipe(Config.withDefault("muse")),
       opencode: yield* Config.String("OUTLORE_OPENCODE_PATH").pipe(Config.withDefault("opencode")),
+      // Pi enters through its own `--mode rpc` interface (the unmodified CLI, fail-closed: piTools.ts).
+      pi: yield* Config.String("OUTLORE_PI_PATH").pipe(Config.withDefault("pi")),
       vibe: yield* Config.String("OUTLORE_VIBE_PATH").pipe(Config.withDefault("vibe-acp")),
     };
     // OUTLORE_RELAY_ORIGIN points pairing at another relay, such as one run locally for checks (device-pairing).

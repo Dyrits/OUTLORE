@@ -22,6 +22,8 @@ import { makeMuseHarness } from "./muse.ts";
 import { listMuseModels, readMuseSignIn } from "./museAccount.ts";
 import { detectOpenCodeSandbox } from "./openCodeSandbox.ts";
 import { listOpenCodeEfforts, makeOpenCodeHarness } from "./opencode.ts";
+import { makePiHarness } from "./pi.ts";
+import { probePiModels } from "./piRpc.ts";
 import { makeVibeHarness } from "./vibe.ts";
 import { listVibeModels, readVibeSignIn } from "./vibeAccount.ts";
 
@@ -228,8 +230,29 @@ const muse: HarnessDefinition = {
   readSignIn: () => readMuseSignIn(),
 };
 
+const pi: HarnessDefinition = {
+  ...harnessFacts.pi,
+  // Pi runs fail-closed: every tool source of its own is denied for good on each turn, every question it asks is
+  // answered cancelled, and a turn that runs a tool anyway ends as a breach (piTools.ts); nothing Outlore has not
+  // approved ever runs (CHG-0644, provider-parity wave 3).
+  makeAdapter: ({ command, idleTimeout }) => makePiHarness({ command, idleTimeout, provider: "pi" }),
+  // Models come from a short-lived RPC probe of the running CLI - against the account's own directory for an
+  // added account, against the computer's own Pi otherwise; none when the CLI is absent or not signed in yet.
+  readModels: (command, configDirectory) =>
+    probePiModels({
+      command,
+      ...(configDirectory === null ? {} : { configDirectory }),
+      provider: "pi",
+    }).pipe(
+      Effect.map((models): ReadonlyArray<ModelOption> => models),
+      Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([])),
+    ),
+  // Pi offers no sign-in status a read-only command answers; an account shows Unknown until its models list.
+  readSignIn: () => Effect.succeed(unknownSignIn),
+};
+
 /** Every harness, by name. */
-export const harnesses = { claude, codex, hermes, muse, opencode, vibe } satisfies Record<
+export const harnesses = { claude, codex, hermes, muse, opencode, pi, vibe } satisfies Record<
   HarnessName,
   HarnessDefinition
 >;
@@ -243,6 +266,7 @@ export const makeHarnessRouter = (commands: Record<HarnessName, string>, options
     hermes: adapterOf("hermes"),
     muse: adapterOf("muse"),
     opencode: adapterOf("opencode"),
+    pi: adapterOf("pi"),
     vibe: adapterOf("vibe"),
   } satisfies Record<HarnessName, unknown>).pipe(Effect.map(routeHarnesses));
 };

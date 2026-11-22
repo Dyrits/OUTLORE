@@ -50,7 +50,15 @@ describe("installing and updating harnesses", () => {
     }).pipe(
       Effect.provide(
         liveHarnessToolsLayer(
-          { claude: "claude", codex: "codex", hermes: "hermes", muse: "muse", opencode: "opencode", vibe: "vibe-acp" },
+          {
+            claude: "claude",
+            codex: "codex",
+            hermes: "hermes",
+            muse: "muse",
+            opencode: "opencode",
+            pi: "pi",
+            vibe: "vibe-acp",
+          },
           (...args) => {
             calls.push(args);
             return Effect.succeed({ code: 0, output: "", stdout: "" });
@@ -64,15 +72,25 @@ describe("installing and updating harnesses", () => {
     const calls: Array<unknown> = [];
     return Effect.gen(function* () {
       const tools = yield* HarnessTools;
-      // Muse's CLI has none: nothing runs, and the owner reads how its releases arrive instead.
+      // Muse's and Pi's CLIs have none: nothing runs, and the owner reads how their releases arrive instead.
       const failure = yield* tools.update("muse").pipe(Effect.flip);
       expect(failure.message).toContain("Muse has no update command");
       expect(failure.message).toContain("Refresh");
+      const pi = yield* tools.update("pi").pipe(Effect.flip);
+      expect(pi.message).toContain("Pi has no update command");
       expect(calls).toEqual([]);
     }).pipe(
       Effect.provide(
         liveHarnessToolsLayer(
-          { claude: "claude", codex: "codex", hermes: "hermes", muse: "muse", opencode: "opencode", vibe: "vibe-acp" },
+          {
+            claude: "claude",
+            codex: "codex",
+            hermes: "hermes",
+            muse: "muse",
+            opencode: "opencode",
+            pi: "pi",
+            vibe: "vibe-acp",
+          },
           (...args) => {
             calls.push(args);
             return Effect.succeed({ code: 0, output: "", stdout: "" });
@@ -87,10 +105,18 @@ describe("installing and updating harnesses", () => {
     updates.available.codex = "0.167.0";
     return Effect.gen(function* () {
       const before = yield* call({ _tag: "ListHarnesses" });
-      expect(before.harnesses.map((harness) => harness.update)).toEqual([null, "0.167.0", null, null, null, null]);
+      expect(before.harnesses.map((harness) => harness.update)).toEqual([
+        null,
+        "0.167.0",
+        null,
+        null,
+        null,
+        null,
+        null,
+      ]);
       const after = yield* call({ _tag: "UpdateHarness", harness: "codex" });
       expect(updates.updated).toEqual(["codex"]);
-      expect(after.harnesses.map((harness) => harness.update)).toEqual([null, null, null, null, null, null]);
+      expect(after.harnesses.map((harness) => harness.update)).toEqual([null, null, null, null, null, null, null]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -117,13 +143,19 @@ describe("installing and updating harnesses", () => {
   it.live("explains instead of installing a harness that arrives from its own source", () => {
     const runs: Array<ReadonlyArray<unknown>> = [];
     return Effect.gen(function* () {
-      // Hermes's Install runs no package manager: it arrives from its own Git source (installVia manual).
+      // Hermes's and Pi's Install run no package manager: Hermes arrives from its own Git source and Pi from
+      // its GitHub release archives (installVia manual).
       const failure = yield* installHarnessPackage("hermes", (...args) => {
         runs.push(args);
         return Effect.succeed({ code: 0, output: "", stdout: "" });
       }).pipe(Effect.flip);
       expect(failure.message).toContain("installed from its own source");
       expect(failure.message).toContain("Refresh");
+      const pi = yield* installHarnessPackage("pi", (...args) => {
+        runs.push(args);
+        return Effect.succeed({ code: 0, output: "", stdout: "" });
+      }).pipe(Effect.flip);
+      expect(pi.message).toContain("installed from its own source");
       expect(runs).toEqual([]);
     });
   });
@@ -141,6 +173,7 @@ describe("signing in to a harness", () => {
         "vibe",
         "hermes",
         "muse",
+        "pi",
       ]);
       expect(yield* call({ _tag: "SignInAccount", accountId: null, harness: "opencode" })).toBeNull();
     }).pipe(Effect.provide(layer));
@@ -173,6 +206,7 @@ describe("signing in to a harness", () => {
             hermes: "hermes",
             muse: "muse",
             opencode: "opencode",
+            pi: "pi",
             vibe: "vibe-acp",
           }),
         ),

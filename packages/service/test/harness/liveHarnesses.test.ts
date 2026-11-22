@@ -13,6 +13,7 @@ import {
   makeCodexHarness,
   makeMuseHarness,
   makeOpenCodeHarness,
+  makePiHarness,
   makeVibeHarness,
   routeHarnesses,
   serviceLayer,
@@ -28,6 +29,7 @@ const commands = {
   hermes: process.env.OUTLORE_HERMES_PATH ?? "hermes",
   muse: process.env.OUTLORE_MUSE_PATH ?? "muse",
   opencode: process.env.OUTLORE_OPENCODE_PATH ?? "opencode",
+  pi: process.env.OUTLORE_PI_PATH ?? "pi",
   vibe: process.env.OUTLORE_VIBE_PATH ?? "vibe-acp",
 };
 
@@ -45,6 +47,7 @@ const live = (directory = realpathSync(temporary("outlore-live-"))) => {
         }),
         muse: yield* makeMuseHarness({ command: commands.muse, idleTimeout: "1 minute" }),
         opencode: yield* makeOpenCodeHarness({ command: commands.opencode, idleTimeout: "1 minute", sandbox: null }),
+        pi: yield* makePiHarness({ command: commands.pi, idleTimeout: "1 minute", provider: "pi" }),
         vibe: yield* makeVibeHarness({ command: commands.vibe, idleTimeout: "1 minute" }),
       });
     }),

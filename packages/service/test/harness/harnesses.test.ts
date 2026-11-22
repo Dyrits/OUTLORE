@@ -136,11 +136,12 @@ describe("managing provider accounts", () => {
       yield* call({ _tag: "RenameHost", name: "Studio" });
       const renamed = yield* call({ _tag: "RenameOwnAccount", harness: "claude", label: " Personal " });
       const labelsOf = (list: typeof renamed) => list.harnesses.map((harness) => harness.accounts[0]?.label);
-      expect(labelsOf(renamed)).toEqual(["Personal", "Studio", "Studio", "Studio", "Studio", "Studio"]);
+      expect(labelsOf(renamed)).toEqual(["Personal", "Studio", "Studio", "Studio", "Studio", "Studio", "Studio"]);
       // A later rename of the computer leaves the sign-in's own name alone.
       yield* call({ _tag: "RenameHost", name: "Laptop" });
       expect(labelsOf(yield* call({ _tag: "ListHarnesses" }))).toEqual([
         "Personal",
+        "Laptop",
         "Laptop",
         "Laptop",
         "Laptop",
@@ -180,6 +181,7 @@ describe("managing provider accounts", () => {
         "vibe",
         "hermes",
         "muse",
+        "pi",
       ]);
       for (const harness of harnesses) {
         expect(harness.accounts[0]).toMatchObject({ id: null, label: computerNameOf(), signIn: "SignedIn" });

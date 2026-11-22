@@ -152,6 +152,31 @@ export const harnessFacts = {
     updateArgs: ["upgrade"],
     updateCommand: null,
   },
+  pi: {
+    // Pi's fail-closed adapter never runs a tool Outlore did not approve (piTools.ts), so it asks the owner about
+    // nothing through an `answer_prompt` tool.
+    approvedCommandAdvice: "",
+    // Each account is Pi's own state directory (`PI_CODING_AGENT_DIR`, default `~/.pi/agent`), holding the
+    // sign-in (auth.json), settings, and sessions; the computer's own sign-in is the unredirected default.
+    configVariable: "PI_CODING_AGENT_DIR",
+    fixedModels: null,
+    hasPromptTool: false,
+    // Pi ships as release archives of earendil-works/pi on GitHub (tarball plus published SHA-256), not through a
+    // package registry, so the Install explanation covers the download instead of running an install tool.
+    installVia: "manual",
+    label: "Pi",
+    // The newest version is what the GitHub releases page carries; no registry holds a version to read.
+    packageName: "",
+    releaseRegistry: "none",
+    // Sign-in is `/login` inside Pi's own interactive screen in a terminal window, closed when it is done; a
+    // plain `pi` run opens it, so the arguments list is empty.
+    signInArgs: [],
+    signInNeedsNoTerminal: false,
+    // No update command of Pi's own is verified (its `update --models` only refreshes the model catalog), so
+    // Update explains a reinstall from the GitHub releases instead of running anything.
+    updateArgs: null,
+    updateCommand: null,
+  },
   vibe: {
     approvedCommandAdvice: "",
     // Mistral Vibe keeps its sign-in, sessions, and configuration under `$VIBE_HOME` (default `~/.vibe`).
@@ -178,11 +203,12 @@ export const harnessLabels = {
   hermes: harnessFacts.hermes.label,
   muse: harnessFacts.muse.label,
   opencode: harnessFacts.opencode.label,
+  pi: harnessFacts.pi.label,
   vibe: harnessFacts.vibe.label,
 } as const satisfies Record<HarnessName, string>;
 
 /** Every harness, in the order pickers list them. */
-export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode", "vibe", "hermes", "muse"];
+export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode", "vibe", "hermes", "muse", "pi"];
 
 /** Whether a harness refuses the accounts the owner adds beside the computer's own sign-in (`supportsAddedAccounts: false`). */
 export const refusesAddedAccounts = (harness: HarnessName): boolean =>

@@ -28,11 +28,12 @@ const sandboxAdvice = {
       "If the sandbox blocks a local command you need, retry it through Codex's own per-command escalation. Outlore approves that escalation automatically in Full access. Use request_approval for consequential actions listed above. A request to widen the sandbox for the turn still asks.",
     asking: null,
   },
-  // Hermes's ACP adapter and Muse's MSP adapter are Unprotected: no sandbox advice applies (each asks the
-  // owner through its protocol's permission requests).
+  // Hermes's ACP adapter, Muse's MSP adapter, and Pi's fail-closed adapter are Unprotected: no sandbox advice
+  // applies (each asks the owner through its protocol's permission requests, or runs no tools at all).
   hermes: null,
   muse: null,
   opencode: null,
+  pi: null,
   vibe: null,
 } as const satisfies Record<HarnessName, { readonly allowed: string; readonly asking: string | null } | null>;
 

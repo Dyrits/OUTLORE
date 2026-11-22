@@ -15,6 +15,7 @@ export const harnessLabels = {
   hermes: "Hermes",
   muse: "Muse",
   opencode: "OpenCode",
+  pi: "Pi",
   vibe: "Mistral Vibe",
 } as const satisfies Record<HarnessName, string>;
 
@@ -45,11 +46,12 @@ export const runnerSummaryOf = (
 const harnessProviders = {
   claude: "Anthropic",
   codex: "OpenAI",
-  // Hermes fronts several companies' models behind its own tool; the harness's name stands in for one. Muse
-  // names each model's provider in its own qualified ids, so its name covers the rest.
+  // Hermes fronts several companies' models behind its own tool and Pi behind its own CLI, so each harness's
+  // name stands in for one; Muse names each model's provider in its own qualified ids, so its name covers the rest.
   hermes: "Hermes",
   muse: "Muse",
   opencode: "OpenCode",
+  pi: "Pi",
   vibe: "Mistral",
 } as const satisfies Record<HarnessName, string>;
 

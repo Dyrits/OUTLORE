@@ -8,11 +8,13 @@ Wave 1 is delivered on the branch (CHG-0642): Hermes registers as the fifth harn
 
 Wave 2 is delivered too (CHG-0643): Muse registers as the sixth harness, computer's own sign-in only (its state root is the shared XDG data directory; adding an account is refused), Install explains Meta's signed-manifest distribution, Update refuses (no update command), and every spawn suppresses the CLI's self-update.
 
+Wave 3 is delivered as well (CHG-0644): Pi registers as the seventh harness, fail-closed with every tool source denied for good (`--no-tools --no-extensions --no-mcp`, only flags the pinned upstream itself passes; the unverified `--no-approve` of the draft is dropped), per-account `PI_CODING_AGENT_DIR` isolation, models from a CLI probe, `/login` in a terminal as sign-in, manual GitHub-release Install, and a refused Update (no verified update command). All three registration waves are landed on the branch, unpushed.
+
 Open next:
 
-- Pi registration (wave 3): the Pi errand's probe profile table (executable, version check, `PI_CODING_AGENT_DIR` convention, install story, Inception's OPEN sign-in) is pending, and registration waits on a live `pi` CLI.
+- Pi live checks once the CLI is installed: flag semantics (`--no-tools` scope), record shapes, one probe and one no-tools turn, before any tool mediation is revisited.
 - The askOwner → `extension_ui_response` mediation design for lifting Pi's tool denial stays fail-closed until proven.
-- Blocked set to re-derive proofs for: Kimi 2.x config-level yolo, Grok `--no-subagents` in normal sessions, Cursor and Copilot added-account isolation.
+- Blocked set to re-derive proofs for: Kimi 2.x config-level yolo, Grok `--no-subagents` in normal sessions, Cursor and Copilot added-account isolation; the remaining provider IDs (grok, cursor, cline, devin, copilot, antigravity) need live CLIs before registration.
 - Live checks the owner must do on this machine: sign a Hermes account in and run one real prompt turn; `muse login` and one real Muse turn; install the provider CLIs that are absent (pi, muse, grok, cursor-agent, cline, copilot, devin, antigravity).
 
 ## Daily background check-ins · 2026-11-22 · settings tested

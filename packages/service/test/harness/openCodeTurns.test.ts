@@ -162,6 +162,7 @@ describe("running OpenCode threads", () => {
           hermes: "hermes",
           muse: "muse",
           opencode: command,
+          pi: "pi",
           vibe: "vibe-acp",
         }),
       ),
