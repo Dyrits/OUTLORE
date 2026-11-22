@@ -28,7 +28,7 @@ import { handleSize, shellStyles as local } from "./shellStyles";
 import { type Place, Sidebar } from "./sidebar";
 import { sidebarPlacementOf } from "./sidebarMode";
 import { SidebarOverlay } from "./sidebarOverlay";
-import { type DetailsToggle, PanelIcon, TopBar } from "./topBar";
+import { type DetailsToggle, NarrowTopBar, PanelIcon, TopBar } from "./topBar";
 import { useDetailsColumn } from "./useDetailsColumn";
 import { useSidebarOverlay } from "./useSidebarOverlay";
 import { viewingOf } from "./viewing";
@@ -137,8 +137,9 @@ export function Shell(
       <QuestPanelSetter.Provider value={column.setPanel}>
         <TopBarShown.Provider value={true}>
           <View style={local.narrow}>
-            <TopBar
+            <NarrowTopBar
               chronicler={narrowChroniclerToggle}
+              client={props.client}
               details={details}
               menu={{
                 isOpen: isMenuOpen,

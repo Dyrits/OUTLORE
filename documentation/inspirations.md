@@ -190,6 +190,18 @@ Nine products added on 2026-11-15 from a directory of personal and team agents, 
 - **Stated status**: the local Intelligence install is "a preview ... not a production installation"; the iOS, Android, Slack and Teams apps are early access.
 - **Check on**: how each coworker is isolated (the site does not say; a secondary review claims a container per coworker, unverified); the separately licensed Intelligence service.
 
+### Claude Duet ([product](https://claude.com/product/claude-duet), [announcement](https://claude.com/resources/articles/claude-duet))
+
+- **What it is**: Anthropic's proactive agent app, a research preview opened by waitlist on 2026-10-21 (US Pro, Max, Ultra): a standalone iOS and Android app (and claude.ai) where Claude comes to the owner — a short morning brief across connected apps, messages only when something needs attention, tasks handed over by text or voice that keep working on its own cloud computer, and a wait for approval before it sends, pays, signs, or deletes. One ongoing thread carries the owner's Claude memory, skills, and connectors.
+- **Good ideas** (from its product page and announcement, read 2026-11-22; claims cited in [research/claude-duet-2026-11-22.md](research/claude-duet-2026-11-22.md)):
+  - the phone as the place that says what needs you: a morning brief, then quiet until something needs a decision — attention as the home, not a chat list;
+  - the count of what waits reaching the owner from every screen (its app icon), so nothing is opened just to check;
+  - "it shows you exactly what it's about to do and waits for your approval" — important decisions stay with the owner, on the phone;
+  - you can see what it is doing and steer it while it works, and it messages you when work is done or needs review.
+- **Taken** (2026-11-22, [CHG-0647](changelog/0.2.2-Pre-Alpha.md)): the phone menu opens the Chronicle with its unread badge, the narrow top bar's menu button carries the same count, and Back from a Chronicle-opened quest or errand returns to the Chronicle — the attention-first phone loop. The morning brief was already Outlore's: daily background check-ins post to realm Missives.
+- **License**: closed (an Anthropic product). Ideas only; no code seen.
+- **Check on**: the announcement and its safety article for how approvals and the see-what-it-does view evolve, whether voice input grows on the phone, and how the Duet app and the main Claude app come together.
+
 ## Interface and design
 
 ### Crest ([crestbrowser.com](https://crestbrowser.com), [source](https://github.com/pauljoda/Crest))

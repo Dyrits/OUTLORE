@@ -212,7 +212,10 @@ const local = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: fontSizes.md,
     fontWeight: "600",
+    // A phone's touch target, like every row the conversation heading opens (CHG-0292's 44 pt rows).
+    minHeight: 36,
     paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   count: {
     backgroundColor: colors.marker,
@@ -257,7 +260,7 @@ const local = StyleSheet.create({
   },
   filterCount: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs },
   filterSelected: { backgroundColor: colors.controlActive, borderColor: colors.borderStrong },
-  filters: { alignSelf: "flex-start", flexDirection: "row", gap: 6 },
+  filters: { alignSelf: "flex-start", flexDirection: "row", flexWrap: "wrap", gap: 6 },
   filterText: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   filterTextSelected: { color: colors.text, fontWeight: "600" },
   heading: {

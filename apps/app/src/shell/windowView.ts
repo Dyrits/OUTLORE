@@ -39,6 +39,7 @@ export const windowViewOf = (location: Location) => {
             openThread: workshopReturn.openThread,
           },
     place: location.place,
+    questReturn: location.questReturn,
     // The Ritual form covering the conversation area (CHG-0643), kept apart from the panes it opens over.
     ritualForm: location.ritualForm,
     selectedMission: location.selectedMission,

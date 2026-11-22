@@ -1,5 +1,7 @@
 # Backlog
 
+- **Mobile feature parity** (owner request, 2026-11-22). Bring desktop workflows to the paired mobile app using phone-sized navigation and controls. Built on `worktree/mobile-parity`: the realm and Borderlands channels with common quest actions (CHG-0646), and the Chronicle on the phone with what-needs-you badges and Back returning to it, from Claude Duet (CHG-0647). Remaining: the Workshop at phone width, dictation on the phone, remote terminals ([ADR 0020](architecture-decision-record/0020-terminals-run-in-the-host.md)), and device integrations. Verify shared workflows on a paired Android build before counting them as available on mobile. See [current focus](work-in-progress.md#mobile-feature-parity) and [Same features in every app](requirements.md#access).
+
 - **Background check-ins, specified** (2026-11-22). The [specification](capabilities/background-check-ins/specifications.md) covers opt-in daily check-ins, realm Missives, and Companion choice. [Bundled inference feasibility](capabilities/background-check-ins/draft.md#provider-feasibility) remains open.
 
 - **Conversation panes toward Pre-Alpha.** Desktop panes, Reply and the initial Chronicle are built. The window review and the [Chronicle attention feed and History](capabilities/conversation-panes/specifications.md#main-conversations-and-channels) remain. Phone navigation and pane identity are deferred.

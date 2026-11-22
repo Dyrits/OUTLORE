@@ -1,14 +1,22 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { colors, radii } from "../foundation/theme";
+
+/** A thumb-sized target for an icon action in phone lists and headers. */
+export const mobileIconTarget = {
+  alignItems: "center",
+  height: 44,
+  justifyContent: "center",
+  width: 44,
+} satisfies ViewStyle;
 
 /** Shows the menu button, conversation title and state, and available conversation actions in a narrow window. */
 export function MobileHeader({ actions, onBack, title }: { actions: ReactNode; onBack: () => void; title: ReactNode }) {
   return (
     <View style={local.header}>
       <Pressable
-        accessibilityLabel="Back to the menu"
+        accessibilityLabel="Back"
         accessibilityRole="button"
         hitSlop={6}
         onPress={onBack}
@@ -35,7 +43,7 @@ export function MobileHeader({ actions, onBack, title }: { actions: ReactNode; o
 
 const local = StyleSheet.create({
   actions: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "center", minWidth: 32 },
-  control: { alignItems: "center", borderRadius: radii.md, height: 32, justifyContent: "center", width: 32 },
+  control: { ...mobileIconTarget, borderRadius: radii.md },
   controlPressed: { backgroundColor: colors.controlHover },
   header: { alignItems: "center", flexDirection: "row", gap: 8, minHeight: 32, paddingBottom: 4 },
   title: { alignItems: "center", flex: 1, flexDirection: "row", gap: 8, justifyContent: "center" },

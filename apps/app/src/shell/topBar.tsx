@@ -1,9 +1,12 @@
 import { type ReactNode, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import type { ServiceClient } from "../foundation/client";
 import { HostMenuContext } from "../foundation/hostContext";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { useServiceQuery } from "../foundation/useServiceQuery";
 import { SettingsIcon } from "../ui/settingsIcons";
 import { UpdateNotice } from "../updates";
+import { unreadCountOf } from "./chronicleFeed";
 import { HostMenu } from "./hostMenu";
 
 // The window's top bar: the host menu, the spending, the quest panel's icon, and the column that
@@ -53,7 +56,7 @@ export function TopBar({
   /** The Workshop's icon, furthest right: it opens the Workshop over the whole content area, and pressed again goes back. */
   workshop?: { isOpen: boolean; onToggle: () => void };
   /** The button that opens or closes the full-screen menu, in a window too narrow for the sidebar; none where it shows. */
-  menu?: { isOpen: boolean; onToggle: () => void };
+  menu?: { isOpen: boolean; onToggle: () => void; unreadCount?: number };
   /** The button that pins or unpins the overlay sidebar, on the side the sidebar belongs to; none when it is docked. */
   sidebar?: { isPinned: boolean; onToggle: () => void; side: "left" | "right" };
 }) {
@@ -75,13 +78,25 @@ export function TopBar({
       {sidebar?.side === "left" && sidebarButton}
       {menu !== undefined && (
         <Pressable
-          accessibilityLabel={menu.isOpen ? "Close the menu" : "Open the menu"}
+          accessibilityLabel={
+            menu.isOpen
+              ? "Close the menu"
+              : menu.unreadCount !== undefined && menu.unreadCount > 0
+                ? `Open the menu, ${menu.unreadCount} unread`
+                : "Open the menu"
+          }
           accessibilityRole="button"
           accessibilityState={{ expanded: menu.isOpen }}
           onPress={menu.onToggle}
           style={({ pressed }) => [local.topIcon, (pressed || menu.isOpen) && local.topIconActive, noDragRegion]}
         >
           <PanelIcon />
+          {menu.unreadCount !== undefined && menu.unreadCount > 0 && (
+            // What needs the owner, seen from every phone screen: the Chronicle's unread count on the menu button.
+            <View style={local.menuBadge}>
+              <Text style={local.menuBadgeText}>{menu.unreadCount}</Text>
+            </View>
+          )}
         </Pressable>
       )}
       {hostMenu !== null && (
@@ -128,6 +143,26 @@ export function TopBar({
       {sidebar?.side === "right" && sidebarButton}
     </View>
   );
+}
+
+/**
+ * The narrow window's top bar: its menu button carries the Chronicle's unread count, so what needs the owner shows
+ * from every phone screen without opening the menu.
+ */
+export function NarrowTopBar({
+  chronicler,
+  client,
+  details,
+  menu,
+}: {
+  chronicler: { isOpen: boolean; onToggle: () => void };
+  client: ServiceClient;
+  details: DetailsToggle | null;
+  menu: { isOpen: boolean; onToggle: () => void };
+}) {
+  const { data: chronicle } = useServiceQuery(client, { _tag: "ReadChronicle" }, "chronicle-menu-badge");
+  const unreadCount = unreadCountOf(chronicle ?? []);
+  return <TopBar chronicler={chronicler} details={details} menu={{ ...menu, unreadCount }} />;
 }
 
 /**
@@ -192,6 +227,21 @@ const local = StyleSheet.create({
   crumbCurrent: { color: colors.onGround },
   crumbPinned: { paddingLeft: 6 },
   crumbText: { fontFamily: fonts.sans, fontSize: fontSizes.lg },
+  // The Chronicle's unread count on the narrow menu button, at its corner like an app icon's badge.
+  menuBadge: {
+    alignItems: "center",
+    backgroundColor: colors.marker,
+    borderColor: colors.accentText,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    justifyContent: "center",
+    minWidth: 15,
+    paddingHorizontal: 3,
+    position: "absolute",
+    right: -6,
+    top: -5,
+  },
+  menuBadgeText: { color: colors.accentText, fontFamily: fonts.sans, fontSize: 9, fontWeight: "600" },
   panelIcon: {
     borderColor: colors.onGround,
     borderRadius: 3,

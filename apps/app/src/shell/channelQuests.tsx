@@ -1,6 +1,7 @@
 import type { MissionId, MissionSummary, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { mobileIconTarget } from "../conversation/mobileHeader";
 import { NewReplyCard, QuestCard, RitualReplyCard } from "../conversation/replyLine";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { listedMissions } from "../foundation/queries";
@@ -20,12 +21,14 @@ import { compareUrgency } from "./childNotches";
  */
 export function ChannelQuests({
   client,
+  isTouch = false,
   onOpen,
   openMission,
   realmId,
   show,
 }: {
   client: ServiceClient;
+  isTouch?: boolean;
   onOpen: (missionId: MissionId) => void;
   openMission?: MissionId | undefined;
   realmId: WorkspaceId | null;
@@ -51,7 +54,7 @@ export function ChannelQuests({
     .filter((mission) => mission.workspaceId === realmId && (mission.ritual !== null) === showRituals)
     .sort(compareUrgency);
   return (
-    <ScrollView contentContainerStyle={local.list} style={local.page}>
+    <ScrollView contentContainerStyle={[local.list, isTouch && local.touchList]} style={local.page}>
       {!showRituals && <NewReplyCard isDisabled={isStarting} label="New quest" onPress={() => void start()} />}
       {failure !== null && (
         <Text accessibilityRole="alert" style={styles.error}>
@@ -65,6 +68,7 @@ export function ChannelQuests({
           <ListedQuest
             client={client}
             isOpen={mission.id === openMission}
+            isTouch={isTouch}
             key={mission.id}
             onOpen={() => onOpen(mission.id)}
             quest={mission}
@@ -80,11 +84,13 @@ export function ChannelQuests({
 function ListedQuest({
   client,
   isOpen,
+  isTouch,
   onOpen,
   quest,
 }: {
   client: ServiceClient;
   isOpen: boolean;
+  isTouch: boolean;
   onOpen: () => void;
   quest: MissionSummary;
 }) {
@@ -101,6 +107,7 @@ function ListedQuest({
               isDisabled={isDisabled}
               label={`${quest.isEmpty ? "Delete" : "Archive"} ${quest.title}`}
               onPress={() => ending.start("Archived")}
+              style={isTouch ? mobileIconTarget : null}
             />
             <DoneButton
               isDisabled={isDisabled}
@@ -111,10 +118,11 @@ function ListedQuest({
                   ? ending.run(() => client.request({ _tag: "ReopenMission", missionId: quest.id }))
                   : ending.start("Fulfilled")
               }
+              style={isTouch ? mobileIconTarget : null}
             />
           </>
         }
-        label="Quest"
+        label={`Open quest: ${quest.title}`}
         onOpen={onOpen}
         origin="Quest"
         quest={quest}
@@ -132,4 +140,5 @@ function ListedQuest({
 const local = StyleSheet.create({
   list: { gap: 8, paddingBottom: 14, paddingHorizontal: 4, paddingTop: 8 },
   page: { flex: 1 },
+  touchList: { gap: 12, paddingHorizontal: 8 },
 });

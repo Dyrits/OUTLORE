@@ -181,7 +181,7 @@ export function Sidebar({
             <RealmHeader
               isOpen={!isClosed}
               name={realmLabelOf(realm, data?.workspaces ?? [])}
-              {...(isNarrow || onOpenChannel === undefined
+              {...(onOpenChannel === undefined
                 ? {}
                 : { onOpenChannel: () => onOpenChannel({ id: realm.id, name: realm.name }) })}
               onNewQuest={() => startQuest(realm.id, realm.id)}
@@ -215,7 +215,7 @@ export function Sidebar({
           {!isClosed && realm.quests.length > realm.visibleQuests.length && (
             <ShowAll
               label={`Show all ${realm.quests.length} quests`}
-              onPress={() => (isNarrow ? onOpenRealmQuests : onOpenQuestsTab)({ id: realm.id, name: realm.name })}
+              onPress={() => onOpenQuestsTab({ id: realm.id, name: realm.name })}
               subject={realm.name}
             />
           )}
@@ -229,12 +229,17 @@ export function Sidebar({
       style={[local.sidebar, !isNarrow && local.sidebarDesktop, hasLeftDivider && local.sidebarLeftDivider, { width }]}
     >
       <ScrollView contentContainerStyle={[local.group, !isNarrow && local.groupWithChronicle]} style={local.flex}>
-        {!isNarrow && onOpenChronicle !== undefined && (
+        {onOpenChronicle !== undefined && (
           <>
             <Pressable
               accessibilityRole="button"
               onPress={onOpenChronicle}
-              style={(state) => [local.chronicleRow, (state.pressed || isHovered(state)) && local.rowHovered]}
+              style={(state) => [
+                local.chronicleRow,
+                // The phone menu's rows are touch targets first (CHG-0292's 44 pt rows).
+                isNarrow && { minHeight: 44 },
+                (state.pressed || isHovered(state)) && local.rowHovered,
+              ]}
             >
               <Text style={local.chronicleTitle}>Chronicle</Text>
               {unreadCount > 0 && (
@@ -271,9 +276,13 @@ export function Sidebar({
           onToggle={() => foldedSections.toggle("Borderlands")}
           title="Borderlands"
         />
-        {!isNarrow && onOpenChannel !== undefined && (
-          <Pressable accessibilityRole="button" onPress={() => onOpenChannel(null)}>
-            <Text style={local.emptyGroup}>Borderlands chat</Text>
+        {onOpenChannel !== undefined && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onOpenChannel(null)}
+            style={isNarrow && { justifyContent: "center", minHeight: 44 }}
+          >
+            <Text style={local.emptyGroup}>{isNarrow ? "Open Borderlands" : "Borderlands chat"}</Text>
           </Pressable>
         )}
         {failureUnder("none")}

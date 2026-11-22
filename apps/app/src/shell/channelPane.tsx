@@ -18,6 +18,7 @@ export function ChannelPane({
   chrome,
   client,
   listRequest,
+  onBack,
   onOpenMission,
   openMission,
 }: {
@@ -26,6 +27,7 @@ export function ChannelPane({
   client: ServiceClient;
   /** A press on the "+N" notch: each new object opens the Quests tab. */
   listRequest?: object | undefined;
+  onBack?: (() => void) | undefined;
   onOpenMission: (id: MissionId) => void;
   openMission?: MissionId | undefined;
 }) {
@@ -36,6 +38,7 @@ export function ChannelPane({
       client={client}
       key={channel.id ?? "borderlands"}
       listRequest={listRequest}
+      onBack={onBack}
       onOpenMission={onOpenMission}
       openMission={openMission}
     />
@@ -114,6 +117,7 @@ function ChannelBody({
   chrome,
   client,
   listRequest,
+  onBack,
   onOpenMission,
   openMission,
 }: {
@@ -121,6 +125,7 @@ function ChannelBody({
   chrome?: ReactNode;
   client: ServiceClient;
   listRequest?: object | undefined;
+  onBack?: (() => void) | undefined;
   onOpenMission: (id: MissionId) => void;
   openMission?: MissionId | undefined;
 }) {
@@ -159,6 +164,7 @@ function ChannelBody({
         tab === "Quests" || tab === "Rituals" ? (
           <ChannelQuests
             client={client}
+            isTouch={onBack !== undefined}
             key={tab}
             onOpen={onOpenMission}
             openMission={openMission}
@@ -176,15 +182,19 @@ function ChannelBody({
         isSelected: tab === "Companions",
         onOpen: () => setTab(tab === "Companions" ? "Missives" : "Companions"),
       }}
+      onBack={onBack}
       onOpenMission={onOpenMission}
       onRealm={() => {}}
       realmPath={null}
       tabs={
         <PaneTabs
+          isTouch={onBack !== undefined}
           names={
             realm === null
               ? ["Missives", "Quests", "Rituals", "Companions"]
-              : ["Missives", "Realm", "Quests", "Rituals", "Companions"]
+              : onBack !== undefined
+                ? ["Missives", "Quests", "Rituals", "Realm", "Companions"]
+                : ["Missives", "Realm", "Quests", "Rituals", "Companions"]
           }
           onSelect={setTab}
           selected={tab}

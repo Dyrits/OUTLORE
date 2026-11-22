@@ -20,6 +20,48 @@ describe("opening the window", () => {
 });
 
 describe("navigating the window", () => {
+  it("returns from a channel quest to the same realm and Quests request", () => {
+    const listing = { id: "realm", name: "Realm" };
+    const channel = navigate(initialLocation(null), { listing, showQuests: true, type: "channel" });
+    const opened = navigate(channel, { id: quest, origin: "channel", type: "quest" });
+    expect(windowViewOf(opened).questReturn).toBe("channel");
+    const back = navigate(opened, { type: "backFromQuest" });
+    expect(back.openMission).toBeNull();
+    expect(back.isMenuOpen).toBe(false);
+    expect(windowViewOf(back).channel?.id).toBe(listing.id);
+    expect(windowViewOf(back).channel?.questsRequest).toBe(channel.listRequest);
+  });
+
+  it("returns from a Chronicle quest or errand to the Chronicle", () => {
+    const chronicle = navigate(initialLocation(null), { place: "Chronicle", type: "place" });
+    const opened = navigate(chronicle, { id: quest, origin: "chronicle", type: "quest" });
+    expect(windowViewOf(opened).questReturn).toBe("chronicle");
+    const errand = navigate(opened, { id: thread, missionId: quest, type: "thread" });
+    expect(windowViewOf(errand).questReturn).toBe("chronicle");
+    const back = navigate(errand, { type: "backFromQuest" });
+    expect(back.openMission).toBeNull();
+    expect(back.openThread).toBeNull();
+    expect(back.place).toBe("Chronicle");
+    expect(back.isMenuOpen).toBe(false);
+  });
+
+  it("returns an errand the Chronicle opened itself to the Chronicle", () => {
+    const chronicle = navigate(initialLocation(null), { place: "Chronicle", type: "place" });
+    const errand = navigate(chronicle, { id: thread, missionId: quest, origin: "chronicle", type: "thread" });
+    expect(windowViewOf(errand).questReturn).toBe("chronicle");
+    expect(navigate(errand, { type: "backFromQuest" }).place).toBe("Chronicle");
+  });
+
+  it("opens the menu when backing out of a quest picked directly from it", () => {
+    const channel = navigate(initialLocation(null), { listing: null, type: "channel" });
+    const opened = navigate(channel, { id: quest, type: "quest" });
+    expect(navigate(opened, { type: "backFromQuest" }).isMenuOpen).toBe(true);
+    // Also when the Chronicle is the place beneath the menu: a menu pick is not a Chronicle pick.
+    const inChronicle = navigate(initialLocation(null), { place: "Chronicle", type: "place" });
+    const picked = navigate({ ...inChronicle, isMenuOpen: true }, { id: quest, type: "quest" });
+    expect(navigate(picked, { type: "backFromQuest" }).isMenuOpen).toBe(true);
+  });
+
   it("opens the requested realm or Borderlands on its Quests tab on every press", () => {
     for (const listing of [{ id: "realm", name: "Realm" }, null]) {
       const action = { listing, showQuests: true, type: "channel" } as const;

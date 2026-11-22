@@ -14,6 +14,7 @@ import { ChipIcon } from "../ui/chips";
 import { Composer } from "../ui/controls";
 import { type CompanionsTab, CompanionsTabLayout } from "./companionsTabLayout";
 import { ConversationFailure, ConversationFeed } from "./conversationFeed";
+import { MobileHeader } from "./mobileHeader";
 import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
 import { useThreadConversation } from "./useThreadConversation";
 
@@ -31,6 +32,28 @@ function RealmNote({ name, onClear }: { name: string; onClear: () => void }) {
   );
 }
 
+function ChannelHeader({
+  actions = null,
+  name,
+  onBack,
+}: {
+  actions?: ReactNode;
+  name?: string | undefined;
+  onBack: () => void;
+}) {
+  return (
+    <MobileHeader
+      actions={actions}
+      onBack={onBack}
+      title={
+        <Text numberOfLines={1} style={[styles.paneTitle, local.mobileTitle]}>
+          {name}
+        </Text>
+      }
+    />
+  );
+}
+
 /**
  * The Chronicle: Chronicler's one permanent conversation, the first pane of the window (CHG-0564). It takes any request,
  * looks for a quest that already fits, offers to continue it or proposes a new one as a card for the owner to open, and
@@ -43,6 +66,7 @@ export function ChroniclerConversation({
   chrome,
   client,
   companions,
+  onBack,
   onOpenMission,
   onRealm,
   realmPath,
@@ -56,6 +80,7 @@ export function ChroniclerConversation({
   chrome: ReactNode;
   client: ServiceClient;
   companions?: CompanionsTab | undefined;
+  onBack?: (() => void) | undefined;
   onOpenMission: (id: MissionId) => void;
   onRealm: (path: string | null) => void;
   realmPath: string | null;
@@ -72,6 +97,7 @@ export function ChroniclerConversation({
   if (place === null)
     return (
       <View style={local.page}>
+        {onBack !== undefined && <ChannelHeader name={channel?.name} onBack={onBack} />}
         <Text style={styles.muted}>{error ?? "Calling Chronicler…"}</Text>
       </View>
     );
@@ -83,6 +109,7 @@ export function ChroniclerConversation({
       client={client}
       companions={companions}
       key={place.threadId}
+      onBack={onBack}
       onOpenMission={onOpenMission}
       onRealm={onRealm}
       place={place}
@@ -99,6 +126,7 @@ function ChroniclerChat({
   chrome,
   client,
   companions,
+  onBack,
   onOpenMission,
   onRealm,
   place,
@@ -111,6 +139,7 @@ function ChroniclerChat({
   chrome: ReactNode;
   client: ServiceClient;
   companions?: CompanionsTab | undefined;
+  onBack?: (() => void) | undefined;
   onOpenMission: (id: MissionId) => void;
   onRealm: (path: string | null) => void;
   place: GuildmasterPlace;
@@ -126,7 +155,7 @@ function ChroniclerChat({
       ? (realms.find((candidate) => realmPath !== null && candidate.path === realmPath) ?? null)
       : (realms.find((candidate) => candidate.id === channel.id) ?? null);
   const path = realm?.path ?? null;
-  const { data: detail } = useServiceQuery(
+  const { data: detail, error } = useServiceQuery(
     client,
     { _tag: "ReadMission", missionId: place.missionId, threadId: null },
     `guildmaster:${place.missionId}`,
@@ -144,7 +173,8 @@ function ChroniclerChat({
   if (detail === null) {
     return (
       <View style={local.page}>
-        <Text style={styles.muted}>Calling Chronicler…</Text>
+        {onBack !== undefined && <ChannelHeader name={channel?.name} onBack={onBack} />}
+        <Text style={styles.muted}>{error ?? "Calling Chronicler…"}</Text>
       </View>
     );
   }
@@ -171,24 +201,41 @@ function ChroniclerChat({
   return (
     <RepliesProvider value={{ start: (message) => setReplyTo(message) }}>
       <View style={local.page}>
-        <View style={styles.header}>
-          <View style={{ alignItems: "center", height: 26, justifyContent: "center", width: 26 }}>
-            <ChipIcon
-              color={mark === null ? colors.textMuted : stateTones[mark].color}
-              kind={channel?.id === null ? "borderlands" : "realm"}
-              size={22}
-            />
+        {onBack !== undefined ? (
+          <ChannelHeader
+            actions={
+              canResume && (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}
+                >
+                  <Text style={local.link}>Resume</Text>
+                </Pressable>
+              )
+            }
+            name={channel?.name}
+            onBack={onBack}
+          />
+        ) : (
+          <View style={styles.header}>
+            <View style={{ alignItems: "center", height: 26, justifyContent: "center", width: 26 }}>
+              <ChipIcon
+                color={mark === null ? colors.textMuted : stateTones[mark].color}
+                kind={channel?.id === null ? "borderlands" : "realm"}
+                size={22}
+              />
+            </View>
+            <Text numberOfLines={1} style={[styles.paneTitle, styles.flex]}>
+              {channel?.name ?? "Chronicle"}
+            </Text>
+            {chrome}
+            {canResume && (
+              <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
+                <Text style={local.link}>Resume</Text>
+              </Pressable>
+            )}
           </View>
-          <Text numberOfLines={1} style={[styles.paneTitle, styles.flex]}>
-            {channel?.name ?? "Chronicle"}
-          </Text>
-          {chrome}
-          {canResume && (
-            <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
-              <Text style={local.link}>Resume</Text>
-            </Pressable>
-          )}
-        </View>
+        )}
         {tabs}
         {detail.budgetStop !== null && (
           <BudgetStopCard client={client} onRaise={() => setIsBudgetOpen(true)} stop={detail.budgetStop} />
@@ -286,6 +333,7 @@ const local = StyleSheet.create({
   handoff: { gap: 6 },
   hidden: { display: "none" },
   link: { color: colors.highlight, fontFamily: fonts.sans, fontSize: fontSizes.md },
+  mobileTitle: { flexShrink: 1 },
   note: { alignItems: "center", flexDirection: "row", gap: 8 },
   noteClear: { color: colors.highlight, fontFamily: fonts.sans, fontSize: fontSizes.lg, paddingHorizontal: 4 },
   noteName: { color: colors.highlight, fontFamily: fonts.sans, fontWeight: "700" },

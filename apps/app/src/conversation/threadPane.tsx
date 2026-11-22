@@ -28,7 +28,7 @@ import { type CompanionsTab, CompanionsTabLayout } from "./companionsTabLayout";
 import { ConversationFailure, ConversationFeed } from "./conversationFeed";
 
 import { ErrandHeaderActions, hasErrandActions } from "./errandHeaderActions";
-import { MobileHeader } from "./mobileHeader";
+import { MobileHeader, mobileIconTarget } from "./mobileHeader";
 import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
 import { terminalFolderOf } from "./terminalFolder";
 import { ChatterNotices } from "./threadActions";
@@ -136,6 +136,7 @@ export function ThreadPane({
       isDisabled={ending.isBusy}
       label={detail.mission.isEmpty ? "Delete quest" : "Archive quest"}
       onPress={() => ending.start("Archived")}
+      style={onBack === undefined ? null : mobileIconTarget}
     />
   );
   // Mark as done is a checkbox: pressing it again takes the mark back (ReopenMission, as the Archive's Reopen does).
@@ -147,6 +148,14 @@ export function ThreadPane({
           : ending.start("Fulfilled")
     : null;
   const errandActions = <ErrandHeaderActions act={act} client={client} detail={detail} />;
+  const doneAction = markDone !== null && (
+    <DoneButton
+      isDisabled={ending.isBusy || ending.pending !== null}
+      isDone={isDone}
+      onPress={markDone}
+      style={onBack === undefined ? null : mobileIconTarget}
+    />
+  );
   const hasActions = isOwnQuest || hasErrandActions(detail);
   const windowQuestTab = useContext(QuestTabButtonContext);
   const questTab = isInPane ? null : windowQuestTab;
@@ -156,7 +165,17 @@ export function ThreadPane({
         <View style={[styles.flex, styles.pane]}>
           {onBack !== undefined && (
             <MobileHeader
-              actions={ritualRunAction ?? archiveAction ?? errandActions}
+              actions={
+                ritualRunAction ??
+                (isOwnQuest ? (
+                  <>
+                    {doneAction}
+                    {archiveAction}
+                  </>
+                ) : (
+                  errandActions
+                ))
+              }
               onBack={onBack}
               title={<ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />}
             />
@@ -174,7 +193,7 @@ export function ThreadPane({
                     </Pressable>
                   )}
                   {archiveAction}
-                  {markDone !== null && <DoneButton isDisabled={ending.isBusy} isDone={isDone} onPress={markDone} />}
+                  {doneAction}
                   {errandActions}
                   {ritualRunAction}
                   {ritualRunAction !== null && chrome != null && <HeaderSeparator />}
