@@ -1,4 +1,5 @@
 import type { MissionState, ThreadState } from "@outlore/contracts";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Emblem, type EmblemName } from "../foundation/emblems";
@@ -35,7 +36,8 @@ export type NotchPart = {
 /**
  * Folded panes next to an open one, and the children of a quest or realm pane that have no pane: a column of small
  * notches on its left or right edge, each the icon of what it is (realm, quest or errand) with its state dot, one press
- * from open. A notch takes no room from the open pane.
+ * from open. A notch takes no room from the open pane; its title shows beside it on hover or keyboard focus, since
+ * several notches can share one icon.
  */
 export function PaneNotches({
   isStraddling = false,
@@ -47,6 +49,8 @@ export function PaneNotches({
   parts: ReadonlyArray<NotchPart>;
   side: "left" | "right";
 }) {
+  // Several notches share one icon, so each says its name while the pointer or keyboard focus rests on it.
+  const [shown, setShown] = useState<string | null>(null);
   return (
     <View
       pointerEvents="box-none"
@@ -58,6 +62,10 @@ export function PaneNotches({
           accessibilityRole="button"
           accessibilityState={{ expanded: false }}
           key={part.id}
+          onBlur={() => setShown(null)}
+          onFocus={() => setShown(part.id)}
+          onHoverIn={() => setShown(part.id)}
+          onHoverOut={() => setShown(null)}
           onPress={part.onReveal}
           style={({ pressed }) => [
             local.notch,
@@ -87,6 +95,18 @@ export function PaneNotches({
                 ]}
               />
             )}
+          {part.id === shown && part.title !== "" && (
+            <View
+              pointerEvents="none"
+              style={[local.titleEdge, side === "left" ? local.titleAtLeft : local.titleAtRight]}
+            >
+              <View style={local.titleCard}>
+                <Text numberOfLines={2} style={local.titleText}>
+                  {part.title}
+                </Text>
+              </View>
+            </View>
+          )}
         </Pressable>
       ))}
     </View>
@@ -175,4 +195,22 @@ const local = StyleSheet.create({
   onLine: { left: -notchWidth / 2 },
   plus: { bottom: 3, position: "absolute", right: 3 },
   pressed: { backgroundColor: colors.controlActive },
+  titleAtLeft: { left: "100%", marginLeft: 6 },
+  titleAtRight: { marginRight: 6, right: "100%" },
+  titleCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.edge,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    elevation: 4,
+    maxWidth: 240,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    shadowColor: colors.shadow,
+    shadowOffset: { height: 3, width: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  titleEdge: { bottom: 0, justifyContent: "center", position: "absolute", top: 0, zIndex: 3 },
+  titleText: { color: colors.text, fontSize: fontSizes.sm },
 });

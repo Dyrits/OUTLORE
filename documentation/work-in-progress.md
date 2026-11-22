@@ -1,5 +1,9 @@
 # Work in progress
 
+## Notch titles on hover · 2026-11-22 · window check pending
+
+CHG-0630: hovering or keyboard-focusing a pane notch shows its title in a small card beside the notch — folded panes and child shortcuts alike — so quests and errands that share one icon are told apart without opening them. Biome, the workspace typecheck, and the app suite (704 passed) are green; see the [verification record](verification/2026-11-22-notch-titles.md). The window check is pending: the card's look on both edges, a stack of several notches, long titles, and keyboard focus. Found beside the work: the `tooltipOf` helper never showed a tooltip (backlog).
+
 ## Codex Full access prompts · 2026-11-22 · live check pending
 
 Outlore now directs Codex to use its own per-command escalation when Full access is active. In a live Codex turn, retry a harmless local command blocked by the sandbox and check that Permissions history records an automatic approval. The original prompt came from Codex calling Outlore's direct approval tool.
