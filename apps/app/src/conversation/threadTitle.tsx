@@ -1,7 +1,7 @@
 import type { MissionDetail, MissionId, MissionState, ThreadId, ThreadState } from "@outlore/contracts";
 import { Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
-import { allMissions } from "../foundation/queries";
+import { listedMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { colors, stateLabels, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -14,7 +14,7 @@ function TitleMenu<Id extends string>({
   choices,
   onSelect,
 }: {
-  kind: "quest" | "errand";
+  kind: "quest" | "ritual" | "errand";
   current: { id: Id; title: string; state?: ThreadState | MissionState };
   choices: ReadonlyArray<{ id: Id; title: string; state?: ThreadState | MissionState }>;
   onSelect: (id: Id) => void;
@@ -66,7 +66,8 @@ function QuestTitle({
   detail: MissionDetail;
   onOpenMission: (id: MissionId) => void;
 }) {
-  const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
+  const { data } = useServiceQuery(client, listedMissions.request, listedMissions.key);
+  const isRitual = detail.mission.ritual !== null;
   const current = {
     id: detail.mission.id,
     state: data?.missions.find((mission) => mission.id === detail.mission.id)?.state ?? detail.thread.state,
@@ -74,9 +75,11 @@ function QuestTitle({
   };
   return (
     <TitleMenu
-      choices={(data?.missions ?? []).filter((mission) => mission.workspaceId === detail.mission.workspaceId)}
+      choices={(data?.missions ?? []).filter(
+        (mission) => mission.workspaceId === detail.mission.workspaceId && (mission.ritual !== null) === isRitual,
+      )}
       current={current}
-      kind="quest"
+      kind={isRitual ? "ritual" : "quest"}
       onSelect={onOpenMission}
     />
   );

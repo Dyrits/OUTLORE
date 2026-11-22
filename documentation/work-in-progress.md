@@ -19,6 +19,10 @@ CHG-0637 is on `worktree/quest-tab-actions`. Check that the archive box, trash i
 
 Outlore now directs Codex to use its own per-command escalation when Full access is active. In a live Codex turn, retry a harmless local command blocked by the sandbox and check that Permissions history records an automatic approval. The original prompt came from Codex calling Outlore's direct approval tool.
 
+## Ritual tabs and manual runs · 2026-11-22 · window check pending
+
+CHG-0638 adds a Rituals tab to realms and the Borderlands, a Ritual details tab in each Ritual, and a Run now button in the header. The desktop and phone layouts still need a visual pass. In a test realm, open a Ritual with its schedule off, run it from the header, and check that its history shows the new run.
+
 ## Pane header controls · 2026-11-21 · window check pending
 
 The Expand pane button uses outward arrows and appears when multiple conversation panes are visible. A full-width pane has no layout buttons. Its edge notches reopen the other conversations. Check the icon and header spacing in the desktop window.

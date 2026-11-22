@@ -62,14 +62,22 @@ export function paneNotchesOf({
   slots: ReadonlyArray<PaneSlot<PaneId> & { content: PaneContent }>;
   threads: ReadonlyArray<NotchThread>;
 }) {
+  const mission = missions.find((entry) => entry.id === missionId);
+  const kindOf = {
+    channel: channel.id === null ? "borderlands" : "realm",
+    errand: "errand",
+    quest: mission?.ritual == null ? "quest" : "ritual",
+    starter: "errand",
+  } satisfies Record<PaneContent["kind"], NotchPart["kind"]>;
   // The dot of a folded pane: a realm shows the mark derived from its quests (it has no status), the quest its own
   // status, and an errand its status rolled up with the errands beneath it.
   const notchStateOf = (content: PaneContent, summary: NotchThread | undefined): NotchPart["state"] => {
     if (content.kind === "channel")
-      return realmMarkOf(missions.filter((mission) => mission.workspaceId === channel.id).map(({ state }) => state));
+      return realmMarkOf(
+        missions.filter((entry) => entry.workspaceId === channel.id && entry.ritual === null).map(({ state }) => state),
+      );
     if (content.kind === "starter") return null;
-    if (content.kind === "quest")
-      return missions.find((mission) => mission.id === missionId)?.state ?? summary?.shownState ?? null;
+    if (content.kind === "quest") return mission?.state ?? summary?.shownState ?? null;
     return summary?.shownState ?? null;
   };
   const notchOf = (content: PaneContent): NotchPart | null => {
@@ -81,10 +89,15 @@ export function paneNotchesOf({
     return {
       id,
       isNew: kind === "starter",
-      kind: kind === "channel" ? (channel.id === null ? "borderlands" : "realm") : kind === "starter" ? "errand" : kind,
+      kind: kindOf[kind],
       onReveal: () => revealPane(id),
       state: notchStateOf(content, summary),
-      title: kind === "channel" ? channel.name : kind === "starter" ? "New errand" : (summary?.title ?? ""),
+      title:
+        kind === "channel"
+          ? channel.name
+          : kind === "starter"
+            ? "New errand"
+            : (summary?.title ?? (kind === "quest" ? mission?.title : void 0) ?? ""),
     };
   };
   // The active errands of the quest and the active quests of the realm that have no pane or notch yet, as notches on the
@@ -94,7 +107,7 @@ export function paneNotchesOf({
     if (!isChannel && kind !== "quest") return [];
     return isChannel
       ? childPartsOf(
-          missions.filter((mission) => mission.workspaceId === channel.id),
+          missions.filter((mission) => mission.workspaceId === channel.id && mission.ritual === null),
           new Set([missionId]),
           "quest",
           onOpenMission,
@@ -129,7 +142,8 @@ export function paneNotchesOf({
         if (notch !== null) right.push(notch);
       }
       // The realm's edge lists quests only: the errands folded after its quest are not its own, so they show no notch there.
-      const shownRight = own?.kind === "channel" ? right.filter((part) => part.kind === "quest") : right;
+      const shownRight =
+        own?.kind === "channel" ? right.filter((part) => part.kind === "quest" || part.kind === "ritual") : right;
       return { left, right: [...shownRight, ...(own === undefined ? [] : childNotchesOfPane(own))] };
     }
     return { left, right };

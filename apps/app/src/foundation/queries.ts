@@ -5,8 +5,7 @@ export const allMissions = {
 } as const;
 
 /**
- * Every mission not archived with the realm's Rituals among them (CHG-0616): what a realm's quest lists show — the
- * sidebar's columns, a realm's page, the channels' Quests tab — so a Ritual is drawn beside the quests of its realm.
+ * Every active mission with Rituals included, for the sidebar and the channel's Quests and Rituals tabs.
  */
 export const listedMissions = {
   key: "missions:listed",

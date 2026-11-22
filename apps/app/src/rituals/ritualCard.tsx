@@ -1,6 +1,7 @@
 import type { Ritual, RitualId, RitualRunState } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { harnessLabels, modelLabelOf } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
@@ -37,33 +38,56 @@ export const setRitualOn = (client: ServiceClient, ritual: Ritual, isOn: boolean
 export function RunNowButton({
   client,
   isBlocked = false,
+  isInHeader = false,
   isUnderway,
+  onError,
   ritualId,
 }: {
   client: ServiceClient;
   /** Whether the Ritual's realm is archived, which keeps it from running. */
   isBlocked?: boolean;
+  isInHeader?: boolean;
   isUnderway: boolean;
+  onError?: (message: string | null) => void;
   ritualId: RitualId;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [isStarting, setStarting] = useState(false);
+  const reportError = onError ?? setError;
+  const isDisabled = isUnderway || isBlocked || isStarting;
   return (
     <View style={ritualStyles.runNow}>
       <Pressable
         accessibilityLabel="Run now"
         accessibilityRole="button"
-        accessibilityState={{ disabled: isUnderway || isBlocked }}
-        disabled={isUnderway || isBlocked}
-        onPress={() => {
-          setError(null);
-          client.request({ _tag: "RunRitual", ritualId }).catch((reason) => setError(messageOf(reason)));
+        accessibilityState={{ busy: isStarting, disabled: isDisabled }}
+        disabled={isDisabled}
+        onPress={async () => {
+          setStarting(true);
+          reportError(null);
+          try {
+            await client.request({ _tag: "RunRitual", ritualId });
+          } catch (reason) {
+            reportError(messageOf(reason));
+          } finally {
+            setStarting(false);
+          }
         }}
         /**
          * The switch and the schedule apply to the next run; Run now starts one at any moment, whatever the schedule
          * and the switch (rituals).
          */
-        style={[ritualStyles.runButton, (isUnderway || isBlocked) && styles.buttonDisabled]}
+        style={[
+          ritualStyles.runButton,
+          isInHeader && { alignItems: "center", flexDirection: "row", gap: 5, minHeight: 28 },
+          isDisabled && styles.buttonDisabled,
+        ]}
       >
+        {isInHeader && (
+          <Svg height={14} viewBox="0 0 16 16" width={14}>
+            <Path d="M5 2.5l8 5.5-8 5.5z" fill={colors.accentText} />
+          </Svg>
+        )}
         <Text style={ritualStyles.runButtonText}>Run now</Text>
       </Pressable>
       {error !== null && <Text style={styles.error}>{error}</Text>}

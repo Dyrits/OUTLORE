@@ -15,6 +15,7 @@ import { allMissions } from "../foundation/queries";
 import { colors, fontSizes, radii, stateLabels, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { scheduleLabelOf } from "../rituals/ritualLabels";
+import { ChipIcon } from "../ui/chips";
 import { handCursor, isHovered } from "../ui/pointer";
 
 /** The threads open as panes beside the one drawing, so a reply line can show that its errand is already open. */
@@ -63,6 +64,7 @@ export function NewReplyCard({
  */
 function ReplyCard({
   actions,
+  isRitual = false,
   isOpen,
   label,
   meta,
@@ -74,6 +76,7 @@ function ReplyCard({
 }: {
   actions?: ReactNode;
   isOpen: boolean;
+  isRitual?: boolean;
   label: string;
   /** What follows the state on the last line: the waiting count and how long ago it last moved. */
   meta: string;
@@ -97,7 +100,11 @@ function ReplyCard({
     >
       <Text style={local.origin}>{origin}</Text>
       <View style={local.row}>
-        {tone !== null && <View style={[local.dot, { backgroundColor: tone.color }]} />}
+        {isRitual ? (
+          <ChipIcon color={colors.highlight} kind="ritual" size={15} />
+        ) : (
+          tone !== null && <View style={[local.dot, { backgroundColor: tone.color }]} />
+        )}
         <Text numberOfLines={1} style={local.title}>
           {shortened(title)}
         </Text>
@@ -210,12 +217,13 @@ export function RitualReplyCard({ onOpen, ritual }: { onOpen: () => void; ritual
   return (
     <ReplyCard
       isOpen={isOpen}
+      isRitual
       label={`Ritual: ${ritual.title}`}
-      meta={[
+      meta={` · ${[
         scheduleLabelOf(card.schedule),
         card.isOn ? "On" : "Off",
         ...(card.lastRunState === "Underway" ? ["A run is underway"] : []),
-      ].join(" · ")}
+      ].join(" · ")}`}
       onPress={onOpen}
       origin="Ritual"
       sample={null}

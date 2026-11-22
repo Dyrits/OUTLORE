@@ -62,6 +62,12 @@ describe("the schedule", () => {
         expect(offDetail.messages).toEqual([]);
         expect(runErrandOf(offDetail)).toBeNull();
         expect((yield* readRitual(off.missionId))?.lastRunAt).toBeNull();
+
+        yield* call({ _tag: "RunRitual", ritualId: off.ritualId });
+        const manual = yield* read(off.missionId);
+        expect(manual.messages[0]?.text).toBe("Ritual · run by you");
+        expect(runErrandOf(manual)).not.toBeNull();
+        expect(yield* readRitual(off.missionId)).toMatchObject({ isOn: false, nextRunAt: null });
       }),
     ),
   );

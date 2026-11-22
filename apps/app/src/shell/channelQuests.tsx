@@ -15,20 +15,21 @@ import { compareUrgency } from "./childNotches";
 /** Where work that is over sits in the list: after the active quests, which read by urgency. */
 
 /**
- * The Quests tab of a channel (conversation panes): the quests of its realm, or of the Borderlands for the quests in no
- * realm, most urgent first and work that is over last. Each is a block with a sample of its last exchange; pressing one
- * opens it in the next pane. The list is part of the channel's own pane, not a pane of its own.
+ * The Quests and Rituals tabs list the corresponding work in the channel's realm or the Borderlands.
+ * Pressing a card opens its conversation in the next pane.
  */
 export function ChannelQuests({
   client,
   onOpen,
   openMission,
   realmId,
+  show,
 }: {
   client: ServiceClient;
   onOpen: (missionId: MissionId) => void;
   openMission?: MissionId | undefined;
   realmId: WorkspaceId | null;
+  show: "Quests" | "Rituals";
 }) {
   const { data, error } = useServiceQuery(client, listedMissions.request, listedMissions.key);
   const [isStarting, setStarting] = useState(false);
@@ -45,18 +46,20 @@ export function ChannelQuests({
       setStarting(false);
     }
   };
-  // The realm's quests read most urgent first (mission-tracking, Mission state), work that is over at the end; its
-  // Rituals keep their place among them (CHG-0616).
-  const missions = (data?.missions ?? []).filter((mission) => mission.workspaceId === realmId).sort(compareUrgency);
+  const showRituals = show === "Rituals";
+  const missions = (data?.missions ?? [])
+    .filter((mission) => mission.workspaceId === realmId && (mission.ritual !== null) === showRituals)
+    .sort(compareUrgency);
   return (
     <ScrollView contentContainerStyle={local.list} style={local.page}>
-      <NewReplyCard isDisabled={isStarting} label="New quest" onPress={() => void start()} />
+      {!showRituals && <NewReplyCard isDisabled={isStarting} label="New quest" onPress={() => void start()} />}
       {failure !== null && (
         <Text accessibilityRole="alert" style={styles.error}>
           {failure}
         </Text>
       )}
       {error !== null && <Text style={styles.error}>{error}</Text>}
+      {showRituals && data !== null && missions.length === 0 && <Text style={styles.muted}>No Rituals yet.</Text>}
       {missions.map((mission) =>
         mission.ritual === null ? (
           <ListedQuest

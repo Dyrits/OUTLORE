@@ -34,5 +34,5 @@ export function PaneTabs<Name extends string>({
 const local = StyleSheet.create({
   selected: { borderBottomColor: colors.highlight },
   tab: { borderBottomColor: "transparent", borderBottomWidth: 2, paddingHorizontal: 8, paddingVertical: 6 },
-  tabs: { flexDirection: "row" },
+  tabs: { flexDirection: "row", flexWrap: "wrap" },
 });

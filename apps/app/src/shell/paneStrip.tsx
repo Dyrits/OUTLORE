@@ -10,11 +10,12 @@ import { notchWidth } from "./paneNotches";
 import { NewQuestIcon } from "./railActions";
 
 /** What a notch stands for: its icon. "more" has none: it counts the children left without a notch of their own. */
-export type NotchKind = "borderlands" | "errand" | "more" | "quest" | "realm";
+export type NotchKind = "borderlands" | "errand" | "more" | "quest" | "realm" | "ritual";
 
 /** The emblem that stands for each kind of pane. */
 const emblems = {
   quest: "sword",
+  ritual: "moon",
 } as const satisfies Record<Exclude<NotchKind, "borderlands" | "errand" | "more" | "realm">, EmblemName>;
 
 /**

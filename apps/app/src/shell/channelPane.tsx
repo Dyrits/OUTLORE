@@ -124,7 +124,7 @@ function ChannelBody({
   onOpenMission: (id: MissionId) => void;
   openMission?: MissionId | undefined;
 }) {
-  const [tab, setTab] = useState<"Missives" | "Quests" | "Realm" | "Companions">(
+  const [tab, setTab] = useState<"Missives" | "Quests" | "Realm" | "Rituals" | "Companions">(
     listRequest === undefined ? "Missives" : "Quests",
   );
   useEffect(() => {
@@ -156,8 +156,8 @@ function ChannelBody({
   return (
     <ChroniclerConversation
       alternateBody={
-        tab === "Quests" ? (
-          <ChannelQuests client={client} onOpen={onOpenMission} openMission={openMission} realmId={id} />
+        tab === "Quests" || tab === "Rituals" ? (
+          <ChannelQuests client={client} key={tab} onOpen={onOpenMission} openMission={openMission} realmId={id} show={tab} />
         ) : tab === "Realm" ? (
           realmPanel
         ) : undefined
@@ -174,7 +174,11 @@ function ChannelBody({
       realmPath={null}
       tabs={
         <PaneTabs
-          names={realm === null ? ["Missives", "Quests", "Companions"] : ["Missives", "Realm", "Quests", "Companions"]}
+          names={
+            realm === null
+              ? ["Missives", "Quests", "Rituals", "Companions"]
+              : ["Missives", "Realm", "Quests", "Rituals", "Companions"]
+          }
           onSelect={setTab}
           selected={tab}
         />

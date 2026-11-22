@@ -5,7 +5,7 @@ import { PaneThread } from "../conversation/paneThread";
 import { OpenPanes } from "../conversation/replyLine";
 import { useShownThreadsRead } from "../conversation/useShownThreadsRead";
 import type { ServiceClient } from "../foundation/client";
-import { allMissions } from "../foundation/queries";
+import { listedMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ExpandPaneButton, FoldPaneButton } from "../ui/questHeaderButtons";
@@ -47,7 +47,7 @@ export function PaneHost({
     `${missionId}:${openThread ?? "top"}`,
   );
   // The tree comes with the thread's read; while another thread loads, the previous chain stays on show.
-  const { data: missionList } = useServiceQuery(client, allMissions.request, allMissions.key);
+  const { data: missionList } = useServiceQuery(client, listedMissions.request, listedMissions.key);
   const [threads, setThreads] = useState(data?.threads ?? []);
   useEffect(() => {
     if (data !== null) setThreads(data.threads);

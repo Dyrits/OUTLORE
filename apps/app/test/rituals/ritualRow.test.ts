@@ -3,7 +3,7 @@ import {
   MissionSummary,
   RitualCard,
   type RitualId,
-  type ThreadId,
+  ThreadId,
   WorkspaceChoice,
   type WorkspaceId,
 } from "@outlore/contracts";
@@ -19,6 +19,8 @@ import {
   runIsUnderwayOf,
   takesTurnsIn,
 } from "../../src/rituals/ritualRow";
+import { channelId } from "../../src/shell/paneIds";
+import { paneNotchesOf } from "../../src/shell/paneNotches";
 import { placementsOf } from "../../src/shell/questTree";
 
 // A Ritual among the realm's quests (CHG-0616): the lists ask for the realm's Rituals, place them with the quests of
@@ -82,6 +84,29 @@ describe("the realm's lists asking for its Rituals", () => {
 });
 
 describe("a Ritual's row among the quests", () => {
+  it("marks a folded Ritual with its own emblem and keeps Rituals out of the quest shortcuts", () => {
+    const folded = quest("Morning digest", ritualCard());
+    const threadId = ThreadId.make("top");
+    const edges = paneNotchesOf({
+      channel: { id: null, name: "Borderlands" },
+      fullChain: [channelId, threadId],
+      missionId: folded.id,
+      missions: [folded, quest("Weekly digest", ritualCard()), quest("Ordinary quest")],
+      onOpenMission: () => {},
+      openList: () => {},
+      revealPane: () => {},
+      revealThread: () => {},
+      slots: [
+        { content: { id: channelId, kind: "channel" }, depth: 0, id: channelId, kind: "pane", width: 400 },
+        { content: { id: threadId, kind: "quest" }, depth: 1, id: threadId, kind: "strip", reason: "folded", width: 0 },
+      ],
+      threads: [],
+    });
+    expect(edges(0).right).toMatchObject([
+      { kind: "ritual", title: "Morning digest" },
+      { kind: "quest", title: "Ordinary quest" },
+    ]);
+  });
   it("marks a run underway from the run state its record carries", () => {
     expect(runIsUnderwayOf(ritualCard({ lastRunState: "Underway" }))).toBe(true);
     expect(runIsUnderwayOf(ritualCard({ lastRunState: "Done" }))).toBe(false);

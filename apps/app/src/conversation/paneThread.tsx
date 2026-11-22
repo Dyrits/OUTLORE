@@ -50,7 +50,7 @@ export function PaneThread({
   );
   // A query for a newly opened thread answers after the previous one; draw only what matches.
   const detail = data !== null && data.thread.id === threadId ? data : null;
-  const [tab, setTab] = useState<"Missives" | "Errands" | "Quest" | "Errand" | "Companions">(
+  const [tab, setTab] = useState<"Missives" | "Errands" | "Quest" | "Ritual" | "Errand" | "Companions">(
     listRequest === undefined ? "Missives" : "Errands",
   );
   useEffect(() => {
@@ -62,8 +62,8 @@ export function PaneThread({
   }, [target, threadId, detail?.thread.parentId]);
   const isQuest = detail?.thread.parentId === null;
   // The details tab is named for what the pane holds: the quest's own thread, or one of its errands.
-  const detailsName = isQuest ? "Quest" : "Errand";
-  const isDetails = tab === "Quest" || tab === "Errand";
+  const detailsName = isQuest ? (detail?.mission.ritual === null ? "Quest" : "Ritual") : "Errand";
+  const isDetails = tab === "Quest" || tab === "Ritual" || tab === "Errand";
   const [page, setPage] = useState<QuestPage>(null);
   const pages = useQuestPages(client, missionId, data?.mission.title ?? "", { onPage: setPage, page });
 
@@ -115,7 +115,9 @@ export function PaneThread({
             onSelect={onOpenThread}
             tabs={
               <PaneTabs
-                names={isQuest ? ["Missives", "Quest", "Errands", "Companions"] : ["Missives", "Errand", "Companions"]}
+                names={
+                  isQuest ? ["Missives", detailsName, "Errands", "Companions"] : ["Missives", "Errand", "Companions"]
+                }
                 onSelect={setTab}
                 selected={isDetails ? detailsName : tab}
               />

@@ -8,8 +8,10 @@ import { countedOf } from "../foundation/labels";
 import { QuestTabButtonContext } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { useEnding } from "../foundation/useEnding";
+import { useServiceQuery } from "../foundation/useServiceQuery";
 import { EndingConfirmation } from "../quests/missionActions";
 import { MissingFolderNotice } from "../realms/workspaces";
+import { RunNowButton } from "../rituals/ritualCard";
 import { takesTurnsIn } from "../rituals/ritualRow";
 import { ArchiveButton } from "../ui/archiveButton";
 import { Composer } from "../ui/controls";
@@ -34,6 +36,30 @@ import { ThreadTitle } from "./threadTitle";
 import { OpenThreadForm } from "./threadTree";
 import { CommentsProvider } from "./useComments";
 import { useThreadConversation } from "./useThreadConversation";
+
+function RitualRunAction({
+  client,
+  missionId,
+  onError,
+}: {
+  client: ServiceClient;
+  missionId: MissionId;
+  onError: (message: string | null) => void;
+}) {
+  const { data: ritual, error } = useServiceQuery(client, { _tag: "ReadRitual", missionId }, `ritual:${missionId}`);
+  if (error !== null) return <Text style={styles.error}>{error}</Text>;
+  if (ritual === null) return null;
+  return (
+    <RunNowButton
+      client={client}
+      isBlocked={ritual.isRealmArchived}
+      isInHeader
+      isUnderway={ritual.lastRunState === "Underway"}
+      onError={onError}
+      ritualId={ritual.id}
+    />
+  );
+}
 
 /** One thread's conversation: its settings, notices, feed, and composer. It stands alone in a pane or as a quest's selected thread. */
 export function ThreadPane({
@@ -92,9 +118,13 @@ export function ThreadPane({
   const [isOpening, setIsOpening] = useState(false);
   // A Reply is offered in a quest's own conversation only: it opens an errand beneath (CHG-0559); an errand's pane has none.
   // A Ritual's own conversation has no composer at all: no thread takes turns there, and its runs are its only errands
-  // (CHG-0616), so a Reply is not offered there either. Run now, from its panel, is the on-the-spot start.
+  // (CHG-0616), so a Reply is not offered there either. Run now is the on-the-spot start.
   const [replyTo, setReplyTo] = useState<{ id: MessageId; text: string } | null>(null);
   const takesTurns = takesTurnsIn(thread, detail.mission.ritual);
+  const [ritualRunError, setRitualRunError] = useState<string | null>(null);
+  const ritualRunAction = takesTurns ? null : (
+    <RitualRunAction client={client} missionId={detail.mission.id} onError={setRitualRunError} />
+  );
   const canReply = thread.parentId === null && takesTurns;
   const { canOpenBeneath, canResume, canStop } = thread.actions;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
@@ -126,7 +156,7 @@ export function ThreadPane({
         <View style={[styles.flex, styles.pane]}>
           {onBack !== undefined && (
             <MobileHeader
-              actions={archiveAction || errandActions}
+              actions={ritualRunAction ?? archiveAction ?? errandActions}
               onBack={onBack}
               title={<ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />}
             />
@@ -146,7 +176,9 @@ export function ThreadPane({
                   {archiveAction}
                   {markDone !== null && <DoneButton isDisabled={ending.isBusy} isDone={isDone} onPress={markDone} />}
                   {errandActions}
-                  {isInPane && thread.parentId === null && (
+                  {ritualRunAction}
+                  {ritualRunAction !== null && chrome != null && <HeaderSeparator />}
+                  {isInPane && thread.parentId === null && takesTurns && (
                     <>
                       <HeaderSeparator />
                       <NewQuestButton
@@ -188,7 +220,7 @@ export function ThreadPane({
               )}
               {canOpenDetails && (
                 <Pressable onPress={onOpenDetails}>
-                  <Text style={styles.link}>Quest panel</Text>
+                  <Text style={styles.link}>{takesTurns ? "Quest panel" : "Ritual panel"}</Text>
                 </Pressable>
               )}
             </View>
@@ -209,6 +241,11 @@ export function ThreadPane({
             <BudgetStopCard client={client} onRaise={onOpenBudget} stop={detail.budgetStop} />
           )}
           {actionError !== null && <Text style={styles.error}>{actionError}</Text>}
+          {ritualRunError !== null && (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {ritualRunError}
+            </Text>
+          )}
           {!isCompact && (
             <Text numberOfLines={1} style={styles.muted}>
               {harnessLabels[thread.harness]}
@@ -285,9 +322,7 @@ export function ThreadPane({
                   ) : (
                     // No composer in a Ritual's own conversation (CHG-0616): the conversation is its runs' history,
                     // written by the runs alone; Run now, in its panel, is the on-the-spot start.
-                    <Text style={styles.muted}>
-                      No message box here: this conversation is the Ritual's runs. Run it from its panel.
-                    </Text>
+                    <Text style={styles.muted}>This conversation shows the Ritual's runs.</Text>
                   )}
                 </>
               )}

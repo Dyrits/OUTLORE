@@ -29,6 +29,7 @@ export const chipIcons = {
     paths: ["M3 5h18", "M12 2v3", "M5 5v12l7 5 7-5V5", "M8 8v7l4 3 4-3V8", "M12 9l1.5 3-1.5 2-1.5-2z"],
     viewBox: "0 0 24 24",
   },
+  ritual: { paths: emblemPaths.moon, viewBox: "0 0 24 24" },
   skill: { paths: ["M2.5 5.5 H6 a1.5 1.5 0 0 1 3 0 H11.5 V8 a1.5 1.5 0 0 1 0 3 V13.5 H2.5 Z"], viewBox: "0 0 16 16" },
 } as const;
 
