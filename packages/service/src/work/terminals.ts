@@ -112,7 +112,7 @@ export const terminalSandboxOf = (host: {
   const probe = host.probe ?? probesCommand;
   if (host.platform === "darwin") {
     const command = "/usr/bin/sandbox-exec";
-    if (!existsSync(command) || !probe(command, ["-p", "(version 1)(allow default)", "/usr/bin/true"])) return null;
+    if (!probe(command, ["-p", "(version 1)(allow default)", "/usr/bin/true"])) return null;
     return { command, hidden, kind: "seatbelt" };
   }
   if (host.platform === "linux") {
