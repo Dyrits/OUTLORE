@@ -20,7 +20,8 @@ import { DropTarget, RealmDragSource } from "./questDrag";
 import { placementsOf, type RealmListing, reorderedRealmIds, toggledFold } from "./questTree";
 import { NewQuestIcon, NewRealmIcon, useRowActions } from "./railActions";
 import { railOutlineOf } from "./railOutline";
-import { Quest, RealmHeader, RitualRow } from "./railQuests";
+import { PlacementRows } from "./railPlacementRows";
+import { RealmHeader } from "./railQuests";
 import { Divider, Row, ShowAll } from "./railRows";
 import { isHovered, local } from "./railStyles";
 
@@ -198,20 +199,14 @@ export function Sidebar({
               {isNarrow ? "No quest in this realm yet." : "No quests yet"}
             </Text>
           )}
-          {!isClosed &&
-            realm.visibleQuests.map((mission) =>
-              mission.ritual === null ? (
-                <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
-              ) : (
-                <RitualRow
-                  {...questProps}
-                  isOpen={outline.isQuestOpen(mission.id)}
-                  key={mission.id}
-                  mission={mission}
-                  realms={realms}
-                />
-              ),
-            )}
+          {!isClosed && (
+            <PlacementRows
+              isQuestOpen={outline.isQuestOpen}
+              missions={realm.visibleQuests}
+              questProps={questProps}
+              realms={realms}
+            />
+          )}
           {!isClosed && realm.quests.length > realm.visibleQuests.length && (
             <ShowAll
               label={`Show all ${realm.quests.length} quests`}
@@ -289,18 +284,13 @@ export function Sidebar({
         {!isFolded("Borderlands") && placements.borderlands.length === 0 && (
           <Text style={local.emptyGroup}>No quest in the Borderlands yet.</Text>
         )}
-        {(isFolded("Borderlands") ? [] : borderlandQuests).map((mission) =>
-          mission.ritual === null ? (
-            <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
-          ) : (
-            <RitualRow
-              {...questProps}
-              isOpen={outline.isQuestOpen(mission.id)}
-              key={mission.id}
-              mission={mission}
-              realms={realms}
-            />
-          ),
+        {!isFolded("Borderlands") && (
+          <PlacementRows
+            isQuestOpen={outline.isQuestOpen}
+            missions={borderlandQuests}
+            questProps={questProps}
+            realms={realms}
+          />
         )}
         {!isFolded("Borderlands") && placements.borderlands.length > borderlandQuests.length && (
           <ShowAll

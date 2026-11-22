@@ -67,6 +67,10 @@ Outlore now directs Codex to use its own per-command escalation when Full access
 
 CHG-0638 adds a Rituals tab to realms and the Borderlands, a Ritual details tab in each Ritual, and a Run now button in the header. The desktop and phone layouts still need a visual pass. In a test realm, open a Ritual with its schedule off, run it from the header, and check that its history shows the new run.
 
+## Sidebar Ritual divider · 2026-11-22 · window check pending
+
+The sidebar groups visible Rituals below visible quests in each realm and in the Borderlands. Check the divider spacing in the desktop window.
+
 ## Pane header controls · 2026-11-21 · window check pending
 
 The Expand pane button uses outward arrows and appears when multiple conversation panes are visible. A full-width pane has no layout buttons. Its edge notches reopen the other conversations. Check the icon and header spacing in the desktop window.
