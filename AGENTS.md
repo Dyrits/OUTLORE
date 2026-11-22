@@ -63,6 +63,6 @@ Latest handoffs:
 
 - To verify OpenBot providers against installed CLIs or resume connector parity, read the [current handoff](.agents/handoffs/2026-11-23-0043-openbot-providers.md). Handoffs are shared and committed.
 
-- To accept the phone channels and the Chronicle on a paired Android device, read the [current handoff](.agents/handoffs/2026-11-23-0032-mobile-parity.md). Handoffs are shared and committed.
+- To check Find in conversation in the desktop window and on a paired phone, read the [current handoff](.agents/handoffs/2026-11-23-0041-conversation-search.md). Handoffs are shared and committed.
 
-- To land and review the quest's two batches (interrupted Codex messages, New realm sources), read the [current handoff](.agents/handoffs/2026-11-23-0023-landing-two-batches.md). Handoffs are shared and committed.
+- To accept the phone channels and the Chronicle on a paired Android device, read the [current handoff](.agents/handoffs/2026-11-23-0032-mobile-parity.md). Handoffs are shared and committed.
