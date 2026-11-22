@@ -14,6 +14,8 @@ export class Sessions extends Context.Service<
   {
     /** Registers a screen; the returned function removes it. */
     readonly add: (send: SessionSend) => () => void;
+    /** Sends one frame to every connected screen, whichever way each connected. */
+    readonly broadcast: (frame: ServerFrame) => void;
   }
 >()("outlore/Sessions") {}
 
@@ -49,6 +51,7 @@ export const sessionsLayer = Layer.effect(
         sinks.add(send);
         return () => void sinks.delete(send);
       },
+      broadcast: (frame: ServerFrame) => broadcast(frame),
     };
   }),
 );

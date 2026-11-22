@@ -1,16 +1,17 @@
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
-import { messageOf } from "../foundation/client";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { messageOf } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { colors, fonts } from "../foundation/theme";
 import type { TerminalPanelProps } from "./terminalPanelTypes";
+import { terminalKeyOf } from "./terminalScope";
 import { terminalTextOf } from "./terminalSnapshot";
 
-/** An interactive desktop shell whose output can be attached to the next message. */
-export function TerminalPanel({ id, cwd, ref, onReady }: TerminalPanelProps) {
+/** The host's conversation shell, whose output can be attached to the next message from any screen (ADR 0020). */
+export function TerminalPanel({ client, id, cwd, scope, ref, onReady }: TerminalPanelProps) {
   const container = useRef<HTMLDivElement>(null);
   const surface = useRef<Terminal | null>(null);
   const folder = useRef("");
@@ -36,9 +37,8 @@ export function TerminalPanel({ id, cwd, ref, onReady }: TerminalPanelProps) {
   // A new shell deliberately recreates the emulator even when its conversation and folder stay the same.
   // biome-ignore lint/correctness/useExhaustiveDependencies: generation explicitly resets the terminal after its shell exits.
   useEffect(() => {
-    const bridge = window.outlore;
     const element = container.current;
-    if (bridge === undefined || element === null) return;
+    if (element === null) return;
     let isActive = true;
     let sequence: number | null = null;
     const pending: { text: string; sequence: number }[] = [];
@@ -88,26 +88,32 @@ export function TerminalPanel({ id, cwd, ref, onReady }: TerminalPanelProps) {
         sequence = next;
       }
     };
-    const unsubscribe = bridge.terminalListen(
-      (session, data, next) => {
-        if (session === id && isActive) write(data, next);
-      },
-      (session) => {
-        if (session === id && isActive) setIsRunning(false);
-      },
-    );
+    // The shell's frames carry its full key, scope included, so a screen shows only the shells its fence covers.
+    const key = terminalKeyOf(scope, id);
+    const unsubscribe = client.subscribeTerminals((frame) => {
+      if (!isActive || frame.id !== key) return;
+      if (frame._tag === "TerminalData") write(frame.data, frame.sequence);
+      else setIsRunning(false);
+    });
     const input = terminal.onData((data) => {
-      if (isReady.current) void bridge.terminalWrite(id, data).catch(onError);
+      if (isReady.current) void client.request({ _tag: "WriteTerminalInput", data, id }).catch(onError);
       else pendingInput.push(data);
     });
     const resize = () => {
       if (!isActive || element.clientWidth === 0 || element.clientHeight === 0) return;
       fit.fit();
-      void bridge.terminalResize(id, Math.min(500, terminal.cols), Math.min(200, terminal.rows)).catch(onError);
+      void client
+        .request({
+          _tag: "ResizeTerminal",
+          cols: Math.min(500, terminal.cols),
+          id,
+          rows: Math.min(200, terminal.rows),
+        })
+        .catch(onError);
     };
     const observer = new ResizeObserver(resize);
-    void bridge
-      .terminalOpen(id, cwd)
+    void client
+      .request({ _tag: "OpenTerminal", cwd, id })
       .then((session) => {
         if (!isActive) return;
         folder.current = session.cwd;
@@ -118,7 +124,8 @@ export function TerminalPanel({ id, cwd, ref, onReady }: TerminalPanelProps) {
         terminal.write("", () => {
           if (isActive) {
             isReady.current = true;
-            for (const data of pendingInput.splice(0)) void bridge.terminalWrite(id, data).catch(onError);
+            for (const data of pendingInput.splice(0))
+              void client.request({ _tag: "WriteTerminalInput", data, id }).catch(onError);
             ready.current();
           }
         });
@@ -136,10 +143,10 @@ export function TerminalPanel({ id, cwd, ref, onReady }: TerminalPanelProps) {
       unsubscribe();
       terminal.dispose();
     };
-  }, [id, cwd, generation]);
+  }, [id, cwd, generation, client, scope]);
   const restart = () => {
-    void window.outlore
-      ?.terminalClose(id)
+    void client
+      .request({ _tag: "CloseTerminal", id })
       .then(() => {
         setError(null);
         setGeneration((value) => value + 1);

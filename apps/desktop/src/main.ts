@@ -11,7 +11,6 @@ import { instanceOf } from "./instance.ts";
 import { createPairingLinkQueue, pairingLinkIn, protocolClientOf } from "./pairingLinks.ts";
 import { answerServiceUpdates, type ServiceUpdates } from "./serviceUpdates.ts";
 import { mergedPathOf, readLoginPath } from "./shellPath.ts";
-import { Terminals } from "./terminals.ts";
 import { setUpUpdates } from "./updateSetup.ts";
 import { whisperExecutable } from "./whisper.ts";
 import { createWindowHandlers } from "./windowCalls.ts";
@@ -200,28 +199,6 @@ app
     window.webContents.on("will-navigate", (event, url) => {
       if (new URL(url).origin !== new URL(appUrl).origin) event.preventDefault();
     });
-    const terminals = new Terminals(
-      (id, data, sequence) => {
-        if (!window.isDestroyed()) window.webContents.send("outlore:terminalData", id, data, sequence);
-      },
-      (id) => {
-        if (!window.isDestroyed()) window.webContents.send("outlore:terminalExit", id);
-      },
-    );
-    // Terminal execution is a desktop capability; embedded frames cannot call it.
-    handleWindow("outlore:terminalOpen", (id: string, cwd: string | null) => {
-      return terminals.open(id, cwd);
-    });
-    handleWindow("outlore:terminalWrite", (id: string, data: string) => {
-      terminals.write(id, data);
-    });
-    handleWindow("outlore:terminalResize", (id: string, cols: number, rows: number) => {
-      terminals.resize(id, cols, rows);
-    });
-    handleWindow("outlore:terminalClose", (id: string) => {
-      terminals.close(id);
-    });
-    window.on("closed", () => terminals.dispose());
     // The theme chosen in the app sets the Dock's and the window's icon; the installed file's own icon stays Outlore's.
     handleWindow("outlore:setTheme", (theme: unknown) => {
       app.dock?.setIcon(iconPathOf(theme));

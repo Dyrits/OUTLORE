@@ -18,6 +18,7 @@ Read the documents that apply to the task before making changes:
 - Technical or structural changes: [architecture](documentation/architecture.md) for boundaries, flows, and how requirements are met.
 - Reversing an architectural decision: read its [decision record](documentation/architecture-decision-record/); add a record for each new hard-to-reverse choice.
 - Capability changes: read `documentation/capabilities/<capability>/specifications.md` for agreed behavior and acceptance.
+- Settling an open capability decision: read its `draft.md` under [capabilities](documentation/capabilities/).
 - First-slice implementation or review: read [first-slice design](documentation/first-slice-design.md) and the relevant `documentation/capabilities/<capability>/blueprint.md`; settle the listed review decisions before production code.
 - Choosing the next work: [backlog](documentation/backlog.md) for candidates and deferrals.
 - Designing a capability covered by an inspiration: [inspirations](documentation/inspirations.md) for ideas adopted and follow-up checks; date new findings.
@@ -25,6 +26,10 @@ Read the documents that apply to the task before making changes:
 - Recording agreements or verified deliveries: append each to the file of the release it ships in, in the [changelog](documentation/changelog/) (one file per release, named by its version, such as `0.1.2-Prototype.md`; work after the newest tag goes in the next version's file, created with its first entry).
 - Re-verifying a batch or relying on its claims: read its [verification evidence](documentation/verification/) and distinguish recorded results from checks run now.
 - Proposing structural refactors: read previous [architecture audits](documentation/architecture-audit/).
+- Revisiting security findings: read the dated [security audit](documentation/security-audit/).
+- Revisiting visual directions or source artwork: read the [art direction boards](documentation/art-direction/) and [brand notes](documentation/brand/README.md).
+- Reproducing the README screenshots and GIFs: read the [recording guide](documentation/readme/recording/README.md).
+- Updating a vendored connector server: read the [vendor guide](packages/service/vendor/README.md) for its pinned source and build.
 - Writing or reviewing code: read [conventions](documentation/conventions.md).
 - Changing `apps/app`: read [apps/app/AGENTS.md](apps/app/AGENTS.md) for Expo-specific rules.
 - Writing Effect code: read `packages/service/node_modules/effect/AGENTS.md` completely for the installed version; search Effect's `src/` for APIs it does not cover.
@@ -38,7 +43,7 @@ Make a task's git worktree in `.worktrees/<name>` (git-ignored, on a `worktree/<
 Then run `.agents/worktree-setup.sh` in it, which copies the installed packages without the files a sandbox cannot write (`bun install` fails there on `.gitmodules`).
 Tests run inside a thread's sandbox with no `env -u` and no escape from it; the few that need what a sandbox withholds (Seatbelt, a terminal, a disk image, the process table) are skipped there and run on the owner's machine and in CI.
 
-The [pre-commit hook](.githooks/pre-commit) runs Biome on staged files and runs the workspace typecheck when code or configuration is staged.
+The [pre-commit hook](.githooks/pre-commit) runs Biome on staged files, runs the workspace typecheck when code or configuration is staged, and runs related tests when TypeScript is staged.
 Fix reported issues and stage the corrected files again.
 
 Every commit message ends with a standalone attribution line naming the provider and model that wrote it, in the form `<Provider> - <Model>`, such as `Mistral - Z.ai GLM 5.3` or `Anthropic - Claude Sonnet 5.5` (owner, 2026-11-21).
@@ -56,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume daily background check-ins, read the [current handoff](.agents/handoffs/2026-11-22-1100-background-check-ins.md). Handoffs are shared and committed.
+- To verify OpenBot providers against installed CLIs or resume connector parity, read the [current handoff](.agents/handoffs/2026-11-23-0043-openbot-providers.md). Handoffs are shared and committed.
 
-- To verify inactivity notices in realm Missives and check their quest links, read the [current handoff](.agents/handoffs/2026-11-22-0255-inactivity-missives.md). Handoffs are shared and committed.
+- To accept the phone channels and the Chronicle on a paired Android device, read the [current handoff](.agents/handoffs/2026-11-23-0032-mobile-parity.md). Handoffs are shared and committed.
 
-- To verify Ritual tabs, manual runs, and live approvals, read the [current handoff](.agents/handoffs/2026-11-22-0250-ritual-verification.md). Handoffs are shared and committed.
+- To land and review the quest's two batches (interrupted Codex messages, New realm sources), read the [current handoff](.agents/handoffs/2026-11-23-0023-landing-two-batches.md). Handoffs are shared and committed.

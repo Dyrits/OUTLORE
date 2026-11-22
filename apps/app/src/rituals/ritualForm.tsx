@@ -224,29 +224,32 @@ export function RitualForm({
         <ScheduleRow onChange={setSchedule} value={schedule} />
       </Part>
       <Part name="Companion">
-        <View style={ritualStyles.sentence}>
-          <RunnerPickers harnesses={harnesses} isCompact={true} onChange={setPrimary} value={primary} />
-        </View>
+        {/* Named fields, as everywhere in the form: the compact composer's picker opens the Companions tab, which no
+            panel or window shows over the form's area (CHG-0643). */}
+        <RunnerPickers harnesses={harnesses} isCompact={false} onChange={setPrimary} value={primary} />
       </Part>
       <Part name="If a run fails, fall back to">
         {fallbacks.map((fallback, index) => (
           // A fallback has no identity but its place in the list.
           // biome-ignore lint/suspicious/noArrayIndexKey: see above
-          <View key={index} style={ritualStyles.sentence}>
-            <Word text={index === 0 ? "first" : "then"} />
+          <View key={index}>
+            <View style={ritualStyles.sentence}>
+              <Word text={index === 0 ? "first" : "then"} />
+              <View style={styles.flex} />
+              <Pressable
+                accessibilityLabel={`Remove fallback ${index + 1}`}
+                accessibilityRole="button"
+                onPress={() => setFallbacks(fallbacks.filter((_, other) => other !== index))}
+              >
+                <Text style={ritualStyles.remove}>Remove</Text>
+              </Pressable>
+            </View>
             <RunnerPickers
               harnesses={harnesses}
-              isCompact={true}
+              isCompact={false}
               onChange={(next) => setFallbacks(fallbacks.map((current, other) => (other === index ? next : current)))}
               value={fallback}
             />
-            <Pressable
-              accessibilityLabel={`Remove fallback ${index + 1}`}
-              accessibilityRole="button"
-              onPress={() => setFallbacks(fallbacks.filter((_, other) => other !== index))}
-            >
-              <Text style={ritualStyles.remove}>Remove</Text>
-            </Pressable>
           </View>
         ))}
         {fallbacks.length < 5 && (

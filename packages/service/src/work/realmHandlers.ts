@@ -1,6 +1,7 @@
 import type {
   ArchiveRealm,
   CreateRealm,
+  CreateRepositoryRealm,
   FindArchivedRealm,
   PreviewRealmArchive,
   RenameRealm,
@@ -8,6 +9,7 @@ import type {
   RestoreRealm,
 } from "@outlore/contracts";
 import { Effect } from "effect";
+import type { FolderAccess } from "../core/index.ts";
 import type { CommandRunner } from "./commands.ts";
 import { changed } from "./followUps.ts";
 import { createRealmOutcome } from "./realmCreation.ts";
@@ -18,16 +20,19 @@ import {
   previewRealmArchive,
   restoreRealm,
 } from "./realmLifecycle.ts";
+import { createRepositoryRealm } from "./realmRepositories.ts";
 import { createRealm, renameRealm, reorderRealms } from "./workspaces.ts";
 
 /** Realm request handlers share the command runner's transaction and post-commit cancellation. */
-export const realmHandlers = (commands: CommandRunner) => ({
+export const realmHandlers = (commands: CommandRunner, folderAccess: FolderAccess) => ({
   ArchiveRealm: (given: typeof ArchiveRealm.Type) =>
     commands.run(archiveRealm(given.workspaceId, given.snapshot, given.movedQuestIds)),
   CreateRealm: (given: typeof CreateRealm.Type) =>
     given.shouldAnswerOutcome
       ? commands.run(createRealmOutcome(given))
       : commands.run(createRealm(given.path, given.name, given.allowDuplicateName ?? false).pipe(Effect.map(changed))),
+  CreateRepositoryRealm: (given: typeof CreateRepositoryRealm.Type) =>
+    createRepositoryRealm(commands, given, folderAccess),
   FindArchivedRealm: (given: typeof FindArchivedRealm.Type) => findArchivedRealm(given.path),
   ListArchivedRealms: () => listArchivedRealms,
   PreviewRealmArchive: (given: typeof PreviewRealmArchive.Type) => previewRealmArchive(given.workspaceId),

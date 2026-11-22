@@ -5,6 +5,7 @@ import type { ServiceClient } from "../foundation/client";
 import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { MobileHeader } from "./mobileHeader";
 import { useQuestPages } from "./questPages";
 import { questPanelOf } from "./questPanelOf";
 import { ThreadPane } from "./threadPane";
@@ -93,6 +94,7 @@ export function Conversation({
         </View>
       )}
       <View style={[styles.questMain, isCompact && styles.questMainCompact]}>
+        {!hasSidebar && detail === null && <MobileHeader actions={null} onBack={goBack} title={null} />}
         {error !== null && <Text style={styles.error}>{error}</Text>}
         {detail && (
           <ThreadPane

@@ -30,6 +30,7 @@ import { KnownHost, PairingCode, RemoteAccessView } from "./remote.ts";
 import { DeletionPreview, type RequestTag } from "./requests.ts";
 import { CreateRitualResult, Ritual } from "./rituals.ts";
 import { Skill } from "./skills.ts";
+import { TerminalSession } from "./terminalRequests.ts";
 import { threadAnchorResults } from "./threadAnchors.ts";
 import { UsageReport } from "./usage.ts";
 import { vaultResults } from "./vaultRequests.ts";
@@ -68,6 +69,7 @@ export const Results = {
   BrowseFolders: FolderListing,
   ChangeSettings: Settings,
   ChangeThreadRunner: Schema.Null,
+  CloseTerminal: Schema.Null,
   CreateFolder: Folder,
   CreatePairingCode: PairingCode,
   CreateRitual: CreateRitualResult,
@@ -95,6 +97,7 @@ export const Results = {
   MarkThreadDone: Schema.Null,
   MarkThreadRead: Schema.Null,
   MoveQuest: Schema.Null,
+  OpenTerminal: TerminalSession,
   OpenThread: OpenThreadResult,
   PinIntel: Schema.Null,
   PreviewDeletion: DeletionPreview,
@@ -134,6 +137,7 @@ export const Results = {
   RenameOwnAccount: HarnessList,
   ReopenMission: Schema.Null,
   ReopenThread: Schema.Null,
+  ResizeTerminal: Schema.Null,
   ResolveChatter: Schema.Null,
   ResolveIntelChange: Schema.Null,
   ResolveIntelProposal: Schema.Null,
@@ -167,6 +171,7 @@ export const Results = {
   UseSharedRelay: RemoteAccessView,
   VisitGuildHall: Schema.Null,
   WidenPermission: Schema.Null,
+  WriteTerminalInput: Schema.Null,
 } as const;
 /** What the service answers to one kind of request. */
 export type ResultOf<Tag extends RequestTag> = (typeof Results)[Tag]["Type"];

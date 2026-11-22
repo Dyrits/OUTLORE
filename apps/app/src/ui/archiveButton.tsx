@@ -1,4 +1,4 @@
-import { Pressable } from "react-native";
+import { Pressable, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { colors } from "../foundation/theme";
 
@@ -8,14 +8,22 @@ export function ArchiveButton({
   isDisabled = false,
   label,
   onPress,
+  style,
 }: {
   isDelete?: boolean;
   isDisabled?: boolean;
   label: string;
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <Pressable accessibilityLabel={label} accessibilityRole="button" disabled={isDisabled} onPress={onPress}>
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      disabled={isDisabled}
+      onPress={onPress}
+      style={style}
+    >
       {isDelete ? (
         <DeleteIcon color={colors.textSecondary} size={20} />
       ) : (

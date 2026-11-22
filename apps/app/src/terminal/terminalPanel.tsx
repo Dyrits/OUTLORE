@@ -1,6 +1,6 @@
 import type { TerminalPanelProps } from "./terminalPanelTypes";
 
-/** Interactive terminals are available exclusively in the desktop window. */
+/** The native app has no shell surface yet; mobile terminals stay in the backlog (conversation-terminal). */
 export function TerminalPanel(_props: TerminalPanelProps) {
   return null;
 }

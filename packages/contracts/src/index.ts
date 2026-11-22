@@ -30,6 +30,7 @@ export * from "./questions.ts";
 export {
   ArchiveRealm,
   CreateRealm,
+  CreateRepositoryRealm,
   FindArchivedRealm,
   ListArchivedRealms,
   PreviewRealmArchive,
@@ -62,6 +63,7 @@ export * from "./ritualSchedules.ts";
 export * from "./rituals.ts";
 export * from "./settingsRequests.ts";
 export * from "./skills.ts";
+export * from "./terminalRequests.ts";
 export * from "./threadAnchors.ts";
 export * from "./usage.ts";
 export * from "./vaultRequests.ts";

@@ -70,6 +70,7 @@ These checks cover the current model. The per-action approval requirement applie
 - A failed turn falls back to the next Companion with the visible switch line and finishes there; a used-up list fails the run; the next run starts on the primary Companion again.
 - A run meeting a reached budget waits in Attention; the Ritual's panel shows its budget ring.
 - The realm's Rituals tab lists its Rituals. The Quests tab lists its ordinary quests. A Ritual uses the crescent and opens with a Ritual details tab. `find_missions` never returns a Ritual.
+- In the sidebar, visible Rituals sit below visible quests in each realm and in the Borderlands. A plain horizontal line separates the rows when both groups are visible.
 - Each run's report lands in the Ritual's conversation; the composer is hidden there; the errand is openable.
 - The realm archive names the realm's Rituals, switches them off, stops a run underway, keeps them marked **Realm archived**, and they stay off after Restore and Start afresh.
 - Deleting a Ritual asks once and removes it with its runs; Cancel keeps everything.

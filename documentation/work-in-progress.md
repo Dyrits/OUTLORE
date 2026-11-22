@@ -2,27 +2,47 @@
 
 ## OpenBot provider parity
 
-The owner put all providers ahead of connectors. The [source inventory](research/openbot-integration-parity-2026-11-22.md) pins OpenBot at `b1e5ea74` and the Outlore base at `7026ce87`, and carries the agreed registration design (CHG-0641). The worktree is `worktree/openbot-providers`, with `main` as its return destination; nothing is pushed yet.
+CHG-0651 through CHG-0655 deliver eight provider harnesses alongside the original four. The full suite on provider tip `96e0103a` passed with 2,848 tests and 24 skips. Authenticated turns, permission behavior against installed binaries, and the remaining provider and connector scope are tracked in the [handoff](../.agents/handoffs/2026-11-23-0043-openbot-providers.md).
 
-Wave 1 is delivered on the branch (CHG-0642): Hermes registers as the fifth harness through the generic ACP adapter, with owner-mediated permissions, per-account `HERMES_HOME` isolation, a no-prompt model probe, manual-install explanation, `hermes update`, and a terminal sign-in chaining `hermes pm repair` with `hermes --setup`. The fixture-verified Pi (fail-closed no-tools), Muse (fail-closed mediator), and Grok (blocked launch profile) adapters landed with it.
+## Mobile feature parity
 
-Wave 2 is delivered too (CHG-0643): Muse registers as the sixth harness, computer's own sign-in only (its state root is the shared XDG data directory; adding an account is refused), Install explains Meta's signed-manifest distribution, Update refuses (no update command), and every spawn suppresses the CLI's self-update.
+The owner requested desktop functionality on mobile. Initial source review at `7026ce87` found that narrow screens bypass the shared realm channel and hide the Chronicle entry. The native terminal panel is a stub, and the desktop terminal starts in Electron. Mobile dictation and broader phone layout checks also remain open.
 
-Wave 3 is delivered as well (CHG-0644): Pi registers as the seventh harness, fail-closed with every tool source denied for good (`--no-tools --no-extensions --no-mcp`, only flags the pinned upstream itself passes; the unverified `--no-approve` of the draft is dropped), per-account `PI_CODING_AGENT_DIR` isolation, models from a CLI probe, `/login` in a terminal as sign-in, manual GitHub-release Install, and a refused Update (no verified update command).
+The owner approved opening the shared realm and Borderlands channels from the phone menu and asked for phone-sized controls and common quest actions. Implementation is on `worktree/mobile-parity`, starting at `7026ce87`. The channel has a Back chevron and a swipeable tab row. Opening a quest from a channel preserves the channel and its tab on return. Mark done, reopen, and archive are available in the Quests tab and the quest header. See [phone navigation](capabilities/conversation-panes/specifications.md#phone-channels).
 
-Waves 4-5 are delivered too (CHG-0645): Cursor, GitHub Copilot, Cline, Devin, and Antigravity (label Gemini) register as harnesses eight through twelve, each a plain ACP server through the generic adapter with every permission mediated and subagents mediated as tool calls. All five take the computer's own sign-in only (Cursor's key account would hand Outlore a credential; Copilot, Cline, and Devin keep no account surface; Antigravity's env-versus-flag home split stays unproven). Three have a pinned terminal sign-in (`cursor-agent login`, `copilot login`, `cline auth -p cline`); Devin and Antigravity have no CLI sign-in at all, so their Sign-in explains instead (`signInArgs: null`, a new catalog shape; the sign-in environment fact `signInEnv` is new too). Every spawn suppresses self-updates as each provider itself does, Install explains each provider's signed-distribution story, and Update refuses (no update command exists for any). The full provider roster is now twelve harnesses - every OpenBot provider ID except the two evidence-blocked ones.
+Verification on 2026-11-22: workspace lint and typecheck passed, as did the Android and web Expo exports. `CI=1 bun run test apps/app/test` passed with 710 tests and 6 skips. The full run had 2,715 passes, 64 skips, and one QuickJS memory-limit test that timed out. All 14 tests in `packages/service/test/connectors/codeExecutor.test.ts` passed on an isolated rerun. ADB found no Android device. The browser check was blocked by Aside's local keychain authentication and the absence of a Playwright Chromium installation.
 
-Open next:
+Batch 2 (2026-11-22), from Claude Duet's lead ([research](research/claude-duet-2026-11-22.md)): the Chronicle is on the phone. The menu's first row opens it with the unread badge, the narrow top bar's menu button carries the same count from every phone screen, and Back in a quest or errand opened from the Chronicle returns to the Chronicle — the batch-1 channel return generalized to a quest origin (`questReturn` in the location). The Attention filters wrap on a narrow screen. [CHG-0647](changelog/0.2.2-Pre-Alpha.md); checks: the 19 location tests, Biome, the workspace typecheck, the app suite (712 passed, 6 skips), and the web export.
 
-- Blocked set, each needing a live CLI on this machine: Kimi 2.x (config-level `yolo` proof; the installed 1.6 is the unsupported archived generation), Grok (`--no-subagents` in normal sessions), and Antigravity's added-account question (which home channel - `GEMINI_HOME` env or the `--gemini-dir` flag - wins).
-- The askOwner → `extension_ui_response` mediation design for lifting Pi's tool denial stays fail-closed until the live flag-semantics proof.
-- Live checks the owner must do on this machine: sign a Hermes account in and run one real prompt turn; `muse login` and one real Muse turn; install pi and check the flag semantics, one probe, one no-tools turn; for each of Cursor, GitHub Copilot, Cline, Devin, and Antigravity: install the CLI, sign in (terminal flow for the first three, the provider's own surface for Devin and Antigravity), one probe, one real turn.
+Paired Android acceptance remains open. In a test realm and the Borderlands, open each channel tab, follow a linked Missive to its quest, and press Back to confirm the selected tab is retained. Mark an idle quest done and reopen it from the list and header. Archive a quest and check the confirmation when it has active work. Open the Chronicle from the menu, follow an unread request into its quest or errand, answer it, and press Back to return to the Chronicle; check that the menu button's badge clears with the read. On desktop, repeat the channel and quest open with the multi-pane layout.
 
-## Daily background check-ins · 2026-11-22 · settings tested
+Later batches cover the Workshop at phone width, dictation, and device integrations. Remote terminals have a separate host-side dependency under [ADR 0020](architecture-decision-record/0020-terminals-run-in-the-host.md).
+
+## Terminals from a paired device · 2026-11-22 · built; live host check pending
+
+CHG-0644 is implemented on `worktree/remote-terminals`, base `7026ce87`: the conversation shells run in the host service (ADR 0020) and every screen reaches them through the same requests. The host's own window opens the full login shell; a paired device — a browser, another computer's app — opens one only while the host's off-by-default **Allow terminals from paired devices** switch is on (Workshop's Remote access card, host window only), inside the OS sandbox, writing only in its conversation's folder and the terminals' own temporary folder, with the Vault hidden and no loopback token inherited. The desktop's terminal IPC is gone; the packaged launch gate drives the packaged service. Checks and the open items are in the [verification record](verification/2026-11-22-remote-terminals.md). Not seen live: a paired browser against a running host, the real Seatbelt/bwrap fence (the tests use a stand-in wrapper over the shared profile), and the desktop window through the new path. The fenced shell's reads follow the harness sandbox — everything readable except the Vault — the workable reading of ADR 0020's stricter fence, which the owner kept on committing. The native phone app keeps no terminal surface yet.
+
+## The Ritual form in the middle panel · 2026-11-22 · window check pending
+
+CHG-0643 makes the Ritual form a screen of the conversation area, not a full-window modal: **+ Ritual** on a realm's header, **Schedule as a Ritual** in a quest's panel, and a Ritual's own **Edit** open the one form over the panes, conversation, or screen beneath it (kept mounted, so Back returns unchanged), and a saved Ritual opens its conversation there. The Companion and each fallback are chosen with the form's named fields; the compact button had opened the Companions column where no choice could be seen. Biome, the workspace typecheck, the location tests, and the form's static-markup test pass, and the full suite is green: 2,764 passed and 24 skipped. Open the desktop window wide and narrow, and a paired phone, to review the form and its Back. [Verification](verification/2026-11-22-ritual-form-panel.md)
+
+## Chronicle source labels · 2026-11-22 · window check pending
+
+CHG-0641 shows **Quest**, **Errand**, or **Realm** before each Chronicle source title in Attention and History. The service derives the type from the thread tree, an older paired host shows no label, long titles wrap, and screen readers speak the type. Biome, the seven-workspace typecheck, and the full suite (2,713 passed, 68 skipped) are green on the base; the rebased tip re-passed Biome, typecheck, and the focused Chronicle tests. The window check is pending; see the [current handoff](../.agents/handoffs/2026-11-22-2206-chronicle-source-labels.md).
+
+## New realm sources · 2026-11-22 · window review pending
+
+CHG-0645 adds five sources to the sidebar's **Visit a new realm** dialog. The worktree branch `mission/outlore-next-batch-0b321042` is rebased onto `mission/outlore-next-batch-3e6266c7` (CHG-0642); the original base was `7026ce87` on `main`. Review the chooser and the folder picker in a desktop window and on a paired device. [Verification](verification/2026-11-22-new-realm-sources.md)
+
+## Daily background check-ins · 2026-11-22 · settings and day admission landed; host wiring pending
 
 Starting revision `f5e50adb` on `worktree/background-check-ins`. The owner authorized implementation of the [CHG-0633 agreement](capabilities/background-check-ins/specifications.md). The settings requests now save selected realms, local time, Companion, and any explicitly chosen fallback. Pausing keeps the selection. The service test went red before the settings field existed and now passes, including a full settings save by an older client.
 
-The Workshop, daily run, and linked Missives are pending. The Ritual scheduler's local-time calculation can be reused. Its runner starts an agent turn with tools, so the check-in runner needs an inference path with tools disabled. The first release's supported Companions are pending the owner's choice. Publication should verify the selected realm, quest link, reportable change, and absence of duplicate Missives through the same conversation request as inactivity warnings.
+The host admission operation reuses Rituals' local-time calculation and claims the local calendar day in storage before calling a reviewer. A controlled-clock test covers paused settings, concurrent sweeps, same-day schedule edits, and a Companion change. A host that first sweeps after the scheduled time can still claim that day. A failed or interrupted attempt consumes the day, so the host does not repeat inference on every sweep.
+
+The workspace typecheck, Biome, and the full suite passed on the admission slice. The suite recorded 2,715 passes and 64 skips. The connector memory-limit test passed on retry.
+
+The settings and admission slices are landed on `main` (CHG-0640). Host wiring, the Workshop, and linked Missives are pending. The [Companion research](research/background-check-in-companion-2026-11-22.md) identifies OpenCode's stateless text endpoint with an owner-installed local runtime as the strongest candidate. The loopback mock and effective configuration isolation are unverified. Publication should verify the selected realm, quest link, reportable change, and absence of duplicate Missives through the same conversation request as inactivity warnings.
 
 ## Inactivity warnings in realm Missives · 2026-11-22 · window check pending
 
@@ -50,6 +70,10 @@ Outlore now directs Codex to use its own per-command escalation when Full access
 ## Ritual tabs and manual runs · 2026-11-22 · window check pending
 
 CHG-0638 adds a Rituals tab to realms and the Borderlands, a Ritual details tab in each Ritual, and a Run now button in the header. The desktop and phone layouts still need a visual pass. In a test realm, open a Ritual with its schedule off, run it from the header, and check that its history shows the new run.
+
+## Sidebar Ritual divider · 2026-11-22 · window check pending
+
+The sidebar groups visible Rituals below visible quests in each realm and in the Borderlands. Check the divider spacing in the desktop window.
 
 ## Pane header controls · 2026-11-21 · window check pending
 

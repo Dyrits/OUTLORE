@@ -155,16 +155,11 @@ export const listHandovers = Effect.fnUntraced(function* (threadId: string) {
       SELECT id, text, at FROM handovers WHERE thread_id = ${threadId} ORDER BY at, rowid`;
 });
 
-/**
- * The thread's conversation before this turn, to hand to a harness session that starts with none: the owner's
- * and threads' messages delivered to earlier turns and the thread's own replies, oldest first. The oldest are
- * left out, with a line saying how many, when they would take over half the model's context limit
- * (provisional: summarizing the oldest part is staged; thread-handover, Long conversations, and ADR 0006). Null when there is no earlier conversation.
- */
-export const readConversationSoFar = Effect.fnUntraced(function* (
+const readEarlierConversation = Effect.fnUntraced(function* (
   threadId: string,
   turnId: string,
   model: ModelChoice,
+  isAfterInterrupt: boolean,
 ) {
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql<{
@@ -177,10 +172,18 @@ export const readConversationSoFar = Effect.fnUntraced(function* (
       SELECT m.id, m.sender_kind AS sender, COALESCE(s.title, m.sender_title) AS fromTitle, m.is_result AS isResult, m.text
       FROM messages m LEFT JOIN threads s ON s.id = m.sender_thread_id
       WHERE m.thread_id = ${threadId}
-        AND (m.sender_kind = 'agent' OR (m.delivered_turn_id IS NOT NULL AND m.delivered_turn_id != ${turnId}))
+        AND (
+          (${!isAfterInterrupt} AND
+            (m.sender_kind = 'agent' OR (m.delivered_turn_id IS NOT NULL AND m.delivered_turn_id != ${turnId})))
+          OR (${isAfterInterrupt} AND m.delivered_turn_id IN (
+            SELECT id FROM turns
+            WHERE thread_id = ${threadId} AND status = 'interrupted' AND rowid > COALESCE((
+              SELECT MAX(rowid) FROM turns WHERE thread_id = ${threadId} AND status = 'completed'
+            ), 0)
+          ))
+        )
       ORDER BY m.sequence`;
   if (rows.length === 0) return null;
-  // An image is named, not resent: the replay is text.
   const attachments = yield* readStoredAttachments(rows.map((row) => row.id));
   const lines = rows.map((row) => {
     const speaker =
@@ -200,17 +203,30 @@ export const readConversationSoFar = Effect.fnUntraced(function* (
     usedTokens += tokensOf(lines[firstKeptIndex] ?? "");
   }
   const kept = lines.slice(firstKeptIndex);
-  return [
-    "## Conversation so far",
-    'This thread ran before in a harness session you do not have (on another harness, account, or model, or one that could not be resumed), and you now continue it. What follows is its conversation, oldest first, with you as "You". Carry on from it; do not repeat it.',
-    ...(firstKeptIndex > 0
-      ? [
-          `(${firstKeptIndex} earlier ${firstKeptIndex === 1 ? "message was" : "messages were"} left out because the conversation is long.)`,
-        ]
-      : []),
-    kept.join("\n\n"),
-  ].join("\n\n");
+  return {
+    attachments: isAfterInterrupt ? rows.slice(firstKeptIndex).flatMap((row) => attachments.get(row.id) ?? []) : [],
+    text: [
+      isAfterInterrupt ? "## Messages from interrupted turns" : "## Conversation so far",
+      isAfterInterrupt
+        ? "These messages were sent before the interruption. Use them as context for the latest message below. Work from those turns may be incomplete."
+        : 'This thread ran before in a harness session you do not have (on another harness, account, or model, or one that could not be resumed), and you now continue it. What follows is its conversation, oldest first, with you as "You". Carry on from it; do not repeat it.',
+      ...(firstKeptIndex > 0
+        ? [
+            `(${firstKeptIndex} earlier ${firstKeptIndex === 1 ? "message was" : "messages were"} left out because the conversation is long.)`,
+          ]
+        : []),
+      kept.join("\n\n"),
+    ].join("\n\n"),
+  };
 });
+
+/** The earlier conversation for a new session, bounded by half its context window, with image names in place of files. */
+export const readConversationSoFar = (threadId: string, turnId: string, model: ModelChoice) =>
+  readEarlierConversation(threadId, turnId, model, false).pipe(Effect.map((history) => history?.text ?? null));
+
+/** Earlier messages and images that an interrupted Codex turn may have left out of its session history. */
+export const readInterruptedConversation = (threadId: string, turnId: string, model: ModelChoice) =>
+  readEarlierConversation(threadId, turnId, model, true);
 
 /** The owner's choice of a thread's runner, with the backups of a preset when one is chosen. */
 export const chooseThreadRunner = (change: {

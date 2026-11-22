@@ -45,9 +45,11 @@ export const requestSourceRules = {
   ChangeSettings: shared,
   ChangeThreadRunner: shared,
   ChooseAppleApps: shared,
+  CloseTerminal: shared,
   CreateFolder: rule(false, (given) => given.parent),
   CreatePairingCode: hostOnly,
   CreateRealm: rule(false, (given) => given.path),
+  CreateRepositoryRealm: rule(false, (given) => given.parent),
   CreateRitual: rule(false, (given) => given.workspacePath),
   DeleteIntel: shared,
   DeleteRitual: shared,
@@ -77,6 +79,8 @@ export const requestSourceRules = {
   MarkThreadDone: shared,
   MarkThreadRead: shared,
   MoveQuest: shared,
+  // The folder a paired device's terminal names is checked against the reachable roots, like every folder it names.
+  OpenTerminal: rule(false, (given) => given.cwd),
   OpenThread: shared,
   PinIntel: shared,
   PreviewDeletion: shared,
@@ -128,6 +132,7 @@ export const requestSourceRules = {
   ReplaceSecret: shared,
   ReplyToMessage: shared,
   RequestApplePermission: hostOnly,
+  ResizeTerminal: shared,
   ResolveChatter: shared,
   ResolveIntelChange: shared,
   ResolveIntelProposal: shared,
@@ -165,6 +170,7 @@ export const requestSourceRules = {
   VerifyClaudeVaultDenial: shared,
   VisitGuildHall: shared,
   WidenPermission: shared,
+  WriteTerminalInput: shared,
 } satisfies SourceRules;
 
 /** Request tags refused before a paired device reaches a handler, derived from the request rules. */

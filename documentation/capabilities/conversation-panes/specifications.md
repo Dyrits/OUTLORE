@@ -33,6 +33,7 @@ The Workshop (Settings) is not a pane and not a sheet: it is the page that takes
 
 - **The Chronicle** opens from one desktop sidebar item with an unread badge. Its default feed groups unread replies and results, open Attention requests, failures, and reminders by conversation across realms and the Borderlands. It offers **Unread** and **Needs attention** filters. Opening an entry takes the owner to the message or request it names in its existing pane. A quest-level entry opens the conversation at its latest message. Reading an approval clears the unread indicator, and the request stays in **Needs attention** until the owner answers it or it is withdrawn. Allowing or denying the request clears it from **Needs attention**.
 - The Chronicle's **History** tab shows routine events such as quest openings and moves. General requests go to Chronicler in the realm or Borderlands chat. The existing phone access remains while phone navigation is deferred.
+- Chronicle puts **Quest**, **Errand**, or **Realm** before the source title in Attention and History.
 - **A realm is a channel**: it has its own main conversation, opened from the sidebar, in which the realm's quests unfold. The Borderlands is one more channel, for the quests in no realm. In a channel the owner talks to Chronicler, scoped to that channel: it has the memory of the realm (its lore); in the Borderlands it has the global memories only. As elsewhere in Outlore, the owner chooses its Companion, so the model is settable for each channel.
 - `#` to name a channel is not built. `@` keeps naming a quest, an errand, a realm or a file as context; telling a citation from a channel reference waits for multiplayer (the owner).
 
@@ -96,9 +97,23 @@ The blocks appear whether or not the lists already have entries.
 - A notch that **starts** something new carries a small "+" on its icon: the errand notch of a quest with no errand pane yet opens the new-errand starter, and a realm's pane with no quest shows a sword notch with a "+" on its right edge that starts a quest in that realm (the owner, 2026-11-20; CHG-0604).
 - When multiple conversation panes are visible, each desktop pane header offers a **Fold** button with a pane-and-arrow icon. The quest and errand can fold even when they are the deepest conversation.
 - On a phone (a narrow window) one pane shows at a time with a Back chevron, as the [phone view](../mission-tracking/specifications.md#simplified-left-navigation) does today.
+
+#### Phone channels
+
+- Tap a realm name or **Open Borderlands** in the phone menu to open its channel. Tap a realm's **Show all** shortcut to open its Quests tab.
+- The channel shows one view at a time. Its tab row scrolls horizontally when needed. It offers Missives, Quests, Rituals, and Companions. A realm also offers its Realm tab.
+- Back in the channel opens the menu. Back in a quest opened from the channel returns to the same channel and tab. This includes quests opened from a linked Missive. A quest picked directly from the menu returns there.
+- The Quests tab and a quest's own header offer Mark as done, Mark as not done, and Archive or Delete. They use the same quest ending rules as desktop, including confirmation when required.
 - Panes are resized by dragging their edges; the widths are remembered.
 - **Equal widths** sits above the conversation row and gives the open panes the same share again (a third each with three) and forgets the dragged shares; folded panes stay folded.
 - When multiple conversation panes are visible, the **Expand pane** button uses outward arrows and gives its pane the available width. The other panes become notches. A full-width pane omits the layout buttons. Press the notch for the conversation you want to reopen.
+
+#### The phone's Chronicle
+
+- The phone menu's first row is the **Chronicle**, carrying its unread count as a badge, as the desktop sidebar's row does.
+- The narrow top bar's menu button carries the same unread count, so what needs the owner shows from every phone screen without opening the menu.
+- The Chronicle's Attention filters wrap on a narrow screen, and every row and conversation heading is a touch target.
+- Back in a quest or errand opened from the Chronicle returns to the Chronicle, as a channel quest returns to its channel; a quest picked directly from the menu returns there.
 
 Realm and Borderlands channels omit the Chronicler, harness, and model line on both Missives and Quests.
 
@@ -125,6 +140,7 @@ Realm and Borderlands channels omit the Chronicler, harness, and model line on b
 - Open an errand from its channel and quest, then open a legacy sub-errand and return to its parent within the same pane.
 - Check persisted Reply anchors, including proposal messages, duplicate Replies and the errand brief. An errand agent's follow-up appears in the quest, and only the owner's Reply starts it.
 - Open the Chronicle from the sidebar and verify that the attention feed is the default and routine events appear under History. Open an unread approval request from the feed, check that its unread indicator clears and it remains in Needs attention, then answer it and check that it leaves the filter. Check that reminders are deduplicated. Move a quest and check that the other channel receives its originating message.
+- On a paired phone, open the Chronicle from the menu, follow an unread request into its quest or errand, answer it, and press Back to return to the Chronicle; check that the menu button's badge clears with the read.
 - Check the in-pane tabs and composer model buttons with a channel, quest, and errand open together.
 - Check draft preservation, pane-local Journal, Lore, and Budget, sidebar pinning, and return from the Workshop in a desktop window.
 - Preserve phone access until the phone batch.

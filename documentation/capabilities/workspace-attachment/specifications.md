@@ -26,6 +26,8 @@ The owner can correct a wrong workspace by moving a whole quest when none of its
 
 ### Cloning a repository
 
+The sidebar's **Visit a new realm** offers **New project**, **Local folder**, **Git URL**, **GitHub repository**, and **Empty realm** (CHG-0645). New project initializes Git. Git URL and GitHub repository clone with the host's Git. These three choices create a subfolder named for the realm in the destination the owner chooses. To use an occupied destination, the owner can choose **Local folder**. **Empty realm** links no folder. The clone location and thread tool below describe the broader workspace attachment workflow.
+
 - Settings hold a **clone location**, `~/Code` by default. A repository given as a link is cloned there, into a folder named after the repository, and becomes a workspace.
 - When the user gives Control a repository link, for example "let's work on this repo: https://github.com/…", Control clones it and proposes the mission in it, as a card the user opens.
 - A repository already cloned by Outlore is reused as the same workspace, never cloned twice.

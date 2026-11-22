@@ -10,12 +10,14 @@ import { PageNavigation } from "./src/foundation/pageNavigation";
 import { colors } from "./src/foundation/theme";
 import { useHostConnection } from "./src/foundation/useHostConnection";
 import { useRightPanel } from "./src/foundation/useRightPanel";
+import type { RitualFormTarget } from "./src/rituals/ritualFormNavigation";
+import { RitualFormNavigation } from "./src/rituals/ritualFormNavigation";
 import type { SettingsSectionId } from "./src/settings/settingsSections";
 import { AddHostModal } from "./src/shell/addHostModal";
 import { AppScreen } from "./src/shell/appScreen";
 import { AppStatusBar } from "./src/shell/appStatusBar";
 import { appStyles as styles } from "./src/shell/appStyles";
-import { initialLocation, navigate, panelScopeOf } from "./src/shell/location";
+import { initialLocation, navigate, panelScopeOf, type QuestOrigin } from "./src/shell/location";
 import { detailsModeOf } from "./src/shell/navigation";
 import { useAttentionNotice } from "./src/shell/notifications";
 import type { RealmListing } from "./src/shell/questTree";
@@ -161,8 +163,12 @@ export function App() {
     );
   }
   const goTo = (place: Place) => dispatch({ place, type: "place" });
-  const openMissionFromAnywhere = (id: MissionId) => dispatch({ id, type: "quest" });
-  const openSideQuest = (missionId: MissionId, id: ThreadId) => dispatch({ id, missionId, type: "thread" });
+  const openMissionFromAnywhere = (id: MissionId, origin?: QuestOrigin) =>
+    dispatch(origin === undefined ? { id, type: "quest" } : { id, origin, type: "quest" });
+  // The Ritual form is a screen of the conversation area (CHG-0643): closing it returns to what showed beneath it.
+  const openRitualForm = (target: RitualFormTarget) => dispatch({ target, type: "ritualForm" });
+  const openSideQuest = (missionId: MissionId, id: ThreadId, origin?: QuestOrigin) =>
+    dispatch(origin === undefined ? { id, missionId, type: "thread" } : { id, missionId, origin, type: "thread" });
   const selectMission = (id: MissionId | null) => {
     dispatch({ id, type: "select" });
     rightPanel.show(id === null ? null : { tab: "quest" });
@@ -203,6 +209,8 @@ export function App() {
       <AppScreen
         client={client}
         navigation={{
+          backFromQuest: () => dispatch({ type: "backFromQuest" }),
+          closeRitualForm: () => dispatch({ target: null, type: "ritualForm" }),
           goTo,
           openChannel: (listing) => dispatch({ listing, type: "channel" }),
           openMenu: () => dispatch({ isOpen: true, type: "menu" }),
@@ -267,7 +275,9 @@ export function App() {
                 page: location.page,
               }}
             >
-              <View style={styles.root}>{shell}</View>
+              <RitualFormNavigation.Provider value={{ open: openRitualForm }}>
+                <View style={styles.root}>{shell}</View>
+              </RitualFormNavigation.Provider>
             </PageNavigation.Provider>
           </ArchiveNavigation.Provider>
         </View>

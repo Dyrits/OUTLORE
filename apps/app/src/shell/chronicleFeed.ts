@@ -1,6 +1,12 @@
 import type { ChronicleItem } from "@outlore/contracts";
 import { recencyHeadingOf } from "./questRecency";
 
+/** Names the conversation with its source type when the host provides one. */
+export const chronicleTitleOf = (item: ChronicleItem): string => {
+  const source = item.source ?? (item.kind === "RealmOpened" ? "Realm" : item.threadId === null ? "Quest" : null);
+  return source === null ? item.title : `${source} · ${item.title}`;
+};
+
 /** What an entry says about its conversation, in the words the owner reads. */
 export const chroniclePhrases = {
   Archived: "Quest archived",
@@ -59,7 +65,7 @@ export const unreadCountOf = (items: ReadonlyArray<ChronicleItem>): number => un
 
 /** The updates of one conversation, in the order the feed shows them. */
 export type ChronicleConversation = {
-  /** What the conversation is: the title of its first entry. */
+  /** The source type and title of the conversation's first entry. */
   readonly heading: string;
   readonly items: ReadonlyArray<ChronicleItem>;
   readonly key: string;
@@ -71,7 +77,7 @@ export const conversationsOf = (items: ReadonlyArray<ChronicleItem>): ReadonlyAr
   for (const item of items) {
     const key = item.threadId ?? item.id;
     const group = groups.get(key);
-    if (group === undefined) groups.set(key, { heading: item.title, items: [item] });
+    if (group === undefined) groups.set(key, { heading: chronicleTitleOf(item), items: [item] });
     else group.items.push(item);
   }
   return [...groups.entries()]

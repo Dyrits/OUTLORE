@@ -12,7 +12,7 @@ import { MoveQuestModal } from "../quests/moveQuestModal";
 import { type Destination, type MoveConfirmation, moveConfirmationOf } from "../quests/questMove";
 import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
-import { NewRitualModal } from "../rituals/ritualModal";
+import { useRitualFormNavigation } from "../rituals/ritualFormNavigation";
 import { FoldChevron } from "../ui/foldChevron";
 import { SettingsIcon } from "../ui/settingsIcons";
 import { unreadCountOf } from "./chronicleFeed";
@@ -20,7 +20,8 @@ import { DropTarget, RealmDragSource } from "./questDrag";
 import { placementsOf, type RealmListing, reorderedRealmIds, toggledFold } from "./questTree";
 import { NewQuestIcon, NewRealmIcon, useRowActions } from "./railActions";
 import { railOutlineOf } from "./railOutline";
-import { Quest, RealmHeader, RitualRow } from "./railQuests";
+import { PlacementRows } from "./railPlacementRows";
+import { RealmHeader } from "./railQuests";
 import { Divider, Row, ShowAll } from "./railRows";
 import { isHovered, local } from "./railStyles";
 
@@ -146,8 +147,8 @@ export function Sidebar({
       setPendingMove({ confirmation, destination, missionId: mission.id });
   };
 
-  // A Ritual being scheduled in a realm, until its form is saved or cancelled.
-  const [newRitualRealm, setNewRitualRealm] = useState<{ name: string; path: string | null } | null>(null);
+  // A new Ritual opens as the conversation area's own screen (CHG-0643), taking the realm it was started in.
+  const { open: openRitualForm } = useRitualFormNavigation();
 
   // A realm dropped on another realm takes the place before or after it; the whole new order is saved.
   const dropRealmOn = (targetId: WorkspaceId) => (movedId: string, side: "before" | "after") => {
@@ -181,11 +182,11 @@ export function Sidebar({
             <RealmHeader
               isOpen={!isClosed}
               name={realmLabelOf(realm, data?.workspaces ?? [])}
-              {...(isNarrow || onOpenChannel === undefined
+              {...(onOpenChannel === undefined
                 ? {}
                 : { onOpenChannel: () => onOpenChannel({ id: realm.id, name: realm.name }) })}
               onNewQuest={() => startQuest(realm.id, realm.id)}
-              onNewRitual={() => setNewRitualRealm({ name: realm.name, path: realm.path })}
+              onNewRitual={() => openRitualForm({ kind: "create", originMissionId: null, realmPath: realm.path })}
               onOverview={() => onOpenRealmQuests({ id: realm.id, name: realm.name })}
               onToggle={() => setRealmFolds((current) => new Map(current).set(realm.id, !isClosed))}
               path={realm.path}
@@ -198,24 +199,18 @@ export function Sidebar({
               {isNarrow ? "No quest in this realm yet." : "No quests yet"}
             </Text>
           )}
-          {!isClosed &&
-            realm.visibleQuests.map((mission) =>
-              mission.ritual === null ? (
-                <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
-              ) : (
-                <RitualRow
-                  {...questProps}
-                  isOpen={outline.isQuestOpen(mission.id)}
-                  key={mission.id}
-                  mission={mission}
-                  realms={realms}
-                />
-              ),
-            )}
+          {!isClosed && (
+            <PlacementRows
+              isQuestOpen={outline.isQuestOpen}
+              missions={realm.visibleQuests}
+              questProps={questProps}
+              realms={realms}
+            />
+          )}
           {!isClosed && realm.quests.length > realm.visibleQuests.length && (
             <ShowAll
               label={`Show all ${realm.quests.length} quests`}
-              onPress={() => (isNarrow ? onOpenRealmQuests : onOpenQuestsTab)({ id: realm.id, name: realm.name })}
+              onPress={() => onOpenQuestsTab({ id: realm.id, name: realm.name })}
               subject={realm.name}
             />
           )}
@@ -229,12 +224,17 @@ export function Sidebar({
       style={[local.sidebar, !isNarrow && local.sidebarDesktop, hasLeftDivider && local.sidebarLeftDivider, { width }]}
     >
       <ScrollView contentContainerStyle={[local.group, !isNarrow && local.groupWithChronicle]} style={local.flex}>
-        {!isNarrow && onOpenChronicle !== undefined && (
+        {onOpenChronicle !== undefined && (
           <>
             <Pressable
               accessibilityRole="button"
               onPress={onOpenChronicle}
-              style={(state) => [local.chronicleRow, (state.pressed || isHovered(state)) && local.rowHovered]}
+              style={(state) => [
+                local.chronicleRow,
+                // The phone menu's rows are touch targets first (CHG-0292's 44 pt rows).
+                isNarrow && { minHeight: 44 },
+                (state.pressed || isHovered(state)) && local.rowHovered,
+              ]}
             >
               <Text style={local.chronicleTitle}>Chronicle</Text>
               {unreadCount > 0 && (
@@ -271,27 +271,26 @@ export function Sidebar({
           onToggle={() => foldedSections.toggle("Borderlands")}
           title="Borderlands"
         />
-        {!isNarrow && onOpenChannel !== undefined && (
-          <Pressable accessibilityRole="button" onPress={() => onOpenChannel(null)}>
-            <Text style={local.emptyGroup}>Borderlands chat</Text>
+        {onOpenChannel !== undefined && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onOpenChannel(null)}
+            style={isNarrow && { justifyContent: "center", minHeight: 44 }}
+          >
+            <Text style={local.emptyGroup}>{isNarrow ? "Open Borderlands" : "Borderlands chat"}</Text>
           </Pressable>
         )}
         {failureUnder("none")}
         {!isFolded("Borderlands") && placements.borderlands.length === 0 && (
           <Text style={local.emptyGroup}>No quest in the Borderlands yet.</Text>
         )}
-        {(isFolded("Borderlands") ? [] : borderlandQuests).map((mission) =>
-          mission.ritual === null ? (
-            <Quest {...questProps} isOpen={outline.isQuestOpen(mission.id)} key={mission.id} mission={mission} />
-          ) : (
-            <RitualRow
-              {...questProps}
-              isOpen={outline.isQuestOpen(mission.id)}
-              key={mission.id}
-              mission={mission}
-              realms={realms}
-            />
-          ),
+        {!isFolded("Borderlands") && (
+          <PlacementRows
+            isQuestOpen={outline.isQuestOpen}
+            missions={borderlandQuests}
+            questProps={questProps}
+            realms={realms}
+          />
         )}
         {!isFolded("Borderlands") && placements.borderlands.length > borderlandQuests.length && (
           <ShowAll
@@ -324,14 +323,6 @@ export function Sidebar({
           initial={{ name: "", path: "" }}
           isFolderRequired={false}
           onCancel={() => setIsCreating(false)}
-        />
-      )}
-      {newRitualRealm !== null && (
-        <NewRitualModal
-          client={client}
-          onCancel={() => setNewRitualRealm(null)}
-          onDone={onOpenMission}
-          realmPath={newRitualRealm.path}
         />
       )}
     </View>

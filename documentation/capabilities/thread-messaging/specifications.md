@@ -59,6 +59,7 @@ When the owner opens a quest, an errand, or Chronicler's conversation, the lates
 - The user can interrupt any thread.
 - A thread can interrupt the threads directly beneath it.
 - An interrupted thread ends its current turn and becomes Resting, or Waiting while threads beneath it are Underway or Waiting (CHG-0039). Messages that had not yet reached the turn stay undelivered and start its next turn.
+- A continuing Codex session receives the stored messages and attached images from interrupted turns since its last completed turn. Outlore supplies these as earlier context for the next message, because Codex can abort before it records the earlier input.
 
 ### Chatter guard
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
 import { emblemPaths } from "../foundation/emblems";
 import { colors, radii } from "../foundation/theme";
@@ -33,11 +33,13 @@ export function DoneButton({
   isDone,
   label = isDone ? "Mark as not done" : "Mark as done",
   onPress,
+  style,
 }: {
   isDisabled?: boolean;
   isDone: boolean;
   label?: string;
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 }) {
   const color = isDone ? colors.accentText : colors.textSecondary;
   return (
@@ -47,6 +49,7 @@ export function DoneButton({
       accessibilityState={{ checked: isDone, disabled: isDisabled }}
       disabled={isDisabled}
       onPress={onPress}
+      style={style}
     >
       <HeaderIcon color={color}>
         <Rect height={16} rx={3} width={16} x={4} y={4} />

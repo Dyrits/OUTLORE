@@ -41,6 +41,7 @@ export const defaultSettings: Settings = {
   inactivityDays: 14,
   intelHalfLives: { decision: 45, fact: 45, preference: 90, temporary: 3 },
   intelWarningPercent: 10,
+  shouldAllowRemoteTerminals: false,
   shouldAutoArchive: false,
   shouldFetchPrices: true,
   shouldOpenOffTopicMissions: false,

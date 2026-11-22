@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import type { Request, RequestSource } from "@outlore/contracts";
+import type { Request, RequestSource, Settings } from "@outlore/contracts";
 import { Effect, Layer, Match, Semaphore } from "effect";
 import type { SqlError } from "effect/sql";
 import {
@@ -68,6 +68,7 @@ import {
   connectorHandlers,
   connectorNoticesLayer,
   guildmasterReportsLayer,
+  hostTerminalHost,
   listMentionables,
   listSkills,
   listWorkspaceEntries,
@@ -96,7 +97,12 @@ import {
   stopAtBudget,
   suggestionsLayer,
   switchAtBudget,
+  type TerminalHost,
+  type TerminalScope,
+  Terminals,
   Threads,
+  terminalHandlers,
+  terminalsLayer,
   threadsLayer,
   toolServerLayer,
   vaultHandlers,
@@ -116,6 +122,8 @@ const make = Effect.gen(function* () {
   const remoteConfig = yield* RemoteConfig;
   const threads = yield* Threads;
   const homeFolder = yield* HomeFolder;
+  /** The host's conversation shells (conversation-terminal, ADR 0020), from the layer that ends them. */
+  const terminals = yield* Terminals;
   const commands = yield* Commands;
   const approvals = yield* Approvals;
   const connectors = yield* Connectors;
@@ -132,6 +140,23 @@ const make = Effect.gen(function* () {
   const context = yield* Effect.context<RequestServices>();
 
   /**
+   * Saves settings, refusing a paired device's change of whether its own terminals are allowed: only the host's own
+   * window can turn them on or off (conversation-terminal, ADR 0020).
+   */
+  const saveSettingsFromSource = (isHostWindow: boolean, next: (saved: Settings) => Settings) =>
+    Effect.gen(function* () {
+      if (!isHostWindow) {
+        const saved = yield* readSettings;
+        if (next(saved).shouldAllowRemoteTerminals !== saved.shouldAllowRemoteTerminals)
+          return yield* new ServiceFailure({
+            kind: "AccessRefused",
+            message: "Only the host itself can change whether terminals from paired devices are allowed.",
+          });
+      }
+      return yield* saveSettings(next);
+    });
+
+  /**
    * Answers one request. A paired device's folder requests reach only the browsable roots; the host's own window,
    * the default, reaches any folder (device-pairing, CHG-0253).
    */
@@ -141,6 +166,8 @@ const make = Effect.gen(function* () {
   ): Effect.Effect<unknown, ServiceFailure> =>
     Effect.gen(function* () {
       const { folderAccess, deviceLabel } = yield* admitRequestSource(source, request);
+      const isHostWindow = !source.isPairedDevice;
+      const terminalScope: TerminalScope = source.isPairedDevice ? "remote" : "host";
       // One handler per request tag; Match.valueTags fails to compile when a tag has none.
       const run: Effect.Effect<unknown, ServiceFailure | SqlError.SqlError, RequestServices> = Match.valueTags(
         request,
@@ -151,6 +178,7 @@ const make = Effect.gen(function* () {
           ...messagesHandlers(dependencies),
           ...questsHandlers(dependencies, connectors),
           ...ritualsHandlers(dependencies),
+          ...terminalHandlers(terminals, terminalScope),
           ...connectorHandlers(commands, connectors),
           ...vaultHandlers(commands, vault, connectors),
           AddBrowsableRoot: (add) => change(addBrowsableRoot(add.path)),
@@ -164,9 +192,10 @@ const make = Effect.gen(function* () {
               Effect.map(({ value }) => value),
             ),
           BrowseFolders: (browse) => browseFolders(browse.path, browse.shouldIncludeHidden, folderAccess),
-          ChangeSettings: (given) => saveSettings((saved) => mergedSettings(saved, given.change)),
+          ChangeSettings: (given) =>
+            saveSettingsFromSource(isHostWindow, (saved) => mergedSettings(saved, given.change)),
           CreateFolder: (create) => createFolder(create.parent, create.name, folderAccess),
-          ...realmHandlers(commands),
+          ...realmHandlers(commands, folderAccess),
           ListMentionables: () => listMentionables,
           ListOpenQuestions: () => listOpenQuestions,
           ListSkills: (given) => listSkills(given.workspacePath),
@@ -202,7 +231,7 @@ const make = Effect.gen(function* () {
           StopAtBudget: (given) => commands.run(stopAtBudget(given.stopId)),
           SwitchAtBudget: (given) => commands.run(switchAtBudget(given.stopId)),
           UpdateHost: () => hostUpdate.arm,
-          UpdateSettings: (update) => saveSettings(() => update.settings),
+          UpdateSettings: (update) => saveSettingsFromSource(isHostWindow, () => update.settings),
           WidenPermission: (widen) => change(widenPermission(widen.permissionId)),
         },
       );
@@ -255,6 +284,11 @@ export interface ServiceOptions {
   readonly release?: string;
   /** The folder holding each mission's scratch folder. */
   readonly scratchRoot: string;
+  /**
+   * The host's conversation shells (conversation-terminal, ADR 0020); the owner's home, login shell and OS sandbox,
+   * with the Vault's folder hidden and the terminals' own temporary folder, when left out.
+   */
+  readonly terminalHost?: TerminalHost;
 }
 
 /**
@@ -336,6 +370,10 @@ export const serviceLayer = (options: ServiceOptions) => {
         priceRefreshLayer,
         questMaintenanceLayer,
         ritualsLayer,
+        // The host's ways its conversation shells run with (conversation-terminal, ADR 0020).
+        terminalsLayer(options.terminalHost ?? hostTerminalHost(options.homeFolder, dirname(options.filename))).pipe(
+          Layer.provide(sessionsLayer),
+        ),
         sessionsLayer,
         toolServerLayer,
       ),
