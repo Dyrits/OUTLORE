@@ -47,14 +47,14 @@ const quest = (id: string, state: "Resting" | "Underway" = "Resting") =>
   });
 
 describe("revealing the rail location", () => {
-  it("shows the first five quests and any running quest beyond them by default", () => {
+  it("shows at most four quests and gives a running quest priority", () => {
     const quests = ["one", "two", "three", "four", "five", "hidden"].map((id) => quest(id));
     const outline = railOutlineOf(
       { borderlands: [...quests, quest("running", "Underway")], realms: [] },
       null,
       new Set(),
     );
-    expect(outline.borderlands.map((each) => each.id)).toEqual(["one", "two", "three", "four", "five", "running"]);
+    expect(outline.borderlands.map((each) => each.id)).toEqual(["one", "two", "three", "running"]);
   });
   it("reveals the selected thread through folded ancestors without changing stored folds", () => {
     const collapsed = new Set(["parent"]);
@@ -63,10 +63,10 @@ describe("revealing the rail location", () => {
     expect(collapsed.has("parent")).toBe(true);
     expect(threadOutlineOf(tree, collapsed, null, true).rows.map((row) => row.thread.id)).toEqual(["parent"]);
   });
-  it("keeps the selected quest past the normal placement limit without changing its fold", () => {
+  it("keeps the selected quest within the placement limit without changing its fold", () => {
     const quests = ["first", "second", "selected"].map((id) => quest(id));
     const outline = railOutlineOf({ borderlands: quests, realms: [] }, "selected", new Set(), 1);
-    expect(outline.borderlands.map((each) => each.id)).toEqual(["first", "selected"]);
+    expect(outline.borderlands.map((each) => each.id)).toEqual(["selected"]);
     expect(outline.isQuestOpen("selected")).toBe(false);
     expect(outline.isQuestOpen("first")).toBe(false);
   });
@@ -83,9 +83,27 @@ describe("revealing the rail location", () => {
     expect(outline.isQuestOpen("first")).toBe(true);
     expect(outline.isQuestOpen("second")).toBe(false);
   });
-  it("keeps every running quest past the normal placement limit, in its place in the list", () => {
+  it("fits running quests into the available slots after the selected quest", () => {
     const quests = [quest("first"), quest("second"), quest("running", "Underway"), quest("fourth", "Underway")];
-    const outline = railOutlineOf({ borderlands: quests, realms: [] }, null, new Set(), 1);
-    expect(outline.borderlands.map((each) => each.id)).toEqual(["first", "running", "fourth"]);
+    const outline = railOutlineOf({ borderlands: quests, realms: [] }, "second", new Set(), 2);
+    expect(outline.borderlands.map((each) => each.id)).toEqual(["second", "running"]);
+  });
+});
+
+describe("limiting sidebar errands", () => {
+  it("offers no overflow link for one or two errand rows", () => {
+    for (const threads of [tree.slice(0, 2), tree]) {
+      const outline = threadOutlineOf(threads, new Set(), null, true);
+      expect(outline.rows).toHaveLength(threads.length - 1);
+      expect(outline.overflowLabel).toBeNull();
+    }
+  });
+
+  it("shows two nested rows and offers the full list when an errand is hidden by the limit", () => {
+    const threads = [...tree, thread("sibling", "top", 1)];
+    const outline = threadOutlineOf(threads, new Set(), null, true);
+    expect(outline.rows.map((row) => row.thread.id)).toEqual(["parent", "child"]);
+    expect(outline.overflowLabel).toBe("Show 3 errands");
+    expect(threadOutlineOf(threads, new Set(["parent"]), null, true).overflowLabel).toBeNull();
   });
 });

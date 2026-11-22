@@ -2,16 +2,24 @@ import type { MissionSummary, ThreadId, ThreadSummary } from "@outlore/contracts
 import { ancestorIdsOf, type Placements, sideQuestRowsOf } from "./questTree";
 
 /** The normal sidebar quota for each realm and for quests in no realm. */
-const sidebarQuestLimit = 5;
+const sidebarQuestLimit = 4;
+const sidebarErrandLimit = 2;
 
 /**
- * Keeps the open quest and every running quest visible beyond a placement's normal row limit, each in its place in the
- * list (the open quest is kept whatever its state; running quests are kept so the owner always sees what works).
+ * Gives the open quest priority, then running quests, while keeping the visible rows in placement order.
  */
-export const visibleQuestsOf = (quests: readonly MissionSummary[], limit: number, openMission: string | null) =>
-  quests.filter((quest, index) => index < limit || quest.id === openMission || quest.state === "Underway");
+const visibleQuestsOf = (quests: readonly MissionSummary[], limit: number, openMission: string | null) => {
+  if (quests.length <= limit) return quests;
+  const byPriority = [
+    ...quests.filter((quest) => quest.id === openMission),
+    ...quests.filter((quest) => quest.id !== openMission && quest.state === "Underway"),
+    ...quests.filter((quest) => quest.id !== openMission && quest.state !== "Underway"),
+  ];
+  const visible = new Set(byPriority.slice(0, limit));
+  return quests.filter((quest) => visible.has(quest));
+};
 
-/** Reveals the location's ancestors without modifying the owner's saved folds. */
+/** Reveals the location's ancestors and previews the first two unfolded errand rows. */
 export const threadOutlineOf = (
   threads: readonly ThreadSummary[],
   collapsed: ReadonlySet<string>,
@@ -20,7 +28,12 @@ export const threadOutlineOf = (
 ) => {
   const ancestors = new Set<string>(selectedThread === null ? [] : ancestorIdsOf(threads, selectedThread));
   const folds = new Set([...collapsed].filter((id) => !ancestors.has(id)));
-  return { collapsed: folds, rows: sideQuestRowsOf(threads, { collapsed: folds, shouldShowAgentThreads }) };
+  const rows = sideQuestRowsOf(threads, { collapsed: folds, shouldShowAgentThreads });
+  return {
+    collapsed: folds,
+    overflowLabel: rows.length > sidebarErrandLimit ? `Show ${rows.length} errands` : null,
+    rows: rows.slice(0, sidebarErrandLimit),
+  };
 };
 
 /** Placement rows with the current quest revealed, ready for the rail to draw. */

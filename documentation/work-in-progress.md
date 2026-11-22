@@ -1,5 +1,9 @@
 # Work in progress
 
+## Quest chevrons and sidebar limits · 2026-11-22 · window check pending
+
+CHG-0635 keeps the fold chevron visible on quests with errands. CHG-0636 previews four quests per realm and in the Borderlands, and two unfolded errand rows per quest. When more errand rows are available, **Show N errands** opens the quest's Errands tab. The desktop window check is pending. See the [overflow verification record](verification/2026-11-22-sidebar-overflow.md).
+
 ## Notch titles on hover · 2026-11-22 · window check pending
 
 CHG-0630: hovering or keyboard-focusing a pane notch shows its title in a small card beside the notch — folded panes and child shortcuts alike — so quests and errands that share one icon are told apart without opening them. Biome, the workspace typecheck, and the app suite (704 passed) are green; see the [verification record](verification/2026-11-22-notch-titles.md). The window check is pending: the card's look on both edges, a stack of several notches, long titles, and keyboard focus. Found beside the work: the `tooltipOf` helper never showed a tooltip (backlog).

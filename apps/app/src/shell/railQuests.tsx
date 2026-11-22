@@ -64,8 +64,7 @@ function SideQuests({
   const [error, setError] = useState<string | null>(null);
   if (threads === null) return null;
   const outline = threadOutlineOf(threads, collapsed, selectedThread, shouldShowAgentThreads);
-  const { rows } = outline;
-  const count = rows.filter(({ depth }) => depth === 1).length;
+  const { overflowLabel, rows } = outline;
   return (
     <>
       {rows.map(({ depth, foldedCount, hasChildren, thread }) => (
@@ -112,12 +111,8 @@ function SideQuests({
           />
         </View>
       ))}
-      {count > 0 && (
-        <ShowAll
-          label={`Show ${count} ${count === 1 ? "errand" : "errands"}`}
-          onPress={() => onOpenErrands(missionId)}
-          subject={title}
-        />
+      {overflowLabel !== null && (
+        <ShowAll label={overflowLabel} onPress={() => onOpenErrands(missionId)} subject={title} />
       )}
       {error !== null && <Text style={local.questError}>{error}</Text>}
     </>

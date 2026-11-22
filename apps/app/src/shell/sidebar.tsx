@@ -95,7 +95,7 @@ export function Sidebar({
   const foldedSections = useToggles();
   const isFolded = (section: Section) => foldedSections.set.has(section);
   const openQuests = useToggles();
-  // Quests in no realm show five rows until the owner asks for the rest.
+  // The narrow Borderlands list expands in place when the owner asks for the rest.
   const [isEveryBorderlandShown, setEveryBorderlandShown] = useState(false);
   const collapsedThreads = useToggles();
   const outline = railOutlineOf(placements, openMission, openQuests.set);
