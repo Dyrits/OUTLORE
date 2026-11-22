@@ -1,6 +1,6 @@
 # Remote terminals · 2026-11-22 · CHG-0644
 
-Implemented on `worktree/remote-terminals`, starting revision `7026ce87`. This record separates the checks run here from what remains for the owner.
+Implemented on `worktree/remote-terminals`, starting revision `7026ce87`, rebased onto `origin/main` at `3fb51bad` before landing. This record separates the checks run here from what remains for the owner.
 
 ## What is built
 
@@ -14,7 +14,7 @@ Implemented on `worktree/remote-terminals`, starting revision `7026ce87`. This r
 
 - `bunx biome check .` — clean, after its own sorted-keys and format fixes.
 - `bun run typecheck` across the workspaces — passes.
-- Full suite `CI=1 bun run test` (vitest over Electron), twice against the final state: 338 test files passed, 3 skipped (341); 2,764 tests passed, 24 skipped (2,788); the skips are the environment-gated ones (Seatbelt, live harness probes, pty).
+- Full suite `CI=1 bun run test` (vitest over Electron), twice against the branch's own final state: 338 test files passed, 3 skipped (341); 2,764 tests passed, 24 skipped (2,788); the skips are the environment-gated ones (Seatbelt, live harness probes, pty). After the rebase onto `origin/main` (`3fb51bad`, six later batches), the full suite passes with 340 files and 2,774 tests passed, 24 skipped (2,798), and Biome and the workspace typecheck stay green on the rebased tip.
 - Focused suites: `packages/service/test/work/terminals.test.ts` (12) and `packages/service/test/work/appGuide.test.ts` (33); `apps/app/test/terminal`, `apps/app/test/foundation/client.test.ts`, `apps/app/test/conversation` (102); `packages/service/test/connectors/gatewayCalls.test.ts` (46), watched because a first cut of this batch put the shells' `Effect.acquireRelease` in the service's own build effect and deterministically flipped the sub-millisecond race between a turn's tool snapshot and the owner's mid-turn switch (the three "keeps a tool off ... during the turn" tests); the shells now live in their own `Terminals` service layer, as the harness processes and host runtime do, and the race is back on main's side.
 
 ## Not checked

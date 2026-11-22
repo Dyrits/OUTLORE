@@ -56,7 +56,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the Ritual form in the middle panel (CHG-0643), read the [current handoff](.agents/handoffs/2026-11-22-2123-ritual-form-panel.md). Handoffs are shared and committed.
+- To run the by-hand live checks on remote terminals (paired browser, real Seatbelt fence, packaged gate), read the [current handoff](.agents/handoffs/2026-11-22-2321-remote-terminals.md). Handoffs are shared and committed.
 
 - To verify Chronicle source labels in Attention and History, read the [current handoff](.agents/handoffs/2026-11-22-2206-chronicle-source-labels.md). Handoffs are shared and committed.
 
