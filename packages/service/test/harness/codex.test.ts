@@ -324,6 +324,38 @@ describe("running Codex threads", () => {
     }).pipe(Effect.provide(layer));
   });
 
+  it.live("supplies the interrupted opening message as context for a queued follow-up", () => {
+    process.env.STAND_IN_CODEX_START_DELAY = "300";
+    const { layer, requests } = withHarnesses();
+    return Effect.gen(function* () {
+      const image = yield* attachedPng();
+      const started = yield* startMission({ attachmentIds: [image.id], harness: "codex", text: "slow 5000" });
+      yield* untilRequested(requests, "turn/start");
+      yield* sendTo(started.threadId, "Check my first message");
+      yield* call({ _tag: "InterruptThread", threadId: started.threadId });
+      const detail = yield* settle(started.missionId, idleWith(1));
+      expect(detail.messages.find((message) => message.text === "slow 5000")).toMatchObject({
+        isDelivered: true,
+        sender: "user",
+      });
+      const [opening, followUp] = requests("turn/start");
+      expect(opening?.params?.input).toEqual([
+        expect.objectContaining({ text: expect.stringContaining("slow 5000") }),
+        expect.objectContaining({ type: "localImage" }),
+      ]);
+      expect(followUp?.params?.input).toEqual([
+        expect.objectContaining({ text: expect.stringContaining("The owner: slow 5000") }),
+        expect.objectContaining({ path: expect.any(String), type: "localImage" }),
+      ]);
+      expect(replies(detail)).toEqual(["Echo: Check my first message"]);
+      yield* sendTo(started.threadId, "Continue");
+      yield* settle(started.missionId, idleWith(2));
+      const continued = requests("turn/start")[2]?.params?.input;
+      expect(continued).toEqual([expect.objectContaining({ text: expect.stringContaining("Continue") })]);
+      expect(JSON.stringify(continued)).not.toContain("slow 5000");
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("fails the turn when Codex reports that the thread-tools server failed to start", () => {
     const { layer } = withHarnesses();
     return Effect.gen(function* () {

@@ -19,7 +19,7 @@ import { Approvals } from "./approvals.ts";
 import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
 import { Commands, makeCommands } from "./commands.ts";
-import { readConversationSoFar } from "./handover.ts";
+import { readConversationSoFar, readInterruptedConversation } from "./handover.ts";
 import { makeLifecycle, recoverThreadStates, stopThread } from "./lifecycle.ts";
 import { listPending, listThreadsWithPending } from "./messaging.ts";
 import { finishRitualRun } from "./rituals.ts";
@@ -169,9 +169,15 @@ export const threadsLayer = Layer.effectContext(
         readApprovalTerms(threadId, turn.harness).pipe(Effect.provideService(Harness, harness)),
       );
       const { context, cwd, isInWorkspace, note } = yield* local(prepareStartingContext(threadId));
-      // A session that starts with no memory of the thread, after a handover, is given its conversation.
+      // A new session gets the whole conversation. Codex may omit interrupted input from its resumed context.
+      const interrupted =
+        turn.sessionId !== null && turn.harness === "codex"
+          ? yield* local(readInterruptedConversation(threadId, turn.turnId, turn.model))
+          : null;
       const history =
-        turn.sessionId === null ? yield* local(readConversationSoFar(threadId, turn.turnId, turn.model)) : null;
+        turn.sessionId === null
+          ? yield* local(readConversationSoFar(threadId, turn.turnId, turn.model))
+          : (interrupted?.text ?? null);
       const mcpUrl = yield* endpoints.urlFor(threadId);
       const onEvent = (event: HarnessEvent) =>
         Match.valueTags(event, {
@@ -219,7 +225,7 @@ export const threadsLayer = Layer.effectContext(
           effort: turn.effort,
           folderRoot: isInWorkspace ? cwd : scratchRoot,
           harness: turn.harness,
-          images: imagesOf(turn.attachments),
+          images: imagesOf([...(interrupted?.attachments ?? []), ...turn.attachments]),
           ...(turn.isBackgroundWake ? { isBackgroundWake: true } : {}),
           model: turn.model,
           note: history === null ? note : `${history}\n\n${note}`,
