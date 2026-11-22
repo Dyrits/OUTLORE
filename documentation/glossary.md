@@ -17,8 +17,8 @@ User-authored text and historical service messages are not rewritten.
 | Model selected to do the work | Companion |
 | Thread opened beneath another thread | Errand (formerly Side-quest, renamed 2026-11-18, CHG-0449 and CHG-0456) |
 | Grouping of missions with shared lore, tied or not to a workspace | Realm |
-| Autonomous mission, with no workspace and no shared lore | A quest in no realm, listed with the realms (the name Borderlands is retired in the interface, CHG-0449 and CHG-0458; code and stored values keep it) |
-| Control conversation | Guild Hall |
+| Autonomous mission, with no workspace and no shared lore | A quest in the Borderlands |
+| Control conversation | Chronicler's conversation (formerly Guild Hall) |
 | Entity the user talks with in Control | Chronicler (formerly Guildmaster, CHG-0173) |
 | Workflow | Craft |
 | Workflow run | Craft run |
@@ -27,7 +27,7 @@ User-authored text and historical service messages are not rewritten.
 | Idle (state) | Resting (stored value too; it is the owner's turn, CHG-0599) |
 | Done (state) | Fulfilled (stored value too, CHG-0599) |
 | Summons, Awaiting word (state names) | Retired as state names: the state is Attention, or Waiting, as stored (CHG-0599) |
-| Settings | Workshop (formerly Charter, CHG-0146) |
+| Settings | Workshop |
 
 Journal, briefing, harness, effort, budget, approval, and archive keep their meanings and names.
 Fulfilled is the ending a quest reaches when the owner marks it done, and a thread state; CHG-0599 brings the name back and replaces Done with it (the "Mark as done" action keeps its label for now). Fresh is a quest with nothing sent yet. Otherwise work remains Resting, Underway, Waiting, or asking for the owner (Attention) until the quest is archived.
@@ -90,7 +90,8 @@ _Avoid_: Mission dashboard, index, mission list, board, kanban
 The name of Chronicler's permanent conversation outside every quest. CHG-0449 retires the Guild Hall hub page and keeps the conversation in Chronicler's own panel. [Quest coordination](capabilities/mission-coordination/specifications.md#place)
 
 **Chronicler** (the assistant; formerly **Guildmaster**, CHG-0173):
-The app-wide assistant the user talks with in the Guild Hall to learn how the app works and to manage realms and quests. It proposes quests and never opens one without the user's confirmation.
+The app-wide assistant the user talks with in desktop conversation panes or from the narrow-screen top bar.
+It asks for the user's confirmation before opening a quest.
 _Avoid_: Coordinator, dispatcher, orchestrator, main thread, Mission control
 
 **Reply**:
@@ -122,7 +123,8 @@ Whom a thread may message and whose journal it may read beyond its own tree: wha
 _Avoid_: Permission, access, scope
 
 **Theme**:
-The app's look in colors and icons: One, Iskios, Black & white, or Gild. One is the default. The owner chooses it in the Workshop, and each theme comes in a dark and a light **Look**.
+The owner chooses One, Iskios, or Black & white in the Workshop.
+One is the default, and each theme comes in a dark and a light **Look**.
 _Avoid_: Skin, style
 
 **Look**:
@@ -133,7 +135,8 @@ _Avoid_: Mode, appearance
 The theme the app had as its own look before the rename to Outlore: a flat dark navy look, and the original application icon as the Dock icon.
 
 **Gild**:
-The theme with brown, gilt, and parchment colors and a hooded figure as the Dock icon. CHG-0449 records its planned removal.
+The retired theme with brown, gilt, and parchment colors.
+CHG-0457 removed it from the theme picker.
 
 **One**:
 The neutral theme based on Zed's One Light and One Dark colors. It is the default theme. It keeps the original application icon and the shared sidebar drawings.
@@ -149,20 +152,25 @@ The place for generated and uploaded artifacts, including those from quests with
 Collection and lifecycle behavior remain to be specified.
 
 **Workshop**:
-The page of application settings, accounts, permissions, and defaults, shown one section at a time: Permissions, Look and feel, Providers (computer name, harnesses, accounts), Companions (the default Companion and the Light, Balanced, and Heavy presets), Remote access, Messaging, Limits, and Updates. Formerly the Charter (CHG-0146), which is now a separate place in the sidebar (see Charter).
+The application settings page, opened from the gear in the desktop top bar or the Workshop row in the narrow-screen menu.
+It shows one section at a time from Permissions, Look and feel, Providers, Companions, Connectors, Remote access, Messaging, Limits, Reserves, and Updates.
 
 **Charter**:
-Where the owner manages what Outlore connects to: the Connectors and The Vault (CHG-0321). It is not the Workshop, though the Workshop bore its name until CHG-0146; it works like a marketplace for connectors and holds nothing else. Since 2026-11-18 (CHG-0449, CHG-0457) it is no place in the sidebar but the **Connectors** section of the Workshop (Settings).
+The former sidebar destination for Connectors and The Vault.
+The owner now manages them under **Workshop → Connectors** (CHG-0449, CHG-0457).
 
 **The menu**:
-The one button at the foot of the sidebar (CHG-0449, CHG-0457) that opens every place other than Chronicler, the Realms and quests: Lore, Archive, Reserves and Settings (Rituals have no place of their own since CHG-0616; they live in the realms' lists beside the quests). On a phone the menu button shows the whole sidebar as a screen, with the same menu at its foot (CHG-0454).
+On a narrow screen, the top bar's menu button opens the sidebar as a screen.
+The Workshop row is at its foot.
 
 **Connector**:
 A named integration that gives threads the tools of one outside service or app, installed once by the owner from the list Outlore offers. It is **installed** (on this computer, global), **connected** (given a key, a sign-in or a permission) and **enabled** (switched on for a realm, the Borderlands or a quest); a thread can use it only when all three hold ([connectors](capabilities/connectors/specifications.md)).
 _Avoid_: Plugin, integration, MCP server (the way a connector is delivered is a technical choice)
 
 **Code Mode**:
-An experimental global setting (off by default, in the Charter) under which a thread reaches the tools of Outlore's tool server, its connectors' tools and Outlore's own thread tools except the four that stay direct, by writing a short piece of code that one tool, `run_code`, runs, instead of having each tool listed and called one by one (CHG-0324, CHG-0446, CHG-0447). Never a harness's own Bash, file or editing tools.
+An experimental global setting under **Workshop → Connectors**, off by default.
+When it is on, a thread can call connector and thread tools by running short pieces of code through `run_code`.
+Four thread tools and the harness's own tools stay directly callable (CHG-0324, CHG-0446, CHG-0447).
 
 **The Vault**:
 Where the host keeps connectors' secrets, shown to the owner by connector, kind and date and never by value.
@@ -178,7 +186,9 @@ _Avoid_: Project, repo, directory
 A grouping of quests with lore shared across its quests. A realm may be tied to one workspace (a repository or folder) or tied to none.
 
 **Borderlands**:
-The stored placement of quests with no realm. These quests have their own lore and global lore. Under CHG-0449 they appear as ordinary quest rows after the realm groups, with no separate heading, marker, or page. [Simplified left navigation](capabilities/mission-tracking/specifications.md#simplified-left-navigation) · [ADR 0015](architecture-decision-record/0015-realms-tied-or-not-and-one-borderlands.md)
+The sidebar section and stored placement for quests with no realm.
+These quests have their own lore and global lore.
+The desktop sidebar also opens the Borderlands conversation. [ADR 0015](architecture-decision-record/0015-realms-tied-or-not-and-one-borderlands.md)
 _Avoid_: Free Realm, Realmless
 
 **Browsable root**:
@@ -337,7 +347,7 @@ Outlore opened in a browser, on a phone or a computer, with nothing installed. I
 _Avoid_: Phone web app, web client
 
 **Mobile app**:
-Outlore installed on a phone from a store (later).
+Outlore installed on an Android phone from the release APK.
 _Avoid_: Native app
 
 **Paired device**:
@@ -345,7 +355,10 @@ A desktop app, web app, or mobile app connected to a host by a pairing code or l
 _Avoid_: Remote, client
 
 **Host**:
-The computer whose Outlore runs the threads, terminals, and folder work that the apps show. It keeps its own name, which the owner can change from the host or from a paired device. With **Keep running after quitting** on, it stays up after its desktop app quits.
+The computer whose Outlore runs the threads, conversation terminals, and folder work.
+It keeps its own name, which the owner can change from the host or a paired device.
+The desktop app starts and stops the host service.
+[ADR 0018](architecture-decision-record/0018-host-service-runs-on-its-own.md) describes the planned **Keep running after quitting** option.
 _Avoid_: Server, remote, daemon
 
 **Screen view**:

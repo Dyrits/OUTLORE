@@ -1,4 +1,8 @@
-This is Outlore's one Expo/React Native app (ADR 0009). Its web build (`react-native-web`) currently runs in the Electron desktop window. A browser with no desktop bridge can pair with a running host (CHG-0286, checked against a local relay); the shared relay serves the build (CHG-0287; a real pairing from another network is not yet seen), and phone layouts are not reviewed; the release workflow builds an Android APK of this same app (CHG-0298), with no local service, its pairings in the secure store and `crypto` from `expo-crypto` (`src/foundation/native/`); see the [architecture](../../documentation/architecture.md). Make changes work on web first and keep them portable to native.
+This Expo/React Native app builds for Electron, browsers, and Android.
+The Electron window uses the web build, and the relay serves the web build for browsers that pair with a running desktop host.
+The Android APK uses the desktop host and stores its pairings in the phone's secure store.
+See the [architecture](../../documentation/architecture.md#parts) for the boundaries.
+Make changes work on web first and keep them portable to native.
 
 ## Expo has changed — do not trust your training data
 
@@ -11,14 +15,15 @@ Expo ships breaking changes every SDK release. APIs you remember are likely rena
 ## Commands
 
 Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
+Use `bunx expo install <package>` for Expo dependencies so the CLI selects SDK-compatible versions.
 
 ```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
+bunx expo install <package> # Resolves SDK-compatible versions.
+bunx expo start             # Starts the dev server.
 bun run check               # lint and format check (Biome, from the repository root; not expo lint)
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
+bun run typecheck           # Typechecks the workspace.
+bunx expo-doctor            # Diagnoses dependency and configuration issues.
+bunx expo install --fix     # Fixes incompatible package versions.
 ```
 
 Run `bun run check` and `bun run typecheck` before declaring any task done.
@@ -28,6 +33,8 @@ Run `bun run check` and `bun run typecheck` before declaring any task done.
 The app switches screens with component state; there is no router. Add one (Expo Router) when the app needs addressable routes.
 
 ## Building with EAS
+
+Outlore's [release workflow](../../.github/workflows/package.yml) builds and signs the Android APK with Expo prebuild and Gradle.
 
 Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
 Docs: https://docs.expo.dev/eas/index.md

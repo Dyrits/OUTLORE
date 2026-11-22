@@ -1,6 +1,9 @@
 # First slice design
 
-Status: technical design under review. The user accepted Claude Code, the staged slice, and the package and module boundaries (CHG-0024). Detailed interfaces, storage behavior, dependency gates, and tooling remain proposals. No implementation or harness conformance check has run.
+This page records the design before implementation.
+At that point the user had accepted Claude Code, the staged slice, and the package and module boundaries (CHG-0024).
+Detailed interfaces, storage behavior, dependency gates, and tooling were still proposals.
+See the [architecture](architecture.md) for the current implementation and the [batch records](work-in-progress.md#batch-1-delivered) for delivery and checks.
 
 ## Boundary
 
