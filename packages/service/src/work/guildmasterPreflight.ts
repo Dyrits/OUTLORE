@@ -48,30 +48,60 @@ export const readQuestAction = Effect.fnUntraced(function* (args: ArgumentsOf<"a
   return { _tag: "Clear", ids, quest } as const;
 });
 
-/** `create_ritual`: the origin quest it names when there is one, and the realm, and the title as stored, after the shared refusals. */
-export const readRitualPreflight = Effect.fnUntraced(function* (args: ArgumentsOf<"create_ritual">) {
+/** Resolves Ritual creation in the caller's realm and binds its origin and destination to approval. */
+export const readRitualPreflight = Effect.fnUntraced(function* (callerId: string, args: ArgumentsOf<"create_ritual">) {
   const sql = yield* SqlClient.SqlClient;
   if (args.instruction.trim() === "" || titleOf(args.title) === "") return refusal("Give an instruction and a title.");
-  const { isNamed, realm } = yield* readOptionalRealm(args.realm);
-  if (isNamed && realm === null)
-    return refusal(`Not created: no realm "${args.realm}". Name one of the realms in your context, or leave it out.`);
-  // The quest a Ritual is made from names its realm (rituals, Creation); nothing else of the quest comes along.
+  const [caller] = yield* sql<{
+    missionId: string;
+    isControl: number;
+    channel: string | null;
+    ritualId: string | null;
+  }>`SELECT m.id AS missionId, m.is_guildmaster AS isControl, m.chronicler_channel AS channel,
+      r.id AS ritualId FROM threads t JOIN missions m ON m.id = t.mission_id
+      LEFT JOIN rituals r ON r.mission_id = m.id WHERE t.id = ${callerId} AND t.is_deleting = 0`;
+  if (caller === undefined || caller.ritualId !== null) return refusal("A Ritual run cannot create a Ritual.");
+  const isLegacyConversation = caller.isControl === 1 && caller.channel === null;
+  if (!isLegacyConversation && (args.realm !== undefined || args.origin !== undefined))
+    return refusal("Leave realm and origin out. Outlore uses this conversation's realm and quest.");
+  if (args.realm !== undefined && args.origin !== undefined) return refusal("Give realm or origin, not both.");
+  const originMissionId = caller.isControl === 0 ? caller.missionId : args.origin?.trim() || null;
   const [origin] =
-    args.origin === undefined || args.origin.trim() === ""
+    originMissionId === null
       ? []
-      : yield* sql<{ missionId: string; realmName: string | null; realmPath: string | null }>`
-          SELECT m.id AS missionId, w.name AS realmName, w.path AS realmPath
-          FROM missions m JOIN threads t ON t.id = m.top_thread_id
-          LEFT JOIN workspaces w ON w.id = t.workspace_id
-          WHERE m.id = ${args.origin} AND m.is_guildmaster = 0 AND t.is_deleting = 0`;
-  if (args.origin !== undefined && args.origin.trim() !== "" && origin === undefined)
-    return refusal(
-      `Not created: no quest "${args.origin}". Give a quest's id as your context shows it, or leave the origin out.`,
-    );
+      : yield* sql<{
+          realmId: string | null;
+          name: string | null;
+          path: string | null;
+          archivedAt: number | null;
+        }>`SELECT w.id AS realmId, w.name, w.path, w.archived_at AS archivedAt
+    FROM missions m JOIN threads t ON t.id = m.top_thread_id
+    LEFT JOIN workspaces w ON w.id = t.workspace_id
+    WHERE m.id = ${originMissionId} AND m.is_guildmaster = 0 AND t.is_deleting = 0
+      AND NOT EXISTS (SELECT 1 FROM rituals WHERE mission_id = m.id)`;
+  if (originMissionId !== null && origin === undefined) return refusal("No such origin quest.");
+  const [channelRealm] =
+    caller.channel === null || caller.channel === "borderlands"
+      ? []
+      : yield* sql<{
+          realmId: string;
+          name: string;
+          path: string | null;
+          archivedAt: number | null;
+        }>`SELECT id AS realmId, name, path, archived_at AS archivedAt FROM workspaces WHERE id = ${caller.channel}`;
+  if (caller.channel !== null && caller.channel !== "borderlands" && channelRealm === undefined)
+    return refusal("This conversation's realm no longer exists.");
+  const destination = origin ?? channelRealm;
+  if (destination !== undefined && destination.archivedAt !== null)
+    return refusal("Restore this archived realm before creating a Ritual.");
+  const { isNamed, realm: namedRealm } = yield* readOptionalRealm(args.realm);
+  if (isNamed && namedRealm === null) return refusal(`Not created: no realm "${args.realm}".`);
+  const realm = destination?.name == null ? namedRealm : { name: destination.name, path: destination.path };
   return {
     _tag: "Clear",
-    originMissionId: origin?.missionId ?? null,
+    originMissionId,
     realm,
+    realmId: destination?.realmId ?? null,
     title: ritualTitleOf(args.title),
   } as const;
 });

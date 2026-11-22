@@ -12,6 +12,7 @@ import { readRitualPreflight, readSettingChange } from "./guildmasterPreflight.t
 import { clip, placeOf, threadsLineOf } from "./guildmasterText.ts";
 import { isRitualRunTurn, readOwnerTexts } from "./messageProvenance.ts";
 import { deriveRealmCreation, deriveRealmRename } from "./realmActions.ts";
+import { readRitualEdit } from "./ritualEdits.ts";
 import { coveringEntryOf, type ScopedAction } from "./ritualScope.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 import { titleOf } from "./titles.ts";
@@ -24,7 +25,13 @@ import { readRunningTurnId } from "./turnAdmission.ts";
 // messages, reports, a Ritual's run message) is never the owner's.
 
 /** The tools that change the app's structure, each derived and authorized here before it runs. */
-export type StructuralTool = "act_on_mission" | "change_setting" | "create_realm" | "rename_realm" | "create_ritual";
+export type StructuralTool =
+  | "act_on_mission"
+  | "change_setting"
+  | "create_realm"
+  | "rename_realm"
+  | "create_ritual"
+  | "edit_ritual";
 
 /** A structural action as the service derived it from a tool call. */
 type DerivedAction = {
@@ -56,11 +63,11 @@ const readRitualOfThread = Effect.fnUntraced(function* (threadId: string) {
 });
 
 /**
- * Whether the thread may take a structural action at all: Chronicler always; a Ritual's own thread only for acting on a
- * quest or changing a setting, which its scope can cover. Any other thread is refused by the tool itself.
+ * Ritual creation and editing check their callers during preflight. Other structural tools are limited to the
+ * control conversation and actions a Ritual run can take on a quest or setting.
  */
 export const isStructuralCaller = Effect.fnUntraced(function* (threadId: string, tool: StructuralTool) {
-  if (yield* isGuildmasterThread(threadId)) return true;
+  if (tool === "create_ritual" || tool === "edit_ritual" || (yield* isGuildmasterThread(threadId))) return true;
   if (!structuralTools[tool].canRitualCall) return false;
   return (yield* readRitualOfThread(threadId)) !== null;
 });
@@ -84,6 +91,7 @@ type StructuralSpec<Tool extends StructuralTool> = {
   /** The structural action the call would take; null when the tool's own checks will refuse it. */
   readonly derive: (
     args: ArgumentsOf<Tool>,
+    callerId: string,
   ) => Effect.Effect<Found | null, ServiceFailure | SqlError, SqlClient.SqlClient>;
 };
 
@@ -153,10 +161,10 @@ const deriveSettingChange = Effect.fnUntraced(function* (args: ArgumentsOf<"chan
 });
 
 /** `create_ritual` as a structural action: the Ritual with its Companion, realm, and schedule, always asked. */
-const deriveRitualCreation = Effect.fnUntraced(function* (args: ArgumentsOf<"create_ritual">) {
-  const checked = yield* readRitualPreflight(args);
+const deriveRitualCreation = Effect.fnUntraced(function* (args: ArgumentsOf<"create_ritual">, callerId: string) {
+  const checked = yield* readRitualPreflight(callerId, args);
   if (checked._tag === "Refused") return null;
-  const { realm, title } = checked;
+  const { originMissionId, realm, realmId, title } = checked;
   const { companion, fallbacks } = ritualStartOf(yield* readSettings, args);
   return {
     details: { companion, fallbacks, instruction: args.instruction, schedule: args.schedule },
@@ -165,8 +173,23 @@ const deriveRitualCreation = Effect.fnUntraced(function* (args: ArgumentsOf<"cre
     // A Ritual runs unattended, so the owner always sees its instruction, schedule, realm, and Companion before it
     // exists: naming the title in a message authorizes none of them (audit SA-01, SA-05).
     shouldAsk: true,
-    state: { companion, realm, title },
+    state: { companion, fallbacks, originMissionId, realm, realmId, title },
     summary: `Create the Ritual "${title}", ${JSON.stringify(args.schedule)}, ${placeOf(realm)}, on ${companion.harness} ${companion.model}${fallbackNoteOf(fallbacks, args.tier ?? null)}.`,
+  } satisfies Found;
+});
+
+/** Derives the exact edit and the current configuration the owner's approval depends on. */
+const deriveRitualEdit = Effect.fnUntraced(function* (args: ArgumentsOf<"edit_ritual">, callerId: string) {
+  const checked = yield* readRitualEdit(callerId, args);
+  if (checked._tag === "Refused") return null;
+  const { before, changes, realm, ritualId } = checked;
+  return {
+    details: { changes, realm },
+    named: { operation: "EditRitual", targets: [before.title], value: null },
+    scoped: null,
+    shouldAsk: true,
+    state: { before, realm, ritualId },
+    summary: `Edit the Ritual "${before.title}" ${placeOf(realm)}.`,
   } satisfies Found;
 });
 
@@ -176,6 +199,7 @@ const structuralTools: { readonly [Tool in StructuralTool]: StructuralSpec<Tool>
   change_setting: { canRitualCall: true, derive: deriveSettingChange },
   create_realm: { canRitualCall: false, derive: deriveRealmCreation },
   create_ritual: { canRitualCall: false, derive: deriveRitualCreation },
+  edit_ritual: { canRitualCall: false, derive: deriveRitualEdit },
   rename_realm: { canRitualCall: false, derive: deriveRealmRename },
 };
 
@@ -190,7 +214,7 @@ export const deriveAction = Effect.fnUntraced(function* <Tool extends Structural
   if (turnId === null) return null;
   const base = { args, callerId, tool, turnId };
   const spec: StructuralSpec<Tool> = structuralTools[tool];
-  const found = yield* spec.derive(args);
+  const found = yield* spec.derive(args, callerId);
   if (found === null) return null;
   return {
     details: JSON.stringify({ action: found.named.operation, ...(found.details ?? {}), state: found.state }, null, 2),

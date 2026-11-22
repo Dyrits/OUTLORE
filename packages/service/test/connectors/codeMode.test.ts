@@ -5,7 +5,7 @@ import { maxWorkStartsPerRun } from "../../src/connectors/index.ts";
 import { Endpoints } from "../../src/core/index.ts";
 import { isCoveredByCodeMode, threadTools } from "../../src/work/threadTools.ts";
 import { fakeGateway, serviceWithGateway } from "../fixtures/connectors.ts";
-import { approvedCall, guildmaster, startIdle } from "../fixtures/guildmaster.ts";
+import { approvedCall, startIdle } from "../fixtures/guildmaster.ts";
 import { callTool, listToolNames, listTools } from "../fixtures/mcp.ts";
 import { call, fixture, read, send, settle, start } from "../fixtures/service.ts";
 import { folderIn } from "../work/guildmasterHelpers.ts";
@@ -205,7 +205,7 @@ describe("calling Outlore's own tools from code", () => {
     Effect.gen(function* () {
       const direct = yield* start();
       const refused = yield* callTool(direct.threadId, "create_ritual", {
-        instruction: "Ping",
+        instruction: "",
         schedule: { _tag: "Daily", time: "07:00" },
         title: "Ping",
       });
@@ -213,9 +213,9 @@ describe("calling Outlore's own tools from code", () => {
       yield* turnCodeModeOn;
       const coded = yield* start();
       const fromCode = yield* callTool(coded.threadId, "run_code", {
-        code: "async () => { const reasons = []; for (const call of [() => outlore.create_ritual({ instruction: 'Ping', schedule: { _tag: 'Daily', time: '07:00' }, title: 'Ping' }), () => outlore.send_thread_message({})]) { try { await call(); } catch (error) { reasons.push(error.message); } } return reasons; }",
+        code: "async () => { const reasons = []; for (const call of [() => outlore.create_ritual({ instruction: '', schedule: { _tag: 'Daily', time: '07:00' }, title: 'Ping' }), () => outlore.send_thread_message({})]) { try { await call(); } catch (error) { reasons.push(error.message); } } return reasons; }",
       });
-      expect(textOf(refused)).toBe("Only Chronicler creates Rituals.");
+      expect(textOf(refused)).toBe("Give an instruction and a title.");
       expect(textOf(invalid)).toBe("Invalid arguments: give to and text.");
       expect(JSON.parse(textOf(fromCode))).toEqual([textOf(refused), textOf(invalid)]);
     }).pipe(Effect.provide(serviceWithGateway(noConnectorsLayer))),
@@ -278,12 +278,14 @@ describe("a tool that asks the owner, called from code", () => {
     const { directory, layer } = fixture();
     return Effect.gen(function* () {
       yield* turnCodeModeOn;
-      yield* startIdle("Existing work", folderIn(directory, "app"));
-      const place = yield* guildmaster;
-      const code = `async () => outlore.create_ritual({ instruction: 'Say hello to me', realm: 'app', schedule: { _tag: 'Hourly', hours: 1 }, title: 'Hourly hello' })`;
+      const place = yield* startIdle("Existing work", folderIn(directory, "app"));
+      const code = `async () => outlore.create_ritual({ instruction: 'Say hello to me', schedule: { _tag: 'Hourly', hours: 1 }, title: 'Hourly hello' })`;
       const text = yield* approvedCall(place, "run_code", { code });
       expect(text).toContain('Created the Ritual "Hourly hello"');
-      expect(yield* call({ _tag: "ListRituals" })).toHaveLength(1);
+      expect(yield* call({ _tag: "ListRituals" })).toMatchObject([{ originMissionId: place.missionId }]);
+      const edit = 'async () => outlore.edit_ritual({ instruction: "Wave hello", ritual: "Hourly hello" })';
+      expect(yield* approvedCall(place, "run_code", { code: edit })).toContain('Edited the Ritual "Hourly hello"');
+      expect(yield* call({ _tag: "ListRituals" })).toMatchObject([{ instruction: "Wave hello" }]);
     }).pipe(Effect.provide(layer));
   });
 });

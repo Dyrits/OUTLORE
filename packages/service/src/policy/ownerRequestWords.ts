@@ -1,7 +1,7 @@
 import type { RitualScopeOperation } from "@outlore/contracts";
 
 /** The structural actions the service derives from Chronicler's tool calls. */
-export type StructuralOperation = RitualScopeOperation | "CreateRealm" | "RenameRealm" | "CreateRitual";
+export type StructuralOperation = RitualScopeOperation | "CreateRealm" | "RenameRealm" | "CreateRitual" | "EditRitual";
 
 /** One structural action as the owner would name it: what, on which target, and to what new value. */
 export type NamedAction = {
@@ -53,6 +53,7 @@ export const vocabulary = {
     "fini",
     "finie",
   ]),
+  EditRitual: operationWords(["edit", "modifier"], ["ritual", "rituel"]),
   Rename: operationWords(rename),
   RenameRealm: operationWords(rename, ["realm", "royaume"]),
   Stop: operationWords(["stop", "stops", "halt", "arrête", "arrete", "arrêter", "arreter", "stoppe", "stopper"]),

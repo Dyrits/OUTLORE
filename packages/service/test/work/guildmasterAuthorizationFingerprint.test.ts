@@ -90,7 +90,7 @@ describe("fingerprinting a structural action for its authorization receipt", () 
         fingerprintOf(
           "create_ritual",
           ritual,
-          '{"companion":{"accountId":null,"effort":"default","harness":"claude","model":"default"},"realm":null,"title":"Hourly hello"}',
+          '{"companion":{"accountId":null,"effort":"default","harness":"claude","model":"default"},"fallbacks":[],"originMissionId":null,"realm":null,"realmId":null,"title":"Hourly hello"}',
         ),
       );
       expect(Object.keys(JSON.parse(created?.details ?? "{}"))).toEqual([

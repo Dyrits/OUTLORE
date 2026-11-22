@@ -21,12 +21,12 @@ import { readAppGuideByGuildmaster } from "./guildmasterGuide.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";
 import { withProvenance } from "./guildmasterProvenance.ts";
 import { createRealmByGuildmaster, renameRealmByGuildmaster } from "./guildmasterRealms.ts";
-import { createRitualByGuildmaster, refuseRitual } from "./guildmasterRituals.ts";
 import { changeSettingByGuildmaster, readSettingsByGuildmaster } from "./guildmasterSettings.ts";
 import { journalToolsOf } from "./journalTools.ts";
 import { loreToolsOf } from "./loreTools.ts";
 import { insertMessage } from "./messaging.ts";
 import { mayMessage } from "./reach.ts";
+import { createRitualByThread, editRitualByThread, refuseRitual } from "./ritualTools.ts";
 import type { Resolution, Suggested, Suggestions } from "./suggestions.ts";
 import type { Threads } from "./threads.ts";
 import { type ArgumentsOf, type ToolHandlers, threadTools as toolCatalogue } from "./threadTools.ts";
@@ -141,6 +141,18 @@ export const makeToolHandlers = (dependencies: {
   const commit = <A, E>(work: Effect.Effect<A, E, SqlClient.SqlClient>) =>
     runTool(Effect.map(work, (value) => changed(value)));
 
+  const runRitualTool = (operation: ReturnType<typeof createRitualByThread>) =>
+    runTool(
+      operation.pipe(Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refuseRitual(failure.message)))),
+    ).pipe(
+      Effect.map(
+        Match.valueTags({
+          Done: ({ text }) => toolText(text),
+          Refused: ({ reason }) => toolRefusal(reason),
+        }),
+      ),
+    );
+
   const openThread = (
     threadId: string,
     { effort, harness, model, ownCopy, replyToMessageId, request, title }: ArgumentsOf<"open_thread">,
@@ -206,18 +218,11 @@ export const makeToolHandlers = (dependencies: {
       ),
     create_ritual: (threadId, args) =>
       withProvenance(approvals, commit, threadId, "create_ritual", args, (authorize) =>
-        runTool(
-          authorize(createRitualByGuildmaster(threadId, args)).pipe(
-            Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refuseRitual(failure.message))),
-          ),
-        ).pipe(
-          Effect.map((outcome) =>
-            Match.valueTags(outcome, {
-              Created: ({ text }) => toolText(text),
-              Refused: ({ reason }) => toolRefusal(reason),
-            }),
-          ),
-        ),
+        runRitualTool(authorize(createRitualByThread(threadId, args))),
+      ),
+    edit_ritual: (threadId, args) =>
+      withProvenance(approvals, commit, threadId, "edit_ritual", args, (authorize) =>
+        runRitualTool(authorize(editRitualByThread(threadId, args))),
       ),
     find_missions: suggestions.findMissions,
     interrupt_thread: Effect.fnUntraced(function* (

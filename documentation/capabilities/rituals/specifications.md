@@ -1,6 +1,6 @@
 # Rituals
 
-Status: the entity model was agreed on 2026-11-21 (CHG-0616): a Ritual is a top-level entity of a realm, beside the quests, and each run opens an errand beneath it. It **replaces** the built model of 2026-11-10 (one quest per Ritual, each run a turn in that quest's main thread, kept in a separate Rituals place; CHG-0098, CHG-0100) and is **not built yet**: the current build still runs the old model, and the implementation batch follows. Everything the owner did not decide is **provisional** until the owner reviews it.
+Status: the realm entity model was agreed in CHG-0616 and delivered in CHG-0619. CHG-0626 extends the agent tools to realm conversations, quests, and errands.
 
 ## Problem and outcome
 
@@ -15,11 +15,11 @@ The owner repeats the same request: a morning digest, a weekly dependency check.
 - **A journal like a quest's**: a briefing and a change log shared by every run and updated as it works ([mission-journal](../mission-journal/specifications.md)), so each run starts from where the last left off.
 - **Creation** has three ways in:
   - An open quest's panel offers **Schedule as a Ritual**, which opens the form with the realm already taken from that quest. The new Ritual keeps a visible **origin link** to that quest on its card and in its panel — a link, nothing else inherited (no shared conversation, journal, or lore beyond the realm's).
-  - Chronicler's `create_ritual` ([mission-coordination](../mission-coordination/specifications.md#rituals)).
+  - A realm conversation can propose a Ritual in its own realm, including realms without a folder. An ordinary quest or errand can propose a Ritual in the quest's realm, with an origin link to the quest. Creation waits for the owner's approval of the title, instruction, schedule, realm, and Companion.
   - A **+ Ritual** button beside the realm's quests.
 - **Where runs work**: a run works in the Ritual's realm — its workspace and its lore, with thread-scoped lore beneath the Ritual like an errand's beneath its quest. Moving a Ritual to another realm is not offered.
 - **Budget**: a Ritual has a budget of its own, shown as a ring in its panel like a quest's, and a line on the dashboard's spending. A run that meets a reached budget waits in Attention, as any thread does ([budget-control](../budget-control/specifications.md)).
-- **Edit**: every field can be edited from the panel. A change applies to the next run; the next time is worked out again only when the schedule or the switch changed.
+- **Edit**: every field can be edited from the panel. An ordinary quest or errand can propose an edit to a Ritual in its quest's realm by exact title or Ritual ID. If a title is shared, the caller supplies the ID. The owner sees the target and the proposed field changes in one Allow or Deny question. Denial or a change to the target's configuration before approval leaves it as it stands. The owner edits the reviewed scope from the form. A change applies to the next run; the next time is worked out again only when the schedule or the switch changed.
 - **Delete**: one confirmation, naming what is lost — the Ritual, its runs' errands, and its history are removed permanently. Switching a Ritual off keeps its history; deleting it does not.
 - **Realm archive**: archiving a realm names its Rituals, switches them off, stops a run underway, and keeps each Ritual in place with its instruction and history, marked **Realm archived**. While the realm is archived a Ritual cannot be switched on or run. Restore and Start afresh leave the Rituals off until the owner switches them on (CHG-0270 carries over to the entity model).
 
@@ -44,7 +44,8 @@ The owner repeats the same request: a morning digest, a weekly dependency check.
 - Webhook and event triggers (they need the relay Worker).
 - Catching up missed runs, jitter, and time zones other than the computer's.
 - Moving a Ritual between realms, or opening an errand beneath a Ritual by hand (its runs are the errands). To repeat work with variations, create a second Ritual (they each have their own journal) or run a quest.
-- A Ritual created by a thread tool, except by Chronicler, whose `create_ritual` makes one at the owner's request ([mission-coordination](../mission-coordination/specifications.md#rituals)).
+- Sub-hour schedules and daily time windows.
+- Creation or editing by a Ritual's own runs.
 
 ## Provisional choices to review
 
@@ -59,8 +60,10 @@ The owner repeats the same request: a morning digest, a weekly dependency check.
 
 ## Acceptance and validation
 
-Agreed checks when the model is built (the old model's checks, in [verification](../../verification/), describe the built behavior being replaced):
+These checks cover the current model. The per-action approval requirement applies to both tool operations. See [Approval per action](../../requirements.md#safety).
 
+- Tool creation from a realm conversation uses its own realm. Tool creation from a quest or errand links to its quest. No record exists before the owner approves.
+- A quest or errand can edit an exact Ritual in its realm. Only approved fields change. Denial or a stale approval leaves the stored configuration as it stands.
 - A scheduled run opens an errand beneath the Ritual with its trigger line; one not due, or off, does not (test clock).
 - A run missed beyond the grace is skipped and the Ritual moves to its next time; a run whose predecessor is still Underway is skipped when scheduled, and Run now is refused with the reason.
 - A scheduled run that cannot start leaves a Failed line with the reason and no partial writes (removed account; an injected failing write).

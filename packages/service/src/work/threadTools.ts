@@ -1,4 +1,4 @@
-import { EffortChoice, HarnessName, ModelChoice, RitualSchedule, TierName } from "@outlore/contracts";
+import { EffortChoice, HarnessName, ModelChoice, RitualSchedule, TierName, UpdateRitual } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import { type ToolAnswer, toolRefusal, toolText } from "../core/index.ts";
 import { latestEntryCount, nothingToRecord } from "./journal.ts";
@@ -95,7 +95,7 @@ export const threadTools = {
   }),
   create_ritual: definitionOf({
     description:
-      "Only Chronicler uses it. Create a Ritual: an instruction that runs by itself on a schedule, an entity of its realm beside the quests, for anything the owner wants done repeatedly (every hour, every morning, weekly). Use it, not a quest, for a repeating request. Pick the preset that fits; there is no cron. Check the Rituals in your context first, so the same one is not made twice. It always asks the owner one Allow or Deny question with its title, schedule, realm, Companion, and instruction, and waits; naming the title in a message is not enough. It starts on and runs when next due; each run is an errand beneath the Ritual, and its whole history shows in the Ritual's own conversation. Its runs may take no structural action unasked until the owner sets its scope in the Ritual's form; its instruction never grants any.",
+      "Propose a scheduled Ritual in this conversation's realm. From a quest or errand, Outlore links it to that quest. Pick the schedule preset that fits. It always asks the owner one Allow or Deny question with its title, schedule, realm, Companion, and instruction, and waits; naming the title in a message is not enough. It starts on and runs when next due; each run is an errand beneath the Ritual, and its whole history shows in the Ritual's own conversation. Its runs may take no structural action unasked until the owner sets its scope in the Ritual's form; its instruction never grants any.",
     invalid: toolRefusal(
       "Invalid arguments: give instruction, title, and schedule (Daily, Weekdays, Weekly, Monthly, or Hourly).",
     ),
@@ -108,10 +108,10 @@ export const threadTools = {
       instruction: text("What each run does, complete enough to act on: a run sees none of your conversation."),
       model: Schema.optionalKey(ModelChoice.annotate({ description: "The model. Yours when left out." })),
       origin: optionalText(
-        "The id of the quest this Ritual comes from, as your context shows it. The Ritual then lives in that quest's realm, keeping a visible link to the quest. Give origin or realm, not both.",
+        "Leave out in a realm conversation, quest, or errand. The original control conversation can specify an origin quest by id.",
       ),
       realm: optionalText(
-        "The name or folder of one of the realms in your context, when the Ritual lives there. Leave it out when you pass origin, which names the realm instead.",
+        "Leave out in a realm conversation, quest, or errand. The original control conversation can name a realm when it gives no origin.",
       ),
       schedule: RitualSchedule.annotate({
         description:
@@ -124,6 +124,35 @@ export const threadTools = {
         }),
       ),
       title: text("A short title of a few words, at most 80 characters."),
+    }),
+  }),
+  edit_ritual: definitionOf({
+    description:
+      "From a quest or errand, propose changes to a Ritual in your realm. Give its exact title or Ritual id and the fields to change. The owner sees the proposed changes and must approve them. Changes take effect on the next run.",
+    invalid: toolRefusal("Give a Ritual title or id and the fields to change."),
+    isUnasked: true,
+    schema: Schema.Struct({
+      fallbacks: Schema.optionalKey(
+        UpdateRitual.fields.fallbacks.annotate({
+          description: "Replacement fallback Companions, in order. An empty list removes the current fallbacks.",
+        }),
+      ),
+      instruction: Schema.optionalKey(
+        UpdateRitual.fields.instruction.annotate({ description: "Replacement instruction for the next run." }),
+      ),
+      isOn: Schema.optionalKey(
+        UpdateRitual.fields.isOn.annotate({ description: "Whether the Ritual should run automatically." }),
+      ),
+      primary: Schema.optionalKey(
+        UpdateRitual.fields.primary.annotate({ description: "Replacement primary Companion for the next run." }),
+      ),
+      ritual: text("Exact title or Ritual id."),
+      schedule: Schema.optionalKey(
+        UpdateRitual.fields.schedule.annotate({
+          description: "Replacement schedule preset in the computer's local time.",
+        }),
+      ),
+      title: Schema.optionalKey(UpdateRitual.fields.title.annotate({ description: "Replacement title." })),
     }),
   }),
   find_missions: definitionOf({

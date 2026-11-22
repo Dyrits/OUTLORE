@@ -12,7 +12,7 @@ import type { ArgumentsOf } from "./threadTools.ts";
 import { renameMission, titleOf } from "./titles.ts";
 
 // Acting on quests and reading Chronicler's own history, its tools beside the files that hold its place
-// (guildmasterPlace.ts), its context (guildmasterContext.ts), its Rituals (guildmasterRituals.ts) and its reports.
+// (guildmasterPlace.ts), its context (guildmasterContext.ts), and its reports.
 
 // ----- Acting on quests, at the owner's request -----
 

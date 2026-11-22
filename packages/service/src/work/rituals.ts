@@ -157,6 +157,8 @@ export const createRitual = Effect.fnUntraced(function* (input: {
   readonly originMissionId: string | null;
   readonly primary: RitualCompanion;
   readonly realm: { name: string } | null;
+  /** The realm conversation that made the Ritual, when it has no origin quest. */
+  readonly realmId?: string | null;
   readonly schedule: RitualSchedule;
   readonly title: string;
   readonly workspacePath: string | null;
@@ -166,10 +168,10 @@ export const createRitual = Effect.fnUntraced(function* (input: {
   const quest = yield* insertQuest(
     {
       firstMessage: null,
-      ...(originRealmId === undefined ? {} : { realmId: originRealmId }),
       isTitleByOwner: true,
       // An origin quest names the realm; folder and realm names matter only when there is none.
       realm: originRealmId === undefined ? input.realm : null,
+      realmId: originRealmId === undefined ? (input.realmId ?? null) : originRealmId,
       shouldRememberChoices: false,
       title: input.title,
     },
