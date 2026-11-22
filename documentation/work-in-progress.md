@@ -1,5 +1,9 @@
 # Work in progress
 
+## Errand draft's Companions footer · 2026-11-22 · window check pending
+
+CHG-0631 gives a new errand's Companions tab its own compact model-and-effort picker at the pane's foot (selected, as a saved errand's pane) and the compact picker names a Default effort. CHG-0632 makes the Vault live-probe fixture read backtick-quoted paths, so the seven probe tests pass where the sandbox's temp folder has a space. Biome, the workspace typecheck, and the full suite (2,703 passed, 68 skipped) are green. The window check is pending: the picker in both tabs of the draft, its selected look, and the effort named at Default.
+
 ## Quest chevrons and sidebar limits · 2026-11-22 · window check pending
 
 CHG-0635 keeps the fold chevron visible on quests with errands. CHG-0636 previews four quests per realm and in the Borderlands, and two unfolded errand rows per quest. When more errand rows are available, **Show N errands** opens the quest's Errands tab. The desktop window check is pending. See the [overflow verification record](verification/2026-11-22-sidebar-overflow.md).

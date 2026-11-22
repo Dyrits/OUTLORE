@@ -29,7 +29,9 @@ export const fakeClaudeLiveRun =
     if (args.includes("--version"))
       return Effect.succeed({ code: 0, output: `${version} (Claude Code)\n`, stdout: `${version} (Claude Code)\n` });
     const prompt = args[args.indexOf("-p") + 1] ?? "";
-    const paths = [...prompt.matchAll(/cat `?([^`\s]+)`?/g)].map((match) => match[1] as string);
+    // The probe's prompt quotes each command in backticks, as in "`cat /a path with spaces`", so a path from a
+    // sandbox whose temp folder has spaces stays whole (vaultDenials.ts writes the prompt).
+    const paths = [...prompt.matchAll(/`cat ([^`]+)`/g)].map((match) => match[1] as string);
     const controlPath = paths[0];
     const markerPath = paths[1];
     if (controlPath === undefined || markerPath === undefined)
