@@ -157,7 +157,14 @@ function ChannelBody({
     <ChroniclerConversation
       alternateBody={
         tab === "Quests" || tab === "Rituals" ? (
-          <ChannelQuests client={client} key={tab} onOpen={onOpenMission} openMission={openMission} realmId={id} show={tab} />
+          <ChannelQuests
+            client={client}
+            key={tab}
+            onOpen={onOpenMission}
+            openMission={openMission}
+            realmId={id}
+            show={tab}
+          />
         ) : tab === "Realm" ? (
           realmPanel
         ) : undefined
