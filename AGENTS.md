@@ -56,8 +56,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To accept the phone channels and the Chronicle on a paired Android device, read the [current handoff](.agents/handoffs/2026-11-23-0032-mobile-parity.md). Handoffs are shared and committed.
+
 - To land and review the quest's two batches (interrupted Codex messages, New realm sources), read the [current handoff](.agents/handoffs/2026-11-23-0023-landing-two-batches.md). Handoffs are shared and committed.
 
 - To run the by-hand live checks on remote terminals (paired browser, real Seatbelt fence, packaged gate), read the [current handoff](.agents/handoffs/2026-11-22-2321-remote-terminals.md). Handoffs are shared and committed.
-
-- To verify Chronicle source labels in Attention and History, read the [current handoff](.agents/handoffs/2026-11-22-2206-chronicle-source-labels.md). Handoffs are shared and committed.
