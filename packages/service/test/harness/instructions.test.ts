@@ -41,6 +41,16 @@ describe("telling a thread where it may work unasked", () => {
     const text = approvalInstructionsOf({ ...access, canWorkOutsideSandbox: true }, "claude");
     expect(text).toContain("Before one, call the request_approval tool");
   });
+
+  it("routes individual Codex command escapes through the harness in Full access", () => {
+    const fullAccess = approvalInstructionsOf({ ...access, canWorkOutsideSandbox: true }, "codex");
+    expect(fullAccess).toContain("retry it through Codex's own per-command escalation");
+    expect(fullAccess).toContain("Outlore approves that escalation automatically");
+    expect(fullAccess).toContain("Before one, call the request_approval tool");
+    expect(fullAccess).toContain("A request to widen the sandbox for the turn still asks");
+    expect(fullAccess).not.toContain("A worktree you make yourself (git worktree add) asks the owner");
+    expect(approvalInstructionsOf(access, "codex")).not.toContain("Outlore approves that escalation automatically");
+  });
 });
 
 describe("telling a thread its standing permissions", () => {

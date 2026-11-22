@@ -1,5 +1,9 @@
 # Work in progress
 
+## Codex Full access prompts · 2026-11-22 · live check pending
+
+Outlore now directs Codex to use its own per-command escalation when Full access is active. In a live Codex turn, retry a harmless local command blocked by the sandbox and check that Permissions history records an automatic approval. The original prompt came from Codex calling Outlore's direct approval tool.
+
 ## Pane header controls · 2026-11-21 · window check pending
 
 The Expand pane button uses outward arrows and appears when multiple conversation panes are visible. A full-width pane has no layout buttons. Its edge notches reopen the other conversations. Check the icon and header spacing in the desktop window.
