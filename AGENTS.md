@@ -56,7 +56,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the pane expand icon batch, read the [current handoff](.agents/handoffs/2026-11-21-2118-pane-expand-icon.md). Handoffs are shared and committed.
+- To resume the pane header controls batch, read the [current handoff](.agents/handoffs/2026-11-22-0126-pane-header-controls.md). Handoffs are shared and committed.
 
 - To resume checking the main CI repair, read the [current handoff](.agents/handoffs/2026-11-21-2126-repair-main.md). Handoffs are shared and committed.
 

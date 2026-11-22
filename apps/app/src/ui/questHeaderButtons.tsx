@@ -128,6 +128,22 @@ export function QuestPanelButton({ isOpen, onPress }: { isOpen: boolean; onPress
   );
 }
 
+/** Gives the pane the available width, shown as two outward arrows. */
+export function ExpandPaneButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel="Expand pane"
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [local.panel, pressed && local.panelActive]}
+    >
+      <HeaderIcon color={colors.textSecondary}>
+        <Path d="M14 10l5-5m-6 0h6v6M10 14l-5 5m0-6v6h6" />
+      </HeaderIcon>
+    </Pressable>
+  );
+}
+
 /** Folds a pane toward its strip, shown as a bar and inward chevrons. */
 export function FoldPaneButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (

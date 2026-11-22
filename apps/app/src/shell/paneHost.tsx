@@ -8,7 +8,7 @@ import type { ServiceClient } from "../foundation/client";
 import { allMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { FoldPaneButton } from "../ui/questHeaderButtons";
+import { ExpandPaneButton, FoldPaneButton } from "../ui/questHeaderButtons";
 import { ChannelPane } from "./channelPane";
 import { ErrandStarter } from "./errandStarter";
 import { resizedWeights } from "./paneChain";
@@ -56,10 +56,10 @@ export function PaneHost({
   const {
     available,
     equalize,
+    expandPane,
     focusedId,
     fold,
     fullChain,
-    isExpandedPane,
     listRequest,
     memory,
     openIds,
@@ -73,7 +73,6 @@ export function PaneHost({
     setMemory,
     slots,
     startErrand,
-    toggleExpanded,
   } = usePaneChain(threads, openThread, onOpenThread);
   // A conversation shown in a pane is read (CHG-0569): its replies, results and requests are no longer unread, and
   // rereading after each change follows the stream while it stays on show. Parked panes are out of sight, so wait.
@@ -81,19 +80,13 @@ export function PaneHost({
   const dragStart = useRef(slots);
   const latest = useRef(memory);
   latest.current = memory;
-  // A pane in full view has nothing to fold into: its fold button is not shown.
-  const foldButton = (id: PaneId, label: string) =>
-    isExpandedPane(id) ? null : <FoldPaneButton label={label} onPress={() => fold(id)} />;
-  const expandButton = (id: PaneId) => {
-    const isExpanded = isExpandedPane(id);
-    return (
-      <PaneButton
-        glyph={isExpanded ? "⤡" : "⛶"}
-        label={isExpanded ? "Restore pane layout" : "Expand pane"}
-        onPress={() => toggleExpanded(id)}
-      />
-    );
-  };
+  const paneControls = (id: PaneId, foldLabel: string) =>
+    paneCount > 1 ? (
+      <>
+        <ExpandPaneButton onPress={() => expandPane(id)} />
+        <FoldPaneButton label={foldLabel} onPress={() => fold(id)} />
+      </>
+    ) : null;
   // Parked out of sight the row has no width: the panes keep the last they had, so they come back as they were.
   const onLayout = (event: LayoutChangeEvent) => {
     const width = Math.floor(event.nativeEvent.layout.width);
@@ -171,12 +164,7 @@ export function PaneHost({
               return wrap(
                 <ChannelPane
                   channel={channel}
-                  chrome={
-                    <>
-                      {expandButton(id)}
-                      {foldButton(id, "Fold the channel")}
-                    </>
-                  }
+                  chrome={paneControls(id, "Fold the channel")}
                   client={client}
                   listRequest={listRequest?.id === id ? listRequest : undefined}
                   onOpenMission={onOpenMission}
@@ -185,12 +173,7 @@ export function PaneHost({
             if (content.kind === "starter") {
               return wrap(
                 <ErrandStarter
-                  chrome={
-                    <>
-                      {expandButton(id)}
-                      {foldButton(id, "Fold the errand")}
-                    </>
-                  }
+                  chrome={paneControls(id, "Fold the errand")}
                   client={client}
                   errands={threads.filter((thread) => thread.parentId !== null && thread.isArchived !== true)}
                   onOpened={revealThread}
@@ -206,12 +189,7 @@ export function PaneHost({
                 style={[local.content, isFocused && paneCount > 1 && local.focused]}
               >
                 <PaneThread
-                  chrome={
-                    <>
-                      {expandButton(threadId)}
-                      {foldButton(threadId, content.kind === "quest" ? "Fold the quest" : "Fold the errand")}
-                    </>
-                  }
+                  chrome={paneControls(id, content.kind === "quest" ? "Fold the quest" : "Fold the errand")}
                   client={client}
                   listRequest={
                     listRequest?.id === id

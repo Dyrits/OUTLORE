@@ -91,13 +91,11 @@ The blocks appear whether or not the lists already have entries.
 - A pane can be **folded** to a notch and **unfolded**, which is how a pane gives room to its neighbour: the neighbour extends over the space and the folded pane stays one press away (the owner: better than closing is extending a panel over another, "just folding it").
 - A folded pane is a **notch** on the edge of the open pane beside it: the left edge of the next open pane, or the right edge of the last one when nothing open follows. A notch shows only the icon of what it is (a realm, a quest or an errand) with its state dot, takes no room from the open pane, and is one press from open again; the full name is its accessibility label. Several folded panes stack as several notches on the same edge (the owner, 2026-11-20: a notch on the left or right of the open pane, with the icons, instead of a strip with the name).
 - A notch that **starts** something new carries a small "+" on its icon: the errand notch of a quest with no errand pane yet opens the new-errand starter, and a realm's pane with no quest shows a sword notch with a "+" on its right edge that starts a quest in that realm (the owner, 2026-11-20; CHG-0604).
-- The desktop headers offer a **Fold** button with a pane-and-arrow icon, separated from the Quest panel icon by a divider. The quest and errand can fold even when they are the deepest conversation. Folding the last open conversation brings another pane into view. A conversation in full view (Expand pane) shows no Fold button (CHG-0603).
+- When multiple conversation panes are visible, each desktop pane header offers a **Fold** button with a pane-and-arrow icon. The quest and errand can fold even when they are the deepest conversation.
 - On a phone (a narrow window) one pane shows at a time with a Back chevron, as the [phone view](../mission-tracking/specifications.md#simplified-left-navigation) does today.
 - Panes are resized by dragging their edges; the widths are remembered.
 - **Equal widths** sits above the conversation row and gives the open panes the same share again (a third each with three) and forgets the dragged shares; folded panes stay folded.
-- The **Expand pane** button in each header gives its conversation the available width and folds the other conversation panes to notches. **Restore pane layout** returns to the previous folds and widths. Opening a notch exits the expanded layout and reveals that pane.
-- When only one pane is visible, its header shows **Restore pane layout** automatically.
-  If the owner folded the panes without using Expand, Restore clears those folds and keeps the pane widths, subject to the space available.
+- When multiple conversation panes are visible, the **Expand pane** button uses outward arrows and gives its pane the available width. The other panes become notches. A full-width pane omits the layout buttons. Press the notch for the conversation you want to reopen.
 
 Realm and Borderlands channels omit the Chronicler, harness, and model line on both Missives and Quests.
 

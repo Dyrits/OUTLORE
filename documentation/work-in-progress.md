@@ -1,5 +1,9 @@
 # Work in progress
 
+## Pane header controls · 2026-11-21 · window check pending
+
+The Expand pane button uses outward arrows and appears when multiple conversation panes are visible. A full-width pane has no layout buttons. Its edge notches reopen the other conversations. Check the icon and header spacing in the desktop window.
+
 ## Sidebar errands · 2026-11-21 · window check pending
 
 CHG-0620 restores the errand tree on desktop and opens the Quests and Errands tabs from the sidebar. See the [verification record](verification/2026-11-21-sidebar-errands.md).
@@ -31,7 +35,7 @@ CHG-0617 replaces the Workshop's two approval levels and its sandbox-escape togg
 
 ## Fold the channel pane when a quest opens · 2026-11-21 · window check pending
 
-CHG-0613: a quest opened from the sidebar starts with only its own conversation pane open, the realm's channel pane folded behind its notch. Pressing the notch (or Restore pane layout) reveals the channel, and the folds hold for the rest of the quest. Biome, the app typecheck, and the app suite (681 passed) are green; nothing was seen in a window. See the [verification](verification/2026-11-21-fold-channel-on-quest-open.md).
+CHG-0613: a quest opened from the sidebar starts with only its own conversation pane open, the realm's channel pane folded behind its notch. Pressing the notch reveals the channel, and the folds hold for the rest of the quest. Biome, the app typecheck, and the app suite (681 passed) are green in the [original verification](verification/2026-11-21-fold-channel-on-quest-open.md). The window check is pending.
 
 ## Thread permission modes · 2026-11-21 · window check pending
 

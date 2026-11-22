@@ -1,6 +1,6 @@
 import { ThreadId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
-import { emptyPaneMemory, openedQuestMemory } from "../../src/shell/paneChain";
+import { emptyPaneMemory, layoutOf, openedQuestMemory } from "../../src/shell/paneChain";
 import { channelId, type PaneId, paneContentsOf, starterId } from "../../src/shell/paneIds";
 import { type PaneSession, paneSessionOf } from "../../src/shell/paneSession";
 
@@ -33,8 +33,21 @@ describe("keeping the pane session", () => {
     expect(paneContentsOf(quest, quest).at(-1)).toEqual({ id: starterId, kind: "starter" });
   });
 
+  it("reopens a pane from its notch after expanding its neighbor", () => {
+    const chain: ReadonlyArray<PaneId> = [channelId, quest, errand];
+    const folded = paneSessionOf(initial(), { chain, id: errand, type: "fold" });
+    const expanded = paneSessionOf(folded, { id: quest, type: "expand" });
+    const openPanes = (session: PaneSession) =>
+      layoutOf({ available: 1600, chain, expanded: session.expanded, memory: session.memory })
+        .filter((slot) => slot.kind === "pane")
+        .map((slot) => slot.id);
+    expect(openPanes(expanded)).toEqual([quest]);
+    const reopened = paneSessionOf(expanded, { id: channelId, type: "reveal" });
+    expect(openPanes(reopened)).toEqual([channelId, quest]);
+  });
+
   it("folds the starter when opening another quest", () => {
-    const expanded = paneSessionOf(initial(), { id: quest, isExpanded: false, type: "expand" });
+    const expanded = paneSessionOf(initial(), { id: quest, type: "expand" });
     const started = paneSessionOf(expanded, { type: "starter" });
     expect(started.expanded).toBe(starterId);
     expect(started.memory.shown.has(starterId)).toBe(true);

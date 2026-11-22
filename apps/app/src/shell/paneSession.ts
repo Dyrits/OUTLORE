@@ -19,7 +19,7 @@ type PaneAction =
   | { type: "reveal"; id: PaneId }
   | { type: "openThread"; id: ThreadId }
   | { type: "starter" }
-  | { type: "expand"; id: PaneId; isExpanded: boolean }
+  | { type: "expand"; id: PaneId }
   | { type: "focus"; id: ThreadId }
   | { type: "list"; id: PaneId }
   | { type: "memory"; update: (memory: PaneMemory<PaneId>) => PaneMemory<PaneId> };
@@ -80,14 +80,9 @@ export const paneSessionOf = (session: PaneSession, action: PaneAction): PaneSes
   if (action.type === "expand")
     return {
       ...session,
-      expanded: action.isExpanded ? null : action.id,
+      expanded: action.id,
       focused: isThreadPane(action.id) ? action.id : focused,
-      memory:
-        action.isExpanded && expanded === null
-          ? { ...memory, folded: new Set() }
-          : action.id === starterId && !action.isExpanded
-            ? revealedPane(memory, action.id)
-            : memory,
+      memory: action.id === starterId ? revealedPane(memory, action.id) : memory,
     };
   if (action.type === "focus") return { ...session, focused: action.id };
   if (action.type === "list") return { ...session, listRequest: { id: action.id } };

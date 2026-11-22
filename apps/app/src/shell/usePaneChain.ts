@@ -59,8 +59,7 @@ export function usePaneChain(
       ),
     [slots],
   );
-  const openSlots = slots.filter((slot) => slot.kind === "pane");
-  const paneCount = openSlots.length;
+  const paneCount = slots.filter((slot) => slot.kind === "pane").length;
   const focusedId = focused !== null && openIds.has(focused) ? focused : ([...openIds].at(-1) ?? null);
   const fold = (id: PaneId) => dispatch({ chain: fullChain, id, type: "fold" });
   const setMemory = (update: (memory: PaneMemory<PaneId>) => PaneMemory<PaneId>) =>
@@ -79,16 +78,14 @@ export function usePaneChain(
     setMemory(equalizedPanes);
     rememberPaneWeights([]);
   };
-  const isExpandedPane = (id: PaneId) => paneCount === 1 && openSlots[0]?.id === id;
-  const toggleExpanded = (id: PaneId) => dispatch({ id, isExpanded: isExpandedPane(id), type: "expand" });
   const revealPane = (id: PaneId) => dispatch({ id, type: "reveal" });
   return {
     available,
     equalize,
+    expandPane: (id: PaneId) => dispatch({ id, type: "expand" }),
     focusedId,
     fold,
     fullChain,
-    isExpandedPane,
     listRequest,
     memory,
     openIds,
@@ -102,6 +99,5 @@ export function usePaneChain(
     setMemory,
     slots,
     startErrand,
-    toggleExpanded,
   };
 }
