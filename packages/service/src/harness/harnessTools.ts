@@ -121,7 +121,7 @@ const releaseRegistries = {
     versionOf: (body: unknown) => textFieldOf(fieldOf(body, "info"), "version"),
   },
 } as const satisfies Record<
-  HarnessFacts["releaseRegistry"],
+  Exclude<HarnessFacts["releaseRegistry"], "none">,
   { readonly urlOf: (packageName: string) => string; readonly versionOf: (body: unknown) => string | null }
 >;
 
@@ -148,6 +148,9 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
     // The harness's package registry; any failure reads as "not known", so an offline computer sees no update.
     const readLatest = (harness: HarnessName) => {
       const facts = harnessFacts[harness];
+      // A harness from its own source reports no registry version: no update is ever known from here; its own
+      // `hermes update --check` remains the source of truth for Hermes.
+      if (facts.releaseRegistry === "none") return Effect.succeed<string | null>(null);
       const registry = releaseRegistries[facts.releaseRegistry];
       return Effect.tryPromise(async () => {
         const response = await fetch(registry.urlOf(facts.packageName), { signal: AbortSignal.timeout(8000) });

@@ -1,3 +1,5 @@
+export { type AcpProviderProfile, acpProviderProfiles } from "./acpProviderProfiles.ts";
+export { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.ts";
 export { type ClaudeOptions, claudeHarnessLayer, makeClaudeHarness } from "./claude.ts";
 export { claudeChoicesOf, claudePromptAnswerOf } from "./claudeChoices.ts";
 export { type CodexOptions, makeCodexHarness } from "./codex.ts";

@@ -20,7 +20,7 @@ const installers = {
     prerequisite: "uv",
   },
 } as const satisfies Record<
-  HarnessFacts["installVia"],
+  Exclude<HarnessFacts["installVia"], "manual">,
   {
     readonly argsOf: (packageName: string) => ReadonlyArray<string>;
     readonly permissionAdvice: string;
@@ -28,13 +28,21 @@ const installers = {
   }
 >;
 
-/** Installs an official harness package with the computer's npm (and its configured global prefix) or uv. */
+/**
+ * Installs an official harness package with the computer's npm (and its configured global prefix) or uv; a harness that
+ * arrives from its own source (`installVia: "manual"`, such as Hermes by Git) cannot be installed from a registry,
+ * so its Install explains that instead of running anything.
+ */
 export const installHarnessPackage = Effect.fnUntraced(function* (
   harness: HarnessName,
   run: typeof runShortCommand = runShortCommand,
   platform: NodeJS.Platform = process.platform,
 ) {
   const facts = harnessFacts[harness];
+  if (facts.installVia === "manual")
+    return yield* invalid(
+      `${facts.label} is installed from its own source rather than a package registry. Follow its installation instructions, then press Refresh.`,
+    );
   const tool = facts.installVia;
   const args = installers[tool].argsOf(facts.packageName);
   // npm is a .cmd launcher on Windows; the command contains only catalog constants.

@@ -3,6 +3,7 @@ import { chmodSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
+import { installHarnessPackage } from "../../src/harness/harnessInstallation.ts";
 import { terminalSignInScript } from "../../src/harness/harnessTools.ts";
 import { HarnessTools, liveHarnessToolsLayer } from "../../src/index.ts";
 import { callTool, listToolNames } from "../fixtures/mcp.ts";
@@ -49,7 +50,7 @@ describe("installing and updating harnesses", () => {
     }).pipe(
       Effect.provide(
         liveHarnessToolsLayer(
-          { claude: "claude", codex: "codex", opencode: "opencode", vibe: "vibe-acp" },
+          { claude: "claude", codex: "codex", hermes: "hermes", opencode: "opencode", vibe: "vibe-acp" },
           (...args) => {
             calls.push(args);
             return Effect.succeed({ code: 0, output: "", stdout: "" });
@@ -63,10 +64,10 @@ describe("installing and updating harnesses", () => {
     updates.available.codex = "0.167.0";
     return Effect.gen(function* () {
       const before = yield* call({ _tag: "ListHarnesses" });
-      expect(before.harnesses.map((harness) => harness.update)).toEqual([null, "0.167.0", null, null]);
+      expect(before.harnesses.map((harness) => harness.update)).toEqual([null, "0.167.0", null, null, null]);
       const after = yield* call({ _tag: "UpdateHarness", harness: "codex" });
       expect(updates.updated).toEqual(["codex"]);
-      expect(after.harnesses.map((harness) => harness.update)).toEqual([null, null, null, null]);
+      expect(after.harnesses.map((harness) => harness.update)).toEqual([null, null, null, null, null]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -89,6 +90,20 @@ describe("installing and updating harnesses", () => {
       expect(result.message).toContain("already installed");
     }).pipe(Effect.provide(layer));
   });
+
+  it.live("explains instead of installing a harness that arrives from its own source", () => {
+    const runs: Array<ReadonlyArray<unknown>> = [];
+    return Effect.gen(function* () {
+      // Hermes's Install runs no package manager: it arrives from its own Git source (installVia manual).
+      const failure = yield* installHarnessPackage("hermes", (...args) => {
+        runs.push(args);
+        return Effect.succeed({ code: 0, output: "", stdout: "" });
+      }).pipe(Effect.flip);
+      expect(failure.message).toContain("installed from its own source");
+      expect(failure.message).toContain("Refresh");
+      expect(runs).toEqual([]);
+    });
+  });
 });
 
 describe("signing in to a harness", () => {
@@ -96,7 +111,13 @@ describe("signing in to a harness", () => {
     const { layer } = withHarnesses();
     return Effect.gen(function* () {
       const claude = yield* call({ _tag: "SignInAccount", accountId: null, harness: "claude" });
-      expect(claude?.harnesses.map((harness) => harness.name)).toEqual(["claude", "codex", "opencode", "vibe"]);
+      expect(claude?.harnesses.map((harness) => harness.name)).toEqual([
+        "claude",
+        "codex",
+        "opencode",
+        "vibe",
+        "hermes",
+      ]);
       expect(yield* call({ _tag: "SignInAccount", accountId: null, harness: "opencode" })).toBeNull();
     }).pipe(Effect.provide(layer));
   });
@@ -122,7 +143,13 @@ describe("signing in to a harness", () => {
         expect(failure.message).toBe("Claude Code did not sign in. one two no way");
       }).pipe(
         Effect.provide(
-          liveHarnessToolsLayer({ claude: command, codex: "codex", opencode: "opencode", vibe: "vibe-acp" }),
+          liveHarnessToolsLayer({
+            claude: command,
+            codex: "codex",
+            hermes: "hermes",
+            opencode: "opencode",
+            vibe: "vibe-acp",
+          }),
         ),
       );
     },

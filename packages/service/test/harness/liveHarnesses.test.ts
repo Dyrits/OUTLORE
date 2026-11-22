@@ -5,8 +5,10 @@ import { describe, expect, it } from "@effect/vitest";
 import type { HarnessName, MissionDetail, MissionId } from "@outlore/contracts";
 import { Effect, Layer } from "effect";
 import {
+  acpProviderProfiles,
   Harness,
   liveHarnessToolsLayer,
+  makeAcpProviderHarness,
   makeClaudeHarness,
   makeCodexHarness,
   makeOpenCodeHarness,
@@ -22,6 +24,7 @@ import { call, temporary } from "../fixtures/service.ts";
 const commands = {
   claude: process.env.OUTLORE_CLAUDE_PATH ?? "claude",
   codex: process.env.OUTLORE_CODEX_PATH ?? "codex",
+  hermes: process.env.OUTLORE_HERMES_PATH ?? "hermes",
   opencode: process.env.OUTLORE_OPENCODE_PATH ?? "opencode",
   vibe: process.env.OUTLORE_VIBE_PATH ?? "vibe-acp",
 };
@@ -33,6 +36,11 @@ const live = (directory = realpathSync(temporary("outlore-live-"))) => {
       return routeHarnesses({
         claude: yield* makeClaudeHarness({ command: commands.claude, idleTimeout: "1 minute", sandboxProblem: null }),
         codex: yield* makeCodexHarness({ command: commands.codex, idleTimeout: "1 minute" }),
+        hermes: yield* makeAcpProviderHarness({
+          command: commands.hermes,
+          idleTimeout: "1 minute",
+          profile: acpProviderProfiles.hermes,
+        }),
         opencode: yield* makeOpenCodeHarness({ command: commands.opencode, idleTimeout: "1 minute", sandbox: null }),
         vibe: yield* makeVibeHarness({ command: commands.vibe, idleTimeout: "1 minute" }),
       });

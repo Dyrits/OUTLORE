@@ -3,6 +3,8 @@ import { join } from "node:path";
 import type { HarnessName, MissionDetail } from "@outlore/contracts";
 import { type Duration, Effect, Layer } from "effect";
 import { afterEach } from "vitest";
+import { acpProviderProfiles } from "../../src/harness/acpProviderProfiles.ts";
+import { makeAcpProviderHarness } from "../../src/harness/acpProviders.ts";
 import type { OpenCodeSandbox } from "../../src/harness/openCodeSandbox.ts";
 import {
   type FakeUpdates,
@@ -132,6 +134,18 @@ export const withHarnesses = (
           command: process.execPath,
           idleTimeout,
           prefixArgs: [join(import.meta.dirname, "stand-in-codex.mjs")],
+        }),
+        // The registered Hermes entry, stood in: the generic ACP fake as the hermes profile's process (its
+        // account-home requirement stands, so only threads with an account folder use it).
+        hermes: yield* makeAcpProviderHarness({
+          command: process.execPath,
+          idleTimeout,
+          prefixArgs: [join(import.meta.dirname, "acpProvidersFake.mjs")],
+          profile: {
+            ...acpProviderProfiles.hermes,
+            args: [],
+            env: { ACP_FAKE_LOG: log, ACP_FAKE_MODE: "turn" },
+          },
         }),
         opencode: yield* makeOpenCodeHarness({
           command: process.execPath,

@@ -136,10 +136,16 @@ describe("managing provider accounts", () => {
       yield* call({ _tag: "RenameHost", name: "Studio" });
       const renamed = yield* call({ _tag: "RenameOwnAccount", harness: "claude", label: " Personal " });
       const labelsOf = (list: typeof renamed) => list.harnesses.map((harness) => harness.accounts[0]?.label);
-      expect(labelsOf(renamed)).toEqual(["Personal", "Studio", "Studio", "Studio"]);
+      expect(labelsOf(renamed)).toEqual(["Personal", "Studio", "Studio", "Studio", "Studio"]);
       // A later rename of the computer leaves the sign-in's own name alone.
       yield* call({ _tag: "RenameHost", name: "Laptop" });
-      expect(labelsOf(yield* call({ _tag: "ListHarnesses" }))).toEqual(["Personal", "Laptop", "Laptop", "Laptop"]);
+      expect(labelsOf(yield* call({ _tag: "ListHarnesses" }))).toEqual([
+        "Personal",
+        "Laptop",
+        "Laptop",
+        "Laptop",
+        "Laptop",
+      ]);
       // An added account renames the same way, and shows in the budgets that name it.
       const added = yield* call({ _tag: "AddAccount", harness: "codex", label: "Work" });
       const accountId = added.harnesses[1]?.accounts[1]?.id as AccountId;
@@ -156,7 +162,7 @@ describe("managing provider accounts", () => {
     const { layer } = withHarnesses();
     return Effect.gen(function* () {
       const { harnesses } = yield* call({ _tag: "ListHarnesses" });
-      expect(harnesses.map((harness) => harness.name)).toEqual(["claude", "codex", "opencode", "vibe"]);
+      expect(harnesses.map((harness) => harness.name)).toEqual(["claude", "codex", "opencode", "vibe", "hermes"]);
       for (const harness of harnesses) {
         expect(harness.accounts[0]).toMatchObject({ id: null, label: computerNameOf(), signIn: "SignedIn" });
         expect(harness.models.map((model) => model.id)).not.toContain("default");

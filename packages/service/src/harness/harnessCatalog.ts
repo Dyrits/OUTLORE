@@ -33,14 +33,14 @@ export type HarnessFacts = {
   readonly fixedModels: ReadonlyArray<ModelOption> | null;
   /** Whether the harness asks its permission prompts through the `answer_prompt` thread tool (ADR 0005). */
   readonly hasPromptTool: boolean;
-  /** The tool that installs the harness's official package when the Workshop offers Install: npm, or uv for a Python package. */
-  readonly installVia: "npm" | "uv";
+  /** The tool that installs the harness's official package when the Workshop offers Install: npm, or uv for a Python package; "manual" for a harness installed from its own source, whose Install must explain that instead. */
+  readonly installVia: "npm" | "uv" | "manual";
   /** The harness's name as the owner reads it. */
   readonly label: string;
   /** The package whose newest release is the harness's newest; read from its registry (`releaseRegistry`). */
   readonly packageName: string;
-  /** Where the newest release's version is read: the npm registry or PyPI's JSON API. */
-  readonly releaseRegistry: "npm" | "pypi";
+  /** Where the newest release's version is read: the npm registry, PyPI's JSON API, or "none" for a harness that reports no registry version (its Update stays the harness's own command). */
+  readonly releaseRegistry: "npm" | "pypi" | "none";
   /** The arguments of the harness's own sign-in command. */
   readonly signInArgs: ReadonlyArray<string>;
   /**
@@ -85,6 +85,29 @@ export const harnessFacts = {
     updateArgs: ["update"],
     updateCommand: null,
   },
+  hermes: {
+    // The generic ACP adapter mediates every permission request itself, so it has no `answer_prompt` tool.
+    approvedCommandAdvice: "",
+    // Fixed by the adapter: an account's own folder is Hermes's `HERMES_HOME`; turns refuse the user's own
+    // Hermes directory (provider-accounts), and models come from the ACP probe, so nothing is fixed here.
+    configVariable: "HERMES_HOME",
+    fixedModels: null,
+    hasPromptTool: false,
+    // Hermes arrives by its own Git source (its installer stamps "Install method: git"), so the Install button
+    // explains that instead of running a registry package.
+    installVia: "manual",
+    label: "Hermes",
+    // The newest version is what its own `hermes update --check` knows; no registry holds it.
+    packageName: "",
+    releaseRegistry: "none",
+    // A fresh Hermes home runs nothing until its dependency environment is committed (`hermes pm repair`,
+    // refused even by `hermes setup`), so sign-in chains both; the terminal script runs the line as a shell
+    // line, and the plain non-darwin instruction repeats the executable the same way.
+    signInArgs: ["pm", "repair", "&&", "hermes", "--setup"],
+    signInNeedsNoTerminal: false,
+    updateArgs: ["update"],
+    updateCommand: null,
+  },
   opencode: {
     approvedCommandAdvice: "",
     // OpenCode keeps its sign-ins and sessions under its data folder (`$XDG_DATA_HOME/opencode`).
@@ -123,12 +146,13 @@ export const harnessFacts = {
 export const harnessLabels = {
   claude: harnessFacts.claude.label,
   codex: harnessFacts.codex.label,
+  hermes: harnessFacts.hermes.label,
   opencode: harnessFacts.opencode.label,
   vibe: harnessFacts.vibe.label,
 } as const satisfies Record<HarnessName, string>;
 
 /** Every harness, in the order pickers list them. */
-export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode", "vibe"];
+export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode", "vibe", "hermes"];
 
 /** The environment that points a harness at an account's folder; empty for the computer's own sign-in. */
 export const accountEnvironmentOf = (harness: HarnessName, configDirectory: string | null): Record<string, string> =>

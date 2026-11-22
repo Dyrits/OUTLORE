@@ -1,5 +1,18 @@
 # Work in progress
 
+## OpenBot provider parity
+
+The owner put all providers ahead of connectors. The [source inventory](research/openbot-integration-parity-2026-11-22.md) pins OpenBot at `b1e5ea74` and the Outlore base at `7026ce87`, and carries the agreed registration design (CHG-0641). The worktree is `worktree/openbot-providers`, with `main` as its return destination; nothing is pushed yet.
+
+Wave 1 is delivered on the branch (CHG-0642): Hermes registers as the fifth harness through the generic ACP adapter, with owner-mediated permissions, per-account `HERMES_HOME` isolation, a no-prompt model probe, manual-install explanation, `hermes update`, and a terminal sign-in chaining `hermes pm repair` with `hermes --setup`. The fixture-verified Pi (fail-closed no-tools), Muse (fail-closed mediator), and Grok (blocked launch profile) adapters landed with it.
+
+Open next:
+
+- Muse registration (wave 2): the Muse account-home isolation is unverified, so it registers with the computer's own sign-in only; an install story (`installVia`) and sign-in command for the Muse CLI still need checking.
+- Pi registration (wave 3): the Pi errand's probe profile table (executable, version check, `PI_CODING_AGENT_DIR` convention, install story, Inception's OPEN sign-in) is pending, and registration waits on a live `pi` CLI.
+- Blocked set to re-derive proofs for: Kimi 2.x config-level yolo, Grok `--no-subagents` in normal sessions, Cursor and Copilot added-account isolation.
+- Live checks the owner must do on this machine: sign a Hermes account in and run one real prompt turn; install the missing provider CLIs (pi, muse, grok, cursor-agent, cline, copilot, devin, antigravity).
+
 ## Daily background check-ins · 2026-11-22 · settings tested
 
 Starting revision `f5e50adb` on `worktree/background-check-ins`. The owner authorized implementation of the [CHG-0633 agreement](capabilities/background-check-ins/specifications.md). The settings requests now save selected realms, local time, Companion, and any explicitly chosen fallback. Pausing keeps the selection. The service test went red before the settings field existed and now passes, including a full settings save by an older client.

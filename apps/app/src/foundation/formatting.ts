@@ -12,6 +12,7 @@ import type {
 export const harnessLabels = {
   claude: "Claude Code",
   codex: "Codex",
+  hermes: "Hermes",
   opencode: "OpenCode",
   vibe: "Mistral Vibe",
 } as const satisfies Record<HarnessName, string>;
@@ -43,6 +44,8 @@ export const runnerSummaryOf = (
 const harnessProviders = {
   claude: "Anthropic",
   codex: "OpenAI",
+  // Hermes fronts several companies' models behind its own tool; the harness's name stands in for one.
+  hermes: "Hermes",
   opencode: "OpenCode",
   vibe: "Mistral",
 } as const satisfies Record<HarnessName, string>;

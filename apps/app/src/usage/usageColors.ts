@@ -5,6 +5,7 @@ import { colors } from "../foundation/theme";
 const harnessColors = {
   claude: colors.warning,
   codex: colors.violet,
+  hermes: colors.highlight,
   opencode: colors.textMuted,
   vibe: colors.success,
 } as const satisfies Record<HarnessName, string>;

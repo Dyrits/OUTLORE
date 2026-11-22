@@ -1,5 +1,7 @@
 export { Changes, Harness, type HarnessAdapter, routeHarnesses, ServiceFailure } from "./core/index.ts";
 export {
+  type AcpProviderProfile,
+  acpProviderProfiles,
   type ClaudeOptions,
   type CodexOptions,
   claudeHarnessLayer,
@@ -11,12 +13,14 @@ export {
   listOpenCodeEfforts,
   listVibeModels,
   liveHarnessToolsLayer,
+  makeAcpProviderHarness,
   makeClaudeHarness,
   makeCodexHarness,
   makeHarnessRouter,
   makeOpenCodeHarness,
   makeVibeHarness,
   type OpenCodeOptions,
+  probeAcpProviderModels,
   readVibeSignIn,
   type VibeOptions,
   vibePlanLimitsOf,

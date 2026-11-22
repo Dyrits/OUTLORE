@@ -12,6 +12,8 @@ import {
   startRpcProcess,
   textFieldOf,
 } from "../core/index.ts";
+import { acpProviderProfiles } from "./acpProviderProfiles.ts";
+import { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.ts";
 import { makeClaudeHarness } from "./claude.ts";
 import { makeCodexHarness } from "./codex.ts";
 import { accountEnvironmentOf, claudeModels, type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
@@ -190,8 +192,28 @@ const vibe: HarnessDefinition = {
   readSignIn: (command, env) => readVibeSignIn(command, env),
 };
 
+const hermes: HarnessDefinition = {
+  ...harnessFacts.hermes,
+  // Hermes runs through the generic ACP adapter: every permission request reaches the owner, modes are forced to
+  // "ask" where the provider offers them, and the account folder becomes HERMES_HOME (acpProviders.ts).
+  makeAdapter: ({ command, idleTimeout }) =>
+    makeAcpProviderHarness({ command, idleTimeout, profile: acpProviderProfiles.hermes }),
+  // Models come from the ACP probe against the account's own (prepared) home; the computer's own Hermes directory is
+  // never probed, and a home that is not set up yet (no repair, no sign-in, no model) lists none yet.
+  readModels: (command, configDirectory) =>
+    configDirectory === null
+      ? Effect.succeed([])
+      : probeAcpProviderModels({ command, profile: acpProviderProfiles.hermes, stateHome: configDirectory }).pipe(
+          Effect.map((models): ReadonlyArray<ModelOption> => models),
+          Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([])),
+        ),
+  // Hermes offers no machine-readable sign-in status a read-only command can answer; an account shows Unknown until
+  // its prepared home starts listing models.
+  readSignIn: () => Effect.succeed(unknownSignIn),
+};
+
 /** Every harness, by name. */
-export const harnesses = { claude, codex, opencode, vibe } satisfies Record<HarnessName, HarnessDefinition>;
+export const harnesses = { claude, codex, hermes, opencode, vibe } satisfies Record<HarnessName, HarnessDefinition>;
 
 /** The adapter the app runs turns through: each harness's own, started from its definition (provider-accounts). */
 export const makeHarnessRouter = (commands: Record<HarnessName, string>, options: Omit<AdapterOptions, "command">) => {
@@ -199,6 +221,7 @@ export const makeHarnessRouter = (commands: Record<HarnessName, string>, options
   return Effect.all({
     claude: adapterOf("claude"),
     codex: adapterOf("codex"),
+    hermes: adapterOf("hermes"),
     opencode: adapterOf("opencode"),
     vibe: adapterOf("vibe"),
   } satisfies Record<HarnessName, unknown>).pipe(Effect.map(routeHarnesses));
