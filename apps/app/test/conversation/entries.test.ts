@@ -10,6 +10,8 @@ import {
 import { describe, expect, it } from "vitest";
 import { entriesOf, newestFirstOf, workingLabel } from "../../src/conversation/entries";
 
+import { detailOf } from "../fixtures/conversation";
+
 const summary = (id: string, parentId: string | null, openedAt: number, isAside = false) =>
   ({
     depth: parentId === null ? 0 : 1,
@@ -44,23 +46,6 @@ const recordedQuestionOf = (id: string, askedAt: number): Question => ({
   threadId: ThreadId.make("top"),
   threadTitle: "Top",
 });
-
-const detailOf = (
-  threads: ReadonlyArray<ThreadSummary>,
-  selectedId: string,
-  handovers: ReadonlyArray<{ at: number; id: string; text: string }> = [],
-) =>
-  ({
-    activities: [],
-    budgetEvents: [],
-    handovers,
-    loreChanges: [],
-    messages: [message("first", 10), message("second", 30)],
-    questions: [],
-    suggestions: [],
-    thread: { id: selectedId },
-    threads,
-  }) as unknown as MissionDetail;
 
 it("keeps unread owner messages below later replies and steps, including after Steer", () => {
   const detail = {

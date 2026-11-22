@@ -106,8 +106,8 @@ export const entriesOf = (
   isWorking = false,
   anchors: ReadonlyArray<ThreadAnchor> = [],
 ): Array<Entry> => {
-  // Earlier builds wrote internal system cards, which are represented by their reply line.
-  const messages = detail.messages.filter((message) => message.sender !== "system");
+  // Earlier builds wrote internal system cards. A system message linked to a quest is a visible notice.
+  const messages = detail.messages.filter((message) => message.sender !== "system" || message.fromMissionId != null);
   const replies = messages.filter((message) => message.sender === "agent");
   /** The message an anchor names, if it is one of this conversation's. */
   const anchorCard = new Map(messages.map((message) => [message.id, message]));
@@ -171,7 +171,9 @@ export const entriesOf = (
         _tag: "Message",
         at: message.sentAt,
         fromQuest:
-          message.sender === "thread" && message.fromMissionId !== detail.mission.id ? message.fromMissionId : null,
+          (message.sender === "thread" || message.sender === "system") && message.fromMissionId !== detail.mission.id
+            ? message.fromMissionId
+            : null,
         key: message.id,
         message,
         ...(message.replyToMessageId == null

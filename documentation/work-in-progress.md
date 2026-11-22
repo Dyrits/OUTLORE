@@ -1,5 +1,9 @@
 # Work in progress
 
+## Inactivity warnings in realm Missives · 2026-11-22 · window check pending
+
+CHG-0639 is implemented and reviewed on `worktree/inactivity-missives`, based on `891c972f`. Outlore posts linked notices to realm Missives at the four-hour Attention and twelve-hour Resting thresholds. The scheduled service and app feed checks passed. Open a notice in the desktop window and from a paired device to check its presentation and quest navigation. [Verification](verification/2026-11-22-inactivity-missives.md)
+
 ## Errand draft's Companions footer · 2026-11-22 · window check pending
 
 CHG-0631 gives a new errand's Companions tab its own compact model-and-effort picker at the pane's foot (selected, as a saved errand's pane) and the compact picker names a Default effort. CHG-0632 makes the Vault live-probe fixture read backtick-quoted paths, so the seven probe tests pass where the sandbox's temp folder has a space. Biome, the workspace typecheck, and the full suite (2,703 passed, 68 skipped) are green. The window check is pending: the picker in both tabs of the draft, its selected look, and the effort named at Default.

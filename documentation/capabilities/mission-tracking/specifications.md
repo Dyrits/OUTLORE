@@ -93,14 +93,14 @@ Update, 2026-11-20: Stop ends the current turn and returns the thread to Resting
 
 ### Ending a mission
 
-- The user archives a quest when it is no longer needed in the active list; marking a quest Done is removed.
-- After 14 days without activity, the dashboard asks whether to archive the quest; it no longer offers Mark as done.
-  The question is not sent as a phone notification.
-- Activity is any turn or message in any of the mission's threads, by the user or by an agent. A dismissed question comes back after another 14 days without activity.
+- Outlore checks at startup and hourly for inactivity in active realms. A quest or errand in Attention qualifies four hours after its last owner or agent message. A Resting quest or errand qualifies after twelve hours. Underway and Waiting quests and threads do not qualify. An Attention state inherited from an errand uses that errand's message history.
+- Outlore posts a linked notice in the realm's Missives once per qualifying thread's latest message. When several threads in one quest qualify in the same sweep, they share a notice. An empty thread with no owner or agent message does not qualify. The notice starts no turn and is independent of daily background check-ins.
+- Automatic archiving applies to Fulfilled quests after the configured delay when enabled. An inactivity warning leaves the quest open.
+
+- The user archives a quest when it is no longer needed in the active list.
+- The former dashboard inactivity question remains available through legacy service requests and settings. Realm Missives use the hourly rules above.
 - Archiving a quest that used no tokens and holds no message deletes it instead (as [deleting a mission](../thread-tree/specifications.md#deleting) does): it carries nothing, so it does not appear in the Archived view. Archiving a realm still archives its empty quests, so Restore brings them back.
 - Archiving a mission with running threads asks one confirmation that names them, for example "2 threads are still running. Stop them and archive?", then stops them.
-- The previous auto-archive rule based on time since Done no longer applies; no replacement automatic archiving rule is agreed.
-- The inactivity duration is adjustable in settings.
 - An archived mission leaves the main list and appears in the Archived view, from which the user can reopen it.
 - Writing in a thread of an archived mission brings the mission back to the active list and the state worked out from its threads.
 - Archiving a mission adds an entry to its journal (see [mission-journal](../mission-journal/specifications.md#when-a-mission-ends)), and `find_missions` still matches archived missions.
