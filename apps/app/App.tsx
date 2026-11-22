@@ -10,6 +10,8 @@ import { PageNavigation } from "./src/foundation/pageNavigation";
 import { colors } from "./src/foundation/theme";
 import { useHostConnection } from "./src/foundation/useHostConnection";
 import { useRightPanel } from "./src/foundation/useRightPanel";
+import type { RitualFormTarget } from "./src/rituals/ritualFormNavigation";
+import { RitualFormNavigation } from "./src/rituals/ritualFormNavigation";
 import type { SettingsSectionId } from "./src/settings/settingsSections";
 import { AddHostModal } from "./src/shell/addHostModal";
 import { AppScreen } from "./src/shell/appScreen";
@@ -162,6 +164,8 @@ export function App() {
   }
   const goTo = (place: Place) => dispatch({ place, type: "place" });
   const openMissionFromAnywhere = (id: MissionId) => dispatch({ id, type: "quest" });
+  // The Ritual form is a screen of the conversation area (CHG-0643): closing it returns to what showed beneath it.
+  const openRitualForm = (target: RitualFormTarget) => dispatch({ target, type: "ritualForm" });
   const openSideQuest = (missionId: MissionId, id: ThreadId) => dispatch({ id, missionId, type: "thread" });
   const selectMission = (id: MissionId | null) => {
     dispatch({ id, type: "select" });
@@ -203,6 +207,7 @@ export function App() {
       <AppScreen
         client={client}
         navigation={{
+          closeRitualForm: () => dispatch({ target: null, type: "ritualForm" }),
           goTo,
           openChannel: (listing) => dispatch({ listing, type: "channel" }),
           openMenu: () => dispatch({ isOpen: true, type: "menu" }),
@@ -267,7 +272,9 @@ export function App() {
                 page: location.page,
               }}
             >
-              <View style={styles.root}>{shell}</View>
+              <RitualFormNavigation.Provider value={{ open: openRitualForm }}>
+                <View style={styles.root}>{shell}</View>
+              </RitualFormNavigation.Provider>
             </PageNavigation.Provider>
           </ArchiveNavigation.Provider>
         </View>

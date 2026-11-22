@@ -1,5 +1,6 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
 import type { QuestPage } from "../foundation/pageNavigation";
+import type { RitualFormTarget } from "../rituals/ritualFormNavigation";
 import { type SettingsSectionId, settingsSectionOf } from "../settings/settingsSections";
 import { archiveParentOf, resumablePlaces } from "./navigation";
 import type { RealmListing } from "./questTree";
@@ -18,6 +19,8 @@ export type Location = {
   openCount: number;
   listRequest: { tab: "quests" | "errands" } | null;
   page: QuestPage;
+  /** The Ritual form covering the conversation area (CHG-0643), or null when none is. */
+  ritualForm: RitualFormTarget | null;
   isChroniclerBudgetOpen: boolean;
   isMenuOpen: boolean;
   isNarrowChroniclerOpen: boolean;
@@ -38,6 +41,7 @@ export type NavigationEvent =
   | { type: "close" }
   | { type: "host" }
   | { type: "page"; page: QuestPage }
+  | { type: "ritualForm"; target: RitualFormTarget | null }
   | { type: "permissions"; isOpen: boolean }
   | { type: "section"; section: SettingsSectionId }
   | { type: "chroniclerRealm"; path: string | null }
@@ -59,6 +63,7 @@ export const initialLocation = (resumed: string | null): Location => ({
   openThread: null,
   page: null,
   place: resumablePlaces.find((place) => place === resumed) ?? "Home",
+  ritualForm: null,
   selectedMission: null,
   settingsSection: settingsSectionOf(resumed),
   workshopReturn: null,
@@ -72,6 +77,7 @@ const uncovered = (location: Location): Location => ({
   isPermissionsOpen: false,
   listRequest: null,
   page: null,
+  ritualForm: null,
 });
 
 /** The events that go to another destination, after which the Workshop icon no longer has a place to go back to. */
@@ -152,6 +158,12 @@ const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "w
   }
   if (event.type === "select") return { ...location, selectedMission: event.id };
   if (event.type === "page") return { ...location, page: event.page };
+  // The form covers the conversation area without leaving the destination beneath it, so Back returns to what was
+  // there; whatever was layered over that destination closes, as any newly opened screen's does.
+  if (event.type === "ritualForm")
+    return event.target === null
+      ? { ...location, ritualForm: null }
+      : { ...uncovered(location), ritualForm: event.target };
   if (event.type === "permissions") return { ...location, isPermissionsOpen: event.isOpen };
   if (event.type === "section") return { ...location, settingsSection: event.section };
   if (event.type === "chroniclerRealm")

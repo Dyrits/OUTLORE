@@ -12,7 +12,7 @@ import { MoveQuestModal } from "../quests/moveQuestModal";
 import { type Destination, type MoveConfirmation, moveConfirmationOf } from "../quests/questMove";
 import { NewRealmModal } from "../realms/newRealmModal";
 import { realmLabelOf } from "../realms/realmLabels";
-import { NewRitualModal } from "../rituals/ritualModal";
+import { useRitualFormNavigation } from "../rituals/ritualFormNavigation";
 import { FoldChevron } from "../ui/foldChevron";
 import { SettingsIcon } from "../ui/settingsIcons";
 import { unreadCountOf } from "./chronicleFeed";
@@ -146,8 +146,8 @@ export function Sidebar({
       setPendingMove({ confirmation, destination, missionId: mission.id });
   };
 
-  // A Ritual being scheduled in a realm, until its form is saved or cancelled.
-  const [newRitualRealm, setNewRitualRealm] = useState<{ name: string; path: string | null } | null>(null);
+  // A new Ritual opens as the conversation area's own screen (CHG-0643), taking the realm it was started in.
+  const { open: openRitualForm } = useRitualFormNavigation();
 
   // A realm dropped on another realm takes the place before or after it; the whole new order is saved.
   const dropRealmOn = (targetId: WorkspaceId) => (movedId: string, side: "before" | "after") => {
@@ -185,7 +185,7 @@ export function Sidebar({
                 ? {}
                 : { onOpenChannel: () => onOpenChannel({ id: realm.id, name: realm.name }) })}
               onNewQuest={() => startQuest(realm.id, realm.id)}
-              onNewRitual={() => setNewRitualRealm({ name: realm.name, path: realm.path })}
+              onNewRitual={() => openRitualForm({ kind: "create", originMissionId: null, realmPath: realm.path })}
               onOverview={() => onOpenRealmQuests({ id: realm.id, name: realm.name })}
               onToggle={() => setRealmFolds((current) => new Map(current).set(realm.id, !isClosed))}
               path={realm.path}
@@ -324,14 +324,6 @@ export function Sidebar({
           initial={{ name: "", path: "" }}
           isFolderRequired={false}
           onCancel={() => setIsCreating(false)}
-        />
-      )}
-      {newRitualRealm !== null && (
-        <NewRitualModal
-          client={client}
-          onCancel={() => setNewRitualRealm(null)}
-          onDone={onOpenMission}
-          realmPath={newRitualRealm.path}
         />
       )}
     </View>

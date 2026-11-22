@@ -4,6 +4,7 @@ import { windowViewOf } from "../../src/shell/windowView";
 
 // Identifiers normally arrive branded from the service.
 const quest = "quest" as import("@outlore/contracts").MissionId;
+const ritual = "ritual" as import("@outlore/contracts").MissionId;
 const thread = "thread" as import("@outlore/contracts").ThreadId;
 
 describe("opening the window", () => {
@@ -133,5 +134,42 @@ describe("the Workshop icon", () => {
     const inWorkshop = navigate(navigate(initialLocation(null), { id: quest, type: "quest" }), { type: "workshop" });
     const inSection = navigate(inWorkshop, { section: "permissions", type: "section" });
     expect(navigate(inSection, { type: "workshop" }).openMission).toBe(quest);
+  });
+});
+
+describe("the Ritual form over the conversation area", () => {
+  it("covers a quest without leaving it, and Back returns to the same panes", () => {
+    const inQuest = navigate(initialLocation(null), { id: quest, type: "quest" });
+    const covered = navigate(inQuest, {
+      target: { kind: "create", originMissionId: quest, realmPath: null },
+      type: "ritualForm",
+    });
+    expect(covered.ritualForm).toEqual({ kind: "create", originMissionId: quest, realmPath: null });
+    // The quest stays open beneath the form, so its panes wait as they were and keep their state.
+    expect(covered.openMission).toBe(quest);
+    const back = navigate(covered, { target: null, type: "ritualForm" });
+    expect(back.ritualForm).toBeNull();
+    expect(back.openMission).toBe(quest);
+    expect(back.openCount).toBe(inQuest.openCount);
+  });
+
+  it("closes with a destination, so a saved Ritual replaces the form with its conversation", () => {
+    const covered = navigate(navigate(initialLocation(null), { id: quest, type: "quest" }), {
+      target: { kind: "create", originMissionId: null, realmPath: "/realm" },
+      type: "ritualForm",
+    });
+    const saved = navigate(covered, { id: ritual, type: "quest" });
+    expect(saved.ritualForm).toBeNull();
+    expect(saved.openMission).toBe(ritual);
+  });
+
+  it("closes the menu it was opened from, as any newly opened screen's own coverings", () => {
+    const menu = navigate(initialLocation(null), { isOpen: true, type: "menu" });
+    const covered = navigate(menu, {
+      target: { kind: "create", originMissionId: null, realmPath: null },
+      type: "ritualForm",
+    });
+    expect(covered.isMenuOpen).toBe(false);
+    expect(windowViewOf(covered).ritualForm).toEqual({ kind: "create", originMissionId: null, realmPath: null });
   });
 });

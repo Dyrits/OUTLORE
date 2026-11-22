@@ -7,6 +7,7 @@ import { PermissionsScreen } from "../editors/permissions";
 import type { ServiceClient } from "../foundation/client";
 import { CompanionDockActions, useHasSidebar } from "../foundation/shellContext";
 import { LoreScreen } from "../lore/lore";
+import { RitualFormScreen } from "../rituals/ritualFormScreen";
 import { SettingsScreen } from "../settings/settings";
 import type { SettingsSectionId } from "../settings/settingsSections";
 import { UsageScreen } from "../usage";
@@ -25,6 +26,8 @@ type Destination = ReturnType<typeof windowViewOf>;
 
 /** Navigation operations exposed to the selected page, with top-level state kept in App. */
 interface Navigation {
+  /** Closes the Ritual form covering the conversation area, going back to what showed beneath it. */
+  closeRitualForm: () => void;
   goTo: (place: Place) => void;
   openChannel: (listing: RealmListing | null) => void;
   /** Shows the narrow window's main menu: the sidebar as a full screen. */
@@ -131,6 +134,17 @@ function AppScreenContent({
   } satisfies Record<Place, ReactNode>;
   // A wide window shows a quest as a chain of panes; a narrow one keeps one conversation at a time.
   const hasPanes = useHasSidebar();
+  // The Ritual form stands over the conversation area (CHG-0643): it is a screen of the middle panel, not a modal,
+  // so it covers both the panes and the screens, and closing it returns to whatever was showing before it.
+  const ritualForm =
+    view.ritualForm === null ? null : (
+      <RitualFormScreen
+        client={client}
+        onClose={navigation.closeRitualForm}
+        onOpened={navigation.openMission}
+        target={view.ritualForm}
+      />
+    );
   const quest =
     view.openMission === null
       ? view.parkedQuest
@@ -145,7 +159,7 @@ function AppScreenContent({
     const isParked = view.openMission === null;
     return (
       <>
-        <View style={isParked ? local.parked : local.fill}>
+        <View style={isParked || view.ritualForm !== null ? local.parked : local.fill}>
           <CompanionDockActions.Provider value={null}>
             <PaneHost
               client={client}
@@ -159,12 +173,12 @@ function AppScreenContent({
             />
           </CompanionDockActions.Provider>
         </View>
-        {isParked && screens[view.place]}
+        {view.ritualForm !== null ? ritualForm : isParked && screens[view.place]}
       </>
     );
   }
-  if (view.openMission !== null)
-    return (
+  if (view.openMission !== null) {
+    const conversation = (
       <Conversation
         client={client}
         initiallyShowErrands={view.errandsRequest !== null}
@@ -178,11 +192,20 @@ function AppScreenContent({
         selectedThreadId={view.openThread}
       />
     );
+    return view.ritualForm === null ? (
+      conversation
+    ) : (
+      <>
+        <View style={local.parked}>{conversation}</View>
+        {ritualForm}
+      </>
+    );
+  }
   const { channel } = view;
   if (hasPanes && channel !== null) {
     return (
       <>
-        <View style={view.place === "Channel" ? local.fill : local.parked}>
+        <View style={view.place === "Channel" && view.ritualForm === null ? local.fill : local.parked}>
           <CompanionDockActions.Provider value={null}>
             <StandaloneChannel
               channel={channel}
@@ -193,11 +216,11 @@ function AppScreenContent({
             />
           </CompanionDockActions.Provider>
         </View>
-        {view.place !== "Channel" && screens[view.place]}
+        {view.ritualForm !== null ? ritualForm : view.place !== "Channel" && screens[view.place]}
       </>
     );
   }
-  return screens[view.place];
+  return view.ritualForm !== null ? ritualForm : screens[view.place];
 }
 
 const local = StyleSheet.create({

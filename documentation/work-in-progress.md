@@ -1,5 +1,9 @@
 # Work in progress
 
+## The Ritual form in the middle panel · 2026-11-22 · window check pending
+
+CHG-0643 makes the Ritual form a screen of the conversation area, not a full-window modal: **+ Ritual** on a realm's header, **Schedule as a Ritual** in a quest's panel, and a Ritual's own **Edit** open the one form over the panes, conversation, or screen beneath it (kept mounted, so Back returns unchanged), and a saved Ritual opens its conversation there. The Companion and each fallback are chosen with the form's named fields; the compact button had opened the Companions column where no choice could be seen. Biome, the workspace typecheck, the location tests, and the form's static-markup test pass, and the full suite is green: 2,764 passed and 24 skipped. Open the desktop window wide and narrow, and a paired phone, to review the form and its Back. [Verification](verification/2026-11-22-ritual-form-panel.md)
+
 ## Chronicle source labels · 2026-11-22 · window check pending
 
 CHG-0641 shows **Quest**, **Errand**, or **Realm** before each Chronicle source title in Attention and History. The service derives the type from the thread tree, an older paired host shows no label, long titles wrap, and screen readers speak the type. Biome, the seven-workspace typecheck, and the full suite (2,713 passed, 68 skipped) are green on the base; the rebased tip re-passed Biome, typecheck, and the focused Chronicle tests. The window check is pending; see the [current handoff](../.agents/handoffs/2026-11-22-2206-chronicle-source-labels.md).

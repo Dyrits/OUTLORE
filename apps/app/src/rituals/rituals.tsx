@@ -12,7 +12,7 @@ import {
   realmArchivedNotice,
   scheduleLineOf,
 } from "./ritualCard";
-import { RitualForm } from "./ritualForm";
+import { useRitualFormNavigation } from "./ritualFormNavigation";
 import { ritualStyles } from "./ritualStyles";
 
 // Rituals in the interface (CHG-0616): a Ritual is one of its realm's things, drawn beside the quests, opened like a
@@ -34,21 +34,11 @@ export function RitualControls({
   onOpenMission: (missionId: MissionId) => void;
 }) {
   const { data: ritual } = useServiceQuery(client, { _tag: "ReadRitual", missionId }, `ritual:${missionId}`);
-  const [isEditing, setIsEditing] = useState(false);
+  const { open: openRitualForm } = useRitualFormNavigation();
   const [error, setError] = useState<string | null>(null);
   if (ritual === null) return null;
   // The origin quest, when the Ritual was scheduled from one: a link, nothing else inherited (CHG-0616).
   const origin = ritual.originMissionId;
-  if (isEditing) {
-    return (
-      <RitualForm
-        client={client}
-        onCancel={() => setIsEditing(false)}
-        onDone={() => setIsEditing(false)}
-        ritual={ritual}
-      />
-    );
-  }
   return (
     <View style={ritualStyles.controls}>
       {scheduleLineOf(ritual)}
@@ -70,7 +60,8 @@ export function RitualControls({
         </View>
       )}
       <View style={ritualStyles.sentence}>
-        <Pressable accessibilityRole="button" onPress={() => setIsEditing(true)}>
+        {/* The form opens as the conversation area's own screen (CHG-0643); this panel stays beside it. */}
+        <Pressable accessibilityRole="button" onPress={() => openRitualForm({ kind: "edit", missionId })}>
           <Text style={styles.link}>Edit</Text>
         </Pressable>
         <DeleteRitualButton client={client} onError={setError} ritualId={ritual.id} title={ritual.title} />
