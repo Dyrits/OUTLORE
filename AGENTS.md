@@ -56,7 +56,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume daily background check-ins, read the [current handoff](.agents/handoffs/2026-11-22-1100-background-check-ins.md). Handoffs are shared and committed.
+- To resume daily background check-ins, read the [current handoff](.agents/handoffs/2026-11-22-2153-background-check-ins.md). Handoffs are shared and committed.
 
 - To verify inactivity notices in realm Missives and check their quest links, read the [current handoff](.agents/handoffs/2026-11-22-0255-inactivity-missives.md). Handoffs are shared and committed.
 
