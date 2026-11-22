@@ -200,6 +200,7 @@ export function OpenThreadForm({
       harnesses={harnesses}
       isCompact
       isFullPanel={isFullPanel}
+      isTabOpen={companions?.isSelected === true}
       onChange={setRunner}
       onOpenTab={companions?.onOpen}
       presetChoice={
@@ -219,7 +220,13 @@ export function OpenThreadForm({
   );
   return (
     <View style={companions === undefined ? styles.pane : styles.flex}>
-      {companions?.isSelected && picker(true)}
+      {companions?.isSelected && (
+        <>
+          {picker(true)}
+          {/* The composer holds the draft's compact picker and is hidden while the tab is open, so the tab carries its own. */}
+          <View style={styles.composerAccessory}>{picker(false)}</View>
+        </>
+      )}
       <View
         style={
           companions?.isSelected

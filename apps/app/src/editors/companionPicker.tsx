@@ -112,7 +112,8 @@ export function CompanionPicker({
           <Text numberOfLines={1} style={local.triggerText}>
             {currentLabel}
           </Text>
-          {props.effort !== "default" && <Text style={local.triggerEffort}>{effortName(props.effort)}</Text>}
+          {/* The effort is always named, so a Default effort still shows the picker sets one. */}
+          <Text style={local.triggerEffort}>{effortName(props.effort)}</Text>
           <Text style={styles.menuCaret}>⌄</Text>
         </Pressable>
       ) : (
