@@ -24,6 +24,7 @@ describe("reading and saving settings", () => {
       const defaults = yield* call({ _tag: "ReadSettings" }).pipe(Effect.provide(serviceLayer(options)));
       expect(defaults).toEqual({
         autoArchiveDays: 30,
+        backgroundCheckIns: null,
         backups: [],
         briefingLimit: 2000,
         chatterThreshold: 20,
@@ -49,6 +50,7 @@ describe("reading and saving settings", () => {
 
       const updated = {
         autoArchiveDays: 10,
+        backgroundCheckIns: null,
         backups: [],
         briefingLimit: 500,
         chatterThreshold: 20,
@@ -86,6 +88,7 @@ describe("reading and saving settings", () => {
       expect(yield* call({ _tag: "ReadSettings" })).toEqual({
         ...saved,
         autoArchiveDays: 30,
+        backgroundCheckIns: null,
         backups: [],
         briefingLimit: 2000,
         chatterThreshold: 20,

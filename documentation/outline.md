@@ -17,6 +17,7 @@ The first build serves one user. The [architecture](architecture.md#future-multi
 
 This is the capability map, including agreed future behavior, not a checklist of shipped features. Read each specification's implementation status and the [working state](work-in-progress.md) before relying on a capability. In particular, app-managed cloning/worktrees, native-subagent mirroring, full skill/MCP management, browser access, workflows, and multiplayer are not built in full.
 
+- **[background check-ins](capabilities/background-check-ins/specifications.md)**: checking selected realms on a daily schedule and bringing relevant quest developments to the owner in realm Missives, with opt-in setup and a configurable Companion in the Workshop.
 - **[mission-tracking](capabilities/mission-tracking/specifications.md)**: creating quests directly or through Chronicler, organizing them in realms or leaving them ungrouped, moving whole quest trees with confirmation, and following their state, threads, and spending.
 - **[mission-coordination](capabilities/mission-coordination/specifications.md)**: talking with Chronicler, the app's assistant, to find information across Outlore, manage the app, and coordinate quests and their messages.
 - **[mission-journal](capabilities/mission-journal/specifications.md)**: keeping each mission's briefing and change log, read by every thread in the mission and updated as it works.

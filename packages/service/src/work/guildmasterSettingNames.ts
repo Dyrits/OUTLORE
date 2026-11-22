@@ -7,6 +7,7 @@ import { Settings } from "@outlore/contracts";
  * the Workshop, because a quest's text could otherwise talk Chronicler into widening them.
  */
 export const settingsKeptFromChronicler = [
+  "backgroundCheckIns",
   "defaultPermissionMode",
   "defaultMissionBudget",
   "globalBudget",

@@ -1,5 +1,7 @@
 # Backlog
 
+- **Background check-ins, specified** (2026-11-22). The [specification](capabilities/background-check-ins/specifications.md) covers opt-in daily check-ins, realm Missives, and Companion choice. [Bundled inference feasibility](capabilities/background-check-ins/draft.md#provider-feasibility) remains open.
+
 - **Conversation panes toward Pre-Alpha.** Desktop panes, Reply and the initial Chronicle are built. The window review and the [Chronicle attention feed and History](capabilities/conversation-panes/specifications.md#main-conversations-and-channels) remain. Phone navigation and pane identity are deferred.
 
 - **Android install confirmation spike** (2026-11-18). Try whether Android can skip its own confirmation after the owner presses **Install update**. The updater keeps both confirmations while this is open. [Draft](capabilities/app-updates/draft.md)

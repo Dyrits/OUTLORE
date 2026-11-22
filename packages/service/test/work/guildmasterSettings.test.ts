@@ -26,7 +26,7 @@ describe("settings at the owner's request", () => {
       const place = yield* guildmaster;
       const text = yield* tool(place.threadId, "read_settings", {});
       expect(text).toContain('"shouldShowFinishedQuests":false');
-      expect(text).toContain("You may not change: defaultPermissionMode");
+      expect(text).toContain("You may not change: backgroundCheckIns, defaultPermissionMode");
     }).pipe(Effect.provide(setup().layer)),
   );
 

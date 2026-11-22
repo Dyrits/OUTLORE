@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 import { Activity } from "./activities.ts";
 import { AttachmentCard } from "./attachments.ts";
+import { BackgroundCheckIns } from "./backgroundCheckIns.ts";
 import {
   BudgetEvent,
   BudgetLimits,
@@ -58,6 +59,8 @@ export type MessageDelivery = typeof MessageDelivery.Type;
 export const Settings = Schema.Struct({
   /** Days after a Done mission was marked Done before it is archived, when auto-archive is on. */
   autoArchiveDays: PositiveInt,
+  /** Daily check-in setup, retained while paused. Null means the owner has never opted in. */
+  backgroundCheckIns: Schema.optionalKey(Schema.NullOr(BackgroundCheckIns)),
   /** The backup Companions a new quest's thread starts with, in the order a failed turn falls back through them; at most five. */
   backups: BackupCompanions,
   /** The most tokens a mission's briefing may hold, estimated at about 4 characters per token (mission-journal, Size). */

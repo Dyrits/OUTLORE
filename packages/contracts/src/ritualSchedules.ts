@@ -5,7 +5,7 @@ import { MissionId, RitualId } from "./ids.ts";
 // in `records.ts`, carries the card and `rituals.ts` reads `records.ts`.
 
 /** A local time of day, "07:00". */
-const TimeOfDay = Schema.String.check(Schema.isPattern(/^([01]\d|2[0-3]):[0-5]\d$/));
+export const TimeOfDay = Schema.String.check(Schema.isPattern(/^([01]\d|2[0-3]):[0-5]\d$/));
 
 /**
  * When a Ritual runs, in the computer's local time: a preset, never a cron expression. Weekly days count from

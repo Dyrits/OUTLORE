@@ -1,5 +1,11 @@
 # Work in progress
 
+## Daily background check-ins · 2026-11-22 · settings tested
+
+Starting revision `f5e50adb` on `worktree/background-check-ins`. The owner authorized implementation of the [CHG-0633 agreement](capabilities/background-check-ins/specifications.md). The settings requests now save selected realms, local time, Companion, and any explicitly chosen fallback. Pausing keeps the selection. The service test went red before the settings field existed and now passes, including a full settings save by an older client.
+
+The Workshop, daily run, and linked Missives are pending. The Ritual scheduler's local-time calculation can be reused. Its runner starts an agent turn with tools, so the check-in runner needs an inference path with tools disabled. The first release's supported Companions are pending the owner's choice. Publication should verify the selected realm, quest link, reportable change, and absence of duplicate Missives through the same conversation request as inactivity warnings.
+
 ## Inactivity warnings in realm Missives · 2026-11-22 · window check pending
 
 CHG-0639 is implemented and reviewed on `worktree/inactivity-missives`, based on `891c972f`. Outlore posts linked notices to realm Missives at the four-hour Attention and twelve-hour Resting thresholds. The scheduled service and app feed checks passed. Open a notice in the desktop window and from a paired device to check its presentation and quest navigation. [Verification](verification/2026-11-22-inactivity-missives.md)

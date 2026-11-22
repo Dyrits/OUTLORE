@@ -27,6 +27,7 @@ export const noLimits: BudgetLimits = { cost: null, tokens: null };
 /** The settings before the owner changes any. */
 export const defaultSettings: Settings = {
   autoArchiveDays: 30,
+  backgroundCheckIns: null,
   backups: [],
   briefingLimit: 2000,
   chatterThreshold: 20,
@@ -120,7 +121,11 @@ const putSetting = (sql: SqlClient.SqlClient, key: string, value: string) =>
 
 /** Stores the owner's settings, refusing any that do not decode. */
 export const writeSettings = Effect.fnUntraced(function* (settings: Settings) {
-  const parsed = yield* Schema.decodeUnknownEffect(Settings)(settings).pipe(
+  const complete =
+    settings.backgroundCheckIns === undefined
+      ? { ...settings, backgroundCheckIns: (yield* readSettings).backgroundCheckIns ?? null }
+      : settings;
+  const parsed = yield* Schema.decodeUnknownEffect(Settings)(complete).pipe(
     Effect.catch(() =>
       invalid(
         "Invalid settings: the chatter threshold must be a whole number of at least 2; the briefing limit, the inactivity and auto-archive days, and the lore half-lives at least 1; budget limits above 0, tokens in whole numbers.",
@@ -129,7 +134,7 @@ export const writeSettings = Effect.fnUntraced(function* (settings: Settings) {
   );
   const sql = yield* SqlClient.SqlClient;
   yield* putSetting(sql, "settings", JSON.stringify(parsed));
-  return settings;
+  return parsed;
 });
 
 const decodeChoices = Schema.decodeUnknownExit(StartChoices);
