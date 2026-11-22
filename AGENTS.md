@@ -56,8 +56,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To verify Chronicle source labels in Attention and History, read the [current handoff](.agents/handoffs/2026-11-22-2206-chronicle-source-labels.md). Handoffs are shared and committed.
+
 - To resume daily background check-ins, read the [current handoff](.agents/handoffs/2026-11-22-2153-background-check-ins.md). Handoffs are shared and committed.
 
 - To verify inactivity notices in realm Missives and check their quest links, read the [current handoff](.agents/handoffs/2026-11-22-0255-inactivity-missives.md). Handoffs are shared and committed.
-
-- To verify Ritual tabs, manual runs, and live approvals, read the [current handoff](.agents/handoffs/2026-11-22-0250-ritual-verification.md). Handoffs are shared and committed.

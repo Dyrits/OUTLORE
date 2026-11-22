@@ -1,5 +1,9 @@
 # Work in progress
 
+## Chronicle source labels · 2026-11-22 · window check pending
+
+CHG-0641 shows **Quest**, **Errand**, or **Realm** before each Chronicle source title in Attention and History. The service derives the type from the thread tree, an older paired host shows no label, long titles wrap, and screen readers speak the type. Biome, the seven-workspace typecheck, and the full suite (2,713 passed, 68 skipped) are green on the base; the rebased tip re-passed Biome, typecheck, and the focused Chronicle tests. The window check is pending; see the [current handoff](../.agents/handoffs/2026-11-22-2206-chronicle-source-labels.md).
+
 ## Daily background check-ins · 2026-11-22 · settings and day admission landed; host wiring pending
 
 Starting revision `f5e50adb` on `worktree/background-check-ins`. The owner authorized implementation of the [CHG-0633 agreement](capabilities/background-check-ins/specifications.md). The settings requests now save selected realms, local time, Companion, and any explicitly chosen fallback. Pausing keeps the selection. The service test went red before the settings field existed and now passes, including a full settings save by an older client.
