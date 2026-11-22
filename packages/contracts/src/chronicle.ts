@@ -24,6 +24,8 @@ export const ChronicleItem = Schema.Struct({
   /** The unanswered request selected for a waiting entry. */
   questionId: Schema.optional(Schema.NullOr(QuestionId)),
   realmId: Schema.NullOr(WorkspaceId),
+  /** The conversation's type, omitted by hosts that predate source labels. */
+  source: Schema.optional(Schema.Literals(["Quest", "Errand", "Realm"])),
   threadId: Schema.NullOr(ThreadId),
   title: Schema.String,
 });

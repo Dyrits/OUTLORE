@@ -64,10 +64,15 @@ export const readChronicle = Effect.gen(function* () {
           AND t.archived_at IS NULL
         GROUP BY t.id
     )
-    SELECT items.*, CASE WHEN kind = 'Waiting' THEN
+    SELECT items.*, CASE
+      WHEN items.kind = 'RealmOpened' THEN 'Realm'
+      WHEN items.threadId IS NULL OR items.threadId = m.top_thread_id THEN 'Quest'
+      ELSE 'Errand' END AS source,
+    CASE WHEN items.kind = 'Waiting' THEN
       (SELECT q.id FROM questions q WHERE q.thread_id = items.threadId AND q.outcome IS NULL
         ORDER BY q.asked_at DESC, q.id ASC LIMIT 1) ELSE NULL END AS questionId
-    FROM items ORDER BY at DESC, id LIMIT 150`;
+    FROM items LEFT JOIN missions m ON m.id = items.missionId
+    ORDER BY items.at DESC, items.id LIMIT 150`;
   return rows.map((row): ChronicleItem => ({ ...row, isUnread: row.isUnread === 1 }));
 });
 

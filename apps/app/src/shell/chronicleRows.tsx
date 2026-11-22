@@ -2,7 +2,7 @@ import type { ChronicleItem } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { agoOf } from "../foundation/formatting";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
-import { type ChronicleUrgency, chroniclePhrases, urgencyOf } from "./chronicleFeed";
+import { type ChronicleUrgency, chroniclePhrases, chronicleTitleOf, urgencyOf } from "./chronicleFeed";
 import { isHovered } from "./railStyles";
 
 /**
@@ -36,11 +36,12 @@ export function ChronicleRow({
   const urgency = urgencyOf(item);
   const { color, corner } = marks[urgency];
   const isQuiet = urgency === "Routine";
+  const title = chronicleTitleOf(item);
   const phrase = chroniclePhrases[item.kind];
   const ago = agoOf(item.at, now);
   return (
     <Pressable
-      accessibilityLabel={`${item.title}, ${phrase}${item.count > 1 ? `, ${item.count} updates` : ""}, ${ago}`}
+      accessibilityLabel={`${title}, ${phrase}${item.count > 1 ? `, ${item.count} updates` : ""}, ${ago}`}
       accessibilityRole="button"
       onPress={onPress}
       style={(state) => [
@@ -49,11 +50,7 @@ export function ChronicleRow({
         (state.pressed || isHovered(state)) && local.rowHovered,
       ]}
     >
-      {isTitled && (
-        <Text numberOfLines={2} style={local.title}>
-          {item.title}
-        </Text>
-      )}
+      {isTitled && <Text style={local.title}>{title}</Text>}
       <View style={local.detail}>
         {item.isUnread && <View style={local.unreadDot} />}
         <Text numberOfLines={1} style={[local.phrase, { color }]}>

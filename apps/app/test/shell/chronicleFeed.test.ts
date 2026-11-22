@@ -2,6 +2,7 @@ import { type ChronicleItem, ThreadId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import {
   attentionOf,
+  chronicleTitleOf,
   conversationsOf,
   historyOf,
   needsAttentionOf,
@@ -70,16 +71,31 @@ describe("the Chronicle's feed", () => {
 
   it("groups attention updates by conversation, ranked by their most urgent entry", () => {
     const items = [
-      entry("A: request", "Waiting", now - hour, { threadId: ThreadId.make("a"), title: "Quest A" }),
-      entry("A: replies", "Replies", now - 30, { isUnread: true, threadId: ThreadId.make("a"), title: "Quest A" }),
-      entry("B: failure", "Failed", now - 2 * hour, { threadId: ThreadId.make("b"), title: "Quest B" }),
+      entry("A: request", "Waiting", now - hour, { source: "Quest", threadId: ThreadId.make("a"), title: "Palace" }),
+      entry("A: replies", "Replies", now - 30, {
+        isUnread: true,
+        source: "Quest",
+        threadId: ThreadId.make("a"),
+        title: "Palace",
+      }),
+      entry("B: failure", "Failed", now - 2 * hour, {
+        source: "Errand",
+        threadId: ThreadId.make("b"),
+        title: "Palace",
+      }),
     ];
     expect(conversationsOf(attentionOf(items)).map((group) => [group.heading, group.key])).toEqual([
-      ["Quest B", "b"],
-      ["Quest A", "a"],
+      ["Errand · Palace", "b"],
+      ["Quest · Palace", "a"],
     ]);
     const questA = conversationsOf(attentionOf(items)).find((group) => group.key === "a");
     expect(questA?.items.map((item) => item.id)).toEqual(["A: request", "A: replies"]);
+  });
+
+  it("labels older events whose type is clear from their data", () => {
+    expect(chronicleTitleOf(entry("Palace", "RealmOpened", now))).toBe("Realm · Palace");
+    expect(chronicleTitleOf(entry("Hello", "QuestOpened", now))).toBe("Quest · Hello");
+    expect(chronicleTitleOf(entry("Hello", "Replies", now, { threadId: ThreadId.make("thread") }))).toBe("Hello");
   });
 
   it("groups routine events by day, latest first, leaving what needs the owner out", () => {

@@ -122,9 +122,7 @@ export function ChronicleActivity({
         feed.map((conversation) => (
           <View key={conversation.key} style={local.conversation}>
             <Pressable accessibilityRole="button" onPress={() => openConversation(conversation)}>
-              <Text numberOfLines={1} style={local.conversationTitle}>
-                {conversation.heading}
-              </Text>
+              <Text style={local.conversationTitle}>{conversation.heading}</Text>
             </Pressable>
             {conversation.items.map((item) => (
               <ChronicleRow isTitled={false} item={item} key={item.id} now={now} onPress={() => open(item)} />

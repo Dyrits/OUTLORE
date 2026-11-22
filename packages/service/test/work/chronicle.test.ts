@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { call, settle, start, withService } from "../fixtures/service.ts";
+import { call, open, settle, start, withService } from "../fixtures/service.ts";
 
 const chronicle = () => call({ _tag: "ReadChronicle" });
 
@@ -15,6 +15,7 @@ describe("the Chronicle's attention feed and reads (CHG-0569)", () => {
           count: 1,
           isUnread: true,
           missionId: quest.missionId,
+          source: "Quest",
         });
         yield* call({ _tag: "MarkThreadRead", threadId: quest.threadId });
         const after = yield* chronicle();
@@ -23,6 +24,32 @@ describe("the Chronicle's attention feed and reads (CHG-0569)", () => {
         expect(after.find((each) => each.kind === "QuestOpened" && each.missionId === quest.missionId)).toMatchObject({
           isUnread: false,
         });
+      }),
+    ),
+  );
+
+  it.live("identifies the realm in its opening event", () =>
+    withService(
+      Effect.gen(function* () {
+        yield* call({ _tag: "CreateRealm", name: "Palace", path: null });
+        expect((yield* chronicle()).find((each) => each.kind === "RealmOpened")).toMatchObject({
+          source: "Realm",
+          title: "Palace",
+        });
+      }),
+    ),
+  );
+
+  it.live("identifies replies from a child thread as an errand", () =>
+    withService(
+      Effect.gen(function* () {
+        const quest = yield* start("Hello there");
+        yield* settle(quest.missionId, (detail) => detail.thread.state === "Resting");
+        const errand = yield* open(quest.threadId, "Hello from the errand");
+        yield* settle(quest.missionId, (detail) => detail.thread.state === "Resting", errand.threadId);
+        expect(
+          (yield* chronicle()).find((each) => each.kind === "Replies" && each.threadId === errand.threadId),
+        ).toMatchObject({ source: "Errand" });
       }),
     ),
   );
