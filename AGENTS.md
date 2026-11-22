@@ -56,8 +56,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To check pane notch titles in the desktop window, read the [current handoff](.agents/handoffs/2026-11-22-0225-pane-notch-titles.md). Handoffs are shared and committed.
+
 - To verify Codex Full access in a live turn, read the [current handoff](.agents/handoffs/2026-11-22-0211-codex-full-access.md). Handoffs are shared and committed.
 
 - To check Ritual creation and editing in live conversations, read the [current handoff](.agents/handoffs/2026-11-22-0146-ritual-conversation-tools.md). Handoffs are shared and committed.
-
-- To resume the pane header controls batch, read the [current handoff](.agents/handoffs/2026-11-22-0126-pane-header-controls.md). Handoffs are shared and committed.
