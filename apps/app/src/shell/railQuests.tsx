@@ -164,6 +164,7 @@ export function Quest({
         <Row
           corners={cornersOf(mission.state)}
           fold={{
+            isAlwaysShown: true,
             isOpen,
             label: questName,
             onPress: mission.threadCount > 1 ? () => onToggle(mission.id) : null,

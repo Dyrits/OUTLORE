@@ -43,7 +43,7 @@ export function Row({
   isSelected: boolean;
   label: string;
   /** The fold mark before the label of a quest or errand row; null `onPress` keeps its place empty. */
-  fold?: { isOpen: boolean; label: string; onPress: (() => void) | null };
+  fold?: { isAlwaysShown?: boolean; isOpen: boolean; label: string; onPress: (() => void) | null };
   onPress: () => void;
   /**
    * The marks at the row's lower-left corner, drawn in order so a smaller one sits over a larger one. A border cannot
@@ -71,7 +71,15 @@ export function Row({
         isSelected && local.rowSelected,
       ]}
     >
-      {fold !== undefined && <Chevron {...fold} focusProps={focusProps} isShown={isShown} />}
+      {fold !== undefined && (
+        <Chevron
+          focusProps={focusProps}
+          isOpen={fold.isOpen}
+          isShown={isShown || fold.isAlwaysShown === true}
+          label={fold.label}
+          onPress={fold.onPress}
+        />
+      )}
       {leading}
       <Text numberOfLines={1} style={[local.rowText, isSelected && local.rowTextSelected, textStyle]}>
         {label}

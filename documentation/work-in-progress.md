@@ -16,6 +16,8 @@ The Expand pane button uses outward arrows and appears when multiple conversatio
 
 CHG-0620 restores the errand tree on desktop and opens the Quests and Errands tabs from the sidebar. See the [verification record](verification/2026-11-21-sidebar-errands.md).
 
+CHG-0635 makes quest chevrons visible at rest on `worktree/quest-fold`, based on `04cc66ee`. In the desktop window, check that a collapsed quest with errands shows its chevron with the pointer away, the chevron toggles the errands, and a quest without errands has an empty chevron slot.
+
 ## Rituals as realm entities · 2026-11-21 · built; window check and the owner's look pending
 
 The entity model of CHG-0616 is implemented and delivered in three commits (CHG-0619: the specifications pass, the service core, and the app UI) plus the app-guide alignment: runs as persisted errands beneath the Ritual, service-made trigger and result lines, one run at a time, savepoint starts, fallbacks on the run errand, `ListMissions.includeRituals`, `CreateRitual.originMissionId`, whole-tree `DeleteRitual` (ritual rows beside the realm's quests, the Rituals place removed, controls and the origin link in the Ritual's panel, the composer hidden, Schedule as a Ritual on a quest's panel, + Ritual on a realm header). Checks and coverage: [verification](verification/2026-11-21-rituals-as-realm-entities.md); the full suite was green at each commit (2734 passed, 24 skipped at the end). Migration: `0073_ritual_origin_mission` (0071 and 0072 are the permission modes').
