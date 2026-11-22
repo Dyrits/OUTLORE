@@ -41,6 +41,11 @@ export type HarnessFacts = {
   readonly packageName: string;
   /** Where the newest release's version is read: the npm registry, PyPI's JSON API, or "none" for a harness that reports no registry version (its Update stays the harness's own command). */
   readonly releaseRegistry: "npm" | "pypi" | "none";
+  /**
+   * Whether the owner can add accounts beside the computer's own sign-in; false when no per-account state home has
+   * been verified, so an added account could only share the computer's sign-in invisibly (Muse, 2026-11-22).
+   */
+  readonly supportsAddedAccounts?: boolean;
   /** The arguments of the harness's own sign-in command. */
   readonly signInArgs: ReadonlyArray<string>;
   /**
@@ -48,8 +53,8 @@ export type HarnessFacts = {
    * a local port. Otherwise it is an interactive screen that needs a terminal window.
    */
   readonly signInNeedsNoTerminal: boolean;
-  /** The arguments of the harness's own command that updates it, which knows how it was installed. */
-  readonly updateArgs: ReadonlyArray<string>;
+  /** The arguments of the harness's own command that updates it, which knows how it was installed; null when the harness has no update command (its Update explains instead). */
+  readonly updateArgs: ReadonlyArray<string> | null;
   /** The executable the update command runs on when it is not the harness's own command; else null. */
   readonly updateCommand: string | null;
 };
@@ -108,6 +113,30 @@ export const harnessFacts = {
     updateArgs: ["update"],
     updateCommand: null,
   },
+  muse: {
+    // The Muse adapter mediates approvals itself, so it has no `answer_prompt` tool.
+    approvedCommandAdvice: "",
+    // No per-account state home is verified (its root is the shared XDG data dir), so only the computer's own
+    // sign-in is offered and added accounts are refused rather than silently sharing it.
+    configVariable: "MUSE_HOME",
+    fixedModels: null,
+    hasPromptTool: false,
+    // Muse's CLI is on no package registry: it ships through Meta's signed muse-stable manifest, so the
+    // Install explanation covers it (the npm SDK is a service dependency, not the CLI).
+    installVia: "manual",
+    label: "Muse",
+    // The newest version is what the muse-stable channel carries; no registry holds the CLI.
+    packageName: "",
+    releaseRegistry: "none",
+    // `muse login` opens its device page only from a real terminal, so sign-in opens one.
+    signInArgs: ["login"],
+    signInNeedsNoTerminal: false,
+    supportsAddedAccounts: false,
+    // The CLI has no update command; Outlore sets MUSE_NO_AUTO_UPDATE on every spawn, so it never updates
+    // itself through us, and Update explains instead of running anything.
+    updateArgs: null,
+    updateCommand: null,
+  },
   opencode: {
     approvedCommandAdvice: "",
     // OpenCode keeps its sign-ins and sessions under its data folder (`$XDG_DATA_HOME/opencode`).
@@ -147,12 +176,17 @@ export const harnessLabels = {
   claude: harnessFacts.claude.label,
   codex: harnessFacts.codex.label,
   hermes: harnessFacts.hermes.label,
+  muse: harnessFacts.muse.label,
   opencode: harnessFacts.opencode.label,
   vibe: harnessFacts.vibe.label,
 } as const satisfies Record<HarnessName, string>;
 
 /** Every harness, in the order pickers list them. */
-export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode", "vibe", "hermes"];
+export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode", "vibe", "hermes", "muse"];
+
+/** Whether a harness refuses the accounts the owner adds beside the computer's own sign-in (`supportsAddedAccounts: false`). */
+export const refusesAddedAccounts = (harness: HarnessName): boolean =>
+  (harnessFacts as Record<HarnessName, HarnessFacts>)[harness].supportsAddedAccounts === false;
 
 /** The environment that points a harness at an account's folder; empty for the computer's own sign-in. */
 export const accountEnvironmentOf = (harness: HarnessName, configDirectory: string | null): Record<string, string> =>

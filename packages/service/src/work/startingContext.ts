@@ -68,6 +68,7 @@ const catalogModels = {
   claude: claudeModels,
   codex: [],
   hermes: [],
+  muse: [],
   opencode: [],
   vibe: [],
 } as const satisfies Record<HarnessName, ReadonlyArray<ModelOption>>;

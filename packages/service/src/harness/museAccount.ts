@@ -77,7 +77,8 @@ const withMuseHost = <A>(
         MuseClient.spawn({
           args: [...prefixArgs, "serve"],
           clientInfo,
-          env: reducedEnvironmentOf({}),
+          // Upstream sets this on every spawn (provider-drivers.ts:636): a manager, not the CLI, owns updates.
+          env: reducedEnvironmentOf({ MUSE_NO_AUTO_UPDATE: "1" }),
           museBin: command,
         }),
     });

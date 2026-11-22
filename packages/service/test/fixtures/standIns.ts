@@ -5,6 +5,7 @@ import { type Duration, Effect, Layer } from "effect";
 import { afterEach } from "vitest";
 import { acpProviderProfiles } from "../../src/harness/acpProviderProfiles.ts";
 import { makeAcpProviderHarness } from "../../src/harness/acpProviders.ts";
+import { makeMuseHarness } from "../../src/harness/muse.ts";
 import type { OpenCodeSandbox } from "../../src/harness/openCodeSandbox.ts";
 import {
   type FakeUpdates,
@@ -146,6 +147,12 @@ export const withHarnesses = (
             args: [],
             env: { ACP_FAKE_LOG: log, ACP_FAKE_MODE: "turn" },
           },
+        }),
+        // The registered Muse entry, stood in: the MSP fake as its `muse serve` host.
+        muse: yield* makeMuseHarness({
+          command: process.execPath,
+          idleTimeout,
+          prefixArgs: [join(import.meta.dirname, "museProviderFake.mjs")],
         }),
         opencode: yield* makeOpenCodeHarness({
           command: process.execPath,

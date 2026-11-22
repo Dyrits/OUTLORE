@@ -160,6 +160,7 @@ describe("running OpenCode threads", () => {
           claude: "claude",
           codex: "codex",
           hermes: "hermes",
+          muse: "muse",
           opencode: command,
           vibe: "vibe-acp",
         }),

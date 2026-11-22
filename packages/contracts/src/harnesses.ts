@@ -3,8 +3,8 @@ import { AccountId } from "./ids.ts";
 
 // Harnesses and the provider accounts they sign in with (provider-accounts).
 
-/** The harness a thread runs on: Claude Code, Codex, OpenCode, Mistral Vibe (ADR 0008), or Hermes, the first of the ACP provider batch (2026-11-22). */
-export const HarnessName = Schema.Literals(["claude", "codex", "opencode", "vibe", "hermes"]);
+/** The harness a thread runs on: Claude Code, Codex, OpenCode, Mistral Vibe (ADR 0008), or Hermes and Muse, the first of the ACP provider batch (2026-11-22). */
+export const HarnessName = Schema.Literals(["claude", "codex", "opencode", "vibe", "hermes", "muse"]);
 export type HarnessName = typeof HarnessName.Type;
 
 /**

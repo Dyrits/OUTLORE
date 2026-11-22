@@ -4,7 +4,13 @@ import type { AccountId, AccountStatus, HarnessInfo, HarnessList, HarnessName } 
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, newId, notFound } from "../core/index.ts";
-import { HarnessTools, harnessLabels, harnessNames, type SignInStatus } from "../harness/index.ts";
+import {
+  HarnessTools,
+  harnessLabels,
+  harnessNames,
+  refusesAddedAccounts,
+  type SignInStatus,
+} from "../harness/index.ts";
 import { ownAccountLabelOf } from "../remote/index.ts";
 import { AccountsRoot } from "./threads.ts";
 
@@ -145,6 +151,10 @@ const trimmedLabel = (label: string) =>
 export const addAccount = Effect.fnUntraced(function* (harness: HarnessName, label: string) {
   const sql = yield* SqlClient.SqlClient;
   const accountsRoot = yield* AccountsRoot;
+  // A harness without a verified per-account state home (Muse) takes no added account: it could only share
+  // the computer's sign-in invisibly, which reads as isolation it does not have.
+  if (refusesAddedAccounts(harness))
+    return yield* invalid(`${harnessLabels[harness]} takes only the computer's own sign-in.`);
   const name = yield* trimmedLabel(label);
   const id = yield* newId;
   const now = yield* Clock.currentTimeMillis;

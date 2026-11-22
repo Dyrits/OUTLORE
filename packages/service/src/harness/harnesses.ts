@@ -18,6 +18,8 @@ import { makeClaudeHarness } from "./claude.ts";
 import { makeCodexHarness } from "./codex.ts";
 import { accountEnvironmentOf, claudeModels, type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
 import type { SignInStatus } from "./harnessTools.ts";
+import { makeMuseHarness } from "./muse.ts";
+import { listMuseModels, readMuseSignIn } from "./museAccount.ts";
 import { detectOpenCodeSandbox } from "./openCodeSandbox.ts";
 import { listOpenCodeEfforts, makeOpenCodeHarness } from "./opencode.ts";
 import { makeVibeHarness } from "./vibe.ts";
@@ -212,8 +214,25 @@ const hermes: HarnessDefinition = {
   readSignIn: () => Effect.succeed(unknownSignIn),
 };
 
+const muse: HarnessDefinition = {
+  ...harnessFacts.muse,
+  // Muse runs through its MSP adapter: every approval reaches the owner, a turn that cannot be mediated stops
+  // rather than guessing, and the CLI's self-update stays suppressed (muse.ts).
+  makeAdapter: ({ command, idleTimeout }) =>
+    makeMuseHarness({ command, env: { MUSE_NO_AUTO_UPDATE: "1" }, idleTimeout }),
+  // The models come from a short-lived `muse serve` host's own list; none when the CLI is not installed.
+  readModels: (command) =>
+    listMuseModels(command).pipe(Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([]))),
+  // The device sign-in needs a terminal and the account probe rides experimental MSP, so an account shows
+  // Unknown until a live check proves a surface.
+  readSignIn: () => readMuseSignIn(),
+};
+
 /** Every harness, by name. */
-export const harnesses = { claude, codex, hermes, opencode, vibe } satisfies Record<HarnessName, HarnessDefinition>;
+export const harnesses = { claude, codex, hermes, muse, opencode, vibe } satisfies Record<
+  HarnessName,
+  HarnessDefinition
+>;
 
 /** The adapter the app runs turns through: each harness's own, started from its definition (provider-accounts). */
 export const makeHarnessRouter = (commands: Record<HarnessName, string>, options: Omit<AdapterOptions, "command">) => {
@@ -222,6 +241,7 @@ export const makeHarnessRouter = (commands: Record<HarnessName, string>, options
     claude: adapterOf("claude"),
     codex: adapterOf("codex"),
     hermes: adapterOf("hermes"),
+    muse: adapterOf("muse"),
     opencode: adapterOf("opencode"),
     vibe: adapterOf("vibe"),
   } satisfies Record<HarnessName, unknown>).pipe(Effect.map(routeHarnesses));

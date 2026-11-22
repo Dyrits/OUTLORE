@@ -6,12 +6,14 @@ The owner put all providers ahead of connectors. The [source inventory](research
 
 Wave 1 is delivered on the branch (CHG-0642): Hermes registers as the fifth harness through the generic ACP adapter, with owner-mediated permissions, per-account `HERMES_HOME` isolation, a no-prompt model probe, manual-install explanation, `hermes update`, and a terminal sign-in chaining `hermes pm repair` with `hermes --setup`. The fixture-verified Pi (fail-closed no-tools), Muse (fail-closed mediator), and Grok (blocked launch profile) adapters landed with it.
 
+Wave 2 is delivered too (CHG-0643): Muse registers as the sixth harness, computer's own sign-in only (its state root is the shared XDG data directory; adding an account is refused), Install explains Meta's signed-manifest distribution, Update refuses (no update command), and every spawn suppresses the CLI's self-update.
+
 Open next:
 
-- Muse registration (wave 2): the Muse account-home isolation is unverified, so it registers with the computer's own sign-in only; an install story (`installVia`) and sign-in command for the Muse CLI still need checking.
 - Pi registration (wave 3): the Pi errand's probe profile table (executable, version check, `PI_CODING_AGENT_DIR` convention, install story, Inception's OPEN sign-in) is pending, and registration waits on a live `pi` CLI.
+- The askOwner → `extension_ui_response` mediation design for lifting Pi's tool denial stays fail-closed until proven.
 - Blocked set to re-derive proofs for: Kimi 2.x config-level yolo, Grok `--no-subagents` in normal sessions, Cursor and Copilot added-account isolation.
-- Live checks the owner must do on this machine: sign a Hermes account in and run one real prompt turn; install the missing provider CLIs (pi, muse, grok, cursor-agent, cline, copilot, devin, antigravity).
+- Live checks the owner must do on this machine: sign a Hermes account in and run one real prompt turn; `muse login` and one real Muse turn; install the provider CLIs that are absent (pi, muse, grok, cursor-agent, cline, copilot, devin, antigravity).
 
 ## Daily background check-ins · 2026-11-22 · settings tested
 

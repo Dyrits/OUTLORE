@@ -172,6 +172,12 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
     const update = Effect.fnUntraced(function* (harness: HarnessName) {
       const facts = harnessFacts[harness];
       const label = facts.label;
+      // A harness with no update command of its own (Muse: the CLI has none, and Outlore keeps its
+      // self-update suppressed) never runs anything here; its releases come by reinstall.
+      if (facts.updateArgs === null)
+        return yield* invalid(
+          `${label} has no update command: reinstall it from its own release channel, then press Refresh.`,
+        );
       const run = yield* runUpdate(facts.updateCommand ?? commands[harness], facts.updateArgs, {}, updateTimeoutMillis);
       if (run.code !== 0) {
         const reason = run.output.trim().split("\n").slice(-3).join(" ");

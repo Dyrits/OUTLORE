@@ -42,6 +42,8 @@ const liveLayer = Layer.unwrap(
       codex: yield* Config.String("OUTLORE_CODEX_PATH").pipe(Config.withDefault("codex")),
       // Hermes is the first of the generic ACP providers (`hermes acp`); an account's home is set per turn.
       hermes: yield* Config.String("OUTLORE_HERMES_PATH").pipe(Config.withDefault("hermes")),
+      // Muse runs its own MSP host (`muse serve`) through the official SDK.
+      muse: yield* Config.String("OUTLORE_MUSE_PATH").pipe(Config.withDefault("muse")),
       opencode: yield* Config.String("OUTLORE_OPENCODE_PATH").pipe(Config.withDefault("opencode")),
       vibe: yield* Config.String("OUTLORE_VIBE_PATH").pipe(Config.withDefault("vibe-acp")),
     };

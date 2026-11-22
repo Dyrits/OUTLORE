@@ -50,7 +50,7 @@ describe("installing and updating harnesses", () => {
     }).pipe(
       Effect.provide(
         liveHarnessToolsLayer(
-          { claude: "claude", codex: "codex", hermes: "hermes", opencode: "opencode", vibe: "vibe-acp" },
+          { claude: "claude", codex: "codex", hermes: "hermes", muse: "muse", opencode: "opencode", vibe: "vibe-acp" },
           (...args) => {
             calls.push(args);
             return Effect.succeed({ code: 0, output: "", stdout: "" });
@@ -59,15 +59,38 @@ describe("installing and updating harnesses", () => {
       ),
     );
   });
+
+  it.live("refuses Update on a harness that has no update command of its own", () => {
+    const calls: Array<unknown> = [];
+    return Effect.gen(function* () {
+      const tools = yield* HarnessTools;
+      // Muse's CLI has none: nothing runs, and the owner reads how its releases arrive instead.
+      const failure = yield* tools.update("muse").pipe(Effect.flip);
+      expect(failure.message).toContain("Muse has no update command");
+      expect(failure.message).toContain("Refresh");
+      expect(calls).toEqual([]);
+    }).pipe(
+      Effect.provide(
+        liveHarnessToolsLayer(
+          { claude: "claude", codex: "codex", hermes: "hermes", muse: "muse", opencode: "opencode", vibe: "vibe-acp" },
+          (...args) => {
+            calls.push(args);
+            return Effect.succeed({ code: 0, output: "", stdout: "" });
+          },
+        ),
+      ),
+    );
+  });
+
   it.live("offers an update only to a harness with a newer version, and updates it", () => {
     const { layer, updates } = withHarnesses();
     updates.available.codex = "0.167.0";
     return Effect.gen(function* () {
       const before = yield* call({ _tag: "ListHarnesses" });
-      expect(before.harnesses.map((harness) => harness.update)).toEqual([null, "0.167.0", null, null, null]);
+      expect(before.harnesses.map((harness) => harness.update)).toEqual([null, "0.167.0", null, null, null, null]);
       const after = yield* call({ _tag: "UpdateHarness", harness: "codex" });
       expect(updates.updated).toEqual(["codex"]);
-      expect(after.harnesses.map((harness) => harness.update)).toEqual([null, null, null, null, null]);
+      expect(after.harnesses.map((harness) => harness.update)).toEqual([null, null, null, null, null, null]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -117,6 +140,7 @@ describe("signing in to a harness", () => {
         "opencode",
         "vibe",
         "hermes",
+        "muse",
       ]);
       expect(yield* call({ _tag: "SignInAccount", accountId: null, harness: "opencode" })).toBeNull();
     }).pipe(Effect.provide(layer));
@@ -147,6 +171,7 @@ describe("signing in to a harness", () => {
             claude: command,
             codex: "codex",
             hermes: "hermes",
+            muse: "muse",
             opencode: "opencode",
             vibe: "vibe-acp",
           }),

@@ -136,11 +136,12 @@ describe("managing provider accounts", () => {
       yield* call({ _tag: "RenameHost", name: "Studio" });
       const renamed = yield* call({ _tag: "RenameOwnAccount", harness: "claude", label: " Personal " });
       const labelsOf = (list: typeof renamed) => list.harnesses.map((harness) => harness.accounts[0]?.label);
-      expect(labelsOf(renamed)).toEqual(["Personal", "Studio", "Studio", "Studio", "Studio"]);
+      expect(labelsOf(renamed)).toEqual(["Personal", "Studio", "Studio", "Studio", "Studio", "Studio"]);
       // A later rename of the computer leaves the sign-in's own name alone.
       yield* call({ _tag: "RenameHost", name: "Laptop" });
       expect(labelsOf(yield* call({ _tag: "ListHarnesses" }))).toEqual([
         "Personal",
+        "Laptop",
         "Laptop",
         "Laptop",
         "Laptop",
@@ -158,11 +159,28 @@ describe("managing provider accounts", () => {
     }).pipe(Effect.provide(layer));
   });
 
+  it.live("refuses an added account on a harness that takes only the computer's own sign-in", () => {
+    const { layer } = withHarnesses();
+    return Effect.gen(function* () {
+      // Muse has no verified per-account state home: an added account could only share the computer's
+      // sign-in invisibly, so adding one is refused rather than silently unisolated.
+      const failure = yield* call({ _tag: "AddAccount", harness: "muse", label: "Work" }).pipe(Effect.flip);
+      expect(failure.message).toBe("Muse takes only the computer's own sign-in.");
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("lists every harness with the computer's own sign-in first", () => {
     const { layer } = withHarnesses();
     return Effect.gen(function* () {
       const { harnesses } = yield* call({ _tag: "ListHarnesses" });
-      expect(harnesses.map((harness) => harness.name)).toEqual(["claude", "codex", "opencode", "vibe", "hermes"]);
+      expect(harnesses.map((harness) => harness.name)).toEqual([
+        "claude",
+        "codex",
+        "opencode",
+        "vibe",
+        "hermes",
+        "muse",
+      ]);
       for (const harness of harnesses) {
         expect(harness.accounts[0]).toMatchObject({ id: null, label: computerNameOf(), signIn: "SignedIn" });
         expect(harness.models.map((model) => model.id)).not.toContain("default");

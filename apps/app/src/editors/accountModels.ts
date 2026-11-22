@@ -1,7 +1,7 @@
 import type { AccountId, HarnessInfo, HarnessList, HarnessName, ModelOption } from "@outlore/contracts";
 
 /** The harnesses in the order the pickers list them. */
-export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode", "vibe", "hermes"];
+export const harnessNames: ReadonlyArray<HarnessName> = ["claude", "codex", "opencode", "vibe", "hermes", "muse"];
 
 /** The models a harness offers one account: that account's own list when the host read it, else the harness's. */
 export const modelsOf = (info: HarnessInfo | undefined, accountId: AccountId | null): ReadonlyArray<ModelOption> =>

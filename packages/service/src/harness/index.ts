@@ -10,6 +10,7 @@ export {
   harnessFacts,
   harnessLabels,
   harnessNames,
+  refusesAddedAccounts,
 } from "./harnessCatalog.ts";
 export { harnesses, makeHarnessRouter } from "./harnesses.ts";
 export {
@@ -26,6 +27,8 @@ export {
   type ThreadPosition,
   threadInstructionsOf,
 } from "./instructions.ts";
+export { type MuseOptions, makeMuseHarness } from "./muse.ts";
+export { listMuseModels, readMuseSignIn } from "./museAccount.ts";
 export { listOpenCodeEfforts, makeOpenCodeHarness, type OpenCodeOptions } from "./opencode.ts";
 export {
   checkAccount,
