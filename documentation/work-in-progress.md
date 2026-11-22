@@ -1,10 +1,14 @@
 # Work in progress
 
-## Daily background check-ins · 2026-11-22 · settings tested
+## Daily background check-ins · 2026-11-22 · settings and day admission landed; host wiring pending
 
 Starting revision `f5e50adb` on `worktree/background-check-ins`. The owner authorized implementation of the [CHG-0633 agreement](capabilities/background-check-ins/specifications.md). The settings requests now save selected realms, local time, Companion, and any explicitly chosen fallback. Pausing keeps the selection. The service test went red before the settings field existed and now passes, including a full settings save by an older client.
 
-The Workshop, daily run, and linked Missives are pending. The Ritual scheduler's local-time calculation can be reused. Its runner starts an agent turn with tools, so the check-in runner needs an inference path with tools disabled. The first release's supported Companions are pending the owner's choice. Publication should verify the selected realm, quest link, reportable change, and absence of duplicate Missives through the same conversation request as inactivity warnings.
+The host admission operation reuses Rituals' local-time calculation and claims the local calendar day in storage before calling a reviewer. A controlled-clock test covers paused settings, concurrent sweeps, same-day schedule edits, and a Companion change. A host that first sweeps after the scheduled time can still claim that day. A failed or interrupted attempt consumes the day, so the host does not repeat inference on every sweep.
+
+The workspace typecheck, Biome, and the full suite passed on the admission slice. The suite recorded 2,715 passes and 64 skips. The connector memory-limit test passed on retry.
+
+The settings and admission slices are landed on `main` (CHG-0640). Host wiring, the Workshop, and linked Missives are pending. The [Companion research](research/background-check-in-companion-2026-11-22.md) identifies OpenCode's stateless text endpoint with an owner-installed local runtime as the strongest candidate. The loopback mock and effective configuration isolation are unverified. Publication should verify the selected realm, quest link, reportable change, and absence of duplicate Missives through the same conversation request as inactivity warnings.
 
 ## Inactivity warnings in realm Missives · 2026-11-22 · window check pending
 
