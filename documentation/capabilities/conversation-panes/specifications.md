@@ -106,7 +106,7 @@ The blocks appear whether or not the lists already have entries.
 
 #### Phone channels
 
-- Tap a realm name or **Open Borderlands** in the phone menu to open its channel. Tap a realm's **Show all** shortcut to open its Quests tab.
+- Tap a realm name or **Borderlands** in the phone menu to open its channel. Tap a realm's **Show all** shortcut to open its Quests tab.
 - The channel shows one view at a time. Its tab row scrolls horizontally when needed. It offers Missives, Quests, Rituals, and Companions. A realm also offers its Realm tab.
 - Back in the channel opens the menu. Back in a quest opened from the channel returns to the same channel and tab. This includes quests opened from a linked Missive. A quest picked directly from the menu returns there.
 - The Quests tab and a quest's own header offer Mark as done, Mark as not done, and Archive or Delete. They use the same quest ending rules as desktop, including confirmation when required.

@@ -18,7 +18,7 @@ import { SettingsIcon } from "../ui/settingsIcons";
 import { unreadCountOf } from "./chronicleFeed";
 import { DropTarget, RealmDragSource } from "./questDrag";
 import { placementsOf, type RealmListing, reorderedRealmIds, toggledFold } from "./questTree";
-import { NewQuestIcon, NewRealmIcon, useRowActions } from "./railActions";
+import { Chevron, NewQuestIcon, NewRealmIcon, useRowActions } from "./railActions";
 import { railOutlineOf } from "./railOutline";
 import { PlacementRows } from "./railPlacementRows";
 import { RealmHeader } from "./railQuests";
@@ -268,18 +268,10 @@ export function Sidebar({
             onPress: () => startQuest("none", null),
           }}
           isOpen={!isFolded("Borderlands")}
+          onOpen={onOpenChannel && (() => onOpenChannel(null))}
           onToggle={() => foldedSections.toggle("Borderlands")}
           title="Borderlands"
         />
-        {onOpenChannel !== undefined && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => onOpenChannel(null)}
-            style={isNarrow && { justifyContent: "center", minHeight: 44 }}
-          >
-            <Text style={local.emptyGroup}>{isNarrow ? "Open Borderlands" : "Borderlands chat"}</Text>
-          </Pressable>
-        )}
         {failureUnder("none")}
         {!isFolded("Borderlands") && placements.borderlands.length === 0 && (
           <Text style={local.emptyGroup}>No quest in the Borderlands yet.</Text>
@@ -337,11 +329,13 @@ export function Sidebar({
 function SectionTitle({
   action,
   isOpen,
+  onOpen,
   onToggle,
   title,
 }: {
   action: { icon: ReactNode; label: string; onPress: () => void };
   isOpen: boolean;
+  onOpen?: (() => void) | undefined;
   onToggle: () => void;
   title: string;
 }) {
@@ -349,17 +343,21 @@ function SectionTitle({
   return (
     <Pressable
       {...rowProps}
-      accessibilityLabel={`${isOpen ? "Fold" : "Unfold"} ${title}`}
+      accessibilityLabel={onOpen ? title : `${isOpen ? "Fold" : "Unfold"} ${title}`}
       accessibilityRole="button"
-      accessibilityState={{ expanded: isOpen }}
-      onPress={onToggle}
+      accessibilityState={onOpen ? {} : { expanded: isOpen }}
+      onPress={onOpen ?? onToggle}
       style={(state) => [
         local.sectionRow,
         !canHover && local.rowTouch,
         (state.pressed || isHovered(state)) && local.rowHovered,
       ]}
     >
-      <FoldChevron color={colors.textMuted} isOpen={isOpen} size={16} />
+      {onOpen ? (
+        <Chevron focusProps={focusProps} isOpen={isOpen} isShown label={title} onPress={onToggle} />
+      ) : (
+        <FoldChevron color={colors.textMuted} isOpen={isOpen} size={16} />
+      )}
       <Text style={local.sectionTitle}>{title}</Text>
       <View style={local.flex} />
       <View style={actionsStyle}>
