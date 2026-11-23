@@ -77,28 +77,8 @@ export const storingRefusalOf = (view: Pick<VaultView, "protection" | "state" | 
   return view.protection.isAllowed ? null : (view.protection.reason ?? "The Vault does not store secrets now.");
 };
 
-/** Whether the live check of Claude Code's sandbox can settle what stands in the way: Claude Code is among the unverified. */
-export const canVerifyClaude = (view: Pick<VaultView, "protection">) =>
-  view.protection.unverified.some((unchecked) => unchecked.harness === "Claude Code");
-
 /** When a secret was added, as a date. */
 export const addedTextOf = (entry: Pick<VaultEntry, "addedAt">) => `Added ${dateOf(Date.parse(entry.addedAt))}`;
-
-/** What the live check of Claude Code found, in the owner's words. */
-export const denialResultOf = (check: {
-  reason: string;
-  status: "Verified" | "Unverified" | "NotInstalled" | "AsksFirst";
-}) =>
-  ({
-    AsksFirst: `Claude Code asks first, so it needs no check. ${check.reason}`,
-    NotInstalled: `Claude Code is not installed here. ${check.reason}`,
-    Unverified: `Not verified. ${check.reason}`,
-    Verified: `Verified. ${check.reason}`,
-  })[check.status];
-
-/** What the live check spends and does, said before the owner runs it. */
-export const verifyNote =
-  "Runs one short turn of Claude Code to see whether it can read the Vault's folder. It uses a fraction of a cent of your own Claude account.";
 
 /** The secret field's name and what saving it means: it is never shown again. */
 export const secretFieldNote = "Shown once as you type; Outlore never shows it again, only that it is stored.";

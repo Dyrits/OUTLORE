@@ -2,6 +2,7 @@ import { existsSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
+import type { VaultDenial } from "../../src/core/index.ts";
 import { sandboxSettingsOf } from "../../src/harness/claudeArgs.ts";
 import {
   claudeDenialStampName,
@@ -67,28 +68,56 @@ describe("the stamp the live probe leaves", () => {
   });
 });
 
-describe("Claude Code's denial at start, from the stamp", () => {
-  it.effect(
-    "is Unverified with no stamp, Verified with a matching one, stale after a version change, NotInstalled when absent",
-    () =>
-      Effect.gen(function* () {
-        const folder = temporary("outlore-stamp-");
-        const options = { command: "claude", run: versionRun(`${version} (Claude Code)`) };
-        expect(yield* readClaudeVaultDenial(options, "claude", folder)).toMatchObject({ status: "Unverified" });
-        yield* writeDenialStamp(folder, yield* stampForVerifiedProbe(version, folder));
-        const verified = yield* readClaudeVaultDenial(options, "claude", folder);
-        expect(verified).toMatchObject({ status: "Verified" });
-        expect(verified.reason).toContain(version);
-        const upgraded = { command: "claude", run: versionRun("2.2.0 (Claude Code)") };
-        const stale = yield* readClaudeVaultDenial(upgraded, "claude", folder);
-        expect(stale).toMatchObject({ status: "Unverified" });
-        expect(stale.reason).toContain("2.1.326");
-        expect(
-          yield* readClaudeVaultDenial({ command: "claude", run: versionRun(null) }, "claude", folder),
-        ).toMatchObject({
-          status: "NotInstalled",
-        });
-      }),
+describe("Claude Code's denial at start, from the sandbox library's probe and the stamp", () => {
+  const probing = (status: VaultDenial["status"]) => () =>
+    Effect.succeed<VaultDenial>({ harness: "claude", reason: `The library's probe: ${status}.`, status });
+  const versions = { command: "claude", run: versionRun(`${version} (Claude Code)`) };
+
+  it.effect("is Verified by a clean probe alone, with no stamp and no step of the owner's", () =>
+    Effect.gen(function* () {
+      const folder = temporary("outlore-stamp-");
+      expect(yield* readClaudeVaultDenial(versions, "claude", folder, undefined, probing("Verified"))).toEqual({
+        harness: "claude",
+        reason: "The library's probe: Verified.",
+        status: "Verified",
+      });
+    }),
+  );
+
+  it.effect("prefers a matching stamp's reason, and falls back to the probe's when the stamp is stale", () =>
+    Effect.gen(function* () {
+      const folder = temporary("outlore-stamp-");
+      yield* writeDenialStamp(folder, yield* stampForVerifiedProbe(version, folder));
+      const stamped = yield* readClaudeVaultDenial(versions, "claude", folder, undefined, probing("Verified"));
+      expect(stamped).toMatchObject({ status: "Verified" });
+      expect(stamped.reason).toContain("live probe");
+      const upgraded = { command: "claude", run: versionRun("2.2.0 (Claude Code)") };
+      expect(yield* readClaudeVaultDenial(upgraded, "claude", folder, undefined, probing("Verified"))).toEqual({
+        harness: "claude",
+        reason: "The library's probe: Verified.",
+        status: "Verified",
+      });
+    }),
+  );
+
+  it.effect("stays Unverified when the probe is, whatever a stamp says, and NotInstalled when absent", () =>
+    Effect.gen(function* () {
+      const folder = temporary("outlore-stamp-");
+      yield* writeDenialStamp(folder, yield* stampForVerifiedProbe(version, folder));
+      expect(yield* readClaudeVaultDenial(versions, "claude", folder, undefined, probing("Unverified"))).toMatchObject({
+        reason: "The library's probe: Unverified.",
+        status: "Unverified",
+      });
+      expect(
+        yield* readClaudeVaultDenial(
+          { command: "claude", run: versionRun(null) },
+          "claude",
+          folder,
+          undefined,
+          probing("Verified"),
+        ),
+      ).toMatchObject({ status: "NotInstalled" });
+    }),
   );
 });
 
@@ -103,8 +132,12 @@ describe("the owner-run live probe", () => {
       expect(existsSync(join(folder, claudeDenialStampName))).toBe(true);
       expect(yield* readDenialStamp(folder)).toMatchObject({ version });
       expect(readdirSync(folder)).toEqual([claudeDenialStampName]);
-      // The stamp now answers the start-up probe too.
-      expect(yield* readClaudeVaultDenial(options, "claude", folder)).toMatchObject({ status: "Verified" });
+      // The stamp now gives the start-up read its reason, beside a clean probe.
+      const probe = () => Effect.succeed<VaultDenial>({ harness: "claude", reason: "probe", status: "Verified" });
+      expect(yield* readClaudeVaultDenial(options, "claude", folder, undefined, probe)).toMatchObject({
+        reason: expect.stringContaining("live probe"),
+        status: "Verified",
+      });
     }),
   );
 

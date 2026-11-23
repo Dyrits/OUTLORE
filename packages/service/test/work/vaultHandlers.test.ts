@@ -4,7 +4,7 @@ import { describe, expect, it } from "@effect/vitest";
 import type { HarnessName, Request } from "@outlore/contracts";
 import { Effect, Layer, Redacted } from "effect";
 import type { CatalogEntry, ConnectorBackend, ConnectorBackends } from "../../src/connectors/index.ts";
-import { Harness, type HarnessAdapter, vaultFolderOf } from "../../src/core/index.ts";
+import { Harness, type HarnessAdapter, type VaultDenial, vaultFolderOf } from "../../src/core/index.ts";
 import { fakeHarnessLayer } from "../../src/harness/index.ts";
 import type { RunCommand } from "../../src/harness/vaultDenial.ts";
 
@@ -17,7 +17,7 @@ import { distinctiveSecret, fakeCustody } from "../fixtures/vault.ts";
 
 // The Vault's owner requests through the whole service: the real Vault behind the gateway's port, the requests wired
 // into the router, the stricter rule (a secret is stored only while every installed harness's denial is verified), and
-// the live probe's stamp. Everything runs on fakes: a fake key holder, a fake harness, a stand-in `claude`.
+// the optional live probe's stamp. Everything runs on fakes: a fake key holder, a fake harness, a stand-in `claude`, a stand-in for the sandbox library's probe.
 
 /** A service with the real Vault over one fake key holder, and the harness given (the fake one by default). */
 const vaultWorld = (
@@ -50,10 +50,23 @@ const inVaultWorld = <A, E, R>(
     return yield* body(world).pipe(Effect.provide(world.layer));
   });
 
-/** A harness whose Claude Code denial is the stamp the stand-in `claude`'s live probe leaves. */
+/** What the sandbox library's start-up probe of Claude Code's denial finds: a stand-in the check can change mid-run. */
+type LibraryProbe = { current: "Verified" | "Unverified" };
+
+const probeOf =
+  (found: LibraryProbe) =>
+  (harness: HarnessName): Effect.Effect<VaultDenial> =>
+    Effect.succeed({
+      harness,
+      reason: found.current === "Verified" ? "The library's probe verified it." : "The library's probe could not run.",
+      status: found.current,
+    });
+
+/** A harness whose Claude Code denial is the library probe's, with the stand-in `claude`'s live probe left optional. */
 const claudeStampHarness = (
   version: string,
   live: { readonly deniedTurnReadsMarker?: boolean; readonly openTurnReadsMarker?: boolean } = {},
+  found: LibraryProbe = { current: "Verified" },
 ) =>
   Layer.effect(
     Harness,
@@ -62,7 +75,7 @@ const claudeStampHarness = (
       return {
         ...base,
         readVaultDenial: (harness: HarnessName, folder: string) =>
-          readClaudeVaultDenial({ command: "claude", run }, harness, folder),
+          readClaudeVaultDenial({ command: "claude", run }, harness, folder, undefined, probeOf(found)),
         runVaultDenialLive: (harness: HarnessName, folder: string) =>
           runClaudeVaultDenialLive({ command: "claude", run }, harness, folder),
       };
@@ -86,7 +99,7 @@ const unverifiedHarness = Layer.effect(
  * A harness whose stand-in `claude` changes under it mid-run, as an install, an upgrade or a removal would: every
  * protection read must ask it afresh, not lean on what an earlier probe reported.
  */
-const switchingClaudeHarness = (claude: { current: RunCommand }) =>
+const switchingClaudeHarness = (claude: { current: RunCommand }, found: LibraryProbe) =>
   Layer.effect(
     Harness,
     Effect.map(
@@ -94,7 +107,7 @@ const switchingClaudeHarness = (claude: { current: RunCommand }) =>
       (base): HarnessAdapter => ({
         ...base,
         readVaultDenial: (harness: HarnessName, folder: string) =>
-          readClaudeVaultDenial({ command: "claude", run: claude.current }, harness, folder),
+          readClaudeVaultDenial({ command: "claude", run: claude.current }, harness, folder, undefined, probeOf(found)),
         runVaultDenialLive: (harness: HarnessName, folder: string) =>
           runClaudeVaultDenialLive({ command: "claude", run: claude.current }, harness, folder),
       }),
@@ -222,34 +235,42 @@ describe("the protected-or-no-secrets rule over the requests", () => {
     ),
   );
 
-  it.live(
-    "stores once the owner-run live probe has verified Claude Code's denial, and the stamp is in the Vault's folder",
-    () =>
-      inVaultWorld({ harness: claudeStampHarness("2.1.326") }, (world) =>
-        Effect.gen(function* () {
-          // No stamp yet: the Vault refuses.
-          expect(yield* Effect.flip(put("composio", distinctiveSecret()))).toMatchObject({ kind: "AccessRefused" });
-          const check = yield* verify();
-          expect(check).toMatchObject({ status: "Verified" });
-          expect(check.reason).toContain("2.1.326");
-          // The stamp is in the Vault's folder, and the rule reads it again without a restart.
-          expect(readdirSync(world.vaultFolder)).toContain("claude-denial-stamp.json");
-          expect((yield* readVault()).protection.isAllowed).toBe(true);
-          const secret = distinctiveSecret();
-          yield* put("composio", secret);
-          expect((yield* readVault()).entries).toHaveLength(1);
-          expect(JSON.stringify(yield* readVault())).not.toContain(secret);
-        }),
-      ),
+  it.live("stores with no step of the owner's once the sandbox library's probe verifies Claude Code's denial", () =>
+    inVaultWorld({ harness: claudeStampHarness("2.1.326") }, (world) =>
+      Effect.gen(function* () {
+        // No request to verify anything: the start-up read of Claude Code's denial is enough.
+        expect((yield* readVault()).protection.isAllowed).toBe(true);
+        const secret = distinctiveSecret();
+        yield* put("composio", secret);
+        expect((yield* readVault()).entries).toHaveLength(1);
+        expect(JSON.stringify(yield* readVault())).not.toContain(secret);
+        expect(readdirSync(world.vaultFolder)).not.toContain("claude-denial-stamp.json");
+      }),
+    ),
   );
 
-  it.live("keeps refusing when the live probe fails closed, and says what it saw", () =>
-    inVaultWorld({ harness: claudeStampHarness("2.1.326", { deniedTurnReadsMarker: true }) }, () =>
+  it.live("keeps refusing while the library's probe cannot verify the denial, whatever a live check says", () => {
+    const found: LibraryProbe = { current: "Unverified" };
+    return inVaultWorld({ harness: claudeStampHarness("2.1.326", {}, found) }, () =>
+      Effect.gen(function* () {
+        expect(yield* Effect.flip(put("composio", distinctiveSecret()))).toMatchObject({ kind: "AccessRefused" });
+        // The optional live check verifies Claude Code and leaves a stamp, which does not lift the refusal alone.
+        expect(yield* verify()).toMatchObject({ status: "Verified" });
+        expect((yield* readVault()).protection.isAllowed).toBe(false);
+        found.current = "Verified";
+        yield* put("composio", distinctiveSecret());
+        expect((yield* readVault()).entries).toHaveLength(1);
+      }),
+    );
+  });
+
+  it.live("keeps the optional live check fail-closed: it says what it saw and leaves no stamp", () =>
+    inVaultWorld({ harness: claudeStampHarness("2.1.326", { deniedTurnReadsMarker: true }) }, (world) =>
       Effect.gen(function* () {
         const check = yield* verify();
         expect(check).toMatchObject({ status: "Unverified" });
         expect(check.reason).toContain("could read the Vault's folder");
-        expect(yield* Effect.flip(put("composio", distinctiveSecret()))).toMatchObject({ kind: "AccessRefused" });
+        expect(readdirSync(world.vaultFolder)).not.toContain("claude-denial-stamp.json");
       }),
     ),
   );
@@ -258,19 +279,20 @@ describe("the protected-or-no-secrets rule over the requests", () => {
     "asks the harnesses afresh at each storing, so a Claude Code installed after an earlier probe counts at once",
     () => {
       const claude = { current: fakeClaudeLiveRun("2.1.326", { isNotInstalled: true }) };
-      return inVaultWorld({ harness: switchingClaudeHarness(claude) }, () =>
+      const found: LibraryProbe = { current: "Unverified" };
+      return inVaultWorld({ harness: switchingClaudeHarness(claude, found) }, () =>
         Effect.gen(function* () {
           // Claude Code absent: nothing is unverified, so a secret may be stored.
           expect((yield* readVault()).protection.isAllowed).toBe(true);
-          // Claude Code appears, with no verified denial of the folder yet: the next storing asks afresh and refuses.
+          // Claude Code appears, and its probe cannot verify the folder's denial: the next storing asks afresh and refuses.
           claude.current = fakeClaudeLiveRun("2.1.326");
           const refused = yield* Effect.flip(put("composio", distinctiveSecret()));
           expect(refused).toMatchObject({ kind: "AccessRefused" });
           expect(refused.message).toContain("Not protected from");
           expect((yield* readVault()).entries).toEqual([]);
           expect((yield* readVault()).protection.unverified.map((entry) => entry.harness)).toContain("Claude Code");
-          // The owner runs the live probe for it: verified, and storing works again.
-          expect(yield* verify()).toMatchObject({ status: "Verified" });
+          // The probe verifies it, with nothing asked of the owner: storing works again.
+          found.current = "Verified";
           yield* put("composio", distinctiveSecret());
           expect((yield* readVault()).entries).toHaveLength(1);
         }),
@@ -278,27 +300,29 @@ describe("the protected-or-no-secrets rule over the requests", () => {
     },
   );
 
-  it.live("asks afresh after an upgrade: a stamp verified for another version no longer allows a storing", () => {
-    const claude = { current: fakeClaudeLiveRun("2.1.326") };
-    return inVaultWorld({ harness: switchingClaudeHarness(claude) }, () =>
-      Effect.gen(function* () {
-        expect(yield* verify()).toMatchObject({ status: "Verified" });
-        yield* put("composio", distinctiveSecret());
-        // Claude Code upgrades: the stamp names the old version, so the fresh probe reads it stale and refuses.
-        claude.current = fakeClaudeLiveRun("2.1.327");
-        expect(yield* Effect.flip(replace("composio", distinctiveSecret()))).toMatchObject({
-          kind: "AccessRefused",
-        });
-        const between = yield* readVault();
-        expect(between.protection.isAllowed).toBe(false);
-        // The stored secret stays sealed and listed: only new storings wait for a probe of the new version.
-        expect(between.entries).toHaveLength(1);
-        expect(yield* verify()).toMatchObject({ status: "Verified" });
-        yield* replace("composio", distinctiveSecret());
-        expect((yield* readVault()).protection.isAllowed).toBe(true);
-      }),
-    );
-  });
+  it.live(
+    "asks afresh at every read: a probe that stops verifying refuses the next storing, the stored secret staying",
+    () => {
+      const claude = { current: fakeClaudeLiveRun("2.1.326") };
+      const found: LibraryProbe = { current: "Verified" };
+      return inVaultWorld({ harness: switchingClaudeHarness(claude, found) }, () =>
+        Effect.gen(function* () {
+          yield* put("composio", distinctiveSecret());
+          found.current = "Unverified";
+          expect(yield* Effect.flip(replace("composio", distinctiveSecret()))).toMatchObject({
+            kind: "AccessRefused",
+          });
+          const between = yield* readVault();
+          expect(between.protection.isAllowed).toBe(false);
+          // The stored secret stays sealed and listed: only new storings wait for the probe.
+          expect(between.entries).toHaveLength(1);
+          found.current = "Verified";
+          yield* replace("composio", distinctiveSecret());
+          expect((yield* readVault()).protection.isAllowed).toBe(true);
+        }),
+      );
+    },
+  );
 });
 
 describe("a replaced secret clearing the connector's Needs connecting", () => {

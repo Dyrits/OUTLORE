@@ -1,7 +1,7 @@
 import type { ConnectorCard } from "@outlore/contracts";
 import { useState } from "react";
 import { Text, View } from "react-native";
-import { canVerifyClaude, storingRefusalOf } from "../connectors";
+import { storingRefusalOf } from "../connectors";
 import type { ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -49,11 +49,7 @@ export function ConnectorSecrets({
       {refusal !== null && (
         <View style={{ alignItems: "flex-start", gap: 8 }}>
           <Text style={styles.error}>{refusal}</Text>
-          <Button
-            isPrimary={false}
-            label={canVerifyClaude(view) ? "Open the Vault to verify" : "Open the Vault"}
-            onPress={onOpenVault}
-          />
+          <Button isPrimary={false} label="Open the Vault" onPress={onOpenVault} />
         </View>
       )}
       {error !== null && <Text style={styles.error}>{error}</Text>}

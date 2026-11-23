@@ -1,31 +1,15 @@
-import { useState } from "react";
 import { Text, View } from "react-native";
-import {
-  canVerifyClaude,
-  denialResultOf,
-  holderLineOf,
-  leftBehindOf,
-  storingRefusalOf,
-  vaultStateLabels,
-  vaultStateNoteOf,
-  verifyNote,
-} from "../connectors";
-import { messageOf, type ServiceClient } from "../foundation/client";
+import { holderLineOf, leftBehindOf, storingRefusalOf, vaultStateLabels, vaultStateNoteOf } from "../connectors";
+import type { ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { Button } from "../ui/button";
 import { SecretField } from "./secretField";
 import { SettingsCard, SettingsRule } from "./settingsParts";
 
 /** The Vault's state and protection, and the secrets no connector panel holds. It only returns their metadata. */
 export function VaultCard({ client }: { client: ServiceClient }) {
-  const [revision, setRevision] = useState(0);
-  const vault = useServiceQuery(client, { _tag: "ReadVault" }, `vault:${revision}`);
+  const vault = useServiceQuery(client, { _tag: "ReadVault" }, "vault");
   const connectors = useServiceQuery(client, { _tag: "ListConnectors" }, "connectors");
-  const [result, setResult] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [verifying, setVerifying] = useState(false);
-  const [confirmVerify, setConfirmVerify] = useState(false);
   const view = vault.data;
   return (
     <SettingsCard icon="shield" title="The Vault">
@@ -42,35 +26,6 @@ export function VaultCard({ client }: { client: ServiceClient }) {
               {item.harness}: {item.reason}
             </Text>
           ))}
-          {canVerifyClaude(view) && !confirmVerify && (
-            <Button label="Verify Claude Code" onPress={() => setConfirmVerify(true)} />
-          )}
-          {confirmVerify && (
-            <>
-              <Text style={styles.muted}>{verifyNote}</Text>
-              <Button
-                isDisabled={verifying}
-                label={verifying ? "Verifying…" : "Run verification"}
-                onPress={() => {
-                  setVerifying(true);
-                  client
-                    .request({ _tag: "VerifyClaudeVaultDenial" })
-                    .then(
-                      (check) => {
-                        setResult(denialResultOf(check));
-                        setRevision((value) => value + 1);
-                        setError(null);
-                        setConfirmVerify(false);
-                      },
-                      (reason) => setError(messageOf(reason)),
-                    )
-                    .finally(() => setVerifying(false));
-                }}
-              />
-              <Button isDisabled={verifying} isPrimary={false} label="Cancel" onPress={() => setConfirmVerify(false)} />
-            </>
-          )}
-          {result !== null && <Text style={styles.body}>{result}</Text>}
           <Text style={styles.muted}>
             A connector's own key is entered in that connector's tab. The Vault keeps them, and any secret left behind
             by a connector that is no longer installed.
@@ -86,7 +41,6 @@ export function VaultCard({ client }: { client: ServiceClient }) {
         </>
       )}
       {view !== null && vault.error !== null && <Text style={styles.error}>{vault.error}</Text>}
-      {error !== null && <Text style={styles.error}>{error}</Text>}
     </SettingsCard>
   );
 }

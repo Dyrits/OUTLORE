@@ -13,3 +13,11 @@ RunAsNode fuse is off), and a stock Mac has no `npx`, so the file is run by a sy
 
 A `.env` beside this file could flip the server to cloud mode at start, so the service starts it with
 `USE_LOCAL_MODE=true` in the child's environment (the catalog entry's `env`).
+
+## Bundled library notices
+
+- `sandbox-runtime.LICENSE` — `@anthropic-ai/sandbox-runtime@0.0.83` (Apache-2.0), the library Claude Code's sandbox is
+  built on. It is a dependency of `packages/service`, bundled into the service by `apps/desktop`'s build (not a file run
+  from here), and used only by the Vault's start-up probe (`harness/claudeSandboxProbe.ts`, ADR 0022). Its licence is
+  placed here so the packaged app carries it beside the others. Upgrading it means re-running the probe's tests outside a
+  sandbox (`test/vault/readDenial.test.ts`).

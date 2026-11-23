@@ -1,5 +1,9 @@
 # Work in progress
 
+## The Vault's read-denial check runs by itself · 2026-11-23 · on `mission/vault-sandbox-check-without-owner-steps-910f3d35`
+
+CHG-0657: Claude Code's denial is probed at start through `@anthropic-ai/sandbox-runtime` (new pinned dependency), each probe writes its own marker (the shared name made Codex read "The marker could not be read outside the sandbox"), and a service inside a sandbox says so. The card has no Verify button; the live stamp is optional. ADR 0022 is amended and awaits the owner's confirmation. Open: the probe proves the library, not the installed Claude Code's copy; the bundle inside Electron's `utilityProcess` and Linux/Windows were not run. [Verification](verification/2026-11-23-vault-denial-automatic.md).
+
 ## OpenBot provider parity
 
 CHG-0651 through CHG-0655 deliver eight provider harnesses alongside the original four. The full suite on provider tip `96e0103a` passed with 2,848 tests and 24 skips. Authenticated turns, permission behavior against installed binaries, and the remaining provider and connector scope are tracked in the [handoff](../.agents/handoffs/2026-11-23-0043-openbot-providers.md).
