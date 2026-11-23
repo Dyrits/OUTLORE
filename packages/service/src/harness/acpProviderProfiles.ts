@@ -32,7 +32,7 @@ export const acceptsAcpProviderVersion = (profile: AcpProviderProfile, output: s
 
 /** Launch profiles; sign-in and account isolation require provider-specific handling. */
 export const acpProviderProfiles = {
-  antigravity: { args: ["acp"], env: {}, label: "Gemini" },
+  antigravity: { args: ["acp"], env: {}, label: "Gemini (Antigravity)" },
   cline: { args: ["--acp"], env: { CLINE_NO_AUTO_UPDATE: "1", CLINE_SESSION_BACKEND_MODE: "local" }, label: "Cline" },
   copilot: { args: ["--acp", "--no-auto-update"], env: { COPILOT_AUTO_UPDATE: "false" }, label: "GitHub Copilot" },
   cursor: { args: ["acp"], env: {}, label: "Cursor" },

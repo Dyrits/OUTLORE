@@ -99,7 +99,7 @@ export const antigravityProfileOf = (home: string, env: Record<string, string> =
     WSL_DISTRO_NAME: "Outlore",
     ...env,
   },
-  label: "Gemini",
+  label: "Gemini (Antigravity)",
   minMajorVersion: 1,
 });
 

@@ -81,7 +81,7 @@ export const harnessFacts = {
     fixedModels: null,
     hasPromptTool: false,
     installVia: "script",
-    label: "Gemini",
+    label: "Gemini (Antigravity)",
     // The newest version is what the GitHub releases carry; no registry holds one to read.
     packageName: "",
     releaseRegistry: "none",

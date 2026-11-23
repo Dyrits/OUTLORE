@@ -197,7 +197,7 @@ describe("managing provider accounts", () => {
         "GitHub Copilot takes only the computer's own sign-in.",
         "Cline takes only the computer's own sign-in.",
         "Devin takes only the computer's own sign-in.",
-        "Gemini takes only the computer's own sign-in.",
+        "Gemini (Antigravity) takes only the computer's own sign-in.",
       ]);
     }).pipe(Effect.provide(layer));
   });

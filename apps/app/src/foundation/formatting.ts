@@ -10,7 +10,7 @@ import type {
 
 /** Each harness by the name the owner reads. */
 export const harnessLabels = {
-  antigravity: "Gemini",
+  antigravity: "Gemini (Antigravity)",
   claude: "Claude Code",
   cline: "Cline",
   codex: "Codex",
