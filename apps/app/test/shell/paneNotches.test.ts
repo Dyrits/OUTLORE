@@ -1,13 +1,19 @@
 import { MissionId, ThreadId } from "@outlore/contracts";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { channelId } from "../../src/shell/paneIds";
 import { notchWidth, paneNotchesOf } from "../../src/shell/paneNotches";
 
 const quest = ThreadId.make("quest");
 const errand = ThreadId.make("errand");
 const revealPane = vi.fn();
+beforeEach(() => vi.clearAllMocks());
 
-function edges(shownState: "Fulfilled" | "Resting", isArchived = false, isQuestFolded = false) {
+function edges(
+  shownState: "Fulfilled" | "Resting",
+  isArchived = false,
+  isQuestFolded = false,
+  hasEarlierErrand = false,
+) {
   return paneNotchesOf({
     channel: { id: null, name: "Borderlands" },
     fullChain: [channelId, quest, errand],
@@ -26,7 +32,21 @@ function edges(shownState: "Fulfilled" | "Resting", isArchived = false, isQuestF
         ? { content: { id: errand, kind: "errand" }, depth: 2, id: errand, kind: "pane", width: 400 }
         : { content: { id: errand, kind: "errand" }, depth: 2, id: errand, kind: "strip", reason: "folded", width: 0 },
     ],
-    threads: [{ id: errand, isArchived, lastActivityAt: 0, parentId: quest, shownState, title: "Errand" }],
+    threads: [
+      ...(hasEarlierErrand
+        ? [
+            {
+              id: ThreadId.make("earlier"),
+              isArchived: false,
+              lastActivityAt: 0,
+              parentId: quest,
+              shownState,
+              title: "Earlier",
+            },
+          ]
+        : []),
+      { id: errand, isArchived, lastActivityAt: 0, parentId: quest, shownState, title: "Errand" },
+    ],
   });
 }
 
@@ -37,6 +57,14 @@ describe("placing folded errand notches", () => {
     const at = edges("Resting", false, true);
     expect(at(0).paddingRight).toBe(notchWidth / 2);
     expect(at(2)).toMatchObject({ isStraddling: true, paddingLeft: notchWidth / 2 });
+  });
+
+  it("places a folded errand among shortcuts in sidebar order", () => {
+    const notches = edges("Resting", false, false, true)(1).right;
+    expect(notches.map((part) => part.title)).toEqual(["Earlier", "Errand"]);
+    notches[0]?.onReveal();
+    notches[1]?.onReveal();
+    expect(revealPane).toHaveBeenCalledWith(errand);
   });
 
   it("keeps a Fulfilled errand off the pane edge", () => {

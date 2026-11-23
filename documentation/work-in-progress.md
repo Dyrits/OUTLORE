@@ -1,5 +1,12 @@
 # Work in progress
 
+## Errand notch order · 2026-11-23
+
+The owner requested the same errand order in pane notches and the sidebar.
+Errand shortcuts preserve the supplied sidebar tree order; folded errands are placed among their siblings instead of before them.
+The four child shortcuts, overflow urgency dot, and inactive filtering remain.
+Focused tests and static checks are recorded in [verification](verification/2026-11-23-errand-notch-order.md); running-app review remains pending.
+
 ## The Vault's read-denial check runs by itself · 2026-11-23 · on `mission/vault-sandbox-check-without-owner-steps-910f3d35`
 
 CHG-0657: Claude Code's denial is probed at start through `@anthropic-ai/sandbox-runtime` (new pinned dependency), each probe writes its own marker (the shared name made Codex read "The marker could not be read outside the sandbox"), and a service inside a sandbox says so. The card has no Verify button; the live stamp is optional. ADR 0022 is amended and awaits the owner's confirmation. Open: the probe proves the library, not the installed Claude Code's copy; the bundle inside Electron's `utilityProcess` and Linux/Windows were not run. [Verification](verification/2026-11-23-vault-denial-automatic.md).

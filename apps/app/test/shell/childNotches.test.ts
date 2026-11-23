@@ -78,6 +78,26 @@ describe("the notches of a pane's children", () => {
     expect(more).toEqual({ count: 3, state: "Underway" });
   });
 
+  it("preserves sidebar order for errands despite urgency, activity and id ties", () => {
+    const children = [
+      child("z", "Waiting", 1),
+      child("a", "Failed", 99),
+      child("b", "Resting", 0),
+      child("c", "Resting", 0),
+      child("d", "Fresh"),
+      child("e", "Attention"),
+    ];
+    const { shown, more } = childNotchesOf(children, new Set(), "listed");
+    expect(shown.map((entry) => entry.id)).toEqual(["z", "a", "b", "c"]);
+    expect(more).toEqual({ count: 2, state: "Attention" });
+    expect(childNotchesOf(children, new Set(["a"]), "listed").shown.map((entry) => entry.id)).toEqual([
+      "z",
+      "b",
+      "c",
+      "d",
+    ]);
+  });
+
   it("has nothing to show for no children", () => {
     expect(childNotchesOf([], new Set())).toEqual({ more: null, shown: [] });
   });

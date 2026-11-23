@@ -16,7 +16,7 @@ export function childPartsOf<Id extends string>(
   openChild: (id: Id) => void,
   openList: () => void,
 ): Array<NotchPart> {
-  const { shown, more } = childNotchesOf(children, visible);
+  const { shown, more } = childNotchesOf(children, visible, kind === "errand" ? "listed" : "urgency");
   const parts = shown.map<NotchPart>((child) => ({
     id: `child:${child.id}`,
     kind,
@@ -144,7 +144,16 @@ export function paneNotchesOf({
       // The realm's edge lists quests only: the errands folded after its quest are not its own, so they show no notch there.
       const shownRight =
         own?.kind === "channel" ? right.filter((part) => part.kind === "quest" || part.kind === "ritual") : right;
-      return { left, right: [...shownRight, ...(own === undefined ? [] : childNotchesOfPane(own))] };
+      const combined = [...shownRight, ...(own === undefined ? [] : childNotchesOfPane(own))];
+      if (own?.kind === "quest") {
+        const positions = new Map<string, number>(threads.map((thread, index) => [thread.id, index]));
+        const positionOf = (part: NotchPart) =>
+          part.kind === "errand" && !part.isNew
+            ? (positions.get(part.id.replace(/^child:/, "")) ?? Infinity)
+            : Infinity;
+        combined.sort((current, next) => positionOf(current) - positionOf(next));
+      }
+      return { left, right: combined };
     }
     return { left, right };
   };

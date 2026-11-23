@@ -43,19 +43,19 @@ export const compareUrgency = (
 const isActive = (child: ChildNotch<string>): boolean => urgencyOf(child.state) !== null && child.isArchived !== true;
 
 /**
- * The notches of the active children that are not in `visible` (already open in a pane, or a notch of their own), the
- * four most urgent first and what is left as a count with the state of the most urgent child it holds. Equal urgency
- * puts the latest activity first.
+ * The first four active children absent from `visible`, in the requested order, with the remainder counted using its most urgent state.
+ * Urgency order puts the latest activity first among equals; listed order preserves the sidebar tree.
  */
 export const childNotchesOf = <Id extends string>(
   children: ReadonlyArray<ChildNotch<Id>>,
   visible: ReadonlySet<string>,
+  order: "urgency" | "listed" = "urgency",
 ): { more: { count: number; state: ThreadState | MissionState } | null; shown: Array<ChildNotch<Id>> } => {
-  const ranked = children
-    .filter((child) => isActive(child) && !visible.has(child.id))
-    .sort((current, next) => compareUrgency(current, next) || current.id.localeCompare(next.id));
+  const ranked = children.filter((child) => isActive(child) && !visible.has(child.id));
+  if (order === "urgency")
+    ranked.sort((current, next) => compareUrgency(current, next) || current.id.localeCompare(next.id));
   const hidden = ranked.slice(maxChildNotches);
-  const first = hidden[0];
+  const first = [...hidden].sort(compareUrgency)[0];
   return {
     more: first === undefined ? null : { count: hidden.length, state: first.state },
     shown: ranked.slice(0, maxChildNotches),
