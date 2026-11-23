@@ -63,6 +63,6 @@ Latest handoffs:
 
 - To verify the installed-only Providers list in the desktop app, read the [current handoff](.agents/handoffs/2026-11-23-1630-providers-installed-only.md). Handoffs are shared and committed.
 
-- To continue the Islands layout, Slate theme and pane notches, read the [current handoff](.agents/handoffs/2026-11-23-1720-islands-layout.md). Handoffs are shared and committed.
+- To continue the Islands layout and pane notch colors, read the [current handoff](.agents/handoffs/2026-11-23-2015-notch-colour.md). Handoffs are shared and committed.
 
 - To verify the Gemini (Antigravity) name and provider logos in the desktop app, read the [current handoff](.agents/handoffs/2026-11-23-1545-gemini-copilot-logos.md). Handoffs are shared and committed.

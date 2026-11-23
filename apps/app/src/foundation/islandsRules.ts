@@ -81,16 +81,19 @@ const glowShares = { dark: 0.09, light: 0.07 } as const satisfies Record<ColorSc
 
 /**
  * The canvas's plain color, and the CSS background image that draws it with its glow spreading from the lower right.
- * The plain color is a layer of the image, so it needs no background color of its own beside it.
+ * The plain color is a layer of the image, so it needs no background color of its own beside it. A `shade` tints the
+ * canvas's colors before they are drawn (the gap's, see `shadedCanvasOf`).
  */
 export function canvasOf(
   canvas: IslandCanvas,
   tones: CanvasTones,
   scheme: ColorScheme,
+  shade: (color: string) => string = (color) => color,
 ): { color: string; background: string } {
-  const color = canvasColorOf(tones, scheme);
+  const plain = canvasColorOf(tones, scheme);
   const tint = canvas === "warm" ? tones.glowWarm : tones.glowCool;
-  const glow = canvas === "flat" ? color : mixColors(color, tint, glowShares[scheme]);
+  const color = shade(plain);
+  const glow = canvas === "flat" ? color : shade(mixColors(plain, tint, glowShares[scheme]));
   return {
     background: `radial-gradient(60% 50% at 70% 85%, ${glow}, transparent 70%), linear-gradient(${color}, ${color})`,
     color,
@@ -100,17 +103,68 @@ export function canvasOf(
 /** How strong the shadow is in each look at a lift of one: the theme's ink is dark in the light look, so it is lighter. */
 const shadowStrengths = { dark: 1, light: 0.6 } as const satisfies Record<ColorScheme, number>;
 
+/** The layers of an island's shadow: their offset down, blur, spread, and strength at a lift of one in the dark look. */
+const shadowLayers = [
+  { alpha: 0.05, blur: 1, spread: 0, y: 1 },
+  { alpha: 0.07, blur: 10, spread: -2, y: 4 },
+  { alpha: 0.12, blur: 40, spread: -12, y: 18 },
+] as const;
+
+/** The color of the shadow's ink: the theme's text in the light look, and black in the dark look. */
+const shadowInkOf = (scheme: ColorScheme, ink: string): string => (scheme === "dark" ? "#000000" : ink);
+
 /**
  * The three-layer shadow under an island, scaled by its lift; none at a lift of zero. Its color is the ink of the
  * light look (the theme's text), and black in the dark look.
  */
 export function islandShadowOf(lift: number, scheme: ColorScheme, ink: string): string {
   if (lift === 0) return "none";
-  const channels = channelTextOf(scheme === "dark" ? "#000000" : ink);
-  const alpha = (base: number) => Math.round(base * lift * shadowStrengths[scheme] * 1000) / 1000;
-  return [
-    `0 1px 1px rgb(${channels} / ${alpha(0.05)})`,
-    `0 4px 10px -2px rgb(${channels} / ${alpha(0.07)})`,
-    `0 18px 40px -12px rgb(${channels} / ${alpha(0.12)})`,
-  ].join(", ");
+  const channels = channelTextOf(shadowInkOf(scheme, ink));
+  return shadowLayers
+    .map(({ alpha, blur, spread, y }) => {
+      const strength = Math.round(alpha * lift * shadowStrengths[scheme] * 1000) / 1000;
+      return `0 ${y}px ${blur}px ${spread === 0 ? "" : `${spread}px `}rgb(${channels} / ${strength})`;
+    })
+    .join(", ");
+}
+
+/** The share of a normal distribution beyond `z` standard deviations (Abramowitz and Stegun, 7.1.26). */
+function tailOf(z: number): number {
+  const x = Math.abs(z) / Math.SQRT2;
+  const t = 1 / (1 + 0.3275911 * x);
+  const poly = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+  const half = 0.5 * poly * Math.exp(-x * x);
+  return z >= 0 ? half : 1 - half;
+}
+
+/**
+ * How much of the canvas the islands' shadows cover `distance` from the edge of each of `neighbours` islands, from 0 to
+ * 1. A blurred edge is a normal curve with a deviation of half the blur, so each layer covers `alpha` times the share
+ * of that curve beyond the point, seen from its spread; the layers and the islands lay over each other.
+ */
+export function shadowCoverOf(distance: number, neighbours: number, lift: number, scheme: ColorScheme): number {
+  let clear = 1;
+  for (const { alpha, blur, spread } of shadowLayers) {
+    const covered = alpha * lift * shadowStrengths[scheme] * tailOf((distance - spread) / (blur / 2));
+    clear *= (1 - covered) ** neighbours;
+  }
+  return 1 - clear;
+}
+
+/**
+ * A color as the canvas shows it in the gap between islands: under the shadows of the `neighbours` islands beside it,
+ * which darken the gap's middle (`gap` / 2 from each edge) by a few steps. A notch drawn in the plain canvas color
+ * looks lighter than the gap it stands in, so it takes this color.
+ */
+export function shadedByIslandsOf(
+  color: string,
+  {
+    gap,
+    ink,
+    lift,
+    neighbours,
+    scheme,
+  }: { gap: number; ink: string; lift: number; neighbours: number; scheme: ColorScheme },
+): string {
+  return mixColors(color, shadowInkOf(scheme, ink), shadowCoverOf(gap / 2, neighbours, lift, scheme));
 }

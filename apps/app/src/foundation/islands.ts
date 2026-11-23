@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { Platform } from "react-native";
 import { colorScheme } from "./colorScheme";
-import { canvasOf, type Islands, islandShadowOf, islandsOf } from "./islandsRules";
+import { canvasOf, type Islands, islandShadowOf, islandsOf, shadedByIslandsOf } from "./islandsRules";
 import { colors } from "./theme";
 
 // The owner's layout and Islands settings, kept in the browser's storage and shown at once with no reload: the Workshop's
@@ -49,6 +49,21 @@ export type IslandFrame = {
   readonly background: string;
   /** The style of one island: its panel color, hairline, corners, and shadow. */
   readonly island: IslandStyle;
+  /**
+   * What the canvas looks like in the gap between islands, shadows and glow included, as the background of a notch
+   * with `neighbours` islands beside it (two where it straddles the gap, one on a pane's outer edge).
+   */
+  readonly gapOf: (neighbours: number) => GapBackground;
+};
+
+/**
+ * A background drawn as the page behind the app draws its own: the same image, fixed to the window so it lines up
+ * with it wherever the view stands.
+ */
+export type GapBackground = {
+  readonly backgroundAttachment: "fixed";
+  readonly backgroundColor: string;
+  readonly backgroundImage: string;
 };
 
 type IslandStyle = {
@@ -77,10 +92,23 @@ export function useIslandFrame(): IslandFrame | null {
     boxShadow: islandShadowOf(islands.lift, colorScheme, colors.text),
     overflow: "hidden",
   };
+  const gapOf = (neighbours: number): GapBackground => {
+    const shaded = canvasOf(islands.canvas, colors, colorScheme, (plain) =>
+      shadedByIslandsOf(plain, {
+        gap: islands.gap,
+        ink: colors.text,
+        lift: islands.lift,
+        neighbours,
+        scheme: colorScheme,
+      }),
+    );
+    return { backgroundAttachment: "fixed", backgroundColor: shaded.color, backgroundImage: shaded.background };
+  };
   return {
     background,
     canvas: color,
     gap: islands.gap,
+    gapOf,
     island,
   };
 }

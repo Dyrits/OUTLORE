@@ -56,10 +56,10 @@ export function PaneNotches({
 }) {
   // Several notches share one icon, so each says its name while the pointer or keyboard focus rests on it.
   const [shown, setShown] = useState<string | null>(null);
-  // In the Islands layout a notch is a bite out of its island seen from the outside: it takes the canvas's color, the color
-  // of the app's own background, and the island's hairline runs around it. The flat layout keeps the sidebar's color.
+  // In the Islands layout a notch is a bite out of its island seen from the outside: it takes the background of the app
+  // as the gap between islands shows it, and the island's hairline runs around it. The flat layout keeps the sidebar's color.
   const islands = useIslandFrame();
-  const fill = islands === null ? colors.sidebar : islands.canvas;
+  const fill = islands === null ? { backgroundColor: colors.sidebar } : islands.gapOf(isStraddling ? 2 : 1);
   return (
     <View
       pointerEvents="box-none"
@@ -88,8 +88,9 @@ export function PaneNotches({
           style={({ pressed }) => [
             local.notch,
             side === "left" ? (isStraddling ? local.notchOnLine : local.notchLeft) : local.notchRight,
-            { backgroundColor: fill },
-            pressed && local.pressed,
+            fill,
+            // The gap's image covers a background color, so a pressed notch in the Islands layout dims instead.
+            pressed && (islands === null ? local.pressed : local.pressedOnIsland),
           ]}
         >
           {part.kind === "more" ? (
@@ -106,14 +107,18 @@ export function PaneNotches({
           {part.isNew === true && part.kind !== "quest" && <PlusMark />}
           {part.isNew !== true &&
             (part.state !== null || part.kind === "realm" || part.kind === "borderlands" || part.kind === "errand") && (
+              // The dot's ring is the notch's own background, drawn as a view around the dot: a border could not hold an image.
               <View
                 accessibilityLabel={part.state === null ? "No active status" : stateLabels[part.state]}
-                style={[
-                  local.dot,
-                  { borderColor: fill },
-                  { backgroundColor: part.state === null ? colors.textMuted : stateTones[part.state].color },
-                ]}
-              />
+                style={[local.dotRing, fill]}
+              >
+                <View
+                  style={[
+                    local.dot,
+                    { backgroundColor: part.state === null ? colors.textMuted : stateTones[part.state].color },
+                  ]}
+                />
+              </View>
             )}
           {part.id === shown && part.title !== "" && (
             <View
@@ -188,11 +193,11 @@ const local = StyleSheet.create({
   atRight: { right: 0 },
   button: { alignItems: "center", borderRadius: radii.sm, height: 26, justifyContent: "center", width: 26 },
   count: { color: colors.textSecondary, fontSize: fontSizes.xs, fontWeight: "600" },
-  dot: {
-    borderColor: colors.sidebar,
+  dot: { borderRadius: radii.pill, flex: 1 },
+  dotRing: {
     borderRadius: radii.pill,
-    borderWidth: 1.5,
     height: 10,
+    padding: 1.5,
     position: "absolute",
     right: 1,
     top: 1,
@@ -214,6 +219,7 @@ const local = StyleSheet.create({
   notchRight: { borderBottomLeftRadius: radii.md, borderRightWidth: 0, borderTopLeftRadius: radii.md },
   plus: { bottom: 3, position: "absolute", right: 3 },
   pressed: { backgroundColor: colors.controlActive },
+  pressedOnIsland: { opacity: 0.7 },
   titleAtLeft: { left: "100%", marginLeft: 6 },
   titleAtRight: { marginRight: 6, right: "100%" },
   titleCard: {
