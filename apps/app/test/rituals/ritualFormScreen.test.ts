@@ -49,14 +49,11 @@ const screenMarkupOf = (target: Parameters<typeof RitualFormScreen>[0]["target"]
   );
 
 describe("the Ritual form as the conversation area's own screen", () => {
-  it("draws a new Ritual over the panes it covers, with a Back and named Companion fields", () => {
+  it("draws a new Ritual over the panes it covers, with a Back and the regular Companion selector", () => {
     const markup = screenMarkupOf({ kind: "create", originMissionId: null, realmPath: null });
     expect(markup).toContain("← Back");
     expect(markup).toContain("New Ritual");
-    // The Companion is chosen in the form itself, not in the Companions tab the compact composer's button opens. The
-    // name shows once in the field's label and once in the menu's own, so one picker counts twice.
-    expect(markup).toContain("Companion (model)");
-    expect(count(markup, "Companion (model)")).toBe(2);
+    expect(count(markup, 'aria-label="Search models"')).toBe(1);
   });
 
   it("derives a new Ritual from the quest it is scheduled from, without choosing a realm folder", () => {
@@ -68,14 +65,12 @@ describe("the Ritual form as the conversation area's own screen", () => {
     expect(markup).toContain("This Ritual takes the realm of the quest it is scheduled from.");
   });
 
-  it("gives every fallback the form's own named fields, too", () => {
+  it("gives every fallback the regular selector, too", () => {
     const markup = renderToStaticMarkup(
       createElement(RitualForm, { client, onCancel: () => {}, onDone: () => {}, ritual }),
     );
     expect(markup).toContain("Edit Ritual");
-    // One for the primary Companion, one for the saved fallback; each name shows in its field label and its menu
-    // label, and the compact composer's button opens no Companions tab anyone can reach from here.
-    expect(count(markup, "Companion (model)")).toBe(4);
+    expect(count(markup, 'aria-label="Search models"')).toBe(2);
     expect(markup).toContain("Save");
   });
 });

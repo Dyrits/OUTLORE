@@ -8,7 +8,7 @@ import {
 } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { type Runner, RunnerPickers, useHarnesses } from "../editors/runners";
+import type { Runner } from "../editors/runners";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { Emblem } from "../foundation/emblems";
 import { allMissions } from "../foundation/queries";
@@ -18,10 +18,11 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { RealmChooser } from "../realms/workspaces";
 import { Toggle } from "../ui/controls";
 import { Menu } from "../ui/pickers";
+import { RitualCompanionFields } from "./ritualCompanionFields";
 import { createRequestOf } from "./ritualCreate";
 import { isTimeValid } from "./ritualLabels";
 import { ritualStyles } from "./ritualStyles";
-import { Part, ScheduleRow, Word } from "./scheduleRow";
+import { Part, ScheduleRow } from "./scheduleRow";
 
 /** How the Ritual form names each action its scope can allow. */
 const scopeOperationLabels: Record<RitualScopeEntry["operation"], string> = {
@@ -63,7 +64,6 @@ export function RitualForm({
   /** The Ritual to edit, or null to make one. */
   ritual: Ritual | null;
 }) {
-  const { data: harnesses } = useHarnesses(client);
   const { data: known } = useServiceQuery(client, allMissions.request, allMissions.key);
   const [title, setTitle] = useState(ritual?.title ?? "");
   const [instruction, setInstruction] = useState(ritual?.instruction ?? "");
@@ -94,19 +94,6 @@ export function RitualForm({
   }));
   const changeEntry = (index: number, change: Partial<RitualScopeEntry>) =>
     setScope(scope.map((entry, at) => (at === index ? { ...entry, ...change } : entry)));
-  const addFallback = () => {
-    // The first harness other than the primary's, on its first listed model.
-    const other = harnesses?.harnesses.find((candidate) => candidate.name !== primary.harness);
-    setFallbacks([
-      ...fallbacks,
-      {
-        accountId: null,
-        effort: "default",
-        harness: other?.name ?? "codex",
-        model: other?.models[0]?.id ?? "default",
-      },
-    ]);
-  };
   const save = () => {
     setIsSaving(true);
     setError(null);
@@ -223,41 +210,13 @@ export function RitualForm({
       <Part name="Runs">
         <ScheduleRow onChange={setSchedule} value={schedule} />
       </Part>
-      <Part name="Companion">
-        {/* Named fields, as everywhere in the form: the compact composer's picker opens the Companions tab, which no
-            panel or window shows over the form's area (CHG-0643). */}
-        <RunnerPickers harnesses={harnesses} isCompact={false} onChange={setPrimary} value={primary} />
-      </Part>
-      <Part name="If a run fails, fall back to">
-        {fallbacks.map((fallback, index) => (
-          // A fallback has no identity but its place in the list.
-          // biome-ignore lint/suspicious/noArrayIndexKey: see above
-          <View key={index}>
-            <View style={ritualStyles.sentence}>
-              <Word text={index === 0 ? "first" : "then"} />
-              <View style={styles.flex} />
-              <Pressable
-                accessibilityLabel={`Remove fallback ${index + 1}`}
-                accessibilityRole="button"
-                onPress={() => setFallbacks(fallbacks.filter((_, other) => other !== index))}
-              >
-                <Text style={ritualStyles.remove}>Remove</Text>
-              </Pressable>
-            </View>
-            <RunnerPickers
-              harnesses={harnesses}
-              isCompact={false}
-              onChange={(next) => setFallbacks(fallbacks.map((current, other) => (other === index ? next : current)))}
-              value={fallback}
-            />
-          </View>
-        ))}
-        {fallbacks.length < 5 && (
-          <Pressable accessibilityRole="button" onPress={addFallback}>
-            <Text style={styles.link}>+ Add a fallback Companion</Text>
-          </Pressable>
-        )}
-      </Part>
+      <RitualCompanionFields
+        client={client}
+        fallbacks={fallbacks}
+        onFallbacks={setFallbacks}
+        onPrimary={setPrimary}
+        primary={primary}
+      />
       {ritual === null && originMissionId === null ? (
         <Part name="Realm">
           <RealmChooser

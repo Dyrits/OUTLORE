@@ -6,11 +6,14 @@ import { useHasSidebar, useHasTopBar, useQuestPanel } from "../foundation/shellC
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { MobileHeader } from "./mobileHeader";
+import { PaneThread } from "./paneThread";
 import { useQuestPages } from "./questPages";
 import { questPanelOf } from "./questPanelOf";
 import { ThreadPane } from "./threadPane";
 import { ThreadTree } from "./threadTree";
 import { useShownThreadsRead } from "./useShownThreadsRead";
+
+const ritualErrandsRequest = {};
 
 /** A mission: its thread tree on the side, the selected thread's conversation beside it. */
 export function Conversation({
@@ -63,6 +66,19 @@ export function Conversation({
   useShownThreadsRead(client, shownId === null ? [] : [shownId], true);
   const hasSideQuests = data?.threads.some((thread) => thread.parentId !== null) ?? false;
   useQuestPanel(shown && questPanelOf({ client, detail: shown, onOpenMission, onSelectThread: setSelectedId, pages }));
+  if (!hasSidebar && detail?.thread.parentId === null && detail.mission.ritual !== null)
+    return (
+      <PaneThread
+        chrome={null}
+        client={client}
+        listRequest={initiallyShowErrands ? ritualErrandsRequest : void 0}
+        missionId={missionId}
+        onBack={goBack}
+        onOpenMission={onOpenMission}
+        onOpenThread={setSelectedId}
+        threadId={detail.thread.id}
+      />
+    );
   if (pages.screen !== null) return pages.screen;
   return (
     <View style={[styles.questLayout, isCompact && styles.questLayoutCompact]}>
