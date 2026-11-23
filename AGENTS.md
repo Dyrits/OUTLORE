@@ -63,6 +63,6 @@ Latest handoffs:
 
 - To verify the installed-only Providers list in the desktop app, read the [current handoff](.agents/handoffs/2026-11-23-1630-providers-installed-only.md). Handoffs are shared and committed.
 
-- To verify the Gemini (Antigravity) name and provider logos in the desktop app, read the [current handoff](.agents/handoffs/2026-11-23-1545-gemini-copilot-logos.md). Handoffs are shared and committed.
+- To continue the Islands theme and sidebar redesign, read the [current handoff](.agents/handoffs/2026-11-23-1613-islands-and-nested-buttons.md). Handoffs are shared and committed.
 
-- To continue the Islands theme and sidebar redesign, read the [current handoff](.agents/handoffs/2026-11-23-1536-islands-theme.md). Handoffs are shared and committed.
+- To verify the Gemini (Antigravity) name and provider logos in the desktop app, read the [current handoff](.agents/handoffs/2026-11-23-1545-gemini-copilot-logos.md). Handoffs are shared and committed.
