@@ -9,6 +9,7 @@ import { Fold, FoldGroup } from "../ui/fold";
 import { ProviderMark } from "../ui/providerMarks";
 import { CompanionBody } from "./companionBody";
 import { PresetChooser } from "./presetChooser";
+import { PresetNameForm } from "./presetNameForm";
 
 /** The width of the picker's panel in a window with no right-hand column to hold it: a mini sidebar. */
 const miniWidth = 288;
@@ -20,6 +21,8 @@ const miniWidth = 288;
 export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { onClose?: () => void }) {
   const { extra, panel, ...picker } = props;
   const { presetChoice = null } = picker;
+  const onSavePreset = presetChoice?.onSavePreset;
+  const backups = presetChoice?.backups;
   return (
     <FoldGroup initial="main">
       <View style={[local.body, panel !== undefined && local.bodyOfPanel]}>
@@ -53,6 +56,21 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
                 <CompanionBody {...picker} />
               </Fold>
               {extra}
+              {onSavePreset !== undefined && backups != null && (
+                <PresetNameForm
+                  key={extra?.key}
+                  label="Save as a preset"
+                  onSave={(name) =>
+                    onSavePreset(name, {
+                      accountId: props.accountId,
+                      backups,
+                      effort: props.effort,
+                      harness: props.harness,
+                      model: props.model,
+                    })
+                  }
+                />
+              )}
             </>
           )}
         </ScrollView>

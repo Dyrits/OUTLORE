@@ -67,6 +67,7 @@ export const Results = {
   AnswerSuggestion: Suggestion,
   ArchiveThread: Schema.Null,
   BrowseFolders: FolderListing,
+  ChangeCompanionPreset: Settings,
   ChangeSettings: Settings,
   ChangeThreadRunner: Schema.Null,
   CloseTerminal: Schema.Null,

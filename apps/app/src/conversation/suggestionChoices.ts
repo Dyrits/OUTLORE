@@ -1,5 +1,5 @@
-import { type Settings, type Tier, TierName, type WorkspaceChoice, type WorkspaceId } from "@outlore/contracts";
-import { isSameStack } from "../editors/presets";
+import type { Settings, Tier, WorkspaceChoice, WorkspaceId } from "@outlore/contracts";
+import { isSameStack, presetChangeOf, presetsOf } from "../editors/presets";
 import type { Runner } from "../editors/runners";
 import { realmLabelOf } from "../realms/realmLabels";
 
@@ -14,7 +14,10 @@ export type CompanionChoice = {
  * the name the tier's model has (quest coordination, CHG-0179). A tier left unset is not offered.
  */
 export const companionChoicesOf = (
-  settings: Pick<Settings, "backups" | "defaultEffort" | "defaultHarness" | "defaultModel" | "tiers">,
+  settings: Pick<
+    Settings,
+    "backups" | "defaultEffort" | "defaultHarness" | "defaultModel" | "tiers" | "companionPresets"
+  >,
   labelOf: (runner: Runner) => string,
 ): ReadonlyArray<CompanionChoice> => [
   {
@@ -27,10 +30,10 @@ export const companionChoicesOf = (
       model: settings.defaultModel,
     },
   },
-  ...TierName.literals.flatMap((name) => {
-    const tier = settings.tiers[name];
-    return tier === null ? [] : [{ label: `${name} · ${labelOf(tier)}`, runner: tier }];
-  }),
+  ...presetsOf(settings.tiers, settings.companionPresets).map((preset) => ({
+    label: `${preset.name} · ${labelOf(preset.runner)}`,
+    runner: presetChangeOf(preset),
+  })),
 ];
 
 /** The first choice whose complete stack matches, or none for a customized one. */

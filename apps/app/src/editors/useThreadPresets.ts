@@ -17,6 +17,8 @@ export function useThreadPresets(
     backups: panel?.backups ?? null,
     onPreset: (preset) =>
       actWith(setError)(client.request({ _tag: "ChangeThreadRunner", ...presetChangeOf(preset), threadId })),
-    presets: presetsOf(settings.tiers),
+    onSavePreset: (name, stack) =>
+      client.request({ _tag: "ChangeCompanionPreset", edit: { _tag: "Add", name, stack } }),
+    presets: presetsOf(settings.tiers, settings.companionPresets),
   };
 }

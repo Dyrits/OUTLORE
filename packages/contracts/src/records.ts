@@ -14,7 +14,7 @@ import {
   Spending,
   TokenUsage,
 } from "./budgets.ts";
-import { BackupCompanions, ModelChoice, Tier } from "./companions.ts";
+import { BackupCompanions, CompanionPresets, ModelChoice, Tier } from "./companions.ts";
 import { ContextGauge } from "./contextGauge.ts";
 import { LastExchange } from "./exchanges.ts";
 import { EffortChoice, HarnessName } from "./harnesses.ts";
@@ -67,6 +67,7 @@ export const Settings = Schema.Struct({
   briefingLimit: PositiveInt,
   /** Messages between two threads before the owner decides how they continue. */
   chatterThreshold: Schema.Int.check(Schema.isGreaterThanOrEqualTo(2)),
+  companionPresets: Schema.optionalKey(CompanionPresets),
   defaultEffort: EffortChoice,
   /** The harness a new mission starts on before any mission was started (provider-accounts). */
   defaultHarness: HarnessName,
@@ -112,7 +113,7 @@ export const Settings = Schema.Struct({
    * default and experimental (connectors, Code Mode; CHG-0324, CHG-0441). Applies from a thread's next listing.
    */
   shouldUseCodeMode: Schema.Boolean,
-  /** The Companions the Chronicler picks from by a request's complexity; none set means the defaults above. */
+  /** The Companions Chronicler picks from by request complexity. */
   tiers: Schema.Struct({ Balanced: Schema.NullOr(Tier), Heavy: Schema.NullOr(Tier), Light: Schema.NullOr(Tier) }),
 });
 export type Settings = typeof Settings.Type;

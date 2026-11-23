@@ -8,6 +8,49 @@ const codex: BackupCompanion = { accountId: null, effort: "default", harness: "c
 const heavy: Tier = { accountId: null, backups: [codex], effort: "high", harness: "claude", model: "opus" };
 
 describe("saving presets", () => {
+  it.live("preserves a custom stack through rename and a legacy settings save", () =>
+    withService(
+      Effect.gen(function* () {
+        const before = yield* call({ _tag: "ReadSettings" });
+        yield* call({ _tag: "ChangeCompanionPreset", edit: { _tag: "Add", name: "Digest", stack: heavy } });
+        const failure = yield* Effect.flip(
+          call({
+            _tag: "ChangeCompanionPreset",
+            edit: { _tag: "Add", name: "digest", stack: { ...heavy, backups: [] } },
+          }),
+        );
+        expect(failure.kind).toBe("InvalidInput");
+        const renamed = yield* call({
+          _tag: "ChangeCompanionPreset",
+          edit: { _tag: "Rename", name: "Digest", nextName: "Review" },
+        });
+        expect(renamed.companionPresets?.custom).toEqual([{ name: "Review", stack: heavy }]);
+        const { companionPresets: _library, ...olderSettings } = before;
+        yield* call({ _tag: "UpdateSettings", settings: olderSettings });
+        expect((yield* call({ _tag: "ReadSettings" })).companionPresets).toEqual(renamed.companionPresets);
+        const deleted = yield* call({ _tag: "ChangeCompanionPreset", edit: { _tag: "Delete", name: "Review" } });
+        expect(deleted.companionPresets?.custom).toEqual([]);
+      }),
+    ),
+  );
+
+  it.live("renames a built-in preset without moving its tier and clears the tier on deletion", () =>
+    withService(
+      Effect.gen(function* () {
+        yield* call({ _tag: "ChangeSettings", change: { tiers: { Heavy: heavy } } });
+        const renamed = yield* call({
+          _tag: "ChangeCompanionPreset",
+          edit: { _tag: "Rename", name: "Heavy", nextName: "Deep review" },
+        });
+        expect(renamed.tiers.Heavy).toEqual(heavy);
+        expect(renamed.companionPresets?.tierNames.Heavy).toBe("Deep review");
+        const deleted = yield* call({ _tag: "ChangeCompanionPreset", edit: { _tag: "Delete", name: "Deep review" } });
+        expect(deleted.tiers.Heavy).toBeNull();
+        expect(deleted.companionPresets?.tierNames.Heavy).toBeUndefined();
+      }),
+    ),
+  );
+
   it.live("saves a preset with its backups", () =>
     withService(
       Effect.gen(function* () {

@@ -42,6 +42,7 @@ export const requestSourceRules = {
   ArchiveRealm: shared,
   ArchiveThread: shared,
   BrowseFolders: rule(false, (given) => given.path),
+  ChangeCompanionPreset: shared,
   ChangeSettings: shared,
   ChangeThreadRunner: shared,
   ChooseAppleApps: shared,
