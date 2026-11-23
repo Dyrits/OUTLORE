@@ -42,9 +42,26 @@ describe("the / list", () => {
     expect(composerListOf(source(typed("/")), initialListState).rows).toHaveLength(3);
   });
 
-  it("offers nothing more for a name already complete, and works without @ mentions", () => {
-    expect(composerListOf(source(typed("/", "review"), false), initialListState).rows).toEqual([]);
+  it("turns a fully typed skill name into a chip with Tab, even without @ mentions", () => {
+    const list = composerListOf(source(typed("/", "review"), false), initialListState);
+    expect(press(initialListState, list, "Tab")).toMatchObject({
+      chip: { kind: "skill", label: "review", token: "/review" },
+      handled: true,
+    });
     expect(composerListOf(source(typed("/", "rev"), false), initialListState).rows).toHaveLength(1);
+  });
+
+  it("highlights the exact skill before a longer name with the same prefix", () => {
+    const list = composerListOf(
+      { ...source(typed("/", "ARCHITECT")), skills: [...skills].reverse() },
+      initialListState,
+    );
+    expect(labelsOf(list.rows)).toEqual(["architect", "architecture"]);
+    expect(press(initialListState, list, "Tab").chip).toEqual({
+      kind: "skill",
+      label: "architect",
+      token: "/architect",
+    });
   });
 
   it("offers nothing for an @ where @ names nothing, or with no trigger", () => {
