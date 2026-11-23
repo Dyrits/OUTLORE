@@ -20,6 +20,12 @@ Status: **desktop design agreed on 2026-11-20**, including agent-authored anchor
 - A quest opened from the sidebar starts with only its conversation pane open: the realm's channel pane is folded behind its notch, and one press brings it back (the owner, 2026-11-21; CHG-0613).
 - Pane management is expected to change as the owner uses it ("we'll iterate on that").
 
+### Find in conversation
+
+- **Find** opens a search field above the current conversation. It matches literal text in the conversation's messages, ignoring case and whitespace at the ends of the query.
+- A query selects the newest matching message, even if it is offscreen. The feed keeps the surrounding messages in place and marks the selected match. Previous and next wrap through the matching messages, and the search shows the current position or **No matches**.
+- Closing Find clears the query and marker and leaves the feed at its current position.
+
 ### The Workshop
 
 The Workshop (Settings) is not a pane and not a sheet: it is the page that takes over the whole content area, every pane included (the owner, 2026-11-19: "the workshop should take over the full panel but the icon should be on the top right, where chronicler is actually", CHG-0563).

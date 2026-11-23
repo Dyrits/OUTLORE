@@ -1,9 +1,12 @@
 import type { MissionDetail } from "@outlore/contracts";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { useState } from "react";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
+import { colors } from "../foundation/theme";
 import { EntryView } from "./conversationEntries";
 import { ConversationFooter } from "./conversationFooter";
+import { ConversationSearchBar } from "./conversationSearchBar";
 import type { Entry } from "./entries";
 import type { useThreadConversation } from "./useThreadConversation";
 
@@ -24,38 +27,60 @@ export function ConversationFeed({
 }: Navigation & { client: ServiceClient; conversation: Conversation; thread: Thread; workspacePath: string | null }) {
   const footer = <ConversationFooter draft={conversation.draft} thread={thread} />;
   const hasPendingMessages = conversation.entries.some((entry) => entry._tag === "LiveFooter");
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   return (
-    <FlatList<Entry>
-      {...conversation.followNewest.listPropsOf(
-        <View>
-          {!hasPendingMessages && footer}
-          {conversation.terminal.panel}
-        </View>,
+    <View style={styles.flex}>
+      {conversation.entries.some((entry) => entry._tag === "Message") && (
+        <ConversationSearchBar
+          entries={conversation.entries}
+          onSelect={(match) => {
+            if (match !== null || selectedKey !== null) conversation.followNewest.reveal(match?.index ?? null);
+            setSelectedKey(match?.key ?? null);
+          }}
+          selectedKey={selectedKey}
+        />
       )}
-      contentContainerStyle={styles.feed}
-      keyboardShouldPersistTaps="handled"
-      keyExtractor={(entry) => entry.key}
-      renderItem={({ item }) =>
-        item._tag === "LiveFooter" ? (
-          footer
-        ) : (
-          <EntryView
-            {...navigation}
-            client={client}
-            entry={item}
-            harness={thread.harness}
-            isInTurn={thread.actions.isInTurn}
-            onInterrupt={conversation.interrupt}
-            onSteer={conversation.steer}
-            skills={conversation.skills}
-            workspacePath={workspacePath}
-          />
-        )
-      }
-      style={styles.flex}
-    />
+      <FlatList<Entry>
+        {...conversation.followNewest.listPropsOf(
+          <View>
+            {!hasPendingMessages && footer}
+            {conversation.terminal.panel}
+          </View>,
+        )}
+        contentContainerStyle={styles.feed}
+        keyboardShouldPersistTaps="handled"
+        keyExtractor={(entry) => entry.key}
+        renderItem={({ item }) =>
+          item._tag === "LiveFooter" ? (
+            footer
+          ) : (
+            <View>
+              <EntryView
+                {...navigation}
+                client={client}
+                entry={item}
+                harness={thread.harness}
+                isInTurn={thread.actions.isInTurn}
+                onInterrupt={conversation.interrupt}
+                onSteer={conversation.steer}
+                skills={conversation.skills}
+                workspacePath={workspacePath}
+              />
+              {item.key === selectedKey && (
+                <View pointerEvents="none" style={[StyleSheet.absoluteFill, local.selected]} />
+              )}
+            </View>
+          )
+        }
+        style={styles.flex}
+      />
+    </View>
   );
 }
+
+const local = StyleSheet.create({
+  selected: { borderColor: colors.accentText, borderRadius: 6, borderWidth: 2 },
+});
 
 /** Explains a turn failure and offers Retry when the thread can take a turn. */
 export function ConversationFailure({

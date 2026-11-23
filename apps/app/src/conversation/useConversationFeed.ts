@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useRef, useState } from "react";
+import { type ReactElement, useCallback, useEffect, useRef, useState } from "react";
 import type { FlatList } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { type ChronicleTarget, targetIndexOf } from "./chronicleTarget";
@@ -26,21 +26,27 @@ export function useFollowNewest(entries: ReadonlyArray<Entry>, target: Chronicle
   const retry = useRef<ReturnType<typeof setTimeout> | null>(null);
   const attempts = useRef(0);
   const index = target === null ? -1 : targetIndexOf(entries, target);
-  useEffect(() => {
+  const clearJump = useCallback(() => {
+    if (retry.current !== null) clearTimeout(retry.current);
+    retry.current = null;
     attempts.current = 0;
+  }, []);
+  useEffect(() => {
     if (target === null || handled.current === target || index < 0) return;
+    clearJump();
     retry.current = setTimeout(() => {
       if (list.current === null) return;
       handled.current = target;
       list.current.scrollToIndex({ animated: false, index, viewPosition: 0.5 });
     }, 100);
-    return () => {
-      if (retry.current !== null) clearTimeout(retry.current);
-      retry.current = null;
-    };
-  }, [target, index]);
+    return clearJump;
+  }, [target, index, clearJump]);
+  useEffect(() => clearJump, [clearJump]);
   return {
-    follow: () => list.current?.scrollToOffset({ animated: false, offset: 0 }),
+    follow: () => {
+      clearJump();
+      list.current?.scrollToOffset({ animated: false, offset: 0 });
+    },
     listPropsOf: (footer: ReactElement) => ({
       data: newestFirstOf(entries),
       inverted: true,
@@ -57,5 +63,9 @@ export function useFollowNewest(entries: ReadonlyArray<Entry>, target: Chronicle
       },
       ref: list,
     }),
+    reveal: (entryIndex: number | null) => {
+      clearJump();
+      if (entryIndex !== null) list.current?.scrollToIndex({ animated: false, index: entryIndex, viewPosition: 0.5 });
+    },
   };
 }

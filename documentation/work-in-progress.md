@@ -1,5 +1,9 @@
 # Work in progress
 
+## OpenBot provider parity
+
+CHG-0651 through CHG-0655 deliver eight provider harnesses alongside the original four. The full suite on provider tip `96e0103a` passed with 2,848 tests and 24 skips. Authenticated turns, permission behavior against installed binaries, and the remaining provider and connector scope are tracked in the [handoff](../.agents/handoffs/2026-11-23-0043-openbot-providers.md).
+
 ## Mobile feature parity
 
 The owner requested desktop functionality on mobile. Initial source review at `7026ce87` found that narrow screens bypass the shared realm channel and hide the Chronicle entry. The native terminal panel is a stub, and the desktop terminal starts in Electron. Mobile dictation and broader phone layout checks also remain open.

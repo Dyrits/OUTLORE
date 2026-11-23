@@ -3,6 +3,7 @@ import { chmodSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
+import { installHarnessPackage } from "../../src/harness/harnessInstallation.ts";
 import { terminalSignInScript } from "../../src/harness/harnessTools.ts";
 import { HarnessTools, liveHarnessToolsLayer } from "../../src/index.ts";
 import { callTool, listToolNames } from "../fixtures/mcp.ts";
@@ -49,7 +50,20 @@ describe("installing and updating harnesses", () => {
     }).pipe(
       Effect.provide(
         liveHarnessToolsLayer(
-          { claude: "claude", codex: "codex", opencode: "opencode", vibe: "vibe-acp" },
+          {
+            antigravity: "antigravity",
+            claude: "claude",
+            cline: "cline",
+            codex: "codex",
+            copilot: "copilot",
+            cursor: "cursor",
+            devin: "devin",
+            hermes: "hermes",
+            muse: "muse",
+            opencode: "opencode",
+            pi: "pi",
+            vibe: "vibe-acp",
+          },
           (...args) => {
             calls.push(args);
             return Effect.succeed({ code: 0, output: "", stdout: "" });
@@ -58,15 +72,79 @@ describe("installing and updating harnesses", () => {
       ),
     );
   });
+
+  it.live("refuses Update on a harness that has no update command of its own", () => {
+    const calls: Array<unknown> = [];
+    return Effect.gen(function* () {
+      const tools = yield* HarnessTools;
+      // Muse's and Pi's CLIs have none: nothing runs, and the owner reads how their releases arrive instead.
+      const failure = yield* tools.update("muse").pipe(Effect.flip);
+      expect(failure.message).toContain("Muse has no update command");
+      expect(failure.message).toContain("Refresh");
+      const pi = yield* tools.update("pi").pipe(Effect.flip);
+      expect(pi.message).toContain("Pi has no update command");
+      expect(calls).toEqual([]);
+    }).pipe(
+      Effect.provide(
+        liveHarnessToolsLayer(
+          {
+            antigravity: "antigravity",
+            claude: "claude",
+            cline: "cline",
+            codex: "codex",
+            copilot: "copilot",
+            cursor: "cursor",
+            devin: "devin",
+            hermes: "hermes",
+            muse: "muse",
+            opencode: "opencode",
+            pi: "pi",
+            vibe: "vibe-acp",
+          },
+          (...args) => {
+            calls.push(args);
+            return Effect.succeed({ code: 0, output: "", stdout: "" });
+          },
+        ),
+      ),
+    );
+  });
+
   it.live("offers an update only to a harness with a newer version, and updates it", () => {
     const { layer, updates } = withHarnesses();
     updates.available.codex = "0.167.0";
     return Effect.gen(function* () {
       const before = yield* call({ _tag: "ListHarnesses" });
-      expect(before.harnesses.map((harness) => harness.update)).toEqual([null, "0.167.0", null, null]);
+      expect(before.harnesses.map((harness) => harness.update)).toEqual([
+        null,
+        "0.167.0",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+      ]);
       const after = yield* call({ _tag: "UpdateHarness", harness: "codex" });
       expect(updates.updated).toEqual(["codex"]);
-      expect(after.harnesses.map((harness) => harness.update)).toEqual([null, null, null, null]);
+      expect(after.harnesses.map((harness) => harness.update)).toEqual([
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+      ]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -89,6 +167,26 @@ describe("installing and updating harnesses", () => {
       expect(result.message).toContain("already installed");
     }).pipe(Effect.provide(layer));
   });
+
+  it.live("explains instead of installing a harness that arrives from its own source", () => {
+    const runs: Array<ReadonlyArray<unknown>> = [];
+    return Effect.gen(function* () {
+      // Hermes's and Pi's Install run no package manager: Hermes arrives from its own Git source and Pi from
+      // its GitHub release archives (installVia manual).
+      const failure = yield* installHarnessPackage("hermes", (...args) => {
+        runs.push(args);
+        return Effect.succeed({ code: 0, output: "", stdout: "" });
+      }).pipe(Effect.flip);
+      expect(failure.message).toContain("installed from its own source");
+      expect(failure.message).toContain("Refresh");
+      const pi = yield* installHarnessPackage("pi", (...args) => {
+        runs.push(args);
+        return Effect.succeed({ code: 0, output: "", stdout: "" });
+      }).pipe(Effect.flip);
+      expect(pi.message).toContain("installed from its own source");
+      expect(runs).toEqual([]);
+    });
+  });
 });
 
 describe("signing in to a harness", () => {
@@ -96,7 +194,20 @@ describe("signing in to a harness", () => {
     const { layer } = withHarnesses();
     return Effect.gen(function* () {
       const claude = yield* call({ _tag: "SignInAccount", accountId: null, harness: "claude" });
-      expect(claude?.harnesses.map((harness) => harness.name)).toEqual(["claude", "codex", "opencode", "vibe"]);
+      expect(claude?.harnesses.map((harness) => harness.name)).toEqual([
+        "claude",
+        "codex",
+        "opencode",
+        "vibe",
+        "hermes",
+        "muse",
+        "pi",
+        "cursor",
+        "copilot",
+        "cline",
+        "devin",
+        "antigravity",
+      ]);
       expect(yield* call({ _tag: "SignInAccount", accountId: null, harness: "opencode" })).toBeNull();
     }).pipe(Effect.provide(layer));
   });
@@ -122,7 +233,20 @@ describe("signing in to a harness", () => {
         expect(failure.message).toBe("Claude Code did not sign in. one two no way");
       }).pipe(
         Effect.provide(
-          liveHarnessToolsLayer({ claude: command, codex: "codex", opencode: "opencode", vibe: "vibe-acp" }),
+          liveHarnessToolsLayer({
+            antigravity: "antigravity",
+            claude: command,
+            cline: "cline",
+            codex: "codex",
+            copilot: "copilot",
+            cursor: "cursor",
+            devin: "devin",
+            hermes: "hermes",
+            muse: "muse",
+            opencode: "opencode",
+            pi: "pi",
+            vibe: "vibe-acp",
+          }),
         ),
       );
     },
@@ -142,5 +266,35 @@ describe("signing in to a harness", () => {
     expect(failure).toContain("Sign-in did not finish");
     expect(script).toContain("export XDG_DATA_HOME='/accounts/x'");
     expect(script).toContain('exit "$status"');
+  });
+
+  it.live("refuses Sign-in on a harness that has no sign-in command of its own", () => {
+    return Effect.gen(function* () {
+      const tools = yield* HarnessTools;
+      // Devin's and Antigravity's only sign-in rides their ACP flow (upstream pins no CLI sign-in to run), so
+      // Sign-in explains instead of opening a terminal; each message names its own harness.
+      const failure = yield* tools.openSignIn("devin", null).pipe(Effect.flip);
+      expect(failure.message).toContain("Devin has no sign-in command of its own");
+      expect(failure.message).toContain("press Refresh");
+      const gemini = yield* tools.openSignIn("antigravity", null).pipe(Effect.flip);
+      expect(gemini.message).toContain("Gemini has no sign-in command of its own");
+    }).pipe(
+      Effect.provide(
+        liveHarnessToolsLayer({
+          antigravity: "antigravity",
+          claude: "claude",
+          cline: "cline",
+          codex: "codex",
+          copilot: "copilot",
+          cursor: "cursor",
+          devin: "devin",
+          hermes: "hermes",
+          muse: "muse",
+          opencode: "opencode",
+          pi: "pi",
+          vibe: "vibe-acp",
+        }),
+      ),
+    );
   });
 });

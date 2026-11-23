@@ -12,6 +12,7 @@
   "dependencies": {
     "@effect/sql-sqlite-node": "4.1.4",
     "@jitl/quickjs-singlefile-mjs-release-sync": "0.32.0",
+    "@muse-code/sdk": "1.4.25",
     "@outlore/channel": "workspace:*",
     "@outlore/contracts": "workspace:*",
     "@outlore/controller": "workspace:*",

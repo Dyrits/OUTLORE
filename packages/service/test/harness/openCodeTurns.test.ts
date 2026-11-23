@@ -155,7 +155,22 @@ describe("running OpenCode threads", () => {
       expect(yield* tools.listEfforts("opencode", null, "provider/model-a")).toEqual(["none", "high"]);
       expect(sessions()).toBe(before);
     }).pipe(
-      Effect.provide(liveHarnessToolsLayer({ claude: "claude", codex: "codex", opencode: command, vibe: "vibe-acp" })),
+      Effect.provide(
+        liveHarnessToolsLayer({
+          antigravity: "antigravity",
+          claude: "claude",
+          cline: "cline",
+          codex: "codex",
+          copilot: "copilot",
+          cursor: "cursor",
+          devin: "devin",
+          hermes: "hermes",
+          muse: "muse",
+          opencode: command,
+          pi: "pi",
+          vibe: "vibe-acp",
+        }),
+      ),
     );
   });
 

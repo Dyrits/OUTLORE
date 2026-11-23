@@ -38,9 +38,25 @@ const liveLayer = Layer.unwrap(
     // OUTLORE_HARNESS=fake selects the echo harness for checks.
     const harnessName = yield* Config.String("OUTLORE_HARNESS").pipe(Config.withDefault("claude"));
     const commands = {
+      // The Antigravity CLI fronts Gemini's models through ACP (`antigravity acp`, home in --gemini-dir).
+      antigravity: yield* Config.String("OUTLORE_ANTIGRAVITY_PATH").pipe(Config.withDefault("antigravity")),
       claude: yield* Config.String("OUTLORE_CLAUDE_PATH").pipe(Config.withDefault("claude")),
+      // Cline is a plain ACP server (`cline --acp`).
+      cline: yield* Config.String("OUTLORE_CLINE_PATH").pipe(Config.withDefault("cline")),
       codex: yield* Config.String("OUTLORE_CODEX_PATH").pipe(Config.withDefault("codex")),
+      // The Copilot CLI keeps an ACP server (`copilot --acp --no-auto-update`).
+      copilot: yield* Config.String("OUTLORE_COPILOT_PATH").pipe(Config.withDefault("copilot")),
+      // Cursor's CLI is `cursor-agent`, never `cursor` (that starts the editor); it serves ACP (`cursor-agent acp`).
+      cursor: yield* Config.String("OUTLORE_CURSOR_PATH").pipe(Config.withDefault("cursor-agent")),
+      // Devin serves ACP (`devin acp`).
+      devin: yield* Config.String("OUTLORE_DEVIN_PATH").pipe(Config.withDefault("devin")),
+      // Hermes is the first of the generic ACP providers (`hermes acp`); an account's home is set per turn.
+      hermes: yield* Config.String("OUTLORE_HERMES_PATH").pipe(Config.withDefault("hermes")),
+      // Muse runs its own MSP host (`muse serve`) through the official SDK.
+      muse: yield* Config.String("OUTLORE_MUSE_PATH").pipe(Config.withDefault("muse")),
       opencode: yield* Config.String("OUTLORE_OPENCODE_PATH").pipe(Config.withDefault("opencode")),
+      // Pi enters through its own `--mode rpc` interface (the unmodified CLI, fail-closed: piTools.ts).
+      pi: yield* Config.String("OUTLORE_PI_PATH").pipe(Config.withDefault("pi")),
       vibe: yield* Config.String("OUTLORE_VIBE_PATH").pipe(Config.withDefault("vibe-acp")),
     };
     // OUTLORE_RELAY_ORIGIN points pairing at another relay, such as one run locally for checks (device-pairing).
