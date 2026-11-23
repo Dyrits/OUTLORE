@@ -5,15 +5,12 @@ import { ancestorIdsOf, type Placements, sideQuestRowsOf } from "./questTree";
 const sidebarQuestLimit = 4;
 const sidebarErrandLimit = 2;
 
-/**
- * Gives the open quest priority, then running quests, while keeping the visible rows in placement order.
- */
+/** Keeps the open quest in the preview and fills remaining slots in placement order. */
 const visibleQuestsOf = (quests: readonly MissionSummary[], limit: number, openMission: string | null) => {
   if (quests.length <= limit) return quests;
   const byPriority = [
     ...quests.filter((quest) => quest.id === openMission),
-    ...quests.filter((quest) => quest.id !== openMission && quest.state === "Underway"),
-    ...quests.filter((quest) => quest.id !== openMission && quest.state !== "Underway"),
+    ...quests.filter((quest) => quest.id !== openMission),
   ];
   const visible = new Set(byPriority.slice(0, limit));
   return quests.filter((quest) => visible.has(quest));

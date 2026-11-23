@@ -1,15 +1,16 @@
 import { MissionSummary, ThreadSummary } from "@outlore/contracts";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
+import { placementsOf } from "../../src/shell/questTree";
 import { railOutlineOf, threadOutlineOf } from "../../src/shell/railOutline";
 
-const thread = (id: string, parentId: string | null, depth: number) =>
+const thread = (id: string, parentId: string | null, depth: number, isOpenedByAgent = false) =>
   Schema.decodeUnknownSync(ThreadSummary)({
     depth,
     harness: "claude",
     id,
     isAside: false,
-    isOpenedByAgent: false,
+    isOpenedByAgent,
     lastActivityAt: 0,
     lastExchange: { owner: null, reply: null },
     model: "default",
@@ -23,7 +24,7 @@ const thread = (id: string, parentId: string | null, depth: number) =>
 const tree = [thread("top", null, 0), thread("parent", "top", 1), thread("child", "parent", 2)];
 
 const usage = { cacheCreation: 0, cacheRead: 0, input: 0, output: 0 };
-const quest = (id: string, state: "Resting" | "Underway" = "Resting") =>
+const quest = (id: string, state: MissionSummary["state"] = "Resting") =>
   Schema.decodeUnknownSync(MissionSummary)({
     budget: { limits: { cost: null, tokens: null }, spent: { cost: 0, tokens: 0 } },
     consumption: { earlierTurns: 0, estimated: 0, reported: 0, tokens: usage, turns: 0, unpricedTurns: 0 },
@@ -47,14 +48,21 @@ const quest = (id: string, state: "Resting" | "Underway" = "Resting") =>
   });
 
 describe("revealing the rail location", () => {
-  it("shows at most four quests and gives a running quest priority", () => {
-    const quests = ["one", "two", "three", "four", "five", "hidden"].map((id) => quest(id));
-    const outline = railOutlineOf(
-      { borderlands: [...quests, quest("running", "Underway")], realms: [] },
-      null,
-      new Set(),
-    );
-    expect(outline.borderlands.map((each) => each.id)).toEqual(["one", "two", "three", "running"]);
+  it("fills the preview by status and then recency, including Failed and Attention quests", () => {
+    const quests = [
+      quest("running", "Underway"),
+      quest("older resting"),
+      { ...quest("newer resting"), lastActivityAt: 1 },
+      quest("attention", "Attention"),
+      quest("failed", "Failed"),
+    ];
+    const outline = railOutlineOf(placementsOf(quests, []), null, new Set());
+    expect(outline.borderlands.map((each) => each.id)).toEqual([
+      "failed",
+      "attention",
+      "newer resting",
+      "older resting",
+    ]);
   });
   it("reveals the selected thread through folded ancestors without changing stored folds", () => {
     const collapsed = new Set(["parent"]);
@@ -83,14 +91,28 @@ describe("revealing the rail location", () => {
     expect(outline.isQuestOpen("first")).toBe(true);
     expect(outline.isQuestOpen("second")).toBe(false);
   });
-  it("fits running quests into the available slots after the selected quest", () => {
+  it("fills the remaining slots in placement order", () => {
     const quests = [quest("first"), quest("second"), quest("running", "Underway"), quest("fourth", "Underway")];
     const outline = railOutlineOf({ borderlands: quests, realms: [] }, "second", new Set(), 2);
-    expect(outline.borderlands.map((each) => each.id)).toEqual(["second", "running"]);
+    expect(outline.borderlands.map((each) => each.id)).toEqual(["first", "second"]);
   });
 });
 
 describe("limiting sidebar errands", () => {
+  it("previews the most urgent errands by displayed status even when a hidden opener folds away", () => {
+    const threads = [
+      ...tree,
+      thread("folded", "top", 1, true),
+      { ...thread("failed", "folded", 2), shownState: "Failed" as const, state: "Failed" as const },
+      { ...thread("attention", "top", 1), shownState: "Attention" as const },
+    ];
+    const outline = threadOutlineOf(threads, new Set(), null, false);
+    expect(outline.rows.map(({ depth, thread }) => [thread.id, depth])).toEqual([
+      ["failed", 1],
+      ["attention", 1],
+    ]);
+  });
+
   it("offers no overflow link for one or two errand rows", () => {
     for (const threads of [tree.slice(0, 2), tree]) {
       const outline = threadOutlineOf(threads, new Set(), null, true);
