@@ -74,7 +74,11 @@ export function Shell(
     side,
     windowWidth: width,
   });
-  const { isMenuOpen, isNarrowChroniclerOpen } = props.location;
+  const { isMenuOpen, isNarrowChroniclerOpen, ritualForm } = props.location;
+  const { close: closeSidebar } = overlay;
+  useEffect(() => {
+    if (ritualForm !== null) closeSidebar();
+  }, [closeSidebar, ritualForm]);
   const setIsMenuOpen = (isOpen: boolean) => props.dispatch({ isOpen, type: "menu" });
   const setIsNarrowChroniclerOpen = (isOpen: boolean) => props.dispatch({ isOpen, type: "narrowChronicler" });
   const narrowChroniclerToggle = {
@@ -131,7 +135,8 @@ export function Shell(
   // A narrow window has the top bar over the content alone; its menu button opens a full-screen menu of the places. An
   // open quest panel, the menu, or Chronicler takes the content's place; the content stays mounted, so the open thread
   // is kept.
-  const isNarrowCovered = column.isPanelShown || isMenuOpen || isNarrowChroniclerOpen;
+  const showsDetails = ritualForm === null && column.isPanelShown;
+  const isNarrowCovered = showsDetails || isMenuOpen || isNarrowChroniclerOpen;
   if (!hasRail) {
     return (
       <QuestPanelSetter.Provider value={column.setPanel}>
@@ -140,7 +145,7 @@ export function Shell(
             <NarrowTopBar
               chronicler={narrowChroniclerToggle}
               client={props.client}
-              details={details}
+              details={ritualForm === null ? details : null}
               menu={{
                 isOpen: isMenuOpen,
                 onToggle: () => {
@@ -155,7 +160,7 @@ export function Shell(
               </View>
             )}
             {isNarrowChroniclerOpen && !isMenuOpen && <View style={local.narrowContent}>{chroniclerChat}</View>}
-            {!isMenuOpen && !isNarrowChroniclerOpen && column.panelColumn}
+            {!isMenuOpen && !isNarrowChroniclerOpen && showsDetails && column.panelColumn}
           </View>
         </TopBarShown.Provider>
       </QuestPanelSetter.Provider>

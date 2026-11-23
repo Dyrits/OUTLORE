@@ -61,6 +61,7 @@ export * from "./requests.ts";
 export * from "./results.ts";
 export * from "./ritualSchedules.ts";
 export * from "./rituals.ts";
+export type { CompanionPresetEdit } from "./settingsRequests.ts";
 export * from "./settingsRequests.ts";
 export * from "./skills.ts";
 export * from "./terminalRequests.ts";

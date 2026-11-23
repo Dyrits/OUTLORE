@@ -10,6 +10,7 @@ import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Fold, FoldGroup } from "../ui/fold";
+import { PresetActions } from "./presetActions";
 import type { WorkshopFocus } from "./workshopTabs";
 
 /** The three presets, as the Companions tab and the page name them. */
@@ -24,10 +25,12 @@ function Tabs<T extends string>({
   onChange,
   options,
   value,
+  labelOf,
 }: {
   onChange: (option: T) => void;
   options: ReadonlyArray<T>;
   value: T;
+  labelOf?: (option: T) => string;
 }) {
   return (
     <View accessibilityRole="tablist" style={local.tabs}>
@@ -39,7 +42,7 @@ function Tabs<T extends string>({
           onPress={() => onChange(option)}
           style={[local.tab, option === value && local.tabActive]}
         >
-          <Text style={[local.tabText, option === value && local.tabTextActive]}>{option}</Text>
+          <Text style={[local.tabText, option === value && local.tabTextActive]}>{labelOf?.(option) ?? option}</Text>
         </Pressable>
       ))}
     </View>
@@ -117,6 +120,7 @@ export function WorkshopCompanions({
     model: settings.defaultModel,
   };
   const tier = settings.tiers[tierName];
+  const displayName = settings.companionPresets?.tierNames[tierName] ?? tierName;
   return (
     <View style={local.panel}>
       <Tabs
@@ -124,7 +128,14 @@ export function WorkshopCompanions({
         options={["Default", "Presets"]}
         value={isPresets ? "Presets" : "Default"}
       />
-      {isPresets && <Tabs onChange={onFocus} options={tierNames.map(({ name }) => name)} value={tierName} />}
+      {isPresets && (
+        <Tabs
+          labelOf={(name) => settings.companionPresets?.tierNames[name] ?? name}
+          onChange={onFocus}
+          options={tierNames.map(({ name }) => name)}
+          value={tierName}
+        />
+      )}
       {!isPresets ? (
         <FoldGroup initial="main" key="default">
           <Fold harness={defaults.harness} id="main" summary={runnerSummaryOf(harnesses, defaults)} title="Companion">
@@ -179,7 +190,7 @@ export function WorkshopCompanions({
                 client={client}
                 // The folds belong to this preset alone.
                 key={tierName}
-                note={`Work started on ${tierName} carries on with the first of these when a turn fails. Choosing ${tierName} for a quest puts them in place with the Companion.`}
+                note={`Work started on ${displayName} carries on with the first of these when a turn fails. Choosing ${displayName} for a quest puts them in place with the Companion.`}
                 onSave={(backups) =>
                   client.request({
                     _tag: "ChangeSettings",
@@ -187,9 +198,7 @@ export function WorkshopCompanions({
                   })
                 }
               />
-              <Pressable accessibilityRole="button" onPress={() => save({ tiers: { [tierName]: null } })}>
-                <Text style={styles.link}>Clear</Text>
-              </Pressable>
+              <PresetActions client={client} key={displayName} name={displayName} />
             </FoldGroup>
           )}
         </View>

@@ -16,6 +16,7 @@ import {
   addBrowsableRoot,
   browseFolders,
   Changes,
+  changeCompanionPreset,
   changesLayer,
   createFolder,
   endpointsLayer,
@@ -192,6 +193,7 @@ const make = Effect.gen(function* () {
               Effect.map(({ value }) => value),
             ),
           BrowseFolders: (browse) => browseFolders(browse.path, browse.shouldIncludeHidden, folderAccess),
+          ChangeCompanionPreset: ({ edit }) => change(changeCompanionPreset(edit)),
           ChangeSettings: (given) =>
             saveSettingsFromSource(isHostWindow, (saved) => mergedSettings(saved, given.change)),
           CreateFolder: (create) => createFolder(create.parent, create.name, folderAccess),

@@ -8,6 +8,7 @@ import { Settings } from "@outlore/contracts";
  */
 export const settingsKeptFromChronicler = [
   "backgroundCheckIns",
+  "companionPresets",
   "defaultPermissionMode",
   "defaultMissionBudget",
   "globalBudget",

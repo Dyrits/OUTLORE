@@ -212,7 +212,9 @@ export function OpenThreadForm({
                 setRunner(preset.runner);
                 setBackups(preset.backups);
               },
-              presets: presetsOf(settings.tiers),
+              onSavePreset: (name, stack) =>
+                client.request({ _tag: "ChangeCompanionPreset", edit: { _tag: "Add", name, stack } }),
+              presets: presetsOf(settings.tiers, settings.companionPresets),
             }
       }
       value={runner}

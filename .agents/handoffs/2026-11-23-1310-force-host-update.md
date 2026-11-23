@@ -11,7 +11,7 @@ A paired device (phone, browser, second computer) can force the host's update wh
 
 ## State
 
-Commit `32a7b9bf` (CHG-0661) is on main; it was fast-forwarded from `mission/update-during-running-turn-b6198594`. Verified: `git log` shows it on main.
+Commit `32a7b9bf` (CHG-0664) is on main; it was fast-forwarded from `mission/update-during-running-turn-b6198594`. Verified: `git log` shows it on main.
 It adds a `ForceUpdateHost` request, separate from `UpdateHost`, so a host older than this feature fails with InvalidInput instead of ignoring a flag and waiting. The service skips the wait on force, and the app shows a **Force update** button only in the WaitingForTurns state, behind a confirmation. The app-updates specification and `documentation/changelog/0.2.3-Pre-Alpha.md` are updated.
 The errand reported that the service, contracts and app foundation tests pass (256 passed, 6 skipped), Biome is clean, and the commit hook ran the typecheck. I did not rerun them (assumed).
 Not tried: a real phone, a packaged macOS update, the confirmation dialog on screen, and the full repository test suite.

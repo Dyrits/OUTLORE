@@ -5,6 +5,7 @@ import { messageOf, type ServiceClient } from "../foundation/client";
 import type { QuestPage } from "../foundation/pageNavigation";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { RitualCompanions } from "../rituals/ritualCompanions";
 import { compareUrgency } from "../shell/childNotches";
 import { ChronicleTargetContext, matchesThread } from "./chronicleTarget";
 import { ErrandEndingButtons } from "./errandHeaderActions";
@@ -23,6 +24,7 @@ export function PaneThread({
   client,
   listRequest,
   missionId,
+  onBack,
   onOpenMission,
   onNewErrand,
   onOpenThread,
@@ -35,12 +37,13 @@ export function PaneThread({
   /** Each new request from the sidebar or a notch opens the quest's Errands tab. */
   listRequest?: object | undefined;
   missionId: MissionId;
+  onBack?: (() => void) | undefined;
   onOpenMission: (missionId: MissionId) => void;
   /** The header's icon that starts an errand of the quest; none on the quest's own pane. */
   onNewErrand?: (() => void) | undefined;
   /** Opens another thread of the quest: a reply line here opens its errand in the pane beside this one. */
   onOpenThread: (threadId: ThreadId) => void;
-  onStartErrand: () => void;
+  onStartErrand?: (() => void) | undefined;
   threadId: ThreadId;
 }) {
   const { data, error } = useServiceQuery(
@@ -63,6 +66,7 @@ export function PaneThread({
   const isQuest = detail?.thread.parentId === null;
   // The details tab is named for what the pane holds: the quest's own thread, or one of its errands.
   const detailsName = isQuest ? (detail?.mission.ritual === null ? "Quest" : "Ritual") : "Errand";
+  const isRitual = detailsName === "Ritual";
   const isDetails = tab === "Quest" || tab === "Ritual" || tab === "Errand";
   const [page, setPage] = useState<QuestPage>(null);
   const pages = useQuestPages(client, missionId, data?.mission.title ?? "", { onPage: setPage, page });
@@ -78,7 +82,7 @@ export function PaneThread({
               isQuest && tab === "Errands" ? (
                 <ScrollView contentContainerStyle={local.list} style={local.page}>
                   {/* A Ritual's runs are its only errands (CHG-0616): none is opened by hand, on a quest it still is. */}
-                  {detail.mission.ritual === null && (
+                  {detail.mission.ritual === null && onStartErrand !== undefined && (
                     <NewReplyCard
                       isDisabled={!detail.thread.actions.canOpenBeneath}
                       label="New errand"
@@ -93,6 +97,8 @@ export function PaneThread({
                       <ListedErrand client={client} key={thread.id} onOpen={onOpenThread} thread={thread} />
                     ))}
                 </ScrollView>
+              ) : isRitual && tab === "Companions" ? (
+                <RitualCompanions client={client} missionId={missionId} />
               ) : isDetails ? (
                 questPanelOf({ client, detail, onOpenMission, onSelectThread: onOpenThread, pages })
               ) : null
@@ -100,14 +106,19 @@ export function PaneThread({
             canOpenDetails={false}
             chrome={chrome}
             client={client}
-            companions={{
-              isSelected: tab === "Companions",
-              onOpen: () => setTab(tab === "Companions" ? "Missives" : "Companions"),
-            }}
+            {...(!isRitual
+              ? {
+                  companions: {
+                    isSelected: tab === "Companions",
+                    onOpen: () => setTab(tab === "Companions" ? "Missives" : "Companions"),
+                  },
+                }
+              : {})}
             detail={detail}
             isCompact={true}
             isInPane
             key={detail.thread.id}
+            {...(onBack === undefined ? {} : { onBack })}
             onNewErrand={onNewErrand}
             onOpenBudget={() => pages.openBudget(detail.budgetStop?.scope ?? "Mission")}
             onOpenDetails={() => {}}
@@ -115,6 +126,7 @@ export function PaneThread({
             onSelect={onOpenThread}
             tabs={
               <PaneTabs
+                isTouch={onBack !== undefined}
                 names={
                   isQuest ? ["Missives", detailsName, "Errands", "Companions"] : ["Missives", "Errand", "Companions"]
                 }

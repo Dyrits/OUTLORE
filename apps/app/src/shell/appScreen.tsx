@@ -209,24 +209,18 @@ function AppScreenContent({
             onOpenMission={(id) => navigation.openMission(id, "channel")}
           />
         </View>
-        {view.ritualForm !== null ? (
-          <>
-            {conversation !== null && <View style={local.parked}>{conversation}</View>}
-            {ritualForm}
-          </>
-        ) : (
-          (conversation ?? (view.place !== "Channel" && screens[view.place]))
+        {conversation !== null && (
+          <View style={view.ritualForm === null ? local.fill : local.parked}>{conversation}</View>
         )}
+        {ritualForm ?? (conversation === null && view.place !== "Channel" && screens[view.place])}
       </>
     );
   }
   if (conversation !== null) {
     // The Ritual form can cover the quest's conversation, which stays mounted beneath it (CHG-0643).
-    return view.ritualForm === null ? (
-      conversation
-    ) : (
+    return (
       <>
-        <View style={local.parked}>{conversation}</View>
+        <View style={view.ritualForm === null ? local.fill : local.parked}>{conversation}</View>
         {ritualForm}
       </>
     );

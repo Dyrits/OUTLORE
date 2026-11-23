@@ -82,7 +82,7 @@ import {
   UseSharedRelay,
 } from "./remote.ts";
 import { CreateRitual, DeleteRitual, ListRituals, ReadRitual, RunRitual, UpdateRitual } from "./rituals.ts";
-import { ChangeSettings, UpdateSettings } from "./settingsRequests.ts";
+import { ChangeCompanionPreset, ChangeSettings, UpdateSettings } from "./settingsRequests.ts";
 import { CloseTerminal, OpenTerminal, ResizeTerminal, WriteTerminalInput } from "./terminalRequests.ts";
 import { OwnerMessageText } from "./texts.ts";
 import { threadAnchorRequests } from "./threadAnchors.ts";
@@ -104,7 +104,7 @@ export const ReadHostUpdate = Schema.TaggedStruct("ReadHostUpdate", {});
  */
 export const UpdateHost = Schema.TaggedStruct("UpdateHost", {});
 /**
- * Tells the host to install the update now, stopping the turns still running (CHG-0661): `UpdateHost` that does not
+ * Tells the host to install the update now, stopping the turns still running (CHG-0664): `UpdateHost` that does not
  * wait. A request of its own, not a flag on `UpdateHost`, so that a host from before it answers with a failure instead
  * of ignoring the flag and waiting. Nothing is forced without it; the answer is where updating stands.
  */
@@ -416,6 +416,7 @@ export const Request = Schema.Union([
   SwitchAtBudget,
   UpdateSettings,
   ChangeSettings,
+  ChangeCompanionPreset,
   ReadJournal,
   RewriteBriefing,
   AddJournalEntry,

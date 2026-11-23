@@ -65,7 +65,7 @@ Not in the Android app: a store listing, iOS, installing without Android's confi
 
 ## Updating a host from a paired device
 
-Problem: a host refuses a paired device of another release, so a phone, browser or second computer that was updated first loses its host until the owner goes to the host and updates it there. Status: **agreed with the owner on 2026-11-18, built in CHG-0518; forcing over running turns agreed on 2026-11-23, built in CHG-0661. The first update to this feature must be made on the host by hand, and a real phone and a packaged macOS update are not yet tried.**
+Problem: a host refuses a paired device of another release, so a phone, browser or second computer that was updated first loses its host until the owner goes to the host and updates it there. Status: **agreed with the owner on 2026-11-18, built in CHG-0518; forcing over running turns agreed on 2026-11-23, built in CHG-0664. The first update to this feature must be made on the host by hand, and a real phone and a packaged macOS update are not yet tried.**
 
 Agreed behavior:
 
