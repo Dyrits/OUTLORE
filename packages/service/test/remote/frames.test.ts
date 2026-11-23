@@ -1,6 +1,6 @@
 import type { ServerFrame } from "@outlore/contracts";
 import { hostOnlyRequestTags } from "@outlore/contracts";
-import { Effect } from "effect";
+import { Effect, Logger } from "effect";
 import { describe, expect, it } from "vitest";
 import { answerText } from "../../src/remote/index.ts";
 
@@ -68,5 +68,24 @@ describe("what a paired device may ask of a host", () => {
       ),
     );
     expect(sent).toMatchObject([{ _tag: "Failure", error: { kind: "InvalidInput" }, id: "7" }]);
+  });
+});
+
+describe("what happens when a request ends without a typed failure", () => {
+  it("logs the cause and still answers with the unchanged message", async () => {
+    const sent: ServerFrame[] = [];
+    const logged: unknown[] = [];
+    const logger = Logger.layer([Logger.make(({ message }) => logged.push(message))]);
+    const handle = () => Effect.die(new Error("the handler broke"));
+    await Effect.runPromise(
+      answerText(handle as never, frameFor("ReadHostName"), (frame) => sent.push(frame), {
+        isPairedDevice: false,
+      }).pipe(Effect.provide(logger)),
+    );
+    expect(sent).toMatchObject([
+      { _tag: "Failure", error: { kind: "ExecutionFailure", message: "The service failed unexpectedly." }, id: "1" },
+    ]);
+    expect(JSON.stringify(logged)).toContain("ReadHostName");
+    expect(JSON.stringify(logged)).toContain("the handler broke");
   });
 });

@@ -143,9 +143,12 @@ type FocusProps = { readonly onBlur: () => void; readonly onFocus: () => void };
 /**
  * A row's hover and keyboard focus, so its action buttons show only then (`areActionsShown`). The buttons keep their
  * place while unseen, so nothing moves when they appear; the row gets `rowProps`, each button and the row `focusProps`.
+ * The row is a plain view and its own button lies inside it beside the others, since a button never holds another: the
+ * button gets `pressProps` so the whole row shows `isHighlighted` while hovered or pressed.
  */
 export const useRowActions = () => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
   const [hasKeyboardFocusWithin, setHasKeyboardFocusWithin] = useState(false);
   const rowRef = useRef<ElementRef<typeof View>>(null);
   // A row that moved under a still pointer (the one above it was archived) hears no pointer enter: look at where the
@@ -162,7 +165,9 @@ export const useRowActions = () => {
   return {
     actionsStyle: [local.actions, !isShown && local.actionsHidden],
     focusProps,
+    isHighlighted: isHovered || isPressed,
     isShown,
+    pressProps: { onPressIn: () => setIsPressed(true), onPressOut: () => setIsPressed(false) },
     // Pointer enter and leave, not Pressable's hover: React Native Web ends a Pressable's hover as soon as the pointer
     // reaches a Pressable inside it (a hidden button, the fold arrow), so the marks vanished exactly where they appear.
     // Enter and leave fire only when the pointer crosses the row's own edge, so the whole row box counts.

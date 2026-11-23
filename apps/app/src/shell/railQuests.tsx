@@ -355,19 +355,12 @@ export function RealmHeader({
   path: string | null;
   questCount: number;
 }) {
-  const { actionsStyle, focusProps, isShown, rowProps } = useRowActions();
+  const { actionsStyle, focusProps, isHighlighted, isShown, pressProps, rowProps } = useRowActions();
+  // The row is a view: its name button and the fold, overview, and creation buttons are siblings, never nested.
   return (
-    <Pressable
+    <View
       {...rowProps}
-      accessibilityLabel={name}
-      accessibilityRole="button"
-      onPress={onOpenChannel ?? onToggle}
-      style={(state) => [
-        local.row,
-        !canHover && local.rowTouch,
-        { paddingLeft: 6 },
-        (state.pressed || isHovered(state)) && local.rowHovered,
-      ]}
+      style={[local.row, !canHover && local.rowTouch, { paddingLeft: 6 }, isHighlighted && local.rowHovered]}
     >
       <Chevron
         focusProps={focusProps}
@@ -376,12 +369,20 @@ export function RealmHeader({
         label={name}
         onPress={onToggle}
       />
-      <FolderCue path={path} />
-      <Text numberOfLines={1} style={local.realmText}>
-        {name}
-      </Text>
-      <View style={local.realmTextEnd} />
-      <Count isShown={isShown} value={questCount} />
+      <Pressable
+        {...pressProps}
+        accessibilityLabel={name}
+        accessibilityRole="button"
+        onPress={onOpenChannel ?? onToggle}
+        style={local.rowMain}
+      >
+        <FolderCue path={path} />
+        <Text numberOfLines={1} style={local.realmText}>
+          {name}
+        </Text>
+        <View style={local.realmTextEnd} />
+        <Count isShown={isShown} value={questCount} />
+      </Pressable>
       <View style={actionsStyle}>
         <OverviewButton focusProps={focusProps} label={name} onPress={onOverview} />
         <Pressable
@@ -407,6 +408,6 @@ export function RealmHeader({
           </Pressable>
         )}
       </View>
-    </Pressable>
+    </View>
   );
 }

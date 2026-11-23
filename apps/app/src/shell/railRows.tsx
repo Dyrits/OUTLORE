@@ -54,20 +54,17 @@ export function Row({
   /** What stands after the label, always in view, such as a Ritual's schedule. */
   trailing?: ReactNode;
 }) {
-  const { focusProps, isShown, rowProps } = useRowActions();
+  const { focusProps, isHighlighted, isShown, pressProps, rowProps } = useRowActions();
+  // The row is a view and its label button sits beside the fold mark and the hover accessory: a button never holds another.
   return (
-    <Pressable
+    <View
       {...rowProps}
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      accessibilityState={{ selected: isSelected }}
-      onPress={onPress}
-      style={(state) => [
+      style={[
         local.row,
         !canHover && local.rowTouch,
         local.rowQuest,
         { paddingLeft: 5 + indent },
-        (state.pressed || isHovered(state)) && local.rowHovered,
+        isHighlighted && local.rowHovered,
         isSelected && local.rowSelected,
       ]}
     >
@@ -80,11 +77,20 @@ export function Row({
           onPress={fold.onPress}
         />
       )}
-      {leading}
-      <Text numberOfLines={1} style={[local.rowText, isSelected && local.rowTextSelected, textStyle]}>
-        {label}
-      </Text>
-      {trailing}
+      <Pressable
+        {...pressProps}
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        accessibilityState={{ selected: isSelected }}
+        onPress={onPress}
+        style={local.rowMain}
+      >
+        {leading}
+        <Text numberOfLines={1} style={[local.rowText, isSelected && local.rowTextSelected, textStyle]}>
+          {label}
+        </Text>
+        {trailing}
+      </Pressable>
       {hoverAccessory?.(isShown)}
       {corners?.map(({ color, share }) => (
         <View
@@ -93,7 +99,7 @@ export function Row({
           style={[local.corner, { borderColor: color, height: `${share}%`, width: `${share}%` }]}
         />
       ))}
-    </Pressable>
+    </View>
   );
 }
 

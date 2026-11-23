@@ -7,7 +7,7 @@ import {
   ServerFrameJson,
   sourceRulesOf,
 } from "@outlore/contracts";
-import { Effect, Exit, Schema } from "effect";
+import { Cause, Effect, Exit, Schema } from "effect";
 import { type ServiceFailure, textFieldOf } from "../core/index.ts";
 
 const decodeClientFrame = Schema.decodeUnknownExit(ClientFrameJson);
@@ -47,22 +47,31 @@ const answerFrame = (handle: Handle, frame: ClientFrame, send: (frame: ServerFra
       Schema.encodeUnknownSync(Results[frame.request._tag] as unknown as Schema.Codec<unknown>)(value),
     ),
     Effect.exit,
-    Effect.flatMap((exit) =>
-      Effect.sync(() => {
-        if (Exit.isSuccess(exit)) {
-          send({ _tag: "Success", id: frame.id, value: exit.value });
-          return;
-        }
-        const failure = firstFailureOf(exit);
-        send(
-          failureFrame(
-            frame.id,
-            failure?.kind ?? "ExecutionFailure",
-            failure?.message ?? "The service failed unexpectedly.",
+    Effect.flatMap((exit) => {
+      if (Exit.isSuccess(exit)) {
+        return Effect.sync(() => send({ _tag: "Success", id: frame.id, value: exit.value }));
+      }
+      const failure = firstFailureOf(exit);
+      // A defect or an interruption carries no typed failure, and the caller is told only that the service failed: the
+      // cause is logged here, or nothing would show which request ended and why.
+      const logUnexpected =
+        failure === null
+          ? Effect.logError(`Request ${frame.request._tag} failed unexpectedly`, Cause.pretty(exit.cause))
+          : Effect.void;
+      return logUnexpected.pipe(
+        Effect.andThen(
+          Effect.sync(() =>
+            send(
+              failureFrame(
+                frame.id,
+                failure?.kind ?? "ExecutionFailure",
+                failure?.message ?? "The service failed unexpectedly.",
+              ),
+            ),
           ),
-        );
-      }),
-    ),
+        ),
+      );
+    }),
   );
 
 /**

@@ -347,27 +347,22 @@ function SectionTitle({
   onToggle: () => void;
   title: string;
 }) {
-  const { actionsStyle, focusProps, rowProps } = useRowActions();
+  const { actionsStyle, focusProps, isHighlighted, pressProps, rowProps } = useRowActions();
+  // The row is a view: the title button, the fold mark, and the creation button are siblings, never nested.
   return (
-    <Pressable
-      {...rowProps}
-      accessibilityLabel={onOpen ? title : `${isOpen ? "Fold" : "Unfold"} ${title}`}
-      accessibilityRole="button"
-      accessibilityState={onOpen ? {} : { expanded: isOpen }}
-      onPress={onOpen ?? onToggle}
-      style={(state) => [
-        local.sectionRow,
-        !canHover && local.rowTouch,
-        (state.pressed || isHovered(state)) && local.rowHovered,
-      ]}
-    >
-      {onOpen ? (
-        <Chevron focusProps={focusProps} isOpen={isOpen} isShown label={title} onPress={onToggle} />
-      ) : (
-        <FoldChevron color={colors.textMuted} isOpen={isOpen} size={16} />
-      )}
-      <Text style={local.sectionTitle}>{title}</Text>
-      <View style={local.flex} />
+    <View {...rowProps} style={[local.sectionRow, !canHover && local.rowTouch, isHighlighted && local.rowHovered]}>
+      {onOpen && <Chevron focusProps={focusProps} isOpen={isOpen} isShown label={title} onPress={onToggle} />}
+      <Pressable
+        {...pressProps}
+        accessibilityLabel={onOpen ? title : `${isOpen ? "Fold" : "Unfold"} ${title}`}
+        accessibilityRole="button"
+        accessibilityState={onOpen ? {} : { expanded: isOpen }}
+        onPress={onOpen ?? onToggle}
+        style={local.rowMain}
+      >
+        {!onOpen && <FoldChevron color={colors.textMuted} isOpen={isOpen} size={16} />}
+        <Text style={local.sectionTitle}>{title}</Text>
+      </Pressable>
       <View style={actionsStyle}>
         <Pressable
           {...focusProps}
@@ -380,7 +375,7 @@ function SectionTitle({
           {action.icon}
         </Pressable>
       </View>
-    </Pressable>
+    </View>
   );
 }
 

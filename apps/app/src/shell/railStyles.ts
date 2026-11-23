@@ -149,6 +149,8 @@ export const local = StyleSheet.create({
     paddingVertical: 4,
   },
   rowHovered: { backgroundColor: colors.controlHover },
+  // The row's own button: it takes the width between the row's other buttons, so the whole row still opens it.
+  rowMain: { alignItems: "center", alignSelf: "stretch", flex: 1, flexDirection: "row", gap: 4 },
   // A row of quests keeps a 1 px outline, clear unless a summons rings it; the padding gives that pixel back. The 1 px
   // margin below keeps a ring from touching the next row.
   rowQuest: { borderColor: "transparent", borderWidth: 1, marginBottom: 1, paddingRight: 7, paddingVertical: 3 },
