@@ -1,0 +1,101 @@
+# Sandbox handling in the inspirations (2026-11-23)
+
+Question from the owner: how do the products in [inspirations](../inspirations.md) keep a sandbox from ever blocking the user, with no manual verification? The Vault card in Settings showed "Not protected from Claude Code and Codex" and needed an owner step.
+Asked of each product: does it verify its sandbox at start; what happens when the sandbox is unavailable or fails (fallback, ask, run unsandboxed, block); does it hide credential or secret folders from the agent; how does it tell the user.
+Sources are the products' own code and documents at the commit named in each section; nothing was copied. A claim not read in a primary source says so. Not redone: [code-mode-autonomy-connectors-2026-11-16.md](code-mode-autonomy-connectors-2026-11-16.md) (Outlore's own sandbox modes, the OpenBot autonomy model) and [openbot-integration-parity-2026-11-22.md](openbot-integration-parity-2026-11-22.md).
+
+## Summary
+
+| Product | Sandbox for the agent | Probe at start | When unavailable | Hides secret folders |
+|---|---|---|---|---|
+| OpenBot (nightly-labs) | only in "Workspace only"; default none | none | fail closed, plain message, another level offered | no (writes confined, reads open) |
+| OpenMausBot | none (permission broker) | developer script only | not applicable | no; keeps the secret away from the model instead |
+| Paseo | none, passes each CLI's mode | none | none found; container advised | no |
+| T3Code | none, maps to each CLI's mode | none | one message, by symptom (loopback) | none found |
+| intentic | a Docker container per agent | yes, for the container engine | one heading and one action per cause | by construction (container) |
+| Claude Code, `srt` | yes (Seatbelt, bubblewrap) | dependency check at startup | runs unsandboxed unless `failIfUnavailable` | no built-in list; `denyRead` is opt-in |
+| Codex | yes (Seatbelt, bubblewrap) | not read | not read | not read |
+
+No product found tests that a read denial really holds, and none hides a credential folder by default. Those that ship a sandbox either fail closed with a message or hand over to a container; the others never have the problem. Outlore's automatic probe of a `denyRead` goes further than any of them.
+
+## OpenBot (nightly-labs/openbot, `a31e9a36847507b4096ce7452dec05123f72bf56`)
+
+- **Default**: no sandbox. `DEFAULT_AGENT_ACCESS = "full"` (`packages/contracts/src/ipc-agents.ts:36`); README `:17` "Agents run with `danger-full-access` and `approvalPolicy: never`" after an explicit first-launch consent; `:549` "routine command and filesystem work ... runs without OpenBot adding another permission boundary". `SECURITY.md` ("Current security model") says it is "not sandboxed from the host on behalf of the user" and lists "Codex and Claude credentials remain owned by their CLIs and are not copied into OpenBot storage" as a boundary; it does not claim an agent cannot read them.
+- **Three access levels per agent**: Workspace only, Ask first, Full access (`docs/architecture/structure.md`, "Permissions level"). Only Workspace only uses a sandbox: `workspaceAccessEnforced` is `access === "workspace"` (`ipc-agents.ts:125`). For Codex it sends `workspace-write` with the agent's writable roots (`src/backend/agent/workspace-sandbox.ts`, `codexSandboxMode`/`codexSandboxPolicy`); Ask first sends `untrusted` (`structure.md`: "with no sandbox, `on-request` asks before almost no command").
+- **Write confinement only, no read denial**: Claude gets `{enabled: true, failIfUnavailable: true, autoAllowBashIfSandboxed: true, allowUnsandboxedCommands: false, filesystem: {allowWrite, denyWrite: excluded}}` (`src/backend/claude-workspace-sandbox.ts:15-23`; `denyWrite` only, no `denyRead`). Other CLIs run under `/usr/bin/sandbox-exec` with a profile that starts `(allow default)` then `(deny file-write*)` (`src/backend/process-confinement.ts:522-523`): reads stay open. Writes to provider settings and trust files are denied so a confined agent cannot change its own permissions.
+- **Start verification**: none found. No probe or self-test; the sandbox is attempted when the turn runs. Only `existsSync("/usr/bin/sandbox-exec")` is checked before spawning (`process-confinement.ts:463-464`).
+- **On failure: fail closed, tell the user, offer another level, never fall back silently.**
+  - Claude: `failIfUnavailable: true`; the SDK's "Sandbox required but unavailable: ... Set sandbox.failIfUnavailable=false" text is matched (`claude-client.ts:3026`) and replaced by "Claude cannot use a sandbox on this computer, so Workspace only does not work for it. Choose Full access or another provider in the agent settings." (`packages/i18n/src/messages/en/error/agent.ts:178-179`). A failed `Bash` result matching `CLAUDE_SANDBOX_BLOCKED` raises a one-per-turn warning (`claude-client.ts:2196-2209`, regex `:3028`).
+  - Codex: a failed `commandExecution` whose output matches a Windows or Linux sandbox failure regex raises "Workspace only needs the Codex sandbox, which Codex cannot start on this computer, so the agent's commands fail. Choose Ask first or Full access in the agent settings." (`src/backend/app-server-client.ts:515-540`; message `error.agent.codexSandboxUnavailable`, `agent.ts:174-175`). The detection is reactive: it reads a failed command; no probe runs first.
+  - Other CLIs: not macOS, or `sandbox-exec` missing, throws `ProcessConfinementUnavailableError` ("Workspace only is available for this provider on macOS only. Choose Full access ..." or "... needs {tool}, which OpenBot did not find. Install it, or choose Full access ...") (`process-confinement.ts:464,483`; `agent.ts:166-173`); `docs/architecture/providers.md:1889` "Workspace-only mode fails closed on hosts without confinement support".
+- **Nested / container**: in the Docker image the sandbox is not used for Full access; "Not tested: a Codex agent with Workspace only access in a container ... bubblewrap ... `bwrap: Failed to make / slave: Operation not permitted`, #9694. The chat then shows a warning that tells the user to choose Ask first or Full access" (`docs/docker.md:534-540`). On Ubuntu 26.04 the installer adds the AppArmor rule `priority=1 allow pix /** -> &bwrap,` because Ubuntu's `bwrap-userns-restrict` profile removes capabilities and the Claude sandbox needs `CAP_SYS_ADMIN` (`docs/self-hosted-server.md:327-331`): the product fixes the host so the sandbox can start, instead of leaving it to the owner.
+- **Secret folders**: the Vault is not shielded from an agent by a sandbox. A Vault item reaches an agent through tools (`request_vault_item`, browser fill with first-fill approval); an API-key item can be written as a key file the agent reads. The Docker doc states the limit: "All agents run as UID 1000, so an agent can read the files and processes of the other agents, also the API key files of a Vault key that is for other agents. Put agents that must not share keys in different containers." (`docs/docker.md:474-477`). It says the limit plainly and moves the boundary to the container.
+- **Not checked**: `src/main/vault-store.ts` and whether a Full access agent could read the Vault file on disk; live behaviour.
+
+## OpenMausBot (milind-soni/OpenMausBot, `3aec210054cdbafec0701100796335f0de1a5b8e`)
+
+- **No sandbox for the agent CLIs**: `SECURITY.md:43-44` "Agents run real CLIs (`claude`, `codex`) with the user's own privileges, and the permission broker is the consent layer for risky actions ... unless that bot is explicitly set to Full access". Its own saved session "in the macOS Keychain or a 0600 file ... a bot with Full access, running as the person, can read like any of their files" (`SECURITY.md`, `openmausbot login` bullet). The permission broker is consent, not isolation.
+- **Start verification**: `scripts/verify-codex-sandbox.mjs` is a developer script, not a start-time probe: it starts a real Codex against a loopback fake model in disposable homes and asserts that the `sandboxPolicy` sent equals the one Codex resolved (`:77-80`, `workspaceWrite` or `dangerFullAccess`). It proves the policy is requested and accepted, not that the kernel enforces it.
+- **Isolation by container where it matters**: the desktop container is made with a fixed hardened capability set and checked against it at start (`server/container-isolation.ts:1`, `HARDENED_CAP_SETS` `:16`); a desktop created under older flags is updated.
+- **Secret folders**: keeps the secret away from the model rather than away from the disk: a secret is a one-use in-memory reference bound to the bot and thread, or an owner-only file in a private folder of the bot's workspace that sync, backup and upload skip (`server/secret-vault.ts:1-6`); the Vault is sealed under its own key in a 0600 file (`server/vault-store.ts:1-4`). Held values are masked in transcripts and logs. A Full access bot can still read files as the person.
+- **User message / fallback**: not applicable (no sandbox to fail).
+- **Not checked**: Local VM workspace mode and its isolation; Windows.
+
+## Paseo (getpaseo/paseo, `3389138eb7734ea9632c9d33208daa4ebc08517f`)
+
+- **No sandbox of its own; it passes each CLI's mode through.** Codex presets: `auto` and `auto-review` send `workspace-write` with `on-request`; `read-only` sends `read-only`; `full-access` sends `danger-full-access` with `never` (`packages/server/src/server/agent/providers/codex-app-server-agent.ts:371-390`). It stores the sandbox policy Codex resolved (`:4109-4111`). Claude: `bypassPermissions`, and the daemon starts the SDK with `allowDangerouslySkipPermissions: true` so the mode can switch later (`providers/claude/agent.ts:4041`); no Claude `sandbox` settings found in the files read.
+- **Start verification / failure**: none for sandboxes found. A container is the documented answer: "The container is the isolation boundary for agents. Agents can read and write whatever you mount into `/workspace` and whatever credentials you place in `/home/paseo`" (`docs/docker.md:184-186`).
+- **Secret folders**: none; credentials are what the owner puts in the container home. The relay keypair is stored with mode 0600 (`SECURITY.md`).
+- **Not checked**: whether a failed Codex sandbox is surfaced differently from other command errors.
+
+## T3Code (pingdotgg/t3code, `f4c38ca3e7a1e9993e876d57eadea60110babd57`)
+
+- **Four runtime modes mapped onto each provider's own switches**, no sandbox of its own: Supervised, Auto-accept edits, Auto, Full access (`apps/web/src/components/chat/runtimeModeConfig.ts:17+`). For Codex: Supervised sends `untrusted` plus a `readOnly` sandbox, the middle two `workspaceWrite`, Full access `dangerFullAccess` with a granular approval policy because `never` "also rejects browser and app access prompts" (`apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.ts:802-851`). A provider can report which modes it supports and the thread is clamped to a compatible one (`resolveCompatibleRuntimeMode`).
+- **Start verification**: none found for sandboxes; the Claude adapter special-cases Claude Code's refusal of bypass as root, "which it explains only on stderr" (`ClaudeAdapterV2.ts:407-409`).
+- **On failure**: one message: the device shim that an agent's shell runs prints "a network sandbox is blocking localhost. Run this command again with network access, outside the sandbox." when a loopback connect fails with EPERM or EACCES (`apps/server/src/device/AgentDeviceShim.ts:215`). The product diagnoses the sandbox by the symptom and tells the agent the next step, not the owner.
+- **Managed policy ceiling**: an environment can cap the runtime mode; a thread above the ceiling is clamped with a notice (`apps/mobile/src/features/threads/ManagedRuntimeModeNotice.tsx`, `clampManagedRuntimeMode`).
+- **Secret folders**: none found in the files read.
+
+## intentic (intentic/intentic, `e9bd596220fc81d9ad337f19bf289b8ee697644b`)
+
+- **The sandbox is a Docker container per agent, not an OS sandbox on the user's session**, so the agent's own CLI runs unrestricted inside it. `SECURITY.md:27` puts "An agent doing what its sandbox's owner allowed it to do inside that sandbox" out of scope: the container is the boundary.
+- **Start verification**: yes, for the container engine, with a user-visible state: the desktop app asks the engine to start and maps each outcome to a heading and one action sentence (`_editor/desktop-app/src/components/dockerWords.ts:34-59`: not installed, would not start, account not allowed, took too long, broken). `dockerReason.ts` classifies the failure by OS error number first, words second.
+- **Removing the blocker**: on a Windows PC it can run the sandboxes on its own engine instead of Docker Desktop (`_editor/desktop-app/src/device/engine/engine.ts:31` `onOurEngine`; `DockerCard.vue:30-31` "ic starts it in seconds, and there is no Docker Desktop window to open, sign in to or quit"). The closest example found of removing the failure instead of explaining it.
+- **Secret folders**: out of reach by construction: the container does not hold the host's home; secrets are injected per turn (site claim, not verified in code here).
+- **Not checked**: the sandbox image's agent permission flags; hosted sandboxes.
+
+## Claude Code and its sandbox runtime `srt`
+
+Sources: `@anthropic-ai/sandbox-runtime` 0.0.83 (Apache-2.0) read from the installed package (`README.md`, `dist/sandbox/sandbox-manager.js`, `dist/sandbox/sandbox-utils.js`, `dist/cli.js`); Claude Code's documentation page `code.claude.com/docs/en/sandboxing` (first 100,000 of 111,990 characters read, 2026-11-23); Claude Code 2.1.330 installed here. Claude Code is closed source, so its documented behaviour is not checked in code.
+
+- **Start verification**: a dependency check, not a read test. `checkDependencies()` returns `{errors, warnings}`: errors mean the sandbox cannot run (`Unsupported platform`; on Linux a missing `rg`, `bwrap` or `socat`; `sandbox-manager.js:1394-1500`), warnings mean degraded (bubblewrap older than 0.5.0, the package installed inside a writable path; `README.md:699,1331`). macOS needs no dependency: `/usr/bin/sandbox-exec` (`README.md:678`). Docs: "If the panel shows only a Dependencies tab, the sandbox can't start yet" (`/sandbox`).
+- **When unavailable**: by default Claude Code runs commands unsandboxed: "By default, when the platform doesn't support the sandbox or the dependency check at startup fails, Claude Code runs commands without sandboxing. To make Claude Code exit at startup instead, set `sandbox.failIfUnavailable` to `true`." The page does not say the user is told. Outlore already sets `failIfUnavailable` (`claudeArgs.ts`), as does OpenBot.
+- **When a command fails inside the sandbox**: Claude Code may retry with `dangerouslyDisableSandbox`, "an escape hatch for commands that fail inside the sandbox". The retry is prompted in manual and `acceptEdits` mode ("Bash command (unsandboxed)"), runs unasked in `bypassPermissions`, is denied in `dontAsk`, and is switched off with `allowUnsandboxedCommands: false`.
+- **Nested sandboxes**: `srt` has no detection of an enclosing sandbox on macOS (no nesting check in `dist/`); the sandboxed command gets `SANDBOX_RUNTIME=1` in its environment (`sandbox-utils.js:680`), which only a nested caller could read. On Linux the documented answer for an unprivileged container is `enableWeakerNestedSandbox` ("Only use this setting when the outer container already provides the isolation boundary", docs), which "considerably weakens security" (`README.md:1332`). Seatbelt cannot be applied twice (the quest lead's own test: `sandbox_apply: Operation not permitted`), so on macOS a nested call fails at the command, not at a check.
+- **Bad configuration fails closed**: an empty, unreadable or invalid settings file makes `srt` exit instead of using defaults, because "falling back would drop the file's `denyRead`" (`README.md:178-185`). A Linux `denyRead` pattern with a wildcard in its first path component "hides nothing", and `getLinuxGlobPatternWarnings()` returns it for the embedder to show (`README.md:563`).
+- **Secret folders**: no default. Docs: "Default read behavior: read access to the entire computer, except certain denied directories. This default still allows reading credential files, so protect credentials you don't want commands to read." and "There is no built-in credential deny list, so only the files and variables you list are restricted." `srt` offers `credentials.envVars` and `credentials.files` with `mode: "deny"` or `"mask"` (a sentinel inside the sandbox, the real value substituted by the proxy on egress to listed hosts; files masked on Linux only, macOS denies them; `README.md:601`).
+- **How the user is told**: network blocks name the host in the command result; a missing sandbox shows as a Dependencies tab in `/sandbox`.
+
+## Codex
+
+Sources: Codex 0.171.0 installed here (`codex --help`, `codex sandbox --help`). The Rust source (`openai/codex`) and `developers.openai.com/codex/security` could not be fetched in this session (the tool host dropped the connection), so this section is only what the installed command shows.
+
+- Modes `--sandbox` read-only, workspace-write, danger-full-access; `--dangerously-bypass-approvals-and-sandbox` "Skip all confirmation prompts and execute commands without sandboxing. EXTREMELY DANGEROUS. Intended solely for running in environments that are externally sandboxed": the same idea as the container advice of OpenBot, Paseo and intentic.
+- `codex sandbox [COMMAND]...` "Run commands within a Codex-provided sandbox", "Full command args to run under seatbelt", with `--sandbox-state-json` ("Opaque JSON value from `codex/sandbox-state`") and `--sandbox-state-readable-root`: Codex itself offers a model-free way to run a command under its sandbox, the Codex counterpart of `srt` for a probe. Not run here; whether it can express a read denial of one folder is not checked.
+- The binary contains `CODEX_SANDBOX` and `CODEX_PERMISSION_PROFILE`, and the text "Network access was denied by the Codex sandbox network proxy." Their meaning is not checked in source.
+- **Not checked**: start verification, behaviour when Seatbelt or bubblewrap is unavailable or under an enclosing sandbox, read denial and permission profiles, user messages.
+
+## Not read in code
+
+Cindy, Hermes Agent, Codync, Rakazo, Bloks, Noodle, OpenFuse, OpenBot (CopilotKit), Grok Bot and agentes.chat were not opened in this pass (tool limits). The [agent directory note](agent-directory-2026-11-15.md) records, from their sites and READMEs only: OpenFuse runs its terminal in a container with no host mounts or credentials and networking off; Noodle is restricted by default with per-bot folder sharing, its mechanism "which its page does not say". Treat these as unchecked leads.
+
+## Recommendation for Outlore's Vault check
+
+1. Keep the automatic probe through `srt` in the service, with no owner step; no inspected product has a start-time read test, so there is no pattern to copy, only wording.
+2. Fail closed on the secret, never on the app: like OpenBot's Workspace only, the cost of a failed check is "no secret stored" plus one plain sentence; everything else keeps running.
+3. Classify before wording, as intentic does (error number first, text second): `sandbox_apply: Operation not permitted` means "this service already runs inside a sandbox", reported as Unverified, never as "not protected".
+4. Run `checkDependencies()` first and turn its `errors` into the reason (missing `bwrap`, `rg`, `socat`, unsupported platform); on Linux offer the fix, as OpenBot's installer does with its AppArmor rule.
+5. Probe ahead, not after a failure: OpenBot and T3Code only detect a broken sandbox by reading a failed command.
+6. Keep `failIfUnavailable: true` for Claude Code (its default is to run unsandboxed without a word) and keep the live turn as an optional proof only.
+7. Codex: look at `codex sandbox --sandbox-state-json` as the model-free probe path before building one; not verified here.
+8. No product hides a credential folder by default, so Outlore's `denyRead` of the Vault goes beyond the field; say so on the card with the limit stated, as OpenBot's Docker doc does.
