@@ -155,7 +155,13 @@ const wake = () => {
   reply(`Woken ${turn} (pid ${process.pid}) after the background command`);
 };
 
+let shouldWakeBeforePrompt = false;
+
 const startTurn = (input) => {
+  if (shouldWakeBeforePrompt) {
+    shouldWakeBeforePrompt = false;
+    wake();
+  }
   // A message with images carries a list of blocks: the text, then one image block each.
   const content = input.message.content;
   const text = typeof content === "string" ? content : (content.find((block) => block.type === "text")?.text ?? "");
@@ -218,7 +224,7 @@ const startTurn = (input) => {
       type: "assistant",
     });
   }
-  const background = /(?:^|\n---\n\n)background (\d+)$/.exec(text);
+  const background = /(?:^|\n---\n\n)background (\d+|overlap)$/.exec(text);
   if (background !== null) {
     emit({
       subtype: "background_tasks_changed",
@@ -227,7 +233,8 @@ const startTurn = (input) => {
     });
     current = { held: [], joined: [], text, timer: null, turn };
     finish(false);
-    setTimeout(wake, Number(background[1]));
+    if (background[1] === "overlap") shouldWakeBeforePrompt = true;
+    else setTimeout(wake, Number(background[1]));
     return;
   }
   const slow = /(?:^|\n---\n\n)slow (\d+)$/.exec(text);

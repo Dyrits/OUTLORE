@@ -35,9 +35,9 @@ import { makeOpenCodeLauncher } from "./openCodeLaunch.ts";
 import { readOpenCodePlanLimits } from "./openCodePlanLimits.ts";
 import { editedPathsOf, findFirstOutside, promptOf, refusalOf } from "./openCodePrompts.ts";
 import { type OpenCodeSandbox, writeOwnerMarker } from "./openCodeSandbox.ts";
-import { addUsage, usageOf } from "./openCodeUsage.ts";
+import { usageOf } from "./openCodeUsage.ts";
 import { sweepOrphans } from "./processTree.ts";
-import { contextOf } from "./tokenUsage.ts";
+import { addUsage, contextOf } from "./tokenUsage.ts";
 import { toolServerName } from "./toolNames.ts";
 import { readOpenCodeVaultDenial } from "./vaultDenials.ts";
 

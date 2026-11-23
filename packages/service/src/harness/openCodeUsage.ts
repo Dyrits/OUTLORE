@@ -11,14 +11,3 @@ export const usageOf = (usage: unknown): TokenUsage | null =>
         input: numberFieldOf(usage, "inputTokens"),
         output: numberFieldOf(usage, "outputTokens") + numberFieldOf(usage, "thoughtTokens"),
       };
-
-/** Sums the usage of the prompts of one turn; unknown when none reported any. */
-export const addUsage = (total: TokenUsage | null, usage: TokenUsage | null): TokenUsage | null =>
-  total === null || usage === null
-    ? (total ?? usage)
-    : {
-        cacheCreation: total.cacheCreation + usage.cacheCreation,
-        cacheRead: total.cacheRead + usage.cacheRead,
-        input: total.input + usage.input,
-        output: total.output + usage.output,
-      };

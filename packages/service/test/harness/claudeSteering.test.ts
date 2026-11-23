@@ -137,6 +137,23 @@ describe("Claude Code woken by a background command", () => {
     }).pipe(Effect.provide(layer));
   });
 
+  it.live("records the owner's reply when a background result arrives before Claude takes the new prompt", () => {
+    const { layer, starts } = withClaude();
+    return Effect.gen(function* () {
+      const started = yield* startMission({ effort: "low", model: "haiku", text: "background overlap" });
+      yield* settle(started.missionId, idleWith(1));
+      yield* sendTo(started.threadId, "Continue");
+      const detail = yield* settle(started.missionId, (current) => idleWith(2)(current) || idleWith(3)(current));
+      const replies = detail.messages.filter((message) => message.sender === "agent");
+      expect(withoutNote(replies.at(-1)?.text)).toMatch(/^Reply 3 .* to: Continue$/);
+      expect(detail.handovers.map((line) => line.text)).toEqual(['Background command "Sleep" completed (exit code 0)']);
+      yield* sendTo(started.threadId, "So?");
+      const next = yield* settle(started.missionId, idleWith(4));
+      expect(withoutNote(next.messages.at(-1)?.text)).toMatch(/^Reply 4 .* to: So\?$/);
+      expect(starts()).toHaveLength(1);
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("lets a message sent while the thread is idle run its turn after the woken one", () => {
     const { layer, starts } = withClaude();
     return Effect.gen(function* () {

@@ -63,6 +63,6 @@ Latest handoffs:
 
 - To continue the Islands theme and sidebar redesign, read the [current handoff](.agents/handoffs/2026-11-23-1536-islands-theme.md). Handoffs are shared and committed.
 
-- To finish lightening worktrees (merged branches, worktrees with uncommitted changes), read the [current handoff](.agents/handoffs/2026-11-23-1444-lighter-worktrees.md). Handoffs are shared and committed.
+- To verify replies sent as a Claude Code background command finishes, read the [current handoff](.agents/handoffs/2026-11-23-1504-delayed-quest-replies.md). Handoffs are shared and committed.
 
-- To verify errand notch order in the desktop app, read the [current handoff](.agents/handoffs/2026-11-23-1414-errand-notch-order.md). Handoffs are shared and committed.
+- To finish lightening worktrees (merged branches, worktrees with uncommitted changes), read the [current handoff](.agents/handoffs/2026-11-23-1444-lighter-worktrees.md). Handoffs are shared and committed.

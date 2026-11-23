@@ -1,5 +1,5 @@
 import { tmpdir } from "node:os";
-import type { ApprovalLevel, BillingKind, HarnessName } from "@outlore/contracts";
+import type { ApprovalLevel, BillingKind, HarnessName, TokenUsage } from "@outlore/contracts";
 import { type Duration, Effect, Layer, Queue } from "effect";
 
 import {
@@ -50,7 +50,7 @@ import {
   type ProcessSignals,
 } from "./harnessProcesses.ts";
 import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
-import { contextOf } from "./tokenUsage.ts";
+import { addUsage, contextOf } from "./tokenUsage.ts";
 import { toolServerName } from "./toolNames.ts";
 import { readClaudeVaultDenial, runClaudeVaultDenialLive } from "./vaultDenials.ts";
 import { listThreadWorktrees } from "./worktrees.ts";
@@ -168,14 +168,18 @@ const claudeProtocolOf = (
     ]),
 
   runTurn: Effect.fnUntraced(function* (connection: ClaudeConnection, request: TurnRequest, turn: PooledTurn) {
-    // A turn Claude Code began on its own, woken by a background task, has no message: its events are already coming.
-    if (request.isBackgroundWake !== true) {
+    const promptId = request.isBackgroundWake === true ? null : crypto.randomUUID();
+    if (promptId !== null) {
       const content = yield* contentOf(turnMessageOf(request), request.images);
-      connection.process.write({ message: { content, role: "user" }, type: "user" });
+      connection.process.write({ message: { content, role: "user" }, type: "user", uuid: promptId });
     }
     let draft = "";
     let reportedError: string | null = null;
     let hasNoticedWake = false;
+    let isPromptPending = promptId !== null;
+    let hasWakeBeforePrompt = false;
+    let totalUsage: TokenUsage | null = null;
+    let totalCost: number | null = null;
     // The latest call's own usage is the context then; the result's usage sums every call of the turn.
     let context: number | null = null;
     // The model that wrote the latest reply, which names its entry in the result's `modelUsage`.
@@ -193,7 +197,11 @@ const claudeProtocolOf = (
       } else if (type === "system" && textFieldOf(event, "subtype") === "task_notification") {
         // A turn takes in the wake, whether it began the turn or arrived during it.
         connection.background.hasBackgroundWake = false;
-        const notice = request.isBackgroundWake === true && !hasNoticedWake ? backgroundTaskNoticeOf(event) : null;
+        if (isPromptPending) hasWakeBeforePrompt = true;
+        const notice =
+          !hasNoticedWake && (request.isBackgroundWake === true || hasWakeBeforePrompt)
+            ? backgroundTaskNoticeOf(event)
+            : null;
         if (notice !== null) yield* request.onEvent({ _tag: "Notice", text: notice });
         hasNoticedWake = true;
       } else if (type === "system" && textFieldOf(event, "subtype") === "compact_boundary") {
@@ -221,9 +229,10 @@ const claudeProtocolOf = (
         const report = planLimitsOf(event, connection.billing);
         if (report !== null) reports.set(request.configDirectory ?? "", report);
       } else if (type === "user") {
-        // Only steered messages are tracked; the turn's own message and tool results are not.
+        // The initial prompt echo identifies the result boundary, while steered message echoes confirm delivery.
         const uuid = textFieldOf(event, "uuid");
-        if (uuid !== null) yield* turn.deliver(uuid);
+        if (uuid !== null && uuid === promptId) isPromptPending = false;
+        else if (uuid !== null) yield* turn.deliver(uuid);
       } else if (type === "stream_event") {
         const inner = fieldOf(event, "event");
         const innerType = textFieldOf(inner, "type");
@@ -258,14 +267,36 @@ const claudeProtocolOf = (
           });
       } else if (type === "result") {
         // An interrupted turn ends with an error result, which is no failure (probe of 2026-11-06).
-        const usage = usageOf(fieldOf(event, "usage"));
+        totalUsage = addUsage(totalUsage, usageOf(fieldOf(event, "usage")));
         const cost = turnCostOf(connection, fieldOf(event, "total_cost_usd"));
+        if (cost !== null) totalCost = Math.round(((totalCost ?? 0) + cost) * 1e6) / 1e6;
         const contextWindow = reportedWindowOf(fieldOf(event, "modelUsage"), replyModel);
         if (turn.isInterrupting())
-          return { billing: connection.billing, context, contextWindow, cost, isInterrupted: true, usage };
+          return {
+            billing: connection.billing,
+            context,
+            contextWindow,
+            cost: totalCost,
+            isInterrupted: true,
+            usage: totalUsage,
+          };
+        // A background command can wake Claude before it takes the prompt, and that wake has its own result.
+        if (hasWakeBeforePrompt && isPromptPending) {
+          hasWakeBeforePrompt = false;
+          hasNoticedWake = false;
+          reportedError = null;
+          continue;
+        }
         if (fieldOf(event, "is_error") === true || reportedError !== null)
           return yield* new HarnessFailure({ reason: failureReasonOf(event, reportedError) });
-        return { billing: connection.billing, context, contextWindow, cost, isInterrupted: false, usage };
+        return {
+          billing: connection.billing,
+          context,
+          contextWindow,
+          cost: totalCost,
+          isInterrupted: false,
+          usage: totalUsage,
+        };
       }
     }
   }),
