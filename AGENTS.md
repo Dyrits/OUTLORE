@@ -65,4 +65,4 @@ Latest handoffs:
 
 - To verify OpenBot providers against installed CLIs or resume connector parity, read the [current handoff](.agents/handoffs/2026-11-23-0043-openbot-providers.md). Handoffs are shared and committed.
 
-- To check Find in conversation in the desktop window and on a paired phone, read the [current handoff](.agents/handoffs/2026-11-23-0041-conversation-search.md). Handoffs are shared and committed.
+- To confirm the automatic Vault read-denial check on the desktop app and finish its follow-ups, read the [current handoff](.agents/handoffs/2026-11-23-1015-vault-denial-check.md). Handoffs are shared and committed.
