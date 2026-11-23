@@ -47,3 +47,17 @@ export const SavedTier = Tier.mapFields((fields) => ({
 /** The three tiers the Chronicler picks from by how complex a request is; each is optional. */
 export const TierName = Schema.Literals(["Light", "Balanced", "Heavy"]);
 export type TierName = typeof TierName.Type;
+
+/** A preset's display name, trimmed before it is stored. */
+export const PresetName = Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(80));
+
+/** Named stacks and display names for built-in tiers whose routing identities stay stable. */
+export const CompanionPresets = Schema.Struct({
+  custom: Schema.Array(Schema.Struct({ name: PresetName, stack: Tier })),
+  tierNames: Schema.Struct({
+    Balanced: Schema.optionalKey(PresetName),
+    Heavy: Schema.optionalKey(PresetName),
+    Light: Schema.optionalKey(PresetName),
+  }),
+});
+export type CompanionPresets = typeof CompanionPresets.Type;

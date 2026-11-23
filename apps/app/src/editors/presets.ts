@@ -1,4 +1,4 @@
-import type { BackupCompanion, Settings, Tier } from "@outlore/contracts";
+import type { BackupCompanion, CompanionPresets, Settings, Tier } from "@outlore/contracts";
 import { TierName } from "@outlore/contracts";
 
 export type { Preset, PresetChoice } from "../foundation/companionPickerProps";
@@ -13,14 +13,16 @@ export const isSameRunner = (current: Runner, next: Runner) =>
   current.effort === next.effort &&
   current.accountId === next.accountId;
 
-/** The presets a picker offers, in the order Light, Balanced, Heavy; a tier left unset is not offered. */
-export const presetsOf = (tiers: Settings["tiers"]): ReadonlyArray<Preset> =>
-  TierName.literals.flatMap((name) => {
-    const tier = tiers[name];
+/** The configured tiers in routing order, followed by the owner's named stacks. */
+export const presetsOf = (tiers: Settings["tiers"], library?: CompanionPresets): ReadonlyArray<Preset> => [
+  ...TierName.literals.flatMap((key) => {
+    const tier = tiers[key];
     if (tier === null) return [];
     const { backups, ...runner } = tier;
-    return [{ backups, name, runner }];
-  });
+    return [{ backups, name: library?.tierNames[key] ?? key, runner }];
+  }),
+  ...(library?.custom.map(({ name, stack: { backups, ...runner } }) => ({ backups, name, runner })) ?? []),
+];
 
 /** Whether two backup lists hold the same Companions in the same order; a list not given or not yet read matches only another one. */
 export const isSameBackups = (

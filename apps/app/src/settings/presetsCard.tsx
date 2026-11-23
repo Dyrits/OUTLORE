@@ -2,12 +2,13 @@ import type { Settings, SettingsChange, Tier, TierName } from "@outlore/contract
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useHarnesses } from "../editors/runners";
 import type { ServiceClient } from "../foundation/client";
-import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
+import { effortLabel, harnessLabels, modelLabelOf, runnerSummaryOf } from "../foundation/formatting";
 import { countedOf } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
 import { Row } from "../quests/questPanel";
 import { CompanionTable } from "./companionTable";
+import { AddPreset, EditPreset, PresetActions } from "./presetActions";
 import { SettingsCard } from "./settingsParts";
 import { tierNames } from "./workshopCompanions";
 
@@ -41,6 +42,7 @@ function PresetRow({
     harness: settings.defaultHarness,
     model: settings.defaultModel,
   };
+  const displayName = settings.companionPresets?.tierNames[name] ?? name;
   const models = harnesses?.harnesses.find((candidate) => candidate.name === tier?.harness)?.models;
   const account = harnesses?.harnesses
     .find((candidate) => candidate.name === tier?.harness)
@@ -49,12 +51,14 @@ function PresetRow({
     <View style={local.tier}>
       <View style={local.tierHead}>
         <View style={styles.flex}>
-          <Text style={local.tierName}>{name}</Text>
-          <Text style={styles.muted}>{hint}</Text>
+          <Text style={local.tierName}>{displayName}</Text>
+          <Text style={styles.muted}>{displayName === name ? hint : `${name} tier · ${hint}`}</Text>
         </View>
-        <Pressable accessibilityRole="button" onPress={() => onChange(tier === null ? defaults : null)}>
-          <Text style={styles.link}>{tier === null ? "Set a Companion" : "Clear"}</Text>
-        </Pressable>
+        {tier === null && (
+          <Pressable accessibilityRole="button" onPress={() => onChange(defaults)}>
+            <Text style={styles.link}>Set a Companion</Text>
+          </Pressable>
+        )}
       </View>
       <CompanionTable
         client={client}
@@ -92,14 +96,12 @@ function PresetRow({
         }
         runner={tier ?? defaults}
       />
+      {tier !== null && <PresetActions client={client} key={displayName} name={displayName} />}
     </View>
   );
 }
 
-/**
- * The presets: the up to three Companions Chronicler picks from by how demanding a request is (quest coordination). With
- * none set, quests start on the default Companion.
- */
+/** The Workshop library of routing tiers and custom presets. */
 export function PresetsCard({
   client,
   onSave,
@@ -109,9 +111,9 @@ export function PresetsCard({
   onSave: (change: SettingsChange) => void;
   settings: Settings;
 }) {
+  const { data: harnesses } = useHarnesses(client);
   return (
-    <SettingsCard icon="layers" summary="Chronicler picks one by how demanding a request is" title="Presets">
-      <Text style={styles.body}>Set only the presets you want; any left out use the default Companion.</Text>
+    <SettingsCard icon="layers" summary="Saved Companions and their backups" title="Presets">
       {tierNames.map(({ hint, name }, index) => (
         <PresetRow
           client={client}
@@ -124,6 +126,26 @@ export function PresetsCard({
           tier={settings.tiers[name]}
         />
       ))}
+      {settings.companionPresets?.custom.map(({ name, stack }) => (
+        <View key={name} style={local.tier}>
+          <Text style={local.tierName}>{name}</Text>
+          <Text style={styles.muted}>
+            {runnerSummaryOf(harnesses, stack)} · {countedOf(stack.backups.length, "backup")}
+          </Text>
+          <PresetActions client={client} name={name} />
+          <EditPreset client={client} name={name} saved={stack} />
+        </View>
+      ))}
+      <AddPreset
+        client={client}
+        defaults={{
+          accountId: null,
+          backups: [],
+          effort: settings.defaultEffort,
+          harness: settings.defaultHarness,
+          model: settings.defaultModel,
+        }}
+      />
     </SettingsCard>
   );
 }

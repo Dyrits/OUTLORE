@@ -6,16 +6,15 @@ import type {
   HarnessName,
   ModelChoice,
   Tier,
-  TierName,
 } from "@outlore/contracts";
 import type { ReactElement } from "react";
 
 /**
- * A Companion preset: one of the Workshop's three tiers that the owner has set, a Companion and the backup Companions that go with it, which choosing it puts in place together (companion-presets).
+ * A named Companion and its ordered backups, which choosing it puts in place together.
  */
 export type Preset = {
   readonly backups: Tier["backups"];
-  readonly name: TierName;
+  readonly name: string;
   readonly runner: Omit<Tier, "backups">;
 };
 
@@ -24,6 +23,7 @@ export type PresetChoice = {
   readonly backups: ReadonlyArray<BackupCompanion> | null;
   readonly onPreset: (preset: Preset) => void;
   readonly presets: ReadonlyArray<Preset>;
+  readonly onSavePreset?: (name: string, stack: Tier) => Promise<unknown>;
 };
 
 /** What the picker shows and can change; `RunnerPickers` owns the rules for each change. */

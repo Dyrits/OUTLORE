@@ -82,7 +82,7 @@ import {
   UseSharedRelay,
 } from "./remote.ts";
 import { CreateRitual, DeleteRitual, ListRituals, ReadRitual, RunRitual, UpdateRitual } from "./rituals.ts";
-import { ChangeSettings, UpdateSettings } from "./settingsRequests.ts";
+import { ChangeCompanionPreset, ChangeSettings, UpdateSettings } from "./settingsRequests.ts";
 import { CloseTerminal, OpenTerminal, ResizeTerminal, WriteTerminalInput } from "./terminalRequests.ts";
 import { OwnerMessageText } from "./texts.ts";
 import { threadAnchorRequests } from "./threadAnchors.ts";
@@ -409,6 +409,7 @@ export const Request = Schema.Union([
   SwitchAtBudget,
   UpdateSettings,
   ChangeSettings,
+  ChangeCompanionPreset,
   ReadJournal,
   RewriteBriefing,
   AddJournalEntry,

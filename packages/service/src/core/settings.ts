@@ -31,6 +31,7 @@ export const defaultSettings: Settings = {
   backups: [],
   briefingLimit: 2000,
   chatterThreshold: 20,
+  companionPresets: { custom: [], tierNames: {} },
   defaultEffort: "default",
   defaultHarness: "claude",
   defaultMissionBudget: noLimits,
@@ -122,10 +123,13 @@ const putSetting = (sql: SqlClient.SqlClient, key: string, value: string) =>
 
 /** Stores the owner's settings, refusing any that do not decode. */
 export const writeSettings = Effect.fnUntraced(function* (settings: Settings) {
-  const complete =
-    settings.backgroundCheckIns === undefined
-      ? { ...settings, backgroundCheckIns: (yield* readSettings).backgroundCheckIns ?? null }
-      : settings;
+  const saved = yield* readSettings;
+  const complete = {
+    ...settings,
+    backgroundCheckIns:
+      settings.backgroundCheckIns === undefined ? (saved.backgroundCheckIns ?? null) : settings.backgroundCheckIns,
+    companionPresets: settings.companionPresets ?? saved.companionPresets ?? { custom: [], tierNames: {} },
+  };
   const parsed = yield* Schema.decodeUnknownEffect(Settings)(complete).pipe(
     Effect.catch(() =>
       invalid(

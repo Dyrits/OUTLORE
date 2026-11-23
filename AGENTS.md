@@ -63,6 +63,6 @@ Latest handoffs:
 
 - To verify Ritual form placement and Companion selection in the running app, read the [current handoff](.agents/handoffs/2026-11-23-1145-ritual-menu-placement.md). Handoffs are shared and committed.
 
-- To confirm the automatic Vault read-denial check on the desktop app and finish its follow-ups, read the [current handoff](.agents/handoffs/2026-11-23-1015-vault-denial-check.md). Handoffs are shared and committed.
-
 - To verify provider installation or Gemini sign-in in a running app, read the [current handoff](.agents/handoffs/2026-11-23-1017-provider-install-and-sign-in.md). Handoffs are shared and committed.
+
+- To verify Companion preset management in a running app or finish its delivery, read the [current handoff](.agents/handoffs/2026-11-23-1144-companion-presets.md). Handoffs are shared and committed.
