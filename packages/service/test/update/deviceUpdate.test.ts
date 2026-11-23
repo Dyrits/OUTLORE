@@ -7,6 +7,7 @@ import { createPairedHosts, type KeyValueStorage, type OpenTransport } from "@ou
 import { openBrowserTransport, pairFromBrowser } from "@outlore/controller/browser";
 import { startNodeRelay } from "@outlore/relay";
 import { Effect, Exit, Layer, Ref, Scope } from "effect";
+import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, Service, serveLoopback, serviceLayer } from "../../src/index.ts";
 import { HostUpdater } from "../../src/update/index.ts";
@@ -95,6 +96,8 @@ const driven = (openTransport: OpenTransport) => {
 interface RunningHost {
   readonly connected: Effect.Effect<unknown, Error>;
   readonly run: (request: object) => Effect.Effect<unknown, unknown>;
+  /** Leaves a turn recorded as running, as a harness would while it works. */
+  readonly startRunningTurn: Effect.Effect<void, unknown>;
   readonly stop: Effect.Effect<void>;
 }
 
@@ -124,12 +127,21 @@ const makeWorld = Effect.gen(function* () {
         Effect.gen(function* () {
           return yield* (yield* Service).handle(request as never);
         }).pipe(Effect.provideContext(context));
+      const startRunningTurn = Effect.gen(function* () {
+        const quest = (yield* (yield* Service).handle({
+          _tag: "StartEmptyQuest",
+          realmId: null,
+          requestId: "quest-running",
+        })) as { threadId: string };
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`INSERT INTO turns (id, thread_id, status, started_at) VALUES ('turn-running', ${quest.threadId}, 'running', 1)`;
+      }).pipe(Effect.provideContext(context));
       const connected = until(() =>
         Effect.runPromise(run({ _tag: "ReadRemoteAccess" })).then((view) =>
           (view as { status: string }).status === "Connected" ? view : undefined,
         ),
       );
-      return { connected, run, stop: Scope.close(scope, Exit.void) } satisfies RunningHost;
+      return { connected, run, startRunningTurn, stop: Scope.close(scope, Exit.void) } satisfies RunningHost;
     });
 
   const pairedHost = (host: RunningHost) =>
@@ -201,6 +213,68 @@ describe("updating a host from a device of a later release", () => {
         });
         resumed.close();
         yield* secondHost.stop;
+      }),
+    ),
+  );
+
+  it.live("a device forces the update over a running turn, and a plain ask still waits", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const world = yield* makeWorld;
+        const updater = fakeDesktopUpdater();
+        const host = yield* world.startHost(earlier, updater.layer);
+        const code = yield* world.pairedHost(host);
+        const hosts = createPairedHosts(memoryStorage());
+        const paired = yield* Effect.promise(() => pairFromBrowser(code, "Pixel", hosts, pageOf(earlier)));
+        yield* host.startRunningTurn;
+        const updating = driven(openBrowserTransport(hosts, paired.id, pageOf(later), { acceptOtherRelease: true }));
+        expect(yield* updating.ask({ _tag: "UpdateHost" })).toMatchObject({ _tag: "Success" });
+        yield* until(() =>
+          updating.ask({ _tag: "ReadHostUpdate" }).pipe(
+            Effect.map((frame) => {
+              const status = (frame.value as { status: { _tag: string } } | undefined)?.status;
+              return status?._tag === "WaitingForTurns" ? true : undefined;
+            }),
+          ),
+        );
+        expect(updater.calls.installs).toBe(0);
+        expect(yield* updating.ask({ _tag: "ForceUpdateHost" })).toMatchObject({
+          _tag: "Success",
+          value: { status: { _tag: "Installing" } },
+        });
+        yield* until(() => (updater.calls.installs === 1 ? true : undefined));
+        updating.close();
+        yield* host.stop;
+      }),
+    ),
+  );
+
+  it.live("a host that does not know the force request answers with a failure the device can read", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const world = yield* makeWorld;
+        const host = yield* world.startHost(earlier, fakeDesktopUpdater().layer);
+        const code = yield* world.pairedHost(host);
+        const hosts = createPairedHosts(memoryStorage());
+        const paired = yield* Effect.promise(() => pairFromBrowser(code, "Pixel", hosts, pageOf(earlier)));
+        const open = openBrowserTransport(hosts, paired.id, pageOf(later), { acceptOtherRelease: true });
+        // A host from before this feature decodes no ForceUpdateHost; a tag this host does not know stands in for it.
+        const link = driven((handlers) => {
+          const transport = open(handlers);
+          return {
+            close: () => transport.close(),
+            get isOpen() {
+              return transport.isOpen;
+            },
+            send: (text) => transport.send(text.replace("ForceUpdateHost", "ForceUpdateHostOfAnEarlierRelease")),
+          };
+        });
+        expect(yield* link.ask({ _tag: "ForceUpdateHost" })).toMatchObject({
+          _tag: "Failure",
+          error: { kind: "InvalidInput" },
+        });
+        link.close();
+        yield* host.stop;
       }),
     ),
   );

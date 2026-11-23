@@ -82,6 +82,7 @@ export const Results = {
   EditIntel: Schema.Null,
   EditQueuedMessage: Schema.Null,
   EndMission: QuestPlacement,
+  ForceUpdateHost: HostUpdate,
   InstallHarness: HarnessList,
   InterruptThread: Schema.Null,
   ListHarnesses: HarnessList,

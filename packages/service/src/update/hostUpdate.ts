@@ -12,6 +12,8 @@ type Progress = {
   readonly isArmed: boolean;
   /** The check the host asked for has not ended yet. */
   readonly isChecking: boolean;
+  /** The owner asked to install now: the install does not wait for the running turns, which stop when the host quits. */
+  readonly isForced: boolean;
   readonly isInstalling: boolean;
   /** Why the last attempt ended without an install; shown until the next one. */
   readonly failure: string | null;
@@ -23,19 +25,26 @@ const initial: Progress = {
   installingVersion: "",
   isArmed: false,
   isChecking: false,
+  isForced: false,
   isInstalling: false,
 };
 
 /**
  * Updating this host on a paired device's word (app-updates, Updating a host from a paired device): `arm` looks for a
- * newer release, downloads it, and installs it once no turn is running, never stopping one. Once armed the install is
- * the host's own decision: the device that asked may disconnect or reload.
+ * newer release, downloads it, and installs it once no turn is running. `force` does the same without waiting: the
+ * install quits the host, which ends the turns as the desktop's Restart and update does (the next start records them
+ * as interrupted). Once armed the install is the host's own decision: the device that asked may disconnect or reload.
  */
 export class HostUpdate extends Context.Service<
   HostUpdate,
   {
     /** Starts the update if it can start and answers where it stands; asking again changes nothing. */
     readonly arm: Effect.Effect<HostUpdateView, never, SqlClient.SqlClient>;
+    /**
+     * Like `arm`, and installs without waiting for the running turns; on an update already armed and waiting it lifts
+     * the wait. An install under way, or an updater that is unsupported, is left alone, so asking again changes nothing.
+     */
+    readonly force: Effect.Effect<HostUpdateView, never, SqlClient.SqlClient>;
     /** Where updating the host stands, with the host's release. */
     readonly read: Effect.Effect<HostUpdateView, never, SqlClient.SqlClient>;
   }
@@ -69,7 +78,7 @@ const make = Effect.gen(function* () {
       return {
         release,
         status:
-          runningCount === 0
+          runningCount === 0 || current.isForced
             ? { _tag: "Installing", version: status.version }
             : { _tag: "WaitingForTurns", runningCount, version: status.version },
       } satisfies HostUpdateView;
@@ -83,6 +92,7 @@ const make = Effect.gen(function* () {
       failure,
       isArmed: false,
       isChecking: false,
+      isForced: false,
       isInstalling: false,
     }));
 
@@ -93,7 +103,7 @@ const make = Effect.gen(function* () {
     yield* Ref.update(progress, (current) => ({ ...current, isChecking: false }));
     for (;;) {
       if (status._tag === "Ready") {
-        const runningCount = yield* countRunningTurns;
+        const runningCount = (yield* Ref.get(progress)).isForced ? 0 : yield* countRunningTurns;
         if (runningCount === 0) {
           const installingVersion = status.version;
           yield* Ref.update(progress, (current) => ({ ...current, installingVersion, isInstalling: true }));
@@ -111,20 +121,26 @@ const make = Effect.gen(function* () {
     }
   }).pipe(Effect.orDie);
 
-  const arm = Effect.gen(function* () {
-    const status = yield* updater.state;
-    const current = yield* Ref.get(progress);
-    if (status._tag === "Unsupported" || current.isArmed || current.isInstalling) return yield* read;
-    yield* Ref.set(progress, {
-      ...initial,
-      isArmed: true,
-      isChecking: status._tag === "Idle" || status._tag === "Failed",
+  const begin = (isForced: boolean) =>
+    Effect.gen(function* () {
+      const status = yield* updater.state;
+      const current = yield* Ref.get(progress);
+      if (status._tag === "Unsupported" || current.isInstalling) return yield* read;
+      if (current.isArmed) {
+        if (isForced) yield* Ref.update(progress, (armed) => ({ ...armed, isForced: true }));
+        return yield* read;
+      }
+      yield* Ref.set(progress, {
+        ...initial,
+        isArmed: true,
+        isChecking: status._tag === "Idle" || status._tag === "Failed",
+        isForced,
+      });
+      yield* Effect.forkIn(run, scope);
+      return yield* read;
     });
-    yield* Effect.forkIn(run, scope);
-    return yield* read;
-  });
 
-  return { arm, read } satisfies HostUpdate["Service"];
+  return { arm: begin(false), force: begin(true), read } satisfies HostUpdate["Service"];
 });
 
 /** The coordinator, over the updater this host has. */

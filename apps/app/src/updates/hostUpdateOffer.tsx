@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
-import { hostUpdateQuestion, hostUpdateTextOf } from "../foundation/hostUpdate";
+import { forceUpdateQuestionOf, hostUpdateQuestion, hostUpdateTextOf } from "../foundation/hostUpdate";
 import { colors, fontSizes, fonts, outline, radii } from "../foundation/theme";
 import { useHostUpdate } from "../foundation/useHostUpdate";
 
@@ -17,8 +17,11 @@ export function HostUpdateOffer({
   onUpdated: () => void;
   openLink: () => Promise<ServiceClient>;
 }) {
-  const { canStart, start, state } = useHostUpdate({ isActive: true, onUpdated, openLink });
+  const { canForce, canStart, force, start, state } = useHostUpdate({ isActive: true, onUpdated, openLink });
   const [isAsking, setIsAsking] = useState(false);
+  const [isForcing, setIsForcing] = useState(false);
+  const runningCount =
+    state._tag === "Updating" && state.update?.status._tag === "WaitingForTurns" ? state.update.status.runningCount : 0;
   const text = hostUpdateTextOf(state);
   return (
     <>
@@ -35,6 +38,45 @@ export function HostUpdateOffer({
         >
           <Text style={local.noticeText}>{state._tag === "Offered" ? "Update host" : "Try again"}</Text>
         </Pressable>
+      )}
+      {canForce && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setIsForcing(true)}
+          style={({ pressed }) => [local.notice, pressed && local.pressed]}
+        >
+          <Text style={local.noticeText}>Force update</Text>
+        </Pressable>
+      )}
+      {isForcing && (
+        <Modal animationType="fade" onRequestClose={() => setIsForcing(false)} transparent visible>
+          <View style={local.backdrop}>
+            <Pressable
+              accessibilityLabel="Cancel"
+              onPress={() => setIsForcing(false)}
+              style={StyleSheet.absoluteFill}
+            />
+            <View accessibilityRole="alert" style={local.menu}>
+              <Text style={local.title}>Force the update?</Text>
+              <Text style={local.body}>{forceUpdateQuestionOf(runningCount)}</Text>
+              <View style={local.footer}>
+                <Pressable accessibilityRole="button" onPress={() => setIsForcing(false)} style={local.button}>
+                  <Text style={local.buttonText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setIsForcing(false);
+                    force();
+                  }}
+                  style={local.done}
+                >
+                  <Text style={local.doneText}>Force update</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
       {isAsking && (
         <Modal animationType="fade" onRequestClose={() => setIsAsking(false)} transparent visible>

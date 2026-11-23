@@ -103,6 +103,12 @@ export const ReadHostUpdate = Schema.TaggedStruct("ReadHostUpdate", {});
  * where that stands. Repeating it changes nothing, and a running turn is never stopped for it.
  */
 export const UpdateHost = Schema.TaggedStruct("UpdateHost", {});
+/**
+ * Tells the host to install the update now, stopping the turns still running (CHG-0661): `UpdateHost` that does not
+ * wait. A request of its own, not a flag on `UpdateHost`, so that a host from before it answers with a failure instead
+ * of ignoring the flag and waiting. Nothing is forced without it; the answer is where updating stands.
+ */
+export const ForceUpdateHost = Schema.TaggedStruct("ForceUpdateHost", {});
 
 /** Starts a mission with its first message, model, effort, and workspace. */
 export const StartMission = Schema.TaggedStruct("StartMission", {
@@ -374,6 +380,7 @@ export const Request = Schema.Union([
   ReadFileDiff,
   ReadHostUpdate,
   UpdateHost,
+  ForceUpdateHost,
   TranscribeDictation,
   StartMission,
   StartEmptyQuest,

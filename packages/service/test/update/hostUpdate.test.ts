@@ -52,7 +52,7 @@ const advance = (seconds: number) =>
     }
   });
 
-const ask = (tag: "ReadHostUpdate" | "UpdateHost") =>
+const ask = (tag: "ReadHostUpdate" | "UpdateHost" | "ForceUpdateHost") =>
   Effect.gen(function* () {
     return yield* (yield* Service).handle({ _tag: tag });
   });
@@ -197,6 +197,104 @@ describe("updating the host from a paired device", () => {
           status: { _tag: "Failed", message: "GitHub did not answer." },
         });
         expect(fake.calls.installs).toBe(0);
+      }).pipe(Effect.provide(host(fake.layer)));
+    }),
+  );
+});
+
+describe("forcing the update over running turns", () => {
+  it.effect("installs once without waiting for the running turns", () =>
+    Effect.gen(function* () {
+      const fake = fakeUpdater({ _tag: "Idle", note: null }, { _tag: "Ready", version: "0.1.10-Prototype" });
+      yield* Effect.gen(function* () {
+        yield* startRunningTurn("turn-a");
+        yield* startRunningTurn("turn-b");
+        const started = yield* ask("ForceUpdateHost");
+        expect(started).toMatchObject({ status: { _tag: "Checking" } });
+        yield* advance(6);
+        expect(fake.calls.installs).toBe(1);
+        expect(yield* ask("ReadHostUpdate")).toMatchObject({
+          status: { _tag: "Installing", version: "0.1.10-Prototype" },
+        });
+        yield* advance(30);
+        expect(fake.calls.installs).toBe(1);
+      }).pipe(Effect.provide(host(fake.layer)));
+    }),
+  );
+
+  it.effect("lifts the wait of an update that is already armed, and a plain ask still waits", () =>
+    Effect.gen(function* () {
+      const fake = fakeUpdater(
+        { _tag: "Ready", version: "0.1.10-Prototype" },
+        { _tag: "Ready", version: "0.1.10-Prototype" },
+      );
+      yield* Effect.gen(function* () {
+        yield* startRunningTurn("turn-a");
+        yield* ask("UpdateHost");
+        yield* advance(6);
+        expect(yield* ask("ReadHostUpdate")).toMatchObject({ status: { _tag: "WaitingForTurns", runningCount: 1 } });
+        yield* ask("UpdateHost");
+        yield* advance(6);
+        expect(fake.calls.installs).toBe(0);
+        expect(yield* ask("ForceUpdateHost")).toMatchObject({ status: { _tag: "Installing" } });
+        yield* advance(6);
+        expect(fake.calls.installs).toBe(1);
+      }).pipe(Effect.provide(host(fake.layer)));
+    }),
+  );
+
+  it.effect("changes nothing when asked a second time, or once the install runs", () =>
+    Effect.gen(function* () {
+      const fake = fakeUpdater(
+        { _tag: "Ready", version: "0.1.10-Prototype" },
+        { _tag: "Ready", version: "0.1.10-Prototype" },
+      );
+      yield* Effect.gen(function* () {
+        yield* startRunningTurn("turn-a");
+        yield* ask("ForceUpdateHost");
+        yield* ask("ForceUpdateHost");
+        yield* advance(6);
+        yield* ask("ForceUpdateHost");
+        yield* ask("UpdateHost");
+        yield* advance(6);
+        expect(fake.calls.installs).toBe(1);
+        expect(fake.calls.checks).toBe(0);
+      }).pipe(Effect.provide(host(fake.layer)));
+    }),
+  );
+
+  it.effect("forces nothing when the host cannot update itself", () =>
+    Effect.gen(function* () {
+      const fake = fakeUpdater(
+        { _tag: "Unsupported", reason: "Updates apply to the installed app." },
+        { _tag: "Idle", note: null },
+      );
+      const forced = yield* Effect.gen(function* () {
+        yield* startRunningTurn("turn-a");
+        return yield* ask("ForceUpdateHost");
+      }).pipe(Effect.provide(host(fake.layer)));
+      expect(forced).toMatchObject({ status: { _tag: "Unsupported" } });
+      expect(fake.calls).toEqual({ checks: 0, installs: 0 });
+    }),
+  );
+
+  it.effect("forgets the force after a failed install: the next plain ask waits again", () =>
+    Effect.gen(function* () {
+      const fake = fakeUpdater(
+        { _tag: "Ready", version: "0.1.10-Prototype" },
+        { _tag: "Ready", version: "0.1.10-Prototype" },
+      );
+      fake.installFailure.message = "Outlore cannot write its folder.";
+      yield* Effect.gen(function* () {
+        yield* startRunningTurn("turn-a");
+        yield* ask("ForceUpdateHost");
+        yield* advance(6);
+        expect(yield* ask("ReadHostUpdate")).toMatchObject({ status: { _tag: "Failed" } });
+        fake.installFailure.message = null;
+        yield* ask("UpdateHost");
+        yield* advance(6);
+        expect(fake.calls.installs).toBe(1);
+        expect(yield* ask("ReadHostUpdate")).toMatchObject({ status: { _tag: "WaitingForTurns", runningCount: 1 } });
       }).pipe(Effect.provide(host(fake.layer)));
     }),
   );

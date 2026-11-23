@@ -1,6 +1,9 @@
 import type { HostUpdate } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  canForceHostUpdate,
+  forceTooOldText,
+  forceUpdateQuestionOf,
   hostUpdateQuestion,
   hostUpdateTextOf,
   initialHostUpdate,
@@ -125,5 +128,64 @@ describe("following the update", () => {
     expect(nextHostUpdate(failed, { type: "start" }, device)).toMatchObject({ _tag: "Updating", update: null });
     const running = nextHostUpdate(started, read("0.1.9-Prototype", { _tag: "Installing", version: device }), device);
     expect(nextHostUpdate(running, { type: "start" }, device)).toBe(running);
+  });
+});
+
+describe("forcing the update over running turns", () => {
+  const started = nextHostUpdate({ _tag: "Offered", hostRelease: "0.1.9-Prototype" }, { type: "start" }, device);
+  const waiting = nextHostUpdate(
+    started,
+    read("0.1.9-Prototype", { _tag: "WaitingForTurns", runningCount: 2, version: device }),
+    device,
+  );
+
+  it("offers forcing only while the host waits for running turns", () => {
+    expect(canForceHostUpdate(waiting)).toBe(true);
+    expect(canForceHostUpdate(started)).toBe(false);
+    const installing = nextHostUpdate(
+      started,
+      read("0.1.9-Prototype", { _tag: "Installing", version: device }),
+      device,
+    );
+    expect(canForceHostUpdate(installing)).toBe(false);
+    expect(canForceHostUpdate(nextHostUpdate(waiting, { type: "disconnected" }, device))).toBe(false);
+    expect(canForceHostUpdate({ _tag: "Offered", hostRelease: "0.1.9-Prototype" })).toBe(false);
+  });
+
+  it("asks first, naming the turns that stop and that the host restarts", () => {
+    expect(forceUpdateQuestionOf(2)).toBe(
+      "2 running turns will be stopped. The host then installs the new release and restarts, and this device reconnects by itself.",
+    );
+    expect(forceUpdateQuestionOf(1)).toContain("1 running turn will be stopped");
+  });
+
+  it("changes nothing when forcing is not on offer, and does not force twice", () => {
+    expect(nextHostUpdate(started, { type: "force" }, device)).toBe(started);
+    const asked = nextHostUpdate(waiting, { type: "force" }, device);
+    expect(asked).toMatchObject({ _tag: "Updating", force: "asked" });
+    expect(hostUpdateTextOf(asked)).toBe("Telling the host to install now…");
+    expect(canForceHostUpdate(asked)).toBe(false);
+    expect(nextHostUpdate(asked, { type: "force" }, device)).toBe(asked);
+  });
+
+  it("follows the host's answer once it was told", () => {
+    const asked = nextHostUpdate(waiting, { type: "force" }, device);
+    const installing = nextHostUpdate(asked, read("0.1.9-Prototype", { _tag: "Installing", version: device }), device);
+    expect(hostUpdateTextOf(installing)).toBe("Installing");
+    expect(installing).not.toHaveProperty("force");
+  });
+
+  it("says so when the host does not know the force request, and keeps following the wait", () => {
+    const asked = nextHostUpdate(waiting, { type: "force" }, device);
+    const refused = nextHostUpdate(asked, { type: "forceRefused" }, device);
+    expect(hostUpdateTextOf(refused)).toBe(forceTooOldText);
+    expect(forceTooOldText).toContain("too old to force an update");
+    expect(canForceHostUpdate(refused)).toBe(false);
+    const later = nextHostUpdate(
+      refused,
+      read("0.1.9-Prototype", { _tag: "WaitingForTurns", runningCount: 1, version: device }),
+      device,
+    );
+    expect(hostUpdateTextOf(later)).toBe(forceTooOldText);
   });
 });

@@ -61,6 +61,7 @@ export const requestSourceRules = {
   EditQueuedMessage: shared,
   EndMission: shared,
   FindArchivedRealm: rule(false, (given) => given.path),
+  ForceUpdateHost: shared,
   InstallConnector: shared,
   InstallHarness: shared,
   InterruptThread: shared,

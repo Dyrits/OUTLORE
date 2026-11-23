@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import { appRelease } from "./browser/page";
 import { RequestFailed, type ServiceClient } from "./client";
-import { canStartHostUpdate, type HostUpdateEvent, initialHostUpdate, nextHostUpdate } from "./hostUpdate";
+import {
+  canForceHostUpdate,
+  canStartHostUpdate,
+  type HostUpdateEvent,
+  initialHostUpdate,
+  nextHostUpdate,
+} from "./hostUpdate";
 
 /** How often the host is asked where its update stands. */
 const pollMillis = 3_000;
@@ -29,7 +35,7 @@ export function useHostUpdate({
     initialHostUpdate,
   );
   // The owner's confirmation waits here until the update link is up to carry it.
-  const hasToStart = useRef(false);
+  const hasToStart = useRef<"force" | "update" | null>(null);
   const isLinked = isActive && (state._tag === "Probing" || state._tag === "Updating");
   useEffect(() => {
     if (!isLinked) return;
@@ -40,19 +46,22 @@ export function useHostUpdate({
       timer = null;
       if (!isCurrent || client === null) return;
       try {
-        const isStarting = hasToStart.current;
-        const update = await client.request({ _tag: isStarting ? "UpdateHost" : "ReadHostUpdate" });
+        const asked = hasToStart.current;
+        const update = await client.request({
+          _tag: asked === "force" ? "ForceUpdateHost" : asked === "update" ? "UpdateHost" : "ReadHostUpdate",
+        });
         if (!isCurrent) return;
-        if (isStarting) hasToStart.current = false;
+        if (asked !== null) hasToStart.current = null;
         dispatch({ type: "read", update });
       } catch (reason) {
         if (!isCurrent) return;
         // A host from before this feature answers a request it cannot read with a failure; a dropped link is another matter.
-        dispatch(
-          reason instanceof RequestFailed && reason.error.kind === "InvalidInput"
-            ? { type: "tooOld" }
-            : { type: "disconnected" },
-        );
+        if (reason instanceof RequestFailed && reason.error.kind === "InvalidInput") {
+          // The force request alone is unknown to a host that knows the plain one, which then goes on waiting.
+          const wasForcing = hasToStart.current === "force";
+          hasToStart.current = null;
+          dispatch({ type: wasForcing ? "forceRefused" : "tooOld" });
+        } else dispatch({ type: "disconnected" });
       }
       if (isCurrent) timer = setTimeout(() => void poll(), pollMillis);
     };
@@ -77,8 +86,12 @@ export function useHostUpdate({
     if (state._tag === "Updated") onUpdated();
   }, [state._tag, onUpdated]);
   const start = useCallback(() => {
-    hasToStart.current = true;
+    hasToStart.current = "update";
     dispatch({ type: "start" });
   }, []);
-  return { canStart: canStartHostUpdate(state), start, state };
+  const force = useCallback(() => {
+    hasToStart.current = "force";
+    dispatch({ type: "force" });
+  }, []);
+  return { canForce: canForceHostUpdate(state), canStart: canStartHostUpdate(state), force, start, state };
 }
