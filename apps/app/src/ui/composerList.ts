@@ -39,10 +39,13 @@ type ComposerList = {
 
 const SKILL_LIMIT = 6;
 
-/** The skills a typed `/word` can be completed to; a name already complete offers nothing more. */
-const skillRowsOf = (skills: ReadonlyArray<Skill>, partial: string): ReadonlyArray<MenuRow> =>
-  skills
-    .filter((skill) => skill.name !== partial && skill.name.toLowerCase().startsWith(partial.toLowerCase()))
+/** The skills a typed `/word` can turn into a chip, with the exact match first. */
+const skillRowsOf = (skills: ReadonlyArray<Skill>, partial: string): ReadonlyArray<MenuRow> => {
+  const query = partial.toLowerCase();
+  const isExact = (skill: Skill) => skill.name.toLowerCase() === query;
+  return skills
+    .filter((skill) => skill.name.toLowerCase().startsWith(query))
+    .sort((current, next) => Number(isExact(next)) - Number(isExact(current)))
     .slice(0, SKILL_LIMIT)
     .map(
       (skill): MenuRow => ({
@@ -52,6 +55,7 @@ const skillRowsOf = (skills: ReadonlyArray<Skill>, partial: string): ReadonlyArr
         type: "option",
       }),
     );
+};
 
 /** The list for the trigger at the caret, in the state it is in. */
 export const composerListOf = (source: ListSource, state: ListState): ComposerList => {
