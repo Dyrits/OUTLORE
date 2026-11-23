@@ -1,6 +1,6 @@
 #!/bin/sh
-# Prepares a git worktree of this repository to run: copies the installed packages of the checkout that holds it,
-# so no `bun install` is needed. Run it from the new worktree, which belongs in `.worktrees/<name>` (git-ignored).
+# Prepares a git worktree of this repository to run: clones the installed packages of the checkout that holds it
+# (a copy-on-write clone where the filesystem supports it, otherwise a plain copy), so no `bun install` is needed. Run it from the new worktree, which belongs in `.worktrees/<name>` (git-ignored).
 #
 # Why not `bun install`: inside Claude Code's sandbox, a package that ships a `.gitmodules` file or a `.vscode` folder
 # cannot be written ("EPERM: copy file .gitmodules"), and running the install outside the sandbox asks the owner.
@@ -18,7 +18,18 @@ source=${1:-$(cd "$(git rev-parse --git-common-dir)/.." && pwd -P)}
 for folder in node_modules $(cd "$source" && ls -d apps/*/node_modules packages/*/node_modules 2>/dev/null); do
   [ -d "$source/$folder" ] || continue
   rm -rf "${here:?}/$folder"
-  mkdir -p "$here/$folder"
-  tar -C "$source/$folder" --exclude .gitmodules --exclude .vscode -cf - . | tar -C "$here/$folder" -xf -
+  mkdir -p "$(dirname "$here/$folder")"
+  # A copy-on-write clone shares the unchanged data with the source, so a worktree costs almost no disk space.
+  # APFS clones with `cp -c`, Btrfs and XFS with `--reflink`; elsewhere, or across volumes, the clone fails and the tar copy runs.
+  if { [ "$(uname)" = Darwin ] && cp -cR "$source/$folder" "$here/$folder" 2>/dev/null; } ||
+    { [ "$(uname)" != Darwin ] && cp -a --reflink=always "$source/$folder" "$here/$folder" 2>/dev/null; }; then
+    find "$here/$folder" \( -name .gitmodules -o -name .vscode \) -prune -exec rm -rf {} +
+    mode=cloned
+  else
+    rm -rf "${here:?}/$folder"
+    mkdir -p "$here/$folder"
+    tar -C "$source/$folder" --exclude .gitmodules --exclude .vscode -cf - . | tar -C "$here/$folder" -xf -
+    mode=copied
+  fi
 done
-echo "Packages copied from $source."
+echo "Packages $mode from $source."

@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To finish lightening worktrees (merged branches, worktrees with uncommitted changes), read the [current handoff](.agents/handoffs/2026-11-23-1444-lighter-worktrees.md). Handoffs are shared and committed.
+
 - To verify errand notch order in the desktop app, read the [current handoff](.agents/handoffs/2026-11-23-1414-errand-notch-order.md). Handoffs are shared and committed.
 
 - To verify conversation toolbar separators in the desktop app, read the [current handoff](.agents/handoffs/2026-11-23-1347-toolbar-trailing-separator.md). Handoffs are shared and committed.
-
-- To verify or finish forcing a host update over running turns from a paired device, read the [current handoff](.agents/handoffs/2026-11-23-1310-force-host-update.md). Handoffs are shared and committed.
