@@ -1,15 +1,14 @@
 import { useSyncExternalStore } from "react";
-import { colorScheme, theme } from "./colorScheme";
+import { Platform } from "react-native";
+import { colorScheme } from "./colorScheme";
 import { canvasOf, type Islands, islandShadowOf, islandsOf } from "./islandsRules";
 import { colors } from "./theme";
 
-// The owner's Islands settings, kept in the browser's storage and shown at once with no reload: the Workshop's Look card
-// sets them and the window's frame reads them. A platform without storage keeps the defaults.
+// The owner's layout and Islands settings, kept in the browser's storage and shown at once with no reload: the Workshop's
+// Look card sets them and the window's frame reads them. A platform without storage keeps the defaults.
 
+// The key CHG-0668 chose for the Islands theme's settings; it stays so those settings survive as the layout's.
 const storageKey = "outlore:islands";
-
-/** Whether the frame is drawn as islands: the Islands theme, fixed for a run as every theme is. */
-export const isIslands = theme === "islands";
 
 const readStored = (): string | null => {
   try {
@@ -29,7 +28,7 @@ const subscribe = (listener: () => void) => {
   };
 };
 
-/** Keeps one Islands setting and redraws the frame with it. */
+/** Keeps one layout or Islands setting and redraws the frame with it. */
 export function chooseIslands(change: Partial<Islands>): void {
   current = { ...current, ...change };
   try {
@@ -38,10 +37,10 @@ export function chooseIslands(change: Partial<Islands>): void {
   for (const listener of listeners) listener();
 }
 
-/** The owner's Islands settings; the component draws again when one is chosen. */
+/** The owner's layout and Islands settings; the component draws again when one is chosen. */
 export const useIslands = (): Islands => useSyncExternalStore(subscribe, () => current);
 
-/** How the frame draws its islands now; null in every other theme, which keeps its flat frame. */
+/** How the frame draws its islands now; null when the layout is flat, which draws the frame as it always was. */
 export type IslandFrame = {
   readonly gap: number;
   /** The canvas's plain color, for the views behind the islands. */
@@ -49,32 +48,39 @@ export type IslandFrame = {
   /** The canvas with its glow, for the page behind the app. */
   readonly background: string;
   /** The style of one island: its panel color, hairline, corners, and shadow. */
-  readonly island: {
-    readonly backgroundColor: string;
-    readonly borderColor: string;
-    readonly borderRadius: number;
-    readonly borderWidth: number;
-    readonly boxShadow: string;
-    readonly overflow: "hidden";
-  };
+  readonly island: IslandStyle;
 };
 
-/** The frame of the Islands theme with the owner's settings, or null in another theme. */
+type IslandStyle = {
+  readonly backgroundColor: string;
+  readonly borderColor: string;
+  readonly borderRadius: number;
+  readonly borderWidth: number;
+  readonly boxShadow: string;
+  readonly overflow: "hidden";
+};
+
+/**
+ * The frame of the Islands layout with the owner's settings and the theme's colors, or null in the flat layout. Only
+ * the web build draws islands: the Android app keeps the flat frame, as does any window too narrow for a sidebar (the
+ * frame decides that).
+ */
 export function useIslandFrame(): IslandFrame | null {
   const islands = useIslands();
-  if (!isIslands) return null;
-  const { background, color } = canvasOf(islands.canvas, colorScheme);
+  if (islands.layout !== "islands" || Platform.OS !== "web") return null;
+  const { background, color } = canvasOf(islands.canvas, colors, colorScheme);
+  const island: IslandStyle = {
+    backgroundColor: colors.page,
+    borderColor: colors.edge,
+    borderRadius: islands.radius,
+    borderWidth: 1,
+    boxShadow: islandShadowOf(islands.lift, colorScheme, colors.text),
+    overflow: "hidden",
+  };
   return {
     background,
     canvas: color,
     gap: islands.gap,
-    island: {
-      backgroundColor: colors.page,
-      borderColor: colors.edge,
-      borderRadius: islands.radius,
-      borderWidth: 1,
-      boxShadow: islandShadowOf(islands.lift, colorScheme),
-      overflow: "hidden",
-    },
+    island,
   };
 }

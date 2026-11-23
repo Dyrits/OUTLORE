@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Emblem, type EmblemName } from "../foundation/emblems";
+import { useIslandFrame } from "../foundation/islands";
 import { colors, fontSizes, radii, stateLabels, stateTones } from "../foundation/theme";
 import { ChipIcon } from "../ui/chips";
 import { errandIconPath } from "../ui/composerIcons";
@@ -41,10 +42,13 @@ export type NotchPart = {
  * several notches can share one icon.
  */
 export function PaneNotches({
+  gap = 0,
   isStraddling = false,
   parts,
   side,
 }: {
+  /** The space between open panes in the Islands layout: the notches stand off the slot's far edge by it. */
+  gap?: number;
   /** On the left edge of a pane that has an open pane before it: the notch sits across the line between the two. */
   isStraddling?: boolean;
   parts: ReadonlyArray<NotchPart>;
@@ -52,10 +56,23 @@ export function PaneNotches({
 }) {
   // Several notches share one icon, so each says its name while the pointer or keyboard focus rests on it.
   const [shown, setShown] = useState<string | null>(null);
+  // In the Islands layout a notch is cut into its island: it takes the island's own color and leaves the island's hairline
+  // open where it sits, so it reads as part of the pane. The flat layout keeps the sidebar's color.
+  const islands = useIslandFrame();
+  const fill = islands === null ? colors.sidebar : islands.island.backgroundColor;
   return (
     <View
       pointerEvents="box-none"
-      style={[local.notches, side === "left" ? (isStraddling ? local.onLine : local.atLeft) : local.atRight]}
+      style={[
+        local.notches,
+        side === "left"
+          ? isStraddling
+            ? { left: -(notchWidth + gap) / 2 }
+            : local.atLeft
+          : gap === 0
+            ? local.atRight
+            : { right: gap },
+      ]}
     >
       {parts.map((part) => (
         <Pressable
@@ -71,6 +88,7 @@ export function PaneNotches({
           style={({ pressed }) => [
             local.notch,
             side === "left" ? (isStraddling ? local.notchOnLine : local.notchLeft) : local.notchRight,
+            { backgroundColor: fill },
             pressed && local.pressed,
           ]}
         >
@@ -92,6 +110,7 @@ export function PaneNotches({
                 accessibilityLabel={part.state === null ? "No active status" : stateLabels[part.state]}
                 style={[
                   local.dot,
+                  { borderColor: fill },
                   { backgroundColor: part.state === null ? colors.textMuted : stateTones[part.state].color },
                 ]}
               />
@@ -193,7 +212,6 @@ const local = StyleSheet.create({
   notchLeft: { borderBottomRightRadius: radii.md, borderLeftWidth: 0, borderTopRightRadius: radii.md },
   notchOnLine: { borderRadius: radii.md },
   notchRight: { borderBottomLeftRadius: radii.md, borderRightWidth: 0, borderTopLeftRadius: radii.md },
-  onLine: { left: -notchWidth / 2 },
   plus: { bottom: 3, position: "absolute", right: 3 },
   pressed: { backgroundColor: colors.controlActive },
   titleAtLeft: { left: "100%", marginLeft: 6 },

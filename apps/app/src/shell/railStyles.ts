@@ -138,7 +138,7 @@ export const local = StyleSheet.create({
   ritualOff: { opacity: 0.6 },
   ritualSchedule: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   ritualTrailing: { alignItems: "center", flexDirection: "row", gap: 4 },
-  ritualUnderway: { backgroundColor: colors.accentText, borderRadius: radii.pill, height: 6, width: 6 },
+  ritualUnderway: { backgroundColor: colors.underwayText, borderRadius: radii.pill, height: 6, width: 6 },
   row: {
     alignItems: "center",
     borderRadius: radii.md,

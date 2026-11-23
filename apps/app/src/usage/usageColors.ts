@@ -12,7 +12,7 @@ const harnessColors = {
   cursor: colors.danger,
   devin: colors.borderStrong,
   hermes: colors.highlight,
-  muse: colors.accent,
+  muse: colors.underway,
   opencode: colors.textMuted,
   // A placeholder color until Pi's own runs read; it only tells this harness's bars apart.
   pi: colors.yellow,

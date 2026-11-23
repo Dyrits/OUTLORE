@@ -1,7 +1,7 @@
 import type { ColorScheme } from "./colorSchemeRules";
-import { islandPalettes } from "./islandPalettes";
 import { monoPalettes } from "./monoPalettes";
 import { onePalettes } from "./onePalettes";
+import { slatePalettes } from "./slatePalettes";
 import type { Theme } from "./themeRules";
 
 /**
@@ -32,6 +32,9 @@ const iskiosDark = {
   /** The outline of a control or card. */
   edge: "#34465e",
   frame: "#1c2a3b",
+  /** The tints the Islands layout's canvas glows with, cool and warm (a grey in the black and white theme). */
+  glowCool: "#4f86e8",
+  glowWarm: "#e0a537",
   /** The window behind the sidebar and the page. */
   ground: "#0f1722",
   /** Headings and icons that stand out from the plain text. */
@@ -57,6 +60,10 @@ const iskiosDark = {
   textDim: "#66758a",
   textMuted: "#8796ab",
   textSecondary: "#b4c0d0",
+  /** What marks an Underway state: the accent in most themes, a blue of its own where the accent is grey. */
+  underway: "#4f86e8",
+  underwaySoft: "#1f3350",
+  underwayText: "#8db3ff",
   violet: "#9a82e0",
   violetSoft: "#2c2745",
   warning: "#e0a537",
@@ -91,6 +98,8 @@ const iskiosLight: Palette = {
   dangerText: "#a8301f",
   edge: "#d5c9ba",
   frame: "#f8f4ee",
+  glowCool: "#3f5f94",
+  glowWarm: "#c98a14",
   ground: "#ebe3d8",
   highlight: "#2a3a4f",
   marker: "#f3e4bd",
@@ -109,6 +118,9 @@ const iskiosLight: Palette = {
   textDim: "#9a9086",
   textMuted: "#6b7686",
   textSecondary: "#46546a",
+  underway: "#3f5f94",
+  underwaySoft: "#e0e7f2",
+  underwayText: "#2f4d80",
   violet: "#7a5fc7",
   violetSoft: "#e6dff5",
   warning: "#c98a14",
@@ -121,7 +133,7 @@ const iskiosLight: Palette = {
 /** Every palette: each theme in its dark and its light look. */
 export const palettes = {
   iskios: { dark: iskiosDark, light: iskiosLight },
-  islands: islandPalettes,
   mono: monoPalettes,
   one: onePalettes,
+  slate: slatePalettes,
 } as const satisfies Record<Theme, Record<ColorScheme, Palette>>;

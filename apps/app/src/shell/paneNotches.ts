@@ -8,6 +8,12 @@ import type { NotchPart } from "./paneStrip";
 /** Width reserved for a full notch. */
 export const notchWidth = 26;
 
+/**
+ * How far a notch that straddles the line between two open panes reaches into each of them. The Islands layout has a
+ * `gap` between the panes where the line was, which holds part of the notch.
+ */
+export const straddleReachOf = (gap: number): number => Math.max(0, (notchWidth - gap) / 2);
+
 /** Builds the ranked child shortcuts and their overflow shortcut. */
 export function childPartsOf<Id extends string>(
   children: ReadonlyArray<ChildNotch<Id> & { title: string }>,
@@ -42,6 +48,7 @@ type NotchThread = Pick<ThreadSummary, "id" | "isArchived" | "lastActivityAt" | 
 export function paneNotchesOf({
   channel,
   fullChain,
+  gap = 0,
   missionId,
   missions,
   onOpenMission,
@@ -53,6 +60,8 @@ export function paneNotchesOf({
 }: {
   channel: { id: string | null; name: string };
   fullChain: ReadonlyArray<PaneId>;
+  /** The space between open panes in the Islands layout; none in the flat one. */
+  gap?: number;
   missionId: MissionId;
   missions: ReadonlyArray<MissionSummary>;
   onOpenMission: (id: MissionId) => void;
@@ -168,8 +177,8 @@ export function paneNotchesOf({
     return {
       isStraddling,
       left,
-      paddingLeft: left.length === 0 ? 0 : isStraddling ? notchWidth / 2 : notchWidth,
-      paddingRight: right.length > 0 ? notchWidth : nextStraddles ? notchWidth / 2 : 0,
+      paddingLeft: left.length === 0 ? 0 : isStraddling ? straddleReachOf(gap) : notchWidth,
+      paddingRight: right.length > 0 ? notchWidth : nextStraddles ? straddleReachOf(gap) : 0,
       right,
     };
   };

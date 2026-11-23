@@ -66,7 +66,7 @@ export function BudgetMeters({ use, onPress }: { use: BudgetUse; onPress?: () =>
 /** What each limit is called in the rail, and the color of its full bar: tokens are Mana, cost is Gold. */
 const reserveKinds = {
   cost: { color: colors.warning, emblem: "gem", name: "Gold" },
-  tokens: { color: colors.accent, emblem: "flask", name: "Mana" },
+  tokens: { color: colors.underway, emblem: "flask", name: "Mana" },
 } as const satisfies Record<string, { color: string; emblem: EmblemName; name: string }>;
 
 /**

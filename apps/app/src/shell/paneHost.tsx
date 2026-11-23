@@ -5,6 +5,7 @@ import { PaneThread } from "../conversation/paneThread";
 import { OpenPanes } from "../conversation/replyLine";
 import { useShownThreadsRead } from "../conversation/useShownThreadsRead";
 import type { ServiceClient } from "../foundation/client";
+import { useIslandFrame } from "../foundation/islands";
 import { listedMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -17,8 +18,12 @@ import { paneNotchesOf } from "./paneNotches";
 import { PaneResizer } from "./paneResizer";
 import { PaneButton, PaneNotches } from "./paneStrip";
 import { rememberPaneWeights } from "./railStorage";
+import { noDragRegion } from "./topBar";
 import { usePaneChain } from "./usePaneChain";
 import { channelOf } from "./windowView";
+
+/** How far from the window's right edge the Equal widths button sits in the Islands layout: past the Workshop button. */
+const topBarEndReach = 42;
 
 /** Shows the channel, quest and selected errand. An older nested errand uses the same third slot. */
 export function PaneHost({
@@ -53,6 +58,9 @@ export function PaneHost({
     if (data !== null) setThreads(data.threads);
   }, [data]);
   const channel = channelOf(data?.mission.workspaceId, data?.mission.workspaceName);
+  // In the Islands layout every open pane is a card of its own with `gap` between them (CHG-0672).
+  const islands = useIslandFrame();
+  const gap = islands?.gap ?? 0;
   const {
     available,
     equalize,
@@ -95,6 +103,7 @@ export function PaneHost({
   const notchesAt = paneNotchesOf({
     channel,
     fullChain,
+    gap,
     missionId,
     missions: missionList?.missions ?? [],
     onOpenMission,
@@ -115,7 +124,7 @@ export function PaneHost({
       <PaneResizer
         key={`resize:${slot.id}`}
         label="Resize the panes"
-        left={edge}
+        left={edge - gap / 2}
         onDrag={(dx) =>
           setMemory((current) => ({
             ...current,
@@ -132,32 +141,41 @@ export function PaneHost({
   return (
     <OpenPanes.Provider value={openIds}>
       {paneCount > 1 && (
-        <View style={local.toolbar}>
+        <View
+          style={
+            islands === null
+              ? [local.toolbar, local.toolbarFlat]
+              : // Over the top bar's empty middle, beside the Workshop button, so the islands all start at one height.
+                [local.toolbarIslands, { right: topBarEndReach - gap }, noDragRegion]
+          }
+        >
           <PaneButton glyph="↔" label="Equal widths" onPress={equalize} />
         </View>
       )}
-      <View onLayout={onLayout} style={local.row}>
+      {/* Each open pane's room ends in a gap, the last one's too, which the row's negative margin pushes past its end. */}
+      <View onLayout={onLayout} style={[local.row, islands === null ? local.rowFlat : { marginRight: -gap }]}>
         {available > 0 &&
           slots.map((slot) => {
             const { content, id } = slot;
             const isStrip = slot.kind === "strip";
             const notches = notchesAt(slot.depth);
+            const notchPadding = { paddingLeft: notches.paddingLeft, paddingRight: notches.paddingRight };
             const wrap = (pane: ReactNode) => (
               <View
                 key={id}
                 style={[
-                  local.pane,
-                  slot.depth > firstOpen && !isStrip && local.paneDivider,
+                  islands === null && local.pane,
+                  islands === null && slot.depth > firstOpen && !isStrip && local.paneDivider,
                   { width: isStrip ? 0 : slot.width },
-                  { paddingLeft: notches.paddingLeft, paddingRight: notches.paddingRight },
+                  islands === null ? notchPadding : { paddingRight: gap },
                   isStrip && local.hidden,
                 ]}
               >
-                {pane}
+                {islands === null ? pane : <View style={[local.card, islands.island, notchPadding]}>{pane}</View>}
                 {notches.left.length > 0 && (
-                  <PaneNotches isStraddling={notches.isStraddling} parts={notches.left} side="left" />
+                  <PaneNotches gap={gap} isStraddling={notches.isStraddling} parts={notches.left} side="left" />
                 )}
-                {notches.right.length > 0 && <PaneNotches parts={notches.right} side="right" />}
+                {notches.right.length > 0 && <PaneNotches gap={gap} parts={notches.right} side="right" />}
               </View>
             );
             if (content.kind === "channel")
@@ -216,17 +234,16 @@ export function PaneHost({
 }
 
 const local = StyleSheet.create({
+  // An island's own box: the layout's island style adds its color, hairline, corners, and shadow.
+  card: { flex: 1 },
   content: { flex: 1 },
   focused: { backgroundColor: colors.page },
   hidden: { display: "none" },
   pane: { backgroundColor: colors.page },
   paneDivider: { borderColor: colors.edge, borderLeftWidth: 1 },
-  row: { backgroundColor: colors.page, flex: 1, flexDirection: "row" },
-  toolbar: {
-    alignItems: "flex-end",
-    backgroundColor: colors.page,
-    borderBottomWidth: 1,
-    borderColor: colors.edge,
-    paddingHorizontal: 8,
-  },
+  row: { flex: 1, flexDirection: "row" },
+  rowFlat: { backgroundColor: colors.page },
+  toolbar: { alignItems: "flex-end", paddingHorizontal: 8 },
+  toolbarFlat: { backgroundColor: colors.page, borderBottomWidth: 1, borderColor: colors.edge },
+  toolbarIslands: { position: "absolute", top: -33, zIndex: 5 },
 });

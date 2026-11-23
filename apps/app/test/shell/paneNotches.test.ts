@@ -1,7 +1,7 @@
 import { MissionId, ThreadId } from "@outlore/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { channelId } from "../../src/shell/paneIds";
-import { notchWidth, paneNotchesOf } from "../../src/shell/paneNotches";
+import { notchWidth, paneNotchesOf, straddleReachOf } from "../../src/shell/paneNotches";
 
 const quest = ThreadId.make("quest");
 const errand = ThreadId.make("errand");
@@ -13,10 +13,12 @@ function edges(
   isArchived = false,
   isQuestFolded = false,
   hasEarlierErrand = false,
+  gap = 0,
 ) {
   return paneNotchesOf({
     channel: { id: null, name: "Borderlands" },
     fullChain: [channelId, quest, errand],
+    gap,
     missionId: MissionId.make("quest"),
     missions: [],
     onOpenMission: () => {},
@@ -51,6 +53,21 @@ function edges(
 }
 
 const questEdge = (shownState: "Fulfilled" | "Resting", isArchived = false) => edges(shownState, isArchived)(1).right;
+
+describe("placing a notch between islands", () => {
+  it("reaches into each pane by what the gap leaves of half the notch", () => {
+    expect(straddleReachOf(0)).toBe(notchWidth / 2);
+    expect(straddleReachOf(10)).toBe((notchWidth - 10) / 2);
+    expect(straddleReachOf(notchWidth)).toBe(0);
+    expect(straddleReachOf(40)).toBe(0);
+  });
+
+  it("pads the two open panes beside a folded quest by that reach", () => {
+    const at = edges("Resting", false, true, false, 10);
+    expect(at(0).paddingRight).toBe(straddleReachOf(10));
+    expect(at(2)).toMatchObject({ isStraddling: true, paddingLeft: straddleReachOf(10) });
+  });
+});
 
 describe("placing folded errand notches", () => {
   it("shares the notch padding across both open panes beside a folded quest", () => {

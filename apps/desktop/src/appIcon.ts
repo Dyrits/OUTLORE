@@ -3,9 +3,9 @@ import type { Theme } from "../../app/src/foundation/themeName.ts";
 /** The icon file of each theme, in the desktop app's `assets`. */
 export const iconFiles = {
   iskios: "icon.png",
-  islands: "icon.png",
   mono: "icon.png",
   one: "icon.png",
+  slate: "icon.png",
 } as const satisfies Record<Theme, string>;
 
 const isTheme = (name: unknown): name is Theme => typeof name === "string" && Object.hasOwn(iconFiles, name);

@@ -59,13 +59,19 @@ export function Shell(
 ) {
   const { width } = useWindowDimensions();
   const hasRail = width >= sidebarBreakpoint;
-  // The Islands theme floats the sidebar, the content, and the quest panel as panels on a canvas (CHG-0668).
+  // The Islands layout floats the sidebar, each pane, the content, and the quest panel as panels on a canvas, in any
+  // theme (CHG-0672); the narrow window below keeps its flat frame.
   const islands = useIslandFrame();
   const islandBackground = islands?.background ?? null;
   useEffect(() => {
-    if (islandBackground === null || typeof document === "undefined") return;
-    document.documentElement.style.background = islandBackground;
-  }, [islandBackground]);
+    if (!hasRail || islandBackground === null || typeof document === "undefined") return;
+    const page = document.documentElement.style;
+    page.backgroundImage = islandBackground;
+    // Back to the flat layout, the page behind the app shows the theme's ground, its background color, again.
+    return () => {
+      page.backgroundImage = "";
+    };
+  }, [hasRail, islandBackground]);
   const gap = islands?.gap ?? 0;
   const { isPinned, mode, side } = useSidebarPreference();
   const placement = sidebarPlacementOf({ isPinned, mode });
@@ -185,6 +191,10 @@ export function Shell(
   // A docked or pinned sidebar stands in the frame, at the left, or at the window's right edge when pinned there.
   const hasLeftRail = placement === "docked" ? !isHidden : placement === "pinned" && side === "left";
   const hasRightRail = placement === "pinned" && side === "right";
+  // In the Islands layout the content is an island of its own, except where it holds the panes, which are islands each.
+  const isPaneRow = props.location.openMission !== null && ritualForm === null;
+  const panelStyle =
+    islands === null ? hasLeftRail && local.panelDivider : isPaneRow ? local.panelOfIslands : islands.island;
   const sidebar = <Sidebar {...props} hasLeftDivider={hasRightRail} host="docked" width={railWidth} />;
   const floatingSidebar = (
     <SidebarOverlay isOpen={overlay.isOpen} side={side} width={railWidth}>
@@ -259,11 +269,7 @@ export function Shell(
                           <PanelIcon />
                         </Pressable>
                       )}
-                      <View
-                        style={[local.panel, islands !== null ? islands.island : hasLeftRail && local.panelDivider]}
-                      >
-                        {props.children}
-                      </View>
+                      <View style={[local.panel, panelStyle]}>{props.children}</View>
                     </View>
                     {!hasPanes && column.wideColumn}
                     {!hasPanes && column.hasEdgeHandle && (

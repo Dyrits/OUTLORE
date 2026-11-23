@@ -2,7 +2,7 @@ import { type ReactNode, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { HostMenuContext } from "../foundation/hostContext";
-import { isIslands, useIslandFrame } from "../foundation/islands";
+import { useIslandFrame } from "../foundation/islands";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { SettingsIcon } from "../ui/settingsIcons";
@@ -62,24 +62,28 @@ export function TopBar({
   sidebar?: { isPinned: boolean; onToggle: () => void; side: "left" | "right" };
 }) {
   const hostMenu = useContext(HostMenuContext);
+  const islands = useIslandFrame();
+  // On the Islands canvas, the canvas's own color would hide the pressed state.
+  const isOnCanvas = islands !== null && menu === undefined;
+  const active = isOnCanvas ? local.topIconOnCanvas : local.topIconActive;
   const sidebarButton = sidebar !== undefined && (
     <Pressable
       accessibilityLabel={sidebar.isPinned ? "Unpin the sidebar (⌘B)" : "Pin the sidebar (⌘B)"}
       accessibilityRole="button"
       accessibilityState={{ selected: sidebar.isPinned }}
       onPress={sidebar.onToggle}
-      style={({ pressed }) => [local.topIcon, (pressed || sidebar.isPinned) && local.topIconActive, noDragRegion]}
+      style={({ pressed }) => [local.topIcon, (pressed || sidebar.isPinned) && active, noDragRegion]}
     >
       <PanelIcon side={sidebar.side} />
     </Pressable>
   );
   return (
     // As the macOS title bar the bar drags the window, and leaves room for the traffic lights at its start.
-    // In the Islands theme, the wide window's bar lies on the canvas above the islands.
+    // In the Islands layout, the wide window's bar lies on the canvas above the islands.
     <View
       style={[
         local.topBar,
-        isIslands && menu === undefined && local.topBarIsland,
+        isOnCanvas && local.topBarIsland,
         hasOwnTitleBar && local.topBarTitle,
         hasOwnTitleBar && dragRegion,
       ]}
@@ -97,7 +101,7 @@ export function TopBar({
           accessibilityRole="button"
           accessibilityState={{ expanded: menu.isOpen }}
           onPress={menu.onToggle}
-          style={({ pressed }) => [local.topIcon, (pressed || menu.isOpen) && local.topIconActive, noDragRegion]}
+          style={({ pressed }) => [local.topIcon, (pressed || menu.isOpen) && active, noDragRegion]}
         >
           <PanelIcon />
           {menu.unreadCount !== undefined && menu.unreadCount > 0 && (
@@ -122,7 +126,7 @@ export function TopBar({
           accessibilityLabel={details.isOpen ? "Hide quest panel" : "Show quest panel"}
           accessibilityRole="button"
           onPress={details.onToggle}
-          style={({ pressed }) => [local.topIcon, (pressed || details.isOpen) && local.topIconActive, noDragRegion]}
+          style={({ pressed }) => [local.topIcon, (pressed || details.isOpen) && active, noDragRegion]}
         >
           <PanelIcon side="right" />
         </Pressable>
@@ -133,7 +137,7 @@ export function TopBar({
           accessibilityRole="button"
           accessibilityState={{ expanded: chronicler.isOpen }}
           onPress={chronicler.onToggle}
-          style={({ pressed }) => [local.topIcon, (pressed || chronicler.isOpen) && local.topIconActive, noDragRegion]}
+          style={({ pressed }) => [local.topIcon, (pressed || chronicler.isOpen) && active, noDragRegion]}
         >
           <Text style={local.chroniclerMark}>✦</Text>
         </Pressable>
@@ -144,7 +148,7 @@ export function TopBar({
           accessibilityRole="button"
           accessibilityState={{ selected: workshop.isOpen }}
           onPress={workshop.onToggle}
-          style={({ pressed }) => [local.topIcon, (pressed || workshop.isOpen) && local.topIconActive, noDragRegion]}
+          style={({ pressed }) => [local.topIcon, (pressed || workshop.isOpen) && active, noDragRegion]}
         >
           <SettingsIcon name="gear" size={18} tint={colors.textSecondary} />
         </Pressable>
@@ -283,6 +287,6 @@ const local = StyleSheet.create({
   topBarIsland: { backgroundColor: "transparent", borderBottomWidth: 0 },
   topBarTitle: { paddingLeft: 82 },
   topIcon: { alignItems: "center", borderRadius: radii.sm, height: 28, justifyContent: "center", width: 28 },
-  // On the Islands canvas, the canvas's own color would hide the pressed state.
-  topIconActive: { backgroundColor: isIslands ? colors.controlActive : colors.ground },
+  topIconActive: { backgroundColor: colors.ground },
+  topIconOnCanvas: { backgroundColor: colors.controlActive },
 });

@@ -308,6 +308,6 @@ const local = StyleSheet.create({
   ritualOff: { opacity: 0.75 },
   ritualTitle: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.base, fontWeight: "600" },
   ritualTitleRow: { alignItems: "center", flexDirection: "row", gap: 6 },
-  ritualUnderway: { backgroundColor: colors.accentText, borderRadius: radii.pill, height: 6, width: 6 },
+  ritualUnderway: { backgroundColor: colors.underwayText, borderRadius: radii.pill, height: 6, width: 6 },
   title: { color: colors.text, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.base },
 });

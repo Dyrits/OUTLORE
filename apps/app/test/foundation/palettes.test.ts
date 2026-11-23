@@ -45,6 +45,7 @@ describe.each(themes.flatMap((theme) => (["dark", "light"] as const).map((scheme
         [colors.successText, colors.successSoft],
         [colors.warningText, colors.warningSoft],
         [colors.violet, colors.violetSoft],
+        [colors.underwayText, colors.underwaySoft],
       ]) {
         expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5);
       }
@@ -52,12 +53,45 @@ describe.each(themes.flatMap((theme) => (["dark", "light"] as const).map((scheme
   },
 );
 
-describe("the black and white theme", () => {
-  const hueless = (hex: string) => hex.slice(1, 3) === hex.slice(3, 5) && hex.slice(3, 5) === hex.slice(5, 7);
+// What carries meaning stays colored in the black and white theme: the states' colors, whose indicators, rings, graphs,
+// and dots are read by their hue. Every other color is a grey.
+const meaningTokens = [
+  "danger",
+  "dangerSoft",
+  "dangerText",
+  "marker",
+  "success",
+  "successSoft",
+  "successText",
+  "underway",
+  "underwaySoft",
+  "underwayText",
+  "violet",
+  "violetSoft",
+  "warning",
+  "warningSoft",
+  "warningText",
+  "yellow",
+  "yellowSoft",
+] as const;
 
-  it.each(["dark", "light"] as const)("has no hue in its %s look", (scheme) => {
-    for (const color of Object.values(palettes.mono[scheme])) {
-      if (color.startsWith("#")) expect(hueless(color)).toBe(true);
+describe("the black and white theme", () => {
+  const isGrey = (hex: string) => hex.slice(1, 3) === hex.slice(3, 5) && hex.slice(3, 5) === hex.slice(5, 7);
+
+  it.each(["dark", "light"] as const)("has no hue in its %s look, outside the colors that carry meaning", (scheme) => {
+    for (const [token, color] of Object.entries(palettes.mono[scheme])) {
+      if (color.startsWith("#") && !(meaningTokens as ReadonlyArray<string>).includes(token)) {
+        expect(isGrey(color), token).toBe(true);
+      }
     }
+  });
+
+  it.each(["dark", "light"] as const)("keeps the colors that carry meaning colored in its %s look", (scheme) => {
+    for (const token of meaningTokens) expect(isGrey(palettes.mono[scheme][token]), token).toBe(false);
+  });
+
+  it.each(["dark", "light"] as const)("gives each state its own hue in its %s look", (scheme) => {
+    const { danger, success, underway, violet, warning } = palettes.mono[scheme];
+    expect(new Set([danger, success, underway, violet, warning]).size).toBe(5);
   });
 });

@@ -7,8 +7,16 @@ import {
   theme,
 } from "../foundation/colorScheme";
 import { colorSchemePreferences } from "../foundation/colorSchemeRules";
-import { chooseIslands, isIslands, useIslands } from "../foundation/islands";
-import { type IslandCanvas, islandCanvases, islandGaps, islandLifts, islandRadii } from "../foundation/islandsRules";
+import { chooseIslands, useIslands } from "../foundation/islands";
+import {
+  type IslandCanvas,
+  islandCanvases,
+  islandGaps,
+  islandLifts,
+  islandRadii,
+  type Layout,
+  layouts,
+} from "../foundation/islandsRules";
 import { chooseSidebarMode, chooseSidebarSide, useSidebarPreference } from "../foundation/sidebarPreference";
 import { type SidebarMode, type SidebarSide, sidebarModes, sidebarSides } from "../foundation/sidebarPreferenceRules";
 import { styles } from "../foundation/styles";
@@ -18,10 +26,11 @@ import { SettingsCard, SettingsRule } from "./settingsParts";
 
 const themeLabels = {
   iskios: "Iskios",
-  islands: "Islands",
   mono: "Black & white",
   one: "One",
+  slate: "Slate",
 } as const satisfies Record<Theme, string>;
+const layoutLabels = { flat: "Flat", islands: "Islands" } as const satisfies Record<Layout, string>;
 const colorSchemeLabels = { dark: "Dark", light: "Light", system: "System" } as const satisfies Record<
   (typeof colorSchemePreferences)[number],
   string
@@ -39,6 +48,7 @@ const sidebarSideLabels = { left: "Left", right: "Right" } as const satisfies Re
 /** The Workshop's local theme and light/dark preferences, applied through the existing reload flow. */
 export function LookCard() {
   const { mode, side } = useSidebarPreference();
+  const { layout } = useIslands();
   if (!canChooseColorScheme) return null;
   return (
     <SettingsCard icon="sliders" title="Look">
@@ -52,7 +62,18 @@ export function LookCard() {
           value={theme}
         />
       </View>
-      {isIslands && <IslandRows />}
+      <SettingsRule />
+      <View style={local.row}>
+        <Text style={[styles.body, local.label]}>Layout · floating islands on a canvas, or one flat frame</Text>
+        <Choice
+          accessibilityLabel="Layout"
+          label={(name) => layoutLabels[name]}
+          onChange={(next) => chooseIslands({ layout: next })}
+          options={layouts}
+          value={layout}
+        />
+      </View>
+      {layout === "islands" && <IslandRows />}
       <SettingsRule />
       <View style={local.row}>
         <Text style={[styles.body, local.label]}>Appearance · light, dark, or the system's</Text>
@@ -94,7 +115,7 @@ export function LookCard() {
   );
 }
 
-/** The Islands theme's own settings, shown at once with no reload: the canvas, the gap, the corners, and the lift. */
+/** The Islands layout's own settings, shown at once with no reload: the canvas, the gap, the corners, and the lift. */
 function IslandRows() {
   const islands = useIslands();
   const steps = <T extends number>(

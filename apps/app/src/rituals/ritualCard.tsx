@@ -15,7 +15,7 @@ const runStateColors = {
   Done: colors.successText,
   Failed: colors.dangerText,
   Interrupted: colors.textMuted,
-  Underway: colors.accentText,
+  Underway: colors.underwayText,
 } as const satisfies Record<RitualRunState, string>;
 
 /** Why a Ritual of an archived realm stays off and cannot run. */

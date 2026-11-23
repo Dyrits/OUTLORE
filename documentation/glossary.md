@@ -123,7 +123,7 @@ Whom a thread may message and whose journal it may read beyond its own tree: wha
 _Avoid_: Permission, access, scope
 
 **Theme**:
-The owner chooses One, Iskios, Black & white, or Islands in the Workshop.
+The owner chooses One, Iskios, Black & white, or Slate in the Workshop.
 One is the default, and each theme comes in a dark and a light **Look**.
 _Avoid_: Skin, style
 
@@ -142,10 +142,19 @@ CHG-0457 removed it from the theme picker.
 The neutral theme based on Zed's One Light and One Dark colors. It is the default theme. It keeps the original application icon and the shared sidebar drawings.
 
 **Black & white**:
-The theme of pure greys with no hue: white on black in the dark look, black on white in the light one. State colors differ only by a step of grey. It keeps the original application icon. Called `mono` in code.
+The theme of pure greys with no hue for what decorates (surfaces, text, borders, the canvas): white on black in the dark look, black on white in the light one. What carries meaning stays colored: the state colors, so the activity indicator, the usage rings and graph, and the status dots keep their hues. It keeps the original application icon. Called `mono` in code.
+
+**Slate**:
+The theme with the colors of the islands prototype: a cool grey ground under near-white panels in the light look, a near-black ground under slate panels in the dark one, and an indigo accent. It was called Islands while that word named a theme (CHG-0668); a stored choice of that name opens Slate. It keeps the original application icon.
+
+**Layout**:
+How the desktop window's panels are drawn, whatever the theme: **Islands** or **Flat**. A phone, a narrow window, and the Android app are always flat.
 
 **Islands**:
-The theme whose sidebar, content, and quest panel float as rounded panels, the islands, on a tinted canvas, each with a hairline and a soft shadow. The owner sets its canvas (cool glow, warm glow, or flat), the gap between the islands, their corner radius, and their lift, and each change shows at once. It keeps the original application icon.
+The default layout, in which the sidebar, each conversation pane (the realm's, the quest's or Ritual's, and the errand's), and the content of a screen without panes float as rounded cards, the islands, on a canvas derived from the theme's colors, each with a hairline and a soft shadow. The owner sets the canvas (cool glow, warm glow, or flat), the gap between the islands, their corner radius, and their lift, and each change shows at once.
+
+**Flat**:
+The layout the window had before Islands: panels side by side in one frame, told apart by dividing lines.
 
 **The Keep**:
 The navigation group containing Library, Lore, and Archive.

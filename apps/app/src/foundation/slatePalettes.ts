@@ -2,11 +2,11 @@ import type { ColorScheme } from "./colorSchemeRules";
 import type { Palette } from "./palettes";
 
 /**
- * The Islands palettes, from the islands prototype (documentation/art-direction/islands-prototype.html): a cool grey
- * canvas under near-white panels in the light look, a near-black canvas under slate panels in the dark one, and an
- * indigo accent. The panels are the islands; the canvas is `ground`. State colors are One's.
+ * The Slate palettes, the colors of the islands prototype (documentation/art-direction/islands-prototype.html): a cool
+ * grey ground under near-white panels in the light look, a near-black ground under slate panels in the dark one, and an
+ * indigo accent. State colors are One's.
  */
-export const islandPalettes = {
+export const slatePalettes = {
   dark: {
     accent: "#8b98ff",
     accentSoft: "#283055",
@@ -25,6 +25,8 @@ export const islandPalettes = {
     dangerText: "#ea858b",
     edge: "#2a2e37",
     frame: "#22262e",
+    glowCool: "#8b98ff",
+    glowWarm: "#dec184",
     ground: "#111318",
     highlight: "#e6e8ee",
     marker: "#3b3b3b",
@@ -44,6 +46,9 @@ export const islandPalettes = {
     textDim: "#6c727d",
     textMuted: "#9aa0ab",
     textSecondary: "#b9bec8",
+    underway: "#8b98ff",
+    underwaySoft: "#283055",
+    underwayText: "#c4ccff",
     violet: "#d398eb",
     violetSoft: "#363443",
     warning: "#dec184",
@@ -70,6 +75,8 @@ export const islandPalettes = {
     dangerText: "#9c2b26",
     edge: "#e2e4e9",
     frame: "#fbfbfc",
+    glowCool: "#4a5bd4",
+    glowWarm: "#a48819",
     ground: "#eceef1",
     highlight: "#1d2027",
     marker: "#faf2e6",
@@ -88,6 +95,9 @@ export const islandPalettes = {
     textDim: "#8a8f98",
     textMuted: "#5f646d",
     textSecondary: "#4d525b",
+    underway: "#4a5bd4",
+    underwaySoft: "#e9ebfa",
+    underwayText: "#2b3a9e",
     violet: "#950095",
     violetSoft: "#e2e2fa",
     warning: "#a48819",

@@ -19,6 +19,7 @@ Status: **desktop design agreed on 2026-11-20**, including agent-authored anchor
 - Tab switches preserve drafts, and each pane selects its own tab independently.
 - A quest opened from the sidebar starts with only its conversation pane open: the realm's channel pane is folded behind its notch, and one press brings it back (the owner, 2026-11-21; CHG-0613).
 - Pane management is expected to change as the owner uses it ("we'll iterate on that").
+- **Islands** is the desktop window's default layout, in every theme (the owner, 2026-11-23; CHG-0672): the sidebar, each open conversation pane (the realm's, the quest's or Ritual's, and the errand's), and the content of a screen without panes, such as the Workshop, each float as a rounded card with a hairline and a soft shadow on a canvas drawn from the theme's own colors, with the same gap between them. The Workshop's Look card offers **Layout** with Islands and **Flat**, the frame the app had before, and, while it is Islands, **Canvas**, **Gap**, **Radius**, and **Lift**, which apply at once. A folded pane's notch, the pane header's buttons, focus, dragging the edge between panes, and the sidebar's overlay and pinned modes work as in the flat layout; the notch between two open panes sits across the gap, and a notch on a pane's outer edge takes the island's own color with no border on its edge side, so it reads as cut into the pane. A phone, a narrow window, and the Android app keep the flat layout.
 
 ### Find in conversation
 
