@@ -14,9 +14,13 @@ Sources are the products' own code and documents at the commit named in each sec
 | T3Code | none, maps to each CLI's mode | none | one message, by symptom (loopback) | none found |
 | intentic | a Docker container per agent | yes, for the container engine | one heading and one action per cause | by construction (container) |
 | Claude Code, `srt` | yes (Seatbelt, bubblewrap) | dependency check at startup | runs unsandboxed unless `failIfUnavailable` | no built-in list; `denyRead` is opt-in |
-| Codex | yes (Seatbelt, bubblewrap) | not read | not read | not read |
+| Codex | yes (Seatbelt, bubblewrap) | none; `doctor` reads the config, an integrity checker is paused | the failed command is classed from its output; the approval policy decides whether to ask | protected paths are read-only; deny-read rules exist in code, docs not read |
+| Cindy | Codex's and Claude Code's own | none | failed Codex sandbox recognised by output shape, tells the model not to retry and the user to switch or move host | not found |
+| Hermes Agent | none by default; container backends | for Chromium's own sandbox only, remembered per version | not applicable to commands | scrubs the environment; not containment |
+| Codync | none | none | not applicable | no |
+| Rakazo | a Docker, cloud or local computer per bot | not read | not read | by construction (container) |
 
-No product found tests that a read denial really holds, and none hides a credential folder by default. Those that ship a sandbox either fail closed with a message or hand over to a container; the others never have the problem. Outlore's automatic probe of a `denyRead` goes further than any of them.
+No product found tests that a read denial really holds, none asks the owner to verify a sandbox by hand, and none hides a credential folder by default. Those that ship a sandbox either fail closed with a message or hand over to a container; the others never have the problem. Outlore's automatic probe of a `denyRead` goes further than any of them.
 
 ## OpenBot (nightly-labs/openbot, `a31e9a36847507b4096ce7452dec05123f72bf56`)
 
@@ -66,7 +70,7 @@ No product found tests that a read denial really holds, and none hides a credent
 
 ## Claude Code and its sandbox runtime `srt`
 
-Sources: `@anthropic-ai/sandbox-runtime` 0.0.83 (Apache-2.0) read from the installed package (`README.md`, `dist/sandbox/sandbox-manager.js`, `dist/sandbox/sandbox-utils.js`, `dist/cli.js`); Claude Code's documentation page `code.claude.com/docs/en/sandboxing` (first 100,000 of 111,990 characters read, 2026-11-23); Claude Code 2.1.330 installed here. Claude Code is closed source, so its documented behaviour is not checked in code.
+Sources: `@anthropic-ai/sandbox-runtime` 0.0.83 (Apache-2.0) read from the installed package (`README.md`, `dist/sandbox/sandbox-manager.js`, `dist/sandbox/sandbox-utils.js`, `dist/cli.js`); the repository at tag v0.0.83 (`anthropic-experimental/sandbox-runtime`, `0bbebed0aa9a8e628dc4df8bc30293550a1988eb`; its README says macOS needs ripgrep, while the code comment in `src/sandbox/sandbox-manager.ts` says ripgrep is Linux-only, a conflict not settled by running it); Claude Code's documentation page `code.claude.com/docs/en/sandboxing` (first 100,000 of 111,990 characters read, 2026-11-23); Claude Code 2.1.330 installed here. Claude Code is closed source, so its documented behaviour is not checked in code.
 
 - **Start verification**: a dependency check, not a read test. `checkDependencies()` returns `{errors, warnings}`: errors mean the sandbox cannot run (`Unsupported platform`; on Linux a missing `rg`, `bwrap` or `socat`; `sandbox-manager.js:1394-1500`), warnings mean degraded (bubblewrap older than 0.5.0, the package installed inside a writable path; `README.md:699,1331`). macOS needs no dependency: `/usr/bin/sandbox-exec` (`README.md:678`). Docs: "If the panel shows only a Dependencies tab, the sandbox can't start yet" (`/sandbox`).
 - **When unavailable**: by default Claude Code runs commands unsandboxed: "By default, when the platform doesn't support the sandbox or the dependency check at startup fails, Claude Code runs commands without sandboxing. To make Claude Code exit at startup instead, set `sandbox.failIfUnavailable` to `true`." The page does not say the user is told. Outlore already sets `failIfUnavailable` (`claudeArgs.ts`), as does OpenBot.
@@ -78,24 +82,46 @@ Sources: `@anthropic-ai/sandbox-runtime` 0.0.83 (Apache-2.0) read from the insta
 
 ## Codex
 
-Sources: Codex 0.171.0 installed here (`codex --help`, `codex sandbox --help`). The Rust source (`openai/codex`) and `developers.openai.com/codex/security` could not be fetched in this session (the tool host dropped the connection), so this section is only what the installed command shows.
+Sources: `openai/codex` at `a1604a8c0554c09c1be45e5a121bb1889b4d9a50` (2026-11-23), read file by file; the security pages at `learn.chatgpt.com/docs/agent-approvals-security` and `/docs/security` (via a summarizing fetch tool, 2026-11-23); Codex 0.171.0 installed here (`codex sandbox --help`). Behaviour was not run.
 
-- Modes `--sandbox` read-only, workspace-write, danger-full-access; `--dangerously-bypass-approvals-and-sandbox` "Skip all confirmation prompts and execute commands without sandboxing. EXTREMELY DANGEROUS. Intended solely for running in environments that are externally sandboxed": the same idea as the container advice of OpenBot, Paseo and intentic.
-- `codex sandbox [COMMAND]...` "Run commands within a Codex-provided sandbox", "Full command args to run under seatbelt", with `--sandbox-state-json` ("Opaque JSON value from `codex/sandbox-state`") and `--sandbox-state-readable-root`: Codex itself offers a model-free way to run a command under its sandbox, the Codex counterpart of `srt` for a probe. Not run here; whether it can express a read denial of one folder is not checked.
-- The binary contains `CODEX_SANDBOX` and `CODEX_PERMISSION_PROFILE`, and the text "Network access was denied by the Codex sandbox network proxy." Their meaning is not checked in source.
-- **Not checked**: start verification, behaviour when Seatbelt or bubblewrap is unavailable or under an enclosing sandbox, read denial and permission profiles, user messages.
+- **Selection, no probe**: `get_platform_sandbox` returns Seatbelt on macOS and seccomp or bubblewrap on Linux without testing them (`codex-rs/sandboxing/src/manager.rs:46-59`). `transform` returns `SandboxUnavailable` only when a sandbox is required and none exists (`:506-513`).
+- **Doctor**: `codex-rs/cli/src/doctor/sandbox.rs` reports the approval policy, the count of denied-read rules and whether the Linux helper path exists ("sandbox configuration is readable"); no command is run under the sandbox on macOS or Linux. On Windows it also reads the setup failure report and names a remedy.
+- **Integrity checker, paused**: `codex-rs/exec-server/src/sandbox_integrity/AGENTS.md`: "Runtime integrity checks are paused at the shared runner entry point"; when on they "emit telemetry only. Findings and preparation errors must not change sandbox construction, permissions, approvals, or command execution", and they model the policy: "Do not reconstruct native enforcement". Even the vendor does not block on a probe.
+- **On failure**: a failed command is classed "likely sandbox denied" from its exit code and output keywords (`operation not permitted`, `permission denied`, `sandbox`, `seccomp`, `landlock` ...) under the comment "We don't have a fully deterministic way to tell" (`codex-rs/sandboxing/src/denial.rs`). The approval policy then decides whether the owner is asked to run it outside the sandbox. The docs, for containers: "the sandbox may not work if the host or container configuration blocks the namespace"; configure the container and run with `--sandbox danger-full-access`. They do not say what Codex does when the sandbox fails to start; WSL1 is unsupported since 0.115 (bubblewrap).
+- **Test by hand**: `codex sandbox macos|linux|windows [command]` (also `codex debug`) runs a command under the sandbox, with `--sandbox-state-json`: a developer check, and a possible model-free probe path for Outlore. Whether it can express a read denial of one folder was not checked.
+- **Secret folders**: protected paths in a writable root (`.git`, `.agents`, `.codex`, `.aws`) are read-only, "not denied for reading". Denied-read rules exist (`FileSystemAccessMode::Deny`, `codex-rs/protocol/src/permissions/deny_read_validator.rs`, counted by `doctor`) but the pages read do not describe them; the Permissions page was not read. A trust level per folder starts untrusted folders read-only.
+- **Not checked**: behaviour under an enclosing Seatbelt; the Permissions and Sandboxing pages.
+
+## Cindy (makecindy/cindy, `e6ba8ebcf5d1c52105f44979e8d6e4880630192c`, 2026-11-23)
+
+- **Recognises an unusable Codex sandbox by output shape and says so**: `packages/maker-core/src/agents/codex/sandbox-init-failure.ts` treats a failed command whose every non-empty output line starts with `bwrap: ` as "sandbox failed to initialize, the command never ran", skips it when the command itself calls `bwrap` (that would blame the wrong sandbox), and appends a note to the tool result: the command "was never executed", "do not retry", "tell the user the sandbox cannot start in this environment and that they can either switch this task to Full access (their explicit choice) or run Cindy on a host that permits sandbox namespaces". The recovery controls are in the interface, not in that module.
+- **Start verification, own sandbox, secret folders**: none found; a search of file names (`sandbox`, `seatbelt`, `bwrap`, `landlock`) found only this module.
+- **Not checked**: its permission modes and how they map to Codex and Claude Code settings.
+
+## Hermes Agent (NousResearch/hermes-agent, `249dc60308a1ea3e13e8cd281433552cd25d36ab`, 2026-11-22)
+
+- **Stated model** (`SECURITY.md`, section 2.2): "The only security boundary against an adversarial LLM is the operating system", not the approval gate or redaction. The default terminal backend runs commands on the host; containers, remote hosts and cloud sandboxes are the supported isolation, and its OpenShell option injects credentials "from a Provider store" so they "never touch the sandbox filesystem".
+- **Secret folders**: environment scrubbing: provider keys and gateway tokens are stripped from the environment of shell, MCP and cron children unless declared. The document says plainly "This reduces casual exfiltration. It is not containment."
+- **Probe, remember, re-probe**: for Chromium's own sandbox in its desktop app, `apps/desktop/electron/windows-sandbox-fallback.ts` documents a recovery ladder: `--no-sandbox` only on strong evidence (a signature-confirmed death, or two consecutive aborted boots), "sticky per app version, not forever: after an update the sandbox is re-probed once". `linux-sandbox-relaunch.ts` restarts once with the flag on the command line. This concerns the app window, not agent commands, but it is the only design found that learns from a failed start and tries again later without the owner.
+- **Not checked**: the code-execution child's confinement.
+
+## Codync (leepokai/Codync, `9dae3e2bec9b91a4a42f85a943eb3983f95d0503`, 2026-11-23) and Rakazo (elie222/rakazo, `e64d73292179c16b29e4282b4ce6255e6e05d8be`, 2026-11-23)
+
+- **Codync**: no sandbox. `SECURITY.md`: a paired device "is meant to have full control of the computer" and agents "execute shell commands, by default without asking"; a per-bot permission policy and approval cards are the consent layer. Not checked: the policy code.
+- **Rakazo**: isolation is a computer per bot, in Docker, a cloud provider or the owner's machine (`README.md`); `SANDBOX_COMPUTER_EGRESS=restricted` blocks private networks and cloud metadata, not public hosts (`SECURITY.md`). Needs Docker Engine; behaviour when it is missing was not read. Not checked: the supervisor code.
 
 ## Not read in code
 
-Cindy, Hermes Agent, Codync, Rakazo, Bloks, Noodle, OpenFuse, OpenBot (CopilotKit), Grok Bot and agentes.chat were not opened in this pass (tool limits). The [agent directory note](agent-directory-2026-11-15.md) records, from their sites and READMEs only: OpenFuse runs its terminal in a container with no host mounts or credentials and networking off; Noodle is restricted by default with per-bot folder sharing, its mechanism "which its page does not say". Treat these as unchecked leads.
+Bloks, Noodle, OpenFuse, OpenBot (CopilotKit), Grok Bot and agentes.chat were not opened (research stopped at the products above). The [agent directory note](agent-directory-2026-11-15.md) records, from their sites and READMEs only: OpenFuse runs its terminal in a container with no host mounts or credentials and networking off; Noodle is restricted by default with per-bot folder sharing, its mechanism "which its page does not say". Treat these as unchecked leads.
 
 ## Recommendation for Outlore's Vault check
 
-1. Keep the automatic probe through `srt` in the service, with no owner step; no inspected product has a start-time read test, so there is no pattern to copy, only wording.
-2. Fail closed on the secret, never on the app: like OpenBot's Workspace only, the cost of a failed check is "no secret stored" plus one plain sentence; everything else keeps running.
-3. Classify before wording, as intentic does (error number first, text second): `sandbox_apply: Operation not permitted` means "this service already runs inside a sandbox", reported as Unverified, never as "not protected".
-4. Run `checkDependencies()` first and turn its `errors` into the reason (missing `bwrap`, `rg`, `socat`, unsupported platform); on Linux offer the fix, as OpenBot's installer does with its AppArmor rule.
-5. Probe ahead, not after a failure: OpenBot and T3Code only detect a broken sandbox by reading a failed command.
-6. Keep `failIfUnavailable: true` for Claude Code (its default is to run unsandboxed without a word) and keep the live turn as an optional proof only.
-7. Codex: look at `codex sandbox --sandbox-state-json` as the model-free probe path before building one; not verified here.
-8. No product hides a credential folder by default, so Outlore's `denyRead` of the Vault goes beyond the field; say so on the card with the limit stated, as OpenBot's Docker doc does.
+1. Probe automatically at start through `srt` in the service, with no owner step and no model; no inspected product has a start-time read test, so there is no pattern to copy, only wording. The live turn stays an optional stronger proof.
+2. Fail closed on the secret, never on the app: a failed check costs "no secret stored" and one plain sentence; threads and turns keep running (OpenBot's Workspace only, intentic).
+3. Three outcomes, never one: verified; not testable here with the cause (this service already runs inside a sandbox, so a nested Seatbelt fails with `sandbox_apply: Operation not permitted`; a missing `bwrap`, `rg` or `socat`); and readable, the only case worded "not protected". Classify by error number first, text second (intentic).
+4. Run `checkDependencies()` first and turn its `errors` into the reason; on Linux offer the fix, as OpenBot's installer does with its AppArmor rule.
+5. When the service is itself sandboxed, retry once from a clean child of the desktop app before reporting Unverified (Hermes relaunches itself once).
+6. Cache the result keyed by the Claude Code, `srt`, Codex and macOS versions and the deny list; re-probe when any changes (Hermes: sticky per version, re-probed after an update).
+7. Codex: try `codex sandbox macos` with `--sandbox-state-json` as the model-free probe before building one; not verified here.
+8. Keep `failIfUnavailable: true` for Claude Code (its default is to run unsandboxed without a word). When a harness command fails because of the sandbox, add the cause and next step to the thread's result, as Cindy does, and read the OS error, not only keywords (Codex's classifier is admittedly heuristic).
+9. No product hides a credential folder by default, so Outlore's `denyRead` goes beyond the field; say so on the card with the limit stated, as OpenBot's Docker doc does.

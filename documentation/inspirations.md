@@ -88,6 +88,7 @@ Review this list when starting a capability, and every few weeks: read each prod
   - a summary per run (archived, replied, drafted, flagged) and a mobile inbox showing which rows wait on the user.
 - **Taken**: none yet. Its approvals, a model per agent, and delegation are already in Outlore. Learning by demonstration, event triggers, and the held pile of drafts are candidates; compare them before adding to the [backlog](backlog.md).
 - **Attachments** (2026-11-10): paste only when `clipboardData.files` is not empty, so text paste is untouched; 10 MB and 4 files per message; jpeg and png shrunk to 1600 px at quality 0.7 on web and mobile; the server refuses an image for a model without vision, and the client offers to send it as a file. Taken: the paste check and the refusal for a model without vision (CHG-0102).
+- **Sandbox** (2026-11-23, from its source at `e64d732`; [research/sandbox-handling-2026-11-23.md](research/sandbox-handling-2026-11-23.md)): isolation is a computer per bot, in Docker, a cloud provider or the owner's machine, not an OS sandbox on the owner's session; an optional restricted-egress setting blocks private networks and cloud metadata but not public hosts. Behaviour when Docker is missing not read. Taken: none.
 - **License**: Apache 2.0 according to its site; not checked in the repository. Ideas only until it is checked.
 - **Check on**: its [docs](https://rakazo.com/docs/), [releases](https://github.com/elie222/rakazo/releases), and [integrations](https://rakazo.com/integrations/), especially how skills learned by demonstration are stored and how approvals are configured.
 
@@ -122,6 +123,7 @@ Review this list when starting a capability, and every few weeks: read each prod
   - an honest local-first statement: "Local-first does not mean no data ever leaves your device", naming what leaves (model requests, sync, remote access, plugins).
 - **Taken**: none yet. Separate harness and model choice, a thread per worker on its own runner, approvals answered from the phone, and budgets are already in Outlore. A planning, workers, and review split as a mission template, checkpoints, and its local-first statement are candidates; compare them before adding to the [backlog](backlog.md).
 - **Attachments** (2026-11-10): a pasted bitmap is written to disk as `clipboard-<time>.png`; Claude Code gets a base64 block after a magic-byte check and a resize to 1568 px (webp, 85), under 5 MB encoded, else an `@path` mention; Codex a `localImage`; its vision-bridge design records that a model such as GLM drops images silently, so only an up-front check catches it. Taken: the 1568 px reduction and the signature check (CHG-0102).
+- **Sandbox** (2026-11-23, from its source at `e6ba8eb`; [research/sandbox-handling-2026-11-23.md](research/sandbox-handling-2026-11-23.md)): no sandbox of its own; it recognises a Codex bubblewrap sandbox that cannot start by the shape of a failed command's output (every line starts with `bwrap: `) and appends a note to the tool result: the command never ran, do not retry, tell the user to switch the task to Full access or use a host that allows sandbox namespaces. Taken: none yet; the note is a candidate wording for Outlore's thread results.
 - **License**: Apache 2.0 according to its site; not checked in the repository. Code may be reused with its notice where a decision record allows it, once checked.
 - **Check on**: its [docs](https://github.com/makecindy/cindy/tree/main/docs) and [releases](https://github.com/makecindy/cindy/releases), especially its Pi harness, how it moves a task between devices, and how the review step is wired; as the open-source product closest to Outlore's multi-harness tree.
 
@@ -149,6 +151,7 @@ Nine products added on 2026-11-15 from a directory of personal and team agents, 
 - **What it is**: a team chat where people and AI agents share channels, in open beta; each agent has a role, tools, a budget, and a named person accountable for it; agents on iPhone and Android and on the web.
 - **Good ideas**: a named accountable person for each agent; approvals for merges, deploys, rollbacks and connected-app actions; agents picked for a message without an @mention.
 - **Taken**: none yet.
+- **Sandbox** (2026-11-23, from its source at `249dc60`; [research/sandbox-handling-2026-11-23.md](research/sandbox-handling-2026-11-23.md)): states that the operating system is the only boundary against an adversarial model; the default backend runs commands on the host, containers and cloud sandboxes are the supported isolation, and it scrubs provider keys from child environments while saying that is not containment. Its desktop app falls back to Chromium's `--no-sandbox` only on strong evidence of a failed start, keeps the fallback per app version and re-probes once after an update. Taken: none yet; the per-version re-probe is a candidate for the Vault check.
 - **License**: the site says AGPL; the repository was not opened to confirm it.
 - **Check on**: the GitHub organisation, for the license and repository; how its cloud computer per agent compares with Outlore's local-first stance.
 
@@ -164,6 +167,7 @@ Nine products added on 2026-11-15 from a directory of personal and team agents, 
 - **What it is**: a desktop app of personal agents that live on the user's machine, as chat contacts with Markdown memory, and rooms where agents take turns under a lead agent; version 3.0; FSL-1.1-MIT.
 - **Good ideas**: a lead agent who speaks last in a room; memory kept as plain Markdown files the user can open; separate workspaces, each with its own agents, keys, rooms and folder; a phone app that holds nothing and only shows the computer's agents.
 - **Taken**: none yet.
+- **Sandbox** (2026-11-23, from its source at `9dae3e2`): none; its `SECURITY.md` says a paired device has full control and agents run shell commands "by default without asking", with permission policies and approval cards as the consent layer. Taken: none.
 - **License**: FSL converts to MIT two years after each release; ideas only until a decision record allows code.
 - **Check on**: how Bloks Cloud relays email and WhatsApp (readable there, unlike other traffic); the Android app; a Stork listing says macOS only, which the README contradicts.
 
@@ -211,8 +215,8 @@ Nine products added on 2026-11-15 from a directory of personal and team agents, 
 
 Not inspirations as products but the sandboxes Outlore's harnesses run in; details and citations in [research/sandbox-handling-2026-11-23.md](research/sandbox-handling-2026-11-23.md).
 Claude Code's runtime `@anthropic-ai/sandbox-runtime` 0.0.83 (Apache-2.0) checks dependencies at startup (`checkDependencies()` returns `errors` and `warnings`) but does not test that a denial holds; with its default, an unavailable sandbox means commands run unsandboxed unless `sandbox.failIfUnavailable` is `true`; a bad settings file makes it exit instead of using defaults; it has no built-in credential deny list ("only the files and variables you list are restricted") and no detection of an enclosing sandbox on macOS. Its `denyRead` can be run model-free through its `srt` command, which Outlore's probe uses (CHG-0657).
-Codex: the installed 0.171.0 offers `codex sandbox <command>` (run under Seatbelt, with `--sandbox-state-json`), a possible model-free probe path; its source and security page were not read in this pass, so its failure behaviour is not checked.
-**Check on**: Codex's behaviour when its sandbox cannot start; whether `srt` gains an enclosing-sandbox check.
+Codex (`a1604a8`): picks Seatbelt or bubblewrap without testing it; `codex doctor` reads the configuration and checks that the Linux helper file exists, not that the kernel enforces anything; a kernel-level "sandbox integrity" checker exists but is paused and was telemetry only; a failed command is classed as sandbox-denied by exit code and output keywords ("no fully deterministic way to tell") and the approval policy decides whether to ask; protected paths are read-only, not unreadable. `codex sandbox macos <command>` is a possible model-free probe path.
+**Check on**: whether Codex turns its integrity checker back on or adds a start check; whether `srt` gains an enclosing-sandbox check.
 
 ## Interface and design
 
