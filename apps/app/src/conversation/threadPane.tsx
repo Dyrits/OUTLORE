@@ -159,6 +159,8 @@ export function ThreadPane({
   const hasActions = isOwnQuest || hasErrandActions(detail);
   const windowQuestTab = useContext(QuestTabButtonContext);
   const questTab = isInPane ? null : windowQuestTab;
+  // A separator after the last action only divides it from something that follows.
+  const hasAfterActions = questTab !== null || chrome != null;
   return (
     <CommentsProvider value={comments}>
       <RepliesProvider value={canReply ? { start: (message) => setReplyTo(message) } : null}>
@@ -213,14 +215,14 @@ export function ThreadPane({
                           )
                         }
                       />
-                      <HeaderSeparator />
+                      {hasAfterActions && <HeaderSeparator />}
                     </>
                   )}
                   {onNewErrand !== undefined && (
                     <>
                       <HeaderSeparator />
                       <NewErrandButton onPress={onNewErrand} />
-                      <HeaderSeparator />
+                      {hasAfterActions && <HeaderSeparator />}
                     </>
                   )}
                   {onNewErrand === undefined &&
