@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { choiceOfSwitch, choiceViewOf, globalOffNote } from "../../src/connectors/connectorChoices";
 import { appsAfterToggle, toolGroupsOf } from "../../src/connectors/connectorWords";
-import { canVerifyClaude, leftBehindOf, storingRefusalOf } from "../../src/connectors/vaultWords";
+import { leftBehindOf, storingRefusalOf } from "../../src/connectors/vaultWords";
 
 describe("choosing connectors in the Charter", () => {
   it("shows an inherited realm choice and permits resetting an explicit choice", () => {
@@ -42,14 +42,13 @@ describe("choosing connectors in the Charter", () => {
     expect(appsAfterToggle({ apps }, "mail", true)).toEqual(["calendar", "mail"]);
   });
 
-  it("shows the Vault's actual refusal and offers only the relevant verification", () => {
+  it("shows the Vault's actual refusal, with no step to take for it", () => {
     const protection = {
       isAllowed: false,
       reason: "Claude Code is unverified",
       unverified: [{ harness: "Claude Code", reason: "No stamp" }],
     };
     expect(storingRefusalOf({ protection, state: "Absent", stateReason: null })).toBe("Claude Code is unverified");
-    expect(canVerifyClaude({ protection })).toBe(true);
     expect(storingRefusalOf({ protection, state: "Locked", stateReason: "Keychain locked" })).toBe("Keychain locked");
   });
 

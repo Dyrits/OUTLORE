@@ -13,13 +13,15 @@ import {
   stampForVerifiedProbe,
   writeDenialStamp,
 } from "./claudeDenialStamp.ts";
+import { probeClaudeSandbox } from "./claudeSandboxProbe.ts";
 import { vaultProfileArgsOf, vaultProfileName } from "./codexVaultProfile.ts";
 import { type OpenCodeSandbox, wrappedCommandOf } from "./openCodeSandbox.ts";
-import { isInstalled, judgeDenial, probeMarkerName, probeVaultDenial, type RunCommand } from "./vaultDenial.ts";
+import { isInstalled, judgeDenial, probeMarkerPrefix, probeVaultDenial, type RunCommand } from "./vaultDenial.ts";
 
 // Each adapter's answer to "does your sandbox hide the Vault's folder" (ADR 0022): the probe of vaultDenial.ts through
-// that harness's own wrapper, or the reason none can run. Claude Code's is the stamp the owner-run live probe leaves
-// (claudeDenialStamp.ts), because its sandbox is applied only inside a live model turn.
+// that harness's own wrapper, or the reason none can run. Claude Code's wrapper is the sandbox library its sandbox is
+// built on (claudeSandboxProbe.ts); its sandbox itself is applied only inside a live model turn, which the optional
+// live probe below tries and stamps (claudeDenialStamp.ts).
 
 /** What each probe needs of its adapter's options; `run` lets a check stand in for the real commands. */
 type Executable = {
@@ -47,25 +49,29 @@ const runShort: RunCommand = (command, args) => runShortCommand(command, args, {
 const runLive: RunCommand = (command, args) => runShortCommand(command, args, {}, 180_000, tmpdir());
 
 /**
- * Claude Code at start: its sandbox is applied inside a live turn only, and no command of its own runs one without a
- * model, so a probe at start cannot try it. The answer is the stamp the owner-run live probe left in the Vault's
- * folder: Verified while it matches the running version and the sandbox settings the adapter writes, Unverified
- * (stale) once either changes, and Unverified (no stamp) until the owner runs the probe (VerifyClaudeVaultDenial).
+ * Claude Code at start, with no model and no step of the owner's: the sandbox library its sandbox is built on is asked
+ * to hide the Vault's folder from a `cat` (claudeSandboxProbe.ts), beside a control and an outside read. A clean denial
+ * is Verified; the owner-run live probe's stamp, when it matches the running version and the sandbox settings the
+ * adapter writes, is the stronger proof and gives the reason. Anything else is Unverified with the probe's own reason,
+ * as for the other harnesses.
  */
-export const readClaudeVaultDenial = (options: Executable, harness: HarnessName, folder: string, run?: RunCommand) => {
+export const readClaudeVaultDenial = (
+  options: Executable,
+  harness: HarnessName,
+  folder: string,
+  run?: RunCommand,
+  probe: typeof probeClaudeSandbox = probeClaudeSandbox,
+) => {
   const use = run ?? options.run ?? runShort;
   return Effect.gen(function* () {
     const version = yield* versionOf(options, use);
     if (version === null) return notInstalled(harness);
+    const probed = yield* probe(harness, folder, run ?? options.run);
+    if (probed.status !== "Verified") return probed;
     const stamp = yield* readDenialStamp(folder);
-    if (stamp === null)
-      return {
-        harness,
-        reason:
-          "Claude Code's sandbox can be tried only in a live turn, which a probe at start does not run; the owner can run it with VerifyClaudeVaultDenial.",
-        status: "Unverified",
-      } satisfies VaultDenial;
-    return judgeDenialStamp(harness, stamp, denialStampKeyOf(version, folder));
+    if (stamp === null) return probed;
+    const stamped = judgeDenialStamp(harness, stamp, denialStampKeyOf(version, folder));
+    return stamped.status === "Verified" ? stamped : probed;
   });
 };
 
@@ -74,7 +80,8 @@ export const readClaudeVaultDenial = (options: Executable, harness: HarnessName,
  * Vault's folder denied, asked to read a marker in it and a control beside it, and one without the denial, which must
  * read both. Only a clean denial, beside the controls, is Verified; on that the probe writes the stamp into the folder,
  * keyed to the version and the settings used. It spends a fraction of a cent of the owner's own Claude account, which
- * is why only the owner asks for it (VerifyClaudeVaultDenial).
+ * is why it is never run at start: the owner may ask for it (VerifyClaudeVaultDenial) as a stronger proof than the
+ * start-up probe's, which the Vault's rule does not wait for.
  */
 export const runClaudeVaultDenialLive = (
   options: Executable,
@@ -90,7 +97,7 @@ export const runClaudeVaultDenialLive = (
     if (version === null) return notInstalled(harness);
     const secrets = { control: randomBytes(16).toString("hex"), marker: randomBytes(16).toString("hex") };
     const scratch = mkdtempSync(join(tmpdir(), "outlore-claude-live-"));
-    const markerPath = join(folder, probeMarkerName);
+    const markerPath = join(folder, `${probeMarkerPrefix}${randomBytes(6).toString("hex")}`);
     const controlPath = join(scratch, "control");
     try {
       mkdirSync(folder, { mode: 0o700, recursive: true });

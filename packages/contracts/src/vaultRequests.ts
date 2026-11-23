@@ -89,9 +89,10 @@ export const RemoveSecret = Schema.TaggedStruct("RemoveSecret", {
 });
 
 /**
- * Runs the live check of Claude Code's sandbox, which only a live model turn can verify, and keeps its result for the
- * Vault's rule (a secret is stored only while every installed harness's denial is verified). It spends a fraction of a
- * cent of the owner's own Claude account, as the owner asking for it chose.
+ * Runs the live check of Claude Code's sandbox, a turn of the model, and keeps its result as a stamp that gives the
+ * Vault's start-up read a stronger reason. Optional: the Vault's rule no longer waits for it, since the start-up read
+ * tries Claude Code's denial through the sandbox library it is built on, with no model and no owner step. It spends a
+ * fraction of a cent of the owner's own Claude account, so only a request from the owner runs it and no screen offers it.
  */
 export const VerifyClaudeVaultDenial = Schema.TaggedStruct("VerifyClaudeVaultDenial", {});
 

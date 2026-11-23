@@ -6,6 +6,12 @@ Review this list when starting a capability, and every few weeks: read each prod
 
 ## Agent workspaces and harnesses
 
+### Keeping a secret out of a sandboxed agent's reach (2026-11-23, from the notes already in this folder; no new primary reading)
+
+- **What the others do**: none of the notes here records a check at start that a harness's own sandbox cannot read the folder holding its secrets; these products avoid the question by where the secret lives. OpenBot (nightly-labs) keeps its vault in the backend process and runs agent-written scripts in a QuickJS WebAssembly sandbox rather than `node:vm` because that process holds the vault ([openbot-browser](research/openbot-browser-2026-11-18.md)), and says plainly that the agents themselves run with full access. intentic injects secrets only into the turns that may use them and never writes them to disk (its site, above). OpenFuse's terminal runs in a container with no host-directory mounts or credentials (above).
+- **Taken**: nothing new in design. Outlore's rule (ADR 0022: no secret stored unless the denial is verified, the service the only reader) stays; the check now runs by itself at start, with no owner step (CHG-0657). Per-turn injection and a container with no mounts remain the stronger alternatives if the harnesses' sandboxes are ever judged not enough.
+- **Check on**: whether any of them documents how it tells a sandbox that cannot start from one that does not protect.
+
 ### OpenBot
 
 - **Good ideas**: an agent panel per agent; installing and updating each harness's command-line tool from its official package, checked against the published hash; how permissions are asked of casual users.

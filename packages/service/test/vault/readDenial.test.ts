@@ -3,9 +3,17 @@ import { existsSync, mkdirSync, readdirSync, realpathSync, writeFileSync } from 
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
+import { probeClaudeSandbox } from "../../src/harness/claudeSandboxProbe.ts";
 import { vaultProfileArgsOf, vaultProfileName } from "../../src/harness/codexVaultProfile.ts";
 import { wrappedCommandOf } from "../../src/harness/openCodeSandbox.ts";
-import { judgeDenial, probeMarkerName, probeVaultDenial, type RunCommand } from "../../src/harness/vaultDenial.ts";
+import {
+  judgeDenial,
+  nestedSandboxReason,
+  nestedSandboxReasonOf,
+  probeMarkerPrefix,
+  probeVaultDenial,
+  type RunCommand,
+} from "../../src/harness/vaultDenial.ts";
 import {
   readClaudeVaultDenial,
   readCodexVaultDenial,
@@ -44,6 +52,15 @@ describe("judging a probe of a harness's denial of the Vault's folder", () => {
     expect(judgeDenial("codex", { ...reads, insideControl: read("", 71) }, secrets).status).toBe("Unverified");
   });
 
+  it("says a sandbox that could not start inside another one is not a leak, and not a protected folder either", () => {
+    const refused = { code: 71, output: "sandbox-exec: sandbox_apply: Operation not permitted", stdout: "" };
+    expect(judgeDenial("codex", { ...reads, insideControl: refused }, secrets)).toEqual({
+      harness: "codex",
+      reason: nestedSandboxReason,
+      status: "Unverified",
+    });
+  });
+
   it("fails closed when the marker's read exited cleanly but showed nothing", () => {
     expect(judgeDenial("codex", { ...reads, insideMarker: read("", 0) }, secrets).status).toBe("Unverified");
   });
@@ -56,7 +73,7 @@ describe("probing with a fake runner", () => {
     (command, args) =>
       Effect.sync(() => {
         const path = args.at(-1) ?? "";
-        if (isHidden && path.endsWith(probeMarkerName) && command !== "/bin/cat") return read("", 1);
+        if (isHidden && path.includes(probeMarkerPrefix) && command !== "/bin/cat") return read("", 1);
         const found = spawnSync("/bin/cat", [path], { encoding: "utf8" });
         return read(found.stdout, found.status);
       });
@@ -67,6 +84,41 @@ describe("probing with a fake runner", () => {
       const folder = join(temporary("outlore-probe-"), "vault");
       expect((yield* probeVaultDenial("opencode", folder, wrap, catting(true))).status).toBe("Verified");
       expect(readdirSync(folder)).toEqual([]);
+    }),
+  );
+
+  it.effect(
+    "keeps probes at the same time from reading each other's marker, which each writes under its own name",
+    () =>
+      Effect.gen(function* () {
+        const folder = join(temporary("outlore-probe-"), "vault");
+        // Several probes of one folder at once, as the Vault asks every harness together: with one shared marker name the
+        // later writes replaced the earlier and the first to finish removed the others', so some found no marker.
+        const reports = yield* Effect.all(
+          [1, 2, 3, 4].map(() => probeVaultDenial("opencode", folder, wrap, catting(true))),
+          { concurrency: "unbounded" },
+        );
+        expect(reports.map(({ status }) => status)).toEqual(["Verified", "Verified", "Verified", "Verified"]);
+        expect(readdirSync(folder)).toEqual([]);
+      }),
+  );
+
+  it.effect("says plainly that the service cannot use the folder, when it cannot write there", () =>
+    Effect.gen(function* () {
+      const blocker = join(temporary("outlore-probe-"), "vault");
+      writeFileSync(blocker, "a file where the folder should be");
+      const report = yield* probeVaultDenial("opencode", join(blocker, "inner"), wrap, catting(true));
+      expect(report.status).toBe("Unverified");
+      expect(report.reason).toContain("cannot write and read back a file in the Vault's folder");
+    }),
+  );
+
+  it.effect("recognises a service that runs inside a sandbox from the sandbox's own refusal", () =>
+    Effect.gen(function* () {
+      const refusing: RunCommand = () =>
+        Effect.succeed(read("sandbox-exec: sandbox_apply: Operation not permitted", 71));
+      expect(yield* nestedSandboxReasonOf(refusing)).toBe(process.platform === "darwin" ? nestedSandboxReason : null);
+      expect(yield* nestedSandboxReasonOf(() => Effect.succeed(read("", 0)))).toBeNull();
     }),
   );
 
@@ -88,7 +140,7 @@ describe("a harness that is not installed, or whose sandbox cannot be tried at s
       Effect.succeed(read("", code));
 
   it.effect(
-    "says Claude Code's denial is unverified, for want of a probe that needs no model, or that it is not installed",
+    "says Claude Code's denial is unverified when nothing could be tried with a fake runner, or that it is not installed",
     () =>
       Effect.gen(function* () {
         expect(yield* readClaudeVaultDenial({ command: "claude", run: run(0) }, "claude", "/data/vault")).toMatchObject(
@@ -170,6 +222,27 @@ describe.skipIf(!canApplySeatbelt)("OpenCode's Seatbelt profile and the Vault's 
         yield* readOpenCodeVaultDenial({ ...options, sandbox: { ...sandbox, hidden: [] } }, "opencode", folder),
       ).toMatchObject({ reason: "A command inside its sandbox could read the Vault's folder.", status: "Unverified" });
       expect(readdirSyncSafe(folder)).toEqual(["marker"]);
+    }),
+  );
+});
+
+describe.skipIf(!canApplySeatbelt)("Claude Code's sandbox library and the Vault's folder", () => {
+  it.effect("verifies the denial with no model and no owner step, and leaves no marker behind", () =>
+    Effect.gen(function* () {
+      const { folder } = vaultWithMarker();
+      const report = yield* probeClaudeSandbox("claude", folder);
+      expect(report).toMatchObject({ harness: "claude", status: "Verified" });
+      expect(readdirSync(folder)).toEqual(["marker"]);
+    }),
+  );
+
+  it.effect("keeps two probes at once apart, the library holding one manager", () =>
+    Effect.gen(function* () {
+      const { folder } = vaultWithMarker();
+      const reports = yield* Effect.all([probeClaudeSandbox("claude", folder), probeClaudeSandbox("claude", folder)], {
+        concurrency: "unbounded",
+      });
+      expect(reports.map(({ status }) => status)).toEqual(["Verified", "Verified"]);
     }),
   );
 });

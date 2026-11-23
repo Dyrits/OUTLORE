@@ -13,8 +13,6 @@ export {
 } from "./connectorWords";
 export {
   addedTextOf,
-  canVerifyClaude,
-  denialResultOf,
   holderLineOf,
   leftBehindOf,
   type SecretSlot,
@@ -23,5 +21,4 @@ export {
   storingRefusalOf,
   vaultStateLabels,
   vaultStateNoteOf,
-  verifyNote,
 } from "./vaultWords";
