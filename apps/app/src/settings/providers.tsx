@@ -214,6 +214,7 @@ function HarnessState({ harness, isUpdating }: { harness: HarnessInfo; isUpdatin
  */
 function HarnessCard({
   client,
+  error,
   harness,
   isBusy,
   isUpdating,
@@ -222,6 +223,7 @@ function HarnessCard({
   onUpdate,
 }: {
   client: ServiceClient;
+  error: string | null;
   harness: HarnessInfo;
   isBusy: boolean;
   isUpdating: boolean;
@@ -248,8 +250,13 @@ function HarnessCard({
           <Button isDisabled={isBusy} label={harness.problem === null ? "Update" : "Install"} onPress={onUpdate} />
         )}
       </View>
+      {error !== null && (
+        <Text accessibilityRole="alert" style={[styles.error, local.problem]}>
+          {error}
+        </Text>
+      )}
       {harness.problem !== null ? (
-        <Text style={[styles.error, local.problem]}>{harness.problem}</Text>
+        error === null && <Text style={[styles.error, local.problem]}>{harness.problem}</Text>
       ) : (
         <View style={local.accounts}>
           {harness.accounts.map((account) => (
@@ -286,7 +293,7 @@ export function ProvidersSection({
   onRefresh: () => void;
 }) {
   const [updating, setUpdating] = useState<HarnessName | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ harness: HarnessName; message: string } | null>(null);
   const update = (harness: HarnessInfo) => {
     if (updating !== null) return;
     setUpdating(harness.name);
@@ -298,9 +305,9 @@ export function ProvidersSection({
           setUpdating(null);
           onChanged(list);
         },
-        (reason: Error) => {
+        (reason: unknown) => {
           setUpdating(null);
-          setError(reason.message);
+          setError({ harness: harness.name, message: messageOf(reason) });
         },
       );
   };
@@ -315,19 +322,19 @@ export function ProvidersSection({
           <Text style={styles.link}>Refresh</Text>
         </Pressable>
       </View>
-      {error !== null && <Text style={styles.error}>{error}</Text>}
       {harnesses === null ? (
         <Text style={styles.muted}>Asking each harness who is signed in…</Text>
       ) : (
         harnesses.harnesses.map((harness) => (
           <HarnessCard
             client={client}
+            error={error?.harness === harness.name ? error.message : null}
             harness={harness}
             isBusy={updating !== null}
             isUpdating={updating === harness.name}
             key={harness.name}
             onChanged={onChanged}
-            onError={setError}
+            onError={(message) => setError(message === null ? null : { harness: harness.name, message })}
             onUpdate={() => update(harness)}
           />
         ))

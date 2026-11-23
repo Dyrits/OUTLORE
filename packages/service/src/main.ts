@@ -1,6 +1,7 @@
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 // Entry point when Electron starts the service as a utilityProcess.
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { Cause, Config, Effect, Exit, Layer, Predicate } from "effect";
 import { Harness, modelsDevSourceLayer, noPriceSourceLayer, sandboxProblem, vaultFolderOf } from "./core/index.ts";
 import { fakeHarnessLayer, fakeHarnessToolsLayer, liveHarnessToolsLayer, makeHarnessRouter } from "./harness/index.ts";
@@ -31,15 +32,24 @@ const parentPortOf = (host: unknown): ParentPort | null => {
 
 const parentPort = parentPortOf(process);
 
+/** Uses the installed legacy executable when present, otherwise the vendor installer’s executable. */
+const defaultAntigravityCommand = () => {
+  const suffix = process.platform === "win32" ? ".exe" : "";
+  const folders = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
+  const legacy = folders.some((folder) => existsSync(join(folder, `antigravity${suffix}`)));
+  return legacy ? "antigravity" : "agy";
+};
+
 // A missing variable fails the program through Config instead of throwing at import.
 const liveLayer = Layer.unwrap(
   Effect.gen(function* () {
     const dataDirectory = yield* Config.NonEmptyString("OUTLORE_DATA_DIR");
     // OUTLORE_HARNESS=fake selects the echo harness for checks.
     const harnessName = yield* Config.String("OUTLORE_HARNESS").pipe(Config.withDefault("claude"));
+    const antigravityCommand = yield* Effect.sync(defaultAntigravityCommand);
     const commands = {
       // The Antigravity CLI fronts Gemini's models through ACP (`antigravity acp`, home in --gemini-dir).
-      antigravity: yield* Config.String("OUTLORE_ANTIGRAVITY_PATH").pipe(Config.withDefault("antigravity")),
+      antigravity: yield* Config.String("OUTLORE_ANTIGRAVITY_PATH").pipe(Config.withDefault(antigravityCommand)),
       claude: yield* Config.String("OUTLORE_CLAUDE_PATH").pipe(Config.withDefault("claude")),
       // Cline is a plain ACP server (`cline --acp`).
       cline: yield* Config.String("OUTLORE_CLINE_PATH").pipe(Config.withDefault("cline")),

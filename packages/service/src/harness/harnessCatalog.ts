@@ -33,8 +33,8 @@ export type HarnessFacts = {
   readonly fixedModels: ReadonlyArray<ModelOption> | null;
   /** Whether the harness asks its permission prompts through the `answer_prompt` thread tool (ADR 0005). */
   readonly hasPromptTool: boolean;
-  /** The tool that installs the harness's official package when the Workshop offers Install: npm, or uv for a Python package; "manual" for a harness installed from its own source, whose Install must explain that instead. */
-  readonly installVia: "npm" | "uv" | "manual";
+  /** The distribution method the Workshop uses to install the harness. */
+  readonly installVia: "npm" | "uv" | "script";
   /** The harness's name as the owner reads it. */
   readonly label: string;
   /** The package whose newest release is the harness's newest; read from its registry (`releaseRegistry`). */
@@ -80,16 +80,12 @@ export const harnessFacts = {
     configVariable: "GEMINI_HOME",
     fixedModels: null,
     hasPromptTool: false,
-    // The CLI ships as release archives of google-antigravity/antigravity-cli with SHA-256 checksums, so the
-    // Install explanation covers the download instead of running a registry package.
-    installVia: "manual",
+    installVia: "script",
     label: "Gemini",
     // The newest version is what the GitHub releases carry; no registry holds one to read.
     packageName: "",
     releaseRegistry: "none",
-    // No sign-in command of the CLI's own is verified: its sign-in is the ACP `oauth-personal` flow, so Sign-in
-    // explains and the owner signs in through Google inside the provider's own surface, then presses Refresh.
-    signInArgs: null,
+    signInArgs: ["acp", "--login"],
     signInNeedsNoTerminal: false,
     supportsAddedAccounts: false,
     updateArgs: null,
@@ -119,11 +115,9 @@ export const harnessFacts = {
     configVariable: "CLINE_DATA_DIR",
     fixedModels: null,
     hasPromptTool: false,
-    // The CLI ships as the npm registry's platform packages (@cline/cli-<target>, pinned 3.0.68 Apache-2.0), so
-    // the Install explanation covers them instead of running a target-qualified package name.
-    installVia: "manual",
+    installVia: "npm",
     label: "Cline",
-    packageName: "",
+    packageName: "cline",
     releaseRegistry: "none",
     // The CLI's device-flow sign-in, with the same environment every spawn carries upstream (self-update
     // suppressed, local session backend); a live check verifies the code it prints in the terminal.
@@ -159,11 +153,9 @@ export const harnessFacts = {
     configVariable: "COPILOT_HOME",
     fixedModels: null,
     hasPromptTool: false,
-    // The Copilot CLI ships as release archives of github/copilot-cli with SHA-256 checksums, so the Install
-    // explanation covers the download instead of running a registry package.
-    installVia: "manual",
+    installVia: "npm",
     label: "GitHub Copilot",
-    packageName: "",
+    packageName: "@github/copilot",
     releaseRegistry: "none",
     // `copilot login` opens its browser sign-in; the environment squeezes the CLI's self-update off, exactly as
     // upstream sets it at every spawn, and a live check verifies the browser flow's completion.
@@ -186,9 +178,7 @@ export const harnessFacts = {
     configVariable: "CURSOR_CONFIG_DIR",
     fixedModels: null,
     hasPromptTool: false,
-    // The `cursor-agent` CLI arrives from the ACP registry's pinned descriptor upstream (not a package registry),
-    // so the Install explanation covers it instead of running anything.
-    installVia: "manual",
+    installVia: "script",
     label: "Cursor",
     packageName: "",
     releaseRegistry: "none",
@@ -210,9 +200,7 @@ export const harnessFacts = {
     configVariable: "XDG_DATA_HOME",
     fixedModels: null,
     hasPromptTool: false,
-    // The CLI ships from Cognition's own manifest with SHA-256 checksums, so the Install explanation covers the
-    // download instead of running a registry package.
-    installVia: "manual",
+    installVia: "script",
     label: "Devin",
     packageName: "",
     releaseRegistry: "none",
@@ -232,9 +220,7 @@ export const harnessFacts = {
     configVariable: "HERMES_HOME",
     fixedModels: null,
     hasPromptTool: false,
-    // Hermes arrives by its own Git source (its installer stamps "Install method: git"), so the Install button
-    // explains that instead of running a registry package.
-    installVia: "manual",
+    installVia: "script",
     label: "Hermes",
     // The newest version is what its own `hermes update --check` knows; no registry holds it.
     packageName: "",
@@ -255,9 +241,7 @@ export const harnessFacts = {
     configVariable: "MUSE_HOME",
     fixedModels: null,
     hasPromptTool: false,
-    // Muse's CLI is on no package registry: it ships through Meta's signed muse-stable manifest, so the
-    // Install explanation covers it (the npm SDK is a service dependency, not the CLI).
-    installVia: "manual",
+    installVia: "script",
     label: "Muse",
     // The newest version is what the muse-stable channel carries; no registry holds the CLI.
     packageName: "",
@@ -295,12 +279,9 @@ export const harnessFacts = {
     configVariable: "PI_CODING_AGENT_DIR",
     fixedModels: null,
     hasPromptTool: false,
-    // Pi ships as release archives of earendil-works/pi on GitHub (tarball plus published SHA-256), not through a
-    // package registry, so the Install explanation covers the download instead of running an install tool.
-    installVia: "manual",
+    installVia: "npm",
     label: "Pi",
-    // The newest version is what the GitHub releases page carries; no registry holds a version to read.
-    packageName: "",
+    packageName: "@earendil-works/pi-coding-agent",
     releaseRegistry: "none",
     // Sign-in is `/login` inside Pi's own interactive screen in a terminal window, closed when it is done; a
     // plain `pi` run opens it, so the arguments list is empty.

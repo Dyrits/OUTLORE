@@ -3,7 +3,7 @@ import { chmodSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { installHarnessPackage } from "../../src/harness/harnessInstallation.ts";
+import { vi } from "vitest";
 import { terminalSignInScript } from "../../src/harness/harnessTools.ts";
 import { HarnessTools, liveHarnessToolsLayer } from "../../src/index.ts";
 import { callTool, listToolNames } from "../fixtures/mcp.ts";
@@ -167,26 +167,6 @@ describe("installing and updating harnesses", () => {
       expect(result.message).toContain("already installed");
     }).pipe(Effect.provide(layer));
   });
-
-  it.live("explains instead of installing a harness that arrives from its own source", () => {
-    const runs: Array<ReadonlyArray<unknown>> = [];
-    return Effect.gen(function* () {
-      // Hermes's and Pi's Install run no package manager: Hermes arrives from its own Git source and Pi from
-      // its GitHub release archives (installVia manual).
-      const failure = yield* installHarnessPackage("hermes", (...args) => {
-        runs.push(args);
-        return Effect.succeed({ code: 0, output: "", stdout: "" });
-      }).pipe(Effect.flip);
-      expect(failure.message).toContain("installed from its own source");
-      expect(failure.message).toContain("Refresh");
-      const pi = yield* installHarnessPackage("pi", (...args) => {
-        runs.push(args);
-        return Effect.succeed({ code: 0, output: "", stdout: "" });
-      }).pipe(Effect.flip);
-      expect(pi.message).toContain("installed from its own source");
-      expect(runs).toEqual([]);
-    });
-  });
 });
 
 describe("signing in to a harness", () => {
@@ -268,16 +248,36 @@ describe("signing in to a harness", () => {
     expect(script).toContain('exit "$status"');
   });
 
-  it.live("refuses Sign-in on a harness that has no sign-in command of its own", () => {
+  it.live("offers Gemini's ACP sign-in while Devin still needs its own surface", () => {
     return Effect.gen(function* () {
       const tools = yield* HarnessTools;
-      // Devin's and Antigravity's only sign-in rides their ACP flow (upstream pins no CLI sign-in to run), so
-      // Sign-in explains instead of opening a terminal; each message names its own harness.
       const failure = yield* tools.openSignIn("devin", null).pipe(Effect.flip);
       expect(failure.message).toContain("Devin has no sign-in command of its own");
       expect(failure.message).toContain("press Refresh");
-      const gemini = yield* tools.openSignIn("antigravity", null).pipe(Effect.flip);
-      expect(gemini.message).toContain("Gemini has no sign-in command of its own");
+      const folder = temporary("outlore-gemini-sign-in-");
+      const captured = join(folder, "captured");
+      const opener = join(folder, "open");
+      writeFileSync(opener, `#!/bin/sh\n/bin/cat "$1" > ${JSON.stringify(captured)}\n/bin/rm "$1"\n`, {
+        mode: 0o755,
+      });
+      const path = `${folder}:${process.env.PATH}`;
+      vi.stubEnv("PATH", path);
+      vi.stubEnv("GEMINI_HOME", join(folder, "Gemini's state"));
+      try {
+        const expected = `'antigravity' 'acp' '--gemini-dir=${folder}/Gemini'\\''s state' '--app-data-dir=antigravity-acp' --login`;
+        if (process.platform === "darwin") {
+          expect(yield* tools.openSignIn("antigravity", null)).toBe("Opened");
+          const script = readFileSync(captured, "utf8");
+          expect(script).toContain(expected);
+          expect(script).toContain(`export GEMINI_HOME='${folder}/Gemini'\\''s state'`);
+          expect(script).toContain(`export PATH='${path}'`);
+        } else {
+          const manual = yield* tools.openSignIn("antigravity", null).pipe(Effect.flip);
+          expect(manual.message).toBe(`Open a terminal on this computer and run: ${expected}`);
+        }
+      } finally {
+        vi.unstubAllEnvs();
+      }
     }).pipe(
       Effect.provide(
         liveHarnessToolsLayer({

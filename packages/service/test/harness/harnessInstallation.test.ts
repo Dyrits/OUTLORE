@@ -9,6 +9,9 @@ describe("installing harness packages", () => {
     ["claude", "@anthropic-ai/claude-code"],
     ["codex", "@openai/codex"],
     ["opencode", "opencode-ai"],
+    ["cline", "cline"],
+    ["copilot", "@github/copilot"],
+    ["pi", "@earendil-works/pi-coding-agent"],
   ];
   for (const [harness, packageName] of packages) {
     it.effect(`installs ${harness} from its official package`, () =>
@@ -20,6 +23,35 @@ describe("installing harness packages", () => {
         };
         yield* installHarnessPackage(harness, run, "darwin");
         expect(calls).toEqual([["npm", ["install", "--global", `${packageName}@latest`], {}, 300000]]);
+      }),
+    );
+  }
+
+  const scripts: ReadonlyArray<readonly [HarnessName, string]> = [
+    ["antigravity", "https://antigravity.google/cli/install.sh"],
+    ["cursor", "https://cursor.com/install"],
+    ["devin", "https://cli.devin.ai/install.sh"],
+    ["hermes", "https://hermes-agent.nousresearch.com/install.sh"],
+    ["muse", "https://dev.meta.ai/install.sh"],
+  ];
+  for (const [harness, url] of scripts) {
+    it.effect(`runs the official ${harness} installer on macOS and Linux`, () =>
+      Effect.gen(function* () {
+        const calls: Array<unknown> = [];
+        const run: typeof runShortCommand = (command, args, environment, timeout) => {
+          calls.push({ command, environment, options: args.slice(4), timeout, url: args[3] });
+          expect(args[0]).toBe("-c");
+          expect(args[1]).toContain("curl");
+          return Effect.succeed({ code: 0, output: "installed", stdout: "installed" });
+        };
+        for (const platform of ["darwin", "linux"] as const) {
+          yield* installHarnessPackage(harness, run, platform);
+        }
+        const options = harness === "hermes" ? ["--non-interactive", "--skip-browser", "--skip-computer-use"] : [];
+        expect(calls).toEqual([
+          { command: "bash", environment: {}, options, timeout: 300000, url },
+          { command: "bash", environment: {}, options, timeout: 300000, url },
+        ]);
       }),
     );
   }

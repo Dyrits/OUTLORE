@@ -20,7 +20,7 @@ const installers = {
     prerequisite: "uv",
   },
 } as const satisfies Record<
-  Exclude<HarnessFacts["installVia"], "manual">,
+  Exclude<HarnessFacts["installVia"], "script">,
   {
     readonly argsOf: (packageName: string) => ReadonlyArray<string>;
     readonly permissionAdvice: string;
@@ -28,21 +28,58 @@ const installers = {
   }
 >;
 
-/**
- * Installs an official harness package with the computer's npm (and its configured global prefix) or uv; a harness that
- * arrives from its own source (`installVia: "manual"`, such as Hermes by Git) cannot be installed from a registry,
- * so its Install explains that instead of running anything.
- */
+const officialScripts: Partial<Record<HarnessName, { url: string; args?: ReadonlyArray<string> }>> = {
+  antigravity: { url: "https://antigravity.google/cli/install.sh" },
+  cursor: { url: "https://cursor.com/install" },
+  devin: { url: "https://cli.devin.ai/install.sh" },
+  hermes: {
+    args: ["--non-interactive", "--skip-browser", "--skip-computer-use"],
+    url: "https://hermes-agent.nousresearch.com/install.sh",
+  },
+  muse: { url: "https://dev.meta.ai/install.sh" },
+};
+
+// Download completely before running so a failed transfer cannot execute a partial installer.
+const runOfficialScript = [
+  "installer=$(mktemp) || exit",
+  "trap 'rm -f \"$installer\"' EXIT",
+  "url=$1",
+  "shift",
+  'curl --fail --silent --show-error --location --proto "=https" --proto-redir "=https" --output "$installer" "$url" || exit',
+  'bash "$installer" "$@" </dev/null',
+].join("\n");
+
+const outputDetailOf = (output: string) => output.trim().split("\n").slice(-3).join(" ");
+
+/** Installs a harness using its official package or provider installer. */
 export const installHarnessPackage = Effect.fnUntraced(function* (
   harness: HarnessName,
   run: typeof runShortCommand = runShortCommand,
   platform: NodeJS.Platform = process.platform,
 ) {
   const facts = harnessFacts[harness];
-  if (facts.installVia === "manual")
-    return yield* invalid(
-      `${facts.label} is installed from its own source rather than a package registry. Follow its installation instructions, then press Refresh.`,
+  if (facts.installVia === "script") {
+    const script = officialScripts[harness];
+    if (script === undefined || (platform !== "darwin" && platform !== "linux"))
+      return yield* invalid(
+        `Automatic installation of ${facts.label} is available on macOS and Linux. Install it on this host using the provider’s instructions, then press Refresh.`,
+      );
+    const result = yield* run(
+      "bash",
+      ["-c", runOfficialScript, "provider-installer", script.url, ...(script.args ?? [])],
+      {},
+      updateTimeoutMillis,
     );
+    if (result.code !== 0) {
+      const detail = outputDetailOf(result.output);
+      const advice =
+        result.code === null
+          ? "The installer could not start or timed out. Make sure Bash and curl are installed."
+          : "";
+      return yield* invalid(`${facts.label} did not install. ${advice} ${detail}`.trim());
+    }
+    return;
+  }
   const tool = facts.installVia;
   const args = installers[tool].argsOf(facts.packageName);
   // npm is a .cmd launcher on Windows; the command contains only catalog constants.
@@ -53,7 +90,7 @@ export const installHarnessPackage = Effect.fnUntraced(function* (
     updateTimeoutMillis,
   );
   if (result.code !== 0) {
-    const detail = result.output.trim().split("\n").slice(-3).join(" ");
+    const detail = outputDetailOf(result.output);
     const advice =
       result.code === null
         ? `${tool} could not run or timed out. Install ${installers[tool].prerequisite}, then try again.`

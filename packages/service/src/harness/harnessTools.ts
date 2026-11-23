@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { EffortChoice, HarnessName, ModelOption, SignInState } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer } from "effect";
 import { fieldOf, invalid, runShortCommand, type ServiceFailure, textFieldOf } from "../core/index.ts";
+import { antigravityArgsOf, antigravityGeminiHome } from "./antigravityProvider.ts";
 import { accountEnvironmentOf, type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
 import { harnesses } from "./harnesses.ts";
 import { installHarnessPackage, updateTimeoutMillis } from "./harnessInstallation.ts";
@@ -266,7 +267,9 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
         return yield* invalid(
           `${facts.label} has no sign-in command of its own: its sign-in happens inside the provider's own surface (the pinned upstream carries no CLI sign-in to run). Sign in there yourself, then press Refresh.`,
         );
-      const command = [quoted(commands[harness]), ...facts.signInArgs].join(" ");
+      const geminiHome = harness === "antigravity" ? (configDirectory ?? antigravityGeminiHome(process.env)) : null;
+      const args = geminiHome === null ? facts.signInArgs : [...antigravityArgsOf(geminiHome).map(quoted), "--login"];
+      const command = [quoted(commands[harness]), ...args].join(" ");
       const variable = facts.configVariable;
       // The sign-in's own environment - an auto-update squeeze or a link-flow flag - rides along on both paths,
       // exactly as the pinned upstream launches the sign-in; a turn never carries it. (Read through the full
@@ -308,7 +311,10 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
           script,
           terminalSignInScript({
             command,
-            environment: envEntries(configDirectory).map(([name, value]) => `${name}=${quoted(value)}`),
+            environment: [
+              ...envEntries(geminiHome ?? configDirectory),
+              ...(geminiHome !== null && process.env.PATH !== undefined ? [["PATH", process.env.PATH] as const] : []),
+            ].map(([name, value]) => `${name}=${quoted(value)}`),
             label: facts.label,
             path: script,
           }),
