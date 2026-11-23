@@ -95,7 +95,7 @@ function ChoiceInput({
       {choice.header !== "" && <Text style={styles.muted}>{choice.header}</Text>}
       <Text style={styles.questionText}>{choice.question}</Text>
       {choice.multiple && <Text style={styles.muted}>Choose any number.</Text>}
-      <View style={styles.chips}>
+      <View style={styles.options}>
         {choice.options.map((option) => (
           <Pressable
             accessibilityLabel={option.label}
@@ -103,7 +103,7 @@ function ChoiceInput({
             accessibilityState={{ selected: draft.selected.includes(option.label) }}
             key={option.label}
             onPress={() => onChange(pickOption(choice, draft, option.label))}
-            style={[styles.answer, draft.selected.includes(option.label) && styles.answerPrimary]}
+            style={[styles.answer, styles.option, draft.selected.includes(option.label) && styles.answerPrimary]}
           >
             <Text style={[styles.answerText, draft.selected.includes(option.label) && styles.answerTextPrimary]}>
               {option.label}

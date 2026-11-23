@@ -276,10 +276,42 @@ function HarnessCard({
   );
 }
 
+/** A harness that is not installed yet, in the "Install another provider" list: its logo, name, Install, and any failure. */
+function MissingRow({
+  error,
+  harness,
+  isBusy,
+  isUpdating,
+  onInstall,
+}: {
+  error: string | null;
+  harness: HarnessInfo;
+  isBusy: boolean;
+  isUpdating: boolean;
+  onInstall: () => void;
+}) {
+  return (
+    <View style={local.card}>
+      <View style={local.head}>
+        <ProviderMark harness={harness.name} size={40} />
+        <Text style={local.name}>{harnessLabels[harness.name]}</Text>
+        <View style={local.state}>{isUpdating && <Text style={styles.muted}>Installing…</Text>}</View>
+        {!isUpdating && <Button isDisabled={isBusy} label="Install" onPress={onInstall} />}
+      </View>
+      {error !== null && (
+        <Text accessibilityRole="alert" style={[styles.error, local.problem]}>
+          {error}
+        </Text>
+      )}
+    </View>
+  );
+}
+
 /**
- * The Workshop's Providers section: a card for each harness holding its version, its update, and its accounts (the
- * Harnesses and Accounts cards, merged). Refresh asks each harness again; missing harnesses offer Install, and
- * installed ones with a newer version offer Update.
+ * The Workshop's Providers section: a card for each installed harness holding its version, its update, and its
+ * accounts (the Harnesses and Accounts cards, merged). Refresh asks each harness again; installed ones with a newer
+ * version offer Update. The missing ones stay out of sight behind "Install another provider", which lists them with
+ * Install.
  */
 export function ProvidersSection({
   client,
@@ -293,6 +325,7 @@ export function ProvidersSection({
   onRefresh: () => void;
 }) {
   const [updating, setUpdating] = useState<HarnessName | null>(null);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [error, setError] = useState<{ harness: HarnessName; message: string } | null>(null);
   const update = (harness: HarnessInfo) => {
     if (updating !== null) return;
@@ -311,6 +344,7 @@ export function ProvidersSection({
         },
       );
   };
+  const missing = harnesses?.harnesses.filter((harness) => harness.problem !== null) ?? [];
   return (
     <>
       <View style={local.intro}>
@@ -325,19 +359,44 @@ export function ProvidersSection({
       {harnesses === null ? (
         <Text style={styles.muted}>Asking each harness who is signed in…</Text>
       ) : (
-        harnesses.harnesses.map((harness) => (
-          <HarnessCard
-            client={client}
-            error={error?.harness === harness.name ? error.message : null}
-            harness={harness}
-            isBusy={updating !== null}
-            isUpdating={updating === harness.name}
-            key={harness.name}
-            onChanged={onChanged}
-            onError={(message) => setError(message === null ? null : { harness: harness.name, message })}
-            onUpdate={() => update(harness)}
-          />
-        ))
+        <>
+          {harnesses.harnesses
+            .filter((harness) => harness.problem === null)
+            .map((harness) => (
+              <HarnessCard
+                client={client}
+                error={error?.harness === harness.name ? error.message : null}
+                harness={harness}
+                isBusy={updating !== null}
+                isUpdating={updating === harness.name}
+                key={harness.name}
+                onChanged={onChanged}
+                onError={(message) => setError(message === null ? null : { harness: harness.name, message })}
+                onUpdate={() => update(harness)}
+              />
+            ))}
+          {missing.length > 0 && (
+            <>
+              <View style={local.more}>
+                <Button
+                  label={isPickerOpen ? "Hide providers to install" : "Install another provider"}
+                  onPress={() => setIsPickerOpen(!isPickerOpen)}
+                />
+              </View>
+              {isPickerOpen &&
+                missing.map((harness) => (
+                  <MissingRow
+                    error={error?.harness === harness.name ? error.message : null}
+                    harness={harness}
+                    isBusy={updating !== null}
+                    isUpdating={updating === harness.name}
+                    key={harness.name}
+                    onInstall={() => update(harness)}
+                  />
+                ))}
+            </>
+          )}
+        </>
       )}
     </>
   );
@@ -355,6 +414,7 @@ const local = StyleSheet.create({
   card: { ...outline, ...round, backgroundColor: colors.canvas, overflow: "hidden" },
   head: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 14, padding: 14 },
   intro: { alignItems: "flex-start", flexDirection: "row", gap: 16 },
+  more: { alignItems: "flex-start" },
   name: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.lg, fontWeight: "700" },
   pill: {
     alignItems: "center",

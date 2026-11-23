@@ -224,6 +224,9 @@ export const styles = StyleSheet.create({
   messageRowUser: { alignSelf: "flex-end" },
   missionRowMain: { gap: 2 },
   muted: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.md },
+  /** One option of a choice, as wide as its card, so a long description wraps instead of running out of the box. */
+  option: { alignSelf: "stretch", gap: 2, minWidth: 0 },
+  options: { alignItems: "flex-start", gap: 6 },
   pane: { gap: 10 },
   paneTitle: { color: colors.text, fontFamily: fonts.sans, fontSize: 18, lineHeight: 26 },
   questButtonPressed: { backgroundColor: colors.sidebar },
