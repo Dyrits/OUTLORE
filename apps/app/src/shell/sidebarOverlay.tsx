@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
+import { useIslandFrame } from "../foundation/islands";
 import type { SidebarSide } from "../foundation/sidebarPreferenceRules";
 import { colors } from "../foundation/theme";
 
@@ -23,14 +24,18 @@ export function SidebarOverlay({
   side: SidebarSide;
   width: number;
 }) {
-  const hiddenOffset = side === "left" ? -width - 16 : width + 16;
+  // In the Islands theme the sidebar is an island of its own, standing off the window's edges by the gap.
+  const islands = useIslandFrame();
+  const gap = islands?.gap ?? 0;
+  const hiddenOffset = side === "left" ? -width - gap - 16 : width + gap + 16;
   return (
     <View
       accessibilityElementsHidden={!isOpen}
       style={[
         local.panel,
         side === "left" ? local.left : local.right,
-        isOpen && local.raised,
+        isOpen && islands === null && local.raised,
+        islands !== null && [local.island, { bottom: gap, [side]: gap }],
         { transform: [{ translateX: isOpen ? 0 : hiddenOffset }], width },
         slide,
         { pointerEvents: isOpen ? "auto" : "none" },
@@ -42,6 +47,7 @@ export function SidebarOverlay({
 }
 
 const local = StyleSheet.create({
+  island: { backgroundColor: "transparent", borderLeftWidth: 0, borderRightWidth: 0 },
   left: { borderRightWidth: 1, left: 0 },
   panel: {
     backgroundColor: colors.page,

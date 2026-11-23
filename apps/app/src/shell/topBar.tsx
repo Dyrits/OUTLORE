@@ -2,6 +2,7 @@ import { type ReactNode, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { HostMenuContext } from "../foundation/hostContext";
+import { isIslands, useIslandFrame } from "../foundation/islands";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { SettingsIcon } from "../ui/settingsIcons";
@@ -74,7 +75,15 @@ export function TopBar({
   );
   return (
     // As the macOS title bar the bar drags the window, and leaves room for the traffic lights at its start.
-    <View style={[local.topBar, hasOwnTitleBar && local.topBarTitle, hasOwnTitleBar && dragRegion]}>
+    // In the Islands theme, the wide window's bar lies on the canvas above the islands.
+    <View
+      style={[
+        local.topBar,
+        isIslands && menu === undefined && local.topBarIsland,
+        hasOwnTitleBar && local.topBarTitle,
+        hasOwnTitleBar && dragRegion,
+      ]}
+    >
       {sidebar?.side === "left" && sidebarButton}
       {menu !== undefined && (
         <Pressable
@@ -192,11 +201,12 @@ export function QuestColumn({
   /** The column's width on a wide window. */
   width: number;
 }) {
+  const islands = useIslandFrame();
   if (isWide)
     return (
-      <View style={[local.questColumn, { width }]}>
+      <View style={[local.questColumn, islands !== null && local.questColumnIsland, { width }]}>
         {edge}
-        <View style={local.questBody}>
+        <View style={[local.questBody, islands?.island]}>
           {tabs}
           {children}
         </View>
@@ -257,6 +267,7 @@ const local = StyleSheet.create({
   questBody: { backgroundColor: colors.page, flex: 1 },
   questClose: { color: colors.highlight, fontSize: fontSizes.base, paddingHorizontal: 4 },
   questColumn: { borderColor: colors.edge, borderLeftWidth: 1 },
+  questColumnIsland: { borderLeftWidth: 0 },
   questColumnNarrow: { flex: 1 },
   spacer: { flex: 1 },
   topBar: {
@@ -269,7 +280,9 @@ const local = StyleSheet.create({
     height: 40,
     paddingHorizontal: 10,
   },
+  topBarIsland: { backgroundColor: "transparent", borderBottomWidth: 0 },
   topBarTitle: { paddingLeft: 82 },
   topIcon: { alignItems: "center", borderRadius: radii.sm, height: 28, justifyContent: "center", width: 28 },
-  topIconActive: { backgroundColor: colors.ground },
+  // On the Islands canvas, the canvas's own color would hide the pressed state.
+  topIconActive: { backgroundColor: isIslands ? colors.controlActive : colors.ground },
 });

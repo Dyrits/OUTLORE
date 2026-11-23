@@ -12,8 +12,9 @@ describe("iconFileOf", () => {
     expect(iconFileOf("one")).toBe("icon.png");
   });
 
-  it("keeps the original icon for the Black & white theme", () => {
+  it("keeps the original icon for the Black & white and Islands themes", () => {
     expect(iconFileOf("mono")).toBe("icon.png");
+    expect(iconFileOf("islands")).toBe("icon.png");
   });
 
   it("gives the same icon for Iskios and for anything unknown, which is the default theme's", () => {

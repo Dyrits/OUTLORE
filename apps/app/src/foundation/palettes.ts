@@ -1,4 +1,5 @@
 import type { ColorScheme } from "./colorSchemeRules";
+import { islandPalettes } from "./islandPalettes";
 import { monoPalettes } from "./monoPalettes";
 import { onePalettes } from "./onePalettes";
 import type { Theme } from "./themeRules";
@@ -120,6 +121,7 @@ const iskiosLight: Palette = {
 /** Every palette: each theme in its dark and its light look. */
 export const palettes = {
   iskios: { dark: iskiosDark, light: iskiosLight },
+  islands: islandPalettes,
   mono: monoPalettes,
   one: onePalettes,
 } as const satisfies Record<Theme, Record<ColorScheme, Palette>>;

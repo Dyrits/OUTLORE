@@ -123,7 +123,7 @@ Whom a thread may message and whose journal it may read beyond its own tree: wha
 _Avoid_: Permission, access, scope
 
 **Theme**:
-The owner chooses One, Iskios, or Black & white in the Workshop.
+The owner chooses One, Iskios, Black & white, or Islands in the Workshop.
 One is the default, and each theme comes in a dark and a light **Look**.
 _Avoid_: Skin, style
 
@@ -143,6 +143,9 @@ The neutral theme based on Zed's One Light and One Dark colors. It is the defaul
 
 **Black & white**:
 The theme of pure greys with no hue: white on black in the dark look, black on white in the light one. State colors differ only by a step of grey. It keeps the original application icon. Called `mono` in code.
+
+**Islands**:
+The theme whose sidebar, content, and quest panel float as rounded panels, the islands, on a tinted canvas, each with a hairline and a soft shadow. The owner sets its canvas (cool glow, warm glow, or flat), the gap between the islands, their corner radius, and their lift, and each change shows at once. It keeps the original application icon.
 
 **The Keep**:
 The navigation group containing Library, Lore, and Archive.

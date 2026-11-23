@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outlore · Islands layout</title>
+<style>
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  /* Tunable from the control bar. */
+  --gap: 10px;
+  --radius: 14px;
+  --lift: 1;
+
+  --canvas: #eceef1;
+  --canvas-glow: #e3e6f6;
+  --island: #fbfbfc;
+  --island-strong: #ffffff;
+  --edge: #e2e4e9;
+  --ink: #2a2d34;
+  --muted: #6b7079;
+  --dim: #9a9ea6;
+  --hover: #f0f1f4;
+  --select: #e9ebfa;
+  --select-ink: #2b3a9e;
+  --accent: #4a5bd4;
+  --bubble-user: #f1f2f6;
+  --shadow-color: 222deg 18% 40%;
+
+  margin: 0; height: 100%;
+  font: 14px/1.45 "Inter", system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(60% 50% at 70% 85%, var(--canvas-glow), transparent 70%),
+    var(--canvas);
+  overflow: hidden;
+}
+body[data-theme="dark"] {
+  --canvas: #111318;
+  --canvas-glow: #1a1e33;
+  --island: #1b1e25;
+  --island-strong: #22262e;
+  --edge: #2a2e37;
+  --ink: #e6e8ee;
+  --muted: #9aa0ab;
+  --dim: #6c727d;
+  --hover: #262a33;
+  --select: #283055;
+  --select-ink: #c4ccff;
+  --accent: #8b98ff;
+  --bubble-user: #252932;
+  --shadow-color: 228deg 40% 2%;
+}
+body[data-canvas="warm"] { --canvas: #efece6; --canvas-glow: #f2e4d3; }
+body[data-canvas="warm"][data-theme="dark"] { --canvas: #15130f; --canvas-glow: #2a2116; }
+body[data-canvas="flat"] { --canvas-glow: var(--canvas); }
+
+button, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- The islands ---------- */
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 300px;
+  grid-template-rows: 38px minmax(0, 1fr);
+  gap: var(--gap);
+  padding: 0 var(--gap) var(--gap);
+}
+body[data-panel="closed"] .app { grid-template-columns: 260px minmax(0, 1fr); }
+body[data-panel="closed"] .panel { display: none; }
+.titlebar { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding-left: 4px; }
+.lights { display: flex; gap: 8px; margin-right: 14px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+.lights i:nth-child(2) { background: #febc2e; }
+.lights i:nth-child(3) { background: #28c840; }
+.titlebar .crumb { color: var(--muted); font-size: 13px; }
+.titlebar .crumb b { color: var(--ink); font-weight: 600; }
+.titlebar .spacer { flex: 1; }
+
+.island {
+  background: var(--island);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  box-shadow:
+    0 1px 1px hsl(var(--shadow-color) / calc(.05 * var(--lift))),
+    0 4px 10px -2px hsl(var(--shadow-color) / calc(.07 * var(--lift))),
+    0 18px 40px -12px hsl(var(--shadow-color) / calc(.12 * var(--lift)));
+  min-height: 0;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+
+/* ---------- Sidebar ---------- */
+.side { padding: 10px 8px; gap: 2px; }
+.brand { display: flex; align-items: center; gap: 8px; padding: 6px 8px 12px; font-weight: 650; font-size: 15px; letter-spacing: -.01em; }
+.brand svg { color: var(--accent); }
+.search { display: flex; align-items: center; gap: 8px; margin: 0 4px 10px; padding: 7px 10px; border-radius: 9px; background: var(--island-strong); border: 1px solid var(--edge); color: var(--dim); font-size: 13px; box-shadow: 0 1px 2px hsl(var(--shadow-color) / .06); }
+.search kbd { margin-left: auto; font: 11px/1 inherit; color: var(--muted); padding: 3px 5px; border-radius: 5px; background: var(--hover); }
+.nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border-radius: 8px; text-align: start; color: var(--ink); }
+.nav-item:hover { background: var(--hover); }
+.nav-item svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
+.nav-item .count { margin-left: auto; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: white; font-size: 11px; line-height: 18px; text-align: center; }
+.group { margin-top: 14px; }
+.group-title { display: flex; align-items: center; padding: 4px 10px; color: var(--dim); font-size: 12px; font-weight: 550; }
+.group-title button { margin-left: auto; width: 22px; height: 22px; border-radius: 6px; color: var(--muted); font-size: 16px; line-height: 1; }
+.group-title button:hover { background: var(--hover); }
+.realm > summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; color: var(--muted); cursor: pointer; }
+.realm > summary::-webkit-details-marker { display: none; }
+.realm > summary:hover { background: var(--hover); }
+.realm[open] > summary { color: var(--ink); font-weight: 550; }
+.realm > summary .mark { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: white; flex: none; }
+.realm > summary .chev { margin-left: auto; width: 6px; height: 6px; border-right: 1.5px solid var(--dim); border-bottom: 1.5px solid var(--dim); transform: rotate(-45deg); transition: transform .15s; }
+.realm[open] > summary .chev { transform: rotate(45deg); }
+.quests { padding: 2px 0 6px 19px; }
+.quest { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; border-radius: 8px; text-align: start; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.quest:hover { background: var(--hover); color: var(--ink); }
+.quest .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); flex: none; }
+.quest .dot.live { background: #2fb36c; box-shadow: 0 0 0 3px #2fb36c22; }
+.quest[aria-current="true"] { background: var(--select); color: var(--select-ink); font-weight: 550; }
+.quest span { overflow: hidden; text-overflow: ellipsis; }
+.side-scroll { flex: 1; overflow: auto; min-height: 0; }
+.account { display: flex; align-items: center; gap: 10px; margin-top: 6px; padding: 8px; border-radius: 10px; background: var(--island-strong); border: 1px solid var(--edge); }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #8b98ff, #d58bff); flex: none; }
+.account small { display: block; color: var(--dim); font-size: 11.5px; }
+.account b { font-weight: 600; font-size: 13px; }
+
+/* ---------- Conversation ---------- */
+.main { background: var(--island); }
+.main-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: 9px; background: var(--island-strong); border: 1px solid var(--edge); font-weight: 600; font-size: 13px; box-shadow: 0 1px 2px hsl(var(--shadow-color) / .06); }
+.pill .mark { width: 16px; height: 16px; border-radius: 5px; background: var(--accent); }
+.main-head .tabs { display: flex; gap: 2px; margin-left: 6px; }
+.main-head .tabs button { padding: 5px 10px; border-radius: 8px; color: var(--muted); font-size: 13px; }
+.main-head .tabs button[aria-pressed="true"] { background: var(--hover); color: var(--ink); font-weight: 550; }
+.main-head .spacer { flex: 1; }
+.icon-btn { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; color: var(--muted); }
+.icon-btn:hover { background: var(--hover); color: var(--ink); }
+.icon-btn svg { width: 16px; height: 16px; }
+.primary { padding: 6px 12px; border-radius: 9px; background: var(--ink); color: var(--island); font-weight: 600; font-size: 13px; }
+
+.thread { flex: 1; overflow: auto; padding: 8px 0 24px; }
+.thread-inner { max-width: 680px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 18px; }
+.msg { display: flex; gap: 12px; }
+.msg .who { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: white; background: var(--accent); }
+.msg.user { justify-content: flex-end; }
+.msg.user .body { background: var(--bubble-user); padding: 9px 13px; border-radius: 14px 14px 4px 14px; max-width: 80%; }
+.msg .meta { font-size: 12px; color: var(--dim); margin-bottom: 2px; }
+.msg .meta b { color: var(--ink); font-weight: 600; margin-right: 6px; }
+.msg p { margin: 0 0 6px; }
+.tool { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 7px 10px; border: 1px solid var(--edge); border-radius: 10px; background: var(--island-strong); color: var(--muted); font-size: 12.5px; }
+.tool code { font: 12px ui-monospace, Menlo, monospace; color: var(--ink); }
+.errand-card { margin-top: 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--edge); background: var(--island-strong); display: flex; align-items: center; gap: 10px; }
+.errand-card .dot { width: 8px; height: 8px; border-radius: 50%; background: #2fb36c; box-shadow: 0 0 0 3px #2fb36c22; }
+.errand-card small { color: var(--dim); }
+
+.composer-wrap { padding: 0 24px 18px; }
+.composer {
+  max-width: 680px; margin: 0 auto; border-radius: 16px; background: var(--island-strong); border: 1px solid var(--edge);
+  box-shadow: 0 2px 4px hsl(var(--shadow-color) / .05), 0 14px 34px -12px hsl(var(--shadow-color) / calc(.18 * var(--lift)));
+  padding: 12px 12px 10px;
+}
+.composer textarea { width: 100%; border: 0; resize: none; background: transparent; min-height: 44px; outline: none; }
+.composer textarea::placeholder { color: var(--dim); }
+.composer-row { display: flex; align-items: center; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 8px; border: 1px solid var(--edge); color: var(--muted); font-size: 12.5px; }
+.chip:hover { background: var(--hover); }
+.send { margin-left: auto; width: 30px; height: 30px; border-radius: 9px; background: var(--accent); color: white; display: grid; place-items: center; }
+
+/* ---------- Right panel ---------- */
+.panel { padding: 12px; gap: 10px; }
+.panel-tabs { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--hover); }
+.panel-tabs button { flex: 1; padding: 5px 0; border-radius: 8px; color: var(--muted); font-size: 12.5px; }
+.panel-tabs button[aria-pressed="true"] { background: var(--island-strong); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px hsl(var(--shadow-color) / .12); }
+.panel h3 { margin: 6px 2px 0; font-size: 12px; font-weight: 550; color: var(--dim); }
+.card { padding: 10px 12px; border-radius: 11px; background: var(--island-strong); border: 1px solid var(--edge); font-size: 13px; }
+.card p { margin: 0; color: var(--muted); }
+.card b { font-weight: 600; }
+.entry { display: flex; gap: 10px; font-size: 13px; padding: 4px 2px; }
+.entry time { color: var(--dim); font-variant-numeric: tabular-nums; flex: none; width: 38px; }
+.entry span { color: var(--muted); }
+
+/* ---------- Variants ---------- */
+/* Seamless: the islands lose their borders and lean on shadow alone. */
+body[data-style="seamless"] .island { border-color: transparent; }
+/* Docked sidebar: the sidebar sits on the canvas, only content floats. */
+body[data-style="docked"] .side { background: transparent; border-color: transparent; box-shadow: none; }
+body[data-style="docked"] .side .search, body[data-style="docked"] .side .account { background: var(--island); }
+body[data-style="docked"] .quest[aria-current="true"] { background: var(--island); box-shadow: 0 1px 3px hsl(var(--shadow-color) / .12); color: var(--ink); }
+
+/* ---------- Controls ---------- */
+.controls {
+  display: flex; align-items: center; gap: 4px; padding: 3px; border-radius: 10px;
+  background: #1d2027e8; color: #e9ebf0; font-size: 12px; white-space: nowrap;
+}
+.controls input[type="range"] { width: 64px; }
+.controls label { display: flex; align-items: center; gap: 5px; padding: 0 5px; }
+.controls select, .controls input { accent-color: #8b98ff; }
+.controls select { background: #2c3039; border: 0; border-radius: 7px; padding: 4px 6px; }
+.controls button { padding: 3px 9px; border-radius: 8px; background: #2c3039; }
+.controls button:hover { background: #3a3f4a; }
+.controls .sep { width: 1px; align-self: stretch; background: #ffffff22; }
+.controls [hidden] { display: none; }
+
+@media (max-width: 1200px) { .controls input[type="range"], .controls .sep { display: none; } .titlebar .crumb { display: none; } }
+@media (max-width: 1000px) {
+  .app { grid-template-columns: 230px minmax(0, 1fr); }
+  .panel { display: none; }
+}
+@media (max-width: 680px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { display: none; }
+}
+</style>
+</head>
+<body data-theme="light" data-canvas="cool" data-style="bordered" data-panel="open">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 16 16"><path d="M2.5 7 8 2.5 13.5 7v6a.5.5 0 0 1-.5.5h-3v-4h-4v4H3a.5.5 0 0 1-.5-.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+  <symbol id="i-book" viewBox="0 0 16 16"><path d="M2.5 3.5c2-.8 3.8-.8 5.5.5 1.7-1.3 3.5-1.3 5.5-.5v9c-2-.8-3.8-.8-5.5.5-1.7-1.3-3.5-1.3-5.5-.5zM8 4v9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 1.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+  <symbol id="i-gem" viewBox="0 0 16 16"><path d="M4 2.5h8L14.5 6 8 13.5 1.5 6z M1.5 6h13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M10 3v10" stroke="currentColor" stroke-width="1.3"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="12.5" cy="8" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="i-up" viewBox="0 0 16 16"><path d="M8 13V3M4 7l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="app">
+  <div class="titlebar">
+    <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="crumb">Outlore &nbsp;/&nbsp; <b id="crumb-quest">Providers: installed only</b></span>
+    <span class="spacer"></span>
+    <div class="controls" role="group" aria-label="Prototype controls">
+    <label>Style
+      <select id="style">
+        <option value="bordered">Islands with hairline</option>
+        <option value="seamless">Islands, shadow only</option>
+        <option value="docked">Sidebar on canvas</option>
+      </select>
+    </label>
+    <span class="sep"></span>
+    <label>Canvas
+      <select id="canvas">
+        <option value="cool">Cool glow</option>
+        <option value="warm">Warm glow</option>
+        <option value="flat">Flat</option>
+      </select>
+    </label>
+    <span class="sep"></span>
+    <label>Gap <input id="gap" type="range" min="4" max="20" value="10"></label>
+    <label>Radius <input id="radius" type="range" min="6" max="22" value="14"></label>
+    <label>Lift <input id="lift" type="range" min="0" max="3" step=".25" value="1"></label>
+    <span class="sep"></span>
+    <button type="button" id="theme">Dark</button>
+  </div>
+  </div>
+
+  <nav class="island side" aria-label="Sidebar">
+    <div class="brand">
+      <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><use href="#i-gem"/></svg>
+      Outlore
+    </div>
+    <div class="search">⌕ Search quests <kbd>⌘K</kbd></div>
+    <button class="nav-item" type="button"><svg><use href="#i-home"/></svg>Chronicle <span class="count">1</span></button>
+    <button class="nav-item" type="button"><svg><use href="#i-clock"/></svg>Rituals</button>
+    <button class="nav-item" type="button"><svg><use href="#i-book"/></svg>Lore</button>
+
+    <div class="side-scroll">
+      <div class="group">
+        <div class="group-title">Realms <button type="button" aria-label="Add realm">+</button></div>
+        <div id="realms"></div>
+      </div>
+      <div class="group">
+        <div class="group-title">Borderlands</div>
+        <button class="quest" type="button" data-quest="Borderlands chat"><span class="dot"></span><span>Borderlands chat</span></button>
+      </div>
+    </div>
+
+    <div class="account">
+      <span class="avatar" aria-hidden="true"></span>
+      <div><b>Dylan</b><small>3 Companions ready</small></div>
+    </div>
+  </nav>
+
+  <main class="island main" aria-label="Quest">
+    <div class="main-head">
+      <span class="pill"><span class="mark"></span><span id="head-quest">Providers: installed only</span></span>
+      <div class="tabs" role="group" aria-label="View">
+        <button type="button" aria-pressed="true">Conversation</button>
+        <button type="button" aria-pressed="false">Changes</button>
+        <button type="button" aria-pressed="false">Terminal</button>
+      </div>
+      <span class="spacer"></span>
+      <button class="icon-btn" type="button" id="toggle-panel" aria-label="Toggle side panel"><svg><use href="#i-panel"/></svg></button>
+      <button class="icon-btn" type="button" aria-label="More"><svg><use href="#i-dots"/></svg></button>
+      <button class="primary" type="button">New quest</button>
+    </div>
+
+    <div class="thread">
+      <div class="thread-inner">
+        <div class="msg user"><div class="body">Only list providers that are actually installed on this machine. Hide the rest behind a “Show all” toggle.</div></div>
+        <div class="msg">
+          <span class="who">C</span>
+          <div>
+            <div class="meta"><b>Claude</b>14:02</div>
+            <p>I'll filter the Providers list by what the harness catalog detects, and keep the full list one click away.</p>
+            <div class="tool">✓ <code>harnessCatalog.ts</code> · 3 edits</div>
+            <div class="tool">✓ <code>providers.tsx</code> · 5 edits</div>
+            <div class="errand-card"><span class="dot"></span><div><b>Verify on desktop</b><br><small>Errand · running · 4 min</small></div></div>
+          </div>
+        </div>
+        <div class="msg user"><div class="body">Looks good. Can the empty state say which providers it looked for?</div></div>
+        <div class="msg">
+          <span class="who">C</span>
+          <div>
+            <div class="meta"><b>Claude</b>14:09</div>
+            <p>Yes — when nothing is installed the list now names the providers it checked, each with a link to its setup guide.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer-wrap">
+      <div class="composer">
+        <textarea rows="2" placeholder="Reply to this quest, or @mention a realm…" aria-label="Message"></textarea>
+        <div class="composer-row">
+          <button class="chip" type="button">＋</button>
+          <button class="chip" type="button">Claude · Opus</button>
+          <button class="chip" type="button">Effort: high</button>
+          <button class="send" type="button" aria-label="Send"><svg width="15" height="15"><use href="#i-up"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="island panel" aria-label="Side panel">
+    <div class="panel-tabs" role="group" aria-label="Panel">
+      <button type="button" aria-pressed="true">Journal</button>
+      <button type="button" aria-pressed="false">Lore</button>
+      <button type="button" aria-pressed="false">Files</button>
+    </div>
+    <h3>Briefing</h3>
+    <div class="card"><p><b>Installed-only list</b> is implemented; desktop verification runs as an errand.</p></div>
+    <h3>Errands</h3>
+    <div class="card"><p><b>Verify on desktop</b> · running</p></div>
+    <h3>Log</h3>
+    <div class="entry"><time>14:11</time><span>Empty state names checked providers.</span></div>
+    <div class="entry"><time>14:04</time><span>Filtered list by detected harnesses.</span></div>
+    <div class="entry"><time>13:58</time><span>Quest opened.</span></div>
+  </aside>
+</div>
+
+
+
+<script>
+const realms = [
+  { name: 'API-GATEWAY', color: '#e0795a', quests: [] },
+  { name: 'Outlore', color: '#4a5bd4', open: true, quests: [
+    { name: 'Delayed quest replies' },
+    { name: 'Gemini and Copilot logos' },
+    { name: 'Providers: installed only', live: true },
+    { name: 'Explore sidebar designs', live: true },
+  ] },
+  { name: 'POS Payment App', color: '#2f9e8f', quests: [{ name: 'Refund flow' }] },
+  { name: 'QUALITY HUB', color: '#b065c9', quests: [] },
+];
+let current = 'Providers: installed only';
+const realmsEl = document.querySelector('#realms');
+
+function render() {
+  realmsEl.innerHTML = realms.map(r => `
+    <details class="realm" ${r.open ? 'open' : ''} data-realm="${r.name}">
+      <summary><span class="mark" style="background:${r.color}">${r.name[0]}</span>${r.name}<span class="chev"></span></summary>
+      <div class="quests">${r.quests.length ? r.quests.map(q => `
+        <button class="quest" type="button" data-quest="${q.name}" aria-current="${q.name === current}">
+          <span class="dot ${q.live ? 'live' : ''}"></span><span>${q.name}</span></button>`).join('')
+        : '<div class="quest" style="cursor:default;font-style:italic;color:var(--dim)">No quests yet</div>'}</div>
+    </details>`).join('');
+}
+render();
+
+realmsEl.addEventListener('toggle', e => {
+  const realm = realms.find(r => r.name === e.target.dataset.realm);
+  if (realm) realm.open = e.target.open;
+}, true);
+document.querySelector('.side').addEventListener('click', e => {
+  const q = e.target.closest('button.quest');
+  if (!q) return;
+  current = q.dataset.quest;
+  document.querySelectorAll('.side button.quest').forEach(b => b.setAttribute('aria-current', String(b === q)));
+  document.querySelector('#crumb-quest').textContent = current;
+  document.querySelector('#head-quest').textContent = current;
+});
+
+const body = document.body;
+const params = new URLSearchParams(location.search);
+function sync() {
+  const url = new URL(location.href);
+  for (const k of ['style', 'canvas', 'theme', 'panel']) url.searchParams.set(k, body.dataset[k]);
+  for (const k of ['gap', 'radius', 'lift']) url.searchParams.set(k, document.querySelector('#' + k).value);
+  history.replaceState(null, '', url);
+  document.querySelector('#theme').textContent = body.dataset.theme === 'dark' ? 'Light' : 'Dark';
+}
+function applyRange(k) {
+  const v = document.querySelector('#' + k).value;
+  body.style.setProperty('--' + k, k === 'lift' ? v : v + 'px');
+}
+for (const k of ['style', 'canvas']) {
+  const el = document.querySelector('#' + k);
+  if (params.get(k)) { el.value = params.get(k); body.dataset[k] = el.value; }
+  el.addEventListener('change', () => { body.dataset[k] = el.value; sync(); });
+}
+for (const k of ['gap', 'radius', 'lift']) {
+  const el = document.querySelector('#' + k);
+  if (params.get(k)) el.value = params.get(k);
+  applyRange(k);
+  el.addEventListener('input', () => { applyRange(k); sync(); });
+}
+if (params.get('theme')) body.dataset.theme = params.get('theme');
+if (params.get('panel')) body.dataset.panel = params.get('panel');
+document.querySelector('#theme').addEventListener('click', () => {
+  body.dataset.theme = body.dataset.theme === 'dark' ? 'light' : 'dark'; sync();
+});
+document.querySelector('#toggle-panel').addEventListener('click', () => {
+  body.dataset.panel = body.dataset.panel === 'open' ? 'closed' : 'open'; sync();
+});
+document.querySelectorAll('.tabs, .panel-tabs').forEach(group => group.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  group.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+}));
+sync();
+</script>
+</body>
+</html>

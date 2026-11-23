@@ -5,6 +5,7 @@ import { ReserveRows } from "../editors/budgets";
 import { PlanLimitRings } from "../editors/planLimitRings";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { canHover } from "../foundation/inputModality";
+import { useIslandFrame } from "../foundation/islands";
 import { listedMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -89,6 +90,7 @@ export function Sidebar({
   const unreadCount = unreadCountOf(chronicle ?? []);
   const placements = placementsOf(data?.missions ?? [], data?.workspaces ?? []);
   const isNarrow = host === "narrow";
+  const islands = useIslandFrame();
   // The menu that makes a realm, tied to a folder or to none.
   const [isCreating, setIsCreating] = useState(false);
   const [realmFolds, setRealmFolds] = useState<ReadonlyMap<WorkspaceId, boolean>>(new Map());
@@ -221,7 +223,13 @@ export function Sidebar({
 
   return (
     <View
-      style={[local.sidebar, !isNarrow && local.sidebarDesktop, hasLeftDivider && local.sidebarLeftDivider, { width }]}
+      style={[
+        local.sidebar,
+        !isNarrow && local.sidebarDesktop,
+        hasLeftDivider && local.sidebarLeftDivider,
+        !isNarrow && islands?.island,
+        { width },
+      ]}
     >
       <ScrollView contentContainerStyle={[local.group, !isNarrow && local.groupWithChronicle]} style={local.flex}>
         {onOpenChronicle !== undefined && (

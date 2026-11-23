@@ -2,6 +2,7 @@ import type { Dispatch, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
+import { useIslandFrame } from "../foundation/islands";
 import {
   CompanionDockActions,
   CompanionTabOf,
@@ -58,6 +59,14 @@ export function Shell(
 ) {
   const { width } = useWindowDimensions();
   const hasRail = width >= sidebarBreakpoint;
+  // The Islands theme floats the sidebar, the content, and the quest panel as panels on a canvas (CHG-0668).
+  const islands = useIslandFrame();
+  const islandBackground = islands?.background ?? null;
+  useEffect(() => {
+    if (islandBackground === null || typeof document === "undefined") return;
+    document.documentElement.style.background = islandBackground;
+  }, [islandBackground]);
+  const gap = islands?.gap ?? 0;
   const { isPinned, mode, side } = useSidebarPreference();
   const placement = sidebarPlacementOf({ isPinned, mode });
   // The overlay's own pointer, button and key rules apply in both of its states; a pinned sidebar stands in the frame.
@@ -216,14 +225,14 @@ export function Shell(
           <CompanionTabOf.Provider value={isCompanionShown ? pillId : null}>
             <TopBarShown.Provider value={true}>
               <QuestTabButtonContext.Provider value={column.questTabButton}>
-                <View style={local.window}>
+                <View style={[local.window, islands !== null && local.islandWindow]}>
                   <TopBar
                     details={null}
                     sidebar={isOverlay ? { isPinned, onToggle: togglePin, side } : undefined}
                     workshop={{ isOpen: props.isWorkshopOpen, onToggle: props.onWorkshop }}
                   />
-                  <View style={local.body}>
-                    <View style={local.frame}>
+                  <View style={[local.body, islands !== null && { gap, paddingBottom: gap, paddingHorizontal: gap }]}>
+                    <View style={[local.frame, islands !== null && [local.islandFrame, { gap }]]}>
                       {hasLeftRail && sidebar}
                       {hasLeftRail && (
                         <EdgeResizer
@@ -243,14 +252,18 @@ export function Shell(
                           onPress={toggle}
                           style={({ pressed }) => [
                             local.handle,
-                            isHidden ? local.handleTab : { left: railWidth - handleSize / 2 },
+                            isHidden ? local.handleTab : { left: railWidth + gap / 2 - handleSize / 2 },
                             pressed && local.handlePressed,
                           ]}
                         >
                           <PanelIcon />
                         </Pressable>
                       )}
-                      <View style={[local.panel, hasLeftRail && local.panelDivider]}>{props.children}</View>
+                      <View
+                        style={[local.panel, islands !== null ? islands.island : hasLeftRail && local.panelDivider]}
+                      >
+                        {props.children}
+                      </View>
                     </View>
                     {!hasPanes && column.wideColumn}
                     {!hasPanes && column.hasEdgeHandle && (
@@ -260,7 +273,7 @@ export function Shell(
                         onPress={column.toggleColumn}
                         style={({ pressed }) => [
                           local.handle,
-                          column.isColumnOpen ? { right: questWidth - handleSize / 2 } : local.endHandleTab,
+                          column.isColumnOpen ? { right: questWidth + gap * 1.5 - handleSize / 2 } : local.endHandleTab,
                           pressed && local.handlePressed,
                         ]}
                       >

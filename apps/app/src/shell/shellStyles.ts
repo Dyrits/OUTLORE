@@ -51,6 +51,9 @@ export const shellStyles = StyleSheet.create({
     width: handleSize * 0.75,
   },
   hidden: { display: "none" },
+  // The Islands theme's frame: the canvas shows through, and the islands' shadows are not cut at its edge.
+  islandFrame: { backgroundColor: "transparent", overflow: "visible" },
+  islandWindow: { backgroundColor: "transparent" },
   // The full-screen menu is a row so the sidebar stretches to the window's height, as in the wide frame, and its foot
   // sits at the bottom of the screen.
   menuScreen: { flexDirection: "row" },
