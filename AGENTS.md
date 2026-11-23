@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To verify conversation toolbar separators in the desktop app, read the [current handoff](.agents/handoffs/2026-11-23-1347-toolbar-trailing-separator.md). Handoffs are shared and committed.
+
 - To verify Ritual form placement and Companion selection in the running app, read the [current handoff](.agents/handoffs/2026-11-23-1145-ritual-menu-placement.md). Handoffs are shared and committed.
 
 - To verify Borderlands navigation on desktop and phone, read the [current handoff](.agents/handoffs/2026-11-23-1144-borderlands-navigation.md). Handoffs are shared and committed.
-
-- To verify Companion preset management in a running app or finish its delivery, read the [current handoff](.agents/handoffs/2026-11-23-1144-companion-presets.md). Handoffs are shared and committed.
