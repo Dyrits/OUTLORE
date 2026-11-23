@@ -56,10 +56,10 @@ export function PaneNotches({
 }) {
   // Several notches share one icon, so each says its name while the pointer or keyboard focus rests on it.
   const [shown, setShown] = useState<string | null>(null);
-  // In the Islands layout a notch is cut into its island: it takes the island's own color and leaves the island's hairline
-  // open where it sits, so it reads as part of the pane. The flat layout keeps the sidebar's color.
+  // In the Islands layout a notch is a bite out of its island seen from the outside: it takes the canvas's color, the color
+  // of the app's own background, and the island's hairline runs around it. The flat layout keeps the sidebar's color.
   const islands = useIslandFrame();
-  const fill = islands === null ? colors.sidebar : islands.island.backgroundColor;
+  const fill = islands === null ? colors.sidebar : islands.canvas;
   return (
     <View
       pointerEvents="box-none"
