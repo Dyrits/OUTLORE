@@ -12,17 +12,18 @@ import {
   startRpcProcess,
   textFieldOf,
 } from "../core/index.ts";
-import { acpProviderProfiles } from "./acpProviderProfiles.ts";
-import { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.ts";
-import { makeAntigravityHarness, probeAntigravityModels, readAntigravitySignIn } from "./antigravityProvider.ts";
+import { type AcpProviderDefinition, acpLaunchOf } from "./acpProviderDefinition.ts";
+import { makeAcpProviderHarness, probeAcpProviderModels, readAcpProviderSignIn } from "./acpProviders.ts";
+import { antigravity as antigravityProvider } from "./antigravityProvider.ts";
 import { makeClaudeHarness } from "./claude.ts";
-import { makeClineHarness, probeClineModels } from "./clineProvider.ts";
+import { cline as clineProvider } from "./clineProvider.ts";
 import { makeCodexHarness } from "./codex.ts";
-import { makeCopilotProviderHarness, probeCopilotModels } from "./copilotProvider.ts";
-import { makeCursorProviderHarness, probeCursorModels } from "./cursorProvider.ts";
-import { makeDevinHarness, probeDevinModels } from "./devinProvider.ts";
+import { copilot as copilotProvider } from "./copilotProvider.ts";
+import { cursor as cursorProvider } from "./cursorProvider.ts";
+import { devin as devinProvider } from "./devinProvider.ts";
 import { accountEnvironmentOf, claudeModels, type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
 import type { SignInStatus } from "./harnessTools.ts";
+import { hermes as hermesProvider } from "./hermesProvider.ts";
 import { makeMuseHarness } from "./muse.ts";
 import { listMuseModels, readMuseSignIn } from "./museAccount.ts";
 import { detectOpenCodeSandbox } from "./openCodeSandbox.ts";
@@ -201,18 +202,30 @@ const vibe: HarnessDefinition = {
   readSignIn: (command, env) => readVibeSignIn(command, env),
 };
 
+/** One long-lived ACP process per thread, started from the provider's definition when the adapter is built. */
+const acpAdapterOf =
+  (provider: AcpProviderDefinition) =>
+  ({ command, idleTimeout }: AdapterOptions) =>
+    Effect.suspend(() => makeAcpProviderHarness({ command, idleTimeout, profile: acpLaunchOf(provider) }));
+
+/** The models of a short-lived session probe on the provider's launch; none when the CLI is absent or not signed in. */
+const probedModelsOf = (provider: AcpProviderDefinition) => (command: string) =>
+  Effect.suspend(() => probeAcpProviderModels({ command, profile: acpLaunchOf(provider) })).pipe(
+    Effect.map((models): ReadonlyArray<ModelOption> => models),
+    Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([])),
+  );
+
 const hermes: HarnessDefinition = {
   ...harnessFacts.hermes,
   // Hermes runs through the generic ACP adapter: every permission request reaches the owner, modes are forced to
   // "ask" where the provider offers them, and the account folder becomes HERMES_HOME (acpProviders.ts).
-  makeAdapter: ({ command, idleTimeout }) =>
-    makeAcpProviderHarness({ command, idleTimeout, profile: acpProviderProfiles.hermes }),
+  makeAdapter: acpAdapterOf(hermesProvider),
   // Models come from the ACP probe against the account's own (prepared) home; the computer's own Hermes directory is
   // never probed, and a home that is not set up yet (no repair, no sign-in, no model) lists none yet.
   readModels: (command, configDirectory) =>
     configDirectory === null
       ? Effect.succeed([])
-      : probeAcpProviderModels({ command, profile: acpProviderProfiles.hermes, stateHome: configDirectory }).pipe(
+      : probeAcpProviderModels({ command, profile: acpLaunchOf(hermesProvider), stateHome: configDirectory }).pipe(
           Effect.map((models): ReadonlyArray<ModelOption> => models),
           Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([])),
         ),
@@ -256,57 +269,50 @@ const pi: HarnessDefinition = {
   readSignIn: () => Effect.succeed(unknownSignIn),
 };
 
-// The five ACP provider harnesses (CHG-0645, provider-parity wave 5): each runs one long-lived ACP process of the
+// The ACP provider harnesses (CHG-0645, provider-parity wave 5): each runs one long-lived ACP process of the
 // generic adapter, so every sensitive action reaches the owner as a permission request and any other reverse
-// request fails closed. All five take the computer's own sign-in only (their added-account surfaces are absent or
-// unproven - supportsAddedAccounts stays false), and each models probe catches failure as no models yet.
+// request fails closed. All of them take the computer's own sign-in only (their added-account surfaces are absent or
+// unproven - supportsAddedAccounts stays false). Their launch, model probe, sign-in and version gate all come from
+// one definition each (acpProviderDefinition.ts), so none of them can drift from another.
 
 const antigravity: HarnessDefinition = {
   ...harnessFacts.antigravity,
-  makeAdapter: ({ command, idleTimeout }) => makeAntigravityHarness({ command, idleTimeout }),
+  makeAdapter: acpAdapterOf(antigravityProvider),
   // Models come from a short-lived session probe against the computer's own Gemini home; none when the CLI is
   // absent or not signed in.
-  readModels: (command) =>
-    probeAntigravityModels({ command }).pipe(
-      Effect.map((models): ReadonlyArray<ModelOption> => models),
-      Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([])),
-    ),
+  readModels: probedModelsOf(antigravityProvider),
   // The same session probe answers the sign-in: models listed means the computer's login works.
-  readSignIn: (command) => readAntigravitySignIn({ command }),
+  readSignIn: (command) => readAcpProviderSignIn({ command, definition: antigravityProvider }),
 };
 
 const cline: HarnessDefinition = {
   ...harnessFacts.cline,
-  makeAdapter: ({ command, idleTimeout }) => makeClineHarness({ command, idleTimeout }),
-  readModels: (command) =>
-    probeClineModels({ command }).pipe(Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([]))),
+  makeAdapter: acpAdapterOf(clineProvider),
+  readModels: probedModelsOf(clineProvider),
   readSignIn: () => Effect.succeed(unknownSignIn),
 };
 
 const copilot: HarnessDefinition = {
   ...harnessFacts.copilot,
-  makeAdapter: ({ command, idleTimeout }) => makeCopilotProviderHarness({ command, idleTimeout }),
+  makeAdapter: acpAdapterOf(copilotProvider),
   // A signed-out Copilot answers with no models rather than failing, so the probe failing at all (the CLI absent)
   // reads as no models yet, exactly as upstream's signed-out shape does.
-  readModels: (command) =>
-    probeCopilotModels({ command }).pipe(Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([]))),
+  readModels: probedModelsOf(copilotProvider),
   readSignIn: () => Effect.succeed(unknownSignIn),
 };
 
 const cursor: HarnessDefinition = {
   ...harnessFacts.cursor,
-  makeAdapter: ({ command, idleTimeout }) => makeCursorProviderHarness({ command, idleTimeout }),
-  readModels: (command) =>
-    probeCursorModels({ command }).pipe(Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([]))),
+  makeAdapter: acpAdapterOf(cursorProvider),
+  readModels: probedModelsOf(cursorProvider),
   readSignIn: () => Effect.succeed(unknownSignIn),
 };
 
 const devin: HarnessDefinition = {
   ...harnessFacts.devin,
-  makeAdapter: ({ command, idleTimeout }) => makeDevinHarness({ command, idleTimeout }),
+  makeAdapter: acpAdapterOf(devinProvider),
   // Devin lists models only when signed in, so both the signed-out probe and any probe failure read as none yet.
-  readModels: (command) =>
-    probeDevinModels({ command }).pipe(Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([]))),
+  readModels: probedModelsOf(devinProvider),
   readSignIn: () => Effect.succeed(unknownSignIn),
 };
 

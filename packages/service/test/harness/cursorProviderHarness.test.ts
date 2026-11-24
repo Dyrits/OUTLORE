@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import type { HarnessEvent } from "../../src/core/index.ts";
-import { makeCursorProviderHarness, probeCursorModels } from "../../src/harness/cursorProvider.ts";
+import { cursor } from "../../src/harness/cursorProvider.ts";
+import { standInHarness, standInProbe } from "../fixtures/providerStandIns.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
 // Checks of the Cursor harness against its stand-in, `cursorProviderFake.mjs`: the audited launch
@@ -39,7 +40,7 @@ const untilLogged = (log: string, predicate: (entry: LoggedEntry) => boolean) =>
   });
 
 const harnessOf = (log: string, env: Record<string, string> = {}) =>
-  makeCursorProviderHarness({
+  standInHarness(cursor, {
     command: process.execPath,
     env: { CURSOR_FAKE_LOG: log, CURSOR_FAKE_MODE: "turn", ...env },
     idleTimeout: "10 minutes",
@@ -119,7 +120,7 @@ describe("running a thread on the Cursor harness", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-cursor-probe-"));
     const log = join(directory, "calls");
     return Effect.gen(function* () {
-      const models = yield* probeCursorModels({
+      const models = yield* standInProbe(cursor, {
         command: process.execPath,
         env: { CURSOR_FAKE_LOG: log, CURSOR_FAKE_MODE: "probe" },
         prefixArgs: [join(import.meta.dirname, "../fixtures/cursorProviderFake.mjs")],

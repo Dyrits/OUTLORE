@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import type { HarnessEvent } from "../../src/core/index.ts";
-import { makeCopilotProviderHarness, probeCopilotModels } from "../../src/harness/copilotProvider.ts";
+import { copilot } from "../../src/harness/copilotProvider.ts";
+import { standInHarness, standInProbe } from "../fixtures/providerStandIns.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
 // Checks of the Copilot harness against its stand-in, `copilotProviderFake.mjs`: the audited launch
@@ -24,7 +25,7 @@ const readEntries = (log: string): Array<LoggedEntry> =>
     : [];
 
 const harnessOf = (log: string, env: Record<string, string> = {}) =>
-  makeCopilotProviderHarness({
+  standInHarness(copilot, {
     command: process.execPath,
     env: { COPILOT_FAKE_LOG: log, COPILOT_FAKE_MODE: "turn", ...env },
     idleTimeout: "10 minutes",
@@ -108,7 +109,7 @@ describe("running a thread on the Copilot harness", () => {
     const log = join(directory, "calls");
     return Effect.gen(function* () {
       const probe = (env: Record<string, string>) =>
-        probeCopilotModels({
+        standInProbe(copilot, {
           command: process.execPath,
           env: { COPILOT_FAKE_LOG: log, COPILOT_FAKE_MODE: "probe", ...env },
           prefixArgs: [join(import.meta.dirname, "../fixtures/copilotProviderFake.mjs")],

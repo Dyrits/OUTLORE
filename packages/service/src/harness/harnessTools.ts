@@ -4,7 +4,6 @@ import { join } from "node:path";
 import type { EffortChoice, HarnessName, ModelOption, SignInState } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer } from "effect";
 import { fieldOf, invalid, runShortCommand, type ServiceFailure, textFieldOf } from "../core/index.ts";
-import { antigravityArgsOf, antigravityGeminiHome } from "./antigravityProvider.ts";
 import { accountEnvironmentOf, type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
 import { harnesses } from "./harnesses.ts";
 import { installHarnessPackage, updateTimeoutMillis } from "./harnessInstallation.ts";
@@ -68,6 +67,9 @@ export type HarnessCommands = Record<HarnessName, string>;
 
 /** Single-quoted for a POSIX shell. */
 const quoted = (text: string) => `'${text.replaceAll("'", "'\\''")}'`;
+
+/** One word of a sign-in line: left bare when a shell reads it as itself, quoted otherwise; `&&` chains two commands on purpose. */
+const shellWord = (text: string) => (text === "&&" || /^[\w@%+=:,./-]+$/u.test(text) ? text : quoted(text));
 
 /** How long a sign-in that needs no terminal may wait for the owner in the browser before it is ended. */
 export const signInTimeoutMillis = 5 * 60 * 1000;
@@ -134,13 +136,20 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
     const inspect = (harness: HarnessName) =>
       runShortCommand(commands[harness], ["--version"], {}).pipe(
         Effect.map(({ code, stdout }): Installation => {
+          const facts = harnessFacts[harness];
           const version = stdout.trim().split("\n")[0] ?? "";
-          return code === 0 && version !== ""
-            ? { problem: null, version }
-            : {
-                problem: `${harnessFacts[harness].label} was not found at "${commands[harness]}". Choose Install, or install it yourself and press Refresh.`,
-                version: null,
-              };
+          if (code !== 0 || version === "")
+            return {
+              problem: `${facts.label} was not found at "${commands[harness]}". Choose Install, or install it yourself and press Refresh.`,
+              version: null,
+            };
+          // A provider is audited against one generation: an older binary runs, but not the way the audit says it does.
+          if (facts.versionGate !== null && !facts.versionGate.accepts(version))
+            return {
+              problem: `${facts.label} reports "${version}", but Outlore supports ${facts.versionGate.expects}. Choose Install to get a supported version, then press Refresh.`,
+              version,
+            };
+          return { problem: null, version };
         }),
       );
 
@@ -263,37 +272,23 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
 
     const openSignIn = Effect.fnUntraced(function* (harness: HarnessName, configDirectory: string | null) {
       const facts = harnessFacts[harness];
-      if (facts.signInArgs === null)
+      // The sign-in's own environment (the home it stores into, an auto-update squeeze, a link-flow flag) rides along on
+      // both paths. For an ACP provider it is built from the same definition as the launch, so what the sign-in stores is what a turn reads.
+      const signIn = facts.signIn(configDirectory);
+      if (signIn === null)
         return yield* invalid(
           `${facts.label} has no sign-in command of its own: its sign-in happens inside the provider's own surface (the pinned upstream carries no CLI sign-in to run). Sign in there yourself, then press Refresh.`,
         );
-      const geminiHome = harness === "antigravity" ? (configDirectory ?? antigravityGeminiHome(process.env)) : null;
-      const args = geminiHome === null ? facts.signInArgs : [...antigravityArgsOf(geminiHome).map(quoted), "--login"];
-      const command = [quoted(commands[harness]), ...args].join(" ");
-      const variable = facts.configVariable;
-      // The sign-in's own environment - an auto-update squeeze or a link-flow flag - rides along on both paths,
-      // exactly as the pinned upstream launches the sign-in; a turn never carries it. (Read through the full
-      // facts record: most harnesses pin none, so the per-harness literal types carry no `signInEnv` at all.)
-      const extraEnv = (harnessFacts as Record<HarnessName, HarnessFacts>)[harness].signInEnv ?? {};
-      const envEntries = (directory: string | null): Array<readonly [string, string]> => [
-        ...(directory === null ? [] : ([[variable, directory]] as const)),
-        ...Object.entries(extraEnv),
-      ];
+      const command = [quoted(commands[harness]), ...signIn.args.map(shellWord)].join(" ");
+      const envEntries = Object.entries(signIn.env);
       const line =
-        configDirectory === null && envEntries(configDirectory).length === 0
+        envEntries.length === 0
           ? command
-          : `${envEntries(configDirectory)
-              .map(([name, value]) => `${name}=${quoted(value)}`)
-              .join(" ")} ${command}`;
+          : `${envEntries.map(([name, value]) => `${name}=${quoted(value)}`).join(" ")} ${command}`;
       if (process.platform !== "darwin") return yield* invalid(`Open a terminal on this computer and run: ${line}`);
       if (facts.signInNeedsNoTerminal) {
         // No window: the tool opens the browser itself and ends once the browser's answer reaches its local port.
-        const run = yield* runShortCommand(
-          commands[harness],
-          facts.signInArgs,
-          { ...accountEnvironmentOf(harness, configDirectory), ...extraEnv },
-          signInTimeoutMillis,
-        );
+        const run = yield* runShortCommand(commands[harness], signIn.args, signIn.env, signInTimeoutMillis);
         if (run.code !== 0) {
           const reason = run.output.trim().split("\n").slice(-3).join(" ");
           return yield* invalid(
@@ -312,8 +307,8 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
           terminalSignInScript({
             command,
             environment: [
-              ...envEntries(geminiHome ?? configDirectory),
-              ...(geminiHome !== null && process.env.PATH !== undefined ? [["PATH", process.env.PATH] as const] : []),
+              ...envEntries,
+              ...(signIn.keepsPath && process.env.PATH !== undefined ? [["PATH", process.env.PATH] as const] : []),
             ].map(([name, value]) => `${name}=${quoted(value)}`),
             label: facts.label,
             path: script,

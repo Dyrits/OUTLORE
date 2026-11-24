@@ -1,7 +1,4 @@
-import { type Duration, Effect, type Scope } from "effect";
-import type { HarnessAdapter } from "../core/index.ts";
-import type { AcpProviderProfile } from "./acpProviderProfiles.ts";
-import { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.ts";
+import type { AcpProviderDefinition } from "./acpProviderDefinition.ts";
 
 // Devin: Cognition's Devin CLI, its own ACP surface. Surveyed fixture-first against the pinned upstream OpenBot
 // (b1e5ea74206e1e16fa2eae62d8d131ea1349eaa0, 2026-11-22); live hands-on stays pending, since no devin CLI is installed
@@ -34,55 +31,16 @@ import { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.t
 // - Update: no update command of Devin's own and no self-update suppression environment appear anywhere in the pinned
 //   tree, so there is nothing to carry: the environment stays empty, and no upstream updater is ever run by Outlore.
 
-/** The audited launch profile: the pinned argv and environment. */
-export const devinProfile: AcpProviderProfile = {
-  args: ["acp"],
-  env: {},
+/** The audited provider: the pinned argv and an empty environment, with no sign-in command of the CLI's own. */
+export const devin: AcpProviderDefinition = {
+  argv: () => ["acp"],
+  executable: "devin",
   label: "Devin",
+  signedOutCode: null,
+  // No sign-in command of the CLI's own is verified: its sign-in is the ACP `devin-browser` flow, so Sign-in explains.
+  signIn: null,
+  spawnEnv: {},
+  // Only the computer's own sign-in: the state sits under the machine-wide XDG data root, which cannot serve as an account home.
+  stateHome: { kind: "computer", variable: "XDG_DATA_HOME" },
+  version: null,
 };
-
-/** How a Devin probe (and nothing else) starts. */
-export type DevinProbeOptions = {
-  /** The devin executable. */
-  readonly command: string;
-  /** Extra environment for the launch, such as a stand-in's knobs in checks. */
-  readonly env?: Record<string, string>;
-  /** Arguments placed before the profile's own, used to run a stand-in script in checks. */
-  readonly prefixArgs?: ReadonlyArray<string>;
-};
-
-/** Lists the models of a signed-in Devin session without prompting or exposing any MCP server. */
-export const probeDevinModels = Effect.fnUntraced(function* (options: DevinProbeOptions) {
-  return yield* probeAcpProviderModels({
-    command: options.command,
-    ...(options.prefixArgs === undefined ? {} : { prefixArgs: options.prefixArgs }),
-    profile: { ...devinProfile, env: { ...devinProfile.env, ...(options.env ?? {}) } },
-  });
-});
-
-/** How the Devin harness starts. */
-export type DevinOptions = {
-  /** The devin executable. */
-  readonly command: string;
-  /** Extra environment for the whole process, such as a stand-in's knobs in checks. */
-  readonly env?: Record<string, string>;
-  /** How long an idle thread keeps its process. */
-  readonly idleTimeout: Duration.Input;
-  /** The MCP servers the session is given; none by default, so the thread's own tool server stays unexposed. */
-  readonly mcpServers?: ReadonlyArray<object>;
-  /** Arguments placed before the profile's own, used to run a stand-in script in checks. */
-  readonly prefixArgs?: ReadonlyArray<string>;
-};
-
-/**
- * Runs each thread in one long-lived Devin ACP process: every permission request reaches the owner, the mode stays
- * "ask" where the session offers one, and a provider that only lists models when signed in simply runs without.
- */
-export const makeDevinHarness = (options: DevinOptions): Effect.Effect<HarnessAdapter, never, Scope.Scope> =>
-  makeAcpProviderHarness({
-    command: options.command,
-    idleTimeout: options.idleTimeout,
-    ...(options.mcpServers === undefined ? {} : { mcpServers: options.mcpServers }),
-    ...(options.prefixArgs === undefined ? {} : { prefixArgs: options.prefixArgs }),
-    profile: { ...devinProfile, env: { ...devinProfile.env, ...(options.env ?? {}) } },
-  });

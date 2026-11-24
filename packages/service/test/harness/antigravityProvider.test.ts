@@ -4,15 +4,10 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "@effect/vitest";
 import { Effect } from "effect";
 import type { HarnessEvent } from "../../src/core/index.ts";
-import {
-  antigravityArgsOf,
-  antigravityGeminiHome,
-  antigravityProfileOf,
-  antigravityTakesStateFolders,
-  makeAntigravityHarness,
-  probeAntigravityModels,
-  readAntigravitySignIn,
-} from "../../src/harness/antigravityProvider.ts";
+import { acpLaunchOf } from "../../src/harness/acpProviderDefinition.ts";
+import { readAcpProviderSignIn } from "../../src/harness/acpProviders.ts";
+import { antigravity, antigravityGeminiHome } from "../../src/harness/antigravityProvider.ts";
+import { standInHarness, standInProbe } from "../fixtures/providerStandIns.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
 // Fixture checks of the Antigravity harness against its stand-in, antigravityProviderFake.mjs: the launch always carries
@@ -45,10 +40,9 @@ const entryOf = (log: string, method: string) => {
 };
 
 const probeOf = (log: string, geminiHome?: string) =>
-  probeAntigravityModels({
-    command: "node",
+  standInProbe(antigravity, {
     env: { ANTIGRAVITY_FAKE_LOG: log },
-    ...(geminiHome === undefined ? {} : { geminiHome }),
+    ...(geminiHome === undefined ? {} : { configDirectory: geminiHome }),
     prefixArgs: [join(import.meta.dirname, fakeArgs[0])],
   }).pipe(Effect.runPromise);
 
@@ -59,21 +53,12 @@ describe("resolving the Antigravity launch surface", () => {
     expect(antigravityGeminiHome({}, "/users/eden")).toBe(join("/users/eden", ".gemini"));
   });
 
-  it("takes per-account state folders from CLI version 1.5.3", () => {
-    expect(antigravityTakesStateFolders("1.5.2")).toBe(false);
-    expect(antigravityTakesStateFolders("1.5.3")).toBe(true);
-    expect(antigravityTakesStateFolders("1.5.4")).toBe(true);
-    expect(antigravityTakesStateFolders("1.10.0")).toBe(true);
-    expect(antigravityTakesStateFolders("2.0.0")).toBe(true);
-  });
-
-  it("launches with the profile in exactly the pinned argv order: acp, the home flag, the app-data flag", () => {
-    expect(antigravityArgsOf("/gemini-home")).toEqual([
+  it("launches in exactly the pinned argv order: acp, the home flag, the app-data flag", () => {
+    expect(acpLaunchOf(antigravity, { configDirectory: "/gemini-home" }).args).toEqual([
       "acp",
       "--gemini-dir=/gemini-home",
       "--app-data-dir=antigravity-acp",
     ]);
-    expect(antigravityProfileOf("/gemini-home").minMajorVersion).toBe(1);
   });
 });
 
@@ -122,8 +107,9 @@ describe("probing the Antigravity CLI", () => {
 describe("reading the Antigravity sign-in", () => {
   const signInOf = (mode: string, command = "node") => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-antigravity-signin-"));
-    return readAntigravitySignIn({
+    return readAcpProviderSignIn({
       command,
+      definition: antigravity,
       env: { ANTIGRAVITY_FAKE_LOG: join(directory, "calls"), ANTIGRAVITY_FAKE_MODE: mode },
       prefixArgs: [join(import.meta.dirname, fakeArgs[0])],
     }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))), Effect.runPromise);
@@ -144,10 +130,9 @@ describe("reading the Antigravity sign-in", () => {
 
 describe("running a thread on the Antigravity CLI", () => {
   const harnessOf = (log: string, geminiHome: string) =>
-    makeAntigravityHarness({
-      command: "node",
+    standInHarness(antigravity, {
+      configDirectory: geminiHome,
       env: { ANTIGRAVITY_FAKE_LOG: log, ANTIGRAVITY_FAKE_MODE: "turn" },
-      geminiHome,
       idleTimeout: "10 minutes",
       prefixArgs: [join(import.meta.dirname, fakeArgs[0])],
     });

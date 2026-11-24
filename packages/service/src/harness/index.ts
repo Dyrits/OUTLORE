@@ -1,33 +1,15 @@
-export { type AcpProviderProfile, acpProviderProfiles } from "./acpProviderProfiles.ts";
-export { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.ts";
 export {
-  type AntigravityOptions,
-  makeAntigravityHarness,
-  probeAntigravityModels,
-} from "./antigravityProvider.ts";
+  type AcpProviderDefinition,
+  type AcpProviderProfile,
+  acpLaunchOf,
+  acpSignInOf,
+  type VersionGate,
+} from "./acpProviderDefinition.ts";
+export { acpProviders } from "./acpProviderRoster.ts";
+export { makeAcpProviderHarness, probeAcpProviderModels, readAcpProviderSignIn } from "./acpProviders.ts";
 export { type ClaudeOptions, claudeHarnessLayer, makeClaudeHarness } from "./claude.ts";
 export { claudeChoicesOf, claudePromptAnswerOf } from "./claudeChoices.ts";
-export {
-  type ClineOptions,
-  makeClineHarness,
-  probeClineModels,
-} from "./clineProvider.ts";
 export { type CodexOptions, makeCodexHarness } from "./codex.ts";
-export {
-  type CopilotProviderOptions,
-  makeCopilotProviderHarness,
-  probeCopilotModels,
-} from "./copilotProvider.ts";
-export {
-  type CursorProviderOptions,
-  makeCursorProviderHarness,
-  probeCursorModels,
-} from "./cursorProvider.ts";
-export {
-  type DevinOptions,
-  makeDevinHarness,
-  probeDevinModels,
-} from "./devinProvider.ts";
 export { fakeHarnessLayer } from "./fakeHarness.ts";
 export {
   claudeCheapestModel,

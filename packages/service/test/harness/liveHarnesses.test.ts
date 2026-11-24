@@ -5,17 +5,11 @@ import { describe, expect, it } from "@effect/vitest";
 import type { HarnessName, MissionDetail, MissionId } from "@outlore/contracts";
 import { Effect, Layer } from "effect";
 import {
-  acpProviderProfiles,
   Harness,
+  harnesses,
   liveHarnessToolsLayer,
-  makeAcpProviderHarness,
-  makeAntigravityHarness,
   makeClaudeHarness,
-  makeClineHarness,
   makeCodexHarness,
-  makeCopilotProviderHarness,
-  makeCursorProviderHarness,
-  makeDevinHarness,
   makeMuseHarness,
   makeOpenCodeHarness,
   makePiHarness,
@@ -48,17 +42,37 @@ const live = (directory = realpathSync(temporary("outlore-live-"))) => {
     Harness,
     Effect.gen(function* () {
       return routeHarnesses({
-        antigravity: yield* makeAntigravityHarness({ command: commands.antigravity, idleTimeout: "1 minute" }),
+        antigravity: yield* harnesses.antigravity.makeAdapter({
+          command: commands.antigravity,
+          idleTimeout: "1 minute",
+          sandboxProblem: null,
+        }),
         claude: yield* makeClaudeHarness({ command: commands.claude, idleTimeout: "1 minute", sandboxProblem: null }),
-        cline: yield* makeClineHarness({ command: commands.cline, idleTimeout: "1 minute" }),
+        cline: yield* harnesses.cline.makeAdapter({
+          command: commands.cline,
+          idleTimeout: "1 minute",
+          sandboxProblem: null,
+        }),
         codex: yield* makeCodexHarness({ command: commands.codex, idleTimeout: "1 minute" }),
-        copilot: yield* makeCopilotProviderHarness({ command: commands.copilot, idleTimeout: "1 minute" }),
-        cursor: yield* makeCursorProviderHarness({ command: commands.cursor, idleTimeout: "1 minute" }),
-        devin: yield* makeDevinHarness({ command: commands.devin, idleTimeout: "1 minute" }),
-        hermes: yield* makeAcpProviderHarness({
+        copilot: yield* harnesses.copilot.makeAdapter({
+          command: commands.copilot,
+          idleTimeout: "1 minute",
+          sandboxProblem: null,
+        }),
+        cursor: yield* harnesses.cursor.makeAdapter({
+          command: commands.cursor,
+          idleTimeout: "1 minute",
+          sandboxProblem: null,
+        }),
+        devin: yield* harnesses.devin.makeAdapter({
+          command: commands.devin,
+          idleTimeout: "1 minute",
+          sandboxProblem: null,
+        }),
+        hermes: yield* harnesses.hermes.makeAdapter({
           command: commands.hermes,
           idleTimeout: "1 minute",
-          profile: acpProviderProfiles.hermes,
+          sandboxProblem: null,
         }),
         muse: yield* makeMuseHarness({ command: commands.muse, idleTimeout: "1 minute" }),
         opencode: yield* makeOpenCodeHarness({ command: commands.opencode, idleTimeout: "1 minute", sandbox: null }),

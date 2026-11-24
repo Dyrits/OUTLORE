@@ -264,16 +264,21 @@ describe("signing in to a harness", () => {
       vi.stubEnv("PATH", path);
       vi.stubEnv("GEMINI_HOME", join(folder, "Gemini's state"));
       try {
-        const expected = `'antigravity' 'acp' '--gemini-dir=${folder}/Gemini'\\''s state' '--app-data-dir=antigravity-acp' --login`;
+        const home = `${folder}/Gemini'\\''s state`;
+        const expected = `'antigravity' acp '--gemini-dir=${home}' --app-data-dir=antigravity-acp --login`;
         if (process.platform === "darwin") {
           expect(yield* tools.openSignIn("antigravity", null)).toBe("Opened");
           const script = readFileSync(captured, "utf8");
           expect(script).toContain(expected);
-          expect(script).toContain(`export GEMINI_HOME='${folder}/Gemini'\\''s state'`);
+          // The sign-in runs on the launch's own environment: the update squeeze and the one home the flag also names.
+          expect(script).toContain("export AGY_CLI_DISABLE_AUTO_UPDATE='true'");
+          expect(script).toContain(`export GEMINI_HOME='${home}'`);
           expect(script).toContain(`export PATH='${path}'`);
         } else {
           const manual = yield* tools.openSignIn("antigravity", null).pipe(Effect.flip);
-          expect(manual.message).toBe(`Open a terminal on this computer and run: ${expected}`);
+          expect(manual.message).toBe(
+            `Open a terminal on this computer and run: AGY_CLI_DISABLE_AUTO_UPDATE='true' GEMINI_HOME='${home}' ${expected}`,
+          );
         }
       } finally {
         vi.unstubAllEnvs();

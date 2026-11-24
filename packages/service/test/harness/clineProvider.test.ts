@@ -4,13 +4,12 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "@effect/vitest";
 import { Effect } from "effect";
 import type { HarnessEvent } from "../../src/core/index.ts";
-import { acceptsAcpProviderVersion } from "../../src/harness/acpProviderProfiles.ts";
-import { clineProfile, makeClineHarness, probeClineModels } from "../../src/harness/clineProvider.ts";
+import { cline } from "../../src/harness/clineProvider.ts";
+import { standInHarness, standInProbe } from "../fixtures/providerStandIns.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
 // Fixture checks of the Cline harness against its stand-in, clineProviderFake.mjs: the launch carries the pinned argv
-// and environment (the local session backend and the CLI's self-update suppression), the version gate holds at
-// generation 3, and a turn mediates its tool calls through the owner exactly as the generic ACP adapter does.
+// and environment (the local session backend and the CLI's self-update suppression), and a turn mediates its tool calls through the owner exactly as the generic ACP adapter does.
 
 type LoggedEntry = {
   argv?: string[];
@@ -37,19 +36,11 @@ const entryOf = (log: string, method: string) => {
 const fakeArgs = ["../fixtures/clineProviderFake.mjs"] as const;
 
 const probeOf = (log: string) =>
-  probeClineModels({
+  standInProbe(cline, {
     command: "node",
     env: { CLINE_FAKE_LOG: log },
     prefixArgs: [join(import.meta.dirname, fakeArgs[0])],
   }).pipe(Effect.runPromise);
-
-describe("the cline launch profile", () => {
-  it("gates on generation 3, the minimum upstream enforces", () => {
-    expect(acceptsAcpProviderVersion(clineProfile, "3.0.68")).toBe(true);
-    expect(acceptsAcpProviderVersion(clineProfile, "4.1.0")).toBe(true);
-    expect(acceptsAcpProviderVersion(clineProfile, "2.9.14")).toBe(false);
-  });
-});
 
 describe("probing the cline CLI", () => {
   it("reads the session's models with the pinned argv and environment", async () => {
@@ -72,7 +63,7 @@ describe("probing the cline CLI", () => {
 
 describe("running a thread on the cline CLI", () => {
   const harnessOf = (log: string) =>
-    makeClineHarness({
+    standInHarness(cline, {
       command: "node",
       env: { CLINE_FAKE_LOG: log, CLINE_FAKE_MODE: "turn" },
       idleTimeout: "10 minutes",

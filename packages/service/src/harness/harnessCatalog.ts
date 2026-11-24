@@ -7,6 +7,19 @@ import {
   type ModelOption,
 } from "@outlore/contracts";
 import { Record } from "effect";
+import {
+  type AcpProviderDefinition,
+  type AcpSignInCommand,
+  acpSignInOf,
+  type VersionGate,
+} from "./acpProviderDefinition.ts";
+import { acpProviders } from "./acpProviderRoster.ts";
+import { antigravity } from "./antigravityProvider.ts";
+import { cline } from "./clineProvider.ts";
+import { copilot } from "./copilotProvider.ts";
+import { cursor } from "./cursorProvider.ts";
+import { devin } from "./devinProvider.ts";
+import { hermes } from "./hermesProvider.ts";
 
 export { harnessLabels, harnessNames };
 
@@ -62,14 +75,14 @@ type HarnessServiceFacts = {
   /** How to leave this harness's sandbox, when its adapter runs a native escalation; omitted for unprotected harnesses. */
   readonly sandboxAdvice?: SandboxAdvice;
   /**
-   * The arguments of the harness's own sign-in command; null when no sign-in command of the harness's own is
+   * The arguments of the harness's own sign-in command, for a harness with its own adapter; null when no sign-in command of the harness's own is
    * verified (its Sign-in explains the provider's own flow instead of running anything).
+   * Absent for an ACP provider, whose sign-in belongs to its definition (`acpProviders`) and is read through `signIn` below.
    */
-  readonly signInArgs: ReadonlyArray<string> | null;
+  readonly signInArgs?: ReadonlyArray<string> | null;
   /**
-   * The environment the harness's own sign-in command runs with, such as an auto-update squeeze or the flag that
-   * keeps a link flow from opening a browser itself; left out when the pinned sign-in needs none. Running a turn
-   * never carries it: it belongs to the sign-in surface alone.
+   * The environment that sign-in command runs with, such as the flag that keeps a link flow from opening a browser itself; left out when it needs none.
+   * Running a turn never carries it: it belongs to the sign-in surface alone.
    */
   readonly signInEnv?: Readonly<Record<string, string>>;
   /**
@@ -89,7 +102,10 @@ type HarnessServiceFacts = {
 };
 
 /** What Outlore knows of one harness without running it. */
-export type HarnessFacts = Omit<HarnessServiceFacts, "legacyExecutable" | "sandboxAdvice"> & {
+export type HarnessFacts = Omit<
+  HarnessServiceFacts,
+  "legacyExecutable" | "sandboxAdvice" | "signInArgs" | "signInEnv"
+> & {
   /** The usual model company when the model's own identifier names none, derived from `harnessDescriptors`. */
   readonly company: string;
   /** The harness's name as the owner reads it, derived from `harnessDescriptors`. */
@@ -98,27 +114,40 @@ export type HarnessFacts = Omit<HarnessServiceFacts, "legacyExecutable" | "sandb
   readonly legacyExecutable: string | null;
   /** How to leave this harness's sandbox, or null when no native sandbox escalation applies. */
   readonly sandboxAdvice: SandboxAdvice | null;
+  /**
+   * The harness's own sign-in command for one account's folder, with the environment it runs with; null when none is verified.
+   * An ACP provider derives it from its definition, so it can only open the state home the launch reads.
+   */
+  readonly signIn: (configDirectory: string | null) => SignInCommand | null;
+  /** The generation the executable must report to run, or null when no gate is verified; `inspect` refuses a version it rejects. */
+  readonly versionGate: VersionGate | null;
 };
+
+/** A harness's own sign-in command: its arguments and the environment it runs with. */
+export type SignInCommand = AcpSignInCommand;
+
+/** What the catalog takes from an ACP provider's definition instead of spelling again: its executables and the variable of its state home. */
+const identityOf = (definition: AcpProviderDefinition) => ({
+  configVariable: definition.stateHome.variable,
+  defaultExecutable: definition.executable,
+  ...(definition.legacyExecutable === undefined ? {} : { legacyExecutable: definition.legacyExecutable }),
+});
 
 const harnessServiceFacts = {
   antigravity: {
     // A plain ACP server mediated by the generic adapter, so it asks the owner through its protocol's permission
     // requests and has no `answer_prompt` tool.
     approvedCommandAdvice: "",
-    // Upstream pins an account's home with GEMINI_HOME and the same value in its --gemini-dir flag, but the pinned
-    // tree never shows the CLI resolving a split between the two, so added accounts stay blocked until a live CLI
-    // check proves which channel wins; the computer's own sign-in is the unredirected ~/.gemini.
-    configVariable: "GEMINI_HOME",
-    // Uses the vendor installer's `agy` by default, or the legacy `antigravity` binary when present on PATH.
-    defaultExecutable: "agy",
+    // The executable (the vendor installer's `agy`, or the legacy `antigravity` binary when present on PATH) and the
+    // home variable come from the definition. Added accounts stay blocked until a live CLI check proves which of the
+    // home's two channels, the flag or GEMINI_HOME, wins (antigravityProvider.ts).
+    ...identityOf(antigravity),
     fixedModels: null,
     hasPromptTool: false,
     installVia: "script",
-    legacyExecutable: "antigravity",
     // The newest version is what the GitHub releases carry; no registry holds one to read.
     packageName: "",
     releaseRegistry: "none",
-    signInArgs: ["acp", "--login"],
     signInNeedsNoTerminal: false,
     supportsAddedAccounts: false,
     updateArgs: null,
@@ -151,17 +180,12 @@ const harnessServiceFacts = {
     approvedCommandAdvice: "",
     // Upstream has no accounts entry for Cline, and CLINE_DIR/CLINE_DATA_DIR only steer its process confinement:
     // no verified account surface exists, so Cline takes the computer's own sign-in only.
-    configVariable: "CLINE_DATA_DIR",
-    defaultExecutable: "cline",
+    ...identityOf(cline),
     fixedModels: null,
     hasPromptTool: false,
     installVia: "npm",
     packageName: "cline",
     releaseRegistry: "none",
-    // The CLI's device-flow sign-in, with the same environment every spawn carries upstream (self-update
-    // suppressed, local session backend); a live check verifies the code it prints in the terminal.
-    signInArgs: ["auth", "-p", "cline"],
-    signInEnv: { CLINE_NO_AUTO_UPDATE: "1", CLINE_SESSION_BACKEND_MODE: "local" },
     signInNeedsNoTerminal: false,
     supportsAddedAccounts: false,
     // No update command of Cline's own exists upstream; its self-update stays squeezed off by the sign-in and
@@ -194,17 +218,13 @@ const harnessServiceFacts = {
     approvedCommandAdvice: "",
     // The driver upstream keeps no accounts entry for Copilot and its sign-in sits in the system keychain, so only
     // the computer's own sign-in is offered and added accounts are refused rather than silently shared.
-    configVariable: "COPILOT_HOME",
-    defaultExecutable: "copilot",
+    ...identityOf(copilot),
     fixedModels: null,
     hasPromptTool: false,
     installVia: "npm",
     packageName: "@github/copilot",
     releaseRegistry: "none",
-    // `copilot login` opens its browser sign-in; the environment squeezes the CLI's self-update off, exactly as
-    // upstream sets it at every spawn, and a live check verifies the browser flow's completion.
-    signInArgs: ["login"],
-    signInEnv: { COPILOT_AUTO_UPDATE: "false" },
+    // `copilot login` opens its browser sign-in; a live check verifies the browser flow's completion.
     signInNeedsNoTerminal: false,
     supportsAddedAccounts: false,
     // No update command of Copilot's own exists upstream and its self-update is squeezed off by the environment,
@@ -219,9 +239,8 @@ const harnessServiceFacts = {
     // CURSOR_CONFIG_DIR moves Cursor's settings only, never its sign-in (the Keychain keeps one credential per
     // computer user, and a key account would hand Outlore a credential it must never hold), so an added account
     // has no home to isolate: only the computer's own sign-in is offered.
-    configVariable: "CURSOR_CONFIG_DIR",
-    // Cursor's CLI is `cursor-agent`, never `cursor` (which launches the editor).
-    defaultExecutable: "cursor-agent",
+    // The executable is `cursor-agent`, never `cursor` (which launches the editor).
+    ...identityOf(cursor),
     fixedModels: null,
     hasPromptTool: false,
     installVia: "script",
@@ -229,8 +248,6 @@ const harnessServiceFacts = {
     releaseRegistry: "none",
     // `cursor-agent login` never opens its page on its own (NO_OPEN_BROWSER prints the sign-in link for the
     // owner to open); a live check verifies the link flow.
-    signInArgs: ["login"],
-    signInEnv: { NO_OPEN_BROWSER: "1" },
     signInNeedsNoTerminal: false,
     supportsAddedAccounts: false,
     updateArgs: null,
@@ -242,8 +259,7 @@ const harnessServiceFacts = {
     approvedCommandAdvice: "",
     // Upstream keeps no accounts entry for Devin and its state sits under the machine-wide XDG data root, so only
     // the computer's own sign-in is offered and added accounts are refused rather than unisolated.
-    configVariable: "XDG_DATA_HOME",
-    defaultExecutable: "devin",
+    ...identityOf(devin),
     fixedModels: null,
     hasPromptTool: false,
     installVia: "script",
@@ -251,7 +267,6 @@ const harnessServiceFacts = {
     releaseRegistry: "none",
     // No sign-in command of the CLI's own is verified: its sign-in is the ACP `devin-browser` flow, so Sign-in
     // explains and the owner signs in inside the provider's own surface, then presses Refresh.
-    signInArgs: null,
     signInNeedsNoTerminal: false,
     supportsAddedAccounts: false,
     updateArgs: null,
@@ -262,18 +277,13 @@ const harnessServiceFacts = {
     approvedCommandAdvice: "",
     // Fixed by the adapter: an account's own folder is Hermes's `HERMES_HOME`; turns refuse the user's own
     // Hermes directory (provider-accounts), and models come from the ACP probe, so nothing is fixed here.
-    configVariable: "HERMES_HOME",
-    defaultExecutable: "hermes",
+    ...identityOf(hermes),
     fixedModels: null,
     hasPromptTool: false,
     installVia: "script",
     // The newest version is what its own `hermes update --check` knows; no registry holds it.
     packageName: "",
     releaseRegistry: "none",
-    // A fresh Hermes home runs nothing until its dependency environment is committed (`hermes pm repair`,
-    // refused even by `hermes setup`), so sign-in chains both; the terminal script runs the line as a shell
-    // line, and the plain non-darwin instruction repeats the executable the same way.
-    signInArgs: ["pm", "repair", "&&", "hermes", "--setup"],
     signInNeedsNoTerminal: false,
     updateArgs: ["update"],
     updateCommand: null,
@@ -365,6 +375,17 @@ export const harnessFacts: Record<HarnessName, HarnessFacts> = Record.map(
     label: harnessDescriptors[name].label,
     legacyExecutable: facts.legacyExecutable ?? null,
     sandboxAdvice: facts.sandboxAdvice ?? null,
+    signIn: (configDirectory) => {
+      const provider = acpProviders[name];
+      if (provider !== undefined) return acpSignInOf(provider, { configDirectory });
+      if (facts.signInArgs == null) return null;
+      return {
+        args: facts.signInArgs,
+        env: { ...accountEnvironmentOf(name, configDirectory), ...facts.signInEnv },
+        keepsPath: false,
+      };
+    },
+    versionGate: acpProviders[name]?.version ?? null,
   }),
 );
 

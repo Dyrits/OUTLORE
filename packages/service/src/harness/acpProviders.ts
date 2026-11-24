@@ -20,7 +20,7 @@ import {
 } from "../core/index.ts";
 import { acpStdioMcpServerOf } from "./acpMcpBridge.ts";
 import { readAcpPrompt } from "./acpPrompt.ts";
-import type { AcpProviderProfile } from "./acpProviderProfiles.ts";
+import { type AcpProviderDefinition, type AcpProviderProfile, acpLaunchOf } from "./acpProviderDefinition.ts";
 import { acpRestartKeyOf, loadAcpSession, permissionOptionIdOf } from "./acpSession.ts";
 import {
   type HarnessConnection,
@@ -28,13 +28,14 @@ import {
   makeHarnessProcesses,
   type PooledTurn,
 } from "./harnessProcesses.ts";
+import type { SignInStatus } from "./harnessTools.ts";
 import { noToolServerInstructions } from "./instructions.ts";
 import { findFirstOutside, promptOf } from "./openCodePrompts.ts";
 import { toolServerName } from "./toolNames.ts";
 import { initializeParams } from "./vibeAccount.ts";
 
-// ACP (Agent Client Protocol) providers beyond the harnesses Outlore already runs: audited launch profiles
-// (acpProviderProfiles.ts), a read-only model probe, and a turn adapter that keeps one process per thread and
+// ACP (Agent Client Protocol) providers beyond the harnesses Outlore already runs: audited provider definitions
+// (acpProviderDefinition.ts), a read-only model probe, and a turn adapter that keeps one process per thread and
 // mediates every `session/request_permission` through the owner, as the Vibe adapter does.
 
 /** A model advertised by an ACP session. */
@@ -110,6 +111,42 @@ export const probeAcpProviderModels = Effect.fnUntraced(function* (options: {
     }).pipe(Effect.ensuring(Effect.sync(() => rpc.close()).pipe(Effect.andThen(Queue.shutdown(rpc.incoming)))));
   }).pipe(Effect.ensuring(Effect.sync(() => rmSync(cwd, { force: true, recursive: true }))));
 });
+
+/** How a probe-based sign-in read starts. */
+export type AcpSignInReadOptions = {
+  readonly command: string;
+  readonly definition: AcpProviderDefinition;
+  /** Extra environment for the launch, such as a stand-in's knobs in checks. */
+  readonly env?: Record<string, string>;
+  /** Arguments placed before the provider's own, used to run a stand-in script in checks. */
+  readonly prefixArgs?: ReadonlyArray<string>;
+};
+
+/**
+ * Reads a provider's sign-in from the session probe that lists models, on the same launch a turn uses.
+ * A session with models reports signed in, and the provider's own signed-out error code reports signed out.
+ * An empty list or any other failure reports unknown.
+ */
+export const readAcpProviderSignIn = (options: AcpSignInReadOptions): Effect.Effect<SignInStatus> =>
+  probeAcpProviderModels({
+    command: options.command,
+    preserveProviderErrors: true,
+    ...(options.prefixArgs === undefined ? {} : { prefixArgs: options.prefixArgs }),
+    profile: acpLaunchOf(options.definition, options.env === undefined ? {} : { env: options.env }),
+  }).pipe(
+    Effect.map((models): SignInStatus => ({ detail: null, signIn: models.length > 0 ? "SignedIn" : "Unknown" })),
+    Effect.catch((failure) =>
+      Effect.succeed<SignInStatus>({
+        detail: null,
+        signIn:
+          failure instanceof HarnessFailure &&
+          options.definition.signedOutCode !== null &&
+          failure.code === options.definition.signedOutCode
+            ? "SignedOut"
+            : "Unknown",
+      }),
+    ),
+  );
 
 /** How the generic ACP adapter starts one provider's harness. */
 export type AcpProviderHarnessOptions = {

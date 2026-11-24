@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "@effect/vitest";
 import { Effect } from "effect";
 import type { HarnessEvent } from "../../src/core/index.ts";
-import { devinProfile, makeDevinHarness, probeDevinModels } from "../../src/harness/devinProvider.ts";
+import { devin } from "../../src/harness/devinProvider.ts";
+import { standInHarness, standInProbe } from "../fixtures/providerStandIns.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
 // Fixture checks of the Devin harness against its stand-in, devinProviderFake.mjs: the launch carries the pinned argv
@@ -31,7 +32,7 @@ const entryOf = (log: string, method: string) => {
 const fakeArgs = ["../fixtures/devinProviderFake.mjs"] as const;
 
 const probeOf = (log: string) =>
-  probeDevinModels({
+  standInProbe(devin, {
     command: "node",
     env: { DEVIN_FAKE_LOG: log },
     prefixArgs: [join(import.meta.dirname, fakeArgs[0])],
@@ -54,13 +55,13 @@ describe("probing the devin CLI", () => {
   });
 
   it("pins no environment of its own", () => {
-    expect(devinProfile.env).toEqual({});
+    expect(devin.spawnEnv).toEqual({});
   });
 });
 
 describe("running a thread on the devin CLI", () => {
   const harnessOf = (log: string) =>
-    makeDevinHarness({
+    standInHarness(devin, {
       command: "node",
       env: { DEVIN_FAKE_LOG: log, DEVIN_FAKE_MODE: "turn" },
       idleTimeout: "10 minutes",

@@ -1,7 +1,4 @@
-import { type Duration, Effect, type Scope } from "effect";
-import type { HarnessAdapter } from "../core/index.ts";
-import type { AcpProviderProfile } from "./acpProviderProfiles.ts";
-import { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.ts";
+import { type AcpProviderDefinition, majorVersionAtLeast } from "./acpProviderDefinition.ts";
 
 // Cline: the Cline CLI's own ACP surface. Surveyed fixture-first against the pinned upstream OpenBot
 // (b1e5ea74206e1e16fa2eae62d8d131ea1349eaa0, 2026-11-22); live hands-on stays pending, since no cline CLI is installed
@@ -34,58 +31,16 @@ import { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.t
 // - Update: no update command of Cline's own is in the pinned tree; the CLI's self-update is suppressed with
 //   CLINE_NO_AUTO_UPDATE=1, this profile's pinned environment.
 
-/**
- * The audited launch profile: the pinned argv and environment, gated on generation 3 (the minimum upstream enforces).
- */
-export const clineProfile: AcpProviderProfile = {
-  args: ["--acp"],
-  env: { CLINE_NO_AUTO_UPDATE: "1", CLINE_SESSION_BACKEND_MODE: "local" },
+/** The audited provider: the pinned argv and environment, gated on generation 3 (the minimum upstream enforces). */
+export const cline: AcpProviderDefinition = {
+  argv: () => ["--acp"],
+  executable: "cline",
   label: "Cline",
-  minMajorVersion: 3,
+  signedOutCode: null,
+  // The CLI's device-flow sign-in, with the same environment every spawn carries upstream; a live check verifies the code it prints in the terminal.
+  signIn: { argv: () => ["auth", "-p", "cline"], extraEnv: {} },
+  spawnEnv: { CLINE_NO_AUTO_UPDATE: "1", CLINE_SESSION_BACKEND_MODE: "local" },
+  // Only the computer's own sign-in: no verified account surface exists, so no launch redirects CLINE_DATA_DIR.
+  stateHome: { kind: "computer", variable: "CLINE_DATA_DIR" },
+  version: majorVersionAtLeast(3),
 };
-
-/** How a Cline probe (and nothing else) starts. */
-export type ClineProbeOptions = {
-  /** The cline executable. */
-  readonly command: string;
-  /** Extra environment for the launch, such as a stand-in's knobs in checks. */
-  readonly env?: Record<string, string>;
-  /** Arguments placed before the profile's own, used to run a stand-in script in checks. */
-  readonly prefixArgs?: ReadonlyArray<string>;
-};
-
-/** Lists the models of a Cline session without prompting or exposing any MCP server. */
-export const probeClineModels = Effect.fnUntraced(function* (options: ClineProbeOptions) {
-  return yield* probeAcpProviderModels({
-    command: options.command,
-    ...(options.prefixArgs === undefined ? {} : { prefixArgs: options.prefixArgs }),
-    profile: { ...clineProfile, env: { ...clineProfile.env, ...(options.env ?? {}) } },
-  });
-});
-
-/** How the Cline harness starts. */
-export type ClineOptions = {
-  /** The cline executable. */
-  readonly command: string;
-  /** Extra environment for the whole process, such as a stand-in's knobs in checks. */
-  readonly env?: Record<string, string>;
-  /** How long an idle thread keeps its process. */
-  readonly idleTimeout: Duration.Input;
-  /** The MCP servers the session is given; none by default, so the thread's own tool server stays unexposed. */
-  readonly mcpServers?: ReadonlyArray<object>;
-  /** Arguments placed before the profile's own, used to run a stand-in script in checks. */
-  readonly prefixArgs?: ReadonlyArray<string>;
-};
-
-/**
- * Runs each thread in one long-lived Cline ACP process: every permission request reaches the owner, the mode stays
- * "ask" where the session offers one, and the pinned environment suppresses the CLI's self-update on every spawn.
- */
-export const makeClineHarness = (options: ClineOptions): Effect.Effect<HarnessAdapter, never, Scope.Scope> =>
-  makeAcpProviderHarness({
-    command: options.command,
-    idleTimeout: options.idleTimeout,
-    ...(options.mcpServers === undefined ? {} : { mcpServers: options.mcpServers }),
-    ...(options.prefixArgs === undefined ? {} : { prefixArgs: options.prefixArgs }),
-    profile: { ...clineProfile, env: { ...clineProfile.env, ...(options.env ?? {}) } },
-  });
