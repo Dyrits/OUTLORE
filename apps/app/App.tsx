@@ -20,7 +20,6 @@ import { appStyles as styles } from "./src/shell/appStyles";
 import { initialLocation, navigate, panelScopeOf, type QuestOrigin } from "./src/shell/location";
 import { detailsModeOf } from "./src/shell/navigation";
 import { useAttentionNotice } from "./src/shell/notifications";
-import type { RealmListing } from "./src/shell/questTree";
 import { Shell } from "./src/shell/shell";
 import type { Place } from "./src/shell/sidebar";
 import { useWorkshopTrip } from "./src/shell/useWorkshopTrip";
@@ -47,7 +46,7 @@ export function App() {
     openUpdateLink,
   } = useHostConnection();
   const [location, dispatch] = useReducer(navigate, resumedPlace, initialLocation);
-  const { openMission, openThread, selectedMission, listedRealm, place, guildmasterRealm } = location;
+  const { openMission, openThread, selectedMission, place, guildmasterRealm } = location;
   const setGuildmasterRealm = (path: string | null) => dispatch({ path, type: "chroniclerRealm" });
   const setIsPermissionsOpen = (isOpen: boolean) => dispatch({ isOpen, type: "permissions" });
   const setSettingsSection = (section: SettingsSectionId) => dispatch({ section, type: "section" });
@@ -173,10 +172,9 @@ export function App() {
     dispatch({ id, type: "select" });
     rightPanel.show(id === null ? null : { tab: "quest" });
   };
-  const openRealm = (listing: RealmListing) => dispatch({ listing, type: "realm" });
   const openParent = (quest: { workspaceId: string | null; workspaceName: string | null }) =>
     dispatch({ quest, type: "parent" });
-  const detailsMode = detailsModeOf({ hasListedRealm: listedRealm !== null, openMission, place, selectedMission });
+  const detailsMode = detailsModeOf({ openMission, selectedMission });
   const details =
     detailsMode === "toggle"
       ? {
@@ -191,14 +189,12 @@ export function App() {
       details={details}
       dispatch={dispatch}
       isWorkshopOpen={place === "Settings" && location.openMission === null}
-      listedRealm={listedRealm}
       location={location}
       onOpenChannel={(listing) => dispatch({ listing, type: "channel" })}
       onOpenChronicle={() => goTo("Chronicle")}
       onOpenErrands={(id) => dispatch({ id, showErrands: true, type: "quest" })}
       onOpenMission={openMissionFromAnywhere}
       onOpenQuestsTab={(listing) => dispatch({ listing, showQuests: true, type: "channel" })}
-      onOpenRealmQuests={openRealm}
       onOpenThread={openSideQuest}
       onWorkshop={onWorkshop}
       openMission={openMission}
@@ -216,7 +212,6 @@ export function App() {
           openMenu: () => dispatch({ isOpen: true, type: "menu" }),
           openMission: openMissionFromAnywhere,
           openParent,
-          openRealm,
           openThread: openSideQuest,
           selectMission,
           selectThread: setOpenThread,

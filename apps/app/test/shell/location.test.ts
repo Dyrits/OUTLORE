@@ -115,12 +115,12 @@ describe("navigating the window", () => {
     expect(menu.isNarrowChroniclerOpen).toBe(false);
     expect(navigate(menu, { place: "Settings", type: "place" }).isMenuOpen).toBe(false);
   });
-  it("returns an archived quest to its parent realm", () => {
+  it("returns an archived quest to its parent realm's channel", () => {
     const next = navigate(initialLocation(null), {
       quest: { workspaceId: "realm", workspaceName: "Realm" },
       type: "parent",
     });
-    expect(next.place).toBe("RealmQuests");
+    expect(next.place).toBe("Channel");
     expect(next.listedRealm).toEqual({ id: "realm", name: "Realm" });
   });
   it("clears host-specific selections and coverings when choosing another host", () => {

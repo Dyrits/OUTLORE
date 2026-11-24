@@ -1,6 +1,6 @@
 import { type ElementRef, type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { Platform, Pressable, View } from "react-native";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import { emblemPaths } from "../foundation/emblems";
 import { canHover, isKeyboardFocus } from "../foundation/inputModality";
 import { isPointerOver } from "../foundation/pointerPosition";
@@ -179,44 +179,3 @@ export const useRowActions = () => {
     },
   };
 };
-
-/** Opens a group's overview without changing its folded state. */
-export function OverviewButton({
-  focusProps,
-  isMain = false,
-  label,
-  onPress,
-}: {
-  focusProps: FocusProps;
-  isMain?: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      {...focusProps}
-      accessibilityLabel={`Open ${label} overview`}
-      accessibilityRole="button"
-      hitSlop={4}
-      onPress={onPress}
-      style={(state) => [
-        isMain ? local.add : local.newQuest,
-        (state.pressed || isHovered(state)) && (isMain ? local.addHovered : local.newQuestHovered),
-      ]}
-    >
-      <Svg
-        fill="none"
-        height={18}
-        stroke={colors.textMuted}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-        viewBox="0 0 24 24"
-        width={18}
-      >
-        <Path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
-        <Circle cx={12} cy={12} r={3} />
-      </Svg>
-    </Pressable>
-  );
-}

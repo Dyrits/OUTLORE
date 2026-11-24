@@ -1,4 +1,4 @@
-import { type MissionId, WorkspaceId } from "@outlore/contracts";
+import { type MissionId, type ThreadId, WorkspaceId } from "@outlore/contracts";
 import { type ReactNode, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
@@ -9,6 +9,7 @@ import { colors, fontSizes } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { LoreScreen } from "../lore/lore";
 import { RealmPanel } from "../quests/questPanel";
+import { ChannelHistory } from "./channelHistory";
 import { ChannelQuests } from "./channelQuests";
 import { childStatusOf } from "./childNotches";
 import { childPartsOf, notchWidth } from "./paneNotches";
@@ -22,6 +23,7 @@ export function ChannelPane({
   listRequest,
   onBack,
   onOpenMission,
+  onOpenThread,
   openMission,
 }: {
   channel: { id: string | null; name: string };
@@ -31,6 +33,8 @@ export function ChannelPane({
   listRequest?: object | undefined;
   onBack?: (() => void) | undefined;
   onOpenMission: (id: MissionId) => void;
+  /** Opens an errand of a quest, from the History tab. */
+  onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   openMission?: MissionId | undefined;
 }) {
   return (
@@ -42,6 +46,7 @@ export function ChannelPane({
       listRequest={listRequest}
       onBack={onBack}
       onOpenMission={onOpenMission}
+      onOpenThread={onOpenThread}
       openMission={openMission}
     />
   );
@@ -52,11 +57,13 @@ export function StandaloneChannel({
   channel,
   client,
   onOpenMission,
+  onOpenThread,
   questsRequest,
 }: {
   channel: { id: string | null; name: string };
   client: ServiceClient;
   onOpenMission: (id: MissionId) => void;
+  onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   questsRequest: object | null;
 }) {
   const { data } = useServiceQuery(client, listedMissions.request, listedMissions.key);
@@ -75,6 +82,7 @@ export function StandaloneChannel({
         client={client}
         listRequest={listRequest ?? void 0}
         onOpenMission={onOpenMission}
+        onOpenThread={onOpenThread}
       />
       <QuestStartFailure failure={failure} />
       <PaneNotches parts={parts} side="right" />
@@ -97,7 +105,7 @@ const local = StyleSheet.create({
 
 /**
  * A channel's pane (conversation panes): Missives is its conversation, Quests lists the realm's quests in the same
- * pane. The tab resets with the channel, so each realm opens on its conversation.
+ * pane, and History lists all of them by recency, with their errands. The tab resets with the channel, so each realm opens on its conversation.
  */
 function ChannelBody({
   channel,
@@ -106,6 +114,7 @@ function ChannelBody({
   listRequest,
   onBack,
   onOpenMission,
+  onOpenThread,
   openMission,
 }: {
   channel: { id: string | null; name: string };
@@ -114,9 +123,10 @@ function ChannelBody({
   listRequest?: object | undefined;
   onBack?: (() => void) | undefined;
   onOpenMission: (id: MissionId) => void;
+  onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   openMission?: MissionId | undefined;
 }) {
-  const [tab, setTab] = useState<"Missives" | "Quests" | "Realm" | "Rituals" | "Companions">(
+  const [tab, setTab] = useState<"Missives" | "Quests" | "Realm" | "Rituals" | "History" | "Companions">(
     listRequest === undefined ? "Missives" : "Quests",
   );
   useEffect(() => {
@@ -158,6 +168,14 @@ function ChannelBody({
             realmId={id}
             show={tab}
           />
+        ) : tab === "History" ? (
+          <ChannelHistory
+            client={client}
+            isTouch={onBack !== undefined}
+            onOpen={onOpenMission}
+            onOpenThread={onOpenThread}
+            realmId={id}
+          />
         ) : tab === "Realm" ? (
           realmPanel
         ) : undefined
@@ -178,10 +196,10 @@ function ChannelBody({
           isTouch={onBack !== undefined}
           names={
             realm === null
-              ? ["Missives", "Quests", "Rituals", "Companions"]
+              ? ["Missives", "Quests", "Rituals", "History", "Companions"]
               : onBack !== undefined
-                ? ["Missives", "Quests", "Rituals", "Realm", "Companions"]
-                : ["Missives", "Realm", "Quests", "Rituals", "Companions"]
+                ? ["Missives", "Quests", "Rituals", "History", "Realm", "Companions"]
+                : ["Missives", "Realm", "Quests", "Rituals", "History", "Companions"]
           }
           onSelect={setTab}
           selected={tab}

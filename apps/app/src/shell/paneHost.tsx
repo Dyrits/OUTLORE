@@ -34,6 +34,7 @@ export function PaneHost({
   isChannelOpen = false,
   isParked = false,
   onChannelOpen,
+  onOpenErrand,
   onOpenMission,
   onOpenThread,
   openThread,
@@ -47,6 +48,8 @@ export function PaneHost({
   missionId: MissionId;
   /** Told whether the channel pane is open, so the next quest to open can keep it so. */
   onChannelOpen?: (isOpen: boolean) => void;
+  /** Opens an errand of any quest, from the channel pane's History tab. */
+  onOpenErrand: (missionId: MissionId, threadId: ThreadId) => void;
   onOpenMission: (missionId: MissionId) => void;
   /** Makes a thread the open one, which is the deepest pane of the chain. */
   onOpenThread: (threadId: ThreadId) => void;
@@ -201,6 +204,7 @@ export function PaneHost({
                     client={client}
                     listRequest={listRequest?.id === id ? listRequest : undefined}
                     onOpenMission={openChannelQuest}
+                    onOpenThread={onOpenErrand}
                     openMission={missionId}
                   />
                   <QuestStartFailure failure={questStartFailure} />

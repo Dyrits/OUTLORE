@@ -12,7 +12,6 @@ describe("the menu of places (CHG-0449)", () => {
   });
   it("names every place Chronicler may be told about, and resumes only those that need no selection", () => {
     for (const place of resumablePlaces) expect(screenNames[place]).toBeDefined();
-    expect(resumablePlaces).not.toContain("RealmQuests");
     expect(resumablePlaces).not.toContain("Rituals");
   });
 });

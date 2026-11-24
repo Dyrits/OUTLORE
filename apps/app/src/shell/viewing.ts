@@ -5,14 +5,8 @@ import { type Place, screenNames } from "./placeCatalog";
 // quest when the screen is one. Chronicler reads it with each message, to know what "this quest" or "this page" means.
 
 /** What Chronicler is told: the quest or screen beside the Chronicle. */
-export const viewingOf = (
-  place: Place | null,
-  openMission: MissionId | null,
-  listedRealmName: string | null,
-): Viewing => {
+export const viewingOf = (place: Place | null, openMission: MissionId | null): Viewing => {
   if (openMission !== null) return { missionId: openMission, screen: "Quest" };
   if (place === null) return { screen: "App" };
-  return {
-    screen: place === "RealmQuests" && listedRealmName !== null ? `Quests of ${listedRealmName}` : screenNames[place],
-  };
+  return { screen: screenNames[place] };
 };

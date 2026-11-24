@@ -49,7 +49,6 @@ export function Sidebar({
   onOpenMission,
   onOpenErrands,
   onOpenQuestsTab,
-  onOpenRealmQuests,
   onOpenChannel,
   onOpenChronicle,
   onOpenThread,
@@ -67,7 +66,6 @@ export function Sidebar({
   onOpenErrands: (id: MissionId) => void;
   onOpenQuestsTab: (listing: RealmListing | null) => void;
   /** Opens the page that lists all of a realm's quests. */
-  onOpenRealmQuests: (listing: RealmListing) => void;
   onOpenChannel?: ((listing: RealmListing | null) => void) | undefined;
   onOpenChronicle?: (() => void) | undefined;
   /** Opens an errand of a quest. */
@@ -189,7 +187,6 @@ export function Sidebar({
                 : { onOpenChannel: () => onOpenChannel({ id: realm.id, name: realm.name }) })}
               onNewQuest={() => startQuest(realm.id, realm.id)}
               onNewRitual={() => openRitualForm({ kind: "create", originMissionId: null, realmPath: realm.path })}
-              onOverview={() => onOpenRealmQuests({ id: realm.id, name: realm.name })}
               onToggle={() => setRealmFolds((current) => new Map(current).set(realm.id, !isClosed))}
               path={realm.path}
               questCount={realm.quests.length}

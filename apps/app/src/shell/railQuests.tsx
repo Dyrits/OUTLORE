@@ -12,16 +12,7 @@ import { DeleteRitualButton, realmArchivedNotice } from "../rituals/ritualCard";
 import { scheduleLabelOf } from "../rituals/ritualLabels";
 import { isRealmArchivedOf, runIsUnderwayOf } from "../rituals/ritualRow";
 import { DragSource } from "./questDrag";
-import {
-  ArchiveIcon,
-  Chevron,
-  DeleteIcon,
-  FolderCue,
-  NewQuestIcon,
-  NewRitualIcon,
-  OverviewButton,
-  useRowActions,
-} from "./railActions";
+import { ArchiveIcon, Chevron, DeleteIcon, FolderCue, NewQuestIcon, NewRitualIcon, useRowActions } from "./railActions";
 import { threadOutlineOf } from "./railOutline";
 import { archiveErrand } from "./railQuestActions";
 import { Count, Row, type RowCorner, ShowAll, StateDot } from "./railRows";
@@ -331,7 +322,7 @@ export function RitualRow({
 
 /**
  * A realm's row: its name with the folder mark when it is tied to a folder, its quest count, and its chevron,
- * always; its overview and new-quest buttons while hovered or focused, and always on a device that cannot hover (CHG-0497).
+ * always; its new-quest buttons while hovered or focused, and always on a device that cannot hover (CHG-0497).
  */
 export function RealmHeader({
   isOpen,
@@ -339,7 +330,6 @@ export function RealmHeader({
   onOpenChannel,
   onNewQuest,
   onNewRitual,
-  onOverview,
   onToggle,
   path,
   questCount,
@@ -350,13 +340,12 @@ export function RealmHeader({
   onNewQuest: () => void;
   /** Schedules a new Ritual in this realm (CHG-0616); its form opens with the realm taken. */
   onNewRitual?: (() => void) | undefined;
-  onOverview: () => void;
   onToggle: () => void;
   path: string | null;
   questCount: number;
 }) {
   const { actionsStyle, focusProps, isHighlighted, isShown, pressProps, rowProps } = useRowActions();
-  // The row is a view: its name button and the fold, overview, and creation buttons are siblings, never nested.
+  // The row is a view: its name button and the fold and creation buttons are siblings, never nested.
   return (
     <View
       {...rowProps}
@@ -384,7 +373,6 @@ export function RealmHeader({
         <Count isShown={isShown} value={questCount} />
       </Pressable>
       <View style={actionsStyle}>
-        <OverviewButton focusProps={focusProps} label={name} onPress={onOverview} />
         <Pressable
           {...focusProps}
           accessibilityLabel={`New quest in ${name}`}

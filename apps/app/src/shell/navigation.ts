@@ -1,23 +1,14 @@
-import type { Place } from "./sidebar";
-
 export { resumablePlaces } from "./placeCatalog";
 
 /** Returns to the archived quest's actual parent, not the screen it happened to be opened from. */
 export const archiveParentOf = <Id extends string>(quest: { workspaceId: Id | null; workspaceName: string | null }) =>
   quest.workspaceId === null
     ? { listing: null, place: "Home" as const }
-    : { listing: { id: quest.workspaceId, name: quest.workspaceName ?? "Realm" }, place: "RealmQuests" as const };
+    : { listing: { id: quest.workspaceId, name: quest.workspaceName ?? "Realm" }, place: "Channel" as const };
 
 /** Whether the screen offers details the owner can explicitly open. */
 export type DetailsMode = "none" | "toggle";
 
-/** Offers details for an open or selected quest or a listed realm; no destination opens them automatically. */
-export const detailsModeOf = (view: {
-  hasListedRealm: boolean;
-  openMission: string | null;
-  place: Place;
-  selectedMission: string | null;
-}): DetailsMode => {
-  if (view.openMission !== null || view.selectedMission !== null) return "toggle";
-  return view.place === "RealmQuests" && view.hasListedRealm ? "toggle" : "none";
-};
+/** Offers details for an open or selected quest; no destination opens them automatically. */
+export const detailsModeOf = (view: { openMission: string | null; selectedMission: string | null }): DetailsMode =>
+  view.openMission !== null || view.selectedMission !== null ? "toggle" : "none";

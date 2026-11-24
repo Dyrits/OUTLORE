@@ -16,7 +16,6 @@ import type { RightPanel } from "../foundation/useRightPanel";
 import { EdgeResizer } from "./edgeResizer";
 import type { Location, NavigationEvent } from "./location";
 import { PaneButton } from "./paneStrip";
-import type { RealmListing } from "./questTree";
 import {
   clampRailWidth,
   minRailWidth,
@@ -51,8 +50,6 @@ export function Shell(
     /** The place the content shows, told to Chronicler. */
     place: Place | null;
     rightPanel: RightPanel;
-    /** The realm whose quest list is open, named in the top bar. */
-    listedRealm: RealmListing | null;
     /** The realm chosen for Chronicler's next message, from a realm's page, and how to clear it. */
     chronicler: { onRealm: (path: string | null) => void; realmPath: string | null };
   },
@@ -141,7 +138,7 @@ export function Shell(
       onOpenMission={props.onOpenMission}
       onRealm={props.chronicler.onRealm}
       realmPath={props.chronicler.realmPath}
-      viewing={viewingOf(props.place, props.openMission, props.listedRealm?.name ?? null)}
+      viewing={viewingOf(props.place, props.openMission)}
     />
   );
   const chroniclerChat = chronicleView(
@@ -206,7 +203,6 @@ export function Shell(
         onOpenErrands={choosing(props.onOpenErrands)}
         onOpenMission={choosing(props.onOpenMission)}
         onOpenQuestsTab={choosing(props.onOpenQuestsTab)}
-        onOpenRealmQuests={choosing(props.onOpenRealmQuests)}
         onOpenThread={choosing(props.onOpenThread)}
         onWorkshop={choosing(props.onWorkshop)}
         width={railWidth}

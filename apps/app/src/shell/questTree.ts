@@ -49,7 +49,7 @@ export const toggledFold = (folded: ReadonlySet<string>, id: string): ReadonlySe
 };
 
 /**
- * Whether a sidebar row shows its hover marks (a heading's fold arrow; overview, new quest, new realm): always on a
+ * Whether a sidebar row shows its hover marks (a heading's fold arrow; new quest, new realm): always on a
  * device that cannot hover (a phone, a touch screen), where they could not be found otherwise; elsewhere only while the
  * pointer is over the row, or while a keyboard focus is inside it so they stay reachable. The focus a click leaves does
  * not count. Otherwise they keep their place, unseen.

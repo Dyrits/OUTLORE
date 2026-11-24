@@ -201,7 +201,7 @@ function RitualLine({
   );
 }
 
-/** A quest's tree read at the shared service seam and drawn with the same rows on every overview. */
+/** A quest's tree read at the shared service seam and drawn with the same rows in the History tab. */
 export function QuestTreeLines({
   client,
   collapsed,

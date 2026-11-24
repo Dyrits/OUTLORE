@@ -17,7 +17,6 @@ import { ChronicleActivity } from "./chronicleActivity";
 import { HomeScreen } from "./homeScreen";
 import type { QuestOrigin } from "./location";
 import { PaneHost } from "./paneHost";
-import { QuestListScreen } from "./questListPage";
 import type { RealmListing } from "./questTree";
 import type { Place } from "./sidebar";
 
@@ -36,9 +35,8 @@ interface Navigation {
   openMenu: () => void;
   /** Opens a quest; the origin says where its Back returns in a narrow window. */
   openMission: (id: MissionId, origin?: QuestOrigin) => void;
-  /** Goes to a quest's parent view: its realm's quests, or the home screen for a quest in no realm. */
+  /** Goes to a quest's parent view: its realm's channel, or the home screen for a quest in no realm. */
   openParent: (quest: { workspaceId: string | null; workspaceName: string | null }) => void;
-  openRealm: (realm: RealmListing) => void;
   /** Opens a quest's errand; the origin says where its Back returns in a narrow window. */
   openThread: (missionId: MissionId, threadId: ThreadId, origin?: QuestOrigin) => void;
   selectMission: (id: MissionId | null) => void;
@@ -94,14 +92,6 @@ function AppScreenContent({
   view: Destination;
   onTarget: (missionId: MissionId, target: ChronicleTarget | null) => void;
 }) {
-  const quests = (listing: RealmListing) => (
-    <QuestListScreen
-      client={client}
-      listing={listing}
-      onOpen={navigation.openMission}
-      onOpenThread={navigation.openThread}
-    />
-  );
   // Whether the realm's channel is open, as its own screen or as a pane: a quest opened next keeps it open.
   const isChannelOpen = useRef(false);
   const { openMission, place } = view;
@@ -132,7 +122,6 @@ function AppScreenContent({
     ),
     Home: home,
     Lore: <LoreScreen client={client} onBack={() => navigation.goTo("Home")} threadId={null} title="All lore" />,
-    RealmQuests: view.listedRealm === null ? home : quests(view.listedRealm),
     Reserves: <UsageScreen client={client} />,
     Settings: view.isPermissionsOpen ? (
       <PermissionsScreen client={client} onBack={() => navigation.setPermissions(false)} />
@@ -183,6 +172,7 @@ function AppScreenContent({
               key={`${quest.openMission}:${quest.openCount}`}
               missionId={quest.openMission}
               onChannelOpen={setChannelOpen}
+              onOpenErrand={navigation.openThread}
               onOpenMission={navigation.openMission}
               onOpenThread={navigation.selectThread}
               openThread={quest.openThread}
@@ -219,6 +209,7 @@ function AppScreenContent({
             listRequest={channel.questsRequest ?? void 0}
             onBack={navigation.openMenu}
             onOpenMission={(id) => navigation.openMission(id, "channel")}
+            onOpenThread={(missionId, threadId) => navigation.openThread(missionId, threadId, "channel")}
           />
         </View>
         {conversation !== null && (
@@ -247,6 +238,7 @@ function AppScreenContent({
               client={client}
               key={channel.id ?? "borderlands"}
               onOpenMission={navigation.openMission}
+              onOpenThread={navigation.openThread}
               questsRequest={channel.questsRequest}
             />
           </CompanionDockActions.Provider>

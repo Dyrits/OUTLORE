@@ -1,5 +1,5 @@
-/** The places the sidebar leads to; a quest is opened from its own row instead, a realm's quests from its own list. */
-export type Place = "Home" | "Chronicle" | "Channel" | "RealmQuests" | "Lore" | "Archived" | "Reserves" | "Settings";
+/** The places the sidebar leads to; a quest is opened from its own row instead, a realm's quests from its channel. */
+export type Place = "Home" | "Chronicle" | "Channel" | "Lore" | "Archived" | "Reserves" | "Settings";
 
 type Entry = { label: string; note: string; place: Place };
 
@@ -18,7 +18,6 @@ export const screenNames: Record<Place, string> = {
   Chronicle: "Chronicle",
   Home: "Home",
   Lore: "Lore",
-  RealmQuests: "Realm quests",
   Reserves: "Reserves",
   Settings: "Settings",
 };
