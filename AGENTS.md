@@ -63,6 +63,6 @@ Latest handoffs:
 
 - To verify content loading on a paired phone during host activity, read the [current handoff](.agents/handoffs/2026-11-24-0918-remote-content-loading.md). Handoffs are shared and committed.
 
-- To resume the 2026-11-24 architecture audit (choose and build a candidate), read the [current handoff](.agents/handoffs/2026-11-24-0738-architecture-audit.md). Handoffs are shared and committed.
+- To resume provider logos, read the [current handoff](.agents/handoffs/2026-11-24-0823-provider-logos.md). Handoffs are shared and committed.
 
-- To verify the realm's channel pane staying open when a quest opens, read the [current handoff](.agents/handoffs/2026-11-24-0729-keep-channel-open.md). Handoffs are shared and committed.
+- To resume the 2026-11-24 architecture audit (choose and build a candidate), read the [current handoff](.agents/handoffs/2026-11-24-0738-architecture-audit.md). Handoffs are shared and committed.
