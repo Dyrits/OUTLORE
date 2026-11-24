@@ -42,6 +42,8 @@ export const probeAcpProviderModels = Effect.fnUntraced(function* (options: {
   readonly command: string;
   readonly profile: AcpProviderProfile;
   readonly prefixArgs?: ReadonlyArray<string>;
+  /** Keep JSON-RPC error codes when the caller needs to distinguish authentication failures. */
+  readonly preserveProviderErrors?: boolean;
   /**
    * A caller-supplied state home for profiles that need one configured (`needsConfiguredStateHome`): the
    * probe uses it as the profile's state home verbatim, neither creating nor removing it, so a prepared
@@ -76,15 +78,16 @@ export const probeAcpProviderModels = Effect.fnUntraced(function* (options: {
       label: options.profile.label,
     });
     return yield* Effect.gen(function* () {
-      // The probe's failures close over one HarnessFailure shape: a timeout says the provider did not answer.
-      const timedOut = (step: string) =>
-        Effect.mapError(
-          () => new HarnessFailure({ reason: `${options.profile.label} did not answer ${step} in time.` }),
+      const probeFailure = (step: string) =>
+        Effect.mapError((failure: unknown) =>
+          options.preserveProviderErrors === true && failure instanceof HarnessFailure
+            ? failure
+            : new HarnessFailure({ reason: `${options.profile.label} did not answer ${step} in time.` }),
         );
-      yield* rpc.request("initialize", initializeParams).pipe(Effect.timeout("20 seconds"), timedOut("initialize"));
+      yield* rpc.request("initialize", initializeParams).pipe(Effect.timeout("20 seconds"), probeFailure("initialize"));
       const session = yield* rpc
         .request("session/new", { cwd, mcpServers: [] })
-        .pipe(Effect.timeout("20 seconds"), timedOut("session/new"));
+        .pipe(Effect.timeout("20 seconds"), probeFailure("session/new"));
       const models = fieldOf(fieldOf(session, "models"), "availableModels");
       if (Array.isArray(models))
         return models.flatMap((model): Array<AcpProviderModel> => {

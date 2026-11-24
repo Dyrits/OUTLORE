@@ -76,6 +76,8 @@ const onRequest = (request) => {
   });
   if (request.method === "initialize")
     return answer(request.id, mode === "turn" ? { agentCapabilities: { promptCapabilities: { image: true } } } : {});
+  if (request.method === "session/new" && mode === "signedout")
+    return send({ error: { code: -32000, message: "Authentication required" }, id: request.id, jsonrpc: "2.0" });
   if (request.method === "session/new")
     return answer(
       request.id,

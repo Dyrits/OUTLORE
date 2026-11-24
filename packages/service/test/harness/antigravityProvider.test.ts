@@ -11,6 +11,7 @@ import {
   antigravityTakesStateFolders,
   makeAntigravityHarness,
   probeAntigravityModels,
+  readAntigravitySignIn,
 } from "../../src/harness/antigravityProvider.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
@@ -115,6 +116,29 @@ describe("probing the Antigravity CLI", () => {
       else process.env.GEMINI_HOME = previous;
       rmSync(directory, { force: true, recursive: true });
     }
+  });
+});
+
+describe("reading the Antigravity sign-in", () => {
+  const signInOf = (mode: string, command = "node") => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-antigravity-signin-"));
+    return readAntigravitySignIn({
+      command,
+      env: { ANTIGRAVITY_FAKE_LOG: join(directory, "calls"), ANTIGRAVITY_FAKE_MODE: mode },
+      prefixArgs: [join(import.meta.dirname, fakeArgs[0])],
+    }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))), Effect.runPromise);
+  };
+
+  it("reads a session that lists models as signed in", async () => {
+    expect(await signInOf("probe")).toEqual({ detail: null, signIn: "SignedIn" });
+  });
+
+  it("reads the authentication error answer as signed out", async () => {
+    expect(await signInOf("signedout")).toEqual({ detail: null, signIn: "SignedOut" });
+  });
+
+  it("reads a CLI that cannot start as unknown", async () => {
+    expect(await signInOf("probe", "outlore-no-such-antigravity")).toEqual({ detail: null, signIn: "Unknown" });
   });
 });
 

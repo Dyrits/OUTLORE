@@ -14,7 +14,7 @@ import {
 } from "../core/index.ts";
 import { acpProviderProfiles } from "./acpProviderProfiles.ts";
 import { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.ts";
-import { makeAntigravityHarness, probeAntigravityModels } from "./antigravityProvider.ts";
+import { makeAntigravityHarness, probeAntigravityModels, readAntigravitySignIn } from "./antigravityProvider.ts";
 import { makeClaudeHarness } from "./claude.ts";
 import { makeClineHarness, probeClineModels } from "./clineProvider.ts";
 import { makeCodexHarness } from "./codex.ts";
@@ -271,7 +271,8 @@ const antigravity: HarnessDefinition = {
       Effect.map((models): ReadonlyArray<ModelOption> => models),
       Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([])),
     ),
-  readSignIn: () => Effect.succeed(unknownSignIn),
+  // The same session probe answers the sign-in: models listed means the computer's login works.
+  readSignIn: (command) => readAntigravitySignIn({ command }),
 };
 
 const cline: HarnessDefinition = {

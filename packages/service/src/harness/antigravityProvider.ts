@@ -1,9 +1,10 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { type Duration, Effect, type Scope } from "effect";
-import type { HarnessAdapter } from "../core/index.ts";
+import { type HarnessAdapter, HarnessFailure } from "../core/index.ts";
 import type { AcpProviderProfile } from "./acpProviderProfiles.ts";
 import { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.ts";
+import type { SignInStatus } from "./harnessTools.ts";
 
 // Antigravity: Google's Antigravity CLI, the ACP surface that fronts Gemini models. Surveyed fixture-first against
 // the pinned upstream OpenBot (b1e5ea74206e1e16fa2eae62d8d131ea1349eaa0, 2026-11-22); live hands-on stays pending,
@@ -122,9 +123,30 @@ export const probeAntigravityModels = Effect.fnUntraced(function* (options: Anti
   return yield* probeAcpProviderModels({
     command: options.command,
     ...(options.prefixArgs === undefined ? {} : { prefixArgs: options.prefixArgs }),
+    preserveProviderErrors: true,
     profile: antigravityProfileOf(home, options.env ?? {}),
   });
 });
+
+/** The error code a signed-out Antigravity answers `session/new` with: -32000 "Authentication required" (CLI 1.5.16, live check 2026-11-24). */
+export const antigravitySignedOutCode = -32000;
+
+/**
+ * Read the computer's Antigravity sign-in from the session probe that lists models.
+ * A session with models reports signed in, and an authentication error reports signed out.
+ * An empty list or another failure reports unknown.
+ */
+export const readAntigravitySignIn = (options: AntigravityProbeOptions): Effect.Effect<SignInStatus> =>
+  probeAntigravityModels(options).pipe(
+    Effect.map((models): SignInStatus => ({ detail: null, signIn: models.length > 0 ? "SignedIn" : "Unknown" })),
+    Effect.catch((failure) =>
+      Effect.succeed<SignInStatus>({
+        detail: null,
+        signIn:
+          failure instanceof HarnessFailure && failure.code === antigravitySignedOutCode ? "SignedOut" : "Unknown",
+      }),
+    ),
+  );
 
 /** How the Antigravity harness starts. */
 export type AntigravityOptions = {
