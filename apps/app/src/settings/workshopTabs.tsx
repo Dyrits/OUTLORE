@@ -1,5 +1,6 @@
 import type { Tier, TierName } from "@outlore/contracts";
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { workshopDraft } from "./workshopDraft";
 
 /** A built-in tier or a custom preset keyed by name. */
 export type WorkshopPreset = TierName | `custom:${string}`;
@@ -10,10 +11,6 @@ export type WorkshopFocus = "Default" | WorkshopPreset;
 interface WorkshopTabs {
   /** Closes the Companions tab, from whichever of the page's tables it was opened by. */
   closeTab: () => void;
-  /** Throws the draft away. */
-  discardDraft: () => void;
-  /** The preset being made, not yet saved under a name; it shows in the tab in place of any preset. */
-  draft: Tier | null;
   focus: WorkshopFocus;
   /** Whether the Companions tab shows one of the page's Companions. */
   isOpen: boolean;
@@ -25,7 +22,6 @@ interface WorkshopTabs {
   revealed: (focus: WorkshopFocus) => void;
   /** The preset a table is asked to show in the tab, such as one just added. */
   revealing: WorkshopFocus | null;
-  setDraft: (draft: Tier) => void;
   setFocus: (focus: WorkshopFocus) => void;
   /** Starts a draft from `stack` and asks the table of `at` to open the tab. */
   startDraft: (stack: Tier, at: WorkshopFocus) => void;
@@ -34,15 +30,12 @@ interface WorkshopTabs {
 
 const WorkshopTabsContext = createContext<WorkshopTabs>({
   closeTab: () => {},
-  discardDraft: () => {},
-  draft: null,
   focus: "Default",
   isOpen: false,
   lastPreset: "Light",
   report: () => {},
   revealed: () => {},
   revealing: null,
-  setDraft: () => {},
   setFocus: () => {},
   startDraft: () => {},
   unregister: () => {},
@@ -55,13 +48,12 @@ export function WorkshopTabsProvider({ children }: { children: ReactNode }) {
   const [focus, setFocusState] = useState<WorkshopFocus>("Default");
   const [lastPreset, setLastPreset] = useState<WorkshopPreset>("Light");
   const [isOpen, setIsOpen] = useState(false);
-  const [draft, setDraft] = useState<Tier | null>(null);
   const [revealing, setRevealing] = useState<WorkshopFocus | null>(null);
   const presses = useRef(new Map<WorkshopFocus, { isOpen: boolean; press: () => void }>());
   const setFocus = useCallback((next: WorkshopFocus) => {
     setFocusState(next);
     // Choosing any Companion leaves a draft behind.
-    setDraft(null);
+    workshopDraft.set(null);
     if (next !== "Default") setLastPreset(next);
   }, []);
   const report = useCallback((at: WorkshopFocus, isShown: boolean, press: () => void) => {
@@ -75,45 +67,30 @@ export function WorkshopTabsProvider({ children }: { children: ReactNode }) {
   }, []);
   const closeTab = useCallback(() => {
     // A draft is the tab's own: closing the tab throws it away.
-    setDraft(null);
+    workshopDraft.set(null);
     [...presses.current.values()].find((entry) => entry.isOpen)?.press();
   }, []);
   const revealed = useCallback((at: WorkshopFocus) => setRevealing((now) => (now === at ? null : now)), []);
-  const discardDraft = useCallback(() => setDraft(null), []);
   const startDraft = useCallback((stack: Tier, at: WorkshopFocus) => {
-    setDraft(stack);
+    workshopDraft.set(stack);
     setRevealing(at);
   }, []);
+  // Leaving the Workshop drops a draft that was never saved.
+  useEffect(() => () => workshopDraft.set(null), []);
   const value = useMemo(
     () => ({
       closeTab,
-      discardDraft,
-      draft,
       focus,
       isOpen,
       lastPreset,
       report,
       revealed,
       revealing,
-      setDraft,
       setFocus,
       startDraft,
       unregister,
     }),
-    [
-      closeTab,
-      discardDraft,
-      draft,
-      focus,
-      isOpen,
-      lastPreset,
-      report,
-      revealed,
-      revealing,
-      setFocus,
-      startDraft,
-      unregister,
-    ],
+    [closeTab, focus, isOpen, lastPreset, report, revealed, revealing, setFocus, startDraft, unregister],
   );
   return <WorkshopTabsContext.Provider value={value}>{children}</WorkshopTabsContext.Provider>;
 }

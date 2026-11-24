@@ -6,6 +6,7 @@ import type { ServiceClient } from "../foundation/client";
 import { colors, radii } from "../foundation/theme";
 import { RowChevron } from "../ui/rowIcons";
 import { WorkshopCompanions } from "./workshopCompanions";
+import { useWorkshopDraft } from "./workshopDraft";
 import { useWorkshopTabs, type WorkshopFocus } from "./workshopTabs";
 
 /** The chevron column's button: marked while the tab shows this table's Companion, and it closes the tab then. */
@@ -16,7 +17,8 @@ function Chevron({ focus, isOpen, onPress }: { focus: WorkshopFocus; isOpen: boo
   // After every render, so the tabs know which chevron shows and how to press it.
   useEffect(() => report(focus, isOpen, onPress));
   const isActive = tabs.isOpen && tabs.focus === focus;
-  const { draft, revealed, revealing, setFocus } = tabs;
+  const draft = useWorkshopDraft();
+  const { revealed, revealing, setFocus } = tabs;
   // A preset just added opens in the tab as soon as its table is on the page.
   useEffect(() => {
     if (revealing !== focus) return;

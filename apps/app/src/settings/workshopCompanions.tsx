@@ -13,7 +13,8 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Button } from "../ui/button";
 import { Fold, FoldGroup } from "../ui/fold";
 import { PresetActions, savePresetEdit } from "./presetActions";
-import { useWorkshopTabs, type WorkshopFocus, type WorkshopPreset } from "./workshopTabs";
+import { useWorkshopDraft, workshopDraft } from "./workshopDraft";
+import type { WorkshopFocus, WorkshopPreset } from "./workshopTabs";
 
 /** The three presets, as the Companions tab and the page name them. */
 export const tierNames: ReadonlyArray<{ hint: string; name: TierName }> = [
@@ -93,9 +94,17 @@ function WorkshopBackups({
  * A preset not yet made: its Companion and backups are chosen here and kept as a draft, unlike a saved preset's, which
  * save at once. Saving asks for the name, and the tab then shows the new preset.
  */
-function DraftPreset({ client, draft }: { client: ServiceClient; draft: Tier }) {
+function DraftPreset({
+  client,
+  draft,
+  onFocus,
+}: {
+  client: ServiceClient;
+  draft: Tier;
+  onFocus: (focus: WorkshopFocus) => void;
+}) {
   const { data: harnesses } = useHarnesses(client);
-  const { discardDraft, setDraft, setFocus } = useWorkshopTabs();
+  const setDraft = workshopDraft.set;
   return (
     <View style={local.tier}>
       <Text style={local.note}>
@@ -124,10 +133,10 @@ function DraftPreset({ client, draft }: { client: ServiceClient; draft: Tier }) 
           label="Save as new preset"
           onSave={async (name) => {
             await savePresetEdit(client, { _tag: "Add", name, stack: draft });
-            setFocus(`custom:${name}`);
+            onFocus(`custom:${name}`);
           }}
         />
-        <Button isPrimary={false} label="Discard" onPress={discardDraft} />
+        <Button isPrimary={false} label="Discard" onPress={() => workshopDraft.set(null)} />
       </View>
     </View>
   );
@@ -149,14 +158,14 @@ export function WorkshopCompanions({
 }) {
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const { data: harnesses } = useHarnesses(client);
-  const { draft } = useWorkshopTabs();
+  const draft = useWorkshopDraft();
   const [error, setError] = useState<string | null>(null);
   const save = (change: SettingsChange) => {
     setError(null);
     client.request({ _tag: "ChangeSettings", change }).catch((reason) => setError(messageOf(reason)));
   };
   if (settings === null) return <Text style={local.note}>Reading the settings…</Text>;
-  if (draft !== null) return <DraftPreset client={client} draft={draft} />;
+  if (draft !== null) return <DraftPreset client={client} draft={draft} onFocus={onFocus} />;
   const defaults = {
     accountId: null,
     effort: settings.defaultEffort,
