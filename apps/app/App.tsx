@@ -22,6 +22,7 @@ import { detailsModeOf } from "./src/shell/navigation";
 import { useAttentionNotice } from "./src/shell/notifications";
 import { Shell } from "./src/shell/shell";
 import type { Place } from "./src/shell/sidebar";
+import { useWorkshopMenu } from "./src/shell/useWorkshopMenu";
 import { useWorkshopTrip } from "./src/shell/useWorkshopTrip";
 import { windowViewOf } from "./src/shell/windowView";
 import { HostUpdateOffer, UpdateNotice } from "./src/updates";
@@ -59,6 +60,7 @@ export function App() {
     isWorkshopOpen: place === "Settings" && openMission === null,
     panel: rightPanel,
   });
+  useWorkshopMenu(place === "Settings" && openMission === null, onWorkshop);
   useAttentionNotice(client);
   const keyboardHeight = useKeyboardHeight();
 

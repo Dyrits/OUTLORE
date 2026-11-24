@@ -61,7 +61,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To verify Antigravity sign-in status in the desktop app, read the [current handoff](.agents/handoffs/2026-11-24-1256-antigravity-status.md). Handoffs are shared and committed.
+- To verify the squarer composer and the Workshop in the File menu in the running desktop app, read the [current handoff](.agents/handoffs/2026-11-24-1418-squarer-composer.md). Handoffs are shared and committed.
 
 - To verify the History tab in the realm's channel in the running app, read the [current handoff](.agents/handoffs/2026-11-24-1256-realm-history-tab.md). Handoffs are shared and committed.
 

@@ -2,9 +2,10 @@ import { randomBytes } from "node:crypto";
 import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell, utilityProcess } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, shell, utilityProcess } from "electron";
 import { appFileOf } from "./appFiles.ts";
 import { iconFileOf } from "./appIcon.ts";
+import { appMenuTemplateOf } from "./appMenu.ts";
 import { appVersionOf } from "./appVersion.ts";
 import { moveFormerData } from "./formerData.ts";
 import { instanceOf } from "./instance.ts";
@@ -184,6 +185,14 @@ app
       width: 1200,
     });
     mainWindow = window;
+    // File > Workshop… (⌘,) asks the window to open the Workshop; the window decides what that means where it is.
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate(
+        appMenuTemplateOf(process.platform, () => {
+          if (!window.isDestroyed()) window.webContents.send("outlore:openWorkshop");
+        }),
+      ),
+    );
     // The owner token travels in the endpoint: only the app's own main frame may read it (audit SA-12).
     const handleWindow = createWindowHandlers(ipcMain, window.webContents, appUrl);
     handleWindow("outlore:endpoint", () => endpoint);

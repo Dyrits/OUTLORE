@@ -9,6 +9,12 @@ export interface PairingLinksBridge {
   take(): Promise<string | null>;
 }
 
+/** How the window hears that the owner chose the Workshop in the system menu bar. */
+export interface WorkshopMenuBridge {
+  /** Calls `onOpen` each time the owner chooses File > Workshop…; returns what stops it. */
+  listen(onOpen: () => void): () => void;
+}
+
 /** Capabilities exposed exclusively to the desktop window by its isolated preload. */
 export interface DesktopBridge {
   endpoint(): Promise<string>;
@@ -21,4 +27,6 @@ export interface DesktopBridge {
   setTheme(theme: Theme): Promise<void>;
   /** Finding and installing a newer release of the installed app. */
   readonly updates: UpdatesBridge;
+  /** The Workshop entry of the system menu bar (File, and the app menu on macOS). */
+  readonly workshopMenu: WorkshopMenuBridge;
 }

@@ -298,12 +298,7 @@ export function Sidebar({
         )}
       </ScrollView>
       <View style={local.footer}>
-        <SidebarFoot
-          client={client}
-          hasWorkshopRow={isNarrow}
-          isWorkshopOpen={isWorkshopOpen}
-          onWorkshop={onWorkshop}
-        />
+        <SidebarFoot client={client} isWorkshopOpen={isWorkshopOpen} onWorkshop={onWorkshop} />
       </View>
       {pendingMove !== null && (
         <MoveQuestModal
@@ -383,12 +378,10 @@ function SectionTitle({
  */
 function SidebarFoot({
   client,
-  hasWorkshopRow,
   isWorkshopOpen,
   onWorkshop,
 }: {
   client: ServiceClient;
-  hasWorkshopRow: boolean;
   isWorkshopOpen: boolean;
   onWorkshop: () => void;
 }) {
@@ -406,15 +399,13 @@ function SidebarFoot({
         </View>
       )}
       {hasRings && <PlanLimitRings client={client} />}
-      {(hasLimits || hasRings) && hasWorkshopRow && <Divider />}
-      {hasWorkshopRow && (
-        <Row
-          isSelected={isWorkshopOpen}
-          label="Workshop"
-          leading={<SettingsIcon name="gear" size={18} tint={colors.textSecondary} />}
-          onPress={onWorkshop}
-        />
-      )}
+      {(hasLimits || hasRings) && <Divider />}
+      <Row
+        isSelected={isWorkshopOpen}
+        label="Workshop"
+        leading={<SettingsIcon name="gear" size={18} tint={colors.textSecondary} />}
+        onPress={onWorkshop}
+      />
     </>
   );
 }

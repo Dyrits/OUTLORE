@@ -34,4 +34,14 @@ contextBridge.exposeInMainWorld("outlore", {
     setEnabled: (isEnabled: boolean): Promise<UpdateState> => ipcRenderer.invoke("outlore:updateSetEnabled", isEnabled),
     state: (): Promise<UpdateState> => ipcRenderer.invoke("outlore:updateState"),
   },
+  /** The system menu bar's File > Workshop… (⌘,) asks the window to open the Workshop. */
+  workshopMenu: {
+    listen: (onOpen: () => void) => {
+      const onOpenWorkshop = () => onOpen();
+      ipcRenderer.on("outlore:openWorkshop", onOpenWorkshop);
+      return () => {
+        ipcRenderer.removeListener("outlore:openWorkshop", onOpenWorkshop);
+      };
+    },
+  },
 } satisfies DesktopBridge);

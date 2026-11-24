@@ -232,11 +232,7 @@ export function Shell(
             <TopBarShown.Provider value={true}>
               <QuestTabButtonContext.Provider value={column.questTabButton}>
                 <View style={[local.window, islands !== null && local.islandWindow]}>
-                  <TopBar
-                    details={null}
-                    sidebar={isOverlay ? { isPinned, onToggle: togglePin, side } : undefined}
-                    workshop={{ isOpen: props.isWorkshopOpen, onToggle: props.onWorkshop }}
-                  />
+                  <TopBar details={null} sidebar={isOverlay ? { isPinned, onToggle: togglePin, side } : undefined} />
                   <View style={[local.body, islands !== null && { gap, paddingBottom: gap, paddingHorizontal: gap }]}>
                     <View style={[local.frame, islands !== null && [local.islandFrame, { gap }]]}>
                       {hasLeftRail && sidebar}

@@ -5,7 +5,6 @@ import { HostMenuContext } from "../foundation/hostContext";
 import { useIslandFrame } from "../foundation/islands";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { SettingsIcon } from "../ui/settingsIcons";
 import { UpdateNotice } from "../updates";
 import { unreadCountOf } from "./chronicleFeed";
 import { HostMenu } from "./hostMenu";
@@ -48,14 +47,11 @@ export function TopBar({
   chronicler,
   menu,
   sidebar,
-  workshop,
 }: {
   /** The icon that shows or hides the quest's side panel; none outside a quest. */
   details: DetailsToggle | null;
   /** The button that opens or folds Chronicler's screen in a window too narrow for panes; where the Chronicle is a pane, none. */
   chronicler?: { isOpen: boolean; onToggle: () => void };
-  /** The Workshop's icon, furthest right: it opens the Workshop over the whole content area, and pressed again goes back. */
-  workshop?: { isOpen: boolean; onToggle: () => void };
   /** The button that opens or closes the full-screen menu, in a window too narrow for the sidebar; none where it shows. */
   menu?: { isOpen: boolean; onToggle: () => void; unreadCount?: number };
   /** The button that pins or unpins the overlay sidebar, on the side the sidebar belongs to; none when it is docked. */
@@ -140,17 +136,6 @@ export function TopBar({
           style={({ pressed }) => [local.topIcon, (pressed || chronicler.isOpen) && active, noDragRegion]}
         >
           <Text style={local.chroniclerMark}>✦</Text>
-        </Pressable>
-      )}
-      {workshop !== undefined && (
-        <Pressable
-          accessibilityLabel={workshop.isOpen ? "Close the Workshop" : "Open the Workshop"}
-          accessibilityRole="button"
-          accessibilityState={{ selected: workshop.isOpen }}
-          onPress={workshop.onToggle}
-          style={({ pressed }) => [local.topIcon, (pressed || workshop.isOpen) && active, noDragRegion]}
-        >
-          <SettingsIcon name="gear" size={18} tint={colors.textSecondary} />
         </Pressable>
       )}
       {sidebar?.side === "right" && sidebarButton}

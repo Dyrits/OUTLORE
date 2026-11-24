@@ -100,7 +100,7 @@ export const styles = StyleSheet.create({
     ...outline,
     alignItems: "flex-end",
     backgroundColor: colors.canvas,
-    borderRadius: 24,
+    borderRadius: 14,
     columnGap: 8,
     flexDirection: "row",
     flexWrap: "wrap",
@@ -279,12 +279,12 @@ export const styles = StyleSheet.create({
   },
   screen: { backgroundColor: colors.page, flex: 1, gap: 14, paddingHorizontal: 28, paddingVertical: 20 },
   section: { gap: 8 },
-  /** The composer's send button: a round ink stamp holding an arrow. */
+  /** The composer's send button: a squircle ink stamp holding an arrow. */
   sendButton: {
     ...outline,
     alignItems: "center",
     backgroundColor: colors.edge,
-    borderRadius: radii.pill,
+    borderRadius: 10,
     height: 32,
     justifyContent: "center",
     width: 32,

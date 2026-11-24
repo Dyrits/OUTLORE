@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
-import { colors, radii } from "../foundation/theme";
+import { colors } from "../foundation/theme";
 import type { DictationPhase } from "./dictation";
 
 /** The microphone: a capsule on a stand, in the given ink. */
@@ -94,5 +94,5 @@ export function DictationButton({
 const local = StyleSheet.create({
   cancel: { alignItems: "center", height: 24, justifyContent: "center", width: 20 },
   listening: { backgroundColor: colors.accentSoft },
-  microphone: { alignItems: "center", borderRadius: radii.pill, height: 32, justifyContent: "center", width: 32 },
+  microphone: { alignItems: "center", borderRadius: 10, height: 32, justifyContent: "center", width: 32 },
 });
