@@ -14,6 +14,7 @@ import { endTurn, failTurn } from "./lifecycle.ts";
 import { deliverMessages, insertReply, listThreadsWithPending } from "./messaging.ts";
 import { fallBackAfterFailure, finishRitualRun } from "./rituals.ts";
 import { type Admitted, isCurrentTurn } from "./turnAdmission.ts";
+import { moveWorkingFolder } from "./workingFolders.ts";
 
 // Turn operations return follow-ups; the command runner commits and applies them.
 
@@ -73,6 +74,10 @@ export const saveTurnActivity = (
       if (change !== null) yield* saveActivityChange(threadId, id, change);
     }),
   );
+
+/** Records where a tool call of the running turn moved the thread's shell, for the terminal to start there. */
+export const saveTurnFolderMove = (threadId: string, turn: Admitted, start: string, toolName: string, input: unknown) =>
+  recordStep(turn, moveWorkingFolder(threadId, start, toolName, input));
 
 /** Records a line the harness adapter left in the thread during the turn, such as a session it could not continue. */
 export const saveTurnNotice = (threadId: string, turn: Admitted, text: string) =>

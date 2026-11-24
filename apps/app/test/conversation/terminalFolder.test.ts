@@ -6,6 +6,20 @@ const workspace = { path: "/code/app" } as ThreadView["workspace"];
 const ownCopy = { branch: "mission/fix-1", path: "/code/app/.worktrees/fix-1" };
 
 describe("where a thread's terminal starts", () => {
+  it("starts in the worktree the agent moved into, ahead of its own copy and the workspace", () => {
+    expect(terminalFolderOf({ ownCopy, workingFolder: "/code/app/.worktrees/other", workspace })).toBe(
+      "/code/app/.worktrees/other",
+    );
+    expect(terminalFolderOf({ ownCopy: null, workingFolder: "/code/app/.worktrees/other", workspace })).toBe(
+      "/code/app/.worktrees/other",
+    );
+  });
+
+  it("falls back to the copy or the workspace when a host sends no working folder", () => {
+    expect(terminalFolderOf({ ownCopy, workspace })).toBe("/code/app/.worktrees/fix-1");
+    expect(terminalFolderOf({ ownCopy: null, workspace })).toBe("/code/app");
+  });
+
   it("starts in the worktree the thread works in, not in the workspace's checkout", () => {
     expect(terminalFolderOf({ ownCopy, workspace })).toBe("/code/app/.worktrees/fix-1");
   });

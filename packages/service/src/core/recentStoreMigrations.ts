@@ -257,4 +257,10 @@ export const recentStoreMigrations = {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`ALTER TABLE rituals ADD COLUMN origin_mission_id TEXT`;
   }),
+  // Where the thread's tool calls last moved its shell (conversation-terminal, Starting folder): a candidate path, checked
+  // against the disk and the workspace whenever the thread is read. Null until a call moves it.
+  "0075_thread_working_folder": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE threads ADD COLUMN working_folder TEXT`;
+  }),
 };

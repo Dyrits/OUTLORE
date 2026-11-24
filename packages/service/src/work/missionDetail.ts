@@ -17,6 +17,7 @@ import { shownStatesOf } from "./missionStates.ts";
 import { listMissionSummaries } from "./missions.ts";
 import { readOwnCopy } from "./ownCopies.ts";
 import { listThreadSuggestions } from "./suggestionStore.ts";
+import { readWorkingFolder } from "./workingFolders.ts";
 import { readThreadWorkspace } from "./workspaces.ts";
 
 // What the owner reads of one mission: its thread tree and one thread's conversation.
@@ -104,6 +105,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
   const computerName = yield* ownAccountLabelOf(thread.harness);
   const workspace = yield* readThreadWorkspace(selected.id);
   const ownCopy = yield* readOwnCopy(selected.id);
+  const workingFolder = yield* readWorkingFolder(selected.id, workspace?.path ?? null);
   const messages = yield* sql<
     Omit<Message, "attachments" | "isResult" | "isQueued" | "isDelivered" | "usage"> & {
       isResult: number;
@@ -171,6 +173,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
       state: selected.state,
       title: selected.title,
       waitingCount: selected.waitingCount,
+      ...(workingFolder === null ? {} : { workingFolder }),
       workspace,
     },
     threads,

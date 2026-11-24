@@ -19,6 +19,7 @@ import { Approvals } from "./approvals.ts";
 import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
 import { Commands, makeCommands } from "./commands.ts";
+import { mightMoveFolder } from "./folderMoves.ts";
 import { readConversationSoFar, readInterruptedConversation } from "./handover.ts";
 import { makeLifecycle, recoverThreadStates, stopThread } from "./lifecycle.ts";
 import { listPending, listThreadsWithPending } from "./messaging.ts";
@@ -34,6 +35,7 @@ import {
   deliverSteered,
   recordTurnFailure,
   saveTurnActivity,
+  saveTurnFolderMove,
   saveTurnNotice,
   saveTurnReply,
 } from "./turns.ts";
@@ -194,6 +196,9 @@ export const threadsLayer = Layer.effectContext(
             Effect.gen(function* () {
               const change = call.fileEdit === undefined ? null : reportedChangeOf(call.fileEdit);
               yield* commands.run(local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input, change)));
+              // A thread in a workspace may move its shell into a worktree; the scratch folder has none to move to.
+              if (isInWorkspace && mightMoveFolder(call.toolName, call.input))
+                yield* commands.run(local(saveTurnFolderMove(threadId, turn, cwd, call.toolName, call.input)));
             }).pipe(Effect.orDie),
         });
       if (!(yield* isCurrent(turn.turnId))) return;

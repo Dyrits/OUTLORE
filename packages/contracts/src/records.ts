@@ -318,6 +318,11 @@ export const ThreadView = Schema.Struct({
   /** The model of the turn the thread is in, as admitted. Null outside a turn, or for a turn recorded before models were. */
   turnModel: Schema.NullOr(ModelChoice),
   waitingCount: Schema.Number,
+  /**
+   * The git worktree of its workspace the thread's own tool calls last moved its shell into (a `cd`, a `git worktree
+   * add`), inferred by the service and still there. Absent when it has moved to none, or from a host that does not infer it.
+   */
+  workingFolder: Schema.optionalKey(Schema.String),
   /** Null when the thread runs in its mission's scratch folder. */
   workspace: Schema.NullOr(Workspace),
 });
