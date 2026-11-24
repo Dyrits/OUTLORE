@@ -4,6 +4,7 @@ import { childStatusOf } from "./childNotches";
 import type { PaneSlot } from "./paneChain";
 import type { PaneContent, PaneId } from "./paneIds";
 import type { NotchPart } from "./paneStrip";
+import { inRealmOf } from "./realmRoster";
 
 /** Width reserved for a full notch. */
 export const notchWidth = 26;
@@ -71,9 +72,7 @@ export function paneNotchesOf({
   // status, and an errand its status rolled up with the errands beneath it.
   const notchStateOf = (content: PaneContent, summary: NotchThread | undefined): NotchPart["state"] => {
     if (content.kind === "channel")
-      return realmMarkOf(
-        missions.filter((entry) => entry.workspaceId === channel.id && entry.ritual === null).map(({ state }) => state),
-      );
+      return realmMarkOf(inRealmOf(missions, channel.id, "Quest").map(({ state }) => state));
     if (content.kind === "starter") return null;
     if (content.kind === "quest") return mission?.state ?? summary?.shownState ?? null;
     return summary?.shownState ?? null;
@@ -97,11 +96,8 @@ export function paneNotchesOf({
   };
   const childNotchesOfPane = (content: PaneContent): ReadonlyArray<NotchPart> => {
     if (content.kind === "channel")
-      return childPartsOf(
-        "quest",
-        childStatusOf(missions.filter((entry) => entry.workspaceId === channel.id && entry.ritual === null)),
-        startQuest,
-        () => openList(content.id),
+      return childPartsOf("quest", childStatusOf(inRealmOf(missions, channel.id, "Quest")), startQuest, () =>
+        openList(content.id),
       );
     if (content.kind === "quest")
       return childPartsOf(

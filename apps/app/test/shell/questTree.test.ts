@@ -1,15 +1,14 @@
 import { type MissionSummary, ThreadSummary, type WorkspaceChoice } from "@outlore/contracts";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
+import { errandRowsOf } from "../../src/conversation/errandRoster";
 import { agoOf, recencyGroupsOf } from "../../src/shell/questRecency";
 import {
-  ancestorIdsOf,
   areActionsShown,
   folderCueOf,
   placementsOf,
   questListRowsOf,
   reorderedRealmIds,
-  sideQuestRowsOf,
   toggledFold,
 } from "../../src/shell/questTree";
 
@@ -42,7 +41,7 @@ const none = new Set<string>();
 
 describe("the errands a quest lists in the sidebar", () => {
   it("lists every level beneath the quest, in order, without the quest itself", () => {
-    const rows = sideQuestRowsOf(tree, { collapsed: none, shouldShowAgentThreads: true });
+    const rows = errandRowsOf(tree, { collapsed: none, shouldShowAgentThreads: true });
     expect(rows.map((row) => [row.thread.id, row.depth])).toEqual([
       ["a", 1],
       ["a1", 2],
@@ -52,24 +51,24 @@ describe("the errands a quest lists in the sidebar", () => {
   });
 
   it("marks the rows that have errands beneath them", () => {
-    const rows = sideQuestRowsOf(tree, { collapsed: none, shouldShowAgentThreads: true });
+    const rows = errandRowsOf(tree, { collapsed: none, shouldShowAgentThreads: true });
     expect(rows.map((row) => row.hasChildren)).toEqual([true, true, false, false]);
   });
 
   it("hides what lies beneath a collapsed errand at any depth and shows the rest", () => {
-    const rows = sideQuestRowsOf(tree, { collapsed: new Set(["a"]), shouldShowAgentThreads: true });
+    const rows = errandRowsOf(tree, { collapsed: new Set(["a"]), shouldShowAgentThreads: true });
     expect(rows.map((row) => row.thread.id)).toEqual(["a", "b"]);
-    const inner = sideQuestRowsOf(tree, { collapsed: new Set(["a1"]), shouldShowAgentThreads: true });
+    const inner = errandRowsOf(tree, { collapsed: new Set(["a1"]), shouldShowAgentThreads: true });
     expect(inner.map((row) => row.thread.id)).toEqual(["a", "a1", "b"]);
   });
 
   it("lists nothing for a quest with no errand", () => {
-    expect(sideQuestRowsOf([thread("top", null, 0)], { collapsed: none, shouldShowAgentThreads: true })).toEqual([]);
+    expect(errandRowsOf([thread("top", null, 0)], { collapsed: none, shouldShowAgentThreads: true })).toEqual([]);
   });
 
   it("folds threads the agents opened into their opener when the setting says so", () => {
     const agents = [thread("top", null, 0), thread("x", "top", 1, true), thread("y", "top", 1)];
-    const rows = sideQuestRowsOf(agents, { collapsed: none, shouldShowAgentThreads: false });
+    const rows = errandRowsOf(agents, { collapsed: none, shouldShowAgentThreads: false });
     expect(rows.map((row) => row.thread.id)).toEqual(["y"]);
   });
 
@@ -80,15 +79,8 @@ describe("the errands a quest lists in the sidebar", () => {
       { ...thread("failed", "top", 1), lastActivityAt: 1, shownState: "Failed" as const, state: "Failed" as const },
       { ...thread("attention", "top", 1), lastActivityAt: 3, shownState: "Attention" as const },
     ];
-    const rows = sideQuestRowsOf(siblings, { collapsed: none, shouldShowAgentThreads: true });
+    const rows = errandRowsOf(siblings, { collapsed: none, shouldShowAgentThreads: true });
     expect(rows.map((row) => row.thread.id)).toEqual(["resting", "attention", "failed"]);
-  });
-});
-
-describe("the path to a thread", () => {
-  it("lists its ancestors, nearest first", () => {
-    expect(ancestorIdsOf(tree, "a1x" as never)).toEqual(["a1", "a", "top"]);
-    expect(ancestorIdsOf(tree, "top" as never)).toEqual([]);
   });
 });
 

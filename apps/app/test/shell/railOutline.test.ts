@@ -1,8 +1,9 @@
 import { MissionSummary, ThreadSummary } from "@outlore/contracts";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
+import { errandPreviewOf } from "../../src/conversation/errandRoster";
 import { placementsOf } from "../../src/shell/questTree";
-import { railOutlineOf, threadOutlineOf } from "../../src/shell/railOutline";
+import { railOutlineOf } from "../../src/shell/railOutline";
 
 const thread = (id: string, parentId: string | null, depth: number, isOpenedByAgent = false) =>
   Schema.decodeUnknownSync(ThreadSummary)({
@@ -57,7 +58,7 @@ describe("revealing the rail location", () => {
       { ...quest("failed", "Failed"), lastActivityAt: 1 },
     ];
     const outline = railOutlineOf(placementsOf(quests, []), null, new Set());
-    expect(outline.borderlands.map((each) => each.id)).toEqual([
+    expect(outline.borderlands.quests.preview.map((each) => each.id)).toEqual([
       "running",
       "newer resting",
       "older resting",
@@ -66,15 +67,23 @@ describe("revealing the rail location", () => {
   });
   it("reveals the selected thread through folded ancestors without changing stored folds", () => {
     const collapsed = new Set(["parent"]);
-    const outline = threadOutlineOf(tree, collapsed, tree[2]?.id ?? null, true);
+    const outline = errandPreviewOf(tree, {
+      collapsed: collapsed,
+      selectedThread: tree[2]?.id ?? null,
+      shouldShowAgentThreads: true,
+    });
     expect(outline.rows.map((row) => row.thread.id)).toEqual(["parent", "child"]);
     expect(collapsed.has("parent")).toBe(true);
-    expect(threadOutlineOf(tree, collapsed, null, true).rows.map((row) => row.thread.id)).toEqual(["parent"]);
+    expect(
+      errandPreviewOf(tree, { collapsed: collapsed, selectedThread: null, shouldShowAgentThreads: true }).rows.map(
+        (row) => row.thread.id,
+      ),
+    ).toEqual(["parent"]);
   });
   it("keeps the selected quest within the placement limit without changing its fold", () => {
     const quests = ["first", "second", "selected"].map((id) => quest(id));
     const outline = railOutlineOf({ borderlands: quests, realms: [] }, "selected", new Set(), 1);
-    expect(outline.borderlands.map((each) => each.id)).toEqual(["selected"]);
+    expect(outline.borderlands.quests.preview.map((each) => each.id)).toEqual(["selected"]);
     expect(outline.isQuestOpen("selected")).toBe(false);
     expect(outline.isQuestOpen("first")).toBe(false);
   });
@@ -94,7 +103,7 @@ describe("revealing the rail location", () => {
   it("fills the remaining slots in placement order", () => {
     const quests = [quest("first"), quest("second"), quest("running", "Underway"), quest("fourth", "Underway")];
     const outline = railOutlineOf({ borderlands: quests, realms: [] }, "second", new Set(), 2);
-    expect(outline.borderlands.map((each) => each.id)).toEqual(["first", "second"]);
+    expect(outline.borderlands.quests.preview.map((each) => each.id)).toEqual(["first", "second"]);
   });
 });
 
@@ -111,7 +120,11 @@ describe("limiting sidebar errands", () => {
       },
       { ...thread("attention", "top", 1), lastActivityAt: 5, shownState: "Attention" as const },
     ];
-    const outline = threadOutlineOf(threads, new Set(), null, false);
+    const outline = errandPreviewOf(threads, {
+      collapsed: new Set(),
+      selectedThread: null,
+      shouldShowAgentThreads: false,
+    });
     expect(outline.rows.map(({ depth, thread }) => [thread.id, depth])).toEqual([
       ["attention", 1],
       ["failed", 1],
@@ -120,7 +133,11 @@ describe("limiting sidebar errands", () => {
 
   it("offers no overflow link for one or two errand rows", () => {
     for (const threads of [tree.slice(0, 2), tree]) {
-      const outline = threadOutlineOf(threads, new Set(), null, true);
+      const outline = errandPreviewOf(threads, {
+        collapsed: new Set(),
+        selectedThread: null,
+        shouldShowAgentThreads: true,
+      });
       expect(outline.rows).toHaveLength(threads.length - 1);
       expect(outline.overflowLabel).toBeNull();
     }
@@ -128,9 +145,16 @@ describe("limiting sidebar errands", () => {
 
   it("shows two nested rows and offers the full list when an errand is hidden by the limit", () => {
     const threads = [...tree, thread("sibling", "top", 1)];
-    const outline = threadOutlineOf(threads, new Set(), null, true);
+    const outline = errandPreviewOf(threads, {
+      collapsed: new Set(),
+      selectedThread: null,
+      shouldShowAgentThreads: true,
+    });
     expect(outline.rows.map((row) => row.thread.id)).toEqual(["parent", "child"]);
     expect(outline.overflowLabel).toBe("Show 3 errands");
-    expect(threadOutlineOf(threads, new Set(["parent"]), null, true).overflowLabel).toBeNull();
+    expect(
+      errandPreviewOf(threads, { collapsed: new Set(["parent"]), selectedThread: null, shouldShowAgentThreads: true })
+        .overflowLabel,
+    ).toBeNull();
   });
 });

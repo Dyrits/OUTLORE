@@ -1,5 +1,5 @@
-import type { MissionSummary, ThreadId, ThreadSummary, WorkspaceChoice } from "@outlore/contracts";
-import { type FoldedThread, foldThreads } from "../conversation/folding";
+import type { MissionSummary, ThreadSummary, WorkspaceChoice } from "@outlore/contracts";
+import { errandRowsOf } from "../conversation/errandRoster";
 import { latestFirstOf } from "./questRecency";
 
 /** The sidebar's two placements of quests (CHG-0161): each realm with its quests, and the Borderlands' quests. */
@@ -60,67 +60,6 @@ export const areActionsShown = (row: {
   readonly isHovered: boolean;
 }): boolean => !row.canHover || row.isHovered || row.hasKeyboardFocusWithin;
 
-/** One errand row of the sidebar: how deep it sits beneath its quest, and what it hides. */
-export interface SideQuestRow {
-  /** Levels beneath the quest: 1 for a quest's own errands. */
-  readonly depth: number;
-  /** Threads the agents opened that the setting folds into this row. */
-  readonly foldedCount: number;
-  /** Whether it has errands beneath it, so it can expand and collapse. */
-  readonly hasChildren: boolean;
-  readonly thread: ThreadSummary;
-}
-
-/**
- * Sorts visible siblings by latest activity, newest first (CHG-0679), including errands whose opener was folded into an
- * ancestor.
- */
-const rankedRowsOf = (rows: FoldedThread[]): FoldedThread[] => {
-  const children = new Map<FoldedThread | null, FoldedThread[]>();
-  const ancestors: FoldedThread[] = [];
-  for (const row of rows) {
-    const parent = ancestors[row.depth - 1] ?? null;
-    const siblings = children.get(parent);
-    if (siblings === undefined) children.set(parent, [row]);
-    else siblings.push(row);
-    ancestors[row.depth] = row;
-  }
-
-  const ordered: FoldedThread[] = [];
-  const visit = (parent: FoldedThread | null): void => {
-    const siblings = children.get(parent) ?? [];
-    siblings.sort((current, next) => next.thread.lastActivityAt - current.thread.lastActivityAt);
-    for (const row of siblings) {
-      ordered.push(row);
-      visit(row);
-    }
-  };
-  visit(null);
-  return ordered;
-};
-
-/**
- * The sidebar lists errands beneath their visible parents, with siblings ordered by latest activity, newest first (CHG-0679).
- * Collapsing an errand hides its descendants, and the setting for agent-opened threads still folds them into their opener.
- */
-export const sideQuestRowsOf = (
-  threads: ReadonlyArray<ThreadSummary>,
-  options: { readonly collapsed: ReadonlySet<string>; readonly shouldShowAgentThreads: boolean },
-): ReadonlyArray<SideQuestRow> => {
-  const rows = rankedRowsOf(foldThreads(threads, options.shouldShowAgentThreads, new Set()));
-  const visible: SideQuestRow[] = [];
-  let hiddenBelow: number | null = null;
-  rows.forEach((row, index) => {
-    if (hiddenBelow !== null && row.depth > hiddenBelow) return;
-    hiddenBelow = null;
-    const hasChildren = (rows[index + 1]?.depth ?? 0) > row.depth;
-    if (options.collapsed.has(row.thread.id)) hiddenBelow = row.depth;
-    if (row.depth > 0)
-      visible.push({ depth: row.depth, foldedCount: row.foldedCount, hasChildren, thread: row.thread });
-  });
-  return visible;
-};
-
 /** One row of the full quest list: the quest at depth 0, or one of its errands beneath it. */
 export interface QuestListRow {
   readonly depth: number;
@@ -134,7 +73,7 @@ export interface QuestListRow {
 
 /**
  * The rows the full quest list shows for one quest: the quest, then its errands nested as the sidebar nests them
- * (`sideQuestRowsOf`, with the same setting for agents' threads), unless the quest is collapsed. Its tree is null until read.
+ * (`errandRowsOf`, with the same setting for agents' threads), unless the quest is collapsed. Its tree is null until read.
  */
 export const questListRowsOf = (
   quest: Pick<MissionSummary, "id" | "threadCount">,
@@ -146,18 +85,10 @@ export const questListRowsOf = (
   if (threads === null || collapsed.has(quest.id)) return [own];
   return [
     own,
-    ...sideQuestRowsOf(threads, { collapsed, shouldShowAgentThreads }).map(
+    ...errandRowsOf(threads, { collapsed, shouldShowAgentThreads }).map(
       ({ depth, hasChildren, thread }): QuestListRow => ({ depth, hasChildren, id: thread.id, thread }),
     ),
   ];
-};
-
-/** The threads above a thread, nearest first, so the sidebar can open the path to the one selected. */
-export const ancestorIdsOf = (threads: ReadonlyArray<ThreadSummary>, id: ThreadId): ReadonlyArray<ThreadId> => {
-  const parents = new Map(threads.map((thread) => [thread.id, thread.parentId]));
-  const path: ThreadId[] = [];
-  for (let parent = parents.get(id) ?? null; parent !== null; parent = parents.get(parent) ?? null) path.push(parent);
-  return path;
 };
 
 /** A realm whose quests the quest list page shows in full. */

@@ -10,7 +10,8 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { EndingConfirmation } from "../quests/missionActions";
 import { ArchiveButton } from "../ui/archiveButton";
 import { DoneButton } from "../ui/questHeaderButtons";
-import { compareUrgency } from "./childNotches";
+import { latestFirstOf } from "./questRecency";
+import { inRealmOf } from "./realmRoster";
 import { useStartQuest } from "./useStartQuest";
 
 /**
@@ -35,9 +36,7 @@ export function ChannelQuests({
   const { data, error } = useServiceQuery(client, listedMissions.request, listedMissions.key);
   const { failure, isStarting, start } = useStartQuest(client, realmId, onOpen);
   const showRituals = show === "Rituals";
-  const missions = (data?.missions ?? [])
-    .filter((mission) => mission.workspaceId === realmId && (mission.ritual !== null) === showRituals)
-    .sort(compareUrgency);
+  const missions = latestFirstOf(inRealmOf(data?.missions ?? [], realmId, showRituals ? "Ritual" : "Quest"));
   return (
     <ScrollView contentContainerStyle={[local.list, isTouch && local.touchList]} style={local.page}>
       {!showRituals && <NewReplyCard isDisabled={isStarting} label="New quest" onPress={() => void start()} />}

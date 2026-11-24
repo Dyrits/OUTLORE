@@ -1,6 +1,9 @@
 import type { MissionState, ThreadState } from "@outlore/contracts";
 
-/** The states of active work, most urgent first (mission-tracking, Mission state; CHG-0599). Fulfilled and Archived have no urgency. */
+/**
+ * The states of active work, most urgent first (mission-tracking, Mission state; CHG-0599). Fulfilled and Archived have no urgency.
+ * It colors a list notch's dot; lists rank by latest activity (CHG-0679), in the rosters.
+ */
 const urgency = {
   Archived: null,
   Attention: 1,
@@ -15,14 +18,6 @@ const urgency = {
 
 /** How urgent a state is, 0 being the most urgent; null for work that is over. */
 export const urgencyOf = (state: ThreadState | MissionState): number | null => urgency[state];
-
-/** Orders work by urgency and then activity, with completed work at the end. */
-export const compareUrgency = (
-  current: { state: ThreadState | MissionState; lastActivityAt: number },
-  next: { state: ThreadState | MissionState; lastActivityAt: number },
-): number =>
-  (urgencyOf(current.state) ?? Infinity) - (urgencyOf(next.state) ?? Infinity) ||
-  next.lastActivityAt - current.lastActivityAt;
 
 /** The list notch reflects the most urgent active child. */
 export function childStatusOf(

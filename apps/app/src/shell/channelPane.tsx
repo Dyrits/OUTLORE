@@ -14,6 +14,7 @@ import { ChannelQuests } from "./channelQuests";
 import { childStatusOf } from "./childNotches";
 import { childPartsOf, notchWidth } from "./paneNotches";
 import { PaneNotches } from "./paneStrip";
+import { inRealmOf } from "./realmRoster";
 import { useStartQuest } from "./useStartQuest";
 
 export function ChannelPane({
@@ -71,9 +72,7 @@ export function StandaloneChannel({
   const { failure, start } = useStartQuest(client, realmId, onOpenMission);
   const [notchRequest, setNotchRequest] = useState<{ after: object | null } | null>(null);
   const listRequest = notchRequest?.after === questsRequest ? notchRequest : questsRequest;
-  const status = childStatusOf(
-    (data?.missions ?? []).filter((mission) => mission.workspaceId === realmId && mission.ritual === null),
-  );
+  const status = childStatusOf(inRealmOf(data?.missions ?? [], realmId, "Quest"));
   const parts = childPartsOf("quest", status, start, () => setNotchRequest({ after: questsRequest }));
   return (
     <View style={[local.fill, { paddingRight: notchWidth }]}>

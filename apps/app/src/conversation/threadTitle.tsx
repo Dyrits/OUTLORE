@@ -5,6 +5,7 @@ import { listedMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { colors, stateLabels, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { inRealmOf } from "../shell/realmRoster";
 import { ChipIcon } from "../ui/chips";
 import { Menu } from "../ui/pickers";
 
@@ -75,9 +76,7 @@ function QuestTitle({
   };
   return (
     <TitleMenu
-      choices={(data?.missions ?? []).filter(
-        (mission) => mission.workspaceId === detail.mission.workspaceId && (mission.ritual !== null) === isRitual,
-      )}
+      choices={inRealmOf(data?.missions ?? [], detail.mission.workspaceId, isRitual ? "Ritual" : "Quest")}
       current={current}
       kind={isRitual ? "ritual" : "quest"}
       onSelect={onOpenMission}

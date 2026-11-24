@@ -21,7 +21,7 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { useSkills } from "../foundation/useSkills";
 import { LoreScreen } from "../lore/lore";
 import { Composer } from "../ui/controls";
-import { foldThreads } from "./folding";
+import { rankedFoldedOf } from "./errandRoster";
 
 /** A mission's threads as an indented tree with their states; selecting one shows its conversation. */
 export function ThreadTree({
@@ -45,7 +45,7 @@ export function ThreadTree({
   };
   return (
     <ScrollView contentContainerStyle={styles.treeList} style={styles.tree}>
-      {foldThreads(
+      {rankedFoldedOf(
         threads.filter((thread) => thread.isArchived !== true),
         shouldShowAgentThreads,
         unfolded,

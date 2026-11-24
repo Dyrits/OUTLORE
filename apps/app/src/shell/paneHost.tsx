@@ -1,6 +1,7 @@
 import { type MissionId, type ThreadId, WorkspaceId } from "@outlore/contracts";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
+import { listedErrandsOf } from "../conversation/errandRoster";
 import { PaneThread } from "../conversation/paneThread";
 import { OpenPanes } from "../conversation/replyLine";
 import { useShownThreadsRead } from "../conversation/useShownThreadsRead";
@@ -215,7 +216,7 @@ export function PaneHost({
                 <ErrandStarter
                   chrome={paneControls(id, "Fold the errand")}
                   client={client}
-                  errands={threads.filter((thread) => thread.parentId !== null && thread.isArchived !== true)}
+                  errands={listedErrandsOf(threads)}
                   onOpened={revealThread}
                   parent={data !== null && data.thread.id === quest ? data.thread : null}
                 />,

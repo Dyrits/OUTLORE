@@ -3,20 +3,20 @@ import type { ComponentProps } from "react";
 import { Quest, RitualRow } from "./railQuests";
 import { Divider } from "./railRows";
 
-/** Draw the visible rows of a realm or the Borderlands, in their existing order within each group. */
+/** Draws a placement's quests, then its Rituals, each group in the order the roster ranked it. */
 export function PlacementRows({
-  missions,
+  quests,
   questProps,
   isQuestOpen,
   realms,
+  rituals,
 }: {
-  missions: readonly MissionSummary[];
+  quests: readonly MissionSummary[];
+  rituals: readonly MissionSummary[];
   questProps: Omit<ComponentProps<typeof Quest>, "isOpen" | "mission">;
   isQuestOpen: (id: string) => boolean;
   realms: ComponentProps<typeof RitualRow>["realms"];
 }) {
-  const quests = missions.filter((mission) => mission.ritual === null);
-  const rituals = missions.filter((mission) => mission.ritual !== null);
   return (
     <>
       {quests.map((mission) => (

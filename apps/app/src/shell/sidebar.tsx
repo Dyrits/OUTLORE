@@ -25,6 +25,7 @@ import { PlacementRows } from "./railPlacementRows";
 import { RealmHeader } from "./railQuests";
 import { Divider, Row, ShowAll } from "./railRows";
 import { isHovered, local } from "./railStyles";
+import { isRosterEmpty } from "./realmRoster";
 
 export type { Place } from "./placeCatalog";
 
@@ -100,7 +101,9 @@ export function Sidebar({
   const [isEveryBorderlandShown, setEveryBorderlandShown] = useState(false);
   const collapsedThreads = useToggles();
   const outline = railOutlineOf(placements, openMission, openQuests.set);
-  const borderlandQuests = isEveryBorderlandShown ? placements.borderlands : outline.borderlands;
+  const borderlandQuests = isEveryBorderlandShown
+    ? outline.borderlands.quests.ranked
+    : outline.borderlands.quests.preview;
   const questProps = {
     client,
     collapsed: collapsedThreads.set,
@@ -168,9 +171,10 @@ export function Sidebar({
    * A realm: its name with the folder mark when it is tied to a folder, its quests beneath it while it is
    * unfolded, and the button for a new quest.
    */
-  const realmRow = ({ quests, visibleQuests, workspace }: (typeof outline.realms)[number]) => {
-    const realm = { id: workspace.id, name: workspace.name, path: workspace.path, quests, visibleQuests };
-    const isClosed = realmFolds.get(realm.id) ?? (!isNarrow && quests.length === 0);
+  const realmRow = ({ roster, workspace }: (typeof outline.realms)[number]) => {
+    const realm = { id: workspace.id, name: workspace.name, path: workspace.path };
+    const isEmpty = isRosterEmpty(roster);
+    const isClosed = realmFolds.get(realm.id) ?? (!isNarrow && isEmpty);
     return (
       <DropTarget
         key={realm.id}
@@ -189,11 +193,11 @@ export function Sidebar({
               onNewRitual={() => openRitualForm({ kind: "create", originMissionId: null, realmPath: realm.path })}
               onToggle={() => setRealmFolds((current) => new Map(current).set(realm.id, !isClosed))}
               path={realm.path}
-              questCount={realm.quests.length}
+              questCount={roster.quests.count}
             />
           </RealmDragSource>
           {failureUnder(realm.id)}
-          {!isClosed && realm.quests.length === 0 && (
+          {!isClosed && isEmpty && (
             <Text style={isNarrow ? local.emptyGroup : local.emptyRealm}>
               {isNarrow ? "No quest in this realm yet." : "No quests yet"}
             </Text>
@@ -201,14 +205,15 @@ export function Sidebar({
           {!isClosed && (
             <PlacementRows
               isQuestOpen={outline.isQuestOpen}
-              missions={realm.visibleQuests}
               questProps={questProps}
+              quests={roster.quests.preview}
               realms={realms}
+              rituals={roster.rituals.preview}
             />
           )}
-          {!isClosed && realm.quests.length > realm.visibleQuests.length && (
+          {!isClosed && roster.quests.count > roster.quests.preview.length && (
             <ShowAll
-              label={`Show all ${realm.quests.length} quests`}
+              label={`Show all ${roster.quests.count} quests`}
               onPress={() => onOpenQuestsTab({ id: realm.id, name: realm.name })}
               subject={realm.name}
             />
@@ -278,20 +283,21 @@ export function Sidebar({
           title="Borderlands"
         />
         {failureUnder("none")}
-        {!isFolded("Borderlands") && placements.borderlands.length === 0 && (
+        {!isFolded("Borderlands") && isRosterEmpty(outline.borderlands) && (
           <Text style={local.emptyGroup}>No quest in the Borderlands yet.</Text>
         )}
         {!isFolded("Borderlands") && (
           <PlacementRows
             isQuestOpen={outline.isQuestOpen}
-            missions={borderlandQuests}
             questProps={questProps}
+            quests={borderlandQuests}
             realms={realms}
+            rituals={outline.borderlands.rituals.preview}
           />
         )}
-        {!isFolded("Borderlands") && placements.borderlands.length > borderlandQuests.length && (
+        {!isFolded("Borderlands") && outline.borderlands.quests.count > borderlandQuests.length && (
           <ShowAll
-            label={`Show all ${placements.borderlands.length} quests`}
+            label={`Show all ${outline.borderlands.quests.count} quests`}
             onPress={() => (isNarrow ? setEveryBorderlandShown(true) : onOpenQuestsTab(null))}
             subject="the Borderlands"
           />

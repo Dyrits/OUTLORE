@@ -1,6 +1,7 @@
 import type { MissionId, MissionSummary, ThreadId, ThreadState, WorkspaceChoice } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { errandPreviewOf } from "../conversation/errandRoster";
 import type { ServiceClient } from "../foundation/client";
 import { Emblem } from "../foundation/emblems";
 import { canHover } from "../foundation/inputModality";
@@ -13,7 +14,6 @@ import { scheduleLabelOf } from "../rituals/ritualLabels";
 import { isRealmArchivedOf, runIsUnderwayOf } from "../rituals/ritualRow";
 import { DragSource } from "./questDrag";
 import { ArchiveIcon, Chevron, DeleteIcon, FolderCue, NewQuestIcon, NewRitualIcon, useRowActions } from "./railActions";
-import { threadOutlineOf } from "./railOutline";
 import { archiveErrand } from "./railQuestActions";
 import { Count, Row, type RowCorner, ShowAll, StateDot } from "./railRows";
 import { chevronWidth, indentStep, isHovered, local } from "./railStyles";
@@ -54,7 +54,7 @@ function SideQuests({
   const { data: threads } = useServiceQuery(client, { _tag: "ReadThreadTree", missionId }, `${missionId}:tree`);
   const [error, setError] = useState<string | null>(null);
   if (threads === null) return null;
-  const outline = threadOutlineOf(threads, collapsed, selectedThread, shouldShowAgentThreads);
+  const outline = errandPreviewOf(threads, { collapsed, selectedThread, shouldShowAgentThreads });
   const { overflowLabel, rows } = outline;
   return (
     <>
@@ -252,6 +252,8 @@ export function RitualRow({
       <Row
         corners={cornersOf(mission.state)}
         fold={{
+          // As a quest's, so the Ritual's runs can be folded without hovering first (CHG-0635).
+          isAlwaysShown: true,
           isOpen,
           label: mission.title,
           onPress: mission.threadCount > 1 ? () => onToggle(mission.id) : null,

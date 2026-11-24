@@ -6,9 +6,9 @@ import type { QuestPage } from "../foundation/pageNavigation";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { RitualCompanions } from "../rituals/ritualCompanions";
-import { compareUrgency } from "../shell/childNotches";
 import { ChronicleTargetContext, matchesThread } from "./chronicleTarget";
 import { ErrandEndingButtons } from "./errandHeaderActions";
+import { childErrandsOf } from "./errandRoster";
 import { PaneTabs } from "./paneTabs";
 import { useQuestPages } from "./questPages";
 import { questPanelOf } from "./questPanelOf";
@@ -89,13 +89,9 @@ export function PaneThread({
                       onPress={onStartErrand}
                     />
                   )}
-                  {detail.threads
-                    .filter((thread) => thread.parentId === threadId && thread.isArchived !== true)
-                    .map((thread) => ({ lastActivityAt: thread.lastActivityAt, state: thread.shownState, thread }))
-                    .sort(compareUrgency)
-                    .map(({ thread }) => (
-                      <ListedErrand client={client} key={thread.id} onOpen={onOpenThread} thread={thread} />
-                    ))}
+                  {childErrandsOf(detail.threads, threadId).map((thread) => (
+                    <ListedErrand client={client} key={thread.id} onOpen={onOpenThread} thread={thread} />
+                  ))}
                 </ScrollView>
               ) : isRitual && tab === "Companions" ? (
                 <RitualCompanions client={client} missionId={missionId} />
