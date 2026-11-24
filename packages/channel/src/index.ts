@@ -3,6 +3,14 @@ export type { Carrier } from "./carrier.ts";
 export type { KeyPair } from "./channel.ts";
 export { ChannelFailure, generateKeyPair, openInitiator, openResponder } from "./channel.ts";
 export { constantTimeEqual } from "./constantTimeEqual.ts";
+export type { DirectControl } from "./directControl.ts";
+export { encodeDirectControl, parseDirectControl } from "./directControl.ts";
+export type { DirectPeer, DirectPeers, RtcConnection, RtcConnectionClass } from "./directPeer.ts";
+export { dataChannelCarrier, rtcPeers } from "./directPeer.ts";
+export type { DirectTimings } from "./directSettings.ts";
+export { defaultDirectTimings, defaultStunServers } from "./directSettings.ts";
+export type { DirectSettings, DirectSlots, HostUpgradeOptions } from "./directUpgrade.ts";
+export { DirectFailure, directPrologue, makeDirectSlots, runDeviceUpgrade, serveHostUpgrade } from "./directUpgrade.ts";
 export type { PairingCode } from "./pairingCode.ts";
 export {
   decodePairingCode,
@@ -12,6 +20,8 @@ export {
   newRoomName,
 } from "./pairingCode.ts";
 export { appPairingLinkOf, pairingInputOf, readPairingInput, webPairingLinkOf } from "./pairingLink.ts";
+export type { PathKind, PathLink, PathLinkOptions } from "./pathLink.ts";
+export { makePathLink, maxLinkMessageBytes, pathTimings } from "./pathLink.ts";
 export { roomPrologue } from "./prologue.ts";
 export type { ClientHello, DeviceKind, HostReply, ProtocolErrorKind, RefusalReason } from "./protocol.ts";
 export {
