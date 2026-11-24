@@ -64,6 +64,10 @@ const startService = (token: string) => {
       ...process.env,
       OUTLORE_DATA_DIR: dataDirectory(),
       ...(app.isPackaged && { OUTLORE_BUNDLED_WHISPER_CLI: join(process.resourcesPath, "whisper", whisperExecutable) }),
+      // The stdio-to-HTTP MCP bridge for ACP harnesses without HTTP MCP, shipped as a resource in the installed app and beside the harness source in dev.
+      OUTLORE_ACP_MCP_BRIDGE: app.isPackaged
+        ? join(process.resourcesPath, "acpMcpBridge.mjs")
+        : join(here, "..", "..", "..", "packages", "service", "src", "harness", "acpMcpBridge.mjs"),
       OUTLORE_RELEASE: appVersionOf(),
       OUTLORE_TOKEN: token,
       // The vendored connector servers, shipped as a resource in the installed app and vendored in the repo in dev.

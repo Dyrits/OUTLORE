@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Fiber } from "effect";
 import type { HarnessEvent } from "../../src/core/index.ts";
+import { bridgeNodePathOf } from "../../src/harness/acpMcpBridge.ts";
 import { makeAcpProviderHarness } from "../../src/harness/acpProviders.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
@@ -63,38 +64,50 @@ describe("running a thread on a generic ACP provider", () => {
     }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
   });
 
-  it.live("gives the session the thread's tool server only when the agent takes HTTP MCP servers", () => {
+  it.live("gives the session an HTTP MCP server when supported and the stdio bridge otherwise", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-acp-turn-"));
-    const sessionParamsOf = (env: Record<string, string>) =>
+    const bridgePath = join(import.meta.dirname, "../../src/harness/acpMcpBridge.mjs");
+    const sessionParamsOf = (env: Record<string, string>, mcpUrl = "http://127.0.0.1:9/mcp/none") =>
       Effect.gen(function* () {
-        const log = join(directory, `calls-${Object.keys(env).length}`);
+        const log = join(directory, `calls-${Object.keys(env).length}-${mcpUrl.length}`);
         const harness = yield* harnessOf(log, env);
-        yield* harness.runTurn(turnRequestOf({ text: "hello" }));
+        const base = turnRequestOf({ text: "hello" });
+        yield* harness.runTurn({ ...base, access: { ...base.access, mcpUrl } });
         return readEntries(log).find((entry) => entry.method === "session/new")?.params?.mcpServers;
       });
     return Effect.gen(function* () {
-      expect(yield* sessionParamsOf({})).toEqual([]);
+      expect(yield* sessionParamsOf({})).toEqual([
+        {
+          args: [bridgePath, "http://127.0.0.1:9/mcp/none"],
+          command: bridgeNodePathOf(),
+          env: [],
+          name: "outlore",
+        },
+      ]);
       expect(yield* sessionParamsOf({ ACP_FAKE_MCP_HTTP: "1" })).toEqual([
         { headers: [], name: "outlore", type: "http", url: "http://127.0.0.1:9/mcp/none" },
       ]);
+      expect(yield* sessionParamsOf({}, "")).toEqual([]);
     }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
   });
 
   it.live("tells a session with no tool server that the thread tools are unavailable, and one with it nothing", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-acp-turn-"));
-    const promptTextOf = (env: Record<string, string>) =>
+    const promptTextOf = (env: Record<string, string>, mcpUrl = "http://127.0.0.1:9/mcp/none") =>
       Effect.gen(function* () {
-        const log = join(directory, `calls-${Object.keys(env).length}`);
+        const log = join(directory, `calls-${Object.keys(env).length}-${mcpUrl.length}`);
         const harness = yield* harnessOf(log, env);
-        yield* harness.runTurn(turnRequestOf({ context: "Starting context.", text: "hello" }));
+        const base = turnRequestOf({ context: "Starting context.", text: "hello" });
+        yield* harness.runTurn({ ...base, access: { ...base.access, mcpUrl } });
         const prompt = readEntries(log).find((entry) => entry.method === "session/prompt");
         return JSON.stringify(prompt?.params?.prompt);
       });
     return Effect.gen(function* () {
-      const without = yield* promptTextOf({});
+      const without = yield* promptTextOf({}, "");
       expect(without).toContain("Starting context.");
       expect(without).toContain("has no Outlore tool server");
       expect(without).toContain("request_approval");
+      expect(yield* promptTextOf({})).not.toContain("tool server");
       expect(yield* promptTextOf({ ACP_FAKE_MCP_HTTP: "1" })).not.toContain("tool server");
     }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
   });

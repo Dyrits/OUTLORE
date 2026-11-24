@@ -86,10 +86,7 @@ export const approvalInstructionsOf = (terms: ApprovalTerms, harness: HarnessNam
   ].join("\n");
 };
 
-/**
- * What a session is told when its harness took no Outlore tool server (an ACP agent that does not advertise HTTP MCP
- * support): the instructions above name tools it cannot call, and a call it cannot make would only stall the thread.
- */
+/** What a session is told when its harness took no Outlore tool server: the instructions above name tools it cannot call, and a call it cannot make would only stall the thread. */
 export const noToolServerInstructions = [
   "# No Outlore tools in this session",
   "This session has no Outlore tool server: request_approval, report_result, and every other Outlore tool named above are unavailable here, so do not try to call them.",

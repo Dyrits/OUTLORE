@@ -9,6 +9,11 @@ CHG-0132 extends Control's authority to the [Guildmaster role](../capabilities/m
 The service must distinguish Guildmaster's app-wide authority from ordinary thread authority and enforce each operation's rules, approvals, and budgets.
 The additional tools still need design and implementation.
 
+## 2026-11-24: Stdio-to-HTTP MCP bridge fallback for ACP harnesses
+
+ACP mandates stdio MCP support while `mcpCapabilities.http` is optional, so an ACP agent that omits `mcpCapabilities.http` (such as Google Antigravity CLI `agy 1.5.16`) still reaches the thread's local HTTP MCP server through `packages/service/src/harness/acpMcpBridge.mjs` (shipped as an unpacked desktop resource because the packaged Electron binary disables `RunAsNode`).
+A live smoke check against `agy 1.5.16` on 2026-11-24 confirmed that `agy` spawns the stdio bridge on `session/new`, negotiates `initialize` and `tools/list`, invokes `tools/call` over SSE, and completes the turn (`end_turn`).
+
 ## Note, 2026-11-24: which ACP harnesses get the tool server
 
 Hermes, Cursor, Copilot, Cline, Devin, and Gemini (Antigravity) start their sessions through the generic ACP adapter (`acpProviders.ts`).

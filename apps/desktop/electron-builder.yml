@@ -35,6 +35,9 @@ extraResources:
   # The vendored connector servers (packages/service/vendor), run by a system Node: the packaged app cannot run its own binary as one (RunAsNode fuse off).
   - from: ../../packages/service/vendor
     to: vendor
+  # The stdio-to-HTTP MCP bridge for ACP harnesses without HTTP MCP, run by a system Node outside the archive.
+  - from: ../../packages/service/src/harness/acpMcpBridge.mjs
+    to: acpMcpBridge.mjs
 # node-pty's native binary and its spawn helper must run from disk, not from inside the archive.
 asarUnpack:
   - "**/node_modules/node-pty/**"

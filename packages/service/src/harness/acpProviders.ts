@@ -18,6 +18,7 @@ import {
   textFieldOf,
   turnMessageOf,
 } from "../core/index.ts";
+import { acpStdioMcpServerOf } from "./acpMcpBridge.ts";
 import { readAcpPrompt } from "./acpPrompt.ts";
 import type { AcpProviderProfile } from "./acpProviderProfiles.ts";
 import { acpRestartKeyOf, loadAcpSession, permissionOptionIdOf } from "./acpSession.ts";
@@ -117,8 +118,8 @@ export type AcpProviderHarnessOptions = {
   /** How long an idle thread keeps its process. */
   readonly idleTimeout: Duration.Input;
   /**
-   * The MCP servers the session is given. By default the thread's own tool server, when the agent advertises HTTP MCP
-   * support (`mcpCapabilities.http`); none otherwise.
+   * The MCP servers the session is given.
+   * By default the thread's own tool server, over HTTP when the agent advertises `mcpCapabilities.http` and otherwise through the stdio-to-HTTP bridge.
    */
   readonly mcpServers?: ReadonlyArray<object>;
   /** Arguments placed before the profile's own, used to run a stand-in script in checks. */
@@ -293,10 +294,13 @@ const acpProviderProtocolOf = (options: AcpProviderHarnessOptions): HarnessProto
     const session = yield* Effect.gen(function* () {
       const initialized = yield* rpc.request("initialize", initializeParams);
       const takesHttpServers = fieldOf(fieldOf(fieldOf(initialized, "agentCapabilities"), "mcpCapabilities"), "http");
+      const hasMcpUrl = request.access.mcpUrl !== "";
       const mcpServers =
         options.mcpServers ??
-        (takesHttpServers === true
-          ? [{ headers: [], name: toolServerName, type: "http", url: request.access.mcpUrl }]
+        (hasMcpUrl
+          ? takesHttpServers === true
+            ? [{ headers: [], name: toolServerName, type: "http", url: request.access.mcpUrl }]
+            : [acpStdioMcpServerOf(request.access.mcpUrl)]
           : []);
       const hasToolServer = mcpServers.length > 0;
       const advertisesImages = fieldOf(

@@ -41,6 +41,13 @@ describe("the installer's build configuration", () => {
     expect(readFileSync(join(desktop, "src/main.ts"), "utf8")).toContain('setAsDefaultProtocolClient("outlore"');
   });
 
+  it("ships the ACP stdio-to-HTTP MCP bridge outside the archive and wires its path", () => {
+    const config = configuration.join("\n");
+    expect(config).toContain("from: ../../packages/service/src/harness/acpMcpBridge.mjs");
+    expect(config).toContain("to: acpMcpBridge.mjs");
+    expect(readFileSync(join(desktop, "src/main.ts"), "utf8")).toContain("OUTLORE_ACP_MCP_BRIDGE");
+  });
+
   it("turns off, after packing, the Electron fuses the app does not need", async () => {
     expect(settingOf("afterPack")).toBe("scripts/afterPack.cjs");
     const { fusePolicy } = require("../scripts/fusePolicy.cjs") as { fusePolicy: Record<string, boolean> };
