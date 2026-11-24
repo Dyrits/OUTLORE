@@ -79,6 +79,17 @@ export const configOptionIdsOf = (configOptions: unknown): ReadonlyArray<string>
   Array.isArray(configOptions) ? configOptions.flatMap((option) => textFieldOf(option, "id") ?? []) : [];
 
 /**
+ * The session option that sets the thinking level, or null when the session offers none.
+ * It is the option named `thinking` where the agent calls it that (Vibe), and otherwise the one of ACP category `thought_level`, whatever its id (Antigravity's `thought_level`, checked live on CLI 1.5.16, which answers -32602 "Unknown config option" to `thinking`).
+ */
+export const thinkingConfigIdOf = (configOptions: unknown): string | null => {
+  if (!Array.isArray(configOptions)) return null;
+  const named = configOptions.find((option) => textFieldOf(option, "id") === "thinking");
+  const option = named ?? configOptions.find((candidate) => textFieldOf(candidate, "category") === "thought_level");
+  return textFieldOf(option, "id");
+};
+
+/**
  * How a session is given the thread's tool server, as ACP `McpServer` entries; none when the thread has no tool server.
  * - `http`: always the HTTP server (ACP `HttpMcpServer`), for an agent that validates the entry and answers anything else -32602 Invalid params.
  * - `negotiated`: the HTTP server when the agent advertises `mcpCapabilities.http`, and otherwise the stdio bridge to it, since stdio is the transport ACP requires every agent to take.

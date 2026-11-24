@@ -169,6 +169,8 @@ const modelOptions = () => config.models.map(([name, value]) => ({ name, value }
 const turnConfigOptions = () =>
   config.options.map((id) => ({
     id,
+    // Antigravity names its thinking level `thought_level`, and says so in the option's ACP category.
+    ...(id === "thought_level" ? { category: "thought_level" } : {}),
     options: id === "model" ? modelOptions() : [{ name: "High", value: "high" }],
   }));
 

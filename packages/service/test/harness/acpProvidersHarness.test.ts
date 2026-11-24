@@ -53,7 +53,12 @@ describe("running a thread on a generic ACP provider", () => {
         input: { command: "git push origin main" },
         toolName: "git push",
       });
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("gives the session an HTTP MCP server when supported and the stdio bridge otherwise", () => {
@@ -80,7 +85,12 @@ describe("running a thread on a generic ACP provider", () => {
         { headers: [], name: "outlore", type: "http", url: "http://127.0.0.1:9/mcp/none" },
       ]);
       expect(yield* sessionParamsOf({}, "")).toEqual([]);
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("tells a session with no tool server that the thread tools are unavailable, and one with it nothing", () => {
@@ -101,7 +111,12 @@ describe("running a thread on a generic ACP provider", () => {
       expect(without).toContain("request_approval");
       expect(yield* promptTextOf({})).not.toContain("tool server");
       expect(yield* promptTextOf({ mcpHttp: true })).not.toContain("tool server");
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("answers a denial with the provider's reject option and carries the turn on", () => {
@@ -122,7 +137,12 @@ describe("running a thread on a generic ACP provider", () => {
         "Working",
         "tool was reject_once",
       ]);
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("starts a new session with the thread's conversation when the old one is missing", () => {
@@ -148,7 +168,12 @@ describe("running a thread on a generic ACP provider", () => {
       expect(text).toContain("Earlier words.");
       expect(text).toContain("Starting context.");
       expect(text).toContain("Two");
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("ends the turn as interrupted when the running turn is interrupted", () => {
@@ -162,7 +187,12 @@ describe("running a thread on a generic ACP provider", () => {
       const outcome = yield* Fiber.join(fiber);
       expect(outcome.isInterrupted).toBe(true);
       expect(readAcpFakeLog(log).some((entry) => entry.method === "session/cancel")).toBe(true);
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("refuses to start a configured-state provider without its account folder", () => {
@@ -186,7 +216,12 @@ describe("running a thread on a generic ACP provider", () => {
       expect(failure.reason).toContain("HERMES_HOME");
       // Without an account folder the provider would reach for the user's own home, so nothing started.
       expect(existsSync(log)).toBe(false);
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("runs the account folder as the state home and sets only the ask mode, model, and thinking", () => {
@@ -219,6 +254,11 @@ describe("running a thread on a generic ACP provider", () => {
       expect(set).toContainEqual(["mode", "ask"]);
       expect(set).toContainEqual(["model", "model-a"]);
       expect(set).toContainEqual(["thinking", "high"]);
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 });

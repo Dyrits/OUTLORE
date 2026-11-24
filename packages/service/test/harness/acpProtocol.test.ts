@@ -28,7 +28,9 @@ const inFolder = <A, E, R>(check: (log: string, directory: string) => Effect.Eff
   const directory = mkdtempSync(join(tmpdir(), "outlore-acp-protocol-"));
   return check(join(directory, "calls"), directory).pipe(
     Effect.scoped,
-    Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))),
+    Effect.ensuring(
+      Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+    ),
   );
 };
 
@@ -162,7 +164,7 @@ describe("every ACP harness reports the context window and the turn's usage", ()
         Effect.sync(() => {
           delete process.env.STAND_IN_LOG;
           delete process.env.STAND_IN_VIBE_PLAN;
-          rmSync(directory, { force: true, recursive: true });
+          rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
         }),
       ),
     );
@@ -176,6 +178,19 @@ describe("every ACP harness sets only the session options the session offered", 
         const harness = yield* bareAdapter(log, { options: ["model"] });
         yield* harness.runTurn(turnRequestOf({ effort: "high", model: "model-a", text: "Hello" }));
         expect(configSetsLogged(log)).toEqual([["model", "model-a"]]);
+      }),
+    ),
+  );
+
+  it.live("sets the thinking level through the option the agent names for it, Antigravity's `thought_level`", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        const harness = yield* turnOn("antigravity", log, { options: ["model", "thought_level"] });
+        yield* harness.runTurn(turnRequestOf({ effort: "high", model: "model-a", text: "Hello" }));
+        expect(configSetsLogged(log)).toEqual([
+          ["model", "model-a"],
+          ["thought_level", "high"],
+        ]);
       }),
     ),
   );
@@ -206,7 +221,7 @@ describe("every ACP harness sets only the session options the session offered", 
         Effect.sync(() => {
           delete process.env.STAND_IN_LOG;
           delete process.env.STAND_IN_VIBE_OPTIONS;
-          rmSync(directory, { force: true, recursive: true });
+          rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
         }),
       ),
     );
@@ -279,7 +294,7 @@ describe("every ACP harness refuses images an agent says it cannot take", () => 
       Effect.ensuring(
         Effect.sync(() => {
           delete process.env.STAND_IN_VIBE_IMAGES;
-          rmSync(directory, { force: true, recursive: true });
+          rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
         }),
       ),
     );
@@ -307,7 +322,7 @@ describe("every ACP harness gives the session the thread's tool server", () => {
       Effect.ensuring(
         Effect.sync(() => {
           delete process.env.STAND_IN_LOG;
-          rmSync(directory, { force: true, recursive: true });
+          rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
         }),
       ),
     );

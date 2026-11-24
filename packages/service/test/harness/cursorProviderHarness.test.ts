@@ -68,7 +68,12 @@ describe("running a thread on the Cursor harness", () => {
         input: { command: "git push origin main" },
         toolName: "git push origin main",
       });
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("answers a denial with the provider's reject option and carries the turn on", () => {
@@ -89,7 +94,12 @@ describe("running a thread on the Cursor harness", () => {
         "Working",
         "tool was reject_once",
       ]);
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("refuses a reverse request Outlore does not mediate, and tolerates the CLI's stdout noise", () => {
@@ -103,7 +113,12 @@ describe("running a thread on the Cursor harness", () => {
       expect(readAcpFakeLog(log).find((entry) => entry.strictAnswer !== undefined)?.strictAnswer).toBe(
         "Outlore does not answer session/set_mode.",
       );
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("probes the models the session offers", () => {
@@ -120,6 +135,10 @@ describe("running a thread on the Cursor harness", () => {
         { id: "gpt-5.2", label: "GPT-5.2" },
       ]);
       expect(readAcpFakeLog(log)[0]?.launch?.argv).toEqual(["acp"]);
-    }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 });

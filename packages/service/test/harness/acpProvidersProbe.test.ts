@@ -32,7 +32,7 @@ describe("probing an ACP provider", () => {
       expect(cwd).not.toBe(tmpdir());
       expect(existsSync(cwd)).toBe(false);
     } finally {
-      rmSync(directory, { force: true, recursive: true });
+      rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
     }
   });
 
@@ -60,7 +60,7 @@ describe("probing an ACP provider", () => {
       expect(entry.launch?.env.KIMI_CODE_HOME).toBe(join(cwd, "state-home"));
       expect(existsSync(cwd)).toBe(false);
     } finally {
-      rmSync(directory, { force: true, recursive: true });
+      rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
     }
   });
 
@@ -89,7 +89,7 @@ describe("probing an ACP provider", () => {
       expect(acpFakeRequest(log, "session/new").launch?.env.HERMES_HOME).toBe(home);
       expect(existsSync(home)).toBe(false);
     } finally {
-      rmSync(directory, { force: true, recursive: true });
+      rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
     }
   });
 
@@ -114,7 +114,7 @@ describe("probing an ACP provider", () => {
       // Nothing runs against a home the caller did not vouch for, so no process was ever started.
       expect(existsSync(log)).toBe(false);
     } finally {
-      rmSync(directory, { force: true, recursive: true });
+      rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
     }
   });
 });

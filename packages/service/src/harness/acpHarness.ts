@@ -23,6 +23,7 @@ import {
   modeIdsOf,
   permissionOptionIdOf,
   reopenAcpSession,
+  thinkingConfigIdOf,
 } from "./acpSession.ts";
 import { acpFileEditsOf } from "./fileEditEvents.ts";
 import {
@@ -382,7 +383,8 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
           ),
         );
       if (request.model !== "default" && offered.includes("model")) yield* setOption("model", request.model);
-      if (request.effort !== "default" && offered.includes("thinking")) yield* setOption("thinking", request.effort);
+      const thinkingId = thinkingConfigIdOf(fieldOf(session.created, "configOptions"));
+      if (request.effort !== "default" && thinkingId !== null) yield* setOption(thinkingId, request.effort);
       const billing = dialect.readBilling === undefined ? null : yield* dialect.readBilling(rpc, sessionId);
       return {
         billing,

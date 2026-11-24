@@ -64,7 +64,7 @@ describe("probing the Antigravity CLI", () => {
       expect(entry.launch?.env.WSL_DISTRO_NAME).toBeNull();
       expect(entry.params?.mcpServers).toEqual([]);
     } finally {
-      rmSync(directory, { force: true, recursive: true });
+      rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
     }
   });
 
@@ -83,7 +83,7 @@ describe("probing the Antigravity CLI", () => {
     } finally {
       if (previous === undefined) delete process.env.GEMINI_HOME;
       else process.env.GEMINI_HOME = previous;
-      rmSync(directory, { force: true, recursive: true });
+      rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
     }
   });
 });
@@ -99,7 +99,12 @@ describe("reading the Antigravity sign-in", () => {
         ...(mode === "signedout" ? { signedOut: { code: -32000, message: "Authentication required" } } : {}),
       }),
       prefixArgs: [acpFakeScript],
-    }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))), Effect.runPromise);
+    }).pipe(
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+      Effect.runPromise,
+    );
   };
 
   it("reads a session that lists models as signed in", async () => {
@@ -150,7 +155,12 @@ describe("running a thread on the Antigravity CLI", () => {
       });
       const entry = acpFakeRequest(log, "session/prompt");
       expect(entry.launch?.argv).toEqual(["acp", `--gemini-dir=${geminiHome}`, "--app-data-dir=antigravity-acp"]);
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("answers a denial with the provider's reject option and carries the turn on", () => {
@@ -171,6 +181,11 @@ describe("running a thread on the Antigravity CLI", () => {
         "Working",
         "tool was reject_once",
       ]);
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 });

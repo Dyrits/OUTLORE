@@ -39,7 +39,7 @@ describe("probing the devin CLI", () => {
       expect(entry.launch?.argv).toEqual(["acp"]);
       expect(entry.params?.mcpServers).toEqual([]);
     } finally {
-      rmSync(directory, { force: true, recursive: true });
+      rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
     }
   });
 
@@ -78,7 +78,12 @@ describe("running a thread on the devin CLI", () => {
         toolName: "git push",
       });
       expect(acpFakeRequest(log, "session/prompt").launch?.argv).toEqual(["acp"]);
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("answers a denial with the provider's reject option and carries the turn on", () => {
@@ -99,6 +104,11 @@ describe("running a thread on the devin CLI", () => {
         "Working",
         "tool was reject_once",
       ]);
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 });

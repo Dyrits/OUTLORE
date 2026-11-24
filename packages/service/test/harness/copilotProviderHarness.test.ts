@@ -63,7 +63,12 @@ describe("running a thread on the Copilot harness", () => {
         input: { path: "src/index.ts" },
         toolName: "Edit src/index.ts",
       });
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("answers a denial with the provider's reject option and carries the turn on", () => {
@@ -84,7 +89,12 @@ describe("running a thread on the Copilot harness", () => {
         "Working",
         "edit was reject_once",
       ]);
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("fails a signed-out process by the CLI's own -32000 session answer", () => {
@@ -95,7 +105,12 @@ describe("running a thread on the Copilot harness", () => {
       const failure = yield* harness.runTurn(turnRequestOf({ text: "Hello" })).pipe(Effect.flip);
       expect(failure.code).toBe(-32000);
       expect(failure.reason).toContain("not signed in to GitHub Copilot");
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("carries the CLI's plan-used-up error as the turn's failure", () => {
@@ -105,7 +120,12 @@ describe("running a thread on the Copilot harness", () => {
       const harness = yield* harnessOf(log, { planUsedUp: true });
       const failure = yield* harness.runTurn(turnRequestOf({ text: "Hello" })).pipe(Effect.flip);
       expect(failure.reason).toContain("Add a payment method to continue.");
-    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 
   it.live("probes the models a signed-in session offers, and fails a signed-out probe by -32000", () => {
@@ -128,6 +148,10 @@ describe("running a thread on the Copilot harness", () => {
       // HarnessFailure shape, so registration reads its failure as "not signed in".
       expect(failure.reason).toContain("did not answer session/new in time");
       expect(readAcpFakeLog(log)[0]?.launch?.argv).toEqual(["--acp", "--no-auto-update"]);
-    }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
+    }).pipe(
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
   });
 });
