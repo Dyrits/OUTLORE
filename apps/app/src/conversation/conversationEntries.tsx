@@ -30,16 +30,18 @@ const shortened = (title: string) => (title.length > 60 ? `${title.slice(0, 59)}
 /** Each sender's card. */
 const cardStyles = {
   agent: styles.messageCardAgent,
-  system: styles.messageCardThread,
+  system: styles.messageCardNotice,
   thread: styles.messageCardThread,
   user: styles.messageCardUser,
 } satisfies Record<Message["sender"], unknown>;
 
 /** The small button at a card's top right corner that opens the quest or Ritual the card speaks of. */
 function QuestButton({
+  isInline = false,
   link,
   onOpenMission,
 }: {
+  isInline?: boolean;
   link: Pick<QuestLink, "label" | "missionId" | "title">;
   onOpenMission: (missionId: MissionId) => void;
 }) {
@@ -48,7 +50,11 @@ function QuestButton({
       accessibilityLabel={`${link.label}: ${link.title}`}
       accessibilityRole="button"
       onPress={() => onOpenMission(link.missionId)}
-      style={({ pressed }) => [styles.cardCornerButton, pressed && styles.questButtonPressed]}
+      style={({ pressed }) => [
+        styles.cardCornerButton,
+        isInline && styles.cardCornerButtonInline,
+        pressed && styles.questButtonPressed,
+      ]}
     >
       <Emblem name="sword" tint={colors.highlight} />
     </Pressable>
@@ -186,6 +192,9 @@ function MessageBubble({
     );
   }
   const sender = senderLabelOf(message);
+  const isNotice = message.sender === "system";
+  const questLink =
+    fromQuest === null ? null : { label: "Open quest", missionId: fromQuest, title: message.fromTitle ?? "" };
   // The comments a message of the owner carried are drawn apart from what they typed.
   const sent = message.sender === "user" ? commentsOf(message.text) : { body: message.text, items: [] };
   const terminal = message.sender === "user" ? terminalSnapshotOf(sent.body) : null;
@@ -196,13 +205,23 @@ function MessageBubble({
           style={[
             styles.messageCard,
             cardStyles[message.sender],
-            fromQuest !== null && styles.cardWithCorner,
+            questLink !== null && !isNotice && styles.cardWithCorner,
             // The owner's message the agent does not have yet is drawn fainter, until it is delivered.
             message.sender === "user" && !message.isDelivered && { opacity: 0.6 },
           ]}
         >
           {/* The owner's own messages need no label, as in a chat; a queued one says it waits. */}
-          {sender !== null && <Text style={styles.senderName}>{sender}</Text>}
+          {isNotice ? (
+            <View style={styles.noticeHeader}>
+              <View style={[styles.senderHeader, styles.noticeMetadata]}>
+                <Text style={styles.senderName}>{sender}</Text>
+                <Text style={styles.senderTime}>{stampOf(message.sentAt)}</Text>
+              </View>
+              {questLink !== null && <QuestButton isInline link={questLink} onOpenMission={onOpenMission} />}
+            </View>
+          ) : (
+            sender !== null && <Text style={styles.senderName}>{sender}</Text>
+          )}
           {message.sender === "user" ? (
             terminal !== null ? (
               <View style={{ gap: 10 }}>
@@ -222,12 +241,7 @@ function MessageBubble({
           )}
           <SentComments items={sent.items} />
           <MessageImages cards={message.attachments} client={client} />
-          {fromQuest !== null && (
-            <QuestButton
-              link={{ label: "Open quest", missionId: fromQuest, title: message.fromTitle ?? "" }}
-              onOpenMission={onOpenMission}
-            />
-          )}
+          {questLink !== null && !isNotice && <QuestButton link={questLink} onOpenMission={onOpenMission} />}
           {message.sender === "user" && message.isQueued && (
             <QueuedMessageActions
               client={client}

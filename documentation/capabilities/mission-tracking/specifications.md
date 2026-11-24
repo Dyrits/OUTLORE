@@ -96,6 +96,7 @@ Update, 2026-11-20: Stop ends the current turn and returns the thread to Resting
 
 - Outlore checks at startup and hourly for inactivity in active realms. A quest or errand in Attention qualifies four hours after its last owner or agent message. A Resting quest or errand qualifies after twelve hours. Underway and Waiting quests and threads do not qualify. An Attention state inherited from an errand uses that errand's message history.
 - Outlore posts a linked notice in the realm's Missives once per qualifying thread's latest message. When several threads in one quest qualify in the same sweep, they share a notice. An empty thread with no owner or agent message does not qualify. The notice starts no turn and is independent of daily background check-ins.
+- The notice header shows its posting date and time in the viewer's locale alongside the Outlore label and the quest shortcut.
 - Automatic archiving applies to Fulfilled quests after the configured delay when enabled. An inactivity warning leaves the quest open.
 
 - The user archives a quest when it is no longer needed in the active list.

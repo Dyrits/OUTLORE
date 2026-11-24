@@ -56,6 +56,7 @@ export const styles = StyleSheet.create({
     top: 10,
     width: 34,
   },
+  cardCornerButtonInline: { flexShrink: 0, position: "relative", right: 0, top: 0 },
   cardWithCorner: { paddingRight: 58 },
   chip: {
     backgroundColor: colors.control,
@@ -216,6 +217,7 @@ export const styles = StyleSheet.create({
   messageCardAgent: { backgroundColor: colors.bubble },
   /** An agent's card leaves room under the medallion that sits on its top edge. */
   messageCardNotched: { paddingTop: 20 },
+  messageCardNotice: { backgroundColor: colors.surface, gap: 8 },
   messageCardThread: { backgroundColor: colors.successSoft },
   messageCardUser: { backgroundColor: colors.bubbleUser },
   messageRow: { alignItems: "flex-start", flexDirection: "row", gap: 10, marginVertical: 6, maxWidth: "92%" },
@@ -224,6 +226,15 @@ export const styles = StyleSheet.create({
   messageRowUser: { alignSelf: "flex-end" },
   missionRowMain: { gap: 2 },
   muted: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.md },
+  noticeHeader: {
+    alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    paddingBottom: 8,
+  },
+  noticeMetadata: { columnGap: 8, flex: 1, flexWrap: "wrap", rowGap: 2 },
   /** One option of a choice, as wide as its card, so a long description wraps instead of running out of the box. */
   option: { alignSelf: "stretch", gap: 2, minWidth: 0 },
   options: { alignItems: "flex-start", gap: 6 },
