@@ -1,7 +1,11 @@
+import { HarnessName } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
+import { inactivityMissiveHours } from "../../src/core/index.ts";
+import { harnessLabels } from "../../src/harness/index.ts";
 import { guildmasterInstructionsOf } from "../../src/harness/instructions.ts";
 import { guideTopics } from "../../src/work/appGuideTopics.ts";
 import { topicsOf } from "../../src/work/guildmasterGuide.ts";
+import { modeTerms } from "../../src/work/threadPermissionMode.ts";
 
 const idsFor = (question: string) => topicsOf(question).map((topic) => topic.id);
 
@@ -131,6 +135,18 @@ describe("reading the app guide", () => {
 
     it("lets one owner pair several installations", () => {
       expect(body("limits")).not.toMatch(/one user on one computer/i);
+    });
+
+    it("names every harness, every permission mode, and the Missive quiet hours from their owning modules", () => {
+      for (const name of HarnessName.literals) {
+        const label = harnessLabels[name];
+        expect(body("overview")).toContain(label);
+        expect(body("companions")).toContain(label);
+      }
+      for (const mode of Object.keys(modeTerms)) expect(body("approvals")).toContain(mode);
+      expect(body("quests")).toContain(`${inactivityMissiveHours.Attention} hours`);
+      expect(body("quests")).toContain(`${inactivityMissiveHours.Resting} hours`);
+      expect(body("quests")).toMatch(/check-in/i);
     });
   });
 

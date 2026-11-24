@@ -1,6 +1,7 @@
 import type { ThreadState } from "@outlore/contracts";
 import { Clock, Effect, Layer } from "effect";
 import { SqlClient } from "effect/sql";
+import { inactivityMissiveHours } from "../core/index.ts";
 import { Commands } from "./commands.ts";
 import { autoArchiveLayer } from "./ending.ts";
 import { changed, unchanged } from "./followUps.ts";
@@ -10,7 +11,6 @@ import { questStateOf, shownStatesOf } from "./missionStates.ts";
 import { timedSweep } from "./timedSweep.ts";
 
 const hour = 60 * 60 * 1000;
-const warningHours = { Attention: 4, Resting: 12 } as const;
 
 // Titles are plain text even when the owner or a Companion gives them Markdown punctuation.
 const plainTitleOf = (title: string) => title.replace(/\s+/g, " ").replace(/[!-/:-@[-`{-~]/g, "\\$&");
@@ -61,7 +61,7 @@ const postDueMissives = Effect.gen(function* () {
       const ownState = thread === top && thread.state === "Fulfilled" ? "Resting" : thread.state;
       // A descendant's Attention should use that descendant's last message, not an older ancestor's message.
       if (state !== ownState || (state !== "Attention" && state !== "Resting")) return [];
-      const hours = warningHours[state];
+      const hours = inactivityMissiveHours[state];
       if (thread.lastMessageAt === null || now - thread.lastMessageAt < hours * hour) return [];
       return [{ state, thread }];
     });
@@ -71,7 +71,7 @@ const postDueMissives = Effect.gen(function* () {
     for (const [state, warnings] of Map.groupBy(due, (warning) => warning.state)) {
       const hasQuest = warnings.some(({ thread }) => thread === top);
       const errands = warnings.length - Number(hasQuest);
-      const hours = warningHours[state];
+      const hours = inactivityMissiveHours[state];
       if (hasQuest) lines.push(`This quest is in ${state}. Its last message was at least ${hours} hours ago.`);
       if (errands === 1) lines.push(`One errand is in ${state} and last had a message at least ${hours} hours ago.`);
       if (errands > 1)

@@ -1,5 +1,13 @@
 # Backlog
 
+- **Island frame and live layout-editing toggle (audit P3)** (owner note, 2026-11-24). Unify flat and Islands surface geometry in one `Island` frame module so components stop branching on `islands === null`. Separate quest idea from the owner: add a toggle to enter edition mode and tweak the layout in real time from any place in the app.
+
+- **Window composition as data or state machine (audit P4)** (owner note, 2026-11-24). Deepen `windowViewOf` into a pure window composition (or a state machine if necessary) so `appScreen.tsx` and `shell.tsx` stop duplicating layer visibility predicates.
+
+- **Sidebar row anatomy and future display modes (audit P5)** (owner note, 2026-11-24). Unify sidebar row anatomy (quests, Rituals, realm headers, section titles) into one component that prevents nested buttons, alongside a future sidebar rework exploring different ways to display the sidebar.
+
+- **Unified ACP module with dialects (audit H2)** (owner note, 2026-11-24). Replace the three copied ACP protocol loops (`vibe.ts`, `acpProviders.ts`, `opencode.ts`) with one deep ACP module plus per-harness dialect hooks. Before designing it, write primary-source research notes in `documentation/research/` inspecting how T3 Code (`pingdotgg/t3code`) implements Antigravity over ACP (including any `clientInfo.name` model-catalog gating) and how Paseo (`getpaseo/paseo`, `acp-agent.ts` / `generic-acp-agent.ts`, and `tiezbro/paseo-agy-acp`) structures its ACP client.
+
 - **Mobile feature parity** (owner request, 2026-11-22). Bring desktop workflows to the paired mobile app using phone-sized navigation and controls. Built on `worktree/mobile-parity`: the realm and Borderlands channels with common quest actions (CHG-0646), and the Chronicle on the phone with what-needs-you badges and Back returning to it, from Claude Duet (CHG-0647). Remaining: the Workshop at phone width, dictation on the phone, remote terminals ([ADR 0020](architecture-decision-record/0020-terminals-run-in-the-host.md)), and device integrations. Verify shared workflows on a paired Android build before counting them as available on mobile. See [current focus](work-in-progress.md#mobile-feature-parity) and [Same features in every app](requirements.md#access).
 
 - **Background check-ins, specified** (2026-11-22). The [specification](capabilities/background-check-ins/specifications.md) covers opt-in daily check-ins, realm Missives, and Companion choice. [Bundled inference feasibility](capabilities/background-check-ins/draft.md#provider-feasibility) remains open.

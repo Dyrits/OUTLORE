@@ -1,7 +1,28 @@
+import type { ThreadPermissionMode } from "@outlore/contracts";
+import { inactivityMissiveHours } from "../core/index.ts";
+import { harnessLabels, harnessNames } from "../harness/index.ts";
+import { modeTerms } from "./threadPermissionMode.ts";
+
 // The user guide Chronicler reads to explain the app (quest coordination, "Chronicler explains how the app works"): one topic
 // per question an owner asks. Chronicler reads a topic with `read_app_guide` only when a question needs it, so the guide
 // costs nothing until asked. It says what the app does today, in the words the screens use (quest, realm, Ritual, the
 // Workshop), and says plainly what is not built; keep it in step with the README and the glossary when they change.
+
+const listWithAnd = (items: ReadonlyArray<string>): string =>
+  items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+
+const allHarnessLabels = listWithAnd(harnessNames.map((name) => harnessLabels[name]));
+
+const allHarnessKeywords = harnessNames.flatMap((name) => {
+  const words = harnessLabels[name]
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= 2);
+  return [name, ...words];
+});
+
+const permissionModeNames = Object.keys(modeTerms) as ReadonlyArray<ThreadPermissionMode>;
+const permissionModeLabels = listWithAnd(permissionModeNames);
 
 /** One topic of the guide. */
 export type GuideTopic = {
@@ -19,7 +40,7 @@ export type GuideTopic = {
 export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
-      "Outlore is a local-first desktop app for working with AI agents. It runs Claude Code, Codex, OpenCode, and Mistral Vibe, the owner's own command-line tools and accounts, in one place. Outlore does not resell model access: the owner pays each provider directly.",
+      `Outlore is a local-first desktop app for working with AI agents. It runs ${allHarnessLabels}, the owner's own command-line tools and accounts, in one place. Outlore does not resell model access: the owner pays each provider directly.`,
       "A piece of work is a quest. Inside it, the owner or a thread opens errands, each of which can use its own harness, model, and effort, and the threads of a quest talk to each other. The quest keeps a briefing and a journal that every thread in it reads.",
       "Everything is stored on the owner's computer, in a database in the app's data folder. Work happens in realms (folders or repositories) the owner chooses.",
       "Outlore is in alpha and serves one owner, who may pair several devices.",
@@ -36,6 +57,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "States a quest or thread shows: Fresh (nothing sent yet), Underway (a turn is in progress), Waiting (its own turn is over and work continues beneath it), Attention (needs the owner: an approval, an answer, a budget reached, a missing folder, or a tool problem), Failed, Resting (the owner's turn), Stopped, and Fulfilled (marked done). A quest or errand shows Failed or Attention when a thread beneath it has it. A quest stays open until it is archived; archived quests are in the Archive, under The Keep.",
       "Each quest has a briefing (where it stands, rewritten as it changes) and a journal (a dated log only ever added to). Every thread in the quest reads them before it starts.",
       "Threads message each other along the tree. When the owner names a quest or errand with @, the receiving thread may reach it for that turn; a realm named with @ is context only and opens no reach. An errand opened by a thread tells its parent when it reports a result.",
+      `Realm Missives: when a thread in a realm stays silent in Attention for ${inactivityMissiveHours.Attention} hours or in Resting for ${inactivityMissiveHours.Resting} hours, Outlore posts an inactivity Missive in that realm's channel. Optional daily background check-ins can also be enabled in the Workshop.`,
     ].join("\n"),
     id: "quests",
     keywords: [
@@ -53,6 +75,11 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "summons",
       "underway",
       "resting",
+      "missive",
+      "missives",
+      "inactive",
+      "check-in",
+      "check-ins",
     ],
     summary: "Quests, errands, their states, and how to start one",
     title: "Quests and errands",
@@ -109,10 +136,10 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "The sidebar, from the top: a small Realms label with the Visit a new realm button at its right end (shown when the pointer is over the label), then each realm with its quests and errands; then a line, and a small Borderlands label with the Start a new quest button at its right end, then the quests that are in no realm below the label. At the foot, between lines, come the usage rings of the plans and a Workshop row with a gear, which opens the Workshop (Settings); while the Workshop is open the row stays selected and pressing it again goes back to where the owner was. Reserves (usage and budgets) and Remote access (devices and relays, once the Charter) are sections of the Workshop. Lore and Archive have no entry in the sidebar for now, and Rituals have none either: each Ritual sits inside its realm's list, beside that realm's quests, with its runs beneath it like errands. On a phone the top bar's menu button opens this same sidebar as a full screen; the other screen is the conversation.",
-      "Realms fold and unfold. Each realm and the quests in no realm show their three newest quests, with a Show all link to the full list.",
+      "The sidebar, from the top: a small Realms label with the Visit a new realm button at its right end (shown when the pointer is over the label), then each realm with its quests and errands; then a line, and a small Borderlands label with the Start a new quest button at its right end, then the quests that are in no realm below the label. Pressing a realm's name opens its tabbed channel pane (including Quests, Rituals, and History). At the foot, between lines, come the usage rings of the plans and a Workshop row with a gear, which opens the Workshop (Settings; also in the File menu on desktop); while the Workshop is open the row stays selected and pressing it again goes back to where the owner was. Reserves (usage and budgets) and Remote access (devices and relays, once the Charter) are sections of the Workshop. Lore and Archive have no entry in the sidebar for now, and Rituals sit inside their realm's list beside its quests, with their runs beneath them like errands. On a phone the top bar's menu button opens this same sidebar as a full screen; the other screen is the conversation.",
+      "Realms fold and unfold. Each realm and the quests in no realm show their newest quests, with a Show all link to the full list.",
       "The top bar shows where the owner is and has the Chronicler button. A quest has its own side panel with its details.",
-      "Themes: One or Iskios, each in a dark and a light look, or following the system. The owner chooses them in Settings.",
+      "Themes: One or Iskios, each in a dark and a light look, or following the system, in flat or Islands layout. The owner chooses them in Settings.",
     ].join("\n"),
     id: "navigation",
     keywords: [
@@ -188,8 +215,8 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "A thread has a harness (Claude Code, Codex, OpenCode, or Mistral Vibe), a model (called its Companion), and an effort level. The owner chooses them when starting a thread and may change them during a turn; the next turn uses the new choice. When a new session is needed, a handover replays stored message text: earlier images appear as names and tool calls are not replayed. The oldest messages are omitted with a notice if the replay exceeds half the new model's context window.",
-      "Outlore looks for the claude, codex, opencode, and vibe-acp commands on the computer's PATH, and only the ones the owner means to use are needed. The Workshop's Providers section shows what is available and can install a missing one (this needs Node.js and npm with a writable global install folder, or uv for Mistral Vibe); each harness handles its own sign-in.",
+      `A thread has a harness (${allHarnessLabels}), a model (called its Companion), and an effort level. The owner chooses them when starting a thread and may change them during a turn; the next turn uses the new choice. When a new session is needed, a handover replays stored message text: earlier images appear as names and tool calls are not replayed. The oldest messages are omitted with a notice if the replay exceeds half the new model's context window.`,
+      "Outlore looks for each harness's command on the computer's PATH, and only the ones the owner means to use are needed. The Workshop's Providers section shows what is available and can install a missing one (through npm, uv, or the provider's install script); each harness handles its own sign-in.",
       "Accounts: each harness can have the computer's own sign-in plus accounts added in Outlore, each with its own folder, such as a second Claude account called Work. A thread runs on the account chosen for it.",
       "Backup companions: when a turn fails (usage limit, overload, model unavailable, signed out), the thread can be handed over to the next backup Companion, which may be on another harness; the switch is a visible line in the conversation.",
     ].join("\n"),
@@ -199,11 +226,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "model",
       "companion",
       "effort",
-      "claude",
-      "codex",
-      "opencode",
-      "vibe",
-      "mistral",
+      ...allHarnessKeywords,
       "handover",
       "switch",
       "account",
@@ -218,7 +241,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   },
   {
     body: [
-      "Each harness runs its commands in a sandbox that limits damage to the computer's files and processes. A thread works on its own at the default approval level and asks before consequential actions: ones that reach people or systems outside the computer or cannot be undone. A sandbox escape asks unless the owner enabled running commands outside the sandbox without asking or granted a matching standing permission; a file change outside the thread's folder still asks.",
+      `Each harness runs its commands in a sandbox that limits damage to the computer's files and processes. A thread runs under one of four permission modes (${permissionModeLabels}), chosen per thread or from the Workshop default: Auto asks before consequential actions and sandbox escapes; AutoAcceptEdits runs edits inside the folder unasked and asks before commands; Supervised asks before commands and edits; FullAccess allows commands outside the sandbox without asking and runs tool calls unasked.`,
       "An approval question says in plain words what the thread wants to do; Show details reveals the exact command. The buttons are Allow (this once), Always allow (a standing permission for that exact action), and Deny, with an optional message saying what to do instead. A thread with an open question is in Attention.",
       "Standing permissions are listed in the Workshop's Permissions card, where each can be removed.",
       "Words never approve a command: not a quoted message, not a Ritual's instruction, nothing a thread writes.",
@@ -231,6 +254,10 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "deny",
       "permission",
       "permissions",
+      "permission mode",
+      "supervised",
+      "full access",
+      "auto accept",
       "sandbox",
       "risky",
       "safe",
@@ -238,7 +265,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "always allow",
       "security",
     ],
-    summary: "How Outlore asks before risky actions, and standing permissions",
+    summary: "Permission modes, how Outlore asks before risky actions, and standing permissions",
     title: "Approvals and permissions",
   },
   {
