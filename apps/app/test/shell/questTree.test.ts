@@ -72,6 +72,17 @@ describe("the errands a quest lists in the sidebar", () => {
     const rows = sideQuestRowsOf(agents, { collapsed: none, shouldShowAgentThreads: false });
     expect(rows.map((row) => row.thread.id)).toEqual(["y"]);
   });
+
+  it("orders siblings under one visible parent by latest activity, whatever their displayed status", () => {
+    const siblings = [
+      thread("top", null, 0),
+      { ...thread("resting", "top", 1), lastActivityAt: 5 },
+      { ...thread("failed", "top", 1), lastActivityAt: 1, shownState: "Failed" as const, state: "Failed" as const },
+      { ...thread("attention", "top", 1), lastActivityAt: 3, shownState: "Attention" as const },
+    ];
+    const rows = sideQuestRowsOf(siblings, { collapsed: none, shouldShowAgentThreads: true });
+    expect(rows.map((row) => row.thread.id)).toEqual(["resting", "attention", "failed"]);
+  });
 });
 
 describe("the path to a thread", () => {
@@ -94,6 +105,17 @@ describe("the placements of quests", () => {
 
   it("puts the quests of no realm in the Borderlands, latest first", () => {
     expect(placements.borderlands.map((each) => each.id)).toEqual(["q2", "q4"]);
+  });
+
+  it("lists a Failed quest with older activity below a Resting quest with newer activity", () => {
+    const ordered = placementsOf(
+      [
+        { ...quest("failed", null, 1), state: "Failed" as const },
+        { ...quest("resting", null, 9), state: "Resting" as const },
+      ],
+      [],
+    );
+    expect(ordered.borderlands.map((each) => each.id)).toEqual(["resting", "failed"]);
   });
 
   it("lists realms in the order the service gave, with their own quests latest first, and keeps a realm with none", () => {

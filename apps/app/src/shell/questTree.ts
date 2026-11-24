@@ -1,6 +1,6 @@
 import type { MissionSummary, ThreadId, ThreadSummary, WorkspaceChoice } from "@outlore/contracts";
 import { type FoldedThread, foldThreads } from "../conversation/folding";
-import { compareUrgency } from "./childNotches";
+import { latestFirstOf } from "./questRecency";
 
 /** The sidebar's two placements of quests (CHG-0161): each realm with its quests, and the Borderlands' quests. */
 export interface Placements {
@@ -15,14 +15,15 @@ export interface Placements {
 /**
  * Sorts every quest into its placement (mission-tracking, Left navigation structure): realms by name, whether tied to a
  * folder or not.
- * Quests within each placement are ordered by status and then latest activity.
+ * Quests within each placement are ordered by latest activity, newest first, whatever their status (CHG-0679): status no
+ * longer ranks them in the sidebar.
  * A realm with no quest is kept, so it can be found.
  */
 export const placementsOf = (
   missions: ReadonlyArray<MissionSummary>,
   workspaces: ReadonlyArray<WorkspaceChoice>,
 ): Placements => {
-  const ranked = [...missions].sort(compareUrgency);
+  const ranked = latestFirstOf(missions);
   return {
     borderlands: ranked.filter((mission) => mission.workspaceId === null),
     // The service lists realms in the owner's order (dragged in the sidebar), by name for those never placed.
@@ -70,7 +71,10 @@ export interface SideQuestRow {
   readonly thread: ThreadSummary;
 }
 
-/** Sorts visible siblings, including errands whose opener was folded into an ancestor. */
+/**
+ * Sorts visible siblings by latest activity, newest first (CHG-0679), including errands whose opener was folded into an
+ * ancestor.
+ */
 const rankedRowsOf = (rows: FoldedThread[]): FoldedThread[] => {
   const children = new Map<FoldedThread | null, FoldedThread[]>();
   const ancestors: FoldedThread[] = [];
@@ -85,12 +89,7 @@ const rankedRowsOf = (rows: FoldedThread[]): FoldedThread[] => {
   const ordered: FoldedThread[] = [];
   const visit = (parent: FoldedThread | null): void => {
     const siblings = children.get(parent) ?? [];
-    siblings.sort((current, next) =>
-      compareUrgency(
-        { lastActivityAt: current.thread.lastActivityAt, state: current.thread.shownState },
-        { lastActivityAt: next.thread.lastActivityAt, state: next.thread.shownState },
-      ),
-    );
+    siblings.sort((current, next) => next.thread.lastActivityAt - current.thread.lastActivityAt);
     for (const row of siblings) {
       ordered.push(row);
       visit(row);
@@ -101,7 +100,7 @@ const rankedRowsOf = (rows: FoldedThread[]): FoldedThread[] => {
 };
 
 /**
- * The sidebar lists errands beneath their visible parents, with siblings ordered by displayed status and then latest activity.
+ * The sidebar lists errands beneath their visible parents, with siblings ordered by latest activity, newest first (CHG-0679).
  * Collapsing an errand hides its descendants, and the setting for agent-opened threads still folds them into their opener.
  */
 export const sideQuestRowsOf = (

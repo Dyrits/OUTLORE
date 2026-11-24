@@ -48,20 +48,20 @@ const quest = (id: string, state: MissionSummary["state"] = "Resting") =>
   });
 
 describe("revealing the rail location", () => {
-  it("fills the preview by status and then recency, including Failed and Attention quests", () => {
+  it("fills the preview by latest activity, whatever the status, including Failed and Attention quests", () => {
     const quests = [
-      quest("running", "Underway"),
-      quest("older resting"),
-      { ...quest("newer resting"), lastActivityAt: 1 },
-      quest("attention", "Attention"),
-      quest("failed", "Failed"),
+      { ...quest("running", "Underway"), lastActivityAt: 5 },
+      { ...quest("newer resting"), lastActivityAt: 4 },
+      { ...quest("older resting"), lastActivityAt: 3 },
+      { ...quest("attention", "Attention"), lastActivityAt: 2 },
+      { ...quest("failed", "Failed"), lastActivityAt: 1 },
     ];
     const outline = railOutlineOf(placementsOf(quests, []), null, new Set());
     expect(outline.borderlands.map((each) => each.id)).toEqual([
-      "failed",
-      "attention",
+      "running",
       "newer resting",
       "older resting",
+      "attention",
     ]);
   });
   it("reveals the selected thread through folded ancestors without changing stored folds", () => {
@@ -99,17 +99,22 @@ describe("revealing the rail location", () => {
 });
 
 describe("limiting sidebar errands", () => {
-  it("previews the most urgent errands by displayed status even when a hidden opener folds away", () => {
+  it("previews the newest errands by latest activity even when a hidden opener folds away", () => {
     const threads = [
       ...tree,
       thread("folded", "top", 1, true),
-      { ...thread("failed", "folded", 2), shownState: "Failed" as const, state: "Failed" as const },
-      { ...thread("attention", "top", 1), shownState: "Attention" as const },
+      {
+        ...thread("failed", "folded", 2),
+        lastActivityAt: 1,
+        shownState: "Failed" as const,
+        state: "Failed" as const,
+      },
+      { ...thread("attention", "top", 1), lastActivityAt: 5, shownState: "Attention" as const },
     ];
     const outline = threadOutlineOf(threads, new Set(), null, false);
     expect(outline.rows.map(({ depth, thread }) => [thread.id, depth])).toEqual([
-      ["failed", 1],
       ["attention", 1],
+      ["failed", 1],
     ]);
   });
 
