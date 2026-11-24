@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To verify content loading on a paired phone during host activity, read the [current handoff](.agents/handoffs/2026-11-24-0918-remote-content-loading.md). Handoffs are shared and committed.
+
 - To resume the 2026-11-24 architecture audit (choose and build a candidate), read the [current handoff](.agents/handoffs/2026-11-24-0738-architecture-audit.md). Handoffs are shared and committed.
 
 - To verify the realm's channel pane staying open when a quest opens, read the [current handoff](.agents/handoffs/2026-11-24-0729-keep-channel-open.md). Handoffs are shared and committed.
-
-- To verify quest and errand ordering by latest activity in the desktop sidebar, read the [current handoff](.agents/handoffs/2026-11-24-0722-sidebar-activity-order.md). Handoffs are shared and committed.
