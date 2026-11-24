@@ -5,7 +5,7 @@ import { PresetNameForm } from "../editors/presetNameForm";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { Button } from "../ui/button";
-import { useWorkshopTabs } from "./workshopTabs";
+import { useWorkshopTabs, type WorkshopFocus } from "./workshopTabs";
 
 /** Sends one preset edit without replacing the rest of the library. */
 export const savePresetEdit = (client: ServiceClient, edit: CompanionPresetEdit) =>
@@ -66,18 +66,10 @@ export function PresetActions({ client, name }: { client: ServiceClient; name: s
 }
 
 /**
- * Names a new custom preset. It starts on the default Companion and opens in the Companions tab, where its Companion
- * and backups are chosen and saved at once, as a built-in preset's are.
+ * Starts a new custom preset as a draft in the Companions tab, from the Companion the tab shows now (`startOf`).
+ * It takes a name only when it is saved there.
  */
-export function AddPreset({ client, defaults }: { client: ServiceClient; defaults: Tier }) {
-  const { reveal } = useWorkshopTabs();
-  return (
-    <PresetNameForm
-      label="Add preset"
-      onSave={async (name) => {
-        await savePresetEdit(client, { _tag: "Add", name, stack: defaults });
-        reveal(`custom:${name}`);
-      }}
-    />
-  );
+export function AddPreset({ startOf }: { startOf: (focus: WorkshopFocus) => Tier }) {
+  const { focus, startDraft } = useWorkshopTabs();
+  return <Button isPrimary={false} label="Add preset" onPress={() => startDraft(startOf(focus), focus)} />;
 }

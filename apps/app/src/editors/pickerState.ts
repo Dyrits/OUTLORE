@@ -12,6 +12,7 @@ export const isSamePicker = (previous: CompanionPickerProps | null, next: Compan
   previous.model === next.model &&
   previous.isChronicler === next.isChronicler &&
   (previous.presetChoice?.onSavePreset !== undefined) === (next.presetChoice?.onSavePreset !== undefined) &&
+  (previous.presetChoice?.onOverwritePreset !== undefined) === (next.presetChoice?.onOverwritePreset !== undefined) &&
   isSameBackups(previous.presetChoice?.backups, next.presetChoice?.backups) &&
   isSamePresets(previous.presetChoice?.presets, next.presetChoice?.presets) &&
   previous.extra?.key === next.extra?.key &&

@@ -15,6 +15,8 @@ export function useThreadPresets(
   if (settings === null) return null;
   return {
     backups: panel?.backups ?? null,
+    onOverwritePreset: (name, stack) =>
+      client.request({ _tag: "ChangeCompanionPreset", edit: { _tag: "SetStack", name, stack } }),
     onPreset: (preset) =>
       actWith(setError)(client.request({ _tag: "ChangeThreadRunner", ...presetChangeOf(preset), threadId })),
     onSavePreset: (name, stack) =>

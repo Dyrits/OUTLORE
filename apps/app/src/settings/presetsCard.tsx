@@ -144,13 +144,22 @@ export function PresetsCard({
         </View>
       ))}
       <AddPreset
-        client={client}
-        defaults={{
-          accountId: null,
-          backups: [],
-          effort: settings.defaultEffort,
-          harness: settings.defaultHarness,
-          model: settings.defaultModel,
+        startOf={(focus) => {
+          const shown =
+            focus === "Default"
+              ? null
+              : focus.startsWith("custom:")
+                ? settings.companionPresets?.custom.find(({ name }) => `custom:${name}` === focus)?.stack
+                : settings.tiers[focus as TierName];
+          return (
+            shown ?? {
+              accountId: null,
+              backups: [],
+              effort: settings.defaultEffort,
+              harness: settings.defaultHarness,
+              model: settings.defaultModel,
+            }
+          );
         }}
       />
     </SettingsCard>

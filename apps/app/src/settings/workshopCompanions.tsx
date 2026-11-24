@@ -2,6 +2,7 @@ import type { BackupCompanion, SettingsChange, Tier, TierName } from "@outlore/c
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BackupsEditor } from "../editors/backupsEditor";
+import { PresetNameForm } from "../editors/presetNameForm";
 import { RunnerPickers, useHarnesses } from "../editors/runners";
 import { useOwnBackups } from "../editors/useOwnBackups";
 import { messageOf, type ServiceClient } from "../foundation/client";
@@ -9,9 +10,10 @@ import { runnerSummaryOf } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { Button } from "../ui/button";
 import { Fold, FoldGroup } from "../ui/fold";
 import { PresetActions, savePresetEdit } from "./presetActions";
-import type { WorkshopFocus, WorkshopPreset } from "./workshopTabs";
+import { useWorkshopTabs, type WorkshopFocus, type WorkshopPreset } from "./workshopTabs";
 
 /** The three presets, as the Companions tab and the page name them. */
 export const tierNames: ReadonlyArray<{ hint: string; name: TierName }> = [
@@ -87,6 +89,50 @@ function WorkshopBackups({
   );
 }
 
+/**
+ * A preset not yet made: its Companion and backups are chosen here and kept as a draft, unlike a saved preset's, which
+ * save at once. Saving asks for the name, and the tab then shows the new preset.
+ */
+function DraftPreset({ client, draft }: { client: ServiceClient; draft: Tier }) {
+  const { data: harnesses } = useHarnesses(client);
+  const { discardDraft, setDraft, setFocus } = useWorkshopTabs();
+  return (
+    <View style={local.tier}>
+      <Text style={local.note}>
+        New preset, not saved yet. Choose its Companion and backups, then save it under a name.
+      </Text>
+      <FoldGroup initial="main">
+        <Fold harness={draft.harness} id="main" summary={runnerSummaryOf(harnesses, draft)} title="Companion">
+          <RunnerPickers
+            client={client}
+            harnesses={harnesses}
+            isCompact={false}
+            isPanel={true}
+            onChange={(runner) => setDraft({ ...runner, backups: draft.backups })}
+            value={draft}
+          />
+        </Fold>
+        <WorkshopBackups
+          backups={draft.backups}
+          client={client}
+          note="When a turn fails, a quest using this preset carries on with the first of these."
+          onSave={async (backups) => setDraft({ ...draft, backups })}
+        />
+      </FoldGroup>
+      <View style={local.draftActions}>
+        <PresetNameForm
+          label="Save as new preset"
+          onSave={async (name) => {
+            await savePresetEdit(client, { _tag: "Add", name, stack: draft });
+            setFocus(`custom:${name}`);
+          }}
+        />
+        <Button isPrimary={false} label="Discard" onPress={discardDraft} />
+      </View>
+    </View>
+  );
+}
+
 /** The Workshop's Companions panel opens on the default stack or the selected preset. */
 export function WorkshopCompanions({
   client,
@@ -103,12 +149,14 @@ export function WorkshopCompanions({
 }) {
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const { data: harnesses } = useHarnesses(client);
+  const { draft } = useWorkshopTabs();
   const [error, setError] = useState<string | null>(null);
   const save = (change: SettingsChange) => {
     setError(null);
     client.request({ _tag: "ChangeSettings", change }).catch((reason) => setError(messageOf(reason)));
   };
   if (settings === null) return <Text style={local.note}>Reading the settings…</Text>;
+  if (draft !== null) return <DraftPreset client={client} draft={draft} />;
   const defaults = {
     accountId: null,
     effort: settings.defaultEffort,
@@ -220,6 +268,7 @@ export function WorkshopCompanions({
 
 const local = StyleSheet.create({
   backups: { gap: 8, paddingTop: 8 },
+  draftActions: { alignItems: "flex-start", flexDirection: "row", flexWrap: "wrap", gap: 8 },
   error: { color: colors.dangerText, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   note: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   // The column's tabs sit 20 px above the first row (its own 12 px of padding, shortened to 6 for this panel) and the rows 8 px apart; every gap is 14 px.

@@ -208,6 +208,8 @@ export function OpenThreadForm({
           ? null
           : {
               backups: backups ?? parentPanel?.backups ?? null,
+              onOverwritePreset: (name, stack) =>
+                client.request({ _tag: "ChangeCompanionPreset", edit: { _tag: "SetStack", name, stack } }),
               onPreset: (preset) => {
                 setRunner(preset.runner);
                 setBackups(preset.backups);

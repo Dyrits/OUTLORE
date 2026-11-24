@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 import { messageOf } from "../foundation/client";
 import { styles } from "../foundation/styles";
@@ -7,16 +7,12 @@ import { Button } from "../ui/button";
 
 /** Opens an inline name form and leaves it open with the host's error if saving fails. */
 export function PresetNameForm({
-  children,
   initialName = "",
   label,
-  onCancel,
   onSave,
 }: {
-  children?: ReactNode;
   initialName?: string;
   label: string;
-  onCancel?: () => void;
   onSave: (name: string) => Promise<unknown>;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -54,13 +50,12 @@ export function PresetNameForm({
         editable={!isSaving}
         maxLength={80}
         onChangeText={setName}
-        onSubmitEditing={children === undefined ? save : void 0}
+        onSubmitEditing={save}
         placeholder="Preset name"
         placeholderTextColor={colors.textMuted}
         style={styles.input}
         value={name}
       />
-      {children}
       {error !== null && (
         <Text accessibilityRole="alert" style={styles.error}>
           {error}
@@ -68,15 +63,7 @@ export function PresetNameForm({
       )}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         <Button isDisabled={isSaving || name.trim() === ""} label="Save preset" onPress={save} />
-        <Button
-          isDisabled={isSaving}
-          isPrimary={false}
-          label="Cancel"
-          onPress={() => {
-            close();
-            onCancel?.();
-          }}
-        />
+        <Button isDisabled={isSaving} isPrimary={false} label="Cancel" onPress={close} />
       </View>
     </View>
   ) : (

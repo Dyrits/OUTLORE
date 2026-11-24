@@ -10,6 +10,8 @@ import { ProviderMark } from "../ui/providerMarks";
 import { CompanionBody } from "./companionBody";
 import { PresetChooser } from "./presetChooser";
 import { PresetNameForm } from "./presetNameForm";
+import { PresetOverwrite } from "./presetOverwrite";
+import { presetOf } from "./presets";
 
 /** The width of the picker's panel in a window with no right-hand column to hold it: a mini sidebar. */
 const miniWidth = 288;
@@ -22,7 +24,16 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
   const { extra, panel, ...picker } = props;
   const { presetChoice = null } = picker;
   const onSavePreset = presetChoice?.onSavePreset;
+  const onOverwritePreset = presetChoice?.onOverwritePreset;
   const backups = presetChoice?.backups;
+  // The preset last chosen in this tab: what a changed Companion can be written back to.
+  const [basedOn, setBasedOn] = useState<string | null>(null);
+  const stack =
+    backups == null
+      ? null
+      : { accountId: props.accountId, backups, effort: props.effort, harness: props.harness, model: props.model };
+  const isCustomStack = stack !== null && presetChoice !== null && presetOf(presetChoice.presets, stack) === null;
+  const overwritten = presetChoice?.presets.find((preset) => preset.name === basedOn);
   return (
     <FoldGroup initial="main">
       <View style={[local.body, panel !== undefined && local.bodyOfPanel]}>
@@ -40,7 +51,13 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
               {presetChoice !== null && presetChoice.presets.length > 0 && (
                 <PresetChooser
                   accountId={props.accountId}
-                  choice={presetChoice}
+                  choice={{
+                    ...presetChoice,
+                    onPreset: (preset) => {
+                      setBasedOn(preset.name);
+                      presetChoice.onPreset(preset);
+                    },
+                  }}
                   effort={props.effort}
                   harness={props.harness}
                   harnesses={props.harnesses}
@@ -56,6 +73,13 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
                 <CompanionBody {...picker} />
               </Fold>
               {extra}
+              {onOverwritePreset !== undefined && isCustomStack && overwritten !== undefined && (
+                <PresetOverwrite
+                  key={overwritten.name}
+                  name={overwritten.name}
+                  onOverwrite={() => onOverwritePreset(overwritten.name, stack)}
+                />
+              )}
               {onSavePreset !== undefined && backups != null && (
                 <PresetNameForm
                   key={extra?.key}

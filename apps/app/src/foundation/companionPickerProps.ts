@@ -24,6 +24,8 @@ export type PresetChoice = {
   readonly onPreset: (preset: Preset) => void;
   readonly presets: ReadonlyArray<Preset>;
   readonly onSavePreset?: (name: string, stack: Tier) => Promise<unknown>;
+  /** Replaces a saved preset's whole stack, such as the one a thread's Companion was changed from. */
+  readonly onOverwritePreset?: (name: string, stack: Tier) => Promise<unknown>;
 };
 
 /** What the picker shows and can change; `RunnerPickers` owns the rules for each change. */

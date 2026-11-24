@@ -16,14 +16,15 @@ function Chevron({ focus, isOpen, onPress }: { focus: WorkshopFocus; isOpen: boo
   // After every render, so the tabs know which chevron shows and how to press it.
   useEffect(() => report(focus, isOpen, onPress));
   const isActive = tabs.isOpen && tabs.focus === focus;
-  const { revealed, revealing, setFocus } = tabs;
+  const { draft, revealed, revealing, setFocus } = tabs;
   // A preset just added opens in the tab as soon as its table is on the page.
   useEffect(() => {
     if (revealing !== focus) return;
-    setFocus(focus);
-    onPress();
+    // A draft has no table of its own: the tab keeps it while it opens on this one.
+    if (draft === null) setFocus(focus);
+    if (!isActive) onPress();
     revealed(focus);
-  }, [focus, onPress, revealed, revealing, setFocus]);
+  }, [draft, focus, isActive, onPress, revealed, revealing, setFocus]);
   return (
     <Pressable
       accessibilityLabel="Change this Companion in the Companions tab"
