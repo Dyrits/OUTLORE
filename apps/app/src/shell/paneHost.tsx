@@ -30,16 +30,22 @@ export function PaneHost({
   client,
   errandsRequest,
   missionId,
+  isChannelOpen = false,
   isParked = false,
+  onChannelOpen,
   onOpenMission,
   onOpenThread,
   openThread,
 }: {
   client: ServiceClient;
   errandsRequest: object | null;
+  /** Whether the realm's channel was open when this quest opened: it then starts open beside the quest. */
+  isChannelOpen?: boolean;
   /** Whether the Workshop covers the panes: they stay as they are, out of sight, and take no part in the details panel. */
   isParked?: boolean;
   missionId: MissionId;
+  /** Told whether the channel pane is open, so the next quest to open can keep it so. */
+  onChannelOpen?: (isOpen: boolean) => void;
   onOpenMission: (missionId: MissionId) => void;
   /** Makes a thread the open one, which is the deepest pane of the chain. */
   onOpenThread: (threadId: ThreadId) => void;
@@ -81,7 +87,7 @@ export function PaneHost({
     setMemory,
     slots,
     startErrand,
-  } = usePaneChain(threads, openThread, onOpenThread);
+  } = usePaneChain(threads, openThread, onOpenThread, isChannelOpen, onChannelOpen);
   // A conversation shown in a pane is read (CHG-0569): its replies, results and requests are no longer unread, and
   // rereading after each change follows the stream while it stays on show. Parked panes are out of sight, so wait.
   useShownThreadsRead(client, openIds, !isParked, data);

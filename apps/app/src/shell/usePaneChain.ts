@@ -11,6 +11,10 @@ export function usePaneChain(
   threads: ReadonlyArray<ThreadSummary>,
   openThread: ThreadId | null,
   onOpenThread: (threadId: ThreadId) => void,
+  /** Whether the realm's channel was open when this quest opened: it then stays open beside the quest. */
+  isChannelOpen = false,
+  /** Told whether the channel pane is open, each time that changes, so the next quest can open the same way. */
+  onChannelOpen: (isOpen: boolean) => void = () => {},
 ) {
   const path = useMemo(() => chainOf(threads, openThread), [threads, openThread]);
   const quest = path[0];
@@ -22,8 +26,10 @@ export function usePaneChain(
     expanded: null,
     focused: null,
     listRequest: null,
-    memory: openedQuestMemory<PaneId>(channelId, readPaneWeights()),
+    memory: openedQuestMemory<PaneId>(channelId, readPaneWeights(), isChannelOpen),
   }));
+  const isChannelFolded = memory.folded.has(channelId);
+  useEffect(() => onChannelOpen(!isChannelFolded), [isChannelFolded, onChannelOpen]);
   const [available, setAvailable] = useState(0);
   const target = useContext(ChronicleTargetContext);
   useEffect(() => {

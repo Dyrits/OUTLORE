@@ -337,3 +337,27 @@ describe("a quest opened from the sidebar", () => {
     expect(prunedMemory(opened, [])).toEqual(opened);
   });
 });
+
+describe("a quest opened while the realm's channel is open", () => {
+  const channel = "channel";
+
+  it("leaves the channel open beside the quest instead of folding it", () => {
+    const slots = layoutOf({
+      available: 1244,
+      chain: [channel, "quest"],
+      memory: openedQuestMemory(channel, [], true),
+    });
+    expect(slots.map((slot) => [slot.id, slot.kind, slot.width])).toEqual([
+      [channel, "pane", 622],
+      ["quest", "pane", 622],
+    ]);
+  });
+
+  it("still keeps the dragged weights", () => {
+    expect(openedQuestMemory(channel, [800, 444], true)).toEqual({
+      folded: new Set(),
+      shown: new Set(),
+      weights: [800, 444],
+    });
+  });
+});

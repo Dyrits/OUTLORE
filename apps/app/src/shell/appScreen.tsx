@@ -1,5 +1,5 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { type ChronicleTarget, ChronicleTargetContext } from "../conversation/chronicleTarget";
 import { Conversation } from "../conversation/conversation";
@@ -102,6 +102,16 @@ function AppScreenContent({
       onOpenThread={navigation.openThread}
     />
   );
+  // Whether the realm's channel is open, as its own screen or as a pane: a quest opened next keeps it open.
+  const isChannelOpen = useRef(false);
+  const { openMission, place } = view;
+  useEffect(() => {
+    // The Workshop parks what is under it, so only a screen the owner left for another place closes the channel.
+    if (openMission === null && place !== "Settings") isChannelOpen.current = place === "Channel";
+  }, [openMission, place]);
+  const setChannelOpen = useCallback((isOpen: boolean) => {
+    isChannelOpen.current = isOpen;
+  }, []);
   const home = <HomeScreen client={client} onOpen={navigation.openMission} />;
   const screens = {
     Archived: <ArchiveScreen client={client} onOpen={navigation.openMission} />,
@@ -168,9 +178,11 @@ function AppScreenContent({
             <PaneHost
               client={client}
               errandsRequest={quest.errandsRequest}
+              isChannelOpen={isChannelOpen.current}
               isParked={isParked}
               key={`${quest.openMission}:${quest.openCount}`}
               missionId={quest.openMission}
+              onChannelOpen={setChannelOpen}
               onOpenMission={navigation.openMission}
               onOpenThread={navigation.selectThread}
               openThread={quest.openThread}

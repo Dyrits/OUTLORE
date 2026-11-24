@@ -63,11 +63,17 @@ export const foldedPane = <Id extends string>(memory: PaneMemory<Id>, id: Id): P
 
 /**
  * The memory a quest opens with: its realm's channel folded behind its notch (the owner, 2026-11-21; CHG-0613), so
- * only the quest's own conversation is open. Pressing the channel's notch on that pane's edge brings it back.
+ * only the quest's own conversation is open. Pressing the channel's notch on that pane's edge brings it back. A
+ * channel that was already open, as a screen of its own or as a pane beside the previous quest, stays open (the
+ * owner, 2026-11-24): opening a quest, an existing one or a new one, never closes what the owner had open.
  * The weights the panes last had are kept, for when another pane is revealed again.
  */
-export const openedQuestMemory = <Id extends string>(channel: Id, weights: ReadonlyArray<number>): PaneMemory<Id> => ({
-  folded: new Set([channel]),
+export const openedQuestMemory = <Id extends string>(
+  channel: Id,
+  weights: ReadonlyArray<number>,
+  isChannelOpen = false,
+): PaneMemory<Id> => ({
+  folded: new Set(isChannelOpen ? [] : [channel]),
   shown: new Set(),
   weights: [...weights],
 });

@@ -61,8 +61,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To verify the realm's channel pane staying open when a quest opens, read the [current handoff](.agents/handoffs/2026-11-24-0729-keep-channel-open.md). Handoffs are shared and committed.
+
 - To verify Antigravity's sign-in in a desktop build, read the [current handoff](.agents/handoffs/2026-11-24-0718-antigravity-sign-in.md). Handoffs are shared and committed.
 
 - To verify quest and errand ordering in the desktop sidebar, read the [current handoff](.agents/handoffs/2026-11-23-2020-sidebar-status-order.md). Handoffs are shared and committed.
 
-- To continue the Islands layout and pane notch colors, read the [current handoff](.agents/handoffs/2026-11-23-2015-notch-colour.md). Handoffs are shared and committed.
