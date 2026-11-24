@@ -352,13 +352,20 @@ export const openConversationTerminal = Effect.fnUntraced(function* (
   return yield* runTerminal(() => terminals.open(scope, giveaway.id, giveaway.cwd));
 });
 
+/**
+ * Runs one of the terminal's ways that answers nothing, as the null its request's result schema requires: an
+ * undefined answer fails encoding after the work already ran, and every screen is told the service failed.
+ */
+const runTerminalAction = (work: () => void): Effect.Effect<null, ServiceFailure> =>
+  runTerminal(work).pipe(Effect.as(null));
+
 /** The terminal requests every screen of the host makes, for the service's one request table. */
 export const terminalHandlers = (terminals: ConversationTerminals, scope: TerminalScope) => ({
-  CloseTerminal: (given: { readonly id: string }) => runTerminal(() => terminals.close(scope, given.id)),
+  CloseTerminal: (given: { readonly id: string }) => runTerminalAction(() => terminals.close(scope, given.id)),
   OpenTerminal: (given: { readonly cwd: string | null; readonly id: string }) =>
     openConversationTerminal(terminals, given, scope),
   ResizeTerminal: (given: { readonly cols: number; readonly id: string; readonly rows: number }) =>
-    runTerminal(() => terminals.resize(scope, given.id, given.cols, given.rows)),
+    runTerminalAction(() => terminals.resize(scope, given.id, given.cols, given.rows)),
   WriteTerminalInput: (given: { readonly data: string; readonly id: string }) =>
-    runTerminal(() => terminals.write(scope, given.id, given.data)),
+    runTerminalAction(() => terminals.write(scope, given.id, given.data)),
 });

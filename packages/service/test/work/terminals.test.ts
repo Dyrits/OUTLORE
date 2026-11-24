@@ -7,6 +7,7 @@ import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { wrappedFencedCommandOf } from "../../src/core/index.ts";
 import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
+import { answerText } from "../../src/remote/index.ts";
 import {
   ConversationTerminals,
   defaultShellOf,
@@ -273,6 +274,42 @@ describe("terminals and their requests", () => {
       }
       expect(output).toContain("DRIVEN");
       yield* callAs({ _tag: "CloseTerminal", id: "quest:home" }, pairedDevice);
+    }).pipe(Effect.provide(terminalService(hostOf(folder())))),
+  );
+});
+
+// What every screen actually receives: each request's answer is encoded against its result schema before it is sent,
+// so an answer the schema refuses reaches the screen as "The service failed unexpectedly." even though the work ran.
+
+/** Sends one request as the wire's text frame and returns the frame the screen receives. */
+const frameAnswerOf = (request: Request, source: RequestSource) =>
+  Effect.gen(function* () {
+    const service = yield* Service;
+    const sent: ServerFrame[] = [];
+    yield* answerText(service.handle, JSON.stringify({ id: "1", request }), (frame) => sent.push(frame), source);
+    return sent;
+  });
+
+describe("the answers terminal requests send to a screen", () => {
+  it.live("succeeds for resizing and closing a shell", () =>
+    Effect.gen(function* () {
+      for (const request of [
+        { _tag: "ResizeTerminal", cols: 120, id: "quest:home", rows: 40 },
+        { _tag: "CloseTerminal", id: "quest:home" },
+      ] as const)
+        expect(yield* frameAnswerOf(request, hostWindow), request._tag).toEqual([
+          { _tag: "Success", id: "1", value: null },
+        ]);
+    }).pipe(Effect.provide(terminalService(hostOf(folder())))),
+  );
+
+  it.live.runIf(canOpenTerminal)("succeeds for typing into an open shell", () =>
+    Effect.gen(function* () {
+      yield* callAs({ _tag: "OpenTerminal", cwd: null, id: "quest:home" }, hostWindow);
+      expect(
+        yield* frameAnswerOf({ _tag: "WriteTerminalInput", data: "true\r", id: "quest:home" }, hostWindow),
+      ).toEqual([{ _tag: "Success", id: "1", value: null }]);
+      yield* callAs({ _tag: "CloseTerminal", id: "quest:home" }, hostWindow);
     }).pipe(Effect.provide(terminalService(hostOf(folder())))),
   );
 });
