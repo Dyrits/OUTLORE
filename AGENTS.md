@@ -65,4 +65,4 @@ Latest handoffs:
 
 - To verify the stacked queued-message tray and Steer toggle in the running app, read the [current handoff](.agents/handoffs/2026-11-24-1738-queued-message-tray.md). Handoffs are shared and committed.
 
-- To verify the preset draft in the Workshop and Overwrite in a quest's Companions tab, read the [current handoff](.agents/handoffs/2026-11-25-0018-preset-draft-and-overwrite.md). Handoffs are shared and committed.
+- To verify the preset draft in the Workshop and Overwrite in a quest's Companions tab, read the [current handoff](.agents/handoffs/2026-11-25-0028-preset-draft-store.md). Handoffs are shared and committed.
