@@ -44,6 +44,7 @@ export {
   ReorderRealms,
   RestoreRealm,
 } from "./realmRequests.ts";
+export * from "./realmSlugs.ts";
 export * from "./records.ts";
 export {
   checksumsOf,

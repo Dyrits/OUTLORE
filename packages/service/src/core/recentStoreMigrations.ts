@@ -1,3 +1,4 @@
+import { realmSlugOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 
@@ -262,5 +263,16 @@ export const recentStoreMigrations = {
   "0075_thread_working_folder": Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`ALTER TABLE threads ADD COLUMN working_folder TEXT`;
+  }),
+  // A realm's name is written like a Slack channel (lowercase words joined by hyphens), and `#` names it in a message. Each
+  // existing name becomes its slug; a name with no letter or digit is left as it is. Names stay labels, so two realms
+  // that now read alike are left alone, as when the owner confirmed a duplicate name.
+  "0076_realm_slug_names": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    const realms = yield* sql<{ id: string; name: string }>`SELECT id, name FROM workspaces`;
+    for (const realm of realms) {
+      const slug = realmSlugOf(realm.name);
+      if (slug !== "" && slug !== realm.name) yield* sql`UPDATE workspaces SET name = ${slug} WHERE id = ${realm.id}`;
+    }
   }),
 };

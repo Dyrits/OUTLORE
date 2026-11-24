@@ -24,7 +24,7 @@ describe("confirming a realm archive safely", () => {
       Effect.gen(function* () {
         const source = yield* create;
         yield* call({ _tag: "CreateRealm", name: "Notes", path: null });
-        const destination = (yield* list()).workspaces.find((realm) => realm.name === "Notes");
+        const destination = (yield* list()).workspaces.find((realm) => realm.name === "notes");
         if (destination === undefined) return yield* Effect.die("No destination");
         const quest = yield* call({ _tag: "StartEmptyQuest", realmId: source.id, requestId: "new" });
         const preview = yield* call({ _tag: "PreviewEnding", ending: "Archived", missionId: quest.missionId });
@@ -35,7 +35,7 @@ describe("confirming a realm archive safely", () => {
           missionId: quest.missionId,
           snapshot: preview.snapshot,
         });
-        expect(parent).toEqual({ workspaceId: destination.id, workspaceName: "Notes" });
+        expect(parent).toEqual({ workspaceId: destination.id, workspaceName: "notes" });
       }),
     ),
   );

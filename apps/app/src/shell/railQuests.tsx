@@ -12,7 +12,9 @@ import { EndingConfirmation } from "../quests/missionActions";
 import { DeleteRitualButton, realmArchivedNotice } from "../rituals/ritualCard";
 import { scheduleLabelOf } from "../rituals/ritualLabels";
 import { isRealmArchivedOf, runIsUnderwayOf } from "../rituals/ritualRow";
+import { ChipIcon } from "../ui/chips";
 import { DragSource } from "./questDrag";
+import { folderCueOf } from "./questTree";
 import { ArchiveIcon, Chevron, DeleteIcon, FolderCue, NewQuestIcon, NewRitualIcon, useRowActions } from "./railActions";
 import { archiveErrand } from "./railQuestActions";
 import { Count, Row, type RowCorner, ShowAll, StateDot } from "./railRows";
@@ -322,8 +324,14 @@ export function RitualRow({
   );
 }
 
+/** The mark before a realm's name: the folder for a realm tied to one, the hash that names a channel for one tied to none. */
+function RealmMark({ path }: { path: string | null }) {
+  if (folderCueOf({ path }) !== null) return <FolderCue path={path} />;
+  return <ChipIcon color={colors.textMuted} kind="realm" size={14} />;
+}
+
 /**
- * A realm's row: its name with the folder mark when it is tied to a folder, its quest count, and its chevron,
+ * A realm's row: its name with the folder mark when it is tied to a folder or a hash when it is tied to none, its quest count, and its chevron,
  * always; its new-quest buttons while hovered or focused, and always on a device that cannot hover (CHG-0497).
  */
 export function RealmHeader({
@@ -367,7 +375,7 @@ export function RealmHeader({
         onPress={onOpenChannel ?? onToggle}
         style={local.rowMain}
       >
-        <FolderCue path={path} />
+        <RealmMark path={path} />
         <Text numberOfLines={1} style={local.realmText}>
           {name}
         </Text>

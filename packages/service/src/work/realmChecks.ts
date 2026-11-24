@@ -1,3 +1,4 @@
+import { realmSlugOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { realFolderOf } from "../core/index.ts";
@@ -20,7 +21,7 @@ export const checkRealmCreation = Effect.fnUntraced(function* (given: {
   readonly name: string;
 }) {
   const sql = yield* SqlClient.SqlClient;
-  const name = given.name.trim();
+  const name = realmSlugOf(given.name);
   if (name === "") return refused("Not done: a realm needs a name.");
   const hasDuplicateName = yield* hasActiveRealmName(name);
   const folder = given.folder === undefined || given.folder.trim() === "" ? null : given.folder.trim();
@@ -39,7 +40,7 @@ export const checkRealmRename = Effect.fnUntraced(function* (given: { readonly n
   const [realm] = matches;
   if (realm === undefined || matches.length > 1)
     return refused(`Not done: no realm "${given.realm}" matches uniquely. Use its id or folder when names repeat.`);
-  const name = given.name.trim();
+  const name = realmSlugOf(given.name);
   if (name === "") return refused("Not done: a realm needs a name.");
   const hasDuplicateName = yield* hasActiveRealmName(name, realm.id);
   return { _tag: "Clear", hasDuplicateName, name, realm } as const;

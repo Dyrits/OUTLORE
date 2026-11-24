@@ -1,5 +1,5 @@
 import { colors, radii } from "../foundation/theme";
-import type { Chip, Trigger } from "./chipEditorTypes";
+import { type Chip, type Trigger, triggerCharacterOf } from "./chipEditorTypes";
 import { chipIcons } from "./chips";
 
 // The web message field's document work, apart from the component: chips as elements, the field's text read back,
@@ -84,10 +84,10 @@ export const triggerBeforeCaret = (root: HTMLElement) => {
   if (selection === null || !selection.isCollapsed || node?.nodeType !== Node.TEXT_NODE || !root.contains(node))
     return null;
   const before = (node.textContent ?? "").slice(0, selection.anchorOffset);
-  const match = /(^|\s)([/@])(\S*)$/.exec(before);
+  const match = /(^|\s)([/@#])(\S*)$/.exec(before);
   if (match === null) return null;
   const query = match[3] ?? "";
-  const trigger: Trigger = { character: match[2] === "@" ? "@" : "/", query };
+  const trigger: Trigger = { character: triggerCharacterOf(match[2]), query };
   return { end: selection.anchorOffset, node, start: before.length - query.length - 1, trigger };
 };
 

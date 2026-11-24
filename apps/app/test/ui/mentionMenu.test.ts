@@ -7,7 +7,8 @@ const mentionables: ReadonlyArray<Mentionable> = [
   { detail: "Outlore", id: "q1", kind: "quest", trail: ["Fix login"] },
   { detail: "Outlore", id: "t1", kind: "side-quest", trail: ["Fix login", "Write tests"] },
   { detail: null, id: "q2", kind: "quest", trail: ["Read my emails"] },
-  { detail: "/code/iskios", id: "r1", kind: "realm", trail: ["Outlore"] },
+  { detail: "/code/iskios", id: "r1", kind: "realm", trail: ["outlore"] },
+  { detail: null, id: "r2", kind: "realm", trail: ["no-folder"] },
 ];
 const entries: ReadonlyArray<WorkspaceEntry> = [
   { kind: "folder", path: "src/" },
@@ -18,10 +19,9 @@ const labelsOf = (rows: ReadonlyArray<MenuRow>) =>
   rows.map((row) => (row.type === "option" ? row.chip.label : `${row.type}:${row.category}`));
 
 describe("offering what an @ names", () => {
-  it("shows the three categories for a bare @ when a folder is linked", () => {
+  it("shows the two categories for a bare @ when a folder is linked", () => {
     expect(labelsOf(mentionMenuOf({ category: null, entries, hasFolder: true, mentionables, query: "" }))).toEqual([
       "category:quests",
-      "category:realms",
       "category:files",
     ]);
   });
@@ -29,7 +29,6 @@ describe("offering what an @ names", () => {
   it("leaves out Files & Directories when no folder is linked", () => {
     expect(labelsOf(mentionMenuOf({ category: null, entries, hasFolder: false, mentionables, query: "" }))).toEqual([
       "category:quests",
-      "category:realms",
     ]);
   });
 
@@ -46,7 +45,7 @@ describe("offering what an @ names", () => {
   });
 
   it("mixes every category's matches under its heading once text follows the @", () => {
-    const rows = mentionMenuOf({ category: "realms", entries, hasFolder: true, mentionables, query: "log" });
+    const rows = mentionMenuOf({ category: null, entries, hasFolder: true, mentionables, query: "log" });
     expect(labelsOf(rows)).toEqual([
       "heading:quests",
       "Fix login",
@@ -58,16 +57,40 @@ describe("offering what an @ names", () => {
     expect(selectableRowsOf(rows).every((row) => row.type === "option")).toBe(true);
   });
 
-  it("writes a quest, errand, or realm as a one-word token with its id and shows its name", () => {
+  it("never offers a realm after an @", () => {
     const rows = mentionMenuOf({ category: null, entries: [], hasFolder: false, mentionables, query: "ou" });
-    const chips = rows.flatMap((row) => (row.type === "option" ? [row.chip] : []));
-    expect(chips).toContainEqual({ kind: "realm", label: "Outlore", token: "@realm:r1" });
+    expect(labelsOf(rows)).toEqual([]);
+  });
+
+  it("writes a quest or errand as a one-word token with its id and shows its name", () => {
     const side = mentionMenuOf({ category: "quests", entries: [], hasFolder: false, mentionables, query: "" })[1];
     expect(side?.type === "option" ? side.chip : null).toEqual({
       kind: "errand",
       label: "Fix login › Write tests",
       token: "@side-quest:t1",
     });
+  });
+});
+
+describe("offering what a # names", () => {
+  it("lists the realms, narrowed by what follows the #, with no category or heading", () => {
+    const given = { category: null, character: "#", entries, hasFolder: true, mentionables } as const;
+    expect(labelsOf(mentionMenuOf({ ...given, query: "" }))).toEqual(["outlore", "no-folder"]);
+    expect(labelsOf(mentionMenuOf({ ...given, query: "OUT" }))).toEqual(["outlore"]);
+    expect(labelsOf(mentionMenuOf({ ...given, query: "login" }))).toEqual([]);
+  });
+
+  it("writes a realm as a one-word #realm token with its id", () => {
+    const rows = mentionMenuOf({
+      category: null,
+      character: "#",
+      entries: [],
+      hasFolder: false,
+      mentionables,
+      query: "no",
+    });
+    const chips = rows.flatMap((row) => (row.type === "option" ? [row.chip] : []));
+    expect(chips).toEqual([{ kind: "realm", label: "no-folder", token: "#realm:r2" }]);
   });
 });
 
@@ -92,15 +115,20 @@ describe("moving through the @ list with the keys", () => {
 
 describe("drawing the references of a sent message as chips", () => {
   it("shows a quest, errand, and realm by name and keeps file paths as before", () => {
-    const text = "See @quest:q1, @side-quest:t1 in @realm:r1 and @src/";
+    const text = "See @quest:q1, @side-quest:t1 in #realm:r1 and @src/";
     const chips = chipsOf(text, { entries: new Map([["src/", "folder"]]), mentionables, skills: [] });
     expect(chips.map((chip) => [chip.kind, chip.label])).toEqual([
       ["quest", "Fix login"],
       ["errand", "Fix login › Write tests"],
-      ["realm", "Outlore"],
+      ["realm", "outlore"],
       ["folder", "src/"],
     ]);
     expect(text.slice(chips[0]?.start, chips[0]?.end)).toBe("@quest:q1");
+  });
+
+  it("still reads a realm written as @realm: before # named realms", () => {
+    const chips = chipsOf("in @realm:r1", { entries: new Map(), mentionables, skills: [] });
+    expect(chips.map((chip) => [chip.kind, chip.label])).toEqual([["realm", "outlore"]]);
   });
 
   it("says a quest no longer open is gone, and only its kind while the list loads", () => {

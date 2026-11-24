@@ -203,7 +203,7 @@ describe("starting an empty quest in a realm with no folder or in the Borderland
         expect(refused).toMatchObject({ kind: "InvalidInput", message: "No such realm." });
 
         const byId = new Map((yield* realmList()).missions.map((each) => [each.id, each]));
-        expect(byId.get(placed.missionId)).toMatchObject({ workspaceId: realm?.id, workspaceName: "Garden" });
+        expect(byId.get(placed.missionId)).toMatchObject({ workspaceId: realm?.id, workspaceName: "garden" });
         expect(byId.get(borderlands.missionId)).toMatchObject({ workspaceId: null, workspaceName: null });
         // A realm with no folder gives its quests no workspace: they work in the quest's scratch folder.
         expect((yield* read(placed.missionId)).thread.workspace).toBeNull();

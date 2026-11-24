@@ -178,11 +178,11 @@ describe("asking before structural actions the owner did not name", () => {
           { setting: "shouldShowFinishedQuests", value: "true" },
           "Change the setting shouldShowFinishedQuests from false to true.",
         ],
-        ["create_realm", { name: "Unrequested realm" }, 'Make the realm "Unrequested realm", tied to no folder.'],
+        ["create_realm", { name: "Unrequested realm" }, 'Make the realm "unrequested-realm", tied to no folder.'],
         [
           "rename_realm",
           { name: "Unrequested realm", realm: "Ideas" },
-          'Rename the realm "Ideas" to "Unrequested realm".',
+          'Rename the realm "ideas" to "unrequested-realm".',
         ],
       ];
       for (const [name, args, summary] of cases) {
@@ -198,7 +198,7 @@ describe("asking before structural actions the owner did not name", () => {
         yield* settle(place.missionId, isIdle, place.threadId);
       }
       expect((yield* read(quest.missionId)).mission.title).toBe("Keep this quest");
-      expect((yield* listed).workspaces.map((realm) => realm.name)).toEqual(["Ideas"]);
+      expect((yield* listed).workspaces.map((realm) => realm.name)).toEqual(["ideas"]);
       expect((yield* call({ _tag: "ReadSettings" })).shouldShowFinishedQuests).toBe(false);
     }).pipe(Effect.provide(setup().layer)),
   );

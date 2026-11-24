@@ -51,7 +51,7 @@ describe("taking structural actions the owner's message names", () => {
         `Rename the realm Ideas to Notions.\ncall rename_realm ${JSON.stringify({ name: "Notions", realm: "Ideas" })}`,
       );
       expect(openQuestions(yield* settle(place.missionId, isIdle, place.threadId))).toEqual([]);
-      expect((yield* listed).workspaces.map((realm) => realm.name)).toEqual(["Notions"]);
+      expect((yield* listed).workspaces.map((realm) => realm.name)).toEqual(["notions"]);
       yield* say(
         place.threadId,
         `Set shouldShowFinishedQuests to true.\ncall change_setting ${JSON.stringify({ setting: "shouldShowFinishedQuests", value: "true" })}`,

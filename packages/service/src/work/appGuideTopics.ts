@@ -56,7 +56,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "To start a quest: press the Start a new quest button at the right of the Borderlands label in the sidebar (the quest is then in no realm), or the new-quest button on a realm, or tell Chronicler what you want and choose on the card it shows (Continue in a quest that fits, or Open as new quest). Chronicler never opens a quest on its own.",
       "States a quest or thread shows: Fresh (nothing sent yet), Underway (a turn is in progress), Waiting (its own turn is over and work continues beneath it), Attention (needs the owner: an approval, an answer, a budget reached, a missing folder, or a tool problem), Failed, Resting (the owner's turn), Stopped, and Fulfilled (marked done). A quest or errand shows Failed or Attention when a thread beneath it has it. A quest stays open until it is archived; archived quests are in the Archive, under The Keep.",
       "Each quest has a briefing (where it stands, rewritten as it changes) and a journal (a dated log only ever added to). Every thread in the quest reads them before it starts.",
-      "Threads message each other along the tree. When the owner names a quest or errand with @, the receiving thread may reach it for that turn; a realm named with @ is context only and opens no reach. An errand opened by a thread tells its parent when it reports a result.",
+      "Threads message each other along the tree. When the owner names a quest or errand with @, the receiving thread may reach it for that turn; a realm named with # is context only and opens no reach. An errand opened by a thread tells its parent when it reports a result.",
       `Realm Missives: when a thread in a realm stays silent in Attention for ${inactivityMissiveHours.Attention} hours or in Resting for ${inactivityMissiveHours.Resting} hours, Outlore posts an inactivity Missive in that realm's channel. Optional daily background check-ins can also be enabled in the Workshop.`,
     ].join("\n"),
     id: "quests",
@@ -183,7 +183,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
   {
     body: [
       "Write to any thread in its message box. Special marks in a message:",
-      "- @ names a quest, errand, or realm to give the thread as context. A thread reads only its own tree and what the owner mentioned.",
+      "- @ names a quest or errand, and # names a realm, to give the thread as context. A thread reads only its own tree and what the owner mentioned.",
       "- / lists skills found in the realm's .agents/skills and .claude/skills folders and then the home folder's; pick one and the thread is told to read and follow it. Skills from plugins are not listed.",
       "- ! opens a shell inside the message on the host its conversation runs on: the host's own window always, and a paired device's screens while the host's Allow terminals from paired devices switch is on; a paired device's shell runs fenced in the host's sandbox. The shell's visible output is sent as context.",
       "- Images can be pasted, dropped, or chosen and are given to the harness with the message. Only images are supported so far.",

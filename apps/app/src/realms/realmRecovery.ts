@@ -1,10 +1,10 @@
-import type { RealmAppearance } from "@outlore/contracts";
+import { type RealmAppearance, realmSlugOf } from "@outlore/contracts";
 import { folderNameOf } from "./realmLabels";
 
-/** A form's real proposed values: an empty name resolves to its chosen folder's name. */
+/** A form's real proposed values: the name as a slug, and an empty name resolves to its chosen folder's name. */
 export const proposedRealmOf = <Draft extends { name: string; path: string }>(draft: Draft) => ({
   ...draft,
-  name: draft.name.trim() || folderNameOf(draft.path),
+  name: realmSlugOf(draft.name) || realmSlugOf(folderNameOf(draft.path)),
 });
 
 /** Which comparison rows differ. */

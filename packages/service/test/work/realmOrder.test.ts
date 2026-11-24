@@ -11,7 +11,7 @@ describe("ordering realms", () => {
     withService(
       Effect.gen(function* () {
         for (const name of ["Beta", "Alpha", "Gamma"]) yield* call({ _tag: "CreateRealm", name, path: null });
-        expect(yield* names).toEqual(["Alpha", "Beta", "Gamma"]);
+        expect(yield* names).toEqual(["alpha", "beta", "gamma"]);
         const realms = (yield* call({
           _tag: "ListMissions",
           isArchived: false,
@@ -20,13 +20,13 @@ describe("ordering realms", () => {
           workspaceId: null,
         })).workspaces;
         const id = (name: string) => realms.find((realm) => realm.name === name)?.id;
-        const gamma = id("Gamma");
-        const alpha = id("Alpha");
+        const gamma = id("gamma");
+        const alpha = id("alpha");
         if (gamma === undefined || alpha === undefined) return yield* Effect.die("Missing realm");
         yield* call({ _tag: "ReorderRealms", workspaceIds: [gamma, alpha] });
-        expect(yield* names).toEqual(["Gamma", "Alpha", "Beta"]);
+        expect(yield* names).toEqual(["gamma", "alpha", "beta"]);
         yield* call({ _tag: "CreateRealm", name: "Aardvark", path: null });
-        expect(yield* names).toEqual(["Gamma", "Alpha", "Beta", "Aardvark"]);
+        expect(yield* names).toEqual(["gamma", "alpha", "beta", "aardvark"]);
       }),
     ),
   );
@@ -37,7 +37,7 @@ describe("ordering realms", () => {
         yield* call({ _tag: "CreateRealm", name: "Alpha", path: null });
         const failure = yield* Effect.flip(call({ _tag: "ReorderRealms", workspaceIds: ["missing" as never] }));
         expect(failure.kind).toBe("InvalidInput");
-        expect(yield* names).toEqual(["Alpha"]);
+        expect(yield* names).toEqual(["alpha"]);
       }),
     ),
   );

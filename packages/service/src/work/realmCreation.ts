@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import type { CreateRealm, RealmCreation } from "@outlore/contracts";
+import { type CreateRealm, type RealmCreation, realmSlugOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, realFolderOf } from "../core/index.ts";
@@ -19,7 +19,7 @@ export const createRealmOutcome = Effect.fn("createRealmOutcome")(function* (giv
   }
   const [existing] =
     folder === null ? [] : yield* sql<{ id: string }>`SELECT id FROM workspaces WHERE path = ${folder}`;
-  const name = given.name.trim() || (folder === null ? "" : basename(folder));
+  const name = realmSlugOf(given.name) || (folder === null ? "" : realmSlugOf(basename(folder)));
   if (!given.allowDuplicateName) {
     if (yield* hasActiveRealmName(name, existing?.id ?? null))
       return unchanged<RealmCreation>({ _tag: "NameTaken", name });

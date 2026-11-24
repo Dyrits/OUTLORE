@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { rm } from "node:fs/promises";
-import type { CreateRepositoryRealm, RealmCreation } from "@outlore/contracts";
+import { type CreateRepositoryRealm, type RealmCreation, realmSlugOf } from "@outlore/contracts";
 import { Effect, Exit } from "effect";
 import { createFolder, type FolderAccess, invalid, type ServiceFailure } from "../core/index.ts";
 import type { CommandRunner } from "./commands.ts";
@@ -84,8 +84,8 @@ export const createRepositoryRealm = Effect.fn("createRepositoryRealm")(function
         : "Enter a Git repository URL without embedded credentials.",
     );
   }
-  if (!given.allowDuplicateName && (yield* hasActiveRealmName(name, null))) {
-    return { _tag: "NameTaken", name } satisfies RealmCreation;
+  if (!given.allowDuplicateName && (yield* hasActiveRealmName(realmSlugOf(name), null))) {
+    return { _tag: "NameTaken", name: realmSlugOf(name) } satisfies RealmCreation;
   }
 
   // The exclusive mkdir prevents Git and cleanup from touching an existing folder.

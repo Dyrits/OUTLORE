@@ -79,7 +79,7 @@ describe("creating a Ritual", () => {
   it.live("creates in a folderless realm from its conversation", () =>
     Effect.gen(function* () {
       yield* call({ _tag: "CreateRealm", name: "Ideas", path: null });
-      const realm = (yield* listed).workspaces.find(({ name }) => name === "Ideas");
+      const realm = (yield* listed).workspaces.find(({ name }) => name === "ideas");
       if (realm === undefined) throw new Error("Missing realm fixture.");
       const place = yield* call({ _tag: "ReadGuildmaster", channelId: realm.id });
       const args = { instruction: "Ping", schedule: { _tag: "Daily", time: "07:00" }, title: "Ping" };

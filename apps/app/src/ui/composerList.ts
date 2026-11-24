@@ -21,7 +21,7 @@ export type ListState = {
 
 export const initialListState: ListState = { category: null, chosen: 0 };
 
-/** What the list is built from. `mentions` is null where an `@` offers nothing. */
+/** What the list is built from. `mentions` is null where an `@` or a `#` offers nothing. */
 export type ListSource = {
   readonly entries: ReadonlyArray<WorkspaceEntry>;
   readonly mentionables: ReadonlyArray<Mentionable>;
@@ -60,7 +60,8 @@ const skillRowsOf = (skills: ReadonlyArray<Skill>, partial: string): ReadonlyArr
 /** The list for the trigger at the caret, in the state it is in. */
 export const composerListOf = (source: ListSource, state: ListState): ComposerList => {
   const { trigger } = source;
-  const mentioned = source.mentions === null || trigger?.character !== "@" ? null : trigger.query;
+  const mentioned =
+    source.mentions === null || (trigger?.character !== "@" && trigger?.character !== "#") ? null : trigger.query;
   const rows: ReadonlyArray<MenuRow> =
     trigger?.character === "/"
       ? skillRowsOf(source.skills, trigger.query)
@@ -68,6 +69,7 @@ export const composerListOf = (source: ListSource, state: ListState): ComposerLi
         ? []
         : mentionMenuOf({
             category: state.category,
+            character: trigger?.character === "#" ? "#" : "@",
             entries: source.entries,
             hasFolder: source.mentions?.hasFolder ?? false,
             mentionables: source.mentionables,
@@ -76,7 +78,7 @@ export const composerListOf = (source: ListSource, state: ListState): ComposerLi
   const selectable = selectableRowsOf(rows);
   return {
     highlighted: selectable[Math.min(state.chosen, selectable.length - 1)],
-    isInCategory: state.category !== null && mentioned === "",
+    isInCategory: state.category !== null && mentioned === "" && trigger?.character === "@",
     rows,
   };
 };

@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { readMissionSummaryMap } from "./matching.ts";
 
-// Quests, errands, and realms the owner names with `@` (thread-messaging, Who can message whom; CHG-0181): what the
+// Quests and errands the owner names with `@`, and realms with `#` (thread-messaging, Who can message whom; CHG-0181): what the
 // menu offers, the reference appended to the message the harness reads, and what a mention opens for the turn it reaches.
 
 /** A thread of a quest not archived. */
@@ -180,7 +180,7 @@ export const readMentionNote = Effect.fnUntraced(function* (text: string) {
   const references = mentionReferencesOf(text);
   if (references.length === 0) return "";
   const resolved = yield* Effect.forEach(references, resolveMention);
-  return `\n\n[The owner mentioned these with @, as context: decide from their words whether to look at each or write to it.\n${resolved.map((mention) => mention.line).join("\n")}]`;
+  return `\n\n[The owner mentioned these with @ or #, as context: decide from their words whether to look at each or write to it.\n${resolved.map((mention) => mention.line).join("\n")}]`;
 });
 
 /** What a thread may reach beyond its tree during its current turn, from what was delivered to that turn. */

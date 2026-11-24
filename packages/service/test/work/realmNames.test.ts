@@ -22,7 +22,7 @@ describe("naming a realm", () => {
         workspacePath: app,
       });
       const first = yield* listed;
-      expect(first.workspaces[0]).toMatchObject({ name: "The Orchard", path: app });
+      expect(first.workspaces[0]).toMatchObject({ name: "the-orchard", path: app });
       yield* call({
         _tag: "StartMission",
         effort: "default",
@@ -32,7 +32,7 @@ describe("naming a realm", () => {
         text: "Again",
         workspacePath: app,
       });
-      expect((yield* listed).workspaces[0]).toMatchObject({ name: "The Orchard" });
+      expect((yield* listed).workspaces[0]).toMatchObject({ name: "the-orchard" });
     }).pipe(Effect.provide(layer));
   });
 
@@ -60,8 +60,8 @@ describe("naming a realm", () => {
       if (workspaceId === undefined) return yield* Effect.die(new Error("no realm"));
       yield* call({ _tag: "RenameRealm", name: "  The Orchard ", workspaceId });
       const after = yield* listed;
-      expect(after.workspaces[0]?.name).toBe("The Orchard");
-      expect(after.missions[0]?.workspaceName).toBe("The Orchard");
+      expect(after.workspaces[0]?.name).toBe("the-orchard");
+      expect(after.missions[0]?.workspaceName).toBe("the-orchard");
       const failure = yield* failureOf({ _tag: "RenameRealm", name: "   ", workspaceId });
       expect(JSON.stringify(failure)).toContain("needs a name");
     }).pipe(Effect.provide(layer));
@@ -74,7 +74,7 @@ describe("naming a realm", () => {
       yield* call({ _tag: "CreateRealm", name: "The Orchard", path: app });
       const imported = yield* listed;
       expect(imported.missions).toEqual([]);
-      expect(imported.workspaces[0]).toMatchObject({ name: "The Orchard", path: app });
+      expect(imported.workspaces[0]).toMatchObject({ name: "the-orchard", path: app });
       const failure = yield* failureOf({ _tag: "CreateRealm", name: "Nope", path: join(home, "missing") });
       expect(JSON.stringify(failure)).toContain("No folder");
     }).pipe(Effect.provide(layer));
@@ -97,9 +97,9 @@ describe("realms with no folder", () => {
       expect(
         listed.map(({ name, path }) => ({ name, path })).sort((current, next) => current.name.localeCompare(next.name)),
       ).toEqual([
-        { name: "App", path: join(home, "app") },
-        { name: "Archive of ideas", path: null },
-        { name: "Game Design", path: null },
+        { name: "app", path: join(home, "app") },
+        { name: "archive-of-ideas", path: null },
+        { name: "game-design", path: null },
       ]);
     }).pipe(Effect.provide(layer));
   });
@@ -110,7 +110,7 @@ describe("realms with no folder", () => {
       yield* call({ _tag: "CreateRealm", name: "Game Design", path: null });
       const [realm] = yield* realms();
       yield* call({ _tag: "RenameRealm", name: "Level Design", workspaceId: realm?.id as never });
-      expect(yield* realms()).toEqual([{ id: realm?.id, name: "Level Design", path: null }]);
+      expect(yield* realms()).toEqual([{ id: realm?.id, name: "level-design", path: null }]);
     }).pipe(Effect.provide(layer));
   });
 

@@ -35,7 +35,7 @@ describe("managing realms at the owner's request", () => {
     Effect.gen(function* () {
       const place = yield* guildmaster;
       yield* manage(place, "create_realm", { name: "Ideas" });
-      expect((yield* realms).map((realm) => [realm.name, realm.path])).toEqual([["Ideas", null]]);
+      expect((yield* realms).map((realm) => [realm.name, realm.path])).toEqual([["ideas", null]]);
     }).pipe(Effect.provide(setup().layer)),
   );
 
@@ -45,7 +45,7 @@ describe("managing realms at the owner's request", () => {
       const place = yield* guildmaster;
       const folder = folderIn(directory, "shop");
       yield* manage(place, "create_realm", { folder, name: "Shop" });
-      expect((yield* realms).map((realm) => [realm.name, realm.path])).toEqual([["Shop", folder]]);
+      expect((yield* realms).map((realm) => [realm.name, realm.path])).toEqual([["shop", folder]]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -59,7 +59,7 @@ describe("managing realms at the owner's request", () => {
       expect(sameName).toContain('Made the realm "shop"');
       const sameFolder = yield* manage(place, "create_realm", { folder, name: "Store" });
       expect(sameFolder).toContain("already belongs to a realm");
-      expect((yield* realms).map((realm) => realm.name).sort()).toEqual(["Shop", "shop"]);
+      expect((yield* realms).map((realm) => realm.name).sort()).toEqual(["shop", "shop"]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -79,7 +79,7 @@ describe("managing realms at the owner's request", () => {
       const place = yield* guildmaster;
       yield* manage(place, "create_realm", { name: "Ideas" });
       yield* manage(place, "rename_realm", { name: "Notions", realm: "ideas" });
-      expect((yield* realms).map((realm) => realm.name)).toEqual(["Notions"]);
+      expect((yield* realms).map((realm) => realm.name)).toEqual(["notions"]);
     }).pipe(Effect.provide(setup().layer)),
   );
 
@@ -94,8 +94,8 @@ describe("managing realms at the owner's request", () => {
         name: "NOTIONS",
         realm: "Ideas",
       });
-      expect(duplicate).toContain('to "NOTIONS"');
-      expect((yield* realms).map((realm) => realm.name).sort()).toEqual(["NOTIONS", "Notions"]);
+      expect(duplicate).toContain('to "notions"');
+      expect((yield* realms).map((realm) => realm.name).sort()).toEqual(["notions", "notions"]);
     }).pipe(Effect.provide(setup().layer)),
   );
 
@@ -127,7 +127,7 @@ describe("managing realms at the owner's request", () => {
         ).toEqual([]);
         expect(lastAgentText(detail), name).toContain(reason);
       }
-      expect((yield* realms).map((realm) => realm.name).sort()).toEqual(["Notions", "Shop"]);
+      expect((yield* realms).map((realm) => realm.name).sort()).toEqual(["notions", "shop"]);
     }).pipe(Effect.provide(layer));
   });
 

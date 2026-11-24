@@ -16,7 +16,7 @@ const skills: ReadonlyArray<Skill> = [
 ];
 const mentionables: ReadonlyArray<Mentionable> = [
   { detail: "Outlore", id: "q1", kind: "quest", trail: ["Fix login"] },
-  { detail: "/code/iskios", id: "r1", kind: "realm", trail: ["Outlore"] },
+  { detail: "/code/iskios", id: "r1", kind: "realm", trail: ["outlore"] },
 ];
 const entries: ReadonlyArray<WorkspaceEntry> = [{ kind: "folder", path: "src/" }];
 
@@ -27,7 +27,7 @@ const source = (trigger: ListSource["trigger"], hasMentions = true): ListSource 
   skills,
   trigger,
 });
-const typed = (character: "/" | "@", query = ""): ListSource["trigger"] => ({ character, query });
+const typed = (character: "/" | "@" | "#", query = ""): ListSource["trigger"] => ({ character, query });
 const labelsOf = (rows: ReturnType<typeof composerListOf>["rows"]) =>
   rows.map((row) => (row.type === "option" ? row.chip.label : `${row.type}:${row.category}`));
 const press = (state: ListState, list: ReturnType<typeof composerListOf>, key: string, shiftKey = false) =>
@@ -70,11 +70,28 @@ describe("the / list", () => {
   });
 });
 
+describe("the # list", () => {
+  it("offers the realms at once, and hands back a #realm chip with Tab", () => {
+    const list = composerListOf(source(typed("#")), initialListState);
+    expect(labelsOf(list.rows)).toEqual(["outlore"]);
+    expect(list.isInCategory).toBe(false);
+    expect(press(initialListState, list, "Tab").chip).toEqual({ kind: "realm", label: "outlore", token: "#realm:r1" });
+  });
+
+  it("offers nothing for a # where mentions are not offered", () => {
+    expect(composerListOf(source(typed("#"), false), initialListState).rows).toEqual([]);
+  });
+
+  it("drops a category opened under an @ once the owner types a #", () => {
+    expect(listAfterTyping({ category: "quests", chosen: 1 }, typed("#"))).toEqual({ category: null, chosen: 0 });
+  });
+});
+
 describe("the @ list across keystrokes", () => {
   it("opens a category with Enter, shows its items, and returns on Backspace", () => {
     const bare = source(typed("@"));
     const categories = composerListOf(bare, initialListState);
-    expect(labelsOf(categories.rows)).toEqual(["category:quests", "category:realms", "category:files"]);
+    expect(labelsOf(categories.rows)).toEqual(["category:quests", "category:files"]);
     const opened = press(initialListState, categories, "Enter");
     expect(opened.handled).toBe(true);
     expect(opened.chip).toBeNull();
@@ -87,9 +104,9 @@ describe("the @ list across keystrokes", () => {
   });
 
   it("chooses an item with Tab and hands back its chip", () => {
-    const state: ListState = { category: "realms", chosen: 0 };
+    const state: ListState = { category: "quests", chosen: 0 };
     const chosen = press(state, composerListOf(source(typed("@")), state), "Tab");
-    expect(chosen.chip).toEqual({ kind: "realm", label: "Outlore", token: "@realm:r1" });
+    expect(chosen.chip).toEqual({ kind: "quest", label: "Fix login", token: "@quest:q1" });
     expect(chosen.handled).toBe(true);
   });
 
@@ -97,8 +114,8 @@ describe("the @ list across keystrokes", () => {
     const list = composerListOf(source(typed("@")), initialListState);
     const down = press(initialListState, list, "ArrowDown").state;
     expect(down.chosen).toBe(1);
-    expect(press({ ...down, chosen: 2 }, list, "ArrowDown").state.chosen).toBe(0);
-    expect(press(initialListState, list, "ArrowUp").state.chosen).toBe(2);
+    expect(press({ ...down, chosen: 1 }, list, "ArrowDown").state.chosen).toBe(0);
+    expect(press(initialListState, list, "ArrowUp").state.chosen).toBe(1);
   });
 
   it("keeps the category only under a bare @, and goes back to the first line on any typing", () => {

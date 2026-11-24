@@ -36,7 +36,7 @@ const listed = () => call({ _tag: "ListMissions", isArchived: false, search: nul
 const makeRealm = (name: string, path: string | null) =>
   Effect.gen(function* () {
     yield* call({ _tag: "CreateRealm", name, path });
-    const realm = (yield* listed()).workspaces.find((each) => each.name === name);
+    const realm = (yield* listed()).workspaces.find((each) => each.name === name.toLowerCase());
     if (realm === undefined) return yield* Effect.die(new Error(`no realm ${name}`));
     return realm.id;
   });
@@ -165,7 +165,7 @@ describe("moving a quest between realms, and out of them", () => {
 
           yield* send(threadId, "context");
           const context = yield* settle(quest.missionId, (detail) => detail.messages.length === 8 && idle(detail));
-          expect(lastReplyOf(context)).toContain("Moved by the user from no realm to Garden");
+          expect(lastReplyOf(context)).toContain("Moved by the user from no realm to garden");
         }),
       ),
   );

@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import type { Workspace, WorkspaceId } from "@outlore/contracts";
+import { realmSlugOf, type Workspace, type WorkspaceId } from "@outlore/contracts";
 import { Clock, Context, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, newId, realFolderOf } from "../core/index.ts";
@@ -91,7 +91,7 @@ export const attachWorkspace = Effect.fnUntraced(function* (path: string, realm:
   }
   const id = yield* newId;
   const now = yield* Clock.currentTimeMillis;
-  const name = realm?.name.trim() || basename(folder) || folder;
+  const name = realmSlugOf(realm?.name ?? "") || realmSlugOf(basename(folder) || folder) || "realm";
   yield* sql`INSERT INTO workspaces (id, name, path, created_at)
       VALUES (${id}, ${name}, ${folder}, ${now})`;
   return id;

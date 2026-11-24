@@ -3,17 +3,17 @@ import type { Chip } from "./chipEditorTypes";
 import { chipOfMentionable } from "./chipPlaces";
 import type { ChipKind } from "./chips";
 
-// What the list above the message box offers after a typed `@` (CHG-0181): a bare `@` shows the categories, a chosen
-// category its items, and any text after the `@` the matches of every category under its heading.
+// What the list above the message box offers after a typed `@` or `#` (CHG-0181): a bare `@` shows the categories, a
+// chosen category its items, and any text after the `@` the matches of every category under its heading; a `#` shows
+// the realms, narrowed by what follows it.
 
 /** The groups an `@` names things from. */
-export type MentionCategory = "quests" | "realms" | "files";
+export type MentionCategory = "quests" | "files";
 
 /** Each category's heading and the icon it shows. */
 export const mentionCategories = {
   files: { kind: "folder", label: "Files & Directories" },
   quests: { kind: "quest", label: "Quests" },
-  realms: { kind: "realm", label: "Realms" },
 } as const satisfies Record<MentionCategory, { readonly kind: ChipKind; readonly label: string }>;
 
 /** One line of the list: a category to open, a heading over a category's matches, or an item to put in the message. */
@@ -46,19 +46,24 @@ const entryOptionOf = (entry: WorkspaceEntry): MenuRow => ({
 /**
  * The list for what follows a typed `@`. With nothing typed after it: the categories, Files & Directories only when a
  * folder is linked, or the chosen category's items. With text: each category's matches under its heading, a quest
- * matching on its title or an errand on its path (`Quest › Errand`), a realm on its name, and the workspace's
- * entries as the service found them.
+ * matching on its title or an errand on its path (`Quest › Errand`), and the workspace's entries as the service found
+ * them. For a typed `#`: the realms whose name holds what follows it, with no categories or headings.
  */
 export const mentionMenuOf = (given: {
+  /** The character the owner typed; `@` when left out. */
+  readonly character?: "@" | "#";
   readonly query: string;
   readonly category: MentionCategory | null;
   readonly hasFolder: boolean;
   readonly mentionables: ReadonlyArray<Mentionable>;
   readonly entries: ReadonlyArray<WorkspaceEntry>;
 }): ReadonlyArray<MenuRow> => {
-  const categories: ReadonlyArray<MentionCategory> = given.hasFolder
-    ? ["quests", "realms", "files"]
-    : ["quests", "realms"];
+  if (given.character === "#")
+    return given.mentionables
+      .filter((each) => each.kind === "realm" && mentionLabelOf(each).toLowerCase().includes(given.query.toLowerCase()))
+      .slice(0, CATEGORY_LIMIT)
+      .map(questOptionOf);
+  const categories: ReadonlyArray<MentionCategory> = given.hasFolder ? ["quests", "files"] : ["quests"];
   const needle = given.query.toLowerCase();
   const itemsOf = (category: MentionCategory, limit: number): ReadonlyArray<MenuRow> =>
     category === "files"
@@ -67,7 +72,7 @@ export const mentionMenuOf = (given: {
           .slice(0, limit)
           .map(entryOptionOf)
       : given.mentionables
-          .filter((each) => (category === "realms") === (each.kind === "realm"))
+          .filter((each) => each.kind !== "realm")
           .filter((each) => mentionLabelOf(each).toLowerCase().includes(needle))
           .slice(0, limit)
           .map(questOptionOf);

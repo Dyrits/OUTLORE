@@ -122,7 +122,7 @@ describe("offering quests, errands, and realms to the @ menu", () => {
 
         const listed = yield* call({ _tag: "ListMentionables" });
         expect(listed.find((each) => each.id === login.missionId)).toEqual({
-          detail: "Garden",
+          detail: "garden",
           id: login.missionId,
           kind: "quest",
           trail: ["Fix login"],
@@ -131,7 +131,7 @@ describe("offering quests, errands, and realms to the @ menu", () => {
         expect(sideQuest?.kind).toBe("side-quest");
         expect(sideQuest?.trail[0]).toBe("Fix login");
         expect(sideQuest?.trail).toHaveLength(2);
-        expect(listed.find((each) => each.kind === "realm")).toMatchObject({ detail: folder, trail: ["Garden"] });
+        expect(listed.find((each) => each.kind === "realm")).toMatchObject({ detail: folder, trail: ["garden"] });
         expect(listed.some((each) => each.id === old.missionId)).toBe(false);
         expect(listed.some((each) => each.trail[0] === "Chronicler")).toBe(false);
       }),
@@ -153,9 +153,9 @@ describe("resolving the owner's mentions for the receiving thread", () => {
 
         expect(reply).toContain(text);
         expect(reply).toContain(
-          `Quest "Fix login" (id ${login.missionId}, state Resting, realm Garden, top thread id ${login.threadId})`,
+          `Quest "Fix login" (id ${login.missionId}, state Resting, realm garden, top thread id ${login.threadId})`,
         );
-        expect(reply).toContain(`Realm "Garden" (id ${realm?.id}, folder ${folder})`);
+        expect(reply).toContain(`Realm "garden" (id ${realm?.id}, folder ${folder})`);
         const stored = (yield* read(here.missionId)).messages.find(
           (message) => message.sender === "user" && message.text === text,
         );
@@ -312,7 +312,7 @@ describe("reaching a quest the owner mentioned", () => {
           here.threadId,
           `Look in ${mentionTokenOf({ id: realm?.id ?? "", kind: "realm" })}`,
         );
-        expect(reply).toContain(`Realm "Garden"`);
+        expect(reply).toContain(`Realm "garden"`);
 
         expect(yield* tool(here.threadId, "read_journal", { mission: login.missionId })).toContain("Only Chronicler");
         expect(yield* tool(here.threadId, "send_thread_message", { text: "Hi", to: login.threadId })).toContain(

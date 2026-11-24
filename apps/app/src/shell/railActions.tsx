@@ -109,7 +109,7 @@ function LineIcon({ children, color }: { children: ReactNode; color: string }) {
 }
 
 /**
- * The small folder before the name of a realm tied to a folder (CHG-0161, CHG-0170); a realm tied to none has no mark. Hovering
+ * The small folder before the name of a realm tied to a folder (CHG-0161, CHG-0170); a realm tied to none has no folder mark. Hovering
  * shows the folder's full path: react-native-web passes no `title` on, so the web build sets it on the element itself.
  */
 export function FolderCue({ path }: { path: string | null }) {

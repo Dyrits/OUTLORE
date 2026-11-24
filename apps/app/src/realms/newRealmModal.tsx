@@ -1,4 +1,4 @@
-import type { CreateRepositoryRealm, RealmArchivePreview } from "@outlore/contracts";
+import { type CreateRepositoryRealm, type RealmArchivePreview, realmSlugOf } from "@outlore/contracts";
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
@@ -43,7 +43,7 @@ export function NewRealmModal({
   const [archived, setArchived] = useState<RealmArchivePreview | null>(null);
   const isClone = source === "GitHub" || source === "GitUrl";
   const isRepository = source === "Project" || isClone;
-  const proposed = source === "Folder" ? proposedRealmOf(editing) : { ...editing, name: editing.name.trim() };
+  const proposed = source === "Folder" ? proposedRealmOf(editing) : { ...editing, name: realmSlugOf(editing.name) };
   const repositorySource: (typeof CreateRepositoryRealm.Type)["source"] | null =
     source === "Project"
       ? { _tag: "Project" }

@@ -34,7 +34,7 @@ describe("the Chronicle's attention feed and reads (CHG-0569)", () => {
         yield* call({ _tag: "CreateRealm", name: "Palace", path: null });
         expect((yield* chronicle()).find((each) => each.kind === "RealmOpened")).toMatchObject({
           source: "Realm",
-          title: "Palace",
+          title: "palace",
         });
       }),
     ),
@@ -91,7 +91,7 @@ describe("the Chronicle's attention feed and reads (CHG-0569)", () => {
           state: null,
           workspaceId: null,
         });
-        const palace = list.workspaces.find((workspace) => workspace.name === "Palace");
+        const palace = list.workspaces.find((workspace) => workspace.name === "palace");
         expect(palace).toBeDefined();
         yield* call({ _tag: "MoveQuest", missionId: quest.missionId, realmId: palace?.id ?? null });
         const after = yield* chronicle();

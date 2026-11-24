@@ -41,7 +41,7 @@ describe("confirming duplicate realm names through Chronicler", () => {
         if (confirmation === undefined) return yield* Effect.die("No duplicate rename confirmation");
         yield* call({ _tag: "AnswerQuestion", answer: "Deny", message: null, questionId: confirmation.id });
         yield* settle(place.missionId, isIdle, place.threadId);
-        expect((yield* listed).workspaces.map((realm) => realm.name).sort()).toEqual(["Garden", "Garden", "Notes"]);
+        expect((yield* listed).workspaces.map((realm) => realm.name).sort()).toEqual(["garden", "garden", "notes"]);
       }),
     ),
   );

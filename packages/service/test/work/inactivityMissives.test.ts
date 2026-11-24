@@ -17,7 +17,7 @@ const createRealm = Effect.fnUntraced(function* (name: string) {
     state: null,
     workspaceId: null,
   });
-  const realm = workspaces.find((candidate) => candidate.name === name);
+  const realm = workspaces.find((candidate) => candidate.name === name.toLowerCase());
   if (realm === undefined) return yield* Effect.die(`Missing realm ${name}`);
   return realm.id;
 });

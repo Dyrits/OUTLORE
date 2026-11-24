@@ -1,4 +1,4 @@
-import type { WorkspaceChoice } from "@outlore/contracts";
+import { realmSlugOf, type WorkspaceChoice } from "@outlore/contracts";
 import { useRef, useState } from "react";
 import { Pressable, type StyleProp, Text, TextInput, type TextStyle, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
@@ -27,8 +27,9 @@ export function RealmName({
     editing.current = name;
     setDraft(name);
   };
-  const save = async (name: string, shouldAllowDuplicateName = false) => {
-    if (isBusy || name.trim() === "" || name.trim() === realm.name) return;
+  const save = async (typed: string, shouldAllowDuplicateName = false) => {
+    const name = realmSlugOf(typed);
+    if (isBusy || name === "" || name === realm.name) return;
     edit(null);
     setBusy(true);
     try {

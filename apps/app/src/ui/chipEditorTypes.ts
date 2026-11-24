@@ -11,10 +11,9 @@ export type Chip = {
   readonly token: string;
 };
 
-/** A `/` or `@` that starts a word just before the caret, with what has been typed after it. */
-/** The `/` or `@` the owner typed, with the text after it, as the field reports it. */
+/** The `/`, `@`, or `#` the owner typed at the start of a word just before the caret, with the text after it, as the field reports it. */
 export type Trigger = {
-  readonly character: "/" | "@";
+  readonly character: "/" | "@" | "#";
   readonly query: string;
 };
 
@@ -42,8 +41,12 @@ export type ChipEditorProps = {
   ref?: Ref<ChipEditorHandle>;
 };
 
+/** The trigger a matched character is; anything but `@` and `#` is the `/` of a skill. */
+export const triggerCharacterOf = (character: string | undefined): Trigger["character"] =>
+  character === "@" || character === "#" ? character : "/";
+
 /** The trigger a text ends with, for a field that has no caret to read. */
 export const triggerOfEnd = (text: string): Trigger | null => {
-  const match = /(^|\s)([/@])(\S*)$/.exec(text);
-  return match === null ? null : { character: match[2] === "@" ? "@" : "/", query: match[3] ?? "" };
+  const match = /(^|\s)([/@#])(\S*)$/.exec(text);
+  return match === null ? null : { character: triggerCharacterOf(match[2]), query: match[3] ?? "" };
 };

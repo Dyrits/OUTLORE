@@ -102,7 +102,7 @@ describe("archiving and restoring realms", () => {
         });
         yield* call({ _tag: "CreateRealm", allowDuplicateName: true, name: "Garden", path: null });
         yield* call({ _tag: "CreateRealm", name: "Notes", path: null });
-        const notes = (yield* list()).workspaces.find((realm) => realm.name === "Notes");
+        const notes = (yield* list()).workspaces.find((realm) => realm.name === "notes");
         if (notes === undefined) return yield* Effect.die("No notes realm");
         expect(yield* Effect.flip(call({ _tag: "RenameRealm", name: "Garden", workspaceId: notes.id }))).toMatchObject({
           kind: "InvalidInput",
@@ -133,7 +133,7 @@ describe("archiving and restoring realms", () => {
           snapshot: saved.snapshot,
           workspaceId: realm.id,
         });
-        expect((yield* list()).workspaces[0]).toMatchObject({ id: realm.id, name: "Fresh garden" });
+        expect((yield* list()).workspaces[0]).toMatchObject({ id: realm.id, name: "fresh-garden" });
         expect((yield* list()).missions).toEqual([]);
         expect((yield* read(quest.missionId)).mission.state).toBe("Archived");
         const current = yield* call({

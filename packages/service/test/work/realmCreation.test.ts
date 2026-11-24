@@ -30,7 +30,7 @@ it.live("creates, acknowledges a name collision, and offers an archived folder w
       const preview = yield* call({ _tag: "PreviewRealmArchive", workspaceId: realm.id });
       yield* call({ _tag: "ArchiveRealm", snapshot: preview.snapshot, workspaceId: realm.id });
       const outcome = yield* call({ ...given, path });
-      expect(outcome).toMatchObject({ _tag: "ArchivedMatch", archived: { realm: { id: realm.id, name: "Folder" } } });
+      expect(outcome).toMatchObject({ _tag: "ArchivedMatch", archived: { realm: { id: realm.id, name: "folder" } } });
       expect(yield* call({ _tag: "ListArchivedRealms" })).toHaveLength(1);
     }),
   ),

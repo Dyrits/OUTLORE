@@ -7,6 +7,7 @@ import {
   mentionTokenOf,
   mentionTokensOf,
   referenceOf,
+  referenceTokensOf,
   type Skill,
   skillTokensOf,
   type WorkspaceEntry,
@@ -29,7 +30,7 @@ export const chipOfMentionable = (mentionable: Mentionable): Chip => ({
   token: mentionTokenOf(mentionable),
 });
 
-/** Where a chip sits in a text, from its `/` or `@` to the end of its token, and what it draws. */
+/** Where a chip sits in a text, from its `/`, `@`, or `#` to the end of its token, and what it draws. */
 type ChipPlace = {
   readonly end: number;
   readonly kind: ChipKind;
@@ -59,17 +60,21 @@ export const chipsOf = (text: string, source: ChipSource): ReadonlyArray<ChipPla
     ...skillTokensOf(text)
       .filter((token) => source.skills.some((skill) => skill.name === token.name))
       .map((token) => ({ end: token.end, kind: "skill" as const, label: token.name, start: token.start })),
-    ...mentionTokensOf(text).flatMap((token: MentionToken): ReadonlyArray<ChipPlace> => {
+    ...referenceTokensOf(text).flatMap((token: MentionToken): ReadonlyArray<ChipPlace> => {
       const reference = referenceOf(token.path);
-      if (reference !== null)
-        return [
-          {
-            end: token.end,
-            kind: chipKinds[reference.kind],
-            label: labelOfReference(reference, source.mentionables),
-            start: token.start,
-          },
-        ];
+      return reference === null
+        ? []
+        : [
+            {
+              end: token.end,
+              kind: chipKinds[reference.kind],
+              label: labelOfReference(reference, source.mentionables),
+              start: token.start,
+            },
+          ];
+    }),
+    ...mentionTokensOf(text).flatMap((token: MentionToken): ReadonlyArray<ChipPlace> => {
+      if (referenceOf(token.path) !== null) return [];
       const kind = source.entries.get(token.path);
       return kind === undefined ? [] : [{ end: token.end, kind, label: token.path, start: token.start }];
     }),

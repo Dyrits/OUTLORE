@@ -27,7 +27,7 @@ describe("making a realm from a repository", () => {
       const path = join(home, "New project");
       expect(yield* call(projectAt(home, "New project"))).toEqual({ _tag: "Created" });
       expect(existsSync(join(path, ".git", "HEAD"))).toBe(true);
-      expect((yield* listed).workspaces).toEqual([expect.objectContaining({ name: "New project", path })]);
+      expect((yield* listed).workspaces).toEqual([expect.objectContaining({ name: "new-project", path })]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -49,7 +49,7 @@ describe("making a realm from a repository", () => {
     const project = projectAt(home, "Garden");
     return Effect.gen(function* () {
       yield* call({ _tag: "CreateRealm", name: "Garden", path: null, shouldAnswerOutcome: true });
-      expect(yield* call(project)).toEqual({ _tag: "NameTaken", name: "Garden" });
+      expect(yield* call(project)).toEqual({ _tag: "NameTaken", name: "garden" });
       expect(existsSync(join(home, "Garden"))).toBe(false);
       expect(yield* call({ ...project, allowDuplicateName: true })).toEqual({ _tag: "Created" });
       expect((yield* listed).workspaces).toHaveLength(2);

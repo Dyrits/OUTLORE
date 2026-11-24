@@ -25,8 +25,9 @@ export function useComposerList(
   const [trigger, setTrigger] = useState<Trigger | null>(null);
   const [state, setState] = useState<ListState>(initialListState);
   const mentioned = mentions === undefined || trigger?.character !== "@" ? null : trigger.query;
+  const isRealm = mentions !== undefined && trigger?.character === "#";
   const entries = useWorkspaceEntries(mentions?.client, mentions?.workspacePath ?? null, mentioned);
-  const mentionables = useMentionables(mentions?.client, mentioned !== null);
+  const mentionables = useMentionables(mentions?.client, mentioned !== null || isRealm);
   const list = composerListOf(
     {
       entries,

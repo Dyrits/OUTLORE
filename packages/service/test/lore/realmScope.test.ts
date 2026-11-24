@@ -40,7 +40,7 @@ describe("recalling the quest's realm", () => {
         state: null,
         workspaceId: null,
       });
-      const beta = list.workspaces.find((realm) => realm.name === "Beta");
+      const beta = list.workspaces.find((realm) => realm.name === "beta");
       if (beta === undefined) return yield* Effect.die("Beta realm not created");
       const other = yield* call({ _tag: "StartEmptyQuest", realmId: beta.id, requestId: crypto.randomUUID() });
       yield* send(other.threadId, "Other quest");
