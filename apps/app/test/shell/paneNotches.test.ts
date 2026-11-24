@@ -6,6 +6,9 @@ import { notchWidth, paneNotchesOf, straddleReachOf } from "../../src/shell/pane
 const quest = ThreadId.make("quest");
 const errand = ThreadId.make("errand");
 const revealPane = vi.fn();
+const openList = vi.fn();
+const startQuest = vi.fn();
+const startErrand = vi.fn();
 beforeEach(() => vi.clearAllMocks());
 
 function edges(
@@ -17,14 +20,11 @@ function edges(
 ) {
   return paneNotchesOf({
     channel: { id: null, name: "Borderlands" },
-    fullChain: [channelId, quest, errand],
     gap,
     missionId: MissionId.make("quest"),
     missions: [],
-    onOpenMission: () => {},
-    openList: () => {},
+    openList,
     revealPane,
-    revealThread: () => {},
     slots: [
       { content: { id: channelId, kind: "channel" }, depth: 0, id: channelId, kind: "pane", width: 400 },
       isQuestFolded
@@ -34,20 +34,21 @@ function edges(
         ? { content: { id: errand, kind: "errand" }, depth: 2, id: errand, kind: "pane", width: 400 }
         : { content: { id: errand, kind: "errand" }, depth: 2, id: errand, kind: "strip", reason: "folded", width: 0 },
     ],
+    startErrand,
+    startQuest,
     threads: [
       ...(hasEarlierErrand
         ? [
             {
               id: ThreadId.make("earlier"),
               isArchived: false,
-              lastActivityAt: 0,
               parentId: quest,
               shownState,
               title: "Earlier",
             },
           ]
         : []),
-      { id: errand, isArchived, lastActivityAt: 0, parentId: quest, shownState, title: "Errand" },
+      { id: errand, isArchived, parentId: quest, shownState, title: "Errand" },
     ],
   });
 }
@@ -69,33 +70,40 @@ describe("placing a notch between islands", () => {
   });
 });
 
-describe("placing folded errand notches", () => {
+describe("placing child navigation notches", () => {
   it("shares the notch padding across both open panes beside a folded quest", () => {
     const at = edges("Resting", false, true);
     expect(at(0).paddingRight).toBe(notchWidth / 2);
     expect(at(2)).toMatchObject({ isStraddling: true, paddingLeft: notchWidth / 2 });
   });
 
-  it("places a folded errand among shortcuts in sidebar order", () => {
+  it("opens the folded parent directly", () => {
+    const parent = edges("Resting", false, true)(2).left[0];
+    expect(parent).toMatchObject({ id: quest, kind: "quest" });
+    parent?.onReveal();
+    expect(revealPane).toHaveBeenCalledExactlyOnceWith(quest);
+  });
+
+  it("keeps two controls and includes the folded errand in the list status", () => {
     const notches = edges("Resting", false, false, true)(1).right;
-    expect(notches.map((part) => part.title)).toEqual(["Earlier", "Errand"]);
+    expect(notches).toMatchObject([
+      { isNew: true, kind: "errand", title: "New errand" },
+      { kind: "list", state: "Resting", title: "Errands" },
+    ]);
     notches[0]?.onReveal();
     notches[1]?.onReveal();
-    expect(revealPane).toHaveBeenCalledWith(errand);
+    expect(startErrand).toHaveBeenCalledExactlyOnceWith(quest);
+    expect(openList).toHaveBeenCalledExactlyOnceWith(quest);
+    expect(revealPane).not.toHaveBeenCalled();
   });
 
-  it("keeps a Fulfilled errand off the pane edge", () => {
-    expect(questEdge("Fulfilled")).toEqual([]);
-  });
-
-  it("keeps an archived errand off the pane edge", () => {
-    expect(questEdge("Resting", true)).toEqual([]);
-  });
-
-  it("reopens an active folded errand through its only notch", () => {
-    const notches = questEdge("Resting");
-    expect(notches).toMatchObject([{ id: errand, kind: "errand", state: "Resting", title: "Errand" }]);
-    notches[0]?.onReveal();
-    expect(revealPane).toHaveBeenCalledExactlyOnceWith(errand);
-  });
+  it.each([
+    ["Fulfilled", false],
+    ["Resting", true],
+  ] as const)(
+    "keeps the list available without a status dot for an inactive errand (%s, archived %s)",
+    (state, isArchived) => {
+      expect(questEdge(state, isArchived)).toMatchObject([{ title: "New errand" }, { state: null, title: "Errands" }]);
+    },
+  );
 });

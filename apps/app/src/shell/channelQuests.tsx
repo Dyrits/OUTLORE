@@ -1,9 +1,8 @@
 import type { MissionId, MissionSummary, WorkspaceId } from "@outlore/contracts";
-import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { mobileIconTarget } from "../conversation/mobileHeader";
 import { NewReplyCard, QuestCard, RitualReplyCard } from "../conversation/replyLine";
-import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
+import type { ServiceClient } from "../foundation/client";
 import { listedMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
 import { useEnding } from "../foundation/useEnding";
@@ -12,8 +11,7 @@ import { EndingConfirmation } from "../quests/missionActions";
 import { ArchiveButton } from "../ui/archiveButton";
 import { DoneButton } from "../ui/questHeaderButtons";
 import { compareUrgency } from "./childNotches";
-
-/** Where work that is over sits in the list: after the active quests, which read by urgency. */
+import { useStartQuest } from "./useStartQuest";
 
 /**
  * The Quests and Rituals tabs list the corresponding work in the channel's realm or the Borderlands.
@@ -35,20 +33,7 @@ export function ChannelQuests({
   show: "Quests" | "Rituals";
 }) {
   const { data, error } = useServiceQuery(client, listedMissions.request, listedMissions.key);
-  const [isStarting, setStarting] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
-  const start = async () => {
-    setStarting(true);
-    setFailure(null);
-    try {
-      const quest = await client.request({ _tag: "StartEmptyQuest", realmId, requestId: newRequestId() });
-      onOpen(quest.missionId);
-    } catch (reason) {
-      setFailure(messageOf(reason));
-    } finally {
-      setStarting(false);
-    }
-  };
+  const { failure, isStarting, start } = useStartQuest(client, realmId, onOpen);
   const showRituals = show === "Rituals";
   const missions = (data?.missions ?? [])
     .filter((mission) => mission.workspaceId === realmId && (mission.ritual !== null) === showRituals)

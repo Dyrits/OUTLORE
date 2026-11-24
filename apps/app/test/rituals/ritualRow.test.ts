@@ -84,27 +84,30 @@ describe("the realm's lists asking for its Rituals", () => {
 });
 
 describe("a Ritual's row among the quests", () => {
-  it("marks a folded Ritual with its own emblem and keeps Rituals out of the quest shortcuts", () => {
+  it("keeps Rituals and other realms out of the Quests notch status", () => {
     const folded = quest("Morning digest", ritualCard());
     const threadId = ThreadId.make("top");
     const edges = paneNotchesOf({
       channel: { id: null, name: "Borderlands" },
-      fullChain: [channelId, threadId],
       missionId: folded.id,
-      missions: [folded, quest("Weekly digest", ritualCard()), quest("Ordinary quest")],
-      onOpenMission: () => {},
+      missions: [
+        { ...folded, state: "Failed" },
+        { ...quest("Other realm", null, "other" as WorkspaceId), state: "Attention" },
+        quest("Ordinary quest"),
+      ],
       openList: () => {},
       revealPane: () => {},
-      revealThread: () => {},
       slots: [
         { content: { id: channelId, kind: "channel" }, depth: 0, id: channelId, kind: "pane", width: 400 },
         { content: { id: threadId, kind: "quest" }, depth: 1, id: threadId, kind: "strip", reason: "folded", width: 0 },
       ],
+      startErrand: () => {},
+      startQuest: () => {},
       threads: [],
     });
     expect(edges(0).right).toMatchObject([
-      { kind: "ritual", title: "Morning digest" },
-      { kind: "quest", title: "Ordinary quest" },
+      { isNew: true, kind: "quest", title: "New quest" },
+      { kind: "list", state: "Resting", title: "Quests" },
     ]);
   });
   it("marks a run underway from the run state its record carries", () => {

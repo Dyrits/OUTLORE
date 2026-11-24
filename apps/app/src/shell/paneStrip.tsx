@@ -10,22 +10,16 @@ import { errandIconPath } from "../ui/composerIcons";
 import { notchWidth } from "./paneNotches";
 import { NewQuestIcon } from "./railActions";
 
-/** What a notch stands for: its icon. "more" has none: it counts the children left without a notch of their own. */
-export type NotchKind = "borderlands" | "errand" | "more" | "quest" | "realm" | "ritual";
+/** The icon for a folded pane or a child navigation control. */
+export type NotchKind = "borderlands" | "errand" | "list" | "quest" | "realm" | "ritual";
 
-/** The emblem that stands for each kind of pane. */
 const emblems = {
   quest: "sword",
   ritual: "moon",
-} as const satisfies Record<Exclude<NotchKind, "borderlands" | "errand" | "more" | "realm">, EmblemName>;
+} as const satisfies Record<Exclude<NotchKind, "borderlands" | "errand" | "list" | "realm">, EmblemName>;
 
-/**
- * One notch: a folded pane, or a child of the pane (an errand of a quest, a quest of a realm) that has no pane. A pane
- * with no state of its own, such as a channel, shows no dot. A "more" notch carries its `count` and its `title` is the
- * whole label.
- */
+/** A folded pane or a control for creating or browsing the children of a pane. */
 export type NotchPart = {
-  count?: number;
   id: string;
   /** The notch starts a new object (an errand of the quest, a quest of the realm): its icon carries a small "+". */
   isNew?: boolean;
@@ -35,12 +29,7 @@ export type NotchPart = {
   title: string;
 };
 
-/**
- * Folded panes next to an open one, and the children of a quest or realm pane that have no pane: a column of small
- * notches on its left or right edge, each the icon of what it is (realm, quest or errand) with its state dot, one press
- * from open. A notch takes no room from the open pane; its title shows beside it on hover or keyboard focus, since
- * several notches can share one icon.
- */
+/** Places the edge controls and shows each title on hover or keyboard focus. */
 export function PaneNotches({
   gap = 0,
   isStraddling = false,
@@ -76,9 +65,8 @@ export function PaneNotches({
     >
       {parts.map((part) => (
         <Pressable
-          accessibilityLabel={part.kind === "more" ? part.title : `Open ${part.title}`}
+          accessibilityLabel={part.isNew === true ? part.title : `Open ${part.title}`}
           accessibilityRole="button"
-          accessibilityState={{ expanded: false }}
           key={part.id}
           onBlur={() => setShown(null)}
           onFocus={() => setShown(part.id)}
@@ -93,8 +81,8 @@ export function PaneNotches({
             pressed && (islands === null ? local.pressed : local.pressedOnIsland),
           ]}
         >
-          {part.kind === "more" ? (
-            <Text style={local.count}>+{part.count}</Text>
+          {part.kind === "list" ? (
+            <ListMark />
           ) : part.isNew === true && part.kind === "quest" ? (
             <NewQuestIcon color={colors.textMuted} />
           ) : part.kind === "realm" || part.kind === "borderlands" ? (
@@ -135,6 +123,23 @@ export function PaneNotches({
         </Pressable>
       ))}
     </View>
+  );
+}
+
+function ListMark() {
+  return (
+    <Svg
+      aria-hidden
+      fill="none"
+      height={16}
+      stroke={colors.textSecondary}
+      strokeLinecap="round"
+      strokeWidth={1.6}
+      viewBox="0 0 20 20"
+      width={16}
+    >
+      <Path d="M3 5h1m3 0h10M3 10h1m3 0h10M3 15h1m3 0h10" />
+    </Svg>
   );
 }
 
@@ -192,7 +197,6 @@ const local = StyleSheet.create({
   atLeft: { left: 0 },
   atRight: { right: 0 },
   button: { alignItems: "center", borderRadius: radii.sm, height: 26, justifyContent: "center", width: 26 },
-  count: { color: colors.textSecondary, fontSize: fontSizes.xs, fontWeight: "600" },
   dot: { borderRadius: radii.pill, flex: 1 },
   dotRing: {
     borderRadius: radii.pill,

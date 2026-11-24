@@ -1,6 +1,6 @@
 import type { MissionId, MissionSummary, ThreadId, ThreadSummary } from "@outlore/contracts";
 import { realmMarkOf } from "../foundation/realmMark";
-import { type ChildNotch, childNotchesOf, urgencyOf } from "./childNotches";
+import { childStatusOf } from "./childNotches";
 import type { PaneSlot } from "./paneChain";
 import type { PaneContent, PaneId } from "./paneIds";
 import type { NotchPart } from "./paneStrip";
@@ -14,61 +14,50 @@ export const notchWidth = 26;
  */
 export const straddleReachOf = (gap: number): number => Math.max(0, (notchWidth - gap) / 2);
 
-/** Builds the ranked child shortcuts and their overflow shortcut. */
-export function childPartsOf<Id extends string>(
-  children: ReadonlyArray<ChildNotch<Id> & { title: string }>,
-  visible: ReadonlySet<string>,
+/** The create and browse controls for the children of an open pane. */
+export function childPartsOf(
   kind: "quest" | "errand",
-  openChild: (id: Id) => void,
+  state: NotchPart["state"],
+  start: (() => void) | null,
   openList: () => void,
-): Array<NotchPart> {
-  const { shown, more } = childNotchesOf(children, visible, kind === "errand" ? "listed" : "urgency");
-  const parts = shown.map<NotchPart>((child) => ({
-    id: `child:${child.id}`,
-    kind,
-    onReveal: () => openChild(child.id),
-    state: child.state,
-    title: children.find((entry) => entry.id === child.id)?.title ?? "",
-  }));
-  if (more !== null)
-    parts.push({
-      count: more.count,
-      id: `more:${kind}s`,
-      kind: "more",
-      onReveal: openList,
-      state: more.state,
-      title: `Show ${more.count} more ${kind}s`,
-    });
-  return parts;
+): ReadonlyArray<NotchPart> {
+  const list: NotchPart = {
+    id: `list:${kind}s`,
+    kind: "list",
+    onReveal: openList,
+    state,
+    title: kind === "quest" ? "Quests" : "Errands",
+  };
+  return start === null
+    ? [list]
+    : [{ id: `new:${kind}`, isNew: true, kind, onReveal: start, state: null, title: `New ${kind}` }, list];
 }
 
-type NotchThread = Pick<ThreadSummary, "id" | "isArchived" | "lastActivityAt" | "parentId" | "shownState" | "title">;
+type NotchThread = Pick<ThreadSummary, "id" | "isArchived" | "parentId" | "shownState" | "title">;
 
 /** Places folded and child shortcuts on the edges of open panes. */
 export function paneNotchesOf({
   channel,
-  fullChain,
   gap = 0,
   missionId,
   missions,
-  onOpenMission,
   openList,
   revealPane,
-  revealThread,
   slots,
+  startErrand,
+  startQuest,
   threads,
 }: {
   channel: { id: string | null; name: string };
-  fullChain: ReadonlyArray<PaneId>;
   /** The space between open panes in the Islands layout; none in the flat one. */
   gap?: number;
   missionId: MissionId;
   missions: ReadonlyArray<MissionSummary>;
-  onOpenMission: (id: MissionId) => void;
   openList: (id: PaneId) => void;
   revealPane: (id: PaneId) => void;
-  revealThread: (id: ThreadId) => void;
   slots: ReadonlyArray<PaneSlot<PaneId> & { content: PaneContent }>;
+  startErrand: ((id: ThreadId) => void) | null;
+  startQuest: () => void;
   threads: ReadonlyArray<NotchThread>;
 }) {
   const mission = missions.find((entry) => entry.id === missionId);
@@ -89,12 +78,9 @@ export function paneNotchesOf({
     if (content.kind === "quest") return mission?.state ?? summary?.shownState ?? null;
     return summary?.shownState ?? null;
   };
-  const notchOf = (content: PaneContent): NotchPart | null => {
+  const notchOf = (content: PaneContent): NotchPart => {
     const { id, kind } = content;
     const summary = kind === "quest" || kind === "errand" ? threads.find((thread) => thread.id === id) : undefined;
-    // An inactive errand remains readable in its pane or from the Errands tab, but has no edge shortcut.
-    if (kind === "errand" && summary !== undefined && (summary.isArchived || urgencyOf(summary.shownState) === null))
-      return null;
     return {
       id,
       isNew: kind === "starter",
@@ -109,61 +95,37 @@ export function paneNotchesOf({
             : (summary?.title ?? (kind === "quest" ? mission?.title : void 0) ?? ""),
     };
   };
-  // The active errands of the quest and the active quests of the realm that have no pane or notch yet, as notches on the
-  // right edge of the quest's or the realm's own pane.
-  const childNotchesOfPane = ({ id, kind }: PaneContent): Array<NotchPart> => {
-    const isChannel = kind === "channel";
-    if (!isChannel && kind !== "quest") return [];
-    return isChannel
-      ? childPartsOf(
-          missions.filter((mission) => mission.workspaceId === channel.id && mission.ritual === null),
-          new Set([missionId]),
-          "quest",
-          onOpenMission,
-          () => openList(id),
-        )
-      : childPartsOf(
+  const childNotchesOfPane = (content: PaneContent): ReadonlyArray<NotchPart> => {
+    if (content.kind === "channel")
+      return childPartsOf(
+        "quest",
+        childStatusOf(missions.filter((entry) => entry.workspaceId === channel.id && entry.ritual === null)),
+        startQuest,
+        () => openList(content.id),
+      );
+    if (content.kind === "quest")
+      return childPartsOf(
+        "errand",
+        childStatusOf(
           threads
             .filter((thread) => thread.parentId !== null)
-            .map((thread) => ({ ...thread, state: thread.shownState })),
-          new Set(fullChain),
-          "errand",
-          revealThread,
-          () => openList(id),
-        );
+            .map(({ isArchived, shownState }) => ({ isArchived, state: shownState })),
+        ),
+        startErrand === null ? null : () => startErrand(content.id),
+        () => openList(content.id),
+      );
+    return [];
   };
-  // A folded pane is a notch on the edge of an open pane: the left edge of the next one, or the right edge of the last.
-  const notchesAt = (depth: number): { left: Array<NotchPart>; right: Array<NotchPart> } => {
+  // Folded parents sit to the left of the next open pane; child controls sit on the right of the last open pane.
+  const notchesAt = (depth: number) => {
     const left: Array<NotchPart> = [];
     for (let each = depth - 1; slots[each]?.kind === "strip"; each -= 1) {
       const content = slots[each]?.content;
-      const notch = content === undefined ? null : notchOf(content);
-      if (notch !== null) left.unshift(notch);
+      if (content !== undefined) left.unshift(notchOf(content));
     }
-    const right: Array<NotchPart> = [];
     const own = slots[depth]?.content;
-    // Only the last open pane has a right edge: it lists its folded panes, then its own children (a realm's quests, a
-    // quest's errands). A pane with another open pane after it shows none, since that pane already stands for them.
-    if (slots.slice(depth + 1).every((slot) => slot.kind === "strip")) {
-      for (let each = depth + 1; slots[each]?.kind === "strip"; each += 1) {
-        const content = slots[each]?.content;
-        const notch = content === undefined ? null : notchOf(content);
-        if (notch !== null) right.push(notch);
-      }
-      // The realm's edge lists quests only: the errands folded after its quest are not its own, so they show no notch there.
-      const shownRight =
-        own?.kind === "channel" ? right.filter((part) => part.kind === "quest" || part.kind === "ritual") : right;
-      const combined = [...shownRight, ...(own === undefined ? [] : childNotchesOfPane(own))];
-      if (own?.kind === "quest") {
-        const positions = new Map<string, number>(threads.map((thread, index) => [thread.id, index]));
-        const positionOf = (part: NotchPart) =>
-          part.kind === "errand" && !part.isNew
-            ? (positions.get(part.id.replace(/^child:/, "")) ?? Infinity)
-            : Infinity;
-        combined.sort((current, next) => positionOf(current) - positionOf(next));
-      }
-      return { left, right: combined };
-    }
+    const right =
+      own !== undefined && slots.slice(depth + 1).every((slot) => slot.kind === "strip") ? childNotchesOfPane(own) : [];
     return { left, right };
   };
   const parts = slots.map((slot) => (slot.kind === "pane" ? notchesAt(slot.depth) : { left: [], right: [] }));

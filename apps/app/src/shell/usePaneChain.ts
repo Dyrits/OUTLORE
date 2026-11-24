@@ -91,7 +91,6 @@ export function usePaneChain(
     expandPane: (id: PaneId) => dispatch({ id, type: "expand" }),
     focusedId,
     fold,
-    fullChain,
     listRequest,
     memory,
     openIds,

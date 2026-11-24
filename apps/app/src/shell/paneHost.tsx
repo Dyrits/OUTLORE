@@ -1,4 +1,4 @@
-import type { MissionId, ThreadId } from "@outlore/contracts";
+import { type MissionId, type ThreadId, WorkspaceId } from "@outlore/contracts";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 import { PaneThread } from "../conversation/paneThread";
@@ -10,7 +10,7 @@ import { listedMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ExpandPaneButton, FoldPaneButton } from "../ui/questHeaderButtons";
-import { ChannelPane } from "./channelPane";
+import { ChannelPane, QuestStartFailure } from "./channelPane";
 import { ErrandStarter } from "./errandStarter";
 import { resizedWeights } from "./paneChain";
 import type { PaneId } from "./paneIds";
@@ -20,6 +20,7 @@ import { PaneButton, PaneNotches } from "./paneStrip";
 import { rememberPaneWeights } from "./railStorage";
 import { noDragRegion } from "./topBar";
 import { usePaneChain } from "./usePaneChain";
+import { useStartQuest } from "./useStartQuest";
 import { channelOf } from "./windowView";
 
 /** How far from the window's right edge the Equal widths button sits in the Islands layout: past the Workshop button. */
@@ -64,6 +65,11 @@ export function PaneHost({
     if (data !== null) setThreads(data.threads);
   }, [data]);
   const channel = channelOf(data?.mission.workspaceId, data?.mission.workspaceName);
+  const { failure: questStartFailure, start: startQuest } = useStartQuest(
+    client,
+    channel.id === null ? null : WorkspaceId.make(channel.id),
+    onOpenMission,
+  );
   // In the Islands layout every open pane is a card of its own with `gap` between them (CHG-0672).
   const islands = useIslandFrame();
   const gap = islands?.gap ?? 0;
@@ -73,7 +79,6 @@ export function PaneHost({
     expandPane,
     focusedId,
     fold,
-    fullChain,
     listRequest,
     memory,
     openIds,
@@ -108,17 +113,20 @@ export function PaneHost({
   };
   const notchesAt = paneNotchesOf({
     channel,
-    fullChain,
     gap,
     missionId,
     missions: missionList?.missions ?? [],
-    onOpenMission,
     openList,
     revealPane,
-    revealThread,
     slots,
+    startErrand: data?.mission.ritual == null ? startErrand : null,
+    startQuest,
     threads,
   });
+  const openChannelQuest = (id: MissionId) => {
+    if (id === missionId && quest !== undefined) revealPane(quest);
+    else onOpenMission(id);
+  };
   const firstOpen = slots.findIndex((slot) => slot.kind === "pane");
   // The strips between neighboring open panes, on the row above the panes, each at the edge it moves.
   let edge = 0;
@@ -186,14 +194,17 @@ export function PaneHost({
             );
             if (content.kind === "channel")
               return wrap(
-                <ChannelPane
-                  channel={channel}
-                  chrome={paneControls(id, "Fold the channel")}
-                  client={client}
-                  listRequest={listRequest?.id === id ? listRequest : undefined}
-                  onOpenMission={onOpenMission}
-                  openMission={missionId}
-                />,
+                <>
+                  <ChannelPane
+                    channel={channel}
+                    chrome={paneControls(id, "Fold the channel")}
+                    client={client}
+                    listRequest={listRequest?.id === id ? listRequest : undefined}
+                    onOpenMission={openChannelQuest}
+                    openMission={missionId}
+                  />
+                  <QuestStartFailure failure={questStartFailure} />
+                </>,
               );
             if (content.kind === "starter") {
               return wrap(

@@ -97,11 +97,11 @@ The blocks appear whether or not the lists already have entries.
 ### Panes
 
 - At most three panes are shown at once. A window too narrow for three shows fewer; each pane has a minimum width.
-- When the window is too narrow for the whole chain, the last panes are shown and the earlier ones are folded to notches, so the deepest conversation left open keeps its space and each notch is one press away. On a narrow window the channel folds first.
+- When the window is too narrow for the whole chain, the last panes are shown and the earlier ones are folded to notches, so the deepest conversation left open keeps its space and each folded parent is one press away. On a narrow window the channel folds first.
 - By default the panes share the width equally: one third each with three.
-- A pane can be **folded** to a notch and **unfolded**, which is how a pane gives room to its neighbour: the neighbour extends over the space and the folded pane stays one press away (the owner: better than closing is extending a panel over another, "just folding it").
-- A folded pane is a **notch** on the edge of the open pane beside it: the left edge of the next open pane, or the right edge of the last one when nothing open follows. A notch shows only the icon of what it is (a realm, a quest or an errand) with its state dot, takes no room from the open pane, and is one press from open again; the full name is its accessibility label and shows beside the notch while the pointer or keyboard focus rests on it (CHG-0630). Several folded panes stack as several notches on the same edge (the owner, 2026-11-20: a notch on the left or right of the open pane, with the icons, instead of a strip with the name).
-- A notch that **starts** something new carries a small "+" on its icon: the errand notch of a quest with no errand pane yet opens the new-errand starter, and a realm's pane with no quest shows a sword notch with a "+" on its right edge that starts a quest in that realm (the owner, 2026-11-20; CHG-0604).
+- Folding a pane gives its space to a neighbour. A folded parent is one press away on the left edge of the next open pane. Its icon and state dot identify the realm, quest or errand, and its name shows on hover or keyboard focus (CHG-0630).
+- When the last open desktop pane is a realm channel or the Borderlands, its right edge has **New quest** and **Quests**. When it is an ordinary quest, the edge has **New errand** and **Errands**. A Ritual offers **Errands** for its runs. The create notch has a plus on its icon and starts a quest or opens the errand starter.
+- The list notch opens its tab in the same pane, even when the list is empty. It shows the most urgent active child's state and provides the route to open a folded child from the list. Rituals remain available from the channel's Rituals tab.
 - When multiple conversation panes are visible, each desktop pane header offers a **Fold** button with a pane-and-arrow icon. The quest and errand can fold even when they are the deepest conversation.
 - On a phone (a narrow window) one pane shows at a time with a Back chevron, as the [phone view](../mission-tracking/specifications.md#simplified-left-navigation) does today.
 
@@ -113,7 +113,7 @@ The blocks appear whether or not the lists already have entries.
 - The Quests tab and a quest's own header offer Mark as done, Mark as not done, and Archive or Delete. They use the same quest ending rules as desktop, including confirmation when required.
 - Panes are resized by dragging their edges; the widths are remembered.
 - **Equal widths** sits above the conversation row and gives the open panes the same share again (a third each with three) and forgets the dragged shares; folded panes stay folded.
-- When multiple conversation panes are visible, the **Expand pane** button uses outward arrows and gives its pane the available width. The other panes become notches. A full-width pane omits the layout buttons. Press the notch for the conversation you want to reopen.
+- When multiple conversation panes are visible, the **Expand pane** button uses outward arrows and gives its pane the available width. Folded parents become left-edge notches, and child conversations are available from the tabs. A full-width pane omits the layout buttons.
 
 #### The phone's Chronicle
 

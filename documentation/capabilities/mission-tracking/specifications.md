@@ -75,8 +75,7 @@ Update, 2026-11-20: Stop ends the current turn and returns the thread to Resting
 
 - Roll-up. The status shown for a quest or an errand is worked out from itself and the active threads beneath it: Failed if it or any of them is Failed; otherwise Attention if it or any of them is Attention; otherwise Waiting if it is Resting or Waiting and any of them is Underway or Waiting; otherwise Resting when a stopped thread has a resting descendant, otherwise its own status. Fulfilled, Fresh and archived threads add nothing. A quest takes the roll-up of its top thread over the whole tree.
 - A realm or Borderlands has no stored status. Its mark follows its quests in priority order: Failed, Attention, Underway, Waiting, Resting; it is Fulfilled when all unarchived quests are fulfilled, and otherwise has no status.
-- Errand notches follow the same tree order as the sidebar, including folded errands among the other shortcuts (owner, 2026-11-23).
-- Order for quest notches and lists of active work, most urgent first: Failed, Attention, Resting, Underway, Waiting, Stopped, Fresh; equal ranks put the latest activity first. Fulfilled and archived work has no notch.
+- Active work is ranked by urgency: Failed, Attention, Resting, Underway, Waiting, Stopped, Fresh. Lists sorted by urgency put the latest activity first among equal ranks. The Quests and Errands list notches show the highest urgency among their active children, excluding fulfilled and archived work.
 - Existing data converts as needed: Idle to Resting, Running to Underway, Done to Fulfilled, an empty quest to Fresh. The older "No migration required" line under CHG-0137 still allows resetting development data instead.
 - The "Mark as done" action keeps its label for now; whether it is renamed to match Fulfilled is open.
 

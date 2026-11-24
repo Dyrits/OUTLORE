@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To verify the quest and errand notches in the desktop window, read the [current handoff](.agents/handoffs/2026-11-24-1130-two-child-notches.md). Handoffs are shared and committed.
+
 - To verify inactivity notice timestamps and layout, read the [current handoff](.agents/handoffs/2026-11-24-1043-notice-timestamp.md). Handoffs are shared and committed.
 
 - To verify content loading on a paired phone during host activity, read the [current handoff](.agents/handoffs/2026-11-24-0918-remote-content-loading.md). Handoffs are shared and committed.
-
-- To resume provider logos, read the [current handoff](.agents/handoffs/2026-11-24-0823-provider-logos.md). Handoffs are shared and committed.

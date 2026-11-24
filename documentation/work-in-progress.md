@@ -5,17 +5,18 @@
 Fifteen deepening candidates for the harness roster, the shell and panes, and the service's work modules are in the [report](architecture-audit/architecture-audit-2026-11-24-0731.html). The top recommendation is H2, one ACP module with dialects, which would also fix H3: six ACP harnesses start with no Outlore tool server, so their errands cannot report back. Defects confirmed along the way:
 - H3, the missing tool server on six ACP harnesses.
 - The account budget card labels nine harnesses "OpenCode".
-- Pane notches no longer follow the sidebar's errand order (P1, still true after CHG-0679).
+- P1 covered individual errand shortcuts, which the two-control batch replaces.
 - The Workshop's inactivity-days setting does nothing (S3).
 
 S1, a paired device enabling remote terminals through Chronicler or a Ritual, comes from reading the code and has not been reproduced. Nothing is built yet. [Handoff](../.agents/handoffs/2026-11-24-0738-architecture-audit.md).
 
-## Errand notch order · 2026-11-23
+## Two child controls on conversation panes · 2026-11-24
 
-The owner requested the same errand order in pane notches and the sidebar.
-Errand shortcuts preserve the supplied sidebar tree order; folded errands are placed among their siblings instead of before them.
-The four child shortcuts, overflow urgency dot, and inactive filtering remain.
-Focused tests and static checks are recorded in [verification](verification/2026-11-23-errand-notch-order.md); running-app review remains pending.
+The owner approved a create notch and a same-pane list notch on the right edge, with the most urgent active child shown on the list notch.
+Starting revision: `a4a4fec1`.
+The focused child notch, pane notch, and Ritual row tests pass (20 tests), and Biome passes with two existing architecture audit warnings.
+Desktop visual review is pending.
+[Behavior](capabilities/conversation-panes/specifications.md#panes).
 
 ## The Vault's read-denial check runs by itself · 2026-11-23 · on `mission/vault-sandbox-check-without-owner-steps-910f3d35`
 
