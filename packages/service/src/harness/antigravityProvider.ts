@@ -17,8 +17,10 @@ import { makeAcpProviderHarness, probeAcpProviderModels } from "./acpProviders.t
 // - Launch: ACP over stdio. argv ["acp", "--gemini-dir=<home>", "--app-data-dir=antigravity-acp"]
 //   (src/backend/provider-drivers.ts:292-296) against the Gemini home. Every spawn carries
 //   AGY_CLI_DISABLE_AUTO_UPDATE=true (src/backend/cli.ts:806 ANTIGRAVITY_UPDATE_ENV, applied to the version check too,
-//   cli.ts:810 and native-provider-runtime.ts:92) and a WSL_DISTRO_NAME naming the host (upstream names its own distro
-//   "OpenBot", src/backend/provider-drivers.ts:284; Outlore names itself instead).
+//   cli.ts:810 and native-provider-runtime.ts:92). Upstream also sets WSL_DISTRO_NAME "OpenBot"
+//   (src/backend/provider-drivers.ts:284); Outlore does not. Any WSL_DISTRO_NAME makes the CLI keep its tokens in a
+//   file instead of the system keychain, and `agy acp --login` writes the keychain. With the variable set, a launch
+//   found no sign-in after a successful login (CLI 1.5.16, live check 2026-11-24).
 // - Isolation: the upstream accounts entry pins per-account state with homeVariable GEMINI_HOME
 //   (src/backend/provider-drivers.ts:892), for CLI versions that take state folders (>= 1.5.3, src/backend/cli.ts:694-696
 //   antigravityTakesStateFolders); the home is GEMINI_HOME, default ~/.gemini
@@ -88,15 +90,14 @@ export const antigravityAddedAccountsEvidence =
 
 /**
  * The audited launch profile against one Gemini home, with the pinned environment: the account home, the auto-update
- * suppression upstream sets at every spawn, and a WSL distro name naming this app (upstream names its own product,
- * provider-drivers.ts:284). The minimum generation keeps 1.x; added accounts are gated separately above.
+ * suppression upstream sets at every spawn. Unlike upstream it sets no WSL_DISTRO_NAME, so the launch reads the sign-in
+ * that `agy acp --login` stored in the keychain. The minimum generation keeps 1.x; added accounts are gated separately above.
  */
 export const antigravityProfileOf = (home: string, env: Record<string, string> = {}): AcpProviderProfile => ({
   args: antigravityArgsOf(home),
   env: {
     AGY_CLI_DISABLE_AUTO_UPDATE: "true",
     GEMINI_HOME: home,
-    WSL_DISTRO_NAME: "Outlore",
     ...env,
   },
   label: "Gemini (Antigravity)",

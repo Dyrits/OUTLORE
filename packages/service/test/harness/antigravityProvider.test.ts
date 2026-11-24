@@ -90,7 +90,8 @@ describe("probing the Antigravity CLI", () => {
       // The two home channels never disagree: the flag and the environment carry the same home.
       expect(entry.geminiHome).toBe(geminiHome);
       expect(entry.autoUpdateDisabled).toBe("true");
-      expect(entry.wslDistroName).toBe("Outlore");
+      // No WSL distro name: it would move the CLI's tokens from the keychain, where its own login stores them, to a file.
+      expect(entry.wslDistroName).toBeNull();
       expect(entry.params?.mcpServers).toEqual([]);
     } finally {
       rmSync(directory, { force: true, recursive: true });
