@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To verify and land the direct WebRTC path for paired devices, read the [current handoff](.agents/handoffs/2026-11-25-0059-direct-p2p-path.md). Handoffs are shared and committed.
+
 - To verify the new icons of the Quests and Errands list controls in the running app, read the [current handoff](.agents/handoffs/2026-11-25-0042-list-control-icons.md). Handoffs are shared and committed.
 
 - To verify the preset draft in the Workshop and Overwrite in a quest's Companions tab, read the [current handoff](.agents/handoffs/2026-11-25-0033-preset-list-layout.md). Handoffs are shared and committed.
-
-- To verify the quest emblem on cards' corner buttons in the dark looks, read the [current handoff](.agents/handoffs/2026-11-25-0033-quest-emblem-contrast.md). Handoffs are shared and committed.
