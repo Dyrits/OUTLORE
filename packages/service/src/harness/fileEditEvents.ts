@@ -32,8 +32,11 @@ export const codexFileEditsOf = (item: unknown, turnId: string) => {
   });
 };
 
-/** Reads ACP text pairs from completed calls and uses result metadata when it gives the actual file contents. */
-export const acpFileEditsOf = (update: unknown, sessionId: string, harness: "opencode" | "vibe") => {
+/**
+ * Reads ACP text pairs from completed calls and uses result metadata when it gives the actual file contents.
+ * `acp` is the standard shape every ACP agent shares, the `diff` blocks of a call's content; OpenCode and Vibe add what their own results carry.
+ */
+export const acpFileEditsOf = (update: unknown, sessionId: string, harness: "acp" | "opencode" | "vibe") => {
   const id = textFieldOf(update, "toolCallId");
   if (id === null || textFieldOf(update, "status") !== "completed") return [];
   const callId = JSON.stringify([harness, sessionId, id]);
@@ -44,7 +47,7 @@ export const acpFileEditsOf = (update: unknown, sessionId: string, harness: "ope
     const path = textFieldOf(fieldOf(metadata, "filediff"), "file") ?? textFieldOf(metadata, "filepath");
     const patch = textFieldOf(metadata, "diff");
     if (path && patch !== null) return [fileEditEventOf(callId, path, { movedTo: null, patch })];
-  } else {
+  } else if (harness === "vibe") {
     const path = textFieldOf(output, "filePath");
     const next = textFieldOf(output, "content");
     const previous = textFieldOf(output, "previousContent");
@@ -75,6 +78,7 @@ export const acpFileEditsOf = (update: unknown, sessionId: string, harness: "ope
   }
   return [...files].map(([path, pairs], index) => {
     const event = fileEditEventOf(callId, path, { pairs });
-    return harness === "vibe" && index === 0 ? { ...event, id } : event;
+    // The first file's entry takes the tool call's own id, so the entry the call opened is the one that shows the diff.
+    return harness !== "opencode" && index === 0 ? { ...event, id } : event;
   });
 };

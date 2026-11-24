@@ -11,6 +11,7 @@ import {
   startRpcProcess,
   textFieldOf,
 } from "../core/index.ts";
+import { acpInitializeParams } from "./acpSession.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 
 // What Mistral Vibe's `vibe-acp` says about an account (its models, its sign-in, its plan), read in one short
@@ -19,13 +20,6 @@ import { accountEnvironmentOf } from "./harnessCatalog.ts";
 /** The child's environment, signed in with the turn's account (provider-accounts). */
 export const childEnvironment = (configDirectory: string | null) =>
   reducedEnvironmentOf(accountEnvironmentOf("vibe", configDirectory));
-
-/** The initialize request: protocol version 1, no filesystem or terminal use, so Vibe's own client tools for them stay off. */
-export const initializeParams = {
-  clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
-  clientInfo: { name: "outlore", title: "Outlore", version: "0.0.0" },
-  protocolVersion: 1,
-};
 
 /** How the account is billed, from the `plan` of its `_account/read` answer; Subscription until it says `api`. */
 export const billingOf = (plan: unknown): BillingKind =>
@@ -131,7 +125,7 @@ const probeVibe = Effect.fnUntraced(function* <Answer>(
     label: "Mistral Vibe",
   });
   return yield* Effect.gen(function* () {
-    yield* rpc.request("initialize", initializeParams);
+    yield* rpc.request("initialize", acpInitializeParams);
     const created = yield* rpc
       .request("session/new", { cwd: tmpdir(), mcpServers: [] })
       .pipe(Effect.timeout("20 seconds"));

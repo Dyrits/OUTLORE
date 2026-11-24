@@ -42,8 +42,9 @@ const defaults = {
   planUsedUp: false,
   // The session ids a probe and a turn open.
   probeSessionId: "probe",
-  // `session/resume`, advertised as `sessionCapabilities.resume`.
+  // `session/resume`, advertised as `sessionCapabilities.resume`; `resumeFails` answers it with an error while `session/load` works.
   resume: false,
+  resumeFails: false,
   sessionId: "acp-1",
   // The signed-out answer to `session/new`: { code, message }.
   signedOut: null,
@@ -202,6 +203,7 @@ const onRequest = (request) => {
     });
   if (request.method === "session/new") return sessionNew(request);
   if (request.method === "session/load" || request.method === "session/resume") {
+    if (request.method === "session/resume" && config.resumeFails) return fail(request.id, -32601, "resume failed");
     if (config.missingSession === request.params.sessionId) return fail(request.id, -32602, "session not found");
     return answer(request.id, { sessionId: request.params.sessionId });
   }

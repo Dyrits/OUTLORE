@@ -12,6 +12,8 @@ export type AcpProviderDefinition = {
   readonly label: string;
   /** An older executable name preferred when it is already installed on `PATH`. */
   readonly legacyExecutable?: string;
+  /** Where the provider's agent departs from the protocol every ACP harness shares; absent when it does not. */
+  readonly protocol?: AcpProviderProtocol;
   /** The provider's own sign-in command, or null when no sign-in command of its own is verified. */
   readonly signIn: AcpSignIn | null;
   /** The JSON-RPC error code a signed-out provider answers `session/new` with, or null when none is verified. */
@@ -22,6 +24,17 @@ export type AcpProviderDefinition = {
   readonly stateHome: StateHomeRule;
   /** The generation the provider was audited against, or null when no gate is verified. */
   readonly version: VersionGate | null;
+};
+
+/**
+ * The facts of the protocol a provider's agent does differently, as data: acpHarness.ts holds what each one does.
+ * Everything not named here is the same for every ACP agent.
+ */
+export type AcpProviderProtocol = {
+  /** Permission requests of tool calls whose id starts with this are questions for the owner to choose an answer to, not actions to approve. */
+  readonly questionIdPrefix?: string;
+  /** The agent replays a session's tool calls on `session/load`, so a session it advertises it can resume is resumed instead. */
+  readonly resumesSessions?: boolean;
 };
 
 /** How the provider's own sign-in command runs; its environment is the spawn environment plus these extras. */
@@ -77,6 +90,8 @@ export type AcpProviderProfile = {
   readonly args: ReadonlyArray<string>;
   readonly env: Readonly<Record<string, string>>;
   readonly label: string;
+  /** The provider's departures from the shared protocol, carried from its definition. */
+  readonly protocol?: AcpProviderProtocol;
   /**
    * Environment variable the executable honors for its state home. Setting it isolates the
    * account's sign-in, config, and MCP inheritance from the user's own provider directory.
@@ -135,6 +150,7 @@ export const acpLaunchOf = (definition: AcpProviderDefinition, options: AcpResol
     args: definition.argv(home),
     env: { ...definition.spawnEnv, ...homeEnvOf(definition, options, home, false), ...options.env },
     label: definition.label,
+    ...(definition.protocol === undefined ? {} : { protocol: definition.protocol }),
     ...(rule.kind === "account"
       ? { ...(rule.needsConfiguredHome ? { needsConfiguredStateHome: true } : {}), stateHomeEnv: rule.variable }
       : {}),

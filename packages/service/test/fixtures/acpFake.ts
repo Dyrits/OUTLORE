@@ -27,6 +27,7 @@ export type AcpFakeConfig = {
   readonly planUsedUp?: boolean;
   readonly probeSessionId?: string;
   readonly resume?: boolean;
+  readonly resumeFails?: boolean;
   readonly sessionId?: string;
   readonly signedOut?: { readonly code: number; readonly message: string };
   readonly slow?: boolean;

@@ -7,7 +7,8 @@
 // turn carry on, as Vibe does); "slow <millis>" keeps the turn running; anything else is echoed. Usage answers are
 // cumulative for the session, as Vibe's are. `session/load` fails for ids listed in STAND_IN_VIBE_MISSING_SESSIONS.
 // `_account/read` answers a ready account with a plan and a monthly budget unless STAND_IN_VIBE_BUDGET is "none";
-// `_identity/read` answers an email unless STAND_IN_VIBE_EMAIL is "none".
+// `_identity/read` answers an email unless STAND_IN_VIBE_EMAIL is "none". STAND_IN_VIBE_OPTIONS lists the config
+// options a session offers (all three by default).
 import { appendFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 
@@ -54,6 +55,12 @@ const configOptions = {
     options: ["off", "low", "medium", "high", "xhigh", "max"].map((value) => ({ name: value, value })),
     type: "select",
   },
+};
+
+// The config options a session offers: all three, or the comma-separated ids of STAND_IN_VIBE_OPTIONS.
+const offeredOptions = () => {
+  const wanted = process.env.STAND_IN_VIBE_OPTIONS?.split(",");
+  return Object.values(configOptions).filter((option) => wanted === undefined || wanted.includes(option.id));
 };
 
 let current = null;
@@ -190,7 +197,7 @@ createInterface({ input: process.stdin }).on("line", (line) => {
     return send({
       id,
       result: {
-        configOptions: [configOptions.mode, configOptions.model, configOptions.thinking],
+        configOptions: offeredOptions(),
         modes: { availableModes: modes, currentModeId: "accept-edits" },
         sessionId: `vibe-${process.pid}`,
       },
@@ -202,13 +209,12 @@ createInterface({ input: process.stdin }).on("line", (line) => {
     return send({
       id,
       result: {
-        configOptions: [configOptions.mode, configOptions.model, configOptions.thinking],
+        configOptions: offeredOptions(),
         modes: { availableModes: modes, currentModeId: "accept-edits" },
       },
     });
   }
-  if (method === "session/set_config_option")
-    return send({ id, result: { configOptions: [configOptions.mode, configOptions.model, configOptions.thinking] } });
+  if (method === "session/set_config_option") return send({ id, result: { configOptions: offeredOptions() } });
   if (method === "session/prompt") {
     current = { id, sessionId: params.sessionId, timer: null };
     update(params.sessionId, { sessionUpdate: "usage_update", size: 200_000, used: 1234 });
