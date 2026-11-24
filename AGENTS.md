@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To verify the realm pane keeping its tab when another quest opens, read the [current handoff](.agents/handoffs/2026-11-24-1720-quest-tab-keeps-tab.md). Handoffs are shared and committed.
+
 - To verify the conversation `!` terminal following the agent's worktree in the running desktop app, read the [current handoff](.agents/handoffs/2026-11-24-1707-shell-follows-worktree.md). Handoffs are shared and committed.
 
 - To resume the 2026-11-24 architecture audit (H1/H4/H5 and H2), read the [current handoff](.agents/handoffs/2026-11-24-1656-architecture-audit.md). Handoffs are shared and committed.
-
-- To verify the squarer composer and the Workshop in the File menu in the running desktop app, read the [current handoff](.agents/handoffs/2026-11-24-1418-squarer-composer.md). Handoffs are shared and committed.

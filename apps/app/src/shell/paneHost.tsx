@@ -11,7 +11,7 @@ import { listedMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ExpandPaneButton, FoldPaneButton } from "../ui/questHeaderButtons";
-import { ChannelPane, QuestStartFailure } from "./channelPane";
+import { ChannelPane, type ChannelTabMemory, QuestStartFailure } from "./channelPane";
 import { ErrandStarter } from "./errandStarter";
 import { resizedWeights } from "./paneChain";
 import type { PaneId } from "./paneIds";
@@ -39,6 +39,7 @@ export function PaneHost({
   onOpenMission,
   onOpenThread,
   openThread,
+  tabMemory,
 }: {
   client: ServiceClient;
   errandsRequest: object | null;
@@ -56,6 +57,8 @@ export function PaneHost({
   onOpenThread: (threadId: ThreadId) => void;
   /** The deepest thread of the chain, or null for the quest's own thread. */
   openThread: ThreadId | null;
+  /** The channel pane's last tab, so the pane of the next quest to open starts on it. */
+  tabMemory?: ChannelTabMemory | undefined;
 }) {
   const { data } = useServiceQuery(
     client,
@@ -207,6 +210,7 @@ export function PaneHost({
                     onOpenMission={openChannelQuest}
                     onOpenThread={onOpenErrand}
                     openMission={missionId}
+                    tabMemory={tabMemory}
                   />
                   <QuestStartFailure failure={questStartFailure} />
                 </>,

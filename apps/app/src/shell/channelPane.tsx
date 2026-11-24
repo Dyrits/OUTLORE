@@ -1,5 +1,5 @@
 import { type MissionId, type ThreadId, WorkspaceId } from "@outlore/contracts";
-import { type ReactNode, useEffect, useState } from "react";
+import { type MutableRefObject, type ReactNode, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
 import { PaneTabs } from "../conversation/paneTabs";
@@ -17,6 +17,12 @@ import { PaneNotches } from "./paneStrip";
 import { inRealmOf } from "./realmRoster";
 import { useStartQuest } from "./useStartQuest";
 
+/** The tabs of a channel's pane. */
+export type ChannelTab = "Missives" | "Quests" | "Realm" | "Rituals" | "History" | "Companions";
+
+/** The tab a channel's pane last showed, kept by the screen so the pane opened beside the next quest starts there. */
+export type ChannelTabMemory = MutableRefObject<{ channelId: string | null; tab: ChannelTab } | null>;
+
 export function ChannelPane({
   channel,
   chrome,
@@ -26,6 +32,7 @@ export function ChannelPane({
   onOpenMission,
   onOpenThread,
   openMission,
+  tabMemory,
 }: {
   channel: { id: string | null; name: string };
   chrome?: ReactNode;
@@ -37,6 +44,7 @@ export function ChannelPane({
   /** Opens an errand of a quest, from the History tab. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   openMission?: MissionId | undefined;
+  tabMemory?: ChannelTabMemory | undefined;
 }) {
   return (
     <ChannelBody
@@ -49,6 +57,7 @@ export function ChannelPane({
       onOpenMission={onOpenMission}
       onOpenThread={onOpenThread}
       openMission={openMission}
+      tabMemory={tabMemory}
     />
   );
 }
@@ -60,12 +69,14 @@ export function StandaloneChannel({
   onOpenMission,
   onOpenThread,
   questsRequest,
+  tabMemory,
 }: {
   channel: { id: string | null; name: string };
   client: ServiceClient;
   onOpenMission: (id: MissionId) => void;
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   questsRequest: object | null;
+  tabMemory?: ChannelTabMemory | undefined;
 }) {
   const { data } = useServiceQuery(client, listedMissions.request, listedMissions.key);
   const realmId = channel.id === null ? null : WorkspaceId.make(channel.id);
@@ -82,6 +93,7 @@ export function StandaloneChannel({
         listRequest={listRequest ?? void 0}
         onOpenMission={onOpenMission}
         onOpenThread={onOpenThread}
+        tabMemory={tabMemory}
       />
       <QuestStartFailure failure={failure} />
       <PaneNotches parts={parts} side="right" />
@@ -104,7 +116,7 @@ const local = StyleSheet.create({
 
 /**
  * A channel's pane (conversation panes): Missives is its conversation, Quests lists the realm's quests in the same
- * pane, and History lists all of them by recency, with their errands. The tab resets with the channel, so each realm opens on its conversation.
+ * pane, and History lists all of them by recency, with their errands. The tab resets with the channel, so each realm opens on its conversation, and stays when a quest opens.
  */
 function ChannelBody({
   channel,
@@ -115,6 +127,7 @@ function ChannelBody({
   onOpenMission,
   onOpenThread,
   openMission,
+  tabMemory,
 }: {
   channel: { id: string | null; name: string };
   chrome?: ReactNode;
@@ -124,10 +137,14 @@ function ChannelBody({
   onOpenMission: (id: MissionId) => void;
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
   openMission?: MissionId | undefined;
+  tabMemory?: ChannelTabMemory | undefined;
 }) {
-  const [tab, setTab] = useState<"Missives" | "Quests" | "Realm" | "Rituals" | "History" | "Companions">(
-    listRequest === undefined ? "Missives" : "Quests",
-  );
+  // Opening a quest remounts the panes; the channel's pane starts on the tab it showed, if it is the same channel.
+  const remembered = tabMemory?.current?.channelId === channel.id ? tabMemory.current.tab : null;
+  const [tab, setTab] = useState<ChannelTab>(listRequest === undefined ? (remembered ?? "Missives") : "Quests");
+  useEffect(() => {
+    if (tabMemory !== undefined) tabMemory.current = { channelId: channel.id, tab };
+  }, [tab, channel.id, tabMemory]);
   useEffect(() => {
     if (listRequest !== undefined) setTab("Quests");
   }, [listRequest]);

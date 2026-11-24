@@ -12,7 +12,7 @@ import { SettingsScreen } from "../settings/settings";
 import type { SettingsSectionId } from "../settings/settingsSections";
 import { UsageScreen } from "../usage";
 import { ArchiveScreen } from "./archivePage";
-import { ChannelPane, StandaloneChannel } from "./channelPane";
+import { ChannelPane, type ChannelTabMemory, StandaloneChannel } from "./channelPane";
 import { ChronicleActivity } from "./chronicleActivity";
 import { HomeScreen } from "./homeScreen";
 import type { QuestOrigin } from "./location";
@@ -99,6 +99,8 @@ function AppScreenContent({
     // The Workshop parks what is under it, so only a screen the owner left for another place closes the channel.
     if (openMission === null && place !== "Settings") isChannelOpen.current = place === "Channel";
   }, [openMission, place]);
+  // The tab the channel's pane showed: the panes remount for each quest, and the channel stays on its tab.
+  const channelTab: ChannelTabMemory = useRef(null);
   const setChannelOpen = useCallback((isOpen: boolean) => {
     isChannelOpen.current = isOpen;
   }, []);
@@ -176,6 +178,7 @@ function AppScreenContent({
               onOpenMission={navigation.openMission}
               onOpenThread={navigation.selectThread}
               openThread={quest.openThread}
+              tabMemory={channelTab}
             />
           </CompanionDockActions.Provider>
         </View>
@@ -210,6 +213,7 @@ function AppScreenContent({
             onBack={navigation.openMenu}
             onOpenMission={(id) => navigation.openMission(id, "channel")}
             onOpenThread={(missionId, threadId) => navigation.openThread(missionId, threadId, "channel")}
+            tabMemory={channelTab}
           />
         </View>
         {conversation !== null && (
@@ -240,6 +244,7 @@ function AppScreenContent({
               onOpenMission={navigation.openMission}
               onOpenThread={navigation.openThread}
               questsRequest={channel.questsRequest}
+              tabMemory={channelTab}
             />
           </CompanionDockActions.Provider>
         </View>
