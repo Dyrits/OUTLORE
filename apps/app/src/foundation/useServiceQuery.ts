@@ -1,6 +1,6 @@
 import type { Request, ResultOf } from "@outlore/contracts";
 import { useEffect, useState } from "react";
-import type { ServiceClient } from "./client";
+import { messageOf, type ServiceClient } from "./client";
 
 /** Runs a query now and again after every committed change. */
 export function useServiceQuery<R extends Request>(client: ServiceClient, request: R, key: string) {
@@ -10,23 +10,32 @@ export function useServiceQuery<R extends Request>(client: ServiceClient, reques
   // biome-ignore lint/correctness/useExhaustiveDependencies: the key identifies the request.
   useEffect(() => {
     let isCurrent = true;
-    // Only the latest read may show its outcome, so a slow older reply cannot replace a newer one.
-    let latest = 0;
-    const load = () => {
-      const mine = ++latest;
-      return client.request(request).then(
-        (value) => {
-          if (!isCurrent || mine !== latest) return;
-          setData(value);
-          setError(null);
-        },
-        (reason: Error) => {
-          if (isCurrent && mine === latest) setError(reason.message);
-        },
-      );
+    let isLoading = false;
+    let needsRefresh = false;
+
+    const load = async () => {
+      if (isLoading) {
+        needsRefresh = true;
+        return;
+      }
+      isLoading = true;
+      do {
+        needsRefresh = false;
+        try {
+          const value = await client.request(request);
+          if (isCurrent) {
+            setData(value);
+            setError(null);
+          }
+        } catch (reason) {
+          if (isCurrent) setError(messageOf(reason));
+        }
+      } while (isCurrent && needsRefresh);
+      isLoading = false;
     };
-    load();
+
     const unsubscribe = client.subscribe(load);
+    void load();
     return () => {
       isCurrent = false;
       unsubscribe();
