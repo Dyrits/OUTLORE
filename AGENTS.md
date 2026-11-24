@@ -65,4 +65,4 @@ Latest handoffs:
 
 - To verify the History tab in the realm's channel in the running app, read the [current handoff](.agents/handoffs/2026-11-24-1256-realm-history-tab.md). Handoffs are shared and committed.
 
-- To verify Claude background wakes and queued-message recovery, read the [current handoff](.agents/handoffs/2026-11-24-1205-dead-background-threads.md). Handoffs are shared and committed.
+- To verify segmented pane tabs on desktop and phone, read the [current handoff](.agents/handoffs/2026-11-24-1256-segmented-pane-tabs.md). Handoffs are shared and committed.
