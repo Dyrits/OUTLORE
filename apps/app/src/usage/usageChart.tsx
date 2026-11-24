@@ -1,4 +1,4 @@
-import type { UsageDay } from "@outlore/contracts";
+import { type HarnessName, harnessNames, type UsageDay } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { handCursor, tooltipOf } from "../ui/pointer";
@@ -7,22 +7,8 @@ import { axisTextOf, metricNames, metricValueOf, type UsageMetric } from "./usag
 import { dayCaptionOf, dayLabelOf } from "./usageLabels";
 import { chartScaleOf } from "./usageScale";
 
-/** The stack's order, top to bottom. */
-const stackOrder = [
-  "claude",
-  "codex",
-  "opencode",
-  "vibe",
-  "hermes",
-  "muse",
-  "pi",
-  "cursor",
-  "copilot",
-  "cline",
-  "devin",
-  "antigravity",
-  null,
-] as const;
+/** The stack's order, top to bottom, derived from `harnessNames` with unrecorded turns last. */
+const stackOrder: ReadonlyArray<HarnessName | null> = [...harnessNames, null];
 
 const plotHeight = 180;
 const axisWidth = 72;

@@ -1,24 +1,57 @@
-import { Schema } from "effect";
+import { Record, Schema } from "effect";
 import { AccountId } from "./ids.ts";
 
 // Harnesses and the provider accounts they sign in with (provider-accounts).
 
-/** The harness a thread runs on: Claude Code, Codex, OpenCode, Mistral Vibe (ADR 0008), or Hermes and Muse, the first of the ACP provider batch (2026-11-22). */
-export const HarnessName = Schema.Literals([
-  "claude",
-  "codex",
-  "opencode",
-  "vibe",
-  "hermes",
-  "muse",
-  "pi",
-  "cursor",
-  "copilot",
-  "cline",
-  "devin",
-  "antigravity",
-]);
+/** One harness's shared identity: its owner-facing label, usual model company, and display order. */
+export type HarnessDescriptor = {
+  /** The usual model company when the model's own identifier names none. */
+  readonly company: string;
+  /** The harness's name as the owner reads it. */
+  readonly label: string;
+  /** The harness's position across pickers, Settings, and usage charts, lowest first. */
+  readonly order: number;
+};
+
+/** Every harness's shared identity, keyed by wire name: the single source of truth for names, labels, companies, and display order. */
+export const harnessDescriptors = {
+  // Antigravity fronts Google's Gemini models; GitHub Copilot fronts GitHub's; Devin fronts Cognition's.
+  antigravity: { company: "Google", label: "Gemini (Antigravity)", order: 11 },
+  claude: { company: "Anthropic", label: "Claude Code", order: 0 },
+  // Hermes, Muse, Pi, Cline, and Cursor front several companies' models behind their own runtime, so each harness's name stands in for one.
+  cline: { company: "Cline", label: "Cline", order: 9 },
+  codex: { company: "OpenAI", label: "Codex", order: 1 },
+  copilot: { company: "GitHub", label: "GitHub Copilot", order: 8 },
+  cursor: { company: "Cursor", label: "Cursor", order: 7 },
+  devin: { company: "Cognition", label: "Devin", order: 10 },
+  hermes: { company: "Hermes", label: "Hermes", order: 4 },
+  muse: { company: "Muse", label: "Muse", order: 5 },
+  opencode: { company: "OpenCode", label: "OpenCode", order: 2 },
+  pi: { company: "Pi", label: "Pi", order: 6 },
+  vibe: { company: "Mistral", label: "Mistral Vibe", order: 3 },
+} as const satisfies Record<string, HarnessDescriptor>;
+
+/** Every harness, in the order pickers, Settings, and charts list them. */
+// Uses `.sort` on the fresh array returned by `Record.keys` because Hermes on Android lacks `Array.prototype.toSorted`.
+export const harnessNames: ReadonlyArray<keyof typeof harnessDescriptors> = Record.keys(harnessDescriptors).sort(
+  (current, next) => harnessDescriptors[current].order - harnessDescriptors[next].order,
+);
+
+/** The harness a thread runs on, derived from `harnessDescriptors` in display order (ADR 0008). */
+export const HarnessName = Schema.Literals(harnessNames);
 export type HarnessName = typeof HarnessName.Type;
+
+/** Each harness's name as the owner reads it, derived from `harnessDescriptors`. */
+export const harnessLabels: Record<HarnessName, string> = Record.map(
+  harnessDescriptors,
+  (descriptor) => descriptor.label,
+);
+
+/** Each harness's usual model company when the model's own identifier names none, derived from `harnessDescriptors`. */
+export const harnessCompanies: Record<HarnessName, string> = Record.map(
+  harnessDescriptors,
+  (descriptor) => descriptor.company,
+);
 
 /**
  * The effort a thread runs with, by the provider's own name for the level, such as "low", "xhigh", or OpenCode's

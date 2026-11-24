@@ -1,28 +1,16 @@
-import type {
-  AccountId,
-  EffortChoice,
-  HarnessList,
-  HarnessName,
-  ModelChoice,
-  ModelOption,
-  TokenUsage,
+import {
+  type AccountId,
+  type EffortChoice,
+  type HarnessList,
+  type HarnessName,
+  harnessCompanies,
+  harnessLabels,
+  type ModelChoice,
+  type ModelOption,
+  type TokenUsage,
 } from "@outlore/contracts";
 
-/** Each harness by the name the owner reads. */
-export const harnessLabels = {
-  antigravity: "Gemini (Antigravity)",
-  claude: "Claude Code",
-  cline: "Cline",
-  codex: "Codex",
-  copilot: "GitHub Copilot",
-  cursor: "Cursor",
-  devin: "Devin",
-  hermes: "Hermes",
-  muse: "Muse",
-  opencode: "OpenCode",
-  pi: "Pi",
-  vibe: "Mistral Vibe",
-} as const satisfies Record<HarnessName, string>;
+export { harnessLabels };
 
 /** A model's label from its harness's list, or its identifier when the list does not name it. */
 export const modelLabelOf = (model: ModelChoice, options: ReadonlyArray<ModelOption> = []) =>
@@ -46,25 +34,6 @@ export const runnerSummaryOf = (
     info !== undefined && info.accounts.length > 1 ? info.accounts.find(({ id }) => id === accountId) : undefined;
   return `${modelLabelOf(runner.model, models)}${runner.effort === "default" ? "" : ` · ${effortName(runner.effort)}`}${account === undefined ? "" : ` · ${account.label}`}`;
 };
-
-/** Each harness's usual model company, when the model's own identifier names none. */
-const harnessProviders = {
-  // Antigravity fronts Google's Gemini models; GitHub Copilot fronts GitHub's; Devin fronts Cognition's.
-  antigravity: "Google",
-  claude: "Anthropic",
-  // Hermes, Muse, Pi, Cline, and Cursor front several companies' models behind their own runtime, so each
-  // harness's name stands in for one.
-  cline: "Cline",
-  codex: "OpenAI",
-  copilot: "GitHub",
-  cursor: "Cursor",
-  devin: "Cognition",
-  hermes: "Hermes",
-  muse: "Muse",
-  opencode: "OpenCode",
-  pi: "Pi",
-  vibe: "Mistral",
-} as const satisfies Record<HarnessName, string>;
 
 const titled = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
@@ -99,7 +68,7 @@ export const companionLabelOf = (harness: HarnessName, reported: string | null, 
   const known = reported === null ? null : knownModelOf(reported);
   if (known !== null) return `${known.provider} - ${known.name}`;
   const name = reported ?? modelLabelOf(chosen);
-  return `${harnessProviders[harness]} - ${name}`;
+  return `${harnessCompanies[harness]} - ${name}`;
 };
 
 /**

@@ -2,9 +2,17 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 // Entry point when Electron starts the service as a utilityProcess.
 import { delimiter, join } from "node:path";
-import { Cause, Config, Effect, Exit, Layer, Predicate } from "effect";
+import { Cause, Config, Effect, Exit, Layer, Predicate, Record } from "effect";
 import { Harness, modelsDevSourceLayer, noPriceSourceLayer, sandboxProblem, vaultFolderOf } from "./core/index.ts";
-import { fakeHarnessLayer, fakeHarnessToolsLayer, liveHarnessToolsLayer, makeHarnessRouter } from "./harness/index.ts";
+import {
+  commandEnvVarOf,
+  defaultCommandOf,
+  fakeHarnessLayer,
+  fakeHarnessToolsLayer,
+  harnessFacts,
+  liveHarnessToolsLayer,
+  makeHarnessRouter,
+} from "./harness/index.ts";
 import { defaultRelayOrigin } from "./remote/index.ts";
 import { serveLoopback } from "./server.ts";
 import { serviceLayer } from "./service.ts";
@@ -32,12 +40,11 @@ const parentPortOf = (host: unknown): ParentPort | null => {
 
 const parentPort = parentPortOf(process);
 
-/** Uses the installed legacy executable when present, otherwise the vendor installer’s executable. */
-const defaultAntigravityCommand = () => {
+/** Whether an executable exists on PATH. */
+const hasExecutableOnPath = (executable: string) => {
   const suffix = process.platform === "win32" ? ".exe" : "";
   const folders = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
-  const legacy = folders.some((folder) => existsSync(join(folder, `antigravity${suffix}`)));
-  return legacy ? "antigravity" : "agy";
+  return folders.some((folder) => existsSync(join(folder, `${executable}${suffix}`)));
 };
 
 // A missing variable fails the program through Config instead of throwing at import.
@@ -46,29 +53,14 @@ const liveLayer = Layer.unwrap(
     const dataDirectory = yield* Config.NonEmptyString("OUTLORE_DATA_DIR");
     // OUTLORE_HARNESS=fake selects the echo harness for checks.
     const harnessName = yield* Config.String("OUTLORE_HARNESS").pipe(Config.withDefault("claude"));
-    const antigravityCommand = yield* Effect.sync(defaultAntigravityCommand);
-    const commands = {
-      // The Antigravity CLI fronts Gemini's models through ACP (`antigravity acp`, home in --gemini-dir).
-      antigravity: yield* Config.String("OUTLORE_ANTIGRAVITY_PATH").pipe(Config.withDefault(antigravityCommand)),
-      claude: yield* Config.String("OUTLORE_CLAUDE_PATH").pipe(Config.withDefault("claude")),
-      // Cline is a plain ACP server (`cline --acp`).
-      cline: yield* Config.String("OUTLORE_CLINE_PATH").pipe(Config.withDefault("cline")),
-      codex: yield* Config.String("OUTLORE_CODEX_PATH").pipe(Config.withDefault("codex")),
-      // The Copilot CLI keeps an ACP server (`copilot --acp --no-auto-update`).
-      copilot: yield* Config.String("OUTLORE_COPILOT_PATH").pipe(Config.withDefault("copilot")),
-      // Cursor's CLI is `cursor-agent`, never `cursor` (that starts the editor); it serves ACP (`cursor-agent acp`).
-      cursor: yield* Config.String("OUTLORE_CURSOR_PATH").pipe(Config.withDefault("cursor-agent")),
-      // Devin serves ACP (`devin acp`).
-      devin: yield* Config.String("OUTLORE_DEVIN_PATH").pipe(Config.withDefault("devin")),
-      // Hermes is the first of the generic ACP providers (`hermes acp`); an account's home is set per turn.
-      hermes: yield* Config.String("OUTLORE_HERMES_PATH").pipe(Config.withDefault("hermes")),
-      // Muse runs its own MSP host (`muse serve`) through the official SDK.
-      muse: yield* Config.String("OUTLORE_MUSE_PATH").pipe(Config.withDefault("muse")),
-      opencode: yield* Config.String("OUTLORE_OPENCODE_PATH").pipe(Config.withDefault("opencode")),
-      // Pi enters through its own `--mode rpc` interface (the unmodified CLI, fail-closed: piTools.ts).
-      pi: yield* Config.String("OUTLORE_PI_PATH").pipe(Config.withDefault("pi")),
-      vibe: yield* Config.String("OUTLORE_VIBE_PATH").pipe(Config.withDefault("vibe-acp")),
-    };
+    const commands = yield* Effect.all(
+      Record.map(harnessFacts, (_facts, name) =>
+        Effect.gen(function* () {
+          const fallback = yield* Effect.sync(() => defaultCommandOf(name, hasExecutableOnPath));
+          return yield* Config.String(commandEnvVarOf(name)).pipe(Config.withDefault(fallback));
+        }),
+      ),
+    );
     // OUTLORE_RELAY_ORIGIN points pairing at another relay, such as one run locally for checks (device-pairing).
     const relayOrigin = yield* Config.String("OUTLORE_RELAY_ORIGIN").pipe(Config.withDefault(defaultRelayOrigin));
     // OUTLORE_RELEASE is the release the desktop app runs; a host tells it to the browsers that connect.

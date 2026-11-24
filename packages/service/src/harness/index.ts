@@ -32,10 +32,13 @@ export { fakeHarnessLayer } from "./fakeHarness.ts";
 export {
   claudeCheapestModel,
   claudeModels,
+  commandEnvVarOf,
+  defaultCommandOf,
   harnessFacts,
   harnessLabels,
   harnessNames,
   refusesAddedAccounts,
+  type SandboxAdvice,
 } from "./harnessCatalog.ts";
 export { harnesses, makeHarnessRouter } from "./harnesses.ts";
 export {

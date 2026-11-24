@@ -1,7 +1,7 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { EffortChoice, HarnessName, ModelOption } from "@outlore/contracts";
-import { type Duration, Effect, Queue, type Scope } from "effect";
+import { type Duration, Effect, Queue, Record, type Scope } from "effect";
 import {
   fieldOf,
   type HarnessAdapter,
@@ -32,8 +32,8 @@ import { probePiModels } from "./piRpc.ts";
 import { makeVibeHarness } from "./vibe.ts";
 import { listVibeModels, readVibeSignIn } from "./vibeAccount.ts";
 
-// The harness registry (provider-accounts): each harness defined once, by its facts, its turn adapter, and
-// what Outlore asks its own tool about sign-in and models. Adding a harness adds one entry here and one line in `makeHarnessRouter`.
+// The harness registry (provider-accounts): each harness defined once, by its facts, its turn adapter, and what Outlore asks its own tool about sign-in and models.
+// `makeHarnessRouter` derives its entries from `harnesses`.
 
 /** What every harness's turn adapter is started with in the app. */
 export type AdapterOptions = {
@@ -327,20 +327,7 @@ export const harnesses = {
 } satisfies Record<HarnessName, HarnessDefinition>;
 
 /** The adapter the app runs turns through: each harness's own, started from its definition (provider-accounts). */
-export const makeHarnessRouter = (commands: Record<HarnessName, string>, options: Omit<AdapterOptions, "command">) => {
-  const adapterOf = (name: HarnessName) => harnesses[name].makeAdapter({ ...options, command: commands[name] });
-  return Effect.all({
-    antigravity: adapterOf("antigravity"),
-    claude: adapterOf("claude"),
-    cline: adapterOf("cline"),
-    codex: adapterOf("codex"),
-    copilot: adapterOf("copilot"),
-    cursor: adapterOf("cursor"),
-    devin: adapterOf("devin"),
-    hermes: adapterOf("hermes"),
-    muse: adapterOf("muse"),
-    opencode: adapterOf("opencode"),
-    pi: adapterOf("pi"),
-    vibe: adapterOf("vibe"),
-  } satisfies Record<HarnessName, unknown>).pipe(Effect.map(routeHarnesses));
-};
+export const makeHarnessRouter = (commands: Record<HarnessName, string>, options: Omit<AdapterOptions, "command">) =>
+  Effect.all(
+    Record.map(harnesses, (definition, name) => definition.makeAdapter({ ...options, command: commands[name] })),
+  ).pipe(Effect.map(routeHarnesses));

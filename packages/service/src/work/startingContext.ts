@@ -1,11 +1,11 @@
 import { join } from "node:path";
-import type { HarnessName, ModelChoice, ModelOption, StartingContext } from "@outlore/contracts";
+import type { HarnessName, ModelChoice, StartingContext } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { notFound, tokensOf } from "../core/index.ts";
 import {
-  claudeModels,
   guildmasterInstructionsOf,
+  harnessFacts,
   positionLineOf,
   type ThreadPosition,
   threadInstructionsOf,
@@ -62,22 +62,6 @@ type Subject = {
 
 /** Stands in for the id of a thread about to be opened: every id has this length, so the size is the same. */
 const unopenedThreadId = "00000000-0000-0000-0000-000000000000";
-
-// Every harness but Claude lists its models only by running (HarnessTools.listModels), so they suggest none.
-const catalogModels = {
-  antigravity: [],
-  claude: claudeModels,
-  cline: [],
-  codex: [],
-  copilot: [],
-  cursor: [],
-  devin: [],
-  hermes: [],
-  muse: [],
-  opencode: [],
-  pi: [],
-  vibe: [],
-} as const satisfies Record<HarnessName, ReadonlyArray<ModelOption>>;
 
 /** The tokens of a part that may be absent: none when it is. */
 const tokensOfPart = (part: string | null) => (part === null ? 0 : tokensOf(part));
@@ -211,8 +195,9 @@ export const readStartingContext = Effect.fnUntraced(function* (
   const tokens = Object.values(parts).reduce((sum, part) => sum + part, 0);
   // The harness's default model has no name: on the parent's own harness it is the model the parent's turns reported.
   const { tokens: windowTokens } = yield* readContextLimit(choice.model, harness === parent.harness ? parentId : null);
+  // Every harness without fixed models lists its models only by running (HarnessTools.listModels), so it suggests none here.
   const limits = yield* Effect.forEach(
-    catalogModels[harness].map((option) => option.id),
+    (harnessFacts[harness].fixedModels ?? []).map((option) => option.id),
     (model) => readContextLimit(model).pipe(Effect.map((limit) => ({ model, tokens: limit.tokens }))),
   );
   return {
