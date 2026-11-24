@@ -1,4 +1,4 @@
-import type { BackupCompanion, SettingsChange, Tier, TierName } from "@outlore/contracts";
+import type { BackupCompanion, HarnessList, SettingsChange, Tier, TierName } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BackupsEditor } from "../editors/backupsEditor";
@@ -26,26 +26,25 @@ export const tierNames: ReadonlyArray<{ hint: string; name: TierName }> = [
 /** A row of tabs in the Companions tab's own style. */
 function Tabs<T extends string>({
   onChange,
-  shouldWrap = false,
   options,
   value,
   labelOf,
 }: {
   onChange: (option: T) => void;
   options: ReadonlyArray<T>;
-  shouldWrap?: boolean;
-  value: T;
+  /** The selected option, or none when what the panel shows is not one of them. */
+  value: T | null;
   labelOf?: (option: T) => string;
 }) {
   return (
-    <View accessibilityRole="tablist" style={[local.tabs, shouldWrap && local.wrappedTabs]}>
+    <View accessibilityRole="tablist" style={local.tabs}>
       {options.map((option) => (
         <Pressable
           accessibilityRole="tab"
           accessibilityState={{ selected: option === value }}
           key={option}
           onPress={() => onChange(option)}
-          style={[local.tab, shouldWrap && local.wrappedTab, option === value && local.tabActive]}
+          style={[local.tab, option === value && local.tabActive]}
         >
           <Text style={[local.tabText, option === value && local.tabTextActive]}>{labelOf?.(option) ?? option}</Text>
         </Pressable>
@@ -97,10 +96,13 @@ function WorkshopBackups({
 function DraftPreset({
   client,
   draft,
+  lastPreset,
   onFocus,
 }: {
   client: ServiceClient;
   draft: Tier;
+  /** Where Discard returns to. */
+  lastPreset: WorkshopPreset;
   onFocus: (focus: WorkshopFocus) => void;
 }) {
   const { data: harnesses } = useHarnesses(client);
@@ -136,8 +138,66 @@ function DraftPreset({
             onFocus(`custom:${name}`);
           }}
         />
-        <Button isPrimary={false} label="Discard" onPress={() => workshopDraft.set(null)} />
+        <Button isPrimary={false} label="Discard" onPress={() => onFocus(lastPreset)} />
       </View>
+    </View>
+  );
+}
+
+/**
+ * The custom presets as a list, under the three built-in tiers' tabs: one row for each, the one shown marked, and a
+ * row that starts a new one. A list stays readable however many there are, as a row of tabs does not.
+ */
+export function CustomPresets({
+  harnesses,
+  isDraft,
+  onAdd,
+  onFocus,
+  presets,
+  selected,
+}: {
+  harnesses: HarnessList | null;
+  isDraft: boolean;
+  onAdd: () => void;
+  onFocus: (focus: WorkshopFocus) => void;
+  presets: ReadonlyArray<{ focus: WorkshopPreset; name: string; stack: Tier | null }>;
+  selected: WorkshopFocus;
+}) {
+  return (
+    <View style={local.custom}>
+      <Text style={local.title}>Custom</Text>
+      {presets.length === 0 && !isDraft && <Text style={local.note}>None yet.</Text>}
+      {presets.map(({ focus, name, stack }) => {
+        const isSelected = !isDraft && focus === selected;
+        return (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
+            key={focus}
+            onPress={() => onFocus(focus)}
+            style={[local.customRow, isSelected && local.tabActive]}
+          >
+            <Text numberOfLines={1} style={[local.customName, isSelected && local.tabTextActive]}>
+              {name}
+            </Text>
+            {stack !== null && (
+              <Text numberOfLines={1} style={local.customSummary}>
+                {runnerSummaryOf(harnesses, stack)}
+              </Text>
+            )}
+          </Pressable>
+        );
+      })}
+      {isDraft ? (
+        <View style={[local.customRow, local.tabActive]}>
+          <Text style={[local.customName, local.tabTextActive]}>New preset</Text>
+          <Text style={local.customSummary}>Not saved yet</Text>
+        </View>
+      ) : (
+        <Pressable accessibilityRole="button" onPress={onAdd} style={local.customRow}>
+          <Text style={styles.link}>+ Add preset</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -165,7 +225,6 @@ export function WorkshopCompanions({
     client.request({ _tag: "ChangeSettings", change }).catch((reason) => setError(messageOf(reason)));
   };
   if (settings === null) return <Text style={local.note}>Reading the settings…</Text>;
-  if (draft !== null) return <DraftPreset client={client} draft={draft} onFocus={onFocus} />;
   const defaults = {
     accountId: null,
     effort: settings.defaultEffort,
@@ -191,7 +250,8 @@ export function WorkshopCompanions({
   ];
   const selected = focus === "Default" ? lastPreset : focus;
   const preset = presets.find((candidate) => candidate.focus === selected);
-  const isPresets = focus !== "Default" && preset !== undefined;
+  const isDraft = draft !== null;
+  const isPresets = isDraft || (focus !== "Default" && preset !== undefined);
   const stack = preset?.stack ?? null;
   const saveStack = (next: Tier) => {
     setError(null);
@@ -205,15 +265,26 @@ export function WorkshopCompanions({
         value={isPresets ? "Presets" : "Default"}
       />
       {isPresets && (
-        <Tabs
-          labelOf={(option) => presets.find((candidate) => candidate.focus === option)?.name ?? option}
-          onChange={onFocus}
-          options={presets.map((candidate) => candidate.focus)}
-          shouldWrap={custom.length > 0}
-          value={selected}
-        />
+        <>
+          <Tabs
+            labelOf={(option) => presets.find((candidate) => candidate.focus === option)?.name ?? option}
+            onChange={onFocus}
+            options={tierNames.map(({ name }) => name)}
+            value={isDraft || selected.startsWith("custom:") ? null : (selected as TierName)}
+          />
+          <CustomPresets
+            harnesses={harnesses}
+            isDraft={isDraft}
+            onAdd={() => workshopDraft.set(stack ?? { ...defaults, backups: [] })}
+            onFocus={onFocus}
+            presets={presets.filter((candidate) => candidate.focus.startsWith("custom:"))}
+            selected={selected}
+          />
+        </>
       )}
-      {!isPresets || preset === undefined ? (
+      {draft !== null ? (
+        <DraftPreset client={client} draft={draft} lastPreset={lastPreset} onFocus={onFocus} />
+      ) : !isPresets || preset === undefined ? (
         <FoldGroup initial="main" key="default">
           <Fold harness={defaults.harness} id="main" summary={runnerSummaryOf(harnesses, defaults)} title="Companion">
             <RunnerPickers
@@ -277,6 +348,25 @@ export function WorkshopCompanions({
 
 const local = StyleSheet.create({
   backups: { gap: 8, paddingTop: 8 },
+  custom: { gap: 4 },
+  customName: { color: colors.textSecondary, flexShrink: 0, fontSize: 13, fontWeight: "500", maxWidth: "50%" },
+  customRow: {
+    alignItems: "center",
+    borderColor: colors.edge,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  customSummary: {
+    color: colors.textMuted,
+    flex: 1,
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.sm,
+    textAlign: "right",
+  },
   draftActions: { alignItems: "flex-start", flexDirection: "row", flexWrap: "wrap", gap: 8 },
   error: { color: colors.dangerText, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   note: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
@@ -296,6 +386,4 @@ const local = StyleSheet.create({
   tabTextActive: { color: colors.accentText, fontWeight: "700" },
   tier: { gap: 8 },
   title: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
-  wrappedTab: { flex: 0, flexGrow: 1, maxWidth: "100%", paddingHorizontal: 8 },
-  wrappedTabs: { flexWrap: "wrap" },
 });
