@@ -149,6 +149,8 @@ export type TurnRequest = {
    * (action-approval). A failure to answer ends the turn.
    */
   readonly askOwner: (prompt: HarnessPrompt) => Effect.Effect<PromptAnswer, HarnessFailure>;
+  /** Waits until the caller has finished recording this turn so a background wake can be admitted. */
+  readonly awaitSettlement?: Effect.Effect<void>;
   /**
    * The provider account's own folder, where the harness keeps its sign-in and sessions, or null for the
    * harness's own sign-in on this computer (provider-accounts).

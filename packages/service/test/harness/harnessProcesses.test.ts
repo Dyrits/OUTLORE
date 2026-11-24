@@ -347,6 +347,25 @@ describe("a process that wakes itself between turns", () => {
     }).pipe(Effect.scoped),
   );
 
+  it.effect("fails a background turn if the process that signalled the wake has exited", () =>
+    Effect.gen(function* () {
+      const { connections, protocol, resumed, signals } = wakingProtocolOf();
+      const pool = yield* makeHarnessProcesses(protocol, { idleTimeout: "10 minutes" });
+      const asked = yield* Deferred.make<void>();
+      pool.onBackgroundWake(() => Deferred.succeed(asked, void 0).pipe(Effect.as(true)));
+      yield* pool.runTurn(turnRequestOf());
+      stir(connections);
+      signal(signals);
+      yield* Deferred.await(asked);
+      connections[0]?.close();
+
+      const outcome = yield* pool.runTurn(turnRequestOf({ isBackgroundWake: true, text: "" })).pipe(Effect.result);
+      expect(outcome._tag).toBe("Failure");
+      expect(resumed).toHaveLength(0);
+      expect(connections).toHaveLength(1);
+    }).pipe(Effect.scoped),
+  );
+
   it.effect("closes the process when its wake is refused, which would otherwise run unseen", () =>
     Effect.gen(function* () {
       const { closed, connections, protocol, signals } = wakingProtocolOf();

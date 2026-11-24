@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { Clock, Context, Effect, FiberMap, FiberSet, Layer, Match, PubSub } from "effect";
+import { Clock, Context, Deferred, Effect, FiberMap, FiberSet, Layer, Match, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
 import { ConnectorGateway, Connectors } from "../connectors/index.ts";
 import { reportedChangeOf } from "../core/fileChanges.ts";
@@ -155,10 +155,11 @@ export const threadsLayer = Layer.effectContext(
         }).pipe(Effect.orDie),
       ).pipe(Effect.asVoid);
 
-    const run = Effect.fnUntraced(function* (
+    const runAdmitted = Effect.fnUntraced(function* (
       threadId: string,
       turn: Admitted,
-    ): Effect.fn.Return<null | undefined, unknown> {
+      awaitSettlement: Effect.Effect<void>,
+    ): Effect.fn.Return<true | null | undefined, unknown> {
       if (!(yield* isCurrent(turn.turnId))) return;
       const removed = yield* local(removedAccountReasonOf(turn));
       if (removed !== null) {
@@ -218,6 +219,7 @@ export const threadsLayer = Layer.effectContext(
             usesCodeMode: shouldUseCodeMode,
           },
           askOwner: askOwnerFor(approvals, sql, threadId),
+          awaitSettlement,
           configDirectory: turn.accountId === null ? null : join(accountsRoot, turn.accountId),
           context,
           conversationSoFar: local(readConversationSoFar(threadId, turn.turnId, turn.model)).pipe(Effect.orDie),
@@ -249,6 +251,15 @@ export const threadsLayer = Layer.effectContext(
         return yield* commands.run(local(recordTurnFailure(threadId, turn, outcome.failure.reason))).pipe(Effect.orDie);
       }
       yield* commands.run(local(completeTurn(threadId, turn, outcome.success))).pipe(Effect.orDie);
+      return true;
+    });
+
+    const run = Effect.fnUntraced(function* (threadId: string, turn: Admitted): Effect.fn.Return<void, unknown> {
+      const settled = yield* Deferred.make<void>();
+      const completed = yield* runAdmitted(threadId, turn, Deferred.await(settled)).pipe(
+        Effect.ensuring(Deferred.succeed(settled, void 0)),
+      );
+      if (completed !== true) return;
       // Messages that arrived during the turn start the next one, in this same fiber,
       // so the thread's entry in the fiber map always holds its current turn.
       const next = yield* local(admitTurn(threadId));

@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Duration } from "effect";
+import type { Duration, Layer } from "effect";
 import { afterEach } from "vitest";
+import type { ConnectorGateway } from "../../src/connectors/index.ts";
 import { claudeHarnessLayer, serviceLayer } from "../../src/index.ts";
 import { temporary } from "./service.ts";
 
@@ -23,11 +24,18 @@ afterEach(() => {
 });
 
 /** A service whose Claude Code adapter runs the stand-in on the current runtime. */
-export const withClaude = (options: { idleTimeout?: Duration.Input; sandboxProblem?: string } = {}) => {
+export const withClaude = (
+  options: {
+    connectorGateway?: Layer.Layer<ConnectorGateway>;
+    idleTimeout?: Duration.Input;
+    sandboxProblem?: string;
+  } = {},
+) => {
   const directory = temporary("outlore-claude-");
   const log = join(directory, "starts.jsonl");
   process.env.STAND_IN_LOG = log;
   const layer = serviceLayer({
+    ...(options.connectorGateway === undefined ? {} : { connectorGateway: options.connectorGateway }),
     filename: join(directory, "outlore.sqlite"),
     harness: claudeHarnessLayer({
       command: process.execPath,

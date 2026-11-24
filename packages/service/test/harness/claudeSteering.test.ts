@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { MissionDetail } from "@outlore/contracts";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
+import { ConnectorGateway, noConnectorsLayer } from "../../src/connectors/index.ts";
 import { withClaude, withoutNote } from "../fixtures/claude.ts";
 import { call, read, sendTo, settle, startMission } from "../fixtures/service.ts";
 import { idleWith } from "../fixtures/standIns.ts";
@@ -120,6 +121,26 @@ describe("steering and interrupting Claude Code", () => {
 });
 
 describe("Claude Code woken by a background command", () => {
+  it.live("records a wake that arrives while the preceding turn is finishing", () => {
+    const connectorGateway = Layer.effect(
+      ConnectorGateway,
+      ConnectorGateway.pipe(
+        Effect.map((gateway) => ({ ...gateway, endTurn: () => Effect.sleep("400 millis") })),
+        Effect.provide(noConnectorsLayer),
+      ),
+    );
+    const { layer, starts } = withClaude({ connectorGateway });
+    return Effect.gen(function* () {
+      const started = yield* startMission({ effort: "low", model: "haiku", text: "background 20" });
+      const detail = yield* settle(started.missionId, idleWith(2));
+      expect(detail.messages.at(-1)?.text).toMatch(/^Woken 2 .* after the background command$/);
+      yield* sendTo(started.threadId, "Continue");
+      const next = yield* settle(started.missionId, idleWith(3));
+      expect(withoutNote(next.messages.at(-1)?.text)).toMatch(/^Reply 3 .* to: Continue$/);
+      expect(starts()).toHaveLength(1);
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("runs what it does on waking as a turn: replies recorded, a line says why, the thread idle after", () => {
     const { layer, starts } = withClaude();
     return Effect.gen(function* () {

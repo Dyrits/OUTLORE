@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To verify Claude background wakes and queued-message recovery, read the [current handoff](.agents/handoffs/2026-11-24-1205-dead-background-threads.md). Handoffs are shared and committed.
+
 - To verify custom Companion cards and editing in the running Workshop, read the [current handoff](.agents/handoffs/2026-11-24-1153-custom-companion-cards.md). Handoffs are shared and committed.
 
 - To verify the quest and errand notches in the desktop window, read the [current handoff](.agents/handoffs/2026-11-24-1130-two-child-notches.md). Handoffs are shared and committed.
-
-- To verify inactivity notice timestamps and layout, read the [current handoff](.agents/handoffs/2026-11-24-1043-notice-timestamp.md). Handoffs are shared and committed.

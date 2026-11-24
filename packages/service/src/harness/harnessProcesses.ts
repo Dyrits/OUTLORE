@@ -3,7 +3,7 @@ import { Deferred, Duration, Effect } from "effect";
 import {
   type BackgroundWakeListener,
   type HarnessAdapter,
-  type HarnessFailure,
+  HarnessFailure,
   interruptedOutcomeOf,
   interruptGraceMillis,
   type SteeredMessage,
@@ -109,6 +109,7 @@ type Entry<Connection> = {
   /** Whether a turn was asked for to take in what the process began on its own, until a turn begins on it. */
   isTakingBackgroundWake: boolean;
   readonly key: string;
+  settling: RunningTurn | null;
   turn: RunningTurn | null;
 };
 
@@ -144,7 +145,14 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
    */
   const resume = (threadId: string) => {
     const entry = entries.get(threadId);
-    if (entry === undefined || entry.turn !== null || entry.isTakingBackgroundWake || starting.has(threadId)) return;
+    if (
+      entry === undefined ||
+      entry.turn !== null ||
+      entry.settling !== null ||
+      entry.isTakingBackgroundWake ||
+      starting.has(threadId)
+    )
+      return;
     if (entry.connection.hasExited() || entry.connection.hasBackgroundWake?.() !== true || listeners.length === 0)
       return;
     entry.isTakingBackgroundWake = true;
@@ -168,11 +176,15 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
       kept.idleTimer = null;
       return kept;
     }
+    // A wake has no prompt to send, so a replacement process has no work to run or result to return.
+    if (request.isBackgroundWake === true)
+      return yield* new HarnessFailure({ reason: "The harness process that woke this thread is no longer available." });
     const entry: Entry<Connection> = {
       connection: yield* protocol.start(request, { resume: () => resume(request.threadId) }),
       idleTimer: null,
       isTakingBackgroundWake: false,
       key,
+      settling: null,
       turn: null,
     };
     entries.set(request.threadId, entry);
@@ -213,6 +225,7 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
         usage: null,
       };
       entry.turn = turn;
+      entry.settling = null;
       entry.isTakingBackgroundWake = false;
       // An interrupt the harness has not confirmed within the grace period ends the turn regardless.
       const unconfirmed = Deferred.await(turn.interrupted).pipe(
@@ -224,7 +237,15 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
           .runTurn(entry.connection, request, controlOf(turn))
           .pipe(Effect.map((end) => ({ _tag: "Ended", end }) as const)),
         Effect.raceFirst(unconfirmed, Deferred.await(turn.failed)),
-      ).pipe(Effect.result, Effect.ensuring(Effect.sync(() => (entry.turn = null))));
+      ).pipe(
+        Effect.result,
+        Effect.ensuring(
+          Effect.sync(() => {
+            entry.settling = turn;
+            entry.turn = null;
+          }),
+        ),
+      );
       if (ended._tag === "Failure") {
         close(request.threadId);
         // A process that dies while interrupted still spent what its earlier prompts reported.
@@ -241,8 +262,14 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
       if (turn.untaken.size > 0) close(request.threadId);
       else {
         entry.idleTimer = setTimeout(() => close(request.threadId), holdMillisOf(entry.connection));
-        // What the process began while this turn ended has no turn to take it in yet.
-        resume(request.threadId);
+        // Admission can only claim the wake after the preceding turn is recorded as ended.
+        const checkWake = Effect.sync(() => {
+          if (entries.get(request.threadId) !== entry || entry.settling !== turn) return;
+          entry.settling = null;
+          resume(request.threadId);
+        });
+        if (request.awaitSettlement === undefined) yield* checkWake;
+        else fork(request.awaitSettlement.pipe(Effect.andThen(checkWake)));
       }
       const { billing, context, contextWindow, cost, isInterrupted, usage } = ended.success.end;
       return {
