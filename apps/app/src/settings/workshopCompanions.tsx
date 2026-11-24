@@ -1,4 +1,4 @@
-import type { BackupCompanion, SettingsChange, TierName } from "@outlore/contracts";
+import type { BackupCompanion, SettingsChange, Tier, TierName } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BackupsEditor } from "../editors/backupsEditor";
@@ -10,8 +10,8 @@ import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Fold, FoldGroup } from "../ui/fold";
-import { PresetActions } from "./presetActions";
-import type { WorkshopFocus } from "./workshopTabs";
+import { PresetActions, savePresetEdit } from "./presetActions";
+import type { WorkshopFocus, WorkshopPreset } from "./workshopTabs";
 
 /** The three presets, as the Companions tab and the page name them. */
 export const tierNames: ReadonlyArray<{ hint: string; name: TierName }> = [
@@ -23,24 +23,26 @@ export const tierNames: ReadonlyArray<{ hint: string; name: TierName }> = [
 /** A row of tabs in the Companions tab's own style. */
 function Tabs<T extends string>({
   onChange,
+  shouldWrap = false,
   options,
   value,
   labelOf,
 }: {
   onChange: (option: T) => void;
   options: ReadonlyArray<T>;
+  shouldWrap?: boolean;
   value: T;
   labelOf?: (option: T) => string;
 }) {
   return (
-    <View accessibilityRole="tablist" style={local.tabs}>
+    <View accessibilityRole="tablist" style={[local.tabs, shouldWrap && local.wrappedTabs]}>
       {options.map((option) => (
         <Pressable
           accessibilityRole="tab"
           accessibilityState={{ selected: option === value }}
           key={option}
           onPress={() => onChange(option)}
-          style={[local.tab, option === value && local.tabActive]}
+          style={[local.tab, shouldWrap && local.wrappedTab, option === value && local.tabActive]}
         >
           <Text style={[local.tabText, option === value && local.tabTextActive]}>{labelOf?.(option) ?? option}</Text>
         </Pressable>
@@ -85,28 +87,22 @@ function WorkshopBackups({
   );
 }
 
-/**
- * The Companions tab of the Workshop: Default and Presets, and under Presets one tab for each of Light, Balanced, and
- * Heavy. It reads and saves the settings itself; the page's tables show the same values and open it where it is
- * pressed.
- */
+/** The Workshop's Companions panel opens on the default stack or the selected preset. */
 export function WorkshopCompanions({
   client,
   focus,
-  lastTier,
+  lastPreset,
   onFocus,
 }: {
   client: ServiceClient;
   /** What the tab shows; the page's tables and the tab's tabs share it. */
   focus: WorkshopFocus;
   /** The preset the Presets tab opens on. */
-  lastTier: TierName;
+  lastPreset: WorkshopPreset;
   onFocus: (focus: WorkshopFocus) => void;
 }) {
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const { data: harnesses } = useHarnesses(client);
-  const isPresets = focus !== "Default";
-  const tierName = focus === "Default" ? lastTier : focus;
   const [error, setError] = useState<string | null>(null);
   const save = (change: SettingsChange) => {
     setError(null);
@@ -119,24 +115,48 @@ export function WorkshopCompanions({
     harness: settings.defaultHarness,
     model: settings.defaultModel,
   };
-  const tier = settings.tiers[tierName];
-  const displayName = settings.companionPresets?.tierNames[tierName] ?? tierName;
+  const custom = settings.companionPresets?.custom ?? [];
+  const presets = [
+    ...tierNames.map(({ hint, name }) => ({
+      focus: name,
+      hint: `${hint} Chronicler picks it for work of this weight.`,
+      name: settings.companionPresets?.tierNames[name] ?? name,
+      save: (stack: Tier) => client.request({ _tag: "ChangeSettings", change: { tiers: { [name]: stack } } }),
+      stack: settings.tiers[name],
+    })),
+    ...custom.map(({ name, stack }) => ({
+      focus: `custom:${name}` as const,
+      hint: null,
+      name,
+      save: (next: typeof stack) => savePresetEdit(client, { _tag: "SetStack", name, stack: next }),
+      stack,
+    })),
+  ];
+  const selected = focus === "Default" ? lastPreset : focus;
+  const preset = presets.find((candidate) => candidate.focus === selected);
+  const isPresets = focus !== "Default" && preset !== undefined;
+  const stack = preset?.stack ?? null;
+  const saveStack = (next: Tier) => {
+    setError(null);
+    preset?.save(next).catch((reason) => setError(messageOf(reason)));
+  };
   return (
     <View style={local.panel}>
       <Tabs
-        onChange={(next) => onFocus(next === "Presets" ? lastTier : "Default")}
+        onChange={(next) => onFocus(next === "Presets" ? (preset?.focus ?? "Light") : "Default")}
         options={["Default", "Presets"]}
         value={isPresets ? "Presets" : "Default"}
       />
       {isPresets && (
         <Tabs
-          labelOf={(name) => settings.companionPresets?.tierNames[name] ?? name}
+          labelOf={(option) => presets.find((candidate) => candidate.focus === option)?.name ?? option}
           onChange={onFocus}
-          options={tierNames.map(({ name }) => name)}
-          value={tierName}
+          options={presets.map((candidate) => candidate.focus)}
+          shouldWrap={custom.length > 0}
+          value={selected}
         />
       )}
-      {!isPresets ? (
+      {!isPresets || preset === undefined ? (
         <FoldGroup initial="main" key="default">
           <Fold harness={defaults.harness} id="main" summary={runnerSummaryOf(harnesses, defaults)} title="Companion">
             <RunnerPickers
@@ -159,46 +179,36 @@ export function WorkshopCompanions({
           />
         </FoldGroup>
       ) : (
-        <View key={tierName} style={local.tier}>
-          <Text style={local.note}>
-            {tierNames.find(({ name }) => name === tierName)?.hint} Chronicler picks it for work of this weight.
-          </Text>
-          {tier === null ? (
+        <View key={preset.focus} style={local.tier}>
+          {preset.hint !== null && <Text style={local.note}>{preset.hint}</Text>}
+          {stack === null ? (
             <>
               <Text style={local.note}>Not set: this work starts on the default Companion.</Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => save({ tiers: { [tierName]: { ...defaults, backups: [] } } })}
-              >
+              <Pressable accessibilityRole="button" onPress={() => saveStack({ ...defaults, backups: [] })}>
                 <Text style={styles.link}>Set a Companion</Text>
               </Pressable>
             </>
           ) : (
             <FoldGroup initial="main">
-              <Fold harness={tier.harness} id="main" summary={runnerSummaryOf(harnesses, tier)} title="Companion">
+              <Fold harness={stack.harness} id="main" summary={runnerSummaryOf(harnesses, stack)} title="Companion">
                 <RunnerPickers
                   client={client}
                   harnesses={harnesses}
                   isCompact={false}
                   isPanel={true}
-                  onChange={(runner) => save({ tiers: { [tierName]: { ...runner, backups: tier.backups } } })}
-                  value={tier}
+                  onChange={(runner) => saveStack({ ...runner, backups: stack.backups })}
+                  value={stack}
                 />
               </Fold>
               <WorkshopBackups
-                backups={tier.backups}
+                backups={stack.backups}
                 client={client}
                 // The folds belong to this preset alone.
-                key={tierName}
-                note={`Work started on ${displayName} carries on with the first of these when a turn fails. Choosing ${displayName} for a quest puts them in place with the Companion.`}
-                onSave={(backups) =>
-                  client.request({
-                    _tag: "ChangeSettings",
-                    change: { tiers: { [tierName]: { ...tier, backups } } },
-                  })
-                }
+                key={preset.focus}
+                note={`Work started on ${preset.name} carries on with the first of these when a turn fails. Choosing ${preset.name} for a quest puts them in place with the Companion.`}
+                onSave={(backups) => preset.save({ ...stack, backups })}
               />
-              <PresetActions client={client} key={displayName} name={displayName} />
+              <PresetActions client={client} key={preset.name} name={preset.name} />
             </FoldGroup>
           )}
         </View>
@@ -228,4 +238,6 @@ const local = StyleSheet.create({
   tabTextActive: { color: colors.accentText, fontWeight: "700" },
   tier: { gap: 8 },
   title: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
+  wrappedTab: { flex: 0, flexGrow: 1, maxWidth: "100%", paddingHorizontal: 8 },
+  wrappedTabs: { flexWrap: "wrap" },
 });

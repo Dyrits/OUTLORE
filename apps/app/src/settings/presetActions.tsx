@@ -84,50 +84,6 @@ export function AddPreset({ client, defaults }: { client: ServiceClient; default
   );
 }
 
-/** Changes the stack of a custom preset while keeping its name. */
-export function EditPreset({ client, name, saved }: { client: ServiceClient; name: string; saved: Tier }) {
-  const [draft, setDraft] = useState<Tier | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const save = async () => {
-    if (draft === null) return;
-    setIsSaving(true);
-    setError(null);
-    try {
-      await savePresetEdit(client, { _tag: "SetStack", name, stack: draft });
-      setDraft(null);
-    } catch (reason) {
-      setError(messageOf(reason));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  return draft === null ? (
-    <Button isPrimary={false} label="Edit Companions" onPress={() => setDraft(saved)} />
-  ) : (
-    <View style={{ gap: 8 }}>
-      <PresetStackPicker client={client} onChange={setDraft} stack={draft} />
-      {error !== null && (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
-        </Text>
-      )}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        <Button isDisabled={isSaving} label="Save changes" onPress={save} />
-        <Button
-          isDisabled={isSaving}
-          isPrimary={false}
-          label="Cancel"
-          onPress={() => {
-            setDraft(null);
-            setError(null);
-          }}
-        />
-      </View>
-    </View>
-  );
-}
-
 function PresetStackPicker({
   client,
   onChange,

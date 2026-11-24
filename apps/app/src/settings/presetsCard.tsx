@@ -1,14 +1,14 @@
-import type { Settings, SettingsChange, Tier, TierName } from "@outlore/contracts";
+import type { HarnessList, Settings, SettingsChange, Tier, TierName } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useHarnesses } from "../editors/runners";
 import type { ServiceClient } from "../foundation/client";
-import { effortLabel, harnessLabels, modelLabelOf, runnerSummaryOf } from "../foundation/formatting";
+import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
 import { countedOf } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
 import { Row } from "../quests/questPanel";
 import { CompanionTable } from "./companionTable";
-import { AddPreset, EditPreset, PresetActions } from "./presetActions";
+import { AddPreset, PresetActions } from "./presetActions";
 import { SettingsCard } from "./settingsParts";
 import { tierNames } from "./workshopCompanions";
 
@@ -43,10 +43,6 @@ function PresetRow({
     model: settings.defaultModel,
   };
   const displayName = settings.companionPresets?.tierNames[name] ?? name;
-  const models = harnesses?.harnesses.find((candidate) => candidate.name === tier?.harness)?.models;
-  const account = harnesses?.harnesses
-    .find((candidate) => candidate.name === tier?.harness)
-    ?.accounts.find((candidate) => candidate.id === tier?.accountId);
   return (
     <View style={local.tier}>
       <View style={local.tierHead}>
@@ -70,34 +66,40 @@ function PresetRow({
           tier === null ? (
             <Row icon="chip" label="Not set" value="Work of this weight starts on the default Companion" />
           ) : (
-            <>
-              <Row
-                icon="chip"
-                label="Harness"
-                mark={tier.harness}
-                value={
-                  account === undefined || tier.accountId === null
-                    ? harnessLabels[tier.harness]
-                    : `${harnessLabels[tier.harness]} · ${account.label}`
-                }
-              />
-              <Row
-                icon="model"
-                label="Model"
-                value={`${modelLabelOf(tier.model, models)} · ${effortLabel(tier.effort)}`}
-              />
-              <Row
-                icon="shield"
-                label="Backups"
-                value={tier.backups.length === 0 ? "None" : countedOf(tier.backups.length, "backup")}
-              />
-            </>
+            <PresetStackRows harnesses={harnesses} stack={tier} />
           )
         }
         runner={tier ?? defaults}
       />
       {tier !== null && <PresetActions client={client} key={displayName} name={displayName} />}
     </View>
+  );
+}
+
+function PresetStackRows({ harnesses, stack }: { harnesses: HarnessList | null; stack: Tier }) {
+  const harness = harnesses?.harnesses.find((candidate) => candidate.name === stack.harness);
+  const account = harness?.accounts.find((candidate) => candidate.id === stack.accountId);
+  return (
+    <>
+      <Row
+        icon="chip"
+        label="Harness"
+        mark={stack.harness}
+        value={
+          account === undefined ? harnessLabels[stack.harness] : `${harnessLabels[stack.harness]} · ${account.label}`
+        }
+      />
+      <Row
+        icon="model"
+        label="Model"
+        value={`${modelLabelOf(stack.model, harness?.models)} · ${effortLabel(stack.effort)}`}
+      />
+      <Row
+        icon="shield"
+        label="Backups"
+        value={stack.backups.length === 0 ? "None" : countedOf(stack.backups.length, "backup")}
+      />
+    </>
   );
 }
 
@@ -126,14 +128,19 @@ export function PresetsCard({
           tier={settings.tiers[name]}
         />
       ))}
-      {settings.companionPresets?.custom.map(({ name, stack }) => (
+      {settings.companionPresets?.custom.map(({ name, stack }, index) => (
         <View key={name} style={local.tier}>
           <Text style={local.tierName}>{name}</Text>
-          <Text style={styles.muted}>
-            {runnerSummaryOf(harnesses, stack)} · {countedOf(stack.backups.length, "backup")}
-          </Text>
+          <CompanionTable
+            client={client}
+            focus={`custom:${name}`}
+            harnesses={harnesses}
+            onChange={() => {}}
+            rank={tierNames.length + index + 1}
+            rows={<PresetStackRows harnesses={harnesses} stack={stack} />}
+            runner={stack}
+          />
           <PresetActions client={client} name={name} />
-          <EditPreset client={client} name={name} saved={stack} />
         </View>
       ))}
       <AddPreset

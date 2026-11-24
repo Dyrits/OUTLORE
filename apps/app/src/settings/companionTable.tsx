@@ -11,7 +11,8 @@ import { useWorkshopTabs, type WorkshopFocus } from "./workshopTabs";
 /** The chevron column's button: marked while the tab shows this table's Companion, and it closes the tab then. */
 function Chevron({ focus, isOpen, onPress }: { focus: WorkshopFocus; isOpen: boolean; onPress: () => void }) {
   const tabs = useWorkshopTabs();
-  const { report } = tabs;
+  const { report, unregister } = tabs;
+  useEffect(() => () => unregister(focus), [focus, unregister]);
   // After every render, so the tabs know which chevron shows and how to press it.
   useEffect(() => report(focus, isOpen, onPress));
   const isActive = tabs.isOpen && tabs.focus === focus;
@@ -78,7 +79,7 @@ export function CompanionTable({
               client={client}
               focus={tabs.focus}
               key={`workshop:${tabs.focus}`}
-              lastTier={tabs.lastTier}
+              lastPreset={tabs.lastPreset}
               onFocus={tabs.setFocus}
             />
           }
