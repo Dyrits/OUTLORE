@@ -17,6 +17,7 @@ const device = (change: Partial<PairedDevice>) =>
   ({
     id: "d",
     isConnected: false,
+    isDirect: false,
     kind: "desktop",
     lastActiveAt: null,
     name: "Laptop",
@@ -43,6 +44,9 @@ describe("Charter's remote access wording", () => {
   it("describes a device by kind, and by connection or last activity", () => {
     const now = 1_000_000;
     expect(deviceLineOf(device({ isConnected: true }), now)).toBe("Desktop · connected now");
+    expect(deviceLineOf(device({ isConnected: true, isDirect: true }), now)).toBe("Desktop · connected now, direct");
+    // A device that is not connected is never direct, whatever was last known.
+    expect(deviceLineOf(device({ isDirect: true }), now)).toBe("Desktop · never connected");
     expect(deviceLineOf(device({ kind: "phone" }), now)).toBe("Phone · never connected");
     expect(deviceLineOf(device({ lastActiveAt: now - 120_000 }), now)).toBe("Desktop · last active 2 min ago");
   });

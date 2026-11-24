@@ -1,5 +1,6 @@
 export { computerNameOf, defaultRelayOrigin, RemoteConfig } from "./config.ts";
 export { type HostChannel, openHostChannel, pairWithHost } from "./controller.ts";
+export { weriftDirectSettings } from "./directPeers.ts";
 export { answerText, encodeServerFrame } from "./frames.ts";
 export { hostNameOf, ownAccountLabelOf, readHostRecord, renameHost } from "./hostAccess.ts";
 export { makeHostControl } from "./hostControl.ts";

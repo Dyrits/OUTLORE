@@ -21,6 +21,8 @@ export type DeviceKind = typeof DeviceKind.Type;
 export const PairedDevice = Schema.Struct({
   id: DeviceId,
   isConnected: Schema.Boolean,
+  /** Whether its messages travel on a direct channel now, so that the relay carries none of them. */
+  isDirect: Schema.Boolean,
   kind: DeviceKind,
   lastActiveAt: Schema.NullOr(Schema.Number),
   name: Schema.String,

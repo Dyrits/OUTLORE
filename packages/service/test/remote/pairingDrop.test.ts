@@ -49,7 +49,9 @@ const droppedPairing = (dropAt: DropPoint) =>
         },
         announce: () => {},
         answer: () => {},
+        direct: null,
         isAccepting: () => true,
+        onPath: () => {},
         run,
         runInTransaction,
       });

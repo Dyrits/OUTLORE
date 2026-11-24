@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 // Entry point when Electron starts the service as a utilityProcess.
 import { delimiter, join } from "node:path";
+import { defaultStunServers } from "@outlore/channel";
 import { Cause, Config, Effect, Exit, Layer, Predicate, Record } from "effect";
 import { Harness, modelsDevSourceLayer, noPriceSourceLayer, sandboxProblem, vaultFolderOf } from "./core/index.ts";
 import {
@@ -13,7 +14,7 @@ import {
   liveHarnessToolsLayer,
   makeHarnessRouter,
 } from "./harness/index.ts";
-import { defaultRelayOrigin } from "./remote/index.ts";
+import { defaultRelayOrigin, weriftDirectSettings } from "./remote/index.ts";
 import { serveLoopback } from "./server.ts";
 import { serviceLayer } from "./service.ts";
 import { parentPortUpdaterLayer, type UpdaterPort } from "./update/parentPortUpdater.ts";
@@ -63,6 +64,10 @@ const liveLayer = Layer.unwrap(
     );
     // OUTLORE_RELAY_ORIGIN points pairing at another relay, such as one run locally for checks (device-pairing).
     const relayOrigin = yield* Config.String("OUTLORE_RELAY_ORIGIN").pipe(Config.withDefault(defaultRelayOrigin));
+    // Direct channels between a host and its devices, through werift; OUTLORE_DIRECT=false keeps every link on the
+    // relay, and OUTLORE_STUN_SERVERS (comma separated stun: addresses) replaces the default STUN server.
+    const isDirect = yield* Config.Boolean("OUTLORE_DIRECT").pipe(Config.withDefault(true));
+    const stunServers = yield* Config.String("OUTLORE_STUN_SERVERS").pipe(Config.withDefault(""));
     // OUTLORE_RELEASE is the release the desktop app runs; a host tells it to the browsers that connect.
     const release = yield* Config.String("OUTLORE_RELEASE").pipe(Config.withDefault("development"));
     // The Worker's name on the owner's own Cloudflare account, for a check that must not touch a Worker already there.
@@ -89,6 +94,18 @@ const liveLayer = Layer.unwrap(
         harness,
         // Only the desktop app's own service can update its host: it reaches the updater through its parent.
         ...(parentPort === null ? {} : { hostUpdater: parentPortUpdaterLayer(parentPort) }),
+        ...(isDirect
+          ? {
+              direct: weriftDirectSettings(
+                stunServers.trim() === ""
+                  ? defaultStunServers
+                  : stunServers
+                      .split(",")
+                      .map((server) => server.trim())
+                      .filter((server) => server !== ""),
+              ),
+            }
+          : {}),
         harnessTools: harnessName === "fake" ? fakeHarnessToolsLayer() : liveHarnessToolsLayer(commands),
         homeFolder: homedir(),
         priceSource: harnessName === "fake" ? noPriceSourceLayer : modelsDevSourceLayer(),

@@ -1,4 +1,5 @@
 import { dirname, join } from "node:path";
+import type { DirectSettings } from "@outlore/channel";
 import type { Request, RequestSource, RequestTag, ResultOf } from "@outlore/contracts";
 import { Effect, Layer, Match, Semaphore } from "effect";
 import type { SqlError } from "effect/sql";
@@ -201,6 +202,11 @@ export interface ServiceOptions {
   readonly connectorVault?: Layer.Layer<VaultPort>;
   /** Deploys the relay to the Cloudflare account a token reaches (device-pairing, own relay); the real deployment when left out. */
   readonly deployOwnRelay?: (token: string) => Promise<DeployResult>;
+  /**
+   * How this installation makes direct channels (device-pairing, Direct path); none when left out, so that only the
+   * desktop app's own service, which passes werift's, and tests that exercise it make any.
+   */
+  readonly direct?: DirectSettings | null;
   readonly filename: string;
   readonly harness: Layer.Layer<Harness>;
   /** The harnesses' own tools for sign-ins and models; every harness signed in, for checks, when left out. */
@@ -289,6 +295,7 @@ export const serviceLayer = (options: ServiceOptions) => {
           token,
           ...(options.ownRelayWorkerName === undefined ? {} : { workerName: options.ownRelayWorkerName }),
         })),
+    direct: options.direct ?? null,
     relayOrigin: options.relayOrigin ?? defaultRelayOrigin,
     release: options.release ?? "development",
   });

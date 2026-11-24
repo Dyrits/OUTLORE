@@ -31,7 +31,8 @@ export const deviceLineOf = (device: PairedDevice, now: number) => {
   const kind = (
     { browser: "Browser", desktop: "Desktop", phone: "Phone" } satisfies Record<typeof device.kind, string>
   )[device.kind];
-  if (device.isConnected) return `${kind} · connected now`;
+  // Direct means its messages no longer cross the relay (device-pairing, Direct path).
+  if (device.isConnected) return `${kind} · connected now${device.isDirect ? ", direct" : ""}`;
   return device.lastActiveAt === null
     ? `${kind} · never connected`
     : `${kind} · last active ${agoOf(device.lastActiveAt, now)}`;

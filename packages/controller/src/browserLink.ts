@@ -1,4 +1,12 @@
-import { decodeBase64Url, encodeBase64Url, type SecureChannel } from "@outlore/channel";
+import {
+  type DirectSettings,
+  decodeBase64Url,
+  defaultStunServers,
+  encodeBase64Url,
+  type PathLink,
+  type RtcConnectionClass,
+  rtcPeers,
+} from "@outlore/channel";
 import { Effect } from "effect";
 import { pairWithCode, type ResumeOptions, resumeHost } from "./hostLink.ts";
 import type { PairedHostStore } from "./hostStore.ts";
@@ -9,10 +17,23 @@ import { hostLinkCodes, type OpenTransport } from "./transport.ts";
 /** Settings of the web app's page, or of the mobile app, which links to a host the same way. */
 export interface PageSettings {
   readonly allowLocalRelay: boolean;
+  /** How this page makes direct channels to a host; absent where the platform has no WebRTC. */
+  readonly direct?: DirectSettings;
   /** How this app identifies itself to the host. */
   readonly kind: "browser" | "phone";
   readonly release: string;
 }
+
+/**
+ * Direct channels through the page's own `RTCPeerConnection`; none in a page that has none, such as the mobile app's
+ * JavaScript runtime, which then stays on the relay (device-pairing, Direct path).
+ */
+export const directSettingsOfPage = (
+  stunServers: readonly string[] = defaultStunServers,
+): DirectSettings | undefined => {
+  const Connection = (globalThis as { RTCPeerConnection?: RtcConnectionClass }).RTCPeerConnection;
+  return Connection === undefined ? void 0 : { peers: rtcPeers(async () => Connection), stunServers };
+};
 
 const browserStore = (hosts: PairedHosts): PairedHostStore => ({
   link: async (id) => {
@@ -38,7 +59,7 @@ export const openBrowserTransport =
   (hosts: PairedHosts, hostId: string, page: PageSettings, options: ResumeOptions = {}): OpenTransport =>
   (handlers) => {
     const waiting: string[] = [];
-    let channel: SecureChannel | null = null;
+    let channel: PathLink | null = null;
     let isClosed = false;
     // The link is opened by a fiber of its own, so closing the transport cancels an opening in progress, which closes
     // whatever it had opened. The first yield lets the caller finish setting the transport up before it hears of it.
@@ -60,6 +81,7 @@ export const openBrowserTransport =
             if (isClosed) return opened.channel.close();
             channel = opened.channel;
             opened.listen((text) => handlers.onText(text));
+            opened.channel.onPath((path) => handlers.onPath?.(path));
             opened.channel.onClose(() => {
               if (!isClosed) handlers.onClose(hostLinkCodes.ended, "The host disconnected.");
             });

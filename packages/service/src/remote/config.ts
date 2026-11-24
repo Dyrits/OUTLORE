@@ -1,4 +1,5 @@
 import { hostname } from "node:os";
+import type { DirectSettings } from "@outlore/channel";
 import { Context } from "effect";
 import type { DeployResult } from "./ownRelay.ts";
 
@@ -18,6 +19,11 @@ export const webAppOrigin = defaultRelayOrigin;
 export type RemoteSettings = {
   /** The computer's own name, offered as the host's name until the owner chooses one. */
   readonly computerName: string;
+  /**
+   * How this installation makes direct channels, as a host and as a controller (device-pairing, Direct path); null
+   * makes none, and every link stays on the relay.
+   */
+  readonly direct: DirectSettings | null;
   /** Deploys the relay to the Cloudflare account a token reaches; never rejects, and never keeps the token. */
   readonly deployOwnRelay: (token: string) => Promise<DeployResult>;
   /** The relay a new pairing code names, unless the owner's host record names another. */

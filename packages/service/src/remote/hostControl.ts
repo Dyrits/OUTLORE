@@ -33,7 +33,9 @@ export const makeHostControl = (dependencies: {
   const withConfig = <Value, Error>(work: Effect.Effect<Value, Error, SqlClient.SqlClient | RemoteConfig>) =>
     Effect.provideService(work, RemoteConfig, config);
   /** Workshop's remote access section as it stands. */
-  const view = Effect.flatMap(state.status, (status) => withConfig(remoteAccessView(status, state.connectedDevices())));
+  const view = Effect.flatMap(state.status, (status) =>
+    withConfig(remoteAccessView(status, state.connectedDevices(), state.directDevices())),
+  );
   /**
    * Uses the relay at `origin` (the shared one when null). When the address changes, devices are disconnected and the
    * host reconnects through the new relay if pairing is on; the same address means a relay updated where it stands,

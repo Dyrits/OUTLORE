@@ -1,4 +1,4 @@
-import type { PageSettings } from "@outlore/controller/browser";
+import { directSettingsOfPage, type PageSettings } from "@outlore/controller/browser";
 import { Platform } from "react-native";
 import { version } from "../../../package.json";
 
@@ -14,12 +14,16 @@ export const isMobileApp = Platform.OS !== "web";
  */
 export const isRemoteOnly = () => isMobileApp || (typeof window !== "undefined" && window.outlore === undefined);
 
+const directOf = (direct: ReturnType<typeof directSettingsOfPage>) => (direct === void 0 ? {} : { direct });
+
 /** What the page tells the link: its release, whether it is served from this computer (a local relay is for those), and its kind. */
 export const pageSettings = (): PageSettings =>
   isMobileApp
     ? { allowLocalRelay: false, kind: "phone", release: appRelease }
     : {
         allowLocalRelay: ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname),
+        // A browser has WebRTC; the mobile app's JavaScript runtime has none, so it stays on the relay above.
+        ...directOf(directSettingsOfPage()),
         kind: "browser",
         release: appRelease,
       };

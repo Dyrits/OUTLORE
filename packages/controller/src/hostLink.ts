@@ -1,18 +1,22 @@
 import {
+  type DirectSettings,
   encodeBase64Url,
   encodeClientHello,
   type HostReply,
   isLocalOrigin,
+  makePathLink,
   maxDeviceNameLength,
   openInitiator,
+  type PathLink,
   parseHostReply,
   readPairingInput,
   refusalText,
   roomPrologue,
+  runDeviceUpgrade,
   type SecureChannel,
 } from "@outlore/channel";
 import { closeCodes, connectClient } from "@outlore/relay/browser";
-import { Clock, Deferred, Effect } from "effect";
+import { Clock, Deferred, Effect, type Fiber } from "effect";
 import type { HostLinkRecord, PairedHostStore } from "./hostStore.ts";
 import { type ControllerKind, controllerWords, LinkFailure, linkTexts, releaseProblemOf } from "./linkFailure.ts";
 
@@ -24,6 +28,11 @@ import { type ControllerKind, controllerWords, LinkFailure, linkTexts, releasePr
 export interface LinkSettings {
   /** Whether a pairing code may name a relay on this computer: only a test or a development run, or a local page. */
   readonly allowLocalRelay: boolean;
+  /**
+   * How this controller makes direct channels to a host that runs its release (device-pairing, Direct path); without
+   * it, or where the platform has no WebRTC, a link stays on the relay.
+   */
+  readonly direct?: DirectSettings;
   readonly kind: ControllerKind;
   /** The release this controller runs; the host must run the same one (0019, Versions). */
   readonly release: string;
@@ -31,7 +40,8 @@ export interface LinkSettings {
 
 /** An open link to a host, its answer read; what the host sends next waits until `listen` is called. */
 export interface HostLink {
-  readonly channel: SecureChannel;
+  /** The secure channel to the host: over the relay, and over a direct channel when one is up. */
+  readonly channel: PathLink;
   readonly hostName: string;
   listen(listener: (text: string) => void): void;
   /** The release the host runs, as it said when the link resumed. */
@@ -102,12 +112,14 @@ const openToHost = Effect.fnUntraced(function* (
   const connection = yield* connectClient({ relayOrigin: link.relayOrigin, room: link.room }).pipe(
     Effect.mapError(() => new LinkFailure("couldNotOpen", linkTexts.unreachable)),
   );
-  const channel = yield* openInitiator(connection.carrier, link.hostPublicKey, roomPrologue(link.room), {
+  const secure = yield* openInitiator(connection.carrier, link.hostPublicKey, roomPrologue(link.room), {
     handshakeTimeoutMs: linkMillis,
   }).pipe(
     Effect.mapError(() => new LinkFailure("couldNotOpen", relayRefusalOf(connection.closeCode()))),
     Effect.onError(() => Effect.sync(() => connection.carrier.close())),
   );
+  // The link carries the hello and the answer unframed, as every host reads them; frames start only once both agree.
+  const channel = yield* makePathLink(secure);
   return yield* Effect.gen(function* () {
     const tap = tapChannel(channel);
     channel.sendText(encodeClientHello(hello));
@@ -191,6 +203,20 @@ export const pairWithCode = Effect.fnUntraced(function* (
   });
 });
 
+/** Starts the device's tries for a direct channel, which end with the link. */
+const startUpgrade = (
+  channel: PathLink,
+  stored: Pick<HostLinkRecord, "hostPublicKey" | "room">,
+  direct: DirectSettings,
+) =>
+  Effect.gen(function* () {
+    channel.enableFrames();
+    const tries: Fiber.Fiber<void> = yield* Effect.forkDetach(
+      runDeviceUpgrade(channel, { hostPublicKey: stored.hostPublicKey, room: stored.room, settings: direct }),
+    );
+    channel.onClose(() => tries.interruptUnsafe());
+  });
+
 /** What else a resumed link may be asked to be. */
 export interface ResumeOptions {
   /**
@@ -227,6 +253,8 @@ export const resumeHost = Effect.fnUntraced(function* (
     if (mismatch !== null && options.acceptOtherRelease !== true) {
       return yield* new LinkFailure("otherRelease", mismatch);
     }
+    // Only a host of this very release is known to speak frames and to make direct channels.
+    if (mismatch === null && settings.direct !== undefined) yield* startUpgrade(channel, stored, settings.direct);
     // Noting the answer may take a while (the service writes it to its database); `listen` keeps what arrives meanwhile.
     const now = yield* Clock.currentTimeMillis;
     yield* Effect.tryPromise({ catch: linkFailureOf, try: () => store.touch(hostId, reply.hostName, now) });

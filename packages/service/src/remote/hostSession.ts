@@ -1,13 +1,18 @@
 import {
+  type DirectSettings,
   decodeBase64Url,
   encodeBase64Url,
   encodeHostReply,
   type HostReply,
+  makeDirectSlots,
+  makePathLink,
   openResponder,
+  type PathKind,
+  type PathLink,
   parseClientHello,
   type RefusalReason,
   roomPrologue,
-  type SecureChannel,
+  serveHostUpgrade,
 } from "@outlore/channel";
 import type { ServerFrame } from "@outlore/contracts";
 import type { HostConnection } from "@outlore/relay";
@@ -33,11 +38,16 @@ const helloMillis = 15_000;
 const touchMillis = 30_000;
 /** A refusal is sent, then the channel is closed once the answer has had time to leave. */
 const refusalGraceMillis = 200;
+/** How many direct channels this host holds at once, across all its devices. */
+const maxDirectPeers = 16;
 
 /** Storage and service work as the host runtime runs it: with the database and the settings provided. */
 export type RunWork = <Value, Error>(
   effect: Effect.Effect<Value, Error, SqlClient.SqlClient | RemoteConfig>,
 ) => Promise<Value>;
+
+/** A device the host accepted, as the rest of the host sees it. */
+type Session = { readonly handle: (message: string) => void };
 
 /** What serving paired devices needs from the rest of the service. */
 export interface DeviceServerParts {
@@ -49,7 +59,11 @@ export interface DeviceServerParts {
   readonly announce: () => void;
   /** Answers a request frame from a paired device through the service. */
   readonly answer: (message: string, send: (frame: ServerFrame) => void, deviceId: string) => void;
+  /** How this host makes direct channels; null where it makes none (device-pairing, Direct path). */
+  readonly direct: DirectSettings | null;
   readonly isAccepting: () => boolean;
+  /** A device's messages moved to the relay or to a direct channel. */
+  readonly onPath: (deviceId: string, path: PathKind) => void;
   readonly run: RunWork;
   /** Runs work in one transaction, as redeeming a pairing code must. */
   readonly runInTransaction: RunWork;
@@ -76,9 +90,10 @@ export interface DeviceServer {
  */
 export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
   const links = new Map<string, ClientLink>();
+  const slots = makeDirectSlots(maxDirectPeers);
 
   /** Says who a device is from its first message; returns what handles its later messages, or null if refused. */
-  const authenticate = async (channel: SecureChannel, text: string): Promise<((message: string) => void) | null> => {
+  const authenticate = async (channel: PathLink, text: string): Promise<Session | null> => {
     let isClosed = false;
     channel.onClose(() => {
       isClosed = true;
@@ -164,20 +179,27 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
     });
     parts.announce();
 
+    channel.onPath((path) => {
+      parts.onPath(deviceId, path);
+      parts.announce();
+    });
+
     let lastTouch = now;
-    return (message) => {
-      const at = Date.now();
-      if (at - lastTouch > touchMillis) {
-        lastTouch = at;
-        void parts.run(touchDevice(deviceId, at)).catch(reportFailure);
-      }
-      parts.answer(message, send, deviceId);
+    return {
+      handle: (message) => {
+        const at = Date.now();
+        if (at - lastTouch > touchMillis) {
+          lastTouch = at;
+          void parts.run(touchDevice(deviceId, at)).catch(reportFailure);
+        }
+        parts.answer(message, send, deviceId);
+      },
     };
   };
 
   /** Once the handshake is done: hands each text to the authentication, then to the session it opens. */
-  const identify = (channel: SecureChannel) =>
-    Effect.callback<void>((resume) => {
+  const identify = (channel: PathLink) =>
+    Effect.callback<boolean>((resume) => {
       let handle: ((message: string) => void) | null = null;
       let isAuthenticating = false;
       channel.onText((message) => {
@@ -192,16 +214,16 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
         isAuthenticating = true;
         authenticate(channel, message)
           .then((session) => {
-            handle = session;
-            resume(Effect.void);
+            handle = session?.handle ?? null;
+            resume(Effect.succeed(session !== null));
           })
           .catch((reason) => {
             reportFailure(reason);
             channel.close();
-            resume(Effect.void);
+            resume(Effect.succeed(false));
           });
       });
-      channel.onClose(() => resume(Effect.void));
+      channel.onClose(() => resume(Effect.succeed(false)));
     });
 
   const serve = (connection: HostConnection, record: HostRecord, clientId: string) => {
@@ -209,13 +231,23 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
     links.set(clientId, link);
     // The device has until the deadline to finish the handshake and say who it is, or its connection is closed.
     return Effect.gen(function* () {
-      const channel = yield* openResponder(
-        link.carrier,
-        { publicKey: record.publicKey, secretKey: record.secretKey },
-        roomPrologue(record.room),
-        { handshakeTimeoutMs: helloMillis },
-      );
-      yield* identify(channel);
+      const hostKeyPair = { publicKey: record.publicKey, secretKey: record.secretKey };
+      const secure = yield* openResponder(link.carrier, hostKeyPair, roomPrologue(record.room), {
+        handshakeTimeoutMs: helloMillis,
+      });
+      // Messages stay unframed until the device asks for frames, which only a device of this release does.
+      const channel = yield* makePathLink(secure);
+      const isKnown = yield* identify(channel);
+      // Offers for a direct channel are answered only from a device the host has accepted.
+      if (isKnown && parts.direct !== null) {
+        yield* serveHostUpgrade(channel, {
+          hostKeyPair,
+          isAccepting: parts.isAccepting,
+          room: record.room,
+          settings: parts.direct,
+          slots,
+        });
+      }
     }).pipe(
       Effect.timeoutOrElse({ duration: helloMillis, orElse: () => Effect.sync(() => link.carrier.close()) }),
       // A failed handshake already closed the carrier; the device was never a session.

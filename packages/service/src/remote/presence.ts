@@ -1,3 +1,4 @@
+import type { PathKind } from "@outlore/channel";
 import type { RelayStatus } from "@outlore/contracts";
 import type { HostConnection } from "@outlore/relay";
 import { Context, Effect, Layer, type Stream, SubscriptionRef } from "effect";
@@ -31,6 +32,10 @@ export class HostPresence extends Context.Service<
     readonly closeDevice: (deviceId: string) => void;
     /** The devices connected now. */
     readonly connectedDevices: () => ReadonlySet<string>;
+    /** The connected devices whose messages travel on a direct channel now. */
+    readonly directDevices: () => ReadonlySet<string>;
+    /** Notes which path a connected device's messages leave on. */
+    readonly setDevicePath: (deviceId: string, path: PathKind) => void;
     /** Closes every device's connection, as turning "Allow paired devices" off does. */
     readonly closeAll: () => void;
     /** Subscribes to committed access or relay changes, waking the connection loop. */
@@ -50,6 +55,7 @@ export const hostPresenceLayer = Layer.effect(
     let generation = 0;
     let relay: HostConnection | null = null;
     const devices = new Map<string, () => void>();
+    const paths = new Map<string, PathKind>();
     const pokes = new Set<() => void>();
     const closeAll = () => {
       for (const close of [...devices.values()]) close();
@@ -58,7 +64,9 @@ export const hostPresenceLayer = Layer.effect(
       devices.get(deviceId)?.();
       devices.set(deviceId, close);
       return () => {
-        if (devices.get(deviceId) === close) devices.delete(deviceId);
+        if (devices.get(deviceId) !== close) return;
+        devices.delete(deviceId);
+        paths.delete(deviceId);
       };
     };
     const setStatus = (next: RelayStatus) => {
@@ -98,6 +106,7 @@ export const hostPresenceLayer = Layer.effect(
       closeAll,
       closeDevice: (deviceId: string) => devices.get(deviceId)?.(),
       connectedDevices: () => new Set(devices.keys()),
+      directDevices: () => new Set([...paths].filter(([, path]) => path === "direct").map(([deviceId]) => deviceId)),
       generation: () => generation,
       onPoke: (listener: () => void) => {
         pokes.add(listener);
@@ -118,6 +127,9 @@ export const hostPresenceLayer = Layer.effect(
         yield* setStatus(record?.isEnabled ? "Connecting" : "Off");
         for (const listener of [...pokes]) listener();
       }),
+      setDevicePath: (deviceId: string, path: PathKind) => {
+        if (devices.has(deviceId)) paths.set(deviceId, path);
+      },
       setStatus,
       status: SubscriptionRef.get(status),
       statusChanges: SubscriptionRef.changes(status),

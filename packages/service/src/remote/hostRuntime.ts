@@ -68,7 +68,9 @@ export const remoteHostLayer = Layer.effectDiscard(
         void runPlain(answerText(service.handle, message, send, { deviceId, isPairedDevice: true })).catch(
           reportFailure,
         ),
+      direct: config.direct,
       isAccepting: () => state.record()?.isEnabled ?? false,
+      onPath: state.setDevicePath,
       run,
       runInTransaction,
     });

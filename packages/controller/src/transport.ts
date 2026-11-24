@@ -7,6 +7,8 @@ export interface TransportHandlers {
   /** The transport could not open. */
   onError(): void;
   onOpen(): void;
+  /** The link moved to the relay or to a direct channel; only a link to a paired host reports it. */
+  onPath?(path: "direct" | "relay"): void;
   onText(data: unknown): void;
 }
 

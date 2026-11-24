@@ -25,7 +25,9 @@ const parts: DeviceServerParts = {
   admitDevice: async () => null,
   announce: () => {},
   answer: () => {},
+  direct: null,
   isAccepting: () => true,
+  onPath: () => {},
   run: async () => {
     throw new Error("not used");
   },

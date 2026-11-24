@@ -24,6 +24,8 @@ export type NodeRelayOptions = Partial<RoomLimits> & {
 export type NodeRelay = {
   /** Stops listening and closes every connection; the scope that started the relay does this too. */
   readonly close: Effect.Effect<void>;
+  /** How many frames the relay has passed between hosts and clients, over all its rooms now held. */
+  framesForwarded(): number;
   /** The port the relay listens on. */
   readonly port: number;
   /** How many rooms the relay holds now. */
@@ -199,7 +201,12 @@ export const startNodeRelay = (options: NodeRelayOptions = {}) =>
         server.close(() => resume(Effect.void));
         server.closeAllConnections();
       });
-      return { close, port, rooms: () => rooms.size } satisfies NodeRelay;
+      return {
+        close,
+        framesForwarded: () => [...rooms.values()].reduce((total, room) => total + room.core.framesForwarded, 0),
+        port,
+        rooms: () => rooms.size,
+      } satisfies NodeRelay;
     }),
     (relay) => relay.close,
   );

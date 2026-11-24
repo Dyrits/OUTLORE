@@ -50,6 +50,7 @@ const failureOf = (failure: LinkFailure) =>
 /** The link settings both controller calls send: this desktop's release, local relay left to the origin. */
 const linkOptionsOf = (config: RemoteSettings): LinkSettings => ({
   allowLocalRelay: isLocalOrigin(config.relayOrigin),
+  ...(config.direct === null ? {} : { direct: config.direct }),
   kind: "desktop",
   release: config.release,
 });

@@ -221,7 +221,7 @@ export const touchDevice = Effect.fnUntraced(function* (deviceId: string, now: n
 });
 
 /** The paired devices, with which of them are connected now. */
-export const listDevices = Effect.fnUntraced(function* (connected: ReadonlySet<string>) {
+export const listDevices = Effect.fnUntraced(function* (connected: ReadonlySet<string>, direct: ReadonlySet<string>) {
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql<{
     id: string;
@@ -231,7 +231,14 @@ export const listDevices = Effect.fnUntraced(function* (connected: ReadonlySet<s
     pairedAt: number;
   }>`SELECT id, kind, last_active_at AS lastActiveAt, name, paired_at AS pairedAt FROM paired_devices
     ORDER BY paired_at`;
-  return rows.map((row): PairedDevice => ({ ...row, id: row.id as DeviceId, isConnected: connected.has(row.id) }));
+  return rows.map(
+    (row): PairedDevice => ({
+      ...row,
+      id: row.id as DeviceId,
+      isConnected: connected.has(row.id),
+      isDirect: direct.has(row.id),
+    }),
+  );
 });
 
 /** Forgets a device's pairing; its connection, if any, is closed by the runtime. */
@@ -245,10 +252,11 @@ export const forgetDevice = Effect.fnUntraced(function* (deviceId: string) {
 export const remoteAccessView = Effect.fnUntraced(function* (
   status: RemoteAccessView["status"],
   connected: ReadonlySet<string>,
+  direct: ReadonlySet<string>,
 ) {
   const record = yield* readHostRecord;
   return {
-    devices: yield* listDevices(connected),
+    devices: yield* listDevices(connected, direct),
     hostName: yield* hostNameOf(record),
     isEnabled: record?.isEnabled ?? false,
     isOwnRelay: record?.relayOrigin != null,
