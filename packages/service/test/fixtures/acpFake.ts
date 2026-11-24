@@ -39,7 +39,7 @@ export type AcpFakeConfig = {
     readonly rawInput?: unknown;
     readonly title?: string;
   };
-  readonly usage?: "none" | "response" | "update";
+  readonly usage?: "context" | "none" | "response" | "update";
 };
 
 /** The stand-in script, run by Node in the provider executable's place. */

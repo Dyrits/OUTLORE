@@ -54,8 +54,8 @@ describe("running a thread on the Cursor harness", () => {
         }),
       );
       expect(outcome.isInterrupted).toBe(false);
-      // Cursor reports no usage over ACP, so a plain turn reports none.
-      expect(outcome.usage).toEqual({ cacheCreation: 0, cacheRead: 0, input: 0, output: 0 });
+      // Cursor reports no usage over ACP, so a plain turn's usage is unknown, never zero.
+      expect(outcome.usage).toBeNull();
       expect(readAcpFakeLog(log)[0]?.launch?.argv).toEqual(["acp"]);
       expect(configSetsLogged(log)).toEqual([["model", "gpt-5.2"]]);
       expect(events.filter((event) => event._tag === "Reply").map((event) => event.text)).toEqual([

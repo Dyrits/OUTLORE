@@ -34,6 +34,7 @@ import {
 } from "./harnessProcesses.ts";
 import { noToolServerInstructions } from "./instructions.ts";
 import { findFirstOutside, promptOf } from "./openCodePrompts.ts";
+import { addUsage } from "./tokenUsage.ts";
 
 // The Agent Client Protocol as Outlore speaks it to a harness that runs one agent process per thread (JSON-RPC 2.0, one
 // message per line): one ACP session per thread, one `session/prompt` per turn. This module owns the protocol once:
@@ -71,7 +72,8 @@ export type AcpDialect = {
   readonly toolServer: "http" | "negotiated";
   /**
    * How a prompt's usage is reported.
-   * - `perPrompt`: each answer is that prompt's own; one that reports none counts as none.
+   * - `perPrompt`: each answer is that prompt's own; one that reports none leaves the turn's usage to the token counts of its
+   *   `usage_update`s, and a turn with neither is unknown.
    * - `cumulative`: each answer sums the whole session, so the turn's usage is what grew; one that reports none is unknown.
    */
   readonly usage: "cumulative" | "perPrompt";
@@ -107,8 +109,6 @@ interface AcpConnection extends HarnessConnection {
   readonly toolCalls: Map<string, unknown>;
 }
 
-const noUsage: TokenUsage = { cacheCreation: 0, cacheRead: 0, input: 0, output: 0 };
-
 /** The usage a prompt's answer reports (ACP `PromptResponse.usage`), thoughts counted as output; null when it reports none. */
 const promptUsageOf = (usage: unknown): TokenUsage | null =>
   usage === undefined || usage === null
@@ -121,13 +121,21 @@ const promptUsageOf = (usage: unknown): TokenUsage | null =>
         output: numberFieldOf(usage, "outputTokens") + numberFieldOf(usage, "thoughtTokens"),
       };
 
-/** The token fields a `usage_update` carries in the ACP field names; zero for a provider whose update carries only the context. */
-const updateUsageOf = (update: unknown): TokenUsage => ({
-  cacheCreation: numberFieldOf(update, "cacheCreationTokens"),
-  cacheRead: numberFieldOf(update, "cachedReadTokens"),
-  input: numberFieldOf(update, "inputTokens"),
-  output: numberFieldOf(update, "outputTokens"),
-});
+const updateTokenFields = ["cacheCreationTokens", "cachedReadTokens", "inputTokens", "outputTokens"] as const;
+
+/**
+ * The token fields a `usage_update` carries in the ACP field names; null for a provider whose update carries only the
+ * context, so that a turn which reported no counts is unknown and never recorded as zero tokens.
+ */
+const updateUsageOf = (update: unknown): TokenUsage | null =>
+  updateTokenFields.every((field) => typeof fieldOf(update, field) !== "number")
+    ? null
+    : {
+        cacheCreation: numberFieldOf(update, "cacheCreationTokens"),
+        cacheRead: numberFieldOf(update, "cachedReadTokens"),
+        input: numberFieldOf(update, "inputTokens"),
+        output: numberFieldOf(update, "outputTokens"),
+      };
 
 /** The turn's usage from the session's cumulative totals: what grew since the last prompt, or the whole when one fell. */
 const turnUsageOf = (connection: AcpConnection, reported: TokenUsage): TokenUsage => {
@@ -253,7 +261,7 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
         return reply.trim() === "" ? Effect.void : request.onEvent({ _tag: "Reply", text: reply });
       });
       let contextTokens: number | null = null;
-      let updateUsage = noUsage;
+      let updateUsage: TokenUsage | null = null;
       const read = Effect.fnUntraced(function* (incoming: RpcIncoming) {
         if (incoming._tag === "Exit") return yield* new HarnessFailure({ reason: incoming.reason });
         if (incoming._tag === "Request") return yield* turn.fork(answerRequest(connection, dialect, request, incoming));
@@ -282,13 +290,7 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
           // The standard fields name the context's size; a provider may add token fields of its own.
           const used = fieldOf(update, "used");
           if (typeof used === "number") contextTokens = used;
-          const reported = updateUsageOf(update);
-          updateUsage = {
-            cacheCreation: updateUsage.cacheCreation + reported.cacheCreation,
-            cacheRead: updateUsage.cacheRead + reported.cacheRead,
-            input: updateUsage.input + reported.input,
-            output: updateUsage.output + reported.output,
-          };
+          updateUsage = addUsage(updateUsage, updateUsageOf(update));
         }
       });
 
@@ -397,7 +399,7 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
           : null,
         handoverNotes: session.handoverNotes,
         hasExited: rpc.hasExited,
-        lastUsage: noUsage,
+        lastUsage: { cacheCreation: 0, cacheRead: 0, input: 0, output: 0 },
         rpc,
         sessionId,
         takesImages: session.takesImages,

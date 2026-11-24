@@ -59,8 +59,9 @@ const defaults = {
     rawInput: { command: "git push origin main" },
     title: "git push",
   },
-  // "none" reports no usage; "update" reports token fields in a `usage_update`; "response" reports them in the prompt's
-  // own answer and the context window in a `usage_update` (the ACP shapes).
+  // "none" reports no usage; "context" reports only the context in a `usage_update`, as the standard ACP update does;
+  // "update" reports token fields in a `usage_update`; "response" reports them in the prompt's own answer and the context
+  // window in a `usage_update` (the ACP shapes).
   usage: "none",
 };
 const config = { ...defaults, ...JSON.parse(process.env.ACP_FAKE ?? "{}") };
@@ -97,6 +98,8 @@ const endPrompt = (sessionId, id, stopReason) => {
       sessionUpdate: "usage_update",
       ...(config.contextUsed === null ? {} : { size: 200_000, used: config.contextUsed }),
     });
+  if (config.usage === "context")
+    sessionUpdate(sessionId, { sessionUpdate: "usage_update", size: 200_000, used: config.contextUsed });
   if (config.usage === "response") {
     sessionUpdate(sessionId, { sessionUpdate: "usage_update", size: 200_000, used: config.contextUsed });
     return answer(id, {

@@ -130,13 +130,24 @@ describe("every ACP harness reports the context window and the turn's usage", ()
       ),
   );
 
-  it.live("reports no context and no usage for a provider that sends neither", () =>
+  it.live("reports no context and unknown usage, not zero, for a provider that sends neither", () =>
     inFolder((log) =>
       Effect.gen(function* () {
         const harness = yield* bareAdapter(log, { usage: "none" });
         const outcome = yield* harness.runTurn(turnRequestOf({ text: "run git push" }));
-        expect(outcome.usage).toEqual({ cacheCreation: 0, cacheRead: 0, input: 0, output: 0 });
+        expect(outcome.usage).toBeNull();
         expect(outcome.context ?? null).toBeNull();
+      }),
+    ),
+  );
+
+  it.live("reports the context but unknown usage for a provider whose usage_update carries only the context", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        const harness = yield* bareAdapter(log, { contextUsed: 4321, usage: "context" });
+        const outcome = yield* harness.runTurn(turnRequestOf({ text: "run git push" }));
+        expect(outcome.context).toBe(4321);
+        expect(outcome.usage).toBeNull();
       }),
     ),
   );
@@ -164,6 +175,39 @@ describe("every ACP harness reports the context window and the turn's usage", ()
         Effect.sync(() => {
           delete process.env.STAND_IN_LOG;
           delete process.env.STAND_IN_VIBE_PLAN;
+          rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
+        }),
+      ),
+    );
+  });
+});
+
+describe("unknown token usage leaves what Vibe reports alone", () => {
+  it.live("keeps Vibe's token usage known, its plan limit, and its context window as they were", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-acp-protocol-"));
+    process.env.STAND_IN_LOG = join(directory, "log.jsonl");
+    return Effect.gen(function* () {
+      const harness = yield* makeVibeHarness({
+        command: process.execPath,
+        idleTimeout: "10 minutes",
+        prefixArgs: vibeStandIn,
+      });
+      const outcome = yield* harness.runTurn(turnRequestOf({ harness: "vibe", text: "Hello" }));
+      // Vibe's answer carries real cumulative counts, so its turn is known, and its context comes from `used`.
+      expect(outcome.usage).toEqual({ cacheCreation: 0, cacheRead: 40, input: 90, output: 8 });
+      expect(outcome.context).toBe(1234);
+      // The percent of the allowance left is the plan's own report, not a token count of the turn.
+      expect(yield* harness.readPlanLimits("vibe", null)).toEqual({
+        billing: "Subscription",
+        windows: [
+          { resetsAtSeconds: Date.parse("2026-12-01T00:00:00.000Z") / 1000, usedPercent: 40, windowMinutes: 43_200 },
+        ],
+      });
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => {
+          delete process.env.STAND_IN_LOG;
           rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
         }),
       ),
