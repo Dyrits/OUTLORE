@@ -24,8 +24,8 @@ const iskiosDark = {
   control: "#1c2a3b",
   controlActive: "#2b3d55",
   controlHover: "#243449",
-  /** The small button at a card's corner that opens its quest. */
-  cornerButton: "#e8edf4",
+  /** The small button at a card's corner that opens its quest: a control step, so the pale emblem reads on it. */
+  cornerButton: "#2b3d55",
   danger: "#e5604f",
   dangerSoft: "#3a2224",
   dangerText: "#f08b7d",

@@ -25,6 +25,11 @@ describe.each(themes.flatMap((theme) => (["dark", "light"] as const).map((scheme
       }
     });
 
+    // The quest emblem in a card's corner button is a graphic, which needs 3:1 against its button.
+    it("reads the quest emblem on a card's corner button", () => {
+      expect(contrast(colors.highlight, colors.cornerButton)).toBeGreaterThanOrEqual(3);
+    });
+
     // Iskios's original colors stay unchanged; newer palettes meet the small-text threshold.
     it.runIf(theme !== "iskios")("reads the dimmer text and the accent on the page", () => {
       expect(contrast(colors.textMuted, colors.page)).toBeGreaterThanOrEqual(4.5);

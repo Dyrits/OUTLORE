@@ -18,7 +18,7 @@ export const onePalettes = {
     control: "#2e343e",
     controlActive: "#454a56",
     controlHover: "#363c46",
-    cornerButton: "#dce0e5",
+    cornerButton: "#454a56",
     danger: "#d07277",
     dangerSoft: "#39333a",
     dangerText: "#ea858b",

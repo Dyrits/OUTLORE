@@ -21,7 +21,7 @@ export const monoPalettes = {
     control: "#141414",
     controlActive: "#333333",
     controlHover: "#1f1f1f",
-    cornerButton: "#e6e6e6",
+    cornerButton: "#333333",
     danger: "#e5604f",
     dangerSoft: "#3a2224",
     dangerText: "#f08b7d",

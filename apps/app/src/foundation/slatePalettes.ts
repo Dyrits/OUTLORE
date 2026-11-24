@@ -19,7 +19,7 @@ export const slatePalettes = {
     control: "#22262e",
     controlActive: "#2e3340",
     controlHover: "#262a33",
-    cornerButton: "#e6e8ee",
+    cornerButton: "#2e3340",
     danger: "#d07277",
     dangerSoft: "#39333a",
     dangerText: "#ea858b",
