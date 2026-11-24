@@ -65,4 +65,4 @@ Latest handoffs:
 
 - To verify the stacked queued-message tray and Steer toggle in the running app, read the [current handoff](.agents/handoffs/2026-11-24-1738-queued-message-tray.md). Handoffs are shared and committed.
 
-- To verify the realm pane keeping its tab when another quest opens, read the [current handoff](.agents/handoffs/2026-11-24-1720-quest-tab-keeps-tab.md). Handoffs are shared and committed.
+- To verify that a new custom Companion preset opens in the Companions tab, read the [current handoff](.agents/handoffs/2026-11-25-0004-custom-preset-creation.md). Handoffs are shared and committed.
