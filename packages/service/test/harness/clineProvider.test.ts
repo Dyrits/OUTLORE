@@ -63,7 +63,7 @@ describe("probing the cline CLI", () => {
 
 describe("running a thread on the cline CLI", () => {
   const harnessOf = (log: string) =>
-    standInHarness(cline, {
+    standInHarness("cline", {
       command: "node",
       env: { CLINE_FAKE_LOG: log, CLINE_FAKE_MODE: "turn" },
       idleTimeout: "10 minutes",

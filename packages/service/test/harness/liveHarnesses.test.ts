@@ -4,25 +4,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { HarnessName, MissionDetail, MissionId } from "@outlore/contracts";
 import { Effect, Layer } from "effect";
-import {
-  Harness,
-  harnesses,
-  liveHarnessToolsLayer,
-  makeClaudeHarness,
-  makeCodexHarness,
-  makeMuseHarness,
-  makeOpenCodeHarness,
-  makePiHarness,
-  makeVibeHarness,
-  routeHarnesses,
-  serviceLayer,
-} from "../../src/index.ts";
+import { Harness, liveHarnessToolsLayer, makeHarnessRouter, serviceLayer } from "../../src/index.ts";
 import { call, temporary } from "../fixtures/service.ts";
 
 // Opt-in checks against the installed Codex and OpenCode (provider-accounts). Each uses a few tokens of the
 // owner's own sign-in: OUTLORE_LIVE_HARNESSES=1, and OUTLORE_LIVE_OPENCODE_MODEL for OpenCode's model.
 
-const commands = {
+const commands: Record<HarnessName, string> = {
   antigravity: process.env.OUTLORE_ANTIGRAVITY_PATH ?? "antigravity",
   claude: process.env.OUTLORE_CLAUDE_PATH ?? "claude",
   cline: process.env.OUTLORE_CLINE_PATH ?? "cline",
@@ -38,48 +26,14 @@ const commands = {
 };
 
 const live = (directory = realpathSync(temporary("outlore-live-"))) => {
+  // The app's own router over the installed CLIs; OpenCode runs unwrapped, as these checks always did.
   const harness = Layer.effect(
     Harness,
-    Effect.gen(function* () {
-      return routeHarnesses({
-        antigravity: yield* harnesses.antigravity.makeAdapter({
-          command: commands.antigravity,
-          idleTimeout: "1 minute",
-          sandboxProblem: null,
-        }),
-        claude: yield* makeClaudeHarness({ command: commands.claude, idleTimeout: "1 minute", sandboxProblem: null }),
-        cline: yield* harnesses.cline.makeAdapter({
-          command: commands.cline,
-          idleTimeout: "1 minute",
-          sandboxProblem: null,
-        }),
-        codex: yield* makeCodexHarness({ command: commands.codex, idleTimeout: "1 minute" }),
-        copilot: yield* harnesses.copilot.makeAdapter({
-          command: commands.copilot,
-          idleTimeout: "1 minute",
-          sandboxProblem: null,
-        }),
-        cursor: yield* harnesses.cursor.makeAdapter({
-          command: commands.cursor,
-          idleTimeout: "1 minute",
-          sandboxProblem: null,
-        }),
-        devin: yield* harnesses.devin.makeAdapter({
-          command: commands.devin,
-          idleTimeout: "1 minute",
-          sandboxProblem: null,
-        }),
-        hermes: yield* harnesses.hermes.makeAdapter({
-          command: commands.hermes,
-          idleTimeout: "1 minute",
-          sandboxProblem: null,
-        }),
-        muse: yield* makeMuseHarness({ command: commands.muse, idleTimeout: "1 minute" }),
-        opencode: yield* makeOpenCodeHarness({ command: commands.opencode, idleTimeout: "1 minute", sandbox: null }),
-        pi: yield* makePiHarness({ command: commands.pi, idleTimeout: "1 minute", provider: "pi" }),
-        vibe: yield* makeVibeHarness({ command: commands.vibe, idleTimeout: "1 minute" }),
-      });
-    }),
+    makeHarnessRouter(
+      commands,
+      { idleTimeout: "1 minute", sandboxProblem: null },
+      { opencode: { openCodeSandbox: null } },
+    ),
   );
   return serviceLayer({
     filename: join(directory, "outlore.sqlite"),

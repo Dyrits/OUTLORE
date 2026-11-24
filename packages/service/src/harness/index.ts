@@ -22,7 +22,7 @@ export {
   refusesAddedAccounts,
   type SandboxAdvice,
 } from "./harnessCatalog.ts";
-export { harnesses, makeHarnessRouter } from "./harnesses.ts";
+export { harnesses, type LaunchOverride, makeHarnessRouter } from "./harnesses.ts";
 export {
   type FakeUpdates,
   fakeHarnessToolsLayer,

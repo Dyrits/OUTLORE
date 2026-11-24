@@ -26,7 +26,7 @@ import type { SignInStatus } from "./harnessTools.ts";
 import { hermes as hermesProvider } from "./hermesProvider.ts";
 import { makeMuseHarness } from "./muse.ts";
 import { listMuseModels, readMuseSignIn } from "./museAccount.ts";
-import { detectOpenCodeSandbox } from "./openCodeSandbox.ts";
+import { detectOpenCodeSandbox, type OpenCodeSandbox } from "./openCodeSandbox.ts";
 import { listOpenCodeEfforts, makeOpenCodeHarness } from "./opencode.ts";
 import { makePiHarness } from "./pi.ts";
 import { probePiModels } from "./piRpc.ts";
@@ -36,6 +36,27 @@ import { listVibeModels, readVibeSignIn } from "./vibeAccount.ts";
 // The harness registry (provider-accounts): each harness defined once, by its facts, its turn adapter, and what Outlore asks its own tool about sign-in and models.
 // `makeHarnessRouter` derives its entries from `harnesses`.
 
+/**
+ * What a check replaces about how a harness starts, so a stand-in runs through the registry's own registration glue (Muse's update flag, Hermes's account home, Antigravity's pinned home, the tool-server wiring) and only the executable differs.
+ * Each field is one a stand-in needs; the app never sets any of them.
+ */
+export type LaunchOverride = {
+  /**
+   * Environment added to the process's own, such as a stand-in's knobs; it wins over the registration's.
+   * Only the adapters that give their process an environment of its own take it: Muse, Pi and the ACP providers.
+   * The rest start with the service's environment, which a check sets directly.
+   */
+  readonly env?: Record<string, string>;
+  /** Where each OpenCode thread's starting context is written; the service's data folder by default. */
+  readonly instructionsFolder?: string;
+  /** The sandbox OpenCode runs in instead of the one detected for this host, or null to run it unwrapped. */
+  readonly openCodeSandbox?: OpenCodeSandbox | null;
+  /** Arguments placed before the harness's own, to run a stand-in script in the executable's place. */
+  readonly prefixArgs?: ReadonlyArray<string>;
+  /** The Claude Code settings file read for the owner's rules, in place of the computer's own. */
+  readonly userSettingsPath?: string;
+};
+
 /** What every harness's turn adapter is started with in the app. */
 export type AdapterOptions = {
   /** The executable. */
@@ -44,6 +65,8 @@ export type AdapterOptions = {
   readonly dataDirectory?: string;
   /** How long an idle thread keeps its process. */
   readonly idleTimeout: Duration.Input;
+  /** What a check replaces about how the harness starts; absent in the app. */
+  readonly launch?: LaunchOverride;
   /** Why the sandbox cannot run here, or null (CHG-0031). */
   readonly sandboxProblem: string | null;
   /** The Vault's folder, hidden from every sandbox (ADR 0022); none when left out, in checks. */
@@ -69,6 +92,10 @@ export interface HarnessDefinition extends HarnessFacts {
   /** Who the harness's tool says is signed in, given the account's environment; never a credential. */
   readonly readSignIn: (command: string, env: Record<string, string>) => Effect.Effect<SignInStatus>;
 }
+
+/** The prefix arguments of an override, as the adapters' options take them. */
+const prefixOf = (launch: LaunchOverride | undefined) =>
+  launch?.prefixArgs === undefined ? {} : { prefixArgs: launch.prefixArgs };
 
 const unknownSignIn: SignInStatus = { detail: null, signIn: "Unknown" };
 const signedOut: SignInStatus = { detail: null, signIn: "SignedOut" };
@@ -118,8 +145,15 @@ const listCodexModels = Effect.fnUntraced(
 
 const claude: HarnessDefinition = {
   ...harnessFacts.claude,
-  makeAdapter: ({ command, idleTimeout, sandboxProblem, vaultFolder }) =>
-    makeClaudeHarness({ command, idleTimeout, sandboxProblem, ...(vaultFolder === undefined ? {} : { vaultFolder }) }),
+  makeAdapter: ({ command, idleTimeout, launch, sandboxProblem, vaultFolder }) =>
+    makeClaudeHarness({
+      command,
+      idleTimeout,
+      sandboxProblem,
+      ...prefixOf(launch),
+      ...(launch?.userSettingsPath === undefined ? {} : { userSettingsPath: launch.userSettingsPath }),
+      ...(vaultFolder === undefined ? {} : { vaultFolder }),
+    }),
   readModels: () => Effect.succeed(claudeModels),
   readSignIn: Effect.fnUntraced(function* (command: string, env: Record<string, string>) {
     const { stdout } = yield* runShortCommand(command, ["auth", "status", "--json"], env);
@@ -141,8 +175,13 @@ const claude: HarnessDefinition = {
 
 const codex: HarnessDefinition = {
   ...harnessFacts.codex,
-  makeAdapter: ({ command, idleTimeout, vaultFolder }) =>
-    makeCodexHarness({ command, idleTimeout, ...(vaultFolder === undefined ? {} : { vaultFolder }) }),
+  makeAdapter: ({ command, idleTimeout, launch, vaultFolder }) =>
+    makeCodexHarness({
+      command,
+      idleTimeout,
+      ...prefixOf(launch),
+      ...(vaultFolder === undefined ? {} : { vaultFolder }),
+    }),
   readModels: (command, configDirectory) => listCodexModels(command, configDirectory),
   readSignIn: (command, env) =>
     runShortCommand(command, ["login", "status"], env).pipe(
@@ -158,16 +197,21 @@ const codex: HarnessDefinition = {
 
 const opencode: HarnessDefinition = {
   ...harnessFacts.opencode,
-  makeAdapter: ({ command, dataDirectory, idleTimeout, sandboxProblem, vaultFolder }) =>
+  makeAdapter: ({ command, dataDirectory, idleTimeout, launch, sandboxProblem, vaultFolder }) =>
     makeOpenCodeHarness({
       command,
       idleTimeout,
-      sandbox: detectOpenCodeSandbox({
-        ...(vaultFolder === undefined ? {} : { hidden: [vaultFolder] }),
-        platform: process.platform,
-        root: join(dataDirectory ?? tmpdir(), "opencode-sandbox"),
-        sandboxProblem,
-      }),
+      ...(launch?.instructionsFolder === undefined ? {} : { instructionsFolder: launch.instructionsFolder }),
+      ...prefixOf(launch),
+      sandbox:
+        launch?.openCodeSandbox !== undefined
+          ? launch.openCodeSandbox
+          : detectOpenCodeSandbox({
+              ...(vaultFolder === undefined ? {} : { hidden: [vaultFolder] }),
+              platform: process.platform,
+              root: join(dataDirectory ?? tmpdir(), "opencode-sandbox"),
+              sandboxProblem,
+            }),
     }),
   readEfforts: listOpenCodeEfforts,
   readModels: (command, configDirectory) =>
@@ -197,7 +241,7 @@ const opencode: HarnessDefinition = {
 
 const vibe: HarnessDefinition = {
   ...harnessFacts.vibe,
-  makeAdapter: ({ command, idleTimeout }) => makeVibeHarness({ command, idleTimeout }),
+  makeAdapter: ({ command, idleTimeout, launch }) => makeVibeHarness({ command, idleTimeout, ...prefixOf(launch) }),
   readModels: (command, configDirectory) => listVibeModels(command, configDirectory),
   readSignIn: (command, env) => readVibeSignIn(command, env),
 };
@@ -205,8 +249,15 @@ const vibe: HarnessDefinition = {
 /** One long-lived ACP process per thread, started from the provider's definition when the adapter is built. */
 const acpAdapterOf =
   (provider: AcpProviderDefinition) =>
-  ({ command, idleTimeout }: AdapterOptions) =>
-    Effect.suspend(() => makeAcpProviderHarness({ command, idleTimeout, profile: acpLaunchOf(provider) }));
+  ({ command, idleTimeout, launch }: AdapterOptions) =>
+    Effect.suspend(() =>
+      makeAcpProviderHarness({
+        command,
+        idleTimeout,
+        ...prefixOf(launch),
+        profile: acpLaunchOf(provider, launch?.env === undefined ? {} : { env: launch.env }),
+      }),
+    );
 
 /** The models of a short-lived session probe on the provider's launch; none when the CLI is absent or not signed in. */
 const probedModelsOf = (provider: AcpProviderDefinition) => (command: string) =>
@@ -238,8 +289,8 @@ const muse: HarnessDefinition = {
   ...harnessFacts.muse,
   // Muse runs through its MSP adapter: every approval reaches the owner, a turn that cannot be mediated stops
   // rather than guessing, and the CLI's self-update stays suppressed (muse.ts).
-  makeAdapter: ({ command, idleTimeout }) =>
-    makeMuseHarness({ command, env: { MUSE_NO_AUTO_UPDATE: "1" }, idleTimeout }),
+  makeAdapter: ({ command, idleTimeout, launch }) =>
+    makeMuseHarness({ command, env: { MUSE_NO_AUTO_UPDATE: "1", ...launch?.env }, idleTimeout, ...prefixOf(launch) }),
   // The models come from a short-lived `muse serve` host's own list; none when the CLI is not installed.
   readModels: (command) =>
     listMuseModels(command).pipe(Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([]))),
@@ -253,7 +304,14 @@ const pi: HarnessDefinition = {
   // Pi runs fail-closed: every tool source of its own is denied for good on each turn, every question it asks is
   // answered cancelled, and a turn that runs a tool anyway ends as a breach (piTools.ts); nothing Outlore has not
   // approved ever runs (CHG-0644, provider-parity wave 3).
-  makeAdapter: ({ command, idleTimeout }) => makePiHarness({ command, idleTimeout, provider: "pi" }),
+  makeAdapter: ({ command, idleTimeout, launch }) =>
+    makePiHarness({
+      command,
+      idleTimeout,
+      ...(launch?.env === undefined ? {} : { env: launch.env }),
+      ...prefixOf(launch),
+      provider: "pi",
+    }),
   // Models come from a short-lived RPC probe of the running CLI - against the account's own directory for an
   // added account, against the computer's own Pi otherwise; none when the CLI is absent or not signed in yet.
   readModels: (command, configDirectory) =>
@@ -332,8 +390,22 @@ export const harnesses = {
   vibe,
 } satisfies Record<HarnessName, HarnessDefinition>;
 
-/** The adapter the app runs turns through: each harness's own, started from its definition (provider-accounts). */
-export const makeHarnessRouter = (commands: Record<HarnessName, string>, options: Omit<AdapterOptions, "command">) =>
+/**
+ * The adapter the app runs turns through: each harness's own, started from its definition (provider-accounts).
+ * A check passes `launches` to run stand-ins in the executables' place; it is the only way a test builds the router, so the registration glue runs in the suite.
+ */
+export const makeHarnessRouter = (
+  commands: Record<HarnessName, string>,
+  options: Omit<AdapterOptions, "command" | "launch">,
+  launches: Partial<Record<HarnessName, LaunchOverride>> = {},
+) =>
   Effect.all(
-    Record.map(harnesses, (definition, name) => definition.makeAdapter({ ...options, command: commands[name] })),
+    Record.map(harnesses, (definition, name) => {
+      const launch = launches[name];
+      return definition.makeAdapter({
+        ...options,
+        command: commands[name],
+        ...(launch === undefined ? {} : { launch }),
+      });
+    }),
   ).pipe(Effect.map(routeHarnesses));

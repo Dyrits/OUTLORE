@@ -13,6 +13,7 @@ export {
   fakeHarnessToolsLayer,
   HarnessTools,
   harnesses,
+  type LaunchOverride,
   listOpenCodeEfforts,
   listVibeModels,
   liveHarnessToolsLayer,

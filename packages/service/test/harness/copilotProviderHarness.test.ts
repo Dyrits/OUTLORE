@@ -25,7 +25,7 @@ const readEntries = (log: string): Array<LoggedEntry> =>
     : [];
 
 const harnessOf = (log: string, env: Record<string, string> = {}) =>
-  standInHarness(copilot, {
+  standInHarness("copilot", {
     command: process.execPath,
     env: { COPILOT_FAKE_LOG: log, COPILOT_FAKE_MODE: "turn", ...env },
     idleTimeout: "10 minutes",

@@ -24,6 +24,9 @@ const log = (entry) => {
   if (process.env.MUSE_FAKE_LOG) appendFileSync(process.env.MUSE_FAKE_LOG, `${JSON.stringify(entry)}\n`);
 };
 
+// What the host started with: the registry's update suppression is a launch fact no frame carries.
+log({ noAutoUpdate: process.env.MUSE_NO_AUTO_UPDATE ?? null });
+
 const send = (frame) => process.stdout.write(`${JSON.stringify(frame)}\n`);
 // Notifications carry no id and are never answered.
 const reply = (id, result) => {

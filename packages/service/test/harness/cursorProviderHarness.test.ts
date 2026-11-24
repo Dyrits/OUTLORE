@@ -40,7 +40,7 @@ const untilLogged = (log: string, predicate: (entry: LoggedEntry) => boolean) =>
   });
 
 const harnessOf = (log: string, env: Record<string, string> = {}) =>
-  standInHarness(cursor, {
+  standInHarness("cursor", {
     command: process.execPath,
     env: { CURSOR_FAKE_LOG: log, CURSOR_FAKE_MODE: "turn", ...env },
     idleTimeout: "10 minutes",

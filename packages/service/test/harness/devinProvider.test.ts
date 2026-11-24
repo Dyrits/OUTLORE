@@ -61,7 +61,7 @@ describe("probing the devin CLI", () => {
 
 describe("running a thread on the devin CLI", () => {
   const harnessOf = (log: string) =>
-    standInHarness(devin, {
+    standInHarness("devin", {
       command: "node",
       env: { DEVIN_FAKE_LOG: log, DEVIN_FAKE_MODE: "turn" },
       idleTimeout: "10 minutes",

@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "@effect/vitest";
+import { afterEach, describe, expect, it, vi } from "@effect/vitest";
 import { Effect } from "effect";
 import type { HarnessEvent } from "../../src/core/index.ts";
 import { acpLaunchOf } from "../../src/harness/acpProviderDefinition.ts";
@@ -129,13 +129,16 @@ describe("reading the Antigravity sign-in", () => {
 });
 
 describe("running a thread on the Antigravity CLI", () => {
-  const harnessOf = (log: string, geminiHome: string) =>
-    standInHarness(antigravity, {
-      configDirectory: geminiHome,
+  // The registry's Antigravity entry resolves its pinned home from the process's GEMINI_HOME, as in the app.
+  afterEach(() => vi.unstubAllEnvs());
+  const harnessOf = (log: string, geminiHome: string) => {
+    vi.stubEnv("GEMINI_HOME", geminiHome);
+    return standInHarness("antigravity", {
       env: { ANTIGRAVITY_FAKE_LOG: log, ANTIGRAVITY_FAKE_MODE: "turn" },
       idleTimeout: "10 minutes",
       prefixArgs: [join(import.meta.dirname, fakeArgs[0])],
     });
+  };
 
   it.live("mediates a tool permission request the owner allows", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-antigravity-turn-"));

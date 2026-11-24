@@ -1,31 +1,10 @@
 import { mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import type { HarnessName, MissionDetail } from "@outlore/contracts";
+import { type HarnessName, harnessNames, type MissionDetail } from "@outlore/contracts";
 import { type Duration, Effect, Layer } from "effect";
 import { afterEach } from "vitest";
-import { acpLaunchOf } from "../../src/harness/acpProviderDefinition.ts";
-import { makeAcpProviderHarness } from "../../src/harness/acpProviders.ts";
-import { antigravity } from "../../src/harness/antigravityProvider.ts";
-import { cline } from "../../src/harness/clineProvider.ts";
-import { copilot } from "../../src/harness/copilotProvider.ts";
-import { cursor } from "../../src/harness/cursorProvider.ts";
-import { devin } from "../../src/harness/devinProvider.ts";
-import { hermes } from "../../src/harness/hermesProvider.ts";
-import { makeMuseHarness } from "../../src/harness/muse.ts";
 import type { OpenCodeSandbox } from "../../src/harness/openCodeSandbox.ts";
-import {
-  type FakeUpdates,
-  fakeHarnessToolsLayer,
-  Harness,
-  makeClaudeHarness,
-  makeCodexHarness,
-  makeOpenCodeHarness,
-  makePiHarness,
-  makeVibeHarness,
-  routeHarnesses,
-  serviceLayer,
-} from "../../src/index.ts";
-import { standInHarness } from "./providerStandIns.ts";
+import { type FakeUpdates, fakeHarnessToolsLayer, Harness, makeHarnessRouter, serviceLayer } from "../../src/index.ts";
 import { call, temporary } from "./service.ts";
 
 /** The controls the stand-in harnesses read; each is cleared after every test that could have set it. */
@@ -134,7 +113,13 @@ export const waitFor = async (check: () => boolean, millis = 5000) => {
   return check();
 };
 
-/** A service whose three adapters run stand-ins, all logging to one file; OpenCode wrapped when a sandbox is given. */
+/** The stand-in a harness runs in its executable's place, by file name in this folder. */
+const standInScript = (name: string) => join(import.meta.dirname, name);
+
+/**
+ * A service whose harnesses all run stand-ins, logging to one file; OpenCode wrapped when a sandbox is given.
+ * The router is the app's own (`makeHarnessRouter`): every harness starts from its registry entry, so what the registry adds around a launch (Muse's update flag, Antigravity's pinned home, the tool-server wiring) happens here too, and only the executable is a stand-in.
+ */
 export const withHarnesses = (
   idleTimeout: Duration.Input = "10 minutes",
   openCodeSandbox: (directory: string) => OpenCodeSandbox | null = () => null,
@@ -148,97 +133,53 @@ export const withHarnesses = (
   const accountsRoot = join(directory, "accounts");
   const harness = Layer.effect(
     Harness,
-    Effect.gen(function* () {
-      return routeHarnesses({
-        // The registered Antigravity entry, stood in: the antigravity fake as its ACP process (the computer's own
-        // Gemini home; added accounts stay refused pending the live flag-vs-env check).
-        antigravity: yield* standInHarness(antigravity, {
-          command: process.execPath,
+    makeHarnessRouter(
+      // Every stand-in is a script run by Node, so one executable serves them all.
+      Object.fromEntries(harnessNames.map((name) => [name, process.execPath])) as Record<HarnessName, string>,
+      { idleTimeout, sandboxProblem: null },
+      {
+        // Added accounts stay refused for Antigravity pending the live flag-vs-env check, so its fake runs the computer's own Gemini home.
+        antigravity: {
           env: { ANTIGRAVITY_FAKE_LOG: log, ANTIGRAVITY_FAKE_MODE: "turn" },
-          idleTimeout,
-          prefixArgs: [join(import.meta.dirname, "antigravityProviderFake.mjs")],
-        }),
-        claude: yield* makeClaudeHarness({
-          command: process.execPath,
-          idleTimeout,
-          prefixArgs: [join(import.meta.dirname, "stand-in-claude.mjs")],
-          sandboxProblem: null,
+          prefixArgs: [standInScript("antigravityProviderFake.mjs")],
+        },
+        claude: {
+          prefixArgs: [standInScript("stand-in-claude.mjs")],
           userSettingsPath: join(directory, "no-settings.json"),
-        }),
-        // The registered Cline entry, stood in: the cline fake as its `cline --acp` process.
-        cline: yield* standInHarness(cline, {
-          command: process.execPath,
+        },
+        cline: {
           env: { CLINE_FAKE_LOG: log, CLINE_FAKE_MODE: "turn" },
-          idleTimeout,
-          prefixArgs: [join(import.meta.dirname, "clineProviderFake.mjs")],
-        }),
-        codex: yield* makeCodexHarness({
-          command: process.execPath,
-          idleTimeout,
-          prefixArgs: [join(import.meta.dirname, "stand-in-codex.mjs")],
-        }),
-        // The registered Copilot entry, stood in: the copilot fake as its `copilot --acp` process.
-        copilot: yield* standInHarness(copilot, {
-          command: process.execPath,
+          prefixArgs: [standInScript("clineProviderFake.mjs")],
+        },
+        codex: { prefixArgs: [standInScript("stand-in-codex.mjs")] },
+        copilot: {
           env: { COPILOT_FAKE_LOG: log, COPILOT_FAKE_MODE: "turn" },
-          idleTimeout,
-          prefixArgs: [join(import.meta.dirname, "copilotProviderFake.mjs")],
-        }),
-        // The registered Cursor entry, stood in: the cursor fake as its `cursor-agent acp` process.
-        cursor: yield* standInHarness(cursor, {
-          command: process.execPath,
+          prefixArgs: [standInScript("copilotProviderFake.mjs")],
+        },
+        cursor: {
           env: { CURSOR_FAKE_LOG: log, CURSOR_FAKE_MODE: "turn" },
-          idleTimeout,
-          prefixArgs: [join(import.meta.dirname, "cursorProviderFake.mjs")],
-        }),
-        // The registered Devin entry, stood in: the devin fake as its `devin acp` process.
-        devin: yield* standInHarness(devin, {
-          command: process.execPath,
+          prefixArgs: [standInScript("cursorProviderFake.mjs")],
+        },
+        devin: {
           env: { DEVIN_FAKE_LOG: log, DEVIN_FAKE_MODE: "turn" },
-          idleTimeout,
-          prefixArgs: [join(import.meta.dirname, "devinProviderFake.mjs")],
-        }),
-        // The registered Hermes entry, stood in: the generic ACP fake as the hermes profile's process (its
-        // account-home requirement stands, so only threads with an account folder use it).
-        hermes: yield* makeAcpProviderHarness({
-          command: process.execPath,
-          idleTimeout,
-          prefixArgs: [join(import.meta.dirname, "acpProvidersFake.mjs")],
-          profile: {
-            ...acpLaunchOf(hermes),
-            args: [],
-            env: { ACP_FAKE_LOG: log, ACP_FAKE_MODE: "turn" },
-          },
-        }),
-        // The registered Muse entry, stood in: the MSP fake as its `muse serve` host.
-        muse: yield* makeMuseHarness({
-          command: process.execPath,
-          idleTimeout,
-          prefixArgs: [join(import.meta.dirname, "museProviderFake.mjs")],
-        }),
-        opencode: yield* makeOpenCodeHarness({
-          command: process.execPath,
-          idleTimeout,
+          prefixArgs: [standInScript("devinProviderFake.mjs")],
+        },
+        // The generic ACP fake stands in for Hermes; its account-home requirement stands, so only threads with an account folder use it.
+        hermes: {
+          env: { ACP_FAKE_LOG: log, ACP_FAKE_MODE: "turn" },
+          prefixArgs: [standInScript("acpProvidersFake.mjs")],
+        },
+        muse: { env: { MUSE_FAKE_LOG: log }, prefixArgs: [standInScript("museProviderFake.mjs")] },
+        opencode: {
           instructionsFolder: join(directory, "instructions"),
-          prefixArgs: [join(import.meta.dirname, "stand-in-opencode.mjs")],
-          sandbox: openCodeSandbox(directory),
-        }),
-        // The registered Pi entry, stood in: the RPC fake as its `pi --mode rpc` process, a turn host from
-        // the start (its models stay a probe the fake answers as when asked).
-        pi: yield* makePiHarness({
-          command: process.execPath,
-          env: { PI_FAKE_LOG: log, PI_FAKE_MODE: "turn" },
-          idleTimeout,
-          prefixArgs: [join(import.meta.dirname, "piProviderFake.mjs")],
-          provider: "pi",
-        }),
-        vibe: yield* makeVibeHarness({
-          command: process.execPath,
-          idleTimeout,
-          prefixArgs: [join(import.meta.dirname, "stand-in-vibe.mjs")],
-        }),
-      });
-    }),
+          openCodeSandbox: openCodeSandbox(directory),
+          prefixArgs: [standInScript("stand-in-opencode.mjs")],
+        },
+        // A turn host from the start; its models stay a probe the fake answers as when asked.
+        pi: { env: { PI_FAKE_LOG: log, PI_FAKE_MODE: "turn" }, prefixArgs: [standInScript("piProviderFake.mjs")] },
+        vibe: { prefixArgs: [standInScript("stand-in-vibe.mjs")] },
+      },
+    ),
   );
   const layer = serviceLayer({
     accountsRoot,
