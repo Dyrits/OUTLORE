@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture review for Outlore · 2026-11-24</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+      mermaid.initialize({ flowchart: { curve: "basis" }, securityLevel: "loose", startOnLoad: true, theme: "neutral" });
+    </script>
+    <style>
+      .seam { border-style: dashed !important; }
+      .leak { color: #dc2626; border-color: #dc2626 !important; }
+      .deep { color: #f8fafc; background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .faded { opacity: 0.45; }
+      .schem { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
+      .diagram { min-height: 300px; }
+      pre.mermaid { background: transparent; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-14">
+      <!-- ═══════════════ HEADER ═══════════════ -->
+      <header class="space-y-4">
+        <p class="text-xs uppercase tracking-widest text-slate-500">Outlore · architecture audit · 2026-11-24 07:31</p>
+        <h1 class="font-serif text-4xl">Fifteen deepening candidates, three hot spots</h1>
+        <p class="text-sm text-slate-600 font-mono">main @ 94f1bace (plus uncommitted antigravityProvider.ts) · P1 rechecked at a0ad5f37 (CHG-0679) · scope: commits since the 2026-11-21 audit</p>
+        <div class="flex flex-wrap gap-6 text-xs text-slate-600 pt-2">
+          <span class="flex items-center gap-2"><span class="inline-block w-5 h-4 border border-slate-500 bg-white"></span>module</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-dashed border-slate-500"></span>seam</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-red-600"></span>leakage / drift</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-5 h-4 deep rounded-sm"></span>deep module</span>
+          <span class="flex items-center gap-2"><span class="inline-block px-1.5 rounded bg-red-100 text-red-700 font-semibold">bug</span>a confirmed defect found on the way</span>
+        </div>
+        <div class="grid md:grid-cols-3 gap-3 pt-4 text-sm">
+          <a class="rounded-lg border border-slate-200 bg-white p-4 hover:border-slate-400" href="#H" ><b>H · Harness roster</b><br /><span class="text-slate-500">4 → 12 harnesses since 11-21; one harness costs 15 closed lists</span></a>
+          <a class="rounded-lg border border-slate-200 bg-white p-4 hover:border-slate-400" href="#P" ><b>P · Shell and panes</b><br /><span class="text-slate-500">sidebar.tsx: 54 commits in ten days; Islands layout</span></a>
+          <a class="rounded-lg border border-slate-200 bg-white p-4 hover:border-slate-400" href="#S" ><b>S · Service work</b><br /><span class="text-slate-500">Rituals, permission modes, check-ins, terminals</span></a>
+        </div>
+        <details class="rounded-lg border border-slate-200 bg-white p-4 text-sm">
+          <summary class="cursor-pointer font-semibold">Did the 2026-11-21 audit hold? (b9002803)</summary>
+          <table class="mt-3 w-full text-left text-xs">
+            <tr class="border-b"><th class="py-1">Held</th><td>A1 pane-session reducer · A2 pane identity once · A4 explicit sidebar host · B1 chronicleTarget · B2 ConversationFeed · B4 shown means read · C1 inbox declares the wake · C3 runner stops naming Claude Code</td></tr>
+            <tr class="border-b"><th class="py-1 text-amber-700">Partly</th><td>B3 one ranking rule: <code>compareUrgency</code> is shared, but its callers drifted → <a class="underline" href="#P1">P1</a></td></tr>
+            <tr class="border-b"><th class="py-1 text-amber-700">Thin, friction back</th><td>A3 notch-edge geometry (Islands split it again → <a class="underline" href="#P3">P3</a>) · A5 window view (pass-through → <a class="underline" href="#P4">P4</a>)</td></tr>
+            <tr><th class="py-1 text-red-700">Older, friction back</th><td>11-07 #6 "each harness defined once" (≈7 files then, 14 now → <a class="underline" href="#H1">H1</a>) · 11-19 #4 "one ACP session module" (built as two thin helpers, then copied → <a class="underline" href="#H2">H2</a>)</td></tr>
+          </table>
+        </details>
+      </header>
+
+      <!-- ═══════════════ H · HARNESS ROSTER ═══════════════ -->
+      <section class="space-y-10" id="H" >
+        <h2 class="font-serif text-2xl border-b border-slate-300 pb-2">H · Harness roster</h2>
+
+        <!-- H1 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="H1" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">H1 · One harness definition that every closed list derives from</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Strong</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process</span>
+              <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">bug: budget card labels 9 harnesses "OpenCode"</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>packages/contracts/src/harnesses.ts:7-20</li>
+            <li>service/src/harness/harnessCatalog.ts:68-348</li>
+            <li>service/src/harness/harnesses.ts:313-345</li>
+            <li>service/src/harness/instructions.ts:19-44</li>
+            <li>service/src/work/startingContext.ts:66-80</li>
+            <li>service/src/main.ts:46-70</li>
+            <li>app/src/foundation/formatting.ts:12-67</li>
+            <li>app/src/editors/accountModels.ts:4</li>
+            <li>app/src/usage/usageChart.tsx:11-24 · usageColors.ts</li>
+            <li>app/src/ui/providerMarks.tsx</li>
+            <li class="text-red-700">app/src/settings/accountBudgetsCard.tsx:71</li>
+            <li>service/test/fixtures/standIns.ts:147-230</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">Before · one harness = 15 lists + 2 barrels</p>
+              <div class="grid grid-cols-3 gap-1.5 text-[0.62rem] font-mono">
+                <div class="border border-slate-400 px-1 py-1">HarnessName</div>
+                <div class="border border-slate-400 px-1 py-1">harnessFacts</div>
+                <div class="border border-red-500 text-red-700 px-1 py-1">harnessLabels ×2</div>
+                <div class="border border-red-500 text-red-700 px-1 py-1">harnessNames ×2</div>
+                <div class="border border-slate-400 px-1 py-1">harnesses</div>
+                <div class="border border-red-500 text-red-700 px-1 py-1">router literal</div>
+                <div class="border border-slate-400 px-1 py-1">sandboxAdvice</div>
+                <div class="border border-red-500 text-red-700 px-1 py-1">catalogModels</div>
+                <div class="border border-slate-400 px-1 py-1">main.ts commands</div>
+                <div class="border border-slate-400 px-1 py-1">harnessProviders</div>
+                <div class="border border-slate-400 px-1 py-1">marks</div>
+                <div class="border border-slate-400 px-1 py-1">harnessColors</div>
+                <div class="border border-red-500 text-red-700 px-1 py-1">stackOrder</div>
+                <div class="border border-red-500 text-red-700 px-1 py-1">test router ×2</div>
+                <div class="border-2 border-red-600 bg-red-50 text-red-700 px-1 py-1">ternary of 3</div>
+              </div>
+              <p class="text-xs text-slate-500 mt-3">Red: restates another list. Order spelled 4×, label 3×.</p>
+              <p class="text-xs text-slate-500">96e0103a: 14 prod + 6 test files. 8ece9dd9 (a label rename): 4 prod sites.</p>
+            </div>
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">After · one definition, lists derived</p>
+              <div class="deep rounded-lg p-4 space-y-2">
+                <p class="schem text-slate-300">harness definition (contracts + service)</p>
+                <p class="text-xs text-slate-300">name · label · company · order · models · sandbox advice · executable · makeAdapter</p>
+                <div class="grid grid-cols-3 gap-1 text-[0.6rem] font-mono pt-2">
+                  <div class="faded border border-slate-500 px-1">labels</div>
+                  <div class="faded border border-slate-500 px-1">order</div>
+                  <div class="faded border border-slate-500 px-1">router</div>
+                  <div class="faded border border-slate-500 px-1">models</div>
+                  <div class="faded border border-slate-500 px-1">commands</div>
+                  <div class="faded border border-slate-500 px-1">test routers</div>
+                </div>
+              </div>
+              <div class="flex gap-2 mt-4 text-[0.65rem] font-mono">
+                <div class="border border-slate-400 px-2 py-1">marks: Record&lt;HarnessName&gt;</div>
+                <div class="border border-slate-400 px-2 py-1">colors: Record&lt;HarnessName&gt;</div>
+              </div>
+              <p class="text-xs text-slate-500 mt-3">The app keeps only presentation tables; it reads label and order from the shared definition.</p>
+            </div>
+          </div>
+          <p><b>Problem.</b> Each harness is spelled in about 15 closed lists, many of them restating another. A ternary written before the roster grew labels every Vibe, Hermes, Muse, Pi, Cursor, Copilot, Cline, Devin and Gemini budget "OpenCode". The comment at harnesses.ts:35 ("one entry here and one line") no longer holds.</p>
+          <p><b>Solution.</b> The harness definition becomes the only place a harness is named. The router, labels, order, suggested models, sandbox advice, default executable, and both test routers derive from it.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5">
+            <li>Locality: a new harness is one definition, plus a mark and a color</li>
+            <li>Leverage: every picker and label site reads one source</li>
+            <li>Deletion test: seven lists vanish and nothing reappears</li>
+            <li>Tests stop pinning list lengths in 6 files</li>
+            <li>Test routers exercise the real registration glue (also H5)</li>
+          </ul>
+          <div class="rounded-md bg-amber-50 border border-amber-200 px-4 py-2 text-sm">This reopens the friction behind 2026-11-07 candidate 6, which was built as this registry. No decision record conflicts.</div>
+        </article>
+
+        <!-- H2 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="H2" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">H2 · One ACP module with dialects, not three protocol copies</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Strong</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">local-substitutable</span>
+              <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">drift: 6 harnesses record no file edits</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>service/src/harness/vibe.ts:100-297</li>
+            <li>service/src/harness/acpProviders.ts:160-356</li>
+            <li>service/src/harness/opencode.ts</li>
+            <li>acpSession.ts (33 lines) · acpPrompt.ts (40)</li>
+            <li>fileEditEvents.ts:36</li>
+            <li>vibeAccount.ts · openCodePrompts.ts</li>
+            <li>cursor/copilot/cline/devin/antigravityProvider.ts</li>
+            <li>test fakes: 6 × ≈110 lines</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-1">Before</p>
+              <pre class="mermaid">
+flowchart TB
+  V["vibe.ts · ACP protocol copy 1"]
+  G["acpProviders.ts · ACP protocol copy 2"]
+  O["opencode.ts · ACP protocol copy 3"]
+  S["acpSession + acpPrompt · thin"]
+  P["5 provider files · pass-through"]
+  FE["acpFileEditsOf · opencode | vibe only"]
+  V --> S
+  G --> S
+  P --> G
+  V --> FE
+  O --> FE
+  G -. "imports vibeAccount, openCodePrompts" .-> V
+  G -. "lost: file edits, context window, tool server" .-> FE
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#991b1b;
+  class G leak
+              </pre>
+            </div>
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-1">After</p>
+              <pre class="mermaid">
+flowchart TB
+  A["ACP module<br/>session start · load · lost-session fallback<br/>read loop · permissions · ask mode<br/>usage · context · file edits · tool server"]
+  D1["Vibe dialect<br/>_account/read, plan limits"]
+  D2["OpenCode dialect<br/>sandbox launch, later"]
+  PR["provider profiles<br/>data only"]
+  D1 --> A
+  D2 --> A
+  PR --> A
+  classDef deep fill:#0f172a,color:#f8fafc,stroke:#0f172a;
+  class A deep
+              </pre>
+            </div>
+          </div>
+          <p><b>Problem.</b> 908f57c5 copied Vibe's protocol into acpProviders.ts; about 140 of 198 lines match. The generic copy has already lost CHG-0593's file edits, the context-window reading and the tool-server wiring. Vibe lacks the generic copy's "was this model offered" check.</p>
+          <p><b>Solution.</b> One deep ACP module owns the protocol. Each harness supplies a profile and a few dialect hooks, and the five provider files shrink to data.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5">
+            <li>Locality: one read-loop fix reaches 7–8 harnesses</li>
+            <li>Leverage: a new ACP harness is a profile</li>
+            <li>One configurable fake replaces six</li>
+            <li>Deletion test: four make/probe pairs vanish</li>
+          </ul>
+          <div class="rounded-md bg-amber-50 border border-amber-200 px-4 py-2 text-sm">This fits ADR 0008 ("OpenCode and others through ACP"). It finishes 2026-11-19 candidate 4, which stopped at two helpers.</div>
+        </article>
+
+        <!-- H3 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="H3" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">H3 · "Reaches thread tools" as a fact the harness definition owns</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Strong</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process · stand-in tests</span>
+              <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">bug: errands on 6 harnesses cannot report back</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>service/src/harness/acpProviders.ts:115, 285 (<code>mcpServers ?? []</code>)</li>
+            <li>service/src/harness/harnesses.ts:209-306 (none passed)</li>
+            <li>vibe.ts:68 · muse.ts:64 (these do wire it)</li>
+            <li>service/src/harness/instructions.ts:62-80, 110</li>
+            <li>documentation/architecture-decision-record/0005</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="diagram rounded-lg border border-slate-200 p-4 relative">
+              <p class="schem text-slate-500 mb-3">Before · the fact hides in a default parameter</p>
+              <div class="space-y-3 text-sm">
+                <div class="border border-slate-400 rounded px-3 py-2"><span class="schem text-slate-500">instructions</span><br />"call <code>request_approval</code>, <code>report_result</code>"</div>
+                <div class="text-center text-red-600 text-xs">▼ told to call · cannot reach ▼</div>
+                <div class="border-2 border-red-500 rounded px-3 py-2 bg-red-50"><span class="schem text-red-700">session/new · mcpServers: []</span><br /><span class="text-xs">Hermes · Cursor · Copilot · Cline · Devin · Gemini</span></div>
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                  <div class="border border-slate-300 rounded px-2 py-1">Claude ✓</div>
+                  <div class="border border-slate-300 rounded px-2 py-1">Vibe ✓</div>
+                  <div class="border border-slate-300 rounded px-2 py-1">Muse ✓</div>
+                  <div class="border border-slate-300 rounded px-2 py-1">Codex ✓</div>
+                  <div class="border border-slate-300 rounded px-2 py-1">OpenCode ✓</div>
+                  <div class="border border-slate-300 rounded px-2 py-1 text-slate-500">Pi · none, documented</div>
+                </div>
+              </div>
+            </div>
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">After · one fact, three readers</p>
+              <div class="deep rounded-lg px-4 py-3 text-sm mb-4"><span class="schem text-slate-300">harness definition</span><br />toolReach: "ThreadTools" | "None"</div>
+              <div class="grid grid-cols-3 gap-2 text-xs">
+                <div class="border border-dashed border-slate-500 rounded px-2 py-2">adapter<br /><span class="text-slate-500">wires the tool server</span></div>
+                <div class="border border-dashed border-slate-500 rounded px-2 py-2">instructions<br /><span class="text-slate-500">omit rules it cannot follow</span></div>
+                <div class="border border-dashed border-slate-500 rounded px-2 py-2">pickers<br /><span class="text-slate-500">refuse errand or Chronicler role</span></div>
+              </div>
+            </div>
+          </div>
+          <p><b>Problem.</b> Six ACP harnesses start every session with an empty tool-server list. Their threads are still told to call <code>request_approval</code> and <code>report_result</code>, so an errand on Cursor cannot ask approval, write the journal, or report back. The default dates from the survey stage, and registration (96e0103a) never revisited it.</p>
+          <p><b>Solution.</b> Tool reach becomes one fact on the harness definition, like <code>containmentOf</code>. The adapter, the instructions and the pickers all read it.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5">
+            <li>Locality: the fact stops hiding in a default</li>
+            <li>A stand-in turn asserts <code>session/new</code>'s mcpServers</li>
+            <li>The instructions stop promising tools a harness lacks</li>
+          </ul>
+          <div class="rounded-md bg-amber-50 border border-amber-200 px-4 py-2 text-sm">The current state contradicts ADR 0005, which says thread tools reach "ACP harnesses" over MCP. Either wire the server or amend the record. Confirm on one live harness first.</div>
+        </article>
+
+        <!-- H4 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="H4" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">H4 · Each provider's launch, sign-in and version facts spelled once, and production reads what tests pin</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Strong</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>service/src/harness/acpProviderProfiles.ts:35-74</li>
+            <li>antigravityProvider.ts:96-106</li>
+            <li>clineProvider.ts:40-45 · devinProvider.ts:38-42</li>
+            <li>cursorProvider.ts:20-60 · copilotProvider.ts:18-103</li>
+            <li>harnessCatalog.ts (signInArgs, signInEnv)</li>
+            <li>harnessTools.ts:126-138, 266-275</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">Before · Antigravity spelled three ways</p>
+              <div class="space-y-2 text-xs">
+                <div class="h-12 border-l-4 border-slate-300 bg-slate-50 px-3 flex items-center justify-between"><span><b>acpProviderProfiles.antigravity</b> · args ["acp"]</span><span class="text-slate-500">tests only, wrong argv</span></div>
+                <div class="h-12 border-l-4 border-slate-700 bg-slate-50 px-3 flex items-center justify-between"><span><b>antigravityProfileOf</b> · real launch env</span><span class="text-slate-500">production</span></div>
+                <div class="h-12 border-l-4 border-red-500 bg-red-50 px-3 flex items-center justify-between"><span><b>catalog signInArgs</b> + harnessTools branch</span><span class="text-red-700">separate sign-in env</span></div>
+                <div class="text-red-700 pt-1">CHG-0676: launch and sign-in disagreed on token storage. The sign-in succeeded, then every launch answered "Authentication required".</div>
+                <div class="text-slate-500">Cursor and Copilot constants and all four version gates: read only by tests.</div>
+              </div>
+            </div>
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">After · one provider definition</p>
+              <div class="deep rounded-lg p-4 text-xs space-y-1">
+                <p class="schem text-slate-300">provider definition</p>
+                <p>executable · argv(home) · spawn env</p>
+                <p>sign-in argv · sign-in env = spawn env + extras</p>
+                <p>state-home rule · version gate · evidence</p>
+              </div>
+              <div class="grid grid-cols-4 gap-2 mt-4 text-[0.65rem] text-center">
+                <div class="border border-dashed border-slate-500 py-1">launch</div>
+                <div class="border border-dashed border-slate-500 py-1">model probe</div>
+                <div class="border border-dashed border-slate-500 py-1">sign-in</div>
+                <div class="border border-dashed border-slate-500 py-1">inspect</div>
+              </div>
+            </div>
+          </div>
+          <p><b>Problem.</b> Pure helpers were extracted for testability while the bugs hide in how they are called. The tests pin stub profiles and constants that production never reads, and <code>inspect</code> accepts any version that exits 0.</p>
+          <p><b>Solution.</b> One definition per provider. Launch, probe, sign-in and inspect all read it, and the sign-in environment is built from the spawn environment.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5">
+            <li>The CHG-0676 class of split cannot happen</li>
+            <li>Tests pin what actually runs</li>
+            <li>Version gates finally gate</li>
+            <li>A live-check correction is one edit</li>
+          </ul>
+          <div class="rounded-md bg-amber-50 border border-amber-200 px-4 py-2 text-sm">This is the data half of H1 and H2, and it fits ADR 0011. Lore fc08b908 says registration reads the Cursor and Copilot constants; it does not.</div>
+        </article>
+
+        <!-- H5 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="H5" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">H5 · Tests build the router through the registry, not beside it</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">Worth exploring</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">local-substitutable</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700"><li>service/test/fixtures/standIns.ts:147-230 · service/test/harness/liveHarnesses.test.ts:31-70 · harnesses.ts makeAdapter entries</li></ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-1">Before</p>
+              <pre class="mermaid">
+flowchart LR
+  R["harnesses registry<br/>makeAdapter glue"] --> Prod["production router"]
+  T1["standIns router"] --> M["makeXHarness"]
+  T2["liveHarnesses router"] --> M
+  R -. "never runs in the suite" .-> T1
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class T1,T2 leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-1">After</p>
+              <pre class="mermaid">
+flowchart LR
+  R["harnesses registry<br/>launch override: command, args, env"] --> Prod["production router"]
+  R --> T["test routers<br/>swap only the executable"]
+  classDef deep fill:#0f172a,color:#f8fafc,stroke:#0f172a;
+  class R deep
+              </pre>
+            </div>
+          </div>
+          <p><b>Problem.</b> The registration glue never runs in the suite: Muse's update flag, the Hermes profile choice, the Antigravity home and the mcpServers gap in H3. Every registration commit also edits both hand-written test routers.</p>
+          <p><b>Solution.</b> The registry's adapter factory takes a launch override, and both test routers derive from it.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5"><li>Registration tested through its interface</li><li>Two more roster copies deleted</li></ul>
+        </article>
+      </section>
+
+      <!-- ═══════════════ P · SHELL AND PANES ═══════════════ -->
+      <section class="space-y-10" id="P" >
+        <h2 class="font-serif text-2xl border-b border-slate-300 pb-2">P · Shell and panes</h2>
+
+        <!-- P1 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="P1" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">P1 · One errand roster: "a quest's errands, in order", answered once</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Strong</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process</span>
+              <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">bug: notches no longer follow the sidebar</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>app/src/shell/questTree.ts:73-112</li>
+            <li>app/src/shell/paneNotches.ts:157-164</li>
+            <li>app/src/shell/childNotches.ts:19-63</li>
+            <li>app/src/conversation/paneThread.tsx:91-96</li>
+            <li>app/src/conversation/threadTree.tsx:48</li>
+            <li>app/src/shell/paneHost.tsx:197</li>
+            <li>app/src/conversation/folding.ts:29</li>
+            <li>app/test/shell/paneNotches.test.ts:79</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-1">Before · five orders</p>
+              <pre class="mermaid">
+flowchart TB
+  SV["ReadMission.threads<br/>ORDER BY tree.path"]
+  SB["sidebar · rankedRowsOf<br/>by status (CHG-0675), then by activity (CHG-0679)"]
+  NO["pane notches<br/>index in threads"]
+  ET["Errands tab<br/>flat by urgency"]
+  TT["ThreadTree<br/>tree order"]
+  ST["ErrandStarter<br/>own filter"]
+  SV --> SB
+  SV --> NO
+  SV --> ET
+  SV --> TT
+  SV --> ST
+  SB -. "should match, no longer does" .- NO
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#991b1b;
+  class NO leak
+              </pre>
+              <div class="flex gap-6 text-xs pt-1">
+                <div>Sidebar: <span class="font-mono bg-red-50 px-1">B·newer</span> <span class="font-mono bg-slate-100 px-1">A·older</span></div>
+                <div>Notches: <span class="font-mono bg-slate-100 px-1">A·first opened</span> <span class="font-mono bg-red-50 px-1">B</span></div>
+              </div>
+            </div>
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-1">After · one roster, several views</p>
+              <pre class="mermaid">
+flowchart TB
+  SV["ReadMission.threads"] --> RO["errand roster<br/>active · folding · sibling rank<br/>urgency table · preview cut"]
+  RO --> SB["sidebar rows"]
+  RO --> NO["pane notches"]
+  RO --> ET["Errands tab"]
+  RO --> ST["starter list"]
+  classDef deep fill:#0f172a,color:#f8fafc,stroke:#0f172a;
+  class RO deep
+              </pre>
+            </div>
+          </div>
+          <p><b>Problem.</b> 89e5a655 (11-23 14:22) matched notch order to the sidebar by position in <code>threads</code>. Six hours later e572b6c2 (CHG-0675) ranked sidebar siblings by status, and the notches went back to tree order. Then 92fa82e3 (CHG-0679, 11-24 07:23, landed during this audit) changed the sidebar's rule to latest activity; the notches still follow tree order. The sidebar's rule changed twice in a day, and each time the notches were left behind. The test meant to pin the order uses equal states and equal activity, so it passes under every one of these orders.</p>
+          <p><b>Solution.</b> One plain .ts errand-roster module owns which errands show, how folding applies, how siblings rank, and how the result is cut. The urgency table moves there from childNotches.ts.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5">
+            <li>Locality: the next ordering decision is one edit</li>
+            <li>Leverage: five callers, one interface</li>
+            <li>One plain-Node test would have caught e572b6c2</li>
+          </ul>
+        </article>
+
+        <!-- P2 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="P2" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">P2 · A realm roster: a realm's quests and Rituals as separate ranked groups</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">Worth exploring</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process</span>
+              <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">bug: "Show all N quests" counts Rituals</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>app/src/shell/questTree.ts:21-33</li>
+            <li>app/src/shell/railOutline.ts:9-49</li>
+            <li>app/src/shell/railPlacementRows.tsx:18-19</li>
+            <li>app/src/shell/sidebar.tsx:212-216, 295-297</li>
+            <li>app/src/shell/channelQuests.tsx:53-55</li>
+            <li>app/src/shell/paneNotches.ts:86, 119</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">Before · split happens after the cut</p>
+              <div class="flex gap-1.5 text-xs mb-2">
+                <div class="flex-1 border border-slate-400 py-2 text-center">quest</div>
+                <div class="flex-1 border-2 border-red-500 bg-red-50 py-2 text-center text-red-700">Ritual</div>
+                <div class="flex-1 border border-slate-400 py-2 text-center">quest</div>
+                <div class="flex-1 border-2 border-red-500 bg-red-50 py-2 text-center text-red-700">Ritual</div>
+              </div>
+              <p class="text-xs text-slate-500">4 preview slots, ranked (by latest activity since CHG-0679) before quests and Rituals are split</p>
+              <div class="mt-4 flex items-center gap-3 text-xs">
+                <span class="border border-slate-400 px-2 py-1">Show all 7 quests</span><span class="text-red-600">→</span><span class="border border-slate-400 px-2 py-1">Quests tab: 5</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-3">The realm filter is written ≈10 times; "without Rituals" 3 times.</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">After</p>
+              <div class="deep rounded-lg p-4 text-xs space-y-2">
+                <p class="schem text-slate-300">realm roster(placement)</p>
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="border border-slate-500 p-2">quests · ranked · preview · count</div>
+                  <div class="border border-slate-500 p-2">Rituals · ranked · preview · count</div>
+                </div>
+              </div>
+              <div class="grid grid-cols-4 gap-1.5 mt-4 text-[0.65rem] text-center">
+                <div class="border border-dashed border-slate-500 py-1">sidebar</div>
+                <div class="border border-dashed border-slate-500 py-1">channel tabs</div>
+                <div class="border border-dashed border-slate-500 py-1">realm notches</div>
+                <div class="border border-dashed border-slate-500 py-1">realm mark</div>
+              </div>
+            </div>
+          </div>
+          <p><b>Problem.</b> Since 42d8bec7, Rituals are split from quests only when rows are drawn, after the preview cap and the count have been taken. So Rituals take quest preview slots, and the count promises more quests than the Quests tab shows.</p>
+          <p><b>Solution.</b> One realm-roster module returns quests and Rituals as separate ranked groups with their previews and counts. It could share one module with P1 as "a parent's children, ranked".</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5">
+            <li>Locality for the quest/Ritual distinction</li>
+            <li>Preview and count become plain-Node tests</li>
+          </ul>
+        </article>
+
+        <!-- P3 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="P3" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">P3 · An Island frame module owns flat versus Islands, and every surface's geometry</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Strong</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process</span>
+              <span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">owner already agreed to the direction</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>app/src/shell/paneHost.tsx:26-248 (7 branches)</li>
+            <li>app/src/shell/shell.tsx (6)</li>
+            <li>app/src/shell/topBar.tsx · sidebarOverlay.tsx (3 each)</li>
+            <li>app/src/shell/paneStrip.tsx:62-74 (2)</li>
+            <li>app/src/shell/paneNotches.ts:9-15, 180-181</li>
+            <li>app/src/foundation/islands.ts · islandsRules.ts (deep, tested)</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">Before · 22 <code>islands === null</code> branches</p>
+              <div class="space-y-1.5 text-xs font-mono">
+                <div class="flex items-center gap-2"><span class="w-28">paneHost.tsx</span><span class="h-3 bg-red-400" style="width: 70%"></span><span>7</span></div>
+                <div class="flex items-center gap-2"><span class="w-28">shell.tsx</span><span class="h-3 bg-red-400" style="width: 60%"></span><span>6</span></div>
+                <div class="flex items-center gap-2"><span class="w-28">topBar.tsx</span><span class="h-3 bg-red-300" style="width: 30%"></span><span>3</span></div>
+                <div class="flex items-center gap-2"><span class="w-28">sidebarOverlay</span><span class="h-3 bg-red-300" style="width: 30%"></span><span>3</span></div>
+                <div class="flex items-center gap-2"><span class="w-28">paneStrip.tsx</span><span class="h-3 bg-red-200" style="width: 20%"></span><span>2</span></div>
+                <div class="flex items-center gap-2"><span class="w-28">sidebar.tsx</span><span class="h-3 bg-red-200" style="width: 10%"></span><span>1</span></div>
+              </div>
+              <div class="mt-4 text-xs border border-red-400 bg-red-50 rounded px-3 py-2 text-red-800">paneStrip guesses the notch's neighbours from <code>isStraddling ? 2 : 1</code>, which only the frame knows. The notch-colour handoff already suspects it is wrong beside a pinned sidebar.</div>
+              <p class="text-xs text-slate-500 mt-2">Magic offsets: 42, −33, −gap, edge − gap/2. None tested.</p>
+            </div>
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">After</p>
+              <div class="deep rounded-lg p-4 text-xs space-y-2">
+                <p class="schem text-slate-300">Island frame(layout, pane row, edges)</p>
+                <p>→ style and offsets per surface</p>
+                <div class="grid grid-cols-5 gap-1 text-[0.6rem] text-center pt-1">
+                  <div class="faded border border-slate-500 py-1">sidebar</div>
+                  <div class="faded border border-slate-500 py-1">pane</div>
+                  <div class="faded border border-slate-500 py-1">column</div>
+                  <div class="faded border border-slate-500 py-1">notch</div>
+                  <div class="faded border border-slate-500 py-1">toolbar</div>
+                </div>
+              </div>
+              <p class="text-xs text-slate-500 mt-3">The flat layout becomes one mode of the frame. The neighbour count comes from <code>paneNotchesOf</code>'s edge spec.</p>
+            </div>
+          </div>
+          <p><b>Problem.</b> Each Islands commit edited drawing code in five or six shell modules. A3's edge spec was built for the flat layout, and Islands added its gap offsets outside it.</p>
+          <p><b>Solution.</b> The <code>Island</code> building block the owner agreed to in the 2026-11-23 notch-colour handoff: one module returns each surface's style and offsets, and components stop branching.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5">
+            <li>Locality: the next layout change touches one module</li>
+            <li>Offsets and neighbours become plain-Node tests</li>
+            <li>Static render can check the drawn result</li>
+          </ul>
+          <div class="rounded-md bg-amber-50 border border-amber-200 px-4 py-2 text-sm">No conflict with ADR 0009: Islands stays web-only through <code>Platform.OS</code>.</div>
+        </article>
+
+        <!-- P4 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="P4" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">P4 · Window composition as data: windowViewOf decides what is mounted and what shows</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">Worth exploring</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>app/src/shell/windowView.ts:14-48</li>
+            <li>app/src/shell/appScreen.tsx:139-247</li>
+            <li>app/src/shell/shell.tsx:106, 153, 163, 195</li>
+            <li>app/App.tsx:60, 193</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">Before · cross-section</p>
+              <div class="space-y-1.5 text-xs">
+                <div class="h-10 border-l-4 border-slate-400 bg-slate-50 px-3 flex items-center">Location</div>
+                <div class="h-10 border-l-4 border-slate-300 bg-slate-50 px-3 flex items-center justify-between"><span>windowViewOf · 16 fields</span><span class="text-slate-500">12 copied through</span></div>
+                <div class="h-10 border-l-4 border-red-400 bg-red-50 px-3 flex items-center justify-between"><span>appScreen · 5 branches</span><span class="text-red-700"><code>ritualForm</code> ×9 · fill/parked ×7</span></div>
+                <div class="h-10 border-l-4 border-red-400 bg-red-50 px-3 flex items-center justify-between"><span>shell.tsx predicates</span><span class="text-red-700">2 "panes showing?" disagree</span></div>
+                <div class="h-10 border-l-4 border-slate-300 bg-slate-50 px-3 flex items-center">App.tsx · Settings check ×2</div>
+              </div>
+            </div>
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">After</p>
+              <div class="space-y-1.5 text-xs">
+                <div class="h-10 border-l-4 border-slate-400 bg-slate-50 px-3 flex items-center">Location + has sidebar</div>
+                <div class="h-28 deep rounded px-3 py-2 flex flex-col justify-center gap-1"><span class="schem text-slate-300">window composition</span><span>mounted layers · the one shown · pane row · details shown · Workshop open</span></div>
+                <div class="h-10 border-l-4 border-slate-300 bg-slate-50 px-3 flex items-center">appScreen maps layers → elements</div>
+              </div>
+            </div>
+          </div>
+          <p><b>Problem.</b> A5 landed as a pass-through. CHG-0643's Ritual form had to be threaded through every branch, and no test covers windowView.ts or appScreen.tsx.</p>
+          <p><b>Solution.</b> windowViewOf deepens into a pure composition. appScreen maps layers to elements, and shell.tsx reads the facts it needs.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5"><li>The next covering screen lands in one place</li><li>Plain-Node tests beside location.test.ts</li></ul>
+        </article>
+
+        <!-- P5 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="P5" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">P5 · One sidebar row anatomy</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">Speculative</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700"><li>app/src/shell/railRows.tsx:26-105 · railQuests.tsx:123-410 · sidebar.tsx:337-380</li></ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4 text-xs">
+              <p class="schem text-slate-500 mb-3">Before · anatomy written 4×</p>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="border border-slate-400 p-2">Row <span class="text-slate-500">(well built)</span></div>
+                <div class="border border-red-400 p-2">Quest <span class="text-slate-500">13 props</span></div>
+                <div class="border border-red-400 p-2">RitualRow <span class="text-slate-500">same 13 props</span></div>
+                <div class="border border-red-400 p-2">RealmHeader · SectionTitle <span class="text-slate-500">by hand</span></div>
+              </div>
+              <p class="mt-3 text-slate-500">CHG-0671 (nested buttons) had to fix 4 files. CHG-0635's fold chevron is set on Quest but not on RitualRow.</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 text-xs">
+              <p class="schem text-slate-500 mb-3">After</p>
+              <div class="deep rounded p-3 mb-2">Row · headings too · enforces "no button in a button"</div>
+              <div class="grid grid-cols-2 gap-2"><div class="faded border border-slate-500 p-2">placement row: quest mark</div><div class="faded border border-slate-500 p-2">placement row: Ritual mark</div></div>
+            </div>
+          </div>
+          <p><b>Problem.</b> The same row anatomy is copied four times and has already drifted.</p>
+          <p><b>Solution.</b> Row grows to cover headings, and Quest and RitualRow share one placement-row module.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5"><li>One static-render test checks every row kind for nested buttons</li></ul>
+        </article>
+      </section>
+
+      <!-- ═══════════════ S · SERVICE WORK ═══════════════ -->
+      <section class="space-y-10" id="S" >
+        <h2 class="font-serif text-2xl border-b border-slate-300 pb-2">S · Service work</h2>
+
+        <!-- S1 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="S1" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">S1 · One settings-authority table: who may change which setting</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Strong</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">local-substitutable (SQLite)</span>
+              <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">probable policy gap · not reproduced</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>service/src/work/guildmasterSettingNames.ts:9-17</li>
+            <li>service/src/service.ts:147-158</li>
+            <li>service/src/core/settings.ts (writeSettings)</li>
+            <li>service/src/work/guildmasterSettings.ts:34-49</li>
+            <li>service/src/work/ritualScope.ts:27</li>
+            <li>service/src/core/companionPresets.ts:34-57</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-1">Before · three rules, three ways to fail</p>
+              <pre class="mermaid">
+flowchart LR
+  PD["paired device<br/>SendMessage / CreateRitual"] --> CH["Chronicler change_setting"]
+  PD --> RS["Ritual scope"]
+  CH --> DL["deny list<br/>fails open"]
+  RS --> DL
+  OW["ChangeSettings / UpdateSettings"] --> HO["host-only check<br/>in service.ts"]
+  DL -. "shouldAllowRemoteTerminals not listed" .-> T["remote terminals on"]
+  HO --> T
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#991b1b;
+  class DL,T leak
+              </pre>
+            </div>
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">After · one mapped table</p>
+              <div class="deep rounded-lg p-4 text-xs font-mono space-y-1">
+                <p class="schem text-slate-300 font-sans">settingAuthority: { [K in keyof Settings]: … }</p>
+                <p>shouldAllowRemoteTerminals → HostOwner</p>
+                <p>globalBudget → Owner</p>
+                <p>theme → Owner | Chronicler | Ritual</p>
+                <p class="text-slate-400">+ merge fields an older client omits</p>
+              </div>
+              <div class="grid grid-cols-4 gap-1.5 mt-4 text-[0.6rem] text-center">
+                <div class="border border-dashed border-slate-500 py-1">Change/Update</div>
+                <div class="border border-dashed border-slate-500 py-1">change_setting</div>
+                <div class="border border-dashed border-slate-500 py-1">Ritual scope</div>
+                <div class="border border-dashed border-slate-500 py-1">presets</div>
+              </div>
+              <p class="text-xs text-slate-500 mt-3">A new field that declares no authority fails to compile.</p>
+            </div>
+          </div>
+          <p><b>Problem.</b> The deny list fails open: both recent settings (7026ce87, bcafd007) had to be added by hand. The host-only rule guards only two requests. Read from the code, a paired device could switch on remote terminals through Chronicler or a Ritual scope, which conversation-terminal/specifications.md:23 forbids.</p>
+          <p><b>Solution.</b> The settings module owns one exhaustive table of who may write each field. Every writer names itself, and the module checks once and merges omitted fields.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5">
+            <li>Locality: one table changes per setting</li>
+            <li>Leverage: five writers, one check</li>
+            <li>"Chronicler cannot enable terminals" becomes a natural test</li>
+          </ul>
+          <div class="rounded-md bg-amber-50 border border-amber-200 px-4 py-2 text-sm">Agrees with ADR 0020. Write the failing test first: a paired-device message to Chronicler naming the setting, then <code>change_setting</code>.</div>
+        </article>
+
+        <!-- S2 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="S2" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">S2 · The request table answers what its result schema says</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Strong</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process</span>
+              <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">shipped once: CHG-0677</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>service/src/work/requestContext.ts:28-32</li>
+            <li>service/src/service.ts:164-238 (34 inline handlers)</li>
+            <li>contracts/src/results.ts:178-179 (ResultOf)</li>
+            <li>service/src/remote/frames.ts:47</li>
+            <li>service/test/fixtures/service.ts:63-66</li>
+            <li>connector/realm/vault/terminalHandlers (untyped)</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-1">Before</p>
+              <pre class="mermaid">
+sequenceDiagram
+  participant H as handler
+  participant T as typecheck
+  participant F as frames.answerFrame
+  participant S as screen
+  H->>T: Effect&lt;unknown&gt; answers undefined
+  T-->>H: passes
+  H->>F: encodeUnknownSync(Schema.Null)
+  F-->>S: "The service failed unexpectedly."
+  Note over H,F: tests call Service.handle and cast, never encode
+              </pre>
+            </div>
+            <div class="diagram rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-1">After</p>
+              <pre class="mermaid">
+sequenceDiagram
+  participant H as handler
+  participant T as typecheck
+  participant F as frames
+  H->>T: returns ResultOf of Tag
+  T-->>H: undefined for Null is an error
+  H->>F: encodes, by construction
+  Note over H,F: tests' call encodes like the wire
+              </pre>
+            </div>
+          </div>
+          <p><b>Problem.</b> There are 47 <code>Schema.Null</code> results, and each handler remembers <code>Effect.as(null)</code> by hand. Four of nine handler groups are not even type-checked against the table, and 140 test files call through a cast that skips the wire.</p>
+          <p><b>Solution.</b> The handler table becomes a mapped type over RequestTag that returns <code>ResultOf&lt;Tag&gt;</code>. <code>handle</code> becomes generic, and the inline handlers fold into typed groups.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5">
+            <li>Closes a shipped bug class at compile time</li>
+            <li>Leverage: 160+ handlers, 140 test files</li>
+            <li>Deletion test: the tag lists and the cast vanish</li>
+          </ul>
+        </article>
+
+        <!-- S3 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="S3" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">S3 · One quest-upkeep rule for when a quest is quiet</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Strong</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">local-substitutable</span>
+              <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">bug: a Workshop setting that does nothing</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>service/src/work/missions.ts:204-209 (promptOf)</li>
+            <li>DismissMissionPrompt: requests/requestSources/results/questsHandlers</li>
+            <li>app/src/settings/settings.tsx:97-102</li>
+            <li>app/src/foundation/labels.ts:87 (no caller)</li>
+            <li>service/src/work/inactivityMissives.ts:11-105</li>
+            <li>service/src/work/ending.ts:150-175</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4 text-xs">
+              <p class="schem text-slate-500 mb-3">Before · two rules, two "last activity", two markers</p>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="border-2 border-red-400 bg-red-50 rounded p-3 space-y-1">
+                  <p class="schem text-red-700">old · orphaned</p>
+                  <p>missions.last_activity_at</p>
+                  <p>inactivityDays = 14 <span class="text-red-700">← Workshop</span></p>
+                  <p>inactivity_dismissed_at</p>
+                  <p class="text-slate-500">no UI since CHG-0453</p>
+                </div>
+                <div class="border border-slate-400 rounded p-3 space-y-1">
+                  <p class="schem text-slate-500">new · Missives</p>
+                  <p>last message per thread</p>
+                  <p>4 h / 12 h hard-coded</p>
+                  <p>inactivity_warned_message_id</p>
+                  <p class="text-slate-500">f5e50adb</p>
+                </div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 text-xs">
+              <p class="schem text-slate-500 mb-3">After</p>
+              <div class="deep rounded-lg p-4 space-y-1">
+                <p class="schem text-slate-300">quest upkeep</p>
+                <p>quiet? · what is posted · what is filed</p>
+                <p>one "last activity" · one marker</p>
+              </div>
+              <div class="grid grid-cols-2 gap-2 mt-4 text-center">
+                <div class="border border-dashed border-slate-500 py-1">Missive sweep</div>
+                <div class="border border-dashed border-slate-500 py-1">archive sweep</div>
+              </div>
+            </div>
+          </div>
+          <p><b>Problem.</b> The Workshop offers "Ask about a quest after this many days without activity". The question it controls has had no UI since CHG-0453, while the live rule hard-codes its hours elsewhere.</p>
+          <p><b>Solution.</b> One quest-upkeep module owns quietness, Missives and filing. The orphaned prompt, its request and its setting are deleted or rewired; which one is the owner's call.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5"><li>A Workshop control that tells the truth</li><li>One request, one result and one field removed</li><li>Deletion test: dead weight, no caller loses anything</li></ul>
+        </article>
+
+        <!-- S4 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="S4" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">S4 · A local-calendar module, and one timed-sweep helper</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">Worth exploring</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process · local-substitutable</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>work/rituals.ts:394-413 · budgetPeriods.ts:13-33</li>
+            <li>work/ending.ts:169-175 · inactivityMissives.ts:97-105</li>
+            <li>work/priceRefresh.ts · guildmasterReports.ts:87-98</li>
+            <li>core/spending.ts:64-75 · accountBudgets.ts:31-35</li>
+            <li>work/usageScope.ts:25 · backgroundCheckInSchedule.ts:14-24</li>
+            <li>work/ritualSchedule.ts:15-30</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4 text-xs">
+              <p class="schem text-slate-500 mb-3">Before · six loops, three error boundaries</p>
+              <table class="w-full">
+                <tr><td>Rituals</td><td class="text-red-700 font-semibold">orDie</td></tr>
+                <tr><td>budget periods</td><td class="text-red-700 font-semibold">orDie</td></tr>
+                <tr><td>auto-archive</td><td class="text-red-700 font-semibold">orDie</td></tr>
+                <tr><td>inactivity Missives</td><td class="text-emerald-700">log + retry</td></tr>
+                <tr><td>price refresh</td><td class="text-slate-500">ignore</td></tr>
+                <tr><td>Chronicler reports</td><td class="text-slate-500">ignore</td></tr>
+                <tr><td class="italic text-slate-400">background check-ins</td><td class="italic text-slate-400">next, pending</td></tr>
+              </table>
+              <p class="mt-3 text-slate-500">"Local day" is spelled 5 times. One SQLITE_BUSY stops the Ritual scheduler for the rest of the session.</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 text-xs">
+              <p class="schem text-slate-500 mb-3">After</p>
+              <div class="deep rounded p-3 mb-3">local calendar · day start · day key · period · next run</div>
+              <div class="deep rounded p-3">timed sweep(work, nextDue) · cadence · log + retry</div>
+              <p class="mt-3 text-slate-500">Each sweep stays its own layer, as the gatewayCalls race lore requires.</p>
+            </div>
+          </div>
+          <p><b>Problem.</b> Every sweep hand-rolls its loop and picks its own failure behaviour, and the calendar rules are re-derived each time.</p>
+          <p><b>Solution.</b> One pure calendar module and one sweep helper that owns cadence and a single error boundary.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5"><li>Every sweep survives a transient failure</li><li>Daylight saving and midnight pinned in one test file</li><li>Check-in wiring becomes a few lines</li></ul>
+        </article>
+
+        <!-- S5 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="S5" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">S5 · One table for what each permission mode means</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">Worth exploring</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700 grid md:grid-cols-2 gap-x-6">
+            <li>work/threadPermissionMode.ts:59-68</li>
+            <li>work/approvalTerms.ts:22-28</li>
+            <li>work/promptPolicy.ts:148-166</li>
+            <li>core/execution.ts:70-80</li>
+            <li>harness/codex.ts:73 · openCodePrompts.ts:33-48</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-1">Before</p>
+              <pre class="mermaid">
+flowchart LR
+  M["4 modes"] --> L["approvalLevelOf"]
+  M --> AT["approvalTerms<br/>=== FullAccess"]
+  M --> PP["promptPolicy<br/>reads mode again"]
+  L --> AD["adapters see<br/>2-valued level"]
+  AT --> AD
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class PP,AD leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-1">After</p>
+              <pre class="mermaid">
+flowchart LR
+  M["mode table<br/>level · escape · edits unasked · all unasked"] --> AT["approvalTerms"]
+  M --> PP["promptPolicy"]
+  M --> AD["adapters and preview"]
+  classDef deep fill:#0f172a,color:#f8fafc,stroke:#0f172a;
+  class M deep
+              </pre>
+            </div>
+          </div>
+          <p><b>Problem.</b> The meaning of the four modes (CHG-0617/0621) is spelled in three modules. Adapters cannot tell Supervised from Auto-accept edits, so "does it hold on harness X?" means reading that adapter.</p>
+          <p><b>Solution.</b> threadPermissionMode.ts owns one table from mode to terms, and ApprovalTerms carries those flags.</p>
+          <ul class="list-disc pl-6 text-sm space-y-0.5"><li>A fifth mode is one row</li><li>Mode read once per prompt</li></ul>
+        </article>
+
+        <!-- S6 -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm" id="S6" >
+          <header class="space-y-2">
+            <h3 class="font-serif text-xl">S6 · The app guide states facts read from the modules that own them</h3>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">Speculative</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">in-process</span>
+            </div>
+          </header>
+          <ul class="font-mono text-sm text-slate-700"><li>service/src/work/appGuideTopics.ts:22, 191-192, 221 · service/test/work/appGuide.test.ts</li></ul>
+          <div class="grid md:grid-cols-2 gap-4 text-xs">
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">Before · Chronicler's guide</p>
+              <div class="flex flex-wrap gap-1">
+                <span class="border border-slate-400 px-1.5">claude</span><span class="border border-slate-400 px-1.5">codex</span><span class="border border-slate-400 px-1.5">opencode</span><span class="border border-slate-400 px-1.5">vibe</span>
+                <span class="border border-dashed border-red-400 text-red-600 px-1.5">+8 missing</span>
+              </div>
+              <p class="mt-3 text-slate-500">No permission modes, Missives, or check-ins. It still says "the default approval level".</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4">
+              <p class="schem text-slate-500 mb-3">After</p>
+              <p>Lines that state facts are built from the harness definition (H1), the mode table (S5) and quest upkeep (S3). The test pins that every HarnessName appears.</p>
+            </div>
+          </div>
+          <p><b>Problem.</b> Seven roster commits kept the guide "in step" by hand, and it still lags.</p>
+          <p><b>Solution.</b> Derive the factual lines from their owners. This is best done as a by-product of H1, S3 and S5.</p>
+        </article>
+      </section>
+
+      <!-- ═══════════════ CHECKED ═══════════════ -->
+      <section class="rounded-xl border border-slate-200 bg-white p-6 space-y-3 text-sm">
+        <h2 class="font-serif text-xl">Checked, not proposed</h2>
+        <ul class="list-disc pl-6 space-y-1 text-slate-700">
+          <li><b>The harness seam itself</b> (<code>HarnessAdapter</code>, <code>routeHarnesses</code>, harnessProcesses.ts): deep, with 12 real adapters plus a fake. The duplication sits inside the adapters, not at the seam.</li>
+          <li><b>Pi and Muse</b>: their own protocols (RPC, MSP) justify their own adapters. Pi's no-tools stance is documented (CHG-0644).</li>
+          <li><b>paneChain, paneSession, location, navigation, sidebarMode, railStorage, questRecency, chronicleFeed, chronicleTarget</b>: deep, pure, tested.</li>
+          <li><b>islands.ts / islandsRules.ts</b>: the shading rules are deep and tested; only the geometry leaks (P3).</li>
+          <li><b>realmMark.ts</b>: its priority order differs from the notch order on purpose (mission-tracking spec :77 vs :79).</li>
+          <li><b>requestSources.ts and Results</b>: exhaustive mapped types; adding a request is sound apart from S2.</li>
+          <li><b>service.ts (388 lines)</b>: the layer-order comments carry real invariants; splitting the graph fails the deletion test. Only <code>saveSettingsFromSource</code> (S1) and the inline handlers (S2) should leave.</li>
+          <li><b>Sweeps through the whole service with TestClock</b>: this tests at the interface and is healthy.</li>
+          <li><b>One-harness capability branches</b> (vision.ts:16, attachmentRules.ts:78, contextWarning.ts:22, guildmasterPlace.ts:22): small, and could become definition facts after H1.</li>
+          <li><b>Over the 256-line soft limit</b>: sidebar.tsx 423, railQuests.tsx 413, rituals.ts 414, threadTools.ts 469, appGuideTopics.ts 404. These are noted only; P1–P5 and S1 shrink several.</li>
+          <li><b>Not read by this audit</b>: apps/desktop, packages/controller, the relay, and the phone-only screens.</li>
+        </ul>
+      </section>
+
+      <!-- ═══════════════ TOP RECOMMENDATION ═══════════════ -->
+      <section class="deep rounded-2xl p-8 space-y-4" id="top-recommendation" >
+        <p class="schem text-slate-400">Top recommendation</p>
+        <h2 class="font-serif text-3xl"><a class="underline decoration-slate-500" href="#H2" >H2 · One ACP module with dialects</a>, carrying <a class="underline decoration-slate-500" href="#H3" >H3</a></h2>
+        <p class="text-slate-300 max-w-3xl">Half the roster now runs through a protocol copy that has already lost file edits, the context window, and the tool server. Six harnesses cannot run errands as a result. Deepening it fixes those once for seven harnesses, and gives H1 and H4 a single place to land.</p>
+        <p class="text-slate-400 text-sm max-w-3xl">Quick, separate fixes: P1's notch order (one roster module and one honest test) and the budget-card label in H1. S1 should start with a failing test, because if the terminal gap is real it outranks everything here.</p>
+      </section>
+    </main>
+  </body>
+</html>
