@@ -25,6 +25,7 @@ export function childPartsOf(
   const list: NotchPart = {
     id: `list:${kind}s`,
     kind: "list",
+    listOf: kind,
     onReveal: openList,
     state,
     title: kind === "quest" ? "Quests" : "Errands",

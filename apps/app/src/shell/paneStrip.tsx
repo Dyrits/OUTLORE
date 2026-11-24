@@ -24,6 +24,8 @@ export type NotchPart = {
   /** The notch starts a new object (an errand of the quest, a quest of the realm): its icon carries a small "+". */
   isNew?: boolean;
   kind: NotchKind;
+  /** What a list notch lists: crossed swords for quests, a line with three branches for errands. */
+  listOf?: "quest" | "errand";
   onReveal: () => void;
   state: ThreadState | MissionState | null;
   title: string;
@@ -82,7 +84,11 @@ export function PaneNotches({
           ]}
         >
           {part.kind === "list" ? (
-            <ListMark />
+            part.listOf === "quest" ? (
+              <QuestsMark />
+            ) : (
+              <ErrandsMark />
+            )
           ) : part.isNew === true && part.kind === "quest" ? (
             <NewQuestIcon color={colors.textMuted} />
           ) : part.kind === "realm" || part.kind === "borderlands" ? (
@@ -126,7 +132,8 @@ export function PaneNotches({
   );
 }
 
-function ListMark() {
+/** The quest list: two crossed swords, the quest's sword and a second one passing behind it. */
+function QuestsMark() {
   return (
     <Svg
       aria-hidden
@@ -134,11 +141,32 @@ function ListMark() {
       height={16}
       stroke={colors.textSecondary}
       strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.7}
+      viewBox="0 0 24 24"
+      width={16}
+    >
+      <Path d="M7 15L18 4h2v2L9 17M5 13l6 6M7 17l-3 3" />
+      <Path d="M10.5 8.5L6 4H4v2l4.5 4.5M19 13l-6 6M17 17l3 3" />
+    </Svg>
+  );
+}
+
+/** The errand list: the errand's line with three branches, and no plus. */
+function ErrandsMark() {
+  return (
+    <Svg
+      aria-hidden
+      fill="none"
+      height={16}
+      stroke={colors.textSecondary}
+      strokeLinecap="round"
+      strokeLinejoin="round"
       strokeWidth={1.6}
       viewBox="0 0 20 20"
       width={16}
     >
-      <Path d="M3 5h1m3 0h10M3 10h1m3 0h10M3 15h1m3 0h10" />
+      <Path d="M6 18V2M6 6c0 0 5 0 8-4M6 11c0 0 6 0 10-4M6 16c0 0 6 0 10-4" />
     </Svg>
   );
 }
