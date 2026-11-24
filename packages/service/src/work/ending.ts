@@ -1,7 +1,7 @@
 import type { EndingPreview, MissionEnding, QuestPlacement } from "@outlore/contracts";
-import { Clock, Effect, Layer } from "effect";
+import { Clock, Effect, Layer, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
-import { dayMillis, hourMillis, invalid, notFound, readSettings, ServiceFailure } from "../core/index.ts";
+import { Changes, dayMillis, hourMillis, invalid, notFound, readSettings, ServiceFailure } from "../core/index.ts";
 import { Commands } from "./commands.ts";
 import { eraseEmptyQuest } from "./deleting.ts";
 import { emptyQuestCondition } from "./emptyQuest.ts";
@@ -153,13 +153,27 @@ const archiveDueMissions = Effect.gen(function* () {
   return due.length === 0 ? unchanged(null) : changed(null, { missionsToRemoveScratch, turnsToCancel });
 });
 
-/** Runs auto-archive at startup and then hourly (provisional: CHG-0045, work-in-progress Batch 9). */
+/** Runs auto-archive at startup and whenever a Fulfilled quest is pending archive (provisional: CHG-0045, work-in-progress Batch 9). */
 export const autoArchiveLayer = Layer.effectDiscard(
   Effect.gen(function* () {
     const commands = yield* Commands;
+    const changes = yield* Changes;
+    const sql = yield* SqlClient.SqlClient;
+    const subscription = yield* PubSub.subscribe(changes.pubsub);
+    const untilNextArchive = Effect.gen(function* () {
+      const settings = yield* readSettings;
+      if (!settings.shouldAutoArchive) return null;
+      const [earliest] = yield* sql<{ doneAt: number | null }>`SELECT MIN(done_at) AS doneAt FROM missions
+        WHERE ending = 'Fulfilled' AND done_at IS NOT NULL`;
+      if (earliest?.doneAt == null) return dayMillis;
+      const now = yield* Clock.currentTimeMillis;
+      return Math.max(1, Math.min(earliest.doneAt + settings.autoArchiveDays * dayMillis - now, hourMillis));
+    });
     yield* timedSweep({
+      isWakeOnlyWhenIdle: true,
       name: "Auto-archive",
-      untilNext: Effect.succeed(hourMillis),
+      untilNext: untilNextArchive,
+      wakeOn: PubSub.take(subscription),
       work: commands.run(archiveDueMissions),
     });
   }),

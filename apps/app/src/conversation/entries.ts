@@ -13,6 +13,7 @@ import type {
   ThreadSummary,
 } from "@outlore/contracts";
 import { settledSuggestionLabelOf } from "../foundation/labels";
+import { isPendingOwnerMessage } from "./queuedMessages";
 
 /** A quest or Ritual the Guildmaster opened, created, or continued, which the conversation draws as a card of its own. */
 export type QuestLink = { key: string; label: string; missionId: MissionId; sentAt: number; title: string };
@@ -92,11 +93,10 @@ export const workingLabel = "Working…";
 /** The entries newest first: a feed drawn inverted starts from the bottom of the view, where the newest entry sits. */
 export const newestFirstOf = (entries: ReadonlyArray<Entry>): Array<Entry> => [...entries].reverse();
 
-const isPendingOwnerMessage = (message: Message) => message.sender === "user" && message.isDelivered === false;
-
 /**
  * Messages, questions, off-topic suggestions, budget lines, handovers, lore changes, and the threads opened beneath, in the order they happened.
  * An aside is left out: its suggestion line already leads to it.
+ * Pending owner messages are left out of the feed because they sit in the stacked tray above the composer.
  * In the Guildmaster's conversation what it opened, created, or continued, becomes a card standing just after its confirmation. A report from a quest carries its own small button.
  * What hangs from a message (its `anchors`) stands as a reply line there: an errand the owner replied into under the
  * message replied to, an agent-opened errand under its agent reply, and a quest a Reply started under the message replied to.
@@ -107,7 +107,10 @@ export const entriesOf = (
   anchors: ReadonlyArray<ThreadAnchor> = [],
 ): Array<Entry> => {
   // Earlier builds wrote internal system cards. A system message linked to a quest is a visible notice.
-  const messages = detail.messages.filter((message) => message.sender !== "system" || message.fromMissionId != null);
+  // Pending owner messages live in the queued-message tray above the composer until a turn takes them in.
+  const messages = detail.messages.filter(
+    (message) => (message.sender !== "system" || message.fromMissionId != null) && !isPendingOwnerMessage(message),
+  );
   const replies = messages.filter((message) => message.sender === "agent");
   /** The message an anchor names, if it is one of this conversation's. */
   const anchorCard = new Map(messages.map((message) => [message.id, message]));
@@ -144,12 +147,7 @@ export const entriesOf = (
       },
     ];
   });
-  const stepGroups = stepGroupsOf(
-    messages.filter((message) => !isPendingOwnerMessage(message)),
-    detail.questions,
-    detail.activities,
-    isWorking,
-  );
+  const stepGroups = stepGroupsOf(messages, detail.questions, detail.activities, isWorking);
   const stepIds = new Set(stepGroups.flatMap((group) => group.steps.map((step) => step.id)));
   const entries: Array<Entry> = [
     ...stepGroups.map(
@@ -222,12 +220,5 @@ export const entriesOf = (
     ...detail.loreChanges.map((change): Entry => ({ _tag: "LoreChange", at: change.at, change, key: change.id })),
   ];
   entries.sort((current, next) => current.at - next.at);
-  const isPending = (entry: Entry) => entry._tag === "Message" && isPendingOwnerMessage(entry.message);
-  const pending = entries.filter(isPending);
-  if (pending.length === 0) return entries;
-  return [
-    ...entries.filter((entry) => !isPending(entry)),
-    { _tag: "LiveFooter", at: 0, key: "live-footer" },
-    ...pending,
-  ];
+  return entries;
 };

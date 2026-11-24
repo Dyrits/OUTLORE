@@ -5,7 +5,7 @@ import { addAttachment, discardAttachment, readAttachment } from "./attachments.
 import { changed } from "./followUps.ts";
 import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
-import { insertUserMessage, releaseQueued } from "./messaging.ts";
+import { insertUserMessage, releaseQueued, requeueSteered } from "./messaging.ts";
 import { editQueuedMessage, removeQueuedMessage } from "./queuedMessages.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 /** Requests for writing and reading messages, dictation included, share the service request context. */
@@ -70,6 +70,7 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
         releaseQueued(given.messageId).pipe(Effect.map((threadId) => changed(null, { threadsToWake: [threadId] }))),
       ),
     TranscribeDictation: (given) => transcribeDictation(given.data),
+    UnsteerQueuedMessage: (given) => commands.run(requeueSteered(given.messageId).pipe(Effect.as(changed(null)))),
   } satisfies OwnerHandlers<
     | "AddAttachment"
     | "AddJournalEntry"
@@ -83,5 +84,6 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
     | "SendMessage"
     | "SteerQueuedMessage"
     | "TranscribeDictation"
+    | "UnsteerQueuedMessage"
   >;
 };

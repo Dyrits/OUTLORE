@@ -43,9 +43,16 @@ Agreed 2026-11-11 (CHG-0195); built in CHG-0196.
 - **Thread messages**, results included, are delivered into the receiving thread's current turn where its harness allows it; otherwise at its next turn. They are delivered whatever the receiving thread is doing.
 - Chronicler uses the same delivery controls as quest threads: while it works, Send queues and a queued message offers Steer or Interrupt (CHG-0316, CHG-0519). Comments remain quest-only.
 - **The user's messages** either steer the current turn or are queued for the next turn. Sending while a thread runs queues the message; there is no setting for it, and Steer or Interrupt is chosen after sending (CHG-0519, CHG-0523).
-- **A queued message** stays faint at the bottom of the conversation, below new replies and live output. It stays there after Steer until the harness acknowledges it. Once delivered it joins the conversation history. Pending owner messages appear in send order.
-- **Edit** changes a queued message's text in place and keeps its attachments. **Remove** withdraws the message and its attachments. These actions are available while Outlore holds the message in its queue. **Steer** hands it off for the running turn, and **Interrupt** ends that turn so the next one can take it in. A turn can take a queued message while its editor is open. The service checks the queue again on Save or Remove.
-- **Messages held while no turn runs** still offer Edit and Remove. Steer and Interrupt apply only during a running turn.
+- **Pending owner messages** sit in a collapsible stacked tray above the composer, numbered in delivery order, instead of appearing as faded bubbles in the conversation feed (CHG-0691).
+  The header shows the pending count and a **Clear all** action that removes every queued (non-steered) message.
+  Once a turn takes a message in, it leaves the tray and joins the conversation history.
+- **Edit** changes a queued message's text in place and keeps its attachments.
+  **Remove** withdraws the message and its attachments.
+  Both actions are available only while Outlore holds the message in its queue and are disabled while the message is steered.
+  **Steer** toggles whether the message may join the running turn (`SteerQueuedMessage` to steer, `UnsteerQueuedMessage` to return it to the queue before the turn takes it in), and **Interrupt** ends the running turn so the next one starts with the pending messages.
+  A turn can take a queued or steered message while an editor is open or before an unsteer arrives; the service checks delivery state again and refuses if already taken in.
+- **Messages held while no turn runs** still appear in the tray and offer Edit, Remove, and Clear all.
+  The Steer toggle and Interrupt apply only during a running turn.
 - **A background command's end** can wake a Claude Code thread that stopped its turn to wait for it. Outlore runs the work Claude Code then does as a turn of the thread: its replies and steps are recorded, a line says which command ended, and the thread reads Running while it works (CHG-0595). A Stopped thread, or one held for a budget or a missing folder, does not run it. A thread with a background command pending keeps its harness process for an hour instead of the idle timeout.
 - A thread that is Waiting, Resting, or Fulfilled is woken by any message addressed to it, so two threads waiting on each other never stay stuck.
 - A Stopped thread keeps its messages and is not woken (see [thread-tree](../thread-tree/specifications.md#stopping)).

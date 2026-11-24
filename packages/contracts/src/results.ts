@@ -164,6 +164,7 @@ export const Results = {
   SwitchAtBudget: Schema.Null,
   TranscribeDictation: Transcript,
   UndoIntelChange: Schema.Null,
+  UnsteerQueuedMessage: Schema.Null,
   UpdateHarness: HarnessList,
   UpdateHost: HostUpdate,
   UpdateRitual: Schema.Null,

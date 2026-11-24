@@ -162,6 +162,21 @@ export const releaseQueued = Effect.fnUntraced(function* (messageId: string) {
   return message.threadId;
 });
 
+/**
+ * Returns a steered owner message to the queue, so it waits for the next turn instead of joining the running one.
+ * Refuses when the running turn has already taken the message in, or when it is not steered. Callers run it in a transaction.
+ */
+export const requeueSteered = Effect.fnUntraced(function* (messageId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const [message] = yield* sql<{ threadId: string }>`
+    UPDATE messages SET is_queued = 1
+    WHERE id = ${messageId} AND sender_kind = 'user' AND is_queued = 0
+      AND delivered_turn_id IS NULL AND is_conversation_only = 0
+    RETURNING thread_id AS threadId`;
+  if (message === undefined) return yield* invalid("This message was already taken in by the running turn.");
+  return message.threadId;
+});
+
 /** A message to record in a thread: from the owner, or from another thread of its mission. */
 type NewMessage = {
   /** The files the owner attached, added beforehand as drafts (message-attachments). */

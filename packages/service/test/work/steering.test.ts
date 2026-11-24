@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { MessageDelivery, MissionDetail, Request, ThreadId } from "@outlore/contracts";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import { afterEach } from "vitest";
-import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
+import { fakeHarnessLayer, Harness, Service, serviceLayer } from "../../src/index.ts";
 import { call, read, settle } from "../fixtures/service.ts";
 
 const directories: string[] = [];
@@ -13,16 +13,22 @@ afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { force: true, recursive: true });
 });
 
-const live = () => {
+const live = (harness: Layer.Layer<Harness> = fakeHarnessLayer("10 millis")) => {
   const directory = mkdtempSync(join(tmpdir(), "outlore-steering-"));
   directories.push(directory);
   return serviceLayer({
     filename: join(directory, "outlore.sqlite"),
-    harness: fakeHarnessLayer("10 millis"),
+    harness,
     homeFolder: directory,
     scratchRoot: join(directory, "missions"),
   });
 };
+
+const withoutMidTurnSteer = () =>
+  Layer.effect(
+    Harness,
+    Effect.map(Harness, (harness) => ({ ...harness, steer: () => Effect.succeed(false) })),
+  ).pipe(Layer.provide(fakeHarnessLayer("10 millis")));
 
 const failureOf = <R extends Request>(request: R) =>
   Effect.gen(function* () {
@@ -130,6 +136,45 @@ describe("steering a running thread", () => {
       const refused = yield* failureOf({ _tag: "SteerQueuedMessage", messageId: sent.messageId });
       expect(refused).toBeDefined();
     }).pipe(Effect.provide(live())),
+  );
+
+  it.live("returns a steered message to the queue when unsteered before delivery and refuses once delivered", () =>
+    Effect.gen(function* () {
+      const started = yield* start("wait 1200");
+      yield* settle(started.missionId, isRunning);
+      const sent = yield* send(started.threadId, "First draft");
+      yield* call({ _tag: "SteerQueuedMessage", messageId: sent.messageId });
+      const steered = yield* read(started.missionId);
+      expect(steered.messages.find((item) => item.id === sent.messageId)).toMatchObject({
+        isDelivered: false,
+        isQueued: false,
+      });
+
+      const editWhileSteered = yield* failureOf({
+        _tag: "EditQueuedMessage",
+        messageId: sent.messageId,
+        text: "Blocked while steered",
+      });
+      expect(editWhileSteered.message).toBe("This message is no longer queued.");
+
+      yield* call({ _tag: "UnsteerQueuedMessage", messageId: sent.messageId });
+      const requeued = yield* read(started.missionId);
+      expect(requeued.messages.find((item) => item.id === sent.messageId)).toMatchObject({
+        isDelivered: false,
+        isQueued: true,
+      });
+
+      // Returning to the queue restores editing and refuses a second unsteer.
+      yield* call({ _tag: "EditQueuedMessage", messageId: sent.messageId, text: "Second draft" });
+      const alreadyQueued = yield* failureOf({ _tag: "UnsteerQueuedMessage", messageId: sent.messageId });
+      expect(alreadyQueued.message).toBe("This message was already taken in by the running turn.");
+
+      const finished = yield* settle(started.missionId, isIdleWith(2));
+      expect(repliesOf(finished)).toEqual(["Echo: waited 1200", "Echo: Second draft"]);
+
+      const alreadyDelivered = yield* failureOf({ _tag: "UnsteerQueuedMessage", messageId: sent.messageId });
+      expect(alreadyDelivered.message).toBe("This message was already taken in by the running turn.");
+    }).pipe(Effect.provide(live(withoutMidTurnSteer()))),
   );
 
   it.live("queues the owner's message when the owner's default is Queue", () =>

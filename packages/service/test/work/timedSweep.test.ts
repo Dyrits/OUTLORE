@@ -123,6 +123,24 @@ it.effect("wakes early when told, such as by a change, and only once per change"
   ),
 );
 
+it.effect("waits only for a change when nothing is due yet", () =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const changes = yield* PubSub.unbounded<void>();
+      const subscription = yield* PubSub.subscribe(changes);
+      const { runs, work } = yield* counting(() => null);
+      yield* timedSweep({ name: "Sweep", untilNext: Effect.succeed(null), wakeOn: PubSub.take(subscription), work });
+      yield* advance(0);
+      expect(yield* runs).toBe(1);
+      yield* advance(400 * 24 * hour);
+      expect(yield* runs).toBe(1);
+      yield* PubSub.publish(changes, undefined);
+      yield* advance(0);
+      expect(yield* runs).toBe(2);
+    }),
+  ),
+);
+
 it.effect("stops when its scope closes", () =>
   Effect.gen(function* () {
     const { runs, work } = yield* counting(() => null);

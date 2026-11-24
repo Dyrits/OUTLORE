@@ -15,6 +15,7 @@ import { Composer } from "../ui/controls";
 import { type CompanionsTab, CompanionsTabLayout } from "./companionsTabLayout";
 import { ConversationFailure, ConversationFeed } from "./conversationFeed";
 import { MobileHeader } from "./mobileHeader";
+import { QueuedMessageTray } from "./queuedMessageTray";
 import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
 import { useThreadConversation } from "./useThreadConversation";
 
@@ -271,19 +272,30 @@ function ChroniclerChat({
                     runner={replyRunnerOf(thread)}
                   />
                 ) : (
-                  <Composer
-                    draftKey={channel === undefined ? "chronicler" : place.threadId}
-                    hasContent={terminal.hasContent}
-                    {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
-                    accessory={accessory}
-                    attachments={{ client, refusal: conversation.refusal }}
-                    dictation={{ client }}
-                    mentions={{ client, workspacePath: realm?.path ?? null }}
-                    onSend={conversation.send}
-                    {...(canStop ? { onStop: conversation.stop } : {})}
-                    placeholder={conversation.placeholder}
-                    skills={skills}
-                  />
+                  <>
+                    <QueuedMessageTray
+                      isInTurn={thread.actions.isInTurn}
+                      messages={conversation.pendingMessages}
+                      onEdit={conversation.editQueued}
+                      onInterrupt={conversation.interrupt}
+                      onRemove={conversation.removeQueued}
+                      onSteer={conversation.steer}
+                      onUnsteer={conversation.unsteer}
+                    />
+                    <Composer
+                      draftKey={channel === undefined ? "chronicler" : place.threadId}
+                      hasContent={terminal.hasContent}
+                      {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
+                      accessory={accessory}
+                      attachments={{ client, refusal: conversation.refusal }}
+                      dictation={{ client }}
+                      mentions={{ client, workspacePath: realm?.path ?? null }}
+                      onSend={conversation.send}
+                      {...(canStop ? { onStop: conversation.stop } : {})}
+                      placeholder={conversation.placeholder}
+                      skills={skills}
+                    />
+                  </>
                 )}
               </>
             )}

@@ -29,6 +29,7 @@ import { ConversationFailure, ConversationFeed } from "./conversationFeed";
 
 import { ErrandHeaderActions, hasErrandActions } from "./errandHeaderActions";
 import { MobileHeader, mobileIconTarget } from "./mobileHeader";
+import { QueuedMessageTray } from "./queuedMessageTray";
 import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
 import { terminalFolderOf } from "./terminalFolder";
 import { ChatterNotices } from "./threadActions";
@@ -322,6 +323,15 @@ export function ThreadPane({
                   ) : takesTurns ? (
                     <>
                       <CommentTray />
+                      <QueuedMessageTray
+                        isInTurn={thread.actions.isInTurn}
+                        messages={conversation.pendingMessages}
+                        onEdit={conversation.editQueued}
+                        onInterrupt={conversation.interrupt}
+                        onRemove={conversation.removeQueued}
+                        onSteer={conversation.steer}
+                        onUnsteer={conversation.unsteer}
+                      />
                       <Composer
                         draftKey={`thread:${thread.id}`}
                         {...(canOpenBeneath && !isInPane ? { onOpenSideQuest: () => setIsOpening(true) } : {})}

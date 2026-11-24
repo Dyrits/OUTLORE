@@ -153,6 +153,8 @@ export const SendMessage = Schema.TaggedStruct("SendMessage", {
 });
 /** Lets a queued owner message join its thread's running turn instead of waiting for the next one (thread-messaging, Delivery). */
 export const SteerQueuedMessage = Schema.TaggedStruct("SteerQueuedMessage", { messageId: MessageId });
+/** Returns a steered owner message to the queue, so it waits for the next turn instead of joining the running one (thread-messaging, Delivery). */
+export const UnsteerQueuedMessage = Schema.TaggedStruct("UnsteerQueuedMessage", { messageId: MessageId });
 export const EditQueuedMessage = Schema.TaggedStruct("EditQueuedMessage", {
   messageId: MessageId,
   text: Schema.String,
@@ -384,6 +386,7 @@ export const Request = Schema.Union([
   DeleteThread,
   SendMessage,
   SteerQueuedMessage,
+  UnsteerQueuedMessage,
   EditQueuedMessage,
   RemoveQueuedMessage,
   ListMissions,

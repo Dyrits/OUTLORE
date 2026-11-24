@@ -20,7 +20,6 @@ import { commentsOf } from "./comments";
 import { SentComments } from "./commentViews";
 import type { Entry, QuestLink } from "./entries";
 import { Markdown } from "./markdown";
-import { QueuedMessageActions } from "./queuedMessageActions";
 import { QuestReplyLine, ReplyLine } from "./replyLine";
 import { StepsGroup } from "./stepsGroup";
 import { SuggestionCard, SuggestionLine } from "./suggestions";
@@ -150,22 +149,13 @@ function MessageBubble({
   client,
   fromQuest,
   harness,
-  isInTurn,
   message,
-  onInterrupt,
   onOpenMission,
-  onSteer,
   replyToText,
   skills,
   workspacePath,
 }: {
   client: ServiceClient;
-  /** Whether the thread is at work: only then can a queued message be steered or sent by interrupting. */
-  isInTurn: boolean;
-  /** Ends the thread's current turn, so a queued message starts the next at once. */
-  onInterrupt: () => Promise<unknown>;
-  /** Lets a queued message join the thread's current turn. */
-  onSteer: (messageId: MessageId) => Promise<unknown>;
   /** The quest a report came from, which its card opens by a small button at its corner. */
   fromQuest: MissionId | null;
   harness: HarnessName;
@@ -206,8 +196,6 @@ function MessageBubble({
             styles.messageCard,
             cardStyles[message.sender],
             questLink !== null && !isNotice && styles.cardWithCorner,
-            // The owner's message the agent does not have yet is drawn fainter, until it is delivered.
-            message.sender === "user" && !message.isDelivered && { opacity: 0.6 },
           ]}
         >
           {/* The owner's own messages need no label, as in a chat; a queued one says it waits. */}
@@ -242,15 +230,6 @@ function MessageBubble({
           <SentComments items={sent.items} />
           <MessageImages cards={message.attachments} client={client} />
           {questLink !== null && !isNotice && <QuestButton link={questLink} onOpenMission={onOpenMission} />}
-          {message.sender === "user" && message.isQueued && (
-            <QueuedMessageActions
-              client={client}
-              isInTurn={isInTurn}
-              message={message}
-              onInterrupt={onInterrupt}
-              onSteer={onSteer}
-            />
-          )}
         </View>
       </CommentableCard>
     </View>
@@ -264,11 +243,8 @@ export function EntryView({
   client,
   entry,
   harness,
-  isInTurn,
-  onInterrupt,
   onOpenMission,
   onSelectThread,
-  onSteer,
   skills,
   workspacePath,
 }: {
@@ -276,10 +252,6 @@ export function EntryView({
   channel?: { id: import("@outlore/contracts").WorkspaceId | null; name: string } | undefined;
   client: ServiceClient;
   entry: Entry;
-  /** Whether the thread is at work. */
-  isInTurn: boolean;
-  onInterrupt: () => Promise<unknown>;
-  onSteer: (messageId: MessageId) => Promise<unknown>;
   /** The harness the thread runs on now: the mark of a reply that records none. */
   harness: HarnessName;
   /** The skills and workspace the owner's messages are read against, to draw what they named as chips. */
@@ -343,11 +315,8 @@ export function EntryView({
       client={client}
       fromQuest={entry.fromQuest}
       harness={harness}
-      isInTurn={isInTurn}
       message={entry.message}
-      onInterrupt={onInterrupt}
       onOpenMission={onOpenMission}
-      onSteer={onSteer}
       replyToText={entry.replyToText}
       skills={skills}
       workspacePath={workspacePath}

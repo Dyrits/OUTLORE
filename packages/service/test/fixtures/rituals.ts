@@ -74,6 +74,8 @@ export const replies = (detail: { messages: ReadonlyArray<{ sender: string; text
 
 export const advance = (millis: number) =>
   Effect.gen(function* () {
+    // Let background sweeps finish processing committed changes and register their next sleep before advancing time.
+    for (let index = 0; index < 20; index++) yield* Effect.yieldNow;
     yield* TestClock.adjust(millis);
     for (let index = 0; index < 40; index++) yield* Effect.yieldNow;
   });

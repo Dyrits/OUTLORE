@@ -162,6 +162,7 @@ export const requestSourceRules = {
   SwitchAtBudget: shared,
   TranscribeDictation: shared,
   UndoIntelChange: shared,
+  UnsteerQueuedMessage: shared,
   UpdateHarness: shared,
   UpdateHost: shared,
   UpdateRitual: shared,

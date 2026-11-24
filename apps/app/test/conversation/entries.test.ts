@@ -47,7 +47,7 @@ const recordedQuestionOf = (id: string, askedAt: number): Question => ({
   threadTitle: "Top",
 });
 
-it("keeps unread owner messages below later replies and steps, including after Steer", () => {
+it("leaves pending owner messages out of the feed until a turn takes them in", () => {
   const detail = {
     ...detailOf([summary("top", null, 0)], "top"),
     messages: [
@@ -57,20 +57,12 @@ it("keeps unread owner messages below later replies and steps, including after S
     ],
     questions: [recordedQuestionOf("action", 25)],
   } as unknown as MissionDetail;
-  expect(entriesOf(detail, true).map((entry) => entry.key)).toEqual([
-    "steps:action",
-    "reply",
-    "live-footer",
-    "queued",
-    "steered",
-  ]);
+  expect(entriesOf(detail, true).map((entry) => entry.key)).toEqual(["steps:action", "reply"]);
   const delivered = detail.messages.map((item) => (item.id === "steered" ? { ...item, isDelivered: true } : item));
   expect(entriesOf({ ...detail, messages: delivered }, true).map((entry) => entry.key)).toEqual([
     "steered",
     "steps:action",
     "reply",
-    "live-footer",
-    "queued",
   ]);
 });
 

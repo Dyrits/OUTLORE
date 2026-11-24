@@ -87,3 +87,75 @@ export function InterruptIcon({ tint }: { tint: string }) {
     </Svg>
   );
 }
+
+/** A small chevron that points down when expanded and right when collapsed. */
+export function ChevronIcon({ isExpanded, tint }: { isExpanded: boolean; tint: string }) {
+  return (
+    <Svg
+      fill="none"
+      height={14}
+      stroke={tint}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.6}
+      viewBox="0 0 16 16"
+      width={14}
+    >
+      <Path d={isExpanded ? "M4 6l4 4 4-4" : "M6 4l4 4-4 4"} />
+    </Svg>
+  );
+}
+
+/** Three stacked lines representing queued messages waiting for delivery. */
+export function QueueIcon({ tint }: { tint: string }) {
+  return (
+    <Svg
+      fill="none"
+      height={14}
+      stroke={tint}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.6}
+      viewBox="0 0 16 16"
+      width={14}
+    >
+      <Path d="M3 4.5h10M3 8h10M3 11.5h6" />
+    </Svg>
+  );
+}
+
+/** A trash can icon for removing a queued message. */
+export function TrashIcon({ tint }: { tint: string }) {
+  return (
+    <Svg
+      fill="none"
+      height={14}
+      stroke={tint}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.6}
+      viewBox="0 0 16 16"
+      width={14}
+    >
+      <Path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 8.5h6l.5-8.5M7 7v4M9 7v4" />
+    </Svg>
+  );
+}
+
+/** A pencil icon for editing a queued message in place. */
+export function EditPencilIcon({ tint }: { tint: string }) {
+  return (
+    <Svg
+      fill="none"
+      height={14}
+      stroke={tint}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.6}
+      viewBox="0 0 16 16"
+      width={14}
+    >
+      <Path d="M10.5 3.5l2 2L6 12l-2.8.8L4 10z" />
+    </Svg>
+  );
+}

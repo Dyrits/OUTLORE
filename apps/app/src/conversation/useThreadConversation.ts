@@ -10,6 +10,7 @@ import { useSkills } from "../foundation/useSkills";
 import { useTerminal } from "../terminal/useTerminal";
 import type { ChronicleTarget } from "./chronicleTarget";
 import { entriesOf } from "./entries";
+import { pendingOwnerMessagesOf } from "./queuedMessages";
 import { type ConversationOptions, conversationStateOf, sendConversationMessage } from "./threadConversation";
 import { useThreadComments } from "./useComments";
 import { useDraft, useFollowNewest } from "./useConversationFeed";
@@ -29,6 +30,7 @@ export function useThreadConversation(
   // What hangs from the messages of this conversation, so their reply lines stand under them (conversation panes).
   const { data: anchors } = useServiceQuery(client, { _tag: "ReadThreadAnchors", threadId }, `anchors:${threadId}`);
   const entries = detail === null ? [] : entriesOf(detail, detail.thread.actions.isInTurn, anchors ?? []);
+  const pendingMessages = detail === null ? [] : pendingOwnerMessagesOf(detail.messages);
   const followNewest = useFollowNewest(entries, target);
   const skills = useSkills(client, path);
   const terminal = useTerminal(client, threadId, terminalPath);
@@ -61,17 +63,21 @@ export function useThreadConversation(
     actionError,
     comments,
     draft,
+    editQueued: (messageId: MessageId, text: string) => client.request({ _tag: "EditQueuedMessage", messageId, text }),
     entries,
     followNewest,
     harnesses,
     interrupt: () => client.request({ _tag: "InterruptThread", threadId }),
+    pendingMessages,
     placeholder: state.placeholder,
     presetChoice,
     refusal: thread === null ? null : imageRefusalOf(harnesses, thread.harness, thread.model),
+    removeQueued: (messageId: MessageId) => client.request({ _tag: "RemoveQueuedMessage", messageId }),
     send,
     skills,
     steer: (messageId: MessageId) => client.request({ _tag: "SteerQueuedMessage", messageId }),
     stop: () => client.request({ _tag: "StopThread", threadId }),
     terminal,
+    unsteer: (messageId: MessageId) => client.request({ _tag: "UnsteerQueuedMessage", messageId }),
   };
 }

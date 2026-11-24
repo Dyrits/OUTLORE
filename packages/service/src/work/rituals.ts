@@ -408,7 +408,8 @@ export const ritualsLayer = Layer.effectDiscard(
       const now = yield* Clock.currentTimeMillis;
       const [next] = yield* sql<{ at: number | null }>`SELECT MIN(next_run_at) AS at FROM rituals
         WHERE is_on = 1 AND next_run_at IS NOT NULL`;
-      return Math.max(1, Math.min((next?.at ?? now + longestSleepMillis) - now, longestSleepMillis));
+      if (next?.at == null) return null;
+      return Math.max(1, Math.min(next.at - now, longestSleepMillis));
     });
     yield* timedSweep({
       name: "The Ritual scheduler",

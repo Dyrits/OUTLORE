@@ -11,11 +11,13 @@ const retryMillis = 60 * 1000;
 export type TimedSweep<A, E, R, E2, R2> = {
   /** Ends the wait early when it completes, such as the next committed change. */
   readonly wakeOn?: Effect.Effect<unknown>;
+  /** When true, `wakeOn` is only awaited while `untilNext` returns null, avoiding race overhead during timed sleeps. */
+  readonly isWakeOnlyWhenIdle?: boolean;
   /** Whether the first run is at once (the default) or after the first wait. */
   readonly isRunAtStart?: boolean;
   readonly name: string;
-  /** Milliseconds from now until the sweep is next due, read after every run; it may change as the data does. */
-  readonly untilNext: Effect.Effect<number, E2, R2>;
+  /** Milliseconds from now until the sweep is next due, or null when nothing is due until `wakeOn` fires. */
+  readonly untilNext: Effect.Effect<number | null, E2, R2>;
   /** What one run does. */
   readonly work: Effect.Effect<A, E, R>;
 };
@@ -36,8 +38,15 @@ export const timedSweep = <A, E, R, E2, R2>(options: TimedSweep<A, E, R, E2, R2>
     Effect.gen(function* () {
       // A time that cannot be read is the retry delay; a run that failed waits at least that long.
       const due = yield* recover(`${options.name}: reading when it is next due`, options.untilNext, retryMillis);
-      const sleep = Effect.sleep(hasFailed ? Math.max(due, retryMillis) : due);
-      yield* options.wakeOn === undefined ? sleep : Effect.raceFirst(sleep, options.wakeOn);
+      if (due === null && !hasFailed && options.wakeOn !== undefined) {
+        yield* options.wakeOn;
+        return;
+      }
+      const delay = due === null ? retryMillis : hasFailed ? Math.max(due, retryMillis) : due;
+      const sleep = Effect.sleep(delay);
+      yield* options.wakeOn === undefined || options.isWakeOnlyWhenIdle === true
+        ? sleep
+        : Effect.raceFirst(sleep, options.wakeOn);
     });
   const cycle = recover(options.name, Effect.as(options.work, false), true).pipe(
     Effect.flatMap((hasFailed) => pause(hasFailed)),

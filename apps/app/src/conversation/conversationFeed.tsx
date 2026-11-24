@@ -60,9 +60,6 @@ export function ConversationFeed({
                 client={client}
                 entry={item}
                 harness={thread.harness}
-                isInTurn={thread.actions.isInTurn}
-                onInterrupt={conversation.interrupt}
-                onSteer={conversation.steer}
                 skills={conversation.skills}
                 workspacePath={workspacePath}
               />

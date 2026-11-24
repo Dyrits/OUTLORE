@@ -1,7 +1,7 @@
 import type { ThreadState } from "@outlore/contracts";
-import { Clock, Effect, Layer } from "effect";
+import { Clock, Effect, Layer, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
-import { inactivityMissiveHours } from "../core/index.ts";
+import { Changes, inactivityMissiveHours } from "../core/index.ts";
 import { Commands } from "./commands.ts";
 import { autoArchiveLayer } from "./ending.ts";
 import { changed, unchanged } from "./followUps.ts";
@@ -98,9 +98,25 @@ const postDueMissives = Effect.gen(function* () {
 const inactivityMissivesLayer = Layer.effectDiscard(
   Effect.gen(function* () {
     const commands = yield* Commands;
+    const changes = yield* Changes;
+    const sql = yield* SqlClient.SqlClient;
+    const subscription = yield* PubSub.subscribe(changes.pubsub);
+    const untilNextMissive = Effect.gen(function* () {
+      const [candidate] = yield* sql<{ id: string }>`
+        SELECT m.id FROM missions m JOIN threads top ON top.id = m.top_thread_id
+          JOIN workspaces w ON w.id = top.workspace_id
+        WHERE w.archived_at IS NULL AND m.ending IS NULL AND m.is_guildmaster = 0
+          AND NOT EXISTS (SELECT 1 FROM rituals WHERE mission_id = m.id)
+        LIMIT 1`;
+      if (candidate === undefined) return null;
+      const now = yield* Clock.currentTimeMillis;
+      return hour - (now % hour);
+    });
     yield* timedSweep({
+      isWakeOnlyWhenIdle: true,
       name: "Inactivity warnings",
-      untilNext: Effect.succeed(hour),
+      untilNext: untilNextMissive,
+      wakeOn: PubSub.take(subscription),
       work: commands.run(postDueMissives),
     });
   }),
