@@ -17,6 +17,12 @@ interface WorkshopTabs {
   lastPreset: WorkshopPreset;
   /** Each table's chevron tells whether the tab shows it, and how it is pressed. */
   report: (focus: WorkshopFocus, isOpen: boolean, press: () => void) => void;
+  /** Asks the table of a preset, once it is on the page, to open the tab on it. */
+  reveal: (focus: WorkshopFocus) => void;
+  /** Clears the request to show a preset once its table has shown it. */
+  revealed: (focus: WorkshopFocus) => void;
+  /** The preset a table is asked to show in the tab, such as one just added. */
+  revealing: WorkshopFocus | null;
   setFocus: (focus: WorkshopFocus) => void;
   unregister: (focus: WorkshopFocus) => void;
 }
@@ -27,6 +33,9 @@ const WorkshopTabsContext = createContext<WorkshopTabs>({
   isOpen: false,
   lastPreset: "Light",
   report: () => {},
+  reveal: () => {},
+  revealed: () => {},
+  revealing: null,
   setFocus: () => {},
   unregister: () => {},
 });
@@ -38,6 +47,7 @@ export function WorkshopTabsProvider({ children }: { children: ReactNode }) {
   const [focus, setFocusState] = useState<WorkshopFocus>("Default");
   const [lastPreset, setLastPreset] = useState<WorkshopPreset>("Light");
   const [isOpen, setIsOpen] = useState(false);
+  const [revealing, setRevealing] = useState<WorkshopFocus | null>(null);
   const presses = useRef(new Map<WorkshopFocus, { isOpen: boolean; press: () => void }>());
   const setFocus = useCallback((next: WorkshopFocus) => {
     setFocusState(next);
@@ -55,9 +65,21 @@ export function WorkshopTabsProvider({ children }: { children: ReactNode }) {
   const closeTab = useCallback(() => {
     [...presses.current.values()].find((entry) => entry.isOpen)?.press();
   }, []);
+  const revealed = useCallback((at: WorkshopFocus) => setRevealing((now) => (now === at ? null : now)), []);
   const value = useMemo(
-    () => ({ closeTab, focus, isOpen, lastPreset, report, setFocus, unregister }),
-    [closeTab, focus, isOpen, lastPreset, report, setFocus, unregister],
+    () => ({
+      closeTab,
+      focus,
+      isOpen,
+      lastPreset,
+      report,
+      reveal: setRevealing,
+      revealed,
+      revealing,
+      setFocus,
+      unregister,
+    }),
+    [closeTab, focus, isOpen, lastPreset, report, revealed, revealing, setFocus, unregister],
   );
   return <WorkshopTabsContext.Provider value={value}>{children}</WorkshopTabsContext.Provider>;
 }

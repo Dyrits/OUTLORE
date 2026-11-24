@@ -1,12 +1,11 @@
 import type { CompanionPresetEdit, Tier } from "@outlore/contracts";
 import { useState } from "react";
 import { Text, View } from "react-native";
-import { BackupsEditor } from "../editors/backupsEditor";
 import { PresetNameForm } from "../editors/presetNameForm";
-import { RunnerPickers, useHarnesses } from "../editors/runners";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { Button } from "../ui/button";
+import { useWorkshopTabs } from "./workshopTabs";
 
 /** Sends one preset edit without replacing the rest of the library. */
 export const savePresetEdit = (client: ServiceClient, edit: CompanionPresetEdit) =>
@@ -66,50 +65,19 @@ export function PresetActions({ client, name }: { client: ServiceClient; name: s
   );
 }
 
-/** Edits a new custom preset's full stack before adding it to the library. */
+/**
+ * Names a new custom preset. It starts on the default Companion and opens in the Companions tab, where its Companion
+ * and backups are chosen and saved at once, as a built-in preset's are.
+ */
 export function AddPreset({ client, defaults }: { client: ServiceClient; defaults: Tier }) {
-  const [draft, setDraft] = useState<Tier | null>(null);
-  const stack = draft ?? defaults;
+  const { reveal } = useWorkshopTabs();
   return (
     <PresetNameForm
       label="Add preset"
-      onCancel={() => setDraft(null)}
       onSave={async (name) => {
-        await savePresetEdit(client, { _tag: "Add", name, stack });
-        setDraft(null);
+        await savePresetEdit(client, { _tag: "Add", name, stack: defaults });
+        reveal(`custom:${name}`);
       }}
-    >
-      <PresetStackPicker client={client} onChange={setDraft} stack={stack} />
-    </PresetNameForm>
-  );
-}
-
-function PresetStackPicker({
-  client,
-  onChange,
-  stack,
-}: {
-  client: ServiceClient;
-  onChange: (stack: Tier) => void;
-  stack: Tier;
-}) {
-  const { data: harnesses } = useHarnesses(client);
-  return (
-    <>
-      <RunnerPickers
-        client={client}
-        harnesses={harnesses}
-        isCompact={false}
-        onChange={(runner) => onChange({ ...runner, backups: stack.backups })}
-        value={stack}
-      />
-      <Text style={styles.body}>Backup companions</Text>
-      <BackupsEditor
-        backups={stack.backups}
-        harnesses={harnesses}
-        isCompact={false}
-        onChange={(backups) => onChange({ ...stack, backups })}
-      />
-    </>
+    />
   );
 }

@@ -16,6 +16,14 @@ function Chevron({ focus, isOpen, onPress }: { focus: WorkshopFocus; isOpen: boo
   // After every render, so the tabs know which chevron shows and how to press it.
   useEffect(() => report(focus, isOpen, onPress));
   const isActive = tabs.isOpen && tabs.focus === focus;
+  const { revealed, revealing, setFocus } = tabs;
+  // A preset just added opens in the tab as soon as its table is on the page.
+  useEffect(() => {
+    if (revealing !== focus) return;
+    setFocus(focus);
+    onPress();
+    revealed(focus);
+  }, [focus, onPress, revealed, revealing, setFocus]);
   return (
     <Pressable
       accessibilityLabel="Change this Companion in the Companions tab"
