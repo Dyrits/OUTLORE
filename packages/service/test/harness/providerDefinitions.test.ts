@@ -1,14 +1,19 @@
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "@effect/vitest";
 import { Effect } from "effect";
-import { acpLaunchOf, majorVersionAtLeast } from "../../src/harness/acpProviderDefinition.ts";
+import {
+  type AcpProviderDefinition,
+  acpLaunchOf,
+  majorVersionAtLeast,
+} from "../../src/harness/acpProviderDefinition.ts";
 import { acpProviders } from "../../src/harness/acpProviderRoster.ts";
 import { antigravity } from "../../src/harness/antigravityProvider.ts";
 import { harnessFacts, harnessNames } from "../../src/harness/harnessCatalog.ts";
 import { harnesses } from "../../src/harness/harnesses.ts";
 import { kimi } from "../../src/harness/kimiProvider.ts";
+import { type AcpFakeConfig, acpFakeEnv, acpFakeScript, readAcpFakeLog } from "../fixtures/acpFake.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
 // Each ACP provider is one definition (acpProviderDefinition.ts). The launch, the model probe, the sign-in and the
@@ -182,89 +187,32 @@ describe("the version gates", () => {
 // The registry's own entries, started through a wrapper script that runs the provider's stand-in: what the stand-in
 // logs is what the real registry launched, so a probe or turn that stopped reading the definition would show here.
 describe.skipIf(process.platform === "win32")("the registry reads the definition when it launches", () => {
-  type Spec = {
-    readonly fake: string;
-    readonly logVariable: string;
-    readonly modeVariable: string;
-    /** What the stand-in logged of its environment, by definition spawn variable. */
-    readonly seenEnv: (entries: ReadonlyArray<Record<string, unknown>>) => Record<string, unknown>;
-  };
-  const argvOf = (entries: ReadonlyArray<Record<string, unknown>>) => {
-    const entry = entries.find((candidate) => Array.isArray(candidate.argv) || Array.isArray(candidate.args));
-    return (entry?.argv ?? entry?.args) as ReadonlyArray<string> | undefined;
-  };
-  const specs = {
-    antigravity: {
-      fake: "antigravityProviderFake.mjs",
-      logVariable: "ANTIGRAVITY_FAKE_LOG",
-      modeVariable: "ANTIGRAVITY_FAKE_MODE",
-      seenEnv: (entries) => ({
-        AGY_CLI_DISABLE_AUTO_UPDATE: entries.find((entry) => "autoUpdateDisabled" in entry)?.autoUpdateDisabled,
-      }),
-    },
-    cline: {
-      fake: "clineProviderFake.mjs",
-      logVariable: "CLINE_FAKE_LOG",
-      modeVariable: "CLINE_FAKE_MODE",
-      seenEnv: (entries) => {
-        const entry = entries.find((candidate) => "backendMode" in candidate);
-        return { CLINE_NO_AUTO_UPDATE: entry?.autoUpdateDisabled, CLINE_SESSION_BACKEND_MODE: entry?.backendMode };
-      },
-    },
-    copilot: {
-      fake: "copilotProviderFake.mjs",
-      logVariable: "COPILOT_FAKE_LOG",
-      modeVariable: "COPILOT_FAKE_MODE",
-      seenEnv: (entries) => ({ COPILOT_AUTO_UPDATE: entries.find((entry) => "autoUpdate" in entry)?.autoUpdate }),
-    },
-    cursor: {
-      fake: "cursorProviderFake.mjs",
-      logVariable: "CURSOR_FAKE_LOG",
-      modeVariable: "CURSOR_FAKE_MODE",
-      seenEnv: () => ({}),
-    },
-    devin: {
-      fake: "devinProviderFake.mjs",
-      logVariable: "DEVIN_FAKE_LOG",
-      modeVariable: "DEVIN_FAKE_MODE",
-      seenEnv: () => ({}),
-    },
-  } as const satisfies Record<string, Spec>;
+  /** The stand-in's launch lines: the argv the registry started it with, and each spawn variable the definition carries as it saw it. */
+  const launchOf = (log: string) => readAcpFakeLog(log).find((entry) => entry.launch !== undefined)?.launch;
 
-  /** A wrapper that runs the stand-in as the provider's executable, and the stand-in's log. */
-  const standIn = (spec: Spec, mode: string) => {
+  /** A wrapper that runs the one ACP stand-in as the provider's executable, knobs set in the process's environment, and the stand-in's log. */
+  const standIn = (definition: AcpProviderDefinition, config: AcpFakeConfig) => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-registry-definition-"));
     const command = join(directory, "provider");
     const log = join(directory, "calls");
-    writeFileSync(
-      command,
-      `#!/bin/sh\nexec node ${JSON.stringify(join(import.meta.dirname, "../fixtures", spec.fake))} "$@"\n`,
-    );
+    writeFileSync(command, `#!/bin/sh\nexec node ${JSON.stringify(acpFakeScript)} "$@"\n`);
     chmodSync(command, 0o755);
-    vi.stubEnv(spec.logVariable, log);
-    vi.stubEnv(spec.modeVariable, mode);
-    const entries = () =>
-      readFileSync(log, "utf8")
-        .trim()
-        .split("\n")
-        .filter((line) => line !== "")
-        .map((line) => JSON.parse(line) as Record<string, unknown>);
-    return { command, directory, entries };
+    for (const [name, value] of Object.entries(
+      acpFakeEnv(log, { ...config, logEnv: Object.keys(definition.spawnEnv) }),
+    ))
+      vi.stubEnv(name, value);
+    return { command, directory, log };
   };
 
-  for (const name of Object.keys(specs) as Array<keyof typeof specs>) {
-    const spec = specs[name];
-    const definition = acpProviders[name];
-    if (definition === undefined) throw new Error(`no definition for ${name}`);
-
+  for (const { definition, name } of providers.filter(({ name: harness }) => harness !== "hermes")) {
     it(`probes ${name} models on the definition's argv and spawn environment`, async () => {
-      const { command, directory, entries } = standIn(spec, "probe");
+      const { command, directory, log } = standIn(definition, { mode: "probe" });
       try {
         const models = await Effect.runPromise(harnesses[name].readModels(command, null));
         expect(models.length).toBeGreaterThan(0);
         const launch = acpLaunchOf(definition);
-        expect(argvOf(entries())).toEqual([...launch.args]);
-        for (const [key, value] of Object.entries(spec.seenEnv(entries())))
+        expect(launchOf(log)?.argv).toEqual([...launch.args]);
+        for (const [key, value] of Object.entries(launchOf(log)?.env ?? {}))
           expect(value, `${name} saw ${key}`).toBe(launch.env[key] ?? null);
       } finally {
         vi.unstubAllEnvs();
@@ -273,7 +221,7 @@ describe.skipIf(process.platform === "win32")("the registry reads the definition
     });
 
     it.live(`runs ${name} turns on the definition's argv and spawn environment`, () => {
-      const { command, directory, entries } = standIn(spec, "turn");
+      const { command, directory, log } = standIn(definition, { mode: "turn" });
       return Effect.gen(function* () {
         const harness = yield* harnesses[name].makeAdapter({
           command,
@@ -282,8 +230,8 @@ describe.skipIf(process.platform === "win32")("the registry reads the definition
         });
         yield* harness.runTurn(turnRequestOf({ text: "run git push" }));
         const launch = acpLaunchOf(definition);
-        expect(argvOf(entries())).toEqual([...launch.args]);
-        for (const [key, value] of Object.entries(spec.seenEnv(entries())))
+        expect(launchOf(log)?.argv).toEqual([...launch.args]);
+        for (const [key, value] of Object.entries(launchOf(log)?.env ?? {}))
           expect(value, `${name} saw ${key}`).toBe(launch.env[key] ?? null);
       }).pipe(
         Effect.scoped,
@@ -298,7 +246,7 @@ describe.skipIf(process.platform === "win32")("the registry reads the definition
   }
 
   it("reads the Antigravity sign-in from the same launch: models listed is signed in, the pinned code is signed out", async () => {
-    const signedIn = standIn(specs.antigravity, "probe");
+    const signedIn = standIn(antigravity, { mode: "probe" });
     try {
       expect(await Effect.runPromise(harnesses.antigravity.readSignIn(signedIn.command, {}))).toEqual({
         detail: null,
@@ -308,7 +256,10 @@ describe.skipIf(process.platform === "win32")("the registry reads the definition
       vi.unstubAllEnvs();
       rmSync(signedIn.directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 });
     }
-    const signedOut = standIn(specs.antigravity, "signedout");
+    const signedOut = standIn(antigravity, {
+      mode: "probe",
+      signedOut: { code: -32000, message: "Authentication required" },
+    });
     try {
       expect(await Effect.runPromise(harnesses.antigravity.readSignIn(signedOut.command, {}))).toEqual({
         detail: null,

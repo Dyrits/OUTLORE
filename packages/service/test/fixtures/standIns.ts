@@ -5,6 +5,7 @@ import { type Duration, Effect, Layer } from "effect";
 import { afterEach } from "vitest";
 import type { OpenCodeSandbox } from "../../src/harness/openCodeSandbox.ts";
 import { type FakeUpdates, fakeHarnessToolsLayer, Harness, makeHarnessRouter, serviceLayer } from "../../src/index.ts";
+import { type AcpFakeConfig, acpFakeEnv, acpFakeScript } from "./acpFake.ts";
 import { call, temporary } from "./service.ts";
 
 /** The controls the stand-in harnesses read; each is cleared after every test that could have set it. */
@@ -33,16 +34,8 @@ const standInControls = [
   "PI_FAKE_TOOL_BREACH",
   "PI_FAKE_REFUSE_PROMPT",
   "PI_FAKE_SLOW",
-  "CURSOR_FAKE_LOG",
-  "CURSOR_FAKE_MODE",
-  "COPILOT_FAKE_LOG",
-  "COPILOT_FAKE_MODE",
-  "CLINE_FAKE_LOG",
-  "CLINE_FAKE_MODE",
-  "DEVIN_FAKE_LOG",
-  "DEVIN_FAKE_MODE",
-  "ANTIGRAVITY_FAKE_LOG",
-  "ANTIGRAVITY_FAKE_MODE",
+  "ACP_FAKE",
+  "ACP_FAKE_LOG",
 ];
 afterEach(() => {
   for (const name of standInControls) delete process.env[name];
@@ -50,6 +43,8 @@ afterEach(() => {
 
 /** One line of the stand-ins' shared log. */
 export type Logged = {
+  /** The argv and watched environment of an ACP stand-in's process (acpFake.mjs). */
+  readonly launch?: { readonly argv: ReadonlyArray<string>; readonly env: Record<string, string | null> };
   readonly args?: ReadonlyArray<string>;
   readonly auth?: string;
   readonly config?: Record<string, unknown>;
@@ -116,6 +111,12 @@ export const waitFor = async (check: () => boolean, millis = 5000) => {
 /** The stand-in a harness runs in its executable's place, by file name in this folder. */
 const standInScript = (name: string) => join(import.meta.dirname, name);
 
+/** The one configurable ACP stand-in as a provider's launch: its environment (logging to the shared log) and script. */
+const acpStandIn = (log: string, config: AcpFakeConfig = {}) => ({
+  env: acpFakeEnv(log, { logEnv: ["GEMINI_HOME", "AGY_CLI_DISABLE_AUTO_UPDATE"], ...config }),
+  prefixArgs: [acpFakeScript],
+});
+
 /**
  * A service whose harnesses all run stand-ins, logging to one file; OpenCode wrapped when a sandbox is given.
  * The router is the app's own (`makeHarnessRouter`): every harness starts from its registry entry, so what the registry adds around a launch (Muse's update flag, Antigravity's pinned home, the tool-server wiring) happens here too, and only the executable is a stand-in.
@@ -139,36 +140,18 @@ export const withHarnesses = (
       { idleTimeout, sandboxProblem: null },
       {
         // Added accounts stay refused for Antigravity pending the live flag-vs-env check, so its fake runs the computer's own Gemini home.
-        antigravity: {
-          env: { ANTIGRAVITY_FAKE_LOG: log, ANTIGRAVITY_FAKE_MODE: "turn" },
-          prefixArgs: [standInScript("antigravityProviderFake.mjs")],
-        },
+        antigravity: acpStandIn(log, { usage: "update" }),
         claude: {
           prefixArgs: [standInScript("stand-in-claude.mjs")],
           userSettingsPath: join(directory, "no-settings.json"),
         },
-        cline: {
-          env: { CLINE_FAKE_LOG: log, CLINE_FAKE_MODE: "turn" },
-          prefixArgs: [standInScript("clineProviderFake.mjs")],
-        },
+        cline: acpStandIn(log, { usage: "update" }),
         codex: { prefixArgs: [standInScript("stand-in-codex.mjs")] },
-        copilot: {
-          env: { COPILOT_FAKE_LOG: log, COPILOT_FAKE_MODE: "turn" },
-          prefixArgs: [standInScript("copilotProviderFake.mjs")],
-        },
-        cursor: {
-          env: { CURSOR_FAKE_LOG: log, CURSOR_FAKE_MODE: "turn" },
-          prefixArgs: [standInScript("cursorProviderFake.mjs")],
-        },
-        devin: {
-          env: { DEVIN_FAKE_LOG: log, DEVIN_FAKE_MODE: "turn" },
-          prefixArgs: [standInScript("devinProviderFake.mjs")],
-        },
-        // The generic ACP fake stands in for Hermes; its account-home requirement stands, so only threads with an account folder use it.
-        hermes: {
-          env: { ACP_FAKE_LOG: log, ACP_FAKE_MODE: "turn" },
-          prefixArgs: [standInScript("acpProvidersFake.mjs")],
-        },
+        copilot: acpStandIn(log),
+        cursor: acpStandIn(log),
+        devin: acpStandIn(log, { usage: "update" }),
+        // The same stand-in is Hermes; its account-home requirement stands, so only threads with an account folder use it.
+        hermes: acpStandIn(log, { modes: ["ask", "default"], options: ["model", "thinking"], usage: "update" }),
         muse: { env: { MUSE_FAKE_LOG: log }, prefixArgs: [standInScript("museProviderFake.mjs")] },
         opencode: {
           instructionsFolder: join(directory, "instructions"),

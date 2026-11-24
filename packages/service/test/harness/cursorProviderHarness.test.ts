@@ -1,50 +1,42 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import type { HarnessEvent } from "../../src/core/index.ts";
 import { cursor } from "../../src/harness/cursorProvider.ts";
+import {
+  type AcpFakeConfig,
+  acpFakeEnv,
+  acpFakeScript,
+  configSetsLogged,
+  readAcpFakeLog,
+  untilAcpFakeLogged,
+} from "../fixtures/acpFake.ts";
 import { standInHarness, standInProbe } from "../fixtures/providerStandIns.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
-// Checks of the Cursor harness against its stand-in, `cursorProviderFake.mjs`: the audited launch
+// Checks of the Cursor harness against the one configurable ACP stand-in, `acpFake.mjs`: the audited launch
 // (`acp`), a mediated tool permission, the model set through the session's config options, Cursor's
 // stdout noise line tolerated by the line transport, the fail-closed answer to a reverse request Outlore
 // does not mediate, and the model probe — all against the profile registration will pass.
 
-type LoggedEntry = {
-  args?: Array<string>;
-  configId?: string;
-  method?: string;
-  setConfigOption?: boolean;
-  strictAnswer?: string;
-};
+const models = [
+  ["Cursor Composer", "cursor/composer-1"],
+  ["GPT-5.2", "gpt-5.2"],
+] as const;
+/** Cursor's own tool call: a command whose title is the command line. */
+const command = {
+  id: "cursor-call-1",
+  title: "git push origin main",
+} as const;
 
-const readEntries = (log: string): Array<LoggedEntry> =>
-  existsSync(log)
-    ? readFileSync(log, "utf8")
-        .trim()
-        .split("\n")
-        .filter((line) => line !== "")
-        .map((line) => JSON.parse(line) as LoggedEntry)
-    : [];
-
-/** Waits until the stand-in has logged an entry the check cares about. */
-const untilLogged = (log: string, predicate: (entry: LoggedEntry) => boolean) =>
-  Effect.promise(async () => {
-    for (let attempt = 0; attempt < 250; attempt += 1) {
-      if (readEntries(log).some(predicate)) return;
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
-  });
-
-const harnessOf = (log: string, env: Record<string, string> = {}) =>
+const harnessOf = (log: string, config: AcpFakeConfig = {}) =>
   standInHarness("cursor", {
     command: process.execPath,
-    env: { CURSOR_FAKE_LOG: log, CURSOR_FAKE_MODE: "turn", ...env },
+    env: acpFakeEnv(log, { models, noise: true, options: ["model", "thinking"], tool: command, ...config }),
     idleTimeout: "10 minutes",
-    prefixArgs: [join(import.meta.dirname, "../fixtures/cursorProviderFake.mjs")],
+    prefixArgs: [acpFakeScript],
   });
 
 describe("running a thread on the Cursor harness", () => {
@@ -64,10 +56,8 @@ describe("running a thread on the Cursor harness", () => {
       expect(outcome.isInterrupted).toBe(false);
       // Cursor reports no usage over ACP, so a plain turn reports none.
       expect(outcome.usage).toEqual({ cacheCreation: 0, cacheRead: 0, input: 0, output: 0 });
-      const entries = readEntries(log);
-      expect(entries[0]?.args).toEqual(["acp"]);
-      const setOptions = entries.filter((entry) => entry.setConfigOption === true);
-      expect(setOptions).toEqual([{ configId: "model", setConfigOption: true, value: "gpt-5.2" }]);
+      expect(readAcpFakeLog(log)[0]?.launch?.argv).toEqual(["acp"]);
+      expect(configSetsLogged(log)).toEqual([["model", "gpt-5.2"]]);
       expect(events.filter((event) => event._tag === "Reply").map((event) => event.text)).toEqual([
         "Working",
         "tool was allow_once",
@@ -106,11 +96,11 @@ describe("running a thread on the Cursor harness", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-cursor-turn-"));
     const log = join(directory, "calls");
     return Effect.gen(function* () {
-      const harness = yield* harnessOf(log, { CURSOR_FAKE_STRICT: "1" });
+      const harness = yield* harnessOf(log, { strict: true });
       const outcome = yield* harness.runTurn(turnRequestOf({ text: "strict" }));
       expect(outcome.isInterrupted).toBe(false);
-      yield* untilLogged(log, (entry) => entry.strictAnswer !== undefined);
-      expect(readEntries(log).find((entry) => entry.strictAnswer !== undefined)?.strictAnswer).toBe(
+      yield* untilAcpFakeLogged(log, (entry) => entry.strictAnswer !== undefined);
+      expect(readAcpFakeLog(log).find((entry) => entry.strictAnswer !== undefined)?.strictAnswer).toBe(
         "Outlore does not answer session/set_mode.",
       );
     }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
@@ -120,16 +110,16 @@ describe("running a thread on the Cursor harness", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-cursor-probe-"));
     const log = join(directory, "calls");
     return Effect.gen(function* () {
-      const models = yield* standInProbe(cursor, {
+      const offered = yield* standInProbe(cursor, {
         command: process.execPath,
-        env: { CURSOR_FAKE_LOG: log, CURSOR_FAKE_MODE: "probe" },
-        prefixArgs: [join(import.meta.dirname, "../fixtures/cursorProviderFake.mjs")],
+        env: acpFakeEnv(log, { mode: "probe", models }),
+        prefixArgs: [acpFakeScript],
       });
-      expect(models).toEqual([
+      expect(offered).toEqual([
         { id: "cursor/composer-1", label: "Cursor Composer" },
         { id: "gpt-5.2", label: "GPT-5.2" },
       ]);
-      expect(readEntries(log)[0]?.args).toEqual(["acp"]);
+      expect(readAcpFakeLog(log)[0]?.launch?.argv).toEqual(["acp"]);
     }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
   });
 });

@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
@@ -6,36 +6,28 @@ import { Effect, Fiber } from "effect";
 import type { HarnessEvent } from "../../src/core/index.ts";
 import { bridgeNodePathOf } from "../../src/harness/acpMcpBridge.ts";
 import { makeAcpProviderHarness } from "../../src/harness/acpProviders.ts";
+import {
+  type AcpFakeConfig,
+  acpFakeEnv,
+  acpFakeRequest,
+  acpFakeScript,
+  configSetsLogged,
+  readAcpFakeLog,
+  untilAcpFakeLogged,
+} from "../fixtures/acpFake.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
-// Checks of the generic ACP provider turn adapter against its stand-in, `acpProvidersFake.mjs` in turn mode.
+// Checks of the generic ACP provider turn adapter against the one configurable ACP stand-in, `acpFake.mjs`.
 
-type LoggedEntry = { cwd?: string; kimiCodeHome?: string | null; method?: string; params?: Record<string, unknown> };
+/** The session the generic adapter's checks open: it offers an ask mode, a model and a thinking level. */
+const turnSession = { modes: ["ask", "default"], options: ["model", "thinking"], usage: "update" } as const;
 
-const readEntries = (log: string): Array<LoggedEntry> =>
-  existsSync(log)
-    ? readFileSync(log, "utf8")
-        .trim()
-        .split("\n")
-        .filter((line) => line !== "")
-        .map((line) => JSON.parse(line) as LoggedEntry)
-    : [];
-
-/** Waits until the stand-in has logged an entry the check cares about. */
-const untilLogged = (log: string, predicate: (entry: LoggedEntry) => boolean) =>
-  Effect.promise(async () => {
-    for (let attempt = 0; attempt < 250; attempt += 1) {
-      if (readEntries(log).some(predicate)) return;
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
-  });
-
-const harnessOf = (log: string, env: Record<string, string> = {}) =>
+const harnessOf = (log: string, config: AcpFakeConfig = {}) =>
   makeAcpProviderHarness({
     command: process.execPath,
     idleTimeout: "10 minutes",
-    prefixArgs: [join(import.meta.dirname, "../fixtures/acpProvidersFake.mjs")],
-    profile: { args: [], env: { ACP_FAKE_LOG: log, ACP_FAKE_MODE: "turn", ...env }, label: "fake ACP" },
+    prefixArgs: [acpFakeScript],
+    profile: { args: [], env: acpFakeEnv(log, { ...turnSession, ...config }), label: "fake ACP" },
   });
 
 describe("running a thread on a generic ACP provider", () => {
@@ -67,13 +59,13 @@ describe("running a thread on a generic ACP provider", () => {
   it.live("gives the session an HTTP MCP server when supported and the stdio bridge otherwise", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-acp-turn-"));
     const bridgePath = join(import.meta.dirname, "../../src/harness/acpMcpBridge.mjs");
-    const sessionParamsOf = (env: Record<string, string>, mcpUrl = "http://127.0.0.1:9/mcp/none") =>
+    const sessionParamsOf = (config: AcpFakeConfig, mcpUrl = "http://127.0.0.1:9/mcp/none") =>
       Effect.gen(function* () {
-        const log = join(directory, `calls-${Object.keys(env).length}-${mcpUrl.length}`);
-        const harness = yield* harnessOf(log, env);
+        const log = join(directory, `calls-${JSON.stringify(config).length}-${mcpUrl.length}`);
+        const harness = yield* harnessOf(log, config);
         const base = turnRequestOf({ text: "hello" });
         yield* harness.runTurn({ ...base, access: { ...base.access, mcpUrl } });
-        return readEntries(log).find((entry) => entry.method === "session/new")?.params?.mcpServers;
+        return acpFakeRequest(log, "session/new").params?.mcpServers;
       });
     return Effect.gen(function* () {
       expect(yield* sessionParamsOf({})).toEqual([
@@ -84,7 +76,7 @@ describe("running a thread on a generic ACP provider", () => {
           name: "outlore",
         },
       ]);
-      expect(yield* sessionParamsOf({ ACP_FAKE_MCP_HTTP: "1" })).toEqual([
+      expect(yield* sessionParamsOf({ mcpHttp: true })).toEqual([
         { headers: [], name: "outlore", type: "http", url: "http://127.0.0.1:9/mcp/none" },
       ]);
       expect(yield* sessionParamsOf({}, "")).toEqual([]);
@@ -93,13 +85,13 @@ describe("running a thread on a generic ACP provider", () => {
 
   it.live("tells a session with no tool server that the thread tools are unavailable, and one with it nothing", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-acp-turn-"));
-    const promptTextOf = (env: Record<string, string>, mcpUrl = "http://127.0.0.1:9/mcp/none") =>
+    const promptTextOf = (config: AcpFakeConfig, mcpUrl = "http://127.0.0.1:9/mcp/none") =>
       Effect.gen(function* () {
-        const log = join(directory, `calls-${Object.keys(env).length}-${mcpUrl.length}`);
-        const harness = yield* harnessOf(log, env);
+        const log = join(directory, `calls-${JSON.stringify(config).length}-${mcpUrl.length}`);
+        const harness = yield* harnessOf(log, config);
         const base = turnRequestOf({ context: "Starting context.", text: "hello" });
         yield* harness.runTurn({ ...base, access: { ...base.access, mcpUrl } });
-        const prompt = readEntries(log).find((entry) => entry.method === "session/prompt");
+        const prompt = acpFakeRequest(log, "session/prompt");
         return JSON.stringify(prompt?.params?.prompt);
       });
     return Effect.gen(function* () {
@@ -108,7 +100,7 @@ describe("running a thread on a generic ACP provider", () => {
       expect(without).toContain("has no Outlore tool server");
       expect(without).toContain("request_approval");
       expect(yield* promptTextOf({})).not.toContain("tool server");
-      expect(yield* promptTextOf({ ACP_FAKE_MCP_HTTP: "1" })).not.toContain("tool server");
+      expect(yield* promptTextOf({ mcpHttp: true })).not.toContain("tool server");
     }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
   });
 
@@ -138,7 +130,7 @@ describe("running a thread on a generic ACP provider", () => {
     const log = join(directory, "calls");
     const events: Array<HarnessEvent> = [];
     return Effect.gen(function* () {
-      const harness = yield* harnessOf(log, { ACP_FAKE_MISSING_SESSION: "gone" });
+      const harness = yield* harnessOf(log, { missingSession: "gone" });
       const outcome = yield* harness.runTurn(
         turnRequestOf({
           conversationSoFar: Effect.succeed("Earlier words."),
@@ -149,7 +141,7 @@ describe("running a thread on a generic ACP provider", () => {
       );
       expect(outcome.sessionId).toBe("acp-1");
       expect(events.some((event) => event._tag === "Notice" && event.text.includes("could not pick up"))).toBe(true);
-      const prompt = readEntries(log).find((entry) => entry.method === "session/prompt");
+      const prompt = acpFakeRequest(log, "session/prompt");
       const text = ((prompt?.params?.prompt as Array<{ text?: string }> | undefined) ?? []).map(
         (part) => part.text ?? "",
       )[0];
@@ -163,13 +155,13 @@ describe("running a thread on a generic ACP provider", () => {
     const directory = mkdtempSync(join(tmpdir(), "outlore-acp-turn-"));
     const log = join(directory, "calls");
     return Effect.gen(function* () {
-      const harness = yield* harnessOf(log, { ACP_FAKE_SLOW: "1" });
+      const harness = yield* harnessOf(log, { slow: true });
       const fiber = yield* Effect.forkChild(harness.runTurn(turnRequestOf({ text: "slow" })));
-      yield* untilLogged(log, (entry) => entry.method === "session/prompt");
+      yield* untilAcpFakeLogged(log, (entry) => entry.method === "session/prompt");
       expect(yield* harness.interrupt("thread-1")).toBe(true);
       const outcome = yield* Fiber.join(fiber);
       expect(outcome.isInterrupted).toBe(true);
-      expect(readEntries(log).some((entry) => entry.method === "session/cancel")).toBe(true);
+      expect(readAcpFakeLog(log).some((entry) => entry.method === "session/cancel")).toBe(true);
     }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
   });
 
@@ -180,10 +172,10 @@ describe("running a thread on a generic ACP provider", () => {
       const harness = yield* makeAcpProviderHarness({
         command: process.execPath,
         idleTimeout: "10 minutes",
-        prefixArgs: [join(import.meta.dirname, "../fixtures/acpProvidersFake.mjs")],
+        prefixArgs: [acpFakeScript],
         profile: {
           args: [],
-          env: { ACP_FAKE_LOG: log, ACP_FAKE_MODE: "turn" },
+          env: acpFakeEnv(log, turnSession),
           label: "fake Hermes",
           needsConfiguredStateHome: true,
           stateHomeEnv: "HERMES_HOME",
@@ -205,10 +197,10 @@ describe("running a thread on a generic ACP provider", () => {
       const harness = yield* makeAcpProviderHarness({
         command: process.execPath,
         idleTimeout: "10 minutes",
-        prefixArgs: [join(import.meta.dirname, "../fixtures/acpProvidersFake.mjs")],
+        prefixArgs: [acpFakeScript],
         profile: {
           args: [],
-          env: { ACP_FAKE_LOG: log, ACP_FAKE_MODE: "turn" },
+          env: acpFakeEnv(log, { ...turnSession, logEnv: ["KIMI_CODE_HOME"] }),
           label: "fake Kimi",
           stateHomeEnv: "KIMI_CODE_HOME",
         },
@@ -222,11 +214,8 @@ describe("running a thread on a generic ACP provider", () => {
         }),
       );
       expect(outcome.sessionId).toBe("acp-1");
-      const created = readEntries(log).find((entry) => entry.method === "session/new");
-      expect(created?.kimiCodeHome).toBe(account);
-      const set = readEntries(log)
-        .filter((entry) => entry.method === "session/set_config_option")
-        .map((entry) => [entry.params?.configId, entry.params?.value]);
+      expect(acpFakeRequest(log, "session/new").launch?.env.KIMI_CODE_HOME).toBe(account);
+      const set = configSetsLogged(log);
       expect(set).toContainEqual(["mode", "ask"]);
       expect(set).toContainEqual(["model", "model-a"]);
       expect(set).toContainEqual(["thinking", "high"]);

@@ -7,43 +7,27 @@ import type { HarnessEvent } from "../../src/core/index.ts";
 import { acpLaunchOf } from "../../src/harness/acpProviderDefinition.ts";
 import { readAcpProviderSignIn } from "../../src/harness/acpProviders.ts";
 import { antigravity, antigravityGeminiHome } from "../../src/harness/antigravityProvider.ts";
+import { type AcpFakeConfig, acpFakeEnv, acpFakeRequest, acpFakeScript } from "../fixtures/acpFake.ts";
 import { standInHarness, standInProbe } from "../fixtures/providerStandIns.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
-// Fixture checks of the Antigravity harness against its stand-in, antigravityProviderFake.mjs: the launch always carries
+// Fixture checks of the Antigravity harness against the one configurable ACP stand-in, acpFake.mjs: the launch always carries
 // the same Gemini home in its --gemini-dir flag and environment, the pinned environment suppresses the CLI's
 // self-update, and a turn mediates its tool calls through the owner exactly as the generic ACP adapter does.
 
-type LoggedEntry = {
-  argv?: string[];
-  autoUpdateDisabled?: string | null;
-  geminiHome?: string | null;
-  method?: string;
-  params?: Record<string, unknown>;
-  wslDistroName?: string | null;
-};
-
-const readEntries = (log: string): Array<LoggedEntry> =>
-  readFileSync(log, "utf8")
-    .trim()
-    .split("\n")
-    .filter((line) => line !== "")
-    .map((line) => JSON.parse(line) as LoggedEntry);
-
-const fakeArgs = ["../fixtures/antigravityProviderFake.mjs"] as const;
-
-/** The stand-in's entry for one method, or a failure naming the absent method. */
-const entryOf = (log: string, method: string) => {
-  const entry = readEntries(log).find((parsed) => parsed.method === method);
-  if (entry === undefined) throw new Error(`the stand-in logged no ${method}`);
-  return entry;
-};
+/** What the stand-in records of its launch: the Gemini home, the update switch, and a WSL distro name that must stay absent. */
+const logEnv = ["GEMINI_HOME", "AGY_CLI_DISABLE_AUTO_UPDATE", "WSL_DISTRO_NAME"];
+const probeConfig = {
+  logEnv,
+  mode: "probe",
+  models: [["Gemini 2.5 Pro", "gemini-2.5-pro"]],
+} as const satisfies AcpFakeConfig;
 
 const probeOf = (log: string, geminiHome?: string) =>
   standInProbe(antigravity, {
-    env: { ANTIGRAVITY_FAKE_LOG: log },
+    env: acpFakeEnv(log, probeConfig),
     ...(geminiHome === undefined ? {} : { configDirectory: geminiHome }),
-    prefixArgs: [join(import.meta.dirname, fakeArgs[0])],
+    prefixArgs: [acpFakeScript],
   }).pipe(Effect.runPromise);
 
 describe("resolving the Antigravity launch surface", () => {
@@ -71,13 +55,13 @@ describe("probing the Antigravity CLI", () => {
       const models = await probeOf(log, geminiHome);
       expect(models).toEqual([{ id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }]);
       await vi.waitFor(() => expect(readFileSync(log, "utf8")).toContain('"exit":true'));
-      const entry = entryOf(log, "session/new");
-      expect(entry.argv).toEqual(["acp", `--gemini-dir=${geminiHome}`, "--app-data-dir=antigravity-acp"]);
+      const entry = acpFakeRequest(log, "session/new");
+      expect(entry.launch?.argv).toEqual(["acp", `--gemini-dir=${geminiHome}`, "--app-data-dir=antigravity-acp"]);
       // The two home channels never disagree: the flag and the environment carry the same home.
-      expect(entry.geminiHome).toBe(geminiHome);
-      expect(entry.autoUpdateDisabled).toBe("true");
+      expect(entry.launch?.env.GEMINI_HOME).toBe(geminiHome);
+      expect(entry.launch?.env.AGY_CLI_DISABLE_AUTO_UPDATE).toBe("true");
       // No WSL distro name: it would move the CLI's tokens from the keychain, where its own login stores them, to a file.
-      expect(entry.wslDistroName).toBeNull();
+      expect(entry.launch?.env.WSL_DISTRO_NAME).toBeNull();
       expect(entry.params?.mcpServers).toEqual([]);
     } finally {
       rmSync(directory, { force: true, recursive: true });
@@ -93,9 +77,9 @@ describe("probing the Antigravity CLI", () => {
       const models = await probeOf(log);
       expect(models).toEqual([{ id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }]);
       await vi.waitFor(() => expect(readFileSync(log, "utf8")).toContain('"exit":true'));
-      const entry = entryOf(log, "session/new");
-      expect(entry.argv).toContain(`--gemini-dir=${join(directory, "env-home")}`);
-      expect(entry.geminiHome).toBe(join(directory, "env-home"));
+      const entry = acpFakeRequest(log, "session/new");
+      expect(entry.launch?.argv).toContain(`--gemini-dir=${join(directory, "env-home")}`);
+      expect(entry.launch?.env.GEMINI_HOME).toBe(join(directory, "env-home"));
     } finally {
       if (previous === undefined) delete process.env.GEMINI_HOME;
       else process.env.GEMINI_HOME = previous;
@@ -110,8 +94,11 @@ describe("reading the Antigravity sign-in", () => {
     return readAcpProviderSignIn({
       command,
       definition: antigravity,
-      env: { ANTIGRAVITY_FAKE_LOG: join(directory, "calls"), ANTIGRAVITY_FAKE_MODE: mode },
-      prefixArgs: [join(import.meta.dirname, fakeArgs[0])],
+      env: acpFakeEnv(join(directory, "calls"), {
+        ...probeConfig,
+        ...(mode === "signedout" ? { signedOut: { code: -32000, message: "Authentication required" } } : {}),
+      }),
+      prefixArgs: [acpFakeScript],
     }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))), Effect.runPromise);
   };
 
@@ -134,9 +121,9 @@ describe("running a thread on the Antigravity CLI", () => {
   const harnessOf = (log: string, geminiHome: string) => {
     vi.stubEnv("GEMINI_HOME", geminiHome);
     return standInHarness("antigravity", {
-      env: { ANTIGRAVITY_FAKE_LOG: log, ANTIGRAVITY_FAKE_MODE: "turn" },
+      env: acpFakeEnv(log, { logEnv, models: [["Gemini 2.5 Pro", "gemini-2.5-pro"]], usage: "update" }),
       idleTimeout: "10 minutes",
-      prefixArgs: [join(import.meta.dirname, fakeArgs[0])],
+      prefixArgs: [acpFakeScript],
     });
   };
 
@@ -161,8 +148,8 @@ describe("running a thread on the Antigravity CLI", () => {
         input: { command: "git push origin main" },
         toolName: "git push",
       });
-      const entry = entryOf(log, "session/prompt");
-      expect(entry.argv).toEqual(["acp", `--gemini-dir=${geminiHome}`, "--app-data-dir=antigravity-acp"]);
+      const entry = acpFakeRequest(log, "session/prompt");
+      expect(entry.launch?.argv).toEqual(["acp", `--gemini-dir=${geminiHome}`, "--app-data-dir=antigravity-acp"]);
     }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))));
   });
 

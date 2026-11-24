@@ -30,10 +30,14 @@ describe("the test router runs the registry's registration glue", () => {
       const started = yield* startMission({ harness: "antigravity", text: "Hello" });
       yield* answerOpen("Allow");
       yield* settle(started.missionId, idleWith(2));
-      const session = (logged() as Array<Seen>).find((entry) => entry.method === "session/new");
-      expect(session?.argv).toEqual(["acp", "--gemini-dir=/stand-in/gemini-home", "--app-data-dir=antigravity-acp"]);
-      expect(session?.geminiHome).toBe("/stand-in/gemini-home");
-      expect(session?.autoUpdateDisabled).toBe("true");
+      const session = logged().find((entry) => entry.method === "session/new");
+      expect(session?.launch?.argv).toEqual([
+        "acp",
+        "--gemini-dir=/stand-in/gemini-home",
+        "--app-data-dir=antigravity-acp",
+      ]);
+      expect(session?.launch?.env.GEMINI_HOME).toBe("/stand-in/gemini-home");
+      expect(session?.launch?.env.AGY_CLI_DISABLE_AUTO_UPDATE).toBe("true");
       // The fake advertises no HTTP MCP support, so the registry's adapter hands over the stdio bridge to the thread's own tool server.
       const params = (session?.params ?? {}) as { mcpServers?: Array<{ args: Array<string> }> };
       expect(params.mcpServers).toHaveLength(1);

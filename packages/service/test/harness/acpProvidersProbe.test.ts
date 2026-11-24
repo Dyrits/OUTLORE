@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import { probeAcpProviderModels } from "../../src/harness/acpProviders.ts";
+import { acpFakeEnv, acpFakeRequest, acpFakeScript, readAcpFakeLog } from "../fixtures/acpFake.ts";
 
 describe("probing an ACP provider", () => {
   it.each(["models", "config"])("reads %s without prompting or providing MCP servers", async (form) => {
@@ -13,23 +14,23 @@ describe("probing an ACP provider", () => {
       const models = await Effect.runPromise(
         probeAcpProviderModels({
           command: "node",
-          prefixArgs: [join(import.meta.dirname, "../fixtures/acpProvidersFake.mjs")],
-          profile: { args: [], env: { ACP_FAKE_FORM: form, ACP_FAKE_LOG: log }, label: "fake ACP" },
+          prefixArgs: [acpFakeScript],
+          profile: {
+            args: [],
+            env: acpFakeEnv(log, { form: form as "config" | "models", mode: "probe" }),
+            label: "fake ACP",
+          },
         }),
       );
       expect(models).toEqual([{ id: "model-a", label: "Model A" }]);
       await vi.waitFor(() => expect(readFileSync(log, "utf8")).toContain('"exit":true'));
-      const entries = readFileSync(log, "utf8")
-        .trim()
-        .split("\n")
-        .map((line) => JSON.parse(line));
-      expect(entries.filter((entry) => entry.method).map((entry) => entry.method)).toEqual([
-        "initialize",
-        "session/new",
-      ]);
-      expect(entries[1].params.mcpServers).toEqual([]);
-      expect(entries[1].cwd).not.toBe(tmpdir());
-      expect(existsSync(entries[1].cwd)).toBe(false);
+      const entries = readAcpFakeLog(log).filter((entry) => entry.method !== undefined);
+      expect(entries.map((entry) => entry.method)).toEqual(["initialize", "session/new"]);
+      expect(entries[1]?.params?.mcpServers).toEqual([]);
+      // The probe runs in a folder of its own, removed once it has answered.
+      const cwd = entries[1]?.params?.cwd as string;
+      expect(cwd).not.toBe(tmpdir());
+      expect(existsSync(cwd)).toBe(false);
     } finally {
       rmSync(directory, { force: true, recursive: true });
     }
@@ -42,10 +43,10 @@ describe("probing an ACP provider", () => {
       const models = await Effect.runPromise(
         probeAcpProviderModels({
           command: "node",
-          prefixArgs: [join(import.meta.dirname, "../fixtures/acpProvidersFake.mjs")],
+          prefixArgs: [acpFakeScript],
           profile: {
             args: [],
-            env: { ACP_FAKE_FORM: "models", ACP_FAKE_LOG: log },
+            env: acpFakeEnv(log, { form: "models", logEnv: ["KIMI_CODE_HOME"], mode: "probe" }),
             label: "fake Kimi",
             stateHomeEnv: "KIMI_CODE_HOME",
           },
@@ -53,14 +54,11 @@ describe("probing an ACP provider", () => {
       );
       expect(models).toEqual([{ id: "model-a", label: "Model A" }]);
       await vi.waitFor(() => expect(readFileSync(log, "utf8")).toContain('"exit":true'));
-      const entry = readFileSync(log, "utf8")
-        .trim()
-        .split("\n")
-        .map((line) => JSON.parse(line))
-        .find((parsed) => parsed.method === "session/new");
-      // The fake's own cwd resolves the /var symlink on macOS, so compare with the probe-side cwd it was given.
-      expect(entry.kimiCodeHome).toBe(join(entry.params.cwd, "state-home"));
-      expect(existsSync(entry.cwd)).toBe(false);
+      const entry = acpFakeRequest(log, "session/new");
+      // The probe-side cwd it was given, since the fake's own resolves the /var symlink on macOS.
+      const cwd = entry.params?.cwd as string;
+      expect(entry.launch?.env.KIMI_CODE_HOME).toBe(join(cwd, "state-home"));
+      expect(existsSync(cwd)).toBe(false);
     } finally {
       rmSync(directory, { force: true, recursive: true });
     }
@@ -74,10 +72,10 @@ describe("probing an ACP provider", () => {
       const models = await Effect.runPromise(
         probeAcpProviderModels({
           command: "node",
-          prefixArgs: [join(import.meta.dirname, "../fixtures/acpProvidersFake.mjs")],
+          prefixArgs: [acpFakeScript],
           profile: {
             args: [],
-            env: { ACP_FAKE_FORM: "models", ACP_FAKE_LOG: log },
+            env: acpFakeEnv(log, { form: "models", logEnv: ["HERMES_HOME"], mode: "probe" }),
             label: "fake Hermes",
             needsConfiguredStateHome: true,
             stateHomeEnv: "HERMES_HOME",
@@ -87,13 +85,8 @@ describe("probing an ACP provider", () => {
       );
       expect(models).toEqual([{ id: "model-a", label: "Model A" }]);
       await vi.waitFor(() => expect(readFileSync(log, "utf8")).toContain('"exit":true'));
-      const entry = readFileSync(log, "utf8")
-        .trim()
-        .split("\n")
-        .map((line) => JSON.parse(line))
-        .find((parsed) => parsed.method === "session/new");
       // The caller's home is used verbatim: an account's prepared state stays as it is.
-      expect(entry.hermesHome).toBe(home);
+      expect(acpFakeRequest(log, "session/new").launch?.env.HERMES_HOME).toBe(home);
       expect(existsSync(home)).toBe(false);
     } finally {
       rmSync(directory, { force: true, recursive: true });
@@ -107,10 +100,10 @@ describe("probing an ACP provider", () => {
       const failure = await Effect.runPromise(
         probeAcpProviderModels({
           command: "node",
-          prefixArgs: [join(import.meta.dirname, "../fixtures/acpProvidersFake.mjs")],
+          prefixArgs: [acpFakeScript],
           profile: {
             args: [],
-            env: { ACP_FAKE_FORM: "models", ACP_FAKE_LOG: log },
+            env: acpFakeEnv(log, { form: "models", mode: "probe" }),
             label: "fake Hermes",
             needsConfiguredStateHome: true,
             stateHomeEnv: "HERMES_HOME",
