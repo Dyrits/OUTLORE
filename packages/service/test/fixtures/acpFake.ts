@@ -6,6 +6,7 @@ import { Effect } from "effect";
 
 /** The knobs of the stand-in; each is optional and the script's own defaults say what an absent one means. */
 export type AcpFakeConfig = {
+  readonly contextSize?: number | null;
   readonly contextUsed?: number | null;
   readonly diff?: boolean;
   readonly form?: "config" | "models";

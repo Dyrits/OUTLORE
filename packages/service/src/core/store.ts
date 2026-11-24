@@ -1,5 +1,6 @@
 import { SqliteClient, SqliteMigrator } from "@effect/sql-sqlite-node";
 import { Layer } from "effect";
+import { contextReadingsMigrations } from "./contextReadingsMigrations.ts";
 import { earlyStoreMigrations } from "./earlyStoreMigrations.ts";
 import { inactivityMissiveMigrations } from "./inactivityMissiveMigrations.ts";
 import { lateStoreMigrations } from "./lateStoreMigrations.ts";
@@ -13,6 +14,7 @@ export const migrations = {
   ...lateStoreMigrations,
   ...recentStoreMigrations,
   ...inactivityMissiveMigrations,
+  ...contextReadingsMigrations,
 };
 
 /** The service's one SQLite database, migrated before use. */

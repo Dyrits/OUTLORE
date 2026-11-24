@@ -7,6 +7,7 @@ import { readContextLimit } from "../lore/index.ts";
 import { callDescriptionOf, saveActivityChange } from "./activities.ts";
 import { fallBackToBackup, resetBackupStep } from "./backups.ts";
 import { enforceBudgets } from "./budgets.ts";
+import { readLatestContextUsed, recordContextReading } from "./contextReadings.ts";
 import { contextLimitLineOf, hasReachedLimit } from "./contextWarning.ts";
 import { changed, unchanged } from "./followUps.ts";
 import { insertThreadLine, isRunnerChangedSince, isSessionOfThread } from "./handover.ts";
@@ -182,28 +183,32 @@ export const completeTurn = Effect.fnUntraced(function* (threadId: string, turn:
   if (!(yield* isCurrentTurn(turn.turnId))) return unchanged(null);
   const { billing, context, contextWindow, cost, isInterrupted, sessionId, usage } = outcome;
   const now = yield* Clock.currentTimeMillis;
-  if (usage !== null) {
-    const endedAt = yield* Clock.currentTimeMillis;
+  const used = context ?? null;
+  const windowSize = contextWindow ?? null;
+  const hasContext = used !== null || windowSize !== null;
+  if (usage !== null || hasContext) {
     const model = yield* modelOfTurn(threadId, turn);
-    const estimate = yield* estimateCost(prices, model, usage, billing, cost, endedAt);
-    const [earlier] = yield* sql<{ context: number }>`
-        SELECT context FROM usage WHERE thread_id = ${threadId} AND context IS NOT NULL
-        ORDER BY ended_at DESC, rowid DESC LIMIT 1`;
-    yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, cost, context, context_window,
+    const earlier = used === null ? null : yield* readLatestContextUsed(threadId);
+    if (usage !== null) {
+      const estimate = yield* estimateCost(prices, model, usage, billing, cost, now);
+      yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, cost, context, context_window,
             billing, harness, model, account_id, estimate, estimate_source, priced_at)
-          VALUES (${turn.turnId}, ${turn.missionId}, ${threadId}, ${endedAt}, ${usage.input}, ${usage.output},
-            ${usage.cacheRead}, ${usage.cacheCreation}, ${cost}, ${context ?? null}, ${contextWindow ?? null}, ${billing},
+          VALUES (${turn.turnId}, ${turn.missionId}, ${threadId}, ${now}, ${usage.input}, ${usage.output},
+            ${usage.cacheRead}, ${usage.cacheCreation}, ${cost}, ${used}, ${windowSize}, ${billing},
             ${turn.harness}, ${model}, ${turn.accountId}, ${estimate?.amount ?? null}, ${estimate?.source ?? null}, ${estimate?.pricedAt ?? null})`;
-    // The context reached the limit this turn: one line says so, and offers the way to compact (not on each turn past it).
-    if (context !== null && context !== undefined) {
-      const limit = yield* readContextLimit(turn.model, threadId);
-      if (hasReachedLimit(earlier?.context ?? null, context, limit.tokens))
-        yield* insertThreadLine(threadId, contextLimitLineOf(limit, turn.harness), endedAt);
+      yield* attachTurnRemainder(threadId, turn, usage, {
+        estimate: billing === "ApiKey" && cost !== null ? null : (estimate?.amount ?? null),
+        reported: billing === "ApiKey" ? cost : null,
+      });
     }
-    yield* attachTurnRemainder(threadId, turn, usage, {
-      estimate: billing === "ApiKey" && cost !== null ? null : (estimate?.amount ?? null),
-      reported: billing === "ApiKey" ? cost : null,
-    });
+    if (hasContext)
+      yield* recordContextReading({ model, recordedAt: now, size: windowSize, threadId, turnId: turn.turnId, used });
+    // The context reached the limit this turn: one line says so, and offers the way to compact (not on each turn past it).
+    if (used !== null) {
+      const limit = yield* readContextLimit(turn.model, threadId);
+      if (hasReachedLimit(earlier, used, limit.tokens))
+        yield* insertThreadLine(threadId, contextLimitLineOf(limit, turn.harness), now);
+    }
   }
   const status = isInterrupted ? "interrupted" : "completed";
   yield* sql`UPDATE turns SET status = ${status}, ended_at = ${now} WHERE id = ${turn.turnId}`;

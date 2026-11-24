@@ -147,6 +147,7 @@ describe("every ACP harness reports the context window and the turn's usage", ()
         const harness = yield* bareAdapter(log, { contextUsed: 4321, usage: "context" });
         const outcome = yield* harness.runTurn(turnRequestOf({ text: "run git push" }));
         expect(outcome.context).toBe(4321);
+        expect(outcome.contextWindow).toBe(200_000);
         expect(outcome.usage).toBeNull();
       }),
     ),

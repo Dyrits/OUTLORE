@@ -7,6 +7,7 @@ import { harnessFacts } from "../harness/index.ts";
 import { readContextLimit } from "../lore/index.ts";
 import { accountOfThread } from "./budgetScopes.ts";
 import { readThreadConsumption } from "./consumption.ts";
+import { readLatestContextUsed } from "./contextReadings.ts";
 import { PlanLimits } from "./planLimits.ts";
 import { readSentContextSize } from "./startingContext.ts";
 import { toolListingOf } from "./threadTools.ts";
@@ -35,23 +36,21 @@ export const contextPartsOf = (
 const readContextGauge = Effect.fnUntraced(function* (threadId: string, model: string) {
   const sql = yield* SqlClient.SqlClient;
   // The latest turn that reported one, not a sum over turns: the context is what the window holds now.
-  const [latest] = yield* sql<{ context: number }>`
-      SELECT context FROM usage WHERE thread_id = ${threadId} AND context IS NOT NULL
-      ORDER BY ended_at DESC, rowid DESC LIMIT 1`;
-  if (latest === undefined) return null;
+  const latest = yield* readLatestContextUsed(threadId);
+  if (latest === null) return null;
   const limit = yield* readContextLimit(model, threadId);
   const sent = yield* readSentContextSize(threadId);
   const [{ messageText } = { messageText: 0 }] = yield* sql<{ messageText: number }>`
       SELECT COALESCE(SUM(LENGTH(text)), 0) AS messageText FROM messages WHERE thread_id = ${threadId}`;
   return {
     isSoftLimit: limit.isSoftLimit,
-    parts: contextPartsOf(latest.context, [
+    parts: contextPartsOf(latest, [
       { kind: "Instructions", tokens: sent.instructions },
       { kind: "Lore", tokens: sent.lore },
       { kind: "Journal", tokens: sent.journal },
       { kind: "Messages", tokens: sent.openerMessages + Math.ceil(messageText / 4) },
     ]),
-    tokens: latest.context,
+    tokens: latest,
     windowTokens: limit.tokens,
   } satisfies ContextGauge;
 });

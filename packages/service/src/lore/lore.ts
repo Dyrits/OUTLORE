@@ -42,14 +42,25 @@ export const contextLimitOf = (reportedWindow: number | null) => {
  */
 export const readContextLimit = Effect.fnUntraced(function* (model: ModelChoice, threadId: string | null = null) {
   const sql = yield* SqlClient.SqlClient;
+  // Read the newest window from either `context_readings` or older `usage` rows so context-only turns and historical rows both feed the limit.
   const [latest] =
     model === "default" && threadId !== null
       ? yield* sql<{ contextWindow: number }>`
-          SELECT context_window AS contextWindow FROM usage WHERE thread_id = ${threadId} AND context_window IS NOT NULL
-          ORDER BY ended_at DESC, rowid DESC LIMIT 1`
+          SELECT size AS contextWindow FROM (
+            SELECT size, recorded_at AS at, 1 AS source, rowid AS seq
+            FROM context_readings WHERE thread_id = ${threadId} AND size IS NOT NULL
+            UNION ALL
+            SELECT context_window AS size, ended_at AS at, 0 AS source, rowid AS seq
+            FROM usage WHERE thread_id = ${threadId} AND context_window IS NOT NULL
+          ) ORDER BY at DESC, source DESC, seq DESC LIMIT 1`
       : yield* sql<{ contextWindow: number }>`
-          SELECT context_window AS contextWindow FROM usage WHERE model = ${model} AND context_window IS NOT NULL
-          ORDER BY ended_at DESC, rowid DESC LIMIT 1`;
+          SELECT size AS contextWindow FROM (
+            SELECT size, recorded_at AS at, 1 AS source, rowid AS seq
+            FROM context_readings WHERE model = ${model} AND size IS NOT NULL
+            UNION ALL
+            SELECT context_window AS size, ended_at AS at, 0 AS source, rowid AS seq
+            FROM usage WHERE model = ${model} AND context_window IS NOT NULL
+          ) ORDER BY at DESC, source DESC, seq DESC LIMIT 1`;
   return contextLimitOf(latest?.contextWindow ?? null);
 });
 

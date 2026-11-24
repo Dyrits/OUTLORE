@@ -11,6 +11,8 @@ import { createInterface } from "node:readline";
 // becomes the next agent message, then the prompt ends (a denial lets the turn carry on, as the providers do).
 
 const defaults = {
+  // The context window size the `usage_update` reports, when one is sent.
+  contextSize: 200_000,
   // The context the `usage_update` reports as used, when one is sent.
   contextUsed: 1234,
   // `diff`: a completed update carrying an ACP diff block follows an allowed tool call (the standard file-edit shape).
@@ -90,18 +92,19 @@ const sessionUpdate = (sessionId, update) =>
   send({ jsonrpc: "2.0", method: "session/update", params: { sessionId, update } });
 
 const endPrompt = (sessionId, id, stopReason) => {
+  const sizeField = config.contextSize === null ? {} : { size: config.contextSize };
   if (config.usage === "update")
     sessionUpdate(sessionId, {
       cachedReadTokens: 2,
       inputTokens: 10,
       outputTokens: 5,
       sessionUpdate: "usage_update",
-      ...(config.contextUsed === null ? {} : { size: 200_000, used: config.contextUsed }),
+      ...(config.contextUsed === null ? {} : { ...sizeField, used: config.contextUsed }),
     });
   if (config.usage === "context")
-    sessionUpdate(sessionId, { sessionUpdate: "usage_update", size: 200_000, used: config.contextUsed });
+    sessionUpdate(sessionId, { sessionUpdate: "usage_update", ...sizeField, used: config.contextUsed });
   if (config.usage === "response") {
-    sessionUpdate(sessionId, { sessionUpdate: "usage_update", size: 200_000, used: config.contextUsed });
+    sessionUpdate(sessionId, { sessionUpdate: "usage_update", ...sizeField, used: config.contextUsed });
     return answer(id, {
       stopReason,
       usage: { cachedReadTokens: 2, inputTokens: 10, outputTokens: 5, thoughtTokens: 1, totalTokens: 18 },

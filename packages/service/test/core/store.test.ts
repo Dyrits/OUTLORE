@@ -298,3 +298,27 @@ describe("migrating the settings to the default permission mode", () => {
     }),
   );
 });
+
+describe("migrating the store to separate context readings", () => {
+  it.effect("keeps older usage rows untouched and stores new context readings alongside them", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-store-"));
+    directories.push(directory);
+    return Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* migrateUntil("0076_realm_slug_names");
+      yield* sql`INSERT INTO missions (id, top_thread_id, title, created_at, last_activity_at) VALUES ('m', 't', 'Quest', 1, 1)`;
+      yield* sql`INSERT INTO threads (id, mission_id, state) VALUES ('t', 'm', 'Resting')`;
+      yield* sql`INSERT INTO usage (turn_id, mission_id, thread_id, ended_at, input, output, cache_read, cache_creation, context, context_window, model)
+        VALUES ('old-turn', 'm', 't', 10, 10, 5, 0, 0, 500, 128000, 'model-a')`;
+      yield* migrateUntil("0077_context_readings");
+      yield* sql`INSERT INTO context_readings (thread_id, turn_id, model, used, size, recorded_at)
+        VALUES ('t', 'new-turn', 'model-a', 1200, 200000, 20)`;
+      expect(yield* sql`SELECT turn_id AS turn, context, context_window AS contextWindow FROM usage`).toEqual([
+        { context: 500, contextWindow: 128_000, turn: "old-turn" },
+      ]);
+      expect(
+        yield* sql`SELECT thread_id AS threadId, turn_id AS turnId, model, used, size, recorded_at AS recordedAt FROM context_readings`,
+      ).toEqual([{ model: "model-a", recordedAt: 20, size: 200_000, threadId: "t", turnId: "new-turn", used: 1200 }]);
+    }).pipe(Effect.provide(SqliteClient.layer({ filename: join(directory, "store.sqlite") })));
+  });
+});

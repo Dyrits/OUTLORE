@@ -261,6 +261,7 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
         return reply.trim() === "" ? Effect.void : request.onEvent({ _tag: "Reply", text: reply });
       });
       let contextTokens: number | null = null;
+      let contextWindow: number | null = null;
       let updateUsage: TokenUsage | null = null;
       const read = Effect.fnUntraced(function* (incoming: RpcIncoming) {
         if (incoming._tag === "Exit") return yield* new HarnessFailure({ reason: incoming.reason });
@@ -290,6 +291,8 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
           // The standard fields name the context's size; a provider may add token fields of its own.
           const used = fieldOf(update, "used");
           if (typeof used === "number") contextTokens = used;
+          const size = fieldOf(update, "size");
+          if (typeof size === "number" && size > 0) contextWindow = size;
           updateUsage = addUsage(updateUsage, updateUsageOf(update));
         }
       });
@@ -310,6 +313,7 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
       return {
         ...(connection.billing === null ? {} : { billing: connection.billing }),
         context: contextTokens,
+        contextWindow,
         isInterrupted: textFieldOf(result.success, "stopReason") === "cancelled" || turn.isInterrupting(),
         usage,
       };
