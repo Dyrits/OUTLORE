@@ -1266,3 +1266,7 @@ Owner request, starting commit `22ac07b`: move Open side-quest to an icon beside
 
 Checks: workspace typecheck and Biome pass. Full suite: 1319 passed, 14 skipped, 5 failed (four lore timeouts and an OpenCode interrupt reporting “This thread is not running”). These service failures have not been diagnosed in this UI batch. Browser appearance and interaction remain unverified; owner look pending.
 
+## Direct WebRTC path for paired devices · 2026-11-25 · built and checked, real-NAT verification pending
+
+Authorized by the owner on 2026-11-25 (CHG-0717, CHG-0718, ADR 0026): paired desktop and web devices upgrade their relay-established link to a direct WebRTC data channel (public STUN, no TURN) carrying a fresh Noise NK session bound to `outlore-direct/1 <room> <attempt>`, leaving the relay idle once up and falling back automatically on failure, drop, or silence. Host service and desktop controller use `werift` (`^0.28.0`, MIT, pure TypeScript); web app uses browser `RTCPeerConnection`; mobile app (Android/Hermes) stays on the relay. Default STUN is `stun:stun.cloudflare.com:3478` (`OUTLORE_STUN_SERVERS` / `OUTLORE_DIRECT`). Workshop lists direct devices as `connected now, direct`. Checks: workspace typecheck, Biome (`bun run check`), and full test suite (`CI=1 bun run test`: 3,159 passed, 24 skipped, 0 failed) pass, including in-process loopback WebRTC with a real local relay and full host service. Not exercised in the sandbox: real NAT traversal from a phone or second network. Shared handoff: `.agents/handoffs/2026-11-25-0059-direct-p2p-path.md`.
+
