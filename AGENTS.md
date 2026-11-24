@@ -63,6 +63,6 @@ Latest handoffs:
 
 - To resume the 2026-11-24 architecture audit follow-ups, read the [current handoff](.agents/handoffs/2026-11-24-2214-architecture-audit.md). Handoffs are shared and committed.
 
-- To verify the stacked queued-message tray and Steer toggle in the running app, read the [current handoff](.agents/handoffs/2026-11-24-1738-queued-message-tray.md). Handoffs are shared and committed.
-
 - To verify the preset draft in the Workshop and Overwrite in a quest's Companions tab, read the [current handoff](.agents/handoffs/2026-11-25-0033-preset-list-layout.md). Handoffs are shared and committed.
+
+- To verify the quest emblem on cards' corner buttons in the dark looks, read the [current handoff](.agents/handoffs/2026-11-25-0033-quest-emblem-contrast.md). Handoffs are shared and committed.
