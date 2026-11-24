@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
 import { BudgetEditor } from "../editors/budgets";
 import { messageOf, type ServiceClient } from "../foundation/client";
+import { harnessLabels } from "../foundation/formatting";
 import { accountBudgetTextOf, planLimitsSummaryOf } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -68,8 +69,7 @@ function AccountBudgetRow({ budget, client }: { budget: AccountBudget; client: S
   return (
     <View style={styles.section}>
       <Text style={styles.label}>
-        {budget.harness === "claude" ? "Claude Code" : budget.harness === "codex" ? "Codex" : "OpenCode"} ·{" "}
-        {budget.label}
+        {harnessLabels[budget.harness]} · {budget.label}
       </Text>
       <Text style={styles.muted}>{accountBudgetTextOf(budget)}</Text>
       <Text style={styles.muted}>{planLimitsSummaryOf(budget.planLimits)}</Text>

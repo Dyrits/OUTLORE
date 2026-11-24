@@ -61,9 +61,7 @@ const ask = (tag: "ReadHostUpdate" | "UpdateHost" | "ForceUpdateHost") =>
 const startRunningTurn = (turnId: string) =>
   Effect.gen(function* () {
     const service = yield* Service;
-    const quest = (yield* service.handle({ _tag: "StartEmptyQuest", realmId: null, requestId: `quest-${turnId}` })) as {
-      threadId: string;
-    };
+    const quest = yield* service.handle({ _tag: "StartEmptyQuest", realmId: null, requestId: `quest-${turnId}` });
     const sql = yield* SqlClient.SqlClient;
     yield* sql`INSERT INTO turns (id, thread_id, status, started_at) VALUES (${turnId}, ${quest.threadId}, 'running', 1)`;
   });

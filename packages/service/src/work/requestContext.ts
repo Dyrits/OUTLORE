@@ -1,4 +1,4 @@
-import type { Request, RequestTag } from "@outlore/contracts";
+import type { Request, RequestTag, ResultOf } from "@outlore/contracts";
 import type { Effect } from "effect";
 import type { SqlClient, SqlError } from "effect/sql";
 import type { Changes, Harness, ServiceFailure } from "../core/index.ts";
@@ -24,11 +24,15 @@ export type RequestServices =
   | VaultFolder
   | Commands;
 
-/** A typed request table whose environments are supplied by the router. */
+/**
+ * A typed request table whose environments are supplied by the router. Each handler answers exactly what its result
+ * schema encodes, so an undefined answer for a Null result is a compile error instead of "The service failed
+ * unexpectedly." after the work already ran (CHG-0677).
+ */
 export type OwnerHandlers<Tags extends RequestTag> = {
   readonly [Tag in Tags]: (
     request: Extract<Request, { _tag: Tag }>,
-  ) => Effect.Effect<unknown, ServiceFailure | SqlError.SqlError, RequestServices>;
+  ) => Effect.Effect<ResultOf<Tag>, ServiceFailure | SqlError.SqlError, RequestServices>;
 };
 
 /** Runtime collaborators captured when the router builds its request tables. */

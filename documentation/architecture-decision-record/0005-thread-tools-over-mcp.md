@@ -8,3 +8,10 @@ CHG-0009 added messaging to threads and missions referenced with `@`, and let Co
 CHG-0132 extends Control's authority to the [Guildmaster role](../capabilities/mission-coordination/specifications.md#what-guildmaster-does-itself).
 The service must distinguish Guildmaster's app-wide authority from ordinary thread authority and enforce each operation's rules, approvals, and budgets.
 The additional tools still need design and implementation.
+
+## Note, 2026-11-24: which ACP harnesses get the tool server
+
+Hermes, Cursor, Copilot, Cline, Devin, and Gemini (Antigravity) start their sessions through the generic ACP adapter (`acpProviders.ts`).
+That adapter passes the thread's tool server (`outlore`, over HTTP) in `session/new` and `session/load` only when the agent's `initialize` answer advertises `agentCapabilities.mcpCapabilities.http: true`, and passes none otherwise.
+A session given none is told so after the starting context (`noToolServerInstructions`): `request_approval`, `report_result`, and the other thread tools are unavailable, consequential actions go through the harness's own permission requests, and the result is the final reply.
+Checked on this computer: Antigravity 1.5.16 advertises no `mcpCapabilities`, so it gets no tool server and its errands cannot call `report_result`; Hermes, Cursor, Copilot, Cline, and Devin were not installed and are unchecked.

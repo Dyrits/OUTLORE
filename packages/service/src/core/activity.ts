@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 
-// A mission's latest activity, which orders the dashboard and starts its inactivity period (mission-tracking).
+// A mission's latest activity, which orders the dashboard and times the inactivity warnings (mission-tracking).
 // A leaf, so every module that records activity can import it without a module-load cycle.
 
 /** Records a mission's latest activity. Callers run it in a transaction. */

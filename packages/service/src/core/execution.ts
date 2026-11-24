@@ -64,13 +64,24 @@ export type SteeredMessage = {
 };
 
 /**
+ * What a permission mode means (CHG-0617, CHG-0621), stated once by the table in work/threadPermissionMode.ts: every
+ * reader judges from these terms and never from the mode's name, so a new mode is one more row.
+ */
+export type ModeTerms = {
+  readonly approvalLevel: ApprovalLevel;
+  /** Whether a change of a file inside the thread's folder runs without a question although commands ask. */
+  readonly areEditsUnasked: boolean;
+  /** Whether the owner allowed commands to leave the sandbox without a question (CHG-0295). */
+  readonly canWorkOutsideSandbox: boolean;
+  /** Whether every tool call runs without a question, but a grant that widens the sandbox for the turn. */
+  readonly isEverythingUnasked: boolean;
+};
+
+/**
  * How a thread's actions are approved on its harness, as its turn runs and as the preview counts it (CHG-0301):
  * built once by work/approvalTerms.ts and rendered for the thread by harness/instructions.ts.
  */
-export type ApprovalTerms = {
-  readonly approvalLevel: ApprovalLevel;
-  /** Whether the owner allowed commands to leave the sandbox without a question (CHG-0295). */
-  readonly canWorkOutsideSandbox: boolean;
+export type ApprovalTerms = ModeTerms & {
   /** Whether the thread's harness runs it inside a sandbox it enforces here, as its adapter reports (`containmentOf`). */
   readonly containment: Containment;
   /**

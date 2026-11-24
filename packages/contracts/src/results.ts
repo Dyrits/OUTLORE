@@ -79,7 +79,6 @@ export const Results = {
   DeleteThread: Schema.Null,
   DiscardAttachment: Schema.Null,
   DisconnectDevice: RemoteAccessView,
-  DismissMissionPrompt: Schema.Null,
   EditIntel: Schema.Null,
   EditQueuedMessage: Schema.Null,
   EndMission: QuestPlacement,

@@ -48,6 +48,7 @@ export {
 export {
   approvalInstructionsOf,
   guildmasterInstructionsOf,
+  noToolServerInstructions,
   positionLineOf,
   type ThreadPosition,
   threadInstructionsOf,

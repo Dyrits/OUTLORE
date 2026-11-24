@@ -6,9 +6,11 @@ import type { TurnRequest } from "../../src/core/index.ts";
 export const turnRequestOf = (fields: Partial<TurnRequest> = {}): TurnRequest => ({
   access: {
     approvalLevel: "RiskyOnly",
+    areEditsUnasked: false,
     canWorkOutsideSandbox: false,
     connectorTools: [],
     containment: "Sandboxed",
+    isEverythingUnasked: false,
     isInWorkspace: false,
     mcpUrl: "http://127.0.0.1:9/mcp/none",
     permissionKinds: [],

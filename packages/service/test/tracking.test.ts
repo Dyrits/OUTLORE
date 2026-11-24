@@ -91,82 +91,26 @@ describe("asking to mark a mission done", () => {
       expect(summaryOf(yield* list(), missionId)?.prompt).toBeNull();
     }).pipe(Effect.provide(live())),
   );
-
-  it.effect("stops asking after Not now, and asks again at the next result", () =>
-    Effect.gen(function* () {
-      const { missionId, threadId } = yield* idle(reportLine);
-      yield* call({ _tag: "DismissMissionPrompt", missionId, prompt: "MarkDone" });
-      expect(summaryOf(yield* list(), missionId)?.prompt).toBeNull();
-      yield* send(threadId, reportLine);
-      yield* settleTurns;
-      expect(summaryOf(yield* list(), missionId)?.prompt).toBe("MarkDone");
-    }).pipe(Effect.provide(live())),
-  );
 });
 
-describe("asking about an inactive mission", () => {
-  it.effect("asks after the set number of days without activity", () =>
+describe("a quiet mission", () => {
+  it.effect("is never asked about, however long it stays without activity", () =>
     Effect.gen(function* () {
       const { missionId } = yield* idle();
-      yield* advance(14 * day - 1000);
+      // Fifteen days is past the retired 14-day default; more would only add hourly sweeps to run.
+      yield* advance(15 * day);
       expect(summaryOf(yield* list(), missionId)?.prompt).toBeNull();
-      yield* advance(1000);
-      expect(summaryOf(yield* list(), missionId)?.prompt).toBe("Inactive");
     }).pipe(Effect.provide(live())),
   );
 
-  it.effect("counts an agent's activity as activity", () =>
-    Effect.gen(function* () {
-      const { missionId, threadId } = yield* idle();
-      yield* open(threadId, `wait ${10 * day}`);
-      yield* advance(10 * day);
-      yield* settleTurns;
-      // The thread beneath finished after 10 days: its turn and reply are activity.
-      yield* advance(13 * day);
-      expect(summaryOf(yield* list(), missionId)?.prompt).toBeNull();
-      yield* advance(day);
-      expect(summaryOf(yield* list(), missionId)?.prompt).toBe("Inactive");
-    }).pipe(Effect.provide(live())),
-  );
-
-  it.effect("asks again after another inactive period once dismissed", () =>
-    Effect.gen(function* () {
-      const { missionId } = yield* idle();
-      yield* advance(14 * day);
-      yield* call({ _tag: "DismissMissionPrompt", missionId, prompt: "Inactive" });
-      expect(summaryOf(yield* list(), missionId)?.prompt).toBeNull();
-      yield* advance(14 * day - 1000);
-      expect(summaryOf(yield* list(), missionId)?.prompt).toBeNull();
-      yield* advance(1000);
-      expect(summaryOf(yield* list(), missionId)?.prompt).toBe("Inactive");
-    }).pipe(Effect.provide(live())),
-  );
-
-  it.effect("follows the inactivity setting", () =>
-    Effect.gen(function* () {
-      yield* updateSettings({ inactivityDays: 3 });
-      const { missionId } = yield* idle();
-      yield* advance(3 * day);
-      expect(summaryOf(yield* list(), missionId)?.prompt).toBe("Inactive");
-    }).pipe(Effect.provide(live())),
-  );
-
-  it.effect("announces a change each hour, so an open dashboard asks about a newly inactive mission", () =>
+  it.effect("announces no change at the hourly sweep when nothing was archived", () =>
     Effect.gen(function* () {
       yield* idle();
       const subscription = yield* PubSub.subscribe((yield* Changes).pubsub);
       yield* advance(60 * 60 * 1000);
-      expect((yield* PubSub.takeAll(subscription)).length).toBeGreaterThan(0);
+      // `takeAll` would wait for a first message, so the pending count is read instead.
+      expect(yield* PubSub.remaining(subscription)).toBe(0);
     }).pipe(Effect.scoped, Effect.provide(live())),
-  );
-
-  it.effect("does not ask of a Done mission", () =>
-    Effect.gen(function* () {
-      const { missionId } = yield* idle();
-      yield* end(missionId, "Fulfilled");
-      yield* advance(20 * day);
-      expect(summaryOf(yield* list(), missionId)?.prompt).toBeNull();
-    }).pipe(Effect.provide(live())),
   );
 });
 

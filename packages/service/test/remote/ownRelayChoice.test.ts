@@ -103,21 +103,16 @@ const makeWorld = Effect.gen(function* () {
   const hostContext = yield* Layer.build(machine("Host Mac", hostDirectory));
   const controllerContext = yield* Layer.build(machine("Laptop", controllerDirectory));
   const { port } = yield* serveLoopback({ port: 0, token: TOKEN }).pipe(Effect.provideContext(controllerContext));
-  const on = (context: typeof hostContext) => (request: Request) =>
-    Effect.gen(function* () {
-      const service = yield* Service;
-      return yield* service.handle(request);
-    }).pipe(Effect.provideContext(context));
+  const on =
+    (context: typeof hostContext) =>
+    <R extends Request>(request: R) =>
+      Effect.gen(function* () {
+        const service = yield* Service;
+        return yield* service.handle(request);
+      }).pipe(Effect.provideContext(context));
   const host = on(hostContext);
   const controller = on(controllerContext);
-  type View = {
-    devices: Array<{ name: string }>;
-    isEnabled: boolean;
-    isOwnRelay: boolean;
-    relayOrigin: string;
-    status: string;
-  };
-  const accessOf = () => host({ _tag: "ReadRemoteAccess" }) as Effect.Effect<View>;
+  const accessOf = () => host({ _tag: "ReadRemoteAccess" });
   const waitFor = (status: string) =>
     until(() => Effect.runPromise(accessOf()).then((view) => (view.status === status ? view : undefined)));
   const allowPairing = Effect.gen(function* () {
@@ -133,8 +128,8 @@ const makeWorld = Effect.gen(function* () {
       link.socket.send(JSON.stringify({ id, request }));
       return yield* until(() => link.frames.find((frame) => "id" in frame && frame.id === id));
     });
-  const useOwnRelay = (token: string) => host({ _tag: "UseOwnRelay", token }) as Effect.Effect<View, unknown>;
-  const useSharedRelay = () => host({ _tag: "UseSharedRelay" }) as Effect.Effect<View, unknown>;
+  const useOwnRelay = (token: string) => host({ _tag: "UseOwnRelay", token });
+  const useSharedRelay = () => host({ _tag: "UseSharedRelay" });
   /** Everything the host's data folder holds, as text, to look for what must not be kept. */
   const hostFilesAsText = () =>
     readdirSync(hostDirectory)

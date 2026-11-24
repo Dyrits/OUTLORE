@@ -1,7 +1,7 @@
 import type { GuildmasterPlace, HarnessName, ModelChoice } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid, readSettings } from "../core/index.ts";
+import { invalid, readSettings, type SettingWriter } from "../core/index.ts";
 import { claudeCheapestModel } from "../harness/index.ts";
 import { changed, unchanged } from "./followUps.ts";
 import { insertQuest } from "./missions.ts";
@@ -66,6 +66,13 @@ export const isGuildmasterThread = Effect.fnUntraced(function* (threadId: string
   const rows = yield* sql<{ id: string }>`
       SELECT t.id FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${threadId} AND m.is_guildmaster = 1`;
   return rows.length > 0;
+});
+
+/** Who a structural tool's caller writes settings as: Chronicler in its own conversation, otherwise a Ritual's run. */
+export const settingWriterOfCaller = Effect.fnUntraced(function* (threadId: string) {
+  return (yield* isGuildmasterThread(threadId))
+    ? ("Chronicler" satisfies SettingWriter)
+    : ("Ritual" satisfies SettingWriter);
 });
 
 /** Whether the quest is Chronicler's. */

@@ -1,14 +1,12 @@
 import { dirname, resolve as resolvePath } from "node:path";
-import type { ApprovalLevel } from "@outlore/contracts";
 import { Effect, Option } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
-import { fieldOf, Harness } from "../core/index.ts";
+import { fieldOf, Harness, type ModeTerms } from "../core/index.ts";
 import { folderEscapeOf, resolvedFolderOf, workspaceWorktreesOf } from "../harness/index.ts";
 import {
   consequences,
   findCoveringPermission,
-  isFileWriting,
-  isUnaskedAt,
+  isUnaskedUnder,
   needsOf,
   plainActionOf,
   reasonOf,
@@ -17,7 +15,7 @@ import {
 import { isInsideVaultFolder, searchReachesVaultFolder, VaultFolder } from "../vault/index.ts";
 import type { Decision } from "./approvalContracts.ts";
 import { type Asked, allowingOutcomes, type makeQuestions, textOf } from "./questions.ts";
-import { approvalLevelOf, readModeOfTurn } from "./threadPermissionMode.ts";
+import { readModeOfTurn, termsOfMode } from "./threadPermissionMode.ts";
 import { readAuthorityHarness } from "./turnAdmission.ts";
 import { ScratchRoot, threadFolderOf } from "./workspaces.ts";
 
@@ -96,8 +94,7 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
    */
   const readCapability = Effect.fnUntraced(function* (
     threadId: string,
-    level: ApprovalLevel,
-    canWorkOutsideSandbox: boolean,
+    terms: ModeTerms,
     toolName: string,
     input: unknown,
     isEscape: boolean,
@@ -106,8 +103,9 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
     const stored = yield* threadFolderOf(threadId).pipe(Effect.provideService(ScratchRoot, scratchRoot));
     const authority = yield* readAuthorityHarness(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
     return yield* needsOf({
-      canWorkOutsideSandbox,
-      containment: authority === null ? "Unprotected" : (harness.containmentOf?.(authority, level) ?? "Unprotected"),
+      canWorkOutsideSandbox: terms.canWorkOutsideSandbox,
+      containment:
+        authority === null ? "Unprotected" : (harness.containmentOf?.(authority, terms.approvalLevel) ?? "Unprotected"),
       editFolders: stored === null ? [] : editFoldersOf(threadId, stored),
       input,
       isEscape,
@@ -145,26 +143,11 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
       const missionId = yield* missionOf(threadId);
       if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
       // The mode the running turn was admitted with (readModeOfTurn), so a change during the turn applies next turn.
-      const effective = yield* readModeOfTurn(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
-      const level = approvalLevelOf(effective);
-      const capability = yield* readCapability(
-        threadId,
-        level,
-        // Full access also covers a command that leaves the sandbox (the folded escape setting).
-        effective === "FullAccess",
-        toolName,
-        input,
-        isEscape,
-        isUnsandboxed,
-      );
+      const terms = termsOfMode(yield* readModeOfTurn(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql)));
+      const capability = yield* readCapability(threadId, terms, toolName, input, isEscape, isUnsandboxed);
       const reason = reasonOf(input);
       const plain = plainActionOf(toolName);
-      // Full access covers individual tool calls. A grant that widens the sandbox for the turn still asks.
-      if (
-        (effective === "FullAccess" && toolName !== "Permissions") ||
-        (capability === null && effective === "AutoAcceptEdits" && isFileWriting(toolName)) ||
-        isUnaskedAt(level, capability)
-      ) {
+      if (isUnaskedUnder(terms, toolName, capability)) {
         yield* record(
           {
             details: target,

@@ -27,7 +27,9 @@ import {
   makeHarnessProcesses,
   type PooledTurn,
 } from "./harnessProcesses.ts";
+import { noToolServerInstructions } from "./instructions.ts";
 import { findFirstOutside, promptOf } from "./openCodePrompts.ts";
+import { toolServerName } from "./toolNames.ts";
 import { initializeParams } from "./vibeAccount.ts";
 
 // ACP (Agent Client Protocol) providers beyond the harnesses Outlore already runs: audited launch profiles
@@ -114,7 +116,10 @@ export type AcpProviderHarnessOptions = {
   readonly command: string;
   /** How long an idle thread keeps its process. */
   readonly idleTimeout: Duration.Input;
-  /** The MCP servers the session is given; none by default, so the thread's own tool server stays unexposed. */
+  /**
+   * The MCP servers the session is given. By default the thread's own tool server, when the agent advertises HTTP MCP
+   * support (`mcpCapabilities.http`); none otherwise.
+   */
   readonly mcpServers?: ReadonlyArray<object>;
   /** Arguments placed before the profile's own, used to run a stand-in script in checks. */
   readonly prefixArgs?: ReadonlyArray<string>;
@@ -285,9 +290,15 @@ const acpProviderProtocolOf = (options: AcpProviderHarnessOptions): HarnessProto
       isTreeKilled: true,
       label: options.profile.label,
     });
-    const mcpServers = options.mcpServers ?? [];
     const session = yield* Effect.gen(function* () {
       const initialized = yield* rpc.request("initialize", initializeParams);
+      const takesHttpServers = fieldOf(fieldOf(fieldOf(initialized, "agentCapabilities"), "mcpCapabilities"), "http");
+      const mcpServers =
+        options.mcpServers ??
+        (takesHttpServers === true
+          ? [{ headers: [], name: toolServerName, type: "http", url: request.access.mcpUrl }]
+          : []);
+      const hasToolServer = mcpServers.length > 0;
       const advertisesImages = fieldOf(
         fieldOf(fieldOf(initialized, "agentCapabilities"), "promptCapabilities"),
         "image",
@@ -296,14 +307,20 @@ const acpProviderProtocolOf = (options: AcpProviderHarnessOptions): HarnessProto
       if (request.sessionId !== null) {
         const loaded = yield* loadAcpSession(rpc, request.cwd, request.sessionId, mcpServers);
         if (Result.isSuccess(loaded))
-          return { created: loaded.success, handoverNotes: null, isNew: false, takesImages };
+          return { created: loaded.success, handoverNotes: null, hasToolServer, isNew: false, takesImages };
         // A session the provider cannot load is replaced by a new one, given the thread's conversation so far.
         const created = yield* rpc.request("session/new", { cwd: request.cwd, mcpServers });
         yield* request.onEvent({ _tag: "Notice", text: lostSessionNoteOf(options.profile.label) });
-        return { created, handoverNotes: yield* request.conversationSoFar, isNew: true, takesImages };
+        return {
+          created,
+          handoverNotes: yield* request.conversationSoFar,
+          hasToolServer,
+          isNew: true,
+          takesImages,
+        };
       }
       const created = yield* rpc.request("session/new", { cwd: request.cwd, mcpServers });
-      return { created, handoverNotes: null, isNew: true, takesImages };
+      return { created, handoverNotes: null, hasToolServer, isNew: true, takesImages };
     }).pipe(Effect.tapError(() => Effect.sync(() => rpc.close())));
     // A loaded session's answer carries no id (the session is the one the load named); a new one's does.
     const sessionId = session.isNew ? textFieldOf(session.created, "sessionId") : request.sessionId;
@@ -333,7 +350,12 @@ const acpProviderProtocolOf = (options: AcpProviderHarnessOptions): HarnessProto
     if (request.effort !== "default" && offered.includes("thinking")) yield* setOption("thinking", request.effort);
     return {
       close: rpc.close,
-      contextToGive: session.isNew ? request.context : null,
+      // The starting context promises the thread tools; a session given no tool server is told they are not there.
+      contextToGive: session.isNew
+        ? session.hasToolServer
+          ? request.context
+          : `${request.context}\n\n${noToolServerInstructions}`
+        : null,
       handoverNotes: session.handoverNotes,
       hasExited: rpc.hasExited,
       rpc,

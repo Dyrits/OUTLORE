@@ -1,10 +1,9 @@
 import { Settings } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
-import { readSettings } from "../core/index.ts";
+import { isSettingName, mayWriteSetting, readSettings, type SettingWriter, settingAuthority } from "../core/index.ts";
 import { readWorkingIds } from "./ending.ts";
 import { readOptionalRealm } from "./guildmasterPlace.ts";
-import { isChangeableSetting, isKeptFromChronicler } from "./guildmasterSettingNames.ts";
 import { parseJson } from "./guildmasterText.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 import { ritualTitleOf, titleOf } from "./titles.ts";
@@ -14,13 +13,20 @@ import { ritualTitleOf, titleOf } from "./titles.ts";
 
 const refusal = (text: string) => ({ _tag: "Refused", text }) as const;
 
-/** `change_setting`: the setting, the value as JSON, and the settings before and after, whole. */
-export const readSettingChange = Effect.fnUntraced(function* (args: ArgumentsOf<"change_setting">) {
+/** `change_setting` as the writer (Chronicler, or a Ritual's run): the setting, the value as JSON, and the settings before and after, whole. */
+export const readSettingChange = Effect.fnUntraced(function* (
+  writer: SettingWriter,
+  args: ArgumentsOf<"change_setting">,
+) {
   const setting = args.setting;
-  if (isKeptFromChronicler(setting))
-    return refusal(`Not done: ${setting} is the owner's alone to change, in the Workshop. Tell them where.`);
-  if (!isChangeableSetting(setting))
+  if (!isSettingName(setting))
     return refusal(`Not done: no setting "${setting}". Read the settings first; use a name from them.`);
+  if (!mayWriteSetting(writer, setting))
+    return refusal(
+      settingAuthority[setting] === "HostOwner"
+        ? `Not done: ${setting} is the owner's alone to change, on the host itself, in the Workshop. Tell them where.`
+        : `Not done: ${setting} is the owner's alone to change, in the Workshop. Tell them where.`,
+    );
   const parsed = parseJson(args.value);
   if (Exit.isFailure(parsed))
     return refusal(`Not done: value must be JSON text, such as true, 14, or "Steer"; ${args.value} is not.`);

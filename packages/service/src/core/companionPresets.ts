@@ -31,13 +31,13 @@ export const changeCompanionPreset = Effect.fnUntraced(function* (edit: Companio
       ) || custom.some((preset) => (edit._tag === "Add" || preset !== existing) && nameKeyOf(preset.name) === key);
     if (isTaken) return yield* invalid("That preset name is already in use. Choose another name.");
     if (edit._tag === "Add") {
-      return yield* writeSettings({
+      return yield* writeSettings("Owner", {
         ...saved,
         companionPresets: { custom: [...custom, { name, stack: edit.stack }], tierNames },
       });
     }
     if (tier !== undefined) names[tier] = name;
-    return yield* writeSettings({
+    return yield* writeSettings("Owner", {
       ...saved,
       companionPresets: {
         custom: custom.map((preset) => (preset === existing ? { ...preset, name } : preset)),
@@ -54,5 +54,5 @@ export const changeCompanionPreset = Effect.fnUntraced(function* (edit: Companio
     edit._tag === "Delete"
       ? custom.filter((preset) => preset !== existing)
       : custom.map((preset) => (preset === existing ? { ...preset, stack: edit.stack } : preset));
-  return yield* writeSettings({ ...saved, companionPresets: { custom: next, tierNames: names }, tiers });
+  return yield* writeSettings("Owner", { ...saved, companionPresets: { custom: next, tierNames: names }, tiers });
 });

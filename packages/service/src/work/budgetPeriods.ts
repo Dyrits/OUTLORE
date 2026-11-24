@@ -4,6 +4,7 @@ import { hourMillis, nextStartOf, readGlobalBudget } from "../core/index.ts";
 import { releaseBudgets } from "./budgets.ts";
 import { Commands } from "./commands.ts";
 import { changed, unchanged } from "./followUps.ts";
+import { timedSweep } from "./timedSweep.ts";
 
 /**
  * Releases threads held at the global limit, or an account's, once a new period starts and the spending counted since is
@@ -26,8 +27,13 @@ export const budgetPeriodsLayer = Layer.effectDiscard(
       const accounts = yield* sql<{ period: "Day" | "Week" | "Month" }>`
         SELECT period FROM account_budgets WHERE period IS NOT NULL`;
       const next = Math.min(nextStart, ...accounts.map((account) => nextStartOf(now, account.period)));
-      yield* Effect.sleep(Math.max(1, Math.min(next - now, hourMillis)));
+      return Math.max(1, Math.min(next - now, hourMillis));
     });
-    yield* Effect.forkScoped(untilNextCheck.pipe(Effect.andThen(release), Effect.forever, Effect.orDie));
+    yield* timedSweep({
+      isRunAtStart: false,
+      name: "The budget-period sweep",
+      untilNext: untilNextCheck,
+      work: release,
+    });
   }),
 );

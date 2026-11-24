@@ -89,11 +89,13 @@ export const makeWorld = (options: { controllerRelay?: string; controllerRelease
     );
     const { port } = yield* serveLoopback({ port: 0, token: TOKEN }).pipe(Effect.provideContext(controllerContext));
 
-    const on = (context: typeof hostContext) => (request: Request) =>
-      Effect.gen(function* () {
-        const service = yield* Service;
-        return yield* service.handle(request);
-      }).pipe(Effect.provideContext(context));
+    const on =
+      (context: typeof hostContext) =>
+      <R extends Request>(request: R) =>
+        Effect.gen(function* () {
+          const service = yield* Service;
+          return yield* service.handle(request);
+        }).pipe(Effect.provideContext(context));
     const host = on(hostContext);
     const controller = on(controllerContext);
     const hostSql = <Value, Error>(work: (sql: SqlClient.SqlClient) => Effect.Effect<Value, Error>) =>
@@ -102,13 +104,7 @@ export const makeWorld = (options: { controllerRelay?: string; controllerRelease
         return yield* work(sql);
       }).pipe(Effect.provideContext(hostContext));
 
-    const accessOf = () =>
-      host({ _tag: "ReadRemoteAccess" }) as Effect.Effect<{
-        devices: Array<{ isConnected: boolean; lastActiveAt: number | null; name: string }>;
-        hostName: string;
-        isEnabled: boolean;
-        status: string;
-      }>;
+    const accessOf = () => host({ _tag: "ReadRemoteAccess" });
 
     /** Turns pairing on at the host and waits until its relay connection is up. */
     const allowPairing = Effect.gen(function* () {

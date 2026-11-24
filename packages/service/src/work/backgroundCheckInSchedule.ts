@@ -1,8 +1,7 @@
 import type { Settings } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { readSettings } from "../core/index.ts";
-import { nextRunAfter } from "./ritualSchedule.ts";
+import { dayKeyOf, dayStartOf, nextRunAfter, readSettings } from "../core/index.ts";
 
 type CheckInSettings = NonNullable<Settings["backgroundCheckIns"]>;
 
@@ -11,17 +10,11 @@ const claimDueCheckIn = Effect.gen(function* () {
   if (!config?.isEnabled) return null;
 
   const now = yield* Clock.currentTimeMillis;
-  const date = new Date(now);
-  const midnight = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  const due = nextRunAfter({ _tag: "Daily", time: config.time }, midnight - 1);
+  const due = nextRunAfter({ _tag: "Daily", time: config.time }, dayStartOf(now) - 1);
   if (now < due) return null;
 
   // The calendar day remains the same if the owner edits the time or the clock repeats an hour.
-  const day = [
-    String(date.getFullYear()).padStart(4, "0"),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("-");
+  const day = dayKeyOf(now);
   const sql = yield* SqlClient.SqlClient;
   const claimed = yield* sql<{ value: string }>`
     INSERT INTO settings (key, value) VALUES ('backgroundCheckInAttemptDay', ${day})

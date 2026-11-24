@@ -8,7 +8,8 @@ import {
 } from "@outlore/contracts";
 import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
-import { invalid } from "./errors.ts";
+import { invalid, ServiceFailure } from "./errors.ts";
+import { mayWriteSetting, type SettingWriter, settingAuthority } from "./settingAuthority.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: settings keys (`intelHalfLives`, `intelWarningPercent`).
 
@@ -39,7 +40,6 @@ export const defaultSettings: Settings = {
   defaultPermissionMode: "Auto",
   globalBudget: noLimits,
   globalBudgetPeriod: "Month",
-  inactivityDays: 14,
   intelHalfLives: { decision: 45, fact: 45, preference: 90, temporary: 3 },
   intelWarningPercent: 10,
   shouldAllowRemoteTerminals: false,
@@ -121,19 +121,54 @@ const putSetting = (sql: SqlClient.SqlClient, key: string, value: string) =>
   sql`INSERT INTO settings (key, value) VALUES (${key}, ${value})
     ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
 
-/** Stores the owner's settings, refusing any that do not decode. */
-export const writeSettings = Effect.fnUntraced(function* (settings: Settings) {
+/** A value as JSON with its keys in order, so two settings that differ only in key order compare equal. */
+const canonicalOf = (value: unknown): string =>
+  JSON.stringify(value, (_key, inner: unknown) =>
+    typeof inner === "object" && inner !== null && !Array.isArray(inner)
+      ? Object.fromEntries(Object.entries(inner).sort(([left], [right]) => left.localeCompare(right)))
+      : inner,
+  );
+
+/** The fields of the saved settings that the writer changes but may not (settingAuthority.ts). */
+const refusedFieldsOf = (writer: SettingWriter, saved: Settings, next: Settings) =>
+  Object.keys(Settings.fields).filter(
+    (key): key is keyof Settings =>
+      key in saved &&
+      !mayWriteSetting(writer, key as keyof Settings) &&
+      canonicalOf(saved[key as keyof Settings]) !== canonicalOf(next[key as keyof Settings]),
+  );
+
+/**
+ * Stores the owner's settings, refusing any that do not decode and any change to a setting the writer may not change
+ * (settingAuthority.ts), whichever door the write came in by. A field the writer omits keeps its saved value, so an
+ * older client's save does not erase a setting it does not know.
+ */
+export const writeSettings = Effect.fnUntraced(function* (writer: SettingWriter, settings: Settings) {
   const saved = yield* readSettings;
+  const omitted = Object.fromEntries(
+    Object.keys(Settings.fields)
+      .filter((key) => (settings as Record<string, unknown>)[key] === undefined)
+      .map((key) => [key, (saved as Record<string, unknown>)[key]]),
+  );
   const complete = {
     ...settings,
+    ...omitted,
     backgroundCheckIns:
       settings.backgroundCheckIns === undefined ? (saved.backgroundCheckIns ?? null) : settings.backgroundCheckIns,
     companionPresets: settings.companionPresets ?? saved.companionPresets ?? { custom: [], tierNames: {} },
   };
+  const refused = refusedFieldsOf(writer, saved, complete as Settings);
+  if (refused.length > 0)
+    return yield* new ServiceFailure({
+      kind: "AccessRefused",
+      message: refused.some((name) => settingAuthority[name] === "HostOwner")
+        ? "Only the host itself can change whether terminals from paired devices are allowed."
+        : `Not allowed from here: ${refused.join(", ")}.`,
+    });
   const parsed = yield* Schema.decodeUnknownEffect(Settings)(complete).pipe(
     Effect.catch(() =>
       invalid(
-        "Invalid settings: the chatter threshold must be a whole number of at least 2; the briefing limit, the inactivity and auto-archive days, and the lore half-lives at least 1; budget limits above 0, tokens in whole numbers.",
+        "Invalid settings: the chatter threshold must be a whole number of at least 2; the briefing limit, the auto-archive days, and the lore half-lives at least 1; budget limits above 0, tokens in whole numbers.",
       ),
     ),
   );

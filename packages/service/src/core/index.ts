@@ -15,6 +15,7 @@ export {
   type ImageAttachment,
   interruptedOutcomeOf,
   interruptGraceMillis,
+  type ModeTerms,
   type PlanLimitReport,
   type PlanLimitsReport,
   type PromptAnswer,
@@ -55,6 +56,15 @@ export {
   startRpcProcess,
   startStreamJsonProcess,
 } from "./lineProcess.ts";
+export {
+  dayKeyOf,
+  dayStartOf,
+  dayStartOfKey,
+  nextRunAfter,
+  nextStartOf,
+  periodStartOf,
+  shiftDays,
+} from "./localCalendar.ts";
 export { modelsDevSourceLayer, noPriceSourceLayer, rowsOfModelsDev } from "./priceSources.ts";
 export {
   PriceReadFailed,
@@ -75,6 +85,14 @@ export { fieldOf, isRecord, numberFieldOf, textFieldOf } from "./records.ts";
 export { sandboxProblem } from "./sandbox.ts";
 export { removeScratch } from "./scratch.ts";
 export { Sessions, sessionsLayer } from "./sessions.ts";
+export {
+  isSettingName,
+  mayWriteSetting,
+  type SettingWriter,
+  settingAuthority,
+  settingsKeptFrom,
+  settingsOpenTo,
+} from "./settingAuthority.ts";
 export {
   dayMillis,
   hourMillis,
@@ -97,8 +115,6 @@ export {
   limitsTextOf,
   missionLimitsOf,
   missionSpendingOf,
-  nextStartOf,
-  periodStartOf,
   pricedTurnsColumn,
   reachedTextOf,
   readGlobalBudget,

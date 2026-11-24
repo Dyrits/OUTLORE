@@ -1,7 +1,7 @@
 import type { AccountBudget, BudgetLimits, BudgetPeriod, HarnessName } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { changeTextOf, costText, invalid, isEmpty, notFound, periodStartOf } from "../core/index.ts";
+import { changeTextOf, costText, dayStartOf, invalid, isEmpty, notFound, periodStartOf } from "../core/index.ts";
 import { harnessNames } from "../harness/index.ts";
 import { ownAccountLabelOf } from "../remote/index.ts";
 import {
@@ -27,12 +27,6 @@ const checkRef = Effect.fnUntraced(function* (ref: AccountRef) {
   if (row === undefined) return yield* notFound("No such account.");
   if (row.harness !== ref.harness) return yield* invalid("That account belongs to another harness.");
 });
-
-const dayStartOf = (at: number) => {
-  const date = new Date(at);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-};
 
 /**
  * Sets, changes, or removes an account's budget. With a period it counts from the period's start; with none (credits)

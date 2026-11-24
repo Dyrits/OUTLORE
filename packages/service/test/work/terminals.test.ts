@@ -2,7 +2,7 @@ import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { Request, RequestSource, RequestTag, ResultOf, ServerFrame } from "@outlore/contracts";
+import type { Request, RequestSource, ServerFrame } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { wrappedFencedCommandOf } from "../../src/core/index.ts";
@@ -195,8 +195,7 @@ const terminalService = (terminalHost: TerminalHost) => {
 };
 const callAs = <R extends Request>(request: R, source: RequestSource) =>
   Effect.gen(function* () {
-    const answer = yield* (yield* Service).handle(request, source);
-    return answer as ResultOf<R["_tag"] & RequestTag>;
+    return yield* (yield* Service).handle(request, source);
   });
 
 describe("terminals and their requests", () => {
@@ -226,7 +225,7 @@ describe("terminals and their requests", () => {
         ),
       ).toMatchObject({ kind: "AccessRefused" });
       // Other settings, and a full save that leaves the switch where it is, still work from a paired device.
-      yield* callAs({ _tag: "ChangeSettings", change: { inactivityDays: 20 } }, pairedDevice);
+      yield* callAs({ _tag: "ChangeSettings", change: { shouldStreamReplies: false } }, pairedDevice);
       yield* callAs(
         { _tag: "UpdateSettings", settings: yield* callAs({ _tag: "ReadSettings" }, pairedDevice) },
         pairedDevice,

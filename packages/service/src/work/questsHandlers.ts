@@ -1,3 +1,4 @@
+import { MissionId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import type { Connectors } from "../connectors/index.ts";
 import { invalid, readStartChoices } from "../core/index.ts";
@@ -7,7 +8,7 @@ import { setThreadBackups } from "./backups.ts";
 import { markThreadRead, readChronicle } from "./chronicle.ts";
 import { listMissions } from "./dashboard.ts";
 import { deleteThread, previewDeletion } from "./deleting.ts";
-import { dismissPrompt, endMission, previewEnding, reopenMission } from "./ending.ts";
+import { endMission, previewEnding, reopenMission } from "./ending.ts";
 import { changed } from "./followUps.ts";
 import { readGuildHallRecap, visitGuildHall } from "./guildHall.ts";
 import { readGuildmaster } from "./guildmasterPlace.ts";
@@ -32,7 +33,6 @@ export const questsHandlers = (
     ArchiveThread: (given) => commands.run(archiveThread(given.threadId)),
     ChangeThreadRunner: (given) => commands.run(admitRunnerChange(given)),
     DeleteThread: (given) => deleteThread(given.threadId, given.confirmation),
-    DismissMissionPrompt: (given) => commands.run(dismissPrompt(given.missionId, given.prompt)),
     EndMission: (given) => commands.run(endMission(given.missionId, given.ending, given.snapshot)),
     InterruptThread: (given) =>
       threads
@@ -133,7 +133,7 @@ export const questsHandlers = (
               },
               null,
             );
-            return changed({ missionId: started.missionId, threadId: started.threadId });
+            return changed({ missionId: MissionId.make(started.missionId), threadId: ThreadId.make(started.threadId) });
           }),
         ),
       ),
@@ -168,7 +168,6 @@ export const questsHandlers = (
   }) satisfies OwnerHandlers<
     | "ChangeThreadRunner"
     | "DeleteThread"
-    | "DismissMissionPrompt"
     | "EndMission"
     | "InterruptThread"
     | "ListMissions"

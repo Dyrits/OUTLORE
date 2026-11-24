@@ -78,7 +78,17 @@ const onRequest = (request) => {
     params: request.params,
   });
   if (request.method === "initialize")
-    return answer(request.id, mode === "turn" ? { agentCapabilities: { promptCapabilities: { image: true } } } : {});
+    return answer(
+      request.id,
+      mode === "turn"
+        ? {
+            agentCapabilities: {
+              ...(process.env.ACP_FAKE_MCP_HTTP === "1" ? { mcpCapabilities: { http: true } } : {}),
+              promptCapabilities: { image: true },
+            },
+          }
+        : {},
+    );
   if (request.method === "session/new")
     return answer(
       request.id,

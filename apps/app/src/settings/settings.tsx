@@ -94,14 +94,6 @@ export function SettingsScreen({
             <Section active={active} id="defaults">
               <LookCard />
               <SettingsCard icon="hourglass" title="Quest upkeep">
-                <NumberSetting
-                  label="Ask about a quest after this many days without activity"
-                  minimum={1}
-                  onInvalid={setSaveError}
-                  onSave={(inactivityDays) => save({ inactivityDays })}
-                  value={settings.inactivityDays}
-                />
-                <SettingsRule />
                 <ToggleRow
                   label="Archive done quests automatically"
                   onChange={(shouldAutoArchive) => save({ shouldAutoArchive })}

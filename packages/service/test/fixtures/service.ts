@@ -1,17 +1,16 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type {
-  BackupCompanion,
-  LoreHistoryEntry,
-  MissionDetail,
-  MissionId,
-  Request,
-  RequestTag,
-  ResultOf,
-  ThreadId,
+import {
+  type BackupCompanion,
+  type LoreHistoryEntry,
+  type MissionDetail,
+  type MissionId,
+  type Request,
+  Results,
+  type ThreadId,
 } from "@outlore/contracts";
-import { Effect, type Layer } from "effect";
+import { Effect, type Layer, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
 import { Endpoints, type Harness, type PriceSource } from "../../src/core/index.ts";
@@ -59,10 +58,15 @@ export const withService = <A, E, R>(body: Effect.Effect<A, E, R>, harness?: Lay
   folders.push(value.remove);
   return body.pipe(Effect.provide(value.layer));
 };
-/** Calls the owner's service interface. */
+/**
+ * Calls the owner's service interface and encodes the answer as the wire does, so a handler that answers what its
+ * result schema cannot encode fails the test here and not only on a screen (CHG-0677).
+ */
 export const call = <R extends Request>(request: R) =>
   Effect.gen(function* () {
-    return (yield* (yield* Service).handle(request)) as ResultOf<R["_tag"] & RequestTag>;
+    const value = yield* (yield* Service).handle(request);
+    Schema.encodeUnknownSync(Results[request._tag] as unknown as Schema.Codec<unknown>)(value);
+    return value;
   });
 /** Calls a thread's authenticated MCP interface, as its fake harness does. */
 export const tool = (threadId: ThreadId, name: string, args: object) =>

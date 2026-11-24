@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { approvalInstructionsOf, guildmasterInstructionsOf, threadInstructionsOf } from "../../src/harness/index.ts";
+import {
+  approvalInstructionsOf,
+  guildmasterInstructionsOf,
+  noToolServerInstructions,
+  threadInstructionsOf,
+} from "../../src/harness/index.ts";
 
 const access = {
   approvalLevel: "RiskyOnly",
+  areEditsUnasked: false,
   canWorkOutsideSandbox: false,
   containment: "Sandboxed",
+  isEverythingUnasked: false,
   permissionKinds: [],
 } as const;
 const unprotected = { ...access, containment: "Unprotected" } as const;
@@ -138,5 +145,14 @@ describe("Chronicler's own instructions", () => {
     expect(guildmasterInstructionsOf("gm-1")).toContain(
       "Never change the approval level, the budgets, the permission to work outside the sandbox, or price fetching",
     );
+  });
+});
+
+describe("telling a session that has no Outlore tool server", () => {
+  it("names the tools the instructions promised as unavailable and sends the result to the reply", () => {
+    expect(noToolServerInstructions).toContain("no Outlore tool server");
+    expect(noToolServerInstructions).toContain("request_approval");
+    expect(noToolServerInstructions).toContain("report_result");
+    expect(noToolServerInstructions).toContain("final reply");
   });
 });

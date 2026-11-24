@@ -1,5 +1,6 @@
-import { Effect, Layer, Schedule } from "effect";
-import { PriceTable } from "../core/index.ts";
+import { Effect, Layer } from "effect";
+import { dayMillis, PriceTable } from "../core/index.ts";
+import { timedSweep } from "./timedSweep.ts";
 
 /**
  * Reads the public price table at startup and then daily, while the Charter's Fetch prices switch is on; a failed
@@ -8,7 +9,6 @@ import { PriceTable } from "../core/index.ts";
 export const priceRefreshLayer = Layer.effectDiscard(
   Effect.gen(function* () {
     const prices = yield* PriceTable;
-    const refresh = prices.refresh.pipe(Effect.ignore);
-    yield* Effect.forkScoped(refresh.pipe(Effect.repeat(Schedule.spaced("1 day"))));
+    yield* timedSweep({ name: "The price refresh", untilNext: Effect.succeed(dayMillis), work: prices.refresh });
   }),
 );

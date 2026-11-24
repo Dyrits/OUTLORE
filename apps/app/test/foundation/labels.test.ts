@@ -22,7 +22,6 @@ import {
   planLimitsSummaryOf,
   planLimitTextOf,
   priceStatusTextOf,
-  promptQuestionOf,
   raisedLimitsOf,
   replyUsageTextOf,
   reserveOf,
@@ -87,12 +86,6 @@ describe("dashboard labels", () => {
   it("counts a quest and its errands, naming running ones only when some run", () => {
     expect(threadCountOf({ runningCount: 0, threadCount: 1 })).toBe("1 quest · 0 errands");
     expect(threadCountOf({ runningCount: 2, threadCount: 5 })).toBe("1 quest · 4 errands · 2 running");
-  });
-
-  it("asks Mark as done after a result, and about inactivity in days", () => {
-    expect(promptQuestionOf("MarkDone", 14)).toBe("Mark as done?");
-    expect(promptQuestionOf("Inactive", 14)).toBe("No activity for 14 days. Archive it or mark it as done?");
-    expect(promptQuestionOf("Inactive", 1)).toBe("No activity for 1 day. Archive it or mark it as done?");
   });
 });
 

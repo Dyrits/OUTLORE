@@ -61,8 +61,8 @@ describe("setting the Charter's default backup Companions", () => {
   );
 });
 
-describe("reading settings saved before the Guild Hall became always shown", () => {
-  it.live("keep their other choices and drop the retired one", () =>
+describe("reading settings saved before the Guild Hall became always shown or the inactivity question retired", () => {
+  it.live("keep their other choices and drop the retired ones", () =>
     withService(
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient;
@@ -70,11 +70,15 @@ describe("reading settings saved before the Guild Hall became always shown", () 
         yield* sql`INSERT INTO settings (key, value) VALUES ('settings', ${JSON.stringify({ ...settings, inactivityDays: 30, shouldShowGuildmaster: false })})
           ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
         const read = yield* call({ _tag: "ReadSettings" });
-        expect(read.inactivityDays).toBe(30);
+        expect(read).not.toHaveProperty("inactivityDays");
         expect(read).not.toHaveProperty("shouldShowGuildmaster");
-        yield* call({ _tag: "ChangeSettings", change: { inactivityDays: 31 } });
+        // An older client may still name the retired inactivity setting; the change is accepted and stores nothing of it.
+        yield* call({ _tag: "ChangeSettings", change: { inactivityDays: 31, shouldStreamReplies: false } as never });
         const [row] = yield* sql<{ value: string }>`SELECT value FROM settings WHERE key = 'settings'`;
-        expect(JSON.parse(row?.value ?? "{}")).not.toHaveProperty("shouldShowGuildmaster");
+        const stored = JSON.parse(row?.value ?? "{}");
+        expect(stored).not.toHaveProperty("shouldShowGuildmaster");
+        expect(stored).not.toHaveProperty("inactivityDays");
+        expect(stored.shouldStreamReplies).toBe(false);
       }),
     ),
   );

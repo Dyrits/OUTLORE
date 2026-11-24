@@ -1,15 +1,16 @@
-import type { EndingPreview, MissionEnding, MissionPrompt, QuestPlacement } from "@outlore/contracts";
-import { Clock, Effect, Layer, Schedule } from "effect";
+import type { EndingPreview, MissionEnding, QuestPlacement } from "@outlore/contracts";
+import { Clock, Effect, Layer } from "effect";
 import { SqlClient } from "effect/sql";
-import { dayMillis, invalid, notFound, readSettings, ServiceFailure } from "../core/index.ts";
+import { dayMillis, hourMillis, invalid, notFound, readSettings, ServiceFailure } from "../core/index.ts";
 import { Commands } from "./commands.ts";
 import { eraseEmptyQuest } from "./deleting.ts";
 import { emptyQuestCondition } from "./emptyQuest.ts";
-import { changed } from "./followUps.ts";
+import { changed, unchanged } from "./followUps.ts";
 import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { updateJournal } from "./journal.ts";
 import { activeStates, haltThreads } from "./lifecycle.ts";
 import { requireActiveQuestRealm } from "./realmAccess.ts";
+import { timedSweep } from "./timedSweep.ts";
 
 /** The journal entry for each way a mission ends or continues (mission-journal, When a mission ends). */
 const journalEntries = {
@@ -133,24 +134,11 @@ export const reopenMission = Effect.fn("reopenMission")(function* (missionId: st
   return changed(null);
 });
 
-/** Not now on a dashboard question; the inactivity question then counts its period from now. */
-export const dismissPrompt = Effect.fn("dismissPrompt")(function* (missionId: string, prompt: MissionPrompt) {
-  const sql = yield* SqlClient.SqlClient;
-  const now = yield* Clock.currentTimeMillis;
-  yield* prompt === "MarkDone"
-    ? sql`UPDATE missions SET is_asking_done = 0 WHERE id = ${missionId}`
-    : sql`UPDATE missions SET inactivity_dismissed_at = ${now} WHERE id = ${missionId}`;
-  return changed(null);
-});
-
-/**
- * Archives the Fulfilled missions past the auto-archive delay, when the setting is on. Each run announces a
- * change even with none due: the inactivity question depends on time alone, so open dashboards refetch.
- */
+/** Archives the Fulfilled missions past the auto-archive delay, when the setting is on. */
 const archiveDueMissions = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const settings = yield* readSettings;
-  if (!settings.shouldAutoArchive) return changed(null);
+  if (!settings.shouldAutoArchive) return unchanged(null);
   const now = yield* Clock.currentTimeMillis;
   const due = yield* sql<{ id: string }>`SELECT id FROM missions
     WHERE ending = 'Fulfilled' AND done_at IS NOT NULL AND done_at <= ${now - settings.autoArchiveDays * dayMillis}`;
@@ -162,14 +150,17 @@ const archiveDueMissions = Effect.gen(function* () {
     missionsToRemoveScratch.push(...ended.followUps.missionsToRemoveScratch);
     turnsToCancel.push(...ended.followUps.turnsToCancel);
   }
-  return changed(null, { missionsToRemoveScratch, turnsToCancel });
+  return due.length === 0 ? unchanged(null) : changed(null, { missionsToRemoveScratch, turnsToCancel });
 });
 
 /** Runs auto-archive at startup and then hourly (provisional: CHG-0045, work-in-progress Batch 9). */
 export const autoArchiveLayer = Layer.effectDiscard(
   Effect.gen(function* () {
     const commands = yield* Commands;
-    const sweep = commands.run(archiveDueMissions).pipe(Effect.orDie);
-    yield* Effect.forkScoped(sweep.pipe(Effect.repeat(Schedule.spaced("1 hour"))));
+    yield* timedSweep({
+      name: "Auto-archive",
+      untilNext: Effect.succeed(hourMillis),
+      work: commands.run(archiveDueMissions),
+    });
   }),
 );

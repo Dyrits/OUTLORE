@@ -86,6 +86,16 @@ export const approvalInstructionsOf = (terms: ApprovalTerms, harness: HarnessNam
   ].join("\n");
 };
 
+/**
+ * What a session is told when its harness took no Outlore tool server (an ACP agent that does not advertise HTTP MCP
+ * support): the instructions above name tools it cannot call, and a call it cannot make would only stall the thread.
+ */
+export const noToolServerInstructions = [
+  "# No Outlore tools in this session",
+  "This session has no Outlore tool server: request_approval, report_result, and every other Outlore tool named above are unavailable here, so do not try to call them.",
+  "Your harness asks the owner about consequential actions through its own permission requests. Give your complete result as your final reply, which the owner reads in this thread.",
+].join("\n");
+
 /** A thread's place in its mission's tree, as its starting context names it. */
 export type ThreadPosition = {
   /** Chronicler's thread, which any thread may message to find the right quest; absent before it exists. */

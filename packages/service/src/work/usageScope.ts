@@ -7,6 +7,7 @@ import {
   type UsageFilter,
   type UsagePeriod,
 } from "@outlore/contracts";
+import { dayKeyOf, dayStartOf, dayStartOfKey, shiftDays } from "../core/index.ts";
 
 // What the usage page reads from (budget-control, Reserves usage page): the local calendar days of a period, and the
 // SQL that selects the rows of a breakdown. Dates are local to the computer the service runs on, as the owner reads them.
@@ -20,44 +21,19 @@ export type UsageBounds = {
   readonly to: number;
 };
 
-/** A local day as `YYYY-MM-DD`. */
-export const dayTextOf = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-/** The local midnight a day text names, or null when it is no real date: `2026-02-30` is not rolled over into March. */
-const midnightOf = (text: string) => {
-  const [year, month, day] = text.split("-").map(Number);
-  const date = new Date(year ?? 0, (month ?? 0) - 1, day ?? 0);
-  return dayTextOf(date) === text ? date : null;
-};
-
-/** The day `days` after `date`, counted on the calendar so a change of clock does not shift it. */
-const shiftDays = (date: Date, days: number) => {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-};
-
 /**
  * The days of a period at time `now`: the last 7 or 30 including today, or a range with both its days included.
  * Null for a range that is no date, runs backwards, or is longer than `maxUsageDays`.
  */
 export const boundsOf = (period: UsagePeriod, now: number): UsageBounds | null => {
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const first = period._tag === "Days" ? shiftDays(today, 1 - period.days) : midnightOf(period.from);
-  const last = period._tag === "Days" ? today : midnightOf(period.to);
+  const today = dayStartOf(now);
+  const first = period._tag === "Days" ? shiftDays(today, 1 - period.days) : dayStartOfKey(period.from);
+  const last = period._tag === "Days" ? today : dayStartOfKey(period.to);
   if (first === null || last === null || first > last) return null;
   const days: DayText[] = [];
-  for (let day = first; day <= last; day = shiftDays(day, 1)) days.push(dayTextOf(day));
+  for (let day = first; day <= last; day = shiftDays(day, 1)) days.push(dayKeyOf(day));
   if (days.length > maxUsageDays) return null;
-  return {
-    days,
-    firstDay: dayTextOf(first),
-    from: first.getTime(),
-    lastDay: dayTextOf(last),
-    to: shiftDays(last, 1).getTime(),
-  };
+  return { days, firstDay: dayKeyOf(first), from: first, lastDay: dayKeyOf(last), to: shiftDays(last, 1) };
 };
 
 /** Where a read finds the quest and the time of the rows it counts: the usage rows' own columns, or another table's. */

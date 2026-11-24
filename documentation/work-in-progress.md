@@ -6,7 +6,7 @@ Fifteen deepening candidates for the harness roster, the shell and panes, and th
 - H3, the missing tool server on six ACP harnesses.
 - The account budget card labels nine harnesses "OpenCode".
 - P1 covered individual errand shortcuts, which the two-control batch replaces.
-- The Workshop's inactivity-days setting does nothing (S3).
+- The Workshop's inactivity-days setting did nothing (S3); the setting and the orphaned question are deleted.
 
 S1, a paired device enabling remote terminals through Chronicler or a Ritual, comes from reading the code and has not been reproduced. Nothing is built yet. [Handoff](../.agents/handoffs/2026-11-24-0738-architecture-audit.md).
 

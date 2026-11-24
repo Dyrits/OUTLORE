@@ -7,7 +7,6 @@ import {
   type MissionSummary,
   type ModelChoice,
   RitualId,
-  type Settings,
   type StartChoices,
   ThreadId,
   WorkspaceId,
@@ -17,7 +16,6 @@ import { SqlClient, type Statement } from "effect/sql";
 import {
   consumptionColumns,
   costSum,
-  dayMillis,
   invalid,
   isReached,
   newId,
@@ -170,7 +168,6 @@ type MissionRow = {
   isEmpty: number;
   isTitleByUser: number;
   isAskingDone: number;
-  inactivityDismissedAt: number | null;
   input: number;
   output: number;
   cacheRead: number;
@@ -200,15 +197,11 @@ type MissionRow = {
   spentTokens: number;
 };
 
-/** What the dashboard asks of a mission not ended: Mark as done after its result, or about its inactivity. */
-const promptOf = (row: MissionRow, now: number, settings: Settings): MissionPrompt | null => {
-  if (row.ending !== null) return null;
-  if (row.isAskingDone === 1) return "MarkDone";
-  const quietSince = Math.max(row.lastActivityAt, row.inactivityDismissedAt ?? 0);
-  return now - quietSince >= settings.inactivityDays * dayMillis ? "Inactive" : null;
-};
+/** What the dashboard asks of a mission not ended: Mark as done after its result. */
+const promptOf = (row: MissionRow): MissionPrompt | null =>
+  row.ending === null && row.isAskingDone === 1 ? "MarkDone" : null;
 
-const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSummary => {
+const summaryOf = (row: MissionRow): MissionSummary => {
   const otherStates = threadStatesOf(row.otherStates);
   const [topState = "Resting"] = threadStatesOf(row.topState);
   return {
@@ -224,7 +217,7 @@ const summaryOf = (row: MissionRow, now: number, settings: Settings): MissionSum
     lastActivityAt: row.lastActivityAt,
     lastExchange: { owner: row.lastOwnerText, reply: row.lastReplyText },
     model: row.model,
-    prompt: promptOf(row, now, settings),
+    prompt: promptOf(row),
     ritual:
       row.ritualId === null || row.ritualSchedule === null
         ? null
@@ -257,7 +250,6 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
       (SELECT COUNT(*) FROM threads t WHERE t.mission_id = m.id AND t.archived_at IS NULL) AS threadCount,
       ${sql.literal(emptyQuestCondition("m.id"))} AS isEmpty,
       m.ending, m.is_title_by_user AS isTitleByUser, m.is_asking_done AS isAskingDone,
-      m.inactivity_dismissed_at AS inactivityDismissedAt,
       ${sql.literal(consumptionColumns)},
       m.budget_cost AS budgetCost, m.budget_tokens AS budgetTokens, COALESCE(SUM(${sql.literal(costSum)}), 0) AS spentCost,
       COALESCE(SUM(${sql.literal(tokenSum)}), 0) AS spentTokens,
@@ -281,10 +273,8 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
 export const listMissionSummaries = Effect.fnUntraced(function* (missionIds: ReadonlyArray<string>) {
   const sql = yield* SqlClient.SqlClient;
   if (missionIds.length === 0) return [];
-  const now = yield* Clock.currentTimeMillis;
-  const settings = yield* readSettings;
   const rows = yield* missionRowsOf(sql, sql`m.id IN ${sql.in(missionIds)}`);
-  return rows.map((row) => summaryOf(row, now, settings));
+  return rows.map(summaryOf);
 });
 
 /**
@@ -294,13 +284,11 @@ export const listMissionSummaries = Effect.fnUntraced(function* (missionIds: Rea
  */
 export const listViewSummaries = Effect.fnUntraced(function* (isArchived: boolean, includeRituals = false) {
   const sql = yield* SqlClient.SqlClient;
-  const now = yield* Clock.currentTimeMillis;
-  const settings = yield* readSettings;
   const rows = yield* missionRowsOf(
     sql,
     isArchived
       ? sql`m.ending = 'Archived' AND m.is_guildmaster = 0`
       : sql`(m.ending IS NULL OR m.ending = 'Fulfilled') AND m.is_guildmaster = 0`,
   );
-  return rows.filter((row) => includeRituals || row.ritualId === null).map((row) => summaryOf(row, now, settings));
+  return rows.filter((row) => includeRituals || row.ritualId === null).map(summaryOf);
 });

@@ -11,7 +11,7 @@ import {
 } from "@outlore/contracts";
 import { Cause, Clock, Effect, Exit, Layer, PubSub, Schema } from "effect";
 import { SqlClient } from "effect/sql";
-import { Changes, hourMillis, invalid, newId, notFound } from "../core/index.ts";
+import { Changes, hourMillis, invalid, newId, nextRunAfter, notFound } from "../core/index.ts";
 import { refuseWaitingImages } from "./admission.ts";
 import { Commands } from "./commands.ts";
 import { deleteThread, previewDeletion } from "./deleting.ts";
@@ -19,7 +19,8 @@ import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
 import { changeThreadRunner } from "./handover.ts";
 import { insertMessage } from "./messaging.ts";
 import { insertQuest } from "./missions.ts";
-import { nextRunAfter, runStateOf, scheduleOf } from "./ritualSchedule.ts";
+import { runStateOf, scheduleOf } from "./ritualSchedule.ts";
+import { timedSweep } from "./timedSweep.ts";
 import { insertThread } from "./tree.ts";
 
 // Rituals (rituals): an instruction run on a schedule, or by hand; an entity of its realm beside the quests
@@ -185,7 +186,12 @@ export const createRitual = Effect.fnUntraced(function* (input: {
       VALUES (${ritualId}, ${quest.missionId}, ${input.instruction}, ${JSON.stringify(input.schedule)},
         ${JSON.stringify(input.primary)}, ${JSON.stringify(input.fallbacks)}, 1, ${nextRunAfter(input.schedule, now)},
         ${now}, ${JSON.stringify(input.scope ?? [])}, ${input.originMissionId})`;
-  return changed({ missionId: quest.missionId, ritualId, threadId: quest.threadId });
+  // The wire result carries branded identifiers; the row layer above keeps plain strings.
+  return changed({
+    missionId: MissionId.make(quest.missionId),
+    ritualId: RitualId.make(ritualId),
+    threadId: ThreadId.make(quest.threadId),
+  });
 });
 
 /** Replaces a Ritual's fields; the next run is worked out again only when the schedule or the switch changed. */
@@ -404,11 +410,11 @@ export const ritualsLayer = Layer.effectDiscard(
         WHERE is_on = 1 AND next_run_at IS NOT NULL`;
       return Math.max(1, Math.min((next?.at ?? now + longestSleepMillis) - now, longestSleepMillis));
     });
-    const watch = Effect.gen(function* () {
-      yield* commands.run(runDueRituals);
-      const wait = yield* untilNextRun;
-      yield* Effect.raceFirst(Effect.sleep(wait), PubSub.take(subscription));
-    }).pipe(Effect.forever, Effect.orDie);
-    yield* Effect.forkScoped(watch);
+    yield* timedSweep({
+      name: "The Ritual scheduler",
+      untilNext: untilNextRun,
+      wakeOn: PubSub.take(subscription),
+      work: commands.run(runDueRituals),
+    });
   }),
 );

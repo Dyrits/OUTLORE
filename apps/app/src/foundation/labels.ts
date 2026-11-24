@@ -83,12 +83,6 @@ export const startingContextPartsOf = (parts: StartingContextParts) =>
 export const threadCountOf = (mission: { readonly runningCount: number; readonly threadCount: number }) =>
   `1 quest · ${sideQuestsOf(Math.max(0, mission.threadCount - 1))}${mission.runningCount === 0 ? "" : ` · ${mission.runningCount} running`}`;
 
-/** What the dashboard asks of a mission (mission-tracking, Ending a mission). */
-export const promptQuestionOf = (prompt: "MarkDone" | "Inactive", inactivityDays: number) =>
-  prompt === "MarkDone"
-    ? "Mark as done?"
-    : `No activity for ${countedOf(inactivityDays, "day")}. Archive it or mark it as done?`;
-
 /** What the line left behind says about where an off-topic request went (thread-tree, Off-topic requests). */
 export const suggestionLabels = {
   Continued: "Continued in quest",

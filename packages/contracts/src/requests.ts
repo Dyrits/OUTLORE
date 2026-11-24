@@ -67,7 +67,7 @@ import {
 } from "./pickerRequests.ts";
 import { ChoiceAnswers, ThreadPermissionMode } from "./questions.ts";
 import { NewRealmAppearance, realmRequests } from "./realmRequests.ts";
-import { MessageDelivery, MissionEnding, MissionPrompt, MissionState, RequestId, Viewing } from "./records.ts";
+import { MessageDelivery, MissionEnding, MissionState, RequestId, Viewing } from "./records.ts";
 import {
   AddHost,
   CreatePairingCode,
@@ -201,11 +201,6 @@ export const MoveQuest = Schema.TaggedStruct("MoveQuest", {
   missionId: MissionId,
   /** The realm to move it to, or null for the Borderlands. */
   realmId: Schema.NullOr(WorkspaceId),
-});
-/** Not now on a dashboard question; the inactivity question comes back after another inactive period. */
-export const DismissMissionPrompt = Schema.TaggedStruct("DismissMissionPrompt", {
-  missionId: MissionId,
-  prompt: MissionPrompt,
 });
 /** Reads a mission with the conversation of one of its threads; null reads the top thread. */
 export const ReadMission = Schema.TaggedStruct("ReadMission", {
@@ -403,7 +398,6 @@ export const Request = Schema.Union([
   EndMission,
   ReopenMission,
   MoveQuest,
-  DismissMissionPrompt,
   ReadMission,
   ReadThreadPanel,
   ReadThreadTree,

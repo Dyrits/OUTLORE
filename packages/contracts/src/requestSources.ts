@@ -57,7 +57,6 @@ export const requestSourceRules = {
   DeleteThread: shared,
   DiscardAttachment: shared,
   DisconnectDevice: hostOnly,
-  DismissMissionPrompt: shared,
   EditIntel: shared,
   EditQueuedMessage: shared,
   EndMission: shared,

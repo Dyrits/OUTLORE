@@ -1,6 +1,6 @@
 import type { ApprovalLevel } from "@outlore/contracts";
 import { Effect } from "effect";
-import { type Containment, isInsideFolder } from "../core/index.ts";
+import { type Containment, isInsideFolder, type ModeTerms } from "../core/index.ts";
 import { type Capability, capabilities, changedFilesOf, isFileWriting } from "./patterns.ts";
 
 /**
@@ -53,3 +53,13 @@ export const needsOf = Effect.fnUntraced(function* (facts: ActionFacts) {
 
 /** Whether an action runs without asking: only at the default level, and only when nothing beyond the sandbox is needed. */
 export const isUnaskedAt = (level: ApprovalLevel, need: Capability | null) => level === "RiskyOnly" && need === null;
+
+/**
+ * Whether the owner's mode lets an action run without asking (CHG-0617, CHG-0621), judged from the mode's terms alone:
+ * a mode that leaves everything unasked still asks to widen the sandbox, and one that leaves edits unasked covers a
+ * change that is contained by its exact path.
+ */
+export const isUnaskedUnder = (terms: ModeTerms, toolName: string, need: Capability | null) =>
+  (terms.isEverythingUnasked && toolName !== "Permissions") ||
+  (need === null && terms.areEditsUnasked && isFileWriting(toolName)) ||
+  isUnaskedAt(terms.approvalLevel, need);

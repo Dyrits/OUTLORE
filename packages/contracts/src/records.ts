@@ -82,8 +82,6 @@ export const Settings = Schema.Struct({
   /** Covers all missions over its period; empty at first. */
   globalBudget: BudgetLimits,
   globalBudgetPeriod: BudgetPeriod,
-  /** Days without activity before the dashboard asks to archive or mark a mission done (mission-tracking). */
-  inactivityDays: PositiveInt,
   /** Days over which an unused lore entry's strength halves, by kind; a rule never fades (scoped-intel, Kinds). */
   intelHalfLives: Schema.Struct({
     decision: PositiveInt,
@@ -139,8 +137,8 @@ export const MissionState = Schema.Literals([
 ]);
 export type MissionState = typeof MissionState.Type;
 
-/** What the dashboard asks of a mission: "Mark as done?" after its result, or the inactivity question. */
-export const MissionPrompt = Schema.Literals(["MarkDone", "Inactive"]);
+/** What the dashboard asks of a mission: "Mark as done?" after its result. */
+export const MissionPrompt = Schema.Literals(["MarkDone"]);
 export type MissionPrompt = typeof MissionPrompt.Type;
 
 /** One mission as the dashboard lists it. */

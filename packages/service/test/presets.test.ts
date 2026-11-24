@@ -110,7 +110,7 @@ describe("saving presets", () => {
         yield* sql`INSERT INTO settings (key, value) VALUES ('settings', ${JSON.stringify({ ...settings, inactivityDays: 30, tiers: { Balanced: null, Heavy: legacy, Light: null } })})
           ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
         const read = yield* call({ _tag: "ReadSettings" });
-        expect(read.inactivityDays).toBe(30);
+        expect(read).not.toHaveProperty("inactivityDays");
         expect(read.tiers.Heavy).toEqual({ ...legacy, backups: [] });
       }),
     ),

@@ -1,18 +1,21 @@
 import { Effect, Match } from "effect";
-import { readSettings, type ToolAnswer, toolRefusal, toolText, writeSettings } from "../core/index.ts";
+import {
+  readSettings,
+  settingsKeptFrom,
+  type ToolAnswer,
+  toolRefusal,
+  toolText,
+  writeSettings,
+} from "../core/index.ts";
 import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
-import { isGuildmasterThread } from "./guildmasterPlace.ts";
+import { isGuildmasterThread, settingWriterOfCaller } from "./guildmasterPlace.ts";
 import { readSettingChange } from "./guildmasterPreflight.ts";
 import { consumeReceipt, isStructuralCaller, notAuthorizedText } from "./guildmasterProvenance.ts";
-import { settingsKeptFromChronicler } from "./guildmasterSettingNames.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 
 // Chronicler's settings tools (quest coordination, CHG-0193): it reads the owner's settings, and changes one once the exact
 // change is authorized by provenance (guildmasterProvenance.ts, CHG-0208). Chronicler calls them, and a Ritual's own thread
 // within its reviewed scope; never on its own initiative.
-
-/** Kept for ritualScope.ts, which is not in this slice and should import it from guildmasterSettingNames.ts. */
-export { changeableSettings } from "./guildmasterSettingNames.ts";
 
 const refused = (text: string): WithFollowUps<ToolAnswer> => unchanged(toolRefusal(text));
 
@@ -22,7 +25,7 @@ export const readSettingsByGuildmaster = Effect.fnUntraced(function* (callerId: 
   const settings = yield* readSettings;
   return unchanged(
     toolText(
-      `${JSON.stringify(settings)}\n\nYou may not change: ${settingsKeptFromChronicler.join(", ")}; the owner sets those in the Workshop.`,
+      `${JSON.stringify(settings)}\n\nYou may not change: ${settingsKeptFrom("Chronicler").join(", ")}; the owner sets those in the Workshop.`,
     ),
   );
 });
@@ -35,10 +38,11 @@ export const changeSettingByGuildmaster = (callerId: string, args: ArgumentsOf<"
   Effect.gen(function* () {
     if (!(yield* isStructuralCaller(callerId, "change_setting")))
       return refused("Only Chronicler changes the settings here.");
-    return yield* Match.valueTags(yield* readSettingChange(args), {
+    const writer = yield* settingWriterOfCaller(callerId);
+    return yield* Match.valueTags(yield* readSettingChange(writer, args), {
       Clear: Effect.fnUntraced(function* ({ after, before, setting, value }) {
         if (!(yield* consumeReceipt(callerId, "change_setting", args))) return refused(notAuthorizedText);
-        yield* writeSettings(after);
+        yield* writeSettings(writer, after);
         return changed(
           toolText(
             `Changed ${setting} from ${JSON.stringify(before)} to ${JSON.stringify(value)}. Tell the owner in a sentence.`,

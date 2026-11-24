@@ -1,5 +1,5 @@
 import type { ThreadState } from "@outlore/contracts";
-import { Clock, Effect, Layer, Schedule } from "effect";
+import { Clock, Effect, Layer } from "effect";
 import { SqlClient } from "effect/sql";
 import { Commands } from "./commands.ts";
 import { autoArchiveLayer } from "./ending.ts";
@@ -7,6 +7,7 @@ import { changed, unchanged } from "./followUps.ts";
 import { ensureGuildmaster } from "./guildmasterPlace.ts";
 import { appendMessage } from "./messageStorage.ts";
 import { questStateOf, shownStatesOf } from "./missionStates.ts";
+import { timedSweep } from "./timedSweep.ts";
 
 const hour = 60 * 60 * 1000;
 const warningHours = { Attention: 4, Resting: 12 } as const;
@@ -97,11 +98,11 @@ const postDueMissives = Effect.gen(function* () {
 const inactivityMissivesLayer = Layer.effectDiscard(
   Effect.gen(function* () {
     const commands = yield* Commands;
-    // This is the scheduled fiber's error boundary; a failed transaction can retry on its next tick.
-    const sweep = commands
-      .run(postDueMissives)
-      .pipe(Effect.catch((error) => Effect.logWarning("Inactivity warnings will retry at the next sweep", error)));
-    yield* Effect.forkScoped(sweep.pipe(Effect.repeat(Schedule.spaced("1 hour"))));
+    yield* timedSweep({
+      name: "Inactivity warnings",
+      untilNext: Effect.succeed(hour),
+      work: commands.run(postDueMissives),
+    });
   }),
 );
 

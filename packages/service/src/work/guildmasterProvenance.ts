@@ -7,7 +7,7 @@ import { isNamedByOwner, type NamedAction } from "../policy/index.ts";
 import type { Approvals } from "./approvals.ts";
 import { previewEnding, readWorkingIds } from "./ending.ts";
 import { fallbackNoteOf, ritualStartOf } from "./guildmasterCompanions.ts";
-import { isGuildmasterThread } from "./guildmasterPlace.ts";
+import { isGuildmasterThread, settingWriterOfCaller } from "./guildmasterPlace.ts";
 import { readRitualPreflight, readSettingChange } from "./guildmasterPreflight.ts";
 import { clip, placeOf, threadsLineOf } from "./guildmasterText.ts";
 import { isRitualRunTurn, readOwnerTexts } from "./messageProvenance.ts";
@@ -145,8 +145,8 @@ const deriveQuestAction = Effect.fnUntraced(function* (args: ArgumentsOf<"act_on
 });
 
 /** `change_setting` as a structural action: one setting, its value as JSON, and what it holds now. */
-const deriveSettingChange = Effect.fnUntraced(function* (args: ArgumentsOf<"change_setting">) {
-  const checked = yield* readSettingChange(args);
+const deriveSettingChange = Effect.fnUntraced(function* (args: ArgumentsOf<"change_setting">, callerId: string) {
+  const checked = yield* readSettingChange(yield* settingWriterOfCaller(callerId), args);
   return Match.valueTags(checked, {
     Clear: ({ before, setting, value }) =>
       ({

@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the 2026-11-24 architecture audit (H1/H4/H5 and deferred refactors), read the [current handoff](.agents/handoffs/2026-11-24-1612-architecture-audit.md). Handoffs are shared and committed.
+
 - To verify the squarer composer and the Workshop in the File menu in the running desktop app, read the [current handoff](.agents/handoffs/2026-11-24-1418-squarer-composer.md). Handoffs are shared and committed.
 
 - To verify the History tab in the realm's channel in the running app, read the [current handoff](.agents/handoffs/2026-11-24-1256-realm-history-tab.md). Handoffs are shared and committed.
-
-- To verify segmented pane tabs on desktop and phone, read the [current handoff](.agents/handoffs/2026-11-24-1256-segmented-pane-tabs.md). Handoffs are shared and committed.

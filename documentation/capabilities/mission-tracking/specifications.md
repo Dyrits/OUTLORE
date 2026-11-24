@@ -99,7 +99,7 @@ Update, 2026-11-20: Stop ends the current turn and returns the thread to Resting
 - Automatic archiving applies to Fulfilled quests after the configured delay when enabled. An inactivity warning leaves the quest open.
 
 - The user archives a quest when it is no longer needed in the active list.
-- The former dashboard inactivity question remains available through legacy service requests and settings. Realm Missives use the hourly rules above.
+- Update, 2026-11-24 (architecture audit S3, owner decision): the former dashboard inactivity question is deleted, with its dismiss request, its Workshop field, and the `inactivityDays` setting. Settings already stored keep loading and the retired field is ignored; the `inactivity_dismissed_at` column stays unused. Realm Missives use the hourly rules above.
 - Archiving a quest that used no tokens and holds no message deletes it instead (as [deleting a mission](../thread-tree/specifications.md#deleting) does): it carries nothing, so it does not appear in the Archived view. Archiving a realm still archives its empty quests, so Restore brings them back.
 - Archiving a mission with running threads asks one confirmation that names them, for example "2 threads are still running. Stop them and archive?", then stops them.
 - An archived mission leaves the main list and appears in the Archived view, from which the user can reopen it.
@@ -288,7 +288,7 @@ Threads use this thread tool (see [0005](../../architecture-decision-record/0005
   - an errand reporting its result to its parent and returning to idle, with no Mark as done action;
   - failures needing the owner producing Summons, waiting and stopped shown as details, and stopped threads staying stopped until explicitly resumed;
   - the top thread's result leaving the quest available without a Done state or Mark as done prompt;
-  - the inactivity question after the set duration, agent activity resetting it, and a dismissed question coming back;
+  - a quiet quest never raising a dashboard question, and a stored `inactivityDays` setting being ignored;
   - the confirmation naming running threads before archiving, and those threads stopped;
   - spending totalled per provider unit by billing kind, with an estimated cost beside it that never counts toward a limit (budget-control);
   - absence of the old Done-based auto-archive and finished-quest visibility controls;

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import type { Request, RequestTag, ResultOf } from "@outlore/contracts";
+import type { Request } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
@@ -55,7 +55,7 @@ const as = (source: { isPairedDevice: boolean }) => ({
   call: <R extends Request>(request: R) =>
     Effect.gen(function* () {
       const service = yield* Service;
-      return (yield* service.handle(request, source)) as ResultOf<R["_tag"] & RequestTag>;
+      return yield* service.handle(request, source);
     }),
   failureOf: <R extends Request>(request: R) =>
     Effect.gen(function* () {

@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import type { Request, RequestSource, Settings } from "@outlore/contracts";
+import type { Request, RequestSource, RequestTag, ResultOf } from "@outlore/contracts";
 import { Effect, Layer, Match, Semaphore } from "effect";
 import type { SqlError } from "effect/sql";
 import {
@@ -13,12 +13,9 @@ import {
   type VaultPort,
 } from "./connectors/index.ts";
 import {
-  addBrowsableRoot,
-  browseFolders,
   Changes,
   changeCompanionPreset,
   changesLayer,
-  createFolder,
   endpointsLayer,
   type Harness,
   HomeFolder,
@@ -29,16 +26,14 @@ import {
   priceTableLayer,
   readSettings,
   readStartChoices,
-  removeBrowsableRoot,
   ServiceFailure,
-  searchFolders,
+  type SettingWriter,
   seedBrowsableRoots,
   sessionsLayer,
   storeLayer,
   vaultFolderOf,
 } from "./core/index.ts";
 import { fakeHarnessToolsLayer, type HarnessTools } from "./harness/index.ts";
-import { listOpenQuestions, removePermission, widenPermission } from "./policy/index.ts";
 import {
   cloudflareApiFor,
   computerNameOf,
@@ -59,10 +54,11 @@ import {
   Approvals,
   AttachmentsRoot,
   accountsHandlers,
-  addCredit,
   admitRequestSource,
+  approvalsHandlers,
   approvalsLayer,
   budgetPeriodsLayer,
+  budgetsHandlers,
   Commands,
   changed,
   connectorAskingLayer,
@@ -70,34 +66,24 @@ import {
   connectorNoticesLayer,
   guildmasterReportsLayer,
   hostTerminalHost,
-  listMentionables,
-  listSkills,
-  listWorkspaceEntries,
+  hostUpdateHandlers,
   loreHandlers,
   messagesHandlers,
+  type OwnerHandlers,
   planLimitsLayer,
   priceRefreshLayer,
   questMaintenanceLayer,
   questsHandlers,
   type RequestServices,
-  readAccountBudgets,
-  readBudgetWindow,
-  readPermissionsView,
-  readUsage,
   realmHandlers,
   remoteHandlers,
-  resolveChatter,
   ritualsHandlers,
   ritualsLayer,
   ScratchRoot,
   Suggestions,
   saveSettings,
-  setAccountBudget,
-  setMissionBudget,
   startupCleanupLayer,
-  stopAtBudget,
   suggestionsLayer,
-  switchAtBudget,
   type TerminalHost,
   type TerminalScope,
   Terminals,
@@ -108,6 +94,7 @@ import {
   toolServerLayer,
   vaultHandlers,
   vaultPortLayer,
+  workspaceHandlers,
 } from "./work/index.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...).
@@ -141,105 +128,52 @@ const make = Effect.gen(function* () {
   const context = yield* Effect.context<RequestServices>();
 
   /**
-   * Saves settings, refusing a paired device's change of whether its own terminals are allowed: only the host's own
-   * window can turn them on or off (conversation-terminal, ADR 0020).
-   */
-  const saveSettingsFromSource = (isHostWindow: boolean, next: (saved: Settings) => Settings) =>
-    Effect.gen(function* () {
-      if (!isHostWindow) {
-        const saved = yield* readSettings;
-        if (next(saved).shouldAllowRemoteTerminals !== saved.shouldAllowRemoteTerminals)
-          return yield* new ServiceFailure({
-            kind: "AccessRefused",
-            message: "Only the host itself can change whether terminals from paired devices are allowed.",
-          });
-      }
-      return yield* saveSettings(next);
-    });
-
-  /**
    * Answers one request. A paired device's folder requests reach only the browsable roots; the host's own window,
    * the default, reaches any folder (device-pairing, CHG-0253).
    */
-  const handle = (
-    request: Request,
-    source: RequestSource = { isPairedDevice: false },
-  ): Effect.Effect<unknown, ServiceFailure> =>
+  const answer = (request: Request, source: RequestSource): Effect.Effect<ResultOf<RequestTag>, ServiceFailure> =>
     Effect.gen(function* () {
       const { folderAccess, deviceLabel } = yield* admitRequestSource(source, request);
-      const isHostWindow = !source.isPairedDevice;
+      // A paired device writes settings as the owner, the host's own window as the owner at the host (settingAuthority.ts).
+      const settingWriter: SettingWriter = source.isPairedDevice ? "Owner" : "HostOwner";
       const terminalScope: TerminalScope = source.isPairedDevice ? "remote" : "host";
-      // One handler per request tag; Match.valueTags fails to compile when a tag has none.
-      const run: Effect.Effect<unknown, ServiceFailure | SqlError.SqlError, RequestServices> = Match.valueTags(
-        request,
-        {
-          ...loreHandlers(dependencies),
-          ...accountsHandlers(dependencies),
-          ...remoteHandlers(dependencies),
-          ...messagesHandlers(dependencies),
-          ...questsHandlers(dependencies, connectors),
-          ...ritualsHandlers(dependencies),
-          ...terminalHandlers(terminals, terminalScope),
-          ...connectorHandlers(commands, connectors),
-          ...vaultHandlers(commands, vault, connectors),
-          AddBrowsableRoot: (add) => change(addBrowsableRoot(add.path)),
-          AddCredit: (given) =>
-            commands.run(addCredit({ accountId: given.accountId, harness: given.harness }, given.amount)),
-          AnswerChoices: (given) => approvals.answerChoices(given.questionId, given.answers, deviceLabel),
-          AnswerQuestion: (given) => approvals.answer(given.questionId, given.answer, given.message, deviceLabel),
-          AnswerSuggestion: (given) =>
-            suggestions.answer(given.suggestionId, given.answer).pipe(
-              Effect.tap(({ followUps }) => commands.apply(followUps)),
-              Effect.map(({ value }) => value),
-            ),
-          BrowseFolders: (browse) => browseFolders(browse.path, browse.shouldIncludeHidden, folderAccess),
-          ChangeCompanionPreset: ({ edit }) => change(changeCompanionPreset(edit)),
-          ChangeSettings: (given) =>
-            saveSettingsFromSource(isHostWindow, (saved) => mergedSettings(saved, given.change)),
-          CreateFolder: (create) => createFolder(create.parent, create.name, folderAccess),
-          ...realmHandlers(commands, folderAccess),
-          ForceUpdateHost: () => hostUpdate.force,
-          ListMentionables: () => listMentionables,
-          ListOpenQuestions: () => listOpenQuestions,
-          ListSkills: (given) => listSkills(given.workspacePath),
-          ListWorkspaceEntries: (given) => listWorkspaceEntries(given.workspacePath, given.query),
-          ReadAccountBudgets: () => readAccountBudgets,
-          ReadBudget: (read) => readBudgetWindow(read.missionId),
-          ReadHostUpdate: () => hostUpdate.read,
-          ReadPermissions: (read) => readPermissionsView(read.missionId),
-          ReadPriceStatus: () => prices.status,
-          ReadSettings: () => readSettings,
-          ReadStartChoices: () => readStartChoices,
-          ReadUsage: (read) => readUsage(read.period, read.filters),
-          RefreshPrices: () =>
-            prices.refresh.pipe(
-              Effect.catchTag("PriceReadFailed", (failure) =>
-                Effect.fail(new ServiceFailure({ kind: "ExecutionFailure", message: failure.reason })),
-              ),
-            ),
-          RemoveBrowsableRoot: (remove) => change(removeBrowsableRoot(remove.path)),
-          RemovePermission: (remove) => change(removePermission(remove.permissionId)),
-          ResolveChatter: (given) => resolveChatter(given.id, given.choice).pipe(chatterDecisions.withPermit),
-          SearchFolders: (search) => searchFolders(search.query, folderAccess, homeFolder),
-          SetAccountBudget: (given) =>
-            commands.run(
-              setAccountBudget(
-                { accountId: given.accountId, harness: given.harness },
-                given.limits,
-                given.period,
-                given.since,
-              ),
-            ),
-          SetMissionBudget: (given) => commands.run(setMissionBudget(given.missionId, given.limits)),
-          StopAtBudget: (given) => commands.run(stopAtBudget(given.stopId)),
-          SwitchAtBudget: (given) => commands.run(switchAtBudget(given.stopId)),
-          UpdateHost: () => hostUpdate.arm,
-          UpdateSettings: (update) => saveSettingsFromSource(isHostWindow, () => update.settings),
-          WidenPermission: (widen) => change(widenPermission(widen.permissionId)),
-        },
-      );
-      return yield* run;
+      const settingsHandlers = {
+        ChangeCompanionPreset: ({ edit }) => change(changeCompanionPreset(edit)),
+        ChangeSettings: (given) => saveSettings(settingWriter, (saved) => mergedSettings(saved, given.change)),
+        ReadSettings: () => readSettings,
+        ReadStartChoices: () => readStartChoices,
+        UpdateSettings: (update) => saveSettings(settingWriter, () => update.settings),
+      } satisfies OwnerHandlers<
+        "ChangeCompanionPreset" | "ChangeSettings" | "ReadSettings" | "ReadStartChoices" | "UpdateSettings"
+      >;
+      // One handler per request tag, each answering its result schema; the table fails to compile when a tag has none
+      // or one answers something its schema cannot encode.
+      const table = {
+        ...loreHandlers(dependencies),
+        ...accountsHandlers(dependencies),
+        ...remoteHandlers(dependencies),
+        ...messagesHandlers(dependencies),
+        ...questsHandlers(dependencies, connectors),
+        ...ritualsHandlers(dependencies),
+        ...terminalHandlers(terminals, terminalScope),
+        ...connectorHandlers(commands, connectors),
+        ...vaultHandlers(commands, vault, connectors),
+        ...realmHandlers(commands, folderAccess),
+        ...approvalsHandlers(dependencies, approvals, suggestions, chatterDecisions, deviceLabel),
+        ...budgetsHandlers(dependencies, prices),
+        ...hostUpdateHandlers(hostUpdate),
+        ...workspaceHandlers(dependencies, folderAccess, homeFolder),
+        ...settingsHandlers,
+      } satisfies OwnerHandlers<RequestTag>;
+      return yield* Match.valueTags(request, table);
     }).pipe(Effect.provideContext(context), Effect.catchTag("SqlError", storageFailure));
+
+  /** Answers one request with its own result: the type follows the request's tag, which the table above guarantees. */
+  const handle = <R extends Request>(
+    request: R,
+    source: RequestSource = { isPairedDevice: false },
+  ): Effect.Effect<ResultOf<R["_tag"]>, ServiceFailure> =>
+    answer(request, source) as Effect.Effect<ResultOf<R["_tag"]>, ServiceFailure>;
 
   return { handle };
 });

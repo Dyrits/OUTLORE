@@ -1,7 +1,7 @@
-import type { ApprovalLevel, ThreadPermissionMode } from "@outlore/contracts";
+import type { ThreadPermissionMode } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { notFound, readSettings } from "../core/index.ts";
+import { type ModeTerms, notFound, readSettings } from "../core/index.ts";
 import { changed } from "./followUps.ts";
 
 export const readThreadPermissionMode = Effect.fnUntraced(function* (threadId: string) {
@@ -59,16 +59,41 @@ export const effectiveModeOf = (
   defaultMode: ThreadPermissionMode,
 ): ThreadPermissionMode => mode ?? defaultMode;
 
-/** The level a single mode derives, whether it came from the thread or the Workshop's default. */
-export const approvalLevelOf = (mode: ThreadPermissionMode): ApprovalLevel => {
-  const asking: Record<ThreadPermissionMode, ApprovalLevel> = {
-    Auto: "RiskyOnly",
-    AutoAcceptEdits: "CommandsAndEdits",
-    FullAccess: "RiskyOnly",
-    Supervised: "CommandsAndEdits",
-  };
-  return asking[mode];
+/**
+ * What each permission mode means (CHG-0617, CHG-0621), the one place that says it: the approval level the harnesses
+ * enforce their sandbox by, whether a command may leave the sandbox unasked, whether an edit inside the folder runs
+ * unasked, and whether every tool call does. Readers judge from these terms, never from a mode's name, and a new mode
+ * is one more row (the type forces it).
+ */
+export const modeTerms: Record<ThreadPermissionMode, ModeTerms> = {
+  Auto: {
+    approvalLevel: "RiskyOnly",
+    areEditsUnasked: false,
+    canWorkOutsideSandbox: false,
+    isEverythingUnasked: false,
+  },
+  AutoAcceptEdits: {
+    approvalLevel: "CommandsAndEdits",
+    areEditsUnasked: true,
+    canWorkOutsideSandbox: false,
+    isEverythingUnasked: false,
+  },
+  FullAccess: {
+    approvalLevel: "RiskyOnly",
+    areEditsUnasked: false,
+    canWorkOutsideSandbox: true,
+    isEverythingUnasked: true,
+  },
+  Supervised: {
+    approvalLevel: "CommandsAndEdits",
+    areEditsUnasked: false,
+    canWorkOutsideSandbox: false,
+    isEverythingUnasked: false,
+  },
 };
+
+/** The terms of one mode, whether it came from the thread or the Workshop's default. */
+export const termsOfMode = (mode: ThreadPermissionMode): ModeTerms => modeTerms[mode];
 
 /**
  * The level the effective mode derives, which tells the harnesses whether to enforce their sandbox and run their own
@@ -76,4 +101,4 @@ export const approvalLevelOf = (mode: ThreadPermissionMode): ApprovalLevel => {
  * sandbox and allow each harness request through the mode instead.
  */
 export const harnessApprovalLevelOf = (mode: ThreadPermissionMode | null, defaultMode: ThreadPermissionMode) =>
-  approvalLevelOf(effectiveModeOf(mode, defaultMode));
+  termsOfMode(effectiveModeOf(mode, defaultMode)).approvalLevel;

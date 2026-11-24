@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { nextRunAfter, runStateOf } from "../../src/work/index.ts";
+import { nextRunAfter } from "../../src/core/index.ts";
+import { runStateOf } from "../../src/work/index.ts";
 
 // Dates are built from local fields, as a schedule is read in the computer's local time.
 const at = (month: number, day: number, hour = 0, minute = 0) => new Date(2026, month - 1, day, hour, minute).getTime();

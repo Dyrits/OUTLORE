@@ -1,6 +1,7 @@
-import type { BudgetLimits, BudgetPeriod, Spending } from "@outlore/contracts";
+import type { BudgetLimits, Spending } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
+import { nextStartOf, periodStartOf } from "./localCalendar.ts";
 import { noLimits, readSettings } from "./settings.ts";
 
 // Budget control (budget-control specifications; work-in-progress Batch 11). A turn counts toward one unit, chosen by its
@@ -43,37 +44,6 @@ export const pricedTurnsColumn = `COALESCE(SUM(CASE WHEN ${knownCostColumn} IS N
 
 /** What no usage rows cost. */
 const nothingSpent: Spending = { cost: 0, tokens: 0 };
-
-const startShifts = {
-  Day: () => void 0,
-  Month: (date: Date) => {
-    date.setDate(1);
-  },
-  Week: (date: Date) => {
-    date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
-  },
-} satisfies Record<BudgetPeriod, (date: Date) => void>;
-
-const nextShifts = {
-  Day: (date: Date) => date.setDate(date.getDate() + 1),
-  Month: (date: Date) => date.setMonth(date.getMonth() + 1),
-  Week: (date: Date) => date.setDate(date.getDate() + 7),
-} satisfies Record<BudgetPeriod, (date: Date) => void>;
-
-/** When the global period holding `now` started: local midnight, on Monday for a week, on the 1st for a month. */
-export const periodStartOf = (now: number, period: BudgetPeriod) => {
-  const date = new Date(now);
-  date.setHours(0, 0, 0, 0);
-  startShifts[period](date);
-  return date.getTime();
-};
-
-/** When the global period holding `now` starts over. */
-export const nextStartOf = (now: number, period: BudgetPeriod) => {
-  const date = new Date(periodStartOf(now, period));
-  nextShifts[period](date);
-  return date.getTime();
-};
 
 /** Whether a budget has neither limit. */
 export const isEmpty = (limits: BudgetLimits) => limits.cost === null && limits.tokens === null;

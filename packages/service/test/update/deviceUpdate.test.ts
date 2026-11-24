@@ -128,11 +128,11 @@ const makeWorld = Effect.gen(function* () {
           return yield* (yield* Service).handle(request as never);
         }).pipe(Effect.provideContext(context));
       const startRunningTurn = Effect.gen(function* () {
-        const quest = (yield* (yield* Service).handle({
+        const quest = yield* (yield* Service).handle({
           _tag: "StartEmptyQuest",
           realmId: null,
           requestId: "quest-running",
-        })) as { threadId: string };
+        });
         const sql = yield* SqlClient.SqlClient;
         yield* sql`INSERT INTO turns (id, thread_id, status, started_at) VALUES ('turn-running', ${quest.threadId}, 'running', 1)`;
       }).pipe(Effect.provideContext(context));

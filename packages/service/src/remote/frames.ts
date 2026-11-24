@@ -2,6 +2,8 @@ import {
   type ClientFrame,
   ClientFrameJson,
   type RequestSource,
+  type RequestTag,
+  type ResultOf,
   Results,
   type ServerFrame,
   ServerFrameJson,
@@ -38,7 +40,10 @@ const failureFrame = (id: string, kind: ServiceFailure["kind"], message: string)
 });
 
 /** What serves requests: the service's `handle`, told whether a paired device asks. */
-export type Handle = (request: ClientFrame["request"], source: RequestSource) => Effect.Effect<unknown, ServiceFailure>;
+export type Handle = (
+  request: ClientFrame["request"],
+  source: RequestSource,
+) => Effect.Effect<ResultOf<RequestTag>, ServiceFailure>;
 
 /** Runs one request frame and sends its answer, as a Success or a Failure carrying the frame's identifier. */
 const answerFrame = (handle: Handle, frame: ClientFrame, send: (frame: ServerFrame) => void, source: RequestSource) =>

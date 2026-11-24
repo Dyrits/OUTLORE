@@ -10,7 +10,7 @@ it.effect("admits one check-in per local day and reads the current settings befo
   const tomorrow = new Date(2026, 10, 23, 9).getTime();
   const nextDay = new Date(2026, 10, 24, 9).getTime();
   return Effect.gen(function* () {
-    const settings = yield* writeSettings({
+    const settings = yield* writeSettings("Owner", {
       ...(yield* readSettings),
       backgroundCheckIns: {
         companion: { accountId: null, effort: "default", harness: "opencode", model: "local/first" },
@@ -37,17 +37,17 @@ it.effect("admits one check-in per local day and reads the current settings befo
     yield* Effect.all([sweep, sweep], { concurrency: 2 });
     expect(seen).toEqual(["local/first"]);
 
-    yield* writeSettings({ ...settings, backgroundCheckIns: { ...config, time: "10:00" } });
+    yield* writeSettings("Owner", { ...settings, backgroundCheckIns: { ...config, time: "10:00" } });
     yield* TestClock.setTime(new Date(2026, 10, 22, 10).getTime());
     yield* sweep;
     expect(seen).toEqual(["local/first"]);
 
-    yield* writeSettings({ ...settings, backgroundCheckIns: { ...config, isEnabled: false } });
+    yield* writeSettings("Owner", { ...settings, backgroundCheckIns: { ...config, isEnabled: false } });
     yield* TestClock.setTime(tomorrow);
     yield* sweep;
     expect(seen).toEqual(["local/first"]);
 
-    yield* writeSettings({
+    yield* writeSettings("Owner", {
       ...settings,
       backgroundCheckIns: { ...config, companion: { ...config.companion, model: "local/second" } },
     });
