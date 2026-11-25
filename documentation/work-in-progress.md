@@ -126,14 +126,6 @@ Still open:
 - A live-harness scheduled run (the fake harness covers the seams; the old model's note said the same).
 - Review points the owner should see: rituals of an archived realm are invisible until the realm is restored (the notice is on the panel); a realm tied to no folder cannot receive a directly created Ritual (pre-existing form limitation); the muted no-message-box line.
 
-## Editable queued messages · 2026-11-21 · window check pending
-
-CHG-0615 landed on `main` in `84bb9552`. Pending messages keep their place below new replies and the live response while waiting for delivery. Edit and Remove act while the host holds the message in its queue. The focused tests cover queue placement after Steer, delivery of edited text, refusal after delivery, and attachment cleanup.
-
-On the feature worktree, Biome and the workspace typecheck passed. `CI=1 bun run test` passed with 2,682 tests and 64 skips.
-
-The desktop build succeeded. The development server did not become reachable during the window check. The open check is to send two messages during a long turn, edit one, remove the other, then steer the edited message and watch its position through delivery.
-
 ## Architecture audit follow-through · 2026-11-21 · window check pending
 
 The owner approved the relevant findings from the 2026-11-21 audit. The work is on `worktree/audit-follow-through`, based on `eaf8fb69`. The automated checks and the blocked Electron launch are recorded in [verification](verification/2026-11-21-architecture-follow-through.md). The desktop window still needs a pass through pane folding and resizing, narrow and wide sidebars, Workshop return, and opening Chronicle entries.
@@ -236,14 +228,6 @@ CHG-0538 (blueprint step 3): the catalog (Composio, Apple apps), migration `0062
 ## Date beside the time in agent replies · 2026-11-19 · built and tested, on `main` once committed; the owner's look pending
 
 An agent reply's header shows the date and the time (`19 Nov 2026 · 11:15 AM`), through `stampOf` in `apps/app/src/foundation/formatting.ts`. Owner messages still show no time, so no date. Checks: formatting and conversation tests pass (58), Biome clean on the touched files; not seen in a window or on a phone. [Handoff](../.agents/handoffs/2026-11-19-0724-message-date.md)
-
-## Corner marks in the sidebar · 2026-11-19 · released in 0.1.11-Prototype; the owner's look pending
-
-A summons carries its amber mark in the lower-left corner (75% of the width and height, rounded), and a quest or errand waiting for the owner carries a grey one there (50%). The teal "your turn" dot is gone; the dot keeps its state's color. Sidebar rows have a 1 px bottom margin. Checks: Biome, typecheck and the app's tests pass; not seen in a window or on a phone. The tag `0.1.11-Prototype` carries it, and it is on `origin/main`. [Handoff](../.agents/handoffs/2026-11-19-0038-sidebar-corner-marks.md) · [Changelog](changelog/0.1.11-Prototype.md), CHG-0524
-
-## Queue by default, Steer or Interrupt a queued message · 2026-11-18 · on `main`; the owner's look pending
-
-CHG-0519: while a thread runs, Send queues the message (the default setting was removed in CHG-0523: messages always queue); the composer has Stop only. A message no turn has taken in is faint, with **Steer** (it joins the running turn) and **Interrupt** (stops the turn and sends it) under it while the thread runs. Stopping with a message queued keeps it queued and faint until Resume. Open: the owner's look in a window and on a phone; an owner who saved Steer as the default keeps it. [Specification](capabilities/thread-messaging/specifications.md#delivery)
 
 ## Updating a host from a paired device · 2026-11-18 · on `main`; a phone and a packaged macOS update pending
 
@@ -451,12 +435,6 @@ CHG-0246: the new side-quest composer uses the shared Companion button and Compa
 The model choice asked for "like Delta's and OpenBot's pickers" became, over CHG-0220 to CHG-0245, a **Companions** tab in the right-hand column beside **Quest** (the Quest tab only in a quest): a Companion button in a composer opens it; a fold for the Companion in use and one fold per backup Companion (drag to reorder, bin to remove), the same picker in each; Iskios's button opens it as "✦ Companions" and its own backups; pressing the tab switches between a quest's and Iskios's; the right-hand toggle shows on every screen. Also: the top bar's breadcrumbs removed (CHG-0229), the quest panel's duplicate "Quest" caption removed (CHG-0230), the app has **no scroll indicator** for now (CHG-0245; question in the [backlog](backlog.md)). Companion presets are specified, not built ([specifications](capabilities/companion-presets/specifications.md), CHG-0242). Evidence: [screens](verification/2026-11-12-companion-picker/); typecheck, Biome, and the app suite (320 passed, 4 skipped) pass; driven in a throwaway Electron window on the fake harness.
 Open: the owner's look at the tab and folds; the narrow-window overlay, light and Gild looks, a real failing turn using backups (a thread's or Iskios's), OpenCode effort levels in a backup, and the phone build were not checked.
 
-## Sidebar icons, flat matte · 2026-11-12 · built and checked in the window, owner review pending
-
-The owner supplied `guildmaster-flat-matte-icons` and asked for the sidebar's icons to be those. CHG-0207: the ivory drawings are used on dark looks and the slate blue ones on light looks, and both themes share them, so the metallic, gilt, and bronze sets are gone; `assets/nav/dark/` and `assets/nav/light/` hold them and `shell/navIcons.tsx` picks by look alone. Starting revision `ef103f9`.
-Checks: typecheck and Biome pass; the web export bundles them; driven in a throwaway Electron window on an empty data folder in the four theme and look combinations ([proof](verification/2026-11-12-sidebar-flat-icons.md)).
-Open: the owner's look; a sidebar filled with quests and realms, the phone build, and the packaged app were not checked.
-
 ## Device pairing · 2026-11-12 · batches 1 and 2 reviewed and checked; later batches pending
 
 The owner wants to control one Iskios from another, from any internet connection, with no account or cost for users or the owner, and asked to implement it. Agreed in CHG-0201 to CHG-0203: the shared relay Worker on the owner's free Cloudflare account on `workers.dev` ([0016](architecture-decision-record/0016-shared-relay-on-the-owners-free-cloudflare-account.md)), end-to-end encrypted; host and paired-device words; full authority; a text pairing code (single use, 10 minutes); paired devices listed in Charter with Disconnect; a host menu at the top left; the folder picker on the host. [Specifications](capabilities/device-pairing/specifications.md), [draft](capabilities/device-pairing/draft.md), [lab evidence](verification/2026-11-12-relay-and-direct-path-lab.md). Starting commit `4987773`; review, verification and publication authorized by the owner.
@@ -482,19 +460,6 @@ Built: in every message box a bare `@` lists Quests, Realms, and Files & Directo
 Checks: typecheck, Biome, 9 service and 9 app tests added, app suite passes, full suite with two failures that also fail without the change; driven in a throwaway Electron window on the fake harness, light and dark ([proof](verification/2026-11-11-mentions.md)).
 Open, awaiting the owner: the look of the menu and chips; the token form and the reply rule (my choices in CHG-0181); whether a realm mention should open anything (today context only). Not checked: a real harness choosing to use a mention; the phone build beyond typecheck (no chips in the box, Backspace erases the `@`); long lists (no scrolling, capped at 12 and 5 per category). Not built: Iskios's event lines for messages between quests.
 
-## Gild theme · 2026-11-11 · built and checked, owner review pending
-
-CHG-0183: Iskios and Gild themes, each dark and light; Gild's colors come from the owner's Guild Hall image (dark) and the former parchment board (light); gilt and bronze sidebar icons are temporary recolorings; the Dock and window icon follow the theme. Starting commit `5fbfc4c`, worktree branch `worktree/gild-theme`, uncommitted. [Screens](verification/2026-11-11-gild-theme/).
-Open: the owner's look at the colors; the cream cards of the image are not reproduced; the flat matte sidebar icons are shared with Iskios (CHG-0207); the Dock icon was not seen; other screens in Gild were not opened.
-
-## Guild Hall hub · 2026-11-11 · built and checked, redesigned after the owner's looks, then given context and settings; owner review pending
-
-Agreed with the owner for this batch (shape from CHG-0176; panel and design direction in CHG-0196, top bar button and expand in CHG-0190, band of figures and dense list in CHG-0191, far-right column in CHG-0192, context, settings, and the column in the Guild Hall in CHG-0193); delivered in CHG-0195 in worktree `ISKIOS-guild-hall-hub` (branch `worktree/guild-hall-hub`, return destination recorded in its Git directory). Starting commit `5fbfc4c`; nothing committed.
-Built: requests `ReadGuildHallRecap` and `VisitGuildHall` (`packages/service/src/work/guildHall.ts`); the hub page (`apps/app/src/conversation/guildHallHub.tsx`, `guildHall.ts`); Iskios's conversation as a panel (`IskiosConversation` in `guildmaster.tsx`; top bar button in `shell/topBar.tsx`; floating card, column, and the pill for a window with no top bar in `shell/iskiosDock.tsx`, wired in `shell/shell.tsx`; its open state in `railStorage.ts`).
-Checks: typecheck, Biome, 6 service and 10 app tests added, app suite 196 passed (service suite last run 816 passed with one failure that predates this work, code unchanged since); driven in a throwaway Electron window ([proof](verification/2026-11-11-guild-hall-hub.md)).
-Open: the owner to confirm what CHG-0193 chose for them (context read by tools, not pushed; settings changeable except the approval level, budgets, and price fetching; no confirmation card or undo); the owner's look at the hub, the panel, and the top bar button; a phone not seen; the button does not show Iskios working or a proposal waiting while folded; the setting that hides the Guild Hall does not hide the button; with Iskios's column and the quest panel both open the quest page is cramped; the duplicate of a quest as waiting and recent is an assumption; a realm's crest is a lozenge for a quest in the Borderlands. The other Iskios decisions (card wording, Customize, realms tied to no folder, `create_ritual`) and the code renaming remain as in the handoff below.
-Out of scope: quick links (the owner found them useless), a period selector, quests started, pending Summons.
-
 ## Iskios, the assistant · 2026-11-11 · built, checked, and reviewed; owner review pending
 
 Agreed in CHG-0173, CHG-0174, and CHG-0176; delivered in CHG-0175, CHG-0177, CHG-0178, CHG-0179, and CHG-0180 (review and refactor). Starting commit `f492434`. The Guildmaster is Iskios: it proposes quests as a card (realm and Companion by tier), makes and renames realms on the owner's quoted words, and the Guild Hall has no side panel. Run with Claude Code in a throwaway window ([verification](verification/2026-11-11-iskios-live.md)).
@@ -513,29 +478,6 @@ Open: the owner's look; no run through the app's own harness process after a mov
 CHG-0161 (placements) and CHG-0163 (sidebar hover marks, folding headings, scroll cue, widths, nested full list) are built and recorded in CHG-0164; storage in [ADR 0015](architecture-decision-record/0015-realms-tied-or-not-and-one-borderlands.md). Starting commit `10684a9`.
 Evidence: [verification](verification/2026-11-11-realms-and-borderlands.md); the Electron window was not checked.
 Open: the owner's look; the assumptions in CHG-0163 (nested full list unfolded by default, "Show all N" counting quests only, the arrow's place on quest rows); the Guildmaster and the realm chooser do not offer realms tied to no folder; quest moves are still to build; the full list keeps its own small "›" fold marks; three suite failures outside this change (CHG-0164).
-
-## Iskios, simple art direction, and the left sidebar · 2026-11-11 · built and checked, owner review pending
-
-The owner asked to rename the app Iskios, simplify the art direction a lot, and organize the sidebar like the supplied Guild Hall image; CHG-0143 records it. Starting revision `37e8c0a`; committed in `2a75c4e`.
-Built: the rename as in CHG-0072 with the data move from a `Gild` profile; one flat dark navy theme in place of the guild board; the sidebar in the agreed order with nested, collapsible quests and side-quests (`shell/sidebar.tsx`, `shell/questTree.ts`), which is now the quest's one tree on a wide window.
-Checks: typecheck, Biome, and the full suite pass (731 passed, 10 skipped); the sidebar was driven in the web export on the fake harness ([proof](verification/2026-11-11-iskios-sidebar.md)).
-Follow-ups committed in `f21e768` and `931aed5`: empty quests can be created in a realm, Free Realm, or Realmless; the sidebar caps realms at three and Realmless at five, with full quest lists. The realm list has a right panel; the wide quest panel has an edge handle and the sidebar a 236 px minimum. The former realm page was withdrawn; Charter is a placeholder, and realm counts now say Side-quests. See the [sidebar follow-up handoff](../.agents/handoffs/2026-11-11-1310-quest-list-page-pushed.md) and [panel handoff](../.agents/handoffs/2026-11-11-1330-panel-handles.md).
-Checks recorded: 743 tests passed, 10 skipped for the sidebar follow-ups ([proof](verification/2026-11-11-sidebar-follow-ups.md), which predates the quest list); the panel batch passed typecheck, Biome, and 155 app tests, and was driven in a web export ([proof](verification/2026-11-11-panel-handles.md)). These checks were not rerun for this documentation update. Desktop appearance awaits the owner; the lore link and rename were not driven. The sword icon, Realmless cap, sort and refresh, and panels for Free Realm and Realmless remain open questions.
-Still to build: confirmed quest moves, the quest lifecycle changes (CHG-0135, CHG-0136), the Reserves usage page, Library, the separate resource-management Workshop, and Craft.
-
-## Left navigation structure · 2026-11-11 · specified; implementation in progress
-
-The owner explicitly requested specification only, with no application update.
-CHG-0134 records the ten sidebar entries, nested quest presentation using the supplied image, Library's artifact purpose, Workshop's resource management location, and Reserves' detailed usage destination.
-Canonical behavior: [mission tracking](capabilities/mission-tracking/specifications.md#left-navigation-structure) and [Reserves](capabilities/budget-control/specifications.md#reserves-usage-page).
-CHG-0135 settles one sidebar on each side, removes the separate left tree column and quest Done status, and adopts the detailed usage content from the owner's supplied OpenBot text.
-CHG-0136 settles side-quest states, failure Summons and stopped details, usage grouping names, reliable skill attribution, and usage filter defaults and drill-down.
-CHG-0137 removes the migration requirement because development data may be reset, confirms usage counts and local date ranges, and defers further Reserves screen specification until work on that screen begins.
-The sidebar scope is specified; [deferred capability work](capabilities/mission-tracking/draft.md) does not block its agreement.
-Library collection and lifecycle, connector operations, and Craft execution require their own specifications.
-Starting revision: `5b4e2a9`; unrelated uncommitted account-budget work is preserved.
-This entry records the original specification; later implementation and checks are described above. Visual acceptance remains pending.
-Documentation whitespace validation passes; no data reset was performed.
 
 ## Release launch recovery · 2026-11-10 · repaired locally, CI gate implemented
 
@@ -562,18 +504,6 @@ Agreed in CHG-0126 and built in three steps, recorded in CHG-0141: billing kind 
 Awaiting the owner: the look of every new screen; decision record 0014 (the price read, proposed; `architecture.md` changes on acceptance); the API-key rule ("I guess") and the requirement "Price table read carries no owner data"; whether the account budgets belong on each account's row in the Accounts card instead of their own Charter card.
 Not probed, since each needs a paid model call: Claude Code's `apiKeySource`, `rate_limit_event`, and `total_cost_usd`; OpenCode's sign-in and usage; usage per model call live. The open terms question on subscription use through the `claude` tool is in the [backlog](backlog.md).
 
-## Compact left navigation specification · 2026-11-10
-
-The owner accepted the smaller main left menu in CHG-0123; see [mission tracking](capabilities/mission-tracking/specifications.md#compact-left-navigation).
-The owner accepted hiding the tree only when no side-quests exist and retaining its location on the left (CHG-0124).
-Implementation starts at `d421b47aaca8c0a8bfef78eb8d9a7fdda33ce554`, alongside an unrelated staged file reorganization that must be preserved.
-Built: a 220px default main left menu with 15px labels, smaller crests and icons, tighter rows, and a 60px collapsed width; existing saved widths remain respected and resizing now allows 200px.
-The quest tree renders only while any side-quest exists, including folded and finished children; the narrow-screen back link remains available without the tree.
-Checks: lint, workspace typecheck, and Expo web export pass; all 132 existing app tests pass; the sandbox blocks localhost fixtures in the full suite (216 passed, 431 failed, 10 skipped).
-Evidence and remaining acceptance: [compact navigation verification](verification/2026-11-10-compact-navigation.md).
-The implementation and agreements are committed and pushed in `51d4ceb` alongside the source-folder reorganization; CHG-0125 records a later full-suite run with four workers (647 passed, 10 skipped), not independently rerun in this navigation session.
-Next: verify the layout in the running app and have the owner review its proportions; the installed app has not been rebuilt by this session.
-
 ## Guildmaster batch · 2026-11-10 · increments A, B, and C implemented and checked, owner review pending
 
 Agreed in CHG-0106 and CHG-0107: the Guildmaster is the one place quests start and the control panel over them, built from the full [quest coordination](capabilities/mission-coordination/specifications.md). Starting revision: `b913921`.
@@ -583,44 +513,6 @@ Awaiting the owner: the look; a live Claude Code, Codex, or OpenCode run of the 
 Not built: messages between quests by `@` reference and their event lines; the 20-message window with summarized older messages; Guildmaster's spending on the quests' dashboard.
 
 Sidebar follow-up (2026-11-10): the rail no longer lists finished (Done) quests by default; a Charter toggle ("Show finished quests in the sidebar", `shouldShowFinishedQuests`) brings them back, and a finished quest stays listed while it is open. The board and the realm counts are unchanged. Checked by `apps/app/test/shell/railQuests.test.ts`, typecheck, lint, and the full suite (590 passed); not driven in the window; the look awaits the owner.
-
-## Guild-board batch · 2026-11-09 · implemented and checked, owner review pending
-
-The owner selected [the Guild direction](art-direction/2026-11-08-guild-board.html) and requested its naming through iterate.
-Starting revision: `63bc425d28bb4ee054e4d0e91c77bdc3c85551a8`.
-Scope: Iskios keeps its brand and logo, adopts leather, timber, parchment, gold controls, bundled Cinzel/Alegreya, guild display vocabulary (refined in CHG-0074), a collapsible Post a quest form, and a docked conversation from 1280px.
-Existing resting quests retain their own column; no subscription data, Rituals, Waystones, Spoils, or Chronicle features are fabricated.
-Contracts, persisted identifiers, capability paths, harness tools, user-authored content, and service-generated historical text retain their existing terms.
-Checks: typecheck and lint pass; full tests passed 413 with one stale label expectation, corrected and verified by all 20 label tests; desktop build passes.
-Visual check on a throwaway database with the fake harness: quest creation, echo reply, and the docked desktop work; a later CDP timeout prevented the final screenshot and phone-width check.
-The Balanced reviewer (`gpt-6.1-terra`) verified fixes for contrast, notifications, and lore scope names.
-Evidence and remaining checks: [guild-board verification](verification/2026-11-09-guild-board.md).
-Owner acceptance of the appearance remains pending.
-The owner rejected the oversized scroll roll on 2026-11-09; it is removed, along with the dark side rules, in favour of a thin gold top border and 16px of heading space.
-This targeted visual correction passes typecheck and lint; its appearance awaits the owner.
-Naming follow-up: Guildmaster replaces War table; all child threads are side-quests; Companion means the selected model; future Workflow and Routine interfaces are Craft and Ritual.
-The follow-up label suite passes 21 tests; typecheck and lint pass.
-Remaining optional naming choices: Realm, Journal, Briefing, and future Waystones / Spoils / Chronicle; none blocks the agreed vocabulary.
-
-Layout follow-up (CHG-0075): no window frame or docked conversation, the quest input always open, a top bar, and an icon-only sidebar option; typecheck, lint, and tests pass, not yet seen in the running window.
-
-Quest layout follow-up (CHG-0076): breadcrumbs, an icon handle on the rail, a quest screen without a header block, and a right quest panel; typecheck, lint, tests, and web export pass, not yet seen in the running window ([proof](verification/2026-11-09-quest-layout.md)).
-
-Card cost batch (CHG-0077): tilted cards with API cost; Claude's `total_cost_usd` recorded per turn (assumed a running total, unprobed live); typecheck, lint, and 419 tests pass; the look and the live probe await the owner.
-
-Board batch (CHG-0078): ribbon column headings and harness and model on cards; typecheck, lint, and tests pass; the look awaits the owner.
-
-Thread panel batch (CHG-0079): a panel beside each thread with its context gauge, built unattended; typecheck, lint, and 430 tests pass; the look, live per-call usage, and the unsettled points of the specification await the owner ([proof](verification/2026-11-09-thread-panel.md)).
-
-Emblems batch (CHG-0081): an emblem per realm and quest, one Realms menu in the collapsed rail, hover labels, Ctrl/Command+B, and card hover; typecheck, lint, and 430 tests pass; the look awaits the owner ([proof](verification/2026-11-09-emblems.md)).
-
-Composer and reserves batch (CHG-0082): a one-line pill message box growing only for several lines, and Mana and Gold reserve rows in the rail; typecheck, lint, and 431 tests pass; the look awaits the owner ([proof](verification/2026-11-09-composer-reserves.md)).
-
-Mockup batch (CHG-0083): hanging banners, a drawn castle heading, a crest and The Keep in the rail, a quest panel header; typecheck, lint, and 431 tests pass; the look awaits the owner ([proof](verification/2026-11-09-guild-mockup.md)).
-
-Illustrated-view batch (CHG-0088): a parchment quest panel with gilt frame, bookmark, Knows and Spends tabs and a Does box; sturdier cards; the painted desk behind the board; typecheck, lint, and 431 tests pass; the look awaits the owner ([proof](verification/2026-11-09-guild-panel.md)).
-
-Review-fix and lore batch (CHG-0093, CHG-0094): the review findings fixed and intel renamed to lore in the code; typecheck, lint, and 458 tests pass; the screen behaviors await the owner ([proof](verification/2026-11-10-review-fixes-and-lore-rename.md)). The architecture audit of 2026-11-09 awaits the owner's choice of candidate.
 
 ## Goal
 
