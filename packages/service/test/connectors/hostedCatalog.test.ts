@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { hostedServiceLicence, isToolName, unnamedToolsOf } from "../../src/connectors/catalog.ts";
+import { hostedServiceLicence, isToolName, listedNameOf, unnamedToolsOf } from "../../src/connectors/catalog.ts";
 import { defaultCatalog } from "../../src/connectors/catalogEntries.ts";
+import { qualifiedToolNameOf } from "../../src/harness/toolNames.ts";
 import { hostedListings } from "../fixtures/hostedListings.ts";
 
 // Wave 1's hosted connectors (connectors specification): each entry is checked against the listing recorded from a
@@ -33,6 +34,11 @@ describe("the hosted connectors of Wave 1", () => {
           expect(tool.summary.trim()).not.toBe("");
           expect(tool.app).toBeNull();
         }
+      });
+
+      it("lists under names Claude Code accepts, at most 64 characters with its server prefix", () => {
+        for (const name of Object.keys(entry.tools))
+          expect(qualifiedToolNameOf("outlore", listedNameOf(entry.id, name)).length).toBeLessThanOrEqual(64);
       });
 
       it("reaches an https address, with a header and a secret kind together or neither", () => {

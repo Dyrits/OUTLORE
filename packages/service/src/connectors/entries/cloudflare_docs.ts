@@ -1,9 +1,7 @@
 import type { CatalogEntry } from "../catalog.ts";
 
 /**
- * Cloudflare Docs: the hosted MCP server at `docs.mcp.cloudflare.com/mcp` answers without a key, and its two tools were
- * read from its own `tools/list` on 2026-11-25 (`test/fixtures/hostedListings.ts`); the code behind the endpoint is the
- * documentation server of `cloudflare/mcp-server-cloudflare` (Apache-2.0, read at a21972e219ae, `apps/docs-ai-search`).
+ * Cloudflare Docs: the hosted MCP server at `docs.mcp.cloudflare.com/mcp` answers without a key, and its two tools were read from its own `tools/list` on 2026-11-25 (`test/fixtures/hostedListings.ts`); the code behind the endpoint is the documentation server of `cloudflare/mcp-server-cloudflare` (Apache-2.0, read at a21972e219ae, `apps/docs-ai-search`).
  * The search returns documentation chunks and the guide returns a fixed page, so both are `Read`.
  */
 export const cloudflareDocsEntry: CatalogEntry = {

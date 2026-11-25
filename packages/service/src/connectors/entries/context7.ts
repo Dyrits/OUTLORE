@@ -1,10 +1,8 @@
 import type { CatalogEntry } from "../catalog.ts";
 
 /**
- * Context7 (Upstash): the hosted MCP server at `mcp.context7.com/mcp` answers without a key, and its two tools were read
- * from its own `tools/list` on 2026-11-25 (`test/fixtures/hostedListings.ts`); the code behind the endpoint is
- * `upstash/context7` (MIT, read at 35656a23c8f1). Both tools look documentation up and change nothing, so both are `Read`,
- * as the tools' own descriptions and their `readOnlyHint` say, though the hint is never what classifies them.
+ * Context7 (Upstash): the hosted MCP server at `mcp.context7.com/mcp` answers without a key, and its two tools were read from its own `tools/list` on 2026-11-25 (`test/fixtures/hostedListings.ts`); the code behind the endpoint is `upstash/context7` (MIT, read at 35656a23c8f1).
+ * Both tools look documentation up and change nothing, so both are `Read`, as the tools' own descriptions and their `readOnlyHint` say, though the hint is never what classifies them.
  */
 export const context7Entry: CatalogEntry = {
   apps: [],
