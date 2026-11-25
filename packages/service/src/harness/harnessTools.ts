@@ -1,6 +1,3 @@
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type { EffortChoice, HarnessName, ModelOption, SignInState } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer } from "effect";
 import { fieldOf, invalid, runShortCommand, type ServiceFailure, textFieldOf } from "../core/index.ts";
@@ -25,6 +22,16 @@ export type Installation = {
   readonly version: string | null;
 };
 
+/** How a harness's own sign-in ran: finished in the background, or ready to run in Outlore's inline terminal. */
+export type SignInLaunch =
+  | { readonly _tag: "Finished" }
+  | {
+      readonly _tag: "Terminal";
+      readonly command: string;
+      readonly env: Readonly<Record<string, string>>;
+      readonly label: string;
+    };
+
 /** The seam to the harnesses' own tools for everything but turns. */
 export class HarnessTools extends Context.Service<
   HarnessTools,
@@ -48,14 +55,14 @@ export class HarnessTools extends Context.Service<
       model: string,
     ) => Effect.Effect<ReadonlyArray<EffortChoice>, ServiceFailure>;
     /**
-     * Runs the harness's own sign-in, pointed at the account's folder. Where the sign-in needs no terminal it runs in
-     * the background, the harness opening the browser itself, and this waits until it ends ("Finished") or fails.
-     * Otherwise it opens a terminal window that closes itself on success and returns at once ("Opened").
+     * Runs the harness's own sign-in, pointed at the account's folder.
+     * Where the sign-in needs no terminal it runs in the background, the harness opening the browser itself, and this waits until it ends ("Finished") or fails.
+     * Otherwise it returns the command and environment to launch inside Outlore's inline terminal ("Terminal").
      */
     readonly openSignIn: (
       harness: HarnessName,
       configDirectory: string | null,
-    ) => Effect.Effect<"Finished" | "Opened", ServiceFailure>;
+    ) => Effect.Effect<SignInLaunch, ServiceFailure>;
     readonly readSignIn: (harness: HarnessName, configDirectory: string | null) => Effect.Effect<SignInStatus>;
     /** Runs the harness's own update command, which updates it the way it was installed. */
     readonly update: (harness: HarnessName) => Effect.Effect<void, ServiceFailure>;
@@ -73,34 +80,6 @@ const shellWord = (text: string) => (text === "&&" || /^[\w@%+=:,./-]+$/u.test(t
 
 /** How long a sign-in that needs no terminal may wait for the owner in the browser before it is ended. */
 export const signInTimeoutMillis = 5 * 60 * 1000;
-
-/**
- * The script a terminal window runs for a sign-in that needs one. The window closes itself, by the tty it runs on,
- * only when the sign-in succeeded; a failure leaves it open with the reason. Terminal closes its own window, so no
- * other application is controlled (not checked on a Mac: the sandbox blocks osascript).
- */
-export const terminalSignInScript = (options: {
-  readonly command: string;
-  readonly environment: ReadonlyArray<string>;
-  readonly label: string;
-  readonly path: string;
-}) =>
-  [
-    "#!/bin/sh",
-    `echo ${quoted(`Signing in to ${options.label} for Outlore. This window closes when you are signed in.`)}`,
-    ...options.environment.map((line) => `export ${line}`),
-    `rm -f ${quoted(options.path)}`,
-    options.command,
-    "status=$?",
-    'if [ "$status" -eq 0 ]; then',
-    "  tty_name=$(tty)",
-    `  (sleep 1; osascript -e "tell application "Terminal" to close (every window whose tty is "$tty_name")" >/dev/null 2>&1) &`,
-    "else",
-    `  echo ${quoted("Sign-in did not finish. You can close this window.")}`,
-    "fi",
-    'exit "$status"',
-    "",
-  ].join("\n");
 
 /** How long a model list is reused before the harness is asked again. */
 const modelsLifetimeMillis = 10 * 60 * 1000;
@@ -272,20 +251,13 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
 
     const openSignIn = Effect.fnUntraced(function* (harness: HarnessName, configDirectory: string | null) {
       const facts = harnessFacts[harness];
-      // The sign-in's own environment (the home it stores into, an auto-update squeeze, a link-flow flag) rides along on
-      // both paths. For an ACP provider it is built from the same definition as the launch, so what the sign-in stores is what a turn reads.
+      // The sign-in's own environment (the home it stores into, an auto-update squeeze, a link-flow flag) rides along on both paths.
+      // For an ACP provider it is built from the same definition as the launch, so what the sign-in stores is what a turn reads.
       const signIn = facts.signIn(configDirectory);
       if (signIn === null)
         return yield* invalid(
           `${facts.label} has no sign-in command of its own: its sign-in happens inside the provider's own surface (the pinned upstream carries no CLI sign-in to run). Sign in there yourself, then press Refresh.`,
         );
-      const command = [quoted(commands[harness]), ...signIn.args.map(shellWord)].join(" ");
-      const envEntries = Object.entries(signIn.env);
-      const line =
-        envEntries.length === 0
-          ? command
-          : `${envEntries.map(([name, value]) => `${name}=${quoted(value)}`).join(" ")} ${command}`;
-      if (process.platform !== "darwin") return yield* invalid(`Open a terminal on this computer and run: ${line}`);
       if (facts.signInNeedsNoTerminal) {
         // No window: the tool opens the browser itself and ends once the browser's answer reaches its local port.
         const run = yield* runShortCommand(commands[harness], signIn.args, signIn.env, signInTimeoutMillis);
@@ -295,30 +267,13 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
             `${facts.label} did not sign in${run.code === null ? ` (it timed out after ${signInTimeoutMillis / 60_000} minutes or could not run)` : ""}. ${reason}`.trim(),
           );
         }
-        return "Finished" as const;
+        return { _tag: "Finished" as const };
       }
-      // A .command file opens in Terminal, which runs the harness's own sign-in where the owner answers it.
-      const folder = join(tmpdir(), "outlore-sign-in");
-      const script = join(folder, `${harness}-${crypto.randomUUID()}.command`);
-      yield* Effect.sync(() => {
-        mkdirSync(folder, { recursive: true });
-        writeFileSync(
-          script,
-          terminalSignInScript({
-            command,
-            environment: [
-              ...envEntries,
-              ...(signIn.keepsPath && process.env.PATH !== undefined ? [["PATH", process.env.PATH] as const] : []),
-            ].map(([name, value]) => `${name}=${quoted(value)}`),
-            label: facts.label,
-            path: script,
-          }),
-        );
-        chmodSync(script, 0o755);
-      });
-      const opened = yield* runShortCommand("open", [script], {});
-      if (opened.code !== 0) return yield* invalid(`Could not open a terminal. Run this yourself: ${line}`);
-      return "Opened" as const;
+      // Run inside Outlore's host-side PTY terminal instead of spawning an external terminal window.
+      const command = [quoted(commands[harness]), ...signIn.args.map(shellWord)].join(" ");
+      const env =
+        signIn.keepsPath && process.env.PATH !== undefined ? { ...signIn.env, PATH: process.env.PATH } : signIn.env;
+      return { _tag: "Terminal" as const, command, env, label: facts.label };
     });
 
     return {
@@ -364,7 +319,9 @@ export const fakeHarnessToolsLayer = (
     openSignIn: (harness, configDirectory) =>
       Effect.sync(() => {
         signIns.push(`${harness}:${configDirectory ?? ""}`);
-        return harnessFacts[harness].signInNeedsNoTerminal ? ("Finished" as const) : ("Opened" as const);
+        return harnessFacts[harness].signInNeedsNoTerminal
+          ? ({ _tag: "Finished" } as const)
+          : ({ _tag: "Terminal", command: "true", env: {}, label: harnessFacts[harness].label } as const);
       }),
     readSignIn: (_harness, configDirectory) =>
       Effect.succeed({

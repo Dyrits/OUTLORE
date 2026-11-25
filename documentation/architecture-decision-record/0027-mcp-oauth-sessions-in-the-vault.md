@@ -1,10 +1,10 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # MCP OAuth 2.1 sessions are stored in the Vault as one encrypted record per connector
 
-Proposed on 2026-11-25 for Connectors Wave 2, extending [ADR 0022](0022-the-vault-encrypts-secrets-and-hides-its-folder-from-sandboxes.md) and the [connectors specification](../capabilities/connectors/specifications.md).
+Accepted on 2026-11-25 for Connectors Wave 2, extending [ADR 0022](0022-the-vault-encrypts-secrets-and-hides-its-folder-from-sandboxes.md) and the [connectors specification](../capabilities/connectors/specifications.md).
 
 ## Why
 

@@ -13,8 +13,13 @@ import {
   updateHarness,
 } from "./accounts.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
+import type { ConversationTerminals, TerminalScope } from "./terminals.ts";
 /** Requests for accounts share the service request context. */
-export const accountsHandlers = ({ change }: Pick<HandlerDependencies, "change">) => {
+export const accountsHandlers = (
+  { change }: Pick<HandlerDependencies, "change">,
+  terminals: ConversationTerminals,
+  scope: TerminalScope,
+) => {
   const thenListHarnesses = <A, R>(work: Effect.Effect<A, ServiceFailure | SqlError.SqlError, R>) =>
     change(work).pipe(Effect.andThen(listHarnesses));
   return {
@@ -27,9 +32,14 @@ export const accountsHandlers = ({ change }: Pick<HandlerDependencies, "change">
     RenameOwnAccount: (rename) => thenListHarnesses(renameOwnAccount(rename.harness, rename.label)),
     // Not a command either: a sign-in without a terminal waits minutes for the owner in the browser.
     SignInAccount: (given) =>
-      signInAccount(given.harness, given.accountId).pipe(
-        Effect.flatMap((outcome) => (outcome === "Finished" ? listHarnesses : Effect.succeed(null))),
-      ),
+      Effect.gen(function* () {
+        const outcome = yield* signInAccount(given.harness, given.accountId, terminals, scope);
+        if (outcome._tag === "Finished") {
+          const harnesses = yield* listHarnesses;
+          return { _tag: "Finished" as const, harnesses };
+        }
+        return outcome;
+      }),
     // Not a command: the harness's own update runs for minutes and must not hold the command queue.
     UpdateHarness: (given) => updateHarness(given.harness).pipe(Effect.andThen(listHarnesses)),
   } satisfies OwnerHandlers<

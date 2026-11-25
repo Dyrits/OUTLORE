@@ -165,6 +165,32 @@ export const withHarnesses = (
       },
     ),
   );
+  const fakeTerminalHost = {
+    hidden: [],
+    home: directory,
+    sandbox: null,
+    spawn: (() => {
+      const exitListeners: Array<(event: { exitCode: number; signal?: number }) => void> = [];
+      return {
+        cols: 80,
+        handleFlowControl: false,
+        kill: () => {},
+        onData: () => ({ dispose: () => {} }),
+        onExit: (listener: (event: { exitCode: number; signal?: number }) => void) => {
+          exitListeners.push(listener);
+          return { dispose: () => {} };
+        },
+        pause: () => {},
+        pid: 0,
+        process: "fake",
+        resize: () => {},
+        resume: () => {},
+        rows: 24,
+        write: () => {},
+      };
+    }) as never,
+    tempRoot: join(directory, "terminal-tmp"),
+  };
   const layer = serviceLayer({
     accountsRoot,
     filename: join(directory, "outlore.sqlite"),
@@ -172,6 +198,7 @@ export const withHarnesses = (
     harnessTools: fakeHarnessToolsLayer(signIns, updates, missing),
     homeFolder: directory,
     scratchRoot: join(directory, "missions"),
+    terminalHost: fakeTerminalHost,
   });
   const logged = (): Array<Logged> => {
     try {

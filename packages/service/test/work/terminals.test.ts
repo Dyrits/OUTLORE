@@ -117,6 +117,30 @@ describe.runIf(canOpenTerminal)("conversation shells", () => {
     expect(terminals.open("host", "quest", null).isRunning).toBe(true);
   });
 
+  it("runs a one-shot interactive command with overlaid env and reports its exit code", async () => {
+    const home = folder();
+    const { frames, terminals } = manager(hostOf(home));
+    terminals.openCommand("host", "sign-in:opencode:own", {
+      command: 'printf "ENV=%s\\n" "$SIGN_IN_VAR"; read answer; printf "GOT=%s\\n" "$answer"; exit 0',
+      env: { SIGN_IN_VAR: "custom-home" },
+    });
+    await expect.poll(() => terminals.open("host", "sign-in:opencode:own", null).output).toContain("ENV=custom-home");
+    terminals.write("host", "sign-in:opencode:own", "ok\r");
+    await expect.poll(() => terminals.open("host", "sign-in:opencode:own", null).isRunning).toBe(false);
+    const ended = terminals.open("host", "sign-in:opencode:own", null);
+    expect(ended.output).toContain("GOT=ok");
+    expect(ended.exitCode).toBe(0);
+    expect(
+      frames.some(
+        (frame) => frame._tag === "TerminalExit" && frame.id === "host:sign-in:opencode:own" && frame.exitCode === 0,
+      ),
+    ).toBe(true);
+    // Re-launching with the same id replaces the exited session cleanly.
+    terminals.openCommand("host", "sign-in:opencode:own", { command: "exit 7" });
+    await expect.poll(() => terminals.open("host", "sign-in:opencode:own", null).isRunning).toBe(false);
+    expect(terminals.open("host", "sign-in:opencode:own", null).exitCode).toBe(7);
+  });
+
   it("refuses a remote shell on a host with no sandbox, and sizes and folders it cannot take", () => {
     const home = folder();
     const { terminals } = manager({ ...hostOf(home), sandbox: null });
@@ -274,6 +298,30 @@ describe("terminals and their requests", () => {
       expect(output).toContain("DRIVEN");
       yield* callAs({ _tag: "CloseTerminal", id: "quest:home" }, pairedDevice);
     }).pipe(Effect.provide(terminalService(hostOf(folder())))),
+  );
+
+  it.live.runIf(canOpenTerminal)(
+    "opens interactive provider sign-in inside the inline terminal and gates paired devices",
+    () =>
+      Effect.gen(function* () {
+        const refused = yield* Effect.flip(
+          callAs({ _tag: "SignInAccount", accountId: null, harness: "opencode" }, pairedDevice),
+        );
+        expect(refused).toMatchObject({ kind: "AccessRefused" });
+        const launched = yield* callAs({ _tag: "SignInAccount", accountId: null, harness: "opencode" }, hostWindow);
+        expect(launched).toEqual({
+          _tag: "Terminal",
+          terminal: { terminalId: "sign-in:opencode:own", title: "OpenCode sign-in" },
+        });
+        if (launched._tag === "Terminal") {
+          const session = yield* callAs(
+            { _tag: "OpenTerminal", cwd: null, id: launched.terminal.terminalId },
+            hostWindow,
+          );
+          expect(session.cwd).toBeTruthy();
+          yield* callAs({ _tag: "CloseTerminal", id: launched.terminal.terminalId }, hostWindow);
+        }
+      }).pipe(Effect.provide(terminalService(hostOf(folder())))),
   );
 });
 

@@ -152,7 +152,7 @@ const make = Effect.gen(function* () {
       // or one answers something its schema cannot encode.
       const table = {
         ...loreHandlers(dependencies),
-        ...accountsHandlers(dependencies),
+        ...accountsHandlers(dependencies, terminals, terminalScope),
         ...remoteHandlers(dependencies),
         ...messagesHandlers(dependencies),
         ...questsHandlers(dependencies, connectors),

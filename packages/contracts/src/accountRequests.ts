@@ -1,7 +1,8 @@
 import { Schema } from "effect";
 import { ModelChoice } from "./companions.ts";
-import { HarnessName } from "./harnesses.ts";
+import { HarnessList, HarnessName } from "./harnesses.ts";
 import { AccountId } from "./ids.ts";
+import { TerminalId } from "./terminalRequests.ts";
 import { NameText } from "./texts.ts";
 
 /** Every harness with its accounts, sign-in states, and models (provider-accounts). */
@@ -42,12 +43,28 @@ export const InstallHarness = Schema.TaggedStruct("InstallHarness", { harness: H
 export const RemoveAccount = Schema.TaggedStruct("RemoveAccount", { accountId: AccountId });
 
 /**
- * Runs the harness's own sign-in for an account on this computer; Outlore never sees the credentials (requirements,
- * Comply with provider terms). Null signs in the computer's own account. A sign-in that needs no terminal runs
- * in the background, waits for the owner in the browser, and answers with the harnesses listed again; one that needs
- * a terminal opens a window that closes itself on success and answers null at once.
+ * Runs the harness's own sign-in for an account on this computer; Outlore never sees the credentials (requirements, Comply with provider terms).
+ * Null signs in the computer's own account.
+ * A sign-in that needs no terminal runs in the background, waits for the owner in the browser, and answers with the harnesses listed again.
+ * One that needs a terminal starts inside Outlore's host-side PTY service and answers with its terminal session identifier.
  */
 export const SignInAccount = Schema.TaggedStruct("SignInAccount", {
   accountId: Schema.NullOr(AccountId),
   harness: HarnessName,
 });
+
+/** An interactive sign-in running inside Outlore's inline terminal. */
+export const SignInTerminal = Schema.Struct({
+  /** The terminal session identifier to attach the inline terminal panel to. */
+  terminalId: TerminalId,
+  /** A short title describing the sign-in running in the terminal. */
+  title: Schema.String,
+});
+export type SignInTerminal = typeof SignInTerminal.Type;
+
+/** What SignInAccount answers: either the updated harnesses after a background sign-in, or an inline terminal session to interact with. */
+export const SignInResult = Schema.Union([
+  Schema.TaggedStruct("Finished", { harnesses: HarnessList }),
+  Schema.TaggedStruct("Terminal", { terminal: SignInTerminal }),
+]);
+export type SignInResult = typeof SignInResult.Type;

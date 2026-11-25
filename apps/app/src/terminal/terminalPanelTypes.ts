@@ -13,7 +13,13 @@ export type TerminalPanelProps = {
   /** The host whose shells open: the shell runs where the host runs, whichever screen asked (ADR 0020). */
   readonly client: ServiceClient;
   readonly cwd: string | null;
+  /** Surface height in pixels; defaults to 160 for conversation shells. */
+  readonly height?: number;
+  /** When true, hides the default "Shell exited / New shell" bar so the caller renders its own command status. */
+  readonly hideExitBar?: boolean;
   readonly id: string;
+  /** Called once when the terminal's process exits, with its exit code when known. */
+  readonly onExit?: (exitCode: number | null) => void;
   readonly onReady: () => void;
   readonly ref?: Ref<TerminalPanelHandle>;
   /** The fence the asking screen's shells run under: plain for the host's own window, sandboxed for a paired device. */
