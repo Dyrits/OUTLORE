@@ -19,6 +19,9 @@ const windows: Readonly<Record<string, { readonly label: string; readonly minute
   weekly: { label: "Weekly", minutes: 10_080 },
 };
 
+/** The owner reads two groups: the Gemini models, and every other model (the CLI names the latter "Claude and GPT models"). */
+const groupLabelOf = (name: string) => (/^gemini\b/i.test(name) ? "Gemini" : "Others");
+
 /** The CLI's reset time of a bucket that has not started counting: the Unix epoch. It reads as 0 seconds. */
 const untouchedResetSeconds = 0;
 
@@ -29,7 +32,7 @@ const usedPercentOf = (remainingFraction: number) =>
 /**
  * The limits in one `/usage` answer (CLI 1.5.16): `command.data.groups` holds the model groups, each with a `name` and
  * `buckets` of a `window` (`5h` or `weekly`), a `remaining_fraction` from 0 to 1, and a `reset_time`. Each limit is named
- * by its group and window, because two groups report the same two windows. A bucket it cannot read is skipped; null when
+ * by its group (Gemini or Others) and window, because two groups report the same two windows. A bucket it cannot read is skipped; null when
  * none can be read.
  */
 export const antigravityPlanLimitsOf = (answer: unknown): PlanLimitsReport | null => {
@@ -47,7 +50,7 @@ export const antigravityPlanLimitsOf = (answer: unknown): PlanLimitsReport | nul
       if (window === undefined || typeof remaining !== "number" || Number.isNaN(resetsAtMillis)) return [];
       return [
         {
-          label: `${name} · ${window.label}`,
+          label: `${groupLabelOf(name)} · ${window.label}`,
           resetsAtSeconds: resetsAtMillis <= 0 ? untouchedResetSeconds : resetsAtMillis / 1000,
           usedPercent: usedPercentOf(remaining),
           windowMinutes: window.minutes,

@@ -23,14 +23,14 @@ describe("a plan's usage as the popup's table", () => {
   it("groups limits named 'group · window' by their model group, in the order the harness gave them", () => {
     const { groups } = planUsageOf(
       [
-        { ...fiveHour, label: "Gemini Models · 5-hour" },
-        { ...weekly, label: "Gemini Models · Weekly" },
-        { ...fiveHour, label: "Claude and GPT models · 5-hour", usedPercent: 50 },
-        { ...weekly, label: "Claude and GPT models · Weekly", usedPercent: 10 },
+        { ...fiveHour, label: "Gemini · 5-hour" },
+        { ...weekly, label: "Gemini · Weekly" },
+        { ...fiveHour, label: "Others · 5-hour", usedPercent: 50 },
+        { ...weekly, label: "Others · Weekly", usedPercent: 10 },
       ],
       now,
     );
-    expect(groups.map((group) => group.name)).toEqual(["Gemini Models", "Claude and GPT models"]);
+    expect(groups.map((group) => group.name)).toEqual(["Gemini", "Others"]);
     expect(groups.map((group) => group.rows.map((row) => row.name))).toEqual([
       ["5-hour", "Weekly"],
       ["5-hour", "Weekly"],
@@ -44,7 +44,7 @@ describe("a plan's usage as the popup's table", () => {
   });
 
   it("says 'not started' for a limit with no reset time, never a date in 1970", () => {
-    const { groups } = planUsageOf([{ label: "Gemini Models · Weekly", resetsAt: 0, usedPercent: 0 }], now);
+    const { groups } = planUsageOf([{ label: "Gemini · Weekly", resetsAt: 0, usedPercent: 0 }], now);
     expect(groups[0]?.rows[0]).toEqual({
       leftPercent: 100,
       level: "unstarted",
@@ -83,7 +83,7 @@ describe("a provider's one dot", () => {
   });
 
   it("ignores limits that have not started, and is normal when none has", () => {
-    const untouched = { label: "Claude and GPT models · Weekly", resetsAt: 0, usedPercent: 0 };
+    const untouched = { label: "Others · Weekly", resetsAt: 0, usedPercent: 0 };
     expect(planUsageOf([untouched, fiveHour], now).level).toBe("normal");
     expect(planUsageOf([untouched], now).level).toBe("normal");
   });

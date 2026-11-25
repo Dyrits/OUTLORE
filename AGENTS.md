@@ -65,5 +65,5 @@ Latest handoffs:
 
 - To verify and continue the quest suggestion card as a destination list (CHG-0739), read the [current handoff](.agents/handoffs/2026-11-25-1800-quest-suggestion-card.md). Handoffs are shared and committed.
 
-- To resume the plan usage hover card with progress bars (CHG-0723 follow-up), read the [current handoff](.agents/handoffs/2026-11-25-1740-plan-usage-hover-card.md). Handoffs are shared and committed.
+- To resume the plan usage display and the Antigravity usage groups named Gemini and Others (CHG-0743), read the [current handoff](.agents/handoffs/2026-11-25-1815-antigravity-usage-group-names.md). Handoffs are shared and committed.
 

@@ -431,8 +431,8 @@ describe("a plan's limits in words", () => {
   });
 
   it("says a limit that has not started as such, not as a reset in 1970", () => {
-    expect(planLimitTextOf({ label: "Gemini Models · Weekly", resetsAt: 0, usedPercent: 0 })).toBe(
-      "Gemini Models · Weekly · 0% used · not started",
+    expect(planLimitTextOf({ label: "Gemini · Weekly", resetsAt: 0, usedPercent: 0 })).toBe(
+      "Gemini · Weekly · 0% used · not started",
     );
   });
 

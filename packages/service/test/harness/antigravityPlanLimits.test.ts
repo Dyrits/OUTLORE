@@ -99,15 +99,15 @@ describe("reading the Antigravity plan limits", () => {
         billing: "Subscription",
         windows: [
           {
-            label: "Gemini Models · Weekly",
+            label: "Gemini · Weekly",
             resetsAtSeconds: 1_796_135_911,
             usedPercent: 38.39,
             windowMinutes: 10_080,
           },
-          { label: "Gemini Models · 5-hour", resetsAtSeconds: 1_795_610_567, usedPercent: 3.89, windowMinutes: 300 },
+          { label: "Gemini · 5-hour", resetsAtSeconds: 1_795_610_567, usedPercent: 3.89, windowMinutes: 300 },
           // An untouched bucket resets at the Unix epoch: nothing has started counting, so it reads as unused.
-          { label: "Claude and GPT models · Weekly", resetsAtSeconds: 0, usedPercent: 0, windowMinutes: 10_080 },
-          { label: "Claude and GPT models · 5-hour", resetsAtSeconds: 0, usedPercent: 0, windowMinutes: 300 },
+          { label: "Others · Weekly", resetsAtSeconds: 0, usedPercent: 0, windowMinutes: 10_080 },
+          { label: "Others · 5-hour", resetsAtSeconds: 0, usedPercent: 0, windowMinutes: 300 },
         ],
       });
     });
@@ -167,7 +167,7 @@ describe("reading the Antigravity plan limits", () => {
       expect(yield* (yield* none.adapter).readPlanLimits("antigravity", null)).toBeNull();
       const report = yield* (yield* partial.adapter).readPlanLimits("antigravity", null);
       expect(report?.windows).toEqual([
-        { label: "Gemini Models · 5-hour", resetsAtSeconds: 1_796_083_200, usedPercent: 75, windowMinutes: 300 },
+        { label: "Gemini · 5-hour", resetsAtSeconds: 1_796_083_200, usedPercent: 75, windowMinutes: 300 },
       ]);
     });
   });

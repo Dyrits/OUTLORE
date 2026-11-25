@@ -17,7 +17,7 @@ export type UsageRow = {
   readonly resetText: string;
 };
 
-/** The limits of one model group, such as "Gemini Models"; the name is null for limits that belong to no group. */
+/** The limits of one model group, such as "Gemini"; the name is null for limits that belong to no group. */
 export type UsageGroup = { readonly name: string | null; readonly rows: readonly UsageRow[] };
 
 /** A plan's usage as the rail and the popup show it: one dot for the provider, and the table grouped by model group. */
@@ -49,7 +49,7 @@ export const leftPercentOf = (window: PlanLimitWindow): number =>
 const groupSeparator = " · ";
 const severity: Record<DotLevel, number> = { neutral: 0, normal: 1, reached: 3, warning: 2 };
 
-/** A limit named "Gemini Models · Weekly" belongs to the group "Gemini Models" and is called "Weekly" inside it. */
+/** A limit named "Gemini · Weekly" belongs to the group "Gemini" and is called "Weekly" inside it. */
 const splitLabelOf = (label: string): { group: string | null; name: string } => {
   const at = label.indexOf(groupSeparator);
   return at < 0
