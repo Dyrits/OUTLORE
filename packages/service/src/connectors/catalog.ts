@@ -4,6 +4,12 @@
 /** How the catalog classifies a tool: a read runs unasked, a write asks. A tool it does not name is unclassified and asks. */
 export type ToolClass = "Read" | "Write";
 
+/**
+ * The licence an entry states for a hosted service whose server code is not published: not an OSI licence, said as it is
+ * (connectors specification, Wave 1). An entry whose server code is published names that repository's SPDX identifier instead.
+ */
+export const hostedServiceLicence = "Hosted service, server code not published";
+
 /** One tool the catalog names, by its exact name at the server, after reading what it does. */
 export type CatalogTool = {
   /** The app a tool of an app-based connector belongs to, or null. */
@@ -22,7 +28,14 @@ export type CatalogApp = {
 
 /** How the host reaches a connector's server; the real adapters come with the backends (blueprint, Order step 4). */
 export type CatalogBackend =
-  | { readonly _tag: "Http"; readonly header: string; readonly url: string }
+  | {
+      readonly _tag: "Http";
+      /** The one header that carries the connector's secret, or null for a keyless server that is sent no secret. */
+      readonly header: string | null;
+      /** Text put before the secret in the header's value, such as "Bearer "; absent, the header carries the secret alone. */
+      readonly prefix?: string;
+      readonly url: string;
+    }
   | {
       readonly _tag: "Stdio";
       /** Extra environment for the child, such as forcing the pinned server's local mode. */

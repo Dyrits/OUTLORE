@@ -5,7 +5,8 @@ import type { CatalogBackend } from "../catalog.ts";
 import { redactedOf } from "../connectorErrors.ts";
 
 // A Streamable-HTTP MCP client (connectors blueprint, Backends): one POST per request, no session kept, the
-// connector's key in the one header its catalog entry names, and a failure carrying the backend's own fixed words,
+// connector's key in the one header its catalog entry names (after the entry's prefix, such as "Bearer ", if it has
+// one; a keyless entry names no header and sends none), and a failure carrying the backend's own fixed words,
 // since an upstream's text may echo the key. Redirects are never followed, so the key's header cannot be carried to
 // another origin. Whether `connect.composio.dev/mcp` answers `tools/list` without a prior `initialize` is not
 // checked against the real server (no key); if it refuses, the fallback is one `initialize` request when the
@@ -103,7 +104,9 @@ const ask = (
           accept: "application/json, text/event-stream",
           "content-type": "application/json",
           "mcp-protocol-version": protocolVersion,
-          ...(secret === null ? {} : { [transport.header]: secret }),
+          ...(secret === null || transport.header === null
+            ? {}
+            : { [transport.header]: `${transport.prefix ?? ""}${secret}` }),
         },
         // Never followed: a redirect would send the key's header to whatever origin the server names (a different
         // host, or a plainer scheme), so the adapter takes the answer itself and refuses it below.

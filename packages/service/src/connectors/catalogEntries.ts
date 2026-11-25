@@ -1,4 +1,16 @@
 import type { CatalogEntry } from "./catalog.ts";
+import { awsKnowledgeEntry } from "./entries/aws_knowledge.ts";
+import { cloudflareDocsEntry } from "./entries/cloudflare_docs.ts";
+import { context7Entry } from "./entries/context7.ts";
+import { datadogEntry } from "./entries/datadog.ts";
+import { deepwikiEntry } from "./entries/deepwiki.ts";
+import { exaEntry } from "./entries/exa.ts";
+import { firecrawlEntry } from "./entries/firecrawl.ts";
+import { githubEntry } from "./entries/github.ts";
+import { gitlabEntry } from "./entries/gitlab.ts";
+import { neonEntry } from "./entries/neon.ts";
+import { stripeEntry } from "./entries/stripe.ts";
+import { tavilyEntry } from "./entries/tavily.ts";
 
 // The two connectors Outlore offers first (connectors specification, Composio and Apple apps). The servers are not run
 // by this build: the Composio entry's tools are the seven it publishes on its own page and in its repo (research note,
@@ -147,4 +159,19 @@ export const appleEntry: CatalogEntry = {
 };
 
 /** Every connector the Charter offers, in the order it lists them. */
-export const defaultCatalog: ReadonlyArray<CatalogEntry> = [composioEntry, appleEntry];
+export const defaultCatalog: ReadonlyArray<CatalogEntry> = [
+  composioEntry,
+  appleEntry,
+  context7Entry,
+  cloudflareDocsEntry,
+  awsKnowledgeEntry,
+  deepwikiEntry,
+  exaEntry,
+  firecrawlEntry,
+  githubEntry,
+  tavilyEntry,
+  stripeEntry,
+  neonEntry,
+  gitlabEntry,
+  datadogEntry,
+];

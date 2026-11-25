@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   catalogToolOf,
   defaultAppsOf,
+  hostedServiceLicence,
   isConnectorId,
   isRunnableOn,
   isToolName,
@@ -23,9 +24,11 @@ describe("the catalog's entries", () => {
     }
   });
 
-  it("name an OSI-approved licence for the server they offer", () => {
+  it("name an OSI-approved licence for the server they offer, or say a hosted service's code is not published", () => {
     // Proves the metadata is present and consistent, not the requirement: the review that chose each server is its source.
-    for (const entry of defaultCatalog) expect(entry.licence).toBe("MIT");
+    for (const entry of defaultCatalog) expect(["MIT", "Apache-2.0", hostedServiceLicence]).toContain(entry.licence);
+    expect(composioEntry.licence).toBe("MIT");
+    expect(appleEntry.licence).toBe("MIT");
   });
 
   it("classify only Composio's discovery tools as reads, and every tool that runs, connects or waits as a write", () => {

@@ -17,7 +17,7 @@ Threads can act only on the computer and on what their harness already reaches. 
 
 ### Install, connect, enable
 
-- Outlore lists the connectors it offers; the first are **Composio** and **Apple apps**. The owner **installs** one: it is then on this computer, global, and **enabled everywhere by default** (CHG-0321).
+- Outlore lists the connectors it offers; the first are **Composio** and **Apple apps**, followed by the hosted connectors of Wave 1 (below). The owner **installs** one: it is then on this computer, global, and **enabled everywhere by default** (CHG-0321).
 - **Connected** is a separate state: the owner has given the connector what it needs (a key kept in the Vault, a sign-in, a macOS permission). An installed connector that is not connected shows **Needs connecting** with what is missing, and no thread is given its tools.
 - A connector is **usable** by a thread only when it is installed, connected, and enabled for the thread. Removing a connector forgets its choices, its secrets in the Vault, and its standing permissions.
 - Each connector's card has a **global switch**, on once installed: the master switch. Off, the connector is unavailable everywhere, whatever any realm or quest says.
@@ -82,6 +82,25 @@ Threads can act only on the computer and on what their harness already reaches. 
 
 - Composio is an opt-in connector that needs the owner's own account at Composio and its key, kept in the Vault. Installing it shows a notice and needs the owner's confirmation: Composio's service stores the sign-ins of the apps connected through it, and sees what its tools return; Outlore holds none of those sign-ins.
 - Connecting an app through Composio happens on Composio's own page, not in Outlore.
+
+### Wave 1: hosted developer and web connectors
+
+- Twelve more connectors are offered, each a remote MCP server run by another company, reached over HTTPS by the host with no browser sign-in (owner, 2026-11-25: "Go with it" to the proposal of Wave 1 without OAuth, a generic MCP OAuth client being a later wave).
+  Six need no key: Context7, Cloudflare Docs, AWS Knowledge, DeepWiki, Exa and Firecrawl.
+  Six need one key or token kept in the Vault: GitHub (personal access token), Tavily (API key), Stripe (agent API key), Neon (API key), GitLab (fine-grained personal access token) and Datadog (access token, US1 site only).
+- Each was added after its tools were read from a primary source: the server's own `tools/list` for the six that answer without a key, the vendor's repository or documentation for the six that need one (no key was held, so those listings are not checked against the live server).
+  Linear and PostHog were proposed and are not offered: Linear publishes no complete tool list, and PostHog's server registers a single `exec` tool that runs command strings, which no per-tool classification can cover.
+- A connector either needs no secret (it shows no key field and is connected once installed) or needs one key or token kept in the Vault, entered by the owner as for Composio.
+  The host sends it in the `Authorization` header with the prefix `Bearer `; the prefix is catalog data, never typed by the owner.
+- Every tool is classified by its exact name as for Composio and Apple apps: a read runs unasked, any other tool, and any tool the catalog does not name, asks.
+  A tool that returns a password or runs any statement the thread writes (Neon's `get_connection_string`, `run_sql`) is classified as a write, so each call asks.
+  A tool that reads the web or a hosted index (a search phrase, a page address) is a read, and the notice says that what a thread puts in them leaves this computer.
+- Each notice says in plain words that the service is run by another company and what it sees, and, where the service lets the owner restrict the key, to give it only the permissions threads need.
+  Outlore uses the servers' full tool set and asks before every write; their read-only addresses are not used, so the owner's key decides how far a thread can reach.
+- Licence.
+  The catalog names the licence of the server's published source when the repository holds the code the hosted endpoint serves (MIT for Context7, Exa, Firecrawl, GitHub, Tavily and Neon; Apache-2.0 for Cloudflare Docs).
+  A hosted service whose server code is not published (AWS Knowledge, DeepWiki, Stripe, GitLab, Datadog) says `Hosted service, server code not published`, which is not an OSI licence.
+  The owner decided on 2026-11-25 to keep such remote services, as Composio's hosted endpoint is, and the Fully open source requirement below is read as covering what Outlore ships, not a third party's service the owner opts into.
 
 ### Apple apps
 
