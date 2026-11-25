@@ -4,6 +4,12 @@
 /** How the catalog classifies a tool: a read runs unasked, a write asks. A tool it does not name is unclassified and asks. */
 export type ToolClass = "Read" | "Write";
 
+/**
+ * The licence an entry states for a hosted service whose server code is not published: not an OSI licence, said as it is
+ * (connectors specification, Wave 1). An entry whose server code is published names that repository's SPDX identifier instead.
+ */
+export const hostedServiceLicence = "Hosted service, server code not published";
+
 /** One tool the catalog names, by its exact name at the server, after reading what it does. */
 export type CatalogTool = {
   /** The app a tool of an app-based connector belongs to, or null. */
