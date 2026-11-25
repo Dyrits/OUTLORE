@@ -11,13 +11,25 @@ import { terminalKeyOf } from "./terminalScope";
 import { terminalTextOf } from "./terminalSnapshot";
 
 /** The host's conversation shell, whose output can be attached to the next message from any screen (ADR 0020). */
-export function TerminalPanel({ client, id, cwd, scope, ref, onReady }: TerminalPanelProps) {
+export function TerminalPanel({
+  client,
+  id,
+  cwd,
+  height,
+  hideExitBar,
+  scope,
+  ref,
+  onExit,
+  onReady,
+}: TerminalPanelProps) {
   const container = useRef<HTMLDivElement>(null);
   const surface = useRef<Terminal | null>(null);
   const folder = useRef("");
   const isReady = useRef(false);
   const ready = useRef(onReady);
   ready.current = onReady;
+  const exited = useRef(onExit);
+  exited.current = onExit;
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(true);
   const [generation, setGeneration] = useState(0);
@@ -40,6 +52,7 @@ export function TerminalPanel({ client, id, cwd, scope, ref, onReady }: Terminal
     const element = container.current;
     if (element === null) return;
     let isActive = true;
+    let hasNotifiedExit = false;
     let sequence: number | null = null;
     const pending: { text: string; sequence: number }[] = [];
     const pendingInput: string[] = [];
@@ -88,12 +101,20 @@ export function TerminalPanel({ client, id, cwd, scope, ref, onReady }: Terminal
         sequence = next;
       }
     };
+    const notifyExit = (exitCode: number | null) => {
+      if (hasNotifiedExit) return;
+      hasNotifiedExit = true;
+      exited.current?.(exitCode);
+    };
     // The shell's frames carry its full key, scope included, so a screen shows only the shells its fence covers.
     const key = terminalKeyOf(scope, id);
     const unsubscribe = client.subscribeTerminals((frame) => {
       if (!isActive || frame.id !== key) return;
       if (frame._tag === "TerminalData") write(frame.data, frame.sequence);
-      else setIsRunning(false);
+      else {
+        setIsRunning(false);
+        notifyExit(frame.exitCode ?? null);
+      }
     });
     const input = terminal.onData((data) => {
       if (isReady.current) void client.request({ _tag: "WriteTerminalInput", data, id }).catch(onError);
@@ -118,6 +139,7 @@ export function TerminalPanel({ client, id, cwd, scope, ref, onReady }: Terminal
         if (!isActive) return;
         folder.current = session.cwd;
         setIsRunning(session.isRunning);
+        if (!session.isRunning) notifyExit(session.exitCode ?? null);
         sequence = session.sequence;
         terminal.write(session.output);
         for (const chunk of pending) write(chunk.text, chunk.sequence);
@@ -155,7 +177,7 @@ export function TerminalPanel({ client, id, cwd, scope, ref, onReady }: Terminal
   };
   return (
     <View style={{ backgroundColor: colors.accentSoft, borderRadius: 8, gap: 4, padding: 8 }}>
-      {!isRunning && (
+      {!isRunning && !hideExitBar && (
         <View style={styles.row}>
           <Text style={{ color: colors.textSecondary }}>Shell exited</Text>
           <Pressable onPress={restart}>
@@ -168,7 +190,7 @@ export function TerminalPanel({ client, id, cwd, scope, ref, onReady }: Terminal
           {error}
         </Text>
       )}
-      <section aria-label="Interactive terminal" ref={container} style={{ height: 160, width: "100%" }} />
+      <section aria-label="Interactive terminal" ref={container} style={{ height: height ?? 160, width: "100%" }} />
     </View>
   );
 }

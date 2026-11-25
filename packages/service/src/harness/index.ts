@@ -28,6 +28,7 @@ export {
   fakeHarnessToolsLayer,
   HarnessTools,
   liveHarnessToolsLayer,
+  type SignInLaunch,
   type SignInStatus,
 } from "./harnessTools.ts";
 export {

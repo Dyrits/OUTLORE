@@ -48,7 +48,11 @@ export const TerminalData = Schema.TaggedStruct("TerminalData", {
 });
 export type TerminalData = typeof TerminalData.Type;
 /** An open conversation shell ended; its screen keeps the output it already has. */
-export const TerminalExit = Schema.TaggedStruct("TerminalExit", { id: Schema.String });
+export const TerminalExit = Schema.TaggedStruct("TerminalExit", {
+  /** The process exit code when known; absent or null when unavailable. */
+  exitCode: Schema.optionalKey(Schema.NullOr(Schema.Number)),
+  id: Schema.String,
+});
 export type TerminalExit = typeof TerminalExit.Type;
 
 /** What the service sends the app: an answer, a failure, a committed change, a reply being written, or a shell's output. */

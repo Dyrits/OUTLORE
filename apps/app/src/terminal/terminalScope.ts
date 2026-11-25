@@ -18,3 +18,22 @@ export const isTerminalAvailable = (
   screen: { readonly isNativeApp: boolean; readonly isRemoteHost: boolean },
   settings: Pick<Settings, "shouldAllowRemoteTerminals"> | null,
 ) => !screen.isNativeApp && (!screen.isRemoteHost || settings?.shouldAllowRemoteTerminals === true);
+
+/** Default, minimum, and maximum heights (in pixels) for a manually resizable inline terminal. */
+export const defaultShellHeight = 160;
+export const defaultCommandHeight = 240;
+export const minTerminalHeight = 140;
+export const maxTerminalHeight = 720;
+
+/** Clamps a dragged inline terminal height to a readable range. */
+export const clampTerminalHeight = (height: number) =>
+  Math.round(Math.min(maxTerminalHeight, Math.max(minTerminalHeight, height)));
+
+/** Status text shown in the header of an inline terminal running a launched interactive command. */
+export const commandTerminalStatusOf = (
+  status: { readonly _tag: "Running" } | { readonly _tag: "Exited"; readonly exitCode: number | null },
+) => {
+  if (status._tag === "Running") return "Running…";
+  if (status.exitCode === 0) return "Finished";
+  return status.exitCode === null ? "Ended" : `Did not finish (exit ${status.exitCode})`;
+};

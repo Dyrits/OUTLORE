@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import { SignInResult } from "./accountRequests.ts";
 import { FileDiff } from "./activities.ts";
 import { AttachmentCard, AttachmentContent } from "./attachments.ts";
 import { AccountBudget, BudgetWindow, PriceStatus } from "./budgets.ts";
@@ -155,7 +156,7 @@ export const Results = {
   SetRemoteAccess: RemoteAccessView,
   SetThreadBackups: Schema.Null,
   SetThreadPermissionMode: Schema.Null,
-  SignInAccount: Schema.NullOr(HarnessList),
+  SignInAccount: SignInResult,
   StartEmptyQuest: StartEmptyQuestResult,
   StartMission: StartMissionResult,
   SteerQueuedMessage: Schema.Null,

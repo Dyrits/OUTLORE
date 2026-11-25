@@ -12,6 +12,7 @@ import {
   type SignInStatus,
 } from "../harness/index.ts";
 import { ownAccountLabelOf } from "../remote/index.ts";
+import { type ConversationTerminals, openCommandTerminal, type TerminalScope } from "./terminals.ts";
 import { AccountsRoot } from "./threads.ts";
 
 // Provider accounts (provider-accounts): each harness's own sign-in on this computer, and accounts the owner
@@ -202,15 +203,24 @@ export const removeAccount = Effect.fnUntraced(function* (accountId: string) {
 });
 
 /**
- * Runs the harness's own sign-in for the account, or for the computer's own sign-in when null. "Finished" when it ran
- * without a terminal and ended; "Opened" when a terminal window has it, which closes itself once it succeeds.
+ * Runs the harness's own sign-in for the account, or for the computer's own sign-in when null.
+ * Returns "Finished" when it ran without a terminal and ended, or "Terminal" with the inline PTY session started for it.
  */
-export const signInAccount = Effect.fnUntraced(function* (harness: HarnessName, accountId: string | null) {
+export const signInAccount = Effect.fnUntraced(function* (
+  harness: HarnessName,
+  accountId: string | null,
+  terminals: ConversationTerminals,
+  scope: TerminalScope,
+) {
   const tools = yield* HarnessTools;
   const accountsRoot = yield* AccountsRoot;
   if (accountId !== null) {
     const account = yield* readAccount(accountId);
     if (account.harness !== harness) return yield* invalid(`That account is not a ${harnessLabels[harness]} account.`);
   }
-  return yield* tools.openSignIn(harness, configDirectoryOf(accountsRoot, accountId));
+  const launch = yield* tools.openSignIn(harness, configDirectoryOf(accountsRoot, accountId));
+  if (launch._tag === "Finished") return { _tag: "Finished" as const };
+  const terminalId = `sign-in:${harness}:${accountId ?? "own"}`;
+  yield* openCommandTerminal(terminals, { command: launch.command, env: launch.env, id: terminalId }, scope);
+  return { _tag: "Terminal" as const, terminal: { terminalId, title: `${launch.label} sign-in` } };
 });

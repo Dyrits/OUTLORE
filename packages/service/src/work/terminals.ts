@@ -137,6 +137,8 @@ export interface TerminalHost {
   readonly sandbox: TerminalSandbox | null;
   /** The shell a terminal opens; the owner's login shell when left out. */
   readonly shell?: string;
+  /** The PTY spawner to use; node-pty's `spawn` when left out, so checks can stand in without an OS PTY. */
+  readonly spawn?: typeof spawn;
   /** Where a paired device's shell keeps temporary files, inside the fence. */
   readonly tempRoot: string;
   /** Which executable a name names, for finding the Linux sandbox; the shell's own `which` when left out. */
@@ -145,6 +147,7 @@ export interface TerminalHost {
 
 interface Session {
   readonly cwd: string;
+  exitCode: number | null;
   isRunning: boolean;
   output: string;
   readonly process: IPty;
@@ -174,36 +177,78 @@ export class ConversationTerminals {
 
   /** Starts the conversation's shell, or returns its retained output without restarting its process. */
   open(scope: "host" | "remote", id: string, cwd: string | null) {
+    this.validateTarget(id, cwd);
+    const key = ConversationTerminals.keyOf(scope, id);
+    const existing = this.sessions.get(key);
+    if (existing !== undefined) return this.view(existing);
+    if (scope === "remote" && this.host.sandbox === null) throw sandboxMissing();
+    const folder = this.resolveFolder(cwd);
+    const started =
+      scope === "remote"
+        ? this.wrappedShell(folder)
+        : { args: shellArgsOf(this.platform), command: this.shell, env: this.environment() };
+    return this.startSession(scope, id, folder, started);
+  }
+
+  /** Starts a one-shot interactive command inside a managed PTY session, replacing any previous session with the same id. */
+  openCommand(
+    scope: TerminalScope,
+    id: string,
+    options: {
+      readonly command: string;
+      readonly cwd?: string | null;
+      readonly env?: Readonly<Record<string, string>>;
+    },
+  ) {
+    const cwd = options.cwd ?? null;
+    this.validateTarget(id, cwd);
+    this.close(scope, id);
+    const folder = this.resolveFolder(cwd);
+    const started = {
+      args: this.platform === "win32" ? ["/c", options.command] : ["-c", options.command],
+      command: this.platform === "win32" ? this.shell : "/bin/sh",
+      env: { ...this.environment(), ...options.env },
+    };
+    return this.startSession(scope, id, folder, started);
+  }
+
+  private validateTarget(id: string, cwd: string | null) {
     if (typeof id !== "string" || id.length === 0 || id.length > 4096)
       throw new TerminalFailure("InvalidInput", "Invalid terminal identifier.");
     if (cwd !== null && (typeof cwd !== "string" || !isAbsolute(cwd)))
       throw new TerminalFailure("InvalidInput", "Choose an absolute realm folder.");
-    if (scope === "remote" && this.host.sandbox === null) throw sandboxMissing();
-    const key = ConversationTerminals.keyOf(scope, id);
-    const existing = this.sessions.get(key);
-    if (existing !== undefined) return this.view(existing);
-    let count = 0;
-    for (const sessionKey of this.sessions.keys()) if (sessionKey.startsWith(`${scope}:`)) count++;
-    if (count >= sessionsPerScope)
-      throw new TerminalFailure("InvalidInput", "Close an existing terminal before opening another.");
+  }
+
+  private resolveFolder(cwd: string | null) {
     const start = cwd ?? this.host.home;
     if (!existsSync(start)) throw new TerminalFailure("InvalidInput", "The terminal's starting folder does not exist.");
     const folder = realpathSync(start);
     if (!statSync(folder).isDirectory())
       throw new TerminalFailure("InvalidInput", "The terminal's starting folder is not a directory.");
-    prepareTerminalHelper();
-    const started =
-      scope === "remote"
-        ? this.wrappedShell(folder)
-        : { args: shellArgsOf(this.platform), command: this.shell, env: this.environment() };
-    const shell = spawn(started.command, started.args, {
+    return folder;
+  }
+
+  private startSession(
+    scope: TerminalScope,
+    id: string,
+    folder: string,
+    started: { readonly args: string[]; readonly command: string; readonly env: NodeJS.ProcessEnv },
+  ) {
+    const key = ConversationTerminals.keyOf(scope, id);
+    let count = 0;
+    for (const sessionKey of this.sessions.keys()) if (sessionKey.startsWith(`${scope}:`)) count++;
+    if (count >= sessionsPerScope)
+      throw new TerminalFailure("InvalidInput", "Close an existing terminal before opening another.");
+    if (this.host.spawn === undefined) prepareTerminalHelper();
+    const spawner = this.host.spawn ?? spawn;
+    const shell = spawner(started.command, started.args, {
       cols: 80,
       cwd: folder,
       env: started.env,
       name: "xterm-256color",
       rows: 24,
     });
-    const session: Session = { cwd: folder, isRunning: true, output: "", process: shell, sequence: 0 };
+    const session: Session = { cwd: folder, exitCode: null, isRunning: true, output: "", process: shell, sequence: 0 };
     this.sessions.set(key, session);
     shell.onData((data) => {
       session.output = (session.output + data).slice(-outputLimit);
@@ -211,9 +256,11 @@ export class ConversationTerminals {
       if (this.sessions.get(key) === session)
         this.broadcast({ _tag: "TerminalData", data, id: key, sequence: session.sequence });
     });
-    shell.onExit(() => {
+    shell.onExit((event) => {
       session.isRunning = false;
-      if (this.sessions.get(key) === session) this.broadcast({ _tag: "TerminalExit", id: key });
+      session.exitCode = event.exitCode;
+      if (this.sessions.get(key) === session)
+        this.broadcast({ _tag: "TerminalExit", exitCode: event.exitCode, id: key });
     });
     return this.view(session);
   }
@@ -242,7 +289,13 @@ export class ConversationTerminals {
   }
 
   private view(session: Session) {
-    return { cwd: session.cwd, isRunning: session.isRunning, output: session.output, sequence: session.sequence };
+    return {
+      cwd: session.cwd,
+      exitCode: session.exitCode,
+      isRunning: session.isRunning,
+      output: session.output,
+      sequence: session.sequence,
+    };
   }
 
   /** Sends the owner's input to the shell, including control characters. */
@@ -350,6 +403,34 @@ export const openConversationTerminal = Effect.fnUntraced(function* (
       });
   }
   return yield* runTerminal(() => terminals.open(scope, giveaway.id, giveaway.cwd));
+});
+
+/** Starts a one-shot interactive command inside Outlore's inline terminal service, gating paired devices on the host's switch. */
+export const openCommandTerminal = Effect.fnUntraced(function* (
+  terminals: ConversationTerminals,
+  giveaway: {
+    readonly command: string;
+    readonly cwd?: string | null;
+    readonly env?: Readonly<Record<string, string>>;
+    readonly id: string;
+  },
+  scope: TerminalScope,
+) {
+  if (scope === "remote") {
+    const settings = yield* readSettings;
+    if (!settings.shouldAllowRemoteTerminals)
+      return yield* new ServiceFailure({
+        kind: "AccessRefused",
+        message: "Terminals from paired devices are off. Turn them on in this host's Workshop.",
+      });
+  }
+  return yield* runTerminal(() =>
+    terminals.openCommand(scope, giveaway.id, {
+      command: giveaway.command,
+      cwd: giveaway.cwd ?? null,
+      ...(giveaway.env === undefined ? {} : { env: giveaway.env }),
+    }),
+  );
 });
 
 /**

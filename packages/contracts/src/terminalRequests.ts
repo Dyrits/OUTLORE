@@ -4,6 +4,8 @@ import { Schema } from "effect";
 export const TerminalSession = Schema.Struct({
   /** The folder the shell started in, as the server resolved it. */
   cwd: Schema.String,
+  /** The process exit code once the shell or command has ended; absent or null while running or unknown. */
+  exitCode: Schema.optionalKey(Schema.NullOr(Schema.Number)),
   isRunning: Schema.Boolean,
   /** The replay buffer the conversation reopens with; at most the latest 200,000 characters. */
   output: Schema.String,

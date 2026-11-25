@@ -5,6 +5,7 @@ import { messageOf, type ServiceClient } from "../foundation/client";
 import { harnessLabels } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, outline, radii, round } from "../foundation/theme";
+import { InlineTerminal } from "../terminal/inlineTerminal";
 import { ActionMenu } from "../ui/actionMenu";
 import { Button } from "../ui/button";
 import { ProviderMark } from "../ui/providerMarks";
@@ -41,19 +42,31 @@ function AccountRow({
   onChanged: (list: HarnessList) => void;
   onError: (message: string | null) => void;
 }) {
-  // "Browser" while a sign-in without a terminal waits for the owner in the browser; "Terminal" once one that needs a
-  // window has opened it, which closes itself on success.
-  const [signingIn, setSigningIn] = useState<"Browser" | "Terminal" | null>(null);
+  // "Browser" while a sign-in without a terminal waits for the owner in the browser; "Terminal" while an interactive sign-in runs inside Outlore's inline terminal.
+  const [signingIn, setSigningIn] = useState<
+    | null
+    | { readonly _tag: "Browser" }
+    | { readonly _tag: "Terminal"; readonly terminalId: string; readonly title: string }
+  >(null);
   // The new name while renaming; null when not. A harness's own sign-in may be left blank to take the computer's name.
   const [name, setName] = useState<string | null>(null);
+  const refreshHarnesses = () =>
+    void client.request({ _tag: "ListHarnesses" }).then(
+      (list) => onChanged(list),
+      (reason) => onError(messageOf(reason)),
+    );
   const signIn = () => {
     // A second press while the first waits would collide with it on the harness's local port.
-    if (signingIn === "Browser") return;
-    setSigningIn("Browser");
+    if (signingIn?._tag === "Browser") return;
+    setSigningIn({ _tag: "Browser" });
     return client.request({ _tag: "SignInAccount", accountId: account.id, harness }).then(
-      (list) => {
-        setSigningIn(list === null ? "Terminal" : null);
-        if (list !== null) onChanged(list);
+      (result) => {
+        if (result._tag === "Finished") {
+          setSigningIn(null);
+          onChanged(result.harnesses);
+        } else {
+          setSigningIn({ _tag: "Terminal", terminalId: result.terminal.terminalId, title: result.terminal.title });
+        }
         onError(null);
       },
       (reason) => {
@@ -91,56 +104,77 @@ function AccountRow({
     ...(accountId === null ? [] : [{ label: "Remove", onPress: () => remove(accountId) }]),
   ];
   return (
-    <View style={local.account}>
-      <RowIcon name="account" tint={colors.textMuted} />
-      <View style={local.accountName}>
+    <View style={local.accountBlock}>
+      <View style={local.account}>
+        <RowIcon name="account" tint={colors.textMuted} />
+        <View style={local.accountName}>
+          {name === null ? (
+            <Text numberOfLines={1} style={local.accountNameText}>
+              {account.label}
+            </Text>
+          ) : (
+            <TextInput
+              accessibilityLabel={`Name of the ${harnessLabels[harness]} account ${account.label}`}
+              autoFocus
+              maxLength={80}
+              onChangeText={setName}
+              onSubmitEditing={() => rename(name)}
+              placeholder={accountId === null ? "Blank takes the computer's name" : "Name of the account"}
+              style={[styles.input, local.renameInput]}
+              value={name}
+            />
+          )}
+        </View>
+        <Text style={[styles.muted, local.accountDetail]}>
+          {signingIn?._tag === "Browser"
+            ? "Finish signing in in your browser."
+            : signingIn?._tag === "Terminal"
+              ? "Finish signing in below."
+              : (account.detail ?? signInLabels[account.signIn])}
+        </Text>
+        <StatusPill isGood={account.signIn === "SignedIn"} label={signInLabels[account.signIn]} />
         {name === null ? (
-          <Text numberOfLines={1} style={local.accountNameText}>
-            {account.label}
-          </Text>
+          <Pressable accessibilityRole="button" onPress={() => setName(account.label)}>
+            <Text style={styles.link}>Rename</Text>
+          </Pressable>
         ) : (
-          <TextInput
-            accessibilityLabel={`Name of the ${harnessLabels[harness]} account ${account.label}`}
-            autoFocus
-            maxLength={80}
-            onChangeText={setName}
-            onSubmitEditing={() => rename(name)}
-            placeholder={accountId === null ? "Blank takes the computer's name" : "Name of the account"}
-            style={[styles.input, local.renameInput]}
-            value={name}
-          />
+          <>
+            <Pressable
+              accessibilityRole="button"
+              disabled={name.trim() === account.label || (accountId !== null && name.trim() === "")}
+              onPress={() => rename(name)}
+            >
+              <Text style={styles.link}>Save</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => setName(null)}>
+              <Text style={styles.link}>Cancel</Text>
+            </Pressable>
+          </>
         )}
+        <ActionMenu
+          accessibilityLabel={`More for ${harnessLabels[harness]} account ${account.label}`}
+          actions={actions}
+        />
       </View>
-      <Text style={[styles.muted, local.accountDetail]}>
-        {signingIn === "Browser"
-          ? "Finish signing in in your browser."
-          : signingIn === "Terminal"
-            ? "Finish signing in in the Terminal window, which closes itself; then press Refresh."
-            : (account.detail ?? signInLabels[account.signIn])}
-      </Text>
-      <StatusPill isGood={account.signIn === "SignedIn"} label={signInLabels[account.signIn]} />
-      {name === null ? (
-        <Pressable accessibilityRole="button" onPress={() => setName(account.label)}>
-          <Text style={styles.link}>Rename</Text>
-        </Pressable>
-      ) : (
-        <>
-          <Pressable
-            accessibilityRole="button"
-            disabled={name.trim() === account.label || (accountId !== null && name.trim() === "")}
-            onPress={() => rename(name)}
-          >
-            <Text style={styles.link}>Save</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => setName(null)}>
-            <Text style={styles.link}>Cancel</Text>
-          </Pressable>
-        </>
+      {signingIn?._tag === "Terminal" && (
+        <InlineTerminal
+          client={client}
+          mode="command"
+          onClose={() => {
+            setSigningIn(null);
+            refreshHarnesses();
+          }}
+          onExit={(exitCode) => {
+            refreshHarnesses();
+            if (exitCode === 0) {
+              void client.request({ _tag: "CloseTerminal", id: signingIn.terminalId }).catch(() => {});
+              setSigningIn(null);
+            }
+          }}
+          terminalId={signingIn.terminalId}
+          title={signingIn.title}
+        />
       )}
-      <ActionMenu
-        accessibilityLabel={`More for ${harnessLabels[harness]} account ${account.label}`}
-        actions={actions}
-      />
     </View>
   );
 }
@@ -208,9 +242,8 @@ function HarnessState({ harness, isUpdating }: { harness: HarnessInfo; isUpdatin
 }
 
 /**
- * One harness and its accounts in one card: its logo, name, version, whether it can run, and Update (or Install when it
- * is missing); then the computer's own sign-in and the accounts added here, each signed in through the harness's own
- * sign-in in a Terminal window, so Outlore never sees the credentials (provider-accounts).
+ * One harness and its accounts in one card: its logo, name, version, whether it can run, and Update (or Install when it is missing);
+ * then the computer's own sign-in and the accounts added here, each signed in through the harness's own sign-in inside Outlore's inline terminal when interactive, so Outlore never sees the credentials (provider-accounts).
  */
 function HarnessCard({
   client,
@@ -408,6 +441,7 @@ export function ProvidersSection({
 
 const local = StyleSheet.create({
   account: { alignItems: "center", flexDirection: "row", gap: 14, minHeight: 36 },
+  accountBlock: { gap: 4 },
   accountDetail: { flex: 1, minWidth: 0 },
   // Every row's name takes the same width, so the details line up down a card; a long name is cut.
   accountName: { flexBasis: 140, flexShrink: 1, minWidth: 0 },
