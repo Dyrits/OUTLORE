@@ -36,7 +36,7 @@ export type OwnerHandlers<Tags extends RequestTag> = {
 };
 
 /** Runtime collaborators captured when the router builds its request tables. */
-export interface HandlerDependencies {
+export type HandlerDependencies = {
   readonly change: <A, E, R>(
     work: Effect.Effect<A, E, R>,
   ) => Effect.Effect<A, E | SqlError.SqlError, Exclude<R, SqlClient.SqlClient>>;
@@ -44,4 +44,4 @@ export interface HandlerDependencies {
   readonly commands: CommandRunner;
   readonly hostControl: ReturnType<typeof makeHostControl>;
   readonly threads: Threads["Service"];
-}
+};

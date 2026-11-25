@@ -12,7 +12,9 @@ import {
   type SignInStatus,
 } from "../harness/index.ts";
 import { ownAccountLabelOf } from "../remote/index.ts";
-import { type ConversationTerminals, openCommandTerminal, type TerminalScope } from "./terminals.ts";
+import type { TerminalScope } from "./terminalHost.ts";
+import type { ConversationTerminals } from "./terminalSessions.ts";
+import { openCommandTerminal } from "./terminals.ts";
 import { AccountsRoot } from "./threads.ts";
 
 // Provider accounts (provider-accounts): each harness's own sign-in on this computer, and accounts the owner

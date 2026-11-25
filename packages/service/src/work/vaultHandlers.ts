@@ -33,36 +33,35 @@ const errorKinds: Record<VaultFailure["kind"], ServiceFailure["kind"]> = {
 const failureOf = (failure: VaultFailure): ServiceFailure =>
   new ServiceFailure({ kind: errorKinds[failure.kind], message: failure.message });
 
+const noEntries: ReadonlyArray<never> = [];
+
 /** The Vault as its owner reads it: state, entries (never a value) and whether a secret may be stored now. */
-const viewOf = (vault: Vault["Service"]): Effect.Effect<VaultView> =>
-  Effect.gen(function* () {
-    const state = yield* vault.state;
-    // A Corrupt Vault still shows its state; its entries are simply not readable.
-    const entries = yield* vault.list.pipe(
-      Effect.catchTag("VaultFailure", () => Effect.succeed([] as ReadonlyArray<never>)),
-    );
-    const protection = yield* vault.protection;
-    const holder = "holder" in state ? state.holder : null;
-    return {
-      entries: entries.map((entry) => ({
-        addedAt: entry.addedAt,
-        connectorId: entry.connectorId,
-        holder: entry.holder,
-        kind: entry.kind,
+const viewOf = Effect.fnUntraced(function* (vault: Vault["Service"]): Effect.fn.Return<VaultView> {
+  const state = yield* vault.state;
+  // A Corrupt Vault still shows its state; its entries are simply not readable.
+  const entries = yield* vault.list.pipe(Effect.catchTag("VaultFailure", () => Effect.succeed(noEntries)));
+  const protection = yield* vault.protection;
+  const holder = "holder" in state ? state.holder : null;
+  return {
+    entries: entries.map((entry) => ({
+      addedAt: entry.addedAt,
+      connectorId: entry.connectorId,
+      holder: entry.holder,
+      kind: entry.kind,
+    })),
+    holder: holder === null ? null : { isReadableFromSandbox: holder.isReadableFromSandbox, label: holder.label },
+    protection: {
+      isAllowed: protection.isAllowed,
+      reason: protection.reason,
+      unverified: protection.unverified.map((unchecked) => ({
+        harness: harnessLabelOf(unchecked.harness),
+        reason: unchecked.reason,
       })),
-      holder: holder === null ? null : { isReadableFromSandbox: holder.isReadableFromSandbox, label: holder.label },
-      protection: {
-        isAllowed: protection.isAllowed,
-        reason: protection.reason,
-        unverified: protection.unverified.map((unchecked) => ({
-          harness: harnessLabelOf(unchecked.harness),
-          reason: unchecked.reason,
-        })),
-      },
-      state: state._tag,
-      stateReason: "reason" in state ? state.reason : null,
-    };
-  });
+    },
+    state: state._tag,
+    stateReason: "reason" in state ? state.reason : null,
+  };
+});
 
 /**
  * Vault request handlers: each change runs in the command runner's transaction and answers the Vault after it; a

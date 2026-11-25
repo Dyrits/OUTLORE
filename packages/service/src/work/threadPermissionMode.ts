@@ -4,6 +4,7 @@ import { SqlClient } from "effect/sql";
 import { type ModeTerms, notFound, readSettings } from "../core/index.ts";
 import { changed } from "./followUps.ts";
 
+/** The permission mode set directly on a thread, or null when it inherits the Workshop default. */
 export const readThreadPermissionMode = Effect.fnUntraced(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{ mode: ThreadPermissionMode | null }>`

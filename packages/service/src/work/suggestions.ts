@@ -1,34 +1,18 @@
-import type { Suggestion, SuggestionAnswer, SuggestionOutcome } from "@outlore/contracts";
-import { Clock, Context, Effect, Layer, Match } from "effect";
+import type { Suggestion, SuggestionAnswer } from "@outlore/contracts";
+import { Clock, Context, Effect, Layer } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { Changes, invalid, notFound, readSettings, type ServiceFailure, toolText } from "../core/index.ts";
 import { makeOwnerWaits } from "./attention.ts";
-import { setCardBackups } from "./backups.ts";
 import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
-import { recordResolvedCard } from "./guildmasterCards.ts";
 import { readOptionalRealm } from "./guildmasterPlace.ts";
 import { resumeInTurn } from "./lifecycle.ts";
 import { findMissions, findMissionsTextOf, maxMatches } from "./matching.ts";
-import { insertSuggestedMessage } from "./messageProvenance.ts";
 import { insertErrandReply } from "./messaging.ts";
-import { insertMission } from "./missions.ts";
 import { placeQuestOrigin } from "./questOrigins.ts";
+import { carryOut } from "./suggestionAnswers.ts";
+import { openFromChannel, openWithoutAsking, type Resolution, withdrawn } from "./suggestionOutcomes.ts";
 import { readSuggestion } from "./suggestionStore.ts";
 import type { ArgumentsOf, ToolHandlers } from "./threadTools.ts";
-import { proposeTitle, titleOf } from "./titles.ts";
-import { openAside } from "./tree.ts";
-
-/** Where an off-topic request went, as the suggesting thread is told and its conversation links to. */
-export type Resolution = {
-  readonly outcome: SuggestionOutcome;
-  readonly targetMissionId: string | null;
-  readonly targetThreadId: string | null;
-  readonly targetTitle: string | null;
-};
-
-type ResolutionWithWakes = Resolution & { threadsToWake: ReadonlyArray<string> };
-
-const withdrawn: Resolution = { outcome: "Withdrawn", targetMissionId: null, targetThreadId: null, targetTitle: null };
 
 /** What a thread's off-topic suggestion came to; what the thread is told is the tool's concern. */
 export type Suggested =
@@ -97,98 +81,8 @@ export const suggestionsLayer = Layer.effect(
         resolve(suggestionId, threadId, withdrawn).pipe(Effect.tap(() => sql.afterCommit(changes.publish))),
       );
 
-    /** Opens a mission with only the off-topic part, under the proposed title, with no workspace unless the owner chose a realm. */
-    const openMission = Effect.fnUntraced(function* (
-      text: string,
-      title: string,
-      choice: Parameters<typeof insertMission>[1],
-      realmPath: string | null = null,
-      isFromGuildmaster = false,
-      realmId?: string | null,
-    ) {
-      const started = yield* insertMission(text, choice, realmPath, false, null, [], realmId);
-      // Chronicler hears of this quest's result, Attention, and failure from now on (hearing back).
-      if (isFromGuildmaster) yield* sql`UPDATE missions SET opened_by_guildmaster = 1 WHERE id = ${started.missionId}`;
-      if (titleOf(title) !== "") yield* proposeTitle(started.missionId, title);
-      const [mission] = yield* sql<{ title: string }>`SELECT title FROM missions WHERE id = ${started.missionId}`;
-      return {
-        outcome: "MovedToMission",
-        targetMissionId: started.missionId,
-        targetThreadId: started.threadId,
-        targetTitle: mission?.title ?? title,
-        threadsToWake: started.threadsToWake,
-      } satisfies ResolutionWithWakes;
-    });
-
-    /** Carries out the owner's choice in the answer's transaction; the request's new home is then woken. */
-    const carryOut = (suggestion: Suggestion, given: SuggestionAnswer) =>
-      Match.valueTags(given, {
-        Aside: Effect.fnUntraced(function* () {
-          if (suggestion.isFromGuildmaster)
-            return yield* invalid("Chronicler keeps no asides: continue in a quest or open a new one.");
-          const { value: opened, followUps } = yield* openAside(suggestion.threadId, suggestion.text, suggestion.title);
-          const [row] = yield* sql<{ title: string }>`SELECT title FROM threads WHERE id = ${opened.threadId}`;
-          return {
-            outcome: "KeptAsAside",
-            targetMissionId: null,
-            targetThreadId: opened.threadId,
-            targetTitle: row?.title ?? suggestion.title,
-            threadsToWake: followUps.threadsToWake,
-          } satisfies ResolutionWithWakes;
-        }),
-        Continue: Effect.fnUntraced(function* ({ missionId }) {
-          if (!suggestion.matches.some((match) => match.missionId === missionId))
-            return yield* invalid("That mission was not offered for this message.");
-          const [mission] = yield* sql<{ title: string; topThreadId: string }>`
-              SELECT title, top_thread_id AS topThreadId FROM missions WHERE id = ${missionId}`;
-          if (mission === undefined) return yield* notFound("No such mission.");
-          const threadsToWake = yield* insertSuggestedMessage(mission.topThreadId, suggestion.text, true);
-          return {
-            outcome: "Continued",
-            targetMissionId: missionId,
-            targetThreadId: mission.topThreadId,
-            targetTitle: mission.title,
-            threadsToWake,
-          } satisfies ResolutionWithWakes;
-        }),
-        NewMission: Effect.fnUntraced(function* (chosen) {
-          // The realm the owner chose on the card (null for the Borderlands) over the one proposed.
-          const [source] = yield* sql<{ channel: string | null; realmId: string | null }>`
-            SELECT m.chronicler_channel AS channel, t.workspace_id AS realmId
-            FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${suggestion.threadId}`;
-          const isChannel = source?.channel != null;
-          const realmId =
-            chosen.realmId !== undefined
-              ? chosen.realmId
-              : chosen.realmPath === undefined && isChannel
-                ? source.realmId
-                : undefined;
-          const chosenPath =
-            realmId !== undefined ? null : chosen.realmPath === undefined ? suggestion.realmPath : chosen.realmPath;
-          if (chosenPath !== null && (yield* sql`SELECT id FROM workspaces WHERE path = ${chosenPath}`).length === 0)
-            return yield* invalid("No realm is tied to that folder.");
-          // Left out, the harness and account are the suggesting thread's, as Open as new mission prefills them.
-          return yield* openMission(
-            suggestion.text,
-            suggestion.title,
-            {
-              accountId:
-                chosen.harness === undefined && chosen.accountId === undefined
-                  ? suggestion.accountId
-                  : chosen.accountId,
-              effort: chosen.effort,
-              harness: chosen.harness ?? suggestion.harness,
-              model: chosen.model,
-            },
-            chosenPath,
-            suggestion.isFromGuildmaster && !isChannel,
-            realmId,
-          ).pipe(Effect.tap((opened) => setCardBackups(opened.targetThreadId, chosen.backups)));
-        }),
-      });
-
-    const answer = (suggestionId: string, given: SuggestionAnswer) =>
-      Effect.gen(function* () {
+    const answer = Effect.fnUntraced(
+      function* (suggestionId: string, given: SuggestionAnswer) {
         const suggestion = yield* readSuggestion(suggestionId);
         if (suggestion === null) return yield* notFound("No such suggestion.");
         if (suggestion.outcome !== null) return yield* invalid("This suggestion was already answered.");
@@ -223,7 +117,9 @@ export const suggestionsLayer = Layer.effect(
         yield* waits.settle(suggestionId, answer);
         const answered = (yield* readSuggestion(suggestionId)) ?? suggestion;
         return changed(answered, { threadsToWake });
-      }).pipe(Effect.provideService(SqlClient.SqlClient, sql));
+      },
+      Effect.provideService(SqlClient.SqlClient, sql),
+    );
 
     /**
      * Opens the suggestion, puts the thread in Attention, and waits with no time limit for the owner; null
@@ -252,79 +148,8 @@ export const suggestionsLayer = Layer.effect(
         threadId,
       });
 
-    /** With the setting on and nothing matching, the new mission opens without asking. */
-    const openWithoutAsking = Effect.fnUntraced(function* (threadId: string, text: string, title: string) {
-      const resolution = yield* sql.withTransaction(
-        Effect.gen(function* () {
-          const [thread] = yield* sql<Pick<Suggestion, "model" | "effort" | "harness" | "accountId">>`
-              SELECT model, effort, harness, account_id AS accountId FROM threads WHERE id = ${threadId}`;
-          const opened = yield* openMission(text, title, {
-            accountId: thread?.accountId ?? null,
-            effort: thread?.effort ?? "default",
-            harness: thread?.harness ?? null,
-            model: thread?.model ?? "default",
-          });
-          yield* recordResolvedCard({
-            callerId: threadId,
-            isRitual: false,
-            realmPath: null,
-            target: { missionId: opened.targetMissionId, threadId: opened.targetThreadId, title: opened.targetTitle },
-            text,
-            title,
-          });
-          return opened;
-        }),
-      );
-      return resolution;
-    });
-
-    /** Opens a quest directly from a realm or Borderlands channel, anchored to the owner's latest message with no second bubble. */
-    const openFromChannel = Effect.fnUntraced(function* (
-      threadId: string,
-      text: string,
-      title: string,
-      realmId: string | null,
-    ) {
-      return yield* sql.withTransaction(
-        Effect.gen(function* () {
-          const [channel] = yield* sql<
-            Pick<Suggestion, "model" | "effort" | "harness" | "accountId"> & {
-              backups: string;
-              permissionMode: string | null;
-            }
-          >`SELECT model, effort, harness, account_id AS accountId, backups, permission_mode AS permissionMode
-              FROM threads WHERE id = ${threadId}`;
-          const opened = yield* openMission(
-            text,
-            title,
-            {
-              accountId: channel?.accountId ?? null,
-              effort: channel?.effort ?? "default",
-              harness: channel?.harness ?? null,
-              model: channel?.model ?? "default",
-            },
-            null,
-            false,
-            realmId,
-          );
-          if (channel !== undefined) {
-            yield* sql`UPDATE threads SET backups = ${channel.backups}, permission_mode = ${channel.permissionMode}
-                WHERE id = ${opened.targetThreadId}`;
-          }
-          const [latestOwner] = yield* sql<{ id: string }>`
-            SELECT id FROM messages WHERE thread_id = ${threadId} AND sender_kind = 'user'
-            ORDER BY sequence DESC LIMIT 1`;
-          if (latestOwner !== undefined) {
-            yield* sql`UPDATE threads SET anchor_message_id = ${latestOwner.id} WHERE id = ${opened.targetThreadId}`;
-            yield* placeQuestOrigin(opened.targetThreadId);
-          }
-          return opened;
-        }),
-      );
-    });
-
-    const suggest = (threadId: string, args: ArgumentsOf<"suggest_mission">) =>
-      Effect.gen(function* () {
+    const suggest = Effect.fnUntraced(
+      function* (threadId: string, args: ArgumentsOf<"suggest_mission">) {
         const { missions = [], title } = args;
         // The thread wrote this text, and it is later stored as the owner's own words: an `@` mention in it must not
         // grant reach as the owner's would (audit SA-06), so the `@` of a reference token is dropped.
@@ -393,23 +218,28 @@ export const suggestionsLayer = Layer.effect(
           isGuildmaster && !isChannel,
         );
         return unchanged<Suggested>(resolution === null ? { _tag: "NotAsked" } : { _tag: "Resolved", resolution });
-      }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie);
+      },
+      Effect.provideService(SqlClient.SqlClient, sql),
+      Effect.orDie,
+    );
 
-    const findMissionsAnswer = (threadId: string, args: ArgumentsOf<"find_missions">) =>
-      Effect.gen(function* () {
+    const findMissionsAnswer = Effect.fnUntraced(
+      function* (threadId: string, args: ArgumentsOf<"find_missions">) {
         return toolText(findMissionsTextOf(yield* findMissions(threadId, args.request)));
-      }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie);
+      },
+      Effect.provideService(SqlClient.SqlClient, sql),
+      Effect.orDie,
+    );
 
-    const withdraw = (threadId: string) =>
-      Effect.gen(function* () {
-        const open = yield* sql<{
-          id: string;
-        }>`SELECT id FROM suggestions WHERE thread_id = ${threadId} AND outcome IS NULL`;
-        for (const { id } of open) {
-          yield* withdrawOne(id, threadId);
-          yield* waits.settle(id, withdrawn);
-        }
-      }).pipe(Effect.orDie);
+    const withdraw = Effect.fnUntraced(function* (threadId: string) {
+      const open = yield* sql<{
+        id: string;
+      }>`SELECT id FROM suggestions WHERE thread_id = ${threadId} AND outcome IS NULL`;
+      for (const { id } of open) {
+        yield* withdrawOne(id, threadId);
+        yield* waits.settle(id, withdrawn);
+      }
+    }, Effect.orDie);
 
     return { answer, findMissions: findMissionsAnswer, suggest, withdraw };
   }),

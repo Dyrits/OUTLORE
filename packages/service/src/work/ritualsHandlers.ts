@@ -1,7 +1,8 @@
 import { Effect } from "effect";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 import { validateScope } from "./ritualScope.ts";
-import { createRitual, deleteRitual, listRituals, readRitual, runRitual, updateRitual } from "./rituals.ts";
+import { createRitual, deleteRitual, listRituals, readRitual, updateRitual } from "./ritualStore.ts";
+import { runRitual } from "./rituals.ts";
 /** Requests for rituals share the service request context. */
 export const ritualsHandlers = ({ commands }: Pick<HandlerDependencies, "commands">) =>
   ({

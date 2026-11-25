@@ -29,6 +29,7 @@ export const removeQueuedMessage = Effect.fnUntraced(function* (messageId: strin
   yield* sql`DELETE FROM messages WHERE id = ${messageId}`;
   if (files.length > 0) {
     yield* sql.afterCommit(
+      // After the commit the removal is already decided and no caller is left to receive a failure: a log is its only record.
       removeAttachmentFiles(files.map(({ file }) => file)).pipe(
         Effect.catchCause((cause) => Effect.logWarning("Queued message attachment cleanup failed", cause)),
       ),

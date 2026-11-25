@@ -2,7 +2,7 @@ import type { MissionSummary } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { dayMillis, readSettings, wordsOf } from "../core/index.ts";
-import { listMissionSummaries } from "./missions.ts";
+import { listMissionSummaries } from "./missionSummaries.ts";
 
 /** The dashboard summaries of the missions, by mission id; a mission that no longer stands has none. */
 export const readMissionSummaryMap = Effect.fnUntraced(function* (ids: ReadonlyArray<string>) {

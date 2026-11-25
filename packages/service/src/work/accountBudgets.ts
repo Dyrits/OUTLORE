@@ -4,6 +4,7 @@ import { SqlClient } from "effect/sql";
 import { changeTextOf, costText, dayStartOf, invalid, isEmpty, notFound, periodStartOf } from "../core/index.ts";
 import { harnessNames } from "../harness/index.ts";
 import { ownAccountLabelOf } from "../remote/index.ts";
+import { applyAccountBudget } from "./budgetChanges.ts";
 import {
   type AccountRef,
   accountNextStartOf,
@@ -12,7 +13,6 @@ import {
   accountStartOf,
   readAccountBudgetRow,
 } from "./budgetScopes.ts";
-import { applyAccountBudget } from "./budgets.ts";
 import { readConsumptionWhere } from "./consumption.ts";
 import { PlanLimits } from "./planLimits.ts";
 

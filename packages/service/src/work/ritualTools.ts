@@ -8,7 +8,7 @@ import { readRitualPreflight } from "./guildmasterPreflight.ts";
 import { consumeReceipt, notAuthorizedText } from "./guildmasterProvenance.ts";
 import { placeOf } from "./guildmasterText.ts";
 import { readRitualEdit } from "./ritualEdits.ts";
-import { createRitual, updateRitual } from "./rituals.ts";
+import { createRitual, updateRitual } from "./ritualStore.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 
 /** What a Ritual creation or edit came to. */

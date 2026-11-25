@@ -2,7 +2,8 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { toolText } from "../core/index.ts";
 import { forgetLoreEntry, relyOnLore, saveLoreEntry, searchLoreText, updateLoreEntry } from "../lore/index.ts";
-import { searchInvalid, type ToolHandlers } from "./threadTools.ts";
+import { searchInvalid } from "./loreToolDefinitions.ts";
+import type { ToolHandlers } from "./threadTools.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: thread tool names (`save_intel`, ...).
 

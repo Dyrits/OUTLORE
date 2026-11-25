@@ -14,18 +14,16 @@ import { loreContextOf, loreInstructions, readContextLimit } from "../lore/index
 import { readApprovalInstructions } from "./approvalTerms.ts";
 import { accountOfThread, budgetLineOf } from "./budgetScopes.ts";
 import { readGuildmasterContext } from "./guildmasterContext.ts";
-import { journalContextOf, journalInstructions, openerContextOf, openerMessagesOf, openerTailOf } from "./journal.ts";
+import { journalContextOf, journalInstructions } from "./journal.ts";
+import { openerContextOf, openerMessagesOf, openerTailOf } from "./openerContext.ts";
 import { readOwnCopy } from "./ownCopies.ts";
 import { newErrandTitle } from "./titles.ts";
 import { prepareWorkingFolder, readThreadWorkspace, ScratchRoot, workingFolderOf } from "./workspaces.ts";
 
-// A thread's starting context (thread-tree, Opening a thread): the system part, the same every turn, and the
-// note each turn's message carries. A thread's turns and the warning before a thread opens read the same parts.
+// A thread's starting context (thread-tree, Opening a thread): the system part, the same every turn, and the note each turn's message carries.
+// A thread's turns and the warning before a thread opens read the same parts.
 
-/**
- * The share of the context window in percent above which the owner is warned before a thread starts
- * (thread-tree, Opening a thread; CHG-0007). Fixed: the specification does not make it a setting.
- */
+/** The share of the context window in percent above which the owner is warned before a thread starts (thread-tree, Opening a thread; CHG-0007). */
 export const startingContextWarningPercent = 25;
 
 /** What one turn of a thread starts from: its system part, its note, and where it works. */
@@ -160,10 +158,9 @@ export const prepareStartingContext = Effect.fnUntraced(function* (threadId: str
 });
 
 /**
- * What a thread the owner opens beneath `parentId` with this request would start with, on the chosen harness
- * (the parent's when null) and model. It has the parent's workspace, the parent's messages since the latest
- * journal entry, and no lore of its own yet, so its lore is the parent's. Skills are not counted until
- * tool-and-skill-loading gives them to threads; the thread tools' own descriptions are not counted either.
+ * What a thread the owner opens beneath `parentId` with this request would start with, on the chosen harness (the parent's when null) and model.
+ * It has the parent's workspace, the parent's messages since the latest journal entry, and no lore of its own yet, so its lore is the parent's.
+ * Skills are not counted until tool-and-skill-loading gives them to threads; the thread tools' own descriptions are not counted either.
  */
 export const readStartingContext = Effect.fnUntraced(function* (
   parentId: string,
@@ -178,25 +175,24 @@ export const readStartingContext = Effect.fnUntraced(function* (
   const harness = choice.harness ?? parent.harness;
   const workspace = yield* readThreadWorkspace(parentId);
   const folder = yield* workingFolderOf(workspace, join(scratchRoot, parent.missionId), yield* readOwnCopy(parentId));
-  const position = {
-    isAside: false,
-    parent: { id: parentId, title: parent.title },
-    threadId: unopenedThreadId,
-    title: newErrandTitle,
-  };
-  const openerMessages = yield* openerMessagesOf(parentId);
-  // The owner opens it, on its first turn: it would read its opener's latest messages as well.
-  const openerTail = yield* openerTailOf(parentId);
-  const subject = {
-    isChannel: false,
-    isGuildmaster: false,
-    loreThreadId: parentId,
-    missionId: parent.missionId,
-    openerMessages,
-    openerTail,
-    position,
-  };
-  const sections = yield* readSections(subject, folder.context);
+  const sections = yield* readSections(
+    {
+      isChannel: false,
+      isGuildmaster: false,
+      loreThreadId: parentId,
+      missionId: parent.missionId,
+      openerMessages: yield* openerMessagesOf(parentId),
+      // The owner opens it, on its first turn: it would read its opener's latest messages as well.
+      openerTail: yield* openerTailOf(parentId),
+      position: {
+        isAside: false,
+        parent: { id: parentId, title: parent.title },
+        threadId: unopenedThreadId,
+        title: newErrandTitle,
+      },
+    },
+    folder.context,
+  );
   const approvals = yield* readApprovalInstructions(parentId, harness);
   const parts = {
     budget: tokensOfPart(sections.budget),
@@ -237,9 +233,8 @@ export const startingContextRefusalOf = (context: StartingContext) =>
     : null;
 
 /**
- * The tokens of what Outlore sends a thread each turn, by the parts of the context gauge (thread-panel): the
- * instructions with the working folder, approval rules, and position; the lore; the journal; and the opener's
- * messages. Counted from the text, so they are estimates. Nothing is made on disk.
+ * The tokens of what Outlore sends a thread each turn, by the parts of the context gauge (thread-panel): the instructions with the working folder, approval rules, and position; the lore; the journal; and the opener's messages.
+ * Counted from the text, so they are estimates, and nothing is made on disk.
  */
 export const readSentContextSize = Effect.fnUntraced(function* (threadId: string) {
   const scratchRoot = yield* ScratchRoot;

@@ -52,18 +52,17 @@ export const planLimitsLayer = Layer.effect(
     const gates = new Map<string, GateState>();
     const running = new Set<string>();
 
-    const stored = (key: string) =>
-      Effect.gen(function* () {
-        const [row] = yield* sql<{ readAt: number; windows: string }>`
-          SELECT windows, read_at AS readAt FROM plan_limits WHERE account_key = ${key}`;
-        return row === undefined
-          ? null
-          : ({ readAt: row.readAt, windows: decodeWindows(JSON.parse(row.windows)) } satisfies PlanLimitReading);
-      }).pipe(Effect.orDie);
+    const stored = Effect.fnUntraced(function* (key: string) {
+      const [row] = yield* sql<{ readAt: number; windows: string }>`
+        SELECT windows, read_at AS readAt FROM plan_limits WHERE account_key = ${key}`;
+      return row === undefined
+        ? null
+        : ({ readAt: row.readAt, windows: decodeWindows(JSON.parse(row.windows)) } satisfies PlanLimitReading);
+    }, Effect.orDie);
 
     /** Reads the account's limits now and keeps them; a harness that reports none leaves no reading. */
-    const read = (account: AccountRef, key: string) =>
-      Effect.gen(function* () {
+    const read = Effect.fnUntraced(
+      function* (account: AccountRef, key: string) {
         const configDirectory = configDirectoryOf(accountsRoot, account.accountId);
         const report = yield* harness.readPlanLimits(account.harness, configDirectory);
         const now = yield* Clock.currentTimeMillis;
@@ -89,26 +88,28 @@ export const planLimitsLayer = Layer.effect(
         );
         gates.set(key, afterRead(now));
         yield* changes.publish;
-      }).pipe(
-        Effect.onError(() =>
-          Clock.currentTimeMillis.pipe(
-            Effect.map((now) => gates.set(key, afterFailure(gates.get(key) ?? noReadYet, now))),
+      },
+      (effect, _account, key) =>
+        effect.pipe(
+          Effect.onError(() =>
+            Clock.currentTimeMillis.pipe(
+              Effect.map((now) => gates.set(key, afterFailure(gates.get(key) ?? noReadYet, now))),
+            ),
           ),
+          Effect.ensuring(Effect.sync(() => running.delete(key))),
+          Effect.ignore,
         ),
-        Effect.ensuring(Effect.sync(() => running.delete(key))),
-        Effect.ignore,
-      );
+    );
 
-    const latest = (account: AccountRef) =>
-      Effect.gen(function* () {
-        const key = accountKeyOf(account);
-        const now = yield* Clock.currentTimeMillis;
-        if (!running.has(key) && isReadDue(gates.get(key) ?? noReadYet, now)) {
-          running.add(key);
-          yield* Effect.forkIn(read(account, key), scope);
-        }
-        return yield* stored(key);
-      });
+    const latest = Effect.fnUntraced(function* (account: AccountRef) {
+      const key = accountKeyOf(account);
+      const now = yield* Clock.currentTimeMillis;
+      if (!running.has(key) && isReadDue(gates.get(key) ?? noReadYet, now)) {
+        running.add(key);
+        yield* Effect.forkIn(read(account, key), scope);
+      }
+      return yield* stored(key);
+    });
 
     return PlanLimits.of({ latest });
   }),

@@ -8,9 +8,10 @@ import {
   writeSettings,
 } from "../core/index.ts";
 import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
+import { isStructuralCaller } from "./guildmasterDerivation.ts";
 import { isGuildmasterThread, settingWriterOfCaller } from "./guildmasterPlace.ts";
 import { readSettingChange } from "./guildmasterPreflight.ts";
-import { consumeReceipt, isStructuralCaller, notAuthorizedText } from "./guildmasterProvenance.ts";
+import { consumeReceipt, notAuthorizedText } from "./guildmasterProvenance.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 
 // Chronicler's settings tools (quest coordination, CHG-0193): it reads the owner's settings, and changes one once the exact
@@ -34,8 +35,8 @@ export const readSettingsByGuildmaster = Effect.fnUntraced(function* (callerId: 
  * `change_setting`: sets one setting to a new value, kept whole, as the settings screen would save it; refused for a
  * setting kept from Chronicler, an unknown one, or a value the setting does not accept.
  */
-export const changeSettingByGuildmaster = (callerId: string, args: ArgumentsOf<"change_setting">) =>
-  Effect.gen(function* () {
+export const changeSettingByGuildmaster = Effect.fnUntraced(
+  function* (callerId: string, args: ArgumentsOf<"change_setting">) {
     if (!(yield* isStructuralCaller(callerId, "change_setting")))
       return refused("Only Chronicler changes the settings here.");
     const writer = yield* settingWriterOfCaller(callerId);
@@ -51,4 +52,6 @@ export const changeSettingByGuildmaster = (callerId: string, args: ArgumentsOf<"
       }),
       Refused: ({ text }) => Effect.succeed(refused(text)),
     });
-  }).pipe(Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refused(`Not done: ${failure.message}`))));
+  },
+  Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refused(`Not done: ${failure.message}`))),
+);

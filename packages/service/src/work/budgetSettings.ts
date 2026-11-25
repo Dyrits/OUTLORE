@@ -1,7 +1,7 @@
 import type { Settings } from "@outlore/contracts";
 import { Effect } from "effect";
 import { readSettings, type SettingWriter, writeSettings } from "../core/index.ts";
-import { applyGlobalBudget } from "./budgets.ts";
+import { applyGlobalBudget } from "./budgetChanges.ts";
 import { Commands } from "./commands.ts";
 import { changed } from "./followUps.ts";
 
