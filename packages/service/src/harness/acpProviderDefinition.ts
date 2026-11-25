@@ -8,12 +8,16 @@ export type AcpProviderDefinition = {
   readonly argv: (home: string | null) => ReadonlyArray<string>;
   /** The default executable when no `OUTLORE_<HARNESS>_PATH` override is set. */
   readonly executable: string;
+  /** Whether each spawned ACP process gets a fresh temporary directory as `TMPDIR`, `TMP`, and `TEMP`, removed when the process ends. */
+  readonly hasIsolatedTempDir?: boolean;
   /** The provider's name as the owner reads it. */
   readonly label: string;
   /** An older executable name preferred when it is already installed on `PATH`. */
   readonly legacyExecutable?: string;
   /** Where the provider's agent departs from the protocol every ACP harness shares; absent when it does not. */
   readonly protocol?: AcpProviderProtocol;
+  /** Ambient environment variable prefixes stripped from the child process before `spawnEnv`, the state home, and explicit overrides apply. */
+  readonly scrubEnvPrefixes?: ReadonlyArray<string>;
   /** The provider's own sign-in command, or null when no sign-in command of its own is verified. */
   readonly signIn: AcpSignIn | null;
   /** The JSON-RPC error code a signed-out provider answers `session/new` with, or null when none is verified. */
@@ -31,6 +35,8 @@ export type AcpProviderDefinition = {
  * Everything not named here is the same for every ACP agent.
  */
 export type AcpProviderProtocol = {
+  /** The minimum agent version (`initialize`'s `agentInfo.version`) required before opening a session; an agent reporting an older version fails startup. */
+  readonly minimumAgentVersion?: string;
   /** Permission requests of tool calls whose id starts with this are questions for the owner to choose an answer to, not actions to approve. */
   readonly questionIdPrefix?: string;
   /** The agent replays a session's tool calls on `session/load`, so a session it advertises it can resume is resumed instead. */
@@ -96,9 +102,13 @@ export const versionLineMatching = (shape: RegExp, expects: string): VersionGate
 export type AcpProviderProfile = {
   readonly args: ReadonlyArray<string>;
   readonly env: Readonly<Record<string, string>>;
+  /** Whether each spawned ACP process gets a fresh temporary directory as `TMPDIR`, `TMP`, and `TEMP`, removed when the process ends. */
+  readonly hasIsolatedTempDir?: boolean;
   readonly label: string;
   /** The provider's departures from the shared protocol, carried from its definition. */
   readonly protocol?: AcpProviderProtocol;
+  /** Ambient environment variable prefixes stripped from the child process before `env` and the state home apply. */
+  readonly scrubEnvPrefixes?: ReadonlyArray<string>;
   /**
    * Environment variable the executable honors for its state home. Setting it isolates the
    * account's sign-in, config, and MCP inheritance from the user's own provider directory.
@@ -156,8 +166,12 @@ export const acpLaunchOf = (definition: AcpProviderDefinition, options: AcpResol
   return {
     args: definition.argv(home),
     env: { ...definition.spawnEnv, ...homeEnvOf(definition, options, home, false), ...options.env },
+    ...(definition.hasIsolatedTempDir === true ? { hasIsolatedTempDir: true } : {}),
     label: definition.label,
     ...(definition.protocol === undefined ? {} : { protocol: definition.protocol }),
+    ...(definition.scrubEnvPrefixes === undefined || definition.scrubEnvPrefixes.length === 0
+      ? {}
+      : { scrubEnvPrefixes: definition.scrubEnvPrefixes }),
     ...(rule.kind === "account"
       ? { ...(rule.needsConfiguredHome ? { needsConfiguredStateHome: true } : {}), stateHomeEnv: rule.variable }
       : {}),

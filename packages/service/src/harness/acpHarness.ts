@@ -10,11 +10,11 @@ import {
   type RpcProcess,
   readImages,
   type SteeredMessage,
-  startRpcProcess,
   type TurnRequest,
   textFieldOf,
   turnMessageOf,
 } from "../core/index.ts";
+import { type AcpLaunch, checkAcpAgentVersion, startAcpRpcProcess } from "./acpLaunch.ts";
 import { type AcpPermissionContext, answerAcpRequest } from "./acpPermissions.ts";
 import { type AcpPromptFlight, openAcpPromptFlight, readAcpPrompt, steerAcpPrompt } from "./acpPrompt.ts";
 import {
@@ -41,6 +41,7 @@ import {
 import { noToolServerInstructions } from "./instructions.ts";
 import { addUsage, contextOf } from "./tokenUsage.ts";
 
+export type { AcpLaunch } from "./acpLaunch.ts";
 export type { AcpPermissionContext } from "./acpPermissions.ts";
 
 // The Agent Client Protocol as Outlore speaks it to a harness that runs one agent process per thread (JSON-RPC 2.0, one
@@ -50,36 +51,18 @@ export type { AcpPermissionContext } from "./acpPermissions.ts";
 // by its dialect (below), so a fix to one of these reaches every harness that runs through it.
 
 /**
- * The process a thread's session runs in: its arguments and its complete environment.
- * A launch that wraps the executable in a sandbox names the command to start, and then its arguments are complete.
- */
-export type AcpLaunch = {
-  readonly args: ReadonlyArray<string>;
-  /** The executable to start, when the launch wraps it; otherwise the harness's own command, after the harness's prefix arguments. */
-  readonly command?: string;
-  readonly env: Record<string, string | undefined>;
-  /** How the launch contains the process, for a dialect that judges permissions by it (`promptOf`). */
-  readonly containment?: {
-    /** Whether the executor, the process that runs the agent's commands and edits, is NOT confirmed to be inside the sandbox; read at each permission request. */
-    readonly isUnconfirmed: (rpc: RpcProcess) => boolean;
-    /** Whether the process is wrapped in the sandbox. */
-    readonly isSandboxed: boolean;
-    /** Whether the owner allowed the agent to run without the sandbox it would otherwise run in. */
-    readonly isUnsandboxed: boolean;
-  };
-  /** Ends anything the process left behind once it has ended, however it ended. */
-  readonly onEnded?: () => Promise<ReadonlyArray<number>>;
-};
-
-/**
  * What one harness does differently from the standard protocol, as small data and two hooks.
  * Anything not named here is the same for every ACP harness and lives in this module.
  */
 export type AcpDialect = {
+  /** Whether each spawned ACP process gets a fresh temporary directory as `TMPDIR`, `TMP`, and `TEMP`, removed when the process ends. */
+  readonly hasIsolatedTempDir?: boolean;
   /** The harness's name as the owner reads it. */
   readonly label: string;
   /** The process this turn's session runs in, or the reason it cannot run: some providers run only against an account folder. */
   readonly launchOf: (request: TurnRequest) => Effect.Effect<AcpLaunch, HarnessFailure>;
+  /** The minimum agent version (`initialize`'s `agentInfo.version`) required before opening a session; an agent reporting an older version fails startup. */
+  readonly minimumAgentVersion?: string;
   /**
    * Reads how the account is billed, once the session is open; a failure to read says nothing. Without it a turn's billing is unknown.
    */
@@ -339,19 +322,19 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
 
     start: Effect.fnUntraced(function* (request: TurnRequest) {
       const launch = yield* dialect.launchOf(request);
-      const rpc = yield* startRpcProcess({
+      const rpc = yield* startAcpRpcProcess({
         args: launch.command === undefined ? [...(options.prefixArgs ?? []), ...launch.args] : launch.args,
         command: launch.command ?? options.command,
         cwd: request.cwd,
         env: launch.env,
-        isJsonRpc2: true,
-        isTreeKilled: true,
+        ...(dialect.hasIsolatedTempDir === true ? { hasIsolatedTempDir: true } : {}),
         label: dialect.label,
         ...(launch.onEnded === undefined ? {} : { onEnded: launch.onEnded }),
       });
       let steersWithPrompt = false;
       const session = yield* Effect.gen(function* () {
         const initialized = yield* rpc.request("initialize", acpInitializeParams);
+        yield* checkAcpAgentVersion(initialized, dialect.minimumAgentVersion, dialect.label);
         steersWithPrompt =
           dialect.steersWithPromptFrom !== undefined &&
           acpVersionAtLeast(acpAgentVersionOf(initialized), dialect.steersWithPromptFrom);

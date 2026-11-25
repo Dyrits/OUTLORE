@@ -34,9 +34,16 @@ export type LineProcessOptions = {
   readonly observe?: (message: unknown) => void;
 };
 
-/** The environment of a child process the service starts: Outlore's own variables, such as the owner token, left out. */
-export const reducedEnvironmentOf = (extra: Record<string, string>) => ({
-  ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("OUTLORE_"))),
+/** The environment of a child process the service starts: Outlore's own variables, and any scrubbed prefixes, left out before extras apply. */
+export const reducedEnvironmentOf = (
+  extra: Record<string, string>,
+  scrubbedPrefixes: ReadonlyArray<string> = [],
+): Record<string, string | undefined> => ({
+  ...Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key]) => !key.startsWith("OUTLORE_") && !scrubbedPrefixes.some((prefix) => key.startsWith(prefix)),
+    ),
+  ),
   ...extra,
 });
 

@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Fiber } from "effect";
 import type { HarnessEvent, HarnessPrompt, PromptAnswer } from "../../src/core/index.ts";
+import type { AcpProviderProtocol } from "../../src/harness/acpProviderDefinition.ts";
 import { makeAcpProviderHarness } from "../../src/harness/acpProviders.ts";
-import { acpAgentVersionOf, acpVersionAtLeast } from "../../src/harness/acpSession.ts";
 import { noToolServerInstructions } from "../../src/harness/instructions.ts";
 import { makeVibeHarness } from "../../src/index.ts";
 import {
@@ -48,12 +48,17 @@ const turnOn = (harness: "antigravity" | "cursor", log: string, config: AcpFakeC
   });
 
 /** The generic adapter without a provider definition: a profile that adds nothing but its label. */
-const bareAdapter = (log: string, config: AcpFakeConfig) =>
+const bareAdapter = (log: string, config: AcpFakeConfig, protocol?: AcpProviderProtocol) =>
   makeAcpProviderHarness({
     command: process.execPath,
     idleTimeout: "10 minutes",
     prefixArgs: [acpFakeScript],
-    profile: { args: [], env: acpFakeEnv(log, config), label: "fake ACP" },
+    profile: {
+      args: [],
+      env: acpFakeEnv(log, config),
+      label: "fake ACP",
+      ...(protocol === undefined ? {} : { protocol }),
+    },
   });
 
 const edited = (events: ReadonlyArray<HarnessEvent>) =>
@@ -696,19 +701,23 @@ describe("Antigravity steers a running turn with a second prompt (CHG-0726)", ()
   it.live("leaves the message for the next turn when the agent is older than 1.5.0 or says no version", () =>
     inFolder((log) =>
       Effect.gen(function* () {
-        for (const [index, agentVersion] of ["1.4.9", undefined].entries()) {
+        const cases = [
+          (path: string) =>
+            bareAdapter(
+              path,
+              { agentVersion: "1.4.9", slow: true, steerable: true },
+              { steersWithPromptFrom: "1.5.0" },
+            ),
+          (path: string) => turnOn("antigravity", path, { slow: true, steerable: true }),
+        ];
+        for (const [index, build] of cases.entries()) {
           const folderLog = `${log}-${index}`;
-          const harness = yield* turnOn("antigravity", folderLog, {
-            ...(agentVersion === undefined ? {} : { agentVersion }),
-            slow: true,
-            steerable: true,
-          });
+          const harness = yield* build(folderLog);
           const fiber = yield* Effect.forkChild(harness.runTurn(turnRequestOf({ text: "Build it" })));
           yield* untilAcpFakeLogged(folderLog, (entry) => entry.method === "session/prompt");
           expect(yield* harness.steer("thread-1", message)).toBe(false);
           expect(yield* harness.interrupt("thread-1")).toBe(true);
-          const outcome = yield* Fiber.join(fiber);
-          expect(outcome.isInterrupted).toBe(true);
+          expect((yield* Fiber.join(fiber)).isInterrupted).toBe(true);
           expect(promptTexts(folderLog)).toHaveLength(1);
         }
       }),
@@ -768,25 +777,4 @@ describe("Antigravity steers a running turn with a second prompt (CHG-0726)", ()
       }),
     ),
   );
-});
-
-describe("the agent's version, as initialize reports it", () => {
-  it("reads agentInfo.version, and nothing when the agent names none", () => {
-    expect(acpAgentVersionOf({ agentInfo: { name: "Antigravity ACP Server", version: "1.5.16" } })).toBe("1.5.16");
-    expect(acpAgentVersionOf({ agentInfo: { name: "x" } })).toBeNull();
-    expect(acpAgentVersionOf({})).toBeNull();
-    expect(acpAgentVersionOf(null)).toBeNull();
-  });
-
-  it("compares the first three numbers, and an unreadable version is never at least anything", () => {
-    expect(acpVersionAtLeast("1.5.0", "1.5.0")).toBe(true);
-    expect(acpVersionAtLeast("1.5.16", "1.5.0")).toBe(true);
-    expect(acpVersionAtLeast("1.10.0", "1.5.0")).toBe(true);
-    expect(acpVersionAtLeast("2.0.0", "1.5.0")).toBe(true);
-    expect(acpVersionAtLeast("1.4.99", "1.5.0")).toBe(false);
-    expect(acpVersionAtLeast("v1.5.2-rc1", "1.5.0")).toBe(true);
-    expect(acpVersionAtLeast("1.5", "1.5.0")).toBe(true);
-    expect(acpVersionAtLeast("nightly", "1.5.0")).toBe(false);
-    expect(acpVersionAtLeast(null, "1.5.0")).toBe(false);
-  });
 });

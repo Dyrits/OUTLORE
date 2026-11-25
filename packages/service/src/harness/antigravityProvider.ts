@@ -69,6 +69,8 @@ const argvOf = (home: string | null): ReadonlyArray<string> => [
 export const antigravity: AcpProviderDefinition = {
   argv: argvOf,
   executable: "agy",
+  // Each launch unpacks roughly 1 GB into its temporary folder and a force-killed process leaves it behind (T3 Code, AntigravityDriver.ts:201-210).
+  hasIsolatedTempDir: true,
   label: "Gemini (Antigravity)",
   legacyExecutable: "antigravity",
   // agy 1.5.16 advertises `sessionCapabilities.resume` (live check 2026-11-24), and loading a session replays its tool calls.
@@ -77,12 +79,16 @@ export const antigravity: AcpProviderDefinition = {
   // It also advertises `_meta.antigravity.systemPrompt.append` (live check 2026-11-24), which takes the starting context as the session's system prompt.
   // From 1.5.0 a second prompt sent while one runs steers it: the agent answers the running prompt `end_turn` and goes on under the new one, and session/cancel would end its running subagents and commands (T3 Code, AntigravityAcpSupport.ts:76-84).
   // No live steering turn was run here (CHG-0726).
+  // T3 Code refuses pre-1.5 runtimes at `initialize` before opening a session (AntigravityDriver.ts:337-357, docs/user/providers-antigravity.md:65).
   protocol: {
+    minimumAgentVersion: "1.5.0",
     questionIdPrefix: "interaction_",
     resumesSessions: true,
     steersWithPromptFrom: "1.5.0",
     systemPromptNamespace: "antigravity",
   },
+  // Ambient Gemini and Google credentials or overrides are stripped before `spawnEnv` and the pinned `GEMINI_HOME` apply (T3 Code, antigravityAuthSupport.ts:202-245).
+  scrubEnvPrefixes: ["GEMINI_", "GOOGLE_"],
   // A signed-out Antigravity answers `session/new` with -32000 "Authentication required" (CLI 1.5.16, live check 2026-11-24).
   signedOutCode: -32000,
   // The sign-in is the launch's own argv with --login, so it can only open the home the launch will read.

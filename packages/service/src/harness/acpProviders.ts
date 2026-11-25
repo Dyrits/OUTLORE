@@ -2,15 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Duration, Effect, Queue } from "effect";
-import {
-  fieldOf,
-  HarnessFailure,
-  reducedEnvironmentOf,
-  startRpcProcess,
-  type TurnRequest,
-  textFieldOf,
-} from "../core/index.ts";
+import { fieldOf, HarnessFailure, reducedEnvironmentOf, type TurnRequest, textFieldOf } from "../core/index.ts";
 import { type AcpDialect, makeAcpHarness } from "./acpHarness.ts";
+import { checkAcpAgentVersion, startAcpRpcProcess } from "./acpLaunch.ts";
 import { type AcpProviderDefinition, type AcpProviderProfile, acpLaunchOf } from "./acpProviderDefinition.ts";
 import { acpInitializeParams } from "./acpSession.ts";
 import type { SignInStatus } from "./harnessTools.ts";
@@ -50,16 +44,18 @@ export const probeAcpProviderModels = Effect.fnUntraced(function* (options: {
     const stateHome = stateHomeEnv === undefined ? null : (options.stateHome ?? join(cwd, "state-home"));
     if (stateHome !== null && options.stateHome === undefined)
       yield* Effect.sync(() => mkdirSync(stateHome, { recursive: true }));
-    const rpc = yield* startRpcProcess({
+    const rpc = yield* startAcpRpcProcess({
       args: [...(options.prefixArgs ?? []), ...options.profile.args],
       command: options.command,
       cwd,
-      env: reducedEnvironmentOf({
-        ...options.profile.env,
-        ...(stateHome === null || stateHomeEnv === undefined ? {} : { [stateHomeEnv]: stateHome }),
-      }),
-      isJsonRpc2: true,
-      isTreeKilled: true,
+      env: reducedEnvironmentOf(
+        {
+          ...options.profile.env,
+          ...(stateHome === null || stateHomeEnv === undefined ? {} : { [stateHomeEnv]: stateHome }),
+        },
+        options.profile.scrubEnvPrefixes,
+      ),
+      ...(options.profile.hasIsolatedTempDir === true ? { hasIsolatedTempDir: true } : {}),
       label: options.profile.label,
     });
     return yield* Effect.gen(function* () {
@@ -69,9 +65,10 @@ export const probeAcpProviderModels = Effect.fnUntraced(function* (options: {
             ? failure
             : new HarnessFailure({ reason: `${options.profile.label} did not answer ${step} in time.` }),
         );
-      yield* rpc
+      const initialized = yield* rpc
         .request("initialize", acpInitializeParams)
         .pipe(Effect.timeout("20 seconds"), probeFailure("initialize"));
+      yield* checkAcpAgentVersion(initialized, options.profile.protocol?.minimumAgentVersion, options.profile.label);
       const session = yield* rpc
         .request("session/new", { cwd, mcpServers: [] })
         .pipe(Effect.timeout("20 seconds"), probeFailure("session/new"));
@@ -148,6 +145,7 @@ export type AcpProviderHarnessOptions = {
  */
 const dialectOf = (profile: AcpProviderProfile): AcpDialect => ({
   fileEdits: "acp",
+  ...(profile.hasIsolatedTempDir === true ? { hasIsolatedTempDir: true } : {}),
   label: profile.label,
   launchOf: Effect.fnUntraced(function* (request: TurnRequest) {
     const stateHomeEnv = profile.stateHomeEnv;
@@ -162,14 +160,20 @@ const dialectOf = (profile: AcpProviderProfile): AcpDialect => ({
       args: profile.args,
       // The account's own folder becomes the provider's state home, so its sign-in, sessions, config, and MCP
       // inheritance stay with the account (provider-accounts); without one, the provider uses its own default.
-      env: reducedEnvironmentOf({
-        ...profile.env,
-        ...(stateHomeEnv === undefined || request.configDirectory === null
-          ? {}
-          : { [stateHomeEnv]: request.configDirectory }),
-      }),
+      env: reducedEnvironmentOf(
+        {
+          ...profile.env,
+          ...(stateHomeEnv === undefined || request.configDirectory === null
+            ? {}
+            : { [stateHomeEnv]: request.configDirectory }),
+        },
+        profile.scrubEnvPrefixes,
+      ),
     };
   }),
+  ...(profile.protocol?.minimumAgentVersion === undefined
+    ? {}
+    : { minimumAgentVersion: profile.protocol.minimumAgentVersion }),
   questionIdPrefix: profile.protocol?.questionIdPrefix ?? null,
   resumesSessions: profile.protocol?.resumesSessions === true,
   ...(profile.protocol?.systemPromptNamespace === undefined

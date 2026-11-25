@@ -66,6 +66,9 @@ describe("one definition per ACP provider", () => {
     const signIn = harnessFacts.antigravity.signIn(home);
     expect(launch.args).toEqual(["acp", `--gemini-dir=${home}`, "--app-data-dir=antigravity-acp"]);
     expect(launch.env.GEMINI_HOME).toBe(home);
+    expect(launch.hasIsolatedTempDir).toBe(true);
+    expect(launch.scrubEnvPrefixes).toEqual(["GEMINI_", "GOOGLE_"]);
+    expect(launch.protocol?.minimumAgentVersion).toBe("1.5.0");
     expect(signIn?.args).toEqual([...launch.args, "--login"]);
     expect(signIn?.env).toEqual({ ...launch.env });
   });

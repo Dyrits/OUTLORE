@@ -1,5 +1,12 @@
 # Work in progress
 
+## Shared ACP launch hygiene · 2026-11-25 · built and tested against the stand-in; no live agy turn run
+
+CHG-0727 on `mission/antigravity-vs-t3code-e08e3479`: adds three declarative, provider-agnostic launch-hygiene options to `AcpProviderDefinition` / `AcpProviderProtocol` (`minimumAgentVersion`, `hasIsolatedTempDir`, `scrubEnvPrefixes`), executed generically in `acpLaunch.ts`, `acpHarness.ts`, `acpProviders.ts`, and `core/lineProcess.ts`.
+Antigravity enables `minimumAgentVersion: "1.5.0"`, `hasIsolatedTempDir: true`, and `scrubEnvPrefixes: ["GEMINI_", "GOOGLE_"]` (preserving `GEMINI_HOME` from `stateHome` and `AGY_CLI_DISABLE_AUTO_UPDATE` from `spawnEnv`).
+`backlog.md` now records the owner's Google AI Developers forum topic URL for Antigravity ToS clarification (topic 205306) and marks launch hygiene as landed.
+Verified with 92 tests across the ACP launch hygiene, protocol, provider definition, and Antigravity suites, plus Biome and workspace typecheck; no live `agy` turn was run.
+
 ## Antigravity steering and interrupt · 2026-11-25 · built and tested against the stand-in; live turn pending owner approval
 
 CHG-0726 on `mission/antigravity-vs-t3code-4774eeeb`, base `953e98b9`: the shared ACP module reads `agentInfo.version` from `initialize` and adds `steersWithPromptFrom` (set to `"1.5.0"` on Antigravity only).
