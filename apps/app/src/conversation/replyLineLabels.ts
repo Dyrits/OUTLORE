@@ -16,3 +16,9 @@ export const findNewlyAnchoredQuest = (
   anchors: ReadonlyArray<ThreadAnchor>,
   seen: ReadonlySet<ThreadId>,
 ): ThreadAnchor | null => anchors.find((anchor) => !seen.has(anchor.threadId)) ?? null;
+
+/** A thread or quest title cut for a one-line label. */
+export const shortenedTitleOf = (title: string) => (title.length > 60 ? `${title.slice(0, 59)}…` : title);
+
+/** A sample of a message on one line, with its line breaks and runs of spaces collapsed. */
+export const oneLineOf = (text: string) => text.replace(/\s+/g, " ").trim();

@@ -1,15 +1,24 @@
-import type { MissionId, Suggestion, SuggestionAnswer, ThreadId, Tier, WorkspaceId } from "@outlore/contracts";
-import { type ReactNode, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import type { MissionId, Suggestion, ThreadId, Tier, WorkspaceId } from "@outlore/contracts";
+import { useState } from "react";
+import { Pressable, Text, View } from "react-native";
 import { type Runner, RunnerPickers, useHarnesses } from "../editors/runners";
-import { messageOf, type ServiceClient } from "../foundation/client";
+import type { ServiceClient } from "../foundation/client";
 import { companionLabelOf, harnessLabels } from "../foundation/formatting";
 import { settledSuggestionLabelOf } from "../foundation/labels";
 import { allMissions } from "../foundation/queries";
 import { styles } from "../foundation/styles";
-import { colors, fontSizes, fonts, outline, radii, round } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { companionChoicesOf, hasTiers, realmOptionsOf, selectedChoiceOf } from "./suggestionChoices";
+import {
+  ChangeLink,
+  ChoiceRow,
+  DestinationRow,
+  local,
+  MatchRows,
+  SuggestionFrame,
+  suggestionRunnerOf,
+  useSuggestionAnswer,
+} from "./suggestionParts";
 
 /** The line a resolved suggestion leaves in its thread, opening where the request went. */
 export function SuggestionLine({
@@ -48,151 +57,8 @@ export function SuggestionLine({
   );
 }
 
-/** A labelled row of exclusive choices, shown as chips that wrap, read by a screen reader as a radio group. */
-function ChoiceRow({
-  label,
-  options,
-}: {
-  label: string;
-  options: ReadonlyArray<{ isSelected: boolean; key: string; label: string; onPress: () => void }>;
-}) {
-  return (
-    <View accessibilityLabel={label} accessibilityRole="radiogroup" style={local.choice}>
-      <Text style={styles.muted}>{label}</Text>
-      <View style={local.chips}>
-        {options.map((option) => (
-          <Pressable
-            accessibilityRole="radio"
-            accessibilityState={{ checked: option.isSelected }}
-            key={option.key}
-            onPress={option.onPress}
-            style={[styles.answer, local.chip, option.isSelected && styles.answerPrimary]}
-          >
-            <Text style={[styles.answerText, option.isSelected && styles.answerTextPrimary]}>{option.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-const local = StyleSheet.create({
-  card: { ...outline, ...round, backgroundColor: colors.surface, gap: 10, padding: 14 },
-  change: { justifyContent: "center", paddingHorizontal: 12 },
-  chip: { alignSelf: "flex-start" },
-  chips: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  choice: { gap: 6 },
-  glyph: { color: colors.accentText, fontFamily: fonts.sans, fontSize: fontSizes.lg, fontWeight: "700", width: 22 },
-  list: { ...outline, ...round, backgroundColor: colors.edge, gap: 1, overflow: "hidden" },
-  quote: { borderLeftColor: colors.edge, borderLeftWidth: 3, paddingLeft: 10 },
-  row: { alignItems: "stretch", backgroundColor: colors.surface, flexDirection: "row" },
-  rowMain: { alignItems: "center", flex: 1, flexDirection: "row", gap: 10, paddingHorizontal: 12, paddingVertical: 9 },
-  rowPrimary: { backgroundColor: colors.controlActive },
-  rowText: { flex: 1, gap: 1 },
-  setup: { backgroundColor: colors.page, borderRadius: radii.md, gap: 10, padding: 10 },
-});
-
-/** Sends the owner's answer to an open suggestion, and keeps the reason when it is refused. */
-function useSuggestionAnswer(client: ServiceClient, suggestion: Suggestion) {
-  const [error, setError] = useState<string | null>(null);
-  const send = (answer: SuggestionAnswer) =>
-    client.request({ _tag: "AnswerSuggestion", answer, suggestionId: suggestion.id }).then(
-      () => setError(null),
-      (reason) => setError(messageOf(reason)),
-    );
-  return { error, send };
-}
-
-const suggestionRunnerOf = (suggestion: Suggestion): Runner => ({
-  accountId: suggestion.accountId,
-  effort: suggestion.effort,
-  harness: suggestion.harness,
-  model: suggestion.model,
-});
-
 /** The channel a suggestion names: the realm it proposes for a quest, or the realm and Borderlands for an off-topic message. */
 type Channel = { id: WorkspaceId | null; name: string };
-
-/** One answer in a suggestion's list: a glyph, what it does, and a line saying what that means. */
-function DestinationRow({
-  detail,
-  glyph,
-  isPrimary = false,
-  onPress,
-  title,
-  trailing,
-}: {
-  detail: string;
-  glyph: string;
-  isPrimary?: boolean;
-  onPress: () => void;
-  title: string;
-  trailing?: ReactNode;
-}) {
-  return (
-    <View style={[local.row, isPrimary && local.rowPrimary]}>
-      <Pressable accessibilityRole="button" onPress={onPress} style={local.rowMain}>
-        <Text style={local.glyph}>{glyph}</Text>
-        <View style={local.rowText}>
-          <Text numberOfLines={2} style={styles.answerText}>
-            {title}
-          </Text>
-          <Text numberOfLines={1} style={styles.muted}>
-            {detail}
-          </Text>
-        </View>
-      </Pressable>
-      {trailing}
-    </View>
-  );
-}
-
-/** The "Continue in ..." rows of the quests that may already cover the request. */
-function MatchRows({ onContinue, suggestion }: { onContinue: (missionId: MissionId) => void; suggestion: Suggestion }) {
-  return suggestion.matches.map((match) => (
-    <DestinationRow
-      detail={`${match.state} · continue this quest`}
-      glyph="↪"
-      key={match.missionId}
-      onPress={() => onContinue(match.missionId)}
-      title={match.title}
-    />
-  ));
-}
-
-/** The card's frame: the owner's text as a quote, then the answers as one list, then the setup the owner asked to change. */
-function SuggestionFrame({
-  children,
-  error,
-  heading,
-  setup,
-  text,
-}: {
-  children: ReactNode;
-  error: string | null;
-  heading: string;
-  setup: ReactNode;
-  text: string;
-}) {
-  return (
-    <View style={local.card}>
-      <Text style={styles.questionText}>{heading}</Text>
-      <Text style={[styles.muted, local.quote]}>{text}</Text>
-      <View style={local.list}>{children}</View>
-      {setup}
-      {error !== null && <Text style={styles.error}>{error}</Text>}
-    </View>
-  );
-}
-
-/** The "Change" link beside the new-quest row, which opens or closes the setup beneath the list. */
-function ChangeLink({ isOpen, onPress }: { isOpen: boolean; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={local.change}>
-      <Text style={styles.link}>{isOpen ? "Done" : "Change"}</Text>
-    </Pressable>
-  );
-}
 
 /** An open suggestion card: Chronicler's proposal of a new quest, or where a thread's off-topic message should go. */
 export function SuggestionCard({
@@ -235,7 +101,7 @@ function ProposalCard({
   const [isChanging, setIsChanging] = useState(false);
   const [isCustomizing, setIsCustomizing] = useState(false);
   // The proposed realm until the owner picks another, or the Borderlands.
-  const [chosenRealm, setChosenRealm] = useState<WorkspaceId | null | undefined>(undefined);
+  const [chosenRealm, setChosenRealm] = useState<{ id: WorkspaceId | null } | null>(null);
   const choices =
     settings === null ? [] : companionChoicesOf(settings, (tier) => companionLabelOf(tier.harness, null, tier.model));
   const selected = selectedChoiceOf(choices, runner);
@@ -243,7 +109,7 @@ function ProposalCard({
   const realmOptions = realmOptionsOf(realms);
   const proposedRealm = realms.find((realm) => suggestion.realmPath !== null && realm.path === suggestion.realmPath);
   const defaultRealm = proposedRealm?.id ?? channel?.id ?? null;
-  const realmId = chosenRealm === undefined ? defaultRealm : chosenRealm;
+  const realmId = chosenRealm === null ? defaultRealm : chosenRealm.id;
   const realmLabel = realmOptions.find((realm) => realm.id === realmId)?.label ?? "No realm";
   const companionLabel = selected?.label ?? companionLabelOf(runner.harness, null, runner.model);
   const hasMatches = suggestion.matches.length > 0;
@@ -261,13 +127,13 @@ function ProposalCard({
                   isSelected: realmId === null,
                   key: "borderlands",
                   label: "No realm",
-                  onPress: () => setChosenRealm(null),
+                  onPress: () => setChosenRealm({ id: null }),
                 },
                 ...realmOptions.map((realm) => ({
                   isSelected: realmId === realm.id,
                   key: realm.id,
                   label: realm.label,
-                  onPress: () => setChosenRealm(realm.id),
+                  onPress: () => setChosenRealm({ id: realm.id }),
                 })),
               ]}
             />

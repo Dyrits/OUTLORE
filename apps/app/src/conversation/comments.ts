@@ -1,4 +1,4 @@
-import type { Message } from "@outlore/contracts";
+import { type Message, SenderKind } from "@outlore/contracts";
 
 // Comments on messages of a quest or errand. The owner writes them while reading; they wait, per thread, and go with
 // the next message the owner sends. They travel inside that message's text, as terminal output does
@@ -70,7 +70,11 @@ const commentPattern =
   /<comment on="([^"]*)" part="(selection|message)">\n<quote>([\s\S]*?)<\/quote>\n<note>([\s\S]*?)<\/note>\n<\/comment>/g;
 
 const senderOf = (label: string): Message["sender"] | null =>
-  (Object.entries(aboutLabels).find(([, known]) => known === label)?.[0] as Message["sender"] | undefined) ?? null;
+  SenderKind.literals.find((sender) => aboutLabels[sender] === label) ?? null;
+
+const isSender = (value: unknown): value is Message["sender"] => SenderKind.literals.some((sender) => sender === value);
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
 /** Splits a sent message into what the owner typed and the comments it carried; an ordinary message has none. */
 export const commentsOf = (text: string): { body: string; items: ReadonlyArray<SentComment> } => {
@@ -98,16 +102,14 @@ export type CommentStorage = Pick<Storage, "getItem" | "removeItem" | "setItem">
 const storageKeyOf = (threadId: string) => `outlore:comments:${threadId}`;
 
 const isComment = (value: unknown): value is Comment => {
-  if (typeof value !== "object" || value === null) return false;
-  const candidate = value as Record<string, unknown>;
+  if (!isRecord(value)) return false;
   return (
-    typeof candidate.id === "string" &&
-    typeof candidate.messageId === "string" &&
-    typeof candidate.note === "string" &&
-    typeof candidate.quote === "string" &&
-    typeof candidate.isSelection === "boolean" &&
-    typeof candidate.about === "string" &&
-    senderOf(aboutLabels[candidate.about as Message["sender"]] ?? "") !== null
+    typeof value.id === "string" &&
+    typeof value.messageId === "string" &&
+    typeof value.note === "string" &&
+    typeof value.quote === "string" &&
+    typeof value.isSelection === "boolean" &&
+    isSender(value.about)
   );
 };
 

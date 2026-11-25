@@ -1,11 +1,11 @@
 import type { ThreadId, ThreadSummary } from "@outlore/contracts";
 
 /** One visible tree row, with the hidden descendants folded into it. */
-export interface FoldedThread {
+export type FoldedThread = {
   readonly depth: number;
   foldedCount: number;
   readonly thread: ThreadSummary;
-}
+};
 
 /** Projects folding without changing the tree; urgent and owner-opened threads always remain reachable. */
 export const foldThreads = (

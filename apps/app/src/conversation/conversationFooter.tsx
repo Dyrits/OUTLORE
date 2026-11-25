@@ -1,6 +1,6 @@
 import type { MissionDetail } from "@outlore/contracts";
 import { companionLabelOf } from "../foundation/formatting";
-import { AgentReply, WorkingIndicator } from "./conversationEntries";
+import { AgentReply, WorkingIndicator } from "./agentReply";
 import { workingLabel } from "./entries";
 import { footerOf, workingRunnerOf } from "./threadConversation";
 
