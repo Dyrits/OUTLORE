@@ -1,4 +1,4 @@
-import { BudgetPeriod, type SettingsChange } from "@outlore/contracts";
+import type { SettingsChange } from "@outlore/contracts";
 import { type ReactNode, useRef, useState } from "react";
 import { Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from "react-native";
 import { BudgetEditor } from "../editors/budgets";
@@ -9,18 +9,16 @@ import { useHasSidebar, useHasTopBar } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { Choice } from "../ui/pickers";
 import { ToggleRow } from "../ui/toggleRow";
 import { UsageScreen } from "../usage";
-import { AccountBudgetsCard } from "./accountBudgetsCard";
 import { BrowsableRootsCard } from "./browsableRootsCard";
 import { ComputerNameCard } from "./computerNameCard";
 import { ConnectorsSection } from "./connectorsSection";
 import { DefaultCompanionCard } from "./defaultCompanionCard";
+import { LimitsSection } from "./limitsSection";
 import { LookCard } from "./lookCard";
 import { NumberField, NumberSetting } from "./numberSetting";
 import { PresetsCard } from "./presetsCard";
-import { PricesCard } from "./pricesCard";
 import { ProvidersSection } from "./providers";
 import { RemoteAccessCard } from "./remoteAccessCard";
 import { SettingsCard, SettingsHeading, SettingsMenu, SettingsRule } from "./settingsParts";
@@ -181,60 +179,7 @@ export function SettingsScreen({
               />
             </Section>
             <Section active={active} id="limits">
-              <SettingsCard
-                icon="layers"
-                title="Briefing limit · tokens a quest's briefing may hold"
-                trailing={
-                  <NumberField
-                    label="Briefing limit · tokens a quest's briefing may hold"
-                    minimum={1}
-                    onInvalid={setSaveError}
-                    onSave={(briefingLimit) => save({ briefingLimit })}
-                    value={settings.briefingLimit}
-                  />
-                }
-              />
-              <SettingsCard
-                icon="scroll"
-                title="Lore warning · percent of a model's context window before a quest or errand's lore icon turns red"
-                trailing={
-                  <NumberField
-                    label="Lore warning · percent of a model's context window before a quest or errand's lore icon turns red"
-                    minimum={1}
-                    onInvalid={setSaveError}
-                    onSave={(intelWarningPercent) => save({ intelWarningPercent: Math.min(intelWarningPercent, 100) })}
-                    value={settings.intelWarningPercent}
-                  />
-                }
-              />
-              <SettingsCard icon="hourglass" title="Lore half-life · days for an unused lore to fade by half">
-                {(["preference", "decision", "fact", "temporary"] as const).map((kind) => (
-                  <NumberSetting
-                    key={kind}
-                    label={`Lore half-life · days for an unused ${kind} lore to fade by half`}
-                    minimum={1}
-                    onInvalid={setSaveError}
-                    onSave={(days) => save({ intelHalfLives: { ...settings.intelHalfLives, [kind]: days } })}
-                    value={settings.intelHalfLives[kind]}
-                  />
-                ))}
-              </SettingsCard>
-              <PricesCard client={client} onSave={save} settings={settings} />
-              <AccountBudgetsCard client={client} />
-              <SettingsCard icon="gem" title="Global budget, over the period">
-                <Choice
-                  label={(period) => period}
-                  onChange={(globalBudgetPeriod) => save({ globalBudgetPeriod })}
-                  options={BudgetPeriod.literals}
-                  value={settings.globalBudgetPeriod}
-                />
-                <BudgetEditor
-                  key={`global:${JSON.stringify(settings.globalBudget)}`}
-                  limits={settings.globalBudget}
-                  onSave={(globalBudget) => client.request({ _tag: "ChangeSettings", change: { globalBudget } })}
-                  saveLabel="Save global budget"
-                />
-              </SettingsCard>
+              <LimitsSection client={client} onInvalid={setSaveError} onSave={save} settings={settings} />
             </Section>
             <Section active={active} id="reserves">
               <UsageScreen client={client} isEmbedded />

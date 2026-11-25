@@ -1,32 +1,18 @@
-import type {
-  LoreChange,
-  LoreEntry,
-  LoreEntryId,
-  LoreGauge,
-  LoreProposal,
-  LoreScope,
-  LoreStateFilter,
-  ThreadId,
-  WorkspaceId,
-} from "@outlore/contracts";
+import type { LoreEntryId, LoreGauge, LoreScope, LoreStateFilter, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { messageOf, type ServiceClient } from "../foundation/client";
-import { clockOf, timeOf } from "../foundation/formatting";
-import {
-  loreActionOf,
-  loreChangeLineOf,
-  loreFadingLabelOf,
-  loreGaugeLabelOf,
-  loreOriginLabelOf,
-  loreProposalLineOf,
-  scopeNameOf,
-} from "../foundation/labels";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import type { ServiceClient } from "../foundation/client";
+import { loreGaugeLabelOf } from "../foundation/loreLabels";
 import { useHasSidebar, useHasTopBar } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Choice } from "../ui/pickers";
+import { LoreChangeCard, LoreProposalCard } from "./loreChanges";
+import { LoreEntryRow } from "./loreEntryRow";
 import { DeletedLoreEntryRow, LoreHistoryScreen } from "./loreHistory";
+
+// The changes are drawn in their own file; they are re-exported so the conversation keeps importing them from here.
+export { LoreChangeCard, LoreChangeLine } from "./loreChanges";
 
 // Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...).
 
@@ -41,175 +27,6 @@ export function LoreIcon({ gauge, onPress }: { gauge: LoreGauge; onPress: () => 
     >
       <Text style={[styles.link, gauge.isOverWarning && styles.error]}>{loreGaugeLabelOf(gauge)}</Text>
     </Pressable>
-  );
-}
-
-/** Approve and Decline on a change or a proposal awaiting the owner. */
-function Decision({ onResolve }: { onResolve: (isApproved: boolean) => Promise<unknown> }) {
-  const [error, setError] = useState<string | null>(null);
-  const resolve = (isApproved: boolean) =>
-    onResolve(isApproved).then(
-      () => setError(null),
-      (reason) => setError(messageOf(reason)),
-    );
-  return (
-    <View style={styles.section}>
-      <View style={styles.inlineRow}>
-        <Pressable onPress={() => resolve(true)} style={[styles.answer, styles.answerPrimary]}>
-          <Text style={[styles.answerText, styles.answerTextPrimary]}>Approve</Text>
-        </Pressable>
-        <Pressable onPress={() => resolve(false)} style={styles.answer}>
-          <Text style={styles.answerText}>Decline</Text>
-        </Pressable>
-      </View>
-      {error !== null && <Text style={styles.error}>{error}</Text>}
-    </View>
-  );
-}
-
-/** A change awaiting approval as a card: what the thread asks, the text, and the decision. */
-export function LoreChangeCard({
-  change,
-  client,
-  shouldNameThread = false,
-}: {
-  change: LoreChange;
-  client: ServiceClient;
-  shouldNameThread?: boolean;
-}) {
-  return (
-    <View style={styles.question}>
-      <Text style={styles.questionText}>
-        {loreActionOf(change)}
-        {shouldNameThread ? ` · asked by "${change.threadTitle}"` : ""}
-      </Text>
-      {(change.kind === "Update" || change.kind === "Replace") && change.previousText !== change.text && (
-        <Text style={styles.muted}>Was: {change.previousText}</Text>
-      )}
-      <Text style={styles.body}>{change.text}</Text>
-      <Decision
-        onResolve={(isApproved) => client.request({ _tag: "ResolveIntelChange", changeId: change.id, isApproved })}
-      />
-    </View>
-  );
-}
-
-/** A widening or narrowing proposed from evidence: why, the text it keeps, the lore entries it moves, and the decision. */
-function LoreProposalCard({ client, proposal }: { client: ServiceClient; proposal: LoreProposal }) {
-  return (
-    <View style={styles.question}>
-      <Text style={styles.questionText}>{loreProposalLineOf(proposal)}</Text>
-      <Text style={styles.body}>{proposal.text}</Text>
-      {proposal.loreEntries.map((loreEntry) => (
-        <Text key={loreEntry.id} style={styles.muted}>
-          Now in {scopeNameOf(loreEntry.scopeLabel)}: {loreEntry.text}
-        </Text>
-      ))}
-      <Decision
-        onResolve={(isApproved) =>
-          client.request({ _tag: "ResolveIntelProposal", isApproved, proposalId: proposal.id })
-        }
-      />
-    </View>
-  );
-}
-
-/** A change made or decided, as a short line in its thread. */
-export function LoreChangeLine({ change }: { change: LoreChange }) {
-  return (
-    <View style={styles.questionLine}>
-      <Text style={styles.muted}>
-        {loreChangeLineOf(change)} · {clockOf(change.resolvedAt ?? change.at)}
-      </Text>
-      <Text style={styles.muted}>{change.text}</Text>
-    </View>
-  );
-}
-
-/** One lore entry in the panel, with Edit, Pin or Unpin, Restore when it faded, Delete, and its History. */
-function LoreEntryRow({
-  client,
-  loreEntry,
-  onHistory,
-}: {
-  client: ServiceClient;
-  loreEntry: LoreEntry;
-  onHistory: () => void;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const origin = loreOriginLabelOf(loreEntry.origin);
-  const act = (request: Promise<unknown>, after: () => void) =>
-    request.then(
-      () => {
-        after();
-        setError(null);
-      },
-      (reason) => setError(messageOf(reason)),
-    );
-  return (
-    <View style={styles.section}>
-      <Text style={styles.muted}>
-        {scopeNameOf(loreEntry.scopeLabel)} · saved by{" "}
-        {loreEntry.savedByTitle === null ? "you" : `"${loreEntry.savedByTitle}"`} · {timeOf(loreEntry.savedAt)}
-        {loreEntry.updatedAt !== loreEntry.savedAt ? ` · changed ${timeOf(loreEntry.updatedAt)}` : ""} ·{" "}
-        {loreEntry.tokens} tokens
-      </Text>
-      <Text style={styles.muted}>{loreFadingLabelOf(loreEntry)}</Text>
-      {origin !== null && <Text style={styles.muted}>{origin}</Text>}
-      {draft === null ? (
-        <View style={styles.row}>
-          <Text style={[styles.body, styles.flex]}>{loreEntry.text}</Text>
-          <Pressable onPress={() => setDraft(loreEntry.text)}>
-            <Text style={styles.link}>Edit</Text>
-          </Pressable>
-          <Pressable
-            onPress={() =>
-              act(
-                client.request({ _tag: "PinIntel", isPinned: !loreEntry.isPinned, loreEntryId: loreEntry.id }),
-                () => {},
-              )
-            }
-          >
-            <Text style={styles.link}>{loreEntry.isPinned ? "Unpin" : "Pin"}</Text>
-          </Pressable>
-          {loreEntry.state !== "Active" && (
-            <Pressable
-              onPress={() => act(client.request({ _tag: "RestoreIntel", loreEntryId: loreEntry.id }), () => {})}
-            >
-              <Text style={styles.link}>Restore</Text>
-            </Pressable>
-          )}
-          <Pressable onPress={() => act(client.request({ _tag: "DeleteIntel", loreEntryId: loreEntry.id }), () => {})}>
-            <Text style={styles.link}>Delete</Text>
-          </Pressable>
-          <Pressable onPress={onHistory}>
-            <Text style={styles.link}>History</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.inlineRow}>
-          <TextInput
-            accessibilityLabel="Lore text"
-            multiline
-            onChangeText={setDraft}
-            style={[styles.input, styles.flex]}
-            value={draft}
-          />
-          <Pressable
-            onPress={() =>
-              act(client.request({ _tag: "EditIntel", loreEntryId: loreEntry.id, text: draft }), () => setDraft(null))
-            }
-          >
-            <Text style={styles.link}>Save</Text>
-          </Pressable>
-          <Pressable onPress={() => setDraft(null)}>
-            <Text style={styles.link}>Cancel</Text>
-          </Pressable>
-        </View>
-      )}
-      {error !== null && <Text style={styles.error}>{error}</Text>}
-    </View>
   );
 }
 

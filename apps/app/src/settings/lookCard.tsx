@@ -40,7 +40,10 @@ const canvasLabels = { cool: "Cool glow", flat: "Flat", warm: "Warm glow" } as c
   IslandCanvas,
   string
 >;
-const liftLabels = { "0": "None", "0.5": "Faint", "1": "Soft", "2": "Strong", "3": "Deep" } as const;
+const liftLabels = { 0: "None", 0.5: "Faint", 1: "Soft", 2: "Strong", 3: "Deep" } as const satisfies Record<
+  (typeof islandLifts)[number],
+  string
+>;
 
 const sidebarModeLabels = { docked: "Docked", overlay: "Overlay" } as const satisfies Record<SidebarMode, string>;
 const sidebarSideLabels = { left: "Left", right: "Right" } as const satisfies Record<SidebarSide, string>;
@@ -124,23 +127,33 @@ function IslandRows() {
     value: T,
     name: (option: T) => string,
     onChange: (option: T) => void,
-  ) => (
-    <>
-      <SettingsRule />
-      <View style={local.row}>
-        <Text style={[styles.body, local.label]}>{label}</Text>
-        <View style={local.steps}>
-          <Steps
-            accessibilityLabel={label}
-            label={(option) => name(Number(option) as T)}
-            onChange={(option) => onChange(Number(option) as T)}
-            options={options.map(String)}
-            value={String(value)}
-          />
+  ) => {
+    // The steps work in text; each is turned back into the option it names.
+    const optionOf = (text: string) => options.find((candidate) => String(candidate) === text);
+    return (
+      <>
+        <SettingsRule />
+        <View style={local.row}>
+          <Text style={[styles.body, local.label]}>{label}</Text>
+          <View style={local.steps}>
+            <Steps
+              accessibilityLabel={label}
+              label={(text) => {
+                const option = optionOf(text);
+                return option === undefined ? text : name(option);
+              }}
+              onChange={(text) => {
+                const option = optionOf(text);
+                if (option !== undefined) onChange(option);
+              }}
+              options={options.map(String)}
+              value={String(value)}
+            />
+          </View>
         </View>
-      </View>
-    </>
-  );
+      </>
+    );
+  };
   return (
     <>
       <SettingsRule />
@@ -160,7 +173,7 @@ function IslandRows() {
         "Lift · the islands' shadow",
         islandLifts,
         islands.lift,
-        (lift) => liftLabels[String(lift) as keyof typeof liftLabels],
+        (lift) => liftLabels[lift],
         (lift) => chooseIslands({ lift }),
       )}
     </>

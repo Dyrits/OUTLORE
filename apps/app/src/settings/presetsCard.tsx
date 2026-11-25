@@ -10,7 +10,7 @@ import { Row } from "../quests/questPanel";
 import { CompanionTable } from "./companionTable";
 import { AddPreset, PresetActions } from "./presetActions";
 import { SettingsCard } from "./settingsParts";
-import { tierNames } from "./workshopCompanions";
+import { tierNameOf, tierNames } from "./tierNames";
 
 /**
  * One preset: its name and what it is for, a Set or Clear beside them, and its Companion as the same table as the
@@ -145,12 +145,16 @@ export function PresetsCard({
       ))}
       <AddPreset
         startOf={(focus) => {
+          const tierStackOf = (key: string) => {
+            const tier = tierNameOf(key);
+            return tier === null ? null : settings.tiers[tier];
+          };
           const shown =
             focus === "Default"
               ? null
               : focus.startsWith("custom:")
                 ? settings.companionPresets?.custom.find(({ name }) => `custom:${name}` === focus)?.stack
-                : settings.tiers[focus as TierName];
+                : tierStackOf(focus);
           return (
             shown ?? {
               accountId: null,
