@@ -10,6 +10,10 @@ export type HostedListing = {
 
 /** The recorded listings, keyed by connector id. */
 export const hostedListings: Readonly<Record<string, HostedListing>> = {
+  cloudflare_docs: {
+    names: ["search_cloudflare_documentation", "migrate_pages_to_workers_guide"],
+    source: "live tools/list of https://docs.mcp.cloudflare.com/mcp, 2026-11-25",
+  },
   context7: {
     names: ["resolve-library-id", "query-docs"],
     source: "live tools/list of https://mcp.context7.com/mcp, 2026-11-25",

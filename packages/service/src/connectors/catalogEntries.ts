@@ -1,4 +1,5 @@
 import type { CatalogEntry } from "./catalog.ts";
+import { cloudflareDocsEntry } from "./entries/cloudflare_docs.ts";
 import { context7Entry } from "./entries/context7.ts";
 
 // The two connectors Outlore offers first (connectors specification, Composio and Apple apps). The servers are not run
@@ -148,4 +149,9 @@ export const appleEntry: CatalogEntry = {
 };
 
 /** Every connector the Charter offers, in the order it lists them. */
-export const defaultCatalog: ReadonlyArray<CatalogEntry> = [composioEntry, appleEntry, context7Entry];
+export const defaultCatalog: ReadonlyArray<CatalogEntry> = [
+  composioEntry,
+  appleEntry,
+  context7Entry,
+  cloudflareDocsEntry,
+];
