@@ -1,5 +1,6 @@
 import type { CatalogEntry } from "./catalog.ts";
 import { awsKnowledgeEntry } from "./entries/aws_knowledge.ts";
+import { cloudflareEntry } from "./entries/cloudflare.ts";
 import { cloudflareDocsEntry } from "./entries/cloudflare_docs.ts";
 import { context7Entry } from "./entries/context7.ts";
 import { datadogEntry } from "./entries/datadog.ts";
@@ -174,4 +175,5 @@ export const defaultCatalog: ReadonlyArray<CatalogEntry> = [
   neonEntry,
   gitlabEntry,
   datadogEntry,
+  cloudflareEntry,
 ];

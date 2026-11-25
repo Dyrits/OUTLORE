@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { hostedServiceLicence, isToolName, listedNameOf, unnamedToolsOf } from "../../src/connectors/catalog.ts";
+import {
+  hostedServiceLicence,
+  isOAuthEntry,
+  isToolName,
+  listedNameOf,
+  oauthSecretKind,
+  unnamedToolsOf,
+} from "../../src/connectors/catalog.ts";
 import { defaultCatalog } from "../../src/connectors/catalogEntries.ts";
 import { qualifiedToolNameOf } from "../../src/harness/toolNames.ts";
 import { hostedListings } from "../fixtures/hostedListings.ts";
@@ -10,7 +17,7 @@ import { hostedListings } from "../fixtures/hostedListings.ts";
 const hostedEntries = defaultCatalog.filter((entry) => entry.id !== "composio" && entry.backend._tag === "Http");
 const openLicences = ["MIT", "Apache-2.0"];
 
-describe("the hosted connectors of Wave 1", () => {
+describe("the hosted connectors of Waves 1 and 2", () => {
   it("have a recorded listing, and every catalog entry of one is a hosted connector with a listing", () => {
     expect(Object.keys(hostedListings).sort()).toEqual(hostedEntries.map((entry) => entry.id).sort());
   });
@@ -48,6 +55,10 @@ describe("the hosted connectors of Wave 1", () => {
         if (entry.backend.header !== null) {
           expect(entry.backend.header).toBe("authorization");
           expect(entry.backend.prefix).toBe("Bearer ");
+        }
+        if (isOAuthEntry(entry)) {
+          expect(entry.secretKind).toBe(oauthSecretKind);
+          expect(entry.backend.usesSession).toBe(true);
         }
       });
 
