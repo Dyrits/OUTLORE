@@ -1,0 +1,125 @@
+import { type CatalogEntry, oauthSecretKind } from "../catalog.ts";
+
+/**
+ * Todoist: the official remote MCP server at `ai.todoist.net/mcp`, authenticated via generic MCP OAuth 2.1.
+ * Live-probed on 2026-11-25: returns HTTP 401 with RFC 9728 protected-resource metadata, RFC 8414 issuer `https://todoist.com`, PKCE `S256`, and RFC 7591 dynamic client registration at `https://todoist.com/oauth/register`.
+ * No OAuth sign-in was completed during this build, so no live `tools/list` was read; all 52 tool names are read from `src/tool-registry.ts` and `src/utils/tool-names.ts` of `Doist/todoist-ai` at 00f065f7b92449d6c09c7e718b7c19989da5e6aa (MIT, read 2026-11-25).
+ * Every tool is classified by exact name after reading its source: tools that only list, search, fetch, view attachments, or read stats and overviews are `Read`; tools that add, update, complete, uncomplete, reschedule, reorder, assign, move, delete, import, export a shareable template, trigger health analysis, or change user status are `Write` and ask on every call.
+ */
+export const todoistEntry: CatalogEntry = {
+  apps: [],
+  backend: {
+    _tag: "Http",
+    header: "authorization",
+    oauth: { clientName: "Outlore" },
+    prefix: "Bearer ",
+    url: "https://ai.todoist.net/mcp",
+    usesSession: true,
+  },
+  description: "Search and read Todoist tasks, projects and activity, and, after a question, create or update them.",
+  id: "todoist",
+  licence: "MIT",
+  name: "Todoist",
+  notice:
+    "Todoist is a service run by another company, Doist. You sign in on Todoist's own page in your browser, and Outlore keeps the OAuth session in the Vault on this computer. Todoist sees every request a thread makes and returns your tasks, projects and comments, which go to the model provider of the thread. Outlore asks before every tool that creates, changes, completes or deletes anything.",
+  platform: "Any",
+  secretKind: oauthSecretKind,
+  tools: {
+    "add-comments": { app: null, class: "Write", summary: "Adds comments to Todoist tasks or projects" },
+    "add-filters": { app: null, class: "Write", summary: "Creates personal Todoist filters" },
+    "add-folders": { app: null, class: "Write", summary: "Creates workspace folders in Todoist" },
+    "add-labels": { app: null, class: "Write", summary: "Creates personal Todoist labels" },
+    "add-projects": { app: null, class: "Write", summary: "Creates Todoist projects" },
+    "add-reminders": { app: null, class: "Write", summary: "Creates reminders on Todoist tasks" },
+    "add-sections": { app: null, class: "Write", summary: "Creates sections in Todoist projects" },
+    "add-tasks": { app: null, class: "Write", summary: "Creates Todoist tasks" },
+    "analyze-project-health": { app: null, class: "Write", summary: "Triggers a new health analysis for a project" },
+    "complete-tasks": { app: null, class: "Write", summary: "Marks Todoist tasks as completed" },
+    "delete-object": {
+      app: null,
+      class: "Write",
+      summary: "Deletes a Todoist task, project, section, comment, label, filter, folder or reminder",
+    },
+    "export-project-template": {
+      app: null,
+      class: "Write",
+      summary: "Exports a Todoist project as a CSV template or shareable URL",
+    },
+    fetch: { app: null, class: "Read", summary: "Reads the full contents of a Todoist task or project by id" },
+    "fetch-object": { app: null, class: "Read", summary: "Reads one Todoist task, project, comment or section by id" },
+    "find-activity": { app: null, class: "Read", summary: "Reads Todoist activity logs" },
+    "find-comments": { app: null, class: "Read", summary: "Lists or reads comments on Todoist tasks or projects" },
+    "find-completed-tasks": { app: null, class: "Read", summary: "Lists completed Todoist tasks in a date range" },
+    "find-filters": { app: null, class: "Read", summary: "Lists or searches personal Todoist filters" },
+    "find-folders": { app: null, class: "Read", summary: "Lists folders in a Todoist workspace" },
+    "find-labels": { app: null, class: "Read", summary: "Lists personal and shared Todoist labels" },
+    "find-project-collaborators": {
+      app: null,
+      class: "Read",
+      summary: "Finds collaborators on shared Todoist projects",
+    },
+    "find-projects": { app: null, class: "Read", summary: "Lists or searches Todoist projects" },
+    "find-reminders": { app: null, class: "Read", summary: "Reads reminders for a Todoist task or by id" },
+    "find-sections": { app: null, class: "Read", summary: "Lists or searches sections in a Todoist project" },
+    "find-tasks": {
+      app: null,
+      class: "Read",
+      summary: "Searches active Todoist tasks by text, project, label or filter",
+    },
+    "find-tasks-by-date": { app: null, class: "Read", summary: "Lists Todoist tasks due within a date range" },
+    "get-overview": { app: null, class: "Read", summary: "Reads a Markdown overview of the account or a project" },
+    "get-productivity-stats": {
+      app: null,
+      class: "Read",
+      summary: "Reads Todoist productivity and completion statistics",
+    },
+    "get-project-activity-stats": {
+      app: null,
+      class: "Read",
+      summary: "Reads daily and weekly task completion counts for a project",
+    },
+    "get-project-health": { app: null, class: "Read", summary: "Reads the health assessment of a Todoist project" },
+    "get-user-status": { app: null, class: "Read", summary: "Reads the signed-in user's Todoist status" },
+    "get-workspace-insights": {
+      app: null,
+      class: "Read",
+      summary: "Reads aggregated health and progress insights for a workspace",
+    },
+    "import-project-template": {
+      app: null,
+      class: "Write",
+      summary: "Imports a template into an existing Todoist project",
+    },
+    "list-workspaces": { app: null, class: "Read", summary: "Lists Todoist workspaces for the signed-in user" },
+    "manage-assignments": { app: null, class: "Write", summary: "Assigns, unassigns or reassigns Todoist tasks" },
+    "project-management": {
+      app: null,
+      class: "Write",
+      summary: "Archives, unarchives or joins a Todoist project",
+    },
+    "project-move": {
+      app: null,
+      class: "Write",
+      summary: "Moves a Todoist project between personal and workspace contexts",
+    },
+    "reorder-objects": { app: null, class: "Write", summary: "Reorders Todoist projects or sections" },
+    "reschedule-tasks": { app: null, class: "Write", summary: "Reschedules Todoist tasks to new dates" },
+    search: { app: null, class: "Read", summary: "Searches across Todoist tasks and projects" },
+    "set-user-status": { app: null, class: "Write", summary: "Sets or clears the signed-in user's Todoist status" },
+    "uncomplete-tasks": { app: null, class: "Write", summary: "Reopens completed Todoist tasks" },
+    "update-comments": { app: null, class: "Write", summary: "Updates existing Todoist comments" },
+    "update-filters": { app: null, class: "Write", summary: "Updates existing personal Todoist filters" },
+    "update-folders": { app: null, class: "Write", summary: "Renames Todoist workspace folders" },
+    "update-labels": { app: null, class: "Write", summary: "Updates existing Todoist labels" },
+    "update-projects": { app: null, class: "Write", summary: "Updates existing Todoist projects" },
+    "update-reminders": { app: null, class: "Write", summary: "Updates existing Todoist reminders" },
+    "update-sections": { app: null, class: "Write", summary: "Updates existing Todoist sections" },
+    "update-tasks": { app: null, class: "Write", summary: "Updates existing Todoist tasks" },
+    "user-info": {
+      app: null,
+      class: "Read",
+      summary: "Reads profile details and timezone of the signed-in Todoist user",
+    },
+    "view-attachment": { app: null, class: "Read", summary: "Reads a file attachment from a Todoist comment" },
+  },
+};

@@ -13,6 +13,7 @@ import { neonEntry } from "./entries/neon.ts";
 import { stripeEntry } from "./entries/stripe.ts";
 import { supabaseEntry } from "./entries/supabase.ts";
 import { tavilyEntry } from "./entries/tavily.ts";
+import { todoistEntry } from "./entries/todoist.ts";
 
 // The two connectors Outlore offers first (connectors specification, Composio and Apple apps). The servers are not run
 // by this build: the Composio entry's tools are the seven it publishes on its own page and in its repo (research note,
@@ -178,4 +179,5 @@ export const defaultCatalog: ReadonlyArray<CatalogEntry> = [
   datadogEntry,
   cloudflareEntry,
   supabaseEntry,
+  todoistEntry,
 ];

@@ -110,6 +110,8 @@ Threads can act only on the computer and on what their harness already reaches. 
   Tokens refresh automatically on expiry or HTTP 401 behind a per-connector lock, HTTP redirects are never followed, and both access and refresh tokens are redacted from all tool outputs and listing metadata.
 - Because the loopback callback runs on the host computer, `SignInConnector` is host-only; paired devices show that browser sign-in happens on the host computer.
   Vendors that do not support generic RFC 7591 dynamic client registration (such as Slack, Asana, Google Workspace, and Microsoft 365) are skipped.
+- Three initial Wave 2 OAuth 2.1 connectors are offered whose endpoints advertise RFC 9728/8414/7591 dynamic client registration and whose complete tool lists were verified from their official open-source repositories on 2026-11-25: Cloudflare (`mcp.cloudflare.com/mcp`, 5 tools, Apache-2.0), Supabase (`mcp.supabase.com/mcp`, 42 tools, Apache-2.0), and Todoist (`ai.todoist.net/mcp`, 52 tools, MIT).
+  Notion, Atlassian, Figma, Vercel, Linear, Intercom, Postman, monday.com, and Airtable are deferred until their exact hosted tool lists can be verified from a primary source or an authenticated `tools/list`.
 
 ### Apple apps
 
