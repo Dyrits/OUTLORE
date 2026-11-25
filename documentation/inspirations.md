@@ -293,6 +293,23 @@ Codex (`a1604a8`): picks Seatbelt or bubblewrap without testing it; `codex docto
 - **Taken**: none yet. Rules as a never-fading intel kind match its first idea.
 - **Check on**: whether it publishes documentation on how lessons and the vault are stored, and its [pricing](https://timon-ai.com/pricing) page for new features.
 
+### Beads ([source](https://github.com/gastownhall/beads), docs at [beads.gascity.com](https://beads.gascity.com/))
+
+- **What it is**: `bd`, a Go command-line issue tracker for coding agents on an embedded or server Dolt database: typed dependency edges, `bd ready` as a computed frontier, atomic claims with leases, gates, TOML workflow templates, and a small `bd remember` notes plane that `bd prime` injects through session hooks.
+  Its charter keeps orchestration (routing, model choice, retries) out of core, so it is a task graph beneath an orchestrator, not a rival to one.
+- **Good ideas** (2026-11-25, from its source and docs at commit `78624109`, v1.4.0-rc.4 pending and v1.3.4 stable; full notes with citations in [research/beads-2026-11-25.md](research/beads-2026-11-25.md)):
+  - an injected-memory cap that cuts at whole entries and prints how many were left out and how to read them, because hosts truncate silently;
+  - `blocks` and `waits-for` edges with a computed ready set, where a stored readiness flag needed a repair command (compute it on read instead);
+  - gates, one waiting primitive for a human, a timer, a merged pull request, a CI run or another bead;
+  - formulas stamped into graphs of steps, and `bd mol distill` turning a finished ad-hoc tree into a reusable template;
+  - an events journal that errors on a truncated checkpoint instead of returning a smaller answer.
+- **Taken**: none yet; the ideas are candidates for the leaner-preamble item and a future `workflow-running` specification in the [backlog](backlog.md).
+  Recommendation: borrow ideas, no connector, no dependency, not Outlore's store.
+- **Cautions**: anonymous command-usage metrics on by default (opt-out through `bd metrics off`, `BD_DISABLE_METRICS=1` or `DO_NOT_TRACK=1`); a fast release cadence with one-way schema migrations and experimental planes; its Claude Code and Codex setup writes hooks and `AGENTS.md` sections that Outlore's strict harness launches would not run or would not want.
+- **License**: MIT (`LICENSE`).
+  Ideas only; no code is taken.
+- **Check on**: whether versioned beads and "Graph Preview 2" (1.4) stabilize the data model, whether the telemetry default changes, how errand ordering would fit the thread tree, and its open issues for data loss and lock problems, which were not read.
+
 ### Delta conversation terminals, checked 2026-11-10
 
 Delta's [terminal documentation](https://delta.dev/docs/agents/terminals) describes `!` on an empty composer line opening a shell, ordinary exclamation marks staying text, and sending a frozen terminal snapshot while its process continues.
