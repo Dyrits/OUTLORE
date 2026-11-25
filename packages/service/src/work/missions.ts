@@ -29,7 +29,7 @@ import { budgetRefusalOf } from "./budgetScopes.ts";
 import { applyDefaultBudget } from "./budgets.ts";
 import { consumptionOf } from "./consumption.ts";
 import { emptyQuestCondition } from "./emptyQuest.ts";
-import { lastSampleOf } from "./exchangeSamples.ts";
+import { lastSampleOf, replyCountOf } from "./exchangeSamples.ts";
 import { insertJournal } from "./journal.ts";
 import { insertMessage } from "./messaging.ts";
 import { questStateOf, threadStatesOf } from "./missionStates.ts";
@@ -257,7 +257,7 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
       COALESCE(SUM(${sql.literal(tokenSum)}), 0) AS spentTokens,
       w.id AS workspaceId, w.name AS workspaceName,
       ${sql.literal(lastSampleOf("top.id", "user"))} AS lastOwnerText, ${sql.literal(lastSampleOf("top.id", "agent"))} AS lastReplyText,
-      MAX(0, (SELECT COUNT(*) FROM messages m WHERE m.thread_id = top.id AND m.sender_kind != 'system') - 1) AS replyCount,
+      ${sql.literal(replyCountOf("top"))} AS replyCount,
       r.id AS ritualId, r.is_on AS ritualIsOn, r.last_run_at AS ritualLastRunAt, r.last_run_state AS ritualLastRunState,
       r.next_run_at AS ritualNextRunAt, r.origin_mission_id AS ritualOriginMissionId,
       r.schedule AS ritualSchedule, top.state AS topState,

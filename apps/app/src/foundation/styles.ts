@@ -311,6 +311,21 @@ export const styles = StyleSheet.create({
     paddingLeft: 12,
   },
   stepText: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.md, fontStyle: "italic" },
+  /** The message a thread hangs from, pinned above its own messages: a quiet card, read-only. */
+  threadRoot: {
+    alignSelf: "stretch",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    gap: 4,
+    marginVertical: 6,
+    opacity: 0.9,
+    padding: 12,
+  },
+  /** The line under the root that counts the replies, with a rule either side as in Slack's thread panel. */
+  threadRootDivider: { alignItems: "center", alignSelf: "stretch", flexDirection: "row", gap: 10, marginVertical: 8 },
+  threadRootRule: { backgroundColor: colors.border, flex: 1, height: 1 },
   title: { color: colors.text, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.base, fontWeight: "500" },
   toggle: { alignItems: "center", flexDirection: "row", gap: 10, marginTop: 8 },
   tree: { flexGrow: 0 },

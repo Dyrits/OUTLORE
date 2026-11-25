@@ -10,6 +10,7 @@ import type {
   Suggestion,
   ThreadAnchor,
   ThreadId,
+  ThreadRoot,
   ThreadSummary,
 } from "@outlore/contracts";
 import { settledSuggestionLabelOf } from "../foundation/labels";
@@ -30,6 +31,8 @@ export type Entry = { key: string; at: number } & (
   | { _tag: "Handover"; handover: Handover }
   | { _tag: "LoreChange"; change: LoreChange }
   | { _tag: "ThreadOpened"; thread: ThreadSummary }
+  /** The message of the parent conversation the thread hangs from, pinned above its own messages, with the reply count. */
+  | { _tag: "Root"; replyCount: number; root: ThreadRoot }
   | ({ _tag: "QuestLink" } & Omit<QuestLink, "key">)
 );
 
@@ -149,7 +152,22 @@ export const entriesOf = (
   });
   const stepGroups = stepGroupsOf(messages, detail.questions, detail.activities, isWorking);
   const stepIds = new Set(stepGroups.flatMap((group) => group.steps.map((step) => step.id)));
+  const { root } = detail.thread;
   const entries: Array<Entry> = [
+    // The root stands before everything the thread did: the oldest entry, so the inverted feed draws it at the top.
+    ...(root == null
+      ? []
+      : [
+          {
+            _tag: "Root",
+            at: Number.NEGATIVE_INFINITY,
+            key: `root:${root.id}`,
+            replyCount:
+              detail.threads.find((thread) => thread.id === detail.thread.id)?.replyCount ??
+              messages.filter((message) => message.sender !== "system").length,
+            root,
+          } satisfies Entry,
+        ]),
     ...stepGroups.map(
       (group): Entry => ({
         _tag: "Steps",

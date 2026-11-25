@@ -1,4 +1,13 @@
-import type { HarnessName, Message, MessageId, MissionId, ReplyUsage, Skill, ThreadId } from "@outlore/contracts";
+import type {
+  HarnessName,
+  Message,
+  MessageId,
+  MissionId,
+  ReplyUsage,
+  Skill,
+  ThreadId,
+  ThreadRoot,
+} from "@outlore/contracts";
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { MessageImages } from "../attachments/attachmentViews";
@@ -140,7 +149,7 @@ export function WorkingIndicator({ harness, label }: { harness: HarnessName; lab
 }
 
 /** The label above a message: none for the owner's own, whose faint card says it waits. */
-export const senderLabelOf = (message: Message) => {
+export const senderLabelOf = (message: Pick<Message, "fromTitle" | "sender"> & { isResult?: boolean }) => {
   if (message.sender === "user") return null;
   if (message.sender === "system") {
     return message.fromTitle ? `Notice from "${shortened(message.fromTitle)}"` : "Outlore";
@@ -252,6 +261,39 @@ function MessageBubble({
   );
 }
 
+/**
+ * The message the thread hangs from, as Slack's thread panel pins the message replied to: a quiet card with its sender
+ * and time, then a rule that counts the replies. Read-only: it takes no Reply or comment.
+ */
+function ThreadRootView({
+  harness,
+  replyCount,
+  root,
+}: {
+  /** The harness the thread runs on now: the writer of an agent root that records none. */
+  harness: HarnessName;
+  replyCount: number;
+  root: ThreadRoot;
+}) {
+  const sender =
+    root.sender === "user" ? "You" : root.sender === "agent" ? replyWriterOf(root, harness).label : senderLabelOf(root);
+  return (
+    <View>
+      <View style={styles.threadRoot}>
+        <View style={styles.senderHeader}>
+          <Text style={styles.senderName}>{sender}</Text>
+          <Text style={styles.senderTime}>{stampOf(root.sentAt)}</Text>
+        </View>
+        <Markdown text={root.text} />
+      </View>
+      <View style={styles.threadRootDivider}>
+        <Text style={styles.muted}>{replyCount === 1 ? "1 reply" : `${replyCount} replies`}</Text>
+        <View style={styles.threadRootRule} />
+      </View>
+    </View>
+  );
+}
+
 /** One conversation entry: an open question or suggestion as a card, a settled one as a line. */
 export function EntryView({
   canOpenAside = true,
@@ -277,6 +319,8 @@ export function EntryView({
   onSelectThread: (threadId: ThreadId) => void;
 }) {
   if (entry._tag === "LiveFooter") return null;
+  if (entry._tag === "Root")
+    return <ThreadRootView harness={harness} replyCount={entry.replyCount} root={entry.root} />;
   if (entry._tag === "ThreadOpened") return <ReplyLine isCompact onOpen={onSelectThread} thread={entry.thread} />;
   if (entry._tag === "Steps")
     return <StepsGroup client={client} seconds={entry.seconds} steps={entry.steps} threadId={entry.threadId} />;

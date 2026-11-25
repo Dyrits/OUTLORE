@@ -167,7 +167,16 @@ describe("what hangs from a message", () => {
       expect(anchors).toEqual([expect.objectContaining({ messageId: trigger.id, threadId: opened.threadId })]);
       const settled = yield* settle(started.missionId, isIdle, opened.threadId);
       const errandSummary = settled.threads.find((thread) => thread.id === opened.threadId);
-      expect(errandSummary?.replyCount).toBe(1);
+      // The anchor is the root, so the errand's own opening message is a reply: the owner's text and the agent's answer.
+      expect(errandSummary?.replyCount).toBe(2);
+      // The errand's pane pins the anchor message of the quest's conversation above its own messages.
+      const errandPane = yield* call({ _tag: "ReadMission", missionId: started.missionId, threadId: opened.threadId });
+      expect(errandPane.thread.root).toEqual(
+        expect.objectContaining({ id: trigger.id, sender: "user", text: trigger.text }),
+      );
+      // A quest started from the dashboard leaves a copy of its text in its channel: its first message is its own root.
+      expect(detail.thread.root ?? null).toBeNull();
+      expect(settled.mission.replyCount).toBe(1);
     }).pipe(Effect.provide(setup().layer)),
   );
 
@@ -264,6 +273,12 @@ describe("replying to a message", () => {
       const quest = yield* settle(started.missionId, isIdle);
       expect(quest.threads).toHaveLength(1);
       expect(quest.messages[0]?.text).toBe("Add dark mode");
+      // The Chronicle's message is the root; the quest's own opening message and its answer are both replies.
+      expect(quest.thread.root).toEqual(
+        expect.objectContaining({ id: message.id, sender: "agent", text: message.text }),
+      );
+      expect(quest.mission.replyCount).toBe(quest.messages.length);
+      expect(quest.mission.replyCount).toBeGreaterThanOrEqual(2);
     }).pipe(Effect.provide(setup().layer)),
   );
 
@@ -279,6 +294,8 @@ describe("replying to a message", () => {
       const detail = yield* read(started.missionId, opened.threadId);
       expect(detail.thread.parentId).toBe(started.threadId);
       expect(detail.messages[0]?.text).toBe("Check the flights");
+      expect(detail.thread.root).toEqual(expect.objectContaining({ id: message.id, sender: "agent" }));
+      expect(detail.threads.find((thread) => thread.id === opened.threadId)?.replyCount).toBe(detail.messages.length);
       expect(yield* anchorsOf(started.threadId)).toEqual([
         { messageId: message.id, missionId: started.missionId, threadId: opened.threadId, title: "Errand" },
       ]);
@@ -435,7 +452,9 @@ describe("realm channels open quests directly", () => {
       expect(quest.thread.model).toBe("claude-sonnet-4-6");
       expect(quest.thread.effort).toBe("high");
       expect(quest.thread.permissionMode).toBe("AutoAcceptEdits");
+      // The quest's opening message repeats the owner's message in the channel, so that message is its own root.
       expect(quest.mission.replyCount).toBe(1);
+      expect(quest.thread.root ?? null).toBeNull();
     }).pipe(Effect.provide(f.layer));
   });
 });
