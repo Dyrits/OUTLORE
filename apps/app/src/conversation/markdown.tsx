@@ -11,17 +11,31 @@ const isTable = (token: Token): token is Tokens.Table => token.type === "table";
 
 import { Fragment, type ReactNode, useMemo } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
+import { channelTextOf } from "../foundation/colorMix";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { CopyButton } from "../ui/copyButton";
 import { linkTargetOf, listMarkerOf } from "./markdownRules";
 
+/**
+ * A veil of the text color over whatever the message sits on, so code reads apart from prose in every theme: it
+ * darkens a light card and lightens a dark one, where the surface color alone is close to the card's own.
+ */
+const codeVeil = `rgba(${channelTextOf(colors.text).replaceAll(" ", ", ")}, 0.08)`;
+
 const styles = StyleSheet.create({
   blockquote: { borderLeftColor: colors.edge, borderLeftWidth: 3, gap: 6, paddingLeft: 10 },
   bold: { fontWeight: "700" },
-  codeBlock: { backgroundColor: colors.surface, borderRadius: radii.md, padding: 10, paddingRight: 36 },
+  codeBlock: {
+    backgroundColor: codeVeil,
+    borderColor: colors.edge,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    padding: 10,
+    paddingRight: 36,
+  },
   codeBlockText: { color: colors.text, fontFamily: fonts.mono, fontSize: fontSizes.md, lineHeight: 18 },
   codeCopy: { position: "absolute", right: 10, top: 10 },
-  codeSpan: { backgroundColor: colors.surface, fontFamily: fonts.mono, fontSize: fontSizes.md },
+  codeSpan: { backgroundColor: codeVeil, fontFamily: fonts.mono, fontSize: fontSizes.md },
   deleted: { textDecorationLine: "line-through" },
   heading: { color: colors.text, fontFamily: fonts.sans, fontWeight: "700" },
   italic: { fontStyle: "italic" },
