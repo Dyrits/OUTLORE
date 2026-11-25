@@ -122,7 +122,9 @@ const check = async () => {
     }
   });
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
-  const port = (server.address() as { port: number }).port;
+  const address = server.address();
+  if (address === null || typeof address === "string") throw new Error("The stand-in release server has no port.");
+  const { port } = address;
   // Stands in for `open`: records what it was asked to open, and starts that app with the same throwaway data.
   const opener = join(root, "open.sh");
   // With OUTLORE_CHECK_LAUNCH_SERVICES=1 the stand-in starts the new app through the real `open`, so macOS's own checks

@@ -1,20 +1,20 @@
 import { join } from "node:path";
 
 /** What kind of instance this is: the installed app the owner works in, or a development or checking run. */
-export interface InstanceInput {
+export type InstanceInput = {
   appData: string;
   /** An instance given its own data folder (`OUTLORE_DATA_DIR`) is a throwaway one: checks, verification. */
   dataDirectory: string | undefined;
   hasProfileSwitch: boolean;
   isPackaged: boolean;
-}
+};
 
 /** The name an instance runs under, and where Electron keeps its own profile (cache, local storage, session). */
-export interface Instance {
+export type Instance = {
   name: string;
   /** Null keeps Electron's default folder for that name. */
   profileFolder: string | null;
-}
+};
 
 /**
  * Only the installed app is "Outlore" and uses the default `Outlore` profile and data folder. Every other run (`bun run
