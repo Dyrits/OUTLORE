@@ -1,5 +1,12 @@
 # Work in progress
 
+## Reply count and pinned thread root · 2026-11-25 · built and tested; desktop window check pending
+
+CHG-0737 on `main` (merged from `mission/reply-count-and-thread-root-8f07963c`, commit `330cc8aa`):
+- An errand counts every non-system message as a reply, so a 4-message errand reads "4 replies"; a thread with no anchor, or a dashboard-started quest whose opening message repeats its anchor, still drops its first message (`replyCountOf` in `exchangeSamples.ts`).
+- `ThreadView.root` carries the thread's anchor message, drawn at the top of the errand and quest panes as a quiet read-only card followed by an "N replies" rule, as Slack does.
+Next: desktop window review together with Batches 1 and 2, then record Delivery once accepted.
+
 ## Slack-like thread replies (Batch 2) · 2026-11-25 · built and tested; desktop window check pending
 
 CHG-0736 on `main` (merged from `worktree/slack-like-replies`, commit `19b3c983`):
