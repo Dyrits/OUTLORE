@@ -1,5 +1,9 @@
 # Work in progress
 
+## Idle host traffic per connected screen · 2026-11-25 · built; live measurement pending
+
+CHG-0719 on `mission/relay-outage-and-p2p-6f3be08b`, base `c8bc9f5d`: a connected screen cost the host about 4.4 MB/s over UDP and 1 MB/s on the desktop's loopback link while idle. Both suspected causes were reproduced by `idleTraffic.test.ts` and fixed in `Sessions`. A 6,000-character reply in 3-character deltas sent 2,002 `Draft` frames and 6,155,152 bytes; it now sends 40 frames and about 9,600 bytes (only the new text with its `offset`, at most ten frames a second per thread, the whole text for a screen that joins mid-reply and every fiftieth frame). 50 commits sent 50 `Changed` frames; they now send 2 (first at once, then one per 250 ms window with the latest sequence). Not measured: the effect on the live relay's request count, the phone app, and what each refetch costs by query (a refetch still returns a query's whole result; refetching only the queries a change affects is not built). [Handoff](../.agents/handoffs/2026-11-25-0800-idle-host-traffic.md).
+
 ## Architecture audit · 2026-11-24 · awaiting the owner's choice of candidate
 
 Fifteen deepening candidates for the harness roster, the shell and panes, and the service's work modules are in the [report](architecture-audit/architecture-audit-2026-11-24-0731.html). The top recommendation is H2, one ACP module with dialects, which would also fix H3: six ACP harnesses start with no Outlore tool server, so their errands cannot report back. Defects confirmed along the way:

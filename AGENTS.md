@@ -61,8 +61,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume the idle host traffic work (what a connected screen costs the host, CHG-0719), read the [current handoff](.agents/handoffs/2026-11-25-0800-idle-host-traffic.md). Handoffs are shared and committed.
+
 - To resume the relay outage, GCP options, and direct WebRTC path work, read the [current handoff](.agents/handoffs/2026-11-25-0120-relay-outage-and-p2p.md). Handoffs are shared and committed.
 
 - To verify the new icons of the Quests and Errands list controls in the running app, read the [current handoff](.agents/handoffs/2026-11-25-0042-list-control-icons.md). Handoffs are shared and committed.
 
-- To verify the preset draft in the Workshop and Overwrite in a quest's Companions tab, read the [current handoff](.agents/handoffs/2026-11-25-0033-preset-list-layout.md). Handoffs are shared and committed.
