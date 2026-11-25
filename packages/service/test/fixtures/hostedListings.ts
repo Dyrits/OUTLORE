@@ -36,4 +36,8 @@ export const hostedListings: Readonly<Record<string, HostedListing>> = {
     names: ["web_search_exa", "web_fetch_exa"],
     source: "live tools/list of https://mcp.exa.ai/mcp, 2026-11-25",
   },
+  firecrawl: {
+    names: ["firecrawl_scrape", "firecrawl_search", "firecrawl_parse"],
+    source: "live tools/list of https://mcp.firecrawl.dev/mcp, 2026-11-25",
+  },
 };
