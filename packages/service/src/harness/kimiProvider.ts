@@ -1,3 +1,4 @@
+import { singleVarIsolation } from "./accountIsolation.ts";
 import { type AcpProviderDefinition, majorVersionAtLeast } from "./acpProviderDefinition.ts";
 
 // Current-generation kimi-code only (2.x): the archived Python kimi-cli reports 1.x and does
@@ -13,6 +14,7 @@ import { type AcpProviderDefinition, majorVersionAtLeast } from "./acpProviderDe
 export const kimi: AcpProviderDefinition = {
   argv: () => ["acp"],
   executable: "kimi",
+  isolation: singleVarIsolation("KIMI_CODE_HOME"),
   label: "Kimi",
   signedOutCode: null,
   signIn: null,
@@ -21,6 +23,5 @@ export const kimi: AcpProviderDefinition = {
     KIMI_CODE_DANGEROUS_COMMAND_GUARD: "true",
     KIMI_CODE_NO_AUTO_UPDATE: "1",
   },
-  stateHome: { kind: "account", needsConfiguredHome: false, variable: "KIMI_CODE_HOME" },
   version: majorVersionAtLeast(2),
 };

@@ -1,3 +1,4 @@
+import { computerOnlyIsolation } from "./accountIsolation.ts";
 import { type AcpProviderDefinition, majorVersionAtLeast } from "./acpProviderDefinition.ts";
 
 // Cline: the Cline CLI's own ACP surface. Surveyed fixture-first against the pinned upstream OpenBot
@@ -15,7 +16,7 @@ import { type AcpProviderDefinition, majorVersionAtLeast } from "./acpProviderDe
 //   every spawn upstream makes: the turn client, its profile client, and the device sign-in (:1020-1036).
 // - isolation: upstream has NO accounts entry for cline (no home variable, no added accounts; the driver block sits
 //   between "cursor" and "kimi" without an `accounts` key), so a Cline harness takes the computer's own sign-in only -
-//   the Muse precedent (supportsAddedAccounts false). CLINE_DIR/CLINE_DATA_DIR exist only as process-confinement paths
+//   the Muse precedent (a `computerOnly` isolation). CLINE_DIR/CLINE_DATA_DIR exist only as process-confinement paths
 //   (src/backend/process-confinement.ts:149-166), not as an account surface upstream proved.
 // - Mediation: Cline is a plain ACP server, so every sensitive action reaches the host as session/request_permission,
 //   and the default answer upstream gives is a refusal (src/backend/acp-client.ts:4204-4278). Its subagents ride the
@@ -35,12 +36,14 @@ import { type AcpProviderDefinition, majorVersionAtLeast } from "./acpProviderDe
 export const cline: AcpProviderDefinition = {
   argv: () => ["--acp"],
   executable: "cline",
+  // Only the computer's own sign-in: no verified account surface exists, so no launch redirects CLINE_DATA_DIR.
+  isolation: computerOnlyIsolation(
+    "Upstream has no accounts entry for Cline, and CLINE_DIR and CLINE_DATA_DIR only steer its process confinement.",
+  ),
   label: "Cline",
   signedOutCode: null,
   // The CLI's device-flow sign-in, with the same environment every spawn carries upstream; a live check verifies the code it prints in the terminal.
   signIn: { argv: () => ["auth", "-p", "cline"], extraEnv: {} },
   spawnEnv: { CLINE_NO_AUTO_UPDATE: "1", CLINE_SESSION_BACKEND_MODE: "local" },
-  // Only the computer's own sign-in: no verified account surface exists, so no launch redirects CLINE_DATA_DIR.
-  stateHome: { kind: "computer", variable: "CLINE_DATA_DIR" },
   version: majorVersionAtLeast(3),
 };

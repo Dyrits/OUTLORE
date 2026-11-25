@@ -3,10 +3,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "@effect/vitest";
 import { Effect } from "effect";
+import { singleVarIsolation } from "../../src/harness/accountIsolation.ts";
 import { makeAcpProviderHarness, probeAcpProviderModels } from "../../src/harness/acpProviders.ts";
 import { acpAgentVersionOf, acpVersionAtLeast } from "../../src/harness/acpSession.ts";
 import { antigravity } from "../../src/harness/antigravityProvider.ts";
-import { type AcpFakeConfig, acpFakeEnv, acpFakeRequest, acpFakeRequests, acpFakeScript } from "../fixtures/acpFake.ts";
+import {
+  type AcpFakeConfig,
+  acpFakeDefinition,
+  acpFakeEnv,
+  acpFakeRequest,
+  acpFakeRequests,
+  acpFakeScript,
+} from "../fixtures/acpFake.ts";
 import { standInHarness, standInProbe } from "../fixtures/providerStandIns.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
 
@@ -32,14 +40,12 @@ describe("shared ACP startup agent version check", () => {
   const gatedAdapter = (log: string, config: AcpFakeConfig, minimumAgentVersion?: string) =>
     makeAcpProviderHarness({
       command: process.execPath,
+      definition: acpFakeDefinition({
+        spawnEnv: acpFakeEnv(log, config),
+        ...(minimumAgentVersion === undefined ? {} : { protocol: { minimumAgentVersion } }),
+      }),
       idleTimeout: "10 minutes",
       prefixArgs: [acpFakeScript],
-      profile: {
-        args: [],
-        env: acpFakeEnv(log, config),
-        label: "fake ACP",
-        ...(minimumAgentVersion === undefined ? {} : { protocol: { minimumAgentVersion } }),
-      },
     });
 
   it.live("accepts versions at or above minimumAgentVersion and rejects older versions before session/new", () =>
@@ -108,14 +114,12 @@ describe("shared ACP per-launch isolated temp directory", () => {
       yield* Effect.gen(function* () {
         const harness = yield* makeAcpProviderHarness({
           command: process.execPath,
+          definition: acpFakeDefinition({
+            hasIsolatedTempDir: true,
+            spawnEnv: acpFakeEnv(log, { logEnv: tempEnv }),
+          }),
           idleTimeout: "10 minutes",
           prefixArgs: [acpFakeScript],
-          profile: {
-            args: [],
-            env: acpFakeEnv(log, { logEnv: tempEnv }),
-            hasIsolatedTempDir: true,
-            label: "fake ACP",
-          },
         });
         yield* harness.runTurn(turnRequestOf({ text: "Hello" }));
         const env = acpFakeRequest(log, "initialize").launch?.env;
@@ -151,8 +155,8 @@ describe("shared ACP per-launch isolated temp directory", () => {
       const before = new Set(readdirSync(tmpdir()).filter((name) => name.startsWith("outlore-acp-tmp-")));
       const missing = yield* makeAcpProviderHarness({
         command: "outlore-no-such-acp-binary",
+        definition: acpFakeDefinition({ hasIsolatedTempDir: true, label: "missing ACP" }),
         idleTimeout: "10 minutes",
-        profile: { args: [], env: {}, hasIsolatedTempDir: true, label: "missing ACP" },
       });
       yield* missing.runTurn(turnRequestOf({ text: "Hello" })).pipe(Effect.flip);
       yield* Effect.promise(() =>
@@ -188,38 +192,38 @@ describe("shared ACP per-launch isolated temp directory", () => {
 });
 
 describe("shared ACP ambient environment scrubbing", () => {
-  it.live("strips matching ambient prefixes while keeping stateHome and spawnEnv overrides", () =>
-    inFolder((log, directory) =>
-      Effect.gen(function* () {
-        vi.stubEnv("TEST_SCRUB_SECRET", "ambient-secret");
-        vi.stubEnv("TEST_SCRUB_HOME", "/ambient/home");
-        vi.stubEnv("TEST_UNRELATED_VAR", "keep-me");
-        const account = join(directory, "account-home");
-        const harness = yield* makeAcpProviderHarness({
-          command: process.execPath,
-          idleTimeout: "10 minutes",
-          prefixArgs: [acpFakeScript],
-          profile: {
-            args: [],
-            env: {
-              ...acpFakeEnv(log, {
-                logEnv: ["TEST_SCRUB_SECRET", "TEST_SCRUB_HOME", "TEST_SCRUB_EXPLICIT", "TEST_UNRELATED_VAR"],
-              }),
-              TEST_SCRUB_EXPLICIT: "from-spawn-env",
-            },
-            label: "fake ACP",
-            scrubEnvPrefixes: ["TEST_SCRUB_"],
-            stateHomeEnv: "TEST_SCRUB_HOME",
-          },
-        });
-        yield* harness.runTurn(turnRequestOf({ configDirectory: account, text: "Hello" }));
-        const env = acpFakeRequest(log, "initialize").launch?.env;
-        expect(env?.TEST_SCRUB_SECRET).toBeNull();
-        expect(env?.TEST_SCRUB_HOME).toBe(account);
-        expect(env?.TEST_SCRUB_EXPLICIT).toBe("from-spawn-env");
-        expect(env?.TEST_UNRELATED_VAR).toBe("keep-me");
-      }),
-    ),
+  it.live(
+    "strips matching ambient prefixes while keeping the account's isolation variable and spawnEnv overrides",
+    () =>
+      inFolder((log, directory) =>
+        Effect.gen(function* () {
+          vi.stubEnv("TEST_SCRUB_SECRET", "ambient-secret");
+          vi.stubEnv("TEST_SCRUB_HOME", "/ambient/home");
+          vi.stubEnv("TEST_UNRELATED_VAR", "keep-me");
+          const account = join(directory, "account-home");
+          const harness = yield* makeAcpProviderHarness({
+            command: process.execPath,
+            definition: acpFakeDefinition({
+              isolation: singleVarIsolation("TEST_SCRUB_HOME"),
+              scrubEnvPrefixes: ["TEST_SCRUB_"],
+              spawnEnv: {
+                ...acpFakeEnv(log, {
+                  logEnv: ["TEST_SCRUB_SECRET", "TEST_SCRUB_HOME", "TEST_SCRUB_EXPLICIT", "TEST_UNRELATED_VAR"],
+                }),
+                TEST_SCRUB_EXPLICIT: "from-spawn-env",
+              },
+            }),
+            idleTimeout: "10 minutes",
+            prefixArgs: [acpFakeScript],
+          });
+          yield* harness.runTurn(turnRequestOf({ configDirectory: account, text: "Hello" }));
+          const env = acpFakeRequest(log, "initialize").launch?.env;
+          expect(env?.TEST_SCRUB_SECRET).toBeNull();
+          expect(env?.TEST_SCRUB_HOME).toBe(account);
+          expect(env?.TEST_SCRUB_EXPLICIT).toBe("from-spawn-env");
+          expect(env?.TEST_UNRELATED_VAR).toBe("keep-me");
+        }),
+      ),
   );
 
   it.live("scrubs ambient GEMINI_* and GOOGLE_* on Antigravity turns and probes while keeping GEMINI_HOME", () =>
@@ -253,18 +257,9 @@ describe("shared ACP ambient environment scrubbing", () => {
 
         yield* probeAcpProviderModels({
           command: process.execPath,
+          definition: antigravity,
+          env: acpFakeEnv(`${log}-probe`, { logEnv: logged, mode: "probe" }),
           prefixArgs: [acpFakeScript],
-          profile: {
-            args: [],
-            env: {
-              ...acpFakeEnv(`${log}-probe`, { logEnv: logged, mode: "probe" }),
-              AGY_CLI_DISABLE_AUTO_UPDATE: "true",
-              GEMINI_HOME: geminiHome,
-            },
-            hasIsolatedTempDir: true,
-            label: antigravity.label,
-            scrubEnvPrefixes: antigravity.scrubEnvPrefixes ?? [],
-          },
         });
         const probeEnv = acpFakeRequest(`${log}-probe`, "initialize").launch?.env;
         expect(probeEnv?.GEMINI_HOME).toBe(geminiHome);

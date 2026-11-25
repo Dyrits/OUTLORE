@@ -1,6 +1,6 @@
 export {
   type AcpProviderDefinition,
-  type AcpProviderProfile,
+  type AcpProviderLaunch,
   acpLaunchOf,
   acpSignInOf,
   type VersionGate,

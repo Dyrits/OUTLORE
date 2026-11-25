@@ -105,6 +105,8 @@ export const HarnessInfo = Schema.Struct({
   name: HarnessName,
   /** Why the harness cannot run, such as not being installed, or null. */
   problem: Schema.NullOr(Schema.String),
+  /** Whether the owner can add accounts beside the computer's own sign-in; false when the harness takes only that one. An older host omits it, which reads as true. */
+  supportsAddedAccounts: Schema.optionalKey(Schema.Boolean),
   /** The newer version the harness's own release channel offers, or null when it is up to date or the latest is not known. */
   update: Schema.NullOr(Schema.String),
   /** The installed version, or null when it was not found. */

@@ -3,9 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "@effect/vitest";
 import { Effect } from "effect";
+import { isolationEnvOf } from "../../src/harness/accountIsolation.ts";
 import {
   type AcpProviderDefinition,
   acpLaunchOf,
+  acpSignInOf,
   majorVersionAtLeast,
 } from "../../src/harness/acpProviderDefinition.ts";
 import { acpProviders } from "../../src/harness/acpProviderRoster.ts";
@@ -36,10 +38,10 @@ describe("one definition per ACP provider", () => {
     for (const { name } of providers) expect(harnessNames).toContain(name);
   });
 
-  it("gives the catalog the executable, the legacy executable and the home variable instead of a second copy", () => {
+  it("gives the catalog the executable, the legacy executable and the account isolation instead of a second copy", () => {
     for (const { definition, name } of providers) {
       expect(harnessFacts[name].defaultExecutable).toBe(definition.executable);
-      expect(harnessFacts[name].configVariable).toBe(definition.stateHome.variable);
+      expect(harnessFacts[name].isolation).toBe(definition.isolation);
       expect(harnessFacts[name].legacyExecutable).toBe(definition.legacyExecutable ?? null);
       expect(harnessFacts[name].label).toBe(definition.label);
       expect(harnessFacts[name].versionGate).toBe(definition.version);
@@ -61,16 +63,25 @@ describe("one definition per ACP provider", () => {
   });
 
   it("opens the same Gemini home in the launch and in the sign-in, in the flag and in the variable", () => {
-    const home = "/accounts/gemini-home";
-    const launch = acpLaunchOf(antigravity, { configDirectory: home });
-    const signIn = harnessFacts.antigravity.signIn(home);
-    expect(launch.args).toEqual(["acp", `--gemini-dir=${home}`, "--app-data-dir=antigravity-acp"]);
-    expect(launch.env.GEMINI_HOME).toBe(home);
+    const processEnv = { GEMINI_HOME: "/accounts/gemini-home" };
+    const launch = acpLaunchOf(antigravity, { processEnv });
+    const signIn = acpSignInOf(antigravity, { processEnv });
+    expect(launch.args).toEqual(["acp", "--gemini-dir=/accounts/gemini-home", "--app-data-dir=antigravity-acp"]);
+    expect(launch.env.GEMINI_HOME).toBe("/accounts/gemini-home");
     expect(launch.hasIsolatedTempDir).toBe(true);
     expect(launch.scrubEnvPrefixes).toEqual(["GEMINI_", "GOOGLE_"]);
     expect(launch.protocol?.minimumAgentVersion).toBe("1.5.0");
     expect(signIn?.args).toEqual([...launch.args, "--login"]);
     expect(signIn?.env).toEqual({ ...launch.env });
+  });
+
+  it("keeps Antigravity on the computer's Gemini home whatever account folder a stale row names", () => {
+    const processEnv = { GEMINI_HOME: "/computer/gemini" };
+    const own = acpLaunchOf(antigravity, { processEnv });
+    expect(acpLaunchOf(antigravity, { configDirectory: "/accounts/stale", processEnv })).toEqual(own);
+    expect(acpSignInOf(antigravity, { configDirectory: "/accounts/stale", processEnv })).toEqual(
+      acpSignInOf(antigravity, { processEnv }),
+    );
   });
 
   it("resolves an unset Gemini home once, from the environment, for the launch and the sign-in alike", () => {
@@ -91,10 +102,10 @@ describe("one definition per ACP provider", () => {
     const hermes = acpProviders.hermes;
     expect(hermes).toBeDefined();
     if (hermes === undefined) return;
-    const launch = acpLaunchOf(hermes);
-    expect(launch).toMatchObject({ needsConfiguredStateHome: true, stateHomeEnv: "HERMES_HOME" });
-    // The adapter sets the variable per thread; the sign-in has no adapter, so it carries the account folder itself.
-    expect(launch.env).not.toHaveProperty("HERMES_HOME");
+    expect(hermes.isolation).toMatchObject({ kind: "directory", needsConfiguredHome: true });
+    // The computer's own sign-in redirects nothing; an account's folder is HERMES_HOME in the launch and in the sign-in alike.
+    expect(acpLaunchOf(hermes).env).not.toHaveProperty("HERMES_HOME");
+    expect(acpLaunchOf(hermes, { configDirectory: "/accounts/h" }).env).toEqual({ HERMES_HOME: "/accounts/h" });
     expect(harnessFacts.hermes.signIn("/accounts/h")?.env).toEqual({ HERMES_HOME: "/accounts/h" });
     expect(harnessFacts.hermes.signIn(null)?.args).toEqual(["pm", "repair", "&&", "hermes", "--setup"]);
   });
@@ -103,10 +114,11 @@ describe("one definition per ACP provider", () => {
     for (const name of ["cursor", "copilot", "cline", "devin"] as const) {
       const definition = acpProviders[name];
       if (definition === undefined) throw new Error(`no definition for ${name}`);
-      const launch = acpLaunchOf(definition, { configDirectory: "/accounts/x" });
-      expect(launch.stateHomeEnv).toBeUndefined();
-      expect(launch.env).toEqual(definition.spawnEnv);
-      expect(harnessFacts[name].signIn("/accounts/x")?.env ?? {}).not.toHaveProperty(definition.stateHome.variable);
+      expect(definition.isolation.kind).toBe("computerOnly");
+      expect(isolationEnvOf(definition.isolation, "/accounts/x")).toEqual({});
+      expect(acpLaunchOf(definition, { configDirectory: "/accounts/x" }).env).toEqual(definition.spawnEnv);
+      const signIn = harnessFacts[name].signIn("/accounts/x");
+      if (signIn !== null) expect(signIn.env).toEqual({ ...definition.spawnEnv, ...definition.signIn?.extraEnv });
     }
   });
 
@@ -153,7 +165,7 @@ describe("the version gates", () => {
   it("accepts only the audited Kimi generation, which is no harness yet", () => {
     expect(kimi.version?.accepts("kimi, version 2.7.2")).toBe(true);
     expect(kimi.version?.accepts("kimi, version 1.6")).toBe(false);
-    expect(kimi.stateHome).toMatchObject({ kind: "account", variable: "KIMI_CODE_HOME" });
+    expect(isolationEnvOf(kimi.isolation, "/accounts/k")).toEqual({ KIMI_CODE_HOME: "/accounts/k" });
     expect(acpLaunchOf(kimi).env).toMatchObject({ KIMI_CODE_DANGEROUS_COMMAND_GUARD: "true" });
     expect(harnessNames).not.toContain("kimi");
   });
@@ -251,7 +263,7 @@ describe.skipIf(process.platform === "win32")("the registry reads the definition
   it("reads the Antigravity sign-in from the same launch: models listed is signed in, the pinned code is signed out", async () => {
     const signedIn = standIn(antigravity, { mode: "probe" });
     try {
-      expect(await Effect.runPromise(harnesses.antigravity.readSignIn(signedIn.command, {}))).toEqual({
+      expect(await Effect.runPromise(harnesses.antigravity.readSignIn(signedIn.command, null))).toEqual({
         detail: null,
         signIn: "SignedIn",
       });
@@ -264,7 +276,7 @@ describe.skipIf(process.platform === "win32")("the registry reads the definition
       signedOut: { code: -32000, message: "Authentication required" },
     });
     try {
-      expect(await Effect.runPromise(harnesses.antigravity.readSignIn(signedOut.command, {}))).toEqual({
+      expect(await Effect.runPromise(harnesses.antigravity.readSignIn(signedOut.command, null))).toEqual({
         detail: null,
         signIn: "SignedOut",
       });

@@ -147,8 +147,8 @@ export const listVibeModels = Effect.fnUntraced(
 
 /** Who Vibe's account is signed in as, read through its own ACP extensions; never a credential. */
 export const readVibeSignIn = Effect.fnUntraced(
-  function* (command: string, env: Record<string, string>, prefixArgs: ReadonlyArray<string> = []) {
-    const { answer } = yield* probeVibe(command, env.VIBE_HOME ?? null, prefixArgs, (rpc, sessionId) =>
+  function* (command: string, configDirectory: string | null, prefixArgs: ReadonlyArray<string> = []) {
+    const { answer } = yield* probeVibe(command, configDirectory, prefixArgs, (rpc, sessionId) =>
       Effect.gen(function* () {
         const identity = yield* rpc.request("_identity/read", { sessionId }).pipe(Effect.result);
         const account = yield* rpc.request("_account/read", { sessionId }).pipe(Effect.result);

@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { computerOnlyIsolation } from "./accountIsolation.ts";
 import { type AcpProviderDefinition, majorVersionAtLeast } from "./acpProviderDefinition.ts";
 
 // Antigravity: Google's Antigravity CLI, the ACP surface that fronts Gemini models. Surveyed fixture-first against
@@ -37,7 +38,7 @@ import { type AcpProviderDefinition, majorVersionAtLeast } from "./acpProviderDe
 //   session/new reading covers this harness; upstream reports usage from its own token file (antigravity-usage.ts),
 //   a registration-level concern this adapter does not read.
 // - Added accounts: upstream passes an account's GEMINI_HOME into BOTH the environment and the --gemini-dir flag (provider-drivers.ts:892 with antigravityArgv({...process.env, ...context.accountEnvironment}), :292-296), so its two home channels always agree.
-//   The pinned tree does not show which one the CLI follows when they differ, and the state-home rule below pins one home into both, so an Antigravity harness takes the computer's own sign-in only until a live check proves the hierarchy.
+//   The pinned tree does not show which one the CLI follows when they differ, and the pinned home below carries one home into both, so an Antigravity harness takes the computer's own sign-in only until a live check proves the hierarchy.
 //   Upstream gates state folders on CLI >= 1.5.3 (antigravityTakesStateFolders, src/backend/cli.ts:694-696); Outlore reads no such gate while added accounts stay refused.
 
 /** The app-data directory the CLI nests inside the Gemini home (upstream ANTIGRAVITY_APP_DATA, provider-drivers.ts:286). */
@@ -71,8 +72,13 @@ export const antigravity: AcpProviderDefinition = {
   executable: "agy",
   // Each launch unpacks roughly 1 GB into its temporary folder and a force-killed process leaves it behind (T3 Code, AntigravityDriver.ts:201-210).
   hasIsolatedTempDir: true,
+  // Added accounts are refused until a live login check proves the CLI follows the account's home (see "Added accounts" above).
+  isolation: computerOnlyIsolation(
+    "Which of the home's two channels, the flag or GEMINI_HOME, wins is unproven until a signed-in live check.",
+  ),
   label: "Gemini (Antigravity)",
   legacyExecutable: "antigravity",
+  pinnedHome: { resolve: (env) => antigravityGeminiHome(env), variable: "GEMINI_HOME" },
   // agy 1.5.16 advertises `sessionCapabilities.resume` (live check 2026-11-24), and loading a session replays its tool calls.
   // Its `interaction_*` permission requests carry the agent's questions for the user (T3 Code, AntigravityProtocol.ts:72-77),
   // so they are choices for the owner, never approvals.
@@ -94,6 +100,5 @@ export const antigravity: AcpProviderDefinition = {
   // The sign-in is the launch's own argv with --login, so it can only open the home the launch will read.
   signIn: { argv: (home) => [...argvOf(home), "--login"], extraEnv: {}, keepsPath: true },
   spawnEnv: { AGY_CLI_DISABLE_AUTO_UPDATE: "true" },
-  stateHome: { kind: "pinned", resolve: (env) => antigravityGeminiHome(env), variable: "GEMINI_HOME" },
   version: majorVersionAtLeast(1),
 };

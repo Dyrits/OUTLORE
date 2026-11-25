@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { Deferred, Duration, Effect, Queue } from "effect";
 import { fieldOf, HarnessFailure, reducedEnvironmentOf, textFieldOf } from "../core/index.ts";
+import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import { type PiProvider, piModelsOf } from "./pi.ts";
 
 // Pi's own RPC framing (earendil-works/pi in `--mode rpc`): one JSON record a line, each answer correlated by the
@@ -146,7 +147,7 @@ export const probePiModels = (options: {
       args: ["--no-session", "--no-extensions", "--no-mcp"],
       command: options.command,
       cwd,
-      env: options.configDirectory === undefined ? {} : { PI_CODING_AGENT_DIR: options.configDirectory },
+      env: accountEnvironmentOf("pi", options.configDirectory ?? null),
       label: "Pi",
       ...(options.prefixArgs === undefined ? {} : { prefixArgs: options.prefixArgs }),
     });

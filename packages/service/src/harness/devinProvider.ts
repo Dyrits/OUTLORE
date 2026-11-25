@@ -1,3 +1,4 @@
+import { computerOnlyIsolation } from "./accountIsolation.ts";
 import type { AcpProviderDefinition } from "./acpProviderDefinition.ts";
 
 // Devin: Cognition's Devin CLI, its own ACP surface. Surveyed fixture-first against the pinned upstream OpenBot
@@ -14,7 +15,7 @@ import type { AcpProviderDefinition } from "./acpProviderDefinition.ts";
 // - Isolation: upstream has NO accounts entry for devin - no home variable, no added accounts (the driver block at
 //   src/backend/provider-drivers.ts:1136-1172) - and its state lives under the machine-wide XDG data root
 //   (src/backend/process-confinement.ts:304-305: XDG_DATA_HOME, else ~/.local/share, plus "/devin"), so a Devin
-//   harness takes the computer's own sign-in only, the Muse precedent (supportsAddedAccounts false); XDG_DATA_HOME itself
+//   harness takes the computer's own sign-in only, the Muse precedent (a `computerOnly` isolation); XDG_DATA_HOME itself
 //   cannot serve as a scoped account home. Its credentials.toml is written by the CLI's own sign-in
 //   (signInFiles, src/backend/provider-drivers.ts:1138).
 // - Mediation: Devin is a plain ACP server, so every sensitive action reaches the host as session/request_permission,
@@ -35,12 +36,13 @@ import type { AcpProviderDefinition } from "./acpProviderDefinition.ts";
 export const devin: AcpProviderDefinition = {
   argv: () => ["acp"],
   executable: "devin",
+  isolation: computerOnlyIsolation(
+    "Its state sits under the machine-wide XDG data root, which cannot serve as an account home.",
+  ),
   label: "Devin",
   signedOutCode: null,
   // No sign-in command of the CLI's own is verified: its sign-in is the ACP `devin-browser` flow, so Sign-in explains.
   signIn: null,
   spawnEnv: {},
-  // Only the computer's own sign-in: the state sits under the machine-wide XDG data root, which cannot serve as an account home.
-  stateHome: { kind: "computer", variable: "XDG_DATA_HOME" },
   version: null,
 };

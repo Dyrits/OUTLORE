@@ -202,6 +202,25 @@ describe("managing provider accounts", () => {
     }).pipe(Effect.provide(layer));
   });
 
+  it.live("tells the Workshop which harnesses offer added accounts, the same answer as the refusal", () => {
+    const { layer } = withHarnesses();
+    return Effect.gen(function* () {
+      const { harnesses } = yield* call({ _tag: "ListHarnesses" });
+      const computerOnly = harnesses.filter((harness) => harness.supportsAddedAccounts === false);
+      expect(computerOnly.map((harness) => harness.name).sort()).toEqual([
+        "antigravity",
+        "cline",
+        "copilot",
+        "cursor",
+        "devin",
+        "muse",
+      ]);
+      expect(
+        harnesses.filter((harness) => harness.supportsAddedAccounts === true).map((harness) => harness.name),
+      ).toEqual(["claude", "codex", "opencode", "vibe", "hermes", "pi"]);
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live("lists every harness with the computer's own sign-in first", () => {
     const { layer } = withHarnesses();
     return Effect.gen(function* () {
