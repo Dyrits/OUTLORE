@@ -172,6 +172,9 @@ const dialectOf = (profile: AcpProviderProfile): AcpDialect => ({
   }),
   questionIdPrefix: profile.protocol?.questionIdPrefix ?? null,
   resumesSessions: profile.protocol?.resumesSessions === true,
+  ...(profile.protocol?.systemPromptNamespace === undefined
+    ? {}
+    : { systemPromptNamespace: profile.protocol.systemPromptNamespace }),
   toolServer: "negotiated",
   usage: "perPrompt",
 });

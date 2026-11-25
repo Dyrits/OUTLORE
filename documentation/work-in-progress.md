@@ -4,15 +4,14 @@
 
 CHG-0719 on `mission/relay-outage-and-p2p-6f3be08b`, base `c8bc9f5d`: a connected screen cost the host about 4.4 MB/s over UDP and 1 MB/s on the desktop's loopback link while idle. Both suspected causes were reproduced by `idleTraffic.test.ts` and fixed in `Sessions`. A 6,000-character reply in 3-character deltas sent 2,002 `Draft` frames and 6,155,152 bytes; it now sends 40 frames and about 9,600 bytes (only the new text with its `offset`, at most ten frames a second per thread, the whole text for a screen that joins mid-reply and every fiftieth frame). 50 commits sent 50 `Changed` frames; they now send 2 (first at once, then one per 250 ms window with the latest sequence). Not measured: the effect on the live relay's request count, the phone app, and what each refetch costs by query (a refetch still returns a query's whole result; refetching only the queries a change affects is not built). [Handoff](../.agents/handoffs/2026-11-25-0800-idle-host-traffic.md).
 
-## Architecture audit · 2026-11-24 · awaiting the owner's choice of candidate
+## Architecture audit · 2026-11-24 · all landed except P3, P4 and the rest of P5
 
-Fifteen deepening candidates for the harness roster, the shell and panes, and the service's work modules are in the [report](architecture-audit/architecture-audit-2026-11-24-0731.html). The top recommendation is H2, one ACP module with dialects, which would also fix H3: six ACP harnesses start with no Outlore tool server, so their errands cannot report back. Defects confirmed along the way:
-- H3, the missing tool server on six ACP harnesses.
-- The account budget card labels nine harnesses "OpenCode".
-- P1 covered individual errand shortcuts, which the two-control batch replaces.
-- The Workshop's inactivity-days setting did nothing (S3); the setting and the orphaned question are deleted.
-
-S1, a paired device enabling remote terminals through Chronicler or a Ritual, comes from reading the code and has not been reproduced. Nothing is built yet. [Handoff](../.agents/handoffs/2026-11-24-0738-architecture-audit.md).
+Fifteen deepening candidates for the harness roster, the shell and panes, and the service's work modules are in the [report](architecture-audit/architecture-audit-2026-11-24-0731.html). What landed, by candidate and change:
+- Shell and panes: P1, P2 and the P5 chevron (CHG-0690).
+- Harness roster: H1 (CHG-0697 fixed the budget card that labelled nine harnesses "OpenCode", and CHG-0704 derived the closed lists from one harness definition), H3 (CHG-0691, the missing tool server on six ACP harnesses), H4 (CHG-0706), H5 (CHG-0707), and H2, the one ACP module: Vibe and the generic providers in CHG-0708 (with CHG-0709 and CHG-0710 for unknown usage and context readings) and OpenCode and Antigravity's system prompt in CHG-0721.
+- Service: S1 (CHG-0693, the settings-authority table), S2 (CHG-0695), S3 (CHG-0692, the inactivity-days setting and its question deleted), S4 (CHG-0696), S5 (CHG-0694) and S6 (CHG-0698).
+Still open: P3 (island frame and layout editing), P4 (window composition) and the rest of P5 (sidebar row anatomy), all in the [backlog](backlog.md), and two H2 leftovers in it: `SSH_CONNECTION` for Antigravity CLI 1.5, which stays undecided until a signed-in live check can prove it, and whether OpenCode's tool calls should show as events.
+OpenCode through the ACP module (CHG-0721, `mission/pull-main-and-choose-next-af907065`): no live OpenCode turn or live Antigravity turn was run, and a real OpenCode inside Seatbelt has not been checked. [Verification](verification/2026-11-25-opencode-through-the-acp-module.md). [Handoff](../.agents/handoffs/2026-11-24-0738-architecture-audit.md).
 
 ## Two child controls on conversation panes · 2026-11-24
 

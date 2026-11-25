@@ -35,6 +35,8 @@ export type AcpProviderProtocol = {
   readonly questionIdPrefix?: string;
   /** The agent replays a session's tool calls on `session/load`, so a session it advertises it can resume is resumed instead. */
   readonly resumesSessions?: boolean;
+  /** The agent takes the starting context as its system prompt under `_meta.<namespace>.systemPrompt.append` when it advertises doing so, instead of in the first prompt. */
+  readonly systemPromptNamespace?: string;
 };
 
 /** How the provider's own sign-in command runs; its environment is the spawn environment plus these extras. */

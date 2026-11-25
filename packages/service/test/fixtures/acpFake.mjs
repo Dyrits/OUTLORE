@@ -11,6 +11,8 @@ import { createInterface } from "node:readline";
 // becomes the next agent message, then the prompt ends (a denial lets the turn carry on, as the providers do).
 
 const defaults = {
+  // Cache-write tokens the prompt's own usage reports, when it reports any.
+  cachedWriteTokens: 0,
   // The context window size the `usage_update` reports, when one is sent.
   contextSize: 200_000,
   // The context the `usage_update` reports as used, when one is sent.
@@ -53,6 +55,8 @@ const defaults = {
   slow: false,
   // Sends one reverse request Outlore does not know (`session/set_mode`) to prove the answer fails closed.
   strict: false,
+  // Advertises `agentCapabilities._meta.antigravity.systemPrompt.append`: the agent takes the starting context as its system prompt.
+  systemPromptAppend: false,
   // The tool call the prompt makes, and the word the reply uses for what the owner chose.
   tool: {
     answerPrefix: "tool",
@@ -107,7 +111,14 @@ const endPrompt = (sessionId, id, stopReason) => {
     sessionUpdate(sessionId, { sessionUpdate: "usage_update", ...sizeField, used: config.contextUsed });
     return answer(id, {
       stopReason,
-      usage: { cachedReadTokens: 2, inputTokens: 10, outputTokens: 5, thoughtTokens: 1, totalTokens: 18 },
+      usage: {
+        cachedReadTokens: 2,
+        ...(config.cachedWriteTokens === 0 ? {} : { cachedWriteTokens: config.cachedWriteTokens }),
+        inputTokens: 10,
+        outputTokens: 5,
+        thoughtTokens: 1,
+        totalTokens: 18,
+      },
     });
   }
   return answer(id, { stopReason });
@@ -204,6 +215,7 @@ const onRequest = (request) => {
   if (request.method === "initialize")
     return answer(request.id, {
       agentCapabilities: {
+        ...(config.systemPromptAppend ? { _meta: { antigravity: { systemPrompt: { append: true } } } } : {}),
         ...(config.mcpHttp ? { mcpCapabilities: { http: true } } : {}),
         promptCapabilities: { image: config.images },
         sessionCapabilities: config.resume ? { resume: {} } : {},

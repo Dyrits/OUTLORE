@@ -5,6 +5,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import type { HarnessEvent, HarnessPrompt, PromptAnswer } from "../../src/core/index.ts";
 import { makeAcpProviderHarness } from "../../src/harness/acpProviders.ts";
+import { noToolServerInstructions } from "../../src/harness/instructions.ts";
 import { makeVibeHarness } from "../../src/index.ts";
 import {
   type AcpFakeConfig,
@@ -128,6 +129,16 @@ describe("every ACP harness reports the context window and the turn's usage", ()
           expect(outcome.context).toBe(1234);
         }),
       ),
+  );
+
+  it.live("counts the cache writes a prompt's usage reports, which OpenCode's own loop always did", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        const harness = yield* bareAdapter(log, { cachedWriteTokens: 7, usage: "response" });
+        const outcome = yield* harness.runTurn(turnRequestOf());
+        expect(outcome.usage).toEqual({ cacheCreation: 7, cacheRead: 2, input: 10, output: 6 });
+      }),
+    ),
   );
 
   it.live("reports no context and unknown usage, not zero, for a provider that sends neither", () =>
@@ -532,6 +543,79 @@ describe("Antigravity's interaction requests are questions, not approvals", () =
         yield* harness.runTurn(turnRequestOf({ askOwner, text: "Decide" }));
         expect(asked).toHaveLength(1);
         expect(asked[0]?.choices).toBeUndefined();
+      }),
+    ),
+  );
+});
+
+describe("every ACP harness answers a permission the agent offers no option for with cancelled", () => {
+  it.live("never makes up an option id the agent did not offer", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        const events: Array<HarnessEvent> = [];
+        const harness = yield* bareAdapter(log, { permissionOptions: [] });
+        yield* harness.runTurn(
+          turnRequestOf({ onEvent: (event) => Effect.sync(() => events.push(event)), text: "Do it" }),
+        );
+        expect(events.filter((event) => event._tag === "Reply").map((event) => event.text)).toContain(
+          "tool was cancelled",
+        );
+      }),
+    ),
+  );
+});
+
+describe("Antigravity takes the starting context as its system prompt when it can", () => {
+  const promptText = (log: string) => {
+    const prompt = (acpFakeRequest(log, "session/prompt").params as { prompt: Array<{ text?: string }> }).prompt;
+    return prompt[0]?.text ?? "";
+  };
+  const meta = (log: string) => acpFakeRequest(log, "session/new").params?._meta;
+
+  it.live(
+    "appends it through `_meta.antigravity.systemPrompt.append` when the agent advertises it, and not in the prompt",
+    () =>
+      inFolder((log) =>
+        Effect.gen(function* () {
+          const harness = yield* turnOn("antigravity", log, { systemPromptAppend: true });
+          yield* harness.runTurn(turnRequestOf({ text: "Hello" }));
+          const appended = meta(log) as { antigravity: { systemPrompt: { append: string } } };
+          expect(appended.antigravity.systemPrompt.append).toContain("Starting context.");
+          expect(promptText(log)).toBe("Hello");
+        }),
+      ),
+  );
+
+  it.live("says in the appended context that the thread has no tool server when the session is given none", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        const harness = yield* turnOn("antigravity", log, { systemPromptAppend: true });
+        const base = turnRequestOf({ text: "Hello" });
+        yield* harness.runTurn({ ...base, access: { ...base.access, mcpUrl: "" } });
+        const appended = meta(log) as { antigravity: { systemPrompt: { append: string } } };
+        expect(appended.antigravity.systemPrompt.append).toContain(noToolServerInstructions);
+      }),
+    ),
+  );
+
+  it.live("puts the context in the first prompt when the agent does not advertise it", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        const harness = yield* turnOn("antigravity", log, {});
+        yield* harness.runTurn(turnRequestOf({ text: "Hello" }));
+        expect(meta(log)).toBeUndefined();
+        expect(promptText(log)).toBe("Starting context.\n\nHello");
+      }),
+    ),
+  );
+
+  it.live("leaves every other provider on the first prompt even when its agent advertises it", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        const harness = yield* turnOn("cursor", log, { systemPromptAppend: true });
+        yield* harness.runTurn(turnRequestOf({ text: "Hello" }));
+        expect(meta(log)).toBeUndefined();
+        expect(promptText(log)).toBe("Starting context.\n\nHello");
       }),
     ),
   );

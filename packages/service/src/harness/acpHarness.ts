@@ -5,6 +5,7 @@ import {
   fieldOf,
   type HarnessAdapter,
   HarnessFailure,
+  type HarnessPrompt,
   numberFieldOf,
   type RpcIncoming,
   type RpcProcess,
@@ -33,8 +34,8 @@ import {
   type PooledTurn,
 } from "./harnessProcesses.ts";
 import { noToolServerInstructions } from "./instructions.ts";
-import { findFirstOutside, promptOf } from "./openCodePrompts.ts";
-import { addUsage } from "./tokenUsage.ts";
+import { findFirstOutside, promptOf, refusalOf } from "./openCodePrompts.ts";
+import { addUsage, contextOf } from "./tokenUsage.ts";
 
 // The Agent Client Protocol as Outlore speaks it to a harness that runs one agent process per thread (JSON-RPC 2.0, one
 // message per line): one ACP session per thread, one `session/prompt` per turn. This module owns the protocol once:
@@ -42,10 +43,35 @@ import { addUsage } from "./tokenUsage.ts";
 // owner's questions, the ask mode, usage and context, file edits and the tool server. A harness differs from another only
 // by its dialect (below), so a fix to one of these reaches every harness that runs through it.
 
-/** The process a thread's session runs in: its arguments and its complete environment. */
+/**
+ * The process a thread's session runs in: its arguments and its complete environment.
+ * A launch that wraps the executable in a sandbox names the command to start, and then its arguments are complete.
+ */
 export type AcpLaunch = {
   readonly args: ReadonlyArray<string>;
+  /** The executable to start, when the launch wraps it; otherwise the harness's own command, after the harness's prefix arguments. */
+  readonly command?: string;
   readonly env: Record<string, string | undefined>;
+  /** How the launch contains the process, for a dialect that judges permissions by it (`promptOf`). */
+  readonly containment?: {
+    /** Whether the executor, the process that runs the agent's commands and edits, is NOT confirmed to be inside the sandbox; read at each permission request. */
+    readonly isUnconfirmed: (rpc: RpcProcess) => boolean;
+    /** Whether the process is wrapped in the sandbox. */
+    readonly isSandboxed: boolean;
+    /** Whether the owner allowed the agent to run without the sandbox it would otherwise run in. */
+    readonly isUnsandboxed: boolean;
+  };
+  /** Ends anything the process left behind once it has ended, however it ended. */
+  readonly onEnded?: () => Promise<ReadonlyArray<number>>;
+};
+
+/** What a dialect's `promptOf` decides the owner's question from. */
+export type AcpPermissionContext = {
+  readonly launch: AcpLaunch;
+  readonly request: TurnRequest;
+  readonly rpc: RpcProcess;
+  /** The tool call the permission request names, as far as the session's updates and the request itself say. */
+  readonly toolCall: unknown;
 };
 
 /**
@@ -68,8 +94,11 @@ export type AcpDialect = {
    * resuming does not replay the session's tool calls to the client, which `session/load` does.
    */
   readonly resumesSessions: boolean;
-  /** How the thread's tool server is given: see `acpToolServersOf`. */
-  readonly toolServer: "http" | "negotiated";
+  /**
+   * How the thread's tool server is given: see `acpToolServersOf`.
+   * `launch`: the launch hands over the tool server and the starting context itself, through a configuration and a file the agent reads (OpenCode); the session is given neither.
+   */
+  readonly toolServer: "http" | "launch" | "negotiated";
   /**
    * How a prompt's usage is reported.
    * - `perPrompt`: each answer is that prompt's own; one that reports none leaves the turn's usage to the token counts of its
@@ -78,7 +107,37 @@ export type AcpDialect = {
    */
   readonly usage: "cumulative" | "perPrompt";
   /** Where a completed call's edits are read from: the standard `diff` blocks, plus what the harness's own results carry. */
-  readonly fileEdits: "acp" | "vibe";
+  readonly fileEdits: "acp" | "opencode" | "vibe";
+  /**
+   * Whether the session's model and thinking level are set on the options it listed (the default), or always, as the options `model` and `effort`:
+   * OpenCode lists an effort only for the model once chosen, so the effort is set after the model without being listed first.
+   */
+  readonly setsOptions?: "always" | "offered";
+  /** The line a thread shows when the agent could not pick up the thread's earlier session; a standard line naming the harness when absent. */
+  readonly lostSessionNote?: string;
+  /** Whether a session the agent could not reopen is replaced by a new one; when this says no, the turn fails with the agent's refusal. Always replaced when absent. */
+  readonly mayReplaceLostSession?: (launch: AcpLaunch) => boolean;
+  /**
+   * The namespace under which the agent takes the starting context as its system prompt (Antigravity: `antigravity`).
+   * An agent that advertises `agentCapabilities._meta.<namespace>.systemPrompt.append` is given the context in `_meta.<namespace>.systemPrompt.append` of each `session/new`,
+   * so the first prompt carries only the owner's message; an agent that does not advertise it is given the context in the first prompt as every agent is.
+   */
+  readonly systemPromptNamespace?: string;
+  /** The turn's context is the token total of its last prompt's answer, not the agent's `usage_update`. */
+  readonly contextFromUsage?: boolean;
+  /** Whether each tool call is a `ToolCall` event in the thread; true when absent. File edits are reported either way. */
+  readonly announcesToolCalls?: boolean;
+  /**
+   * The question the owner is asked about one permission request, from the request and the launch;
+   * the standard question about the tool call, naming the file outside the folder, when absent.
+   */
+  readonly promptOf?: (context: AcpPermissionContext) => Effect.Effect<HarnessPrompt>;
+  /**
+   * The agent cancels its whole prompt when the owner refuses a permission, and ACP carries no message with a refusal:
+   * each refusal is kept and told to the agent in a new prompt of the same turn, so the thread carries on without the action.
+   * An interrupt ends the turn instead.
+   */
+  readonly repromptsRefusals?: boolean;
 };
 
 /** How the unified ACP harness starts. */
@@ -102,6 +161,8 @@ interface AcpConnection extends HarnessConnection {
   handoverNotes: string | null;
   /** A `cumulative` dialect's session totals at the last prompt, so a turn's usage is the delta. */
   lastUsage: TokenUsage;
+  /** The launch that started the process, for the dialect's judgement of permissions. */
+  readonly launch: AcpLaunch;
   readonly rpc: RpcProcess;
   /** Whether the agent advertised that it takes images (ACP `promptCapabilities.image`); false refuses them, null leaves it open. */
   readonly takesImages: boolean | null;
@@ -114,7 +175,7 @@ const promptUsageOf = (usage: unknown): TokenUsage | null =>
   usage === undefined || usage === null
     ? null
     : {
-        cacheCreation: 0,
+        cacheCreation: numberFieldOf(usage, "cachedWriteTokens"),
         // Outlore's usage already carries cache reads beside the input, so a cached read is never added to it as well.
         cacheRead: numberFieldOf(usage, "cachedReadTokens"),
         input: numberFieldOf(usage, "inputTokens"),
@@ -201,28 +262,42 @@ const answerQuestion = Effect.fnUntraced(function* (
   );
 });
 
+/** The question the owner is asked about a tool call: the call, naming the first file it edits outside the thread's folder. */
+const standardPromptOf = Effect.fnUntraced(function* ({ request, toolCall }: AcpPermissionContext) {
+  return promptOf(toolCall, yield* findFirstOutside(request, toolCall));
+});
+
 /**
  * Answers one of the agent's reverse requests: a permission request goes to the owner, any other fails closed.
- * Some agents name only the tool call's id, so the call itself is read from the session updates seen so far.
- * A denial is answered with the agent's reject option and the turn carries on without the action.
+ * Some agents name only the tool call's id, so the call is read from the session updates seen so far, with what the request itself says on top.
+ * A denial is answered with the agent's reject option and the turn carries on without the action;
+ * where the agent cancels its prompt for a refusal, the refusal is added to `refusals` before the agent hears it.
  */
 const answerRequest = Effect.fnUntraced(function* (
   connection: AcpConnection,
   dialect: AcpDialect,
   request: TurnRequest,
   incoming: Extract<RpcIncoming, { _tag: "Request" }>,
+  refusals: Array<string>,
 ) {
   if (incoming.method !== "session/request_permission")
     return connection.rpc.respondError(incoming.id, `Outlore does not answer ${incoming.method}.`);
-  const toolCallId = textFieldOf(fieldOf(incoming.params, "toolCall"), "toolCallId");
-  const toolCall =
-    (toolCallId === null ? null : connection.toolCalls.get(toolCallId)) ?? fieldOf(incoming.params, "toolCall");
+  const named = fieldOf(incoming.params, "toolCall");
+  const toolCallId = textFieldOf(named, "toolCallId");
+  const seen = toolCallId === null ? undefined : connection.toolCalls.get(toolCallId);
+  const toolCall = seen === undefined || seen === null ? named : { ...(seen as object), ...(named as object) };
   if (dialect.questionIdPrefix !== null && toolCallId?.startsWith(dialect.questionIdPrefix) === true)
     return yield* answerQuestion(connection, dialect, request, incoming, toolCall);
-  const answer = yield* request.askOwner(promptOf(toolCall, yield* findFirstOutside(request, toolCall)));
-  const wanted = answer.isAllowed ? "allow_once" : "reject_once";
-  const optionId = permissionOptionIdOf(incoming.params, wanted) ?? wanted;
-  connection.rpc.respond(incoming.id, { outcome: { optionId, outcome: "selected" } });
+  const context = { launch: connection.launch, request, rpc: connection.rpc, toolCall } satisfies AcpPermissionContext;
+  const prompt = yield* (dialect.promptOf ?? standardPromptOf)(context);
+  const answer = yield* request.askOwner(prompt);
+  if (!answer.isAllowed && dialect.repromptsRefusals === true) refusals.push(refusalOf(prompt, answer));
+  const optionId = permissionOptionIdOf(incoming.params, answer.isAllowed ? "allow_once" : "reject_once");
+  // An agent that offers no such option hears the request cancelled, never an option id it did not offer.
+  connection.rpc.respond(
+    incoming.id,
+    optionId === null ? { outcome: { outcome: "cancelled" } } : { outcome: { optionId, outcome: "selected" } },
+  );
 });
 
 /** The ACP protocol of one harness: one ACP session per Outlore thread, one prompt per turn. */
@@ -253,68 +328,92 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
         return yield* new HarnessFailure({
           reason: `${dialect.label}'s agent does not take images. Send the message without them, or hand the thread to a runner that does.`,
         });
-      let draft = "";
-      /** A reply is complete once the agent moves on from writing it, such as to a tool call. */
-      const finishDraft = Effect.suspend(() => {
-        const reply = draft;
-        draft = "";
-        return reply.trim() === "" ? Effect.void : request.onEvent({ _tag: "Reply", text: reply });
-      });
-      let contextTokens: number | null = null;
-      let contextWindow: number | null = null;
-      let updateUsage: TokenUsage | null = null;
-      const read = Effect.fnUntraced(function* (incoming: RpcIncoming) {
-        if (incoming._tag === "Exit") return yield* new HarnessFailure({ reason: incoming.reason });
-        if (incoming._tag === "Request") return yield* turn.fork(answerRequest(connection, dialect, request, incoming));
-        if (incoming.method !== "session/update") return;
-        if (textFieldOf(incoming.params, "sessionId") !== connection.sessionId) return;
-        const update = fieldOf(incoming.params, "update");
-        const kind = textFieldOf(update, "sessionUpdate");
-        if (kind === "agent_message_chunk") {
-          draft += textFieldOf(fieldOf(update, "content"), "text") ?? "";
-          yield* request.onEvent({ _tag: "Draft", text: draft });
-        } else if (kind === "tool_call" || kind === "tool_call_update") {
-          const id = textFieldOf(update, "toolCallId");
-          if (id !== null) connection.toolCalls.set(id, update);
-          if (kind === "tool_call") {
-            yield* finishDraft;
-            yield* request.onEvent({
-              _tag: "ToolCall",
-              id: id ?? "",
-              input: fieldOf(update, "rawInput") ?? {},
-              toolName: textFieldOf(update, "title") ?? textFieldOf(update, "kind") ?? "tool",
-            });
+      // The refusals of the owner that the agent has not heard yet: see `repromptsRefusals`.
+      const refusals: Array<string> = [];
+      let usage: TokenUsage | null = null;
+      // One prompt, whose updates are read until its answer. The turn's images go with its first prompt only.
+      const readPrompt = Effect.fnUntraced(function* (promptText: string, promptImages: typeof images) {
+        let draft = "";
+        /** A reply is complete once the agent moves on from writing it, such as to a tool call. */
+        const finishDraft = Effect.suspend(() => {
+          const reply = draft;
+          draft = "";
+          return reply.trim() === "" ? Effect.void : request.onEvent({ _tag: "Reply", text: reply });
+        });
+        let contextTokens: number | null = null;
+        let contextWindow: number | null = null;
+        let updateUsage: TokenUsage | null = null;
+        const read = Effect.fnUntraced(function* (incoming: RpcIncoming) {
+          if (incoming._tag === "Exit") return yield* new HarnessFailure({ reason: incoming.reason });
+          if (incoming._tag === "Request")
+            return yield* turn.fork(answerRequest(connection, dialect, request, incoming, refusals));
+          if (incoming.method !== "session/update") return;
+          if (textFieldOf(incoming.params, "sessionId") !== connection.sessionId) return;
+          const update = fieldOf(incoming.params, "update");
+          const kind = textFieldOf(update, "sessionUpdate");
+          if (kind === "agent_message_chunk") {
+            draft += textFieldOf(fieldOf(update, "content"), "text") ?? "";
+            yield* request.onEvent({ _tag: "Draft", text: draft });
+          } else if (kind === "tool_call" || kind === "tool_call_update") {
+            const id = textFieldOf(update, "toolCallId");
+            if (id !== null) connection.toolCalls.set(id, update);
+            if (kind === "tool_call") {
+              yield* finishDraft;
+              if (dialect.announcesToolCalls !== false)
+                yield* request.onEvent({
+                  _tag: "ToolCall",
+                  id: id ?? "",
+                  input: fieldOf(update, "rawInput") ?? {},
+                  toolName: textFieldOf(update, "title") ?? textFieldOf(update, "kind") ?? "tool",
+                });
+            }
+            for (const event of acpFileEditsOf(update, connection.sessionId, dialect.fileEdits))
+              yield* request.onEvent(event);
+          } else if (kind === "usage_update") {
+            // The standard fields name the context's size; a provider may add token fields of its own.
+            const used = fieldOf(update, "used");
+            if (typeof used === "number") contextTokens = used;
+            const size = fieldOf(update, "size");
+            if (typeof size === "number" && size > 0) contextWindow = size;
+            updateUsage = addUsage(updateUsage, updateUsageOf(update));
           }
-          for (const event of acpFileEditsOf(update, connection.sessionId, dialect.fileEdits))
-            yield* request.onEvent(event);
-        } else if (kind === "usage_update") {
-          // The standard fields name the context's size; a provider may add token fields of its own.
-          const used = fieldOf(update, "used");
-          if (typeof used === "number") contextTokens = used;
-          const size = fieldOf(update, "size");
-          if (typeof size === "number" && size > 0) contextWindow = size;
-          updateUsage = addUsage(updateUsage, updateUsageOf(update));
-        }
+        });
+
+        const result = yield* readAcpPrompt(connection.rpc, connection.sessionId, promptText, promptImages, read);
+        yield* finishDraft;
+        if (Result.isFailure(result)) return yield* result.failure;
+        const reported = promptUsageOf(fieldOf(result.success, "usage"));
+        const promptUsage =
+          reported !== null
+            ? dialect.usage === "cumulative"
+              ? turnUsageOf(connection, reported)
+              : reported
+            : dialect.usage === "cumulative"
+              ? null
+              : updateUsage;
+        return {
+          context: dialect.contextFromUsage === true ? contextOf(reported) : contextTokens,
+          contextWindow,
+          isCancelled: textFieldOf(result.success, "stopReason") === "cancelled",
+          usage: promptUsage,
+        };
       });
 
-      const result = yield* readAcpPrompt(connection.rpc, connection.sessionId, text, images, read);
-      yield* finishDraft;
-      if (Result.isFailure(result)) return yield* result.failure;
-      const reported = promptUsageOf(fieldOf(result.success, "usage"));
-      const usage =
-        reported !== null
-          ? dialect.usage === "cumulative"
-            ? turnUsageOf(connection, reported)
-            : reported
-          : dialect.usage === "cumulative"
-            ? null
-            : updateUsage;
-      turn.reportUsage(usage);
+      let end = yield* readPrompt(text, images);
+      for (;;) {
+        usage = addUsage(usage, end.usage);
+        // Each prompt's usage counts at once, so a later prompt that fails keeps what the earlier ones used.
+        turn.reportUsage(usage);
+        if (!(dialect.repromptsRefusals === true && end.isCancelled && refusals.length > 0 && !turn.isInterrupting()))
+          break;
+        end = yield* readPrompt(refusals.splice(0).join("\n"), []);
+      }
       return {
         ...(connection.billing === null ? {} : { billing: connection.billing }),
-        context: contextTokens,
-        contextWindow,
-        isInterrupted: textFieldOf(result.success, "stopReason") === "cancelled" || turn.isInterrupting(),
+        // The latest prompt's own reading stands for the context: the sum of usage covers every prompt of the turn.
+        context: end.context,
+        contextWindow: end.contextWindow,
+        isInterrupted: end.isCancelled || turn.isInterrupting(),
         usage,
       };
     }),
@@ -322,27 +421,43 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
     start: Effect.fnUntraced(function* (request: TurnRequest) {
       const launch = yield* dialect.launchOf(request);
       const rpc = yield* startRpcProcess({
-        args: [...(options.prefixArgs ?? []), ...launch.args],
-        command: options.command,
+        args: launch.command === undefined ? [...(options.prefixArgs ?? []), ...launch.args] : launch.args,
+        command: launch.command ?? options.command,
         cwd: request.cwd,
         env: launch.env,
         isJsonRpc2: true,
         isTreeKilled: true,
         label: dialect.label,
+        ...(launch.onEnded === undefined ? {} : { onEnded: launch.onEnded }),
       });
       const session = yield* Effect.gen(function* () {
         const initialized = yield* rpc.request("initialize", acpInitializeParams);
         const capabilities = fieldOf(initialized, "agentCapabilities");
-        const mcpServers = acpToolServersOf(
-          dialect.toolServer,
-          request.access,
-          fieldOf(fieldOf(capabilities, "mcpCapabilities"), "http") === true,
-        );
-        const hasToolServer = mcpServers.length > 0;
+        // A launch that hands the tool server over itself gives the session none, and the agent already has its context.
+        const mcpServers =
+          dialect.toolServer === "launch"
+            ? []
+            : acpToolServersOf(
+                dialect.toolServer,
+                request.access,
+                fieldOf(fieldOf(capabilities, "mcpCapabilities"), "http") === true,
+              );
+        const hasToolServer = dialect.toolServer === "launch" || mcpServers.length > 0;
         const advertisesImages = fieldOf(fieldOf(capabilities, "promptCapabilities"), "image");
         const takesImages = typeof advertisesImages === "boolean" ? advertisesImages : null;
         const resume = fieldOf(fieldOf(capabilities, "sessionCapabilities"), "resume");
         const canResume = dialect.resumesSessions && resume !== undefined && resume !== null && resume !== false;
+        // The starting context promises the thread tools; a session given no tool server is told they are not there.
+        const startingContext = hasToolServer ? request.context : `${request.context}\n\n${noToolServerInstructions}`;
+        const namespace = dialect.systemPromptNamespace;
+        const isAppended =
+          namespace !== undefined &&
+          fieldOf(fieldOf(fieldOf(fieldOf(capabilities, "_meta"), namespace), "systemPrompt"), "append") === true;
+        const newSession = rpc.request("session/new", {
+          cwd: request.cwd,
+          mcpServers,
+          ...(isAppended ? { _meta: { [namespace]: { systemPrompt: { append: startingContext } } } } : {}),
+        });
         if (request.sessionId !== null) {
           const reopened = yield* reopenAcpSession(rpc, {
             canResume,
@@ -351,20 +466,30 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
             sessionId: request.sessionId,
           });
           if (Result.isSuccess(reopened))
-            return { created: reopened.success, handoverNotes: null, hasToolServer, isNew: false, takesImages };
-          // A session the agent cannot open is replaced by a new one, given the thread's conversation so far.
-          const created = yield* rpc.request("session/new", { cwd: request.cwd, mcpServers });
-          yield* request.onEvent({ _tag: "Notice", text: lostSessionNoteOf(dialect.label) });
+            return {
+              created: reopened.success,
+              handoverNotes: null,
+              isAppended,
+              isNew: false,
+              startingContext,
+              takesImages,
+            };
+          // A session the agent cannot open is replaced by a new one, given the thread's conversation so far,
+          // unless the dialect fails the turn instead or the process is gone.
+          if (dialect.mayReplaceLostSession?.(launch) === false || rpc.hasExited()) return yield* reopened.failure;
+          const created = yield* newSession;
+          yield* request.onEvent({ _tag: "Notice", text: dialect.lostSessionNote ?? lostSessionNoteOf(dialect.label) });
           return {
             created,
             handoverNotes: yield* request.conversationSoFar,
-            hasToolServer,
+            isAppended,
             isNew: true,
+            startingContext,
             takesImages,
           };
         }
-        const created = yield* rpc.request("session/new", { cwd: request.cwd, mcpServers });
-        return { created, handoverNotes: null, hasToolServer, isNew: true, takesImages };
+        const created = yield* newSession;
+        return { created, handoverNotes: null, isAppended, isNew: true, startingContext, takesImages };
       }).pipe(Effect.tapError(() => Effect.sync(() => rpc.close())));
       // A reopened session's answer carries no id (the session is the one the request named); a new one's does.
       const sessionId = session.isNew ? textFieldOf(session.created, "sessionId") : request.sessionId;
@@ -388,22 +513,23 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
               new HarnessFailure({ reason: `${dialect.label} refused the ${configId} ${value}: ${failure.reason}` }),
           ),
         );
-      if (request.model !== "default" && offered.includes("model")) yield* setOption("model", request.model);
-      const thinkingId = thinkingConfigIdOf(fieldOf(session.created, "configOptions"));
+      const isAlways = dialect.setsOptions === "always";
+      if (request.model !== "default" && (isAlways || offered.includes("model")))
+        yield* setOption("model", request.model);
+      // The effort is an option of the session's model, which an "always" dialect lists only once the model is chosen.
+      const thinkingId = isAlways ? "effort" : thinkingConfigIdOf(fieldOf(session.created, "configOptions"));
       if (request.effort !== "default" && thinkingId !== null) yield* setOption(thinkingId, request.effort);
       const billing = dialect.readBilling === undefined ? null : yield* dialect.readBilling(rpc, sessionId);
       return {
         billing,
         close: rpc.close,
-        // The starting context promises the thread tools; a session given no tool server is told they are not there.
-        contextToGive: session.isNew
-          ? session.hasToolServer
-            ? request.context
-            : `${request.context}\n\n${noToolServerInstructions}`
-          : null,
+        // A launch that gave the context itself, or a session given it as its system prompt, leaves nothing for the first prompt.
+        contextToGive:
+          session.isNew && dialect.toolServer !== "launch" && !session.isAppended ? session.startingContext : null,
         handoverNotes: session.handoverNotes,
         hasExited: rpc.hasExited,
         lastUsage: { cacheCreation: 0, cacheRead: 0, input: 0, output: 0 },
+        launch,
         rpc,
         sessionId,
         takesImages: session.takesImages,
