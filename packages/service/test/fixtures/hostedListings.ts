@@ -95,6 +95,27 @@ export const hostedListings: Readonly<Record<string, HostedListing>> = {
     source:
       "README of github/github-mcp-server at c6b62954c062b3ad779f4e208716e09cb4a723e0 (default toolset and remote-only tools), 2026-11-25",
   },
+  stripe: {
+    names: [
+      "stripe_api_search",
+      "stripe_api_details",
+      "stripe_api_read",
+      "stripe_api_write",
+      "get_stripe_account_info",
+      "get_balance_summary",
+      "stripe_analytics",
+      "stripe_directory_search",
+      "search_stripe_documentation",
+      "stripe_implementation_planner",
+      "convert_currency",
+      "send_money",
+      "setup_recipient",
+      "transfer_money",
+      "atlas_company_formation",
+      "send_stripe_feedback",
+    ],
+    source: "Stripe docs, 'Stripe MCP' tools table, https://docs.stripe.com/mcp, 2026-11-25",
+  },
   tavily: {
     names: ["tavily_search", "tavily_extract", "tavily_crawl", "tavily_map", "tavily_research", "tavily_feedback"],
     source: "src/index.ts of tavily-ai/tavily-mcp at a65282ee41f1101f8a2b1a3d7548e151326c7106, 2026-11-25",

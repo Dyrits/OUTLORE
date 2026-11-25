@@ -6,6 +6,7 @@ import { deepwikiEntry } from "./entries/deepwiki.ts";
 import { exaEntry } from "./entries/exa.ts";
 import { firecrawlEntry } from "./entries/firecrawl.ts";
 import { githubEntry } from "./entries/github.ts";
+import { stripeEntry } from "./entries/stripe.ts";
 import { tavilyEntry } from "./entries/tavily.ts";
 
 // The two connectors Outlore offers first (connectors specification, Composio and Apple apps). The servers are not run
@@ -166,4 +167,5 @@ export const defaultCatalog: ReadonlyArray<CatalogEntry> = [
   firecrawlEntry,
   githubEntry,
   tavilyEntry,
+  stripeEntry,
 ];
