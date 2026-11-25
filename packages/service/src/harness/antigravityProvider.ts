@@ -74,7 +74,8 @@ export const antigravity: AcpProviderDefinition = {
   // agy 1.5.16 advertises `sessionCapabilities.resume` (live check 2026-11-24), and loading a session replays its tool calls.
   // Its `interaction_*` permission requests carry the agent's questions for the user (T3 Code, AntigravityProtocol.ts:72-77),
   // so they are choices for the owner, never approvals.
-  protocol: { questionIdPrefix: "interaction_", resumesSessions: true },
+  // It also advertises `_meta.antigravity.systemPrompt.append` (live check 2026-11-24), which takes the starting context as the session's system prompt.
+  protocol: { questionIdPrefix: "interaction_", resumesSessions: true, systemPromptNamespace: "antigravity" },
   // A signed-out Antigravity answers `session/new` with -32000 "Authentication required" (CLI 1.5.16, live check 2026-11-24).
   signedOutCode: -32000,
   // The sign-in is the launch's own argv with --login, so it can only open the home the launch will read.

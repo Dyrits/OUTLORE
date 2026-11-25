@@ -1,11 +1,5 @@
 import { Effect } from "effect";
-import {
-  HarnessFailure,
-  type RpcProcess,
-  reducedEnvironmentOf,
-  startRpcProcess,
-  type TurnRequest,
-} from "../core/index.ts";
+import { HarnessFailure, type RpcProcess, reducedEnvironmentOf, type TurnRequest } from "../core/index.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
   type OpenCodeSandbox,
@@ -20,8 +14,9 @@ import { type FolderEscape, folderEscapeOf, folderProblemOf } from "./threadFold
 
 // The sandboxed launch of one thread's `opencode acp`. The order is what makes the sandbox safe, so it is written
 // once, here: ask about a folder that would widen the sandbox, sweep what an earlier run left, copy the sign-in and
-// settings into the sandbox, wrap the command, start it, and keep watching that its executor stays inside the wrap.
-// The caller keeps the protocol (sessions, models, prompts) and learns only what the launch reports.
+// settings into the sandbox, wrap the command, and give the process to start with how to keep watching that its executor
+// stays inside the wrap. The ACP module starts the process and keeps the protocol (sessions, models, prompts); it learns only
+// what the launch reports.
 
 /** What the launch needs from the harness's options. */
 export type OpenCodeLaunchOptions = {
@@ -31,15 +26,22 @@ export type OpenCodeLaunchOptions = {
   readonly sandbox: OpenCodeSandbox | null;
 };
 
-/** A started OpenCode process and the facts about how it is contained, which Containment judges (policy/containment.ts). */
-export type LaunchedOpenCode = {
-  /** Whether a wrapped OpenCode's executor is NOT confirmed to descend from the wrapped process; read at each request. */
-  readonly isContainmentUnconfirmed: () => boolean;
+/** The process to start for one thread and the facts about how it is contained, which Containment judges (policy/containment.ts). */
+export type OpenCodeLaunchPlan = {
+  /** The complete arguments, the sandbox's own included when the command is wrapped. */
+  readonly args: ReadonlyArray<string>;
+  /** The executable to start: the sandbox tool when wrapped, else OpenCode. */
+  readonly command: string;
+  /** The reduced environment of the process. */
+  readonly env: Record<string, string | undefined>;
+  /** Whether a wrapped OpenCode's executor is NOT confirmed to descend from the started process; read at each request. */
+  readonly isContainmentUnconfirmed: (rpc: RpcProcess) => boolean;
   /** Whether the process is wrapped in the sandbox. */
   readonly isSandboxed: boolean;
   /** Whether the thread runs without the sandbox it otherwise runs in, as the owner allowed for a folder that points out. */
   readonly isUnsandboxed: boolean;
-  readonly rpc: RpcProcess;
+  /** Ends any marked OpenCode process a sandboxed one left once it has ended, however it ended; absent when unsandboxed. */
+  readonly onEnded?: () => Promise<ReadonlyArray<number>>;
 };
 
 /** The question asked before running OpenCode without its sandbox for a folder that points elsewhere. */
@@ -124,24 +126,16 @@ export const makeOpenCodeLauncher = (options: OpenCodeLaunchOptions) => {
             options.command,
             args,
           );
-    const rpc = yield* startRpcProcess({
+    // `acp` starts its own `serve`, whose children leave its process group: the module closes the whole tree, and
+    // once `acp` has ended, however it ended, any marked OpenCode process it left is ended too.
+    return {
       args: started.args,
       command: started.command,
-      cwd: request.cwd,
       env: reducedEnvironmentOf(env),
-      isJsonRpc2: true,
-      // `acp` starts its own `serve`, whose children leave its process group: closing ends the group and the whole
-      // tree, and once `acp` has ended, however it ended, any marked OpenCode process it left is ended too.
-      isTreeKilled: true,
-      label: "OpenCode",
-      ...(marker === null ? {} : { onEnded: () => sweepOrphans(marker) }),
-    });
-    const rootPid = rpc.pid;
-    return {
-      isContainmentUnconfirmed: () => sandbox !== null && !(rootPid !== null && hasExecutorBelow(rootPid)),
+      isContainmentUnconfirmed: (rpc) => sandbox !== null && !(rpc.pid !== null && hasExecutorBelow(rpc.pid)),
       isSandboxed: sandbox !== null,
       isUnsandboxed,
-      rpc,
-    } satisfies LaunchedOpenCode;
+      ...(marker === null ? {} : { onEnded: () => sweepOrphans(marker) }),
+    } satisfies OpenCodeLaunchPlan;
   });
 };

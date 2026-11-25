@@ -6,6 +6,7 @@ import { Effect } from "effect";
 
 /** The knobs of the stand-in; each is optional and the script's own defaults say what an absent one means. */
 export type AcpFakeConfig = {
+  readonly cachedWriteTokens?: number;
   readonly contextSize?: number | null;
   readonly contextUsed?: number | null;
   readonly diff?: boolean;
@@ -33,6 +34,7 @@ export type AcpFakeConfig = {
   readonly signedOut?: { readonly code: number; readonly message: string };
   readonly slow?: boolean;
   readonly strict?: boolean;
+  readonly systemPromptAppend?: boolean;
   readonly tool?: {
     readonly answerPrefix?: string;
     readonly id?: string;

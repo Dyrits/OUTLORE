@@ -9,6 +9,7 @@
 // a child in its own process group, as OpenCode's `serve` does, and logs its pid as { grandchild }. `acp` starts its own
 // `serve --stdio --port 0` child as the executor of OpenCode 2.2.0 does (probed 2026-11-12), and logs its pid as
 // { executor }, unless STAND_IN_OPENCODE_EXECUTOR is "none" (an `acp` that served from a process outside its own tree).
+// STAND_IN_OPENCODE_CACHE_WRITE: a number of cache-write tokens a prompt's usage reports besides its other counts.
 // STAND_IN_OPENCODE_IMAGES: "false" advertises `promptCapabilities.image: false` in the initialize answer (ACP's
 // agentCapabilities); unset advertises nothing about images.
 // That executor ends when its parent does; STAND_IN_OPENCODE_EXECUTOR "survivor" makes it outlive its parent, in a
@@ -169,7 +170,18 @@ const finish = (stopReason, text) => {
       update(prompt.sessionId, { content: { text: `${word} `, type: "text" }, sessionUpdate: "agent_message_chunk" });
   send({
     id: prompt.id,
-    result: { stopReason, usage: { cachedReadTokens: 40, inputTokens: 90, outputTokens: 6, thoughtTokens: 2 } },
+    result: {
+      stopReason,
+      usage: {
+        cachedReadTokens: 40,
+        ...(process.env.STAND_IN_OPENCODE_CACHE_WRITE === undefined
+          ? {}
+          : { cachedWriteTokens: Number(process.env.STAND_IN_OPENCODE_CACHE_WRITE) }),
+        inputTokens: 90,
+        outputTokens: 6,
+        thoughtTokens: 2,
+      },
+    },
   });
 };
 
