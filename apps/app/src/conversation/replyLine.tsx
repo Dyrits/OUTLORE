@@ -150,6 +150,7 @@ function ReplyCard({
 function CompactReplyBar({
   activityAt,
   isOpen,
+  kind,
   label,
   onPress,
   replyCount,
@@ -159,6 +160,8 @@ function CompactReplyBar({
 }: {
   activityAt: number | null;
   isOpen: boolean;
+  /** What the line opens, which its small mark shows: a quest or an errand. */
+  kind: "errand" | "quest";
   label: string;
   onPress: () => void;
   replyCount: number | undefined;
@@ -170,24 +173,30 @@ function CompactReplyBar({
   const countLabel = replyCountLabelOf(replyCount, state);
   const badge = waitingCount > 0 ? `${waitingCount} waiting` : state === "Attention" ? stateLabels.Attention : null;
   return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={(pressState) => [
-        local.compactBar,
-        (pressState.pressed || isOpen || isHovered(pressState)) && local.lineActive,
-      ]}
-    >
-      {tone !== null && <View style={[local.dot, { backgroundColor: tone.color }]} />}
-      <Text style={local.compactCount}>{countLabel}</Text>
-      <Text numberOfLines={1} style={local.compactTitle}>
-        {shortened(title)}
-      </Text>
-      {badge !== null && <Text style={[local.compactBadge, tone !== null && { color: tone.color }]}>{badge}</Text>}
-      {activityAt !== null && activityAt > 0 && <Text style={local.compactMeta}>{agoOf(activityAt, Date.now())}</Text>}
-      <Text style={local.go}>{isOpen ? "Open" : "›"}</Text>
-    </Pressable>
+    <View style={local.compactRow}>
+      {/* The elbow sits beside the pressable area, not under it, so the pressed or hovered fill never covers it. */}
+      <View style={local.compactElbow} />
+      <Pressable
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        onPress={onPress}
+        style={(pressState) => [
+          local.compactBar,
+          (pressState.pressed || isOpen || isHovered(pressState)) && local.lineActive,
+        ]}
+      >
+        {tone !== null && <View style={[local.dot, { backgroundColor: tone.color }]} />}
+        <Text style={local.compactCount}>{countLabel}</Text>
+        <Text numberOfLines={1} style={local.compactTitle}>
+          {shortened(title)}
+        </Text>
+        {badge !== null && <Text style={[local.compactBadge, tone !== null && { color: tone.color }]}>{badge}</Text>}
+        {activityAt !== null && activityAt > 0 && (
+          <Text style={local.compactMeta}>{agoOf(activityAt, Date.now())}</Text>
+        )}
+        <ChipIcon color={colors.accentText} kind={kind} size={14} />
+      </Pressable>
+    </View>
   );
 }
 
@@ -213,6 +222,7 @@ export function ReplyLine({
       <CompactReplyBar
         activityAt={thread.lastActivityAt}
         isOpen={isOpen}
+        kind="errand"
         label={`Errand: ${thread.title}, ${stateLabels[thread.shownState]}`}
         onPress={() => onOpen(thread.id)}
         replyCount={thread.replyCount}
@@ -328,6 +338,7 @@ export function QuestReplyLine({
       <CompactReplyBar
         activityAt={quest?.lastActivityAt ?? null}
         isOpen={quest !== null && openPanes.has(quest.topThreadId)}
+        kind="quest"
         label={`${label}: ${quest?.title ?? title}`}
         onPress={() => onOpen(missionId)}
         replyCount={quest?.replyCount}
@@ -354,21 +365,31 @@ const local = StyleSheet.create({
   actionCard: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
   actions: { alignItems: "center", flexDirection: "row", gap: 12 },
   compactBadge: { fontSize: fontSizes.xs, fontWeight: "600" },
+  // The line has no box: plain text hung from the message above by an elbow, as Slack hangs a thread from its message.
   compactBar: {
     alignItems: "center",
-    alignSelf: "stretch",
-    borderColor: colors.edge,
     borderRadius: radii.md,
-    borderWidth: 1,
+    flex: 1,
     flexDirection: "row",
     gap: 8,
-    marginLeft: 18,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 4,
     ...handCursor,
   },
   compactCount: { color: colors.accentText, fontSize: fontSizes.sm, fontWeight: "600" },
+  compactElbow: {
+    borderBottomColor: colors.edge,
+    borderBottomLeftRadius: radii.md,
+    borderBottomWidth: 2,
+    borderLeftColor: colors.edge,
+    borderLeftWidth: 2,
+    height: 18,
+    marginRight: 4,
+    marginTop: -8,
+    width: 10,
+  },
   compactMeta: { color: colors.textMuted, fontSize: fontSizes.xs },
+  compactRow: { alignItems: "center", alignSelf: "stretch", flexDirection: "row", marginLeft: 14 },
   compactTitle: { color: colors.text, flex: 1, fontSize: fontSizes.sm, fontWeight: "500" },
   dot: { borderRadius: radii.pill, height: 8, width: 8 },
   go: { color: colors.accentText, fontSize: fontSizes.sm },

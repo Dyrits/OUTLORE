@@ -105,6 +105,13 @@ describe("the message an errand hangs from, pinned at the top of its pane", () =
     const bare = { ...errand, threads: [summary("child", "top", 20)] } as unknown as MissionDetail;
     expect(entriesOf(bare)[0]).toMatchObject({ _tag: "Root", replyCount: 2 });
   });
+  it("does not repeat a thread's own first message, pinned as its root, among the replies", () => {
+    const own = {
+      ...errand,
+      thread: { id: "child", root: { ...root, id: MessageId.make("first") } },
+    } as unknown as MissionDetail;
+    expect(entriesOf(own).map((entry) => entry.key)).toEqual(["root:first", "second"]);
+  });
   it("shows nothing extra in a thread without a root", () => {
     expect(entriesOf(detailOf(threads, "child")).some((entry) => entry._tag === "Root")).toBe(false);
   });

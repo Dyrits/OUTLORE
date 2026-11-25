@@ -164,7 +164,8 @@ export const entriesOf = (
             key: `root:${root.id}`,
             replyCount:
               detail.threads.find((thread) => thread.id === detail.thread.id)?.replyCount ??
-              messages.filter((message) => message.sender !== "system").length,
+              messages.filter((message) => message.sender !== "system").length +
+                detail.questions.filter((question) => question.source === "Thread").length,
             root,
           } satisfies Entry,
         ]),
@@ -182,21 +183,24 @@ export const entriesOf = (
     ...detail.threads
       .filter((thread) => thread.parentId === detail.thread.id && !thread.isAside)
       .map((thread): Entry => ({ _tag: "ThreadOpened", at: replyLineAt(thread), key: `opened:${thread.id}`, thread })),
-    ...messages.map(
-      (message): Entry => ({
-        _tag: "Message",
-        at: message.sentAt,
-        fromQuest:
-          (message.sender === "thread" || message.sender === "system") && message.fromMissionId !== detail.mission.id
-            ? message.fromMissionId
-            : null,
-        key: message.id,
-        message,
-        ...(message.replyToMessageId == null
-          ? {}
-          : { replyToText: anchorCard.get(message.replyToMessageId)?.text ?? "" }),
-      }),
-    ),
+    // A thread's own first message is its root, pinned above, so it does not repeat among the replies.
+    ...messages
+      .filter((message) => message.id !== root?.id)
+      .map(
+        (message): Entry => ({
+          _tag: "Message",
+          at: message.sentAt,
+          fromQuest:
+            (message.sender === "thread" || message.sender === "system") && message.fromMissionId !== detail.mission.id
+              ? message.fromMissionId
+              : null,
+          key: message.id,
+          message,
+          ...(message.replyToMessageId == null
+            ? {}
+            : { replyToText: anchorCard.get(message.replyToMessageId)?.text ?? "" }),
+        }),
+      ),
     // A quest a Reply started, as a card under the message replied to; its own mission's threads stand above.
     ...anchors.flatMap((anchor): Array<Entry> => {
       if (anchor.missionId === detail.mission.id) return [];

@@ -128,16 +128,29 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
         ru.cache_creation AS usageCacheCreation, ru.estimate AS usageEstimate, ru.reported AS usageReported
       FROM messages m LEFT JOIN reply_usage ru ON ru.message_id = m.id LEFT JOIN threads s ON s.id = m.sender_thread_id LEFT JOIN missions sm ON sm.id = s.mission_id
       WHERE m.thread_id = ${selected.id} ORDER BY m.sequence`;
-  // The message the thread hangs from, which its pane pins above its own messages. A quest whose opening message
-  // repeats it (a quest started from the dashboard) already shows it first, so it pins nothing.
+  // The message the thread hangs from, which its pane pins above its own messages. A thread with no anchor, or a quest
+  // whose opening message repeats it (started from the dashboard), is its own root: its first message is pinned and
+  // left out of the replies, so the first reply is the agent's.
   const [anchored] = yield* sql<NonNullable<MissionDetail["thread"]["root"]>>`
       SELECT m.id, m.sender_kind AS sender, m.harness, m.model, COALESCE(s.title, m.sender_title) AS fromTitle, m.text,
         m.sent_at AS sentAt
       FROM threads t JOIN messages m ON m.id = t.anchor_message_id LEFT JOIN threads s ON s.id = m.sender_thread_id
       WHERE t.id = ${selected.id}`;
-  const firstText = messages.find((message) => message.sender !== "system")?.text;
+  const first = messages.find((message) => message.sender !== "system");
+  const ownRoot =
+    first === undefined || first.isQueued === 1
+      ? undefined
+      : {
+          fromTitle: first.fromTitle,
+          harness: first.harness,
+          id: first.id,
+          model: first.model,
+          sender: first.sender,
+          sentAt: first.sentAt,
+          text: first.text,
+        };
   const root =
-    anchored !== undefined && !(selected.parentId === null && anchored.text === firstText) ? anchored : undefined;
+    anchored !== undefined && !(selected.parentId === null && anchored.text === first?.text) ? anchored : ownRoot;
   const cards = yield* readCards(messages.map((message) => message.id));
   const questions = yield* listThreadQuestions(selected.id);
   const suggestions = yield* listThreadSuggestions(selected.id);

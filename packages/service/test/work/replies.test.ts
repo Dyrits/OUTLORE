@@ -175,7 +175,8 @@ describe("what hangs from a message", () => {
         expect.objectContaining({ id: trigger.id, sender: "user", text: trigger.text }),
       );
       // A quest started from the dashboard leaves a copy of its text in its channel: its first message is its own root.
-      expect(detail.thread.root ?? null).toBeNull();
+      const firstMessage = detail.messages.find((message) => message.sender !== "system");
+      expect(detail.thread.root).toEqual(expect.objectContaining({ id: firstMessage?.id, text: firstMessage?.text }));
       expect(settled.mission.replyCount).toBe(1);
     }).pipe(Effect.provide(setup().layer)),
   );
@@ -454,7 +455,9 @@ describe("realm channels open quests directly", () => {
       expect(quest.thread.permissionMode).toBe("AutoAcceptEdits");
       // The quest's opening message repeats the owner's message in the channel, so that message is its own root.
       expect(quest.mission.replyCount).toBe(1);
-      expect(quest.thread.root ?? null).toBeNull();
+      expect(quest.thread.root).toEqual(
+        expect.objectContaining({ id: quest.messages.find((message) => message.sender !== "system")?.id }),
+      );
     }).pipe(Effect.provide(f.layer));
   });
 });

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Outlore — the reply line under a message, four alternatives (2026-11-25)</title>
+<style>
+  :root {
+    --ground: #0f1722; --page: #172230; --bubble: #1d2b3d; --bubble-user: #24384f; --border: #2a3a4f; --edge: #34465e;
+    --text: #e8edf4; --muted: #8796ab; --secondary: #b4c0d0; --accent: #8db3ff; --accent-soft: #1f3350; --dot: #e0a537;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  body.light {
+    --ground: #e9e1d6; --page: #f3eee6; --bubble: #fbf8f3; --bubble-user: #e3eaf4; --border: #e0d6c9; --edge: #d5c9ba;
+    --text: #1c2838; --muted: #6b7686; --secondary: #46546a; --accent: #2f4d80; --accent-soft: #e0e7f2; --dot: #c98a14;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 32px 60px; font: 14px/1.45 var(--sans); color: var(--text); background: var(--ground); }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  h2 { margin: 0 0 2px; font-size: 16px; }
+  p.lead { max-width: 880px; margin: 0 0 14px; color: var(--muted); }
+  button.theme { margin-bottom: 22px; padding: 5px 12px; font: inherit; color: var(--text); background: var(--page); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(420px, 1fr)); gap: 22px; align-items: start; }
+  .option { padding: 16px; background: var(--page); border: 1px solid var(--border); border-radius: 12px; }
+  .option > p { margin: 2px 0 12px; color: var(--muted); font-size: 13px; }
+  .label { margin: 14px 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .label:first-of-type { margin-top: 0; }
+
+  /* the conversation column: the owner's card is right-aligned and takes at most 92% of the row */
+  .feed { display: grid; gap: 0; }
+  .user { align-self: end; justify-self: end; max-width: 92%; margin: 6px 0; padding: 10px 14px; background: var(--bubble-user); border: 1px solid var(--edge); border-radius: 10px; }
+  .agent { margin: 6px 0; padding: 10px 14px; background: var(--bubble); border: 1px solid var(--edge); border-radius: 10px; }
+  .thumb { width: 96px; height: 52px; margin-top: 6px; background: var(--page); border: 1px solid var(--edge); border-radius: 6px; }
+
+  /* the reply line: the same pieces in every option: dot, count, title, time, Open */
+  .line { display: flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
+  .line .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--dot); flex: none; }
+  .line .count { color: var(--accent); font-weight: 600; white-space: nowrap; }
+  .line .title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .line .time { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+  .line .go { color: var(--accent); }
+  .line:hover { background: var(--accent-soft); }
+
+  /* today: a bordered bar with a fixed 18px indent, whatever the card above it does */
+  .today .line { margin-left: 18px; padding: 6px 10px; border: 1px solid var(--edge); border-radius: 10px; }
+
+  /* the owner's card and the line share one right-aligned column, so both start at the card's left edge */
+  .col { justify-self: end; max-width: 92%; display: grid; }
+  .col .user { max-width: none; justify-self: stretch; }
+  .col.wide { width: 92%; }
+
+  /* A: no bubble, one hairline above, text only */
+  .a .line { padding: 6px 14px 6px 14px; border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; }
+
+  /* B: no bubble, no rule: text hangs under the card's own text, with a Slack-style thread elbow */
+  .b .line { padding: 4px 14px 4px 28px; position: relative; border-radius: 8px; }
+  .b .line::before { content: ""; position: absolute; left: 14px; top: -8px; width: 10px; height: 18px; border-left: 2px solid var(--edge); border-bottom: 2px solid var(--edge); border-bottom-left-radius: 8px; }
+
+  /* C: a quiet pill that only wraps its own text, left edge on the card's edge */
+  .c .line { width: fit-content; padding: 4px 10px; margin-top: 4px; border-radius: 999px; background: var(--accent-soft); }
+  .c .line .title { flex: none; max-width: 260px; }
+
+  /* D: the count is the line; title and time appear on hover only in the real app (shown here as hovered) */
+  .d .line { padding: 2px 14px; color: var(--muted); }
+  .d .line .count::after { content: " ›"; }
+  .d .line .title, .d .line .time, .d .line .dot { }
+  .d .line.hover { background: var(--accent-soft); border-radius: 8px; }
+</style>
+</head>
+<body>
+<h1>The reply line under a message: four alternatives</h1>
+<p class="lead">
+  The owner wants the reply line (the "4 replies  Restore usage toolbar" bar) to start where the message above it starts, and does not think it needs a bubble (2026-11-25).
+  Today it is a bordered bar with a fixed 18 px left margin, so it sits to the left of the owner's right-aligned card and looks unrelated to it.
+  In every alternative the line and the card share one column, so their left edges agree whether the message is short or fills the row.
+  Each is shown twice: under a wide message (as in the screenshot) and under a short one.
+</p>
+<button class="theme" onclick="document.body.classList.toggle('light')">Switch dark / light</button>
+
+<h2>Today</h2>
+<div class="option today" style="max-width:640px; margin-bottom:26px">
+  <div class="feed">
+    <div class="user">I like the new logo like that without the circles around, but I think I prefer the old tooltip with the progression (usage) bar.<br>Can you keep the icon but display the toolbar as it used to be?<div class="thumb"></div></div>
+    <div class="line"><span class="dot"></span><span class="count">4 replies</span><span class="title">Restore usage toolbar, keep new logo</span><span class="time">1 minute ago</span><span class="go">Open</span></div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="option a">
+    <h2>A. A hairline under the card</h2>
+    <p>The line keeps its place under the card as a footer rule: no border box, nothing but a rule and the text. It reads as part of the message.</p>
+    <div class="label">Wide message</div>
+    <div class="feed"><div class="col wide">
+      <div class="user">I like the new logo without the circles around, but I think I prefer the old tooltip with the progression (usage) bar. Can you keep the icon but display the toolbar as it used to be?</div>
+      <div class="line"><span class="dot"></span><span class="count">4 replies</span><span class="title">Restore usage toolbar, keep new logo</span><span class="time">1 minute ago</span><span class="go">Open</span></div>
+    </div></div>
+    <div class="label">Short message</div>
+    <div class="feed"><div class="col">
+      <div class="user">Fix the flaky login test</div>
+      <div class="line"><span class="dot"></span><span class="count">2 replies</span><span class="title">Fix flaky login test</span><span class="time">now</span><span class="go">›</span></div>
+    </div></div>
+  </div>
+
+  <div class="option b">
+    <h2>B. Thread elbow, no box</h2>
+    <p>Plain text hung from the card by a small elbow, as a thread hangs from its message in Slack. It starts under the card's own text, a little inside its edge.</p>
+    <div class="label">Wide message</div>
+    <div class="feed"><div class="col wide">
+      <div class="user">I like the new logo without the circles around, but I think I prefer the old tooltip with the progression (usage) bar. Can you keep the icon but display the toolbar as it used to be?</div>
+      <div class="line"><span class="dot"></span><span class="count">4 replies</span><span class="title">Restore usage toolbar, keep new logo</span><span class="time">1 minute ago</span><span class="go">Open</span></div>
+    </div></div>
+    <div class="label">Short message</div>
+    <div class="feed"><div class="col">
+      <div class="user">Fix the flaky login test</div>
+      <div class="line"><span class="dot"></span><span class="count">2 replies</span><span class="title">Fix flaky login test</span><span class="time">now</span><span class="go">›</span></div>
+    </div></div>
+  </div>
+
+  <div class="option c">
+    <h2>C. A small pill</h2>
+    <p>Not a bar: a pill that is only as wide as its words, its left edge on the card's edge. The softest shape that is still plainly pressable.</p>
+    <div class="label">Wide message</div>
+    <div class="feed"><div class="col wide">
+      <div class="user">I like the new logo without the circles around, but I think I prefer the old tooltip with the progression (usage) bar. Can you keep the icon but display the toolbar as it used to be?</div>
+      <div class="line"><span class="dot"></span><span class="count">4 replies</span><span class="title">Restore usage toolbar, keep new logo</span><span class="time">1 minute ago</span></div>
+    </div></div>
+    <div class="label">Short message</div>
+    <div class="feed"><div class="col">
+      <div class="user">Fix the flaky login test</div>
+      <div class="line"><span class="dot"></span><span class="count">2 replies</span><span class="title">Fix flaky login test</span></div>
+    </div></div>
+  </div>
+
+  <div class="option d">
+    <h2>D. Just the count</h2>
+    <p>Only the dot and "4 replies ›" show; the title and time are left to the pane the line opens. The quietest, and the line never overflows. Shown pressed in the second case.</p>
+    <div class="label">Wide message</div>
+    <div class="feed"><div class="col wide">
+      <div class="user">I like the new logo without the circles around, but I think I prefer the old tooltip with the progression (usage) bar. Can you keep the icon but display the toolbar as it used to be?</div>
+      <div class="line"><span class="dot"></span><span class="count">4 replies</span><span class="time">last 1 minute ago</span></div>
+    </div></div>
+    <div class="label">Short message</div>
+    <div class="feed"><div class="col">
+      <div class="user">Fix the flaky login test</div>
+      <div class="line hover"><span class="dot"></span><span class="count">2 replies</span><span class="time">now</span></div>
+    </div></div>
+  </div>
+</div>
+</body>
+</html>

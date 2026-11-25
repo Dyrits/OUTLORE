@@ -61,9 +61,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To verify and continue the quest suggestion card as a destination list (CHG-0739), read the [current handoff](.agents/handoffs/2026-11-25-1800-quest-suggestion-card.md). Handoffs are shared and committed.
+- To verify and continue the agent reply first in a thread and the reply line without a box (CHG-0741, CHG-0742), read the [current handoff](.agents/handoffs/2026-11-25-1756-agent-reply-first-reply-line.md). Handoffs are shared and committed.
 
-- To verify and continue the Copy buttons and visible code blocks (CHG-0738), read the [current handoff](.agents/handoffs/2026-11-25-1732-copy-buttons-code-blocks.md). Handoffs are shared and committed.
+- To verify and continue the quest suggestion card as a destination list (CHG-0739), read the [current handoff](.agents/handoffs/2026-11-25-1800-quest-suggestion-card.md). Handoffs are shared and committed.
 
 - To resume the plan usage hover card with progress bars (CHG-0723 follow-up), read the [current handoff](.agents/handoffs/2026-11-25-1740-plan-usage-hover-card.md). Handoffs are shared and committed.
 
