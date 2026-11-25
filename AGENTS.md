@@ -61,7 +61,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To verify the direct WebRTC path over a real NAT and check the Workshop row, read the [current handoff](.agents/handoffs/2026-11-25-0105-direct-p2p-path-verified.md). Handoffs are shared and committed.
+- To resume the relay outage, GCP options, and direct WebRTC path work, read the [current handoff](.agents/handoffs/2026-11-25-0120-relay-outage-and-p2p.md). Handoffs are shared and committed.
 
 - To verify the new icons of the Quests and Errands list controls in the running app, read the [current handoff](.agents/handoffs/2026-11-25-0042-list-control-icons.md). Handoffs are shared and committed.
 
