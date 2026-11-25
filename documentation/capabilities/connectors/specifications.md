@@ -17,7 +17,7 @@ Threads can act only on the computer and on what their harness already reaches. 
 
 ### Install, connect, enable
 
-- Outlore lists the connectors it offers; the first are **Composio** and **Apple apps**. The owner **installs** one: it is then on this computer, global, and **enabled everywhere by default** (CHG-0321).
+- Outlore lists the connectors it offers; the first are **Composio** and **Apple apps**, followed by the hosted connectors of Wave 1 (below). The owner **installs** one: it is then on this computer, global, and **enabled everywhere by default** (CHG-0321).
 - **Connected** is a separate state: the owner has given the connector what it needs (a key kept in the Vault, a sign-in, a macOS permission). An installed connector that is not connected shows **Needs connecting** with what is missing, and no thread is given its tools.
 - A connector is **usable** by a thread only when it is installed, connected, and enabled for the thread. Removing a connector forgets its choices, its secrets in the Vault, and its standing permissions.
 - Each connector's card has a **global switch**, on once installed: the master switch. Off, the connector is unavailable everywhere, whatever any realm or quest says.
@@ -82,6 +82,16 @@ Threads can act only on the computer and on what their harness already reaches. 
 
 - Composio is an opt-in connector that needs the owner's own account at Composio and its key, kept in the Vault. Installing it shows a notice and needs the owner's confirmation: Composio's service stores the sign-ins of the apps connected through it, and sees what its tools return; Outlore holds none of those sign-ins.
 - Connecting an app through Composio happens on Composio's own page, not in Outlore.
+
+### Wave 1: hosted developer and web connectors
+
+- Fourteen more connectors are offered, each a remote MCP server run by another company, reached over HTTPS by the host with no browser sign-in (owner, 2026-11-25: "Go with it" to the proposal of Wave 1 without OAuth, a generic MCP OAuth client being a later wave).
+  They are added one at a time, each after its tools were read from a primary source (the server's own `tools/list` where it answers without a key, the vendor's repository or documentation where it does not).
+- A connector either needs no secret (it shows no key field and is connected once installed) or needs one key or token kept in the Vault, entered by the owner as for Composio. The host sends it in one HTTP header, with a prefix such as `Bearer ` when the service asks for one; the prefix is catalog data, never typed by the owner.
+- Every tool is classified by its exact name as for Composio and Apple apps: a read runs unasked, any other tool, and any tool the catalog does not name, asks.
+- Each notice says in plain words that the service is run by another company and what it sees: the tool's inputs (a search phrase, a URL, a repository name) and what it returns, plus, where the connector holds an account, the account's data the key reaches.
+  Where the service lets the owner restrict the key (a read-only token or scope), the notice says to do so.
+- Licence. The catalog names the licence of the server's published source when it has an OSI-approved one. A hosted service whose server code is not published says so in the entry (`Hosted service, server code not published`), which is not an OSI licence: the owner decided on 2026-11-25 to keep such remote services, as Composio's hosted endpoint is, and the Fully open source requirement below is read as covering what Outlore ships, not a third party's service the owner opts into.
 
 ### Apple apps
 

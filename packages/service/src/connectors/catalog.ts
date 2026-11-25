@@ -22,7 +22,14 @@ export type CatalogApp = {
 
 /** How the host reaches a connector's server; the real adapters come with the backends (blueprint, Order step 4). */
 export type CatalogBackend =
-  | { readonly _tag: "Http"; readonly header: string; readonly url: string }
+  | {
+      readonly _tag: "Http";
+      /** The one header that carries the connector's secret, or null for a keyless server that is sent no secret. */
+      readonly header: string | null;
+      /** Text put before the secret in the header's value, such as "Bearer "; absent, the header carries the secret alone. */
+      readonly prefix?: string;
+      readonly url: string;
+    }
   | {
       readonly _tag: "Stdio";
       /** Extra environment for the child, such as forcing the pinned server's local mode. */
