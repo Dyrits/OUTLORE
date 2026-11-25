@@ -11,6 +11,7 @@ import { githubEntry } from "./entries/github.ts";
 import { gitlabEntry } from "./entries/gitlab.ts";
 import { neonEntry } from "./entries/neon.ts";
 import { stripeEntry } from "./entries/stripe.ts";
+import { supabaseEntry } from "./entries/supabase.ts";
 import { tavilyEntry } from "./entries/tavily.ts";
 
 // The two connectors Outlore offers first (connectors specification, Composio and Apple apps). The servers are not run
@@ -176,4 +177,5 @@ export const defaultCatalog: ReadonlyArray<CatalogEntry> = [
   gitlabEntry,
   datadogEntry,
   cloudflareEntry,
+  supabaseEntry,
 ];
