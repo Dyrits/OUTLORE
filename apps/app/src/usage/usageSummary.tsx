@@ -31,7 +31,7 @@ export function UsageHeadline({ metric, report }: { metric: UsageMetric; report:
   return (
     <View style={local.headline}>
       <Text
-        accessibilityLabel={isTokens ? `${exactCountOf(tokens)} tokens without cache reads` : undefined}
+        accessibilityLabel={isTokens ? `${exactCountOf(tokens)} tokens without cache reads` : void 0}
         accessibilityRole="header"
         style={local.total}
         {...(isTokens ? tooltipOf(exactCountOf(tokens)) : {})}

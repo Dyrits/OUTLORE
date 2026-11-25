@@ -36,6 +36,7 @@ function Body({ children, isEmbedded }: { children: ReactNode; isEmbedded: boole
   );
 }
 
+/** Displays spending, token usage, and plan allowances across a chosen period and filters. */
 export function UsageScreen({ client, isEmbedded = false }: { client: ServiceClient; isEmbedded?: boolean }) {
   const [period, setPeriod] = useState<UsagePeriod>({ _tag: "Days", days: 30 });
   const [isCustom, setIsCustom] = useState(false);
@@ -66,7 +67,7 @@ export function UsageScreen({ client, isEmbedded = false }: { client: ServiceCli
   const breakdown = report?.breakdowns.find((candidate) => candidate.dimension === dimension);
   const notice = report === null ? null : noticeOf(report.gaps);
   return (
-    <View style={isEmbedded ? undefined : local.page}>
+    <View style={isEmbedded ? null : local.page}>
       <Body isEmbedded={isEmbedded}>
         {error !== null && <Text style={local.invalid}>{error}</Text>}
         {notice !== null && (

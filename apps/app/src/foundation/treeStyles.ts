@@ -1,0 +1,65 @@
+import { StyleSheet } from "react-native";
+import { colors, fontSizes, fonts, radii } from "./theme";
+
+/** The shared look of the quest tree and the quest page layout. */
+export const treeStyles = StyleSheet.create({
+  missionRowMain: { gap: 2 },
+  questButtonPressed: { backgroundColor: colors.sidebar },
+  questLayout: { backgroundColor: colors.page, flex: 1, flexDirection: "row" },
+  questLayoutCompact: { flexDirection: "column" },
+  questMain: { flex: 1, gap: 10, paddingHorizontal: 24, paddingVertical: 16 },
+  /** A narrow window gives the conversation the width and height it can: less padding and gap. */
+  questMainCompact: { gap: 6, paddingHorizontal: 10, paddingVertical: 8 },
+  questSide: { borderColor: colors.border, borderRightWidth: 1, gap: 8, padding: 12, width: 240 },
+  /** The narrow window's one line over the conversation: back, and the errands that open or fold. */
+  questSideBar: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  questSideCompact: {
+    borderBottomWidth: 1,
+    borderRightWidth: 0,
+    gap: 4,
+    maxHeight: 180,
+    paddingVertical: 6,
+    width: "100%",
+  },
+  tree: { flexGrow: 0 },
+  treeBranch: {
+    borderBottomLeftRadius: 4,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 1,
+    height: 21,
+    position: "absolute",
+    top: -6,
+    width: 10,
+  },
+  treeList: { gap: 2, paddingRight: 12 },
+  treeNote: { color: colors.warningText, fontFamily: fonts.sans, fontSize: fontSizes.sm, fontStyle: "italic" },
+  treeRow: {
+    borderColor: "transparent",
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    gap: 2,
+    paddingRight: 8,
+    paddingVertical: 7,
+  },
+  treeRowSelected: { backgroundColor: colors.controlActive, borderColor: colors.border },
+  treeSection: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    color: colors.textSecondary,
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 4,
+    marginLeft: 8,
+    paddingBottom: 5,
+    paddingTop: 8,
+  },
+  treeSectionLater: { marginTop: 10 },
+  treeState: { alignItems: "center", borderRadius: radii.pill, flexDirection: "row", gap: 6, paddingHorizontal: 4 },
+  treeStateMark: { fontFamily: fonts.sans, fontSize: 9 },
+  treeStateText: { fontFamily: fonts.sans, fontSize: fontSizes.sm, fontStyle: "italic", fontWeight: "600" },
+  treeTitle: { color: colors.text, flex: 1, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "700" },
+  treeTitleQuest: { fontSize: fontSizes.base },
+  treeTitleRow: { alignItems: "center", flexDirection: "row", gap: 6 },
+});

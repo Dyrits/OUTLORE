@@ -4,4 +4,4 @@ import type { AndroidUpdatesBridge } from "../updateState";
 export const androidUpdatesBridge = (): AndroidUpdatesBridge | null => null;
 
 /** Starts looking for a newer release, once; nothing off the phone. */
-export const startAndroidUpdates = (): void => undefined;
+export const startAndroidUpdates = (): void => void 0;

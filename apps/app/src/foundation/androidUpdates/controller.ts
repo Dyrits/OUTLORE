@@ -8,53 +8,11 @@ import {
 } from "@outlore/contracts";
 import { messageOf } from "../client";
 import type { UpdateState, UpdateStatus } from "../updateState";
+import { type AndroidUpdateOptions, checkIntervalMilliseconds } from "./controllerTypes";
+import { availableOf, hostOf, RequestFailure } from "./releaseStatus";
 
-/** How often a running app looks for a new release, as on the desktop. */
-export const checkIntervalMilliseconds = 6 * 60 * 60 * 1000;
-
-/** What the phone's own system does for the updater; the native module answers it, and tests supply their own. */
-export type AndroidInstaller = {
-  /** Opens Android's setting where the owner allows this app to install updates. */
-  readonly allowInstalling: () => Promise<void>;
-  readonly canInstallPackages: () => boolean;
-  /** Deletes a downloaded file. */
-  readonly discard: (fileName: string) => Promise<void>;
-  /** Downloads a file into the app's private folder and returns its SHA-512 as hex, reporting how much has arrived. */
-  readonly download: (
-    request: {
-      readonly allowsMetered: boolean;
-      readonly fileName: string;
-      readonly url: string;
-      readonly userAgent: string;
-    },
-    onProgress: (percent: number) => void,
-  ) => Promise<string>;
-  /** Checks the file is an update of this app signed with the same key, and opens Android's install confirmation. */
-  readonly install: (fileName: string) => Promise<void>;
-  /** Whether the network in use is metered, as mobile data is. */
-  readonly isNetworkMetered: () => boolean;
-  /** Whether a store installed this app, which then updates it. */
-  readonly isStoreInstall: () => boolean;
-};
-
-/** What the controller needs from the app and the clock; tests supply their own. */
-export type AndroidUpdateOptions = {
-  readonly currentVersion: string;
-  readonly fetch: typeof fetch;
-  readonly installer: AndroidInstaller;
-  /** A development build never checks. */
-  readonly isDevelopment: boolean;
-  readonly now: () => number;
-  readonly releasesUrl: string;
-  /** Runs `run` every `milliseconds` until the returned function is called. */
-  readonly repeat: (run: () => void, milliseconds: number) => () => void;
-  readonly settings: { readonly read: () => AppUpdateSettings; readonly write: (settings: AppUpdateSettings) => void };
-};
-
-const hostOf = (url: string) => /^https?:\/\/([^/]+)/.exec(url)?.[1] ?? url;
-
-/** A request to GitHub that failed, in words for the Updates section. */
-class RequestFailure extends Error {}
+// The installer and option types live in their own file; they are re-exported so the controller stays the one import.
+export { type AndroidInstaller, type AndroidUpdateOptions, checkIntervalMilliseconds } from "./controllerTypes";
 
 /**
  * Owns what the phone's app knows about its updates: whether checking is on, when it last checked, and where an update
@@ -276,10 +234,7 @@ export class AndroidUpdateController {
       this.status = { _tag: "Ready", notes: release.notes, pageUrl: release.pageUrl, version: release.version };
     } catch (reason) {
       await installer.discard(fileName).catch(() => void 0);
-      const isMeteredError =
-        reason instanceof Error &&
-        Object.hasOwn(reason, "code") &&
-        (reason as { code?: unknown }).code === "ERR_METERED";
+      const isMeteredError = reason instanceof Error && "code" in reason && reason.code === "ERR_METERED";
       this.status =
         !this.settings.isEnabled || isMeteredError
           ? availableOf(release)
@@ -294,11 +249,3 @@ export class AndroidUpdateController {
     for (const listener of this.listeners) listener(state);
   }
 }
-
-const availableOf = (release: FoundRelease): UpdateStatus => ({
-  _tag: "Available",
-  notes: release.notes,
-  pageUrl: release.pageUrl,
-  sizeBytes: release.installer.size,
-  version: release.version,
-});

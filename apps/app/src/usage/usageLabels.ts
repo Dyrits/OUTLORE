@@ -78,9 +78,9 @@ const rowLabels = {
 export const rowLabelOf = (dimension: UsageDimension, row: UsageRow): string => rowLabels[dimension](row);
 
 /** A filter with the row's name when it was chosen, so its chip names it even when the period leaves the row without usage. */
-export interface ChosenFilter extends UsageFilter {
+export type ChosenFilter = UsageFilter & {
   readonly label: string;
-}
+};
 
 /** A chosen filter's chip: its dimension and the row. */
 export const filterTextOf = (filter: ChosenFilter) => `${dimensionNames[filter.dimension]}: ${filter.label}`;
@@ -149,12 +149,12 @@ export const recordDetailOf = (record: UsageRecord) => {
 };
 
 /** One allowance of the page: a budget's use, or an account's budget and plan limits. */
-export interface AllowanceLine {
+export type AllowanceLine = {
   readonly key: string;
   readonly level: "normal" | "warning" | "reached";
   readonly name: string;
   readonly text: string;
-}
+};
 
 /**
  * What the owner still has beside what was used (budget-control, Seeing budget use and consumption; Plan limits): each
