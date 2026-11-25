@@ -61,9 +61,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To verify and continue Slack-like thread replies Batches 1 and 2 and the reply count fix (CHG-0735, CHG-0736, CHG-0737), read the [current handoff](.agents/handoffs/2026-11-25-1634-slack-like-thread-replies-reply-count.md). Handoffs are shared and committed.
+- To verify and continue the Copy buttons and visible code blocks (CHG-0738), read the [current handoff](.agents/handoffs/2026-11-25-1732-copy-buttons-code-blocks.md). Handoffs are shared and committed.
 
-- To resume Connectors live verification and closed-source OAuth 2.1 catalog additions after Wave 1 and Wave 2 (CHG-0730, CHG-0731, CHG-0733, CHG-0734), read the [current handoff](.agents/handoffs/2026-11-25-1549-connectors-wave-2-shipped.md). Handoffs are shared and committed.
+- To verify and continue Slack-like thread replies Batches 1 and 2 and the reply count fix (CHG-0735, CHG-0736, CHG-0737), read the [current handoff](.agents/handoffs/2026-11-25-1634-slack-like-thread-replies-reply-count.md). Handoffs are shared and committed.
 
 - To resume the Beads research and decide what to borrow for memory and errand ordering, read the [current handoff](.agents/handoffs/2026-11-25-1608-beads-research-fit.md). Handoffs are shared and committed.
 

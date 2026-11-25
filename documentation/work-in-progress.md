@@ -1,5 +1,12 @@
 # Work in progress
 
+## Copy buttons and visible code blocks · 2026-11-25 · built and tested; desktop window check pending
+
+CHG-0738 on `main` (commits `6279ea1b`, `172e98de`):
+- An agent's reply has a Copy button at the right of the line under it, and each code block has one in its top right corner; both show a check mark for 1.5 seconds (`apps/app/src/ui/copyButton.tsx`).
+- Code blocks and inline code sit on a veil of the text color (opacity 0.08) with a border, so they stand apart from the card in every theme.
+Next: look at both in the desktop window across the themes (copy a reply, copy a code block, check the contrast), then record Delivery once accepted.
+
 ## Reply count and pinned thread root · 2026-11-25 · built and tested; desktop window check pending
 
 CHG-0737 on `main` (merged from `mission/reply-count-and-thread-root-8f07963c`, commit `330cc8aa`):
