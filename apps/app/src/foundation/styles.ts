@@ -3,6 +3,7 @@ import { colors, fontSizes, fonts, outline, radii, round } from "./theme";
 
 /** The styles every screen shares, in the Sketchbook look: ink outlines, hand-cut corners, flat lifts. */
 export const styles = StyleSheet.create({
+  anchoredReplies: { marginTop: 6 },
   answer: {
     ...outline,
     ...round,
@@ -220,6 +221,16 @@ export const styles = StyleSheet.create({
   messageCardNotice: { backgroundColor: colors.surface, gap: 8 },
   messageCardThread: { backgroundColor: colors.successSoft },
   messageCardUser: { backgroundColor: colors.bubbleUser },
+  /** A message card and the reply lines anchored beneath it share one column so their edges align. */
+  messageGroup: {
+    alignItems: "stretch",
+    alignSelf: "flex-start",
+    flexDirection: "column",
+    marginVertical: 6,
+    maxWidth: "92%",
+  },
+  messageGroupAgent: { alignSelf: "stretch", marginTop: 22, maxWidth: "100%" },
+  messageGroupUser: { alignSelf: "flex-end" },
   messageRow: { alignItems: "flex-start", flexDirection: "row", gap: 10, marginVertical: 6, maxWidth: "92%" },
   /** An agent's reply spans the row; its medallion sits above the card, which needs room above it. */
   messageRowAgent: { alignSelf: "stretch", flexDirection: "column", marginTop: 22, maxWidth: "100%" },

@@ -245,7 +245,11 @@ describe("what hangs from a message, as reply lines", () => {
       [summary("top", null, 0), summary("child", "top", 35)],
     );
     const entries = entriesOf(detail, false, [anchor("first", "child")]);
-    expect(shapeOf(entries)).toEqual(["first", "opened:child", "second"]);
+    expect(shapeOf(entries)).toEqual(["first", "second"]);
+    expect(entries[0]).toMatchObject({
+      _tag: "Message",
+      replies: [{ _tag: "ThreadOpened", key: "opened:child", thread: { id: "child" } }],
+    });
   });
 
   it("draws an agent-opened errand's card as its reply line, where the card stands, and nowhere else", () => {
@@ -261,12 +265,18 @@ describe("what hangs from a message, as reply lines", () => {
   it("stands a quest a Reply started as a card under the message replied to", () => {
     const detail = anchoredDetail([note("first", 10), note("second", 30)], [summary("top", null, 0)]);
     const entries = entriesOf(detail, false, [anchor("second", "quest-9", "quest-9")]);
-    expect(shapeOf(entries)).toEqual(["first", "second", "anchored:quest-9"]);
-    expect(entries.at(-1)).toMatchObject({
-      _tag: "QuestLink",
-      label: "Opened a quest",
-      missionId: "quest-9",
-      title: "Title of quest-9",
+    expect(shapeOf(entries)).toEqual(["first", "second"]);
+    expect(entries[1]).toMatchObject({
+      _tag: "Message",
+      replies: [
+        {
+          _tag: "QuestLink",
+          key: "anchored:quest-9",
+          label: "Opened a quest",
+          missionId: "quest-9",
+          title: "Title of quest-9",
+        },
+      ],
     });
   });
 

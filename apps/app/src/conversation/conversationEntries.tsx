@@ -27,7 +27,7 @@ import { ChoiceBubbles } from "./choiceBubbleViews";
 import { Commentable } from "./commentable";
 import { commentsOf } from "./comments";
 import { SentComments } from "./commentViews";
-import type { Entry, QuestLink } from "./entries";
+import type { AnchoredReply, Entry, QuestLink } from "./entries";
 import { Markdown } from "./markdown";
 import { MessageActions } from "./messageActions";
 import { QuestReplyLine, ReplyLine } from "./replyLine";
@@ -80,6 +80,7 @@ export function AgentReply({
   isDraft = false,
   label,
   messageId = null,
+  replies = null,
   replyToText,
   text,
   time,
@@ -90,6 +91,7 @@ export function AgentReply({
   label: string;
   /** The message this reply is, which the owner can comment on; null for a draft, which is not a message yet. */
   messageId?: MessageId | null;
+  replies?: ReactNode;
   replyToText?: string;
   text: string;
   time: string | null;
@@ -97,7 +99,13 @@ export function AgentReply({
   usage?: ReplyUsage | null;
 }) {
   return (
-    <View style={[styles.messageRow, styles.messageRowAgent, isDraft && styles.draft]}>
+    <View
+      style={[
+        replies !== null ? styles.messageGroup : styles.messageRow,
+        replies !== null ? styles.messageGroupAgent : styles.messageRowAgent,
+        isDraft && styles.draft,
+      ]}
+    >
       <CommentableCard about="agent" messageId={messageId} text={text}>
         <View style={[styles.messageCard, styles.messageCardAgent, styles.messageCardNotched]}>
           <View style={styles.medallion}>
@@ -117,6 +125,41 @@ export function AgentReply({
           )}
         </View>
       </CommentableCard>
+      {replies}
+    </View>
+  );
+}
+
+/** Compact reply lines hung directly beneath their anchor message in the same aligned column. */
+function AnchoredReplies({
+  client,
+  onOpenMission,
+  onSelectThread,
+  replies,
+}: {
+  client: ServiceClient;
+  onOpenMission: (missionId: MissionId) => void;
+  onSelectThread: (threadId: ThreadId) => void;
+  replies: ReadonlyArray<AnchoredReply>;
+}) {
+  if (replies.length === 0) return null;
+  return (
+    <View style={styles.anchoredReplies}>
+      {replies.map((reply) =>
+        reply._tag === "ThreadOpened" ? (
+          <ReplyLine isCompact key={reply.key} onOpen={onSelectThread} thread={reply.thread} />
+        ) : (
+          <QuestReplyLine
+            client={client}
+            isCompact
+            key={reply.key}
+            label={reply.label}
+            missionId={reply.missionId}
+            onOpen={onOpenMission}
+            title={reply.title}
+          />
+        ),
+      )}
     </View>
   );
 }
@@ -169,6 +212,7 @@ function MessageBubble({
   message,
   onOpenMission,
   onSelectThread,
+  replies,
   replyToText,
   skills,
   workspacePath,
@@ -178,12 +222,22 @@ function MessageBubble({
   fromQuest: MissionId | null;
   harness: HarnessName;
   message: Message;
+  replies?: ReadonlyArray<AnchoredReply>;
   replyToText?: string;
   onOpenMission: (missionId: MissionId) => void;
   onSelectThread: (threadId: ThreadId) => void;
   skills: ReadonlyArray<Skill>;
   workspacePath: string | null;
 }) {
+  const anchored =
+    replies !== undefined && replies.length > 0 ? (
+      <AnchoredReplies
+        client={client}
+        onOpenMission={onOpenMission}
+        onSelectThread={onSelectThread}
+        replies={replies}
+      />
+    ) : null;
   // A reply keeps the provider and model that wrote it, whatever the thread runs on now (thread-handover); a
   // reply from before the harness was recorded is the thread's own.
   if (message.sender === "agent") {
@@ -193,6 +247,7 @@ function MessageBubble({
         harness={writer.harness}
         label={writer.label}
         messageId={message.id}
+        replies={anchored}
         replyToText={replyToText}
         text={message.text}
         time={stampOf(message.sentAt)}
@@ -210,7 +265,13 @@ function MessageBubble({
   const sent = message.sender === "user" ? commentsOf(message.text) : { body: message.text, items: [] };
   const terminal = message.sender === "user" ? terminalSnapshotOf(sent.body) : null;
   return (
-    <View style={[styles.messageRow, message.sender === "user" && styles.messageRowUser]}>
+    <View
+      style={
+        anchored !== null
+          ? [styles.messageGroup, message.sender === "user" && styles.messageGroupUser]
+          : [styles.messageRow, message.sender === "user" && styles.messageRowUser]
+      }
+    >
       <CommentableCard about={message.sender} messageId={message.id} text={message.text}>
         <View
           style={[
@@ -266,6 +327,7 @@ function MessageBubble({
           {questLink !== null && !isNotice && <QuestButton link={questLink} onOpenMission={onOpenMission} />}
         </View>
       </CommentableCard>
+      {anchored}
     </View>
   );
 }
@@ -388,6 +450,7 @@ export function EntryView({
       message={entry.message}
       onOpenMission={onOpenMission}
       onSelectThread={onSelectThread}
+      replies={entry.replies}
       replyToText={entry.replyToText}
       skills={skills}
       workspacePath={workspacePath}

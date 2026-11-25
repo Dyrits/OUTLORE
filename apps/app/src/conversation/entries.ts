@@ -19,9 +19,20 @@ import { isPendingOwnerMessage } from "./queuedMessages";
 /** A quest or Ritual the Guildmaster opened, created, or continued, which the conversation draws as a card of its own. */
 export type QuestLink = { key: string; label: string; missionId: MissionId; sentAt: number; title: string };
 
+/** A reply line hung directly beneath its visible anchor message so both share one aligned column. */
+export type AnchoredReply =
+  | { _tag: "ThreadOpened"; key: string; thread: ThreadSummary }
+  | ({ _tag: "QuestLink" } & QuestLink);
+
 /** One entry of a thread's conversation, with the key the list keeps it by. */
 export type Entry = { key: string; at: number } & (
-  | { _tag: "Message"; message: Message; fromQuest: MissionId | null; replyToText?: string }
+  | {
+      _tag: "Message";
+      message: Message;
+      fromQuest: MissionId | null;
+      replies?: ReadonlyArray<AnchoredReply>;
+      replyToText?: string;
+    }
   /** The settled actions of one turn gathered under one collapsible line. */
   | { _tag: "Steps"; isCurrent: boolean; seconds: number; steps: ReadonlyArray<Step>; threadId: ThreadId }
   | { _tag: "Question"; question: Question }
@@ -153,6 +164,44 @@ export const entriesOf = (
   const stepGroups = stepGroupsOf(messages, detail.questions, detail.activities, isWorking);
   const stepIds = new Set(stepGroups.flatMap((group) => group.steps.map((step) => step.id)));
   const { root } = detail.thread;
+  // A thread's own first message is its root, pinned above, so it does not repeat among the replies.
+  const visibleMessages = messages.filter((message) => message.id !== root?.id);
+  const visibleMessageIds = new Set(visibleMessages.map((message) => message.id));
+  const repliesByMessageId = new Map<Message["id"], Array<AnchoredReply>>();
+  const attachReply = (messageId: Message["id"], reply: AnchoredReply) => {
+    const existing = repliesByMessageId.get(messageId);
+    if (existing === undefined) repliesByMessageId.set(messageId, [reply]);
+    else existing.push(reply);
+  };
+  const standaloneThreads: Array<Entry> = [];
+  for (const thread of detail.threads) {
+    if (thread.parentId !== detail.thread.id || thread.isAside) continue;
+    const anchor = anchorOf.get(thread.id);
+    if (anchor !== undefined && visibleMessageIds.has(anchor.messageId)) {
+      attachReply(anchor.messageId, { _tag: "ThreadOpened", key: `opened:${thread.id}`, thread });
+    } else {
+      standaloneThreads.push({ _tag: "ThreadOpened", at: replyLineAt(thread), key: `opened:${thread.id}`, thread });
+    }
+  }
+  const standaloneAnchoredQuests: Array<Entry> = [];
+  for (const anchor of anchors) {
+    if (anchor.missionId === detail.mission.id) continue;
+    const message = anchorCard.get(anchor.messageId);
+    if (message === undefined) continue;
+    const link = {
+      _tag: "QuestLink" as const,
+      key: `anchored:${anchor.threadId}`,
+      label: "Opened a quest",
+      missionId: anchor.missionId,
+      sentAt: message.sentAt,
+      title: anchor.title,
+    };
+    if (visibleMessageIds.has(anchor.messageId)) {
+      attachReply(anchor.messageId, link);
+    } else {
+      standaloneAnchoredQuests.push({ ...link, at: message.sentAt + afterReply });
+    }
+  }
   const entries: Array<Entry> = [
     // The root stands before everything the thread did: the oldest entry, so the inverted feed draws it at the top.
     ...(root == null
@@ -180,44 +229,26 @@ export const entriesOf = (
         threadId: detail.thread.id,
       }),
     ),
-    ...detail.threads
-      .filter((thread) => thread.parentId === detail.thread.id && !thread.isAside)
-      .map((thread): Entry => ({ _tag: "ThreadOpened", at: replyLineAt(thread), key: `opened:${thread.id}`, thread })),
-    // A thread's own first message is its root, pinned above, so it does not repeat among the replies.
-    ...messages
-      .filter((message) => message.id !== root?.id)
-      .map(
-        (message): Entry => ({
-          _tag: "Message",
-          at: message.sentAt,
-          fromQuest:
-            (message.sender === "thread" || message.sender === "system") && message.fromMissionId !== detail.mission.id
-              ? message.fromMissionId
-              : null,
-          key: message.id,
-          message,
-          ...(message.replyToMessageId == null
-            ? {}
-            : { replyToText: anchorCard.get(message.replyToMessageId)?.text ?? "" }),
-        }),
-      ),
-    // A quest a Reply started, as a card under the message replied to; its own mission's threads stand above.
-    ...anchors.flatMap((anchor): Array<Entry> => {
-      if (anchor.missionId === detail.mission.id) return [];
-      const message = anchorCard.get(anchor.messageId);
-      if (message === undefined) return [];
-      return [
-        {
-          _tag: "QuestLink",
-          at: message.sentAt + afterReply,
-          key: `anchored:${anchor.threadId}`,
-          label: "Opened a quest",
-          missionId: anchor.missionId,
-          sentAt: message.sentAt,
-          title: anchor.title,
-        },
-      ];
+    ...standaloneThreads,
+    ...visibleMessages.map((message): Entry => {
+      const messageReplies = repliesByMessageId.get(message.id);
+      return {
+        _tag: "Message",
+        at: message.sentAt,
+        fromQuest:
+          (message.sender === "thread" || message.sender === "system") && message.fromMissionId !== detail.mission.id
+            ? message.fromMissionId
+            : null,
+        key: message.id,
+        message,
+        ...(messageReplies === undefined ? {} : { replies: messageReplies }),
+        ...(message.replyToMessageId == null
+          ? {}
+          : { replyToText: anchorCard.get(message.replyToMessageId)?.text ?? "" }),
+      };
     }),
+    // A quest a Reply started, when its anchor is not drawn as a message above.
+    ...standaloneAnchoredQuests,
     ...questLinks,
     ...detail.questions
       .filter((question) => !stepIds.has(question.id))
