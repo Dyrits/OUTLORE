@@ -61,7 +61,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To verify and continue the agent reply first in a thread and the reply line without a box (CHG-0741, CHG-0742), read the [current handoff](.agents/handoffs/2026-11-25-1756-agent-reply-first-reply-line.md). Handoffs are shared and committed.
+- To verify and continue the reply line's empty state and alignment, and the agent reply first (CHG-0741, CHG-0742, CHG-0744), read the [current handoff](.agents/handoffs/2026-11-25-1840-reply-line-empty-state-alignment.md). Handoffs are shared and committed.
 
 - To verify and continue the quest suggestion card as a destination list (CHG-0739), read the [current handoff](.agents/handoffs/2026-11-25-1800-quest-suggestion-card.md). Handoffs are shared and committed.
 

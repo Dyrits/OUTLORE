@@ -8,9 +8,9 @@ describe("compact reply line labels", () => {
     expect(replyCountLabelOf(undefined, "Underway")).toBe("Opening…");
   });
 
-  it("shows No replies yet when an idle thread has zero replies", () => {
-    expect(replyCountLabelOf(0, "Resting")).toBe("No replies yet");
-    expect(replyCountLabelOf(undefined, "Resting")).toBe("No replies yet");
+  it("shows nothing when an idle thread has zero replies", () => {
+    expect(replyCountLabelOf(0, "Resting")).toBeNull();
+    expect(replyCountLabelOf(undefined, "Resting")).toBeNull();
   });
 
   it("formats singular and plural reply counts", () => {

@@ -186,7 +186,7 @@ function CompactReplyBar({
         ]}
       >
         {tone !== null && <View style={[local.dot, { backgroundColor: tone.color }]} />}
-        <Text style={local.compactCount}>{countLabel}</Text>
+        {countLabel !== null && <Text style={local.compactCount}>{countLabel}</Text>}
         <Text numberOfLines={1} style={local.compactTitle}>
           {shortened(title)}
         </Text>
@@ -372,7 +372,8 @@ const local = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     gap: 8,
-    paddingHorizontal: 10,
+    paddingLeft: 4,
+    paddingRight: 10,
     paddingVertical: 4,
     ...handCursor,
   },
@@ -384,12 +385,11 @@ const local = StyleSheet.create({
     borderLeftColor: colors.edge,
     borderLeftWidth: 2,
     height: 18,
-    marginRight: 4,
     marginTop: -8,
     width: 10,
   },
   compactMeta: { color: colors.textMuted, fontSize: fontSizes.xs },
-  compactRow: { alignItems: "center", alignSelf: "stretch", flexDirection: "row", marginLeft: 14 },
+  compactRow: { alignItems: "center", alignSelf: "stretch", flexDirection: "row" },
   compactTitle: { color: colors.text, flex: 1, fontSize: fontSizes.sm, fontWeight: "500" },
   dot: { borderRadius: radii.pill, height: 8, width: 8 },
   go: { color: colors.accentText, fontSize: fontSizes.sm },

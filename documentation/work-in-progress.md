@@ -5,7 +5,8 @@
 CHG-0741 and CHG-0742 in `0.2.8-Pre-Alpha`:
 - A thread with no anchor, or a dashboard-started quest whose opening message repeats its anchor, pins its own first message as the root, so the first reply is the agent's; the reply count includes the questions a thread asked the owner (`missionDetail.ts`, `exchangeSamples.ts`, `entries.ts`).
 - The compact reply line under a message has no box and no "Open": it hangs from the message by an elbow and ends with a small quest or errand mark, with a hover fill that leaves the elbow alone (`replyLine.tsx`; option B of `documentation/art-direction/2026-11-25-reply-line.html`).
-Next: look at both in the desktop window, then record Delivery once accepted.
+- CHG-0744: the reply line shows nothing instead of "No replies yet" and its elbow and text start at the card's left edge and text inset.
+Next: look at all three in the desktop window, then record Delivery once accepted.
 
 ## Copy buttons and visible code blocks · 2026-11-25 · built and tested; desktop window check pending
 

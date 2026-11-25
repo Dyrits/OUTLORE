@@ -1,12 +1,12 @@
 import type { MissionState, ThreadAnchor, ThreadId, ThreadState } from "@outlore/contracts";
 
-/** The compact reply-count text shown on an in-feed reply line, matching Slack/Cookout thread summaries. */
+/** The compact reply-count text shown on an in-feed reply line, or null while the thread has no replies and is not opening. */
 export const replyCountLabelOf = (
   replyCount: number | undefined,
   state: ThreadState | MissionState | undefined,
-): string => {
+): string | null => {
   if (replyCount === undefined || replyCount <= 0) {
-    return state === "Underway" ? "Opening…" : "No replies yet";
+    return state === "Underway" ? "Opening…" : null;
   }
   return replyCount === 1 ? "1 reply" : `${replyCount} replies`;
 };
