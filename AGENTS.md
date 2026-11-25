@@ -61,9 +61,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To verify the provider logo marks in the Providers list, read the [current handoff](.agents/handoffs/2026-11-25-0937-provider-logo-marks.md). Handoffs are shared and committed.
-
 - To resume the plan usage display, OpenCode on the ACP module, idle traffic checks, and the window-check review list (CHG-0721 to CHG-0725), read the [current handoff](.agents/handoffs/2026-11-25-1200-pull-main-and-four-errands.md). Handoffs are shared and committed.
 
 - To resume ACP launch hygiene, Antigravity steering, and multi-account Batches 2 to 4 (CHG-0726 to CHG-0728), read the [current handoff](.agents/handoffs/2026-11-25-1320-acp-hygiene-and-multi-account.md). Handoffs are shared and committed.
+
+- To resume Connectors Wave 2 (generic MCP OAuth 2.1 client and OAuth connectors) after Wave 1 (CHG-0729 and CHG-0730), read the [current handoff](.agents/handoffs/2026-11-25-1418-connectors-wave-1-and-wave-2.md). Handoffs are shared and committed.
 
