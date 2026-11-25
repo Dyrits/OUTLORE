@@ -13,6 +13,8 @@ import { AccountsRoot } from "./threads.ts";
  * but says nothing per model, so an unlisted or unknown model is allowed.
  */
 export const imageRefusalOf = Effect.fnUntraced(function* (runner: Pick<Runner, "accountId" | "harness" | "model">) {
+  if (runner.harness === "pi")
+    return `${harnessLabels.pi} cannot read images yet. Choose a Companion that can, or send the message without them.`;
   if (runner.harness !== "codex") return null;
   const tools = yield* HarnessTools;
   const accountsRoot = yield* AccountsRoot;

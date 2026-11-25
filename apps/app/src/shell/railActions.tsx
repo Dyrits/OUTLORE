@@ -8,7 +8,7 @@ import { colors } from "../foundation/theme";
 import { FoldChevron } from "../ui/foldChevron";
 import { areActionsShown, folderCueOf } from "./questTree";
 
-import { isHovered, local } from "./railStyles";
+import { local } from "./railStyles";
 /**
  * The mark that folds or unfolds what lies beneath a realm, quest, or errand row.
  * A row with nothing beneath it keeps the chevron's place empty.

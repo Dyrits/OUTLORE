@@ -125,10 +125,16 @@ export const readClosingFrame = (text: string): Rejection | null => {
   } catch {
     return null;
   }
-  if (typeof parsed !== "object" || parsed === null || !("closing" in parsed)) return null;
-  const closing = parsed.closing;
-  if (typeof closing !== "object" || closing === null || !("code" in closing) || !("reason" in closing)) return null;
-  const { code, reason } = closing;
+  if (typeof parsed !== "object" || parsed === null || !Object.hasOwn(parsed, "closing")) return null;
+  const closing = (parsed as { closing?: unknown }).closing;
+  if (
+    typeof closing !== "object" ||
+    closing === null ||
+    !Object.hasOwn(closing, "code") ||
+    !Object.hasOwn(closing, "reason")
+  )
+    return null;
+  const { code, reason } = closing as { code?: unknown; reason?: unknown };
   if (typeof code !== "number" || !Number.isInteger(code) || code < 1000 || code > 4999) return null;
   return typeof reason === "string" ? { code, reason } : null;
 };

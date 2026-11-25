@@ -28,6 +28,13 @@ export {
   type TurnRequest,
   turnMessageOf,
 } from "./execution.ts";
+export {
+  type FileChange,
+  fileChangeOf,
+  linesOfStoredDiff,
+  reportedChangeOf,
+  storedDiffOf,
+} from "./fileChanges.ts";
 export { searchFolders } from "./folderSearch.ts";
 export {
   addBrowsableRoot,
@@ -79,11 +86,13 @@ export {
   type MarkedProcess,
   type ProcessMarker,
   readMarkedProcesses,
+  readProcessCommands,
   readProcessTree,
 } from "./processTree.ts";
 export { fieldOf, isRecord, numberFieldOf, textFieldOf } from "./records.ts";
 export { sandboxProblem } from "./sandbox.ts";
 export { removeScratch } from "./scratch.ts";
+export { Service } from "./serviceTag.ts";
 export { Sessions, sessionsLayer } from "./sessions.ts";
 export {
   isSettingName,

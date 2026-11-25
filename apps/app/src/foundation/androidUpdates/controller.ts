@@ -276,8 +276,12 @@ export class AndroidUpdateController {
       this.status = { _tag: "Ready", notes: release.notes, pageUrl: release.pageUrl, version: release.version };
     } catch (reason) {
       await installer.discard(fileName).catch(() => void 0);
+      const isMeteredError =
+        reason instanceof Error &&
+        Object.hasOwn(reason, "code") &&
+        (reason as { code?: unknown }).code === "ERR_METERED";
       this.status =
-        !this.settings.isEnabled || (reason instanceof Error && "code" in reason && reason.code === "ERR_METERED")
+        !this.settings.isEnabled || isMeteredError
           ? availableOf(release)
           : { _tag: "Failed", message: messageOf(reason), pageUrl: release.pageUrl };
     } finally {

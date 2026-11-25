@@ -1,11 +1,12 @@
 import { StyleSheet } from "react-native";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { isHovered } from "../ui/pointer";
 import { expandedWidth } from "./railStorage";
+
+export { isHovered };
 /** How far each level of errands steps in, and the width of the chevron's place at the start of a row. */
 export const indentStep = 14;
 export const chevronWidth = 16;
-
-export const isHovered = (state: unknown) => (state as { hovered?: boolean }).hovered === true;
 
 export const local = StyleSheet.create({
   actions: { alignItems: "center", flexDirection: "row", gap: 4 },

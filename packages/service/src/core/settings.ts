@@ -134,7 +134,7 @@ const canonicalOf = (value: unknown): string =>
 const refusedFieldsOf = (writer: SettingWriter, saved: Settings, next: Settings) =>
   Object.keys(Settings.fields).filter(
     (key): key is keyof Settings =>
-      key in saved &&
+      Object.hasOwn(saved, key) &&
       !mayWriteSetting(writer, key as keyof Settings) &&
       canonicalOf(saved[key as keyof Settings]) !== canonicalOf(next[key as keyof Settings]),
   );

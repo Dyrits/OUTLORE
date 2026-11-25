@@ -2,7 +2,6 @@ import { join } from "node:path";
 import { Clock, Context, Deferred, Effect, FiberMap, FiberSet, Layer, Match, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
 import { ConnectorGateway, Connectors } from "../connectors/index.ts";
-import { reportedChangeOf } from "../core/fileChanges.ts";
 import {
   Changes,
   Endpoints,
@@ -12,6 +11,7 @@ import {
   PriceTable,
   readSettings,
   removeScratch,
+  reportedChangeOf,
   type ServiceFailure,
 } from "../core/index.ts";
 import { HarnessTools, qualifiedToolNameOf, removedAccountReasonOf, toolServerName } from "../harness/index.ts";

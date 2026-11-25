@@ -1,5 +1,5 @@
 import type { ThreadId, ThreadSummary, ThreadView } from "@outlore/contracts";
-import { type ReactNode, useState } from "react";
+import { memo, type ReactNode, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { PaneTabs } from "../conversation/paneTabs";
 import { OpenThreadForm } from "../conversation/threadTree";
@@ -10,7 +10,7 @@ import { ChipIcon } from "../ui/chips";
 import { Menu } from "../ui/pickers";
 
 /** Starts a new errand or switches the pane to an existing one. */
-export function ErrandStarter({
+export const ErrandStarter = memo(function ErrandStarter({
   chrome,
   client,
   errands,
@@ -66,7 +66,7 @@ export function ErrandStarter({
         ))}
     </View>
   );
-}
+});
 
 const local = StyleSheet.create({
   composer: { marginTop: "auto" },

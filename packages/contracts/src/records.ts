@@ -1,26 +1,21 @@
 import { Schema } from "effect";
 import { Activity } from "./activities.ts";
 import { AttachmentCard } from "./attachments.ts";
-import { BackgroundCheckIns } from "./backgroundCheckIns.ts";
-import {
-  BudgetEvent,
-  BudgetLimits,
-  BudgetPeriod,
-  BudgetStop,
-  BudgetUse,
-  Consumption,
-  ReplyUsage,
-  TokenUsage,
-} from "./budgets.ts";
-import { BackupCompanions, CompanionPresets, ModelChoice, Tier } from "./companions.ts";
+import { BudgetEvent, BudgetStop, BudgetUse, Consumption, ReplyUsage, TokenUsage } from "./budgets.ts";
+import { ModelChoice } from "./companions.ts";
 import { LastExchange } from "./exchanges.ts";
 import { EffortChoice, HarnessName } from "./harnesses.ts";
-import { AccountId, MessageId, MissionId, SuggestionId, ThreadId, WorkspaceId } from "./ids.ts";
+import { AccountId, MessageId, MissionId, ThreadId, WorkspaceId } from "./ids.ts";
 import { LoreChange, LoreGauge } from "./lore.ts";
-import { PositiveInt } from "./positiveInt.ts";
 import { Question, ThreadPermissionMode } from "./questions.ts";
 import { RitualCard } from "./ritualSchedules.ts";
+import { MissionState, Suggestion } from "./suggestions.ts";
 import { Workspace, WorkspaceChoice } from "./workspaces.ts";
+
+export { GuildHallRecap, GuildmasterPlace, Viewing } from "./guildHall.ts";
+export { Settings } from "./settings.ts";
+export { StartingContext, StartingContextParts } from "./startingContext.ts";
+export { MissionState, Suggestion, SuggestionMatch, SuggestionOutcome } from "./suggestions.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: settings keys (`intelHalfLives`, `intelWarningPercent`).
 
@@ -56,89 +51,9 @@ export type MessageDelivery = typeof MessageDelivery.Type;
 export const SendToParentScope = Schema.Literals(["MessageOnly", "FullContext"]);
 export type SendToParentScope = typeof SendToParentScope.Type;
 
-/** The owner's settings. */
-export const Settings = Schema.Struct({
-  /** Days after a Done mission was marked Done before it is archived, when auto-archive is on. */
-  autoArchiveDays: PositiveInt,
-  /** Daily check-in setup, retained while paused. Null means the owner has never opted in. */
-  backgroundCheckIns: Schema.optionalKey(Schema.NullOr(BackgroundCheckIns)),
-  /** The backup Companions a new quest's thread starts with, in the order a failed turn falls back through them; at most five. */
-  backups: BackupCompanions,
-  /** The most tokens a mission's briefing may hold, estimated at about 4 characters per token (mission-journal, Size). */
-  briefingLimit: PositiveInt,
-  /** Messages between two threads before the owner decides how they continue. */
-  chatterThreshold: Schema.Int.check(Schema.isGreaterThanOrEqualTo(2)),
-  companionPresets: Schema.optionalKey(CompanionPresets),
-  defaultEffort: EffortChoice,
-  /** The harness a new mission starts on before any mission was started (provider-accounts). */
-  defaultHarness: HarnessName,
-  /** Copied onto each new mission; empty at first. */
-  defaultMissionBudget: BudgetLimits,
-  defaultModel: ModelChoice,
-  /**
-   * The default permission mode every thread without a mode of its own runs with (action-approval, Permission modes;
-   * CHG-0617): what the composer's Default permissions means. Full access also lets commands leave the sandbox unasked.
-   */
-  defaultPermissionMode: ThreadPermissionMode,
-  /** Days a Fulfilled or Archived quest stays offered as a place to continue an off-topic or proposed request (thread-tree). */
-  endedQuestMatchDays: PositiveInt,
-  /** Covers all missions over its period; empty at first. */
-  globalBudget: BudgetLimits,
-  globalBudgetPeriod: BudgetPeriod,
-  /** Days over which an unused lore entry's strength halves, by kind; a rule never fades (scoped-intel, Kinds). */
-  intelHalfLives: Schema.Struct({
-    decision: PositiveInt,
-    fact: PositiveInt,
-    preference: PositiveInt,
-    temporary: PositiveInt,
-  }),
-  /** The share of the chosen model's context window, in percent, past which a thread's lore icon turns red (scoped-intel). */
-  intelWarningPercent: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100)),
-  /**
-   * Whether a paired device may open and steer a conversation shell, off by default; only the host's own window can
-   * change it, and a shell it allows runs inside the host's sandbox (conversation-terminal, ADR 0020).
-   */
-  shouldAllowRemoteTerminals: Schema.Boolean,
-  /** Whether Done missions are archived automatically, off by default (mission-tracking, Ending a mission). */
-  shouldAutoArchive: Schema.Boolean,
-  /** Whether Outlore reads the public model price table; off leaves the snapshot shipped with it (budget-control, The price table). */
-  shouldFetchPrices: Schema.Boolean,
-  /** Whether an off-topic request opens a new mission without asking when no mission matches (thread-tree). */
-  shouldOpenOffTopicMissions: Schema.Boolean,
-  shouldShowAgentThreads: Schema.Boolean,
-  /** Whether the rail lists finished (Done) quests among the quests; off by default, the board still shows them. */
-  shouldShowFinishedQuests: Schema.Boolean,
-  shouldStreamReplies: Schema.Boolean,
-  /**
-   * Whether threads reach their connectors' tools by running code that calls them instead of calling each one, off by
-   * default and experimental (connectors, Code Mode; CHG-0324, CHG-0441). Applies from a thread's next listing.
-   */
-  shouldUseCodeMode: Schema.Boolean,
-  /** The Companions Chronicler picks from by request complexity. */
-  tiers: Schema.Struct({ Balanced: Schema.NullOr(Tier), Heavy: Schema.NullOr(Tier), Light: Schema.NullOr(Tier) }),
-});
-export type Settings = typeof Settings.Type;
-
 /** How a mission ended: Fulfilled (marked done), or archived (mission-tracking, Ending a mission). */
 export const MissionEnding = Schema.Literals(["Fulfilled", "Archived"]);
 export type MissionEnding = typeof MissionEnding.Type;
-
-/**
- * A mission's status: how it ended, Fresh while it holds nothing, otherwise the roll-up of its top thread over its
- * tree (mission-tracking, Mission state; CHG-0599).
- */
-export const MissionState = Schema.Literals([
-  "Fresh",
-  "Underway",
-  "Waiting",
-  "Attention",
-  "Failed",
-  "Resting",
-  "Stopped",
-  "Fulfilled",
-  "Archived",
-]);
-export type MissionState = typeof MissionState.Type;
 
 /** What the dashboard asks of a mission: "Mark as done?" after its result. */
 export const MissionPrompt = Schema.Literals(["MarkDone"]);
@@ -372,120 +287,6 @@ export const ChatterNotice = Schema.Struct({
   secondTitle: Schema.String,
 });
 export type ChatterNotice = typeof ChatterNotice.Type;
-
-/** Where an off-topic request went: continued in another mission, a new mission, an aside, or nowhere (withdrawn). */
-export const SuggestionOutcome = Schema.Literals(["Continued", "MovedToMission", "KeptAsAside", "Withdrawn"]);
-export type SuggestionOutcome = typeof SuggestionOutcome.Type;
-
-/** A mission offered for an off-topic request, with its state when read. */
-export const SuggestionMatch = Schema.Struct({ missionId: MissionId, state: MissionState, title: Schema.String });
-export type SuggestionMatch = typeof SuggestionMatch.Type;
-
-/** A thread's suggestion for an off-topic request, open or resolved (thread-tree, Off-topic requests). */
-export const Suggestion = Schema.Struct({
-  /** The suggesting thread's account, prefilled for Open as new mission. */
-  accountId: Schema.NullOr(AccountId),
-  askedAt: Schema.Number,
-  /** The proposed preset's backups, or the default quest backups when no preset is proposed. */
-  backups: BackupCompanions,
-  /** The suggesting thread's effort, prefilled for Open as new mission. */
-  effort: EffortChoice,
-  /** The suggesting thread's harness, prefilled for Open as new mission. */
-  harness: HarnessName,
-  id: SuggestionId,
-  /** Whether the setting opened a new mission without asking. */
-  isAutomatic: Schema.Boolean,
-  /** Whether the Chronicler asked: it offers no aside, and opens the quest in the realm the owner named. */
-  isFromGuildmaster: Schema.Boolean,
-  /** Whether the card is a Ritual the Chronicler created, whose link opens the Ritual's quest. */
-  isRitual: Schema.Boolean,
-  /** Matching missions, best first, at most 3. */
-  matches: Schema.Array(SuggestionMatch),
-  /** The suggesting thread's model, prefilled for Open as new mission. */
-  model: ModelChoice,
-  outcome: Schema.NullOr(SuggestionOutcome),
-  /** The folder of the realm Chronicler proposed for a new quest, or null for none (the owner may change it on the card). */
-  realmPath: Schema.NullOr(Schema.String),
-  resolvedAt: Schema.NullOr(Schema.Number),
-  targetMissionId: Schema.NullOr(MissionId),
-  targetThreadId: Schema.NullOr(ThreadId),
-  /** The mission or aside it went to, as titled then. */
-  targetTitle: Schema.NullOr(Schema.String),
-  /** The off-topic part of the owner's message. */
-  text: Schema.String,
-  threadId: ThreadId,
-  /** The thread's proposed title for a new mission or aside. */
-  title: Schema.String,
-});
-export type Suggestion = typeof Suggestion.Type;
-
-/**
- * Where the owner has Chronicler open from (quest coordination, Context): the screen's name as the app shows it, and the
- * quest the screen is about when it is one. Chronicler reads it with each message, to know what "this quest" means.
- */
-export const Viewing = Schema.Struct({
-  missionId: Schema.optionalKey(Schema.NullOr(MissionId)),
-  screen: Schema.String.check(Schema.isMaxLength(60)),
-});
-export type Viewing = typeof Viewing.Type;
-
-/** Where Chronicler's conversation is: its hidden quest and the thread the owner writes in. */
-export const GuildmasterPlace = Schema.Struct({ missionId: MissionId, threadId: ThreadId });
-export type GuildmasterPlace = typeof GuildmasterPlace.Type;
-
-/**
- * The Guild Hall hub's recap of the period since the owner's last visit (quest coordination, Guild Hall as a hub): quests
- * finished, what the turns used, and Ritual runs. `since` is the start of the period, which the screen sends back
- * on later reads so the period stays fixed while the owner is there.
- */
-export const GuildHallRecap = Schema.Struct({
-  consumption: Consumption,
-  /** The latest quests finished in the period, at most five. */
-  finished: Schema.Array(Schema.Struct({ missionId: MissionId, title: Schema.String })),
-  finishedCount: Schema.Number,
-  /** Whether the owner never visited before, when the period is the last 24 hours. */
-  isFirstVisit: Schema.Boolean,
-  ritualRuns: Schema.Number,
-  since: Schema.Number,
-});
-export type GuildHallRecap = typeof GuildHallRecap.Type;
-
-/** What a new thread's starting context takes, in estimated tokens, by part (thread-tree, Opening a thread). */
-export const StartingContextParts = Schema.Struct({
-  /** The budget line; none without a budget. */
-  budget: Schema.Number,
-  /** The instructions every thread receives: on threads, the journal, lore, and approvals. */
-  instructions: Schema.Number,
-  /** The mission's briefing and its latest entries. */
-  journal: Schema.Number,
-  /** The lore in the new thread's scope: scoped lore in full and the global index. */
-  lore: Schema.Number,
-  /** The opener's messages since the journal's latest entry. */
-  openerMessages: Schema.Number,
-  /** The line naming the new thread's title and its opener's. */
-  position: Schema.Number,
-  /** The opener's request, the new thread's first message. */
-  request: Schema.Number,
-  /** The working folder: the workspace with its own instructions, or the mission's scratch folder. */
-  workspace: Schema.Number,
-});
-export type StartingContextParts = typeof StartingContextParts.Type;
-
-/** How much of the chosen model's context window a new thread's starting context would take (thread-tree, Opening a thread). */
-export const StartingContext = Schema.Struct({
-  /** Whether it takes more than the warning share, so the owner is warned before the thread starts. */
-  isOverWarning: Schema.Boolean,
-  /** The models with a larger context window than the chosen one, largest first. */
-  largerModels: Schema.Array(ModelChoice),
-  parts: StartingContextParts,
-  /** The whole starting context: the sum of its parts. */
-  tokens: Schema.Number,
-  /** The share in percent above which the owner is warned. */
-  warningPercent: Schema.Number,
-  /** The chosen model's context window, in tokens. */
-  windowTokens: Schema.Number,
-});
-export type StartingContext = typeof StartingContext.Type;
 
 export { ThreadPanel } from "./threadPanel.ts";
 

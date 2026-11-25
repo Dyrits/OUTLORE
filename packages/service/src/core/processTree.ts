@@ -104,6 +104,23 @@ export type MarkedProcess = {
 /** The token a process's environment holds when it carries the marker, matched whole. */
 const tokenOf = (marker: ProcessMarker) => `${marker.name}=${marker.value}`;
 
+/** The command line of each given process, read from `ps`; processes it does not list are left out. */
+export const readProcessCommands = (pids: ReadonlyArray<number>): Map<number, string> => {
+  try {
+    const table = execFileSync("ps", ["-A", "-o", "pid=,args="], { encoding: "utf8" });
+    const wanted = new Set(pids);
+    const commands = new Map<number, string>();
+    for (const line of table.split("\n")) {
+      const match = /^\s*(\d+)\s+(.*)$/.exec(line);
+      if (match?.[1] !== undefined && match[2] !== undefined && wanted.has(Number(match[1])))
+        commands.set(Number(match[1]), match[2]);
+    }
+    return commands;
+  } catch {
+    return new Map<number, string>();
+  }
+};
+
 /**
  * macOS: `ps -E` appends the environment to the command line, for this user's processes only. The command line alone
  * is read without `-E`, so the environment is the rest of the line and an argument can never pass for it.

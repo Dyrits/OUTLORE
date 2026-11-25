@@ -14,6 +14,7 @@ export type PaneSession = {
 type PaneAction =
   | { type: "chain"; chain: ReadonlyArray<PaneId>; deepest: ThreadId | null }
   | { type: "quest" }
+  | { type: "reopenQuest"; quest: ThreadId | null }
   | { type: "target"; target: ChronicleTarget; thread: ThreadId | null; quest: ThreadId | null }
   | { type: "fold"; id: PaneId; chain: ReadonlyArray<PaneId> }
   | { type: "reveal"; id: PaneId }
@@ -42,6 +43,16 @@ export const paneSessionOf = (session: PaneSession, action: PaneAction): PaneSes
         ? { ...memory, shown: new Set([...memory.shown].filter((id) => id !== starterId)) }
         : memory,
     };
+  if (action.type === "reopenQuest") {
+    const withoutStarter = memory.shown.has(starterId)
+      ? { ...memory, shown: new Set([...memory.shown].filter((id) => id !== starterId)) }
+      : memory;
+    const revealed =
+      action.quest !== null && withoutStarter.folded.has(action.quest)
+        ? revealedPane(withoutStarter, action.quest)
+        : withoutStarter;
+    return { ...session, expanded: null, memory: revealed };
+  }
   if (action.type === "target") {
     const id = action.target.threadId === null ? action.quest : action.thread;
     return id !== null && matchesThread(action.target, id, id === action.quest)

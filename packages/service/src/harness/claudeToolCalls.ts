@@ -1,6 +1,6 @@
 import { Effect } from "effect";
-import { fileChangeOf } from "../core/fileChanges.ts";
 import type { HarnessEvent } from "../core/index.ts";
+import { fileChangeOf } from "../core/index.ts";
 
 type ToolCall = Extract<HarnessEvent, { _tag: "ToolCall" }>;
 

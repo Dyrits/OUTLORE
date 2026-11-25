@@ -1,8 +1,6 @@
 import { useRef } from "react";
 import { PanResponder, StyleSheet, View } from "react-native";
-
-// The pointer shows it can be dragged sideways.
-const resizeCursor = { cursor: "col-resize" } as object;
+import { colResizeCursor as resizeCursor } from "../ui/pointer";
 
 /**
  * The strip on the edge between two open panes that the owner drags to move room from one to the other. It reports how

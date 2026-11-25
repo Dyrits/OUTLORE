@@ -1,5 +1,16 @@
 import { type MissionId, type ThreadId, WorkspaceId } from "@outlore/contracts";
-import { type MutableRefObject, type ReactNode, useEffect, useState } from "react";
+import {
+  type ComponentProps,
+  createContext,
+  type MutableRefObject,
+  memo,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
 import { PaneTabs } from "../conversation/paneTabs";
@@ -23,7 +34,15 @@ export type ChannelTab = "Missives" | "Quests" | "Realm" | "Rituals" | "History"
 /** The tab a channel's pane last showed, kept by the screen so the pane opened beside the next quest starts there. */
 export type ChannelTabMemory = MutableRefObject<{ channelId: string | null; tab: ChannelTab } | null>;
 
-export function ChannelPane({
+/** The quest open beside the channel: only its Quests list marks it, so the rest of the pane need not render when it changes. */
+const OpenMissionContext = createContext<MissionId | undefined>(void 0);
+
+/** The channel's Quests and Rituals list, which marks the open quest. */
+function OpenMissionQuests(props: Omit<ComponentProps<typeof ChannelQuests>, "openMission">) {
+  return <ChannelQuests {...props} openMission={useContext(OpenMissionContext)} />;
+}
+
+export const ChannelPane = memo(function ChannelPane({
   channel,
   chrome,
   client,
@@ -47,20 +66,21 @@ export function ChannelPane({
   tabMemory?: ChannelTabMemory | undefined;
 }) {
   return (
-    <ChannelBody
-      channel={channel}
-      chrome={chrome}
-      client={client}
-      key={channel.id ?? "borderlands"}
-      listRequest={listRequest}
-      onBack={onBack}
-      onOpenMission={onOpenMission}
-      onOpenThread={onOpenThread}
-      openMission={openMission}
-      tabMemory={tabMemory}
-    />
+    <OpenMissionContext.Provider value={openMission}>
+      <ChannelBody
+        channel={channel}
+        chrome={chrome}
+        client={client}
+        key={channel.id ?? "borderlands"}
+        listRequest={listRequest}
+        onBack={onBack}
+        onOpenMission={onOpenMission}
+        onOpenThread={onOpenThread}
+        tabMemory={tabMemory}
+      />
+    </OpenMissionContext.Provider>
   );
-}
+});
 
 /** A realm or Borderlands channel with no quest pane open. */
 export function StandaloneChannel({
@@ -118,7 +138,7 @@ const local = StyleSheet.create({
  * A channel's pane (conversation panes): Missives is its conversation, Quests lists the realm's quests in the same
  * pane, and History lists all of them by recency, with their errands. The tab resets with the channel, so each realm opens on its conversation, and stays when a quest opens.
  */
-function ChannelBody({
+const ChannelBody = memo(function ChannelBody({
   channel,
   chrome,
   client,
@@ -126,7 +146,6 @@ function ChannelBody({
   onBack,
   onOpenMission,
   onOpenThread,
-  openMission,
   tabMemory,
 }: {
   channel: { id: string | null; name: string };
@@ -136,7 +155,6 @@ function ChannelBody({
   onBack?: (() => void) | undefined;
   onOpenMission: (id: MissionId) => void;
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
-  openMission?: MissionId | undefined;
   tabMemory?: ChannelTabMemory | undefined;
 }) {
   // Opening a quest remounts the panes; the channel's pane starts on the tab it showed, if it is the same channel.
@@ -152,11 +170,18 @@ function ChannelBody({
   const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
   const realm = data?.workspaces.find((each) => each.id === id) ?? null;
   const [isLoreOpen, setLoreOpen] = useState(false);
+  const openLore = useCallback(() => setLoreOpen(true), []);
+  const closeLore = useCallback(() => setLoreOpen(false), []);
+  const realmMissions = useMemo(
+    () => (realm === null ? [] : (data?.missions ?? []).filter((mission) => mission.workspaceId === realm.id)),
+    [data?.missions, realm],
+  );
+  const channelProp = useMemo(() => ({ id, name: channel.name }), [id, channel.name]);
   const realmPanel =
     realm === null ? undefined : isLoreOpen ? (
       <LoreScreen
         client={client}
-        onBack={() => setLoreOpen(false)}
+        onBack={closeLore}
         threadId={null}
         title={`Lore · ${realm.name}`}
         workspaceId={realm.id}
@@ -165,8 +190,8 @@ function ChannelBody({
       <RealmPanel
         client={client}
         key={realm.id}
-        missions={(data?.missions ?? []).filter((mission) => mission.workspaceId === realm.id)}
-        onOpenLore={() => setLoreOpen(true)}
+        missions={realmMissions}
+        onOpenLore={openLore}
         onSelect={onOpenMission}
         realm={realm}
       />
@@ -175,12 +200,11 @@ function ChannelBody({
     <ChroniclerConversation
       alternateBody={
         tab === "Quests" || tab === "Rituals" ? (
-          <ChannelQuests
+          <OpenMissionQuests
             client={client}
             isTouch={onBack !== undefined}
             key={tab}
             onOpen={onOpenMission}
-            openMission={openMission}
             realmId={id}
             show={tab}
           />
@@ -196,7 +220,7 @@ function ChannelBody({
           realmPanel
         ) : undefined
       }
-      channel={{ id, name: channel.name }}
+      channel={channelProp}
       chrome={chrome}
       client={client}
       companions={{
@@ -224,4 +248,4 @@ function ChannelBody({
       viewing={{ screen: "Channel" }}
     />
   );
-}
+});

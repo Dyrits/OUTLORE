@@ -1,5 +1,5 @@
 import type { ThreadId, ThreadSummary } from "@outlore/contracts";
-import { useContext, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ChronicleTargetContext } from "../conversation/chronicleTarget";
 import { chainOf, equalizedPanes, layoutOf, openedQuestMemory, type PaneMemory } from "./paneChain";
 import { channelId, type PaneId, paneContentsOf } from "./paneIds";
@@ -15,6 +15,8 @@ export function usePaneChain(
   isChannelOpen = false,
   /** Told whether the channel pane is open, each time that changes, so the next quest can open the same way. */
   onChannelOpen: (isOpen: boolean) => void = () => {},
+  /** Incremented when the owner selects a quest, so a folded quest or expanded channel yields to it without remounting. */
+  openCount = 0,
 ) {
   const path = useMemo(() => chainOf(threads, openThread), [threads, openThread]);
   const quest = path[0];
@@ -42,6 +44,14 @@ export function usePaneChain(
   useEffect(() => {
     dispatch({ type: "quest" });
   }, [quest]);
+  const lastOpenCount = useRef(openCount);
+  const questRef = useRef(quest);
+  questRef.current = quest;
+  useEffect(() => {
+    if (lastOpenCount.current === openCount) return;
+    lastOpenCount.current = openCount;
+    dispatch({ quest: questRef.current ?? null, type: "reopenQuest" });
+  }, [openCount]);
   const slots = useMemo(
     () =>
       layoutOf({
@@ -67,40 +77,49 @@ export function usePaneChain(
   );
   const paneCount = slots.filter((slot) => slot.kind === "pane").length;
   const focusedId = focused !== null && openIds.has(focused) ? focused : ([...openIds].at(-1) ?? null);
-  const fold = (id: PaneId) => dispatch({ chain: fullChain, id, type: "fold" });
-  const setMemory = (update: (memory: PaneMemory<PaneId>) => PaneMemory<PaneId>) =>
-    dispatch({ type: "memory", update });
-  const revealThread = (threadId: ThreadId) => {
+  const fullChainRef = useRef(fullChain);
+  fullChainRef.current = fullChain;
+  const onOpenThreadRef = useRef(onOpenThread);
+  onOpenThreadRef.current = onOpenThread;
+  const fold = useCallback((id: PaneId) => dispatch({ chain: fullChainRef.current, id, type: "fold" }), []);
+  const setMemory = useCallback(
+    (update: (memory: PaneMemory<PaneId>) => PaneMemory<PaneId>) => dispatch({ type: "memory", update }),
+    [],
+  );
+  const revealThread = useCallback((threadId: ThreadId) => {
     // Opening a thread, from a notch or a list, exits the expanded layout: its pane is revealed instead.
     dispatch({ id: threadId, type: "openThread" });
-    onOpenThread(threadId);
-  };
-  const startErrand = (questId: ThreadId) => {
+    onOpenThreadRef.current(threadId);
+  }, []);
+  const startErrand = useCallback((questId: ThreadId) => {
     dispatch({ type: "starter" });
-    onOpenThread(questId);
-  };
+    onOpenThreadRef.current(questId);
+  }, []);
   // Every open pane gets the same share again, and the dragged shares are forgotten with the memory of them.
-  const equalize = () => {
+  const equalize = useCallback(() => {
     setMemory(equalizedPanes);
     rememberPaneWeights([]);
-  };
-  const revealPane = (id: PaneId) => dispatch({ id, type: "reveal" });
+  }, [setMemory]);
+  const revealPane = useCallback((id: PaneId) => dispatch({ id, type: "reveal" }), []);
+  const expandPane = useCallback((id: PaneId) => dispatch({ id, type: "expand" }), []);
+  const openList = useCallback((id: PaneId) => dispatch({ id, type: "list" }), []);
+  const setFocused = useCallback((id: ThreadId) => dispatch({ id, type: "focus" }), []);
   return {
     available,
     equalize,
-    expandPane: (id: PaneId) => dispatch({ id, type: "expand" }),
+    expandPane,
     focusedId,
     fold,
     listRequest,
     memory,
     openIds,
-    openList: (id: PaneId) => dispatch({ id, type: "list" }),
+    openList,
     paneCount,
     quest,
     revealPane,
     revealThread,
     setAvailable,
-    setFocused: (id: ThreadId) => dispatch({ id, type: "focus" }),
+    setFocused,
     setMemory,
     slots,
     startErrand,

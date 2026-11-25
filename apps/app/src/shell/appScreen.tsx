@@ -171,12 +171,12 @@ function AppScreenContent({
               errandsRequest={quest.errandsRequest}
               isChannelOpen={isChannelOpen.current}
               isParked={isParked}
-              key={`${quest.openMission}:${quest.openCount}`}
               missionId={quest.openMission}
               onChannelOpen={setChannelOpen}
               onOpenErrand={navigation.openThread}
               onOpenMission={navigation.openMission}
               onOpenThread={navigation.selectThread}
+              openCount={quest.openCount}
               openThread={quest.openThread}
               tabMemory={channelTab}
             />

@@ -44,4 +44,21 @@ describe("the fetched image cache", () => {
     await Promise.resolve();
     expect(cache.has("a")).toBe(false);
   });
+  it("exposes a resolved image synchronously through peek and returns null while loading or uncached", async () => {
+    const cache = imageCache(100);
+    expect(cache.peek("a")).toBeNull();
+    let resolve: (data: string) => void = () => {};
+    const pending = cache.load(
+      "a",
+      () =>
+        new Promise<string>((done) => {
+          resolve = done;
+        }),
+    );
+    expect(cache.peek("a")).toBeNull();
+    resolve("data:image/png;base64,abc");
+    await pending;
+    await Promise.resolve();
+    expect(cache.peek("a")).toBe("data:image/png;base64,abc");
+  });
 });

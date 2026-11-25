@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { CompanionPanel } from "../editors/companionPicker";
 import { colors, radii } from "../foundation/theme";
@@ -61,9 +61,13 @@ export function useDetailsColumn(input: {
   const activeTab = rightPanel.content?.tab ?? "quest";
   const isColumnOpen = isCompanionShown || (hasQuestPanel && details.isOpen);
   const isQuestTabShown = isQuestTabOpen({ activeTab, hasQuestPanel, isColumnOpen });
-  const questTabButton = hasQuestPanel
-    ? { isOpen: isQuestTabShown, onPress: () => rightPanel.show(panelAfterQuestIcon(isQuestTabShown)) }
-    : null;
+  const questTabButton = useMemo(
+    () =>
+      hasQuestPanel
+        ? { isOpen: isQuestTabShown, onPress: () => rightPanel.show(panelAfterQuestIcon(isQuestTabShown)) }
+        : null,
+    [hasQuestPanel, isQuestTabShown, rightPanel],
+  );
   const hasEdgeHandle = hasQuestPanel ? details.isPinned !== true && !isQuestOpen : hasCompanion;
   const toggleColumn = () => {
     if (isColumnOpen) rightPanel.show(null);

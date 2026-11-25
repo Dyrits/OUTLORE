@@ -1,8 +1,7 @@
 import { type MissionId, type ThreadId, WorkspaceId } from "@outlore/contracts";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 import { listedErrandsOf } from "../conversation/errandRoster";
-import { PaneThread } from "../conversation/paneThread";
 import { OpenPanes } from "../conversation/replyLine";
 import { useShownThreadsRead } from "../conversation/useShownThreadsRead";
 import type { ServiceClient } from "../foundation/client";
@@ -14,11 +13,12 @@ import { ExpandPaneButton, FoldPaneButton } from "../ui/questHeaderButtons";
 import { ChannelPane, type ChannelTabMemory, QuestStartFailure } from "./channelPane";
 import { ErrandStarter } from "./errandStarter";
 import { resizedWeights } from "./paneChain";
-import type { PaneId } from "./paneIds";
+import { type PaneId, starterId } from "./paneIds";
 import { paneNotchesOf } from "./paneNotches";
 import { PaneResizer } from "./paneResizer";
 import { PaneButton, PaneNotches } from "./paneStrip";
 import { rememberPaneWeights } from "./railStorage";
+import { ThreadSlot } from "./threadSlot";
 import { noDragRegion } from "./topBar";
 import { usePaneChain } from "./usePaneChain";
 import { useStartQuest } from "./useStartQuest";
@@ -38,6 +38,7 @@ export function PaneHost({
   onOpenErrand,
   onOpenMission,
   onOpenThread,
+  openCount = 0,
   openThread,
   tabMemory,
 }: {
@@ -55,6 +56,8 @@ export function PaneHost({
   onOpenMission: (missionId: MissionId) => void;
   /** Makes a thread the open one, which is the deepest pane of the chain. */
   onOpenThread: (threadId: ThreadId) => void;
+  /** Incremented each time the owner opens a quest, so re-selecting a folded quest or switching while expanded reveals it without remounting the channel. */
+  openCount?: number;
   /** The deepest thread of the chain, or null for the quest's own thread. */
   openThread: ThreadId | null;
   /** The channel pane's last tab, so the pane of the next quest to open starts on it. */
@@ -71,7 +74,19 @@ export function PaneHost({
   useEffect(() => {
     if (data !== null) setThreads(data.threads);
   }, [data]);
-  const channel = channelOf(data?.mission.workspaceId, data?.mission.workspaceName);
+  // Resolve the quest's realm synchronously from the cached mission list so ChannelPane never flashes Borderlands while ReadMission loads.
+  const listedMission = missionList?.missions.find((mission) => mission.id === missionId) ?? null;
+  const hasChannelSource = listedMission !== null || data !== null;
+  const workspaceId = listedMission !== null ? listedMission.workspaceId : data?.mission.workspaceId;
+  const workspaceName = listedMission !== null ? listedMission.workspaceName : data?.mission.workspaceName;
+  const resolvedChannel = useMemo(
+    () => (hasChannelSource ? channelOf(workspaceId, workspaceName) : null),
+    [hasChannelSource, workspaceId, workspaceName],
+  );
+  const lastChannel = useRef<{ id: string | null; name: string } | null>(null);
+  if (resolvedChannel !== null) lastChannel.current = resolvedChannel;
+  const fallbackChannel = useMemo(() => channelOf(void 0, void 0), []);
+  const channel = resolvedChannel ?? lastChannel.current ?? fallbackChannel;
   const { failure: questStartFailure, start: startQuest } = useStartQuest(
     client,
     channel.id === null ? null : WorkspaceId.make(channel.id),
@@ -99,20 +114,28 @@ export function PaneHost({
     setMemory,
     slots,
     startErrand,
-  } = usePaneChain(threads, openThread, onOpenThread, isChannelOpen, onChannelOpen);
+  } = usePaneChain(threads, openThread, onOpenThread, isChannelOpen, onChannelOpen, openCount);
   // A conversation shown in a pane is read (CHG-0569): its replies, results and requests are no longer unread, and
   // rereading after each change follows the stream while it stays on show. Parked panes are out of sight, so wait.
   useShownThreadsRead(client, openIds, !isParked, data);
   const dragStart = useRef(slots);
   const latest = useRef(memory);
   latest.current = memory;
-  const paneControls = (id: PaneId, foldLabel: string) =>
-    paneCount > 1 ? (
-      <>
-        <ExpandPaneButton onPress={() => expandPane(id)} />
-        <FoldPaneButton label={foldLabel} onPress={() => fold(id)} />
-      </>
-    ) : null;
+  const hasMultiplePanes = paneCount > 1;
+  const paneControls = useCallback(
+    (id: PaneId, foldLabel: string) =>
+      hasMultiplePanes ? (
+        <>
+          <ExpandPaneButton onPress={() => expandPane(id)} />
+          <FoldPaneButton label={foldLabel} onPress={() => fold(id)} />
+        </>
+      ) : null,
+    [expandPane, fold, hasMultiplePanes],
+  );
+  const channelChrome = useMemo(() => paneControls("channel", "Fold the channel"), [paneControls]);
+  const starterChrome = useMemo(() => paneControls(starterId, "Fold the errand"), [paneControls]);
+  const starterErrands = useMemo(() => listedErrandsOf(threads), [threads]);
+  const starterParent = data !== null && data.thread.id === quest ? data.thread : null;
   // Parked out of sight the row has no width: the panes keep the last they had, so they come back as they were.
   const onLayout = (event: LayoutChangeEvent) => {
     const width = Math.floor(event.nativeEvent.layout.width);
@@ -130,10 +153,19 @@ export function PaneHost({
     startQuest,
     threads,
   });
-  const openChannelQuest = (id: MissionId) => {
-    if (id === missionId && quest !== undefined) revealPane(quest);
-    else onOpenMission(id);
-  };
+  const missionIdRef = useRef(missionId);
+  missionIdRef.current = missionId;
+  const questRef = useRef(quest);
+  questRef.current = quest;
+  const onOpenMissionRef = useRef(onOpenMission);
+  onOpenMissionRef.current = onOpenMission;
+  const openChannelQuest = useCallback(
+    (id: MissionId) => {
+      if (id === missionIdRef.current && questRef.current !== undefined) revealPane(questRef.current);
+      else onOpenMissionRef.current(id);
+    },
+    [revealPane],
+  );
   const firstOpen = slots.findIndex((slot) => slot.kind === "pane");
   // The strips between neighboring open panes, on the row above the panes, each at the edge it moves.
   let edge = 0;
@@ -204,9 +236,9 @@ export function PaneHost({
                 <>
                   <ChannelPane
                     channel={channel}
-                    chrome={paneControls(id, "Fold the channel")}
+                    chrome={channelChrome}
                     client={client}
-                    listRequest={listRequest?.id === id ? listRequest : undefined}
+                    listRequest={listRequest?.id === id ? listRequest : void 0}
                     onOpenMission={openChannelQuest}
                     onOpenThread={onOpenErrand}
                     openMission={missionId}
@@ -218,39 +250,33 @@ export function PaneHost({
             if (content.kind === "starter") {
               return wrap(
                 <ErrandStarter
-                  chrome={paneControls(id, "Fold the errand")}
+                  chrome={starterChrome}
                   client={client}
-                  errands={listedErrandsOf(threads)}
+                  errands={starterErrands}
                   onOpened={revealThread}
-                  parent={data !== null && data.thread.id === quest ? data.thread : null}
+                  parent={starterParent}
                 />,
               );
             }
             const threadId = content.id;
-            const isFocused = !isParked && threadId === focusedId;
+            const isQuest = content.kind === "quest";
             return wrap(
-              <View
-                onPointerDown={() => setFocused(threadId)}
-                style={[local.content, isFocused && paneCount > 1 && local.focused]}
-              >
-                <PaneThread
-                  chrome={paneControls(id, content.kind === "quest" ? "Fold the quest" : "Fold the errand")}
-                  client={client}
-                  listRequest={
-                    listRequest?.id === id
-                      ? listRequest
-                      : content.kind === "quest"
-                        ? (errandsRequest ?? void 0)
-                        : void 0
-                  }
-                  missionId={missionId}
-                  onNewErrand={content.kind === "errand" && quest !== undefined ? () => startErrand(quest) : undefined}
-                  onOpenMission={onOpenMission}
-                  onOpenThread={revealThread}
-                  onStartErrand={() => startErrand(threadId)}
-                  threadId={threadId}
-                />
-              </View>,
+              <ThreadSlot
+                client={client}
+                expandPane={expandPane}
+                fold={fold}
+                hasMultiplePanes={hasMultiplePanes}
+                isFocused={!isParked && threadId === focusedId}
+                isQuest={isQuest}
+                listRequest={listRequest?.id === id ? listRequest : isQuest ? (errandsRequest ?? void 0) : void 0}
+                missionId={missionId}
+                onOpenMission={onOpenMission}
+                questId={quest ?? null}
+                revealThread={revealThread}
+                setFocused={setFocused}
+                startErrand={startErrand}
+                threadId={threadId}
+              />,
             );
           })}
         {available > 0 && resizers}
@@ -262,8 +288,6 @@ export function PaneHost({
 const local = StyleSheet.create({
   // An island's own box: the layout's island style adds its color, hairline, corners, and shadow.
   card: { flex: 1 },
-  content: { flex: 1 },
-  focused: { backgroundColor: colors.page },
   hidden: { display: "none" },
   pane: { backgroundColor: colors.page },
   paneDivider: { borderColor: colors.edge, borderLeftWidth: 1 },

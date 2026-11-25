@@ -16,7 +16,7 @@ import {
 } from "@outlore/channel";
 import type { ServerFrame } from "@outlore/contracts";
 import type { HostConnection } from "@outlore/relay";
-import { Cause, Effect } from "effect";
+import { Cause, Clock, Effect } from "effect";
 import type { SqlClient } from "effect/sql";
 import type { RemoteConfig } from "./config.ts";
 import { encodeServerFrame } from "./frames.ts";
@@ -113,7 +113,7 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
     // The switch may have gone off after this connection was made: nobody pairs or resumes while it is off.
     if (!parts.isAccepting()) return refuse("disabled");
 
-    const now = Date.now();
+    const now = await parts.run(Clock.currentTimeMillis);
     let deviceId: string;
     let redeemedCodeId: string | null = null;
     let newToken: Uint8Array | null = null;
@@ -187,11 +187,17 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
     let lastTouch = now;
     return {
       handle: (message) => {
-        const at = Date.now();
-        if (at - lastTouch > touchMillis) {
-          lastTouch = at;
-          void parts.run(touchDevice(deviceId, at)).catch(reportFailure);
-        }
+        void parts
+          .run(
+            Clock.currentTimeMillis.pipe(
+              Effect.flatMap((at) => {
+                if (at - lastTouch <= touchMillis) return Effect.void;
+                lastTouch = at;
+                return touchDevice(deviceId, at);
+              }),
+            ),
+          )
+          .catch(reportFailure);
         parts.answer(message, send, deviceId);
       },
     };

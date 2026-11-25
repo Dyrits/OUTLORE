@@ -84,7 +84,21 @@ export const markThreadRead = Effect.fnUntraced(function* (threadId: string) {
     readAt: number;
   }>`SELECT read_at AS readAt FROM thread_reads WHERE thread_id = ${threadId}`;
   if (row !== undefined && row.readAt >= now) return unchanged(null);
+  const previousReadAt = row?.readAt ?? 0;
+  // Only broadcast a change when marking the thread read actually clears an unread Chronicle item, so opening an already-read quest does not force unrelated open panels to refetch.
+  const [unread] = yield* sql<{ hasUnread: number }>`
+    SELECT EXISTS (
+      SELECT 1 FROM messages
+        WHERE thread_id = ${threadId} AND sender_kind IN ('agent', 'thread') AND sent_at > ${previousReadAt}
+      UNION ALL
+      SELECT 1 FROM questions
+        WHERE thread_id = ${threadId} AND outcome IS NULL AND asked_at > ${previousReadAt}
+      UNION ALL
+      SELECT 1 FROM threads t JOIN missions m ON m.id = t.mission_id
+        WHERE t.id = ${threadId} AND t.state = 'Failed'
+          AND COALESCE((SELECT MAX(sent_at) FROM messages WHERE thread_id = t.id), m.last_activity_at) > ${previousReadAt}
+    ) AS hasUnread`;
   if (row === undefined) yield* sql`INSERT INTO thread_reads (thread_id, read_at) VALUES (${threadId}, ${now})`;
   else yield* sql`UPDATE thread_reads SET read_at = ${now} WHERE thread_id = ${threadId}`;
-  return changed(null);
+  return unread?.hasUnread === 1 ? changed(null) : unchanged(null);
 });

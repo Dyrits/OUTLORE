@@ -223,7 +223,8 @@ export const openEmptyThreadByOwner = Effect.fnUntraced(function* (
   choice: RunnerChoice & { readonly model: string },
   anchorMessageId: string,
 ) {
-  yield* checkOwnerOpening(parentId, "", choice, false, anchorMessageId);
+  // No turn starts yet, so do not block opening the empty errand on the 25% starting-context limit; the owner can pick a larger Companion or trim lore before sending.
+  yield* checkOwnerOpening(parentId, "", choice, true, anchorMessageId);
   return yield* recordThread({
     anchorMessageId,
     backups: null,

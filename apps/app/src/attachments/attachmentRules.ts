@@ -75,6 +75,7 @@ export const sizeRefusalOf = (name: string, mediaType: AttachmentMediaType, byte
  * the chosen model says it does not, and OpenCode is allowed since it is unknown until its agent starts.
  */
 export const canReadImages = (harnesses: HarnessList | null, harness: HarnessName, model: ModelChoice) => {
+  if (harness === "pi") return false;
   if (harness !== "codex") return true;
   const models = harnesses?.harnesses.find((candidate) => candidate.name === harness)?.models ?? [];
   // "default" stands for the harness's own model, the first one it lists, as the pickers take it.

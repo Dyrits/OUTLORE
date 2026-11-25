@@ -1,7 +1,7 @@
 import type { HostUpdate as HostUpdateView } from "@outlore/contracts";
 import { Context, Effect, Layer, Ref } from "effect";
 import { SqlClient } from "effect/sql";
-import { RemoteConfig } from "../remote/config.ts";
+import { RemoteConfig } from "../remote/index.ts";
 import { HostUpdater } from "./hostUpdater.ts";
 
 /** How often an armed update looks at the updater and at the turns still running. */

@@ -1,25 +1,14 @@
 import type { MissionSummary } from "@outlore/contracts";
+import { inRealmOf, type MissionKind, missionKindOf } from "../foundation/realmFilter";
 import { latestFirstOf } from "./questRecency";
+
+export { inRealmOf, type MissionKind };
 
 /**
  * The realm roster: a placement's quests and Rituals as two separate ranked groups, each with its preview and its count.
  * The split comes before the cut and the count, so a Ritual takes no quest slot and "Show all N quests" counts quests.
  * Rituals are the quests of a placement that carry a Ritual card (CHG-0616).
  */
-
-export type MissionKind = "Quest" | "Ritual";
-
-const kindOf = (mission: MissionSummary): MissionKind => (mission.ritual === null ? "Quest" : "Ritual");
-
-/**
- * The missions of one kind that a realm holds (null for the Borderlands), in the order the service gave.
- * Rank them with `latestFirstOf` for a list.
- */
-export const inRealmOf = (
-  missions: ReadonlyArray<MissionSummary>,
-  realmId: string | null,
-  kind: MissionKind,
-): MissionSummary[] => missions.filter((mission) => mission.workspaceId === realmId && kindOf(mission) === kind);
 
 /** One group of a placement: every mission ranked, the preview cut from it, and how many there are. */
 export interface RankedMissions {
@@ -57,7 +46,7 @@ export const rosterOf = (
   options: { readonly openMission: string | null; readonly questLimit: number; readonly ritualLimit?: number },
 ): PlacementRoster => {
   const groupOf = (kind: MissionKind, limit: number): RankedMissions => {
-    const ranked = latestFirstOf(missions.filter((mission) => kindOf(mission) === kind));
+    const ranked = latestFirstOf(missions.filter((mission) => missionKindOf(mission) === kind));
     return { count: ranked.length, preview: previewOf(ranked, limit, options.openMission), ranked };
   };
   return {

@@ -56,6 +56,14 @@ describe("keeping the pane session", () => {
     expect(next.memory.shown.has(starterId)).toBe(false);
   });
 
+  it("lets a folded quest and an expanded channel yield when the owner selects the quest again", () => {
+    const folded = paneSessionOf(initial(), { chain: [channelId, quest], id: quest, type: "fold" });
+    const expanded = paneSessionOf(folded, { id: channelId, type: "expand" });
+    const reopened = paneSessionOf(expanded, { quest, type: "reopenQuest" });
+    expect(reopened.expanded).toBeNull();
+    expect(reopened.memory.folded.has(quest)).toBe(false);
+  });
+
   it("reveals a folded quest when opening its Chronicle target", () => {
     const folded = paneSessionOf(initial(), { chain: [channelId, quest, errand], id: quest, type: "fold" });
     const opened = paneSessionOf(folded, {

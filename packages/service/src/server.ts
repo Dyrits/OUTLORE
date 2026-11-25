@@ -6,8 +6,7 @@ import { Effect, FiberSet } from "effect";
 import { SqlClient } from "effect/sql";
 import { WebSocket, WebSocketServer } from "ws";
 import { Sessions } from "./core/index.ts";
-import { RemoteConfig } from "./remote/config.ts";
-import { answerText, encodeServerFrame, type HostChannel, openHostChannel } from "./remote/index.ts";
+import { answerText, encodeServerFrame, type HostChannel, openHostChannel, RemoteConfig } from "./remote/index.ts";
 import { Service } from "./service.ts";
 
 const sameToken = (given: string | null, expected: string) => {
@@ -23,8 +22,13 @@ const tokenOf = (request: IncomingMessage) => new URL(request.url ?? "/", "http:
  * Serves the owner on one loopback WebSocket. The per-launch token in the
  * connection URL is the owner's credential; any other connection is refused.
  */
-export const serveLoopback = (options: { readonly port: number; readonly token: string }) =>
+export const serveLoopback = (options: {
+  readonly openHostChannel?: typeof openHostChannel;
+  readonly port: number;
+  readonly token: string;
+}) =>
   Effect.gen(function* () {
+    const openChannel = options.openHostChannel ?? openHostChannel;
     const service = yield* Service;
     const sessions = yield* Sessions;
     const sql = yield* SqlClient.SqlClient;
@@ -69,7 +73,7 @@ export const serveLoopback = (options: { readonly port: number; readonly token: 
         isClosed = true;
         link?.close();
       });
-      const opening = openHostChannel(hostId, options).pipe(
+      const opening = openChannel(hostId, options).pipe(
         Effect.provideService(SqlClient.SqlClient, sql),
         Effect.provideService(RemoteConfig, remote),
         Effect.map((channel) => ({ channel, closeCode: 4000, message: "" })),

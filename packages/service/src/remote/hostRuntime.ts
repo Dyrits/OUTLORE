@@ -1,8 +1,7 @@
 import { closeCodes, connectHost, type HostConnection, legacyClaimUntil } from "@outlore/relay";
 import { Clock, Deferred, Effect, Layer, Schedule, Schema } from "effect";
 import { SqlClient } from "effect/sql";
-import { Changes, Sessions } from "../core/index.ts";
-import { Service } from "../serviceTag.ts";
+import { Changes, Service, Sessions } from "../core/index.ts";
 import { RemoteConfig } from "./config.ts";
 import { answerText } from "./frames.ts";
 import { type HostRecord, relayOriginOf } from "./hostAccess.ts";

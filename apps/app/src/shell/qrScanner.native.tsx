@@ -1,6 +1,7 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useEffect, useRef, useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
+import { messageOf } from "../foundation/client";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { Button } from "../ui/button";
 import { cameraAccessOf } from "./cameraAccess";
@@ -24,7 +25,7 @@ export function QrScanner({ onCancel, onScanned }: QrScannerProps) {
   useEffect(() => {
     if (permission?.status !== "undetermined" || !permission.canAskAgain || hasAsked.current) return;
     hasAsked.current = true;
-    requestPermission().catch(() => {});
+    requestPermission().catch((reason) => setMessage(messageOf(reason)));
   }, [permission, requestPermission]);
   const read = (scanned: string) => {
     const step = scanStep(scan.current, scanned);
@@ -63,14 +64,25 @@ export function QrScanner({ onCancel, onScanned }: QrScannerProps) {
           {access.kind === "ask" && (
             <>
               <Text style={local.text}>Outlore needs the camera to read the QR code of the host.</Text>
-              <Button label="Allow the camera" onPress={() => requestPermission().catch(() => {})} />
+              <Button
+                label="Allow the camera"
+                onPress={() => requestPermission().catch((reason) => setMessage(messageOf(reason)))}
+              />
             </>
           )}
           {access.kind === "blocked" && (
             <>
               <Text style={local.text}>{access.message}</Text>
-              <Button label="Open Settings" onPress={() => Linking.openSettings().catch(() => {})} />
+              <Button
+                label="Open Settings"
+                onPress={() => Linking.openSettings().catch((reason) => setMessage(messageOf(reason)))}
+              />
             </>
+          )}
+          {message !== null && (
+            <Text accessibilityRole="alert" style={local.error}>
+              {message}
+            </Text>
           )}
           <Button isPrimary={false} label="Paste the code instead" onPress={onCancel} />
         </View>

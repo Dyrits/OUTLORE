@@ -128,13 +128,14 @@ export function islandShadowOf(lift: number, scheme: ColorScheme, ink: string): 
     .join(", ");
 }
 
-/** The share of a normal distribution beyond `z` standard deviations (Abramowitz and Stegun, 7.1.26). */
-function tailOf(z: number): number {
-  const x = Math.abs(z) / Math.SQRT2;
-  const t = 1 / (1 + 0.3275911 * x);
-  const poly = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-  const half = 0.5 * poly * Math.exp(-x * x);
-  return z >= 0 ? half : 1 - half;
+/** The share of a normal distribution beyond `deviations` standard deviations (Abramowitz and Stegun, 7.1.26). */
+function tailOf(deviations: number): number {
+  const scaled = Math.abs(deviations) / Math.SQRT2;
+  const term = 1 / (1 + 0.3275911 * scaled);
+  const poly =
+    term * (0.254829592 + term * (-0.284496736 + term * (1.421413741 + term * (-1.453152027 + term * 1.061405429))));
+  const half = 0.5 * poly * Math.exp(-scaled * scaled);
+  return deviations >= 0 ? half : 1 - half;
 }
 
 /**

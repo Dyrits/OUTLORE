@@ -1,5 +1,5 @@
 import type { MissionId, ThreadId, ThreadSummary } from "@outlore/contracts";
-import { type ReactNode, useContext, useEffect, useState } from "react";
+import { memo, type ReactNode, useContext, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import type { QuestPage } from "../foundation/pageNavigation";
@@ -19,7 +19,7 @@ import { ThreadPane } from "./threadPane";
  * One thread's conversation in a pane (CHG-0561): it reads its own thread, so panes side by side each stay current,
  * and each owns its tabs and the pages opened from Quest details.
  */
-export function PaneThread({
+export const PaneThread = memo(function PaneThread({
   chrome,
   client,
   listRequest,
@@ -135,7 +135,7 @@ export function PaneThread({
       </View>
     </View>
   );
-}
+});
 
 function ListedErrand({
   client,

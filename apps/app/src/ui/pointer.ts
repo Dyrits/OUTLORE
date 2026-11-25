@@ -6,6 +6,12 @@ export const isHovered = (state: unknown) => (state as { hovered?: boolean }).ho
 /** The style that shows a hand over a clickable element on the web. */
 export const handCursor: object = Platform.OS === "web" ? { cursor: "pointer", userSelect: "none" } : {};
 
+/** The style that shows a horizontal resize handle on the web. */
+export const colResizeCursor: object = Platform.OS === "web" ? { cursor: "col-resize", userSelect: "none" } : {};
+
+/** The style that shows a vertical resize handle on the web. */
+export const rowResizeCursor: object = Platform.OS === "web" ? { cursor: "row-resize", userSelect: "none" } : {};
+
 /** The props that give a web element a tooltip with `title`; none elsewhere. */
 export const tooltipOf = (title: string): object => (Platform.OS === "web" ? { title } : {});
 

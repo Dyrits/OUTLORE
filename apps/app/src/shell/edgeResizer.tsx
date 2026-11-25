@@ -1,9 +1,7 @@
 import { useRef } from "react";
 import { PanResponder, StyleSheet, View } from "react-native";
+import { colResizeCursor as resizeCursor } from "../ui/pointer";
 import { clampPaneWidth } from "./railStorage";
-
-// The pointer shows it can be dragged sideways.
-const resizeCursor = { cursor: "col-resize" } as object;
 
 /**
  * A thin strip on a pane's edge that the owner drags to widen or narrow it, between its least width and a quarter of the

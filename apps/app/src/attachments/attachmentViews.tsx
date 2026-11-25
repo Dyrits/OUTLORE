@@ -1,5 +1,5 @@
 import type { AttachmentCard } from "@outlore/contracts";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
@@ -10,6 +10,36 @@ import type { AttachedFile } from "./useAttachments";
 // How attached images show (message-attachments): thumbnails above the message box with a × to remove them, and on the messages sent.
 
 const thumbnail = 56;
+
+const AttachmentTile = memo(function AttachmentTile({
+  file,
+  onRemove,
+}: {
+  file: AttachedFile;
+  onRemove: (key: string) => void;
+}) {
+  const source = useMemo(() => (file.previewUrl === null ? null : { uri: file.previewUrl }), [file.previewUrl]);
+  return (
+    <View style={local.tile}>
+      {source === null ? (
+        <Text numberOfLines={2} style={local.tileName}>
+          {file.name}
+        </Text>
+      ) : (
+        <Image accessibilityLabel={file.name} resizeMode="cover" source={source} style={local.image} />
+      )}
+      {file.card === null && file.previewUrl !== null && <View style={local.uploading} />}
+      <Pressable
+        accessibilityLabel={`Remove ${file.name}`}
+        accessibilityRole="button"
+        onPress={() => onRemove(file.key)}
+        style={local.remove}
+      >
+        <Text style={local.removeMark}>×</Text>
+      </Pressable>
+    </View>
+  );
+});
 
 /** The images of the message being written, each with a × to take it out before sending; one still being checked or uploaded shows a plain tile. */
 export function AttachmentStrip({
@@ -23,29 +53,7 @@ export function AttachmentStrip({
   return (
     <View style={local.strip}>
       {files.map((file) => (
-        <View key={file.key} style={local.tile}>
-          {file.previewUrl === null ? (
-            <Text numberOfLines={2} style={local.tileName}>
-              {file.name}
-            </Text>
-          ) : (
-            <Image
-              accessibilityLabel={file.name}
-              resizeMode="cover"
-              source={{ uri: file.previewUrl }}
-              style={local.image}
-            />
-          )}
-          {file.card === null && file.previewUrl !== null && <View style={local.uploading} />}
-          <Pressable
-            accessibilityLabel={`Remove ${file.name}`}
-            accessibilityRole="button"
-            onPress={() => onRemove(file.key)}
-            style={local.remove}
-          >
-            <Text style={local.removeMark}>×</Text>
-          </Pressable>
-        </View>
+        <AttachmentTile file={file} key={file.key} onRemove={onRemove} />
       ))}
     </View>
   );
@@ -54,11 +62,21 @@ export function AttachmentStrip({
 /** The images already fetched, so a refresh or a scroll does not fetch a sent image again; bounded, as each one is held as base64. */
 const fetched = imageCache(64 * 1024 * 1024);
 
-function SentImageTile({ card, client }: { card: AttachmentCard; client: ServiceClient }) {
-  const [image, setImage] = useState<SentImage | null>(null);
+const SentImageTile = memo(function SentImageTile({ card, client }: { card: AttachmentCard; client: ServiceClient }) {
+  const [image, setImage] = useState<SentImage | null>(() => {
+    const cached = fetched.peek(card.id);
+    return cached === null ? null : { status: "ready", uri: cached };
+  });
   const [attempt, setAttempt] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new attempt is the retry the owner asked for.
   useEffect(() => {
+    const cached = fetched.peek(card.id);
+    if (cached !== null) {
+      setImage((current) =>
+        current?.status === "ready" && current.uri === cached ? current : { status: "ready", uri: cached },
+      );
+      return;
+    }
     let isCurrent = true;
     setImage(null);
     loadSentImage(fetched, card.id, () => client.request({ _tag: "ReadAttachment", attachmentId: card.id })).then(
@@ -67,11 +85,12 @@ function SentImageTile({ card, client }: { card: AttachmentCard; client: Service
     return () => {
       isCurrent = false;
     };
-  }, [client, card, attempt]);
+  }, [client, card.id, attempt]);
+  const source = useMemo(() => (image?.status === "ready" ? { uri: image.uri } : null), [image]);
   return (
     <View style={[local.sent, image?.status === "failed" && local.sentFailed]}>
-      {image?.status === "ready" ? (
-        <Image accessibilityLabel={card.name} resizeMode="cover" source={{ uri: image.uri }} style={local.sentImage} />
+      {source !== null ? (
+        <Image accessibilityLabel={card.name} resizeMode="cover" source={source} style={local.sentImage} />
       ) : (
         <Text numberOfLines={2} style={local.tileName}>
           {card.name}
@@ -93,10 +112,16 @@ function SentImageTile({ card, client }: { card: AttachmentCard; client: Service
       )}
     </View>
   );
-}
+});
 
 /** The images a sent message carries, as thumbnails under its text. */
-export function MessageImages({ cards, client }: { cards: ReadonlyArray<AttachmentCard>; client: ServiceClient }) {
+export const MessageImages = memo(function MessageImages({
+  cards,
+  client,
+}: {
+  cards: ReadonlyArray<AttachmentCard>;
+  client: ServiceClient;
+}) {
   if (cards.length === 0) return null;
   return (
     <View style={local.strip}>
@@ -105,7 +130,7 @@ export function MessageImages({ cards, client }: { cards: ReadonlyArray<Attachme
       ))}
     </View>
   );
-}
+});
 
 const local = StyleSheet.create({
   failure: { gap: 2, padding: 4 },

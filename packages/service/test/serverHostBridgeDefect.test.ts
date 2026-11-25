@@ -3,14 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { afterEach, vi } from "vitest";
+import { afterEach } from "vitest";
 import { fakeHarnessLayer, serveLoopback, serviceLayer } from "../src/index.ts";
 
 // A paired host's link that fails with a defect, not a typed failure, must still end the app's socket.
-vi.mock("../src/remote/index.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/remote/index.ts")>()),
-  openHostChannel: () => Effect.die("The host link broke unexpectedly."),
-}));
+const brokenHostChannel = () => Effect.die("The host link broke unexpectedly.");
 
 const TOKEN = "owner-token-for-tests";
 
@@ -41,7 +38,7 @@ const closeOf = (url: string) =>
 describe("bridging the app to a paired host", () => {
   it.live("closes the socket with 4000 when opening the host link fails with a defect", () =>
     Effect.gen(function* () {
-      const { port } = yield* serveLoopback({ port: 0, token: TOKEN });
+      const { port } = yield* serveLoopback({ openHostChannel: brokenHostChannel, port: 0, token: TOKEN });
       const closed = yield* closeOf(`ws://127.0.0.1:${port}/host/abc?token=${TOKEN}`);
       expect(closed.code).toBe(4000);
     }).pipe(Effect.provide(fresh())),

@@ -1,5 +1,5 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import { useEffect, useMemo, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { Pressable, Text, View } from "react-native";
 import { startAndroidUpdates } from "./src/foundation/androidUpdates/platform";
 import { ArchiveNavigation } from "./src/foundation/archiveNavigation";
@@ -51,9 +51,22 @@ export function App() {
   const setGuildmasterRealm = (path: string | null) => dispatch({ path, type: "chroniclerRealm" });
   const setIsPermissionsOpen = (isOpen: boolean) => dispatch({ isOpen, type: "permissions" });
   const setSettingsSection = (section: SettingsSectionId) => dispatch({ section, type: "section" });
-  const setOpenThread = (id: ThreadId | null) => {
-    if (openMission !== null) dispatch({ id, missionId: openMission, type: "thread" });
-  };
+  // These reach the panes, which skip rendering while their props are the same: so they keep one identity for good.
+  const openMissionRef = useRef(openMission);
+  openMissionRef.current = openMission;
+  const setOpenThread = useCallback((id: ThreadId | null) => {
+    if (openMissionRef.current !== null) dispatch({ id, missionId: openMissionRef.current, type: "thread" });
+  }, []);
+  const openMissionFromAnywhere = useCallback(
+    (id: MissionId, origin?: QuestOrigin) =>
+      dispatch(origin === undefined ? { id, type: "quest" } : { id, origin, type: "quest" }),
+    [],
+  );
+  const openSideQuest = useCallback(
+    (missionId: MissionId, id: ThreadId, origin?: QuestOrigin) =>
+      dispatch(origin === undefined ? { id, missionId, type: "thread" } : { id, missionId, origin, type: "thread" }),
+    [],
+  );
   const rightPanel = useRightPanel(hostId, panelScopeOf(location));
   const onWorkshop = useWorkshopTrip({
     dispatch,
@@ -102,6 +115,27 @@ export function App() {
       }
     />
   ) : null;
+  const archiveNavigation = useMemo(
+    () => ({
+      quest: (quest: { workspaceId: string | null; workspaceName: string | null }) =>
+        dispatch({ quest, type: "parent" }),
+      realm: () => dispatch({ place: "Home", type: "place" }),
+    }),
+    [],
+  );
+  const pageNavigation = useMemo(
+    () => ({
+      isChroniclerBudgetOpen: location.isChroniclerBudgetOpen,
+      onChroniclerBudget: (isOpen: boolean) => dispatch({ isOpen, type: "chroniclerBudget" }),
+      onPage: (page: typeof location.page) => dispatch({ page, type: "page" }),
+      page: location.page,
+    }),
+    [location.isChroniclerBudgetOpen, location.page],
+  );
+  const ritualFormNavigation = useMemo(
+    () => ({ open: (target: RitualFormTarget) => dispatch({ target, type: "ritualForm" }) }),
+    [],
+  );
   // A browser with no host has nothing to show: it pairs first.
   if (status.kind === "pairing" || (status.canPair && isAddingHost)) {
     return (
@@ -164,12 +198,6 @@ export function App() {
     );
   }
   const goTo = (place: Place) => dispatch({ place, type: "place" });
-  const openMissionFromAnywhere = (id: MissionId, origin?: QuestOrigin) =>
-    dispatch(origin === undefined ? { id, type: "quest" } : { id, origin, type: "quest" });
-  // The Ritual form is a screen of the conversation area (CHG-0643): closing it returns to what showed beneath it.
-  const openRitualForm = (target: RitualFormTarget) => dispatch({ target, type: "ritualForm" });
-  const openSideQuest = (missionId: MissionId, id: ThreadId, origin?: QuestOrigin) =>
-    dispatch(origin === undefined ? { id, missionId, type: "thread" } : { id, missionId, origin, type: "thread" });
   const selectMission = (id: MissionId | null) => {
     dispatch({ id, type: "select" });
     rightPanel.show(id === null ? null : { tab: "quest" });
@@ -258,21 +286,9 @@ export function App() {
               )}
             </View>
           )}
-          <ArchiveNavigation.Provider
-            value={{
-              quest: openParent,
-              realm: () => goTo("Home"),
-            }}
-          >
-            <PageNavigation.Provider
-              value={{
-                isChroniclerBudgetOpen: location.isChroniclerBudgetOpen,
-                onChroniclerBudget: (isOpen) => dispatch({ isOpen, type: "chroniclerBudget" }),
-                onPage: (page) => dispatch({ page, type: "page" }),
-                page: location.page,
-              }}
-            >
-              <RitualFormNavigation.Provider value={{ open: openRitualForm }}>
+          <ArchiveNavigation.Provider value={archiveNavigation}>
+            <PageNavigation.Provider value={pageNavigation}>
+              <RitualFormNavigation.Provider value={ritualFormNavigation}>
                 <View style={styles.root}>{shell}</View>
               </RitualFormNavigation.Provider>
             </PageNavigation.Provider>

@@ -3,14 +3,17 @@ import { expect, it, vi } from "vitest";
 import { ServiceClient } from "../../src/foundation/client";
 import { useServiceQuery } from "../../src/foundation/useServiceQuery";
 
-const { setters } = vi.hoisted(() => ({ setters: [vi.fn(), vi.fn()] }));
+const { setSnapshot } = vi.hoisted(() => ({ setSnapshot: vi.fn() }));
 
 vi.mock("react", () => ({
   useEffect: (start: () => () => void) => start(),
-  useState: (initial: null) => [initial, setters.shift()],
+  useState: (initial: unknown) => [typeof initial === "function" ? initial() : initial, setSnapshot],
 }));
 
-it("shows completed reads during host changes and only queues one follow-up", async () => {
+const shownBy = (update: unknown) =>
+  (update as (previous: { data: unknown; error: string | null }) => unknown)({ data: null, error: null });
+
+it("shows completed reads during host changes, queues one follow-up, and ignores an unchanged answer", async () => {
   const sent = vi.fn();
   let receive: TransportHandlers["onText"] = () => {};
   const open: OpenTransport = (handlers) => {
@@ -19,19 +22,18 @@ it("shows completed reads during host changes and only queues one follow-up", as
     return { close: () => {}, isOpen: true, send: sent };
   };
   const client = await ServiceClient.connectThrough(open, "fixture-host");
-  const setData = vi.fn();
-  setters.splice(0, setters.length, setData, vi.fn());
   useServiceQuery(client, { _tag: "ReadChronicle" }, "chronicle");
   receive(JSON.stringify({ _tag: "Changed", sequence: 1 }));
   receive(JSON.stringify({ _tag: "Changed", sequence: 2 }));
   receive(JSON.stringify({ _tag: "Success", id: "1", value: [] }));
   await Promise.resolve();
-  expect(setData).toHaveBeenCalledWith([]);
+  expect(setSnapshot.mock.calls.map(([update]) => shownBy(update))).toContainEqual({ data: [], error: null });
   expect(sent).toHaveBeenCalledTimes(2);
+  const shownSoFar = setSnapshot.mock.calls.length;
 
   receive(JSON.stringify({ _tag: "Success", id: "2", value: [] }));
   await Promise.resolve();
-  expect(setData).toHaveBeenCalledTimes(2);
+  expect(setSnapshot).toHaveBeenCalledTimes(shownSoFar);
   expect(sent).toHaveBeenCalledTimes(2);
   client.close();
 });

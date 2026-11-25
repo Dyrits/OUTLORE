@@ -1,5 +1,5 @@
 import type { HarnessName, MissionDetail, MissionId, MissionSummary, WorkspaceChoice } from "@outlore/contracts";
-import { type ReactNode, useState } from "react";
+import { memo, type ReactNode, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ConnectorChoicePanel } from "../connectors";
 import { BudgetMeters } from "../editors/budgets";
@@ -297,7 +297,7 @@ function QuestLedger({
 }) {
   const board = boardOf(missions);
   const lists = [
-    { label: "Needs you", rows: board.Attention },
+    { label: "Attention", rows: board.Attention },
     { label: "Underway", rows: board.Underway },
   ] as const;
   return (
@@ -322,7 +322,7 @@ function QuestLedger({
                 {rows.slice(0, 5).map((mission) => (
                   <OverviewRow key={mission.id} mission={mission} onPress={() => onSelect(mission.id)} />
                 ))}
-                {rows.length > 5 && <Text style={local.overviewMore}>+ {rows.length - 5} more on the board</Text>}
+                {rows.length > 5 && <Text style={local.overviewMore}>+ {rows.length - 5} more</Text>}
               </View>
             </View>
           ),
@@ -335,7 +335,7 @@ function QuestLedger({
  * What the board's side panel shows for a realm while no quest is chosen: its name, its folder, the ledger
  * of its quests, and those needing the owner or underway.
  */
-export function RealmPanel({
+export const RealmPanel = memo(function RealmPanel({
   client,
   missions,
   onOpenLore,
@@ -386,7 +386,7 @@ export function RealmPanel({
       </ScrollView>
     </View>
   );
-}
+});
 
 const local = StyleSheet.create({
   card: {

@@ -17,7 +17,7 @@ import {
 import { defaultRelayOrigin, weriftDirectSettings } from "./remote/index.ts";
 import { serveLoopback } from "./server.ts";
 import { serviceLayer } from "./service.ts";
-import { parentPortUpdaterLayer, type UpdaterPort } from "./update/parentPortUpdater.ts";
+import { parentPortUpdaterLayer, type UpdaterPort } from "./update/index.ts";
 
 interface ParentPort extends UpdaterPort {}
 

@@ -1,32 +1,15 @@
-import { execFileSync } from "node:child_process";
 import {
   killProcessTree,
   type MarkedProcess,
   type ProcessMarker,
   readMarkedProcesses,
+  readProcessCommands,
   readProcessTree,
 } from "../core/index.ts";
 
 // The OpenCode half of the process-tree work (CHG-0208): finding the executor OpenCode's `acp` starts for itself, and
 // ending the OpenCode processes an earlier run of the service lost. The generic tree reading, ending and marker reading
 // live in core/processTree.ts.
-
-/** The command line of each given process, read from `ps`; processes it does not list are left out. */
-const readProcessCommands = (pids: ReadonlyArray<number>) => {
-  try {
-    const table = execFileSync("ps", ["-A", "-o", "pid=,args="], { encoding: "utf8" });
-    const wanted = new Set(pids);
-    const commands = new Map<number, string>();
-    for (const line of table.split("\n")) {
-      const match = /^\s*(\d+)\s+(.*)$/.exec(line);
-      if (match?.[1] !== undefined && match[2] !== undefined && wanted.has(Number(match[1])))
-        commands.set(Number(match[1]), match[2]);
-    }
-    return commands;
-  } catch {
-    return new Map<number, string>();
-  }
-};
 
 /** Whether a command line is the `serve ... --stdio` executor OpenCode's `acp` starts for itself. */
 const isExecutorCommand = (command: string) =>

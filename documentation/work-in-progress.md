@@ -1,5 +1,10 @@
 # Work in progress
 
+## Whole-codebase review and refactor · 2026-11-25 · first pass committed; follow-up errands in flight; desktop check pending
+
+CHG-0750 in `0.2.8-Pre-Alpha`: image flicker, panel islands, quest-read broadcasts, spec fixes SPEC-03 to SPEC-06, and the first convention fixes.
+Next: the owner checks the flicker and the realm panel in the desktop window; the follow-up errands finish the standalone-channel island, the Reply starting-context warning, Pi tests, scoped `Changed`, and the standards sweeps; the owner decides Fresh or Resting for an empty errand (SPEC-07).
+
 ## Child reads parent on demand · 2026-11-25 · built and verified by tests; desktop check pending
 
 CHG-0748 in `0.2.8-Pre-Alpha`: the opener's-messages snapshot is replaced by a line plus the `read_parent_messages` tool with FTS5 search (`parentMessages.ts`, migration 0079, `journal.ts`, `threadTools.ts`).

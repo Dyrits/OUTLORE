@@ -65,4 +65,4 @@ Latest handoffs:
 
 - To verify and continue the instruction that stops agents announcing an opened errand (CHG-0745), read the [current handoff](.agents/handoffs/2026-11-25-1855-no-errand-announcement.md). Handoffs are shared and committed.
 
-- To verify and continue Reply as an icon beside Copy and the owner message time and actions (CHG-0747), read the [current handoff](.agents/handoffs/2026-11-25-1841-reply-icon-owner-message-actions.md). Handoffs are shared and committed.
+- To resume the whole-codebase review and refactor (CHG-0750), read the [current handoff](.agents/handoffs/2026-11-25-2240-codebase-review-and-refactor.md). Handoffs are shared and committed.

@@ -182,10 +182,10 @@ export const makeToolListing = (dependencies: {
       const isDisconnected =
         typeof failure === "object" &&
         failure !== null &&
-        "_tag" in failure &&
-        failure._tag === "BackendFailure" &&
-        "class" in failure &&
-        failure.class === "Disconnected";
+        Object.hasOwn(failure, "_tag") &&
+        (failure as { _tag?: unknown })._tag === "BackendFailure" &&
+        Object.hasOwn(failure, "class") &&
+        (failure as { class?: unknown }).class === "Disconnected";
       if (!isDisconnected || active.refreshToken === null) return yield* Effect.fail(failure);
       const refreshed = yield* refreshOAuthSession(entry.id, active.accessToken);
       const allSecrets = [...secrets, ...refreshed.secrets];

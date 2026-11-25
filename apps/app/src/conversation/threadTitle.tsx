@@ -2,10 +2,10 @@ import type { MissionDetail, MissionId, MissionState, ThreadId, ThreadState } fr
 import { Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { listedMissions } from "../foundation/queries";
+import { inRealmOf } from "../foundation/realmFilter";
 import { styles } from "../foundation/styles";
 import { colors, stateLabels, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { inRealmOf } from "../shell/realmRoster";
 import { ChipIcon } from "../ui/chips";
 import { Menu } from "../ui/pickers";
 

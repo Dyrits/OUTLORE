@@ -4,6 +4,7 @@ import { messageOf, type ServiceClient } from "../foundation/client";
 import { useIsRemoteHost } from "../foundation/hostContext";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, outline, radii, round } from "../foundation/theme";
+import { rowResizeCursor as resizeCursor } from "../ui/pointer";
 import { TerminalPanel } from "./terminalPanel";
 import type { TerminalPanelHandle } from "./terminalPanelTypes";
 import {
@@ -13,9 +14,6 @@ import {
   defaultShellHeight,
   type TerminalScope,
 } from "./terminalScope";
-
-// The pointer shows the bottom edge can be dragged up or down to resize the terminal.
-const resizeCursor = { cursor: "row-resize" } as object;
 
 /** Props for the single inline terminal component shared by conversation shells and launched interactive commands. */
 export type InlineTerminalProps = {

@@ -307,8 +307,7 @@ export function ThreadPane({
           {thread.state === "Stopped" && thread.waitingCount > 0 && (
             <Text style={styles.muted}>
               {countedOf(thread.waitingCount, "message")} {thread.waitingCount === 1 ? "waits" : "wait"} until you
-              resume this
-              {work}.
+              resume this {work}.
             </Text>
           )}
           {thread.blocker === "MissingWorkspace" && thread.workspace !== null && (

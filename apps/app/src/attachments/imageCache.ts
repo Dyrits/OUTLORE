@@ -3,7 +3,7 @@
  * A fetch still running is kept until it settles, so showing the same image twice makes one request; a failed fetch is forgotten.
  */
 export function imageCache(limit: number) {
-  const entries = new Map<string, { promise: Promise<string>; size: number }>();
+  const entries = new Map<string, { promise: Promise<string>; size: number; value: string | null }>();
   let total = 0;
   const evict = (keep: string) => {
     for (const [id, entry] of entries) {
@@ -25,11 +25,16 @@ export function imageCache(limit: number) {
         entries.set(id, held);
         return held.promise;
       }
-      const entry = { promise: fetch(), size: 0 };
+      const entry: { promise: Promise<string>; size: number; value: string | null } = {
+        promise: fetch(),
+        size: 0,
+        value: null,
+      };
       entries.set(id, entry);
       entry.promise.then(
         (data) => {
           if (entries.get(id) !== entry) return;
+          entry.value = data;
           entry.size = data.length;
           total += data.length;
           evict(id);
@@ -40,6 +45,8 @@ export function imageCache(limit: number) {
       );
       return entry.promise;
     },
+    /** The already-resolved image data if held, or null while uncached or still loading. */
+    peek: (id: string): string | null => entries.get(id)?.value ?? null,
     get size() {
       return total;
     },

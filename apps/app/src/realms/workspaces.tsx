@@ -5,6 +5,7 @@ import { messageOf, type ServiceClient } from "../foundation/client";
 import { samePath } from "../foundation/paths";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { isHovered } from "../ui/pointer";
 import { FolderPicker } from "./folderPicker";
 import { type NewRealm, NewRealmModal } from "./newRealmModal";
 import { folderNameOf, realmLabelOf } from "./realmLabels";
@@ -81,7 +82,7 @@ function Chip({ children, isSelected, onPress }: { children: ReactNode; isSelect
       onPress={onPress}
       style={(state) => [
         local.chip,
-        (state.pressed || (state as { hovered?: boolean }).hovered === true) && local.chipHovered,
+        (state.pressed || isHovered(state)) && local.chipHovered,
         isSelected && local.chipSelected,
       ]}
     >

@@ -1,5 +1,5 @@
 import type { AttachmentId, MessageId, MissionDetail, SendToParentScope, ThreadId } from "@outlore/contracts";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { imageRefusalOf } from "../attachments/attachmentRules";
 import { useHarnesses } from "../editors/runners";
 import { useThreadPresets } from "../editors/useThreadPresets";
@@ -29,8 +29,11 @@ export function useThreadConversation(
   const draft = useDraft(client, threadId);
   // What hangs from the messages of this conversation, so their reply lines stand under them (conversation panes).
   const { data: anchors } = useServiceQuery(client, { _tag: "ReadThreadAnchors", threadId }, `anchors:${threadId}`);
-  const entries = detail === null ? [] : entriesOf(detail, detail.thread.actions.isInTurn, anchors ?? []);
-  const pendingMessages = detail === null ? [] : pendingOwnerMessagesOf(detail.messages);
+  const entries = useMemo(
+    () => (detail === null ? [] : entriesOf(detail, detail.thread.actions.isInTurn, anchors ?? [])),
+    [anchors, detail],
+  );
+  const pendingMessages = useMemo(() => (detail === null ? [] : pendingOwnerMessagesOf(detail.messages)), [detail]);
   const followNewest = useFollowNewest(entries, target);
   const skills = useSkills(client, path);
   const terminal = useTerminal(client, threadId, terminalPath);
