@@ -6,6 +6,7 @@ import { deepwikiEntry } from "./entries/deepwiki.ts";
 import { exaEntry } from "./entries/exa.ts";
 import { firecrawlEntry } from "./entries/firecrawl.ts";
 import { githubEntry } from "./entries/github.ts";
+import { gitlabEntry } from "./entries/gitlab.ts";
 import { neonEntry } from "./entries/neon.ts";
 import { stripeEntry } from "./entries/stripe.ts";
 import { tavilyEntry } from "./entries/tavily.ts";
@@ -170,4 +171,5 @@ export const defaultCatalog: ReadonlyArray<CatalogEntry> = [
   tavilyEntry,
   stripeEntry,
   neonEntry,
+  gitlabEntry,
 ];
