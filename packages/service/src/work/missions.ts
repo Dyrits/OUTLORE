@@ -181,6 +181,7 @@ type MissionRow = {
   workspaceName: string | null;
   lastOwnerText: string | null;
   lastReplyText: string | null;
+  replyCount: number;
   budgetCost: number | null;
   budgetTokens: number | null;
   ritualId: string | null;
@@ -218,6 +219,7 @@ const summaryOf = (row: MissionRow): MissionSummary => {
     lastExchange: { owner: row.lastOwnerText, reply: row.lastReplyText },
     model: row.model,
     prompt: promptOf(row),
+    replyCount: row.replyCount,
     ritual:
       row.ritualId === null || row.ritualSchedule === null
         ? null
@@ -255,6 +257,7 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
       COALESCE(SUM(${sql.literal(tokenSum)}), 0) AS spentTokens,
       w.id AS workspaceId, w.name AS workspaceName,
       ${sql.literal(lastSampleOf("top.id", "user"))} AS lastOwnerText, ${sql.literal(lastSampleOf("top.id", "agent"))} AS lastReplyText,
+      MAX(0, (SELECT COUNT(*) FROM messages m WHERE m.thread_id = top.id AND m.sender_kind != 'system') - 1) AS replyCount,
       r.id AS ritualId, r.is_on AS ritualIsOn, r.last_run_at AS ritualLastRunAt, r.last_run_state AS ritualLastRunState,
       r.next_run_at AS ritualNextRunAt, r.origin_mission_id AS ritualOriginMissionId,
       r.schedule AS ritualSchedule, top.state AS topState,

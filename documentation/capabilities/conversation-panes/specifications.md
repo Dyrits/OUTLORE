@@ -55,25 +55,26 @@ The switchers also appear in the narrow header when another conversation of the 
 
 ### Reply and Comment
 
-- A message offers two actions. **Comment** is the existing one: a note held for the owner's next message ([thread-messaging](../thread-messaging/specifications.md#comments-on-messages)). **Reply** is new: it starts a thread of work from the message, whose conversation opens in the next pane.
-- A Reply on a message of a channel starts a **quest**, which stays in that channel. The reply's composer offers the Companion, which the owner may change for that reply; the quest is placed in the channel's realm.
-- A Reply on a message of a quest's conversation starts an **errand** beneath the quest, with the replied message as context. An errand's pane offers no Reply: the owner starts errands only from a quest, and steers an errand by writing in it (CHG-0558).
-- A message has at most one reply (one reply is one quest or errand). Replying again to a message that already has one opens that conversation.
+- A message offers two actions. **Comment** is the existing one: a note held for the owner's next message ([thread-messaging](../thread-messaging/specifications.md#comments-on-messages)). **Reply** starts or opens a thread of work from the message, whose conversation opens in the next pane.
+- A Reply on a message of a channel starts a **quest** in that channel's realm, inheriting the channel's current Companion configuration directly (no inline Companion pickers).
+- A Reply on a message of a quest's conversation directly opens the **errand** starter pane anchored to that message, inheriting the quest's Companion configuration (editable via its **Companions** tab), and creates the errand on first send. An errand's pane offers no Reply: the owner starts errands only from a quest, and steers an errand by writing in it (CHG-0558).
+- A message has at most one reply (one reply is one quest or errand). Replying again to a message that already has one opens that conversation directly.
 
 ### Quests in a main conversation
 
 Quests with errands show their fold chevron even when collapsed and the pointer is elsewhere. Press it to collapse the errands or expand a quest in the desktop sidebar to preview up to two unfolded errand rows, including nested errands. Each errand opens its conversation. If more than two rows would appear, **Show N errands** opens the quest's **Errands** tab. The number counts the unfolded rows before applying the limit. On a narrow screen, the same action opens the quest with its errand list expanded.
 
 - A quest with an originating channel message appears as a **reply line** under that message:
-  - A quest Chronicler proposes hangs under Chronicler's proposal message, itself a reply to the owner's message that led to it; the quest's reply line sits under that reply (the owner, 2026-11-20). The confirmation is a simple menu: the realm, and the Companion preset. Nothing starts until the owner confirms, as [today](../mission-coordination/specifications.md#chronicler-the-assistant-chg-0173).
+  - In a realm or Borderlands channel, casual chat receives an in-channel reply with no quest; when a message calls for a quest and no existing quest matches, the channel's Companion directly opens the quest anchored to the owner's message using the channel's current Companion configuration (no second proposal bubble, no confirmation card), and the quest pane opens beside the channel.
+  - In the global Chronicler conversation, a quest Chronicler proposes still hangs under Chronicler's proposal message with its confirmation card, as [today](../mission-coordination/specifications.md#chronicler-the-assistant-chg-0173).
   - When the owner supplies an opening request as part of creating the quest, the request appears in the channel with the reply line under it.
   - A quest started by a Reply hangs under the message replied to.
   - When the owner creates an empty quest, messages they later send from its composer appear only in the quest.
   - The opening of an empty quest still appears in Chronicle History.
   - Moving a quest to another realm moves the message it came from with it, into that realm's channel, under the existing [move confirmation](../mission-tracking/specifications.md#quest-placement-and-moves).
   - A quest's results, Attention requests, and failures arrive as replies in that thread, in place of the buttons beside Chronicler's replies.
-- The reply line shows the quest's title, its state, and its latest activity. Pressing it opens the quest's conversation in the next pane.
-- A reply line, and each quest in the Quests tab, is a **block** that quotes a sample of the last exchange, as a Slack thread quotes its last reply: the owner's latest message ("You") and the companion's latest reply ("Companion"), each cut to 160 characters. Errands' reply lines quote their own last exchange the same way (CHG-0571).
+- The in-feed reply line is a compact one-line bar under the anchor message showing the state dot, reply count (`1 reply`, `N replies`, or `Opening…`), title, waiting or attention indicator, and last activity time; pressing it opens the quest or errand in the next pane.
+- Each quest in the **Quests** tab and each errand in the **Errands** tab keeps the fuller **block** that quotes a sample of the last exchange: the owner's latest message ("You") and the companion's latest reply ("Companion"), each cut to 160 characters (CHG-0571).
 
 The Errands tab starts with a **New errand** block which opens the existing errand composer in the next pane.
 The Quests tab starts with a **New quest** block which creates and opens an empty quest in the current realm or in the Borderlands.
@@ -88,7 +89,7 @@ The blocks appear whether or not the lists already have entries.
 - **Opened by the owner:** by a Reply, the anchor is the message replied to; the reply's text starts the errand.
 - **Started in the Errand pane:** when a desktop quest opens without a selected errand, its third pane holds a composer for a new errand. Sending there starts the errand from the quest's current context using the usual starting-context limits, and opens the new conversation in that pane. The selected errand's New errand button brings the composer back.
 - The Open errand button in the quest's message box is available in the single-conversation layout, which has no Errand pane.
-- **Opened by an agent:** the agent replies, in its own words, to the message that led to the errand, and that reply is the anchor — there is no system card (the owner, 2026-11-20). Outlore writes the reply from the open_thread call itself, so it costs no extra agent turn and looks the same on every harness, but it is attributed to the agent and carries the brief. It is placed as a reply to the message the call names, or to the conversation's latest message when it names none, and the errand's reply line hangs from it. Three errands opened in one turn give three replies, in order, each carrying one; the agent may write ordinary text around them. The anchor only positions the reply line: the tree parent stays the conversation, so anchoring never creates a sub-errand. Pressing the reply line, or replying to the reply, opens the errand's pane, where the brief is the first message (until the pane-identity work restyles it).
+- **Opened by an agent:** a single errand opened with `open_thread` anchors directly to the triggering message (`replyToMessageId`, or the conversation's latest message) with no extra brief bubble, inheriting the quest's Companion configuration by default. When an agent opens multiple errands on the same triggering message in one turn, Outlore posts one attributed agent brief reply per errand tied to that triggering message so each errand hangs from its own message and none is asymmetrically tied to an umbrella prompt. The anchor only positions the reply line: the tree parent stays the conversation, so anchoring never creates a sub-errand. Pressing the reply line, or replying to the anchor message, opens the errand's pane, where the brief is the first message.
 - Opening a reply line from a pane replaces every pane to the right of it.
 - **Follow-up work from an errand:** the agent can post an attributed message about the work in the quest conversation. The owner can Reply to start a quest-level errand from that message. Posting the message starts no errand.
 - New errands open directly beneath the quest. Existing phone access to older errands continues.

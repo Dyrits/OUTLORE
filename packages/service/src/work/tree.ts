@@ -56,6 +56,49 @@ const readParent = Effect.fnUntraced(function* (parentId: string) {
 });
 
 /**
+ * Resolves the anchor message for an agent-opened errand: a single errand anchors directly to the triggering message
+ * with no extra bubble, while multiple errands on the same message each get their own agent brief reply so none is
+ * asymmetrically tied to an umbrella message.
+ */
+const resolveAgentAnchor = Effect.fnUntraced(function* (
+  parentId: string,
+  brief: string,
+  replyToMessageId: string | null,
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const [target] =
+    replyToMessageId === null
+      ? yield* sql<{ id: string; replyToMessageId: string | null }>`
+          SELECT id, reply_to_message_id AS replyToMessageId FROM messages
+          WHERE thread_id = ${parentId} ORDER BY sequence DESC LIMIT 1`
+      : yield* sql<{ id: string; replyToMessageId: string | null }>`
+          SELECT id, reply_to_message_id AS replyToMessageId FROM messages
+          WHERE thread_id = ${parentId} AND id = ${replyToMessageId}`;
+  if (target === undefined) return yield* insertErrandReply(parentId, brief, replyToMessageId);
+  // If the latest message is already an agent brief from a multi-errand split, keep sibling briefs tied to its trigger.
+  if (replyToMessageId === null && target.replyToMessageId !== null) {
+    const [splitErrand] = yield* sql<{ id: string }>`
+      SELECT id FROM threads WHERE anchor_message_id = ${target.id} AND is_opened_by_agent = 1 AND is_deleting = 0 LIMIT 1`;
+    if (splitErrand !== undefined) return yield* insertErrandReply(parentId, brief, target.replyToMessageId);
+  }
+  const [existing] = yield* sql<{ id: string; isOpenedByAgent: number }>`
+    SELECT id, is_opened_by_agent AS isOpenedByAgent FROM threads
+    WHERE anchor_message_id = ${target.id} AND is_deleting = 0 LIMIT 1`;
+  const [existingSplit] = yield* sql<{ id: string }>`
+    SELECT t.id FROM threads t JOIN messages m ON m.id = t.anchor_message_id
+    WHERE m.thread_id = ${parentId} AND m.reply_to_message_id = ${target.id}
+      AND t.is_opened_by_agent = 1 AND t.is_deleting = 0 LIMIT 1`;
+  if (existing === undefined && existingSplit === undefined) return target.id;
+  if (existing !== undefined && existing.isOpenedByAgent === 1) {
+    const [firstMessage] = yield* sql<{ text: string }>`
+      SELECT text FROM messages WHERE thread_id = ${existing.id} ORDER BY sequence ASC LIMIT 1`;
+    const existingReplyId = yield* insertErrandReply(parentId, firstMessage?.text ?? "", target.id);
+    yield* sql`UPDATE threads SET anchor_message_id = ${existingReplyId} WHERE id = ${existing.id}`;
+  }
+  return yield* insertErrandReply(parentId, brief, target.id);
+});
+
+/**
  * Records a thread beneath the parent, in the parent's workspace and, unless chosen, with its harness,
  * account, model, effort, and backup Companions, and its first message: the opener's request. The command that opens it wakes
  * it. The errand starts with the parent’s permission setting.
@@ -75,11 +118,11 @@ export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
       VALUES (${threadId}, ${parent.missionId}, ${opening.parentId}, 'Resting', ${runner.harness}, ${runner.accountId},
         ${runner.model}, ${runner.effort}, ${parent.workspaceId}, ${titleOf(opening.title ?? "") || newErrandTitle}, ${opening.isOpenedByAgent ? 1 : 0},
         ${openerMessages}, ${opening.isAside ? 1 : 0}, ${backups}, ${ownCopy?.path ?? null}, ${ownCopy?.branch ?? null}, ${parent.permissionMode})`;
-  // The errand's anchor: the message the owner replied to, or the agent reply recorded where the agent opened it.
+  // The errand's anchor: the message the owner replied to, or the triggering message (split on multiple errands).
   const anchorId =
     opening.anchorMessageId ??
     (opening.isOpenedByAgent && !opening.isAside
-      ? yield* insertErrandReply(opening.parentId, opening.text, opening.replyToMessageId ?? null)
+      ? yield* resolveAgentAnchor(opening.parentId, opening.text, opening.replyToMessageId ?? null)
       : null);
   if (anchorId !== null) yield* sql`UPDATE threads SET anchor_message_id = ${anchorId} WHERE id = ${threadId}`;
   const { messageId, threadsToWake } = yield* insertMessage({
@@ -116,6 +159,11 @@ export const openThreadByOwner = Effect.fnUntraced(function* (
     return yield* invalid("A Ritual opens no errands by hand: its runs are the errands. Run the Ritual again.");
   if ((yield* depthOf(parentId)) + 1 > maxOwnerDepth) {
     return yield* invalid("Open an errand from the quest conversation.");
+  }
+  if (anchorMessageId !== null) {
+    const [anchor] = yield* sql<{ id: string }>`
+      SELECT id FROM messages WHERE id = ${anchorMessageId} AND thread_id = ${parentId}`;
+    if (anchor === undefined) return yield* notFound("No such message in this conversation.");
   }
   if (!shouldStartAnyway) {
     const refusal = startingContextRefusalOf(

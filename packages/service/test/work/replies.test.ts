@@ -92,7 +92,7 @@ describe("Chronicler channels", () => {
 });
 
 describe("what hangs from a message", () => {
-  it.live("posts one agent reply per errand, each tied to the triggering message and anchoring its errand", () =>
+  it.live("splits multiple agent errands in one turn into separate agent replies tied to the triggering message", () =>
     Effect.gen(function* () {
       const started = yield* questWithErrands(["Design", "Build", "Test"]);
       const detail = yield* read(started.missionId);
@@ -105,7 +105,7 @@ describe("what hangs from a message", () => {
       const errands = detail.threads.filter((thread) => thread.parentId === started.threadId);
       expect(anchors.map((anchor) => anchor.threadId).sort()).toEqual(errands.map((thread) => thread.id).sort());
       const trigger = detail.messages.find((message) => message.sender === "user");
-      expect(cards.map((card) => card.replyToMessageId)).toEqual([trigger?.id, cards[0]?.id, cards[1]?.id]);
+      expect(cards.map((card) => card.replyToMessageId)).toEqual([trigger?.id, trigger?.id, trigger?.id]);
       for (const errand of errands) {
         const child = yield* read(started.missionId, errand.id);
         expect(child.messages[0]?.text).toBe(`Brief for ${errand.title}`);
@@ -113,20 +113,23 @@ describe("what hangs from a message", () => {
     }).pipe(Effect.provide(setup().layer)),
   );
 
-  it.live("does not queue its own anchor reply for delivery", () =>
+  it.live("anchors a single agent errand directly to the triggering message with no extra bubble", () =>
     Effect.gen(function* () {
       const started = yield* questWithErrands(["Design"]);
       const detail = yield* read(started.missionId);
+      const trigger = detail.messages.find((message) => message.sender === "user");
       expect(detail.messages.some((message) => message.sender === "agent" && message.text === "Brief for Design")).toBe(
-        true,
+        false,
       );
-      // Nothing waits for the thread and its state is not Waiting or Running because of the card.
+      const [anchor] = yield* anchorsOf(started.threadId);
+      expect(anchor?.messageId).toBe(trigger?.id);
+      // Nothing waits for the thread and its state is not Waiting or Running because of the anchor.
       expect(detail.thread.state).toBe("Resting");
       expect(detail.threads.find((thread) => thread.id === started.threadId)?.waitingCount).toBe(0);
     }).pipe(Effect.provide(setup().layer)),
   );
 
-  it.live("uses the message named by the agent without changing the tree parent", () =>
+  it.live("anchors directly to the message named by the agent without changing the tree parent", () =>
     Effect.gen(function* () {
       const started = yield* startIdle("The first request");
       const detail = yield* read(started.missionId);
@@ -135,13 +138,36 @@ describe("what hangs from a message", () => {
       yield* tool(started.threadId, "open_thread", { replyToMessageId: trigger.id, request: "Explicit brief" });
       const after = yield* read(started.missionId);
       const anchor = (yield* anchorsOf(started.threadId))[0];
-      const message = after.messages.find((item) => item.id === anchor?.messageId);
-      expect(message?.replyToMessageId).toBe(trigger.id);
+      expect(anchor?.messageId).toBe(trigger.id);
       expect(after.threads.find((item) => item.id === anchor?.threadId)?.parentId).toBe(started.threadId);
       expect(
         JSON.stringify(yield* tool(started.threadId, "open_thread", { replyToMessageId: "missing", request: "Bad" })),
       ).toContain("No such message");
       expect((yield* read(started.missionId)).threads).toHaveLength(2);
+    }).pipe(Effect.provide(setup().layer)),
+  );
+
+  it.live("anchors an owner-opened errand when OpenThread names a quest message", () =>
+    Effect.gen(function* () {
+      const started = yield* startIdle("Check the logs");
+      const detail = yield* read(started.missionId);
+      const trigger = detail.messages.find((message) => message.sender === "user");
+      if (trigger === undefined) return yield* Effect.die("No trigger");
+      const opened = yield* call({
+        _tag: "OpenThread",
+        anchorMessageId: trigger.id,
+        effort: "default",
+        model: "default",
+        parentThreadId: started.threadId,
+        requestId: crypto.randomUUID(),
+        shouldStartAnyway: false,
+        text: "Investigate timeout",
+      });
+      const anchors = yield* anchorsOf(started.threadId);
+      expect(anchors).toEqual([expect.objectContaining({ messageId: trigger.id, threadId: opened.threadId })]);
+      const settled = yield* settle(started.missionId, isIdle, opened.threadId);
+      const errandSummary = settled.threads.find((thread) => thread.id === opened.threadId);
+      expect(errandSummary?.replyCount).toBe(1);
     }).pipe(Effect.provide(setup().layer)),
   );
 
@@ -169,16 +195,17 @@ describe("what hangs from a message", () => {
 });
 
 describe("persisting anchors", () => {
-  it.live("retains the agent reply, its trigger, the child anchor and brief after a service restart", () =>
+  it.live("retains the direct trigger anchor and child brief after a service restart", () =>
     Effect.gen(function* () {
       const value = setup();
       const saved = yield* Effect.gen(function* () {
         const started = yield* questWithErrands(["Design"]);
         const detail = yield* read(started.missionId);
+        const trigger = detail.messages.find((message) => message.sender === "user");
         const anchor = (yield* anchorsOf(started.threadId))[0];
-        const message = detail.messages.find((item) => item.id === anchor?.messageId);
-        if (anchor === undefined || message?.replyToMessageId == null) return yield* Effect.die("Missing anchor");
-        return { anchor, started, trigger: message.replyToMessageId };
+        if (anchor === undefined || trigger === undefined) return yield* Effect.die("Missing anchor");
+        expect(anchor.messageId).toBe(trigger.id);
+        return { anchor, started, trigger: trigger.id };
       }).pipe(Effect.provide(value.layer));
       const restarted = serviceLayer({
         filename: join(value.directory, "store.sqlite"),
@@ -188,12 +215,6 @@ describe("persisting anchors", () => {
       });
       yield* Effect.gen(function* () {
         expect(yield* anchorsOf(saved.started.threadId)).toEqual([saved.anchor]);
-        const parent = yield* read(saved.started.missionId);
-        expect(parent.messages.find((item) => item.id === saved.anchor.messageId)).toMatchObject({
-          replyToMessageId: saved.trigger,
-          sender: "agent",
-          text: "Brief for Design",
-        });
         const child = yield* read(saved.started.missionId, saved.anchor.threadId);
         expect(child.thread.parentId).toBe(saved.started.threadId);
         expect(child.messages[0]?.text).toBe("Brief for Design");
@@ -370,16 +391,67 @@ describe("errand follow-ups", () => {
   );
 });
 
+describe("realm channels open quests directly", () => {
+  it.live("opens a quest directly under the owner's message with the channel's Companion and no second bubble", () => {
+    const f = setup();
+    return Effect.gen(function* () {
+      yield* call({ _tag: "CreateRealm", name: "Workshop", path: null });
+      const {
+        workspaces: [realm],
+      } = yield* call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null });
+      if (realm === undefined) return yield* Effect.die("Missing realm");
+      const channel = yield* call({ _tag: "ReadGuildmaster", channelId: realm.id });
+      yield* call({
+        _tag: "ChangeThreadRunner",
+        accountId: null,
+        effort: "high",
+        harness: "claude",
+        model: "claude-sonnet-4-6",
+        threadId: channel.threadId,
+      });
+      yield* call({ _tag: "SetThreadPermissionMode", mode: "AutoAcceptEdits", threadId: channel.threadId });
+      yield* say(channel.threadId, "Fix the login redirect");
+      const chat = yield* settle(channel.missionId, isIdle);
+      const ownerMessage = chat.messages.find((candidate) => candidate.sender === "user");
+      if (ownerMessage === undefined) return yield* Effect.die("Missing owner message");
+      const countBefore = chat.messages.length;
+      const result = yield* tool(channel.threadId, "suggest_mission", {
+        missions: [],
+        text: "Fix the login redirect",
+        title: "Fix login redirect",
+      });
+      expect(JSON.stringify(result)).toContain("directly as replies under the owner's message");
+      const afterChannel = yield* read(channel.missionId);
+      // No second proposal bubble and no pending suggestion card in the channel.
+      expect(afterChannel.messages).toHaveLength(countBefore);
+      expect(afterChannel.suggestions).toHaveLength(0);
+      const [anchor] = yield* anchorsOf(channel.threadId);
+      if (anchor === undefined) return yield* Effect.die("Missing quest anchor");
+      expect(anchor.messageId).toBe(ownerMessage.id);
+      const quest = yield* settle(anchor.missionId, isIdle);
+      expect(quest.mission.workspaceId).toBe(realm.id);
+      expect(quest.mission.title).toBe("Fix login redirect");
+      expect(quest.thread.harness).toBe("claude");
+      expect(quest.thread.model).toBe("claude-sonnet-4-6");
+      expect(quest.thread.effort).toBe("high");
+      expect(quest.thread.permissionMode).toBe("AutoAcceptEdits");
+      expect(quest.mission.replyCount).toBe(1);
+    }).pipe(Effect.provide(f.layer));
+  });
+});
+
 describe("the tool still opens errands", () => {
-  it.live("opens an errand by the tool with an agent reply", () =>
+  it.live("opens a single errand by the tool anchored directly to the latest message with no extra bubble", () =>
     Effect.gen(function* () {
       const started = yield* startIdle("Hello");
+      const before = yield* read(started.missionId);
+      const latest = before.messages.at(-1);
       const result = yield* tool(started.threadId, "open_thread", { request: "Brief", title: "Errand" });
       expect(JSON.stringify(result)).toContain("Opened");
-      const cards = (yield* read(started.missionId)).messages.filter(
-        (message) => message.sender === "agent" && message.text === "Brief",
-      );
-      expect(cards).toHaveLength(1);
+      const after = yield* read(started.missionId);
+      expect(after.messages).toHaveLength(before.messages.length);
+      const [anchor] = yield* anchorsOf(started.threadId);
+      expect(anchor?.messageId).toBe(latest?.id);
     }).pipe(Effect.provide(setup().layer)),
   );
 });

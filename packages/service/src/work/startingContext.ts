@@ -51,6 +51,8 @@ type Sections = {
 
 /** Whom a starting context is for: a thread, or one about to be opened. */
 type Subject = {
+  /** Whether it is a realm or Borderlands channel conversation. */
+  readonly isChannel: boolean;
   /** Whether it is Chronicler's thread, which starts from the realms and the quest list, not a journal. */
   readonly isGuildmaster: boolean;
   /** The thread whose scope the lore comes from: the thread itself, or the opener of one about to be opened. */
@@ -70,7 +72,7 @@ const readSections = Effect.fnUntraced(function* (subject: Subject, workspace: s
   return {
     budget: yield* budgetLineOf(subject.missionId, yield* accountOfThread(subject.position.threadId)),
     instructions: (subject.isGuildmaster
-      ? [guildmasterInstructionsOf(subject.position.threadId), loreInstructions]
+      ? [guildmasterInstructionsOf(subject.position.threadId, subject.isChannel), loreInstructions]
       : [threadInstructionsOf(subject.position), journalInstructions, loreInstructions]
     ).join("\n\n"),
     journal: subject.isGuildmaster
@@ -99,6 +101,7 @@ const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
     harness: HarnessName;
     guildmasterId: string | null;
     isAside: number;
+    isChannel: number;
     isGuildmaster: number;
     missionId: string;
     openerMessages: string | null;
@@ -108,6 +111,7 @@ const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
   }>`
       SELECT t.mission_id AS missionId, t.harness, t.title, t.parent_id AS parentId, p.title AS parentTitle,
         t.is_aside AS isAside, t.opener_messages AS openerMessages, m.is_guildmaster AS isGuildmaster,
+        (m.chronicler_channel IS NOT NULL) AS isChannel,
         (SELECT g.top_thread_id FROM missions g WHERE g.is_guildmaster = 1 AND g.chronicler_channel IS NULL LIMIT 1) AS guildmasterId
       FROM threads t JOIN missions m ON m.id = t.mission_id LEFT JOIN threads p ON p.id = t.parent_id
       WHERE t.id = ${threadId}`;
@@ -123,6 +127,7 @@ const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
     harness: row.harness,
     ownCopy: yield* readOwnCopy(threadId),
     subject: {
+      isChannel: row.isChannel === 1,
       isGuildmaster: row.isGuildmaster === 1,
       loreThreadId: threadId,
       missionId: row.missionId,
@@ -174,6 +179,7 @@ export const readStartingContext = Effect.fnUntraced(function* (
   };
   const openerMessages = yield* openerMessagesOf(parentId);
   const subject = {
+    isChannel: false,
     isGuildmaster: false,
     loreThreadId: parentId,
     missionId: parent.missionId,

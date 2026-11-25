@@ -1,5 +1,5 @@
-import type { GuildmasterPlace, MessageId, MissionId, Viewing, WorkspaceId } from "@outlore/contracts";
-import { type ReactNode, useState } from "react";
+import type { GuildmasterPlace, MessageId, MissionId, ThreadId, Viewing, WorkspaceId } from "@outlore/contracts";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BudgetScreen, BudgetStopCard } from "../editors/budgets";
 import type { ServiceClient } from "../foundation/client";
@@ -17,6 +17,7 @@ import { ConversationFailure, ConversationFeed } from "./conversationFeed";
 import { MobileHeader } from "./mobileHeader";
 import { QueuedMessageTray } from "./queuedMessageTray";
 import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
+import { findNewlyAnchoredQuest } from "./replyLineLabels";
 import { useThreadConversation } from "./useThreadConversation";
 
 /** The realm chosen for the next message, shown over the message box and cleared with its ×. */
@@ -166,9 +167,29 @@ function ChroniclerChat({
     realmPath: path,
     viewing,
   });
-  const { draft, skills, terminal, actionError, entries, act } = conversation;
+  const { draft, skills, terminal, actionError, entries, act, anchors, hasLoadedAnchors } = conversation;
   // A Reply in the Chronicle starts a quest, which Chronicler hears of as one it opened (conversation panes).
   const [replyTo, setReplyTo] = useState<{ id: MessageId; text: string } | null>(null);
+  // Auto-open a quest pane when the realm channel Companion opens a new quest directly under a message.
+  const seenAnchors = useRef<Set<ThreadId> | null>(null);
+  useEffect(() => {
+    if (channel === undefined || !hasLoadedAnchors) return;
+    if (seenAnchors.current === null) {
+      seenAnchors.current = new Set(anchors.map((anchor) => anchor.threadId));
+      return;
+    }
+    const opened = findNewlyAnchoredQuest(anchors, seenAnchors.current);
+    for (const anchor of anchors) seenAnchors.current.add(anchor.threadId);
+    if (opened !== null) onOpenMission(opened.missionId);
+  }, [anchors, channel, hasLoadedAnchors, onOpenMission]);
+  const startReply = (message: { id: MessageId; text: string }) => {
+    const existing = anchors.find((anchor) => anchor.messageId === message.id);
+    if (existing !== undefined) {
+      onOpenMission(existing.missionId);
+      return;
+    }
+    setReplyTo(message);
+  };
   // The Guildmaster can have a budget of its own, set on its own screen like a quest's (budget-control).
   const { isChroniclerBudgetOpen: isBudgetOpen, onChroniclerBudget: setIsBudgetOpen } = usePageNavigation();
   if (detail === null) {
@@ -200,7 +221,7 @@ function ChroniclerChat({
             .map((mission) => mission.state),
         );
   return (
-    <RepliesProvider value={{ start: (message) => setReplyTo(message) }}>
+    <RepliesProvider value={{ start: startReply }}>
       <View style={local.page}>
         {onBack !== undefined ? (
           <ChannelHeader

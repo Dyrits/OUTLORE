@@ -1,4 +1,4 @@
-import { type MissionId, type ThreadId, WorkspaceId } from "@outlore/contracts";
+import { type MessageId, type MissionId, type ThreadId, WorkspaceId } from "@outlore/contracts";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 import { listedErrandsOf } from "../conversation/errandRoster";
@@ -71,6 +71,11 @@ export function PaneHost({
   useEffect(() => {
     if (data !== null) setThreads(data.threads);
   }, [data]);
+  const [replyTo, setReplyTo] = useState<{ id: MessageId; text: string } | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: changing quests clears any pending errand reply anchor.
+  useEffect(() => {
+    setReplyTo(null);
+  }, [missionId]);
   const channel = channelOf(data?.mission.workspaceId, data?.mission.workspaceName);
   const { failure: questStartFailure, start: startQuest } = useStartQuest(
     client,
@@ -221,8 +226,13 @@ export function PaneHost({
                   chrome={paneControls(id, "Fold the errand")}
                   client={client}
                   errands={listedErrandsOf(threads)}
-                  onOpened={revealThread}
+                  onClearReply={() => setReplyTo(null)}
+                  onOpened={(openedId) => {
+                    setReplyTo(null);
+                    revealThread(openedId);
+                  }}
                   parent={data !== null && data.thread.id === quest ? data.thread : null}
+                  replyTo={replyTo}
                 />,
               );
             }
@@ -244,10 +254,28 @@ export function PaneHost({
                         : void 0
                   }
                   missionId={missionId}
-                  onNewErrand={content.kind === "errand" && quest !== undefined ? () => startErrand(quest) : undefined}
+                  onNewErrand={
+                    content.kind === "errand" && quest !== undefined
+                      ? () => {
+                          setReplyTo(null);
+                          startErrand(quest);
+                        }
+                      : undefined
+                  }
                   onOpenMission={onOpenMission}
                   onOpenThread={revealThread}
-                  onStartErrand={() => startErrand(threadId)}
+                  onReplyMessage={
+                    content.kind === "quest"
+                      ? (message) => {
+                          setReplyTo(message);
+                          startErrand(threadId);
+                        }
+                      : undefined
+                  }
+                  onStartErrand={() => {
+                    setReplyTo(null);
+                    startErrand(threadId);
+                  }}
                   threadId={threadId}
                 />
               </View>,

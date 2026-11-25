@@ -1,4 +1,4 @@
-import type { MissionId, ThreadId, ThreadSummary } from "@outlore/contracts";
+import type { MessageId, MissionId, ThreadId, ThreadSummary } from "@outlore/contracts";
 import { type ReactNode, useContext, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
@@ -28,6 +28,7 @@ export function PaneThread({
   onOpenMission,
   onNewErrand,
   onOpenThread,
+  onReplyMessage,
   onStartErrand,
   threadId,
 }: {
@@ -43,6 +44,8 @@ export function PaneThread({
   onNewErrand?: (() => void) | undefined;
   /** Opens another thread of the quest: a reply line here opens its errand in the pane beside this one. */
   onOpenThread: (threadId: ThreadId) => void;
+  /** Opens the errand starter pane anchored to a quest message when the owner clicks Reply. */
+  onReplyMessage?: ((message: { id: MessageId; text: string }) => void) | undefined;
   onStartErrand?: (() => void) | undefined;
   threadId: ThreadId;
 }) {
@@ -119,6 +122,7 @@ export function PaneThread({
             onOpenBudget={() => pages.openBudget(detail.budgetStop?.scope ?? "Mission")}
             onOpenDetails={() => {}}
             onOpenMission={onOpenMission}
+            {...(onReplyMessage === undefined ? {} : { onReplyMessage })}
             onSelect={onOpenThread}
             tabs={
               <PaneTabs

@@ -18,7 +18,7 @@ import type { CommandRunner } from "./commands.ts";
 import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
 import { actOnMission, readControlHistory, refuseAction } from "./guildmaster.ts";
 import { readAppGuideByGuildmaster } from "./guildmasterGuide.ts";
-import { isGuildmasterThread } from "./guildmasterPlace.ts";
+import { isChannelThread, isGuildmasterThread } from "./guildmasterPlace.ts";
 import { withProvenance } from "./guildmasterProvenance.ts";
 import { createRealmByGuildmaster, renameRealmByGuildmaster } from "./guildmasterRealms.ts";
 import { changeSettingByGuildmaster, readSettingsByGuildmaster } from "./guildmasterSettings.ts";
@@ -301,8 +301,18 @@ export const makeToolHandlers = (dependencies: {
         : suggestions.suggest(threadId, args).pipe(
             Effect.tap(({ followUps }) => commands.apply(followUps)),
             Effect.flatMap(({ value }) =>
-              commit(isGuildmasterThread(threadId)).pipe(
-                Effect.map((isGuildmaster) => {
+              commit(
+                Effect.all({
+                  isChannel: isChannelThread(threadId),
+                  isGuildmaster: isGuildmasterThread(threadId),
+                }),
+              ).pipe(
+                Effect.map(({ isChannel, isGuildmaster }) => {
+                  if (isChannel && value._tag === "OpenedWithoutAsking") {
+                    return toolText(
+                      `Opened quest "${value.resolution.targetTitle}" (id ${value.resolution.targetMissionId}) directly as replies under the owner's message. End your turn without posting another message in the channel.`,
+                    );
+                  }
                   const answered = suggestedAnswerOf(value);
                   return isGuildmaster
                     ? { ...answered, text: answered.text.replace(carryOn, confirmInstead) }

@@ -68,6 +68,15 @@ export const isGuildmasterThread = Effect.fnUntraced(function* (threadId: string
   return rows.length > 0;
 });
 
+/** Whether the thread is a realm or Borderlands channel conversation rather than the global Chronicler thread. */
+export const isChannelThread = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ id: string }>`
+      SELECT t.id FROM threads t JOIN missions m ON m.id = t.mission_id
+      WHERE t.id = ${threadId} AND m.is_guildmaster = 1 AND m.chronicler_channel IS NOT NULL`;
+  return rows.length > 0;
+});
+
 /** Who a structural tool's caller writes settings as: Chronicler in its own conversation, otherwise a Ritual's run. */
 export const settingWriterOfCaller = Effect.fnUntraced(function* (threadId: string) {
   return (yield* isGuildmasterThread(threadId))

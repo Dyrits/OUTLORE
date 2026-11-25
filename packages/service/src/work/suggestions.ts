@@ -6,7 +6,7 @@ import { makeOwnerWaits } from "./attention.ts";
 import { setCardBackups } from "./backups.ts";
 import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
 import { recordResolvedCard } from "./guildmasterCards.ts";
-import { isGuildmasterThread, readOptionalRealm } from "./guildmasterPlace.ts";
+import { readOptionalRealm } from "./guildmasterPlace.ts";
 import { resumeInTurn } from "./lifecycle.ts";
 import { findMissions, findMissionsTextOf, maxMatches } from "./matching.ts";
 import { insertSuggestedMessage } from "./messageProvenance.ts";
@@ -205,6 +205,14 @@ export const suggestionsLayer = Layer.effect(
               if (row?.proposal != null) {
                 yield* sql`UPDATE threads SET anchor_message_id = ${row.proposal} WHERE id = ${done.targetThreadId}`;
                 if (row.channel !== null) yield* placeQuestOrigin(done.targetThreadId);
+              } else if (row?.channel != null) {
+                const [latestOwner] = yield* sql<{ id: string }>`
+                  SELECT id FROM messages WHERE thread_id = ${suggestion.threadId} AND sender_kind = 'user'
+                  ORDER BY sequence DESC LIMIT 1`;
+                if (latestOwner !== undefined) {
+                  yield* sql`UPDATE threads SET anchor_message_id = ${latestOwner.id} WHERE id = ${done.targetThreadId}`;
+                  yield* placeQuestOrigin(done.targetThreadId);
+                }
               }
             }
             yield* resolve(suggestionId, suggestion.threadId, done);
@@ -270,6 +278,51 @@ export const suggestionsLayer = Layer.effect(
       return resolution;
     });
 
+    /** Opens a quest directly from a realm or Borderlands channel, anchored to the owner's latest message with no second bubble. */
+    const openFromChannel = Effect.fnUntraced(function* (
+      threadId: string,
+      text: string,
+      title: string,
+      realmId: string | null,
+    ) {
+      return yield* sql.withTransaction(
+        Effect.gen(function* () {
+          const [channel] = yield* sql<
+            Pick<Suggestion, "model" | "effort" | "harness" | "accountId"> & {
+              backups: string;
+              permissionMode: string | null;
+            }
+          >`SELECT model, effort, harness, account_id AS accountId, backups, permission_mode AS permissionMode
+              FROM threads WHERE id = ${threadId}`;
+          const opened = yield* openMission(
+            text,
+            title,
+            {
+              accountId: channel?.accountId ?? null,
+              effort: channel?.effort ?? "default",
+              harness: channel?.harness ?? null,
+              model: channel?.model ?? "default",
+            },
+            null,
+            false,
+            realmId,
+          );
+          if (channel !== undefined) {
+            yield* sql`UPDATE threads SET backups = ${channel.backups}, permission_mode = ${channel.permissionMode}
+                WHERE id = ${opened.targetThreadId}`;
+          }
+          const [latestOwner] = yield* sql<{ id: string }>`
+            SELECT id FROM messages WHERE thread_id = ${threadId} AND sender_kind = 'user'
+            ORDER BY sequence DESC LIMIT 1`;
+          if (latestOwner !== undefined) {
+            yield* sql`UPDATE threads SET anchor_message_id = ${latestOwner.id} WHERE id = ${opened.targetThreadId}`;
+            yield* placeQuestOrigin(opened.targetThreadId);
+          }
+          return opened;
+        }),
+      );
+    });
+
     const suggest = (threadId: string, args: ArgumentsOf<"suggest_mission">) =>
       Effect.gen(function* () {
         const { missions = [], title } = args;
@@ -277,8 +330,13 @@ export const suggestionsLayer = Layer.effect(
         // grant reach as the owner's would (audit SA-06), so the `@` of a reference token is dropped.
         const text = args.text.replace(/@(?=(?:quest|errand|realm):)/g, "");
         const [caller] = yield* sql<{
+          channel: string | null;
+          isGuildmaster: number;
           missionId: string;
-        }>`SELECT mission_id AS missionId FROM threads WHERE id = ${threadId}`;
+          realmId: string | null;
+        }>`SELECT t.mission_id AS missionId, m.is_guildmaster AS isGuildmaster, m.chronicler_channel AS channel,
+              t.workspace_id AS realmId
+            FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${threadId}`;
         if (caller === undefined) return unchanged<Suggested>({ _tag: "UnknownThread" });
         // Chronicler's own quest is never a place to continue (find_missions leaves it out too).
         const existing = new Set(
@@ -291,13 +349,24 @@ export const suggestionsLayer = Layer.effect(
         const named = [...new Set(missions)]
           .filter((id) => existing.has(id) && id !== caller.missionId)
           .slice(0, maxMatches);
-        // Chronicler always asks: it is where the owner decides whether a quest continues or a new one opens.
-        const isGuildmaster = yield* isGuildmasterThread(threadId);
-        const { isNamed, realm } = isGuildmaster
-          ? yield* readOptionalRealm(args.realm)
-          : ({ isNamed: false, realm: null } as const);
+        const isGuildmaster = caller.isGuildmaster === 1;
+        const isChannel = isGuildmaster && caller.channel !== null;
+        const { isNamed, realm } =
+          isGuildmaster && !isChannel
+            ? yield* readOptionalRealm(args.realm)
+            : ({ isNamed: false, realm: null } as const);
         if (isNamed && realm === null)
           return unchanged<Suggested>({ _tag: "UnknownRealm", given: args.realm?.trim() ?? "" });
+        if (isChannel && named.length === 0) {
+          // A realm or Borderlands channel opens a quest directly under the owner's message with the channel's Companion.
+          const channelOpened = yield* openFromChannel(threadId, text, title, caller.realmId).pipe(
+            Effect.catch(() => Effect.succeed(null)),
+          );
+          if (channelOpened !== null) {
+            const { threadsToWake, ...resolution } = channelOpened;
+            return changed<Suggested>({ _tag: "OpenedWithoutAsking", resolution }, { threadsToWake });
+          }
+        }
         const shouldOpenOffTopicMissions = !isGuildmaster && (yield* readSettings).shouldOpenOffTopicMissions;
         // Opening without asking needs no mission to match, so it is checked here, not taken from the thread.
         const matches =
@@ -320,8 +389,8 @@ export const suggestionsLayer = Layer.effect(
           title,
           matches,
           realm?.path ?? null,
-          isGuildmaster ? (args.tier ?? null) : null,
-          isGuildmaster,
+          isGuildmaster && !isChannel ? (args.tier ?? null) : null,
+          isGuildmaster && !isChannel,
         );
         return unchanged<Suggested>(resolution === null ? { _tag: "NotAsked" } : { _tag: "Resolved", resolution });
       }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie);

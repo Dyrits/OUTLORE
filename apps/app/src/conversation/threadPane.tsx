@@ -77,11 +77,14 @@ export function ThreadPane({
   onOpenMission,
   onOpenBudget,
   onOpenDetails,
+  onReplyMessage,
   onBack,
   onNewErrand,
 }: {
   /** Starts an errand of the quest: an icon among the header's actions, before the separator. */
   onNewErrand?: () => void;
+  /** Opens the errand starter pane anchored to a quest message when the owner clicks Reply. */
+  onReplyMessage?: (message: { id: MessageId; text: string }) => void;
   /** In a narrow window, which has no sidebar: the header's back chevron, which opens the main menu. */
   onBack?: () => void;
   /** The buttons at the end of the header of a pane among several: fold and close; none in the quest's own screen. */
@@ -162,9 +165,21 @@ export function ThreadPane({
   const questTab = isInPane ? null : windowQuestTab;
   // A separator after the last action only divides it from something that follows.
   const hasAfterActions = questTab !== null || chrome != null;
+  const startReply = (message: { id: MessageId; text: string }) => {
+    const existing = conversation.anchors.find((anchor) => anchor.messageId === message.id);
+    if (existing !== undefined) {
+      onSelect(existing.threadId);
+      return;
+    }
+    if (onReplyMessage !== undefined) {
+      onReplyMessage(message);
+      return;
+    }
+    setReplyTo(message);
+  };
   return (
     <CommentsProvider value={comments}>
-      <RepliesProvider value={canReply ? { start: (message) => setReplyTo(message) } : null}>
+      <RepliesProvider value={canReply ? { start: startReply } : null}>
         <View style={[styles.flex, styles.pane]}>
           {onBack !== undefined && (
             <MobileHeader

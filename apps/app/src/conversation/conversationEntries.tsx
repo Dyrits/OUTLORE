@@ -261,13 +261,14 @@ export function EntryView({
   onSelectThread: (threadId: ThreadId) => void;
 }) {
   if (entry._tag === "LiveFooter") return null;
-  if (entry._tag === "ThreadOpened") return <ReplyLine onOpen={onSelectThread} thread={entry.thread} />;
+  if (entry._tag === "ThreadOpened") return <ReplyLine isCompact onOpen={onSelectThread} thread={entry.thread} />;
   if (entry._tag === "Steps")
     return <StepsGroup client={client} seconds={entry.seconds} steps={entry.steps} threadId={entry.threadId} />;
   if (entry._tag === "QuestLink")
     return (
       <QuestReplyLine
         client={client}
+        isCompact
         label={entry.label}
         missionId={entry.missionId}
         onOpen={onOpenMission}

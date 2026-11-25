@@ -1,5 +1,14 @@
 # Work in progress
 
+## Slack-like thread replies (Batch 1) · 2026-11-25 · built and tested; desktop window check pending
+
+Branch `worktree/slack-like-replies`, starting revision `8aeff2e9`:
+- In realm and Borderlands channels, `suggest_mission` with no matching quest directly opens the quest anchored to the owner's latest message using the channel's current Companion configuration (harness, account, model, effort, backups, and permission mode) with no second proposal bubble or confirmation card, and the channel pane auto-opens the new quest pane beside it; casual chat still receives an in-channel reply.
+- Clicking **Reply** on a quest message directly opens the `ErrandStarter` third pane anchored to that message (inheriting the quest's Companion configuration and creating the errand on first send via `OpenThread.anchorMessageId`), and replying to an already-anchored message opens the existing quest or errand directly.
+- Agent `open_thread` anchors a single errand directly to the triggering message with no extra brief bubble, and splits multiple errands targeting the same message into separate agent brief replies so none is asymmetrically tied to an umbrella prompt.
+- In-feed reply lines use a compact one-line bar (state dot, reply count from `replyCount`, title, waiting/attention indicator, last activity time) while the **Quests** and **Errands** tabs keep the fuller cards.
+Next: desktop window review of Batch 1, then Batch 2 (**Also send to \<parent\>** checkbox with message-only vs full child context, one-message child-to-parent reporting, and quest/errand notices rendered as parent-echoed replies).
+
 ## One account isolation per harness · 2026-11-25 · built and tested against stand-ins; no provider turn or sign-in run
 
 CHG-0728 (Batch 1 of the multi-account plan), branch `mission/antigravity-vs-t3code-5a344e2b`: every harness declares one `AccountIsolation` (`computerOnly` or `directory` with `envOf`), and the launch, sign-in command, sign-in read, model probe, plan limits and the Workshop's **+ Add account** derive from it.

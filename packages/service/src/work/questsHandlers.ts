@@ -69,6 +69,7 @@ export const questsHandlers = (
               open.shouldStartAnyway,
               attachmentIds,
               open.backups ?? null,
+              open.anchorMessageId ?? null,
             ),
           ),
         );
