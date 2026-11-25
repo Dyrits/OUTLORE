@@ -65,6 +65,8 @@ const defaults = {
   // "update" reports token fields in a `usage_update`; "response" reports them in the prompt's own answer and the context
   // window in a `usage_update` (the ACP shapes).
   usage: "none",
+  // What the provider's own `--print "/usage"` command prints on standard output (Antigravity's plan limits), or null when the stand-in answers it with an exit code of 1.
+  usageReport: null,
 };
 const config = { ...defaults, ...JSON.parse(process.env.ACP_FAKE ?? "{}") };
 const tool = { ...defaults.tool, ...config.tool };
@@ -229,6 +231,12 @@ const onRequest = (request) => {
 
 if (config.noise) process.stdout.write("Error: AgentKernel: WritableIterable is closed\n");
 write({ launch });
+// `agy --print "/usage"` is a one-shot command, not an ACP session: it prints its report and ends.
+if (launch.argv[0] === "--print") {
+  if (config.usageReport === null) process.exit(1);
+  process.stdout.write(config.usageReport);
+  process.exit(0);
+}
 createInterface({ input: process.stdin }).on("line", (line) => {
   const message = JSON.parse(line);
   if (message.method !== undefined) return onRequest(message);

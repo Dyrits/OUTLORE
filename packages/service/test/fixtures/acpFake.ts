@@ -41,6 +41,8 @@ export type AcpFakeConfig = {
     readonly title?: string;
   };
   readonly usage?: "context" | "none" | "response" | "update";
+  /** What the one-shot `--print "/usage"` command prints (Antigravity); absent, it fails with exit code 1. */
+  readonly usageReport?: string;
 };
 
 /** The stand-in script, run by Node in the provider executable's place. */

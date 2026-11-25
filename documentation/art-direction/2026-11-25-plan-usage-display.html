@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Outlore — plan usage display, three alternatives (2026-11-25)</title>
+<style>
+  :root {
+    --bg: #15171c; --panel: #1d2027; --card: #232730; --edge: #353a46; --text: #e8eaf0; --muted: #8d94a5;
+    --track: #2d323d; --ok: #4fae74; --warn: #e0a23a; --bad: #d65a4c;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 32px 60px; font: 14px/1.45 var(--sans); color: var(--text); background: var(--bg); }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  h2 { margin: 0 0 2px; font-size: 16px; }
+  p.lead { max-width: 820px; margin: 0 0 22px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; align-items: start; }
+  .option { padding: 16px; background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; }
+  .option p { margin: 2px 0 14px; color: var(--muted); font-size: 13px; }
+  .option ul { margin: 14px 0 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; }
+  .label { margin: 14px 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+  /* the rail strip: one entry per provider that reports plan limits */
+  .strip { display: flex; gap: 10px; align-items: center; padding: 10px 12px; background: var(--card); border: 1px solid var(--edge); border-radius: 10px; }
+  .logo { display: grid; place-items: center; width: 26px; height: 26px; font-size: 11px; font-weight: 700; color: var(--bg); border-radius: 50%; }
+  .l-claude { background: #d98b5f; } .l-codex { background: #9aa6ff; } .l-open { background: #6fc7b2; } .l-agy { background: #7fb2ff; }
+  .entry { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .entry small { color: var(--muted); font-size: 10.5px; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+
+  /* A: percent chip under the logo */
+  .chip { padding: 1px 6px; font-size: 11px; font-weight: 600; background: var(--track); border-radius: 999px; }
+  /* B: mini bars */
+  .minibars { display: flex; gap: 2px; align-items: flex-end; height: 22px; }
+  .minibars i { display: block; width: 4px; border-radius: 2px; background: var(--ok); }
+  .minibars i.w { background: var(--warn); } .minibars i.b { background: var(--bad); }
+  .minibars i.untouched { background: var(--track); }
+
+  /* the popup card */
+  .popup { width: 100%; padding: 12px 14px; background: var(--card); border: 1px solid var(--edge); border-radius: 10px; box-shadow: 0 8px 22px rgba(0,0,0,.35); }
+  .popup .who { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; font-weight: 600; }
+  .group { margin-top: 10px; }
+  .group h4 { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .row { display: grid; grid-template-columns: 62px 1fr 74px; gap: 8px; align-items: center; margin: 5px 0; font-size: 12.5px; }
+  .row .reset { color: var(--muted); text-align: right; font-size: 12px; }
+  .bar { height: 7px; overflow: hidden; background: var(--track); border-radius: 4px; }
+  .bar b { display: block; height: 100%; background: var(--ok); }
+  .bar b.warn { background: var(--warn); } .bar b.bad { background: var(--bad); }
+  .foot { margin-top: 8px; color: var(--muted); font-size: 11.5px; }
+
+  /* C: table popup */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { padding: 3px 4px; font-weight: 500; text-align: right; color: var(--muted); font-size: 11.5px; }
+  th:first-child, td:first-child { text-align: left; }
+  td { padding: 5px 4px; text-align: right; border-top: 1px solid var(--edge); }
+  td:first-child { color: var(--text); }
+  .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--ok); }
+  .dot.untouched { background: var(--track); border: 1px solid var(--muted); }
+</style>
+</head>
+<body>
+<h1>Plan usage: three display alternatives</h1>
+<p class="lead">
+  The owner likes the popup and dislikes the circles (2026-11-24). Antigravity makes the circles harder still: four limits (a 5-hour and a weekly limit for each of two model groups) would be four concentric rings around one logo.
+  Each alternative below shows the rail strip (what is always visible) and the popup (what hovering or tapping opens) for the same data: Claude Code, Codex, OpenCode Go (three windows), and Antigravity (four limits, the Claude and GPT group untouched).
+  Figures are the real Antigravity reading of 2026-11-25: Gemini models 62% of the weekly limit left, 96% of the 5-hour limit left; the Claude and GPT group has never been used, so the CLI reports no reset time and the popup says "not started".
+</p>
+
+<div class="grid">
+
+  <!-- ===== A ===== -->
+  <section class="option">
+    <h2>A · Worst limit as a number</h2>
+    <p>Each provider is its logo with one chip: the percent left of its tightest limit. The chip turns orange from 80% used and red at 100%. The popup groups by model group, with a bar per limit.</p>
+    <div class="label">Rail strip</div>
+    <div class="strip">
+      <div class="entry"><span class="logo l-claude">C</span><span class="chip ok">62%</span></div>
+      <div class="entry"><span class="logo l-codex">X</span><span class="chip ok">88%</span></div>
+      <div class="entry"><span class="logo l-open">O</span><span class="chip warn">17%</span></div>
+      <div class="entry"><span class="logo l-agy">A</span><span class="chip ok">62%</span></div>
+    </div>
+    <div class="label">Popup (Antigravity)</div>
+    <div class="popup">
+      <div class="who"><span class="logo l-agy">A</span>Antigravity</div>
+      <div class="group"><h4>Gemini models</h4>
+        <div class="row"><span>5-hour</span><span class="bar"><b style="width:96%"></b></span><span class="reset">2h 48m</span></div>
+        <div class="row"><span>Weekly</span><span class="bar"><b style="width:62%"></b></span><span class="reset">6d 4h</span></div>
+      </div>
+      <div class="group"><h4>Claude and GPT models</h4>
+        <div class="row"><span>5-hour</span><span class="bar"><b style="width:100%"></b></span><span class="reset">not started</span></div>
+        <div class="row"><span>Weekly</span><span class="bar"><b style="width:100%"></b></span><span class="reset">not started</span></div>
+      </div>
+      <div class="foot">As of 11:02</div>
+    </div>
+    <ul>
+      <li>Smallest change: the popup keeps its bars, only grouped; the circles go.</li>
+      <li>Honest at a glance for one limit, but hides which limit is the tight one until the popup opens.</li>
+      <li>Works on a phone: a tap opens the same popup.</li>
+    </ul>
+  </section>
+
+  <!-- ===== B ===== -->
+  <section class="option">
+    <h2>B · Small bars beside the logo</h2>
+    <p>Each provider is its logo with one thin vertical bar per limit, side by side, so a four-limit plan shows four bars and a one-limit plan one. A bar is as tall as what is left and an untouched bar is drawn empty-outlined. The popup is the same as A.</p>
+    <div class="label">Rail strip</div>
+    <div class="strip">
+      <div class="entry"><span class="logo l-claude">C</span><span class="minibars"><i style="height:62%"></i><i style="height:80%"></i></span></div>
+      <div class="entry"><span class="logo l-codex">X</span><span class="minibars"><i style="height:88%"></i><i style="height:95%"></i></span></div>
+      <div class="entry"><span class="logo l-open">O</span><span class="minibars"><i class="w" style="height:17%"></i><i style="height:60%"></i><i style="height:90%"></i></span></div>
+      <div class="entry"><span class="logo l-agy">A</span><span class="minibars"><i style="height:96%"></i><i style="height:62%"></i><i class="untouched" style="height:100%"></i><i class="untouched" style="height:100%"></i></span></div>
+    </div>
+    <div class="label">Popup (Antigravity)</div>
+    <div class="popup">
+      <div class="who"><span class="logo l-agy">A</span>Antigravity</div>
+      <div class="group"><h4>Gemini models</h4>
+        <div class="row"><span>5-hour</span><span class="bar"><b style="width:96%"></b></span><span class="reset">2h 48m</span></div>
+        <div class="row"><span>Weekly</span><span class="bar"><b style="width:62%"></b></span><span class="reset">6d 4h</span></div>
+      </div>
+      <div class="group"><h4>Claude and GPT models</h4>
+        <div class="row"><span>5-hour</span><span class="bar"><b style="width:100%"></b></span><span class="reset">not started</span></div>
+        <div class="row"><span>Weekly</span><span class="bar"><b style="width:100%"></b></span><span class="reset">not started</span></div>
+      </div>
+      <div class="foot">As of 11:02</div>
+    </div>
+    <ul>
+      <li>Keeps a glanceable shape per provider and scales to any number of limits, which rings do not.</li>
+      <li>Four bars are tiny: the order (5-hour, weekly, per group) is learned, not read.</li>
+      <li>Closest to the old look without the circles.</li>
+    </ul>
+  </section>
+
+  <!-- ===== C ===== -->
+  <section class="option">
+    <h2>C · Dots in the rail, a table in the popup</h2>
+    <p>The rail shows only the logo with one status dot (green, orange, red) for its tightest limit, no figures. The popup is a small table, one row per limit with percent left and time to reset, grouped by model group. Fewest pixels in the rail, most exact in the popup.</p>
+    <div class="label">Rail strip</div>
+    <div class="strip">
+      <div class="entry"><span class="logo l-claude">C</span><small><span class="dot"></span>ok</small></div>
+      <div class="entry"><span class="logo l-codex">X</span><small><span class="dot"></span>ok</small></div>
+      <div class="entry"><span class="logo l-open">O</span><small><span class="dot" style="background:var(--warn)"></span>17%</small></div>
+      <div class="entry"><span class="logo l-agy">A</span><small><span class="dot"></span>ok</small></div>
+    </div>
+    <div class="label">Popup (Antigravity)</div>
+    <div class="popup">
+      <div class="who"><span class="logo l-agy">A</span>Antigravity</div>
+      <table>
+        <tr><th>Limit</th><th>Left</th><th>Resets in</th></tr>
+        <tr><td><span class="dot"></span>Gemini · 5-hour</td><td>96%</td><td>2h 48m</td></tr>
+        <tr><td><span class="dot"></span>Gemini · Weekly</td><td>62%</td><td>6d 4h</td></tr>
+        <tr><td><span class="dot untouched"></span>Claude and GPT · 5-hour</td><td>100%</td><td>not started</td></tr>
+        <tr><td><span class="dot untouched"></span>Claude and GPT · Weekly</td><td>100%</td><td>not started</td></tr>
+      </table>
+      <div class="foot">As of 11:02</div>
+    </div>
+    <ul>
+      <li>The most compact rail and the exact popup; nothing to decode.</li>
+      <li>Loses the "how full" feel: percentages replace bars.</li>
+      <li>The label each limit reads as is the one the service already sends ("Gemini Models · 5-hour"), so no new data is needed for any alternative.</li>
+    </ul>
+  </section>
+</div>
+
+<p class="lead" style="margin-top:26px">
+  Whichever is chosen, an untouched limit reads "not started" rather than a reset time in 1970, and a limit whose reset time has passed reads as unused, as the rings do now.
+  Account rows in the Workshop and the thread panel's Companion row use the same text lines ("Gemini Models · Weekly 38% · …"), which already work with four limits.
+</p>
+</body>
+</html>

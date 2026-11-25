@@ -2,7 +2,7 @@ import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { type ReactNode, useState } from "react";
 import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
-import { PlanLimitRings } from "../editors/planLimitRings";
+import { PlanUsageDots } from "../editors/planUsageDots";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { canHover } from "../foundation/inputModality";
 import { useIslandFrame } from "../foundation/islands";
@@ -394,7 +394,7 @@ function SidebarFoot({
   const { data: global } = useServiceQuery(client, { _tag: "ReadBudget", missionId: null }, "budget:global");
   const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
   const hasLimits = global !== null && (global.limits.cost !== null || global.limits.tokens !== null);
-  const hasRings =
+  const hasPlanUsage =
     budgets?.some((budget) => budget.planLimits !== null && budget.planLimits.windows.length > 0) ?? false;
   return (
     <>
@@ -404,8 +404,8 @@ function SidebarFoot({
           <ReserveRows use={global} />
         </View>
       )}
-      {hasRings && <PlanLimitRings client={client} />}
-      {(hasLimits || hasRings) && <Divider />}
+      {hasPlanUsage && <PlanUsageDots client={client} />}
+      {(hasLimits || hasPlanUsage) && <Divider />}
       <Row
         isSelected={isWorkshopOpen}
         label="Workshop"

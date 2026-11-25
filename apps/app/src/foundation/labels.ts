@@ -178,9 +178,9 @@ export const replyUsageTextOf = (usage: ReplyUsage) => {
   return `${tokenCountOf(tokens)} tokens${cost === null ? "" : ` · ${cost}`}`;
 };
 
-/** A plan limit in words, for example "5-hour · 40% used · resets 19:30". */
+/** A plan limit in words, for example "5-hour · 40% used · resets 19:30"; a limit with no reset time has not started. */
 export const planLimitTextOf = (window: PlanLimitWindow) =>
-  `${window.label} · ${Math.round(window.usedPercent)}% used · resets ${clockOf(window.resetsAt)}`;
+  `${window.label} · ${Math.round(window.usedPercent)}% used · ${window.resetsAt <= 0 ? "not started" : `resets ${clockOf(window.resetsAt)}`}`;
 
 /** A plan's limits on one line, for example "5-hour 40% · Weekly 93% · as of 14:02"; none are never guessed. */
 export const planLimitsSummaryOf = (reading: PlanLimitReading | null) =>
