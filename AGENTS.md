@@ -65,5 +65,5 @@ Latest handoffs:
 
 - To resume the plan usage display, OpenCode on the ACP module, idle traffic checks, and the window-check review list (CHG-0721 to CHG-0725), read the [current handoff](.agents/handoffs/2026-11-25-1200-pull-main-and-four-errands.md). Handoffs are shared and committed.
 
-- To resume ACP launch hygiene, Antigravity steering, and multi-account Batches 2 to 4 (CHG-0726 to CHG-0728), read the [current handoff](.agents/handoffs/2026-11-25-1320-acp-hygiene-and-multi-account.md). Handoffs are shared and committed.
+- To resume ACP pricing lookup, Antigravity `WSL_DISTRO_NAME` isolation, and multi-account Batches 2 to 4 (CHG-0726 to CHG-0729), read the [current handoff](.agents/handoffs/2026-11-25-1416-acp-pricing-and-multi-account.md). Handoffs are shared and committed.
 
