@@ -65,5 +65,5 @@ Latest handoffs:
 
 - To verify and continue Slack-like thread replies Batches 1 and 2 and the reply count fix (CHG-0735, CHG-0736, CHG-0737), read the [current handoff](.agents/handoffs/2026-11-25-1634-slack-like-thread-replies-reply-count.md). Handoffs are shared and committed.
 
-- To resume the Beads research and decide what to borrow for memory and errand ordering, read the [current handoff](.agents/handoffs/2026-11-25-1608-beads-research-fit.md). Handoffs are shared and committed.
+- To resume the plan usage hover card with progress bars (CHG-0723 follow-up), read the [current handoff](.agents/handoffs/2026-11-25-1740-plan-usage-hover-card.md). Handoffs are shared and committed.
 

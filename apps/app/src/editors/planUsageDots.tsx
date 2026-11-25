@@ -2,11 +2,18 @@ import type { HarnessName, PlanLimitWindow } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
-import { planLimitTextOf } from "../foundation/labels";
+import { meterLevelOf, planLimitTextOf } from "../foundation/labels";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ProviderMark } from "../ui/providerMarks";
-import { type DotLevel, type PlanUsage, planUsageOf, type RowLevel } from "./planUsage";
+import {
+  currentWindowsOf,
+  type DotLevel,
+  leftPercentOf,
+  planUsageOf,
+  type RowLevel,
+  resetsInTextOf,
+} from "./planUsage";
 
 const logoSize = 26;
 const dotColors: Record<DotLevel | RowLevel, string> = {
@@ -31,36 +38,44 @@ function Dot({ level, style }: { level: DotLevel | RowLevel; style?: object }) {
   );
 }
 
-/** What hovering or focusing a provider opens: a card above the rail with a table of its limits, grouped by model group. */
-function UsageCard({ harness, name, usage }: { harness: HarnessName; name: string; usage: PlanUsage }) {
+/** One window in the hover card: its name, what is left and when it starts over, and a bar of what is left. */
+function WindowBar({ now, window }: { now: number; window: PlanLimitWindow }) {
+  const level = meterLevelOf(window.usedPercent, 100);
+  const resetText = window.resetsAt <= 0 ? "not started" : resetsInTextOf(window.resetsAt - now);
+  return (
+    <View style={local.window}>
+      <View style={local.windowText}>
+        <Text style={local.windowName}>{window.label}</Text>
+        <Text style={local.windowLeft}>{leftPercentOf(window)}% left</Text>
+        <Text style={local.windowReset}>{resetText}</Text>
+      </View>
+      <View style={local.track}>
+        <View style={[local.bar, { backgroundColor: dotColors[level], width: `${leftPercentOf(window)}%` }]} />
+      </View>
+    </View>
+  );
+}
+
+/** What hovering or focusing a provider opens: a card above the rail with each window spelled out, as a bar of what is left. */
+function UsageCard({
+  harness,
+  name,
+  windows,
+}: {
+  harness: HarnessName;
+  name: string;
+  windows: readonly PlanLimitWindow[];
+}) {
+  const now = Date.now();
   return (
     <View pointerEvents="none" style={local.card}>
       <View style={local.provider}>
         <ProviderMark harness={harness} size={16} />
         <Text style={local.providerName}>{name}</Text>
       </View>
-      <View style={local.table}>
-        <View style={local.tableRow}>
-          <Text style={[local.head, local.limitCell]}>Limit</Text>
-          <Text style={[local.head, local.leftCell]}>Left</Text>
-          <Text style={[local.head, local.resetCell]}>Resets in</Text>
-        </View>
-        {usage.groups.map((group) => (
-          <View key={group.name ?? ""}>
-            {group.name !== null && <Text style={local.groupName}>{group.name}</Text>}
-            {group.rows.map((row) => (
-              <View key={row.name} style={[local.tableRow, local.ruled]}>
-                <View style={[local.limitCell, local.limitName]}>
-                  <Dot level={row.level} />
-                  <Text style={local.cell}>{row.name}</Text>
-                </View>
-                <Text style={[local.cell, local.leftCell]}>{row.leftPercent}%</Text>
-                <Text style={[local.muted, local.resetCell]}>{row.resetText}</Text>
-              </View>
-            ))}
-          </View>
-        ))}
-      </View>
+      {windows.map((window) => (
+        <WindowBar key={window.label} now={now} window={window} />
+      ))}
     </View>
   );
 }
@@ -71,10 +86,9 @@ const accessibilityTextOf = (name: string, windows: readonly PlanLimitWindow[]) 
 /**
  * The plan limits each subscription's harness reports, as the rail shows them beside the reserves: each provider's
  * logo with one status dot, green until 80% used, orange from 80% and red at 100%, taken from its tightest limit.
- * Hovering or focusing a provider (a tap on a phone) opens a card with a table of its limits grouped by model group:
- * the share left and the time to each reset, or "not started" for a limit nobody has used. An account whose harness
- * reports none shows nothing here (its Charter row says "Limits not reported"), and nothing is shown before a
- * reading arrives.
+ * Hovering or focusing a provider (a tap on a phone) opens a card with each window's share left as a bar and the time
+ * to its reset, or "not started" for a limit nobody has used. An account whose harness reports none shows nothing
+ * here (its Charter row says "Limits not reported"), and nothing is shown before a reading arrives.
  */
 export function PlanUsageDots({ client }: { client: ServiceClient }) {
   const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
@@ -90,7 +104,7 @@ export function PlanUsageDots({ client }: { client: ServiceClient }) {
         <UsageCard
           harness={detailed.harness}
           name={detailed.accountId === null ? detailed.harness : detailed.label}
-          usage={planUsageOf(detailed.planLimits?.windows ?? [], now)}
+          windows={currentWindowsOf(detailed.planLimits?.windows ?? [], now)}
         />
       )}
       <View style={local.row}>
@@ -131,6 +145,7 @@ const local = StyleSheet.create({
     right: 2,
     width: 12,
   },
+  bar: { borderRadius: radii.pill, height: "100%" },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.edge,
@@ -138,7 +153,7 @@ const local = StyleSheet.create({
     borderWidth: 1,
     bottom: "100%",
     elevation: 8,
-    gap: 8,
+    gap: 10,
     left: 0,
     marginBottom: 6,
     padding: 12,
@@ -150,23 +165,10 @@ const local = StyleSheet.create({
     shadowRadius: 14,
     zIndex: 10,
   },
-  cell: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   dot: { borderRadius: radii.pill, height: 8, width: 8 },
   entry: { alignItems: "center", borderRadius: radii.pill, height: 40, justifyContent: "center", width: 40 },
   entryLifted: { backgroundColor: colors.controlHover },
   group: { paddingTop: 6 },
-  groupName: {
-    color: colors.textMuted,
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.sm,
-    fontWeight: "700",
-    paddingTop: 6,
-  },
-  head: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
-  leftCell: { minWidth: 40, textAlign: "right" },
-  limitCell: { flex: 1 },
-  limitName: { alignItems: "center", flexDirection: "row", gap: 6 },
-  muted: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   provider: { alignItems: "center", flexDirection: "row", gap: 8 },
   providerName: {
     color: colors.text,
@@ -175,9 +177,24 @@ const local = StyleSheet.create({
     fontWeight: "700",
     textTransform: "capitalize",
   },
-  resetCell: { minWidth: 72, textAlign: "right" },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingHorizontal: 7 },
-  ruled: { borderColor: colors.edge, borderTopWidth: 1 },
-  table: { gap: 0 },
-  tableRow: { alignItems: "center", flexDirection: "row", gap: 8, paddingVertical: 4 },
+  track: { backgroundColor: colors.ground, borderRadius: radii.pill, height: 6, overflow: "hidden" },
+  window: { gap: 5 },
+  windowLeft: {
+    color: colors.text,
+    flex: 1,
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.sm,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  windowName: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
+  windowReset: {
+    color: colors.textMuted,
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.sm,
+    minWidth: 44,
+    textAlign: "right",
+  },
+  windowText: { alignItems: "baseline", flexDirection: "row", gap: 8 },
 });
