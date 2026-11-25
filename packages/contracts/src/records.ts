@@ -52,6 +52,10 @@ export const startingModel: ModelChoice = "claude-sonnet-5-5";
 export const MessageDelivery = Schema.Literals(["Steer", "Queue"]);
 export type MessageDelivery = typeof MessageDelivery.Type;
 
+/** How much of a child thread's conversation to include when also sending a message to its parent. */
+export const SendToParentScope = Schema.Literals(["MessageOnly", "FullContext"]);
+export type SendToParentScope = typeof SendToParentScope.Type;
+
 /** The owner's settings. */
 export const Settings = Schema.Struct({
   /** Days after a Done mission was marked Done before it is archived, when auto-archive is on. */

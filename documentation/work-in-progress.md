@@ -1,5 +1,13 @@
 # Work in progress
 
+## Slack-like thread replies (Batch 2) · 2026-11-25 · built and tested; desktop window check pending
+
+Branch `worktree/slack-like-replies`, on top of Batch 1 (`167142e`):
+- Added `SendToParentScope` (`"MessageOnly"` | `"FullContext"`) on `SendMessage` and an unchecked-by-default **Also send to \<parent\>** checkbox with **This message** / **Full context** toggle under quest and errand composers; errands echo to and wake their parent quest, while quests echo conversation-only into their realm or Borderlands channel.
+- Updated `report_result` to post one message that appears both as the errand's reply and directly in its parent quest (with optional `includeContext` on `report_result` and `send_thread_message`), deduplicating an identical final turn reply.
+- Updated inactivity notices to post inside the quest and echo to its parent channel, and suppressed **Reply** on notices and parent-echoed thread replies while linking them to their originating quest or errand.
+Next: desktop window review of Batches 1 and 2, then merge `worktree/slack-like-replies` into `main` and remove the worktree.
+
 ## Slack-like thread replies (Batch 1) · 2026-11-25 · built and tested; desktop window check pending
 
 Branch `worktree/slack-like-replies`, starting revision `8aeff2e9`:

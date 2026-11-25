@@ -4,6 +4,7 @@ import type {
   MessageDelivery,
   ModelChoice,
   SendMessage,
+  SendToParentScope,
   ThreadId,
   Viewing,
 } from "@outlore/contracts";
@@ -30,6 +31,7 @@ export const sendConversationMessage = async (given: {
   text: string;
   attachmentIds: ReadonlyArray<AttachmentId>;
   delivery: MessageDelivery | null;
+  sendToParent?: SendToParentScope | null;
   options: ConversationOptions;
   comments: ReadonlyArray<Comment>;
   prepare: (text: string) => Promise<string>;
@@ -48,6 +50,7 @@ export const sendConversationMessage = async (given: {
     text,
     threadId: given.threadId,
     ...(given.options.isChronicler ? { realmPath: given.options.realmPath } : {}),
+    ...(given.sendToParent == null ? {} : { sendToParent: given.sendToParent }),
     ...(given.options.viewing === null ? {} : { viewing: given.options.viewing }),
   });
   given.clearComments();

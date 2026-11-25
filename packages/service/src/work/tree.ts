@@ -13,8 +13,9 @@ import { budgetRefusalOf } from "./budgetScopes.ts";
 import { changed, unchanged } from "./followUps.ts";
 import { type JournalAuthor, nothingToRecord, openerMessagesOf, updateJournal } from "./journal.ts";
 import { maxOwnerDepth } from "./lifecycle.ts";
-import { insertErrandReply, insertMessage } from "./messaging.ts";
+import { insertErrandReply, insertMessage, insertReply } from "./messaging.ts";
 import { ownCopyForChild } from "./ownCopies.ts";
+import { withThreadContext } from "./parentEcho.ts";
 import { readStartingContext, startingContextRefusalOf } from "./startingContext.ts";
 import { newErrandTitle, titleOf } from "./titles.ts";
 import { depthOf, maxRunning, runningCountOf } from "./treeLimits.ts";
@@ -305,13 +306,20 @@ const isNothingToRecord = (journal: string) => journal.trim().toLowerCase().repl
  * parent as a thread message, which wakes it, and the turn now running ends the caller Done. Returns the
  * parent, or null for a top thread.
  */
-export const reportResult = Effect.fnUntraced(function* (threadId: string, result: string, journal: string) {
+export const reportResult = Effect.fnUntraced(function* (
+  threadId: string,
+  result: string,
+  journal: string,
+  includeContext = false,
+) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{
+    harness: HarnessName;
     missionId: string;
+    model: string | null;
     parentId: string | null;
     isAside: number;
-  }>`SELECT mission_id AS missionId, parent_id AS parentId, is_aside AS isAside FROM threads WHERE id = ${threadId}`;
+  }>`SELECT harness, mission_id AS missionId, model, parent_id AS parentId, is_aside AS isAside FROM threads WHERE id = ${threadId}`;
   if (thread === undefined) return yield* notFound("No such thread.");
   // An aside leaves the journal to its parent (thread-tree, Off-topic requests).
   if (thread.isAside === 0 && !isNothingToRecord(journal)) {
@@ -326,6 +334,12 @@ export const reportResult = Effect.fnUntraced(function* (threadId: string, resul
     yield* sql`UPDATE missions SET is_asking_done = 1 WHERE id = ${thread.missionId} AND ending IS NULL`;
     return changed(null);
   }
+  // One-message reporting: post the result as this errand's own reply and echo it to the parent in one step.
+  const replyId = yield* insertReply(thread.missionId, threadId, result, {
+    harness: thread.harness,
+    model: thread.model === "default" ? null : thread.model,
+  });
+  const parentText = yield* withThreadContext(threadId, result, includeContext, replyId);
   // A run errand reports into its Ritual's conversation — the run history no thread takes a turn at (CHG-0616) —
   // so the report stays in the history without waking the conversation.
   const [beneathRitual] = yield* sql<{ id: string }>`SELECT r.id FROM rituals r
@@ -335,7 +349,7 @@ export const reportResult = Effect.fnUntraced(function* (threadId: string, resul
     isConversationOnly: beneathRitual !== undefined,
     isQueued: false,
     isResult: true,
-    text: result,
+    text: parentText,
     threadId: thread.parentId,
   });
   return changed(thread.parentId, { threadsToWake });

@@ -59,6 +59,9 @@ The switchers also appear in the narrow header when another conversation of the 
 - A Reply on a message of a channel starts a **quest** in that channel's realm, inheriting the channel's current Companion configuration directly (no inline Companion pickers).
 - A Reply on a message of a quest's conversation directly opens the **errand** starter pane anchored to that message, inheriting the quest's Companion configuration (editable via its **Companions** tab), and creates the errand on first send. An errand's pane offers no Reply: the owner starts errands only from a quest, and steers an errand by writing in it (CHG-0558).
 - A message has at most one reply (one reply is one quest or errand). Replying again to a message that already has one opens that conversation directly.
+- **Also send to parent**: in a quest (whose parent is its realm or Borderlands channel) and an errand (whose parent is its quest), the composer offers an unchecked-by-default **Also send to \<parent\>** checkbox with a **This message** vs. **Full context** toggle. Sending with it checked posts the message in the child conversation and echoes it into the parent feed (delivering it to the parent quest's Companion when sent from an errand, and posting conversation-only to the channel feed when sent from a quest), then resets the checkbox to unchecked.
+- **One-message child reporting**: when an errand calls `report_result`, Outlore posts the result as the errand's own reply and echoes it directly to the parent quest in one step (optionally with `includeContext: true` to attach the errand's prior conversation context).
+- **Parent-echoed notices and replies**: quest/errand notices (such as inactivity warnings) are recorded inside the quest and echoed to its parent channel, and parent-echoed notices and child replies omit the **Reply** action so clicking them opens the originating quest or errand instead of starting a duplicate.
 
 ### Quests in a main conversation
 

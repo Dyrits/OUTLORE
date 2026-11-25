@@ -8,6 +8,8 @@ import { useReplies } from "./replies";
 export type CommentableProps = {
   /** Who wrote the message. */
   about: Message["sender"];
+  /** Whether the Reply button is offered on this message (suppressed on notices and parent-echoed child replies). */
+  canReply?: boolean;
   children: ReactNode;
   messageId: MessageId;
   /** The message's text, whose start a comment on the whole message quotes. */
@@ -18,9 +20,9 @@ export type CommentableProps = {
  * A card that can be replied to on the phone: a small menu at its corner whose one action is Reply, since there is no
  * pointer to hover with and no text to select. Commenting needs the web build; elsewhere a message is drawn as it is.
  */
-export function Commentable({ children, messageId, text }: CommentableProps) {
+export function Commentable({ canReply = true, children, messageId, text }: CommentableProps) {
   const replies = useReplies();
-  if (replies === null) return <>{children}</>;
+  if (!canReply || replies === null) return <>{children}</>;
   return (
     <View style={local.card}>
       {children}

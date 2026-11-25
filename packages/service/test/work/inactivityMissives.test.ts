@@ -66,6 +66,10 @@ it.effect("groups quiet errands in one linked Missive after four hours and waits
     expect(yield* warnings).toMatchObject([
       { fromMissionId: quest.missionId, text: expect.stringContaining("2 errands are in Attention") },
     ]);
+    const questNotices = (yield* read(quest.missionId)).messages.filter((message) => message.sender === "system");
+    expect(questNotices).toMatchObject([
+      { fromMissionId: quest.missionId, text: expect.stringContaining("2 errands are in Attention") },
+    ]);
     expect((yield* read(elsewhere.missionId)).messages).toEqual([]);
     yield* TestClock.adjust(2 * hour);
     expect(yield* warnings).toHaveLength(1);

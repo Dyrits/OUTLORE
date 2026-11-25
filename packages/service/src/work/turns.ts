@@ -40,11 +40,19 @@ export const saveTurnReply = (
   recordStep(
     turn,
     Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      const [reported] = yield* sql<{ reportedTurnId: string | null }>`
+        SELECT reported_turn_id AS reportedTurnId FROM threads WHERE id = ${threadId}`;
+      if (reported?.reportedTurnId === turn.turnId) {
+        const [latest] = yield* sql<{ text: string }>`
+          SELECT text FROM messages WHERE thread_id = ${threadId} AND sender_kind = 'agent'
+          ORDER BY sequence DESC LIMIT 1`;
+        if (latest !== undefined && latest.text.trim() === text.trim()) return;
+      }
       const written = model ?? (turn.model === "default" ? null : turn.model);
       const messageId = yield* insertReply(turn.missionId, threadId, text, { harness: turn.harness, model: written });
       // The call behind the reply, when the harness reports usage per call; the turn's remainder joins it at the turn's end.
       if (usage !== null) {
-        const sql = yield* SqlClient.SqlClient;
         const estimate = written === null ? null : yield* (yield* PriceTable).estimate(written, usage);
         yield* sql`INSERT INTO reply_usage (message_id, input, output, cache_read, cache_creation, estimate)
           VALUES (${messageId}, ${usage.input}, ${usage.output}, ${usage.cacheRead}, ${usage.cacheCreation}, ${estimate?.amount ?? null})`;

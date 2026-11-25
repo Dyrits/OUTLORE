@@ -67,7 +67,7 @@ import {
 } from "./pickerRequests.ts";
 import { ChoiceAnswers, ThreadPermissionMode } from "./questions.ts";
 import { NewRealmAppearance, realmRequests } from "./realmRequests.ts";
-import { MessageDelivery, MissionEnding, MissionState, RequestId, Viewing } from "./records.ts";
+import { MessageDelivery, MissionEnding, MissionState, RequestId, SendToParentScope, Viewing } from "./records.ts";
 import {
   AddHost,
   CreatePairingCode,
@@ -146,6 +146,8 @@ export const SendMessage = Schema.TaggedStruct("SendMessage", {
   /** The realm's folder the owner attached, for the Chronicler: a quest it opens starts there. */
   realmPath: Schema.optionalKey(Schema.NullOr(Schema.String)),
   requestId: RequestId,
+  /** Also echo this message to the parent conversation, with either this message alone or the full child context. */
+  sendToParent: Schema.optionalKey(SendToParentScope),
   text: OwnerMessageText,
   threadId: ThreadId,
   /** Where the owner has Chronicler open from, for Chronicler: the screen, and its quest when it is one. */

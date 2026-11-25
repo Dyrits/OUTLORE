@@ -278,12 +278,18 @@ export const threadTools = {
   }),
   report_result: definitionOf({
     description:
-      "When your work is done, report your result to the thread that opened you, with an entry for the mission's journal. You become Fulfilled; a later message continues you.",
+      "When your work is done, report your result in one message: it posts as your reply in this thread and goes directly to the thread that opened you, with an entry for the mission's journal. You become Fulfilled; a later message continues you.",
     invalid: toolRefusal(
       `Not reported: give result, and journal: an entry for the mission's journal, or exactly "${nothingToRecord}".`,
     ),
     isUnasked: true,
     schema: Schema.Struct({
+      includeContext: Schema.optionalKey(
+        Schema.Boolean.annotate({
+          description:
+            "True to also include this thread's prior conversation context in the report sent to your parent; false or omitted sends only the result.",
+        }),
+      ),
       journal: text(
         `The entry for the mission's journal saying what you did or decided, or exactly "${nothingToRecord}".`,
       ),
@@ -343,6 +349,12 @@ export const threadTools = {
     invalid: toolRefusal("Invalid arguments: give to and text."),
     isUnasked: true,
     schema: Schema.Struct({
+      includeContext: Schema.optionalKey(
+        Schema.Boolean.annotate({
+          description:
+            "True to also include this thread's prior conversation context with the message; false or omitted sends only text.",
+        }),
+      ),
       text: text("The message, complete enough to act on: the receiving thread sees none of your conversation."),
       to: text("The receiving thread's id."),
     }),

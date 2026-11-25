@@ -70,6 +70,11 @@ describe("sending a conversation message", () => {
     await sendConversationMessage(fake.given);
     expect(fake.requests[0]).toMatchObject({ realmPath: "/realm", text: "hello terminal" });
   });
+  it("includes sendToParent on SendMessage when requested", async () => {
+    const fake = setup();
+    await sendConversationMessage({ ...fake.given, sendToParent: "FullContext" });
+    expect(fake.requests[0]).toMatchObject({ sendToParent: "FullContext" });
+  });
   it("explains what Send does in a running turn and for stopped threads", () => {
     expect(conversationStateOf("Underway", true, "Chronicler").placeholder).toContain("next turn");
     expect(conversationStateOf("Stopped", false, "this quest").placeholder).toContain("resume");

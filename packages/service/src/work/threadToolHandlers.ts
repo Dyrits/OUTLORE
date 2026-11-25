@@ -25,6 +25,7 @@ import { changeSettingByGuildmaster, readSettingsByGuildmaster } from "./guildma
 import { journalToolsOf } from "./journalTools.ts";
 import { loreToolsOf } from "./loreTools.ts";
 import { insertMessage } from "./messaging.ts";
+import { withThreadContext } from "./parentEcho.ts";
 import { mayMessage } from "./reach.ts";
 import { createRitualByThread, editRitualByThread, refuseRitual } from "./ritualTools.ts";
 import type { Resolution, Suggested, Suggestions } from "./suggestions.ts";
@@ -253,14 +254,16 @@ export const makeToolHandlers = (dependencies: {
       withProvenance(approvals, commit, threadId, "rename_realm", args, (authorize) =>
         runTool(authorize(renameRealmByGuildmaster(threadId, args))),
       ),
-    report_result: (threadId, { journal, result }) =>
+    report_result: (threadId, { includeContext, journal, result }) =>
       journal.trim() === ""
         ? Effect.succeed(toolCatalogue.report_result.invalid)
-        : runTool(reportResult(threadId, result, journal)).pipe(
+        : runTool(reportResult(threadId, result, journal, includeContext === true)).pipe(
             Effect.map((parentId) =>
               parentId === null
                 ? toolText("Reported. You are the mission's top thread: the owner reads your replies.")
-                : toolText("Reported to your parent. You are Done once this turn ends."),
+                : toolText(
+                    "Reported to your parent and posted as your reply here. You are Done once this turn ends — end your turn without repeating the result.",
+                  ),
             ),
           ),
     request_approval: (threadId, given) =>
@@ -271,16 +274,17 @@ export const makeToolHandlers = (dependencies: {
           outsideSandbox: given.outsideSandbox ?? false,
         })
         .pipe(Effect.map((decision) => (decision.isAllowed ? toolText(decision.text) : toolRefusal(decision.text)))),
-    send_thread_message: (threadId, { text, to }) =>
+    send_thread_message: (threadId, { includeContext, text, to }) =>
       runTool(
         Effect.gen(function* () {
           // Beyond the tree, the owner's mentions and the messages received in this turn open a way (CHG-0181).
           if (!(yield* mayMessage(threadId, to))) return unchanged(false);
+          const sentText = yield* withThreadContext(threadId, text, includeContext === true);
           const { threadsToWake } = yield* insertMessage({
             fromThreadId: threadId,
             isQueued: false,
             isResult: false,
-            text,
+            text: sentText,
             threadId: to,
           });
           // A pause the message set off ends both turns before the receiver is woken.

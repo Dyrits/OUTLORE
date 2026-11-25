@@ -455,3 +455,121 @@ describe("the tool still opens errands", () => {
     }).pipe(Effect.provide(setup().layer)),
   );
 });
+
+describe("Batch 2: parent echoes and one-message reporting", () => {
+  it.live("echoes an errand message to its parent quest with MessageOnly or FullContext and wakes the parent", () =>
+    Effect.gen(function* () {
+      const started = yield* startIdle("Coordinate the release");
+      const opened = yield* call({
+        _tag: "OpenThread",
+        effort: "default",
+        model: "default",
+        parentThreadId: started.threadId,
+        requestId: crypto.randomUUID(),
+        shouldStartAnyway: false,
+        text: "Check changelog entries",
+      });
+      yield* settle(started.missionId, isIdle, opened.threadId);
+      const parentBefore = (yield* read(started.missionId)).messages.length;
+      yield* call({
+        _tag: "SendMessage",
+        delivery: null,
+        requestId: crypto.randomUUID(),
+        sendToParent: "MessageOnly",
+        text: "Changelog looks clean",
+        threadId: opened.threadId,
+      });
+      const parentAfterOnly = yield* settle(started.missionId, (detail) =>
+        detail.messages.some((message) => message.sender === "thread" && message.text === "Changelog looks clean"),
+      );
+      expect(parentAfterOnly.messages.length).toBeGreaterThan(parentBefore);
+      yield* settle(started.missionId, isIdle);
+      yield* settle(started.missionId, isIdle, opened.threadId);
+      yield* call({
+        _tag: "SendMessage",
+        delivery: null,
+        requestId: crypto.randomUUID(),
+        sendToParent: "FullContext",
+        text: "Ready to tag",
+        threadId: opened.threadId,
+      });
+      const parentAfterFull = yield* settle(started.missionId, (detail) =>
+        detail.messages.some(
+          (message) =>
+            message.sender === "thread" &&
+            message.text.includes("Ready to tag") &&
+            message.text.includes("Thread context") &&
+            message.text.includes("Check changelog entries"),
+        ),
+      );
+      const echoed = parentAfterFull.messages.find(
+        (message) => message.sender === "thread" && message.text.includes("Ready to tag"),
+      );
+      expect(echoed?.fromThreadId).toBe(opened.threadId);
+    }).pipe(Effect.provide(setup().layer)),
+  );
+
+  it.live("echoes a quest message to its realm channel feed without waking Chronicler", () =>
+    Effect.gen(function* () {
+      yield* call({ _tag: "CreateRealm", name: "Studio", path: null });
+      const {
+        workspaces: [realm],
+      } = yield* call({ _tag: "ListMissions", isArchived: false, search: null, state: null, workspaceId: null });
+      if (realm === undefined) return yield* Effect.die("Missing realm");
+      const channel = yield* call({ _tag: "ReadGuildmaster", channelId: realm.id });
+      const quest = yield* call({ _tag: "StartEmptyQuest", realmId: realm.id, requestId: crypto.randomUUID() });
+      yield* call({
+        _tag: "SendMessage",
+        delivery: null,
+        requestId: crypto.randomUUID(),
+        sendToParent: "MessageOnly",
+        text: "Status update for the realm",
+        threadId: quest.threadId,
+      });
+      yield* settle(quest.missionId, isIdle);
+      const channelDetail = yield* read(channel.missionId);
+      const echoed = channelDetail.messages.find(
+        (message) => message.sender === "thread" && message.text === "Status update for the realm",
+      );
+      expect(echoed?.fromMissionId).toBe(quest.missionId);
+      expect(echoed?.fromThreadId).toBe(quest.threadId);
+      // Channel echo is conversation-only: Chronicler took no turn in the channel.
+      expect(channelDetail.messages.filter((message) => message.sender === "agent")).toHaveLength(0);
+    }).pipe(Effect.provide(setup().layer)),
+  );
+
+  it.live("report_result posts one reply in the errand and echoes it to the parent with optional context", () =>
+    Effect.gen(function* () {
+      const started = yield* startIdle("Audit the API");
+      const opened = yield* call({
+        _tag: "OpenThread",
+        effort: "default",
+        model: "default",
+        parentThreadId: started.threadId,
+        requestId: crypto.randomUUID(),
+        shouldStartAnyway: false,
+        text: "Inspect auth middleware",
+      });
+      yield* settle(started.missionId, isIdle, opened.threadId);
+      const reported = yield* tool(opened.threadId, "report_result", {
+        includeContext: true,
+        journal: "Verified auth middleware tokens.",
+        result: "Auth middleware checks signatures and expiry.",
+      });
+      expect(JSON.stringify(reported)).toContain("posted as your reply here");
+      const errand = yield* read(started.missionId, opened.threadId);
+      expect(
+        errand.messages.some(
+          (message) => message.sender === "agent" && message.text === "Auth middleware checks signatures and expiry.",
+        ),
+      ).toBe(true);
+      const parent = yield* read(started.missionId);
+      const resultMessage = parent.messages.find(
+        (message) => message.sender === "thread" && message.isResult && message.fromThreadId === opened.threadId,
+      );
+      expect(resultMessage?.text).toContain("Auth middleware checks signatures and expiry.");
+      expect(resultMessage?.text).toContain("Thread context");
+      expect(resultMessage?.text).toContain("Inspect auth middleware");
+    }).pipe(Effect.provide(setup().layer)),
+  );
+});
