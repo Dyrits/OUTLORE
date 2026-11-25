@@ -82,6 +82,34 @@ describe("the threads opened beneath, in their opener's conversation", () => {
   });
 });
 
+describe("the message an errand hangs from, pinned at the top of its pane", () => {
+  const root = {
+    fromTitle: null,
+    harness: null,
+    id: MessageId.make("anchor"),
+    model: null,
+    sender: "user",
+    sentAt: 5,
+    text: "Check the logs",
+  } as const;
+  const threads = [{ ...summary("child", "top", 20), replyCount: 2 }, summary("top", null, 0)];
+  const errand = { ...detailOf(threads, "child"), thread: { id: "child", root } } as unknown as MissionDetail;
+
+  it("stands before everything the thread did, so the inverted feed draws it at the top", () => {
+    const entries = entriesOf(errand);
+    expect(entries.map((entry) => entry.key)).toEqual(["root:anchor", "first", "second"]);
+    expect(entries[0]).toMatchObject({ _tag: "Root", replyCount: 2, root });
+    expect(newestFirstOf(entries).at(-1)?._tag).toBe("Root");
+  });
+  it("falls back on counting the thread's own messages without a summary count", () => {
+    const bare = { ...errand, threads: [summary("child", "top", 20)] } as unknown as MissionDetail;
+    expect(entriesOf(bare)[0]).toMatchObject({ _tag: "Root", replyCount: 2 });
+  });
+  it("shows nothing extra in a thread without a root", () => {
+    expect(entriesOf(detailOf(threads, "child")).some((entry) => entry._tag === "Root")).toBe(false);
+  });
+});
+
 describe("handovers, in the conversation they changed", () => {
   it("places each handover line between the messages around it", () => {
     const handovers = [{ at: 20, id: "handover-1", text: "Handed over to Codex · default model · default effort" }];

@@ -161,7 +161,10 @@ export const MissionSummary = Schema.Struct({
   model: ModelChoice,
   /** The question the dashboard asks of it, or null. */
   prompt: Schema.NullOr(MissionPrompt),
-  /** Replies after the opening message in the quest's top thread, for compact in-feed reply lines. */
+  /**
+   * Replies in the quest's top thread, for compact in-feed reply lines: every message of the thread when it hangs from
+   * an anchor message of its channel (the root lives there), else every message after the first, which is its own root.
+   */
   replyCount: Schema.optionalKey(Schema.Number),
   /** The Ritual this quest belongs to, or null for an ordinary quest. */
   ritual: Schema.NullOr(RitualCard),
@@ -267,7 +270,11 @@ export const ThreadSummary = Schema.Struct({
   /** When it was opened: the time of its first message. */
   openedAt: Schema.Number,
   parentId: Schema.NullOr(ThreadId),
-  /** Replies after the opening message in this thread, for compact in-feed reply lines. */
+  /**
+   * Replies in this thread, for compact in-feed reply lines: every message of the thread when it hangs from an anchor
+   * message of its parent conversation (the root lives there, so the thread's own first message is a reply), else every
+   * message after the first, which is its own root.
+   */
   replyCount: Schema.optionalKey(Schema.Number),
   /** The status shown for it: its own state rolled up with its active descendants' (mission-tracking, Mission state). */
   shownState: ThreadState,
@@ -295,6 +302,24 @@ export type ThreadActions = typeof ThreadActions.Type;
 export const OwnCopyView = Schema.Struct({ branch: Schema.String, path: Schema.String });
 export type OwnCopyView = typeof OwnCopyView.Type;
 
+/**
+ * The message of the parent conversation a thread hangs from, which its pane shows pinned above the thread's own
+ * messages, as Slack's thread panel shows the message replied to (conversation panes, Thread root).
+ */
+export const ThreadRoot = Schema.Struct({
+  /** The sending thread's title, for a thread message; null otherwise. */
+  fromTitle: Schema.NullOr(Schema.String),
+  /** The harness that wrote an agent message; null for other messages. */
+  harness: Schema.NullOr(HarnessName),
+  id: MessageId,
+  /** The model that wrote an agent message, as its harness named it; null when unreported. */
+  model: Schema.NullOr(Schema.String),
+  sender: SenderKind,
+  sentAt: Schema.Number,
+  text: Schema.String,
+});
+export type ThreadRoot = typeof ThreadRoot.Type;
+
 /** The selected thread as its conversation shows it, with the owner's actions on it. */
 export const ThreadView = Schema.Struct({
   /** The provider account it runs with, or null for the harness's own sign-in on this computer. */
@@ -316,6 +341,8 @@ export const ThreadView = Schema.Struct({
   ownCopy: Schema.NullOr(OwnCopyView),
   parentId: Schema.NullOr(ThreadId),
   permissionMode: Schema.optionalKey(Schema.NullOr(ThreadPermissionMode)),
+  /** The message of the parent conversation the thread hangs from; absent or null for a thread with no anchor. */
+  root: Schema.optionalKey(Schema.NullOr(ThreadRoot)),
   state: ThreadState,
   title: Schema.String,
   /** The harness of the turn the thread is in, as admitted: the owner's later pick does not change it. Null outside a turn. */

@@ -9,7 +9,7 @@ import { listThreadActivities } from "./activities.ts";
 import { readCards } from "./attachments.ts";
 import { listBudgetEvents, readHeldStop } from "./budgetViews.ts";
 import { readChatter } from "./chatter.ts";
-import { lastSampleOf } from "./exchangeSamples.ts";
+import { lastSampleOf, replyCountOf } from "./exchangeSamples.ts";
 import { listHandovers } from "./handover.ts";
 import { threadActionsOf } from "./lifecycle.ts";
 import { isPendingDeliveryOf } from "./messaging.ts";
@@ -46,7 +46,7 @@ const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId:
         (SELECT COALESCE(MAX(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS lastActivityAt,
         t.harness, t.model,
         (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id AND ${isPendingDeliveryOf(sql)}) AS waitingCount,
-        MAX(0, (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id AND m.sender_kind != 'system') - 1) AS replyCount,
+        ${sql.literal(replyCountOf("t"))} AS replyCount,
         ${sql.literal(lastSampleOf("t.id", "user"))} AS lastOwnerText, ${sql.literal(lastSampleOf("t.id", "agent"))} AS lastReplyText
       FROM tree JOIN threads t ON t.id = tree.id
       WHERE t.mission_id = ${missionId} AND (${includeArchived ? 1 : 0} = 1 OR t.archived_at IS NULL)
@@ -128,6 +128,16 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
         ru.cache_creation AS usageCacheCreation, ru.estimate AS usageEstimate, ru.reported AS usageReported
       FROM messages m LEFT JOIN reply_usage ru ON ru.message_id = m.id LEFT JOIN threads s ON s.id = m.sender_thread_id LEFT JOIN missions sm ON sm.id = s.mission_id
       WHERE m.thread_id = ${selected.id} ORDER BY m.sequence`;
+  // The message the thread hangs from, which its pane pins above its own messages. A quest whose opening message
+  // repeats it (a quest started from the dashboard) already shows it first, so it pins nothing.
+  const [anchored] = yield* sql<NonNullable<MissionDetail["thread"]["root"]>>`
+      SELECT m.id, m.sender_kind AS sender, m.harness, m.model, COALESCE(s.title, m.sender_title) AS fromTitle, m.text,
+        m.sent_at AS sentAt
+      FROM threads t JOIN messages m ON m.id = t.anchor_message_id LEFT JOIN threads s ON s.id = m.sender_thread_id
+      WHERE t.id = ${selected.id}`;
+  const firstText = messages.find((message) => message.sender !== "system")?.text;
+  const root =
+    anchored !== undefined && !(selected.parentId === null && anchored.text === firstText) ? anchored : undefined;
   const cards = yield* readCards(messages.map((message) => message.id));
   const questions = yield* listThreadQuestions(selected.id);
   const suggestions = yield* listThreadSuggestions(selected.id);
@@ -171,6 +181,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
       depth: selected.depth,
       ownCopy: ownCopy === null ? null : { branch: ownCopy.branch, path: ownCopy.path },
       parentId: selected.parentId,
+      ...(root === undefined ? {} : { root }),
       state: selected.state,
       title: selected.title,
       waitingCount: selected.waitingCount,
