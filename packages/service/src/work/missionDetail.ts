@@ -46,6 +46,7 @@ const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId:
         (SELECT COALESCE(MAX(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS lastActivityAt,
         t.harness, t.model,
         (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id AND ${isPendingDeliveryOf(sql)}) AS waitingCount,
+        MAX(0, (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id AND m.sender_kind != 'system') - 1) AS replyCount,
         ${sql.literal(lastSampleOf("t.id", "user"))} AS lastOwnerText, ${sql.literal(lastSampleOf("t.id", "agent"))} AS lastReplyText
       FROM tree JOIN threads t ON t.id = tree.id
       WHERE t.mission_id = ${missionId} AND (${includeArchived ? 1 : 0} = 1 OR t.archived_at IS NULL)

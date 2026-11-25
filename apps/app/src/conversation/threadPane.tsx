@@ -31,6 +31,8 @@ import { ErrandHeaderActions, hasErrandActions } from "./errandHeaderActions";
 import { MobileHeader, mobileIconTarget } from "./mobileHeader";
 import { QueuedMessageTray } from "./queuedMessageTray";
 import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
+import { parentTargetLabelOf, sendToParentScopeOf } from "./sendToParent";
+import { SendToParentControl } from "./sendToParentControl";
 import { terminalFolderOf } from "./terminalFolder";
 import { ChatterNotices } from "./threadActions";
 import { ThreadTitle } from "./threadTitle";
@@ -77,11 +79,14 @@ export function ThreadPane({
   onOpenMission,
   onOpenBudget,
   onOpenDetails,
+  onReplyMessage,
   onBack,
   onNewErrand,
 }: {
   /** Starts an errand of the quest: an icon among the header's actions, before the separator. */
   onNewErrand?: () => void;
+  /** Opens the errand starter pane anchored to a quest message when the owner clicks Reply. */
+  onReplyMessage?: (message: { id: MessageId; text: string }) => void;
   /** In a narrow window, which has no sidebar: the header's back chevron, which opens the main menu. */
   onBack?: () => void;
   /** The buttons at the end of the header of a pane among several: fold and close; none in the quest's own screen. */
@@ -121,7 +126,10 @@ export function ThreadPane({
   // A Ritual's own conversation has no composer at all: no thread takes turns there, and its runs are its only errands
   // (CHG-0616), so a Reply is not offered there either. Run now is the on-the-spot start.
   const [replyTo, setReplyTo] = useState<{ id: MessageId; text: string } | null>(null);
+  const [alsoSendToParent, setAlsoSendToParent] = useState(false);
+  const [includeFullContext, setIncludeFullContext] = useState(false);
   const takesTurns = takesTurnsIn(thread, detail.mission.ritual);
+  const parentLabel = takesTurns ? parentTargetLabelOf(detail) : null;
   const [ritualRunError, setRitualRunError] = useState<string | null>(null);
   const ritualRunAction = takesTurns ? null : (
     <RitualRunAction client={client} missionId={detail.mission.id} onError={setRitualRunError} />
@@ -162,9 +170,21 @@ export function ThreadPane({
   const questTab = isInPane ? null : windowQuestTab;
   // A separator after the last action only divides it from something that follows.
   const hasAfterActions = questTab !== null || chrome != null;
+  const startReply = (message: { id: MessageId; text: string }) => {
+    const existing = conversation.anchors.find((anchor) => anchor.messageId === message.id);
+    if (existing !== undefined) {
+      onSelect(existing.threadId);
+      return;
+    }
+    if (onReplyMessage !== undefined) {
+      onReplyMessage(message);
+      return;
+    }
+    setReplyTo(message);
+  };
   return (
     <CommentsProvider value={comments}>
-      <RepliesProvider value={canReply ? { start: (message) => setReplyTo(message) } : null}>
+      <RepliesProvider value={canReply ? { start: startReply } : null}>
         <View style={[styles.flex, styles.pane]}>
           {onBack !== undefined && (
             <MobileHeader
@@ -346,9 +366,26 @@ export function ThreadPane({
                         mentions={{ client, workspacePath: thread.workspace?.path ?? null }}
                         skills={skills}
                         {...(canStop ? { onStop: conversation.stop } : {})}
-                        onSend={conversation.send}
+                        onSend={async (text, attachmentIds) => {
+                          const scope =
+                            parentLabel === null ? null : sendToParentScopeOf(alsoSendToParent, includeFullContext);
+                          await conversation.send(text, attachmentIds, scope);
+                          if (alsoSendToParent) {
+                            setAlsoSendToParent(false);
+                            setIncludeFullContext(false);
+                          }
+                        }}
                         placeholder={conversation.placeholder}
                       />
+                      {parentLabel !== null && (
+                        <SendToParentControl
+                          includeFullContext={includeFullContext}
+                          isChecked={alsoSendToParent}
+                          onToggleChecked={() => setAlsoSendToParent((current) => !current)}
+                          onToggleFullContext={setIncludeFullContext}
+                          parentLabel={parentLabel}
+                        />
+                      )}
                     </>
                   ) : (
                     // No composer in a Ritual's own conversation (CHG-0616): the conversation is its runs' history,

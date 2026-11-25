@@ -77,6 +77,18 @@ const postDueMissives = Effect.gen(function* () {
       if (errands > 1)
         lines.push(`${errands} errands are in ${state} and last had messages at least ${hours} hours ago.`);
     }
+    const text = lines.join("\n\n");
+    yield* appendMessage({
+      fromThreadId: top.id,
+      isConversationOnly: true,
+      isQueued: false,
+      isResult: false,
+      missionId: top.missionId,
+      now,
+      senderKind: "system",
+      text,
+      threadId: top.id,
+    });
     yield* appendMessage({
       ...channel,
       fromThreadId: top.id,
@@ -85,7 +97,7 @@ const postDueMissives = Effect.gen(function* () {
       isResult: false,
       now,
       senderKind: "system",
-      text: lines.join("\n\n"),
+      text,
     });
     for (const { thread } of due) {
       yield* sql`UPDATE threads SET inactivity_warned_message_id = ${thread.messageId} WHERE id = ${thread.id}`;

@@ -109,11 +109,13 @@ export function AgentReply({
 /** A message's card with the means to comment on it; a card with no message behind it is drawn as it is. */
 function CommentableCard({
   about,
+  canReply = true,
   children,
   messageId,
   text,
 }: {
   about: Message["sender"];
+  canReply?: boolean;
   children: ReactNode;
   messageId: MessageId | null;
   text: string;
@@ -121,7 +123,7 @@ function CommentableCard({
   return messageId === null ? (
     children
   ) : (
-    <Commentable about={about} messageId={messageId} text={text}>
+    <Commentable about={about} canReply={canReply} messageId={messageId} text={text}>
       {children}
     </Commentable>
   );
@@ -138,10 +140,12 @@ export function WorkingIndicator({ harness, label }: { harness: HarnessName; lab
 }
 
 /** The label above a message: none for the owner's own, whose faint card says it waits. */
-const senderLabelOf = (message: Message) => {
+export const senderLabelOf = (message: Message) => {
   if (message.sender === "user") return null;
-  if (message.sender === "system") return "Outlore";
-  return `${message.isResult ? "Result from" : "From"} "${shortened(message.fromTitle ?? "a quest")}"`;
+  if (message.sender === "system") {
+    return message.fromTitle ? `Notice from "${shortened(message.fromTitle)}"` : "Outlore";
+  }
+  return `${message.isResult ? "Result from" : "Reply from"} "${shortened(message.fromTitle ?? "a quest")}"`;
 };
 
 /** One message: the agent's reply with its provider's mark, or the owner's and another thread's as a card. */
@@ -151,6 +155,7 @@ function MessageBubble({
   harness,
   message,
   onOpenMission,
+  onSelectThread,
   replyToText,
   skills,
   workspacePath,
@@ -162,6 +167,7 @@ function MessageBubble({
   message: Message;
   replyToText?: string;
   onOpenMission: (missionId: MissionId) => void;
+  onSelectThread: (threadId: ThreadId) => void;
   skills: ReadonlyArray<Skill>;
   workspacePath: string | null;
 }) {
@@ -183,14 +189,17 @@ function MessageBubble({
   }
   const sender = senderLabelOf(message);
   const isNotice = message.sender === "system";
+  const isParentEcho = isNotice || message.sender === "thread";
   const questLink =
     fromQuest === null ? null : { label: "Open quest", missionId: fromQuest, title: message.fromTitle ?? "" };
+  const threadLink =
+    questLink === null && message.sender === "thread" && message.fromThreadId !== null ? message.fromThreadId : null;
   // The comments a message of the owner carried are drawn apart from what they typed.
   const sent = message.sender === "user" ? commentsOf(message.text) : { body: message.text, items: [] };
   const terminal = message.sender === "user" ? terminalSnapshotOf(sent.body) : null;
   return (
     <View style={[styles.messageRow, message.sender === "user" && styles.messageRowUser]}>
-      <CommentableCard about={message.sender} messageId={message.id} text={message.text}>
+      <CommentableCard about={message.sender} canReply={!isParentEcho} messageId={message.id} text={message.text}>
         <View
           style={[
             styles.messageCard,
@@ -208,7 +217,14 @@ function MessageBubble({
               {questLink !== null && <QuestButton isInline link={questLink} onOpenMission={onOpenMission} />}
             </View>
           ) : (
-            sender !== null && <Text style={styles.senderName}>{sender}</Text>
+            sender !== null &&
+            (threadLink !== null ? (
+              <Pressable accessibilityRole="button" onPress={() => onSelectThread(threadLink)}>
+                <Text style={[styles.senderName, styles.link]}>{sender}</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.senderName}>{sender}</Text>
+            ))
           )}
           {message.sender === "user" ? (
             terminal !== null ? (
@@ -261,13 +277,14 @@ export function EntryView({
   onSelectThread: (threadId: ThreadId) => void;
 }) {
   if (entry._tag === "LiveFooter") return null;
-  if (entry._tag === "ThreadOpened") return <ReplyLine onOpen={onSelectThread} thread={entry.thread} />;
+  if (entry._tag === "ThreadOpened") return <ReplyLine isCompact onOpen={onSelectThread} thread={entry.thread} />;
   if (entry._tag === "Steps")
     return <StepsGroup client={client} seconds={entry.seconds} steps={entry.steps} threadId={entry.threadId} />;
   if (entry._tag === "QuestLink")
     return (
       <QuestReplyLine
         client={client}
+        isCompact
         label={entry.label}
         missionId={entry.missionId}
         onOpen={onOpenMission}
@@ -317,6 +334,7 @@ export function EntryView({
       harness={harness}
       message={entry.message}
       onOpenMission={onOpenMission}
+      onSelectThread={onSelectThread}
       replyToText={entry.replyToText}
       skills={skills}
       workspacePath={workspacePath}

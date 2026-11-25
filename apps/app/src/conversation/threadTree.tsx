@@ -1,6 +1,7 @@
 import type {
   AttachmentId,
   BackupCompanion,
+  MessageId,
   ModelChoice,
   ThreadId,
   ThreadSummary,
@@ -121,12 +122,14 @@ function TreeState({ state }: { state: ThreadSummary["state"] }) {
  * window it warns, with a larger model, trimming lore, or starting anyway.
  */
 export function OpenThreadForm({
+  anchorMessageId = null,
   client,
   companions,
   onCancel,
   onOpened,
   parent,
 }: {
+  anchorMessageId?: MessageId | null;
   client: ServiceClient;
   companions?: { isSelected: boolean; onOpen: () => void };
   onCancel?: () => void;
@@ -167,6 +170,7 @@ export function OpenThreadForm({
     const opened = await client.request({
       _tag: "OpenThread",
       accountId: runner.accountId,
+      ...(anchorMessageId === null ? {} : { anchorMessageId }),
       attachmentIds,
       ...(backups === null ? {} : { backups }),
       effort: runner.effort,

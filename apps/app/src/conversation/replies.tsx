@@ -1,7 +1,7 @@
 import type { AccountId, MessageId, MissionId, ThreadId } from "@outlore/contracts";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { type Runner, RunnerPickers, useHarnesses } from "../editors/runners";
+import type { Runner } from "../editors/runners";
 import { newRequestId, type ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, outline, round } from "../foundation/theme";
@@ -57,16 +57,14 @@ export function ReplyForm({
   realmPath?: string | null;
   runner: Runner;
 }) {
-  const { data: harnesses } = useHarnesses(client);
-  const [choice, setChoice] = useState<Runner>(runner);
   const send = async (text: string) => {
     const started = await client.request({
       _tag: "ReplyToMessage",
-      accountId: choice.accountId,
-      effort: choice.effort,
-      harness: choice.harness,
+      accountId: runner.accountId,
+      effort: runner.effort,
+      harness: runner.harness,
       messageId: message.id,
-      model: choice.model,
+      model: runner.model,
       ...(realmPath === null ? {} : { realmPath }),
       requestId: newRequestId(),
       text,
@@ -83,14 +81,7 @@ export function ReplyForm({
           <Text style={styles.error}>✕</Text>
         </Pressable>
       </View>
-      <Composer
-        accessory={
-          <RunnerPickers client={client} harnesses={harnesses} isCompact onChange={setChoice} value={choice} />
-        }
-        dictation={{ client }}
-        onSend={send}
-        placeholder={placeholder}
-      />
+      <Composer dictation={{ client }} onSend={send} placeholder={placeholder} />
     </View>
   );
 }

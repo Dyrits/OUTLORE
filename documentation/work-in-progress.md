@@ -1,5 +1,21 @@
 # Work in progress
 
+## Slack-like thread replies (Batch 2) · 2026-11-25 · built and tested; desktop window check pending
+
+CHG-0736 on `main` (merged from `worktree/slack-like-replies`, commit `19b3c983`):
+- Added `SendToParentScope` (`"MessageOnly"` | `"FullContext"`) on `SendMessage` and an unchecked-by-default **Also send to \<parent\>** checkbox with **This message** / **Full context** toggle under quest and errand composers; errands echo to and wake their parent quest, while quests echo conversation-only into their realm or Borderlands channel.
+- Updated `report_result` to post one message that appears both as the errand's reply and directly in its parent quest (with optional `includeContext` on `report_result` and `send_thread_message`), deduplicating an identical final turn reply.
+- Updated inactivity notices to post inside the quest and echo to its parent channel, and suppressed **Reply** on notices and parent-echoed thread replies while linking them to their originating quest or errand.
+Next: desktop window review of Batches 1 and 2 (CHG-0735 and CHG-0736), then record Delivery once accepted.
+
+## Slack-like thread replies (Batch 1) · 2026-11-25 · built and tested; desktop window check pending
+
+CHG-0735 on `main` (merged from `worktree/slack-like-replies`, commit `167142e0`):
+- In realm and Borderlands channels, `suggest_mission` with no matching quest directly opens the quest anchored to the owner's latest message using the channel's current Companion configuration (harness, account, model, effort, backups, and permission mode) with no second proposal bubble or confirmation card, and the channel pane auto-opens the new quest pane beside it; casual chat still receives an in-channel reply.
+- Clicking **Reply** on a quest message directly opens the `ErrandStarter` third pane anchored to that message (inheriting the quest's Companion configuration and creating the errand on first send via `OpenThread.anchorMessageId`), and replying to an already-anchored message opens the existing quest or errand directly.
+- Agent `open_thread` anchors a single errand directly to the triggering message with no extra brief bubble, and splits multiple errands targeting the same message into separate agent brief replies so none is asymmetrically tied to an umbrella prompt.
+- In-feed reply lines use a compact one-line bar (state dot, reply count from `replyCount`, title, waiting/attention indicator, last activity time) while the **Quests** and **Errands** tabs keep the fuller cards.
+
 ## Price lookup for effort-suffixed model IDs · 2026-11-25 · built and tested
 
 CHG-0729 on `mission/antigravity-vs-t3code-47229313`: `priceOf()` in `packages/service/src/core/prices.ts` falls back to stripping trailing effort suffixes (`-low`, `-medium`, `-high`, `-xhigh`, `-max`) and date+effort combinations after exact and undated lookups, while keeping exact matches first and returning `null` for unknown base models.

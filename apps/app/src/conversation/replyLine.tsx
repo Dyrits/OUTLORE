@@ -17,6 +17,7 @@ import { useServiceQuery } from "../foundation/useServiceQuery";
 import { scheduleLabelOf } from "../rituals/ritualLabels";
 import { ChipIcon } from "../ui/chips";
 import { handCursor, isHovered } from "../ui/pointer";
+import { replyCountLabelOf } from "./replyLineLabels";
 
 /** The threads open as panes beside the one drawing, so a reply line can show that its errand is already open. */
 export const OpenPanes = createContext<ReadonlySet<ThreadId>>(new Set());
@@ -143,20 +144,84 @@ function ReplyCard({
 }
 
 /**
+ * Compact one-line reply bar shown directly under an anchor message in the conversation feed: state dot, reply count,
+ * title, waiting/attention indicator, and last activity time.
+ */
+function CompactReplyBar({
+  activityAt,
+  isOpen,
+  label,
+  onPress,
+  replyCount,
+  state,
+  title,
+  waitingCount = 0,
+}: {
+  activityAt: number | null;
+  isOpen: boolean;
+  label: string;
+  onPress: () => void;
+  replyCount: number | undefined;
+  state?: ThreadState | MissionState;
+  title: string;
+  waitingCount?: number;
+}) {
+  const tone = state === undefined ? null : stateTones[state];
+  const countLabel = replyCountLabelOf(replyCount, state);
+  const badge = waitingCount > 0 ? `${waitingCount} waiting` : state === "Attention" ? stateLabels.Attention : null;
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={(pressState) => [
+        local.compactBar,
+        (pressState.pressed || isOpen || isHovered(pressState)) && local.lineActive,
+      ]}
+    >
+      {tone !== null && <View style={[local.dot, { backgroundColor: tone.color }]} />}
+      <Text style={local.compactCount}>{countLabel}</Text>
+      <Text numberOfLines={1} style={local.compactTitle}>
+        {shortened(title)}
+      </Text>
+      {badge !== null && <Text style={[local.compactBadge, tone !== null && { color: tone.color }]}>{badge}</Text>}
+      {activityAt !== null && activityAt > 0 && <Text style={local.compactMeta}>{agoOf(activityAt, Date.now())}</Text>}
+      <Text style={local.go}>{isOpen ? "Open" : "›"}</Text>
+    </Pressable>
+  );
+}
+
+/**
  * The reply line under the message an errand hangs from (CHG-0561): who opened it, its title, a sample of its last
  * exchange, its state and how long ago it last moved. Pressing it opens the errand's conversation in the next pane, as a
  * thread opens in Slack; it is marked while that pane is open.
  */
 export function ReplyLine({
   actions,
+  isCompact = false,
   onOpen,
   thread,
 }: {
   actions?: ReactNode;
+  isCompact?: boolean;
   onOpen: (threadId: ThreadId) => void;
   thread: ThreadSummary;
 }) {
   const isOpen = useContext(OpenPanes).has(thread.id);
+  if (isCompact && actions === undefined) {
+    return (
+      <CompactReplyBar
+        activityAt={thread.lastActivityAt}
+        isOpen={isOpen}
+        label={`Errand: ${thread.title}, ${stateLabels[thread.shownState]}`}
+        onPress={() => onOpen(thread.id)}
+        replyCount={thread.replyCount}
+        state={thread.shownState}
+        title={thread.title}
+        waitingCount={thread.waitingCount}
+      />
+    );
+  }
   return (
     <ReplyCard
       actions={actions}
@@ -241,12 +306,14 @@ export function RitualReplyCard({ onOpen, ritual }: { onOpen: () => void; ritual
  */
 export function QuestReplyLine({
   client,
+  isCompact = false,
   label,
   missionId,
   onOpen,
   title,
 }: {
   client: ServiceClient;
+  isCompact?: boolean;
   /** What Chronicler did with the quest: "Opened a quest", "Continued in a quest". */
   label: string;
   missionId: MissionId;
@@ -255,6 +322,20 @@ export function QuestReplyLine({
 }) {
   const { data } = useServiceQuery(client, allMissions.request, allMissions.key);
   const quest = data?.missions.find((mission) => mission.id === missionId) ?? null;
+  const openPanes = useContext(OpenPanes);
+  if (isCompact) {
+    return (
+      <CompactReplyBar
+        activityAt={quest?.lastActivityAt ?? null}
+        isOpen={quest !== null && openPanes.has(quest.topThreadId)}
+        label={`${label}: ${quest?.title ?? title}`}
+        onPress={() => onOpen(missionId)}
+        replyCount={quest?.replyCount}
+        state={quest?.state}
+        title={quest?.title ?? title}
+      />
+    );
+  }
   if (quest !== null) return <QuestCard label={label} onOpen={() => onOpen(missionId)} origin={label} quest={quest} />;
   return (
     <ReplyCard
@@ -272,6 +353,23 @@ export function QuestReplyLine({
 const local = StyleSheet.create({
   actionCard: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
   actions: { alignItems: "center", flexDirection: "row", gap: 12 },
+  compactBadge: { fontSize: fontSizes.xs, fontWeight: "600" },
+  compactBar: {
+    alignItems: "center",
+    alignSelf: "stretch",
+    borderColor: colors.edge,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    marginLeft: 18,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    ...handCursor,
+  },
+  compactCount: { color: colors.accentText, fontSize: fontSizes.sm, fontWeight: "600" },
+  compactMeta: { color: colors.textMuted, fontSize: fontSizes.xs },
+  compactTitle: { color: colors.text, flex: 1, fontSize: fontSizes.sm, fontWeight: "500" },
   dot: { borderRadius: radii.pill, height: 8, width: 8 },
   go: { color: colors.accentText, fontSize: fontSizes.sm },
   line: {

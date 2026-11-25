@@ -67,7 +67,7 @@ import {
 } from "./pickerRequests.ts";
 import { ChoiceAnswers, ThreadPermissionMode } from "./questions.ts";
 import { NewRealmAppearance, realmRequests } from "./realmRequests.ts";
-import { MessageDelivery, MissionEnding, MissionState, RequestId, Viewing } from "./records.ts";
+import { MessageDelivery, MissionEnding, MissionState, RequestId, SendToParentScope, Viewing } from "./records.ts";
 import {
   AddHost,
   CreatePairingCode,
@@ -146,6 +146,8 @@ export const SendMessage = Schema.TaggedStruct("SendMessage", {
   /** The realm's folder the owner attached, for the Chronicler: a quest it opens starts there. */
   realmPath: Schema.optionalKey(Schema.NullOr(Schema.String)),
   requestId: RequestId,
+  /** Also echo this message to the parent conversation, with either this message alone or the full child context. */
+  sendToParent: Schema.optionalKey(SendToParentScope),
   text: OwnerMessageText,
   threadId: ThreadId,
   /** Where the owner has Chronicler open from, for Chronicler: the screen, and its quest when it is one. */
@@ -217,6 +219,8 @@ export const ReadThreadPanel = Schema.TaggedStruct("ReadThreadPanel", { threadId
 export const OpenThread = Schema.TaggedStruct("OpenThread", {
   /** Absent keeps the parent's account when the harness is the parent's, else the computer's own sign-in. */
   accountId: Schema.optionalKey(Schema.NullOr(AccountId)),
+  /** The message in the parent conversation this errand hangs from, when opened by Reply. */
+  anchorMessageId: Schema.optionalKey(Schema.NullOr(MessageId)),
   attachmentIds: AttachmentIds,
   /** A chosen preset's complete backup list; absent inherits the parent's, empty clears it. */
   backups: Schema.optionalKey(BackupCompanions),
@@ -497,18 +501,4 @@ export type Request = typeof Request.Type;
 /** The name of one kind of request. */
 export type RequestTag = Request["_tag"];
 
-/** The kinds of failure the app tells apart. */
-export const ErrorKind = Schema.Literals([
-  "InvalidInput",
-  "NotFound",
-  "StaleVersion",
-  "AccessRefused",
-  "Unsupported",
-  "MissingDependency",
-  "ExecutionFailure",
-]);
-export type ErrorKind = typeof ErrorKind.Type;
-
-/** A failure as the app receives it. */
-export const ServiceError = Schema.Struct({ kind: ErrorKind, message: Schema.String });
-export type ServiceError = typeof ServiceError.Type;
+export { ErrorKind, ServiceError } from "./serviceErrors.ts";

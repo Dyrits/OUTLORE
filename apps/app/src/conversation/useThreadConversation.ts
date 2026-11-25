@@ -1,4 +1,4 @@
-import type { AttachmentId, MessageId, MissionDetail, ThreadId } from "@outlore/contracts";
+import type { AttachmentId, MessageId, MissionDetail, SendToParentScope, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
 import { imageRefusalOf } from "../attachments/attachmentRules";
 import { useHarnesses } from "../editors/runners";
@@ -44,7 +44,11 @@ export function useThreadConversation(
     thread?.actions.isInTurn ?? false,
     options.isChronicler ? "Chronicler" : thread?.parentId === null ? "this quest" : "this errand",
   );
-  const send = (text: string, attachmentIds: ReadonlyArray<AttachmentId>) =>
+  const send = (
+    text: string,
+    attachmentIds: ReadonlyArray<AttachmentId>,
+    sendToParent: SendToParentScope | null = null,
+  ) =>
     sendConversationMessage({
       attachmentIds,
       clearComments: options.isChronicler ? () => {} : comments.clear,
@@ -54,6 +58,7 @@ export function useThreadConversation(
       follow: followNewest.follow,
       options,
       prepare: terminal.prepare,
+      sendToParent,
       sent: terminal.sent,
       text,
       threadId,
@@ -61,12 +66,14 @@ export function useThreadConversation(
   return {
     act: actWith(setActionError),
     actionError,
+    anchors: anchors ?? [],
     comments,
     draft,
     editQueued: (messageId: MessageId, text: string) => client.request({ _tag: "EditQueuedMessage", messageId, text }),
     entries,
     followNewest,
     harnesses,
+    hasLoadedAnchors: anchors !== null,
     interrupt: () => client.request({ _tag: "InterruptThread", threadId }),
     pendingMessages,
     placeholder: state.placeholder,

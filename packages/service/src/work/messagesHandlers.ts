@@ -6,6 +6,7 @@ import { changed } from "./followUps.ts";
 import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
 import { insertUserMessage, releaseQueued, requeueSteered } from "./messaging.ts";
+import { echoUserMessageToParent } from "./parentEcho.ts";
 import { editQueuedMessage, removeQueuedMessage } from "./queuedMessages.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 /** Requests for writing and reading messages, dictation included, share the service request context. */
@@ -61,7 +62,17 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
             attachmentIds,
             send.realmPath ?? null,
             viewing,
-          ).pipe(Effect.map(({ value, threadsToWake }) => changed(value, { threadsToWake }))),
+          ).pipe(
+            Effect.flatMap(({ value, threadsToWake }) =>
+              send.sendToParent === undefined
+                ? Effect.succeed(changed(value, { threadsToWake }))
+                : echoUserMessageToParent(send.threadId, text, send.sendToParent, value.messageId).pipe(
+                    Effect.map((parentWake) =>
+                      changed(value, { threadsToWake: [...new Set([...threadsToWake, ...parentWake])] }),
+                    ),
+                  ),
+            ),
+          ),
         ),
       );
     }),

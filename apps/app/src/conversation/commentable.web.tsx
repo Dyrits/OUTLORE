@@ -45,9 +45,10 @@ type Selected = { left: number; quote: string; top: number };
  * in a quest) — and a button beside any passage the owner selects in it. A comment opens a small field under the card;
  * a Reply opens the reply composer in place of the message box. Without either, the card is drawn as it is.
  */
-export function Commentable({ about, children, messageId, text }: CommentableProps) {
+export function Commentable({ about, canReply = true, children, messageId, text }: CommentableProps) {
   const comments = useComments();
-  const replies = useReplies();
+  const repliesContext = useReplies();
+  const replies = canReply ? repliesContext : null;
   const container = useRef<HTMLDivElement>(null);
   const [isShown, setIsShown] = useState(false);
   const [selected, setSelected] = useState<Selected | null>(null);

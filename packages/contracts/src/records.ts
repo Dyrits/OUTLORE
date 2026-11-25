@@ -9,13 +9,10 @@ import {
   BudgetStop,
   BudgetUse,
   Consumption,
-  PlanLimitReading,
   ReplyUsage,
-  Spending,
   TokenUsage,
 } from "./budgets.ts";
 import { BackupCompanions, CompanionPresets, ModelChoice, Tier } from "./companions.ts";
-import { ContextGauge } from "./contextGauge.ts";
 import { LastExchange } from "./exchanges.ts";
 import { EffortChoice, HarnessName } from "./harnesses.ts";
 import { AccountId, MessageId, MissionId, SuggestionId, ThreadId, WorkspaceId } from "./ids.ts";
@@ -54,6 +51,10 @@ export const startingModel: ModelChoice = "claude-sonnet-5-5";
 /** How an owner message reaches a running thread: joining its current turn, or waiting for its next (thread-messaging, Delivery; CHG-0039). */
 export const MessageDelivery = Schema.Literals(["Steer", "Queue"]);
 export type MessageDelivery = typeof MessageDelivery.Type;
+
+/** How much of a child thread's conversation to include when also sending a message to its parent. */
+export const SendToParentScope = Schema.Literals(["MessageOnly", "FullContext"]);
+export type SendToParentScope = typeof SendToParentScope.Type;
 
 /** The owner's settings. */
 export const Settings = Schema.Struct({
@@ -160,6 +161,8 @@ export const MissionSummary = Schema.Struct({
   model: ModelChoice,
   /** The question the dashboard asks of it, or null. */
   prompt: Schema.NullOr(MissionPrompt),
+  /** Replies after the opening message in the quest's top thread, for compact in-feed reply lines. */
+  replyCount: Schema.optionalKey(Schema.Number),
   /** The Ritual this quest belongs to, or null for an ordinary quest. */
   ritual: Schema.NullOr(RitualCard),
   /** Threads Underway now. */
@@ -264,6 +267,8 @@ export const ThreadSummary = Schema.Struct({
   /** When it was opened: the time of its first message. */
   openedAt: Schema.Number,
   parentId: Schema.NullOr(ThreadId),
+  /** Replies after the opening message in this thread, for compact in-feed reply lines. */
+  replyCount: Schema.optionalKey(Schema.Number),
   /** The status shown for it: its own state rolled up with its active descendants' (mission-tracking, Mission state). */
   shownState: ThreadState,
   state: ThreadState,
@@ -453,35 +458,7 @@ export const StartingContext = Schema.Struct({
 });
 export type StartingContext = typeof StartingContext.Type;
 
-/** What the thread panel shows beyond the thread itself (thread-panel, The panel). */
-export const ThreadPanel = Schema.Struct({
-  /** The Companions tried in order after a turn of this thread fails; at most five. */
-  backups: BackupCompanions,
-  /** The mission's budget and its spending, as the quest panel shows them. */
-  budget: BudgetUse,
-  /** Tools of usable connectors from their last server listing, including switched-off tools. */
-  connectorTools: Schema.Array(
-    Schema.Struct({
-      connectorId: Schema.String,
-      connectorName: Schema.String,
-      isOn: Schema.Boolean,
-      name: Schema.String,
-    }),
-  ),
-  /** What this thread's own turns used, with the estimated cost. */
-  consumption: Consumption,
-  /** Null until a turn reported usage: shown as "Not measured yet", never guessed. */
-  context: Schema.NullOr(ContextGauge),
-  /** Outlore's own tools available to the thread's harness. */
-  outloreTools: Schema.Array(Schema.String),
-  /** The plan limits of the account this thread runs on, as last reported, or null. */
-  planLimits: Schema.NullOr(PlanLimitReading),
-  /** What this thread alone spent. */
-  spending: Spending,
-  /** Turns this thread has run with usage reported. */
-  turnCount: Schema.Number,
-});
-export type ThreadPanel = typeof ThreadPanel.Type;
+export { ThreadPanel } from "./threadPanel.ts";
 
 /**
  * A line in a thread's conversation recording a handover: its harness, account, model, or effort changed; or that its
