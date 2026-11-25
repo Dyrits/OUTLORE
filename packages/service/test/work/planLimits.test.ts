@@ -85,4 +85,25 @@ describe("an account's plan limits", () => {
       expect(yield* readAfterAWhile).toBeNull();
     }).pipe(Effect.provide(withAnswers(answer)));
   });
+
+  it.effect("names a window by the label its harness gives it, so two windows of one length stay distinct", () => {
+    const answer: { current: PlanLimitsReport | null | "fail" } = {
+      current: {
+        billing: "Subscription",
+        windows: [
+          { label: "Gemini Models · 5-hour", resetsAtSeconds: 1_794_405_450, usedPercent: 4, windowMinutes: 300 },
+          { label: "Claude and GPT models · 5-hour", resetsAtSeconds: 0, usedPercent: 0, windowMinutes: 300 },
+          { resetsAtSeconds: 1_794_405_450, usedPercent: 40, windowMinutes: 10_080 },
+        ],
+      },
+    };
+    return Effect.gen(function* () {
+      const read = yield* readAfterAWhile;
+      expect(read?.windows.map((window) => window.label)).toEqual([
+        "Gemini Models · 5-hour",
+        "Claude and GPT models · 5-hour",
+        "Weekly",
+      ]);
+    }).pipe(Effect.provide(withAnswers(answer)));
+  });
 });

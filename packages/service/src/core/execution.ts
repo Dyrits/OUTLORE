@@ -251,8 +251,12 @@ export class HarnessFailure extends Schema.TaggedError<HarnessFailure>()("Harnes
   reason: Schema.String,
 }) {}
 
-/** One plan limit as a harness reports it: a window of so many minutes, how much is used, and when it resets (seconds). */
+/**
+ * One plan limit as a harness reports it: a window of so many minutes, how much is used, and when it resets (seconds).
+ * `label` names the limit when its window length cannot (Antigravity reports a 5-hour and a weekly limit for each of two model groups); left out, the window's length names it.
+ */
 export type PlanLimitReport = {
+  readonly label?: string;
   readonly resetsAtSeconds: number;
   readonly usedPercent: number;
   readonly windowMinutes: number;

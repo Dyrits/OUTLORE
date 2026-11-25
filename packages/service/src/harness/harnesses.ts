@@ -14,6 +14,7 @@ import {
 } from "../core/index.ts";
 import { type AcpProviderDefinition, acpLaunchOf } from "./acpProviderDefinition.ts";
 import { makeAcpProviderHarness, probeAcpProviderModels, readAcpProviderSignIn } from "./acpProviders.ts";
+import { readAntigravityPlanLimits } from "./antigravityPlanLimits.ts";
 import { antigravity as antigravityProvider } from "./antigravityProvider.ts";
 import { makeClaudeHarness } from "./claude.ts";
 import { cline as clineProvider } from "./clineProvider.ts";
@@ -335,7 +336,26 @@ const pi: HarnessDefinition = {
 
 const antigravity: HarnessDefinition = {
   ...harnessFacts.antigravity,
-  makeAdapter: acpAdapterOf(antigravityProvider),
+  // The plan limits come from the CLI's own `/usage` command, which spends no tokens (antigravityPlanLimits.ts).
+  makeAdapter: (options) =>
+    acpAdapterOf(antigravityProvider)(options).pipe(
+      Effect.map(
+        (adapter): HarnessAdapter => ({
+          ...adapter,
+          readPlanLimits: (_harness, configDirectory) =>
+            configDirectory === null
+              ? readAntigravityPlanLimits({
+                  command: options.command,
+                  env: acpLaunchOf(
+                    antigravityProvider,
+                    options.launch?.env === undefined ? {} : { env: options.launch.env },
+                  ).env,
+                  ...prefixOf(options.launch),
+                })
+              : Effect.succeed(null),
+        }),
+      ),
+    ),
   // Models come from a short-lived session probe against the computer's own Gemini home; none when the CLI is
   // absent or not signed in.
   readModels: probedModelsOf(antigravityProvider),

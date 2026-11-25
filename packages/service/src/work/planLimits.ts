@@ -78,7 +78,7 @@ export const planLimitsLayer = Layer.effect(
           return;
         }
         const windows = report.windows.map((window) => ({
-          label: windowLabelOf(window.windowMinutes),
+          label: window.label ?? windowLabelOf(window.windowMinutes),
           resetsAt: window.resetsAtSeconds * 1000,
           usedPercent: window.usedPercent,
           windowMinutes: window.windowMinutes,
