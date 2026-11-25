@@ -1,5 +1,6 @@
 import {
   ClientFrameJson,
+  draftAfter,
   type Request,
   type RequestTag,
   type ResultOf,
@@ -42,6 +43,8 @@ export class ServiceClient {
   private link = initialHostLink;
   private readonly pending = new Map<string, Pending>();
   private readonly listeners = new Set<() => void>();
+  /** The reply each thread is writing, as far as this connection has been told: appended frames continue it. */
+  private readonly drafts = new Map<string, string>();
   private readonly draftListeners = new Set<(threadId: string, text: string) => void>();
   private readonly terminalListeners = new Set<(frame: TerminalData | TerminalExit) => void>();
   private readonly failureListeners = new Set<() => void>();
@@ -125,6 +128,9 @@ export class ServiceClient {
       const transport = this.openTransport({
         onClose: (code, reason) => {
           if (this.attempt === socket) this.attempt = null;
+          // What a dropped link was told of replies in progress is not carried over: the next link starts with the text so far.
+          for (const threadId of this.drafts.keys()) for (const listener of this.draftListeners) listener(threadId, "");
+          this.drafts.clear();
           const failure = linkFailureOf(code, reason);
           if (failure !== null) this.setFailure(failure);
           this.link = advanceHostLink(this.link, { code, type: "close" });
@@ -174,7 +180,12 @@ export class ServiceClient {
     const frame = decodeFrame(data);
     if (frame._tag === "Changed") return this.notify();
     if (frame._tag === "Draft") {
-      for (const listener of this.draftListeners) listener(frame.threadId, frame.text);
+      // A frame that continues text this connection does not hold is a missed one: the whole text comes again soon.
+      const text = draftAfter(this.drafts.get(frame.threadId) ?? "", frame);
+      if (text === null) return;
+      if (text === "") this.drafts.delete(frame.threadId);
+      else this.drafts.set(frame.threadId, text);
+      for (const listener of this.draftListeners) listener(frame.threadId, text);
       return;
     }
     if (frame._tag === "TerminalData" || frame._tag === "TerminalExit") {
@@ -202,7 +213,12 @@ export class ServiceClient {
     return () => this.listeners.delete(listener);
   }
 
-  /** Calls the listener with each thread's reply in progress; empty text ends it. */
+  /** The reply a thread is writing as far as this connection has been told; empty when it writes none. */
+  draftOf(threadId: string) {
+    return this.drafts.get(threadId) ?? "";
+  }
+
+  /** Calls the listener with each thread's reply in progress, whole each time; empty text ends it. */
   subscribeDrafts(listener: (threadId: string, text: string) => void) {
     this.draftListeners.add(listener);
     return () => this.draftListeners.delete(listener);

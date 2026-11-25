@@ -8,7 +8,8 @@ import { type Entry, newestFirstOf } from "./entries";
 export function useDraft(client: ServiceClient, threadId: string | null) {
   const [draft, setDraft] = useState("");
   useEffect(() => {
-    setDraft("");
+    // A screen opened mid-reply starts from the text the connection has been told so far.
+    setDraft(threadId === null ? "" : client.draftOf(threadId));
     const unsubscribe = client.subscribeDrafts((id, text) => {
       if (id === threadId) setDraft(text);
     });

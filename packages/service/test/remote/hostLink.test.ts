@@ -151,6 +151,8 @@ describe("holding a controller host link", () => {
         const link = yield* Effect.promise(() => opening);
         const frames: string[] = [];
         link.listen((text) => frames.push(text));
+        // The announcement of the join may wait for the Changed window (CHG-0719) before it reaches the link.
+        yield* Effect.sleep("400 millis");
         expect(frames.some((text) => JSON.parse(text)._tag === "Changed")).toBe(true);
         link.channel.close();
         // A fiber interrupted while the pairing store updates closes the channel it had opened.
@@ -202,7 +204,8 @@ describe("holding a controller host link", () => {
         yield* world.allowPairing;
         const host = yield* world.pair(yield* world.newCode());
         const channel = yield* world.open(host.id);
-        yield* Effect.sleep("100 millis");
+        // The announcement of the join may wait for the Changed window (CHG-0719).
+        yield* Effect.sleep("400 millis");
         const frames: string[] = [];
         channel.onText((text) => frames.push(text));
         expect(frames.some((text) => JSON.parse(text)._tag === "Changed")).toBe(true);

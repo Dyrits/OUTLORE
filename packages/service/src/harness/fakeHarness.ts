@@ -45,6 +45,10 @@ const tokenUsageOf = (match: RegExpExecArray): TokenUsage => ({
   output: Number(match[2]),
 });
 
+/** The reply a `write` line writes, up to `length` characters: the same text on every run, so a screen's copy can be compared. */
+export const fakeDraftOf = (length: number) =>
+  Array.from({ length }, (_, index) => String.fromCharCode(97 + (index % 26))).join("");
+
 /** Counts the calls a `tooluse` line reports, so each has its own id. */
 let reportedCalls = 0;
 
@@ -53,7 +57,7 @@ let reportedCalls = 0;
 // sandbox (as Codex's escalations do), `folder <tool> <json>` asks the one-time question about a linked thread folder, and `call <tool> <json>` calls any thread tool, `tooluse <tool> <json>` reports a harness tool call as it starts, each answered before
 // the echo; `wait <millis>` keeps the turn running; `fail <harness> <reason>` fails the turn on that harness; `cwd`, `context`, and `runner` report the working folder, the
 // starting context, and the harness, model, effort, and session; `spend <tokens> [cost]` reports spending at the turn's end,
-// `usage <input> <output> <cacheRead> <cacheWrite>` reports tokens by kind, `window <tokens>` reports the model's context window, `callusage <input> <output> <cacheRead> <cacheWrite>` gives the reply's own call its usage, and `billing <Subscription|ApiKey|Unknown>` names how the turn was billed (a turn that reports a cost and names none is API-key, as before).
+// `usage <input> <output> <cacheRead> <cacheWrite>` reports tokens by kind, `window <tokens>` reports the model's context window, `write <characters> <delta> [pause millis]` streams a reply as drafts, `callusage <input> <output> <cacheRead> <cacheWrite>` gives the reply's own call its usage, and `billing <Subscription|ApiKey|Unknown>` names how the turn was billed (a turn that reports a cost and names none is API-key, as before).
 const scriptedCall = (request: TurnRequest, line: string, turn: FakeTurn) => {
   const access = request.access;
   const spend = /^spend (\d+)(?: (\d+(?:\.\d+)?))?$/.exec(line);
@@ -63,6 +67,23 @@ const scriptedCall = (request: TurnRequest, line: string, turn: FakeTurn) => {
       if (spend[2] !== undefined) turn.spent.cost = (turn.spent.cost ?? 0) + Number(spend[2]);
       turn.spent.isReported = true;
       return `spent ${spend[1]}`;
+    });
+  }
+  // `write <characters> <delta> [pause millis]` streams a reply of `fakeDraftOf(characters)` as drafts, `delta` characters at a time,
+  // each draft carrying the whole text so far as a harness reports it; the line's answer stays short.
+  const write = /^write (\d+) (\d+)(?: (\d+))?$/.exec(line);
+  if (write !== null) {
+    return Effect.gen(function* () {
+      const total = Number(write[1]);
+      const delta = Math.max(1, Number(write[2]));
+      const pause = Number(write[3] ?? 0);
+      for (let length = delta; ; length += delta) {
+        const written = Math.min(length, total);
+        yield* request.onEvent({ _tag: "Draft", text: fakeDraftOf(written) });
+        if (written >= total) break;
+        if (pause > 0) yield* Effect.sleep(pause);
+      }
+      return `wrote ${total}`;
     });
   }
   const window = /^window (\d+)$/.exec(line);

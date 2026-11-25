@@ -19,35 +19,132 @@ export class Sessions extends Context.Service<
   }
 >()("outlore/Sessions") {}
 
-/** The registry, and the two fibers that carry changes and drafts to it. */
+/** How long Changed frames are held together: a burst of commits reaches a screen as a frame now and one after the window. */
+export const changedWindowMillis = 250;
+/** How long a thread's draft frames are held together: a reply streams to a screen as at most this many frames a second. */
+export const draftWindowMillis = 100;
+/** After how many appended frames a draft sends the whole text again, so a screen that missed a frame recovers. */
+const framesPerSnapshot = 50;
+
+/** What the screens hold of one thread's reply, and what is still to send them. */
+type DraftState = {
+  /** The reply as the service has it now. */
+  latest: string;
+  /** The reply every connected screen holds; null before the first frame. */
+  sent: string | null;
+  /** Whether a window is open: frames in it wait for its end. */
+  isOpen: boolean;
+  /** The appended frames sent since the whole text was last sent. */
+  appends: number;
+};
+
+/**
+ * The registry, and the fibers that carry changes and drafts to it. Changes and drafts reach the screens in windows
+ * (idle traffic): a burst of commits is one Changed frame now and one after the window carrying the latest sequence, and
+ * a reply being written is sent as the text that is new, whole only to a screen that joins mid-reply and now and then
+ * so that a screen that missed a frame recovers.
+ */
 export const sessionsLayer = Layer.effect(
   Sessions,
   Effect.gen(function* () {
     const changes = yield* Changes;
+    const scope = yield* Effect.scope;
     const sinks = new Set<SessionSend>();
     const broadcast = (frame: ServerFrame) => {
       for (const send of sinks) send(frame);
     };
 
-    /** Carries every value of `pubsub` to `broadcast` on a fiber of its own, for the layer's lifetime. */
-    const relay = <Value>(pubsub: PubSub.PubSub<Value>, send: (value: Value) => void) =>
+    /** Carries every value of `pubsub` to `send` on a fiber of its own, for the layer's lifetime. */
+    const relay = <Value>(pubsub: PubSub.PubSub<Value>, send: (value: Value) => Effect.Effect<void>) =>
       PubSub.subscribe(pubsub).pipe(
         Effect.flatMap((subscription) =>
-          PubSub.take(subscription).pipe(
-            Effect.tap((value) => Effect.sync(() => send(value))),
-            Effect.forever,
-            Effect.forkScoped,
-          ),
+          PubSub.take(subscription).pipe(Effect.flatMap(send), Effect.forever, Effect.forkScoped),
         ),
       );
 
-    yield* relay(changes.pubsub, (sequence) => broadcast({ _tag: "Changed", sequence }));
-    yield* relay(changes.drafts, ({ threadId, text }) =>
-      broadcast({ _tag: "Draft", text, threadId: threadId as ThreadId }),
+    // Changed: the first change of a burst goes out at once, later ones wait for the window to end and go out as one.
+    let latestSequence = 0;
+    let sentSequence = 0;
+    let isChangedWindowOpen = false;
+    const changedWindow = Effect.gen(function* () {
+      while (true) {
+        yield* Effect.sleep(changedWindowMillis);
+        if (latestSequence === sentSequence) {
+          isChangedWindowOpen = false;
+          return;
+        }
+        sentSequence = latestSequence;
+        broadcast({ _tag: "Changed", sequence: sentSequence });
+      }
+    });
+    yield* relay(changes.pubsub, (sequence) =>
+      Effect.gen(function* () {
+        latestSequence = Math.max(latestSequence, sequence);
+        if (isChangedWindowOpen) return;
+        isChangedWindowOpen = true;
+        sentSequence = latestSequence;
+        broadcast({ _tag: "Changed", sequence: sentSequence });
+        yield* Effect.forkIn(changedWindow, scope);
+      }),
+    );
+
+    // Draft: what each screen holds of each thread's reply, so that only what is new is sent.
+    const drafts = new Map<string, DraftState>();
+    const draftFrame = (threadId: string, text: string, offset?: number): ServerFrame => ({
+      _tag: "Draft",
+      ...(offset === undefined ? {} : { offset }),
+      text,
+      threadId: threadId as ThreadId,
+    });
+    const flush = (threadId: string, state: DraftState) => {
+      const { latest, sent } = state;
+      if (sent === latest) return;
+      if (sent !== null && latest.startsWith(sent) && state.appends < framesPerSnapshot) {
+        state.appends += 1;
+        broadcast(draftFrame(threadId, latest.slice(sent.length), sent.length));
+      } else {
+        state.appends = 0;
+        broadcast(draftFrame(threadId, latest));
+      }
+      state.sent = latest;
+    };
+    const draftWindow = (threadId: string, state: DraftState) =>
+      Effect.gen(function* () {
+        while (true) {
+          yield* Effect.sleep(draftWindowMillis);
+          if (drafts.get(threadId) !== state) return;
+          if (state.sent === state.latest) {
+            state.isOpen = false;
+            return;
+          }
+          flush(threadId, state);
+        }
+      });
+    yield* relay(changes.drafts, ({ text, threadId }) =>
+      Effect.gen(function* () {
+        const held = drafts.get(threadId);
+        if (text === "") {
+          // The draft ends at once, and what was waiting for the window is dropped: the saved reply replaces it.
+          drafts.delete(threadId);
+          if (held !== undefined) broadcast(draftFrame(threadId, ""));
+          return;
+        }
+        const state = held ?? { appends: 0, isOpen: false, latest: text, sent: null };
+        drafts.set(threadId, state);
+        state.latest = text;
+        if (state.isOpen) return;
+        state.isOpen = true;
+        flush(threadId, state);
+        yield* Effect.forkIn(draftWindow(threadId, state), scope);
+      }),
     );
 
     return {
       add: (send: SessionSend) => {
+        // A screen that joins mid-reply gets the text so far; the frames after it continue from there.
+        for (const [threadId, state] of drafts) {
+          if (state.sent !== null) send(draftFrame(threadId, state.sent));
+        }
         sinks.add(send);
         return () => void sinks.delete(send);
       },

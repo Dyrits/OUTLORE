@@ -15,8 +15,28 @@ export const Failure = Schema.TaggedStruct("Failure", { error: ServiceError, id:
 /** Sent after each committed change; clients refetch what they show. */
 export const Changed = Schema.TaggedStruct("Changed", { sequence: Schema.Number });
 
-/** The reply a thread is writing, sent only while "Show replies as they're written" is on; never saved. */
-export const Draft = Schema.TaggedStruct("Draft", { text: Schema.String, threadId: ThreadId });
+/**
+ * The reply a thread is writing, sent only while "Show replies as they're written" is on; never saved.
+ * Without `offset`, `text` is the whole reply so far (a snapshot, empty when the draft ends); with it, `text` continues
+ * the reply a screen already holds, which is exactly `offset` characters long (an append). The service sends the whole
+ * text to a screen that connects mid-reply and every fiftieth frame, and only the new text otherwise, so a long reply
+ * costs its own length once, not once per delta.
+ */
+export const Draft = Schema.TaggedStruct("Draft", {
+  offset: Schema.optionalKey(Schema.Number),
+  text: Schema.String,
+  threadId: ThreadId,
+});
+export type Draft = typeof Draft.Type;
+
+/**
+ * The reply a screen holds after a Draft frame arrives, or null when the frame continues text the screen does not hold
+ * (a frame it missed); the screen then keeps what it has until the next snapshot.
+ */
+export const draftAfter = (held: string, frame: Draft): string | null => {
+  if (frame.offset === undefined) return frame.text;
+  return frame.offset === held.length ? held + frame.text : null;
+};
 
 /** One chunk of output from a conversation's open shell, sent to every connected screen. */
 export const TerminalData = Schema.TaggedStruct("TerminalData", {

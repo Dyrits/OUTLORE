@@ -101,6 +101,40 @@ describe("the service client's reconnection", () => {
     expect(seen).toHaveLength(2);
     client.close();
   });
+
+  it("rebuilds a reply from appended frames, starts a late listener at the text so far, and drops a gapped frame", async () => {
+    const client = await connect();
+    const threadId = crypto.randomUUID();
+    const deliver = (frame: object) =>
+      FakeSocket.all[0]?.onmessage?.({ data: JSON.stringify({ _tag: "Draft", threadId, ...frame }) });
+    const seen: string[] = [];
+    client.subscribeDrafts((id, text) => id === threadId && seen.push(text));
+    deliver({ text: "Hel" });
+    deliver({ offset: 3, text: "lo, " });
+    // A late screen reads what the connection holds, not only what comes after.
+    expect(client.draftOf(threadId)).toBe("Hello, ");
+    // A frame that continues text the screen never held is a missed one: kept out, the snapshot repairs it.
+    deliver({ offset: 12, text: "far" });
+    expect(client.draftOf(threadId)).toBe("Hello, ");
+    deliver({ text: "Hello, world" });
+    deliver({ offset: 12, text: "!" });
+    expect(seen).toEqual(["Hel", "Hello, ", "Hello, world", "Hello, world!"]);
+    deliver({ text: "" });
+    expect(client.draftOf(threadId)).toBe("");
+    client.close();
+  });
+
+  it("forgets the replies in progress when the link drops, and tells the screens showing them", async () => {
+    const client = await connect();
+    const threadId = crypto.randomUUID();
+    const seen: string[] = [];
+    client.subscribeDrafts((_, text) => seen.push(text));
+    FakeSocket.all[0]?.onmessage?.({ data: JSON.stringify({ _tag: "Draft", text: "Partly", threadId }) });
+    FakeSocket.all[0]?.fail();
+    expect(client.draftOf(threadId)).toBe("");
+    expect(seen).toEqual(["Partly", ""]);
+    client.close();
+  });
 });
 
 describe("the update link to a host that restarts to install", () => {
