@@ -1,44 +1,27 @@
 import { join } from "node:path";
-import { Clock, Context, Deferred, Effect, FiberMap, FiberSet, Layer, Match, PubSub } from "effect";
+import { Clock, Context, Deferred, Effect, FiberMap, FiberSet, Layer, PubSub } from "effect";
 import { SqlClient } from "effect/sql";
 import { ConnectorGateway, Connectors } from "../connectors/index.ts";
 import {
   Changes,
   Endpoints,
   Harness,
-  type HarnessEvent,
   type ImageAttachment,
   PriceTable,
-  readSettings,
   removeScratch,
-  reportedChangeOf,
   type ServiceFailure,
 } from "../core/index.ts";
-import { HarnessTools, qualifiedToolNameOf, removedAccountReasonOf, toolServerName } from "../harness/index.ts";
+import { HarnessTools } from "../harness/index.ts";
 import { Approvals } from "./approvals.ts";
-import { readApprovalTerms } from "./approvalTerms.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
 import { Commands, makeCommands } from "./commands.ts";
-import { mightMoveFolder } from "./folderMoves.ts";
-import { readConversationSoFar, readInterruptedConversation } from "./handover.ts";
 import { makeLifecycle, recoverThreadStates, stopThread } from "./lifecycle.ts";
-import { listPending, listThreadsWithPending } from "./messaging.ts";
+import { listPending, listThreadsWithPending } from "./pendingMessages.ts";
 import { finishRitualRun } from "./rituals.ts";
-import { prepareStartingContext } from "./startingContext.ts";
 import { Suggestions } from "./suggestions.ts";
 import { resumeThread, retryThread } from "./threadRecovery.ts";
-import { unaskedToolNamesOf } from "./threadToolAccess.ts";
-import { askOwnerFor } from "./threadToolHandlers.ts";
 import { type Admitted, admitBackgroundWake, admitTurn, isCurrentTurn } from "./turnAdmission.ts";
-import {
-  completeTurn,
-  deliverSteered,
-  recordTurnFailure,
-  saveTurnActivity,
-  saveTurnFolderMove,
-  saveTurnNotice,
-  saveTurnReply,
-} from "./turns.ts";
+import { makeTurnRunner } from "./turnRunner.ts";
 import { ScratchRoot } from "./workspaces.ts";
 
 /** Owns thread state and admits at most one turn per thread. */
@@ -72,7 +55,7 @@ export class Threads extends Context.Service<
 export class AccountsRoot extends Context.Service<AccountsRoot, string>()("outlore/AccountsRoot") {}
 
 /** A turn the harness is running, with the steered messages already written to it. */
-type ActiveTurn = {
+export type ActiveTurn = {
   readonly turnId: string;
   readonly written: Set<string>;
 };
@@ -157,106 +140,20 @@ export const threadsLayer = Layer.effectContext(
         }).pipe(Effect.orDie),
       ).pipe(Effect.asVoid);
 
-    const runAdmitted = Effect.fnUntraced(function* (
-      threadId: string,
-      turn: Admitted,
-      awaitSettlement: Effect.Effect<void>,
-    ): Effect.fn.Return<true | null | undefined, unknown> {
-      if (!(yield* isCurrent(turn.turnId))) return;
-      const removed = yield* local(removedAccountReasonOf(turn));
-      if (removed !== null) {
-        return yield* commands.run(local(recordTurnFailure(threadId, turn, removed, false))).pipe(Effect.orDie);
-      }
-      const { shouldStreamReplies, shouldUseCodeMode } = yield* local(readSettings);
-      const terms = yield* local(
-        readApprovalTerms(threadId, turn.harness).pipe(Effect.provideService(Harness, harness)),
-      );
-      const { context, cwd, isInWorkspace, note } = yield* local(prepareStartingContext(threadId));
-      // A new session gets the whole conversation. Codex may omit interrupted input from its resumed context.
-      const interrupted =
-        turn.sessionId !== null && turn.harness === "codex"
-          ? yield* local(readInterruptedConversation(threadId, turn.turnId, turn.model))
-          : null;
-      const history =
-        turn.sessionId === null
-          ? yield* local(readConversationSoFar(threadId, turn.turnId, turn.model))
-          : (interrupted?.text ?? null);
-      const mcpUrl = yield* endpoints.urlFor(threadId);
-      const onEvent = (event: HarnessEvent) =>
-        Match.valueTags(event, {
-          Delivered: (delivered) => commands.run(local(deliverSteered(turn, delivered.messageId))).pipe(Effect.orDie),
-          Draft: (written) =>
-            shouldStreamReplies ? publishDraft(threadId, written.text).pipe(Effect.asVoid) : Effect.void,
-          Notice: (notice) => commands.run(local(saveTurnNotice(threadId, turn, notice.text))).pipe(Effect.orDie),
-          Reply: (reply) =>
-            commands
-              .run(local(saveTurnReply(threadId, turn, reply.text, reply.model ?? null, reply.usage ?? null)))
-              .pipe(Effect.andThen(publishDraft(threadId, "")), Effect.orDie),
-          ToolCall: (call) =>
-            Effect.gen(function* () {
-              const change = call.fileEdit === undefined ? null : reportedChangeOf(call.fileEdit);
-              yield* commands.run(local(saveTurnActivity(threadId, turn, call.id, call.toolName, call.input, change)));
-              // A thread in a workspace may move its shell into a worktree; the scratch folder has none to move to.
-              if (isInWorkspace && mightMoveFolder(call.toolName, call.input))
-                yield* commands.run(local(saveTurnFolderMove(threadId, turn, cwd, call.toolName, call.input)));
-            }).pipe(Effect.orDie),
-        });
-      if (!(yield* isCurrent(turn.turnId))) return;
-      // The tool server answers under the setting this turn starts with, as its harness lists the tools (CHG-0446).
-      yield* endpoints.holdCodeMode(threadId, shouldUseCodeMode);
-      // The connectors list their tools again, and the thread's snapshot of the tools it is offered for this turn is taken;
-      // with Code Mode on the harness lists none of them, they are reached by code (connectors specification).
-      const snapshot = yield* connectorGateway.beginTurn(threadId);
-      const connectorTools = shouldUseCodeMode ? [] : snapshot;
-      active.set(threadId, { turnId: turn.turnId, written: new Set() });
-      const outcome = yield* harness
-        .runTurn({
-          access: {
-            ...terms,
-            connectorTools,
-            isInWorkspace,
-            mcpUrl,
-            unaskedTools: [
-              ...unaskedToolNamesOf(toolServerName, shouldUseCodeMode),
-              // Claude Code runs only the tools it is told; each connector tool asks for itself in the gateway.
-              ...connectorTools.map((name) => qualifiedToolNameOf(toolServerName, name)),
-            ],
-            usesCodeMode: shouldUseCodeMode,
-          },
-          askOwner: askOwnerFor(approvals, sql, threadId),
-          awaitSettlement,
-          configDirectory: turn.accountId === null ? null : join(accountsRoot, turn.accountId),
-          context,
-          conversationSoFar: local(readConversationSoFar(threadId, turn.turnId, turn.model)).pipe(Effect.orDie),
-          cwd,
-          effort: turn.effort,
-          folderRoot: isInWorkspace ? cwd : scratchRoot,
-          harness: turn.harness,
-          images: imagesOf([...(interrupted?.attachments ?? []), ...turn.attachments]),
-          ...(turn.isBackgroundWake ? { isBackgroundWake: true } : {}),
-          model: turn.model,
-          note: history === null ? note : `${history}\n\n${note}`,
-          onEvent,
-          sessionId: turn.sessionId,
-          text: turn.messages.join("\n\n"),
-          threadId,
-        })
-        .pipe(
-          Effect.result,
-          // However the turn ends, what was allowed once in it is spent (action-approval, CHG-0063).
-          Effect.ensuring(
-            Effect.sync(() => active.delete(threadId)).pipe(
-              Effect.andThen(approvals.endTurn(threadId)),
-              Effect.andThen(connectorGateway.endTurn(threadId)),
-            ),
-          ),
-        );
-      yield* publishDraft(threadId, "");
-      if (outcome._tag === "Failure") {
-        return yield* commands.run(local(recordTurnFailure(threadId, turn, outcome.failure.reason))).pipe(Effect.orDie);
-      }
-      yield* commands.run(local(completeTurn(threadId, turn, outcome.success))).pipe(Effect.orDie);
-      return true;
+    const runAdmitted = makeTurnRunner({
+      accountsRoot,
+      active,
+      approvals,
+      commands: { run: (operation) => commands.run(operation) },
+      connectorGateway,
+      endpoints,
+      harness,
+      imagesOf,
+      isCurrent,
+      local,
+      publishDraft,
+      scratchRoot,
+      sql,
     });
 
     const run = Effect.fnUntraced(function* (threadId: string, turn: Admitted): Effect.fn.Return<void, unknown> {

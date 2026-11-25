@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
-import type { StructuralTool } from "../../src/work/guildmasterProvenance.ts";
-import { deriveAction } from "../../src/work/guildmasterProvenance.ts";
+import type { StructuralTool } from "../../src/work/guildmasterDerivation.ts";
+import { deriveAction } from "../../src/work/guildmasterDerivation.ts";
 import type { ArgumentsOf } from "../../src/work/threadTools.ts";
 import { readRunningTurnId } from "../../src/work/turnAdmission.ts";
 import { guildmaster, say, startIdle } from "../fixtures/guildmaster.ts";

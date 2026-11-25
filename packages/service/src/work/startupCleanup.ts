@@ -10,7 +10,8 @@ const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const questFolder = new RegExp(`^${uuid}$`, "i");
 const attachmentFile = new RegExp(`^${uuid}\\.(png|jpg|gif|webp)$`, "i");
 
-// This is the startup boundary: failures are observable but must not make the app unusable.
+// This is the startup boundary: failures are observable but must not make the app unusable. It logs here, as the
+// process top does, because the cleanup runs once before any caller exists that could receive a failure.
 const attemptCleanup = <A, E, R>(target: string, operation: Effect.Effect<A, E, R>) =>
   operation.pipe(
     Effect.catchCause((cause) =>

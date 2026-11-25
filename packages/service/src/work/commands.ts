@@ -47,7 +47,8 @@ export const makeCommands = (dependencies: {
     for (const id of followUps.threadsToWithdraw) yield* dependencies.withdrawQuestions(id);
     for (const id of followUps.missionsToRemoveScratch) {
       // The deletion is already committed. A scratch failure must not prevent attachment cleanup or
-      // report that committed deletion as failed; startup reconciliation will retry the folder.
+      // report that committed deletion as failed; startup reconciliation will retry the folder. It is logged here, not
+      // returned, for the same reason: no caller is left to act on it.
       yield* dependencies
         .removeScratch(id)
         .pipe(

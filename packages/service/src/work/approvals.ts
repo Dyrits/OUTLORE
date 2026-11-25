@@ -32,7 +32,7 @@ export const approvalsLayer = Layer.effect(
     // Targets approved through `request_approval` that the next matching harness prompt may run once.
     const allowances = new Map<
       string,
-      Array<{ readonly target: string; readonly turnId: string; readonly outsideSandbox: boolean }>
+      Array<{ readonly target: string; readonly turnId: string; readonly isOutsideSandbox: boolean }>
     >();
     // The real path the owner last allowed a harness to start in, by thread, for a thread folder that is a link.
     const allowedFolders = new Map<string, string>();
@@ -49,19 +49,20 @@ export const approvalsLayer = Layer.effect(
     const readTurnId = (threadId: string) =>
       readRunningTurnId(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
 
-    const allowOnce = (threadId: string, target: string, turnId: string, outsideSandbox: boolean) =>
+    const allowOnce = (threadId: string, target: string, turnId: string, isOutsideSandbox: boolean) =>
       Effect.sync(() =>
         allowances.set(threadId, [
           ...(allowances.get(threadId) ?? []),
-          { outsideSandbox, target: target.trim(), turnId },
+          { isOutsideSandbox, target: target.trim(), turnId },
         ]),
       );
 
-    const takeAllowance = Effect.fnUntraced(function* (threadId: string, target: string, outsideSandbox: boolean) {
+    const takeAllowance = Effect.fnUntraced(function* (threadId: string, target: string, isOutsideSandbox: boolean) {
       const turnId = yield* readTurnId(threadId);
       const targets = allowances.get(threadId) ?? [];
       const index = targets.findIndex(
-        (grant) => grant.target === target.trim() && grant.turnId === turnId && grant.outsideSandbox === outsideSandbox,
+        (grant) =>
+          grant.target === target.trim() && grant.turnId === turnId && grant.isOutsideSandbox === isOutsideSandbox,
       );
       if (index === -1) return false;
       allowances.set(threadId, targets.toSpliced(index, 1));
@@ -82,9 +83,9 @@ export const approvalsLayer = Layer.effect(
       if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
       const turnId = yield* readTurnId(threadId);
       if (turnId === null) return { isAllowed: false, text: "No running turn to approve." } satisfies Decision;
-      const outsideSandbox = request.outsideSandbox ?? false;
+      const isOutsideSandbox = request.isOutsideSandbox ?? false;
       // The question names only what the service knows: the exact command, and whether it leaves the sandbox.
-      const kind = outsideSandbox ? capabilities.outsideSandbox : null;
+      const kind = isOutsideSandbox ? capabilities.outsideSandbox : null;
       const asked: Asked = {
         details: request.command,
         kind: "Approval",
@@ -93,20 +94,20 @@ export const approvalsLayer = Layer.effect(
         pattern: request.command.trim(),
         permission: kind ?? "Run this exact command",
         source: "Thread",
-        summary: outsideSandbox ? `${request.action}. Run this exact command outside the sandbox.` : request.action,
+        summary: isOutsideSandbox ? `${request.action}. Run this exact command outside the sandbox.` : request.action,
         threadId,
       };
       const covering = yield* findCoveringPermission(threadId, request.command, kind);
       if (covering !== null) {
         const resolution: Resolution = { message: covering.sentence, outcome: "AllowedByPermission" };
         yield* record(asked, resolution);
-        yield* allowOnce(threadId, request.command, turnId, outsideSandbox);
-        return { isAllowed: true, text: textOf(resolution, outsideSandbox) } satisfies Decision;
+        yield* allowOnce(threadId, request.command, turnId, isOutsideSandbox);
+        return { isAllowed: true, text: textOf(resolution, isOutsideSandbox) } satisfies Decision;
       }
       const resolution = yield* ask(asked);
       const isAllowed = allowingOutcomes.includes(resolution.outcome) && (yield* readTurnId(threadId)) === turnId;
-      if (isAllowed) yield* allowOnce(threadId, request.command, turnId, outsideSandbox);
-      return { isAllowed, text: textOf(resolution, outsideSandbox) } satisfies Decision;
+      if (isAllowed) yield* allowOnce(threadId, request.command, turnId, isOutsideSandbox);
+      return { isAllowed, text: textOf(resolution, isOutsideSandbox) } satisfies Decision;
     }, Effect.orDie);
 
     /**

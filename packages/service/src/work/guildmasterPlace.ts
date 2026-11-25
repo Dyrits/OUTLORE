@@ -1,4 +1,4 @@
-import type { GuildmasterPlace, HarnessName, ModelChoice } from "@outlore/contracts";
+import { type GuildmasterPlace, type HarnessName, MissionId, type ModelChoice, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, readSettings, type SettingWriter } from "../core/index.ts";
@@ -55,7 +55,7 @@ export const readGuildmaster = (channelId?: string | null) =>
     // Only making the place announces a change: a read that always did made every screen that follows changes reload
     // it at once, a loop that froze the Guild Hall.
     Effect.map(({ isCreated, missionId, threadId }) => {
-      const place = { missionId, threadId } as GuildmasterPlace;
+      const place: GuildmasterPlace = { missionId: MissionId.make(missionId), threadId: ThreadId.make(threadId) };
       return isCreated ? changed(place) : unchanged(place);
     }),
   );

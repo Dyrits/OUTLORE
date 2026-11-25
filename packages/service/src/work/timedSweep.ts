@@ -22,7 +22,11 @@ export type TimedSweep<A, E, R, E2, R2> = {
   readonly work: Effect.Effect<A, E, R>;
 };
 
-/** Runs `effect`, giving its value, or `fallback` after logging a failure or defect; only an interruption passes. */
+/**
+ * Runs `effect`, giving its value, or `fallback` after logging a failure or defect; only an interruption passes. It logs
+ * here, not lower, because a sweep is a fiber root: nothing above it receives its failure, so the log is the process
+ * top's own record of it.
+ */
 const recover = <A, E, R, B>(what: string, effect: Effect.Effect<A, E, R>, fallback: B) =>
   effect.pipe(
     Effect.catchCauseIf(
@@ -34,20 +38,19 @@ const recover = <A, E, R, B>(what: string, effect: Effect.Effect<A, E, R>, fallb
 
 /** Starts the sweep on the scope's own fiber: run, wait until it is next due, run again, until the scope closes. */
 export const timedSweep = <A, E, R, E2, R2>(options: TimedSweep<A, E, R, E2, R2>) => {
-  const pause = (hasFailed: boolean) =>
-    Effect.gen(function* () {
-      // A time that cannot be read is the retry delay; a run that failed waits at least that long.
-      const due = yield* recover(`${options.name}: reading when it is next due`, options.untilNext, retryMillis);
-      if (due === null && !hasFailed && options.wakeOn !== undefined) {
-        yield* options.wakeOn;
-        return;
-      }
-      const delay = due === null ? retryMillis : hasFailed ? Math.max(due, retryMillis) : due;
-      const sleep = Effect.sleep(delay);
-      yield* options.wakeOn === undefined || options.isWakeOnlyWhenIdle === true
-        ? sleep
-        : Effect.raceFirst(sleep, options.wakeOn);
-    });
+  const pause = Effect.fnUntraced(function* (hasFailed: boolean) {
+    // A time that cannot be read is the retry delay; a run that failed waits at least that long.
+    const due = yield* recover(`${options.name}: reading when it is next due`, options.untilNext, retryMillis);
+    if (due === null && !hasFailed && options.wakeOn !== undefined) {
+      yield* options.wakeOn;
+      return;
+    }
+    const delay = due === null ? retryMillis : hasFailed ? Math.max(due, retryMillis) : due;
+    const sleep = Effect.sleep(delay);
+    yield* options.wakeOn === undefined || options.isWakeOnlyWhenIdle === true
+      ? sleep
+      : Effect.raceFirst(sleep, options.wakeOn);
+  });
   const cycle = recover(options.name, Effect.as(options.work, false), true).pipe(
     Effect.flatMap((hasFailed) => pause(hasFailed)),
     Effect.forever,

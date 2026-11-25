@@ -24,11 +24,11 @@ type QuestionAnswer =
   | { readonly kind: "Choice"; readonly answers: ReadonlyArray<ReadonlyArray<string>> | null };
 
 /** The outcome persisted for a question and delivered to its waiting caller. */
-export interface Resolution {
+export type Resolution = {
   readonly answers?: ReadonlyArray<ReadonlyArray<string>> | null;
   readonly message: string | null;
   readonly outcome: QuestionOutcome;
-}
+};
 
 const outcomeOfAnswer = {
   Allow: "Allowed",
@@ -55,11 +55,11 @@ const skippedText =
   "The owner skipped this question and chose not to answer. Carry on without an answer, or ask again in plain text if you still need one.";
 
 /** The outcome in words for the thread, preserving refusals, skips and withdrawal. */
-export const textOf = (resolution: Resolution, outsideSandbox = false) =>
+export const textOf = (resolution: Resolution, isOutsideSandbox = false) =>
   resolution.outcome === "Skipped"
     ? skippedText
     : allowingOutcomes.includes(resolution.outcome)
-      ? outsideSandbox
+      ? isOutsideSandbox
         ? "Allowed. Run exactly this command outside the sandbox once, with nothing added."
         : allowedText
       : resolution.outcome === "Withdrawn"
@@ -124,8 +124,8 @@ export const makeQuestions = (
       }),
     );
 
-  const answerQuestion = (questionId: string, given: QuestionAnswer, device: string) =>
-    Effect.gen(function* () {
+  const answerQuestion = Effect.fnUntraced(
+    function* (questionId: string, given: QuestionAnswer, device: string) {
       const question = yield* readQuestion(questionId);
       if (question === null) return yield* notFound("No such question.");
       if (question.outcome !== null) return yield* invalid("This question was already answered.");
@@ -156,24 +156,25 @@ export const makeQuestions = (
       yield* resolve(questionId, question.threadId, resolution, device);
       yield* waits.settle(questionId, resolution);
       return (yield* readQuestion(questionId)) ?? question;
-    }).pipe(Effect.provideService(SqlClient.SqlClient, sql));
+    },
+    Effect.provideService(SqlClient.SqlClient, sql),
+  );
 
   const answer = (id: string, answer: Answer, message: string | null, device: string) =>
     answerQuestion(id, { answer, kind: "Action", message }, device);
   const answerChoices = (id: string, answers: ReadonlyArray<ReadonlyArray<string>> | null, device: string) =>
     answerQuestion(id, { answers, kind: "Choice" }, device);
 
-  const withdraw = (threadId: string) =>
-    Effect.gen(function* () {
-      const open = yield* sql<{
-        id: string;
-      }>`SELECT id FROM questions WHERE thread_id = ${threadId} AND outcome IS NULL`;
-      for (const { id } of open) {
-        yield* resolve(id, threadId, withdrawn, null);
-        yield* waits.settle(id, withdrawn);
-      }
-      forgetAllowances(threadId);
-    }).pipe(Effect.orDie);
+  const withdraw = Effect.fnUntraced(function* (threadId: string) {
+    const open = yield* sql<{
+      id: string;
+    }>`SELECT id FROM questions WHERE thread_id = ${threadId} AND outcome IS NULL`;
+    for (const { id } of open) {
+      yield* resolve(id, threadId, withdrawn, null);
+      yield* waits.settle(id, withdrawn);
+    }
+    forgetAllowances(threadId);
+  }, Effect.orDie);
 
   return { answer, answerChoices, ask, record, withdraw };
 };

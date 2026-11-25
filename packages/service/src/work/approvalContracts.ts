@@ -11,7 +11,7 @@ export type ApprovalRequest = {
   /** The exact command, file, or target. */
   readonly command: string;
   /** Whether the owner is explicitly being asked to run this command without the sandbox. */
-  readonly outsideSandbox?: boolean;
+  readonly isOutsideSandbox?: boolean;
 };
 
 /** The question a harness asks before starting in a thread folder that is a link (harness/threadFolder.ts). */

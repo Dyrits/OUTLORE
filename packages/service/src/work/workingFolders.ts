@@ -49,8 +49,8 @@ export const moveWorkingFolder = Effect.fnUntraced(function* (
   const stored = row?.folder ?? null;
   const from = stored !== null && isFolder(stored) ? stored : start;
   const move = folderMoveOf(toolName, input, from, start);
-  if (move === undefined) return;
-  yield* sql`UPDATE threads SET working_folder = ${move} WHERE id = ${threadId}`;
+  if (move._tag === "Stays") return;
+  yield* sql`UPDATE threads SET working_folder = ${move._tag === "MovesTo" ? move.path : null} WHERE id = ${threadId}`;
 });
 
 /**

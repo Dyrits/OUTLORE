@@ -11,10 +11,11 @@ import {
 import { Endpoints, readSettings, unknownToolAnswer } from "../core/index.ts";
 import { harnessFacts, toolServerName } from "../harness/index.ts";
 import { Approvals } from "./approvals.ts";
+import { readCallerRefusal } from "./askOwner.ts";
 import { Commands } from "./commands.ts";
 import { Suggestions } from "./suggestions.ts";
 import { Threads } from "./threads.ts";
-import { makeToolHandlers, readCallerRefusal } from "./threadToolHandlers.ts";
+import { makeToolHandlers } from "./threadToolHandlers.ts";
 import { answerToolCall, isCoveredByCodeMode, isThreadToolName, startsWork, toolListingOf } from "./threadTools.ts";
 import { readAuthorityHarness } from "./turnAdmission.ts";
 
@@ -84,16 +85,15 @@ export const toolServerLayer = Layer.effectDiscard(
       );
 
     /** The caller checks every call to the tool server has, or null when the thread may make this call now. */
-    const readRefusalOf = (threadId: string, name: string) =>
-      Effect.gen(function* () {
-        const refusal = yield* readCallerRefusal(threadId, name);
-        if (refusal !== null) return refusal;
-        // Only a harness that asks its permission prompts through `answer_prompt` may call it (audit SA-14): the
-        // others ask in-process, and a call by one would draw an allow decision of its own choosing.
-        if (name === "answer_prompt" && !(yield* hasPromptToolOf(threadId)))
-          return "This tool is not available to this thread.";
-        return null;
-      });
+    const readRefusalOf = Effect.fnUntraced(function* (threadId: string, name: string) {
+      const refusal = yield* readCallerRefusal(threadId, name);
+      if (refusal !== null) return refusal;
+      // Only a harness that asks its permission prompts through `answer_prompt` may call it (audit SA-14): the
+      // others ask in-process, and a call by one would draw an allow decision of its own choosing.
+      if (name === "answer_prompt" && !(yield* hasPromptToolOf(threadId)))
+        return "This tool is not available to this thread.";
+      return null;
+    });
 
     /** Answers a thread tool, or an unknown name, once the caller's checks have passed. */
     const answerOwnTool = (threadId: string, name: string, args: unknown) =>
@@ -104,19 +104,22 @@ export const toolServerLayer = Layer.effectDiscard(
      * call has, so a call from code is never easier than a call made directly.
      */
     const ownToolsFor = (threadId: string): OwnTools => ({
-      call: (name, args) =>
-        Effect.gen(function* () {
+      call: Effect.fnUntraced(
+        function* (name, args) {
           const refusal = yield* readRefusalOf(threadId, name);
           return refusal === null
             ? yield* answerOwnTool(threadId, name, args)
             : ({ isError: true, text: refusal } as const);
-        }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie),
+        },
+        Effect.provideService(SqlClient.SqlClient, sql),
+        Effect.orDie,
+      ),
       isCovered: isCoveredByCodeMode,
       startsWork,
     });
 
-    const dispatchTool = (threadId: string, name: string, args: unknown) =>
-      Effect.gen(function* () {
+    const dispatchTool = Effect.fnUntraced(
+      function* (threadId: string, name: string, args: unknown) {
         const answer = yield* answerCodeModeCall(executor, gateway, ownToolsFor(threadId), {
           args,
           name,
@@ -125,25 +128,29 @@ export const toolServerLayer = Layer.effectDiscard(
           threadId,
         });
         return answer ?? (yield* answerOwnTool(threadId, name, args));
-      }).pipe(Effect.map(({ isError, text }) => textResult(text, isError)));
+      },
+      Effect.map(({ isError, text }) => textResult(text, isError)),
+    );
 
-    const callTool = (threadId: string, name: string, args: unknown) =>
-      Effect.gen(function* () {
+    const callTool = Effect.fnUntraced(
+      function* (threadId: string, name: string, args: unknown) {
         const refusal = yield* readRefusalOf(threadId, name);
         return refusal === null ? yield* dispatchTool(threadId, name, args) : textResult(refusal, true);
-      }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.orDie);
+      },
+      Effect.provideService(SqlClient.SqlClient, sql),
+      Effect.orDie,
+    );
 
     /** The tools the thread's harness lists: `answer_prompt` only for Claude Code, then its connectors' tools. */
-    const listTools = (threadId: string) =>
-      Effect.gen(function* () {
-        const ownListed = toolListingOf(yield* hasPromptToolOf(threadId));
-        return offeredToolsOf(
-          ownListed,
-          yield* gateway.listingFor(threadId),
-          ownToolsFor(threadId),
-          yield* codeModeOf(threadId),
-        );
-      }).pipe(Effect.orDie);
+    const listTools = Effect.fnUntraced(function* (threadId: string) {
+      const ownListed = toolListingOf(yield* hasPromptToolOf(threadId));
+      return offeredToolsOf(
+        ownListed,
+        yield* gateway.listingFor(threadId),
+        ownToolsFor(threadId),
+        yield* codeModeOf(threadId),
+      );
+    }, Effect.orDie);
 
     const respondJson = (response: ServerResponse, body: unknown) => {
       response.writeHead(200, { "content-type": "application/json" });

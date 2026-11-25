@@ -41,7 +41,7 @@ export const recordOnce = Effect.fnUntraced(function* <A, E, R>(
           }
         : decodeWakes(JSON.parse(stored.wakes));
     // The value is an opaque result written by the same request handler, retained across retries.
-    const value = JSON.parse(stored.outcome) as A;
+    const value: A = JSON.parse(stored.outcome);
     return unchanged(value, wakes);
   }
   const done = yield* work;

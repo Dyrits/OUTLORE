@@ -1,18 +1,9 @@
-import type { SuggestionOutcome } from "@outlore/contracts";
 import { Effect, Match } from "effect";
-import { SqlClient } from "effect/sql";
-import {
-  HarnessFailure,
-  type HarnessPrompt,
-  type PromptAnswer,
-  type ToolAnswer,
-  textFieldOf,
-  toolRefusal,
-  toolText,
-} from "../core/index.ts";
+import type { SqlClient } from "effect/sql";
+import { toolRefusal, toolText } from "../core/index.ts";
 import { claudeChoicesOf, claudePromptAnswerOf } from "../harness/index.ts";
-import type { ChoiceDecision } from "./approvalContracts.ts";
 import type { Approvals } from "./approvals.ts";
+import { promptAnswerOf } from "./askOwner.ts";
 import { countChatter } from "./chatter.ts";
 import type { CommandRunner } from "./commands.ts";
 import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
@@ -29,99 +20,12 @@ import { withThreadContext } from "./parentEcho.ts";
 import { readParentMessages } from "./parentMessages.ts";
 import { mayMessage } from "./reach.ts";
 import { createRitualByThread, editRitualByThread, refuseRitual } from "./ritualTools.ts";
-import type { Resolution, Suggested, Suggestions } from "./suggestions.ts";
+import { carryOn, confirmInstead, suggestedAnswerOf } from "./suggestedAnswers.ts";
+import type { Suggestions } from "./suggestions.ts";
 import type { Threads } from "./threads.ts";
 import { type ArgumentsOf, type ToolHandlers, threadTools as toolCatalogue } from "./threadTools.ts";
 import { titleToolsOf } from "./titles.ts";
 import { isBeneath, openThreadByAgent, refusedOf, reportResult } from "./tree.ts";
-
-/** Why a thread may not call a thread tool now, or null: an unknown or deleting thread, or one the chatter guard paused. */
-export const readCallerRefusal = Effect.fnUntraced(function* (threadId: string, name: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const [caller] = yield* sql<{
-    blocker: string | null;
-  }>`SELECT blocker FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
-  if (caller === undefined) return "Unknown thread.";
-  if (caller.blocker === "Chatter" && name !== "send_thread_message" && name !== "report_result")
-    return "Paused by the chatter guard. Wait for the owner.";
-  return null;
-});
-
-/**
- * A thread's ask-the-owner capability for its turn request: the answer `answer_prompt` gives Claude Code,
- * without MCP. A store that cannot answer fails the turn rather than leave the harness waiting.
- */
-export const askOwnerFor =
-  (approvals: Approvals["Service"], sql: SqlClient.SqlClient, threadId: string) => (prompt: HarnessPrompt) =>
-    Effect.gen(function* () {
-      const refusal = yield* readCallerRefusal(threadId, "answer_prompt");
-      if (refusal !== null) return { isAllowed: false, text: refusal } satisfies PromptAnswer;
-      // The folder question is one-time: it never goes through the standing permissions (harness/threadFolder.ts).
-      if (prompt.folderCheck !== undefined) {
-        const answered = yield* approvals.askAboutFolder(threadId, {
-          folder: textFieldOf(prompt.input, "file_path") ?? "",
-          pointsTo: prompt.folderCheck.pointsTo,
-          startsIn: prompt.folderCheck.startsIn,
-          summary: textFieldOf(prompt.input, "description") ?? `${prompt.toolName} asks about its folder`,
-        });
-        return { isAllowed: answered.isAllowed, text: answered.text } satisfies PromptAnswer;
-      }
-      if (prompt.choices !== undefined) return promptAnswerOf(yield* approvals.askChoices(threadId, prompt.choices));
-      const decision = yield* approvals.answerPrompt(threadId, prompt);
-      return {
-        isAllowed: decision.isAllowed,
-        text: decision.text,
-      } satisfies PromptAnswer;
-    }).pipe(
-      Effect.provideService(SqlClient.SqlClient, sql),
-      Effect.orDie,
-      Effect.catchDefect((defect) =>
-        Effect.fail(
-          new HarnessFailure({
-            reason: `Outlore could not ask about ${prompt.toolName}: ${defect instanceof Error ? defect.message : String(defect)}`,
-          }),
-        ),
-      ),
-    );
-
-/** What a harness is told of the owner's choice: the answers, or why there are none. */
-const promptAnswerOf = (chosen: ChoiceDecision): PromptAnswer =>
-  Match.valueTags(chosen, {
-    Answered: ({ answers }) => ({ answers, isAllowed: true, text: "" }),
-    Skipped: ({ text }) => ({ isAllowed: false, text }),
-  });
-
-const carryOn = "Carry on as if that message had not been sent to you; do not answer it.";
-// Chronicler answers its owner instead: one sentence saying where the request went.
-const confirmInstead = "Tell the owner in one sentence where it went; do not repeat the request.";
-
-/** What `suggest_mission` tells the thread for each way the owner resolved its suggestion. */
-const resolutionTextOf = (resolution: Resolution) =>
-  ({
-    Continued: `The owner continued it in mission "${resolution.targetTitle}" (id ${resolution.targetMissionId}). ${carryOn}`,
-    KeptAsAside: `The owner kept it as an aside beneath you: thread "${resolution.targetTitle}" (id ${resolution.targetThreadId}). It will message you what is relevant to the mission. ${carryOn}`,
-    MovedToMission: `The owner opened it as a new mission "${resolution.targetTitle}" (id ${resolution.targetMissionId}). ${carryOn}`,
-    Withdrawn: "Withdrawn: the turn that asked ended before the owner answered.",
-  }) satisfies Record<SuggestionOutcome, string>;
-
-/** What `suggest_mission` answers the thread. */
-const suggestedAnswerOf = (suggested: Suggested): ToolAnswer =>
-  Match.valueTags(suggested, {
-    NotAsked: () => toolRefusal("Not asked: this thread is not at work in a turn, so the owner was not asked."),
-    OpenedWithoutAsking: ({ resolution }) =>
-      toolText(
-        `No mission fits, so Outlore opened it as a new mission "${resolution.targetTitle}" (id ${resolution.targetMissionId}), as the owner's settings ask. ${carryOn}`,
-      ),
-    Resolved: ({ resolution }) =>
-      resolution.outcome === "Withdrawn"
-        ? toolRefusal(resolutionTextOf(resolution)[resolution.outcome])
-        : toolText(resolutionTextOf(resolution)[resolution.outcome]),
-    UnknownRealm: ({ given }) =>
-      toolRefusal(
-        `Not proposed: no realm "${given}" is tied to a folder. Name one of the realms in your context that has a folder, or leave the realm out.`,
-      ),
-    UnknownThread: () => toolRefusal("Unknown thread."),
-  });
 
 /** Answers every thread tool with its decoded arguments, through the modules that own each one and the command runner. */
 export const makeToolHandlers = (dependencies: {
@@ -273,7 +177,7 @@ export const makeToolHandlers = (dependencies: {
         .requestApproval(threadId, {
           action: given.action,
           command: given.command,
-          outsideSandbox: given.outsideSandbox ?? false,
+          isOutsideSandbox: given.outsideSandbox ?? false,
         })
         .pipe(Effect.map((decision) => (decision.isAllowed ? toolText(decision.text) : toolRefusal(decision.text)))),
     send_thread_message: (threadId, { includeContext, text, to }) =>

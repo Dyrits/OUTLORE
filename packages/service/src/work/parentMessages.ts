@@ -2,7 +2,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { toolRefusal, toolText } from "../core/index.ts";
 import { clip } from "./guildmasterText.ts";
-import { senderLabelOf } from "./journal.ts";
+import { senderLabelOf } from "./openerContext.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 
 /** The most words a search uses; more would only widen it. */

@@ -22,8 +22,8 @@ const countRealms = Effect.gen(function* () {
 });
 
 /** `create_realm`: makes a realm, tied to a folder or to none; refused for a name or a folder that a realm already has. */
-export const createRealmByGuildmaster = (callerId: string, args: ArgumentsOf<"create_realm">) =>
-  Effect.gen(function* () {
+export const createRealmByGuildmaster = Effect.fnUntraced(
+  function* (callerId: string, args: ArgumentsOf<"create_realm">) {
     if (!(yield* isGuildmasterThread(callerId))) return refused("Only Chronicler makes realms here.");
     return yield* Match.valueTags(yield* checkRealmCreation(args), {
       Clear: Effect.fnUntraced(function* (checked) {
@@ -41,14 +41,14 @@ export const createRealmByGuildmaster = (callerId: string, args: ArgumentsOf<"cr
       }),
       Refused: ({ text }) => Effect.succeed(refused(text)),
     });
-  }).pipe(
-    // A failure of the realm rules, such as a folder that does not exist, comes back to Chronicler as a refusal.
-    Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refused(`Not done: ${failure.message}`))),
-  );
+  },
+  // A failure of the realm rules, such as a folder that does not exist, comes back to Chronicler as a refusal.
+  Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refused(`Not done: ${failure.message}`))),
+);
 
 /** `rename_realm`: renames a realm; refused for an unknown realm or a name another realm has. */
-export const renameRealmByGuildmaster = (callerId: string, args: ArgumentsOf<"rename_realm">) =>
-  Effect.gen(function* () {
+export const renameRealmByGuildmaster = Effect.fnUntraced(
+  function* (callerId: string, args: ArgumentsOf<"rename_realm">) {
     if (!(yield* isGuildmasterThread(callerId))) return refused("Only Chronicler renames realms here.");
     return yield* Match.valueTags(yield* checkRealmRename(args), {
       Clear: Effect.fnUntraced(function* (checked) {
@@ -58,7 +58,7 @@ export const renameRealmByGuildmaster = (callerId: string, args: ArgumentsOf<"re
       }),
       Refused: ({ text }) => Effect.succeed(refused(text)),
     });
-  }).pipe(
-    // A failure of the realm rules, such as a folder that does not exist, comes back to Chronicler as a refusal.
-    Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refused(`Not done: ${failure.message}`))),
-  );
+  },
+  // A failure of the realm rules, such as a folder that does not exist, comes back to Chronicler as a refusal.
+  Effect.catchTag("ServiceFailure", (failure) => Effect.succeed(refused(`Not done: ${failure.message}`))),
+);

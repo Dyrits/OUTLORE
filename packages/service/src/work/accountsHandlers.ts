@@ -13,7 +13,8 @@ import {
   updateHarness,
 } from "./accounts.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
-import type { ConversationTerminals, TerminalScope } from "./terminals.ts";
+import type { TerminalScope } from "./terminalHost.ts";
+import type { ConversationTerminals } from "./terminalSessions.ts";
 /** Requests for accounts share the service request context. */
 export const accountsHandlers = (
   { change }: Pick<HandlerDependencies, "change">,

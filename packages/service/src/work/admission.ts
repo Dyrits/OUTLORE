@@ -3,7 +3,7 @@ import { SqlClient, type SqlError } from "effect/sql";
 import { invalid, readSettings, type ServiceFailure } from "../core/index.ts";
 import { type Runner, type RunnerChoice, runnerOf } from "../harness/index.ts";
 import { chooseThreadRunner } from "./handover.ts";
-import { isPendingDeliveryOf } from "./messaging.ts";
+import { isPendingDeliveryOf } from "./pendingMessages.ts";
 import { imageRefusalOf, readThreadRunner } from "./vision.ts";
 
 // Admitting an owner's message (message-attachments): the text must say something unless files come with it, and a

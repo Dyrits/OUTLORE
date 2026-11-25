@@ -5,8 +5,9 @@ import { addAttachment, discardAttachment, readAttachment } from "./attachments.
 import { changed } from "./followUps.ts";
 import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
-import { insertUserMessage, releaseQueued, requeueSteered } from "./messaging.ts";
+import { insertUserMessage } from "./messaging.ts";
 import { echoUserMessageToParent } from "./parentEcho.ts";
+import { releaseQueued, requeueSteered } from "./pendingMessages.ts";
 import { copyOpeningToParent, isUnwritten } from "./questOrigins.ts";
 import { editQueuedMessage, removeQueuedMessage } from "./queuedMessages.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";

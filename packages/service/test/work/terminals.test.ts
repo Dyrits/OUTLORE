@@ -9,13 +9,13 @@ import { wrappedFencedCommandOf } from "../../src/core/index.ts";
 import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
 import { answerText } from "../../src/remote/index.ts";
 import {
-  ConversationTerminals,
   defaultShellOf,
   shellArgsOf,
   type TerminalHost,
   terminalSandboxOf,
   unpackedPathOf,
-} from "../../src/work/terminals.ts";
+} from "../../src/work/terminalHost.ts";
+import { type ConversationTerminals, makeConversationTerminals } from "../../src/work/terminalSessions.ts";
 import { canOpenTerminal } from "../support/environment.ts";
 
 // The conversation shells of the host service (conversation-terminal, ADR 0020): the class here, and the requests'
@@ -39,14 +39,23 @@ const hostOf = (home: string, hidden: string[] = []): TerminalHost => ({
   shell: "/bin/sh",
   tempRoot: join(home, ".terminal-tmp"),
 });
+/** The shells run to completion at once, so a check reads them as plain calls and a refusal throws. */
+const synchronously = (terminals: ConversationTerminals) => ({
+  close: (...given: Parameters<ConversationTerminals["close"]>) => Effect.runSync(terminals.close(...given)),
+  open: (...given: Parameters<ConversationTerminals["open"]>) => Effect.runSync(terminals.open(...given)),
+  openCommand: (...given: Parameters<ConversationTerminals["openCommand"]>) =>
+    Effect.runSync(terminals.openCommand(...given)),
+  resize: (...given: Parameters<ConversationTerminals["resize"]>) => Effect.runSync(terminals.resize(...given)),
+  write: (...given: Parameters<ConversationTerminals["write"]>) => Effect.runSync(terminals.write(...given)),
+});
 const manager = (host: TerminalHost) => {
   const frames: ServerFrame[] = [];
-  const terminals = new ConversationTerminals(host, (frame) => frames.push(frame));
+  const terminals = Effect.runSync(makeConversationTerminals(host, (frame) => frames.push(frame)));
   managers.push(terminals);
-  return { frames, terminals };
+  return { frames, terminals: synchronously(terminals) };
 };
 afterEach(() => {
-  for (const terminals of managers.splice(0)) terminals.dispose();
+  for (const terminals of managers.splice(0)) Effect.runSync(terminals.dispose);
   for (const path of folders.splice(0)) rmSync(path, { force: true, recursive: true });
 });
 
@@ -194,7 +203,7 @@ describe("the fence around a paired device's shell", () => {
     expect(unpackedPathOf("/Applications/Outlore.app/Contents/Resources/app.asar/node_modules/node-pty")).toBe(
       "/Applications/Outlore.app/Contents/Resources/app.asar.unpacked/node_modules/node-pty",
     );
-    expect(defaultShellOf("darwin", "/bin/zsh", undefined)).toBe("/bin/zsh");
+    expect(defaultShellOf("darwin", "/bin/zsh", null)).toBe("/bin/zsh");
     expect(shellArgsOf("darwin")).toEqual(["-l"]);
     expect(defaultShellOf("win32", "/bin/sh", "C:\\Windows\\System32\\cmd.exe")).toBe("C:\\Windows\\System32\\cmd.exe");
     expect(shellArgsOf("win32")).toEqual([]);

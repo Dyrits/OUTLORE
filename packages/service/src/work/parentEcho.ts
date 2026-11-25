@@ -37,13 +37,15 @@ export const formatThreadContext = Effect.fnUntraced(function* (
 export const withThreadContext = Effect.fnUntraced(function* (
   threadId: string,
   text: string,
-  includeContext: boolean,
+  shouldIncludeContext: boolean,
   excludeMessageId: string | null = null,
 ) {
-  if (!includeContext) return text;
+  if (!shouldIncludeContext) return text;
   const context = yield* formatThreadContext(threadId, excludeMessageId);
   return context === "" ? text : `${text}\n\n${context}`;
 });
+
+const noWakes: ReadonlyArray<string> = [];
 
 /**
  * Echoes an owner message from a quest or errand into its parent conversation.
@@ -64,7 +66,7 @@ export const echoUserMessageToParent = Effect.fnUntraced(function* (
     SELECT t.parent_id AS parentId, t.workspace_id AS workspaceId, m.is_guildmaster AS isGuildmaster
     FROM threads t JOIN missions m ON m.id = t.mission_id
     WHERE t.id = ${threadId} AND t.is_deleting = 0`;
-  if (thread === undefined || thread.isGuildmaster === 1) return [] as ReadonlyArray<string>;
+  if (thread === undefined || thread.isGuildmaster === 1) return noWakes;
   const echoText = yield* withThreadContext(threadId, text, scope === "FullContext", sentMessageId);
   if (thread.parentId !== null) {
     const { threadsToWake } = yield* insertMessage({
@@ -86,5 +88,5 @@ export const echoUserMessageToParent = Effect.fnUntraced(function* (
     text: echoText,
     threadId: channel.threadId,
   });
-  return [] as ReadonlyArray<string>;
+  return noWakes;
 });

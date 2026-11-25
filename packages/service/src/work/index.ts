@@ -4,9 +4,9 @@ export { accountsHandlers } from "./accountsHandlers.ts";
 export { Approvals, approvalsLayer } from "./approvals.ts";
 export { approvalsHandlers } from "./approvalsHandlers.ts";
 export { AttachmentsRoot } from "./attachments.ts";
+export { setMissionBudget } from "./budgetChanges.ts";
 export { budgetPeriodsLayer } from "./budgetPeriods.ts";
 export { saveSettings } from "./budgetSettings.ts";
-export { setMissionBudget, stopAtBudget, switchAtBudget } from "./budgets.ts";
 export { budgetsHandlers } from "./budgetsHandlers.ts";
 export { Commands, makeCommands } from "./commands.ts";
 export { connectorHandlers } from "./connectorHandlers.ts";
@@ -15,7 +15,7 @@ export { changed, noFollowUps, unchanged } from "./followUps.ts";
 export { guildmasterReportsLayer } from "./guildmasterReports.ts";
 export { hostUpdateHandlers } from "./hostUpdateHandlers.ts";
 export { questMaintenanceLayer } from "./inactivityMissives.ts";
-export { readMissionIdOf, stopThread } from "./lifecycle.ts";
+export { stopThread } from "./lifecycle.ts";
 export { loreHandlers } from "./loreHandlers.ts";
 export { toolServerLayer } from "./mcp.ts";
 export { messagesHandlers } from "./messagesHandlers.ts";
@@ -33,7 +33,6 @@ export { ritualsHandlers } from "./ritualsHandlers.ts";
 export { startupCleanupLayer } from "./startupCleanup.ts";
 export { Suggestions, suggestionsLayer } from "./suggestions.ts";
 export {
-  ConversationTerminals,
   hostTerminalHost,
   type TerminalHost,
   type TerminalScope,

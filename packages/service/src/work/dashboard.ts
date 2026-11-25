@@ -1,7 +1,7 @@
 import type { MissionList, MissionState, WorkspaceId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { listViewSummaries } from "./missions.ts";
+import { listViewSummaries } from "./missionSummaries.ts";
 
 // The dashboard's list of missions: filters, search, and order (mission-tracking, Dashboard).
 

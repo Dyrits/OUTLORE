@@ -6,8 +6,14 @@ import { textFieldOf } from "../core/index.ts";
 // folder, so it is inferred from the calls the thread makes: a `cd`, a `git worktree add`, Claude Code's worktree tools.
 // The result is only a candidate: `workingFolders.ts` checks it against the disk and the workspace.
 
-/** A call's folder move: a candidate path, `null` to go back to where the thread started, `undefined` for no move. */
-export type FolderMove = string | null | undefined;
+/** A call's folder move: a candidate path, going back to where the thread started, or no move. */
+export type FolderMove =
+  | { readonly _tag: "MovesTo"; readonly path: string }
+  | { readonly _tag: "ReturnsToStart" }
+  | { readonly _tag: "Stays" };
+
+const stays: FolderMove = { _tag: "Stays" };
+const movesTo = (path: string): FolderMove => ({ _tag: "MovesTo", path });
 
 /** A word of a command; null when the shell would expand it to something unknown here (`$HOME`, a substitution, a glob). */
 type Word = string | null;
@@ -158,7 +164,7 @@ const moveByCommand = (line: string, folder: string, home: string): FolderMove =
       current = worktreeAddTarget(current, args) ?? current;
     }
   }
-  return current === folder ? undefined : current;
+  return current === folder ? stays : movesTo(current);
 };
 
 /** Whether a call might move the shell, so a call that cannot is not looked into further. */
@@ -187,12 +193,12 @@ export const folderMoveOf = (
 ): FolderMove => {
   if (isShellTool(toolName)) return moveByCommand(textFieldOf(input, "command") ?? "", folder, home);
   // Claude Code's worktree tools (unverified against a live run: `EnterWorktree` is refused in `-p` mode, 2026-11-17).
-  if (toolName === "ExitWorktree") return null;
+  if (toolName === "ExitWorktree") return { _tag: "ReturnsToStart" };
   if (toolName === "EnterWorktree") {
     const path = textFieldOf(input, "path");
-    if (path !== null) return isAbsolute(path) ? resolve(path) : resolve(folder, path);
+    if (path !== null) return movesTo(isAbsolute(path) ? resolve(path) : resolve(folder, path));
     const name = textFieldOf(input, "name");
-    return name === null ? undefined : resolve(checkout, ".claude", "worktrees", name);
+    return name === null ? stays : movesTo(resolve(checkout, ".claude", "worktrees", name));
   }
-  return undefined;
+  return stays;
 };

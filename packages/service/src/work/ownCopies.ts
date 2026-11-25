@@ -108,17 +108,16 @@ const excludeOwnCopies = (workspace: string) => {
  * opener's own copy). Refused with the reason when the workspace is not the top folder of a git repository, or git
  * refuses; the installed packages are not copied, the workspace's own instructions say how to prepare a worktree.
  */
-export const createOwnCopy = (workspace: string, baseFolder: string, name: string) =>
-  Effect.gen(function* () {
-    const top = yield* Effect.sync(() => runGit(workspace, ["rev-parse", "--show-toplevel"]));
-    if (!top.isDone || realPathOrNull(top.text) !== realPathOrNull(workspace))
-      return yield* invalid("Not opened: an own copy needs a workspace that is the top folder of a git repository.");
-    const base = yield* Effect.sync(() => runGit(baseFolder, ["rev-parse", "--verify", "HEAD^{commit}"]));
-    if (!base.isDone) return yield* invalid("Not opened: the workspace has no commit to start an own copy from.");
-    const path = join(workspace, ownCopiesFolder, name);
-    const branch = `mission/${name}`;
-    yield* Effect.sync(() => excludeOwnCopies(workspace));
-    const added = yield* Effect.sync(() => runGit(workspace, ["worktree", "add", "-b", branch, path, base.text]));
-    if (!added.isDone) return yield* invalid(`Not opened: git could not make the own copy: ${added.text}`);
-    return { branch, path: realPathOrNull(path) ?? path } satisfies OwnCopy;
-  });
+export const createOwnCopy = Effect.fnUntraced(function* (workspace: string, baseFolder: string, name: string) {
+  const top = yield* Effect.sync(() => runGit(workspace, ["rev-parse", "--show-toplevel"]));
+  if (!top.isDone || realPathOrNull(top.text) !== realPathOrNull(workspace))
+    return yield* invalid("Not opened: an own copy needs a workspace that is the top folder of a git repository.");
+  const base = yield* Effect.sync(() => runGit(baseFolder, ["rev-parse", "--verify", "HEAD^{commit}"]));
+  if (!base.isDone) return yield* invalid("Not opened: the workspace has no commit to start an own copy from.");
+  const path = join(workspace, ownCopiesFolder, name);
+  const branch = `mission/${name}`;
+  yield* Effect.sync(() => excludeOwnCopies(workspace));
+  const added = yield* Effect.sync(() => runGit(workspace, ["worktree", "add", "-b", branch, path, base.text]));
+  if (!added.isDone) return yield* invalid(`Not opened: git could not make the own copy: ${added.text}`);
+  return { branch, path: realPathOrNull(path) ?? path } satisfies OwnCopy;
+});

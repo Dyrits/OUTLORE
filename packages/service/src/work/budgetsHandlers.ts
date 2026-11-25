@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { type PriceTable, ServiceFailure } from "../core/index.ts";
 import { addCredit, readAccountBudgets, setAccountBudget } from "./accountBudgets.ts";
-import { setMissionBudget, stopAtBudget, switchAtBudget } from "./budgets.ts";
+import { setMissionBudget, stopAtBudget, switchAtBudget } from "./budgetChanges.ts";
 import { readBudgetWindow } from "./budgetViews.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 import { readUsage } from "./usageReport.ts";

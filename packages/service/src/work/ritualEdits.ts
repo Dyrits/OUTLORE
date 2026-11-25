@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { readRitual } from "./rituals.ts";
+import { readRitual } from "./ritualStore.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 import { ritualTitleOf } from "./titles.ts";
 
