@@ -21,7 +21,6 @@ import { LoreChangeCard, LoreChangeLine } from "../lore/lore";
 import { TerminalMessage } from "../terminal/terminalMessage";
 import { terminalSnapshotOf } from "../terminal/terminalSnapshot";
 import { ChipText } from "../ui/chips";
-import { CopyButton } from "../ui/copyButton";
 import { ProviderMark } from "../ui/providerMarks";
 import { QuestionCard, QuestionLine } from "../ui/questions";
 import { ChoiceBubbles } from "./choiceBubbleViews";
@@ -30,6 +29,7 @@ import { commentsOf } from "./comments";
 import { SentComments } from "./commentViews";
 import type { Entry, QuestLink } from "./entries";
 import { Markdown } from "./markdown";
+import { MessageActions } from "./messageActions";
 import { QuestReplyLine, ReplyLine } from "./replyLine";
 import { StepsGroup } from "./stepsGroup";
 import { SuggestionCard, SuggestionLine } from "./suggestions";
@@ -112,7 +112,7 @@ export function AgentReply({
           {(usage !== null || !isDraft) && (
             <View style={styles.replyFooter}>
               {usage !== null && <Text style={styles.muted}>{replyUsageTextOf(usage)}</Text>}
-              {!isDraft && <CopyButton label="Copy reply" style={styles.replyCopy} text={text} />}
+              {!isDraft && <MessageActions copyLabel="Copy reply" messageId={messageId} text={text} />}
             </View>
           )}
         </View>
@@ -124,13 +124,11 @@ export function AgentReply({
 /** A message's card with the means to comment on it; a card with no message behind it is drawn as it is. */
 function CommentableCard({
   about,
-  canReply = true,
   children,
   messageId,
   text,
 }: {
   about: Message["sender"];
-  canReply?: boolean;
   children: ReactNode;
   messageId: MessageId | null;
   text: string;
@@ -138,7 +136,7 @@ function CommentableCard({
   return messageId === null ? (
     children
   ) : (
-    <Commentable about={about} canReply={canReply} messageId={messageId} text={text}>
+    <Commentable about={about} messageId={messageId} text={text}>
       {children}
     </Commentable>
   );
@@ -204,7 +202,6 @@ function MessageBubble({
   }
   const sender = senderLabelOf(message);
   const isNotice = message.sender === "system";
-  const isParentEcho = isNotice || message.sender === "thread";
   const questLink =
     fromQuest === null ? null : { label: "Open quest", missionId: fromQuest, title: message.fromTitle ?? "" };
   const threadLink =
@@ -214,7 +211,7 @@ function MessageBubble({
   const terminal = message.sender === "user" ? terminalSnapshotOf(sent.body) : null;
   return (
     <View style={[styles.messageRow, message.sender === "user" && styles.messageRowUser]}>
-      <CommentableCard about={message.sender} canReply={!isParentEcho} messageId={message.id} text={message.text}>
+      <CommentableCard about={message.sender} messageId={message.id} text={message.text}>
         <View
           style={[
             styles.messageCard,
@@ -260,6 +257,12 @@ function MessageBubble({
           )}
           <SentComments items={sent.items} />
           <MessageImages cards={message.attachments} client={client} />
+          {message.sender === "user" && (
+            <View style={styles.replyFooter}>
+              <Text style={styles.senderTime}>{stampOf(message.sentAt)}</Text>
+              <MessageActions copyLabel="Copy message" messageId={message.id} text={sent.body} />
+            </View>
+          )}
           {questLink !== null && !isNotice && <QuestButton link={questLink} onOpenMission={onOpenMission} />}
         </View>
       </CommentableCard>

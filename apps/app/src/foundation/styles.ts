@@ -268,8 +268,7 @@ export const styles = StyleSheet.create({
     width: "100%",
   },
   raised: { zIndex: 2 },
-  replyCopy: { marginLeft: "auto" },
-  /** Under an agent's reply: what it used on the left, its Copy button on the right. */
+  /** Under a message: what it used or when it was sent on the left, its action icons on the right. */
   replyFooter: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 20 },
   row: {
     alignItems: "center",

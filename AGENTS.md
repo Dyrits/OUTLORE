@@ -63,7 +63,6 @@ Latest handoffs:
 
 - To verify and continue the reply line's empty state and alignment, and the agent reply first (CHG-0741, CHG-0742, CHG-0744), read the [current handoff](.agents/handoffs/2026-11-25-1840-reply-line-empty-state-alignment.md). Handoffs are shared and committed.
 
-- To verify and continue the quest suggestion card as a destination list (CHG-0739), read the [current handoff](.agents/handoffs/2026-11-25-1800-quest-suggestion-card.md). Handoffs are shared and committed.
-
 - To resume the plan usage display and the Antigravity usage groups named Gemini and Others (CHG-0743), read the [current handoff](.agents/handoffs/2026-11-25-1815-antigravity-usage-group-names.md). Handoffs are shared and committed.
 
+- To verify and continue Reply as an icon beside Copy and the owner message time and actions (CHG-0747), read the [current handoff](.agents/handoffs/2026-11-25-1841-reply-icon-owner-message-actions.md). Handoffs are shared and committed.

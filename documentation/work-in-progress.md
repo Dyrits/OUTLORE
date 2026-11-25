@@ -1,5 +1,10 @@
 # Work in progress
 
+## Reply icon and owner message actions · 2026-11-25 · built and tested; desktop window check pending
+
+CHG-0747 in `0.2.8-Pre-Alpha`: Reply is an icon beside Copy under an agent's reply; the owner's messages have a time line with Reply and Copy icons shown on hover (`messageActions.tsx`, `commentable.web.tsx`, `conversationEntries.tsx`).
+Next: look at it in the desktop window, light and dark, then record Delivery once accepted.
+
 ## Agent reply first and the reply line without a box · 2026-11-25 · built and tested; desktop window check pending
 
 CHG-0741 and CHG-0742 in `0.2.8-Pre-Alpha`:
