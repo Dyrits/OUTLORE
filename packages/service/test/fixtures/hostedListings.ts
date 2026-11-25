@@ -10,6 +10,16 @@ export type HostedListing = {
 
 /** The recorded listings, keyed by connector id. */
 export const hostedListings: Readonly<Record<string, HostedListing>> = {
+  aws_knowledge: {
+    names: [
+      "aws___read_documentation",
+      "aws___search_documentation",
+      "aws___list_regions",
+      "aws___get_regional_availability",
+      "aws___retrieve_skill",
+    ],
+    source: "live tools/list of https://knowledge-mcp.global.api.aws, 2026-11-25",
+  },
   cloudflare_docs: {
     names: ["search_cloudflare_documentation", "migrate_pages_to_workers_guide"],
     source: "live tools/list of https://docs.mcp.cloudflare.com/mcp, 2026-11-25",
