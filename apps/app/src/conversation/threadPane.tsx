@@ -37,6 +37,8 @@ import { terminalFolderOf } from "./terminalFolder";
 import { ChatterNotices } from "./threadActions";
 import { ThreadTitle } from "./threadTitle";
 import { OpenThreadForm } from "./threadTree";
+import { isUnstartedErrand } from "./unstartedErrand";
+import { UnstartedErrandWarning } from "./unstartedErrandWarning";
 import { CommentsProvider } from "./useComments";
 import { useThreadConversation } from "./useThreadConversation";
 
@@ -334,6 +336,9 @@ export function ThreadPane({
                     />
                   ) : takesTurns ? (
                     <>
+                      {isUnstartedErrand(thread, detail.messages) && (
+                        <UnstartedErrandWarning act={act} client={client} thread={thread} />
+                      )}
                       <CommentTray />
                       <QueuedMessageTray
                         isInTurn={thread.actions.isInTurn}

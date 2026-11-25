@@ -51,6 +51,9 @@ Work with AI agents spreads across disconnected chats, and subagents run out of 
   The thread reads what it needs: `read_parent_messages` gives the opener's latest messages newest first, pages back with `before`, and with `query` gives the best matches for some words, each as a short excerpt (full-text search with word endings and prefixes, any of the words matching and more of them ranking higher; no embeddings).
   An aside has no access to its opener's conversation.
 - When this starting context would take more than 25% of the chosen model's context window, the user is warned before the thread starts, with the choice of a model with a larger window or trimming intel.
+  An errand a Reply opens has no message to send when it opens, so the warning stands in its pane, above its composer, until its first message is sent (owner, 2026-11-25, CHG-0751).
+  It reads the same preview as the new-errand form, for the errand's own model and the quest it hangs from, with a request of nothing; the choice of a larger model changes the errand's own model (a handover before its first turn), and trimming intel opens the intel for the errand.
+  Sending the first message is never refused for this reason: the warning advises, as Start anyway does.
 
 ### Subagents
 

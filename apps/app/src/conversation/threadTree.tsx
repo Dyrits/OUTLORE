@@ -14,8 +14,7 @@ import { BackupsEditor } from "../editors/backupsEditor";
 import { presetsOf } from "../editors/presets";
 import { type Runner, RunnerPickers, useHarnesses } from "../editors/runners";
 import { newRequestId, type ServiceClient } from "../foundation/client";
-import { modelLabelOf } from "../foundation/formatting";
-import { countedOf, foldedLabelOf, startingContextPartsOf, startingContextWarningOf } from "../foundation/labels";
+import { countedOf, foldedLabelOf } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { stateLabels, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -23,6 +22,7 @@ import { useSkills } from "../foundation/useSkills";
 import { LoreScreen } from "../lore/lore";
 import { Composer } from "../ui/controls";
 import { rankedFoldedOf } from "./errandRoster";
+import { StartingContextWarning } from "./startingContextWarning";
 
 /** A mission's threads as an indented tree with their states; selecting one shows its conversation. */
 export function ThreadTree({
@@ -253,24 +253,7 @@ export function OpenThreadForm({
           </View>
         )}
         {context != null && isOverWarning && (
-          <View style={styles.failure}>
-            <Text style={styles.error}>{startingContextWarningOf(context)}</Text>
-            <Text style={styles.muted}>{startingContextPartsOf(context.parts)}</Text>
-            <View style={styles.inlineRow}>
-              {context.largerModels.length === 0 ? (
-                <Text style={styles.muted}>No model has a larger context window.</Text>
-              ) : (
-                context.largerModels.map((larger) => (
-                  <Pressable key={larger} onPress={() => setModel(larger)} style={styles.answer}>
-                    <Text style={styles.answerText}>Use {modelLabelOf(larger)}</Text>
-                  </Pressable>
-                ))
-              )}
-              <Pressable onPress={() => setIsTrimming(true)} style={styles.answer}>
-                <Text style={styles.answerText}>Trim lore</Text>
-              </Pressable>
-            </View>
-          </View>
+          <StartingContextWarning context={context} onChooseModel={setModel} onTrim={() => setIsTrimming(true)} />
         )}
         {isTrimming && (
           // The panel opens inside the form, so the request typed so far stays.
