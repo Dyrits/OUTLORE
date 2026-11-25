@@ -95,4 +95,8 @@ export const hostedListings: Readonly<Record<string, HostedListing>> = {
     source:
       "README of github/github-mcp-server at c6b62954c062b3ad779f4e208716e09cb4a723e0 (default toolset and remote-only tools), 2026-11-25",
   },
+  tavily: {
+    names: ["tavily_search", "tavily_extract", "tavily_crawl", "tavily_map", "tavily_research", "tavily_feedback"],
+    source: "src/index.ts of tavily-ai/tavily-mcp at a65282ee41f1101f8a2b1a3d7548e151326c7106, 2026-11-25",
+  },
 };
