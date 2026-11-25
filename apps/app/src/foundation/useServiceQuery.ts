@@ -86,10 +86,24 @@ const entryFor = (client: ServiceClient, request: Request, key: string): QueryEn
   return entry;
 };
 
-/** Runs a query now and again after every committed change, sharing one subscription and retaining unchanged results per client and key. */
-export function useServiceQuery<R extends Request>(client: ServiceClient, request: R, key: string) {
+/** Stops the shared subscription once no hook listens, after the commit's cleanups and remounts (Strict Mode's) have settled. */
+const releaseWhenUnused = (entry: QueryEntry) => {
+  queueMicrotask(() => {
+    if (entry.listeners.size > 0 || entry.unsubscribe === null) return;
+    entry.unsubscribe();
+    entry.unsubscribe = null;
+  });
+};
+
+const noSnapshot = { data: null, error: null };
+
+/**
+ * Runs a query now and again after every committed change, sharing one subscription and retaining unchanged results per client and key.
+ * A null request reads nothing and shows no data, for a panel with nothing to ask yet.
+ */
+export function useServiceQuery<R extends Request>(client: ServiceClient, request: R | null, key: string) {
   const [snapshot, setSnapshot] = useState<{ data: ResultOf<R["_tag"]> | null; error: string | null }>(() => {
-    const cached = queryCaches.get(client)?.get(key);
+    const cached = request === null ? undefined : queryCaches.get(client)?.get(key);
     return {
       data: (cached?.data ?? null) as ResultOf<R["_tag"]> | null,
       error: cached?.error ?? null,
@@ -98,6 +112,10 @@ export function useServiceQuery<R extends Request>(client: ServiceClient, reques
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the key identifies the request.
   useEffect(() => {
+    if (request === null) {
+      setSnapshot((previous) => (previous.data === null && previous.error === null ? previous : noSnapshot));
+      return;
+    }
     const current = entryFor(client, request, key);
     const sync = () => {
       const nextData = current.data as ResultOf<R["_tag"]> | null;
@@ -118,12 +136,9 @@ export function useServiceQuery<R extends Request>(client: ServiceClient, reques
     }
     return () => {
       current.listeners.delete(sync);
-      if (current.listeners.size === 0 && current.unsubscribe !== null) {
-        current.unsubscribe();
-        current.unsubscribe = null;
-      }
+      if (current.listeners.size === 0) releaseWhenUnused(current);
     };
-  }, [client, key]);
+  }, [client, key, request === null]);
 
   return snapshot;
 }
