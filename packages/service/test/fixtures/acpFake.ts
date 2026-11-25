@@ -6,6 +6,8 @@ import { Effect } from "effect";
 
 /** The knobs of the stand-in; each is optional and the script's own defaults say what an absent one means. */
 export type AcpFakeConfig = {
+  /** The version `initialize` reports as `agentInfo.version`; absent, no `agentInfo`. */
+  readonly agentVersion?: string;
   readonly cachedWriteTokens?: number;
   readonly contextSize?: number | null;
   readonly contextUsed?: number | null;
@@ -32,7 +34,10 @@ export type AcpFakeConfig = {
   readonly resumeFails?: boolean;
   readonly sessionId?: string;
   readonly signedOut?: { readonly code: number; readonly message: string };
-  readonly slow?: boolean;
+  /** `true`: every prompt runs until a cancel ends it; `"first"`: only the process's first prompt does. */
+  readonly slow?: boolean | "first";
+  /** A prompt that arrives while another runs steers it: the running one is answered `end_turn` (Antigravity 1.5). */
+  readonly steerable?: boolean;
   readonly strict?: boolean;
   readonly systemPromptAppend?: boolean;
   readonly tool?: {

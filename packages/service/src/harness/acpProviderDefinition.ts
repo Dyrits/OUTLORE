@@ -35,6 +35,11 @@ export type AcpProviderProtocol = {
   readonly questionIdPrefix?: string;
   /** The agent replays a session's tool calls on `session/load`, so a session it advertises it can resume is resumed instead. */
   readonly resumesSessions?: boolean;
+  /**
+   * The agent version from which a message steered into a running turn is sent as a second `session/prompt`, which the agent reads as a message into the running prompt (acpHarness.ts, `AcpDialect.steersWithPromptFrom`).
+   * Only an agent known to do so has it: standard ACP defines no message into a running prompt, and an agent that does not expect a second prompt may refuse it or queue it.
+   */
+  readonly steersWithPromptFrom?: string;
   /** The agent takes the starting context as its system prompt under `_meta.<namespace>.systemPrompt.append` when it advertises doing so, instead of in the first prompt. */
   readonly systemPromptNamespace?: string;
 };

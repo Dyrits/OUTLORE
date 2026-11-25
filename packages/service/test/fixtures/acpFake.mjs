@@ -11,6 +11,8 @@ import { createInterface } from "node:readline";
 // becomes the next agent message, then the prompt ends (a denial lets the turn carry on, as the providers do).
 
 const defaults = {
+  // The version `initialize` reports as `agentInfo.version`; null reports no `agentInfo`, as an agent that does not say.
+  agentVersion: null,
   // Cache-write tokens the prompt's own usage reports, when it reports any.
   cachedWriteTokens: 0,
   // The context window size the `usage_update` reports, when one is sent.
@@ -52,7 +54,11 @@ const defaults = {
   sessionId: "acp-1",
   // The signed-out answer to `session/new`: { code, message }.
   signedOut: null,
+  // `true`: every prompt runs until a cancel ends it; "first": only the first prompt of the process does.
   slow: false,
+  // A prompt that arrives while another runs steers it, as Antigravity 1.5 does: the running prompt is answered `end_turn`
+  // and the turn carries on under the new one. Without it, a second prompt is not expected.
+  steerable: false,
   // Sends one reverse request Outlore does not know (`session/set_mode`) to prove the answer fails closed.
   strict: false,
   // Advertises `agentCapabilities._meta.antigravity.systemPrompt.append`: the agent takes the starting context as its system prompt.
@@ -91,8 +97,10 @@ process.on("SIGTERM", () => {
 
 /** The stand-in's own requests, by id, waiting for the client's response. */
 const waiting = new Map();
-/** The slow mode's running prompt, ended by a cancel. */
+/** The slow mode's running prompt, ended by a cancel (or answered `end_turn` by a steering prompt). */
 let cancellable = null;
+/** How many prompts this process has been asked. */
+let prompts = 0;
 
 const sessionUpdate = (sessionId, update) =>
   send({ jsonrpc: "2.0", method: "session/update", params: { sessionId, update } });
@@ -128,10 +136,17 @@ const endPrompt = (sessionId, id, stopReason) => {
 
 const runPrompt = (request) => {
   const sessionId = request.params.sessionId;
+  const isFirst = prompts === 0;
+  prompts += 1;
+  if (config.steerable && cancellable !== null) {
+    const steered = cancellable;
+    cancellable = null;
+    steered.settle("end_turn");
+  }
   if (config.planUsedUp) return fail(request.id, -32603, "Add a payment method to continue.");
   sessionUpdate(sessionId, { content: { text: "Working", type: "text" }, sessionUpdate: "agent_message_chunk" });
-  if (config.slow) {
-    cancellable = { settle: () => endPrompt(sessionId, request.id, "cancelled") };
+  if (config.slow === true || (config.slow === "first" && isFirst)) {
+    cancellable = { settle: (stopReason = "cancelled") => endPrompt(sessionId, request.id, stopReason) };
     return;
   }
   if (config.strict) {
@@ -216,6 +231,9 @@ const onRequest = (request) => {
   write({ launch, method: request.method, params: request.params });
   if (request.method === "initialize")
     return answer(request.id, {
+      ...(config.agentVersion === null
+        ? {}
+        : { agentInfo: { name: "Antigravity ACP Server", version: config.agentVersion } }),
       agentCapabilities: {
         ...(config.systemPromptAppend ? { _meta: { antigravity: { systemPrompt: { append: true } } } } : {}),
         ...(config.mcpHttp ? { mcpCapabilities: { http: true } } : {}),

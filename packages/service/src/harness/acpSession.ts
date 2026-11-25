@@ -1,6 +1,7 @@
+import type { TokenUsage } from "@outlore/contracts";
 import { Effect, Queue, Result } from "effect";
 import type { RpcProcess, ThreadAccess } from "../core/index.ts";
-import { fieldOf, type TurnRequest, textFieldOf } from "../core/index.ts";
+import { fieldOf, numberFieldOf, type TurnRequest, textFieldOf } from "../core/index.ts";
 import { acpStdioMcpServerOf } from "./acpMcpBridge.ts";
 import { toolServerName } from "./toolNames.ts";
 
@@ -61,6 +62,29 @@ export const reopenAcpSession = Effect.fnUntraced(function* (
   return yield* loadAcpSession(rpc, options.cwd, options.sessionId, options.mcpServers);
 });
 
+/** The version the agent names in its `initialize` answer (`agentInfo.version`), or null when it names none. */
+export const acpAgentVersionOf = (initialized: unknown): string | null =>
+  textFieldOf(fieldOf(initialized, "agentInfo"), "version");
+
+/**
+ * Whether a version is at least a minimum, comparing the first three numbers of each (`1.5.16` is at least `1.5.0`; a missing third number is 0).
+ * A version that does not start with numbers, or none, is never at least anything: a dialect that gates a behavior on the agent's version leaves it off for an agent that does not say.
+ */
+export const acpVersionAtLeast = (version: string | null, minimum: string): boolean => {
+  const numbersOf = (text: string) => {
+    const match = /(\d+)(?:\.(\d+))?(?:\.(\d+))?/u.exec(text);
+    return match === null ? null : [1, 2, 3].map((index) => Number.parseInt(match[index] ?? "0", 10));
+  };
+  const found = version === null ? null : numbersOf(version);
+  const wanted = numbersOf(minimum);
+  if (found === null || wanted === null) return false;
+  for (const [index, number] of found.entries()) {
+    const difference = number - (wanted[index] ?? 0);
+    if (difference !== 0) return difference > 0;
+  }
+  return true;
+};
+
 /** Finds the option ID the ACP agent offered for a one-time permission answer. */
 export const permissionOptionIdOf = (params: unknown, kind: "allow_once" | "reject_once") => {
   const options = fieldOf(params, "options");
@@ -103,4 +127,52 @@ export const acpToolServersOf = (
   if (transport === "http" || advertisesHttp)
     return [{ headers: [], name: toolServerName, type: "http", url: access.mcpUrl }];
   return [acpStdioMcpServerOf(access.mcpUrl)];
+};
+
+/** The usage a prompt's answer reports (ACP `PromptResponse.usage`), thoughts counted as output; null when it reports none. */
+export const acpPromptUsageOf = (usage: unknown): TokenUsage | null =>
+  usage === undefined || usage === null
+    ? null
+    : {
+        cacheCreation: numberFieldOf(usage, "cachedWriteTokens"),
+        // Outlore's usage already carries cache reads beside the input, so a cached read is never added to it as well.
+        cacheRead: numberFieldOf(usage, "cachedReadTokens"),
+        input: numberFieldOf(usage, "inputTokens"),
+        output: numberFieldOf(usage, "outputTokens") + numberFieldOf(usage, "thoughtTokens"),
+      };
+
+const updateTokenFields = ["cacheCreationTokens", "cachedReadTokens", "inputTokens", "outputTokens"] as const;
+
+/**
+ * The token fields a `usage_update` carries in the ACP field names; null for a provider whose update carries only the
+ * context, so that a turn which reported no counts is unknown and never recorded as zero tokens.
+ */
+export const acpUpdateUsageOf = (update: unknown): TokenUsage | null =>
+  updateTokenFields.every((field) => typeof fieldOf(update, field) !== "number")
+    ? null
+    : {
+        cacheCreation: numberFieldOf(update, "cacheCreationTokens"),
+        cacheRead: numberFieldOf(update, "cachedReadTokens"),
+        input: numberFieldOf(update, "inputTokens"),
+        output: numberFieldOf(update, "outputTokens"),
+      };
+
+/** The turn's usage from a `cumulative` session's totals: what grew since the last prompt, or the whole when one fell. */
+export const acpCumulativeUsageDeltaOf = (
+  previous: TokenUsage,
+  reported: TokenUsage,
+): { readonly delta: TokenUsage; readonly next: TokenUsage } => {
+  const grew =
+    reported.input >= previous.input && reported.output >= previous.output && reported.cacheRead >= previous.cacheRead;
+  return {
+    delta: grew
+      ? {
+          cacheCreation: 0,
+          cacheRead: reported.cacheRead - previous.cacheRead,
+          input: reported.input - previous.input,
+          output: reported.output - previous.output,
+        }
+      : reported,
+    next: reported,
+  };
 };

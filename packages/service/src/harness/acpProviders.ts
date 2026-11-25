@@ -175,6 +175,9 @@ const dialectOf = (profile: AcpProviderProfile): AcpDialect => ({
   ...(profile.protocol?.systemPromptNamespace === undefined
     ? {}
     : { systemPromptNamespace: profile.protocol.systemPromptNamespace }),
+  ...(profile.protocol?.steersWithPromptFrom === undefined
+    ? {}
+    : { steersWithPromptFrom: profile.protocol.steersWithPromptFrom }),
   toolServer: "negotiated",
   usage: "perPrompt",
 });

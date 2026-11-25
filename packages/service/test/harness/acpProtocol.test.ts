@@ -2,9 +2,10 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Fiber } from "effect";
 import type { HarnessEvent, HarnessPrompt, PromptAnswer } from "../../src/core/index.ts";
 import { makeAcpProviderHarness } from "../../src/harness/acpProviders.ts";
+import { acpAgentVersionOf, acpVersionAtLeast } from "../../src/harness/acpSession.ts";
 import { noToolServerInstructions } from "../../src/harness/instructions.ts";
 import { makeVibeHarness } from "../../src/index.ts";
 import {
@@ -14,6 +15,8 @@ import {
   acpFakeRequests,
   acpFakeScript,
   configSetsLogged,
+  readAcpFakeLog,
+  untilAcpFakeLogged,
 } from "../fixtures/acpFake.ts";
 import { standInHarness } from "../fixtures/providerStandIns.ts";
 import { turnRequestOf } from "../fixtures/turns.ts";
@@ -619,4 +622,171 @@ describe("Antigravity takes the starting context as its system prompt when it ca
       }),
     ),
   );
+});
+
+describe("Antigravity steers a running turn with a second prompt (CHG-0726)", () => {
+  /** The prompts the stand-in was sent, as the text of their first block. */
+  const promptTexts = (log: string) =>
+    acpFakeRequests(log, "session/prompt").map(
+      (entry) => (entry.params as { prompt: Array<{ text?: string }> }).prompt[0]?.text ?? "",
+    );
+  const cancels = (log: string) => acpFakeRequests(log, "session/cancel").length;
+  /** Process starts the stand-in logged: each start logs one entry with a launch and no request. */
+  const starts = (log: string) =>
+    readAcpFakeLog(log).filter((entry) => entry.launch !== undefined && entry.method === undefined).length;
+  const message = { id: "steer-1", images: [], text: "Use opus subagents" };
+  const promptTextsOf = (entry: { readonly method?: string; readonly params?: Record<string, unknown> }) =>
+    entry.method === "session/prompt"
+      ? ((entry.params as { prompt: Array<{ text?: string }> }).prompt[0]?.text ?? "")
+      : null;
+
+  it.live("sends a steered message as a second prompt, never a cancel, and ends the turn with the second prompt", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        const events: Array<HarnessEvent> = [];
+        const harness = yield* turnOn("antigravity", log, {
+          agentVersion: "1.5.16",
+          slow: "first",
+          steerable: true,
+          usage: "response",
+        });
+        const fiber = yield* Effect.forkChild(
+          harness.runTurn(
+            turnRequestOf({ onEvent: (event) => Effect.sync(() => events.push(event)), text: "Build it" }),
+          ),
+        );
+        yield* untilAcpFakeLogged(log, (entry) => entry.method === "session/prompt");
+        expect(yield* harness.steer("thread-1", message)).toBe(true);
+        const outcome = yield* Fiber.join(fiber);
+        expect(promptTexts(log)).toEqual(["Starting context.\n\nBuild it", "Use opus subagents"]);
+        expect(cancels(log)).toBe(0);
+        expect(outcome.isInterrupted).toBe(false);
+        // The agent took the message in, so the thread shows it as delivered and nothing is left waiting for the next turn.
+        expect(events.filter((event) => event._tag === "Delivered")).toEqual([
+          { _tag: "Delivered", messageId: "steer-1" },
+        ]);
+        // The first prompt's reply is closed when the agent answers it, not run into the second prompt's.
+        expect(events.flatMap((event) => (event._tag === "Reply" ? [event.text] : []))).toEqual([
+          "Working",
+          "Working",
+          "tool was allow_once",
+        ]);
+        // Both prompts spent tokens: the turn's usage is their sum, and its context is the last prompt's reading.
+        expect(outcome.usage).toEqual({ cacheCreation: 0, cacheRead: 4, input: 20, output: 12 });
+        expect(outcome.context).toBe(1234);
+      }),
+    ),
+  );
+
+  it.live("keeps the process for the thread's next turn after a steered turn", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        const harness = yield* turnOn("antigravity", log, { agentVersion: "1.5.0", slow: "first", steerable: true });
+        const fiber = yield* Effect.forkChild(harness.runTurn(turnRequestOf({ text: "Build it" })));
+        yield* untilAcpFakeLogged(log, (entry) => entry.method === "session/prompt");
+        expect(yield* harness.steer("thread-1", message)).toBe(true);
+        yield* Fiber.join(fiber);
+        yield* harness.runTurn(turnRequestOf({ text: "And then" }));
+        expect(starts(log)).toBe(1);
+        expect(readAcpFakeLog(log).some((entry) => entry.exit === true)).toBe(false);
+      }),
+    ),
+  );
+
+  it.live("leaves the message for the next turn when the agent is older than 1.5.0 or says no version", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        for (const [index, agentVersion] of ["1.4.9", undefined].entries()) {
+          const folderLog = `${log}-${index}`;
+          const harness = yield* turnOn("antigravity", folderLog, {
+            ...(agentVersion === undefined ? {} : { agentVersion }),
+            slow: true,
+            steerable: true,
+          });
+          const fiber = yield* Effect.forkChild(harness.runTurn(turnRequestOf({ text: "Build it" })));
+          yield* untilAcpFakeLogged(folderLog, (entry) => entry.method === "session/prompt");
+          expect(yield* harness.steer("thread-1", message)).toBe(false);
+          expect(yield* harness.interrupt("thread-1")).toBe(true);
+          const outcome = yield* Fiber.join(fiber);
+          expect(outcome.isInterrupted).toBe(true);
+          expect(promptTexts(folderLog)).toHaveLength(1);
+        }
+      }),
+    ),
+  );
+
+  it.live("interrupts a steered turn with one cancel, ends it as interrupted and keeps the process", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        const harness = yield* turnOn("antigravity", log, { agentVersion: "1.5.16", slow: true, steerable: true });
+        const first = yield* Effect.forkChild(harness.runTurn(turnRequestOf({ text: "Build it" })));
+        yield* untilAcpFakeLogged(log, (entry) => entry.method === "session/prompt");
+        expect(yield* harness.steer("thread-1", message)).toBe(true);
+        expect(yield* harness.interrupt("thread-1")).toBe(true);
+        const outcome = yield* Fiber.join(first);
+        expect(outcome.isInterrupted).toBe(true);
+        expect(cancels(log)).toBe(1);
+        // The agent confirmed the cancel, so the process is not closed: the next turn of the thread runs on it.
+        const next = yield* Effect.forkChild(harness.runTurn(turnRequestOf({ text: "Again" })));
+        yield* untilAcpFakeLogged(log, (entry) => promptTextsOf(entry) === "Again");
+        expect(yield* harness.interrupt("thread-1")).toBe(true);
+        expect((yield* Fiber.join(next)).isInterrupted).toBe(true);
+        expect(starts(log)).toBe(1);
+      }),
+    ),
+  );
+
+  it.live("refuses a steered message once the turn's prompt has been answered", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        const harness = yield* turnOn("antigravity", log, { agentVersion: "1.5.16" });
+        yield* harness.runTurn(turnRequestOf({ text: "Build it" }));
+        expect(yield* harness.steer("thread-1", message)).toBe(false);
+        expect(promptTexts(log)).toHaveLength(1);
+      }),
+    ),
+  );
+
+  it.live("leaves every other ACP harness without steering, whatever version its agent reports", () =>
+    inFolder((log) =>
+      Effect.gen(function* () {
+        for (const [index, build] of [
+          (path: string) => turnOn("cursor", path, { agentVersion: "1.5.16", slow: true, steerable: true }),
+          (path: string) => bareAdapter(path, { agentVersion: "1.5.16", slow: true, steerable: true }),
+        ].entries()) {
+          const folderLog = `${log}-${index}`;
+          const harness = yield* build(folderLog);
+          const fiber = yield* Effect.forkChild(harness.runTurn(turnRequestOf({ text: "Build it" })));
+          yield* untilAcpFakeLogged(folderLog, (entry) => entry.method === "session/prompt");
+          expect(yield* harness.steer("thread-1", message)).toBe(false);
+          // An interrupt is the same as before: one cancel, the turn ends as interrupted.
+          expect(yield* harness.interrupt("thread-1")).toBe(true);
+          expect((yield* Fiber.join(fiber)).isInterrupted).toBe(true);
+          expect(promptTexts(folderLog)).toHaveLength(1);
+          expect(cancels(folderLog)).toBe(1);
+        }
+      }),
+    ),
+  );
+});
+
+describe("the agent's version, as initialize reports it", () => {
+  it("reads agentInfo.version, and nothing when the agent names none", () => {
+    expect(acpAgentVersionOf({ agentInfo: { name: "Antigravity ACP Server", version: "1.5.16" } })).toBe("1.5.16");
+    expect(acpAgentVersionOf({ agentInfo: { name: "x" } })).toBeNull();
+    expect(acpAgentVersionOf({})).toBeNull();
+    expect(acpAgentVersionOf(null)).toBeNull();
+  });
+
+  it("compares the first three numbers, and an unreadable version is never at least anything", () => {
+    expect(acpVersionAtLeast("1.5.0", "1.5.0")).toBe(true);
+    expect(acpVersionAtLeast("1.5.16", "1.5.0")).toBe(true);
+    expect(acpVersionAtLeast("1.10.0", "1.5.0")).toBe(true);
+    expect(acpVersionAtLeast("2.0.0", "1.5.0")).toBe(true);
+    expect(acpVersionAtLeast("1.4.99", "1.5.0")).toBe(false);
+    expect(acpVersionAtLeast("v1.5.2-rc1", "1.5.0")).toBe(true);
+    expect(acpVersionAtLeast("1.5", "1.5.0")).toBe(true);
+    expect(acpVersionAtLeast("nightly", "1.5.0")).toBe(false);
+    expect(acpVersionAtLeast(null, "1.5.0")).toBe(false);
+  });
 });

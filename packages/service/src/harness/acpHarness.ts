@@ -1,4 +1,4 @@
-import type { BillingKind, Choice, TokenUsage } from "@outlore/contracts";
+import type { BillingKind, TokenUsage } from "@outlore/contracts";
 import { type Duration, Effect, Result } from "effect";
 import {
   type Containment,
@@ -6,23 +6,28 @@ import {
   type HarnessAdapter,
   HarnessFailure,
   type HarnessPrompt,
-  numberFieldOf,
   type RpcIncoming,
   type RpcProcess,
   readImages,
+  type SteeredMessage,
   startRpcProcess,
   type TurnRequest,
   textFieldOf,
   turnMessageOf,
 } from "../core/index.ts";
-import { readAcpPrompt } from "./acpPrompt.ts";
+import { type AcpPermissionContext, answerAcpRequest } from "./acpPermissions.ts";
+import { type AcpPromptFlight, openAcpPromptFlight, readAcpPrompt, steerAcpPrompt } from "./acpPrompt.ts";
 import {
+  acpAgentVersionOf,
+  acpCumulativeUsageDeltaOf,
   acpInitializeParams,
+  acpPromptUsageOf,
   acpRestartKeyOf,
   acpToolServersOf,
+  acpUpdateUsageOf,
+  acpVersionAtLeast,
   configOptionIdsOf,
   modeIdsOf,
-  permissionOptionIdOf,
   reopenAcpSession,
   thinkingConfigIdOf,
 } from "./acpSession.ts";
@@ -34,8 +39,9 @@ import {
   type PooledTurn,
 } from "./harnessProcesses.ts";
 import { noToolServerInstructions } from "./instructions.ts";
-import { findFirstOutside, promptOf, refusalOf } from "./openCodePrompts.ts";
 import { addUsage, contextOf } from "./tokenUsage.ts";
+
+export type { AcpPermissionContext } from "./acpPermissions.ts";
 
 // The Agent Client Protocol as Outlore speaks it to a harness that runs one agent process per thread (JSON-RPC 2.0, one
 // message per line): one ACP session per thread, one `session/prompt` per turn. This module owns the protocol once:
@@ -63,15 +69,6 @@ export type AcpLaunch = {
   };
   /** Ends anything the process left behind once it has ended, however it ended. */
   readonly onEnded?: () => Promise<ReadonlyArray<number>>;
-};
-
-/** What a dialect's `promptOf` decides the owner's question from. */
-export type AcpPermissionContext = {
-  readonly launch: AcpLaunch;
-  readonly request: TurnRequest;
-  readonly rpc: RpcProcess;
-  /** The tool call the permission request names, as far as the session's updates and the request itself say. */
-  readonly toolCall: unknown;
 };
 
 /**
@@ -138,6 +135,13 @@ export type AcpDialect = {
    * An interrupt ends the turn instead.
    */
   readonly repromptsRefusals?: boolean;
+  /**
+   * The agent version (`initialize`'s `agentInfo.version`) from which a second `session/prompt` sent while one runs is a message into it:
+   * the agent answers the running prompt `end_turn` and carries the turn on under the new one, leaving its running subagents and commands alone (Antigravity 1.5.0).
+   * From that version a steered message is sent as that prompt; before it, with no version reported, or when absent, a steered message waits for the next turn.
+   * Interrupting never changes: standard ACP's `session/cancel`.
+   */
+  readonly steersWithPromptFrom?: string;
 };
 
 /** How the unified ACP harness starts. */
@@ -157,6 +161,8 @@ interface AcpConnection extends HarnessConnection {
   readonly billing: BillingKind | null;
   /** The starting context, prepended to the first prompt of a session this process opened; null once given. */
   contextToGive: string | null;
+  /** The running stretch of the turn's prompts, which a steered message joins; null between prompts. */
+  flight: AcpPromptFlight | null;
   /** The thread's conversation so far, for a session opened in place of one the agent could not load; null once given. */
   handoverNotes: string | null;
   /** A `cumulative` dialect's session totals at the last prompt, so a turn's usage is the delta. */
@@ -164,141 +170,21 @@ interface AcpConnection extends HarnessConnection {
   /** The launch that started the process, for the dialect's judgement of permissions. */
   readonly launch: AcpLaunch;
   readonly rpc: RpcProcess;
+  /** The messages steered into the running flight that the agent has not yet taken in, by their ids. */
+  readonly steered: Array<string>;
+  /** Whether this agent takes a steered message as a second prompt: the dialect asks for it and the agent's version is at least the one it names. */
+  readonly steersWithPrompt: boolean;
   /** Whether the agent advertised that it takes images (ACP `promptCapabilities.image`); false refuses them, null leaves it open. */
   readonly takesImages: boolean | null;
   /** The tool calls seen so far, by id, so a permission request naming only an id can be judged. */
   readonly toolCalls: Map<string, unknown>;
 }
 
-/** The usage a prompt's answer reports (ACP `PromptResponse.usage`), thoughts counted as output; null when it reports none. */
-const promptUsageOf = (usage: unknown): TokenUsage | null =>
-  usage === undefined || usage === null
-    ? null
-    : {
-        cacheCreation: numberFieldOf(usage, "cachedWriteTokens"),
-        // Outlore's usage already carries cache reads beside the input, so a cached read is never added to it as well.
-        cacheRead: numberFieldOf(usage, "cachedReadTokens"),
-        input: numberFieldOf(usage, "inputTokens"),
-        output: numberFieldOf(usage, "outputTokens") + numberFieldOf(usage, "thoughtTokens"),
-      };
-
-const updateTokenFields = ["cacheCreationTokens", "cachedReadTokens", "inputTokens", "outputTokens"] as const;
-
-/**
- * The token fields a `usage_update` carries in the ACP field names; null for a provider whose update carries only the
- * context, so that a turn which reported no counts is unknown and never recorded as zero tokens.
- */
-const updateUsageOf = (update: unknown): TokenUsage | null =>
-  updateTokenFields.every((field) => typeof fieldOf(update, field) !== "number")
-    ? null
-    : {
-        cacheCreation: numberFieldOf(update, "cacheCreationTokens"),
-        cacheRead: numberFieldOf(update, "cachedReadTokens"),
-        input: numberFieldOf(update, "inputTokens"),
-        output: numberFieldOf(update, "outputTokens"),
-      };
-
-/** The turn's usage from the session's cumulative totals: what grew since the last prompt, or the whole when one fell. */
-const turnUsageOf = (connection: AcpConnection, reported: TokenUsage): TokenUsage => {
-  const last = connection.lastUsage;
-  const grew = reported.input >= last.input && reported.output >= last.output && reported.cacheRead >= last.cacheRead;
-  connection.lastUsage = reported;
-  return grew
-    ? {
-        cacheCreation: 0,
-        cacheRead: reported.cacheRead - last.cacheRead,
-        input: reported.input - last.input,
-        output: reported.output - last.output,
-      }
-    : reported;
-};
-
 /** The line a thread shows when the agent could not pick up the thread's earlier session. */
 const lostSessionNoteOf = (label: string) =>
   `${label} could not pick up this thread's earlier conversation: it is not in the provider's own folder for ` +
   "this account. The thread carries on in a new session, which was given the thread's conversation so far, as " +
   "when a thread changes harness.";
-
-/**
- * A question the agent asks through a permission request, as the owner chooses an answer to it.
- * The agent's own options are the choices, each answered by its id; no answer, or text naming none of them, answers cancelled,
- * so the agent never hears an option the owner did not pick.
- */
-const answerQuestion = Effect.fnUntraced(function* (
-  connection: AcpConnection,
-  dialect: AcpDialect,
-  request: TurnRequest,
-  incoming: Extract<RpcIncoming, { _tag: "Request" }>,
-  toolCall: unknown,
-) {
-  const offered = fieldOf(incoming.params, "options");
-  const options = Array.isArray(offered)
-    ? offered.flatMap((option) => {
-        const optionId = textFieldOf(option, "optionId");
-        const name = textFieldOf(option, "name") ?? optionId;
-        return optionId === null || name === null ? [] : [{ name, optionId }];
-      })
-    : [];
-  const question = textFieldOf(toolCall, "title") ?? "Choose an option";
-  const choice = {
-    allowsOther: false,
-    header: dialect.label,
-    multiple: false,
-    options: options.map((option) => ({ description: "", label: option.name })),
-    question,
-  } satisfies typeof Choice.Type;
-  const answer = yield* request.askOwner({
-    choices: [choice],
-    input: { options: options.map((option) => option.name), question },
-    toolName: "request_user_input",
-  });
-  const chosen = answer.isAllowed ? answer.answers?.[0]?.[0] : undefined;
-  const picked = options.find((option) => option.name === chosen);
-  connection.rpc.respond(
-    incoming.id,
-    picked === undefined
-      ? { outcome: { outcome: "cancelled" } }
-      : { outcome: { optionId: picked.optionId, outcome: "selected" } },
-  );
-});
-
-/** The question the owner is asked about a tool call: the call, naming the first file it edits outside the thread's folder. */
-const standardPromptOf = Effect.fnUntraced(function* ({ request, toolCall }: AcpPermissionContext) {
-  return promptOf(toolCall, yield* findFirstOutside(request, toolCall));
-});
-
-/**
- * Answers one of the agent's reverse requests: a permission request goes to the owner, any other fails closed.
- * Some agents name only the tool call's id, so the call is read from the session updates seen so far, with what the request itself says on top.
- * A denial is answered with the agent's reject option and the turn carries on without the action;
- * where the agent cancels its prompt for a refusal, the refusal is added to `refusals` before the agent hears it.
- */
-const answerRequest = Effect.fnUntraced(function* (
-  connection: AcpConnection,
-  dialect: AcpDialect,
-  request: TurnRequest,
-  incoming: Extract<RpcIncoming, { _tag: "Request" }>,
-  refusals: Array<string>,
-) {
-  if (incoming.method !== "session/request_permission")
-    return connection.rpc.respondError(incoming.id, `Outlore does not answer ${incoming.method}.`);
-  const named = fieldOf(incoming.params, "toolCall");
-  const toolCallId = textFieldOf(named, "toolCallId");
-  const seen = toolCallId === null ? undefined : connection.toolCalls.get(toolCallId);
-  const toolCall = seen === undefined || seen === null ? named : { ...(seen as object), ...(named as object) };
-  if (dialect.questionIdPrefix !== null && toolCallId?.startsWith(dialect.questionIdPrefix) === true)
-    return yield* answerQuestion(connection, dialect, request, incoming, toolCall);
-  const context = { launch: connection.launch, request, rpc: connection.rpc, toolCall } satisfies AcpPermissionContext;
-  const prompt = yield* (dialect.promptOf ?? standardPromptOf)(context);
-  const answer = yield* request.askOwner(prompt);
-  if (!answer.isAllowed && dialect.repromptsRefusals === true) refusals.push(refusalOf(prompt, answer));
-  const optionId = permissionOptionIdOf(incoming.params, answer.isAllowed ? "allow_once" : "reject_once");
-  // An agent that offers no such option hears the request cancelled, never an option id it did not offer.
-  connection.rpc.respond(
-    incoming.id,
-    optionId === null ? { outcome: { outcome: "cancelled" } } : { outcome: { optionId, outcome: "selected" } },
-  );
-});
 
 /** The ACP protocol of one harness: one ACP session per Outlore thread, one prompt per turn. */
 const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnection> => {
@@ -331,9 +217,28 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
       // The refusals of the owner that the agent has not heard yet: see `repromptsRefusals`.
       const refusals: Array<string> = [];
       let usage: TokenUsage | null = null;
-      // One prompt, whose updates are read until its answer. The turn's images go with its first prompt only.
+      // One prompt, whose updates are read until its answer; a message steered into it makes it a flight of prompts, read until the last one is answered.
+      // The turn's images go with its first prompt only.
       const readPrompt = Effect.fnUntraced(function* (promptText: string, promptImages: typeof images) {
         let draft = "";
+        /** What the flight's prompts have reported so far, each counted once; null until one reports usage. */
+        let flightUsage: TokenUsage | null = null;
+        /** A prompt's usage counts in the flight's, and the prompt's own reading is returned. */
+        const countUsage = (answer: unknown) => {
+          const reported = acpPromptUsageOf(fieldOf(answer, "usage"));
+          if (reported !== null) {
+            if (dialect.usage === "cumulative") {
+              const { delta, next } = acpCumulativeUsageDeltaOf(connection.lastUsage, reported);
+              connection.lastUsage = next;
+              flightUsage = addUsage(flightUsage, delta);
+            } else flightUsage = addUsage(flightUsage, reported);
+          }
+          return reported;
+        };
+        /** The agent has taken the messages steered so far into the turn. */
+        const deliverSteered = Effect.suspend(() =>
+          Effect.forEach(connection.steered.splice(0), (id) => turn.deliver(id), { discard: true }),
+        );
         /** A reply is complete once the agent moves on from writing it, such as to a tool call. */
         const finishDraft = Effect.suspend(() => {
           const reply = draft;
@@ -346,7 +251,7 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
         const read = Effect.fnUntraced(function* (incoming: RpcIncoming) {
           if (incoming._tag === "Exit") return yield* new HarnessFailure({ reason: incoming.reason });
           if (incoming._tag === "Request")
-            return yield* turn.fork(answerRequest(connection, dialect, request, incoming, refusals));
+            return yield* turn.fork(answerAcpRequest(connection, dialect, request, incoming, refusals));
           if (incoming.method !== "session/update") return;
           if (textFieldOf(incoming.params, "sessionId") !== connection.sessionId) return;
           const update = fieldOf(incoming.params, "update");
@@ -375,27 +280,41 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
             if (typeof used === "number") contextTokens = used;
             const size = fieldOf(update, "size");
             if (typeof size === "number" && size > 0) contextWindow = size;
-            updateUsage = addUsage(updateUsage, updateUsageOf(update));
+            updateUsage = addUsage(updateUsage, acpUpdateUsageOf(update));
           }
         });
 
-        const result = yield* readAcpPrompt(connection.rpc, connection.sessionId, promptText, promptImages, read);
+        const flight = openAcpPromptFlight();
+        connection.flight = flight;
+        const ended = yield* readAcpPrompt(connection.rpc, connection.sessionId, promptText, promptImages, read, {
+          flight,
+          // The agent answered the prompt before it, which carried the turn on under the steered one: the steered message is taken in,
+          // the reply written so far is complete, and what the prompt used counts at once, so a failure of the last prompt keeps it.
+          onSuperseded: (answer) =>
+            Effect.gen(function* () {
+              countUsage(answer);
+              turn.reportUsage(addUsage(usage, flightUsage));
+              yield* finishDraft;
+              yield* deliverSteered;
+            }),
+        }).pipe(
+          Effect.ensuring(
+            Effect.sync(() => {
+              connection.flight = null;
+              connection.steered.splice(0);
+            }),
+          ),
+        );
         yield* finishDraft;
-        if (Result.isFailure(result)) return yield* result.failure;
-        const reported = promptUsageOf(fieldOf(result.success, "usage"));
-        const promptUsage =
-          reported !== null
-            ? dialect.usage === "cumulative"
-              ? turnUsageOf(connection, reported)
-              : reported
-            : dialect.usage === "cumulative"
-              ? null
-              : updateUsage;
+        if (Result.isFailure(ended.answer)) return yield* ended.answer.failure;
+        // An answer to the last prompt, even a cancelled one, shows the agent had taken the steered messages in.
+        yield* deliverSteered;
+        const reported = countUsage(ended.answer.success);
         return {
           context: dialect.contextFromUsage === true ? contextOf(reported) : contextTokens,
           contextWindow,
-          isCancelled: textFieldOf(result.success, "stopReason") === "cancelled",
-          usage: promptUsage,
+          isCancelled: textFieldOf(ended.answer.success, "stopReason") === "cancelled",
+          usage: flightUsage ?? (dialect.usage === "cumulative" ? null : updateUsage),
         };
       });
 
@@ -430,8 +349,12 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
         label: dialect.label,
         ...(launch.onEnded === undefined ? {} : { onEnded: launch.onEnded }),
       });
+      let steersWithPrompt = false;
       const session = yield* Effect.gen(function* () {
         const initialized = yield* rpc.request("initialize", acpInitializeParams);
+        steersWithPrompt =
+          dialect.steersWithPromptFrom !== undefined &&
+          acpVersionAtLeast(acpAgentVersionOf(initialized), dialect.steersWithPromptFrom);
         const capabilities = fieldOf(initialized, "agentCapabilities");
         // A launch that hands the tool server over itself gives the session none, and the agent already has its context.
         const mcpServers =
@@ -526,19 +449,38 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
         // A launch that gave the context itself, or a session given it as its system prompt, leaves nothing for the first prompt.
         contextToGive:
           session.isNew && dialect.toolServer !== "launch" && !session.isAppended ? session.startingContext : null,
+        flight: null,
         handoverNotes: session.handoverNotes,
         hasExited: rpc.hasExited,
         lastUsage: { cacheCreation: 0, cacheRead: 0, input: 0, output: 0 },
         launch,
         rpc,
         sessionId,
+        steered: [],
+        steersWithPrompt,
         takesImages: session.takesImages,
         toolCalls: new Map(),
       } satisfies AcpConnection;
     }),
 
-    /** ACP takes no message into a running prompt: a steered message waits for the next turn. */
-    steer: () => Effect.succeed(false),
+    /**
+     * Standard ACP takes no message into a running prompt, so a steered message waits for the next turn.
+     * An agent the dialect knows takes a second prompt as one (`steersWithPromptFrom`) is sent it, and the message counts as taken in once the agent answers the prompt before it.
+     */
+    steer: Effect.fnUntraced(function* (connection: AcpConnection, message: SteeredMessage) {
+      const flight = connection.flight;
+      if (!connection.steersWithPrompt || flight === null) return false;
+      // An unreadable image, or one the agent does not take, leaves the message for the next turn, where the turn itself says so.
+      const images = yield* readImages(message.images).pipe(Effect.catch(() => Effect.succeed(null)));
+      if (images === null || (images.length > 0 && connection.takesImages === false)) return false;
+      connection.steered.push(message.id);
+      const isSent = yield* steerAcpPrompt(flight, message.text, images);
+      if (!isSent) {
+        const index = connection.steered.indexOf(message.id);
+        if (index >= 0) connection.steered.splice(index, 1);
+      }
+      return isSent;
+    }),
   };
 };
 

@@ -1,5 +1,13 @@
 # Work in progress
 
+## Antigravity steering and interrupt · 2026-11-25 · built and tested against the stand-in; live turn pending owner approval
+
+CHG-0726 on `mission/antigravity-vs-t3code-4774eeeb`, base `953e98b9`: the shared ACP module reads `agentInfo.version` from `initialize` and adds `steersWithPromptFrom` (set to `"1.5.0"` on Antigravity only).
+When `agy` reports `>= 1.5.0`, steering a running turn sends a second `session/prompt` instead of refusing, delivers the steered message to the pool, sums usage across the prompt flight, and keeps the last prompt's context reading; older versions, missing versions, and all other ACP harnesses stay unchanged.
+Outlore's existing interrupt path already matches T3 Code's `cancelBehavior: "wait-for-prompt"` (sends `session/cancel`, waits up to `interruptGraceMillis` for the prompt to settle, keeps the process alive when confirmed, and closes it only on timeout).
+Verified against the configurable ACP stand-in (`acpProtocol.test.ts` and related harness suites), Biome, and workspace typecheck.
+No live Antigravity turn was run (personal Google quota and pending forum clarification); a live check requires owner approval for one signed-in `agy acp` turn to confirm mid-turn second-prompt steering and settled `session/cancel`.
+
 ## Antigravity plan limits and plan usage display · 2026-11-25 · data side and di
 
 The owner chose display alternative C (CHG-0723, branch `mission/pull-main-and-choose-next-9eb450d2`, built on the CHG-0722 branch): the rings are gone (`editors/planLimitRings.tsx` removed); the rail shows each provider's logo with one status dot (`editors/planUsageDots.tsx`, `PlanUsageDots` in the sidebar) and the popup is a table grouped by model group with the share left and the time to reset, and "not started" for a limit with no reset time (`editors/planUsage.ts`, `planUsageOf`, tested in `planUsage.test.ts`). The accessibility text says "not started" too. **Built, not seen:** the window check is pending (the dot's size and place on the logo, the table's width in the rail card for four limits, Antigravity's two groups, a phone's tap, the light and dark themes), and the owner has accepted nothing. My choices to redirect: an all-unstarted provider's dot is green rather than grey; the dot sits at the logo's lower right with a ground-colored ring; rows inside a group are ordered by window length.
