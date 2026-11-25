@@ -21,6 +21,7 @@ import { LoreChangeCard, LoreChangeLine } from "../lore/lore";
 import { TerminalMessage } from "../terminal/terminalMessage";
 import { terminalSnapshotOf } from "../terminal/terminalSnapshot";
 import { ChipText } from "../ui/chips";
+import { CopyButton } from "../ui/copyButton";
 import { ProviderMark } from "../ui/providerMarks";
 import { QuestionCard, QuestionLine } from "../ui/questions";
 import { ChoiceBubbles } from "./choiceBubbleViews";
@@ -108,7 +109,12 @@ export function AgentReply({
           </View>
           {replyToText ? <Text style={styles.muted}>Replying to: {shortened(replyToText)}</Text> : null}
           <Markdown text={text} />
-          {usage !== null && <Text style={styles.muted}>{replyUsageTextOf(usage)}</Text>}
+          {(usage !== null || !isDraft) && (
+            <View style={styles.replyFooter}>
+              {usage !== null && <Text style={styles.muted}>{replyUsageTextOf(usage)}</Text>}
+              {!isDraft && <CopyButton label="Copy reply" style={styles.replyCopy} text={text} />}
+            </View>
+          )}
         </View>
       </CommentableCard>
     </View>

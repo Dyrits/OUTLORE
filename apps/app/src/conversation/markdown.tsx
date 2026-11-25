@@ -12,13 +12,15 @@ const isTable = (token: Token): token is Tokens.Table => token.type === "table";
 import { Fragment, type ReactNode, useMemo } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { CopyButton } from "../ui/copyButton";
 import { linkTargetOf, listMarkerOf } from "./markdownRules";
 
 const styles = StyleSheet.create({
   blockquote: { borderLeftColor: colors.edge, borderLeftWidth: 3, gap: 6, paddingLeft: 10 },
   bold: { fontWeight: "700" },
-  codeBlock: { backgroundColor: colors.surface, borderRadius: radii.md, padding: 10 },
+  codeBlock: { backgroundColor: colors.surface, borderRadius: radii.md, padding: 10, paddingRight: 36 },
   codeBlockText: { color: colors.text, fontFamily: fonts.mono, fontSize: fontSizes.md, lineHeight: 18 },
+  codeCopy: { position: "absolute", right: 10, top: 10 },
   codeSpan: { backgroundColor: colors.surface, fontFamily: fonts.mono, fontSize: fontSizes.md },
   deleted: { textDecorationLine: "line-through" },
   heading: { color: colors.text, fontFamily: fonts.sans, fontWeight: "700" },
@@ -155,6 +157,7 @@ const blockOf = (token: Token, key: string): ReactNode => {
         <Text selectable style={styles.codeBlockText}>
           {token.text}
         </Text>
+        <CopyButton label="Copy code" style={styles.codeCopy} text={token.text} />
       </View>
     );
   }
