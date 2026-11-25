@@ -48,7 +48,7 @@ export const rankedFoldedOf = (
 };
 
 /** One errand row of the sidebar: how deep it sits beneath its quest, and what it hides. */
-export interface ErrandRow {
+export type ErrandRow = {
   /** Levels beneath the quest: 1 for a quest's own errands. */
   readonly depth: number;
   /** Threads the agents opened that the setting folds into this row. */
@@ -56,7 +56,7 @@ export interface ErrandRow {
   /** Whether it has errands beneath it, so it can expand and collapse. */
   readonly hasChildren: boolean;
   readonly thread: ThreadSummary;
-}
+};
 
 /**
  * The errands a quest lists beneath their visible parents, siblings ranked.

@@ -416,6 +416,94 @@ describe("message attachments: images added to the owner's messages", () => {
     ),
   );
 
+  it.live("Pi is refused a message with images, and the message is not sent", () =>
+    withService(
+      Effect.gen(function* () {
+        const started = yield* call({
+          _tag: "StartMission",
+          effort: "default",
+          harness: "pi",
+          model: "default",
+          requestId: crypto.randomUUID(),
+          text: "Hello",
+          workspacePath: null,
+        });
+        const first = yield* settle(started.missionId, idle);
+        const card = yield* add("shot.png", png());
+        const failure = yield* Effect.flip(sendWith(first.thread.id, "see", [card.id]));
+        expect(failure.message).toContain("Pi cannot read images");
+        expect((yield* read(started.missionId)).messages).toHaveLength(2);
+        // Text alone is still taken.
+        yield* sendWith(first.thread.id, "just words", []);
+        const after = yield* settle(started.missionId, (current) => current.messages.length === 4 && idle(current));
+        expect(after.messages.some((message) => message.text === "just words")).toBe(true);
+      }),
+    ),
+  );
+
+  it.live("starting a mission on Pi with images is refused", () =>
+    withService(
+      Effect.gen(function* () {
+        const card = yield* add("shot.png", png());
+        const failure = yield* Effect.flip(
+          call({
+            _tag: "StartMission",
+            attachmentIds: [card.id],
+            effort: "default",
+            harness: "pi",
+            model: "default",
+            requestId: crypto.randomUUID(),
+            text: "see",
+            workspacePath: null,
+          }),
+        );
+        expect(failure.message).toContain("Pi cannot read images");
+      }),
+    ),
+  );
+
+  it.live("a handover to Pi is refused while a message holding images waits", () =>
+    withService(
+      Effect.gen(function* () {
+        const started = yield* start("wait 60000");
+        const first = yield* settle(started.missionId, (detail) => detail.thread.state === "Underway");
+        const threadId = first.thread.id;
+        const card = yield* add("shot.png", png());
+        yield* sendWith(threadId, "see", [card.id], "Queue");
+        const failure = yield* Effect.flip(
+          call({
+            _tag: "ChangeThreadRunner",
+            accountId: null,
+            effort: "default",
+            harness: "pi",
+            model: "default",
+            threadId,
+          }),
+        );
+        expect(failure.message).toContain("Pi cannot read images");
+        expect((yield* read(started.missionId)).thread.harness).toBe("claude");
+      }),
+    ),
+  );
+
+  it.live("skips a Pi backup when a failed message has an image", () =>
+    withService(
+      Effect.gen(function* () {
+        const started = yield* start("Hello");
+        yield* settle(started.missionId, idle);
+        const pi = { accountId: null, effort: "default", harness: "pi", model: "default" } as const;
+        const seeing = { accountId: null, effort: "default", harness: "codex", model: "gpt-seeing" } as const;
+        yield* call({ _tag: "SetThreadBackups", backups: [pi, seeing], threadId: started.threadId });
+        const image = yield* add("shot.png", png());
+        yield* sendWith(started.threadId, "fail claude no\nrunner", [image.id]);
+        const done = yield* settle(started.missionId, (detail) => idle(detail) && detail.handovers.length > 0);
+        expect(done.thread.harness).toBe("codex");
+        expect(done.thread.model).toBe("gpt-seeing");
+      }),
+      codexModelsLayer,
+    ),
+  );
+
   it.live("a handover's replay of the conversation names an image as text", () =>
     withService(
       Effect.gen(function* () {

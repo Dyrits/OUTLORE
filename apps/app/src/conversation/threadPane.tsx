@@ -5,64 +5,21 @@ import { BudgetStopCard } from "../editors/budgets";
 import { newRequestId, type ServiceClient } from "../foundation/client";
 import { effortLabel, harnessLabels, modelLabelOf } from "../foundation/formatting";
 import { countedOf } from "../foundation/labels";
-import { QuestTabButtonContext } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { useEnding } from "../foundation/useEnding";
-import { useServiceQuery } from "../foundation/useServiceQuery";
 import { EndingConfirmation } from "../quests/missionActions";
 import { MissingFolderNotice } from "../realms/workspaces";
-import { RunNowButton } from "../rituals/ritualCard";
 import { takesTurnsIn } from "../rituals/ritualRow";
-import { ArchiveButton } from "../ui/archiveButton";
-import { Composer } from "../ui/controls";
-import {
-  DoneButton,
-  HeaderSeparator,
-  NewErrandButton,
-  NewQuestButton,
-  QuestPanelButton,
-} from "../ui/questHeaderButtons";
 import { ChronicleTargetContext, matchesThread } from "./chronicleTarget";
-import { CommentTray } from "./commentViews";
 import { type CompanionsTab, CompanionsTabLayout } from "./companionsTabLayout";
 import { ConversationFailure, ConversationFeed } from "./conversationFeed";
-
-import { ErrandHeaderActions, hasErrandActions } from "./errandHeaderActions";
-import { MobileHeader, mobileIconTarget } from "./mobileHeader";
-import { QueuedMessageTray } from "./queuedMessageTray";
 import { RepliesProvider } from "./replies";
-import { parentTargetLabelOf, sendToParentScopeOf } from "./sendToParent";
-import { SendToParentControl } from "./sendToParentControl";
 import { terminalFolderOf } from "./terminalFolder";
 import { ChatterNotices } from "./threadActions";
-import { ThreadTitle } from "./threadTitle";
-import { OpenThreadForm } from "./threadTree";
+import { ThreadPaneComposer } from "./threadPaneComposer";
+import { ThreadPaneHeader } from "./threadPaneHeader";
 import { CommentsProvider } from "./useComments";
 import { useThreadConversation } from "./useThreadConversation";
-
-function RitualRunAction({
-  client,
-  missionId,
-  onError,
-}: {
-  client: ServiceClient;
-  missionId: MissionId;
-  onError: (message: string | null) => void;
-}) {
-  const { data: ritual, error } = useServiceQuery(client, { _tag: "ReadRitual", missionId }, `ritual:${missionId}`);
-  if (error !== null) return <Text style={styles.error}>{error}</Text>;
-  if (ritual === null) return null;
-  return (
-    <RunNowButton
-      client={client}
-      isBlocked={ritual.isRealmArchived}
-      isInHeader
-      isUnderway={ritual.lastRunState === "Underway"}
-      onError={onError}
-      ritualId={ritual.id}
-    />
-  );
-}
 
 /** One thread's conversation: its settings, notices, feed, and composer. It stands alone in a pane or as a quest's selected thread. */
 export function ThreadPane({
@@ -117,55 +74,13 @@ export function ThreadPane({
     terminalFolderOf(thread),
     target !== null && matchesThread(target, thread.id, thread.parentId === null) ? target : null,
   );
-  const { skills, actionError, terminal, comments, act } = conversation;
-  const [isOpening, setIsOpening] = useState(false);
+  const { actionError, comments, act } = conversation;
   // A Reply is offered in a quest's own conversation only: it opens an errand beneath (CHG-0559); an errand's pane has none.
-  // A Ritual's own conversation has no composer at all: no thread takes turns there, and its runs are its only errands
-  // (CHG-0616), so a Reply is not offered there either. Run now is the on-the-spot start.
-  const [alsoSendToParent, setAlsoSendToParent] = useState(false);
-  const [includeFullContext, setIncludeFullContext] = useState(false);
+  // A Ritual's own conversation has no composer at all: no thread takes turns there, and its runs are its only errands (CHG-0616), so a Reply is not offered there either.
   const takesTurns = takesTurnsIn(thread, detail.mission.ritual);
-  const parentLabel = takesTurns ? parentTargetLabelOf(detail) : null;
   const [ritualRunError, setRitualRunError] = useState<string | null>(null);
-  const ritualRunAction = takesTurns ? null : (
-    <RitualRunAction client={client} missionId={detail.mission.id} onError={setRitualRunError} />
-  );
   const canReply = thread.parentId === null && takesTurns;
-  const { canOpenBeneath, canResume, canStop } = thread.actions;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
-  // Only a quest's own thread archives it, and not a Ritual or one already archived.
-  const isOwnQuest = thread.parentId === null && detail.mission.ritual === null && detail.mission.state !== "Archived";
-  const archiveAction = isOwnQuest && (
-    <ArchiveButton
-      isDelete={detail.mission.isEmpty}
-      isDisabled={ending.isBusy}
-      label={detail.mission.isEmpty ? "Delete quest" : "Archive quest"}
-      onPress={() => ending.start("Archived")}
-      style={onBack === undefined ? null : mobileIconTarget}
-    />
-  );
-  // Mark as done is a checkbox: pressing it again takes the mark back (ReopenMission, as the Archive's Reopen does).
-  const isDone = detail.mission.state === "Fulfilled";
-  const markDone = isOwnQuest
-    ? () =>
-        isDone
-          ? ending.run(() => client.request({ _tag: "ReopenMission", missionId: detail.mission.id }))
-          : ending.start("Fulfilled")
-    : null;
-  const errandActions = <ErrandHeaderActions act={act} client={client} detail={detail} />;
-  const doneAction = markDone !== null && (
-    <DoneButton
-      isDisabled={ending.isBusy || ending.pending !== null}
-      isDone={isDone}
-      onPress={markDone}
-      style={onBack === undefined ? null : mobileIconTarget}
-    />
-  );
-  const hasActions = isOwnQuest || hasErrandActions(detail);
-  const windowQuestTab = useContext(QuestTabButtonContext);
-  const questTab = isInPane ? null : windowQuestTab;
-  // A separator after the last action only divides it from something that follows.
-  const hasAfterActions = questTab !== null || chrome != null;
   const startReply = (message: { id: MessageId; text: string }) => {
     const existing = conversation.anchors.find((anchor) => anchor.messageId === message.id);
     if (existing !== undefined) {
@@ -191,91 +106,25 @@ export function ThreadPane({
     <CommentsProvider value={comments}>
       <RepliesProvider value={canReply ? { start: startReply } : null}>
         <View style={[styles.flex, styles.pane]}>
-          {onBack !== undefined && (
-            <MobileHeader
-              actions={
-                ritualRunAction ??
-                (isOwnQuest ? (
-                  <>
-                    {doneAction}
-                    {archiveAction}
-                  </>
-                ) : (
-                  errandActions
-                ))
-              }
-              onBack={onBack}
-              title={<ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />}
-            />
-          )}
-          {(onBack === undefined || canResume || canOpenDetails) && (
-            <View style={styles.header}>
-              {onBack === undefined && (
-                <>
-                  <View style={styles.flex}>
-                    <ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />
-                  </View>
-                  {canResume && (
-                    <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
-                      <Text style={styles.link}>Resume</Text>
-                    </Pressable>
-                  )}
-                  {archiveAction}
-                  {doneAction}
-                  {errandActions}
-                  {ritualRunAction}
-                  {ritualRunAction !== null && chrome != null && <HeaderSeparator />}
-                  {isInPane && thread.parentId === null && takesTurns && (
-                    <>
-                      <HeaderSeparator />
-                      <NewQuestButton
-                        onPress={() =>
-                          void act(
-                            client
-                              .request({
-                                _tag: "StartEmptyQuest",
-                                realmId: detail.mission.workspaceId,
-                                requestId: newRequestId(),
-                              })
-                              .then((started) => onOpenMission(started.missionId)),
-                          )
-                        }
-                      />
-                      {hasAfterActions && <HeaderSeparator />}
-                    </>
-                  )}
-                  {onNewErrand !== undefined && (
-                    <>
-                      <HeaderSeparator />
-                      <NewErrandButton onPress={onNewErrand} />
-                      {hasAfterActions && <HeaderSeparator />}
-                    </>
-                  )}
-                  {onNewErrand === undefined &&
-                    !(isInPane && thread.parentId === null) &&
-                    hasActions &&
-                    (questTab !== null || chrome != null) && <HeaderSeparator />}
-                  {questTab !== null && <QuestPanelButton isOpen={questTab.isOpen} onPress={questTab.onPress} />}
-                  {questTab !== null && chrome != null && <HeaderSeparator />}
-                  {chrome}
-                </>
-              )}
-              {onBack !== undefined && canResume && (
-                <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
-                  <Text style={styles.link}>Resume</Text>
-                </Pressable>
-              )}
-              {canOpenDetails && (
-                <Pressable onPress={onOpenDetails}>
-                  <Text style={styles.link}>{takesTurns ? "Quest panel" : "Ritual panel"}</Text>
-                </Pressable>
-              )}
-            </View>
-          )}
+          <ThreadPaneHeader
+            act={act}
+            canOpenDetails={canOpenDetails}
+            chrome={chrome}
+            client={client}
+            detail={detail}
+            ending={ending}
+            isInPane={isInPane}
+            {...(onBack === undefined ? {} : { onBack })}
+            {...(onNewErrand === undefined ? {} : { onNewErrand })}
+            onOpenDetails={onOpenDetails}
+            onOpenMission={onOpenMission}
+            onRitualRunError={setRitualRunError}
+            onSelect={onSelect}
+            takesTurns={takesTurns}
+          />
           <EndingConfirmation ending={ending} />
           {ending.error !== null && <Text style={styles.error}>{ending.error}</Text>}
-          {/* A legacy sub-errand's parent is not the quest pane to its left, so the link back stays: it is the offered
-              return its pane owes it. */}
+          {/* A legacy sub-errand's parent is not the quest pane to its left, so the link back stays: it is the offered return its pane owes it. */}
           {parent !== undefined && (!isInPane || parent.parentId !== null) && (
             <Pressable onPress={() => onSelect(parent.id)}>
               <Text numberOfLines={1} style={styles.link}>
@@ -321,71 +170,15 @@ export function ThreadPane({
               client={client}
               companions={companions}
               composer={(accessory) => (
-                <>
-                  {isOpening ? (
-                    <OpenThreadForm
-                      client={client}
-                      onCancel={() => setIsOpening(false)}
-                      onOpened={(threadId) => {
-                        setIsOpening(false);
-                        onSelect(threadId);
-                      }}
-                      parent={thread}
-                    />
-                  ) : takesTurns ? (
-                    <>
-                      <CommentTray />
-                      <QueuedMessageTray
-                        isInTurn={thread.actions.isInTurn}
-                        messages={conversation.pendingMessages}
-                        onEdit={conversation.editQueued}
-                        onInterrupt={conversation.interrupt}
-                        onRemove={conversation.removeQueued}
-                        onSteer={conversation.steer}
-                        onUnsteer={conversation.unsteer}
-                      />
-                      <Composer
-                        draftKey={`thread:${thread.id}`}
-                        {...(canOpenBeneath && !isInPane ? { onOpenSideQuest: () => setIsOpening(true) } : {})}
-                        hasContent={terminal.hasContent || comments.items.length > 0}
-                        {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
-                        // The harness, account, Companion, and effort can change at any time, in a turn too: a handover
-                        // (thread-handover). It starts no turn: the running turn finishes as it was, and the next message, or Retry
-                        // after a failed turn, runs on it.
-                        accessory={accessory}
-                        attachments={{ client, refusal: conversation.refusal }}
-                        dictation={{ client }}
-                        mentions={{ client, workspacePath: thread.workspace?.path ?? null }}
-                        skills={skills}
-                        {...(canStop ? { onStop: conversation.stop } : {})}
-                        onSend={async (text, attachmentIds) => {
-                          const scope =
-                            parentLabel === null ? null : sendToParentScopeOf(alsoSendToParent, includeFullContext);
-                          await conversation.send(text, attachmentIds, scope);
-                          if (alsoSendToParent) {
-                            setAlsoSendToParent(false);
-                            setIncludeFullContext(false);
-                          }
-                        }}
-                        placeholder={conversation.placeholder}
-                      />
-                      {parentLabel !== null && (
-                        <SendToParentControl
-                          includeFullContext={includeFullContext}
-                          isChecked={alsoSendToParent}
-                          onToggleChecked={() => setAlsoSendToParent((current) => !current)}
-                          onToggleFullContext={setIncludeFullContext}
-                          parentKind={thread.parentId === null ? "realm" : "quest"}
-                          parentLabel={parentLabel}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    // No composer in a Ritual's own conversation (CHG-0616): the conversation is its runs' history,
-                    // written by the runs alone; Run now, in its panel, is the on-the-spot start.
-                    <Text style={styles.muted}>This conversation shows the Ritual's runs.</Text>
-                  )}
-                </>
+                <ThreadPaneComposer
+                  accessory={accessory}
+                  client={client}
+                  conversation={conversation}
+                  detail={detail}
+                  isInPane={isInPane}
+                  onSelect={onSelect}
+                  takesTurns={takesTurns}
+                />
               )}
               conversation={conversation}
               feed={

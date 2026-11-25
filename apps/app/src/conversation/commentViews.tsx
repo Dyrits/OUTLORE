@@ -56,11 +56,13 @@ export function CommentBox({
         multiline
         onChangeText={setNote}
         onKeyPress={(event) => {
-          const { key, shiftKey } = event.nativeEvent as { key: string; shiftKey?: boolean };
-          if (key === "Enter" && shiftKey !== true) {
+          const { nativeEvent } = event;
+          // On the web the event is the browser's, whose modifier flags are inherited getters, not own properties.
+          const isShifted = "shiftKey" in nativeEvent && nativeEvent.shiftKey === true;
+          if (nativeEvent.key === "Enter" && !isShifted) {
             event.preventDefault();
             save();
-          } else if (key === "Escape") onCancel();
+          } else if (nativeEvent.key === "Escape") onCancel();
         }}
         placeholder="Comment; it is sent with your next message…"
         placeholderTextColor={colors.textMuted}

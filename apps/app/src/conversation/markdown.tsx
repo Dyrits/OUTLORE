@@ -10,7 +10,7 @@ const isList = (token: Token): token is Tokens.List => token.type === "list";
 const isTable = (token: Token): token is Tokens.Table => token.type === "table";
 
 import { Fragment, type ReactNode, useMemo } from "react";
-import { Linking, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, type TextStyle, View } from "react-native";
 import { channelTextOf } from "../foundation/colorMix";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { CopyButton } from "../ui/copyButton";
@@ -54,35 +54,12 @@ const styles = StyleSheet.create({
 
 const headingSizes = [fontSizes.title, fontSizes.xl, fontSizes.lg, fontSizes.base, fontSizes.base, fontSizes.base];
 
-type Rendered = (token: never, key: string, children: ReactNode) => ReactNode;
-
-/** The inline tokens that wrap other inline tokens, each drawn as a styled run of its children. */
-const inlineWrappers = {
-  del: (_token: Tokens.Del, key, children) => (
-    <Text key={key} style={styles.deleted}>
-      {children}
-    </Text>
-  ),
-  em: (_token: Tokens.Em, key, children) => (
-    <Text key={key} style={styles.italic}>
-      {children}
-    </Text>
-  ),
-  link: (token: Tokens.Link, key, children) => {
-    const target = linkTargetOf(token.href);
-    if (target === null) return <Fragment key={key}>{children}</Fragment>;
-    return (
-      <Text accessibilityRole="link" key={key} onPress={() => void Linking.openURL(target)} style={styles.link}>
-        {children}
-      </Text>
-    );
-  },
-  strong: (_token: Tokens.Strong, key, children) => (
-    <Text key={key} style={styles.bold}>
-      {children}
-    </Text>
-  ),
-} satisfies Record<string, Rendered>;
+/** The style of each inline token that wraps other inline tokens, by token type; its children are drawn inside it. */
+const wrapperStyles = new Map<string, TextStyle>([
+  ["del", styles.deleted],
+  ["em", styles.italic],
+  ["strong", styles.bold],
+]);
 
 /** Inline tokens drawn as nested runs of text, so bold, code, and links sit in the same line. */
 function Inline({ tokens }: { tokens: ReadonlyArray<Token> }) {
@@ -90,10 +67,23 @@ function Inline({ tokens }: { tokens: ReadonlyArray<Token> }) {
 }
 
 const inlineOf = (token: Token, key: string): ReactNode => {
-  if (Object.hasOwn(inlineWrappers, token.type)) {
-    const wrap = inlineWrappers[token.type as keyof typeof inlineWrappers] as Rendered;
+  const wrapperStyle = wrapperStyles.get(token.type);
+  if (wrapperStyle !== void 0) {
+    return (
+      <Text key={key} style={wrapperStyle}>
+        <Inline tokens={token.tokens ?? []} />
+      </Text>
+    );
+  }
+  if (token.type === "link") {
+    const target = linkTargetOf(token.href);
     const children = <Inline tokens={token.tokens ?? []} />;
-    return wrap(token as never, key, children);
+    if (target === null) return <Fragment key={key}>{children}</Fragment>;
+    return (
+      <Text accessibilityRole="link" key={key} onPress={() => void Linking.openURL(target)} style={styles.link}>
+        {children}
+      </Text>
+    );
   }
   if (token.type === "codespan") {
     return (

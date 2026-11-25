@@ -1,0 +1,71 @@
+import { StyleSheet } from "react-native";
+import { colors, fontSizes, radii } from "../foundation/theme";
+import { handCursor } from "../ui/pointer";
+
+/** The styles of the reply lines and cards, which the card and the compact bar share. */
+export const local = StyleSheet.create({
+  actionCard: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
+  actions: { alignItems: "center", flexDirection: "row", gap: 12 },
+  compactBadge: { flexShrink: 0, fontSize: fontSizes.xs, fontWeight: "600" },
+  // The line has no box: plain text hung from the message above by an elbow, as Slack hangs a thread from its message.
+  compactBar: {
+    alignItems: "center",
+    borderRadius: radii.md,
+    flexDirection: "row",
+    flexGrow: 1,
+    flexShrink: 1,
+    gap: 8,
+    minWidth: 0,
+    paddingLeft: 4,
+    paddingRight: 10,
+    paddingVertical: 4,
+    ...handCursor,
+  },
+  compactCount: { color: colors.accentText, flexShrink: 0, fontSize: fontSizes.sm, fontWeight: "600" },
+  compactElbow: {
+    borderBottomColor: colors.edge,
+    borderBottomLeftRadius: radii.md,
+    borderBottomWidth: 2,
+    borderLeftColor: colors.edge,
+    borderLeftWidth: 2,
+    height: 18,
+    marginTop: -8,
+    width: 10,
+  },
+  compactMeta: { color: colors.textMuted, flexShrink: 0, fontSize: fontSizes.xs },
+  compactRow: { alignItems: "center", alignSelf: "stretch", flexDirection: "row" },
+  compactTitle: {
+    color: colors.text,
+    flexGrow: 1,
+    flexShrink: 1,
+    fontSize: fontSizes.sm,
+    fontWeight: "500",
+    minWidth: 0,
+  },
+  dot: { borderRadius: radii.pill, height: 8, width: 8 },
+  go: { color: colors.accentText, fontSize: fontSizes.sm },
+  line: {
+    alignSelf: "stretch",
+    borderColor: colors.edge,
+    borderLeftWidth: 3,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    gap: 4,
+    marginLeft: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  lineActive: { backgroundColor: colors.accentSoft, borderLeftColor: colors.accentText },
+  lineDisabled: { opacity: 0.5 },
+  lineNew: { borderLeftWidth: 1, borderStyle: "dashed", justifyContent: "center", minHeight: 40, ...handCursor },
+  linePressed: { opacity: 0.8 },
+  meta: { color: colors.textMuted, fontSize: fontSizes.sm },
+  openArea: { flex: 1, gap: 4, minWidth: 0 },
+  origin: { color: colors.textMuted, fontSize: fontSizes.sm },
+  row: { alignItems: "center", flexDirection: "row", gap: 8 },
+  // The sample is quoted the way Slack quotes a thread's last reply: a rule at its left, the speakers in bold.
+  sample: { borderLeftColor: colors.edge, borderLeftWidth: 2, gap: 2, paddingLeft: 8 },
+  sampleLine: { color: colors.textSecondary, fontSize: fontSizes.sm },
+  speaker: { color: colors.text, fontWeight: "600" },
+  title: { color: colors.text, flex: 1, fontSize: fontSizes.base, fontWeight: "600" },
+});

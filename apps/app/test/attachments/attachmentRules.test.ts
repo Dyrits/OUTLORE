@@ -165,6 +165,11 @@ describe("canReadImages", () => {
     expect(canReadImages(null, "codex", "gpt-blind")).toBe(true);
   });
 
+  it("refuses Pi whatever the list says, since it reads no images yet", () => {
+    expect(canReadImages(list, "pi", "any-model")).toBe(false);
+    expect(canReadImages(null, "pi", "default")).toBe(false);
+  });
+
   it("reads the first listed model for the default", () => {
     expect(canReadImages(list, "codex", "default")).toBe(true);
     const blindFirst: HarnessList = { harnesses: [harnessOf("codex", [{ id: "x", inputsImages: false, label: "X" }])] };
@@ -188,5 +193,10 @@ describe("imageRefusalOf", () => {
     expect(imageRefusalOf(harnesses, "codex", "gpt-blind")).toContain("cannot read images");
     expect(imageRefusalOf(harnesses, "codex", "gpt-seeing")).toBeNull();
     expect(imageRefusalOf(null, "claude", "default")).toBeNull();
+  });
+
+  it("refuses Pi in the message box, so the owner is told before an image is attached", () => {
+    expect(imageRefusalOf(null, "pi", "default")).toContain("cannot read images");
+    expect(imageRefusalOf(list, "pi", "default")).toContain("Choose a Companion that can");
   });
 });
