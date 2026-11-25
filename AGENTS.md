@@ -63,7 +63,7 @@ Latest handoffs:
 
 - To resume the idle host traffic work (what a connected screen costs the host, CHG-0719), read the [current handoff](.agents/handoffs/2026-11-25-0800-idle-host-traffic.md). Handoffs are shared and committed.
 
-- To resume the relay outage, GCP options, and direct WebRTC path work, read the [current handoff](.agents/handoffs/2026-11-25-0120-relay-outage-and-p2p.md). Handoffs are shared and committed.
+- To resume the relay outage, GCP options, direct WebRTC path, and live measurement of host traffic, read the [current handoff](.agents/handoffs/2026-11-25-0842-relay-outage-and-idle-traffic.md). Handoffs are shared and committed.
 
 - To verify the new icons of the Quests and Errands list controls in the running app, read the [current handoff](.agents/handoffs/2026-11-25-0042-list-control-icons.md). Handoffs are shared and committed.
 
