@@ -1,8 +1,10 @@
 # Work in progress
 
-## Antigravity plan limits · 2026-11-25 · data side built; display choice pending
+## Antigravity plan limits and plan usage display · 2026-11-25 · data side and di
 
-CHG-0722 on `mission/pull-main-and-choose-next-79f32477`, base `a8416f70`: `readPlanLimits` on the Antigravity adapter runs the CLI's own `agy --print "/usage" ...` (zero tokens, no token file), and the report's new optional `label` names the four limits "Gemini Models · 5-hour" and so on. Tests pass against the stand-in; the live app has not shown them. Waiting for the owner to choose one of three display alternatives (A worst limit as a number, B small bars beside the logo, C dots in the rail with a table popup) in the [mockup](art-direction/2026-11-25-plan-usage-display.html); until then the rail draws four rings for Antigravity. Open: the owner's choice, then the build, and whether an untouched limit should say "not started".
+The owner chose display alternative C (CHG-0723, branch `mission/pull-main-and-choose-next-9eb450d2`, built on the CHG-0722 branch): the rings are gone (`editors/planLimitRings.tsx` removed); the rail shows each provider's logo with one status dot (`editors/planUsageDots.tsx`, `PlanUsageDots` in the sidebar) and the popup is a table grouped by model group with the share left and the time to reset, and "not started" for a limit with no reset time (`editors/planUsage.ts`, `planUsageOf`, tested in `planUsage.test.ts`). The accessibility text says "not started" too. **Built, not seen:** the window check is pending (the dot's size and place on the logo, the table's width in the rail card for four limits, Antigravity's two groups, a phone's tap, the light and dark themes), and the owner has accepted nothing. My choices to redirect: an all-unstarted provider's dot is green rather than grey; the dot sits at the logo's lower right with a ground-colored ring; rows inside a group are ordered by window length.
+
+CHG-0722 on `mission/pull-main-and-choose-next-79f32477`, base `a8416f70`: `readPlanLimits` on the Antigravity adapter runs the CLI's own `agy --print "/usage" ...` (zero tokens, no token file), and the report's new optional `label` names the four limits "Gemini Models · 5-hour" and so on. Tests pass against the stand-in; the live app has not shown them. The display choice and its build are described above.
 
 ## Idle host traffic per connected screen · 2026-11-25 · built; live measurement pending
 
