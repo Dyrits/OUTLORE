@@ -32,4 +32,8 @@ export const hostedListings: Readonly<Record<string, HostedListing>> = {
     names: ["ask_wiki_question", "read_wiki_contents", "read_wiki_structure"],
     source: "live tools/list of https://mcp.deepwiki.com/mcp, 2026-11-25",
   },
+  exa: {
+    names: ["web_search_exa", "web_fetch_exa"],
+    source: "live tools/list of https://mcp.exa.ai/mcp, 2026-11-25",
+  },
 };
