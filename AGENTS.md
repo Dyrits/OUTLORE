@@ -65,5 +65,5 @@ Latest handoffs:
 
 - To resume the relay outage, GCP options, direct WebRTC path, and live measurement of host traffic, read the [current handoff](.agents/handoffs/2026-11-25-0842-relay-outage-and-idle-traffic.md). Handoffs are shared and committed.
 
-- To verify the new icons of the Quests and Errands list controls in the running app, read the [current handoff](.agents/handoffs/2026-11-25-0042-list-control-icons.md). Handoffs are shared and committed.
+- To verify the provider logo marks in the Providers list, read the [current handoff](.agents/handoffs/2026-11-25-0937-provider-logo-marks.md). Handoffs are shared and committed.
 
