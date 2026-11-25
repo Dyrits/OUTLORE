@@ -73,7 +73,11 @@ describe("moving a quest between realms, and out of them", () => {
           expect(detail.thread.workspace?.path).toBe(workshop);
         }
         const after = yield* read(quest.missionId);
-        expect(after.messages.map((message) => message.text)).toEqual(before.messages.map((message) => message.text));
+        // The errand's first message stands in the quest as the errand's anchor.
+        expect(after.messages.map((message) => message.text)).toEqual([
+          ...before.messages.map((message) => message.text),
+          "Side",
+        ]);
 
         yield* call({ _tag: "MoveQuest", missionId: quest.missionId, realmId: null });
         expect(yield* realmOf(quest.missionId)).toBeNull();

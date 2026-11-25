@@ -48,6 +48,8 @@ const defaults = {
   planUsedUp: false,
   // The session ids a probe and a turn open.
   probeSessionId: "probe",
+  // When set, `session/prompt` emits this text as one `agent_message_chunk` and ends immediately with `end_turn`.
+  replyText: null,
   // `session/resume`, advertised as `sessionCapabilities.resume`; `resumeFails` answers it with an error while `session/load` works.
   resume: false,
   resumeFails: false,
@@ -144,6 +146,13 @@ const runPrompt = (request) => {
     steered.settle("end_turn");
   }
   if (config.planUsedUp) return fail(request.id, -32603, "Add a payment method to continue.");
+  if (config.replyText !== null) {
+    sessionUpdate(sessionId, {
+      content: { text: config.replyText, type: "text" },
+      sessionUpdate: "agent_message_chunk",
+    });
+    return endPrompt(sessionId, request.id, "end_turn");
+  }
   sessionUpdate(sessionId, { content: { text: "Working", type: "text" }, sessionUpdate: "agent_message_chunk" });
   if (config.slow === true || (config.slow === "first" && isFirst)) {
     cancellable = { settle: (stopReason = "cancelled") => endPrompt(sessionId, request.id, stopReason) };

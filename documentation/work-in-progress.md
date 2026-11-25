@@ -1,5 +1,18 @@
 # Work in progress
 
+## Child reads parent on demand · 2026-11-25 · built and verified by tests; desktop check pending
+
+CHG-0748 in `0.2.8-Pre-Alpha`: the opener's-messages snapshot is replaced by a line plus the `read_parent_messages` tool with FTS5 search (`parentMessages.ts`, migration 0079, `journal.ts`, `threadTools.ts`).
+CHG-0749 adds the last 5 clipped opener messages on the first turn of an owner-opened errand (`opener_tail`, migration 0080).
+Next: read the proof in `documentation/verification/2026-11-25-opener-tail-and-parent-search.md`, try it in the desktop window, and decide whether `read_parent_messages` should also reach further up than the direct parent.
+
+## Reply opens the child thread · 2026-11-25 · built and tested; desktop window check pending
+
+CHG-0746 in `0.2.8-Pre-Alpha`:
+- A Reply opens an empty quest (Chronicler message) or an empty errand (quest message) at once and opens its pane; the bottom Reply box and the starter's reply banner are gone (`replies.ts`, `tree.ts`, `guildmaster.tsx`, `threadPane.tsx`).
+- The first message of a quest or errand opened without a Reply is copied to its parent as conversation only and becomes its anchor (`copyOpeningToParent` in `questOrigins.ts`); this reverses CHG-0572 for empty quests.
+Next: look at it in the desktop window (Reply in the Chronicle and in a quest, New quest then write, New errand then write, mobile layout), then record Delivery once accepted.
+
 ## Reply icon and owner message actions · 2026-11-25 · built and tested; desktop window check pending
 
 CHG-0747 in `0.2.8-Pre-Alpha`: Reply is an icon beside Copy under an agent's reply; the owner's messages have a time line with Reply and Copy icons shown on hover (`messageActions.tsx`, `commentable.web.tsx`, `conversationEntries.tsx`).

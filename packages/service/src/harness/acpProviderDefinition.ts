@@ -39,6 +39,11 @@ export type AcpProviderDefinition = {
  * Everything not named here is the same for every ACP agent.
  */
 export type AcpProviderProtocol = {
+  /**
+   * A pattern matching a failure line the agent writes into an `agent_message_chunk` instead of returning a JSON-RPC error (such as Antigravity's inline quota warning).
+   * When matched, the matched line is stripped from the reply and the prompt fails with `HarnessFailure`, so backups and Ritual fallbacks run instead of leaving the thread idle.
+   */
+  readonly inlineFailurePattern?: RegExp;
   /** The minimum agent version (`initialize`'s `agentInfo.version`) required before opening a session; an agent reporting an older version fails startup. */
   readonly minimumAgentVersion?: string;
   /** Permission requests of tool calls whose id starts with this are questions for the owner to choose an answer to, not actions to approve. */

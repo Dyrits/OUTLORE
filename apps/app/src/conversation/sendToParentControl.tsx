@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { ChipIcon, type ChipKind } from "../ui/chips";
 
 /** Slack-like "Also send to <parent>" checkbox with a message-only vs. full-context toggle. */
 export function SendToParentControl({
@@ -7,12 +8,15 @@ export function SendToParentControl({
   isChecked,
   onToggleChecked,
   onToggleFullContext,
+  parentKind,
   parentLabel,
 }: {
   includeFullContext: boolean;
   isChecked: boolean;
   onToggleChecked: () => void;
   onToggleFullContext: (includeFullContext: boolean) => void;
+  /** What the target is: a realm for a quest, shown with the hash that names it, or the quest an errand sits in. */
+  parentKind: Extract<ChipKind, "quest" | "realm">;
   parentLabel: string;
 }) {
   return (
@@ -27,7 +31,11 @@ export function SendToParentControl({
           {isChecked && <Text style={local.check}>✓</Text>}
         </View>
         <Text numberOfLines={1} style={local.label}>
-          Also send to {parentLabel}
+          Also send to
+        </Text>
+        <ChipIcon color={colors.textMuted} kind={parentKind} size={12} />
+        <Text numberOfLines={1} style={local.label}>
+          {parentLabel}
         </Text>
       </Pressable>
       {isChecked && (

@@ -39,7 +39,8 @@ export const ReplyToMessage = Schema.TaggedStruct("ReplyToMessage", {
   /** The realm's folder a quest starts in, from the Chronicle's realm menu; absent starts it in none. */
   realmPath: Schema.optionalKey(Schema.NullOr(Schema.String)),
   requestId: RequestId,
-  text: OwnerMessageText,
+  /** The first message; absent in the Chronicle starts an empty quest, whose own composer takes it. An errand needs one. */
+  text: Schema.optionalKey(OwnerMessageText),
 });
 
 /** The thread a Reply started, or already had. */

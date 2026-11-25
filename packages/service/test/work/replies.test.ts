@@ -3,10 +3,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { MessageId, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
+import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
+import type { TurnRequest } from "../../src/core/index.ts";
 import { fakeHarnessLayer, serviceLayer } from "../../src/index.ts";
 import { prepareStartingContext } from "../../src/work/startingContext.ts";
 import { guildmaster, isIdle, say, startIdle } from "../fixtures/guildmaster.ts";
+import { receivedFor, recordingHarnessLayer } from "../fixtures/recordingHarness.ts";
 import { call, fixture, read, settle, start, tool } from "../fixtures/service.ts";
 import { answer, proposeCard } from "./guildmasterHelpers.ts";
 
@@ -21,7 +24,7 @@ afterEach(() => {
 });
 
 /** The reply to a message, on the default Companion. */
-const reply = (messageId: MessageId, text = "Take it from here", realmPath: string | null = null) =>
+const reply = (messageId: MessageId, text: string | null = "Take it from here", realmPath: string | null = null) =>
   call({
     _tag: "ReplyToMessage",
     effort: "default",
@@ -29,7 +32,7 @@ const reply = (messageId: MessageId, text = "Take it from here", realmPath: stri
     model: "default",
     ...(realmPath === null ? {} : { realmPath }),
     requestId: crypto.randomUUID(),
-    text,
+    ...(text === null ? {} : { text }),
   });
 
 const anchorsOf = (threadId: ThreadId) => call({ _tag: "ReadThreadAnchors", threadId });
@@ -187,6 +190,7 @@ describe("what hangs from a message", () => {
       yield* call({ _tag: "SetThreadPermissionMode", mode: "AutoAcceptEdits", threadId: started.threadId });
       const opened = yield* call({
         _tag: "OpenThread",
+        attachmentIds: [],
         effort: "default",
         model: "default",
         parentThreadId: started.threadId,
@@ -194,10 +198,9 @@ describe("what hangs from a message", () => {
         shouldStartAnyway: false,
         text: "An errand",
       });
-      expect(yield* anchorsOf(started.threadId)).toEqual([]);
       expect((yield* read(started.missionId, opened.threadId)).thread.permissionMode).toBe("AutoAcceptEdits");
       yield* tool(started.threadId, "open_thread", { request: "Agent errand" });
-      const [anchor] = yield* anchorsOf(started.threadId);
+      const anchor = (yield* anchorsOf(started.threadId)).find((candidate) => candidate.threadId !== opened.threadId);
       if (anchor === undefined) return yield* Effect.die("Missing agent errand");
       expect((yield* read(started.missionId, anchor.threadId)).thread.permissionMode).toBe("AutoAcceptEdits");
     }).pipe(Effect.provide(setup().layer)),
@@ -280,6 +283,91 @@ describe("replying to a message", () => {
       );
       expect(quest.mission.replyCount).toBe(quest.messages.length);
       expect(quest.mission.replyCount).toBeGreaterThanOrEqual(2);
+    }).pipe(Effect.provide(setup().layer)),
+  );
+
+  it.live("opens an empty quest from a message of the Chronicle when the Reply carries no text", () =>
+    Effect.gen(function* () {
+      const place = yield* guildmaster;
+      yield* say(place.threadId, "Hello Chronicler");
+      const chronicle = yield* settle(
+        place.missionId,
+        (detail) => isIdle(detail) && detail.messages.length > 1,
+        place.threadId,
+      );
+      const message = chronicle.messages.find((candidate) => candidate.sender === "agent");
+      if (message === undefined) return yield* Effect.die("Chronicler wrote nothing");
+      const started = yield* reply(message.id, null);
+      expect(started.isNew).toBe(true);
+      const quest = yield* read(started.missionId);
+      expect(quest.mission.isEmpty).toBe(true);
+      expect(quest.messages).toHaveLength(0);
+      expect(yield* anchorsOf(place.threadId)).toEqual([
+        { messageId: message.id, missionId: started.missionId, threadId: started.threadId, title: "Quest" },
+      ]);
+      expect((yield* reply(message.id, null)).threadId).toBe(started.threadId);
+    }).pipe(Effect.provide(setup().layer)),
+  );
+
+  it.live(
+    "opens an empty errand from a message of the quest when the Reply carries no text, which it then answers",
+    () =>
+      Effect.gen(function* () {
+        const started = yield* startIdle("Plan the trip");
+        const message = (yield* read(started.missionId)).messages.find((candidate) => candidate.sender === "agent");
+        if (message === undefined) return yield* Effect.die("No reply");
+        const opened = yield* reply(message.id, null);
+        expect(opened.isNew).toBe(true);
+        const errand = yield* read(started.missionId, opened.threadId);
+        expect(errand.thread.parentId).toBe(started.threadId);
+        expect(errand.messages).toHaveLength(0);
+        expect(errand.thread.state).toBe("Resting");
+        expect(yield* anchorsOf(started.threadId)).toEqual([
+          { messageId: message.id, missionId: started.missionId, threadId: opened.threadId, title: "Errand" },
+        ]);
+        expect((yield* reply(message.id, null)).threadId).toBe(opened.threadId);
+        yield* say(opened.threadId, "Look into the visas");
+        const answered = yield* settle(
+          started.missionId,
+          (detail) => detail.messages.length > 0 && isIdle(detail),
+          opened.threadId,
+        );
+        expect(answered.messages[0]?.text).toBe("Look into the visas");
+        // A Reply's anchored message is its context: no tail of the quest's latest messages comes with it, and the
+        // fake harness echoes its first turn's context when asked.
+        const sql = yield* SqlClient.SqlClient;
+        const [stored] = yield* sql<{
+          tail: string | null;
+        }>`SELECT opener_tail AS tail FROM threads WHERE id = ${opened.threadId}`;
+        expect(stored?.tail).toBeNull();
+        // Anchored by the Reply: the quest holds no copy of the first message.
+        expect((yield* read(started.missionId)).messages.map((candidate) => candidate.text)).not.toContain(
+          "Look into the visas",
+        );
+      }).pipe(Effect.provide(setup().layer)),
+  );
+
+  it.live("leaves the first message of an errand opened without a Reply in its quest, as its anchor", () =>
+    Effect.gen(function* () {
+      const started = yield* startIdle("Plan the trip");
+      const opened = yield* call({
+        _tag: "OpenThread",
+        effort: "default",
+        model: "default",
+        parentThreadId: started.threadId,
+        requestId: crypto.randomUUID(),
+        shouldStartAnyway: false,
+        text: "Check the visas",
+      });
+      const anchors = yield* anchorsOf(started.threadId);
+      const copy = (yield* read(started.missionId)).messages.find((candidate) => candidate.text === "Check the visas");
+      if (copy === undefined) return yield* Effect.die("No copy in the quest");
+      expect(copy.sender).toBe("user");
+      expect(anchors).toEqual([expect.objectContaining({ messageId: copy.id, threadId: opened.threadId })]);
+      const errand = yield* settle(started.missionId, isIdle, opened.threadId);
+      // The copy repeats the errand's opening message, so it is the errand's own root: the first reply is the agent's.
+      expect(errand.thread.root).toEqual(expect.objectContaining({ text: "Check the visas" }));
+      expect(errand.mission.replyCount).toBeGreaterThanOrEqual(1);
     }).pipe(Effect.provide(setup().layer)),
   );
 
@@ -594,4 +682,59 @@ describe("Batch 2: parent echoes and one-message reporting", () => {
       expect(resultMessage?.text).toContain("Inspect auth middleware");
     }).pipe(Effect.provide(setup().layer)),
   );
+
+  it.live("tells a child thread on delivery when an owner message was also sent to its parent", () => {
+    const received: Array<TurnRequest> = [];
+    const f = fixture(undefined, undefined, recordingHarnessLayer(received));
+    fixtures.push(f);
+    return Effect.gen(function* () {
+      const started = yield* startIdle("Coordinate the release");
+      const opened = yield* call({
+        _tag: "OpenThread",
+        effort: "default",
+        model: "default",
+        parentThreadId: started.threadId,
+        requestId: crypto.randomUUID(),
+        shouldStartAnyway: false,
+        text: "Check changelog entries",
+      });
+      yield* settle(started.missionId, isIdle, opened.threadId);
+      yield* call({
+        _tag: "SendMessage",
+        delivery: null,
+        requestId: crypto.randomUUID(),
+        sendToParent: "MessageOnly",
+        text: "Changelog looks clean",
+        threadId: opened.threadId,
+      });
+      yield* settle(started.missionId, isIdle, opened.threadId);
+      expect((yield* receivedFor(received, opened.threadId)).text).toContain(
+        '[The owner also sent this message to your parent thread ("Also send to").]',
+      );
+      yield* call({
+        _tag: "SendMessage",
+        delivery: null,
+        requestId: crypto.randomUUID(),
+        sendToParent: "FullContext",
+        text: "Ready to tag",
+        threadId: opened.threadId,
+      });
+      yield* settle(started.missionId, isIdle, opened.threadId);
+      expect((yield* receivedFor(received, opened.threadId)).text).toContain(
+        '[The owner also sent this message with this thread\'s conversation to your parent thread ("Also send to").]',
+      );
+      yield* call({
+        _tag: "SendMessage",
+        delivery: null,
+        requestId: crypto.randomUUID(),
+        sendToParent: "MessageOnly",
+        text: "Release is out",
+        threadId: started.threadId,
+      });
+      yield* settle(started.missionId, isIdle);
+      expect((yield* receivedFor(received, started.threadId)).text).toContain(
+        '[The owner also posted this message to the channel ("Also send to") without waking Chronicler.]',
+      );
+    }).pipe(Effect.provide(f.layer));
+  });
 });

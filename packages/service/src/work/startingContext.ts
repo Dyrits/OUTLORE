@@ -14,7 +14,7 @@ import { loreContextOf, loreInstructions, readContextLimit } from "../lore/index
 import { readApprovalInstructions } from "./approvalTerms.ts";
 import { accountOfThread, budgetLineOf } from "./budgetScopes.ts";
 import { readGuildmasterContext } from "./guildmasterContext.ts";
-import { journalContextOf, journalInstructions, openerContextOf, openerMessagesOf } from "./journal.ts";
+import { journalContextOf, journalInstructions, openerContextOf, openerMessagesOf, openerTailOf } from "./journal.ts";
 import { readOwnCopy } from "./ownCopies.ts";
 import { newErrandTitle } from "./titles.ts";
 import { prepareWorkingFolder, readThreadWorkspace, ScratchRoot, workingFolderOf } from "./workspaces.ts";
@@ -59,6 +59,8 @@ type Subject = {
   readonly loreThreadId: string;
   readonly missionId: string;
   readonly openerMessages: string | null;
+  /** Its opener's latest messages, for a thread's first turn only; null otherwise. */
+  readonly openerTail: string | null;
   readonly position: ThreadPosition;
 };
 
@@ -79,7 +81,7 @@ const readSections = Effect.fnUntraced(function* (subject: Subject, workspace: s
       ? yield* readGuildmasterContext
       : yield* journalContextOf(subject.missionId, { isBriefingOnly: subject.position.isAside }),
     lore: yield* loreContextOf(subject.loreThreadId),
-    openerMessages: openerContextOf(subject.openerMessages),
+    openerMessages: openerContextOf(subject.openerMessages, subject.openerTail),
     position: positionLineOf(subject.position),
     workspace,
   } satisfies Sections;
@@ -105,13 +107,16 @@ const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
     isGuildmaster: number;
     missionId: string;
     openerMessages: string | null;
+    openerTail: string | null;
     parentId: string | null;
     parentTitle: string | null;
     title: string;
+    turnCount: number;
   }>`
       SELECT t.mission_id AS missionId, t.harness, t.title, t.parent_id AS parentId, p.title AS parentTitle,
-        t.is_aside AS isAside, t.opener_messages AS openerMessages, m.is_guildmaster AS isGuildmaster,
+        t.is_aside AS isAside, t.opener_messages AS openerMessages, t.opener_tail AS openerTail, m.is_guildmaster AS isGuildmaster,
         (m.chronicler_channel IS NOT NULL) AS isChannel,
+        (SELECT COUNT(*) FROM turns u WHERE u.thread_id = t.id) AS turnCount,
         (SELECT g.top_thread_id FROM missions g WHERE g.is_guildmaster = 1 AND g.chronicler_channel IS NULL LIMIT 1) AS guildmasterId
       FROM threads t JOIN missions m ON m.id = t.mission_id LEFT JOIN threads p ON p.id = t.parent_id
       WHERE t.id = ${threadId}`;
@@ -132,6 +137,8 @@ const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
       loreThreadId: threadId,
       missionId: row.missionId,
       openerMessages: row.openerMessages,
+      // The turn is admitted before its context is read, so a thread's first turn is the only one it has.
+      openerTail: row.turnCount <= 1 ? row.openerTail : null,
       position,
     },
     workspace: yield* readThreadWorkspace(threadId),
@@ -178,12 +185,15 @@ export const readStartingContext = Effect.fnUntraced(function* (
     title: newErrandTitle,
   };
   const openerMessages = yield* openerMessagesOf(parentId);
+  // The owner opens it, on its first turn: it would read its opener's latest messages as well.
+  const openerTail = yield* openerTailOf(parentId);
   const subject = {
     isChannel: false,
     isGuildmaster: false,
     loreThreadId: parentId,
     missionId: parent.missionId,
     openerMessages,
+    openerTail,
     position,
   };
   const sections = yield* readSections(subject, folder.context);

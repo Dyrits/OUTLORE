@@ -170,6 +170,9 @@ const dialectOf = (
     });
     return { args: launch.args, env: reducedEnvironmentOf(launch.env, launch.scrubEnvPrefixes) };
   }),
+  ...(definition.protocol?.inlineFailurePattern === undefined
+    ? {}
+    : { inlineFailurePattern: definition.protocol.inlineFailurePattern }),
   ...(definition.protocol?.minimumAgentVersion === undefined
     ? {}
     : { minimumAgentVersion: definition.protocol.minimumAgentVersion }),

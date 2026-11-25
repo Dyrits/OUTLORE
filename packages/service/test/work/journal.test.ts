@@ -172,34 +172,115 @@ describe("keeping a mission's journal", () => {
     }).pipe(Effect.provide(live())),
   );
 
-  it.live("starts a thread opened beneath another with its opener's messages since the latest entry", () =>
+  it.live("tells a thread opened beneath another how much its opener said, and shows its latest messages", () =>
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle("Before the entry");
       yield* record(threadId, { entry: "Decided the plan." });
       yield* send(threadId, "After the entry");
       yield* settle(missionId, (detail) => detail.thread.state === "Resting" && detail.messages.length === 4);
+      const context = yield* contextOfChild(missionId, threadId);
       // The opener's title is the mission's first message, so only the opener's section is read.
-      const section = (yield* contextOfChild(missionId, threadId)).split("# Your opener's messages")[1] ?? "";
+      const section = context.split("# Your opener's conversation")[1] ?? "";
+      expect(section).toContain("your opener had 4 messages");
+      expect(section).toContain("read_parent_messages");
+      // The owner opened it, so its first turn also carries the opener's latest messages (here all four).
+      expect(section).toContain("Owner:\nBefore the entry");
       expect(section).toContain("Owner:\nAfter the entry");
-      expect(section).toContain("Opener:\nEcho: After the entry");
-      expect(section).not.toContain("Before the entry");
     }).pipe(Effect.provide(live())),
   );
 
-  it.live("keeps the opener's 40 latest messages and counts those left out", () =>
+  it.live("gives a thread the owner opens its opener's last five messages, clipped, on its first turn only", () =>
     Effect.gen(function* () {
       const { missionId, threadId } = yield* idle("Message 0");
-      for (let index = 1; index <= 21; index++) {
-        yield* send(threadId, `Message ${index}`);
+      for (const text of ["Message 1", `Message 2 ${"long ".repeat(200)}`, "Message 3"]) {
+        yield* send(threadId, text);
+        yield* settle(missionId, (detail) => detail.thread.state === "Resting" && detail.messages.length % 2 === 0);
+      }
+      const child = yield* open(threadId, "context");
+      const echoes = (detail: { messages: ReadonlyArray<{ sender: string; text: string }> }) =>
+        detail.messages.filter((message) => message.sender === "agent");
+      const first = yield* settle(missionId, (detail) => echoes(detail).length === 1, child.threadId);
+      const section = echoes(first)[0]?.text.split("# Your opener's conversation")[1] ?? "";
+      expect(section).toContain("Its latest messages when you were opened");
+      // Five of the opener's eight messages, the oldest three left to read_parent_messages.
+      expect(section).toContain("Owner:\nMessage 3");
+      expect(section).toContain("Owner:\nMessage 2 long");
+      expect(section).not.toContain("Owner:\nMessage 1");
+      expect(section).not.toContain("Owner:\nMessage 0");
+      expect(section).not.toContain(`${"long ".repeat(200)}`);
+      yield* send(child.threadId, "context");
+      const second = yield* settle(missionId, (detail) => echoes(detail).length === 2, child.threadId);
+      const later = echoes(second)[1]?.text.split("# Your opener's conversation")[1] ?? "";
+      expect(later).toContain("your opener had");
+      expect(later).not.toContain("Its latest messages when you were opened");
+      expect(later).not.toContain("Owner:\nMessage 3");
+    }).pipe(Effect.provide(live())),
+  );
+
+  it.live("gives a thread an agent opens no tail, since its request is meant to be complete", () =>
+    Effect.gen(function* () {
+      const { missionId, threadId } = yield* idle("Message 0");
+      yield* tool(threadId, "open_thread", { request: "Look into it" });
+      const detail = yield* settle(missionId, (detail) => detail.threads.length === 2);
+      const errand = detail.threads.find((candidate) => candidate.parentId === threadId);
+      if (errand === undefined) return yield* Effect.die("No errand");
+      const sql = yield* SqlClient.SqlClient;
+      const [row] = yield* sql<{
+        tail: string | null;
+      }>`SELECT opener_tail AS tail FROM threads WHERE id = ${errand.id}`;
+      expect(row?.tail).toBeNull();
+    }).pipe(Effect.provide(live())),
+  );
+
+  it.live("reads the opener's messages on demand: newest first, paged back, and searched by words", () =>
+    Effect.gen(function* () {
+      const { missionId, threadId } = yield* idle("Message 0");
+      for (const [index, text] of [
+        "The login page redirects users",
+        "Pricing needs a discount code",
+        "Message 3",
+      ].entries()) {
+        yield* send(threadId, text);
         yield* settle(
           missionId,
-          (detail) => detail.thread.state === "Resting" && detail.messages.length === 2 * (index + 1),
+          (detail) => detail.thread.state === "Resting" && detail.messages.length === 2 * (index + 2),
         );
       }
-      const section = (yield* contextOfChild(missionId, threadId)).split("# Your opener's messages")[1] ?? "";
-      expect(section).toContain("(4 earlier messages left out.)");
-      expect(section).toContain("Owner:\nMessage 2\n");
-      expect(section).not.toContain("Owner:\nMessage 1\n");
+      const child = yield* open(threadId, "context");
+      const latest = yield* tool(child.threadId, "read_parent_messages", { count: 2 });
+      // Opening the thread left a copy of its first message in its opener's conversation, the newest message.
+      expect(latest).toContain("#9 Owner: context");
+      expect(latest).toContain("#8 Opener: Echo: Message 3");
+      expect(latest).not.toContain("discount");
+      const earlier = yield* tool(child.threadId, "read_parent_messages", { before: 4, count: 1 });
+      expect(earlier).toContain("Owner: The login page redirects users");
+      expect(earlier).not.toContain("discount");
+      // Word endings and several words match, and the better match ranks first.
+      const found = yield* tool(child.threadId, "read_parent_messages", { query: "redirected users discount" });
+      expect(found).toContain("The login page redirects users");
+      expect(found).toContain("Pricing needs a discount code");
+      expect(found.indexOf("redirects")).toBeLessThan(found.indexOf("discount"));
+      expect(yield* tool(child.threadId, "read_parent_messages", { before: 3, query: "redirect" })).toBe(
+        "No such messages.",
+      );
+      expect(yield* tool(child.threadId, "read_parent_messages", { query: "unrelated" })).toBe("No such messages.");
+      expect(yield* tool(threadId, "read_parent_messages", {})).toContain("no opener");
+    }).pipe(Effect.provide(live())),
+  );
+
+  it.live("searches the opener's messages by words even where the full-text index is missing", () =>
+    Effect.gen(function* () {
+      const { missionId, threadId } = yield* idle("The login page redirects users");
+      yield* send(threadId, "Pricing needs a discount code");
+      yield* settle(missionId, (detail) => detail.thread.state === "Resting" && detail.messages.length === 4);
+      const sql = yield* SqlClient.SqlClient;
+      for (const trigger of ["insert", "delete", "update"]) yield* sql.unsafe(`DROP TRIGGER messages_fts_${trigger}`);
+      yield* sql`DROP TABLE messages_fts`;
+      const child = yield* open(threadId, "context");
+      const found = yield* tool(child.threadId, "read_parent_messages", { query: "discount login" });
+      expect(found).toContain("Owner: Pricing needs a discount code");
+      expect(found).toContain("Owner: The login page redirects users");
+      expect(yield* tool(child.threadId, "read_parent_messages", { query: "unrelated" })).toBe("No such messages.");
     }).pipe(Effect.provide(live())),
   );
 

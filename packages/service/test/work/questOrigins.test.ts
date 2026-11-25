@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { isIdle, say } from "../fixtures/guildmaster.ts";
 import { call, fixture, read, settle } from "../fixtures/service.ts";
 
-it.live("keeps the first message sent inside an empty quest in that quest", () => {
+it.live("copies the first message sent inside an empty quest to its channel as the quest's anchor, once", () => {
   const store = fixture();
   return Effect.gen(function* () {
     yield* call({ _tag: "CreateRealm", name: "Ideas", path: null });
@@ -30,7 +30,12 @@ it.live("keeps the first message sent inside an empty quest in that quest", () =
     expect(detail.messages.filter((message) => message.sender === "user").map((message) => message.text)).toEqual([
       text,
     ]);
-    expect((yield* read(channel.missionId)).messages).toEqual([]);
-    expect(yield* call({ _tag: "ReadThreadAnchors", threadId: channel.threadId })).toEqual([]);
+    // The copy waits for no answer: it is conversation only, and the next message stays in the quest.
+    yield* say(quest.threadId, "And the margins");
+    const copies = (yield* read(channel.missionId, channel.threadId)).messages;
+    expect(copies.map((message) => [message.sender, message.text])).toEqual([["user", text]]);
+    expect(yield* call({ _tag: "ReadThreadAnchors", threadId: channel.threadId })).toEqual([
+      expect.objectContaining({ messageId: copies[0]?.id, missionId: quest.missionId, threadId: quest.threadId }),
+    ]);
   }).pipe(Effect.provide(store.layer), Effect.ensuring(Effect.sync(store.remove)));
 });

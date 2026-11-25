@@ -275,4 +275,34 @@ export const recentStoreMigrations = {
       if (slug !== "" && slug !== realm.name) yield* sql`UPDATE workspaces SET name = ${slug} WHERE id = ${realm.id}`;
     }
   }),
+  // Whether the owner also sent a message to the parent ("Also send to"), as the scope they chose; null otherwise.
+  "0078_message_sent_to_parent": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE messages ADD COLUMN sent_to_parent TEXT`;
+  }),
+  // Word search over message text (`read_parent_messages`): an external-content full-text index, kept current by triggers.
+  // The store is never vacuumed, which could renumber the rowids the index points at. A SQLite build without full-text
+  // search leaves the store as it was, and the search then falls back to matching words in code.
+  "0079_message_search": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* Effect.gen(function* () {
+      yield* sql`CREATE VIRTUAL TABLE messages_fts USING fts5(text, content = 'messages', content_rowid = 'rowid', tokenize = 'porter unicode61 remove_diacritics 2')`;
+      yield* sql`CREATE TRIGGER messages_fts_insert AFTER INSERT ON messages BEGIN
+        INSERT INTO messages_fts (rowid, text) VALUES (new.rowid, new.text);
+      END`;
+      yield* sql`CREATE TRIGGER messages_fts_delete AFTER DELETE ON messages BEGIN
+        INSERT INTO messages_fts (messages_fts, rowid, text) VALUES ('delete', old.rowid, old.text);
+      END`;
+      yield* sql`CREATE TRIGGER messages_fts_update AFTER UPDATE OF text ON messages BEGIN
+        INSERT INTO messages_fts (messages_fts, rowid, text) VALUES ('delete', old.rowid, old.text);
+        INSERT INTO messages_fts (rowid, text) VALUES (new.rowid, new.text);
+      END`;
+      yield* sql`INSERT INTO messages_fts (messages_fts) VALUES ('rebuild')`;
+    }).pipe(Effect.ignore);
+  }),
+  // The opener's latest messages a thread the owner opened reads on its first turn, captured when it was opened.
+  "0080_thread_opener_tail": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE threads ADD COLUMN opener_tail TEXT`;
+  }),
 };

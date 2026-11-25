@@ -1,8 +1,8 @@
 import type { GuildmasterPlace, MessageId, MissionId, ThreadId, Viewing, WorkspaceId } from "@outlore/contracts";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BudgetScreen, BudgetStopCard } from "../editors/budgets";
-import type { ServiceClient } from "../foundation/client";
+import { newRequestId, type ServiceClient } from "../foundation/client";
 import { companionLabelOf, harnessLabels } from "../foundation/formatting";
 import { usePageNavigation } from "../foundation/pageNavigation";
 import { allMissions } from "../foundation/queries";
@@ -16,7 +16,7 @@ import { type CompanionsTab, CompanionsTabLayout } from "./companionsTabLayout";
 import { ConversationFailure, ConversationFeed } from "./conversationFeed";
 import { MobileHeader } from "./mobileHeader";
 import { QueuedMessageTray } from "./queuedMessageTray";
-import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
+import { RepliesProvider } from "./replies";
 import { findNewlyAnchoredQuest } from "./replyLineLabels";
 import { useThreadConversation } from "./useThreadConversation";
 
@@ -168,8 +168,8 @@ function ChroniclerChat({
     viewing,
   });
   const { draft, skills, terminal, actionError, entries, act, anchors, hasLoadedAnchors } = conversation;
-  // A Reply in the Chronicle starts a quest, which Chronicler hears of as one it opened (conversation panes).
-  const [replyTo, setReplyTo] = useState<{ id: MessageId; text: string } | null>(null);
+  // A Reply in the Chronicle opens an empty quest hung from the message, which Chronicler hears of as one it opened
+  // (conversation panes); its own composer takes the first message.
   // Auto-open a quest pane when the realm channel Companion opens a new quest directly under a message.
   const seenAnchors = useRef<Set<ThreadId> | null>(null);
   useEffect(() => {
@@ -182,14 +182,6 @@ function ChroniclerChat({
     for (const anchor of anchors) seenAnchors.current.add(anchor.threadId);
     if (opened !== null) onOpenMission(opened.missionId);
   }, [anchors, channel, hasLoadedAnchors, onOpenMission]);
-  const startReply = (message: { id: MessageId; text: string }) => {
-    const existing = anchors.find((anchor) => anchor.messageId === message.id);
-    if (existing !== undefined) {
-      onOpenMission(existing.missionId);
-      return;
-    }
-    setReplyTo(message);
-  };
   // The Guildmaster can have a budget of its own, set on its own screen like a quest's (budget-control).
   const { isChroniclerBudgetOpen: isBudgetOpen, onChroniclerBudget: setIsBudgetOpen } = usePageNavigation();
   if (detail === null) {
@@ -211,6 +203,27 @@ function ChroniclerChat({
     );
   }
   const { thread } = detail;
+  const startReply = (message: { id: MessageId; text: string }) => {
+    const existing = anchors.find((anchor) => anchor.messageId === message.id);
+    if (existing !== undefined) {
+      onOpenMission(existing.missionId);
+      return;
+    }
+    void act(
+      client
+        .request({
+          _tag: "ReplyToMessage",
+          accountId: thread.accountId,
+          effort: thread.effort,
+          harness: thread.harness,
+          messageId: message.id,
+          model: thread.model,
+          ...(realm === null ? {} : { realmPath: realm.path }),
+          requestId: newRequestId(),
+        })
+        .then((started) => onOpenMission(started.missionId)),
+    );
+  };
   const { canResume, canStop } = thread.actions;
   const mark =
     channel === undefined
@@ -279,45 +292,28 @@ function ChroniclerChat({
                 {channel === undefined && realm !== null && (
                   <RealmNote name={realm.name} onClear={() => onRealm(null)} />
                 )}
-                {replyTo !== null ? (
-                  <ReplyForm
-                    client={client}
-                    message={replyTo}
-                    onCancel={() => setReplyTo(null)}
-                    onStarted={(started) => {
-                      setReplyTo(null);
-                      onOpenMission(started.missionId);
-                    }}
-                    placeholder="The quest's first message…"
-                    realmPath={realm?.path ?? null}
-                    runner={replyRunnerOf(thread)}
-                  />
-                ) : (
-                  <>
-                    <QueuedMessageTray
-                      isInTurn={thread.actions.isInTurn}
-                      messages={conversation.pendingMessages}
-                      onEdit={conversation.editQueued}
-                      onInterrupt={conversation.interrupt}
-                      onRemove={conversation.removeQueued}
-                      onSteer={conversation.steer}
-                      onUnsteer={conversation.unsteer}
-                    />
-                    <Composer
-                      draftKey={channel === undefined ? "chronicler" : place.threadId}
-                      hasContent={terminal.hasContent}
-                      {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
-                      accessory={accessory}
-                      attachments={{ client, refusal: conversation.refusal }}
-                      dictation={{ client }}
-                      mentions={{ client, workspacePath: realm?.path ?? null }}
-                      onSend={conversation.send}
-                      {...(canStop ? { onStop: conversation.stop } : {})}
-                      placeholder={conversation.placeholder}
-                      skills={skills}
-                    />
-                  </>
-                )}
+                <QueuedMessageTray
+                  isInTurn={thread.actions.isInTurn}
+                  messages={conversation.pendingMessages}
+                  onEdit={conversation.editQueued}
+                  onInterrupt={conversation.interrupt}
+                  onRemove={conversation.removeQueued}
+                  onSteer={conversation.steer}
+                  onUnsteer={conversation.unsteer}
+                />
+                <Composer
+                  draftKey={channel === undefined ? "chronicler" : place.threadId}
+                  hasContent={terminal.hasContent}
+                  {...(terminal.onBang === null ? {} : { onBang: terminal.onBang })}
+                  accessory={accessory}
+                  attachments={{ client, refusal: conversation.refusal }}
+                  dictation={{ client }}
+                  mentions={{ client, workspacePath: realm?.path ?? null }}
+                  onSend={conversation.send}
+                  {...(canStop ? { onStop: conversation.stop } : {})}
+                  placeholder={conversation.placeholder}
+                  skills={skills}
+                />
               </>
             )}
             conversation={conversation}

@@ -47,22 +47,6 @@ const idle = (text = "Hello") =>
     yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
     return started;
   });
-/** A mission whose top thread holds three long owner messages since the journal's latest entry. */
-const crowded = () =>
-  Effect.gen(function* () {
-    const started = yield* idle();
-    for (let index = 0; index < 3; index++) {
-      const before = (yield* read(started.missionId, started.threadId)).messages.length;
-      yield* send(started.threadId, `${index} ${"x".repeat(80_000)}`);
-      yield* settle(
-        started.missionId,
-        (detail) => detail.thread.state === "Resting" && detail.messages.length >= before + 2,
-        started.threadId,
-      );
-    }
-    return started;
-  });
-
 describe("previewing a new thread's starting context", () => {
   it.live("keeps the turn and preview rules stable when another exact action of a granted kind is saved", () => {
     const requests: Array<TurnRequest> = [];
@@ -109,6 +93,8 @@ describe("previewing a new thread's starting context", () => {
       expect(shown.parts.lore).toBeGreaterThan((yield* read(missionId, threadId)).loreGauge.tokens);
       expect(shown.parts.journal).toBeGreaterThan(0);
       expect(shown.parts.openerMessages).toBeGreaterThan(0);
+      // A line about the opener's conversation, not the conversation itself.
+      expect(shown.parts.openerMessages).toBeLessThan(200);
       expect(shown.tokens).toBe(sumOf(shown));
       expect(shown).toMatchObject({ isOverWarning: false, warningPercent: 25, windowTokens: 200_000 });
     }).pipe(Effect.provide(layer));
@@ -131,9 +117,8 @@ describe("previewing a new thread's starting context", () => {
   it.live("warns past a quarter of the chosen model's context window", () => {
     const { layer } = live();
     return Effect.gen(function* () {
-      const { threadId } = yield* crowded();
-      const shown = yield* preview(threadId, "Summarize the long messages.", "sonnet");
-      expect(shown.parts.openerMessages).toBeGreaterThan(50_000);
+      const { threadId } = yield* idle();
+      const shown = yield* preview(threadId, "x".repeat(250_000), "sonnet");
       expect(shown).toMatchObject({ isOverWarning: true, windowTokens: 200_000 });
     }).pipe(Effect.provide(layer));
   });
@@ -141,7 +126,7 @@ describe("previewing a new thread's starting context", () => {
   it.live("offers no larger model while every model has the same context window", () => {
     const { layer } = live();
     return Effect.gen(function* () {
-      const { threadId } = yield* crowded();
+      const { threadId } = yield* idle();
       expect((yield* preview(threadId, "Go on.")).largerModels).toEqual([]);
     }).pipe(Effect.provide(layer));
   });
@@ -209,11 +194,12 @@ describe("opening a thread with a large starting context", () => {
   it.live("refuses to start it until the owner chooses to start anyway", () => {
     const { layer } = live();
     return Effect.gen(function* () {
-      const { missionId, threadId } = yield* crowded();
-      const refusal = yield* openBeneath(threadId, "Summarize the long messages.", false);
+      const { missionId, threadId } = yield* idle();
+      const request = "x".repeat(250_000);
+      const refusal = yield* openBeneath(threadId, request, false);
       expect(refusal).toMatch(/^Not started: its starting context takes about \d+% of the model's context window/);
       expect((yield* read(missionId, threadId)).threads).toHaveLength(1);
-      expect(yield* openBeneath(threadId, "Summarize the long messages.", true)).toBe("opened");
+      expect(yield* openBeneath(threadId, request, true)).toBe("opened");
       expect((yield* read(missionId, threadId)).threads).toHaveLength(2);
     }).pipe(Effect.provide(layer));
   });
@@ -249,7 +235,7 @@ describe("assembling a thread's starting context", () => {
     }).pipe(Effect.provide(layer));
   });
 
-  it.live("gives a thread beneath its opener's messages and the budget line", () => {
+  it.live("gives a thread beneath a line on its opener's conversation and the budget line", () => {
     const { layer } = live();
     return Effect.gen(function* () {
       const { missionId, threadId } = yield* idle("Plan the release.");
@@ -258,7 +244,10 @@ describe("assembling a thread's starting context", () => {
       const { context, note } = yield* prepareStartingContext(child.threadId);
       expect(context).toContain(`Thread ${threadId} opened you.`);
       expect(note).toContain(`thread ${threadId}, which opened you, is "`);
-      expect(note).toContain("# Your opener's messages since the latest journal entry\n");
+      expect(note).toContain("# Your opener's conversation\n");
+      expect(note).toContain("your opener had 2 messages");
+      // A first turn of a thread the owner opened also carries its opener's latest messages.
+      expect(note).toContain("Its latest messages when you were opened");
       expect(note).toContain("Owner:\nPlan the release.");
       expect(note.endsWith("At a limit, Outlore stops the work under it and asks the owner.")).toBe(true);
     }).pipe(Effect.provide(layer));

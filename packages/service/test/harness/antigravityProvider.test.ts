@@ -126,10 +126,10 @@ describe("reading the Antigravity sign-in", () => {
 describe("running a thread on the Antigravity CLI", () => {
   // The registry's Antigravity entry resolves its pinned home from the process's GEMINI_HOME, as in the app.
   afterEach(() => vi.unstubAllEnvs());
-  const harnessOf = (log: string, geminiHome: string) => {
+  const harnessOf = (log: string, geminiHome: string, extra: AcpFakeConfig = {}) => {
     vi.stubEnv("GEMINI_HOME", geminiHome);
     return standInHarness("antigravity", {
-      env: acpFakeEnv(log, { logEnv, models: [["Gemini 2.5 Pro", "gemini-2.5-pro"]], usage: "update" }),
+      env: acpFakeEnv(log, { logEnv, models: [["Gemini 2.5 Pro", "gemini-2.5-pro"]], usage: "update", ...extra }),
       idleTimeout: "10 minutes",
       prefixArgs: [acpFakeScript],
     });
@@ -183,6 +183,54 @@ describe("running a thread on the Antigravity CLI", () => {
       expect(events.filter((event) => event._tag === "Reply").map((event) => event.text)).toEqual([
         "Working",
         "tool was reject_once",
+      ]);
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
+  });
+
+  it.live("fails the turn when Antigravity emits an inline quota-reached warning so backups can take over", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-antigravity-quota-"));
+    const log = join(directory, "calls");
+    const events: Array<HarnessEvent> = [];
+    const warning =
+      "⚠ Third-party quota reached. Please switch to Gemini models or upgrade your subscription to increase your limits. Resets in 4h30m22s.";
+    return Effect.gen(function* () {
+      const harness = yield* harnessOf(log, join(directory, "gemini-home"), {
+        replyText: `Waiting for the suite.\n${warning}`,
+      });
+      const result = yield* harness
+        .runTurn(turnRequestOf({ onEvent: (event) => Effect.sync(() => events.push(event)), text: "continue" }))
+        .pipe(Effect.flip);
+      expect(result.reason).toBe(warning);
+      expect(events.filter((event) => event._tag === "Reply").map((event) => event.text)).toEqual([
+        "Waiting for the suite.",
+      ]);
+    }).pipe(
+      Effect.scoped,
+      Effect.ensuring(
+        Effect.sync(() => rmSync(directory, { force: true, maxRetries: 5, recursive: true, retryDelay: 50 })),
+      ),
+    );
+  });
+
+  it.live("keeps a normal reply containing a warning sign that is not a quota error", () => {
+    const directory = mkdtempSync(join(tmpdir(), "outlore-antigravity-note-"));
+    const log = join(directory, "calls");
+    const events: Array<HarnessEvent> = [];
+    return Effect.gen(function* () {
+      const harness = yield* harnessOf(log, join(directory, "gemini-home"), {
+        replyText: "⚠ Note: check the lockfile before merging.",
+      });
+      const outcome = yield* harness.runTurn(
+        turnRequestOf({ onEvent: (event) => Effect.sync(() => events.push(event)), text: "review" }),
+      );
+      expect(outcome.isInterrupted).toBe(false);
+      expect(events.filter((event) => event._tag === "Reply").map((event) => event.text)).toEqual([
+        "⚠ Note: check the lockfile before merging.",
       ]);
     }).pipe(
       Effect.scoped,

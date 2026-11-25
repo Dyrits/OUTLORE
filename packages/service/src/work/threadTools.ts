@@ -248,6 +248,19 @@ export const threadTools = {
       ),
     }),
   }),
+  read_parent_messages: definitionOf({
+    description:
+      "Read the conversation of the thread that opened you, which is not included in your context beyond the journal. Without query it gives the latest messages, newest first; with query it gives the best matches for those words, each as a short excerpt. Search with several words and likely synonyms, then read around a hit.",
+    invalid: toolRefusal("Invalid arguments: before and count are whole numbers, query is text."),
+    isUnasked: true,
+    schema: Schema.Struct({
+      before: optionalWhole("Only messages numbered below this one, to read older ones or the ones around a hit."),
+      count: optionalWhole("How many messages, 10 by default, at most 40."),
+      query: optionalText(
+        "Words to search for, in any order; a message matches when it holds any of them, and holding more of them ranks it higher. Word endings and prefixes match.",
+      ),
+    }),
+  }),
   read_settings: definitionOf({
     description:
       "Only Chronicler uses it. Read the owner's settings as JSON, to answer a question about them or before you change one.",

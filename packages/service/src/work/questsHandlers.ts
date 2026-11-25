@@ -91,7 +91,7 @@ export const questsHandlers = (
     ReopenThread: (given) => commands.run(reopenThread(given.threadId)),
     ReplyToMessage: (reply) =>
       Effect.gen(function* () {
-        const text = yield* admitOwnerText(reply.text, [], Effect.succeed(null));
+        const text = reply.text === undefined ? null : yield* admitOwnerText(reply.text, [], Effect.succeed(null));
         return yield* commands.run(
           commands.once(
             reply.requestId,

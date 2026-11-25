@@ -248,8 +248,17 @@ describe("suggesting where an off-topic request goes", () => {
       expect(context).toContain("The report covers Q3 sales.");
       // An aside starts with the briefing only (mission-journal): the change log stays out of its first turn.
       expect(context).not.toContain("Settled the layout of the Q3 tables");
+      expect(context).not.toContain("# Your opener's conversation");
+      expect(context).not.toContain("Owner:\nWrite the report");
       expect(context).toContain("went off the quest's topic and was put aside");
       expect(context).toContain("comes back to the quest");
+      const sql = yield* SqlClient.SqlClient;
+      const [stored] = yield* sql<{
+        tail: string | null;
+      }>`SELECT opener_tail AS tail FROM threads WHERE id = ${asideId}`;
+      expect(stored?.tail).toBeNull();
+      const parentRefused = yield* tool(asideId, "read_parent_messages", {});
+      expect(parentRefused).toContain("aside");
       const refused = yield* tool(asideId, "update_journal", { entry: "Weather is fine" });
       expect(refused).toContain("aside");
       yield* tool(asideId, "report_result", { journal: "Talked about the weather", result: "Sunny" });

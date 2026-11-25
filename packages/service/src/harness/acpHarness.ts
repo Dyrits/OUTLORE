@@ -57,6 +57,11 @@ export type { AcpPermissionContext } from "./acpPermissions.ts";
 export type AcpDialect = {
   /** Whether each spawned ACP process gets a fresh temporary directory as `TMPDIR`, `TMP`, and `TEMP`, removed when the process ends. */
   readonly hasIsolatedTempDir?: boolean;
+  /**
+   * A pattern matching a failure line the agent writes into an `agent_message_chunk` instead of returning a JSON-RPC error (such as Antigravity's inline quota warning).
+   * When matched, the matched line is stripped from the reply and the prompt fails with `HarnessFailure`.
+   */
+  readonly inlineFailurePattern?: RegExp;
   /** The harness's name as the owner reads it. */
   readonly label: string;
   /** The process this turn's session runs in, or the reason it cannot run: some providers run only against an account folder. */
@@ -204,6 +209,7 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
       // The turn's images go with its first prompt only.
       const readPrompt = Effect.fnUntraced(function* (promptText: string, promptImages: typeof images) {
         let draft = "";
+        let inlineFailure: string | null = null;
         /** What the flight's prompts have reported so far, each counted once; null until one reports usage. */
         let flightUsage: TokenUsage | null = null;
         /** A prompt's usage counts in the flight's, and the prompt's own reading is returned. */
@@ -224,8 +230,15 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
         );
         /** A reply is complete once the agent moves on from writing it, such as to a tool call. */
         const finishDraft = Effect.suspend(() => {
-          const reply = draft;
+          let reply = draft;
           draft = "";
+          if (dialect.inlineFailurePattern !== undefined) {
+            const match = dialect.inlineFailurePattern.exec(reply);
+            if (match !== null) {
+              inlineFailure = match[0].trim();
+              reply = reply.replace(dialect.inlineFailurePattern, "").trim();
+            }
+          }
           return reply.trim() === "" ? Effect.void : request.onEvent({ _tag: "Reply", text: reply });
         });
         let contextTokens: number | null = null;
@@ -290,6 +303,7 @@ const acpProtocolOf = (options: AcpHarnessOptions): HarnessProtocol<AcpConnectio
         );
         yield* finishDraft;
         if (Result.isFailure(ended.answer)) return yield* ended.answer.failure;
+        if (inlineFailure !== null) return yield* new HarnessFailure({ reason: inlineFailure });
         // An answer to the last prompt, even a cancelled one, shows the agent had taken the steered messages in.
         yield* deliverSteered;
         const reported = countUsage(ended.answer.success);

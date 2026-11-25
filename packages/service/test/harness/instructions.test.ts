@@ -106,6 +106,15 @@ describe("telling a thread how the threads around it work", () => {
     );
   });
 
+  it("has a reply stand in one place: the child answers its first message, the parent answers an echo only when it is for it", () => {
+    for (const position of [top, child]) {
+      expect(threadInstructionsOf(position)).toContain("A reply stands in one place.");
+    }
+    expect(threadInstructionsOf(child)).toContain("answer it in this thread, never in your parent");
+    expect(threadInstructionsOf(top)).toContain("that thread answers it, so never answer it here");
+    expect(threadInstructionsOf(top)).toContain("Answer it only when the words are for you");
+  });
+
   it("uses the quest words for everything written to the owner", () => {
     for (const position of [top, child]) {
       expect(threadInstructionsOf(position)).toContain('never "mission"');

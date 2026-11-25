@@ -44,8 +44,12 @@ Work with AI agents spreads across disconnected chats, and subagents run out of 
   - the opener's request;
   - the briefing and its 20 latest entries (see [mission-journal](../mission-journal/specifications.md#reading));
   - the intel and skills in scope for it;
-  - the opener's messages since the journal's last change log entry.
-  None of the opener's earlier history is included. When this exceeds the new model's context window, the oldest part is summarized.
+  - a line saying how many messages its opener has and that `read_parent_messages` reads them.
+  - on its first turn only, when the owner opened it with a message of its own: its opener's last 5 messages, each clipped to 500 characters (owner, 2026-11-25), since a short request such as "fix this" leans on them and a thread cannot tell what it is missing.
+  An errand an agent opens (its request is meant to be complete), an errand a Reply opens (the anchored message is its context), and an aside get no such messages.
+  Beyond those last messages none of the opener's conversation is included (owner, 2026-11-25: was the opener's messages since the journal's last change log entry, up to 40, captured when the thread opened and re-sent with every turn).
+  The thread reads what it needs: `read_parent_messages` gives the opener's latest messages newest first, pages back with `before`, and with `query` gives the best matches for some words, each as a short excerpt (full-text search with word endings and prefixes, any of the words matching and more of them ranking higher; no embeddings).
+  An aside has no access to its opener's conversation.
 - When this starting context would take more than 25% of the chosen model's context window, the user is warned before the thread starts, with the choice of a model with a larger window or trimming intel.
 
 ### Subagents

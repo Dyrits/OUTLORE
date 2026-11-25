@@ -7,6 +7,7 @@ import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
 import { insertUserMessage, releaseQueued, requeueSteered } from "./messaging.ts";
 import { echoUserMessageToParent } from "./parentEcho.ts";
+import { copyOpeningToParent, isUnwritten } from "./questOrigins.ts";
 import { editQueuedMessage, removeQueuedMessage } from "./queuedMessages.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 /** Requests for writing and reading messages, dictation included, share the service request context. */
@@ -55,13 +56,20 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
         commands.once(
           send.requestId,
           send._tag,
-          insertUserMessage(
-            send.threadId,
-            text,
-            delivery === "Queue",
-            attachmentIds,
-            send.realmPath ?? null,
-            viewing,
+          // The first message of a quest a New quest opened empty is left in its channel, where it becomes the anchor.
+          Effect.andThen(
+            isUnwritten(send.threadId).pipe(
+              Effect.flatMap((isFirst) => (isFirst ? copyOpeningToParent(send.threadId, text) : Effect.void)),
+            ),
+            insertUserMessage(
+              send.threadId,
+              text,
+              delivery === "Queue",
+              attachmentIds,
+              send.realmPath ?? null,
+              viewing,
+              send.sendToParent ?? null,
+            ),
           ).pipe(
             Effect.flatMap(({ value, threadsToWake }) =>
               send.sendToParent === undefined

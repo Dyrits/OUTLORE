@@ -30,7 +30,7 @@ import { ConversationFailure, ConversationFeed } from "./conversationFeed";
 import { ErrandHeaderActions, hasErrandActions } from "./errandHeaderActions";
 import { MobileHeader, mobileIconTarget } from "./mobileHeader";
 import { QueuedMessageTray } from "./queuedMessageTray";
-import { RepliesProvider, ReplyForm, replyRunnerOf } from "./replies";
+import { RepliesProvider } from "./replies";
 import { parentTargetLabelOf, sendToParentScopeOf } from "./sendToParent";
 import { SendToParentControl } from "./sendToParentControl";
 import { terminalFolderOf } from "./terminalFolder";
@@ -79,14 +79,11 @@ export function ThreadPane({
   onOpenMission,
   onOpenBudget,
   onOpenDetails,
-  onReplyMessage,
   onBack,
   onNewErrand,
 }: {
   /** Starts an errand of the quest: an icon among the header's actions, before the separator. */
   onNewErrand?: () => void;
-  /** Opens the errand starter pane anchored to a quest message when the owner clicks Reply. */
-  onReplyMessage?: (message: { id: MessageId; text: string }) => void;
   /** In a narrow window, which has no sidebar: the header's back chevron, which opens the main menu. */
   onBack?: () => void;
   /** The buttons at the end of the header of a pane among several: fold and close; none in the quest's own screen. */
@@ -125,7 +122,6 @@ export function ThreadPane({
   // A Reply is offered in a quest's own conversation only: it opens an errand beneath (CHG-0559); an errand's pane has none.
   // A Ritual's own conversation has no composer at all: no thread takes turns there, and its runs are its only errands
   // (CHG-0616), so a Reply is not offered there either. Run now is the on-the-spot start.
-  const [replyTo, setReplyTo] = useState<{ id: MessageId; text: string } | null>(null);
   const [alsoSendToParent, setAlsoSendToParent] = useState(false);
   const [includeFullContext, setIncludeFullContext] = useState(false);
   const takesTurns = takesTurnsIn(thread, detail.mission.ritual);
@@ -176,11 +172,20 @@ export function ThreadPane({
       onSelect(existing.threadId);
       return;
     }
-    if (onReplyMessage !== undefined) {
-      onReplyMessage(message);
-      return;
-    }
-    setReplyTo(message);
+    // An errand with no message yet opens at once, hung from the message; its own composer takes the first one.
+    void act(
+      client
+        .request({
+          _tag: "ReplyToMessage",
+          accountId: thread.accountId,
+          effort: thread.effort,
+          harness: thread.harness,
+          messageId: message.id,
+          model: thread.model,
+          requestId: newRequestId(),
+        })
+        .then((started) => onSelect(started.threadId)),
+    );
   };
   return (
     <CommentsProvider value={comments}>
@@ -318,19 +323,7 @@ export function ThreadPane({
               companions={companions}
               composer={(accessory) => (
                 <>
-                  {replyTo !== null ? (
-                    <ReplyForm
-                      client={client}
-                      message={replyTo}
-                      onCancel={() => setReplyTo(null)}
-                      onStarted={(started) => {
-                        setReplyTo(null);
-                        onSelect(started.threadId);
-                      }}
-                      placeholder="The errand's first message…"
-                      runner={replyRunnerOf(thread)}
-                    />
-                  ) : isOpening ? (
+                  {isOpening ? (
                     <OpenThreadForm
                       client={client}
                       onCancel={() => setIsOpening(false)}
@@ -383,6 +376,7 @@ export function ThreadPane({
                           isChecked={alsoSendToParent}
                           onToggleChecked={() => setAlsoSendToParent((current) => !current)}
                           onToggleFullContext={setIncludeFullContext}
+                          parentKind={thread.parentId === null ? "realm" : "quest"}
                           parentLabel={parentLabel}
                         />
                       )}

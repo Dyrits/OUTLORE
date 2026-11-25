@@ -87,6 +87,9 @@ export const antigravity: AcpProviderDefinition = {
   // No live steering turn was run here (CHG-0726).
   // T3 Code refuses pre-1.5 runtimes at `initialize` before opening a session (AntigravityDriver.ts:337-357, docs/user/providers-antigravity.md:65).
   protocol: {
+    // Antigravity writes quota-reached notices inline as an `agent_message_chunk` and still answers `session/prompt` with `end_turn` (live check 2026-11-25).
+    // Treating that line as a turn failure lets backup Companions and Ritual fallbacks take over instead of leaving the thread idle.
+    inlineFailurePattern: /^⚠\s+[^\n]*\bquota\s+reached\b[^\n]*$/imu,
     minimumAgentVersion: "1.5.0",
     questionIdPrefix: "interaction_",
     resumesSessions: true,

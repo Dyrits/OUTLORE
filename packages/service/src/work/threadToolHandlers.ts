@@ -26,6 +26,7 @@ import { journalToolsOf } from "./journalTools.ts";
 import { loreToolsOf } from "./loreTools.ts";
 import { insertMessage } from "./messaging.ts";
 import { withThreadContext } from "./parentEcho.ts";
+import { readParentMessages } from "./parentMessages.ts";
 import { mayMessage } from "./reach.ts";
 import { createRitualByThread, editRitualByThread, refuseRitual } from "./ritualTools.ts";
 import type { Resolution, Suggested, Suggestions } from "./suggestions.ts";
@@ -249,6 +250,7 @@ export const makeToolHandlers = (dependencies: {
       ),
     read_app_guide: (threadId, args) => runTool(readAppGuideByGuildmaster(threadId, args)),
     read_control_history: (threadId, args) => commit(readControlHistory(threadId, args)),
+    read_parent_messages: (threadId, args) => commit(readParentMessages(threadId, args)),
     read_settings: (threadId) => runTool(readSettingsByGuildmaster(threadId)),
     rename_realm: (threadId, args) =>
       withProvenance(approvals, commit, threadId, "rename_realm", args, (authorize) =>

@@ -32,6 +32,8 @@ export type AcpFakeConfig = {
   }>;
   readonly planUsedUp?: boolean;
   readonly probeSessionId?: string;
+  /** When set, `session/prompt` emits this text as one `agent_message_chunk` and ends immediately with `end_turn`. */
+  readonly replyText?: string;
   readonly resume?: boolean;
   readonly resumeFails?: boolean;
   readonly sessionId?: string;

@@ -1,4 +1,4 @@
-import { type HarnessName, MessageId } from "@outlore/contracts";
+import { type HarnessName, MessageId, type SendToParentScope } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { newId, touchMission } from "../core/index.ts";
@@ -18,6 +18,8 @@ export const appendMessage = Effect.fnUntraced(function* (message: {
   readonly model?: string | null;
   /** The realm's folder the owner attached to the message, for Chronicler; null otherwise. */
   readonly realmPath?: string | null;
+  /** The "Also send to" scope when the owner also echoed this message to the parent; null otherwise. */
+  readonly sentToParent?: SendToParentScope | null;
   /** Where the owner had Chronicler open from, as the line Chronicler reads with the message; null otherwise. */
   readonly viewing?: string | null;
   readonly text: string;
@@ -28,11 +30,11 @@ export const appendMessage = Effect.fnUntraced(function* (message: {
   const [next] = yield* sql<{ sequence: number }>`
       SELECT COALESCE(MAX(sequence), 0) + 1 AS sequence FROM messages WHERE thread_id = ${message.threadId}`;
   yield* sql`INSERT INTO messages
-        (id, mission_id, thread_id, sender_kind, sender_thread_id, is_result, is_queued, text, sequence, sent_at, sender_title, model, harness, realm_path, viewing, is_conversation_only)
+        (id, mission_id, thread_id, sender_kind, sender_thread_id, is_result, is_queued, text, sequence, sent_at, sender_title, model, harness, realm_path, sent_to_parent, viewing, is_conversation_only)
       VALUES (${messageId}, ${message.missionId}, ${message.threadId}, ${message.senderKind}, ${message.fromThreadId},
         ${message.isResult ? 1 : 0}, ${message.isQueued ? 1 : 0}, ${message.text}, ${next?.sequence ?? 1}, ${message.now},
         (SELECT title FROM threads WHERE id = ${message.fromThreadId}), ${message.model ?? null}, ${message.harness ?? null},
-        ${message.realmPath ?? null}, ${message.viewing ?? null}, ${message.isConversationOnly === true ? 1 : 0})`;
+        ${message.realmPath ?? null}, ${message.sentToParent ?? null}, ${message.viewing ?? null}, ${message.isConversationOnly === true ? 1 : 0})`;
   yield* touchMission(message.missionId, message.now);
   return messageId;
 });

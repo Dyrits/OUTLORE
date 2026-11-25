@@ -1,4 +1,4 @@
-import type { HarnessName, SendMessageResult } from "@outlore/contracts";
+import type { HarnessName, SendMessageResult, SendToParentScope } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound } from "../core/index.ts";
@@ -84,16 +84,19 @@ export const listPending = Effect.fnUntraced(function* (threadId: string, isStee
     text: string;
     fromThreadId: string | null;
     fromTitle: string | null;
+    hasParent: number;
     isResult: number;
     isOwner: number;
     realmName: string | null;
     realmPath: string | null;
+    sentToParent: SendToParentScope | null;
     viewing: string | null;
   }>`
       SELECT m.id, m.text, m.sender_thread_id AS fromThreadId, COALESCE(s.title, m.sender_title) AS fromTitle,
-        m.is_result AS isResult, (${isOwnerMessageOf(sql)}) AS isOwner,
-        m.realm_path AS realmPath, w.name AS realmName, m.viewing AS viewing
-      FROM messages m LEFT JOIN threads s ON s.id = m.sender_thread_id LEFT JOIN workspaces w ON w.path = m.realm_path
+        (t.parent_id IS NOT NULL) AS hasParent, m.is_result AS isResult, (${isOwnerMessageOf(sql)}) AS isOwner,
+        m.realm_path AS realmPath, w.name AS realmName, m.sent_to_parent AS sentToParent, m.viewing AS viewing
+      FROM messages m JOIN threads t ON t.id = m.thread_id
+        LEFT JOIN threads s ON s.id = m.sender_thread_id LEFT JOIN workspaces w ON w.path = m.realm_path
       WHERE m.thread_id = ${threadId} AND ${isPendingDeliveryOf(sql)}
         AND ${isSteering ? sql`m.is_queued = 0` : sql`1 = 1`}
       ORDER BY m.sequence`;
@@ -112,8 +115,10 @@ export const listPending = Effect.fnUntraced(function* (threadId: string, isStee
         id: row.id,
         text: deliveredTextOf({
           ...row,
+          hasParent: row.hasParent === 1,
           isResult: row.isResult === 1,
           realm: row.realmPath === null ? null : { name: row.realmName ?? row.realmPath, path: row.realmPath },
+          sentToParent: row.sentToParent,
           text: row.fromThreadId === null ? `${addSkillInstructions(row.text, skills)}${note}` : row.text,
           viewing: row.viewing,
         }),
@@ -191,6 +196,8 @@ type NewMessage = {
   readonly isResult: boolean;
   /** The realm's folder the owner attached, for Chronicler (quest coordination). */
   readonly realmPath?: string | null;
+  /** The "Also send to" scope when the owner also echoed this message to the parent. */
+  readonly sentToParent?: SendToParentScope | null;
   readonly text: string;
   readonly threadId: string;
   /** Where the owner had Chronicler open from, as the line Chronicler reads with the message. */
@@ -245,6 +252,7 @@ export const insertUserMessage = (
   attachmentIds: ReadonlyArray<string> = [],
   realmPath: string | null = null,
   viewing: string | null = null,
+  sentToParent: SendToParentScope | null = null,
 ) =>
   insertMessage({
     attachmentIds,
@@ -252,6 +260,7 @@ export const insertUserMessage = (
     isQueued,
     isResult: false,
     realmPath,
+    sentToParent,
     text,
     threadId,
     viewing,
@@ -259,12 +268,22 @@ export const insertUserMessage = (
     Effect.map(({ messageId, threadsToWake }) => ({ threadsToWake, value: { messageId } satisfies SendMessageResult })),
   );
 
+/** The note appended to an owner message when the owner also sent it to the parent ("Also send to"). */
+const sentToParentNoteOf = (scope: SendToParentScope, hasParent: boolean) =>
+  hasParent
+    ? scope === "FullContext"
+      ? '[The owner also sent this message with this thread\'s conversation to your parent thread ("Also send to").]'
+      : '[The owner also sent this message to your parent thread ("Also send to").]'
+    : '[The owner also posted this message to the channel ("Also send to") without waking Chronicler.]';
+
 /** A message as the receiving thread's harness reads it: a thread message names its sender. */
 const deliveredTextOf = (message: {
   readonly fromThreadId: string | null;
   readonly fromTitle: string | null;
+  readonly hasParent: boolean;
   readonly isResult: boolean;
   readonly realm: { readonly name: string; readonly path: string } | null;
+  readonly sentToParent: SendToParentScope | null;
   readonly text: string;
   readonly viewing: string | null;
 }) =>
@@ -276,6 +295,7 @@ const deliveredTextOf = (message: {
           : [
               `[The owner chose the realm "${message.realm.name}" (${message.realm.path}) for this message: any new quest opens there.]`,
             ]),
+        ...(message.sentToParent === null ? [] : [sentToParentNoteOf(message.sentToParent, message.hasParent)]),
         ...(message.viewing === null
           ? []
           : [`[The owner wrote this with ${message.viewing} open: "this quest" or "this page" means it.]`]),

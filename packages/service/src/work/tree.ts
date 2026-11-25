@@ -11,11 +11,12 @@ import { invalid, newId, notFound } from "../core/index.ts";
 import { checkAccount, checkBackups, type Runner, type RunnerChoice, runnerOf } from "../harness/index.ts";
 import { budgetRefusalOf } from "./budgetScopes.ts";
 import { changed, unchanged } from "./followUps.ts";
-import { type JournalAuthor, nothingToRecord, openerMessagesOf, updateJournal } from "./journal.ts";
+import { type JournalAuthor, nothingToRecord, openerMessagesOf, openerTailOf, updateJournal } from "./journal.ts";
 import { maxOwnerDepth } from "./lifecycle.ts";
 import { insertErrandReply, insertMessage, insertReply } from "./messaging.ts";
 import { ownCopyForChild } from "./ownCopies.ts";
 import { withThreadContext } from "./parentEcho.ts";
+import { copyOpeningToParent } from "./questOrigins.ts";
 import { readStartingContext, startingContextRefusalOf } from "./startingContext.ts";
 import { newErrandTitle, titleOf } from "./titles.ts";
 import { depthOf, maxRunning, runningCountOf } from "./treeLimits.ts";
@@ -104,7 +105,7 @@ const resolveAgentAnchor = Effect.fnUntraced(function* (
  * account, model, effort, and backup Companions, and its first message: the opener's request. The command that opens it wakes
  * it. The errand starts with the parent’s permission setting.
  */
-export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
+const recordThread = Effect.fnUntraced(function* (opening: Opening) {
   const sql = yield* SqlClient.SqlClient;
   const parent = yield* readParent(opening.parentId);
   if (parent === undefined) return yield* notFound("No such thread.");
@@ -114,11 +115,17 @@ export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
   const threadId = yield* newId;
   // An aside starts from the off-topic request alone, without its opener's conversation.
   const openerMessages = opening.isAside ? null : yield* openerMessagesOf(opening.parentId);
+  // Only a thread the owner opens with a message of its own leans on the conversation around it: an agent's request is
+  // meant to be complete, and a Reply's anchored message is its context.
+  const openerTail =
+    opening.isAside || opening.isOpenedByAgent || opening.anchorMessageId != null
+      ? null
+      : yield* openerTailOf(opening.parentId);
   const ownCopy = yield* ownCopyForChild(opening.parentId, threadId, opening.isOwnCopyAsked);
-  yield* sql`INSERT INTO threads (id, mission_id, parent_id, state, harness, account_id, model, effort, workspace_id, title, is_opened_by_agent, opener_messages, is_aside, backups, own_copy, own_copy_branch, permission_mode)
+  yield* sql`INSERT INTO threads (id, mission_id, parent_id, state, harness, account_id, model, effort, workspace_id, title, is_opened_by_agent, opener_messages, opener_tail, is_aside, backups, own_copy, own_copy_branch, permission_mode)
       VALUES (${threadId}, ${parent.missionId}, ${opening.parentId}, 'Resting', ${runner.harness}, ${runner.accountId},
         ${runner.model}, ${runner.effort}, ${parent.workspaceId}, ${titleOf(opening.title ?? "") || newErrandTitle}, ${opening.isOpenedByAgent ? 1 : 0},
-        ${openerMessages}, ${opening.isAside ? 1 : 0}, ${backups}, ${ownCopy?.path ?? null}, ${ownCopy?.branch ?? null}, ${parent.permissionMode})`;
+        ${openerMessages}, ${openerTail}, ${opening.isAside ? 1 : 0}, ${backups}, ${ownCopy?.path ?? null}, ${ownCopy?.branch ?? null}, ${parent.permissionMode})`;
   // The errand's anchor: the message the owner replied to, or the triggering message (split on multiple errands).
   const anchorId =
     opening.anchorMessageId ??
@@ -126,6 +133,12 @@ export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
       ? yield* resolveAgentAnchor(opening.parentId, opening.text, opening.replyToMessageId ?? null)
       : null);
   if (anchorId !== null) yield* sql`UPDATE threads SET anchor_message_id = ${anchorId} WHERE id = ${threadId}`;
+  return threadId as ThreadId;
+});
+
+/** Records the thread and then its first message, which the command that opens it wakes it with. */
+export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
+  const threadId = yield* recordThread(opening);
   const { messageId, threadsToWake } = yield* insertMessage({
     fromThreadId: opening.isOpenedByAgent ? opening.parentId : null,
     isQueued: false,
@@ -134,23 +147,18 @@ export const insertThread = Effect.fnUntraced(function* (opening: Opening) {
     threadId,
     ...(opening.attachmentIds === undefined ? {} : { attachmentIds: opening.attachmentIds }),
   });
-  return { messageId, threadId: threadId as ThreadId, threadsToWake } satisfies OpenThreadResult & {
+  return { messageId, threadId, threadsToWake } satisfies OpenThreadResult & {
     threadsToWake: ReadonlyArray<string>;
   };
 });
 
-/**
- * The owner opens an errand directly beneath a quest. One whose starting context is over
- * the warning starts only when the owner chose to start it anyway; the new thread is then woken.
- */
-export const openThreadByOwner = Effect.fnUntraced(function* (
+/** Refuses an errand the owner may not open beneath the parent, from where it stands or the context it would start with. */
+const checkOwnerOpening = Effect.fnUntraced(function* (
   parentId: string,
   text: string,
   choice: RunnerChoice & { readonly model: string },
   shouldStartAnyway: boolean,
-  attachmentIds: ReadonlyArray<string> = [],
-  backups: ReadonlyArray<BackupCompanion> | null = null,
-  anchorMessageId: string | null = null,
+  anchorMessageId: string | null,
 ) {
   const sql = yield* SqlClient.SqlClient;
   // A Ritual opens no errands by hand; its runs are the errands (CHG-0616).
@@ -172,6 +180,22 @@ export const openThreadByOwner = Effect.fnUntraced(function* (
     );
     if (refusal !== null) return yield* invalid(refusal);
   }
+});
+
+/**
+ * The owner opens an errand directly beneath a quest. One whose starting context is over
+ * the warning starts only when the owner chose to start it anyway; the new thread is then woken.
+ */
+export const openThreadByOwner = Effect.fnUntraced(function* (
+  parentId: string,
+  text: string,
+  choice: RunnerChoice & { readonly model: string },
+  shouldStartAnyway: boolean,
+  attachmentIds: ReadonlyArray<string> = [],
+  backups: ReadonlyArray<BackupCompanion> | null = null,
+  anchorMessageId: string | null = null,
+) {
+  yield* checkOwnerOpening(parentId, text, choice, shouldStartAnyway, anchorMessageId);
   const opened = yield* insertThread({
     anchorMessageId,
     attachmentIds,
@@ -184,8 +208,33 @@ export const openThreadByOwner = Effect.fnUntraced(function* (
     text,
     title: null,
   });
+  // An errand no Reply started leaves its first message in the quest, where it becomes the anchor.
+  if (anchorMessageId === null) yield* copyOpeningToParent(opened.threadId, text);
   const { threadsToWake, ...value } = opened;
   return changed(value, { threadsToWake });
+});
+
+/**
+ * The owner opens an errand beneath a quest from a message, with no first message yet: it is written in the errand's
+ * own composer. Nothing wakes it; its context is the quest's at this moment.
+ */
+export const openEmptyThreadByOwner = Effect.fnUntraced(function* (
+  parentId: string,
+  choice: RunnerChoice & { readonly model: string },
+  anchorMessageId: string,
+) {
+  yield* checkOwnerOpening(parentId, "", choice, false, anchorMessageId);
+  return yield* recordThread({
+    anchorMessageId,
+    backups: null,
+    choice,
+    isAside: false,
+    isOpenedByAgent: false,
+    isOwnCopyAsked: false,
+    parentId,
+    text: "",
+    title: null,
+  });
 });
 
 /**

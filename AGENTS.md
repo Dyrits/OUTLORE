@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To verify and continue the instruction that stops agents announcing an opened errand (CHG-0745), read the [current handoff](.agents/handoffs/2026-11-25-1855-no-errand-announcement.md). Handoffs are shared and committed.
+- To resume Reply opening the child thread, on-demand parent search, and the opener tail (CHG-0746, CHG-0748, CHG-0749), read the [current handoff](.agents/handoffs/2026-11-25-2000-reply-opens-child-and-parent-search.md). Handoffs are shared and committed.
 
-- To verify and continue the reply line's empty state and alignment, and the agent reply first (CHG-0741, CHG-0742, CHG-0744), read the [current handoff](.agents/handoffs/2026-11-25-1840-reply-line-empty-state-alignment.md). Handoffs are shared and committed.
+- To verify and continue the instruction that stops agents announcing an opened errand (CHG-0745), read the [current handoff](.agents/handoffs/2026-11-25-1855-no-errand-announcement.md). Handoffs are shared and committed.
 
 - To verify and continue Reply as an icon beside Copy and the owner message time and actions (CHG-0747), read the [current handoff](.agents/handoffs/2026-11-25-1841-reply-icon-owner-message-actions.md). Handoffs are shared and committed.
