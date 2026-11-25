@@ -63,7 +63,7 @@ Latest handoffs:
 
 - To resume ACP pricing lookup, Antigravity `WSL_DISTRO_NAME` isolation, and multi-account Batches 2 to 4 (CHG-0726 to CHG-0729), read the [current handoff](.agents/handoffs/2026-11-25-1416-acp-pricing-and-multi-account.md). Handoffs are shared and committed.
 
-- To resume Connectors Wave 2 (generic MCP OAuth 2.1 client and OAuth connectors) after Wave 1 (CHG-0730 and CHG-0731), read the [current handoff](.agents/handoffs/2026-11-25-1418-connectors-wave-1-and-wave-2.md). Handoffs are shared and committed.
+- To resume Connectors live verification and closed-source OAuth 2.1 catalog additions after Wave 1 and Wave 2 (CHG-0730, CHG-0731, CHG-0733, CHG-0734), read the [current handoff](.agents/handoffs/2026-11-25-1549-connectors-wave-2-shipped.md). Handoffs are shared and committed.
 
 - To verify and continue the inline terminal for launched commands and unified resizable `InlineTerminal` (CHG-0732), read the [current handoff](.agents/handoffs/2026-11-25-1425-inline-terminal-launched-commands.md). Handoffs are shared and committed.
 
