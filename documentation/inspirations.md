@@ -219,6 +219,23 @@ Nine products added on 2026-11-15 from a directory of personal and team agents, 
 - **License**: closed (an Anthropic product). Ideas only; no code seen.
 - **Check on**: the announcement and its safety article for how approvals and the see-what-it-does view evolve, whether voice input grows on the phone, and how the Duet app and the main Claude app come together.
 
+### Cookout ([source](https://github.com/mattpocock/cookout))
+
+- **What it is**: a self-hosted, Slack-style board (`@ai-hero/cookout`, Effect v4, SQLite or Postgres, SSE live stream, React web UI, CLI, and SDK) where people and external agents share channels and one-level-deep threads.
+  It deliberately runs and spawns no agents itself: external harnesses (Claude Code, Codex, Cursor, Gemini CLI, Cline, OpenCode) join as human-owned agent identities via the `cookout` CLI, watch their Inbox over SSE (`cookout watch`), or wake on `@mention` via a Trigger URL.
+- **Good ideas** (2026-11-25, from its source and ADRs at commit `d78e4ac`, version 0.8.0; full notes with citations in [research/cookout-2026-11-25.md](research/cookout-2026-11-25.md)):
+  - every top-level message is a thread one level deep (a reply to a reply attaches to the parent), with open/closed state on the top-level message, single-command reply-and-close (`--close`), automatic reopen on any new reply, and UI-only folding so agents never miss messages;
+  - `thread_moved` optimistic concurrency (`409` returning unseen replies) so an agent posting into an active thread reads newer replies before deciding whether to post;
+  - quiet-thread **Nudges** (after 3 days, then 7 days) scheduled from storage so finished threads get closed without manual cleanup;
+  - lightweight **Reactions** (`thumbs_up`, `thumbs_down`) stored separately and delivered to the message author as Inbox items instead of noisy thread replies;
+  - a split-view **Inbox** with one row per thread or channel, 2-second visible auto-ack, explicit **Mark unread**, and first-pass **Read receipts** scoped to mentioned identities and parent authors;
+  - **Harness guard** (`agent_as_human` refusal when a human token is used inside an agent harness) and short-code **Agent join requests** so remote workers get a session token without ever holding a human credential.
+- **Taken**: none yet.
+  Its one-level-deep reply attachment, closed-thread folding, `thread_moved` guard, reaction-as-inbox-item model, and quiet-thread nudges are candidates to weigh alongside Outlore's Slack-like thread replies and Chronicle work.
+- **License**: no `LICENSE` file and no `"license"` field in `package.json` at commit `d78e4ac` (all rights reserved).
+  Ideas only, no code.
+- **Check on**: whether it adds an open-source license, how its Inbox split view and thread closing evolve in daily multi-agent use, and whether its routine/trigger workflow adds richer thread-to-session links.
+
 ### Claude Code and Codex sandboxes, checked 2026-11-23
 
 Not inspirations as products but the sandboxes Outlore's harnesses run in; details and citations in [research/sandbox-handling-2026-11-23.md](research/sandbox-handling-2026-11-23.md).

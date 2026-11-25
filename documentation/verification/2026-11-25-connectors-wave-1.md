@@ -1,4 +1,4 @@
-# Proof: Connectors Wave 1 (CHG-0729 and CHG-0730)
+# Proof: Connectors Wave 1 (CHG-0730 and CHG-0731)
 
 - **Verdict:** not proven overall (C1 to C3 are proven; C4 for the six keyed servers is unproven because no vendor API keys were held)
 - **Work:** `b4d4dd0e..13db903b` on branch `mission/add-many-connectors-3919525c` (worktree `.worktrees/add-many-connectors-3919525c`)
@@ -10,10 +10,10 @@
 
 | # | Claim | Source | Verdict |
 | --- | --- | --- | --- |
-| C1 | The Streamable-HTTP MCP backend sends no credential header for keyless entries (`header: null`, even when a secret is passed), puts `prefix` before the secret when configured (e.g. `Bearer `), and keeps Composio's unprefixed header unchanged | CHG-0729, `packages/service/src/connectors/backends/httpMcp.ts` | proven |
-| C2 | All twelve Wave 1 catalog entries (six keyless, six keyed) name every tool from their recorded primary-source listing, invent none, classify every tool as `Read` or `Write` with a non-empty summary, fit Claude Code's 64-character qualified tool-name limit, reach an `https://` endpoint, state an honest licence (`MIT`, `Apache-2.0`, or `hostedServiceLicence`), and carry a third-party notice | CHG-0730, `packages/service/src/connectors/entries/` | proven |
-| C3 | All six keyless Wave 1 servers (`context7`, `cloudflare_docs`, `aws_knowledge`, `deepwiki`, `exa`, `firecrawl`) answer `tools/list` live through `httpMcpBackend` with the exact tool names their catalog entries declare | CHG-0730, `packages/service/test/connectors/hostedLive.test.ts` | proven |
-| C4 | All six keyed Wave 1 servers (`github`, `tavily`, `stripe`, `neon`, `gitlab`, `datadog`) answer stateless `tools/list` and `tools/call` with `Authorization: Bearer <secret>` and match their cataloged tool lists live | CHG-0730, `packages/service/src/connectors/entries/` | unproven |
+| C1 | The Streamable-HTTP MCP backend sends no credential header for keyless entries (`header: null`, even when a secret is passed), puts `prefix` before the secret when configured (e.g. `Bearer `), and keeps Composio's unprefixed header unchanged | CHG-0730, `packages/service/src/connectors/backends/httpMcp.ts` | proven |
+| C2 | All twelve Wave 1 catalog entries (six keyless, six keyed) name every tool from their recorded primary-source listing, invent none, classify every tool as `Read` or `Write` with a non-empty summary, fit Claude Code's 64-character qualified tool-name limit, reach an `https://` endpoint, state an honest licence (`MIT`, `Apache-2.0`, or `hostedServiceLicence`), and carry a third-party notice | CHG-0731, `packages/service/src/connectors/entries/` | proven |
+| C3 | All six keyless Wave 1 servers (`context7`, `cloudflare_docs`, `aws_knowledge`, `deepwiki`, `exa`, `firecrawl`) answer `tools/list` live through `httpMcpBackend` with the exact tool names their catalog entries declare | CHG-0731, `packages/service/test/connectors/hostedLive.test.ts` | proven |
+| C4 | All six keyed Wave 1 servers (`github`, `tavily`, `stripe`, `neon`, `gitlab`, `datadog`) answer stateless `tools/list` and `tools/call` with `Authorization: Bearer <secret>` and match their cataloged tool lists live | CHG-0731, `packages/service/src/connectors/entries/` | unproven |
 
 ## Evidence
 

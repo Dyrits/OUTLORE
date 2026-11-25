@@ -12,8 +12,8 @@ Expand Outlore's curated connector catalog beyond Composio and Apple apps in two
 ## State
 
 - **Primary-source research (verified):** Three research notes are committed in `documentation/research/`: `openbot-connectors-inventory-2026-11-25.md`, `t3code-paseo-connectors-2026-11-25.md`, and `connector-catalogs-2026-11-25.md`.
-- **Wave 1 HTTP backend (CHG-0729, verified):** `packages/service/src/connectors/backends/httpMcp.ts` and `catalog.ts` now support keyless HTTP entries (`header: null`) and an optional header `prefix` (such as `"Bearer "`), keeping secrets in the Vault and leaving Composio unchanged (`httpMcpHeader.test.ts`: 4 passed; mutation check failed as expected).
-- **Wave 1 catalog entries (CHG-0730, verified offline; 6 keyless verified live):** Twelve remote HTTP MCP connectors were added one commit each under `packages/service/src/connectors/entries/`:
+- **Wave 1 HTTP backend (CHG-0730, verified):** `packages/service/src/connectors/backends/httpMcp.ts` and `catalog.ts` now support keyless HTTP entries (`header: null`) and an optional header `prefix` (such as `"Bearer "`), keeping secrets in the Vault and leaving Composio unchanged (`httpMcpHeader.test.ts`: 4 passed; mutation check failed as expected).
+- **Wave 1 catalog entries (CHG-0731, verified offline; 6 keyless verified live):** Twelve remote HTTP MCP connectors were added one commit each under `packages/service/src/connectors/entries/`:
   - Keyless (6, live `tools/list` verified on 2026-11-25 via `OUTLORE_LIVE_CONNECTORS=1 bunx vitest run packages/service/test/connectors/hostedLive.test.ts`): `context7` (2 tools), `cloudflare_docs` (2), `aws_knowledge` (5), `deepwiki` (3), `exa` (2), `firecrawl` (3).
   - Keyed with `Authorization: Bearer <secret>` (6, verified against primary-source vendor repos/docs, not live-tested due to no keys): `github` (49 tools), `tavily` (6), `stripe` (16), `neon` (65), `gitlab` (57), `datadog` (23).
   - Deferred from Wave 1 (2): `linear` (no public complete tool list without auth) and `posthog` (single `exec` tool taking CLI strings across 1,161 commands, incompatible with per-tool Read/Write classification).
@@ -25,9 +25,9 @@ Expand Outlore's curated connector catalog beyond Composio and Apple apps in two
 
 - **Curated catalog only:** Extend `defaultCatalog` with verified entries; no owner-added arbitrary MCP servers (owner decision, quest journal #1).
 - **Two-wave auth strategy (Option A):** Ship Wave 1 without OAuth first, then build one generic host-side MCP OAuth 2.1 client in Wave 2 so sign-ins happen on the vendor's own page with no connector-specific sign-in screens in Outlore (owner decision, quest journal #6).
-- **Exact-name Read/Write classification:** Every tool is classified `Read` or `Write` by exact name from primary sources, never trusting server annotations; tools that return credentials (`get_connection_string`) or run arbitrary SQL (`run_sql`, `explain_sql_statement`) are `Write` (CHG-0730).
-- **Hosted-only licence representation:** Added `hostedServiceLicence` (`"Hosted service, server code not published"`) for hosted SaaS endpoints whose server code is not published under an OSI licence; Sentry remains excluded for its non-OSI FSL-1.1-Apache-2.0 licence (CHG-0730).
-- **Keyed connectors expose full toolsets with Write confirmation:** Rather than hardcoding `/readonly` endpoints, writes prompt per call and connector notices advise restricting API keys (CHG-0730; open for owner override).
+- **Exact-name Read/Write classification:** Every tool is classified `Read` or `Write` by exact name from primary sources, never trusting server annotations; tools that return credentials (`get_connection_string`) or run arbitrary SQL (`run_sql`, `explain_sql_statement`) are `Write` (CHG-0731).
+- **Hosted-only licence representation:** Added `hostedServiceLicence` (`"Hosted service, server code not published"`) for hosted SaaS endpoints whose server code is not published under an OSI licence; Sentry remains excluded for its non-OSI FSL-1.1-Apache-2.0 licence (CHG-0731).
+- **Keyed connectors expose full toolsets with Write confirmation:** Rather than hardcoding `/readonly` endpoints, writes prompt per call and connector notices advise restricting API keys (CHG-0731; open for owner override).
 
 ## Next
 
@@ -52,7 +52,7 @@ Expand Outlore's curated connector catalog beyond Composio and Apple apps in two
 - `documentation/research/t3code-paseo-connectors-2026-11-25.md`
 - `documentation/capabilities/connectors/specifications.md`
 - `documentation/capabilities/connectors/blueprint.md`
-- `documentation/changelog/0.2.7-Pre-Alpha.md` (CHG-0729, CHG-0730)
+- `documentation/changelog/0.2.7-Pre-Alpha.md` (CHG-0730, CHG-0731)
 - `documentation/verification/2026-11-25-connectors-wave-1.md`
 - `packages/service/src/connectors/backends/httpMcp.ts`
 - `packages/service/src/connectors/entries/`
