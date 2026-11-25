@@ -84,6 +84,7 @@ const readHarness = Effect.fnUntraced(function* (harness: HarnessName, rows: Rea
     models,
     name: harness,
     problem: installation.problem,
+    supportsAddedAccounts: !refusesAddedAccounts(harness),
     update,
     version: installation.version,
   } satisfies HarnessInfo;

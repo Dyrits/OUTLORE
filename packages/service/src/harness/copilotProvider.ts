@@ -1,3 +1,4 @@
+import { computerOnlyIsolation } from "./accountIsolation.ts";
 import type { AcpProviderDefinition } from "./acpProviderDefinition.ts";
 
 // GitHub Copilot through the Copilot CLI's own ACP surface, audited against the pinned upstream nightly-labs/openbot b1e5ea74206e1e16fa2eae62d8d131ea1349eaa0.
@@ -23,12 +24,14 @@ import type { AcpProviderDefinition } from "./acpProviderDefinition.ts";
 export const copilot: AcpProviderDefinition = {
   argv: () => ["--acp", "--no-auto-update"],
   executable: "copilot",
+  isolation: computerOnlyIsolation(
+    "Its sign-in sits in the system keychain and the upstream driver keeps no accounts entry for it.",
+  ),
   label: "GitHub Copilot",
   signedOutCode: null,
   // The sign-in carries the spawn environment alone, which already squeezes the self-update off.
   signIn: { argv: () => ["login"], extraEnv: {} },
   spawnEnv: { COPILOT_AUTO_UPDATE: "false" },
-  stateHome: { kind: "computer", variable: "COPILOT_HOME" },
   version: {
     accepts: (output) =>
       /\bCopilot CLI[ \t]+v?(\d+\.\d+\.\d+)\b/iu.test(output) || /\b\d+\.\d+\.\d+\b/u.test(output.trim()),

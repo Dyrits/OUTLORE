@@ -10,6 +10,7 @@ import { noToolServerInstructions } from "../../src/harness/instructions.ts";
 import { makeVibeHarness } from "../../src/index.ts";
 import {
   type AcpFakeConfig,
+  acpFakeDefinition,
   acpFakeEnv,
   acpFakeRequest,
   acpFakeRequests,
@@ -47,18 +48,16 @@ const turnOn = (harness: "antigravity" | "cursor", log: string, config: AcpFakeC
     prefixArgs: [acpFakeScript],
   });
 
-/** The generic adapter without a provider definition: a profile that adds nothing but its label. */
+/** The generic adapter on a definition that adds nothing but its label. */
 const bareAdapter = (log: string, config: AcpFakeConfig, protocol?: AcpProviderProtocol) =>
   makeAcpProviderHarness({
     command: process.execPath,
+    definition: acpFakeDefinition({
+      spawnEnv: acpFakeEnv(log, config),
+      ...(protocol === undefined ? {} : { protocol }),
+    }),
     idleTimeout: "10 minutes",
     prefixArgs: [acpFakeScript],
-    profile: {
-      args: [],
-      env: acpFakeEnv(log, config),
-      label: "fake ACP",
-      ...(protocol === undefined ? {} : { protocol }),
-    },
   });
 
 const edited = (events: ReadonlyArray<HarnessEvent>) =>

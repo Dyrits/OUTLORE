@@ -10,6 +10,7 @@ import {
   textFieldOf,
   turnMessageOf,
 } from "../core/index.ts";
+import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import { type HarnessConnection, type HarnessProtocol, makeHarnessProcesses } from "./harnessProcesses.ts";
 import { type PiProcess, startPiProcess } from "./piRpc.ts";
 import { denyPiUiRequest, isPiToolExecution, piDenialArgs, piToolBreachOf } from "./piTools.ts";
@@ -213,7 +214,7 @@ const piProtocolOf = (options: PiOptions): HarnessProtocol<PiConnection> => ({
       cwd,
       env: {
         PWD: cwd,
-        ...(request.configDirectory === null ? {} : { PI_CODING_AGENT_DIR: request.configDirectory }),
+        ...accountEnvironmentOf("pi", request.configDirectory),
         ...(options.env ?? {}),
       },
       label: "Pi",

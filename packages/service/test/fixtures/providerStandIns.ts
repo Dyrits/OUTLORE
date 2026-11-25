@@ -1,6 +1,6 @@
 import type { HarnessName } from "@outlore/contracts";
 import type { Duration } from "effect";
-import { type AcpProviderDefinition, acpLaunchOf } from "../../src/harness/acpProviderDefinition.ts";
+import type { AcpProviderDefinition } from "../../src/harness/acpProviderDefinition.ts";
 import { probeAcpProviderModels } from "../../src/harness/acpProviders.ts";
 import { harnesses } from "../../src/harness/harnesses.ts";
 
@@ -35,9 +35,8 @@ export const standInHarness = (name: HarnessName, options: StandInOptions & { re
 export const standInProbe = (provider: AcpProviderDefinition, options: StandInOptions) =>
   probeAcpProviderModels({
     command: options.command ?? "node",
+    definition: provider,
+    ...(options.configDirectory === undefined ? {} : { configDirectory: options.configDirectory }),
+    ...(options.env === undefined ? {} : { env: options.env }),
     ...(options.prefixArgs === undefined ? {} : { prefixArgs: options.prefixArgs }),
-    profile: acpLaunchOf(provider, {
-      ...(options.configDirectory === undefined ? {} : { configDirectory: options.configDirectory }),
-      ...(options.env === undefined ? {} : { env: options.env }),
-    }),
   });

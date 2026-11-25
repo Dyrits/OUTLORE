@@ -1,3 +1,5 @@
+import { type AccountIsolation, isolationEnvOf } from "./accountIsolation.ts";
+
 /**
  * The facts of one ACP provider that launching, probing models, signing in and inspecting the executable all need.
  * They are stated once here, per provider, because the sign-in and the launch once disagreed about where the CLI keeps its token (CHG-0676):
@@ -10,10 +12,14 @@ export type AcpProviderDefinition = {
   readonly executable: string;
   /** Whether each spawned ACP process gets a fresh temporary directory as `TMPDIR`, `TMP`, and `TEMP`, removed when the process ends. */
   readonly hasIsolatedTempDir?: boolean;
+  /** Whether an account's folder can isolate the provider, and which environment variables point it there; the catalog and the Workshop read the same value. */
+  readonly isolation: AccountIsolation;
   /** The provider's name as the owner reads it. */
   readonly label: string;
   /** An older executable name preferred when it is already installed on `PATH`. */
   readonly legacyExecutable?: string;
+  /** The state home the launch resolves once and carries in the argv and a variable, for the computer's own sign-in as well; absent when the provider needs none named. */
+  readonly pinnedHome?: PinnedHome;
   /** Where the provider's agent departs from the protocol every ACP harness shares; absent when it does not. */
   readonly protocol?: AcpProviderProtocol;
   /** Ambient environment variable prefixes stripped from the child process before `spawnEnv`, the state home, and explicit overrides apply. */
@@ -24,8 +30,6 @@ export type AcpProviderDefinition = {
   readonly signedOutCode: number | null;
   /** The non-secret environment every process of the provider carries: launch, model probe and sign-in alike. */
   readonly spawnEnv: Readonly<Record<string, string>>;
-  /** Where the provider keeps its state and whether an account folder may redirect it. */
-  readonly stateHome: StateHomeRule;
   /** The generation the provider was audited against, or null when no gate is verified. */
   readonly version: VersionGate | null;
 };
@@ -61,20 +65,14 @@ export type AcpSignIn = {
 };
 
 /**
- * Where a provider keeps its state, which is also what an account folder may redirect.
- * - `account`: the thread's account folder becomes the variable, so sign-in, sessions and MCP inheritance stay with the account.
- *   `needsConfiguredHome` means an empty folder cannot serve: it must be repaired, signed in and given a default model first.
- * - `pinned`: the launch always resolves one home (the account folder, else `resolve`) and carries it in the argv and the variable.
- * - `computer`: only the computer's own sign-in is offered, so nothing redirects; the variable is the provider's, recorded for the catalog.
+ * A state home the argv binds, so a launch, a probe and a sign-in must all name the same one.
+ * The account's folder is the home when the provider's isolation takes one, else `resolve` finds the computer's own.
  */
-export type StateHomeRule =
-  | { readonly kind: "account"; readonly needsConfiguredHome: boolean; readonly variable: string }
-  | {
-      readonly kind: "pinned";
-      readonly resolve: (env: Readonly<Record<string, string | undefined>>) => string;
-      readonly variable: string;
-    }
-  | { readonly kind: "computer"; readonly variable: string };
+export type PinnedHome = {
+  readonly resolve: (env: Readonly<Record<string, string | undefined>>) => string;
+  /** The variable that carries the home beside the argv. */
+  readonly variable: string;
+};
 
 /** What a binary's `--version` output must satisfy for Outlore to run it, and what the owner reads when it does not. */
 export type VersionGate = {
@@ -98,8 +96,8 @@ export const versionLineMatching = (shape: RegExp, expects: string): VersionGate
   expects,
 });
 
-/** The ACP launch Outlore's generic adapter starts: argv and environment in full, plus the state-home rule the adapter applies per thread. */
-export type AcpProviderProfile = {
+/** One resolution of a definition's launch: argv and environment in full for one account, plus the hygiene and protocol facts the adapter applies. */
+export type AcpProviderLaunch = {
   readonly args: ReadonlyArray<string>;
   readonly env: Readonly<Record<string, string>>;
   /** Whether each spawned ACP process gets a fresh temporary directory as `TMPDIR`, `TMP`, and `TEMP`, removed when the process ends. */
@@ -107,78 +105,56 @@ export type AcpProviderProfile = {
   readonly label: string;
   /** The provider's departures from the shared protocol, carried from its definition. */
   readonly protocol?: AcpProviderProtocol;
-  /** Ambient environment variable prefixes stripped from the child process before `env` and the state home apply. */
+  /** Ambient environment variable prefixes stripped from the child process before `env` applies. */
   readonly scrubEnvPrefixes?: ReadonlyArray<string>;
-  /**
-   * Environment variable the executable honors for its state home. Setting it isolates the
-   * account's sign-in, config, and MCP inheritance from the user's own provider directory.
-   */
-  readonly stateHomeEnv?: string;
-  /**
-   * The state home cannot simply be created empty: it must be configured (repaired, signed in, a default
-   * model) before the provider serves anything, so the probe needs a caller-supplied home (`stateHome`)
-   * and a turn needs its account folder; an empty temp redirect would only mislead.
-   */
-  readonly needsConfiguredStateHome?: boolean;
 };
 
 /** What one call resolves a definition against. */
 export type AcpResolveOptions = {
-  /** The account's folder, or null/absent for the computer's own sign-in. */
+  /** The account's folder, or null/absent for the computer's own sign-in; a provider no folder can isolate ignores it. */
   readonly configDirectory?: string | null;
   /** Extra environment for the process, such as a stand-in's knobs in checks. */
   readonly env?: Readonly<Record<string, string>>;
-  /** The environment a `pinned` rule resolves its default home from; the process's own when absent. */
+  /** The environment a pinned home resolves its default from; the process's own when absent. */
   readonly processEnv?: Readonly<Record<string, string | undefined>>;
 };
 
-/** The state home a `pinned` rule launches against: the account's folder, else the rule's own resolution; null for any other rule. */
-const pinnedHomeOf = (definition: AcpProviderDefinition, options: AcpResolveOptions): string | null =>
-  definition.stateHome.kind === "pinned"
-    ? (options.configDirectory ?? definition.stateHome.resolve(options.processEnv ?? process.env))
-    : null;
-
 /**
- * The variable the state home sets in a process's environment: the pinned home, or an account folder under an `account` rule.
- * A launch leaves the account folder to the adapter, which sets it per thread; a sign-in has no adapter, so it sets it itself.
+ * The home and the isolation environment of one account, the single place a launch, a probe and a sign-in all read.
+ * A provider no folder can isolate never takes the account's folder, so a stale account cannot move it off the computer's sign-in.
  */
-const homeEnvOf = (
-  definition: AcpProviderDefinition,
-  options: AcpResolveOptions,
-  home: string | null,
-  appliesAccountFolder: boolean,
-): Record<string, string> => {
-  const rule = definition.stateHome;
-  if (rule.kind === "pinned" && home !== null) return { [rule.variable]: home };
-  if (rule.kind === "account" && appliesAccountFolder && options.configDirectory != null)
-    return { [rule.variable]: options.configDirectory };
-  return {};
+const isolationOf = (definition: AcpProviderDefinition, options: AcpResolveOptions) => {
+  const accountDirectory = definition.isolation.kind === "directory" ? (options.configDirectory ?? null) : null;
+  const pinned = definition.pinnedHome;
+  const home = pinned === undefined ? null : (accountDirectory ?? pinned.resolve(options.processEnv ?? process.env));
+  return {
+    env: {
+      ...(pinned === undefined || home === null ? {} : { [pinned.variable]: home }),
+      ...isolationEnvOf(definition.isolation, accountDirectory),
+    },
+    home,
+  };
 };
 
 /**
- * The launch of a definition, read by the harness's turns and its model probe alike.
- * An `account` rule is left to the adapter, which sets its variable per thread from the thread's account folder;
- * a `pinned` rule is resolved here, so the home in the argv and in the variable can never differ.
+ * The launch of a definition for one account, read by the harness's turns, its model probe, its sign-in read and its plan limits alike.
+ * Argv and environment are resolved per call, so the home in the argv and in the variables can never differ.
  */
-export const acpLaunchOf = (definition: AcpProviderDefinition, options: AcpResolveOptions = {}): AcpProviderProfile => {
-  const home = pinnedHomeOf(definition, options);
-  const rule = definition.stateHome;
+export const acpLaunchOf = (definition: AcpProviderDefinition, options: AcpResolveOptions = {}): AcpProviderLaunch => {
+  const isolation = isolationOf(definition, options);
   return {
-    args: definition.argv(home),
-    env: { ...definition.spawnEnv, ...homeEnvOf(definition, options, home, false), ...options.env },
+    args: definition.argv(isolation.home),
+    env: { ...definition.spawnEnv, ...isolation.env, ...options.env },
     ...(definition.hasIsolatedTempDir === true ? { hasIsolatedTempDir: true } : {}),
     label: definition.label,
     ...(definition.protocol === undefined ? {} : { protocol: definition.protocol }),
     ...(definition.scrubEnvPrefixes === undefined || definition.scrubEnvPrefixes.length === 0
       ? {}
       : { scrubEnvPrefixes: definition.scrubEnvPrefixes }),
-    ...(rule.kind === "account"
-      ? { ...(rule.needsConfiguredHome ? { needsConfiguredStateHome: true } : {}), stateHomeEnv: rule.variable }
-      : {}),
   };
 };
 
-/** The provider's own sign-in command with the environment it runs with: the spawn environment plus the state home plus its extras. */
+/** The provider's own sign-in command with the environment it runs with: the spawn environment plus the account's isolation plus its extras. */
 export type AcpSignInCommand = {
   readonly args: ReadonlyArray<string>;
   readonly env: Readonly<Record<string, string>>;
@@ -187,17 +163,17 @@ export type AcpSignInCommand = {
 
 /**
  * The sign-in of a definition, or null when it has none.
- * Its environment is built from the spawn environment, so a sign-in stores its token where the launch will look for it.
+ * Its environment is built from the same isolation as the launch, so a sign-in stores its token where the launch will look for it.
  */
 export const acpSignInOf = (
   definition: AcpProviderDefinition,
   options: AcpResolveOptions = {},
 ): AcpSignInCommand | null => {
   if (definition.signIn === null) return null;
-  const home = pinnedHomeOf(definition, options);
+  const isolation = isolationOf(definition, options);
   return {
-    args: definition.signIn.argv(home),
-    env: { ...definition.spawnEnv, ...homeEnvOf(definition, options, home, true), ...definition.signIn.extraEnv },
+    args: definition.signIn.argv(isolation.home),
+    env: { ...definition.spawnEnv, ...isolation.env, ...definition.signIn.extraEnv },
     keepsPath: definition.signIn.keepsPath === true,
   };
 };

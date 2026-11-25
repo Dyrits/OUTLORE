@@ -1,5 +1,12 @@
 # Work in progress
 
+## One account isolation per harness · 2026-11-25 · built and tested against stand-ins; no provider turn or sign-in run
+
+CHG-0728 (Batch 1 of the multi-account plan), branch `mission/antigravity-vs-t3code-5a344e2b`: every harness declares one `AccountIsolation` (`computerOnly` or `directory` with `envOf`), and the launch, sign-in command, sign-in read, model probe, plan limits and the Workshop's **+ Add account** derive from it.
+ACP launches resolve per call from the definition and the thread's `configDirectory`; Antigravity keeps its pinned Gemini home through `pinnedHome` while it stays `computerOnly`.
+No provider is newly enabled: the same six stay computer-only and the same six stay directory-based, and the Workshop shows "Uses this computer's sign-in only." instead of Add account on the six.
+Next: Batches 2 to 4 in the [backlog](backlog.md), each behind a live check.
+
 ## Shared ACP launch hygiene · 2026-11-25 · built and tested against the stand-in; no live agy turn run
 
 CHG-0727 on `mission/antigravity-vs-t3code-e08e3479`: adds three declarative, provider-agnostic launch-hygiene options to `AcpProviderDefinition` / `AcpProviderProtocol` (`minimumAgentVersion`, `hasIsolatedTempDir`, `scrubEnvPrefixes`), executed generically in `acpLaunch.ts`, `acpHarness.ts`, `acpProviders.ts`, and `core/lineProcess.ts`.

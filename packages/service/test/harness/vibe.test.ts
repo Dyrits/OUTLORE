@@ -220,7 +220,7 @@ describe("the Mistral Vibe adapter alone", () => {
 
   it.live("reads who is signed in from its identity and account extensions, never a credential", () =>
     Effect.gen(function* () {
-      expect(yield* readVibeSignIn(process.execPath, {}, standIn)).toEqual({
+      expect(yield* readVibeSignIn(process.execPath, null, standIn)).toEqual({
         detail: "owner@example.com · Pro plan",
         signIn: "SignedIn",
       });

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { EffortChoice, HarnessName, ModelOption, SignInState } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer } from "effect";
 import { fieldOf, invalid, runShortCommand, type ServiceFailure, textFieldOf } from "../core/index.ts";
-import { accountEnvironmentOf, type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
+import { type HarnessFacts, harnessFacts } from "./harnessCatalog.ts";
 import { harnesses } from "./harnesses.ts";
 import { installHarnessPackage, updateTimeoutMillis } from "./harnessInstallation.ts";
 import { updateOf } from "./harnessVersions.ts";
@@ -198,7 +198,7 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
     });
 
     const readSignIn = (harness: HarnessName, configDirectory: string | null) =>
-      harnesses[harness].readSignIn(commands[harness], accountEnvironmentOf(harness, configDirectory));
+      harnesses[harness].readSignIn(commands[harness], configDirectory);
 
     const readModels = (harness: HarnessName, configDirectory: string | null) =>
       harnesses[harness].readModels(commands[harness], configDirectory);

@@ -1,7 +1,7 @@
 export { Changes, Harness, type HarnessAdapter, routeHarnesses, ServiceFailure } from "./core/index.ts";
 export {
   type AcpProviderDefinition,
-  type AcpProviderProfile,
+  type AcpProviderLaunch,
   acpLaunchOf,
   acpProviders,
   acpSignInOf,

@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Effect } from "effect";
+import { computerOnlyIsolation } from "../../src/harness/accountIsolation.ts";
+import type { AcpProviderDefinition } from "../../src/harness/acpProviderDefinition.ts";
 
 // The one configurable ACP stand-in (acpFake.mjs) and what a check reads of it: its knobs, the environment that starts it, and its log.
 
@@ -54,6 +56,19 @@ export type AcpFakeConfig = {
 
 /** The stand-in script, run by Node in the provider executable's place. */
 export const acpFakeScript = join(import.meta.dirname, "acpFake.mjs");
+
+/** A definition for the stand-in that adds nothing the check does not name: no argv, a computer-only isolation, and the label "fake ACP". */
+export const acpFakeDefinition = (overrides: Partial<AcpProviderDefinition> = {}): AcpProviderDefinition => ({
+  argv: () => [],
+  executable: "fake-acp",
+  isolation: computerOnlyIsolation("a stand-in"),
+  label: "fake ACP",
+  signedOutCode: null,
+  signIn: null,
+  spawnEnv: {},
+  version: null,
+  ...overrides,
+});
 
 /** The environment that starts the stand-in with these knobs, logging to `log`. */
 export const acpFakeEnv = (log: string, config: AcpFakeConfig = {}): Record<string, string> => ({

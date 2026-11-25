@@ -9,7 +9,7 @@ import { ActionMenu } from "../ui/actionMenu";
 import { Button } from "../ui/button";
 import { ProviderMark } from "../ui/providerMarks";
 import { RowIcon } from "../ui/rowIcons";
-import { versionOf } from "./providerRules";
+import { canAddAccount, versionOf } from "./providerRules";
 
 /** What a sign-in state says on an account's badge. */
 const signInLabels = {
@@ -269,7 +269,11 @@ function HarnessCard({
               onError={onError}
             />
           ))}
-          <AddAccount client={client} harness={harness.name} onChanged={onChanged} onError={onError} />
+          {canAddAccount(harness) ? (
+            <AddAccount client={client} harness={harness.name} onChanged={onChanged} onError={onError} />
+          ) : (
+            <Text style={styles.muted}>Uses this computer's sign-in only.</Text>
+          )}
         </View>
       )}
     </View>

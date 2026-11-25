@@ -23,12 +23,15 @@ const probeConfig = {
   models: [["Gemini 2.5 Pro", "gemini-2.5-pro"]],
 } as const satisfies AcpFakeConfig;
 
-const probeOf = (log: string, geminiHome?: string) =>
-  standInProbe(antigravity, {
-    env: acpFakeEnv(log, probeConfig),
-    ...(geminiHome === undefined ? {} : { configDirectory: geminiHome }),
-    prefixArgs: [acpFakeScript],
-  }).pipe(Effect.runPromise);
+// Antigravity takes the computer's own sign-in only, so a launch resolves its home from GEMINI_HOME and never from an account folder.
+const probeOf = (log: string, geminiHome?: string) => {
+  if (geminiHome !== undefined) vi.stubEnv("GEMINI_HOME", geminiHome);
+  return standInProbe(antigravity, { env: acpFakeEnv(log, probeConfig), prefixArgs: [acpFakeScript] }).pipe(
+    Effect.runPromise,
+  );
+};
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe("resolving the Antigravity launch surface", () => {
   it("uses the account's GEMINI_HOME and otherwise the user's .gemini, as upstream does", () => {
@@ -38,7 +41,7 @@ describe("resolving the Antigravity launch surface", () => {
   });
 
   it("launches in exactly the pinned argv order: acp, the home flag, the app-data flag", () => {
-    expect(acpLaunchOf(antigravity, { configDirectory: "/gemini-home" }).args).toEqual([
+    expect(acpLaunchOf(antigravity, { processEnv: { GEMINI_HOME: "/gemini-home" } }).args).toEqual([
       "acp",
       "--gemini-dir=/gemini-home",
       "--app-data-dir=antigravity-acp",

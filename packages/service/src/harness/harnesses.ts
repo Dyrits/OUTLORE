@@ -12,6 +12,7 @@ import {
   startRpcProcess,
   textFieldOf,
 } from "../core/index.ts";
+import { isComputerOnly } from "./accountIsolation.ts";
 import { type AcpProviderDefinition, acpLaunchOf } from "./acpProviderDefinition.ts";
 import { makeAcpProviderHarness, probeAcpProviderModels, readAcpProviderSignIn } from "./acpProviders.ts";
 import { readAntigravityPlanLimits } from "./antigravityPlanLimits.ts";
@@ -90,8 +91,8 @@ export interface HarnessDefinition extends HarnessFacts {
   ) => Effect.Effect<ReadonlyArray<EffortChoice>, ServiceFailure>;
   /** The models the harness offers with an account's sign-in, its default first. */
   readonly readModels: (command: string, configDirectory: string | null) => Effect.Effect<ReadonlyArray<ModelOption>>;
-  /** Who the harness's tool says is signed in, given the account's environment; never a credential. */
-  readonly readSignIn: (command: string, env: Record<string, string>) => Effect.Effect<SignInStatus>;
+  /** Who the harness's tool says is signed in for an account (null for the computer's own), on the isolation its launch uses; never a credential. */
+  readonly readSignIn: (command: string, configDirectory: string | null) => Effect.Effect<SignInStatus>;
 }
 
 /** The prefix arguments of an override, as the adapters' options take them. */
@@ -156,8 +157,12 @@ const claude: HarnessDefinition = {
       ...(vaultFolder === undefined ? {} : { vaultFolder }),
     }),
   readModels: () => Effect.succeed(claudeModels),
-  readSignIn: Effect.fnUntraced(function* (command: string, env: Record<string, string>) {
-    const { stdout } = yield* runShortCommand(command, ["auth", "status", "--json"], env);
+  readSignIn: Effect.fnUntraced(function* (command: string, configDirectory: string | null) {
+    const { stdout } = yield* runShortCommand(
+      command,
+      ["auth", "status", "--json"],
+      accountEnvironmentOf("claude", configDirectory),
+    );
     let status: unknown = null;
     try {
       status = JSON.parse(stdout);
@@ -184,8 +189,8 @@ const codex: HarnessDefinition = {
       ...(vaultFolder === undefined ? {} : { vaultFolder }),
     }),
   readModels: (command, configDirectory) => listCodexModels(command, configDirectory),
-  readSignIn: (command, env) =>
-    runShortCommand(command, ["login", "status"], env).pipe(
+  readSignIn: (command, configDirectory) =>
+    runShortCommand(command, ["login", "status"], accountEnvironmentOf("codex", configDirectory)).pipe(
       Effect.map(({ code, output }): SignInStatus => {
         const text = output.trim();
         if (code === null) return unknownSignIn;
@@ -226,8 +231,8 @@ const opencode: HarnessDefinition = {
       ),
     ),
   // OpenCode lists one line per stored sign-in, each naming its provider.
-  readSignIn: (command, env) =>
-    runShortCommand(command, ["auth", "list"], env).pipe(
+  readSignIn: (command, configDirectory) =>
+    runShortCommand(command, ["auth", "list"], accountEnvironmentOf("opencode", configDirectory)).pipe(
       Effect.map(({ code, stdout }): SignInStatus => {
         if (code === null) return unknownSignIn;
         const providers = stdout
@@ -244,25 +249,24 @@ const vibe: HarnessDefinition = {
   ...harnessFacts.vibe,
   makeAdapter: ({ command, idleTimeout, launch }) => makeVibeHarness({ command, idleTimeout, ...prefixOf(launch) }),
   readModels: (command, configDirectory) => listVibeModels(command, configDirectory),
-  readSignIn: (command, env) => readVibeSignIn(command, env),
+  readSignIn: (command, configDirectory) => readVibeSignIn(command, configDirectory),
 };
 
-/** One long-lived ACP process per thread, started from the provider's definition when the adapter is built. */
+/** One long-lived ACP process per thread, started from the provider's definition and resolved against each thread's account at its launch. */
 const acpAdapterOf =
   (provider: AcpProviderDefinition) =>
   ({ command, idleTimeout, launch }: AdapterOptions) =>
-    Effect.suspend(() =>
-      makeAcpProviderHarness({
-        command,
-        idleTimeout,
-        ...prefixOf(launch),
-        profile: acpLaunchOf(provider, launch?.env === undefined ? {} : { env: launch.env }),
-      }),
-    );
+    makeAcpProviderHarness({
+      command,
+      definition: provider,
+      idleTimeout,
+      ...(launch?.env === undefined ? {} : { env: launch.env }),
+      ...prefixOf(launch),
+    });
 
-/** The models of a short-lived session probe on the provider's launch; none when the CLI is absent or not signed in. */
-const probedModelsOf = (provider: AcpProviderDefinition) => (command: string) =>
-  Effect.suspend(() => probeAcpProviderModels({ command, profile: acpLaunchOf(provider) })).pipe(
+/** The models of a short-lived session probe on the provider's launch for one account; none when the CLI is absent, not signed in, or the account is not set up yet. */
+const probedModelsOf = (provider: AcpProviderDefinition) => (command: string, configDirectory: string | null) =>
+  probeAcpProviderModels({ command, configDirectory, definition: provider }).pipe(
     Effect.map((models): ReadonlyArray<ModelOption> => models),
     Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([])),
   );
@@ -272,15 +276,9 @@ const hermes: HarnessDefinition = {
   // Hermes runs through the generic ACP adapter: every permission request reaches the owner, modes are forced to
   // "ask" where the provider offers them, and the account folder becomes HERMES_HOME (acpProviders.ts).
   makeAdapter: acpAdapterOf(hermesProvider),
-  // Models come from the ACP probe against the account's own (prepared) home; the computer's own Hermes directory is
-  // never probed, and a home that is not set up yet (no repair, no sign-in, no model) lists none yet.
-  readModels: (command, configDirectory) =>
-    configDirectory === null
-      ? Effect.succeed([])
-      : probeAcpProviderModels({ command, profile: acpLaunchOf(hermesProvider), stateHome: configDirectory }).pipe(
-          Effect.map((models): ReadonlyArray<ModelOption> => models),
-          Effect.catch(() => Effect.succeed<ReadonlyArray<ModelOption>>([])),
-        ),
+  // Models come from the ACP probe against the account's own (prepared) home; its isolation refuses the computer's own
+  // Hermes directory, and a home that is not set up yet (no repair, no sign-in, no model) lists none yet.
+  readModels: probedModelsOf(hermesProvider),
   // Hermes offers no machine-readable sign-in status a read-only command can answer; an account shows Unknown until
   // its prepared home starts listing models.
   readSignIn: () => Effect.succeed(unknownSignIn),
@@ -330,8 +328,8 @@ const pi: HarnessDefinition = {
 
 // The ACP provider harnesses (CHG-0645, provider-parity wave 5): each runs one long-lived ACP process of the
 // generic adapter, so every sensitive action reaches the owner as a permission request and any other reverse
-// request fails closed. All of them take the computer's own sign-in only (their added-account surfaces are absent or
-// unproven - supportsAddedAccounts stays false). Their launch, model probe, sign-in and version gate all come from
+// request fails closed. All of them but Hermes take the computer's own sign-in only (their added-account surfaces are absent or
+// unproven - their isolation is computerOnly). Their launch, model probe, sign-in and version gate all come from
 // one definition each (acpProviderDefinition.ts), so none of them can drift from another.
 
 const antigravity: HarnessDefinition = {
@@ -342,25 +340,27 @@ const antigravity: HarnessDefinition = {
       Effect.map(
         (adapter): HarnessAdapter => ({
           ...adapter,
+          // An account no folder can isolate has no limits of its own to read, so only the computer's own sign-in does.
           readPlanLimits: (_harness, configDirectory) =>
-            configDirectory === null
-              ? readAntigravityPlanLimits({
+            configDirectory !== null && isComputerOnly(antigravityProvider.isolation)
+              ? Effect.succeed(null)
+              : readAntigravityPlanLimits({
                   command: options.command,
-                  env: acpLaunchOf(
-                    antigravityProvider,
-                    options.launch?.env === undefined ? {} : { env: options.launch.env },
-                  ).env,
+                  env: acpLaunchOf(antigravityProvider, {
+                    configDirectory,
+                    ...(options.launch?.env === undefined ? {} : { env: options.launch.env }),
+                  }).env,
                   ...prefixOf(options.launch),
-                })
-              : Effect.succeed(null),
+                }),
         }),
       ),
     ),
-  // Models come from a short-lived session probe against the computer's own Gemini home; none when the CLI is
+  // Models come from a short-lived session probe on the same launch a turn uses; none when the CLI is
   // absent or not signed in.
   readModels: probedModelsOf(antigravityProvider),
-  // The same session probe answers the sign-in: models listed means the computer's login works.
-  readSignIn: (command) => readAcpProviderSignIn({ command, definition: antigravityProvider }),
+  // The same session probe answers the sign-in: models listed means the login works.
+  readSignIn: (command, configDirectory) =>
+    readAcpProviderSignIn({ command, configDirectory, definition: antigravityProvider }),
 };
 
 const cline: HarnessDefinition = {

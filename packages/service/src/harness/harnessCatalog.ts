@@ -8,6 +8,13 @@ import {
 } from "@outlore/contracts";
 import { Record } from "effect";
 import {
+  type AccountIsolation,
+  computerOnlyIsolation,
+  isComputerOnly,
+  isolationEnvOf,
+  singleVarIsolation,
+} from "./accountIsolation.ts";
+import {
   type AcpProviderDefinition,
   type AcpSignInCommand,
   acpSignInOf,
@@ -56,12 +63,12 @@ export type SandboxAdvice = {
 type HarnessServiceFacts = {
   /** What a command approved through `request_approval` needs on this harness, appended to that rule. */
   readonly approvedCommandAdvice: string;
-  /** Where the harness keeps its sign-in and sessions, set to an account's own folder for an added account. */
-  readonly configVariable: string;
   /** The default executable name when no `OUTLORE_<HARNESS>_PATH` override is set. */
   readonly defaultExecutable: string;
   /** The harness's own fixed list of models, or null when its tool lists them. */
   readonly fixedModels: ReadonlyArray<ModelOption> | null;
+  /** Whether an account's own folder isolates the harness's sign-in and sessions, and which variables point it there; every surface derives from it. */
+  readonly isolation: AccountIsolation;
   /** Whether the harness asks its permission prompts through the `answer_prompt` thread tool (ADR 0005). */
   readonly hasPromptTool: boolean;
   /** The distribution method the Workshop uses to install the harness. */
@@ -90,11 +97,6 @@ type HarnessServiceFacts = {
    * a local port. Otherwise it is an interactive screen that needs a terminal window.
    */
   readonly signInNeedsNoTerminal: boolean;
-  /**
-   * Whether the owner can add accounts beside the computer's own sign-in; false when no per-account state home has
-   * been verified, so an added account could only share the computer's sign-in invisibly (Muse, 2026-11-22).
-   */
-  readonly supportsAddedAccounts?: boolean;
   /** The arguments of the harness's own command that updates it, which knows how it was installed; null when the harness has no update command (its Update explains instead). */
   readonly updateArgs: ReadonlyArray<string> | null;
   /** The executable the update command runs on when it is not the harness's own command; else null. */
@@ -126,10 +128,10 @@ export type HarnessFacts = Omit<
 /** A harness's own sign-in command: its arguments and the environment it runs with. */
 export type SignInCommand = AcpSignInCommand;
 
-/** What the catalog takes from an ACP provider's definition instead of spelling again: its executables and the variable of its state home. */
+/** What the catalog takes from an ACP provider's definition instead of spelling again: its executables and its account isolation. */
 const identityOf = (definition: AcpProviderDefinition) => ({
-  configVariable: definition.stateHome.variable,
   defaultExecutable: definition.executable,
+  isolation: definition.isolation,
   ...(definition.legacyExecutable === undefined ? {} : { legacyExecutable: definition.legacyExecutable }),
 });
 
@@ -149,18 +151,17 @@ const harnessServiceFacts = {
     packageName: "",
     releaseRegistry: "none",
     signInNeedsNoTerminal: false,
-    supportsAddedAccounts: false,
     updateArgs: null,
     updateCommand: null,
   },
   claude: {
     approvedCommandAdvice:
       "; keep the sandbox for it, unless the owner allowed that exact command outside the sandbox: then set dangerouslyDisableSandbox to true",
-    configVariable: "CLAUDE_CONFIG_DIR",
     defaultExecutable: "claude",
     fixedModels: claudeModels,
     hasPromptTool: true,
     installVia: "npm",
+    isolation: singleVarIsolation("CLAUDE_CONFIG_DIR"),
     packageName: "@anthropic-ai/claude-code",
     releaseRegistry: "npm",
     sandboxAdvice: {
@@ -187,7 +188,6 @@ const harnessServiceFacts = {
     packageName: "cline",
     releaseRegistry: "none",
     signInNeedsNoTerminal: false,
-    supportsAddedAccounts: false,
     // No update command of Cline's own exists upstream; its self-update stays squeezed off by the sign-in and
     // launch environment, and Update explains instead of running anything.
     updateArgs: null,
@@ -195,11 +195,11 @@ const harnessServiceFacts = {
   },
   codex: {
     approvedCommandAdvice: "",
-    configVariable: "CODEX_HOME",
     defaultExecutable: "codex",
     fixedModels: null,
     hasPromptTool: false,
     installVia: "npm",
+    isolation: singleVarIsolation("CODEX_HOME"),
     packageName: "@openai/codex",
     releaseRegistry: "npm",
     sandboxAdvice: {
@@ -226,7 +226,6 @@ const harnessServiceFacts = {
     releaseRegistry: "none",
     // `copilot login` opens its browser sign-in; a live check verifies the browser flow's completion.
     signInNeedsNoTerminal: false,
-    supportsAddedAccounts: false,
     // No update command of Copilot's own exists upstream and its self-update is squeezed off by the environment,
     // so Update explains instead of running anything.
     updateArgs: null,
@@ -249,7 +248,6 @@ const harnessServiceFacts = {
     // `cursor-agent login` never opens its page on its own (NO_OPEN_BROWSER prints the sign-in link for the
     // owner to open); a live check verifies the link flow.
     signInNeedsNoTerminal: false,
-    supportsAddedAccounts: false,
     updateArgs: null,
     updateCommand: null,
   },
@@ -268,7 +266,6 @@ const harnessServiceFacts = {
     // No sign-in command of the CLI's own is verified: its sign-in is the ACP `devin-browser` flow, so Sign-in
     // explains and the owner signs in inside the provider's own surface, then presses Refresh.
     signInNeedsNoTerminal: false,
-    supportsAddedAccounts: false,
     updateArgs: null,
     updateCommand: null,
   },
@@ -291,20 +288,19 @@ const harnessServiceFacts = {
   muse: {
     // The Muse adapter mediates approvals itself, so it has no `answer_prompt` tool.
     approvedCommandAdvice: "",
-    // No per-account state home is verified (its root is the shared XDG data dir), so only the computer's own
-    // sign-in is offered and added accounts are refused rather than silently sharing it.
-    configVariable: "MUSE_HOME",
     defaultExecutable: "muse",
     fixedModels: null,
     hasPromptTool: false,
     installVia: "script",
+    // No per-account state home is verified (its root is the shared XDG data dir), so only the computer's own
+    // sign-in is offered and added accounts are refused rather than silently sharing it (Muse, 2026-11-22).
+    isolation: computerOnlyIsolation("No per-account state home is verified: its root is the shared XDG data dir."),
     // The newest version is what the muse-stable channel carries; no registry holds the CLI.
     packageName: "",
     releaseRegistry: "none",
     // `muse login` opens its device page only from a real terminal, so sign-in opens one.
     signInArgs: ["login"],
     signInNeedsNoTerminal: false,
-    supportsAddedAccounts: false,
     // The CLI has no update command; Outlore sets MUSE_NO_AUTO_UPDATE on every spawn, so it never updates
     // itself through us, and Update explains instead of running anything.
     updateArgs: null,
@@ -313,11 +309,11 @@ const harnessServiceFacts = {
   opencode: {
     approvedCommandAdvice: "",
     // OpenCode keeps its sign-ins and sessions under its data folder (`$XDG_DATA_HOME/opencode`).
-    configVariable: "XDG_DATA_HOME",
     defaultExecutable: "opencode",
     fixedModels: null,
     hasPromptTool: false,
     installVia: "npm",
+    isolation: singleVarIsolation("XDG_DATA_HOME"),
     packageName: "opencode-ai",
     releaseRegistry: "npm",
     signInArgs: ["auth", "login"],
@@ -331,11 +327,11 @@ const harnessServiceFacts = {
     approvedCommandAdvice: "",
     // Each account is Pi's own state directory (`PI_CODING_AGENT_DIR`, default `~/.pi/agent`), holding the
     // sign-in (auth.json), settings, and sessions; the computer's own sign-in is the unredirected default.
-    configVariable: "PI_CODING_AGENT_DIR",
     defaultExecutable: "pi",
     fixedModels: null,
     hasPromptTool: false,
     installVia: "npm",
+    isolation: singleVarIsolation("PI_CODING_AGENT_DIR"),
     packageName: "@earendil-works/pi-coding-agent",
     releaseRegistry: "none",
     // Sign-in is `/login` inside Pi's own interactive screen in a terminal window, closed when it is done; a
@@ -350,12 +346,12 @@ const harnessServiceFacts = {
   vibe: {
     approvedCommandAdvice: "",
     // Mistral Vibe keeps its sign-in, sessions, and configuration under `$VIBE_HOME` (default `~/.vibe`).
-    configVariable: "VIBE_HOME",
     defaultExecutable: "vibe-acp",
     fixedModels: null,
     hasPromptTool: false,
     // Vibe's update command prompts in a terminal, while uv upgrades the package without one.
     installVia: "uv",
+    isolation: singleVarIsolation("VIBE_HOME"),
     packageName: "mistral-vibe",
     releaseRegistry: "pypi",
     signInArgs: ["--setup"],
@@ -400,10 +396,10 @@ export const defaultCommandOf = (harness: HarnessName, hasExecutable: (executabl
     : facts.defaultExecutable;
 };
 
-/** Whether a harness refuses the accounts the owner adds beside the computer's own sign-in (`supportsAddedAccounts: false`). */
-export const refusesAddedAccounts = (harness: HarnessName): boolean =>
-  harnessFacts[harness].supportsAddedAccounts === false;
+/** Whether a harness refuses the accounts the owner adds beside the computer's own sign-in: its isolation is `computerOnly`. */
+export const refusesAddedAccounts = (harness: HarnessName): boolean => isComputerOnly(harnessFacts[harness].isolation);
 
 /** The environment that points a harness at an account's folder; empty for the computer's own sign-in. */
-export const accountEnvironmentOf = (harness: HarnessName, configDirectory: string | null): Record<string, string> =>
-  configDirectory === null ? {} : { [harnessFacts[harness].configVariable]: configDirectory };
+export const accountEnvironmentOf = (harness: HarnessName, configDirectory: string | null): Record<string, string> => ({
+  ...isolationEnvOf(harnessFacts[harness].isolation, configDirectory),
+});

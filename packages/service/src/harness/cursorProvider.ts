@@ -1,3 +1,4 @@
+import { computerOnlyIsolation } from "./accountIsolation.ts";
 import { type AcpProviderDefinition, versionLineMatching } from "./acpProviderDefinition.ts";
 
 // Cursor through the Cursor CLI's own ACP surface, audited against the pinned upstream nightly-labs/openbot b1e5ea74206e1e16fa2eae62d8d131ea1349eaa0.
@@ -25,11 +26,13 @@ import { type AcpProviderDefinition, versionLineMatching } from "./acpProviderDe
 export const cursor: AcpProviderDefinition = {
   argv: () => ["acp"],
   executable: "cursor-agent",
+  isolation: computerOnlyIsolation(
+    "CURSOR_CONFIG_DIR moves its settings only, never its sign-in: the Keychain keeps one credential per computer user (ADR 0011).",
+  ),
   label: "Cursor",
   signedOutCode: null,
   signIn: { argv: () => ["login"], extraEnv: { NO_OPEN_BROWSER: "1" } },
   spawnEnv: {},
-  stateHome: { kind: "computer", variable: "CURSOR_CONFIG_DIR" },
   version: versionLineMatching(
     /^\d{4}\.\d{2}\.\d{2}(?:-\d{2}-\d{2}-\d{2})?-[0-9a-f]{7,40}$/u,
     "a dated build such as 2026.09.28-64d2043",

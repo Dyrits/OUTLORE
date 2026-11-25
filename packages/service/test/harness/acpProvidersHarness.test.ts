@@ -4,10 +4,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Fiber } from "effect";
 import type { HarnessEvent } from "../../src/core/index.ts";
+import { singleVarIsolation } from "../../src/harness/accountIsolation.ts";
 import { bridgeNodePathOf } from "../../src/harness/acpMcpBridge.ts";
 import { makeAcpProviderHarness } from "../../src/harness/acpProviders.ts";
 import {
   type AcpFakeConfig,
+  acpFakeDefinition,
   acpFakeEnv,
   acpFakeRequest,
   acpFakeScript,
@@ -25,9 +27,9 @@ const turnSession = { modes: ["ask", "default"], options: ["model", "thinking"],
 const harnessOf = (log: string, config: AcpFakeConfig = {}) =>
   makeAcpProviderHarness({
     command: process.execPath,
+    definition: acpFakeDefinition({ spawnEnv: acpFakeEnv(log, { ...turnSession, ...config }) }),
     idleTimeout: "10 minutes",
     prefixArgs: [acpFakeScript],
-    profile: { args: [], env: acpFakeEnv(log, { ...turnSession, ...config }), label: "fake ACP" },
   });
 
 describe("running a thread on a generic ACP provider", () => {
@@ -201,19 +203,17 @@ describe("running a thread on a generic ACP provider", () => {
     return Effect.gen(function* () {
       const harness = yield* makeAcpProviderHarness({
         command: process.execPath,
+        definition: acpFakeDefinition({
+          isolation: singleVarIsolation("HERMES_HOME", true),
+          label: "fake Hermes",
+          spawnEnv: acpFakeEnv(log, turnSession),
+        }),
         idleTimeout: "10 minutes",
         prefixArgs: [acpFakeScript],
-        profile: {
-          args: [],
-          env: acpFakeEnv(log, turnSession),
-          label: "fake Hermes",
-          needsConfiguredStateHome: true,
-          stateHomeEnv: "HERMES_HOME",
-        },
       });
       // No account folder to run as the state home (configDirectory stays null in turnRequestOf).
       const failure = yield* harness.runTurn(turnRequestOf({ text: "Hello" })).pipe(Effect.flip);
-      expect(failure.reason).toContain("HERMES_HOME");
+      expect(failure.reason).toContain("fake Hermes runs against the account folder");
       // Without an account folder the provider would reach for the user's own home, so nothing started.
       expect(existsSync(log)).toBe(false);
     }).pipe(
@@ -231,14 +231,13 @@ describe("running a thread on a generic ACP provider", () => {
     return Effect.gen(function* () {
       const harness = yield* makeAcpProviderHarness({
         command: process.execPath,
+        definition: acpFakeDefinition({
+          isolation: singleVarIsolation("KIMI_CODE_HOME"),
+          label: "fake Kimi",
+          spawnEnv: acpFakeEnv(log, { ...turnSession, logEnv: ["KIMI_CODE_HOME"] }),
+        }),
         idleTimeout: "10 minutes",
         prefixArgs: [acpFakeScript],
-        profile: {
-          args: [],
-          env: acpFakeEnv(log, { ...turnSession, logEnv: ["KIMI_CODE_HOME"] }),
-          label: "fake Kimi",
-          stateHomeEnv: "KIMI_CODE_HOME",
-        },
       });
       const outcome = yield* harness.runTurn(
         turnRequestOf({
