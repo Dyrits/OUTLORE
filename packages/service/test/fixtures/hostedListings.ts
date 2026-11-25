@@ -28,4 +28,8 @@ export const hostedListings: Readonly<Record<string, HostedListing>> = {
     names: ["resolve-library-id", "query-docs"],
     source: "live tools/list of https://mcp.context7.com/mcp, 2026-11-25",
   },
+  deepwiki: {
+    names: ["ask_wiki_question", "read_wiki_contents", "read_wiki_structure"],
+    source: "live tools/list of https://mcp.deepwiki.com/mcp, 2026-11-25",
+  },
 };

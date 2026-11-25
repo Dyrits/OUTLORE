@@ -2,6 +2,7 @@ import type { CatalogEntry } from "./catalog.ts";
 import { awsKnowledgeEntry } from "./entries/aws_knowledge.ts";
 import { cloudflareDocsEntry } from "./entries/cloudflare_docs.ts";
 import { context7Entry } from "./entries/context7.ts";
+import { deepwikiEntry } from "./entries/deepwiki.ts";
 
 // The two connectors Outlore offers first (connectors specification, Composio and Apple apps). The servers are not run
 // by this build: the Composio entry's tools are the seven it publishes on its own page and in its repo (research note,
@@ -156,4 +157,5 @@ export const defaultCatalog: ReadonlyArray<CatalogEntry> = [
   context7Entry,
   cloudflareDocsEntry,
   awsKnowledgeEntry,
+  deepwikiEntry,
 ];
