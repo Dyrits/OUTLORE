@@ -85,6 +85,12 @@ export const fakeVault = () => {
       state.isLocked
         ? Effect.fail(new VaultUnavailable({ reason: "Locked" }))
         : Effect.succeed(secrets.has(keyOf(connector, kind))),
+    putOrReplace: (connector, kind, secret) =>
+      Effect.suspend(() => {
+        if (state.isLocked) return Effect.fail(new VaultUnavailable({ reason: "Locked" }));
+        secrets.set(keyOf(connector, kind), secret);
+        return Effect.void;
+      }),
     removeAllOf: (connector) =>
       Effect.suspend(() => {
         if (state.isFailingRemoval) return Effect.fail(new VaultUnavailable({ reason: "Failed" }));

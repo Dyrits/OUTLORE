@@ -4,6 +4,7 @@ import type { Request, RequestSource, RequestTag, ResultOf } from "@outlore/cont
 import { Effect, Layer, Match, Semaphore } from "effect";
 import type { SqlError } from "effect/sql";
 import {
+  type BrowserOpener,
   type CatalogEntry,
   type ConnectorBackends,
   type ConnectorGateway,
@@ -196,6 +197,8 @@ export interface ServiceOptions {
    * on the gateway, such as Code Mode (CHG-0441). Left out, threads use the connectors the owner installed.
    */
   readonly connectorGateway?: Layer.Layer<ConnectorGateway>;
+  /** The gateway's browser opener for MCP OAuth 2.1 sign-in; the operating system's default browser when left out. */
+  readonly connectorOpenBrowser?: BrowserOpener;
   /** The platform the host runs on, which Apple apps needs to be macOS; the process's own when left out. */
   readonly connectorPlatform?: NodeJS.Platform;
   /** The Vault, which the connectors read secrets from; the service's own, adapted to the gateway's port, when left out. */
@@ -274,6 +277,7 @@ export const serviceLayer = (options: ServiceOptions) => {
   // thread's snapshot of its connector tools from them.
   const connectorServices = connectorServicesLayer({
     ...(options.connectorCatalog === undefined ? {} : { catalog: options.connectorCatalog }),
+    ...(options.connectorOpenBrowser === undefined ? {} : { openBrowser: options.connectorOpenBrowser }),
     ...(options.connectorPlatform === undefined ? {} : { platform: options.connectorPlatform }),
   }).pipe(Layer.provide(Layer.mergeAll(connectorAskingLayer, connectorNoticesLayer)));
   const gateway =

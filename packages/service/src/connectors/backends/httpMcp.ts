@@ -18,6 +18,9 @@ type HttpTransport = Extract<CatalogBackend, { readonly _tag: "Http" }>;
 /** The version of MCP this adapter speaks, told to the server with every request, as Streamable HTTP asks. */
 const protocolVersion = "2025-06-18";
 
+/** Client identity sent during MCP Streamable HTTP session initialization. */
+const clientInfo = { name: "outlore", version: "0.2.7" } as const;
+
 /** The failure of each class, in words written here, never the server's own. */
 const failureWordsOf = {
   Disconnected: "The server rejected the connector's sign-in.",
@@ -86,12 +89,22 @@ const readEventReply = async (response: Response, id: number) => {
   }
 };
 
-/** One request to the server: its JSON-RPC answer message, or the transport's failure. */
+/** Headers sent with one Streamable-HTTP MCP request, including the credential and session identifier when present. */
+const headersOf = (transport: HttpTransport, secret: string | null, sessionId: string | null) => ({
+  accept: "application/json, text/event-stream",
+  "content-type": "application/json",
+  "mcp-protocol-version": protocolVersion,
+  ...(sessionId === null ? {} : { "mcp-session-id": sessionId }),
+  ...(secret === null || transport.header === null ? {} : { [transport.header]: `${transport.prefix ?? ""}${secret}` }),
+});
+
+/** One JSON-RPC request to the server: its answer message and any session header, or the transport's failure. */
 const ask = (
   transport: HttpTransport,
   method: string,
   params: unknown,
   secret: string | null,
+  sessionId: string | null,
   counter: number,
   timeoutMillis: number,
 ) =>
@@ -100,14 +113,7 @@ const ask = (
     try: (signal) =>
       fetch(transport.url, {
         body: JSON.stringify({ id: counter, jsonrpc: "2.0", method, params }),
-        headers: {
-          accept: "application/json, text/event-stream",
-          "content-type": "application/json",
-          "mcp-protocol-version": protocolVersion,
-          ...(secret === null || transport.header === null
-            ? {}
-            : { [transport.header]: `${transport.prefix ?? ""}${secret}` }),
-        },
+        headers: headersOf(transport, secret, sessionId),
         // Never followed: a redirect would send the key's header to whatever origin the server names (a different
         // host, or a plainer scheme), so the adapter takes the answer itself and refuses it below.
         method: "POST",
@@ -117,23 +123,57 @@ const ask = (
         // A manual redirect answers with its 3xx status, or as an opaque redirect of status 0; either way the key stops here.
         if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400))
           throw new HttpRefusal("Failed", redirectWords);
+        if (response.status === 404 && sessionId !== null) throw new HttpRefusal("Failed", sessionExpiredWords, true);
         if (response.status < 200 || response.status >= 300) throw new HttpRefusal(failureClassOf(response.status));
         // A 2xx answer with no JSON-RPC message in it is the server's failure, not a network one.
         const message = (response.headers.get("content-type") ?? "").includes("text/event-stream")
           ? await readEventReply(response, counter)
           : messageOf(await response.text(), counter);
         if (message === null) throw new HttpRefusal("Failed");
-        return message;
+        return { message, sessionId: response.headers.get("mcp-session-id") };
       }),
   });
+
+/** Sends one JSON-RPC notification (such as `notifications/initialized`) without expecting a JSON-RPC reply body. */
+const notify = (
+  transport: HttpTransport,
+  method: string,
+  secret: string | null,
+  sessionId: string | null,
+  timeoutMillis: number,
+) =>
+  Effect.tryPromise({
+    catch: (problem) => (problem instanceof HttpRefusal ? problem.failure : refuse("Unreachable")),
+    try: (signal) =>
+      fetch(transport.url, {
+        body: JSON.stringify({ jsonrpc: "2.0", method }),
+        headers: headersOf(transport, secret, sessionId),
+        method: "POST",
+        redirect: "manual",
+        signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMillis)]),
+      }).then((response) => {
+        if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400))
+          throw new HttpRefusal("Failed", redirectWords);
+        if (response.status < 200 || response.status >= 300) throw new HttpRefusal(failureClassOf(response.status));
+      }),
+  });
+
+/** Fixed words used when a server reports 404 for a stale MCP session identifier. */
+const sessionExpiredWords = "The server expired the MCP session.";
 
 /** The failure of a request the transport itself reported, kept out of the catch-all that a network error shares. */
 class HttpRefusal extends Error {
   readonly failure: BackendFailure;
+  readonly isSessionExpired: boolean;
 
-  constructor(errorClass: ConnectorErrorClass, words: string = failureWordsOf[errorClass]) {
+  constructor(
+    errorClass: ConnectorErrorClass,
+    words: string = failureWordsOf[errorClass],
+    isSessionExpired: boolean = false,
+  ) {
     super(words);
     this.failure = new BackendFailure({ class: errorClass, upstream: words });
+    this.isSessionExpired = isSessionExpired;
   }
 }
 
@@ -173,22 +213,62 @@ const textOf = (result: unknown): string | null => {
 /**
  * One HTTP connector's server: each request is one POST with the key in the entry's header, an interrupted or stopped
  * call gives up waiting, and the answer's text has the key's spellings redacted before it leaves.
+ * Entries with `usesSession` or `oauth` perform MCP `initialize` + `notifications/initialized` and send `Mcp-Session-Id`.
  */
 export const httpMcpBackend = (
   transport: HttpTransport,
   options: { readonly requestTimeoutMillis?: number } = {},
 ): ConnectorBackend => {
   let counter = 0;
-  // One request per list or call: the server decides nothing about the next request, so nothing is cached here.
-  const askServer = (method: string, params: unknown, secret: string | null) =>
+  let sessionId: string | null = null;
+  let isInitialized = false;
+  const usesSession = transport.usesSession === true || transport.oauth !== undefined;
+  const timeoutMillis = options.requestTimeoutMillis ?? 60_000;
+
+  /** Performs the MCP Streamable HTTP session handshake when required by the transport. */
+  const ensureSession = (secret: string | null) =>
     Effect.gen(function* () {
+      if (!usesSession || isInitialized) return;
       counter += 1;
-      const message = yield* ask(transport, method, params, secret, counter, options.requestTimeoutMillis ?? 60_000);
-      const error = fieldOf(message, "error");
+      const initialized = yield* ask(
+        transport,
+        "initialize",
+        { capabilities: {}, clientInfo, protocolVersion },
+        secret,
+        null,
+        counter,
+        timeoutMillis,
+      );
+      const initError = fieldOf(initialized.message, "error");
+      if (initError !== void 0) return yield* Effect.fail(refuse("Failed"));
+      sessionId = initialized.sessionId;
+      yield* notify(transport, "notifications/initialized", secret, sessionId, timeoutMillis);
+      isInitialized = true;
+    });
+
+  const sendRequest = (method: string, params: unknown, secret: string | null) =>
+    Effect.gen(function* () {
+      yield* ensureSession(secret);
+      counter += 1;
+      const reply = yield* ask(transport, method, params, secret, sessionId, counter, timeoutMillis);
+      if (reply.sessionId !== null) sessionId = reply.sessionId;
+      const error = fieldOf(reply.message, "error");
       if (error !== void 0)
         return yield* Effect.fail(refuse(numberFieldOf(error, "code") === -32602 ? "InvalidArguments" : "Failed"));
-      return fieldOf(message, "result");
+      return fieldOf(reply.message, "result");
     });
+
+  const askServer = (method: string, params: unknown, secret: string | null) =>
+    sendRequest(method, params, secret).pipe(
+      Effect.catch((failure) => {
+        if (usesSession && failure.upstream === sessionExpiredWords) {
+          sessionId = null;
+          isInitialized = false;
+          return sendRequest(method, params, secret);
+        }
+        return Effect.fail(failure);
+      }),
+    );
 
   return {
     call: (tool, args, secret) =>
@@ -201,7 +281,10 @@ export const httpMcpBackend = (
               Effect.succeed(redactedOf(text, secret === null ? [] : [secret]));
         }),
       ),
-    close: Effect.void,
+    close: Effect.sync(() => {
+      sessionId = null;
+      isInitialized = false;
+    }),
     listTools: (secret) =>
       askServer("tools/list", {}, secret).pipe(
         Effect.flatMap((result) => {

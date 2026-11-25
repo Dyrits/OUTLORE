@@ -102,6 +102,15 @@ Threads can act only on the computer and on what their harness already reaches. 
   A hosted service whose server code is not published (AWS Knowledge, DeepWiki, Stripe, GitLab, Datadog) says `Hosted service, server code not published`, which is not an OSI licence.
   The owner decided on 2026-11-25 to keep such remote services, as Composio's hosted endpoint is, and the Fully open source requirement below is read as covering what Outlore ships, not a third party's service the owner opts into.
 
+### Wave 2: generic MCP OAuth 2.1 connectors
+
+- Remote MCP servers that require browser sign-in use one generic host-side MCP OAuth 2.1 client, with no connector-specific sign-in screens in Outlore (owner, 2026-11-25; [ADR 0027](../../architecture-decision-record/0027-mcp-oauth-sessions-in-the-vault.md)).
+  The host discovers RFC 9728 Protected Resource Metadata and RFC 8414 / OIDC Authorization Server Metadata, registers dynamically via RFC 7591 with an ephemeral loopback redirect (`http://127.0.0.1:<port>/callback`), opens the vendor's consent page in the host's browser with PKCE S256 and a random `state`, and exchanges the code for tokens.
+- Access tokens, refresh tokens, expiry, and dynamic client metadata are stored together in the Vault under kind `OAuth session` and never reach a model, harness, thread, paired device, or log.
+  Tokens refresh automatically on expiry or HTTP 401 behind a per-connector lock, HTTP redirects are never followed, and both access and refresh tokens are redacted from all tool outputs and listing metadata.
+- Because the loopback callback runs on the host computer, `SignInConnector` is host-only; paired devices show that browser sign-in happens on the host computer.
+  Vendors that do not support generic RFC 7591 dynamic client registration (such as Slack, Asana, Google Workspace, and Microsoft 365) are skipped.
+
 ### Apple apps
 
 - Apple apps works only when the host is a Mac; on another host it shows **Needs a Mac** and cannot be installed there.

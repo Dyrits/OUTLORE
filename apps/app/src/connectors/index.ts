@@ -6,6 +6,7 @@ export {
   chosenAppsOf,
   connectorStateLabels,
   isInstalledCard,
+  remoteOAuthNote,
   remotePermissionNote,
   removalWarning,
   toolClassLabels,

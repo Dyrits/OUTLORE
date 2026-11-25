@@ -12,11 +12,12 @@ export {
 } from "./backend.ts";
 export { connectorBackendsLayer, type StdioMcpOptions, stdioMcpBackend } from "./backends/index.ts";
 export { ConnectorCalls, connectorCallsLayer } from "./calls.ts";
-export { type CatalogEntry, listedNameOf } from "./catalog.ts";
+export { type CatalogEntry, isOAuthEntry, listedNameOf, oauthSecretKind } from "./catalog.ts";
 export { defaultCatalog } from "./catalogEntries.ts";
 export { CodeExecutor } from "./codeExecutor.ts";
 export { answerCodeModeCall, codeToolName, maxWorkStartsPerRun, type OwnTools, offeredToolsOf } from "./codeMode.ts";
 export { Connectors, type ConnectorsOptions, connectorServicesLayer } from "./connectors.ts";
 export { ConnectorGateway, noConnectorsLayer } from "./gateway.ts";
 export { connectorsLayer } from "./layers.ts";
+export type { BrowserOpener } from "./oauth/index.ts";
 export { emptyVaultLayer, SecretMissing, VaultPort, VaultUnavailable } from "./vaultPort.ts";

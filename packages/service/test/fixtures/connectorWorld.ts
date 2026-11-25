@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { MissionDetail, Question, Request, ThreadId } from "@outlore/contracts";
 import { Deferred, Effect, type Layer } from "effect";
-import type { CatalogEntry, ConnectorBackends } from "../../src/connectors/index.ts";
+import type { BrowserOpener, CatalogEntry, ConnectorBackends } from "../../src/connectors/index.ts";
 import type { Harness } from "../../src/core/index.ts";
 import { fakeHarnessLayer, serviceLayer } from "../../src/index.ts";
 import {
@@ -27,6 +27,7 @@ export const connectorWorld = (
     readonly entries?: ReadonlyArray<CatalogEntry>;
     readonly harness?: Layer.Layer<Harness>;
     readonly hasKey?: boolean;
+    readonly openBrowser?: BrowserOpener;
     readonly platform?: NodeJS.Platform;
   } = {},
 ) =>
@@ -57,6 +58,7 @@ export const connectorWorld = (
             unnamed_service: unnamed.backend,
           }),
         connectorCatalog: catalog,
+        ...(options.openBrowser === undefined ? {} : { connectorOpenBrowser: options.openBrowser }),
         connectorPlatform: options.platform ?? "darwin",
         connectorVault: vault.layer,
         filename: join(directory, "store.sqlite"),

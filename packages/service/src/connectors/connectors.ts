@@ -13,7 +13,7 @@ import { ConnectorAsking, ConnectorNotices } from "./asking.ts";
 import { isUsableBy } from "./availability.ts";
 import { ConnectorBackends } from "./backend.ts";
 import { ConnectorCalls } from "./calls.ts";
-import { type CatalogEntry, defaultAppsOf, entryOf } from "./catalog.ts";
+import { type CatalogEntry, defaultAppsOf, entryOf, isOAuthEntry, oauthSecretKind } from "./catalog.ts";
 import { defaultCatalog } from "./catalogEntries.ts";
 import {
   type CallDependencies,
@@ -42,6 +42,7 @@ import {
   writeNeeds,
 } from "./connectorStore.ts";
 import { ConnectorGateway, type ConnectorTool } from "./gateway.ts";
+import { type BrowserOpener, encodeOAuthSession, runOAuthSignIn } from "./oauth/index.ts";
 import { failureOutcomeOf, makeToolListing } from "./toolListing.ts";
 import { VaultPort } from "./vaultPort.ts";
 
@@ -92,6 +93,8 @@ export class Connectors extends Context.Service<
     readonly setTool: (
       request: Parameters<typeof setConnectorTool>[1],
     ) => Effect.Effect<void, ServiceFailure | SqlError.SqlError>;
+    /** Runs the generic MCP OAuth 2.1 browser sign-in flow for an installed OAuth connector. */
+    readonly signIn: (connectorId: string) => Effect.Effect<ConnectorCard, ServiceFailure | SqlError.SqlError>;
     /** The first step of a removal. Runs in the command's transaction. */
     readonly startRemoval: (connectorId: string) => Effect.Effect<void, ServiceFailure | SqlError.SqlError>;
     /** Stops the calls underway whose tool a committed change took from their thread. */
@@ -101,9 +104,10 @@ export class Connectors extends Context.Service<
   }
 >()("outlore/connectors/Connectors") {}
 
-/** What the connectors are built over: the catalog the Charter offers and the host's platform. */
+/** What the connectors are built over: the catalog the Charter offers, the host's platform, and optional browser opener. */
 export type ConnectorsOptions = {
   readonly catalog?: ReadonlyArray<CatalogEntry>;
+  readonly openBrowser?: BrowserOpener;
   readonly platform?: NodeJS.Platform;
 };
 
@@ -257,6 +261,40 @@ const make = (options: ConnectorsOptions) =>
       }).pipe(Effect.ignore),
       setSwitch: (request) => setConnectorSwitch(operations, request),
       setTool: (request) => setConnectorTool(operations, request),
+      signIn: (connectorId) =>
+        Effect.gen(function* () {
+          const entry = entryOf(catalog, connectorId);
+          if (entry === null) return yield* notFound("Outlore offers no such connector.");
+          if (!isOAuthEntry(entry) || entry.backend._tag !== "Http") {
+            return yield* invalid("That connector does not sign in through OAuth.");
+          }
+          const record = yield* readConnectorRecord(connectorId).pipe(provided);
+          if (record === null || record.isRemoving) {
+            return yield* invalid("Install that connector before signing in.");
+          }
+          const session = yield* runOAuthSignIn(entry.backend, {
+            ...(options.openBrowser === undefined ? {} : { openBrowser: options.openBrowser }),
+          }).pipe(
+            Effect.mapError((failure) => new ServiceFailure({ kind: "ExecutionFailure", message: failure.message })),
+          );
+          yield* vault.putOrReplace(entry.id, oauthSecretKind, encodeOAuthSession(session)).pipe(
+            Effect.catchTag("VaultUnavailable", (failure) =>
+              Effect.fail(
+                new ServiceFailure({
+                  kind: failure.reason === "NotProtected" ? "AccessRefused" : "ExecutionFailure",
+                  message:
+                    failure.reason === "NotProtected"
+                      ? "The Vault cannot store the OAuth session until its folder protection is verified."
+                      : "Could not save the OAuth session in the Vault.",
+                }),
+              ),
+            ),
+          );
+          yield* writeNeeds(entry.id, null).pipe(provided);
+          yield* refreshFor(entry, null);
+          yield* changes.publish;
+          return yield* cardOf(cardDependencies, entry);
+        }),
       startRemoval: (connectorId) => startRemoval(operations, connectorId),
       stopRevokedCalls: calls.stopRevoked.pipe(Effect.asVoid),
     };

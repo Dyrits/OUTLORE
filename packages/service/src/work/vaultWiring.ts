@@ -18,9 +18,11 @@ const reasons: Record<VaultState["_tag"], VaultUnavailable["reason"]> = {
 
 /** The VaultUnavailable the gateway sees for a Vault failure, reading the Vault's state when the failure names one. */
 const unavailableOf = (vault: Vault["Service"], failure: VaultFailure): Effect.Effect<VaultUnavailable> =>
-  failure.kind === "Unavailable"
-    ? Effect.map(vault.state, (state) => new VaultUnavailable({ reason: reasons[state._tag] }))
-    : Effect.succeed(new VaultUnavailable({ reason: "Failed" }));
+  failure.kind === "NotProtected"
+    ? Effect.succeed(new VaultUnavailable({ reason: "NotProtected" }))
+    : failure.kind === "Unavailable"
+      ? Effect.map(vault.state, (state) => new VaultUnavailable({ reason: reasons[state._tag] }))
+      : Effect.succeed(new VaultUnavailable({ reason: "Failed" }));
 
 /** The port's failure for one Vault failure: a missing secret is SecretMissing, anything else VaultUnavailable. */
 const portFailureOf = (
@@ -43,6 +45,22 @@ export const vaultPortOf = (vault: Vault["Service"]): VaultPort["Service"] => ({
         Effect.catchTag("VaultFailure", (failure) =>
           failure.kind === "Missing"
             ? Effect.succeed(false)
+            : Effect.flatMap(unavailableOf(vault, failure), Effect.fail),
+        ),
+      ),
+  putOrReplace: (connector, kind, secret) =>
+    vault
+      .replace({ connectorId: connector, kind, secret: Secret.make(secret) })
+      .pipe(
+        Effect.catchTag("VaultFailure", (failure) =>
+          failure.kind === "Missing"
+            ? vault
+                .put({ connectorId: connector, kind, secret: Secret.make(secret) })
+                .pipe(
+                  Effect.catchTag("VaultFailure", (putFailure) =>
+                    Effect.flatMap(unavailableOf(vault, putFailure), Effect.fail),
+                  ),
+                )
             : Effect.flatMap(unavailableOf(vault, failure), Effect.fail),
         ),
       ),

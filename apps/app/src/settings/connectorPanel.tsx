@@ -1,9 +1,10 @@
 import type { ConnectorCard } from "@outlore/contracts";
 import { Text } from "react-native";
-import { canInstallCard, connectorStateLabels, isInstalledCard } from "../connectors";
+import { canInstallCard, connectorStateLabels, isInstalledCard, remoteOAuthNote } from "../connectors";
 import type { ServiceClient } from "../foundation/client";
 import { useIsRemoteHost } from "../foundation/hostContext";
 import { styles } from "../foundation/styles";
+import { Button } from "../ui/button";
 import { ToggleRow } from "../ui/toggleRow";
 import { AppsBlock, InstallBlock, PanelBlock, RemoveBlock, ToolsBlock, useAttempt } from "./connectorPanelBlocks";
 import { ConnectorSecrets } from "./connectorSecrets";
@@ -33,10 +34,23 @@ export function ConnectorPanel({
       <Text style={styles.muted}>{card.description}</Text>
       <PanelBlock title="Connection">
         {card.needs !== null && <Text style={styles.muted}>{card.needs}</Text>}
-        {isInstalled && !isRemoving && card.secretKinds.length > 0 && (
+        {isInstalled &&
+          !isRemoving &&
+          card.usesOAuth === true &&
+          (isRemote ? (
+            <Text style={styles.muted}>{remoteOAuthNote}</Text>
+          ) : (
+            <Button
+              isDisabled={busy}
+              isPrimary={card.state !== "Ready"}
+              label={card.state === "Ready" ? "Sign in again" : "Sign in in browser"}
+              onPress={() => attempt(() => client.request({ _tag: "SignInConnector", connectorId: card.id }))}
+            />
+          ))}
+        {isInstalled && !isRemoving && card.usesOAuth !== true && card.secretKinds.length > 0 && (
           <ConnectorSecrets card={card} client={client} onChanged={onChanged} onOpenVault={onOpenVault} />
         )}
-        {isInstalled && card.secretKinds.length === 0 && card.needs === null && (
+        {isInstalled && card.usesOAuth !== true && card.secretKinds.length === 0 && card.needs === null && (
           <Text style={styles.muted}>Nothing to connect.</Text>
         )}
         {canInstallCard(card) && (

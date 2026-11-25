@@ -19,6 +19,7 @@ const requests = {
   RequestApplePermission: { connectorId: "apple" },
   SetRemoteAccess: { isEnabled: false },
   SetThreadPermissionMode: { mode: "FullAccess", threadId: "thread" },
+  SignInConnector: { connectorId: "oauth_notes" },
   UseOwnRelay: { token: "a-token" },
   UseSharedRelay: {},
 } as const;

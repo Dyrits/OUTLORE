@@ -16,6 +16,7 @@ describe("the requests only a host may answer", () => {
       "RemoveHost",
       "RequestApplePermission",
       "SetRemoteAccess",
+      "SignInConnector",
       "UseOwnRelay",
       "UseSharedRelay",
     ]);

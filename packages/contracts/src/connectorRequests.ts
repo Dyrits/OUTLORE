@@ -62,6 +62,8 @@ export const ConnectorCard = Schema.Struct({
   secretKinds: Schema.Array(Schema.String),
   state: ConnectorState,
   tools: Schema.Array(ConnectorToolCard),
+  /** Whether the connector signs in through the generic MCP OAuth 2.1 browser flow. */
+  usesOAuth: Schema.optionalKey(Schema.Boolean),
 });
 export type ConnectorCard = typeof ConnectorCard.Type;
 
@@ -162,6 +164,12 @@ export type ApplePermissionReport = typeof ApplePermissionReport.Type;
  */
 export const RequestApplePermission = Schema.TaggedStruct("RequestApplePermission", { connectorId: Schema.String });
 
+/**
+ * Runs the generic MCP OAuth 2.1 browser sign-in flow on the host computer for an installed OAuth connector, stores its
+ * session in the Vault, refreshes its tool listing, and answers the updated card.
+ */
+export const SignInConnector = Schema.TaggedStruct("SignInConnector", { connectorId: Schema.String });
+
 /** The requests that read or change connectors. */
 export const connectorRequests = [
   ListConnectors,
@@ -172,6 +180,7 @@ export const connectorRequests = [
   SetConnectorTool,
   ChooseAppleApps,
   RequestApplePermission,
+  SignInConnector,
 ] as const;
 
 /** What each connector request answers: the connector's card after the change, or every card. */
@@ -184,4 +193,5 @@ export const connectorResults = {
   RequestApplePermission: ApplePermissionReport,
   SetConnectorSwitch: ConnectorCard,
   SetConnectorTool: ConnectorCard,
+  SignInConnector: ConnectorCard,
 } as const;

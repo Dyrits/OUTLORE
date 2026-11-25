@@ -10,6 +10,17 @@ export type ToolClass = "Read" | "Write";
  */
 export const hostedServiceLicence = "Hosted service, server code not published";
 
+/** The Vault secret kind used to store an OAuth 2.1 session (access token, refresh token and client metadata). */
+export const oauthSecretKind = "OAuth session";
+
+/** Configuration for a remote MCP server that authenticates with MCP OAuth 2.1 browser sign-in. */
+export type HttpOAuthConfig = {
+  /** Client name sent during RFC 7591 dynamic client registration; defaults to "Outlore". */
+  readonly clientName?: string;
+  /** Optional scopes to request; when omitted, scopes come from the server's challenge or metadata. */
+  readonly scopes?: ReadonlyArray<string>;
+};
+
 /** One tool the catalog names, by its exact name at the server, after reading what it does. */
 export type CatalogTool = {
   /** The app a tool of an app-based connector belongs to, or null. */
@@ -32,9 +43,13 @@ export type CatalogBackend =
       readonly _tag: "Http";
       /** The one header that carries the connector's secret, or null for a keyless server that is sent no secret. */
       readonly header: string | null;
+      /** When set, the connector authenticates via MCP OAuth 2.1 browser sign-in and stores its session in the Vault. */
+      readonly oauth?: HttpOAuthConfig;
       /** Text put before the secret in the header's value, such as "Bearer "; absent, the header carries the secret alone. */
       readonly prefix?: string;
       readonly url: string;
+      /** When true, the adapter performs MCP initialize and sends Mcp-Session-Id; OAuth entries always use a session. */
+      readonly usesSession?: boolean;
     }
   | {
       readonly _tag: "Stdio";
@@ -108,6 +123,9 @@ export const defaultAppsOf = (entry: CatalogEntry) => entry.apps.filter((app) =>
 /** Whether a host of this platform can run the connector. */
 export const isRunnableOn = (entry: CatalogEntry, platform: NodeJS.Platform) =>
   entry.platform === "Any" || platform === "darwin";
+
+/** Whether an entry authenticates through the generic MCP OAuth 2.1 browser sign-in flow. */
+export const isOAuthEntry = (entry: CatalogEntry) => entry.backend._tag === "Http" && entry.backend.oauth !== undefined;
 
 /**
  * The tools a server lists that the entry does not name: they are asked about on every call, and a test of the pinned

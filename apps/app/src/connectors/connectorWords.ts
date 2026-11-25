@@ -83,6 +83,9 @@ export const applePermissionLabelOf = (app: string, status: ApplePermissionStatu
 export const remotePermissionNote =
   "Permission needed on the computer. Only that computer's own window can ask macOS; the switches above work from here.";
 
+/** The words in place of the browser sign-in button on a paired device: loopback OAuth callbacks run on the host. */
+export const remoteOAuthNote = "Browser sign-in runs on the host computer. Open Outlore on that computer to sign in.";
+
 /** The line that asks the owner to confirm the notice before installing. */
 export const noticeConfirmLabel = "I have read this";
 

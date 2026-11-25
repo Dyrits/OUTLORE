@@ -6,6 +6,7 @@ import type {
   RequestApplePermission,
   SetConnectorSwitch,
   SetConnectorTool,
+  SignInConnector,
 } from "@outlore/contracts";
 import { Effect } from "effect";
 import type { SqlError } from "effect/sql";
@@ -66,5 +67,7 @@ export const connectorHandlers = (commands: CommandRunner, connectors: Connector
         given.connectorId,
         connectors.setTool({ connectorId: given.connectorId, isOn: given.isOn, tool: given.tool }),
       ),
+    // Not a command and host-only: browser sign-in waits for the owner and uses a loopback callback on the host.
+    SignInConnector: (given: typeof SignInConnector.Type) => connectors.signIn(given.connectorId),
   };
 };

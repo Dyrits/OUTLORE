@@ -9,17 +9,19 @@ export class SecretMissing extends Schema.TaggedError<SecretMissing>()("SecretMi
   kind: Schema.String,
 }) {}
 
-/** The Vault cannot answer now: locked, its key lost, a record corrupt, or a failed read or write. */
+/** The Vault cannot answer now: locked, its key lost, a record corrupt, not protected, or a failed read or write. */
 export class VaultUnavailable extends Schema.TaggedError<VaultUnavailable>()("VaultUnavailable", {
-  reason: Schema.Literals(["Locked", "Lost", "Corrupt", "Failed"]),
+  reason: Schema.Literals(["Locked", "Lost", "Corrupt", "Failed", "NotProtected"]),
 }) {}
 
-/** What the connectors need of the Vault: whether a secret is held, the one read, and removing a connector's secrets. */
+/** What the connectors need of the Vault: whether a secret is held, the one read, storing OAuth sessions, and removing secrets. */
 export class VaultPort extends Context.Service<
   VaultPort,
   {
     /** Whether the Vault holds a secret of this kind for the connector; never its value. */
     readonly holds: (connector: string, kind: string) => Effect.Effect<boolean, VaultUnavailable>;
+    /** Stores or replaces a secret of this kind for the connector, used for OAuth sessions and token refreshes. */
+    readonly putOrReplace: (connector: string, kind: string, secret: string) => Effect.Effect<void, VaultUnavailable>;
     /** Removes every secret of the connector; removing none is not a failure, so a resumed removal repeats it safely. */
     readonly removeAllOf: (connector: string) => Effect.Effect<void, VaultUnavailable>;
     /** Hands the secret to the callback and keeps nothing: the only read of a secret. */
@@ -34,6 +36,7 @@ export class VaultPort extends Context.Service<
 /** A Vault that holds nothing, for a service built before the Vault is wired in: a connector that needs a key never connects. */
 export const emptyVaultLayer = Layer.succeed(VaultPort, {
   holds: () => Effect.succeed(false),
+  putOrReplace: () => Effect.fail(new VaultUnavailable({ reason: "Failed" })),
   removeAllOf: () => Effect.void,
   withSecret: (connector, kind) => Effect.fail(new SecretMissing({ connector, kind })),
 });
