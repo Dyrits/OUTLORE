@@ -52,7 +52,7 @@ const formerDataMoved = Promise.resolve().then(() => {
 });
 
 /** The updates of this app, once set up; the service's calls about updating the host wait for them. */
-let updatesReady: (updates: ServiceUpdates) => void = () => undefined;
+let updatesReady: (updates: ServiceUpdates) => void = () => void 0;
 const updatesOfService = new Promise<ServiceUpdates>((resolve) => {
   updatesReady = resolve;
 });
@@ -116,16 +116,16 @@ const quitWith = (reason: string) => {
   app.quit();
 };
 
-let mainWindow: BrowserWindow | undefined;
+let mainWindow: BrowserWindow | null = null;
 const bringWindowForward = () => {
-  if (mainWindow === undefined || mainWindow.isDestroyed()) return;
+  if (mainWindow === null || mainWindow.isDestroyed()) return;
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.focus();
 };
 // Pairing links (`outlore://pair#<code>`) go to the window alone: never logged, never in a title or a command line of
 // ours. The link is as secret as the code in it.
 const pairingLinks = createPairingLinkQueue((link) => {
-  if (mainWindow !== undefined && !mainWindow.isDestroyed()) mainWindow.webContents.send("outlore:pairingLink", link);
+  if (mainWindow !== null && !mainWindow.isDestroyed()) mainWindow.webContents.send("outlore:pairingLink", link);
 });
 // A second launch on this profile brings the running window forward instead of starting another service; on Windows and
 // Linux a link opened while the app runs arrives as that launch's arguments.

@@ -2,7 +2,8 @@ import type { Tier } from "@outlore/contracts";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { CustomPresets } from "../../src/settings/workshopCompanions";
+import { CustomPresets } from "../../src/settings/customPresets";
+import { customFocusOf } from "../../src/settings/workshopTabs";
 
 // react-native loads only on a device or in a browser; react-native-web draws the same tree to static markup.
 vi.mock("react-native", async () => await import("react-native-web"));
@@ -16,7 +17,7 @@ const draw = (props: { isDraft?: boolean; names: ReadonlyArray<string> }) =>
       isDraft: props.isDraft ?? false,
       onAdd: () => {},
       onFocus: () => {},
-      presets: props.names.map((name) => ({ focus: `custom:${name}` as const, name, stack })),
+      presets: props.names.map((name) => ({ focus: customFocusOf(name), name, stack })),
       selected: "Light",
     }),
   );

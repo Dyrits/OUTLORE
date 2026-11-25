@@ -8,7 +8,10 @@ export type WorkshopPreset = TierName | `custom:${string}`;
 /** The default Companion or the preset selected in the Workshop. */
 export type WorkshopFocus = "Default" | WorkshopPreset;
 
-interface WorkshopTabs {
+/** The preset key of the custom preset called `name`. */
+export const customFocusOf = (name: string): WorkshopPreset => `custom:${name}`;
+
+type WorkshopTabs = {
   /** Closes the Companions tab, from whichever of the page's tables it was opened by. */
   closeTab: () => void;
   focus: WorkshopFocus;
@@ -26,7 +29,7 @@ interface WorkshopTabs {
   /** Starts a draft from `stack` and asks the table of `at` to open the tab. */
   startDraft: (stack: Tier, at: WorkshopFocus) => void;
   unregister: (focus: WorkshopFocus) => void;
-}
+};
 
 const WorkshopTabsContext = createContext<WorkshopTabs>({
   closeTab: () => {},
@@ -41,6 +44,7 @@ const WorkshopTabsContext = createContext<WorkshopTabs>({
   unregister: () => {},
 });
 
+/** Reads the shared Workshop companion tab selection from context. */
 export const useWorkshopTabs = () => useContext(WorkshopTabsContext);
 
 /** Shares the selected Companion between the Workshop tables and the Companions panel. */

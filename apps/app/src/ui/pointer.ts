@@ -1,7 +1,8 @@
 import { Platform } from "react-native";
 
 /** Whether the pointer is over a pressable: react-native-web reports it in the press state; native has no pointer. */
-export const isHovered = (state: unknown) => (state as { hovered?: boolean }).hovered === true;
+export const isHovered = (state: unknown) =>
+  typeof state === "object" && state !== null && "hovered" in state && state.hovered === true;
 
 /** The style that shows a hand over a clickable element on the web. */
 export const handCursor: object = Platform.OS === "web" ? { cursor: "pointer", userSelect: "none" } : {};

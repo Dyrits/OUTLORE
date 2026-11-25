@@ -1,22 +1,16 @@
-import type { PairingCode, RemoteAccessView } from "@outlore/contracts";
+import type { PairingCode } from "@outlore/contracts";
 import { useEffect, useState } from "react";
-import { Linking, StyleSheet, Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { useActiveHost } from "../foundation/hostContext";
 import { styles } from "../foundation/styles";
-import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Button } from "../ui/button";
 import { ToggleRow } from "../ui/toggleRow";
 import { PairingBlock } from "./pairingBlock";
-import {
-  cloudflareTokensUrl,
-  deviceLineOf,
-  ownRelayNoticeOf,
-  relayLineOf,
-  relayStatusTextOf,
-  webAppLineOf,
-} from "./remoteAccess";
+import { RelayChoice } from "./relayChoice";
+import { deviceLineOf, relayStatusTextOf } from "./remoteAccess";
+import { remoteAccessStyles } from "./remoteAccessStyles";
 import { SettingsCard, SettingsRule } from "./settingsParts";
 
 /**
@@ -94,7 +88,7 @@ function RemoteAccessOnHost({ client }: { client: ServiceClient }) {
       <SettingsRule />
       <RelayChoice client={client} deviceCount={view.devices.length} view={view} />
       <SettingsRule />
-      <View style={local.row}>
+      <View style={remoteAccessStyles.row}>
         <Button
           isDisabled={!view.isEnabled}
           label="Pair a device"
@@ -104,11 +98,11 @@ function RemoteAccessOnHost({ client }: { client: ServiceClient }) {
       </View>
       {pairing !== null && <PairingBlock key={pairing.code} now={now} pairing={pairing} />}
       <SettingsRule />
-      <Text style={local.label}>Paired devices</Text>
+      <Text style={remoteAccessStyles.label}>Paired devices</Text>
       {view.devices.length === 0 && <Text style={styles.muted}>No device is paired with this computer.</Text>}
       {view.devices.map((device) => (
-        <View key={device.id} style={local.device}>
-          <View style={local.deviceText}>
+        <View key={device.id} style={remoteAccessStyles.device}>
+          <View style={remoteAccessStyles.deviceText}>
             <Text style={styles.body}>{device.name}</Text>
             <Text style={styles.muted}>{deviceLineOf(device, now)}</Text>
           </View>
@@ -126,138 +120,3 @@ function RemoteAccessOnHost({ client }: { client: ServiceClient }) {
     </SettingsCard>
   );
 }
-
-/**
- * Which relay this host uses. The shared relay needs nothing; the owner may deploy one to their own Cloudflare account
- * with one API token, which is used once and not kept (device-pairing, own relay).
- */
-function RelayChoice({
-  client,
-  deviceCount,
-  view,
-}: {
-  client: ServiceClient;
-  deviceCount: number;
-  view: RemoteAccessView;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [token, setToken] = useState("");
-  const [isWorking, setIsWorking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const close = () => {
-    setIsOpen(false);
-    setToken("");
-    setError(null);
-  };
-  const deploy = () => {
-    setIsWorking(true);
-    setError(null);
-    client.request({ _tag: "UseOwnRelay", token }).then(
-      () => {
-        setIsWorking(false);
-        close();
-      },
-      (reason) => {
-        setIsWorking(false);
-        setError(messageOf(reason));
-      },
-    );
-  };
-  const returnToShared = () => {
-    setError(null);
-    client.request({ _tag: "UseSharedRelay" }).then(
-      () => undefined,
-      (reason) => setError(messageOf(reason)),
-    );
-  };
-  return (
-    <View style={{ gap: 8 }}>
-      <Text style={local.label}>Relay</Text>
-      <Text accessibilityLabel="Relay in use" style={styles.body}>
-        {relayLineOf(view)}
-      </Text>
-      <Text accessibilityLabel="Web app address" selectable style={styles.muted}>
-        {webAppLineOf(view)}
-      </Text>
-      {!isOpen && (
-        <View style={local.row}>
-          <Button
-            isPrimary={false}
-            label={view.isOwnRelay ? "Update my relay" : "Use my own Cloudflare account"}
-            onPress={() => setIsOpen(true)}
-          />
-          {view.isOwnRelay && <Button isPrimary={false} label="Use the shared relay" onPress={returnToShared} />}
-        </View>
-      )}
-      {isOpen && (
-        <View style={local.codeBox}>
-          <Text style={styles.body}>
-            Deploy the relay to your own Cloudflare account instead of sharing the project's. A free Cloudflare account
-            is enough.
-          </Text>
-          <Text style={styles.muted}>
-            1. Open Cloudflare's token page, choose Create Token, and use the “Edit Cloudflare Workers” template. Under
-            Account Resources, choose your one account.
-          </Text>
-          <View style={local.row}>
-            <Button
-              isPrimary={false}
-              label="Open Cloudflare's token page"
-              onPress={() => void Linking.openURL(cloudflareTokensUrl)}
-            />
-          </View>
-          <Text style={styles.muted}>2. Paste the token here.</Text>
-          <TextInput
-            accessibilityLabel="Cloudflare API token"
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!isWorking}
-            onChangeText={setToken}
-            placeholder="Cloudflare API token"
-            placeholderTextColor={colors.textDim}
-            secureTextEntry
-            style={local.input}
-            value={token}
-          />
-          <Text style={styles.muted}>{ownRelayNoticeOf(deviceCount)}</Text>
-          <View style={local.row}>
-            <Button
-              isDisabled={isWorking || token.trim() === ""}
-              label={isWorking ? "Deploying…" : "Deploy and use"}
-              onPress={deploy}
-            />
-            <Button isDisabled={isWorking} isPrimary={false} label="Cancel" onPress={close} />
-          </View>
-          {isWorking && <Text style={styles.muted}>This takes up to a minute.</Text>}
-        </View>
-      )}
-      {error !== null && <Text style={styles.error}>{error}</Text>}
-    </View>
-  );
-}
-
-const local = StyleSheet.create({
-  codeBox: {
-    backgroundColor: colors.page,
-    borderColor: colors.edge,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    gap: 8,
-    padding: 12,
-  },
-  device: { alignItems: "center", flexDirection: "row", gap: 12, justifyContent: "space-between" },
-  deviceText: { flex: 1, gap: 2 },
-  input: {
-    backgroundColor: colors.page,
-    borderColor: colors.edge,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    color: colors.text,
-    flex: 1,
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.md,
-    padding: 8,
-  },
-  label: { color: colors.textDim, fontFamily: fonts.sans, fontSize: fontSizes.sm },
-  row: { alignItems: "center", flexDirection: "row", gap: 10 },
-});

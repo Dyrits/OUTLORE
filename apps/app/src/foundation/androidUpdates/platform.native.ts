@@ -46,17 +46,17 @@ const installerOf = (native: InstallerModule): AndroidInstaller => ({
   isStoreInstall: () => native.isStoreInstall(),
 });
 
-let current: { bridge: AndroidUpdatesBridge; controller: AndroidUpdateController } | null | undefined;
+let current: { bridge: AndroidUpdatesBridge; controller: AndroidUpdateController } | null = null;
+// Whether `current` was decided, since null is the decision for a build that cannot update.
+let isResolved = false;
 let hasStarted = false;
 
 /** The one updater of this phone's app, made on first use; null off Android or in a build without the native module. */
 const updater = () => {
-  if (current !== undefined) return current;
+  if (isResolved) return current;
+  isResolved = true;
   const native = Platform.OS === "android" ? requireOptionalNativeModule<InstallerModule>("OutloreInstaller") : null;
-  if (native === null) {
-    current = null;
-    return current;
-  }
+  if (native === null) return current;
   const controller = new AndroidUpdateController({
     currentVersion: version,
     fetch: (url, init) => fetch(url, init),

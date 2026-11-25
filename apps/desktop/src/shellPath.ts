@@ -25,7 +25,8 @@ export const readLoginPath = (shell: string): string | null => {
   return result.status === 0 ? pathFromShellOutput(result.stdout) : null;
 };
 
-export interface MergedPathInput {
+/** Inputs used to merge the launch PATH, login shell PATH, and standard user bin folders. */
+export type MergedPathInput = {
   home: string;
   /** The path the app was launched with; a Finder or Dock launch gives only the system folders. */
   launchPath: string | undefined;
@@ -33,7 +34,7 @@ export interface MergedPathInput {
   loginPath: string | null;
   /** The platform whose separators and install folders apply; the running one when omitted. */
   platform?: NodeJS.Platform;
-}
+};
 
 /**
  * The path the installed app runs the service and its shells with: the login shell's folders first, then the launcher's, then where the harness tools install themselves.

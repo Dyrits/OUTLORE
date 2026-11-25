@@ -26,8 +26,10 @@ export function ChipEditor({ initialText = "", onChange, onKeyDown, placeholder,
       multiline
       onChangeText={change}
       onKeyPress={(event) => {
-        const native = event.nativeEvent as { key: string; shiftKey?: boolean };
-        if (onKeyDown({ key: native.key, shiftKey: native.shiftKey === true })) event.preventDefault();
+        // The web reports the Shift key on the event; React Native's types do not declare it.
+        const { nativeEvent } = event;
+        const isShiftHeld = "shiftKey" in nativeEvent && nativeEvent.shiftKey === true;
+        if (onKeyDown({ key: nativeEvent.key, shiftKey: isShiftHeld })) event.preventDefault();
       }}
       placeholder={placeholder}
       placeholderTextColor={colors.placeholder}

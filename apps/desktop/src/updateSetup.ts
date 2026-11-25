@@ -24,8 +24,8 @@ const updaterOf = async (): Promise<{ reason: string | null; updater: Updater | 
     if (!bundle.endsWith(".app")) return { reason: "Outlore is not running from an app bundle.", updater: null };
     // A throwaway run (checks, tests) may name its own release list and opener; the installed app always asks GitHub.
     const isThrowaway = process.env.OUTLORE_DATA_DIR !== undefined;
-    const releasesUrl = (isThrowaway ? process.env.OUTLORE_UPDATE_URL : undefined) ?? defaultReleasesUrl;
-    const opener = isThrowaway ? process.env.OUTLORE_UPDATE_OPENER : undefined;
+    const releasesUrl = (isThrowaway ? process.env.OUTLORE_UPDATE_URL : void 0) ?? defaultReleasesUrl;
+    const opener = isThrowaway ? process.env.OUTLORE_UPDATE_OPENER : void 0;
     return {
       reason: null,
       updater: createMacUpdater({

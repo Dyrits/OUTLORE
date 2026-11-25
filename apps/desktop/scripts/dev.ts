@@ -16,7 +16,7 @@ const expo = spawn("bunx", ["expo", "start", "--port", "8081"], {
   env: { ...process.env, BROWSER: "none", CI: "1" },
   stdio: "inherit",
 });
-let electron: ChildProcess | undefined;
+let electron: ChildProcess | null = null;
 let relaunching = false;
 
 const stop = () => {
@@ -35,7 +35,7 @@ const launchElectron = () => {
 
 const relaunchElectron = () => {
   const previous = electron;
-  if (previous === undefined || previous.exitCode !== null) return launchElectron();
+  if (previous === null || previous.exitCode !== null) return launchElectron();
   relaunching = true;
   previous.once("exit", () => {
     relaunching = false;

@@ -20,14 +20,14 @@ export const harnessOfAccount = (
 ): HarnessInfo | undefined => (info === undefined ? undefined : { ...info, models: modelsOf(info, accountId) });
 
 /** One tab of the Companion picker: a harness signed in with one account, and the models it offers there. */
-export interface PickerTab {
+export type PickerTab = {
   readonly accountId: AccountId | null;
   readonly harness: HarnessName;
   readonly label: string;
   readonly models: ReadonlyArray<ModelOption>;
   /** Why nothing can be chosen on this tab, or null. */
   readonly problem: "not installed" | "signed out" | null;
-}
+};
 
 const removedLabel = "Removed account";
 

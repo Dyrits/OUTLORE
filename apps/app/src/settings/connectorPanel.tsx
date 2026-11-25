@@ -6,7 +6,8 @@ import { useIsRemoteHost } from "../foundation/hostContext";
 import { styles } from "../foundation/styles";
 import { Button } from "../ui/button";
 import { ToggleRow } from "../ui/toggleRow";
-import { AppsBlock, InstallBlock, PanelBlock, RemoveBlock, ToolsBlock, useAttempt } from "./connectorPanelBlocks";
+import { AppsBlock, InstallBlock, PanelBlock, ToolsBlock, useAttempt } from "./connectorPanelBlocks";
+import { RemoveBlock } from "./connectorRemoveBlock";
 import { ConnectorSecrets } from "./connectorSecrets";
 import { SettingsCard } from "./settingsParts";
 

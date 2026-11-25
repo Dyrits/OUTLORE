@@ -37,6 +37,9 @@ export const defaultIslands: Islands = { canvas: "cool", gap: 10, layout: "islan
 const oneOf = <T>(options: ReadonlyArray<T>, value: unknown, fallback: T): T =>
   options.find((option) => option === value) ?? fallback;
 
+/** Whether a parsed value is a plain object whose fields can be read by name. */
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
+
 /**
  * The settings a stored text names; each missing or unknown one is the default. Text saved while Islands was a theme
  * (CHG-0668) has no layout and keeps its canvas, gap, radius, and lift.
@@ -45,7 +48,7 @@ export function islandsOf(stored: string | null): Islands {
   let parsed: Record<string, unknown> = {};
   try {
     const value: unknown = stored === null ? null : JSON.parse(stored);
-    if (typeof value === "object" && value !== null) parsed = value as Record<string, unknown>;
+    if (isRecord(value)) parsed = value;
   } catch {
     // Unreadable text keeps the defaults.
   }

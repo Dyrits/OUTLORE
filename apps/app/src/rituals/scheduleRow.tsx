@@ -41,7 +41,7 @@ export function ScheduleRow({
             label={(day) => weekdayLabelOf(Number(day))}
             onChange={(day) => onChange({ ...value, day: Number(day) })}
             options={weekdays}
-            value={String(value.day) as (typeof weekdays)[number]}
+            value={weekdays.find((weekday) => weekday === String(value.day)) ?? "0"}
           />
         </>
       )}

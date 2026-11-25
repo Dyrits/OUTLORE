@@ -20,25 +20,9 @@ import { Toggle } from "../ui/controls";
 import { Menu } from "../ui/pickers";
 import { RitualCompanionFields } from "./ritualCompanionFields";
 import { createRequestOf } from "./ritualCreate";
-import { isTimeValid } from "./ritualLabels";
+import { isScheduleValid, isValued, scopeOperationLabels } from "./ritualRules";
 import { ritualStyles } from "./ritualStyles";
 import { Part, ScheduleRow } from "./scheduleRow";
-
-/** How the Ritual form names each action its scope can allow. */
-const scopeOperationLabels: Record<RitualScopeEntry["operation"], string> = {
-  Archive: "Archive a quest",
-  ChangeSetting: "Change a setting",
-  Done: "Mark a quest Done",
-  Rename: "Rename a quest",
-  Stop: "Stop a quest's threads",
-};
-
-/** Whether the action takes an exact new value: a quest's new title, or a setting's new value. */
-const isValued = (operation: RitualScopeEntry["operation"]) => operation === "Rename" || operation === "ChangeSetting";
-
-/** Whether the schedule can be sent: a valid time, or hours within the allowed range. */
-const isScheduleValid = (schedule: RitualSchedule) =>
-  schedule._tag === "Hourly" ? schedule.hours >= 1 && schedule.hours <= 168 : isTimeValid(schedule.time);
 
 /**
  * Makes a Ritual, or edits one: its title, instruction, schedule, the Companion it runs on, and the Companions it falls

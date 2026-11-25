@@ -1,206 +1,20 @@
-import type { BackupCompanion, HarnessList, SettingsChange, Tier, TierName } from "@outlore/contracts";
+import type { SettingsChange, Tier } from "@outlore/contracts";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { BackupsEditor } from "../editors/backupsEditor";
-import { PresetNameForm } from "../editors/presetNameForm";
+import { Pressable, Text, View } from "react-native";
 import { RunnerPickers, useHarnesses } from "../editors/runners";
-import { useOwnBackups } from "../editors/useOwnBackups";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { runnerSummaryOf } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
-import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { Button } from "../ui/button";
 import { Fold, FoldGroup } from "../ui/fold";
+import { companionStyles } from "./companionStyles";
+import { Tabs } from "./companionTabs";
+import { CustomPresets } from "./customPresets";
 import { PresetActions, savePresetEdit } from "./presetActions";
+import { tierNameOf, tierNames } from "./tierNames";
+import { DraftPreset, WorkshopBackups } from "./workshopBackups";
 import { useWorkshopDraft, workshopDraft } from "./workshopDraft";
-import type { WorkshopFocus, WorkshopPreset } from "./workshopTabs";
-
-/** The three presets, as the Companions tab and the page name them. */
-export const tierNames: ReadonlyArray<{ hint: string; name: TierName }> = [
-  { hint: "Small, well-scoped, checkable work: renames, small fixes.", name: "Light" },
-  { hint: "Ordinary implementation, debugging, and tests.", name: "Balanced" },
-  { hint: "Ambiguous, architectural, or risky work.", name: "Heavy" },
-];
-
-/** A row of tabs in the Companions tab's own style. */
-function Tabs<T extends string>({
-  onChange,
-  options,
-  value,
-  labelOf,
-}: {
-  onChange: (option: T) => void;
-  options: ReadonlyArray<T>;
-  /** The selected option, or none when what the panel shows is not one of them. */
-  value: T | null;
-  labelOf?: (option: T) => string;
-}) {
-  return (
-    <View accessibilityRole="tablist" style={local.tabs}>
-      {options.map((option) => (
-        <Pressable
-          accessibilityRole="tab"
-          accessibilityState={{ selected: option === value }}
-          key={option}
-          onPress={() => onChange(option)}
-          style={[local.tab, option === value && local.tabActive]}
-        >
-          <Text style={[local.tabText, option === value && local.tabTextActive]}>{labelOf?.(option) ?? option}</Text>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
-/**
- * A list of backup Companions in the tab: what the list does, then one fold for each.
- * The tab draws it away from the page, so it reads the saved list and saves its own changes at once, as a thread's does; the list is the owner's own once they change it, until the saved one changes elsewhere.
- */
-function WorkshopBackups({
-  backups,
-  client,
-  note,
-  onSave,
-}: {
-  backups: ReadonlyArray<BackupCompanion>;
-  client: ServiceClient;
-  note: string;
-  onSave: (backups: ReadonlyArray<BackupCompanion>) => Promise<unknown>;
-}) {
-  const { data: harnesses } = useHarnesses(client);
-  const { backups: shown, discard, edit } = useOwnBackups(backups);
-  const [error, setError] = useState<string | null>(null);
-  const save = (next: ReadonlyArray<BackupCompanion>) => {
-    edit(next);
-    setError(null);
-    onSave(next).catch((reason) => {
-      discard();
-      setError(messageOf(reason));
-    });
-  };
-  return (
-    <View style={local.backups}>
-      <Text style={local.title}>Backup companions</Text>
-      <Text style={local.note}>{note}</Text>
-      <BackupsEditor backups={shown} harnesses={harnesses} isCompact={false} isFolded={true} onChange={save} />
-      {error !== null && <Text style={local.error}>{error}</Text>}
-    </View>
-  );
-}
-
-/**
- * A preset not yet made: its Companion and backups are chosen here and kept as a draft, unlike a saved preset's, which
- * save at once. Saving asks for the name, and the tab then shows the new preset.
- */
-function DraftPreset({
-  client,
-  draft,
-  lastPreset,
-  onFocus,
-}: {
-  client: ServiceClient;
-  draft: Tier;
-  /** Where Discard returns to. */
-  lastPreset: WorkshopPreset;
-  onFocus: (focus: WorkshopFocus) => void;
-}) {
-  const { data: harnesses } = useHarnesses(client);
-  const setDraft = workshopDraft.set;
-  return (
-    <View style={local.tier}>
-      <Text style={local.note}>
-        New preset, not saved yet. Choose its Companion and backups, then save it under a name.
-      </Text>
-      <FoldGroup initial="main">
-        <Fold harness={draft.harness} id="main" summary={runnerSummaryOf(harnesses, draft)} title="Companion">
-          <RunnerPickers
-            client={client}
-            harnesses={harnesses}
-            isCompact={false}
-            isPanel={true}
-            onChange={(runner) => setDraft({ ...runner, backups: draft.backups })}
-            value={draft}
-          />
-        </Fold>
-        <WorkshopBackups
-          backups={draft.backups}
-          client={client}
-          note="When a turn fails, a quest using this preset carries on with the first of these."
-          onSave={async (backups) => setDraft({ ...draft, backups })}
-        />
-      </FoldGroup>
-      <View style={local.draftActions}>
-        <PresetNameForm
-          label="Save as new preset"
-          onSave={async (name) => {
-            await savePresetEdit(client, { _tag: "Add", name, stack: draft });
-            onFocus(`custom:${name}`);
-          }}
-        />
-        <Button isPrimary={false} label="Discard" onPress={() => onFocus(lastPreset)} />
-      </View>
-    </View>
-  );
-}
-
-/**
- * The custom presets as a list, under the three built-in tiers' tabs: one row for each, the one shown marked, and a
- * row that starts a new one. A list stays readable however many there are, as a row of tabs does not.
- */
-export function CustomPresets({
-  harnesses,
-  isDraft,
-  onAdd,
-  onFocus,
-  presets,
-  selected,
-}: {
-  harnesses: HarnessList | null;
-  isDraft: boolean;
-  onAdd: () => void;
-  onFocus: (focus: WorkshopFocus) => void;
-  presets: ReadonlyArray<{ focus: WorkshopPreset; name: string; stack: Tier | null }>;
-  selected: WorkshopFocus;
-}) {
-  return (
-    <View style={local.custom}>
-      <Text style={local.title}>Custom</Text>
-      {presets.length === 0 && !isDraft && <Text style={local.note}>None yet.</Text>}
-      {presets.map(({ focus, name, stack }) => {
-        const isSelected = !isDraft && focus === selected;
-        return (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: isSelected }}
-            key={focus}
-            onPress={() => onFocus(focus)}
-            style={[local.customRow, isSelected && local.tabActive]}
-          >
-            <Text numberOfLines={1} style={[local.customName, isSelected && local.tabTextActive]}>
-              {name}
-            </Text>
-            {stack !== null && (
-              <Text numberOfLines={1} style={local.customSummary}>
-                {runnerSummaryOf(harnesses, stack)}
-              </Text>
-            )}
-          </Pressable>
-        );
-      })}
-      {isDraft ? (
-        <View style={[local.customRow, local.tabActive]}>
-          <Text style={[local.customName, local.tabTextActive]}>New preset</Text>
-          <Text style={local.customSummary}>Not saved yet</Text>
-        </View>
-      ) : (
-        <Pressable accessibilityRole="button" onPress={onAdd} style={local.customRow}>
-          <Text style={styles.link}>+ Add preset</Text>
-        </Pressable>
-      )}
-    </View>
-  );
-}
+import { customFocusOf, type WorkshopFocus, type WorkshopPreset } from "./workshopTabs";
 
 /** The Workshop's Companions panel opens on the default stack or the selected preset. */
 export function WorkshopCompanions({
@@ -224,7 +38,7 @@ export function WorkshopCompanions({
     setError(null);
     client.request({ _tag: "ChangeSettings", change }).catch((reason) => setError(messageOf(reason)));
   };
-  if (settings === null) return <Text style={local.note}>Reading the settings…</Text>;
+  if (settings === null) return <Text style={companionStyles.note}>Reading the settings…</Text>;
   const defaults = {
     accountId: null,
     effort: settings.defaultEffort,
@@ -241,7 +55,7 @@ export function WorkshopCompanions({
       stack: settings.tiers[name],
     })),
     ...custom.map(({ name, stack }) => ({
-      focus: `custom:${name}` as const,
+      focus: customFocusOf(name),
       hint: null,
       name,
       save: (next: typeof stack) => savePresetEdit(client, { _tag: "SetStack", name, stack: next }),
@@ -258,7 +72,7 @@ export function WorkshopCompanions({
     preset?.save(next).catch((reason) => setError(messageOf(reason)));
   };
   return (
-    <View style={local.panel}>
+    <View style={companionStyles.panel}>
       <Tabs
         onChange={(next) => onFocus(next === "Presets" ? (preset?.focus ?? "Light") : "Default")}
         options={["Default", "Presets"]}
@@ -270,7 +84,7 @@ export function WorkshopCompanions({
             labelOf={(option) => presets.find((candidate) => candidate.focus === option)?.name ?? option}
             onChange={onFocus}
             options={tierNames.map(({ name }) => name)}
-            value={isDraft || selected.startsWith("custom:") ? null : (selected as TierName)}
+            value={isDraft ? null : tierNameOf(selected)}
           />
           <CustomPresets
             harnesses={harnesses}
@@ -307,11 +121,11 @@ export function WorkshopCompanions({
           />
         </FoldGroup>
       ) : (
-        <View key={preset.focus} style={local.tier}>
-          {preset.hint !== null && <Text style={local.note}>{preset.hint}</Text>}
+        <View key={preset.focus} style={companionStyles.tier}>
+          {preset.hint !== null && <Text style={companionStyles.note}>{preset.hint}</Text>}
           {stack === null ? (
             <>
-              <Text style={local.note}>Not set: this work starts on the default Companion.</Text>
+              <Text style={companionStyles.note}>Not set: this work starts on the default Companion.</Text>
               <Pressable accessibilityRole="button" onPress={() => saveStack({ ...defaults, backups: [] })}>
                 <Text style={styles.link}>Set a Companion</Text>
               </Pressable>
@@ -341,49 +155,7 @@ export function WorkshopCompanions({
           )}
         </View>
       )}
-      {error !== null && <Text style={local.error}>{error}</Text>}
+      {error !== null && <Text style={companionStyles.error}>{error}</Text>}
     </View>
   );
 }
-
-const local = StyleSheet.create({
-  backups: { gap: 8, paddingTop: 8 },
-  custom: { gap: 4 },
-  customName: { color: colors.textSecondary, flexShrink: 0, fontSize: 13, fontWeight: "500", maxWidth: "50%" },
-  customRow: {
-    alignItems: "center",
-    borderColor: colors.edge,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  customSummary: {
-    color: colors.textMuted,
-    flex: 1,
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.sm,
-    textAlign: "right",
-  },
-  draftActions: { alignItems: "flex-start", flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  error: { color: colors.dangerText, fontFamily: fonts.sans, fontSize: fontSizes.sm },
-  note: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
-  // The column's tabs sit 20 px above the first row (its own 12 px of padding, shortened to 6 for this panel) and the rows 8 px apart; every gap is 14 px.
-  panel: { gap: 14 },
-  tab: {
-    alignItems: "center",
-    borderColor: colors.edge,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    flex: 1,
-    paddingVertical: 5,
-  },
-  tabActive: { backgroundColor: colors.controlActive },
-  tabs: { flexDirection: "row", gap: 6 },
-  tabText: { color: colors.textSecondary, fontSize: 13, fontWeight: "500" },
-  tabTextActive: { color: colors.accentText, fontWeight: "700" },
-  tier: { gap: 8 },
-  title: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
-});

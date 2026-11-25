@@ -140,7 +140,7 @@ export function BackupsEditor({
     );
   }
   return (
-    <View style={isBare ? undefined : local.card}>
+    <View style={isBare ? null : local.card}>
       {backups.map((backup, index) => (
         // A backup has no identity but its place in the list.
         // biome-ignore lint/suspicious/noArrayIndexKey: see above
