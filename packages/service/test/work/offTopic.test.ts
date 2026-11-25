@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { MissionId, Suggestion, SuggestionAnswer, ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
+import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, serviceLayer } from "../../src/index.ts";
 import { isIdle, lastAgentText, startIdle } from "../fixtures/guildmaster.ts";
@@ -65,6 +66,39 @@ describe("finding missions for an off-topic request", () => {
       expect(answer).not.toContain("printer");
       expect(answer).not.toContain(current.missionId);
     }).pipe(Effect.provide(setup().layer)),
+  );
+
+  it.live(
+    "skips a Fulfilled or Archived quest that ended over 14 days ago by default, but not a recent one or an open one",
+    () =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        const current = yield* startIdle("Write the report");
+        const open = yield* startIdle("Lisbon notes");
+        const recent = yield* startIdle("Lisbon hotels");
+        const oldFulfilled = yield* startIdle("Lisbon flights");
+        const oldArchived = yield* startIdle("Lisbon museums");
+        for (const [quest, ending] of [
+          [recent, "Fulfilled"],
+          [oldFulfilled, "Fulfilled"],
+          [oldArchived, "Archived"],
+        ] as const) {
+          const preview = yield* call({ _tag: "PreviewEnding", ending, missionId: quest.missionId });
+          yield* call({ _tag: "EndMission", ending, missionId: quest.missionId, snapshot: preview.snapshot });
+        }
+        const longAgo = Date.now() - 15 * 24 * 60 * 60 * 1000;
+        yield* sql`UPDATE missions SET done_at = ${longAgo}, last_activity_at = ${longAgo} WHERE id = ${oldFulfilled.missionId}`;
+        yield* sql`UPDATE missions SET done_at = NULL, last_activity_at = ${longAgo} WHERE id = ${oldArchived.missionId}`;
+        const answer = yield* tool(current.threadId, "find_missions", { request: "Lisbon" });
+        expect(answer).toContain(open.missionId);
+        expect(answer).toContain(recent.missionId);
+        expect(answer).not.toContain(oldFulfilled.missionId);
+        expect(answer).not.toContain(oldArchived.missionId);
+        yield* call({ _tag: "ChangeSettings", change: { endedQuestMatchDays: 30 } });
+        const longer = yield* tool(current.threadId, "find_missions", { request: "flights museums" });
+        expect(longer).toContain(oldFulfilled.missionId);
+        expect(longer).toContain(oldArchived.missionId);
+      }).pipe(Effect.provide(setup().layer)),
   );
 
   it.live("offers at most 3 missions and never a deleted one", () =>

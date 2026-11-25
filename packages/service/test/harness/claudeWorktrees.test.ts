@@ -356,6 +356,7 @@ it.live("shows the reply as it is written only while the setting is on", () => {
         defaultMissionBudget: { cost: null, tokens: null },
         defaultModel: "default",
         defaultPermissionMode: "Auto",
+        endedQuestMatchDays: 14,
         globalBudget: { cost: null, tokens: null },
         globalBudgetPeriod: "Month",
         intelHalfLives: { decision: 45, fact: 45, preference: 90, temporary: 3 },

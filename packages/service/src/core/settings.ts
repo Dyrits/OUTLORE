@@ -38,6 +38,7 @@ export const defaultSettings: Settings = {
   defaultMissionBudget: noLimits,
   defaultModel: startingModel,
   defaultPermissionMode: "Auto",
+  endedQuestMatchDays: 14,
   globalBudget: noLimits,
   globalBudgetPeriod: "Month",
   intelHalfLives: { decision: 45, fact: 45, preference: 90, temporary: 3 },

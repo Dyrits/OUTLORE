@@ -1,7 +1,7 @@
 import type { MissionSummary } from "@outlore/contracts";
-import { Effect } from "effect";
+import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { wordsOf } from "../core/index.ts";
+import { dayMillis, readSettings, wordsOf } from "../core/index.ts";
 import { listMissionSummaries } from "./missions.ts";
 
 /** The dashboard summaries of the missions, by mission id; a mission that no longer stands has none. */
@@ -35,11 +35,13 @@ const identifierScore = 20;
 /**
  * Other missions whose titles, briefings, or opening requests share words with the request, best first, at most 3:
  * a title word counts twice, a briefing or opening word once (provisional, work-in-progress Batch 10), and a shared
- * ticket key or link counts 20. Every ordinary mission not deleted counts, whatever its state; Ritual quests, the
- * caller's own mission and Chronicler's do not.
+ * ticket key or link counts 20.
+ * Every ordinary mission not deleted counts, whatever its state; Ritual quests, the caller's own mission and Chronicler's do not.
+ * A Fulfilled or Archived mission counts only for `endedQuestMatchDays` (14 by default) after it ended, by its finish time or, when it has none, its last activity.
  */
 export const findMissions = Effect.fnUntraced(function* (callerId: string, request: string) {
   const sql = yield* SqlClient.SqlClient;
+  const staleBefore = (yield* Clock.currentTimeMillis) - (yield* readSettings).endedQuestMatchDays * dayMillis;
   const wanted = wordsOf(request);
   const wantedKeys = identifiersOf(request);
   const rows = yield* sql<{
@@ -53,6 +55,7 @@ export const findMissions = Effect.fnUntraced(function* (callerId: string, reque
       FROM missions m JOIN threads top ON top.id = m.top_thread_id LEFT JOIN journals j ON j.mission_id = m.id
       WHERE top.is_deleting = 0 AND m.is_guildmaster = 0
         AND NOT EXISTS (SELECT 1 FROM rituals r WHERE r.mission_id = m.id)
+        AND (m.ending IS NULL OR COALESCE(m.done_at, m.last_activity_at) >= ${staleBefore})
         AND m.id <> (SELECT mission_id FROM threads WHERE id = ${callerId})`;
   const scored = rows
     .map((row) => {

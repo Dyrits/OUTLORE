@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Outlore — quest suggestion card, three alternatives (2026-11-25)</title>
+<style>
+  :root {
+    --bg: #15171c; --panel: #1d2027; --card: #232730; --edge: #353a46; --text: #e8eaf0; --muted: #8d94a5;
+    --control: #2b303b; --primary: #3d4660; --accent: #9aa6ff; --warn-soft: #3a2f22; --warn: #d9a05b;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 32px 60px; font: 14px/1.45 var(--sans); color: var(--text); background: var(--bg); }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  h2 { margin: 0 0 2px; font-size: 16px; }
+  p.lead { max-width: 860px; margin: 0 0 22px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(310px, 1fr)); gap: 22px; align-items: start; }
+  .option { padding: 16px; background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; }
+  .option > p { margin: 2px 0 14px; color: var(--muted); font-size: 13px; }
+  .option ul { margin: 14px 0 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; }
+  .label { margin: 16px 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .label:first-of-type { margin-top: 0; }
+
+  /* today's card, for comparison */
+  .today { padding: 14px; background: var(--warn-soft); border: 1px solid #b4574a; border-radius: 10px; display: grid; gap: 8px; }
+  .today .inner { padding: 10px; background: var(--card); border-radius: 8px; display: grid; gap: 6px; }
+
+  .card { padding: 14px; background: var(--card); border: 1px solid var(--edge); border-radius: 10px; display: grid; gap: 10px; }
+  .head { font-weight: 600; font-size: 13.5px; }
+  .quote { margin: 0; padding: 8px 10px; color: var(--muted); font-size: 13px; border-left: 3px solid var(--edge); }
+  .btn { display: block; width: 100%; padding: 7px 12px; text-align: left; font: inherit; font-weight: 600; font-size: 13px; color: var(--text); background: var(--control); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; }
+  .btn.primary { background: var(--primary); border-color: #566086; }
+  .btn small { display: block; margin-top: 1px; font-weight: 400; font-size: 11.5px; color: var(--muted); }
+  .link { color: var(--accent); font-size: 12.5px; cursor: pointer; }
+  .meta { color: var(--muted); font-size: 12.5px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .chip { padding: 2px 9px; font-size: 12px; color: var(--text); background: var(--control); border: 1px solid var(--edge); border-radius: 999px; }
+  .chip.on { background: var(--primary); border-color: #566086; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+  /* A: setup folded into one line */
+  .setup { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; background: var(--bg); border-radius: 8px; font-size: 12.5px; }
+  .setup b { font-weight: 600; }
+  .open-setup { margin-top: 2px; padding: 10px; background: var(--bg); border-radius: 8px; display: grid; gap: 8px; }
+
+  /* B: one list of destinations */
+  .dest { display: grid; border: 1px solid var(--edge); border-radius: 10px; overflow: hidden; }
+  .dest .item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--card); border-top: 1px solid var(--edge); cursor: pointer; }
+  .dest .item:first-child { border-top: 0; }
+  .dest .item.main { background: var(--primary); }
+  .dest .glyph { width: 22px; text-align: center; color: var(--accent); font-weight: 700; }
+  .dest .what { flex: 1; font-weight: 600; font-size: 13px; }
+  .dest .what small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); }
+  .dest .go { color: var(--muted); }
+
+  /* C: split button */
+  .split { display: flex; }
+  .split .btn { border-radius: 8px 0 0 8px; }
+  .split .caret { padding: 7px 11px; color: var(--text); background: var(--primary); border: 1px solid #566086; border-left: 0; border-radius: 0 8px 8px 0; cursor: pointer; }
+  .pop { padding: 10px; background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; box-shadow: 0 8px 22px rgba(0,0,0,.35); display: grid; gap: 8px; }
+  .pop .k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .foot { display: flex; justify-content: space-between; align-items: center; }
+</style>
+</head>
+<body>
+<h1>Quest suggestion card: three alternatives</h1>
+<p class="lead">
+  The owner finds the card ugly and wants only the first options up front, not the whole Realm and Companion setup (2026-11-25).
+  Today's card (below) stacks a message, a red-bordered box, an open-quest button, then every Realm chip, every Companion chip, and a "Customize" link, all at once.
+  Each alternative shows the same two cases: Chronicler proposing a new quest with one quest that may already cover it, and a thread's off-topic message.
+  In all three the setup moves behind one line (or one caret) that already names the defaults, so the common answer is one press.
+</p>
+
+<h2>Today</h2>
+<div style="max-width:420px; margin-bottom:26px">
+  <div class="today">
+    <b>A quest may already cover this. Continue it, or open a new quest?</b>
+    <span class="meta">Fix the flaky login test in the mobile app</span>
+    <button class="btn">Continue in "Login tests" · Doing</button>
+    <div class="inner">
+      <button class="btn primary">Open a new quest anyway "Fix flaky login test"</button>
+      <span class="meta">Realm</span>
+      <div class="chips"><span class="chip">No realm</span><span class="chip on">Outlore</span><span class="chip">Notes</span><span class="chip">Website</span></div>
+      <span class="meta">Companion</span>
+      <div class="chips"><span class="chip">Light · Haiku 5.5</span><span class="chip on">Balanced · Sonnet 5.5</span><span class="chip">Heavy · Opus 5.5</span></div>
+      <span class="link">Customize the Companion</span>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+
+<!-- A -->
+<div class="option">
+  <h2>A. One line of setup</h2>
+  <p>Keeps today's card shape, calmer: no red box, the quote muted, and the Realm and Companion folded into one line you can open.</p>
+
+  <div class="label">Proposal, one match, setup closed</div>
+  <div class="card">
+    <div class="head">Chronicler suggests a quest</div>
+    <blockquote class="quote">Fix the flaky login test in the mobile app</blockquote>
+    <button class="btn">Continue in "Login tests"<small>Doing · may already cover this</small></button>
+    <button class="btn primary">Open new quest "Fix flaky login test"</button>
+    <div class="setup"><span><b>Outlore</b> · Balanced</span><span class="link">Change</span></div>
+  </div>
+
+  <div class="label">Same card, setup open</div>
+  <div class="card">
+    <button class="btn primary">Open new quest "Fix flaky login test"</button>
+    <div class="setup"><span><b>Outlore</b> · Balanced</span><span class="link">Done</span></div>
+    <div class="open-setup">
+      <span class="meta">Realm</span>
+      <div class="chips"><span class="chip">No realm</span><span class="chip on">Outlore</span><span class="chip">Notes</span><span class="chip">Website</span></div>
+      <span class="meta">Companion</span>
+      <div class="chips"><span class="chip">Light</span><span class="chip on">Balanced</span><span class="chip">Heavy</span></div>
+      <span class="link">More Companion settings</span>
+    </div>
+  </div>
+
+  <div class="label">Off-topic message</div>
+  <div class="card">
+    <div class="head">This looks off topic for this quest</div>
+    <blockquote class="quote">Also, can you rename the export button?</blockquote>
+    <button class="btn primary">Open as new quest "Rename export button"</button>
+    <div class="row"><span class="link">Keep as aside</span><span class="meta"><b>Outlore</b> · Balanced · <span class="link">Change</span></span></div>
+  </div>
+  <ul><li>Smallest change from the code: the same choices, one fold.</li><li>The default is always visible, so nothing starts blind.</li></ul>
+</div>
+
+<!-- B -->
+<div class="option">
+  <h2>B. Destination list</h2>
+  <p>The question is "where does this go?", so the answers are one list of rows: each match, a new quest, an aside. Setup lives inside the new-quest row only.</p>
+
+  <div class="label">Proposal, one match</div>
+  <div class="card">
+    <div class="head">Where should this go?</div>
+    <blockquote class="quote">Fix the flaky login test in the mobile app</blockquote>
+    <div class="dest">
+      <div class="item"><span class="glyph">↪</span><span class="what">Login tests<small>Doing · continue this quest</small></span><span class="go">›</span></div>
+      <div class="item main"><span class="glyph">＋</span><span class="what">New quest "Fix flaky login test"<small>Outlore · Balanced · <span class="link">change</span></small></span><span class="go">›</span></div>
+    </div>
+  </div>
+
+  <div class="label">Off-topic message</div>
+  <div class="card">
+    <div class="head">Where should this go?</div>
+    <blockquote class="quote">Also, can you rename the export button?</blockquote>
+    <div class="dest">
+      <div class="item main"><span class="glyph">＋</span><span class="what">New quest "Rename export button"<small>Outlore · Balanced · <span class="link">change</span></small></span><span class="go">›</span></div>
+      <div class="item"><span class="glyph">·</span><span class="what">Keep here as an aside<small>Stays in this quest's thread</small></span><span class="go">›</span></div>
+    </div>
+  </div>
+  <ul><li>Reads as one decision with equal rows; easy on a phone.</li><li>A row is one press, so no separate confirm button.</li><li>"change" opens the Realm and Companion chips under that row.</li></ul>
+</div>
+
+<!-- C -->
+<div class="option">
+  <h2>C. Split button</h2>
+  <p>The lightest card: one big button that opens the new quest, a caret beside it for the Realm and Companion, and everything else as quiet text.</p>
+
+  <div class="label">Proposal, one match</div>
+  <div class="card">
+    <div class="head">Open a quest for this?</div>
+    <blockquote class="quote">Fix the flaky login test in the mobile app</blockquote>
+    <div class="split"><button class="btn primary">Open "Fix flaky login test"<small>in Outlore · Balanced</small></button><span class="caret">▾</span></div>
+    <div class="foot"><span class="link">Continue in "Login tests" (Doing)</span></div>
+  </div>
+
+  <div class="label">Caret open</div>
+  <div class="card">
+    <div class="split"><button class="btn primary">Open "Fix flaky login test"<small>in Outlore · Balanced</small></button><span class="caret">▴</span></div>
+    <div class="pop">
+      <span class="k">Realm</span>
+      <div class="chips"><span class="chip">No realm</span><span class="chip on">Outlore</span><span class="chip">Notes</span><span class="chip">Website</span></div>
+      <span class="k">Companion</span>
+      <div class="chips"><span class="chip">Light</span><span class="chip on">Balanced</span><span class="chip">Heavy</span></div>
+    </div>
+  </div>
+
+  <div class="label">Off-topic message</div>
+  <div class="card">
+    <div class="head">Off topic for this quest</div>
+    <blockquote class="quote">Also, can you rename the export button?</blockquote>
+    <div class="split"><button class="btn primary">Open "Rename export button"<small>in Outlore · Balanced</small></button><span class="caret">▾</span></div>
+    <div class="foot"><span class="link">Keep as aside</span></div>
+  </div>
+  <ul><li>Fewest controls on screen, strongest default.</li><li>The caret is the least discoverable of the three.</li></ul>
+</div>
+
+</div>
+</body>
+</html>

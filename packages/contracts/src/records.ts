@@ -80,6 +80,8 @@ export const Settings = Schema.Struct({
    * CHG-0617): what the composer's Default permissions means. Full access also lets commands leave the sandbox unasked.
    */
   defaultPermissionMode: ThreadPermissionMode,
+  /** Days a Fulfilled or Archived quest stays offered as a place to continue an off-topic or proposed request (thread-tree). */
+  endedQuestMatchDays: PositiveInt,
   /** Covers all missions over its period; empty at first. */
   globalBudget: BudgetLimits,
   globalBudgetPeriod: BudgetPeriod,

@@ -28,6 +28,7 @@ export const settingAuthority = {
   defaultMissionBudget: "Owner",
   defaultModel: "Ritual",
   defaultPermissionMode: "Owner",
+  endedQuestMatchDays: "Ritual",
   globalBudget: "Owner",
   globalBudgetPeriod: "Owner",
   intelHalfLives: "Ritual",

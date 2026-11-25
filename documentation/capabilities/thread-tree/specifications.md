@@ -82,8 +82,8 @@ Update, 2026-11-20: Stop ends the current turn and returns the thread to Resting
 ### Off-topic requests
 
 - When a message from the user clearly shares nothing with the mission, judged by the thread's agent against the briefing, the thread does not answer it. Merely unexpected messages do not count.
-- The thread first looks for other missions that fit the request, by their titles, briefings, and opening requests. A shared ticket key or link weighs more than plain words. Every ordinary mission that is not deleted counts, whatever its state, except the caller's own mission and Chronicler's; Rituals are excluded (a Ritual is not a mission since CHG-0616).
-- It then shows a suggestion with these choices:
+- The thread first looks for other missions that fit the request, by their titles, briefings, and opening requests. A shared ticket key or link weighs more than plain words. Every ordinary mission that is not deleted counts, whatever its state, except the caller's own mission and Chronicler's, and except a Fulfilled or Archived mission that ended more than the owner's setting ago, 14 days by default (its finish time, or its last activity when it has none); Rituals are excluded (a Ritual is not a mission since CHG-0616).
+- It then shows a suggestion as one list of destinations, with no Realm or Companion chips until the owner presses **Change** on the new-mission row (CHG-0739):
   - **Continue in "mission title"**: one for each matching mission, best match first, at most 3, each showing that mission's state;
   - **Open as new mission**;
   - **Keep as aside**.

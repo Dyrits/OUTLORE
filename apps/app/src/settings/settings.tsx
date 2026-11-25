@@ -112,6 +112,13 @@ export function SettingsScreen({
                   onChange={(shouldOpenOffTopicMissions) => save({ shouldOpenOffTopicMissions })}
                   value={settings.shouldOpenOffTopicMissions}
                 />
+                <NumberSetting
+                  label="Days a finished or archived quest is still offered as a place to continue a request"
+                  minimum={1}
+                  onInvalid={setSaveError}
+                  onSave={(endedQuestMatchDays) => save({ endedQuestMatchDays })}
+                  value={settings.endedQuestMatchDays}
+                />
                 <ToggleRow
                   label="Show replies as they're written"
                   onChange={(shouldStreamReplies) => save({ shouldStreamReplies })}
