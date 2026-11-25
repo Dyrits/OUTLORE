@@ -20,6 +20,7 @@ import { appStyles as styles } from "./src/shell/appStyles";
 import { initialLocation, navigate, panelScopeOf, type QuestOrigin } from "./src/shell/location";
 import { detailsModeOf } from "./src/shell/navigation";
 import { useAttentionNotice } from "./src/shell/notifications";
+import type { RealmListing } from "./src/shell/questTree";
 import { Shell } from "./src/shell/shell";
 import type { Place } from "./src/shell/sidebar";
 import { useWorkshopMenu } from "./src/shell/useWorkshopMenu";
@@ -48,26 +49,53 @@ export function App() {
   } = useHostConnection();
   const [location, dispatch] = useReducer(navigate, resumedPlace, initialLocation);
   const { openMission, openThread, selectedMission, place, guildmasterRealm } = location;
-  const setGuildmasterRealm = (path: string | null) => dispatch({ path, type: "chroniclerRealm" });
-  const setIsPermissionsOpen = (isOpen: boolean) => dispatch({ isOpen, type: "permissions" });
-  const setSettingsSection = (section: SettingsSectionId) => dispatch({ section, type: "section" });
-  // These reach the panes, which skip rendering while their props are the same: so they keep one identity for good.
+  const setGuildmasterRealm = useCallback((path: string | null) => dispatch({ path, type: "chroniclerRealm" }), []);
+  const rightPanel = useRightPanel(hostId, panelScopeOf(location));
+  // The navigation reaches the panels, which skip rendering while their props are the same: it keeps one identity for
+  // good, reading what changes (the open quest, the details panel) from refs, so one panel's change never renders another.
   const openMissionRef = useRef(openMission);
   openMissionRef.current = openMission;
-  const setOpenThread = useCallback((id: ThreadId | null) => {
-    if (openMissionRef.current !== null) dispatch({ id, missionId: openMissionRef.current, type: "thread" });
+  const rightPanelRef = useRef(rightPanel);
+  rightPanelRef.current = rightPanel;
+  const { navigation, sidebar } = useMemo(() => {
+    const openMissionFromAnywhere = (id: MissionId, origin?: QuestOrigin) =>
+      dispatch(origin === undefined ? { id, type: "quest" } : { id, origin, type: "quest" });
+    const openSideQuest = (missionId: MissionId, id: ThreadId, origin?: QuestOrigin) =>
+      dispatch(origin === undefined ? { id, missionId, type: "thread" } : { id, missionId, origin, type: "thread" });
+    const goTo = (place: Place) => dispatch({ place, type: "place" });
+    const openChannel = (listing: RealmListing | null) => dispatch({ listing, type: "channel" });
+    return {
+      navigation: {
+        backFromQuest: () => dispatch({ type: "backFromQuest" }),
+        closeRitualForm: () => dispatch({ target: null, type: "ritualForm" }),
+        goTo,
+        openChannel,
+        openMenu: () => dispatch({ isOpen: true, type: "menu" }),
+        openMission: openMissionFromAnywhere,
+        openParent: (quest: { workspaceId: string | null; workspaceName: string | null }) =>
+          dispatch({ quest, type: "parent" }),
+        openThread: openSideQuest,
+        selectMission: (id: MissionId | null) => {
+          dispatch({ id, type: "select" });
+          rightPanelRef.current.show(id === null ? null : { tab: "quest" });
+        },
+        selectThread: (id: ThreadId | null) => {
+          if (openMissionRef.current !== null) dispatch({ id, missionId: openMissionRef.current, type: "thread" });
+        },
+        setPermissions: (isOpen: boolean) => dispatch({ isOpen, type: "permissions" }),
+        setSettingsSection: (section: SettingsSectionId) => dispatch({ section, type: "section" }),
+        showDetails: (isOpen: boolean) => rightPanelRef.current.show(isOpen ? { tab: "quest" } : null),
+      },
+      sidebar: {
+        onOpenChannel: openChannel,
+        onOpenChronicle: () => goTo("Chronicle"),
+        onOpenErrands: (id: MissionId) => dispatch({ id, showErrands: true, type: "quest" }),
+        onOpenMission: openMissionFromAnywhere,
+        onOpenQuestsTab: (listing: RealmListing | null) => dispatch({ listing, showQuests: true, type: "channel" }),
+        onOpenThread: openSideQuest,
+      },
+    };
   }, []);
-  const openMissionFromAnywhere = useCallback(
-    (id: MissionId, origin?: QuestOrigin) =>
-      dispatch(origin === undefined ? { id, type: "quest" } : { id, origin, type: "quest" }),
-    [],
-  );
-  const openSideQuest = useCallback(
-    (missionId: MissionId, id: ThreadId, origin?: QuestOrigin) =>
-      dispatch(origin === undefined ? { id, missionId, type: "thread" } : { id, missionId, origin, type: "thread" }),
-    [],
-  );
-  const rightPanel = useRightPanel(hostId, panelScopeOf(location));
   const onWorkshop = useWorkshopTrip({
     dispatch,
     isWorkshopOpen: place === "Settings" && openMission === null,
@@ -136,6 +164,24 @@ export function App() {
     () => ({ open: (target: RitualFormTarget) => dispatch({ target, type: "ritualForm" }) }),
     [],
   );
+  const detailsMode = detailsModeOf({ openMission, selectedMission });
+  const isDetailsOpen = rightPanel.content?.tab === "quest";
+  const details = useMemo(
+    () =>
+      detailsMode === "toggle"
+        ? {
+            isOpen: isDetailsOpen,
+            onToggle: () =>
+              rightPanelRef.current.show(rightPanelRef.current.content?.tab === "quest" ? null : { tab: "quest" }),
+          }
+        : null,
+    [detailsMode, isDetailsOpen],
+  );
+  const view = useMemo(() => windowViewOf(location), [location]);
+  const chronicler = useMemo(
+    () => ({ onRealm: setGuildmasterRealm, realmPath: guildmasterRealm }),
+    [guildmasterRealm, setGuildmasterRealm],
+  );
   // A browser with no host has nothing to show: it pairs first.
   if (status.kind === "pairing" || (status.canPair && isAddingHost)) {
     return (
@@ -197,60 +243,27 @@ export function App() {
       </View>
     );
   }
-  const goTo = (place: Place) => dispatch({ place, type: "place" });
-  const selectMission = (id: MissionId | null) => {
-    dispatch({ id, type: "select" });
-    rightPanel.show(id === null ? null : { tab: "quest" });
-  };
-  const openParent = (quest: { workspaceId: string | null; workspaceName: string | null }) =>
-    dispatch({ quest, type: "parent" });
-  const detailsMode = detailsModeOf({ openMission, selectedMission });
-  const details =
-    detailsMode === "toggle"
-      ? {
-          isOpen: rightPanel.content?.tab === "quest",
-          onToggle: () => rightPanel.show(rightPanel.content?.tab === "quest" ? null : { tab: "quest" }),
-        }
-      : null;
   const shell = (
     <Shell
-      chronicler={{ onRealm: setGuildmasterRealm, realmPath: guildmasterRealm }}
+      chronicler={chronicler}
       client={client}
       details={details}
       dispatch={dispatch}
       isWorkshopOpen={place === "Settings" && location.openMission === null}
       location={location}
-      onOpenChannel={(listing) => dispatch({ listing, type: "channel" })}
-      onOpenChronicle={() => goTo("Chronicle")}
-      onOpenErrands={(id) => dispatch({ id, showErrands: true, type: "quest" })}
-      onOpenMission={openMissionFromAnywhere}
-      onOpenQuestsTab={(listing) => dispatch({ listing, showQuests: true, type: "channel" })}
-      onOpenThread={openSideQuest}
+      onOpenChannel={sidebar.onOpenChannel}
+      onOpenChronicle={sidebar.onOpenChronicle}
+      onOpenErrands={sidebar.onOpenErrands}
+      onOpenMission={sidebar.onOpenMission}
+      onOpenQuestsTab={sidebar.onOpenQuestsTab}
+      onOpenThread={sidebar.onOpenThread}
       onWorkshop={onWorkshop}
       openMission={openMission}
       openThread={openThread}
       place={place}
       rightPanel={rightPanel}
     >
-      <AppScreen
-        client={client}
-        navigation={{
-          backFromQuest: () => dispatch({ type: "backFromQuest" }),
-          closeRitualForm: () => dispatch({ target: null, type: "ritualForm" }),
-          goTo,
-          openChannel: (listing) => dispatch({ listing, type: "channel" }),
-          openMenu: () => dispatch({ isOpen: true, type: "menu" }),
-          openMission: openMissionFromAnywhere,
-          openParent,
-          openThread: openSideQuest,
-          selectMission,
-          selectThread: setOpenThread,
-          setPermissions: setIsPermissionsOpen,
-          setSettingsSection,
-          showDetails: (isOpen) => rightPanel.show(isOpen ? { tab: "quest" } : null),
-        }}
-        view={windowViewOf(location)}
-      />
+      <AppScreen client={client} navigation={navigation} view={view} />
     </Shell>
   );
   return (

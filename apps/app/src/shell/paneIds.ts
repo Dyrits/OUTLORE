@@ -15,10 +15,10 @@ export type PaneContent =
   | { kind: "starter"; id: typeof starterId }
   | { kind: "quest" | "errand"; id: ThreadId };
 
-/** Places the channel, quest and selected errand or starter into the desktop row. */
+/** Places the channel, quest and selected errand or starter into the desktop row; with no quest, the channel alone. */
 export const paneContentsOf = (quest: ThreadId | null, selected: ThreadId | null): ReadonlyArray<PaneContent> =>
   quest === null
-    ? []
+    ? [{ id: channelId, kind: "channel" }]
     : [
         { id: channelId, kind: "channel" },
         { id: quest, kind: "quest" },

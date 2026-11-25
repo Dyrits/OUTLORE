@@ -1,5 +1,5 @@
-import { type MissionId, type ThreadId, WorkspaceId } from "@outlore/contracts";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type MissionId, type ThreadId, type ThreadSummary, WorkspaceId } from "@outlore/contracts";
+import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 import { listedErrandsOf } from "../conversation/errandRoster";
 import { OpenPanes } from "../conversation/replyLine";
@@ -27,10 +27,16 @@ import { channelOf } from "./windowView";
 /** How far from the window's right edge the Equal widths button sits in the Islands layout: past the Workshop button. */
 const topBarEndReach = 42;
 
-/** Shows the channel, quest and selected errand. An older nested errand uses the same third slot. */
-export function PaneHost({
+const noThreads: ReadonlyArray<ThreadSummary> = [];
+
+/**
+ * Shows the channel, quest and selected errand. An older nested errand uses the same third slot.
+ * With no quest it shows the channel alone, so opening the first quest keeps the channel's pane mounted with its tab, scroll and queries.
+ */
+export const PaneHost = memo(function PaneHost({
   client,
   errandsRequest,
+  listedChannel,
   missionId,
   isChannelOpen = false,
   isParked = false,
@@ -40,6 +46,7 @@ export function PaneHost({
   onOpenThread,
   openCount = 0,
   openThread,
+  questsRequest,
   tabMemory,
 }: {
   client: ServiceClient;
@@ -48,7 +55,10 @@ export function PaneHost({
   isChannelOpen?: boolean;
   /** Whether the Workshop covers the panes: they stay as they are, out of sight, and take no part in the details panel. */
   isParked?: boolean;
-  missionId: MissionId;
+  /** The channel to show while no quest is open. */
+  listedChannel?: { id: string | null; name: string } | undefined;
+  /** The open quest, or null for the channel alone. */
+  missionId: MissionId | null;
   /** Told whether the channel pane is open, so the next quest to open can keep it so. */
   onChannelOpen?: (isOpen: boolean) => void;
   /** Opens an errand of any quest, from the channel pane's History tab. */
@@ -62,23 +72,37 @@ export function PaneHost({
   openThread: ThreadId | null;
   /** The channel pane's last tab, so the pane of the next quest to open starts on it. */
   tabMemory?: ChannelTabMemory | undefined;
+  /** A request from the channel's own page to list its quests; each new object opens the Quests tab. */
+  questsRequest?: object | null | undefined;
 }) {
   const { data } = useServiceQuery(
     client,
-    { _tag: "ReadMission", missionId, threadId: openThread },
+    missionId === null ? null : { _tag: "ReadMission", missionId, threadId: openThread },
     `${missionId}:${openThread ?? "top"}`,
   );
   // The tree comes with the thread's read; while another thread loads, the previous chain stays on show.
   const { data: missionList } = useServiceQuery(client, listedMissions.request, listedMissions.key);
-  const [threads, setThreads] = useState(data?.threads ?? []);
+  const [loadedThreads, setThreads] = useState(data?.threads ?? noThreads);
   useEffect(() => {
-    if (data !== null) setThreads(data.threads);
-  }, [data]);
+    if (missionId === null) setThreads(noThreads);
+    else if (data !== null) setThreads(data.threads);
+  }, [data, missionId]);
+  const threads = missionId === null ? noThreads : loadedThreads;
   // Resolve the quest's realm synchronously from the cached mission list so ChannelPane never flashes Borderlands while ReadMission loads.
   const listedMission = missionList?.missions.find((mission) => mission.id === missionId) ?? null;
-  const hasChannelSource = listedMission !== null || data !== null;
-  const workspaceId = listedMission !== null ? listedMission.workspaceId : data?.mission.workspaceId;
-  const workspaceName = listedMission !== null ? listedMission.workspaceName : data?.mission.workspaceName;
+  const hasChannelSource = missionId === null || listedMission !== null || data !== null;
+  const workspaceId =
+    missionId === null
+      ? listedChannel?.id
+      : listedMission !== null
+        ? listedMission.workspaceId
+        : data?.mission.workspaceId;
+  const workspaceName =
+    missionId === null
+      ? listedChannel?.name
+      : listedMission !== null
+        ? listedMission.workspaceName
+        : data?.mission.workspaceName;
   const resolvedChannel = useMemo(
     () => (hasChannelSource ? channelOf(workspaceId, workspaceName) : null),
     [hasChannelSource, workspaceId, workspaceName],
@@ -114,7 +138,16 @@ export function PaneHost({
     setMemory,
     slots,
     startErrand,
-  } = usePaneChain(threads, openThread, onOpenThread, isChannelOpen, onChannelOpen, openCount);
+  } = usePaneChain({
+    isChannelOpen,
+    isStandalone: missionId === null,
+    onChannelOpen,
+    onOpenThread,
+    openCount,
+    openThread,
+    questsRequest,
+    threads,
+  });
   // A conversation shown in a pane is read (CHG-0569): its replies, results and requests are no longer unread, and
   // rereading after each change follows the stream while it stays on show. Parked panes are out of sight, so wait.
   useShownThreadsRead(client, openIds, !isParked, data);
@@ -241,7 +274,7 @@ export function PaneHost({
                     listRequest={listRequest?.id === id ? listRequest : void 0}
                     onOpenMission={openChannelQuest}
                     onOpenThread={onOpenErrand}
-                    openMission={missionId}
+                    openMission={missionId ?? void 0}
                     tabMemory={tabMemory}
                   />
                   <QuestStartFailure failure={questStartFailure} />
@@ -258,6 +291,8 @@ export function PaneHost({
                 />,
               );
             }
+            // A quest's own panes wait for a quest to open.
+            if (missionId === null) return null;
             const threadId = content.id;
             const isQuest = content.kind === "quest";
             return wrap(
@@ -283,7 +318,7 @@ export function PaneHost({
       </View>
     </OpenPanes.Provider>
   );
-}
+});
 
 const local = StyleSheet.create({
   // An island's own box: the layout's island style adds its color, hairline, corners, and shadow.

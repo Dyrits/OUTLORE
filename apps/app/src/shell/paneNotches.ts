@@ -53,7 +53,8 @@ export function paneNotchesOf({
   channel: { id: string | null; name: string };
   /** The space between open panes in the Islands layout; none in the flat one. */
   gap?: number;
-  missionId: MissionId;
+  /** The open quest, or null when only the channel is open. */
+  missionId: MissionId | null;
   missions: ReadonlyArray<MissionSummary>;
   openList: (id: PaneId) => void;
   revealPane: (id: PaneId) => void;

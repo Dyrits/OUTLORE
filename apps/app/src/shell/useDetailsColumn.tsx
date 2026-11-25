@@ -61,12 +61,12 @@ export function useDetailsColumn(input: {
   const activeTab = rightPanel.content?.tab ?? "quest";
   const isColumnOpen = isCompanionShown || (hasQuestPanel && details.isOpen);
   const isQuestTabShown = isQuestTabOpen({ activeTab, hasQuestPanel, isColumnOpen });
+  // The panel's `show` changes with the destination, never for its own sake: the tab button's context follows it alone.
+  const { show } = rightPanel;
   const questTabButton = useMemo(
     () =>
-      hasQuestPanel
-        ? { isOpen: isQuestTabShown, onPress: () => rightPanel.show(panelAfterQuestIcon(isQuestTabShown)) }
-        : null,
-    [hasQuestPanel, isQuestTabShown, rightPanel],
+      hasQuestPanel ? { isOpen: isQuestTabShown, onPress: () => show(panelAfterQuestIcon(isQuestTabShown)) } : null,
+    [hasQuestPanel, isQuestTabShown, show],
   );
   const hasEdgeHandle = hasQuestPanel ? details.isPinned !== true && !isQuestOpen : hasCompanion;
   const toggleColumn = () => {

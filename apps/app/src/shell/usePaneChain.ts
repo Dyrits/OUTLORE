@@ -1,23 +1,41 @@
 import type { ThreadId, ThreadSummary } from "@outlore/contracts";
 import { useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ChronicleTargetContext } from "../conversation/chronicleTarget";
-import { chainOf, equalizedPanes, layoutOf, openedQuestMemory, type PaneMemory } from "./paneChain";
+import { chainOf, equalizedPanes, layoutOf, openedQuestMemory, type PaneMemory, unfoldedPane } from "./paneChain";
 import { channelId, type PaneId, paneContentsOf } from "./paneIds";
 import { paneSessionOf } from "./paneSession";
 import { readPaneWeights, rememberPaneWeights } from "./railStorage";
 
-/** Keeps the desktop pane layout and its fold, focus, and resize state. */
-export function usePaneChain(
-  threads: ReadonlyArray<ThreadSummary>,
-  openThread: ThreadId | null,
-  onOpenThread: (threadId: ThreadId) => void,
+/** What the pane row shows and how it starts; the quest's threads come from its read. */
+export type PaneChainInput = {
   /** Whether the realm's channel was open when this quest opened: it then stays open beside the quest. */
-  isChannelOpen = false,
+  isChannelOpen?: boolean;
+  /** Whether no quest is open: the row is the channel alone, open, and a quest opened next joins it without remounting it. */
+  isStandalone?: boolean;
   /** Told whether the channel pane is open, each time that changes, so the next quest can open the same way. */
-  onChannelOpen: (isOpen: boolean) => void = () => {},
+  onChannelOpen?: (isOpen: boolean) => void;
+  onOpenThread: (threadId: ThreadId) => void;
   /** Incremented when the owner selects a quest, so a folded quest or expanded channel yields to it without remounting. */
+  openCount?: number;
+  openThread: ThreadId | null;
+  /** A request from the channel's own page to list its quests: each new object opens the Quests tab. */
+  questsRequest?: object | null;
+  threads: ReadonlyArray<ThreadSummary>;
+};
+
+const noChannelOpenTold = () => {};
+
+/** Keeps the desktop pane layout and its fold, focus, and resize state. */
+export function usePaneChain({
+  isChannelOpen = false,
+  isStandalone = false,
+  onChannelOpen = noChannelOpenTold,
+  onOpenThread,
   openCount = 0,
-) {
+  openThread,
+  questsRequest = null,
+  threads,
+}: PaneChainInput) {
   const path = useMemo(() => chainOf(threads, openThread), [threads, openThread]);
   const quest = path[0];
   const deepest = path.at(-1) ?? null;
@@ -27,12 +45,22 @@ export function usePaneChain(
   const [{ memory, focused, expanded, listRequest }, dispatch] = useReducer(paneSessionOf, null, () => ({
     expanded: null,
     focused: null,
-    listRequest: null,
+    listRequest: questsRequest === null ? null : ({ id: channelId } satisfies { id: PaneId }),
     memory: openedQuestMemory<PaneId>(channelId, readPaneWeights(), isChannelOpen),
   }));
   const isChannelFolded = memory.folded.has(channelId);
   useEffect(() => onChannelOpen(!isChannelFolded), [isChannelFolded, onChannelOpen]);
   const [available, setAvailable] = useState(0);
+  // With no quest the channel is the only pane, so one the owner folded beside a quest opens again.
+  useEffect(() => {
+    if (isStandalone) dispatch({ type: "memory", update: (current) => unfoldedPane(current, channelId) });
+  }, [isStandalone]);
+  const lastQuestsRequest = useRef(questsRequest);
+  useEffect(() => {
+    if (lastQuestsRequest.current === questsRequest) return;
+    lastQuestsRequest.current = questsRequest;
+    if (questsRequest !== null) dispatch({ id: channelId, type: "list" });
+  }, [questsRequest]);
   const target = useContext(ChronicleTargetContext);
   useEffect(() => {
     if (target !== null) dispatch({ quest: quest ?? null, target, thread: openThread, type: "target" });
@@ -52,19 +80,23 @@ export function usePaneChain(
     lastOpenCount.current = openCount;
     dispatch({ quest: questRef.current ?? null, type: "reopenQuest" });
   }, [openCount]);
+  // A quest still loading has no chain: the channel shows alone if it was open, and waits folded otherwise.
+  const isWaiting = quest === undefined && !isStandalone && memory.folded.has(channelId);
   const slots = useMemo(
     () =>
-      layoutOf({
-        available,
-        chain: fullChain,
-        expanded,
-        memory,
-        ...(starter === undefined ? {} : { starter }),
-      }).flatMap((slot) => {
-        const content = contents[slot.depth];
-        return content === undefined ? [] : [{ ...slot, content }];
-      }),
-    [available, contents, expanded, fullChain, memory, starter],
+      isWaiting
+        ? []
+        : layoutOf({
+            available,
+            chain: fullChain,
+            expanded,
+            memory,
+            ...(starter === undefined ? {} : { starter }),
+          }).flatMap((slot) => {
+            const content = contents[slot.depth];
+            return content === undefined ? [] : [{ ...slot, content }];
+          }),
+    [available, contents, expanded, fullChain, isWaiting, memory, starter],
   );
   const openIds = useMemo(
     () =>

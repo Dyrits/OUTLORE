@@ -94,6 +94,10 @@ export const equalizedPanes = <Id extends string>(memory: PaneMemory<Id>): PaneM
   weights: [],
 });
 
+/** The memory with a pane open again, without pressing it: a channel the owner folded beside a quest opens as the window's only pane. */
+export const unfoldedPane = <Id extends string>(memory: PaneMemory<Id>, id: Id): PaneMemory<Id> =>
+  memory.folded.has(id) ? { ...memory, folded: new Set([...memory.folded].filter((each) => each !== id)) } : memory;
+
 /**
  * The memory without the panes that left the chain, so a pane opened again later starts open. A chain still waiting
  * to load is empty and prunes nothing, so the folds a quest opens with survive the read.

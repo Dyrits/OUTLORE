@@ -11,22 +11,17 @@ import {
   useMemo,
   useState,
 } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
 import { PaneTabs } from "../conversation/paneTabs";
 import type { ServiceClient } from "../foundation/client";
-import { allMissions, listedMissions } from "../foundation/queries";
+import { allMissions } from "../foundation/queries";
 import { colors, fontSizes } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { LoreScreen } from "../lore/lore";
 import { RealmPanel } from "../quests/questPanel";
 import { ChannelHistory } from "./channelHistory";
 import { ChannelQuests } from "./channelQuests";
-import { childStatusOf } from "./childNotches";
-import { childPartsOf, notchWidth } from "./paneNotches";
-import { PaneNotches } from "./paneStrip";
-import { inRealmOf } from "./realmRoster";
-import { useStartQuest } from "./useStartQuest";
 
 /** The tabs of a channel's pane. */
 export type ChannelTab = "Missives" | "Quests" | "Realm" | "Rituals" | "History" | "Companions";
@@ -82,45 +77,6 @@ export const ChannelPane = memo(function ChannelPane({
   );
 });
 
-/** A realm or Borderlands channel with no quest pane open. */
-export function StandaloneChannel({
-  channel,
-  client,
-  onOpenMission,
-  onOpenThread,
-  questsRequest,
-  tabMemory,
-}: {
-  channel: { id: string | null; name: string };
-  client: ServiceClient;
-  onOpenMission: (id: MissionId) => void;
-  onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
-  questsRequest: object | null;
-  tabMemory?: ChannelTabMemory | undefined;
-}) {
-  const { data } = useServiceQuery(client, listedMissions.request, listedMissions.key);
-  const realmId = channel.id === null ? null : WorkspaceId.make(channel.id);
-  const { failure, start } = useStartQuest(client, realmId, onOpenMission);
-  const [notchRequest, setNotchRequest] = useState<{ after: object | null } | null>(null);
-  const listRequest = notchRequest?.after === questsRequest ? notchRequest : questsRequest;
-  const status = childStatusOf(inRealmOf(data?.missions ?? [], realmId, "Quest"));
-  const parts = childPartsOf("quest", status, start, () => setNotchRequest({ after: questsRequest }));
-  return (
-    <View style={[local.fill, { paddingRight: notchWidth }]}>
-      <ChannelPane
-        channel={channel}
-        client={client}
-        listRequest={listRequest ?? void 0}
-        onOpenMission={onOpenMission}
-        onOpenThread={onOpenThread}
-        tabMemory={tabMemory}
-      />
-      <QuestStartFailure failure={failure} />
-      <PaneNotches parts={parts} side="right" />
-    </View>
-  );
-}
-
 export function QuestStartFailure({ failure }: { failure: string | null }) {
   return failure === null ? null : (
     <Text accessibilityRole="alert" style={local.failure}>
@@ -131,7 +87,6 @@ export function QuestStartFailure({ failure }: { failure: string | null }) {
 
 const local = StyleSheet.create({
   failure: { bottom: 8, color: colors.dangerText, fontSize: fontSizes.xs, left: 12, position: "absolute" },
-  fill: { flex: 1 },
 });
 
 /**

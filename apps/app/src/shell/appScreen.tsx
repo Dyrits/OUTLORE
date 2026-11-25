@@ -1,5 +1,5 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { type ChronicleTarget, ChronicleTargetContext } from "../conversation/chronicleTarget";
 import { Conversation } from "../conversation/conversation";
@@ -12,7 +12,7 @@ import { SettingsScreen } from "../settings/settings";
 import type { SettingsSectionId } from "../settings/settingsSections";
 import { UsageScreen } from "../usage";
 import { ArchiveScreen } from "./archivePage";
-import { ChannelPane, type ChannelTabMemory, StandaloneChannel } from "./channelPane";
+import { ChannelPane, type ChannelTabMemory } from "./channelPane";
 import { ChronicleActivity } from "./chronicleActivity";
 import { HomeScreen } from "./homeScreen";
 import type { QuestOrigin } from "./location";
@@ -47,7 +47,7 @@ interface Navigation {
 }
 
 /** Exhaustive destination rendering; adding a place requires choosing its screen at compile time. */
-export function AppScreen({
+export const AppScreen = memo(function AppScreen({
   client,
   navigation,
   view,
@@ -79,7 +79,7 @@ export function AppScreen({
       />
     </ChronicleTargetContext.Provider>
   );
-}
+});
 
 function AppScreenContent({
   client,
@@ -159,25 +159,37 @@ function AppScreenContent({
           openMission: view.openMission,
           openThread: view.openThread,
         };
-  if (quest !== null && hasPanes) {
-    // The Workshop covers the whole content area, and the panes wait beneath it as they were, then come back (CHG-0563).
-    const isParked = view.openMission === null;
+  const { channel } = view;
+  // The channel's identity, so the panes skip rendering while the same channel is listed.
+  const channelId = channel?.id;
+  const channelName = channel?.name;
+  const listedChannel = useMemo(
+    () => (channelName === undefined ? undefined : { id: channelId ?? null, name: channelName }),
+    [channelId, channelName],
+  );
+  if ((quest !== null || channel !== null) && hasPanes) {
+    // One host for the channel alone and for the channel beside a quest, so a quest opening or closing never remounts the
+    // channel's pane. The Workshop covers the whole content area, and the panes wait beneath it as they were, then come
+    // back (CHG-0563).
+    const isParked = view.place !== "Channel" && view.openMission === null;
     return (
       <>
         <View style={isParked || view.ritualForm !== null ? local.parked : local.fill}>
           <CompanionDockActions.Provider value={null}>
             <PaneHost
               client={client}
-              errandsRequest={quest.errandsRequest}
-              isChannelOpen={isChannelOpen.current}
+              errandsRequest={quest?.errandsRequest ?? null}
+              isChannelOpen={isChannelOpen.current || quest === null}
               isParked={isParked}
-              missionId={quest.openMission}
+              listedChannel={listedChannel}
+              missionId={quest?.openMission ?? null}
               onChannelOpen={setChannelOpen}
               onOpenErrand={navigation.openThread}
               onOpenMission={navigation.openMission}
               onOpenThread={navigation.selectThread}
-              openCount={quest.openCount}
-              openThread={quest.openThread}
+              openCount={quest?.openCount ?? 0}
+              openThread={quest?.openThread ?? null}
+              questsRequest={quest === null ? (channel?.questsRequest ?? null) : null}
               tabMemory={channelTab}
             />
           </CompanionDockActions.Provider>
@@ -200,7 +212,6 @@ function AppScreenContent({
         selectedThreadId={view.openThread}
       />
     );
-  const { channel } = view;
   if (!hasPanes && channel !== null) {
     const showsChannel = view.place === "Channel" && conversation === null && view.ritualForm === null;
     return (
@@ -229,26 +240,6 @@ function AppScreenContent({
       <>
         <View style={view.ritualForm === null ? local.fill : local.parked}>{conversation}</View>
         {ritualForm}
-      </>
-    );
-  }
-  if (hasPanes && channel !== null) {
-    return (
-      <>
-        <View style={view.place === "Channel" && view.ritualForm === null ? local.fill : local.parked}>
-          <CompanionDockActions.Provider value={null}>
-            <StandaloneChannel
-              channel={channel}
-              client={client}
-              key={channel.id ?? "borderlands"}
-              onOpenMission={navigation.openMission}
-              onOpenThread={navigation.openThread}
-              questsRequest={channel.questsRequest}
-              tabMemory={channelTab}
-            />
-          </CompanionDockActions.Provider>
-        </View>
-        {view.ritualForm !== null ? ritualForm : view.place !== "Channel" && screens[view.place]}
       </>
     );
   }

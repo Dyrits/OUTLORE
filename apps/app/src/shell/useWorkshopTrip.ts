@@ -1,4 +1,4 @@
-import { type Dispatch, useEffect, useRef } from "react";
+import { type Dispatch, useCallback, useEffect, useRef } from "react";
 import type { PanelContent } from "../foundation/panelState";
 import type { RightPanel } from "../foundation/useRightPanel";
 import type { NavigationEvent } from "./location";
@@ -23,11 +23,14 @@ export function useWorkshopTrip(input: {
     panel.show(toRestore.current);
     toRestore.current = null;
   });
-  return () => {
-    if (isWorkshopOpen) {
+  // The latest of what the trip reads, so the icon's handler keeps one identity and the Sidebar that holds it skips renders.
+  const latest = useRef({ isWorkshopOpen, panel });
+  latest.current = { isWorkshopOpen, panel };
+  return useCallback(() => {
+    if (latest.current.isWorkshopOpen) {
       toRestore.current = kept.current;
       kept.current = null;
-    } else kept.current = panel.content;
+    } else kept.current = latest.current.panel.content;
     dispatch({ type: "workshop" });
-  };
+  }, [dispatch]);
 }

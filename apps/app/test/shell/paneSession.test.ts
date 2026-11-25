@@ -1,6 +1,6 @@
 import { ThreadId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
-import { emptyPaneMemory, layoutOf, openedQuestMemory } from "../../src/shell/paneChain";
+import { emptyPaneMemory, foldedPane, layoutOf, openedQuestMemory, unfoldedPane } from "../../src/shell/paneChain";
 import { channelId, type PaneId, paneContentsOf, starterId } from "../../src/shell/paneIds";
 import { type PaneSession, paneSessionOf } from "../../src/shell/paneSession";
 
@@ -31,6 +31,29 @@ describe("keeping the pane session", () => {
       { id: errand, kind: "errand" },
     ]);
     expect(paneContentsOf(quest, quest).at(-1)).toEqual({ id: starterId, kind: "starter" });
+  });
+
+  it("shows the channel alone while no quest is open, so a quest that opens next joins the pane that is mounted", () => {
+    expect(paneContentsOf(null, null)).toEqual([{ id: channelId, kind: "channel" }]);
+    const standalone = layoutOf({ available: 900, chain: [channelId], memory: emptyPaneMemory<PaneId>() });
+    expect(standalone).toEqual([{ depth: 0, id: channelId, kind: "pane", width: 900 }]);
+    // The channel stays the first pane, open, when the quest and its starter join the chain.
+    const joined = layoutOf({
+      available: 1200,
+      chain: [channelId, quest, starterId],
+      memory: emptyPaneMemory<PaneId>(),
+      starter: starterId,
+    });
+    expect(joined.filter((slot) => slot.kind === "pane").map((slot) => slot.id)).toEqual([channelId, quest]);
+  });
+
+  it("opens a channel the owner folded beside a quest again when it is the only pane", () => {
+    const folded = foldedPane(emptyPaneMemory<PaneId>(), channelId);
+    expect(unfoldedPane(folded, channelId).folded.has(channelId)).toBe(false);
+    expect(unfoldedPane(emptyPaneMemory<PaneId>(), channelId).folded.size).toBe(0);
+    const untouched = emptyPaneMemory<PaneId>();
+    expect(unfoldedPane(untouched, channelId)).toBe(untouched);
+    expect(unfoldedPane(folded, channelId).shown.size).toBe(0);
   });
 
   it("reopens a pane from its notch after expanding its neighbor", () => {

@@ -1,5 +1,5 @@
 import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
-import { type ReactNode, useState } from "react";
+import { memo, type ReactNode, useState } from "react";
 import { type DimensionValue, Pressable, ScrollView, Text, View } from "react-native";
 import { ReserveRows } from "../editors/budgets";
 import { PlanUsageDots } from "../editors/planUsageDots";
@@ -39,27 +39,8 @@ const useToggles = () => {
   return { set, setSet, toggle };
 };
 
-/**
- * The left sidebar (CHG-0449): each realm with its quests; the quests that
- * are in no realm as ordinary rows; the buttons that visit a realm and start a quest; and at the foot the menu of the other
- * places. Quests nest their errands at every depth, and the sidebar opens the path to the thread that is open.
- */
-export function Sidebar({
-  client,
-  width,
-  onOpenMission,
-  onOpenErrands,
-  onOpenQuestsTab,
-  onOpenChannel,
-  onOpenChronicle,
-  onOpenThread,
-  hasLeftDivider,
-  host,
-  isWorkshopOpen,
-  onWorkshop,
-  openMission,
-  openThread,
-}: {
+/** What the sidebar shows and asks: its callbacks keep one identity, so it skips rendering for another panel's change. */
+export type SidebarProps = {
   client: ServiceClient;
   /** The open rail's width, as dragged; the whole width on a phone, where this is the menu screen. */
   width: DimensionValue;
@@ -81,7 +62,29 @@ export function Sidebar({
   openMission: MissionId | null;
   /** The errand open in the open quest, or null for the quest itself. */
   openThread: ThreadId | null;
-}) {
+};
+
+/**
+ * The left sidebar (CHG-0449): each realm with its quests; the quests that
+ * are in no realm as ordinary rows; the buttons that visit a realm and start a quest; and at the foot the menu of the other
+ * places. Quests nest their errands at every depth, and the sidebar opens the path to the thread that is open.
+ */
+export const Sidebar = memo(function Sidebar({
+  client,
+  width,
+  onOpenMission,
+  onOpenErrands,
+  onOpenQuestsTab,
+  onOpenChannel,
+  onOpenChronicle,
+  onOpenThread,
+  hasLeftDivider,
+  host,
+  isWorkshopOpen,
+  onWorkshop,
+  openMission,
+  openThread,
+}: SidebarProps) {
   const { data } = useServiceQuery(client, listedMissions.request, listedMissions.key);
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   // What the Chronicle's badge counts: the updates the owner has not read (CHG-0569).
@@ -325,7 +328,7 @@ export function Sidebar({
       )}
     </View>
   );
-}
+});
 
 /**
  * A quiet label over a group of the sidebar; pressing it folds or unfolds the group. Its creation button (a new realm, a

@@ -1,4 +1,4 @@
-import { type ReactNode, useContext } from "react";
+import { memo, type ReactNode, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { HostMenuContext } from "../foundation/hostContext";
@@ -42,7 +42,7 @@ export function PanelIcon({ side = "left" }: { side?: "left" | "right" }) {
 /**
  * The top bar: the host menu at its start and, at the end, the quest panel's icon and, furthest right like its panel, Chronicler's mark. It names no place: the rail and the screens say where the owner is.
  */
-export function TopBar({
+export const TopBar = memo(function TopBar({
   details,
   chronicler,
   menu,
@@ -141,7 +141,7 @@ export function TopBar({
       {sidebar?.side === "right" && sidebarButton}
     </View>
   );
-}
+});
 
 /**
  * The narrow window's top bar: its menu button carries the Chronicle's unread count, so what needs the owner shows

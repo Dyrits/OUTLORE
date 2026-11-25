@@ -1,5 +1,5 @@
 import type { Dispatch, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import { ChroniclerConversation } from "../conversation/guildmaster";
 import { useIslandFrame } from "../foundation/islands";
@@ -25,7 +25,7 @@ import {
   rememberRailWidth,
 } from "./railStorage";
 import { handleSize, shellStyles as local } from "./shellStyles";
-import { type Place, Sidebar } from "./sidebar";
+import { type Place, Sidebar, type SidebarProps } from "./sidebar";
 import { sidebarPlacementOf } from "./sidebarMode";
 import { SidebarOverlay } from "./sidebarOverlay";
 import { type DetailsToggle, NarrowTopBar, PanelIcon, TopBar } from "./topBar";
@@ -42,7 +42,7 @@ const sidebarBreakpoint = 820;
  * beside them (CHG-0560), under a top bar over the content; on a narrow one the content alone.
  */
 export function Shell(
-  props: Omit<Parameters<typeof Sidebar>[0], "hasLeftDivider" | "host" | "width"> & {
+  props: Omit<SidebarProps, "hasLeftDivider" | "host" | "width"> & {
     children: ReactNode;
     location: Location;
     dispatch: Dispatch<NavigationEvent>;
@@ -75,7 +75,7 @@ export function Shell(
   // The overlay's own pointer, button and key rules apply in both of its states; a pinned sidebar stands in the frame.
   const isOverlay = mode === "overlay";
   const isFloating = placement === "floating";
-  const togglePin = () => chooseSidebarPinned(!isPinned);
+  const togglePin = useCallback(() => chooseSidebarPinned(!isPinned), [isPinned]);
   const [isHidden, setIsHidden] = useState(readHidden);
   const [storedRailWidth, setRailWidth] = useState(readRailWidth);
   // Held to a quarter of the window again whenever the window changes size; the remembered width stays as dragged.
@@ -109,6 +109,82 @@ export function Shell(
     rightPanel,
   });
   const { companionDock, isCompanionShown, pillId, questWidth } = column;
+  // The sidebar and the top bar are panels of their own: they get only what they show, each with one identity, so
+  // another panel's change, such as the details column opening, leaves them as they are.
+  const {
+    client,
+    isWorkshopOpen,
+    onOpenChannel,
+    onOpenChronicle,
+    onOpenErrands,
+    onOpenMission,
+    onOpenQuestsTab,
+    onOpenThread,
+    onWorkshop,
+    openMission,
+    openThread,
+  } = props;
+  const sidebarProps = useMemo(
+    () => ({
+      client,
+      isWorkshopOpen,
+      onOpenChannel,
+      onOpenChronicle,
+      onOpenErrands,
+      onOpenMission,
+      onOpenQuestsTab,
+      onOpenThread,
+      onWorkshop,
+      openMission,
+      openThread,
+    }),
+    [
+      client,
+      isWorkshopOpen,
+      onOpenChannel,
+      onOpenChronicle,
+      onOpenErrands,
+      onOpenMission,
+      onOpenQuestsTab,
+      onOpenThread,
+      onWorkshop,
+      openMission,
+      openThread,
+    ],
+  );
+  // Choosing something in the floating sidebar puts it away, so the panes are not left covered.
+  const overlayProps = useMemo(() => {
+    const choosing = <Args extends unknown[]>(action: (...args: Args) => void) => {
+      return (...args: Args) => {
+        closeSidebar();
+        action(...args);
+      };
+    };
+    return {
+      ...sidebarProps,
+      ...(onOpenChannel === undefined ? {} : { onOpenChannel: choosing(onOpenChannel) }),
+      ...(onOpenChronicle === undefined ? {} : { onOpenChronicle: choosing(onOpenChronicle) }),
+      onOpenErrands: choosing(onOpenErrands),
+      onOpenMission: choosing(onOpenMission),
+      onOpenQuestsTab: choosing(onOpenQuestsTab),
+      onOpenThread: choosing(onOpenThread),
+      onWorkshop: choosing(onWorkshop),
+    };
+  }, [
+    closeSidebar,
+    onOpenChannel,
+    onOpenChronicle,
+    onOpenErrands,
+    onOpenMission,
+    onOpenQuestsTab,
+    onOpenThread,
+    onWorkshop,
+    sidebarProps,
+  ]);
+  const topBarSidebar = useMemo(
+    () => (isOverlay ? { isPinned, onToggle: togglePin, side } : undefined),
+    [isOverlay, isPinned, side, togglePin],
+  );
 
   const toggle = () => {
     rememberHidden(!isHidden);
@@ -168,7 +244,7 @@ export function Shell(
             <View style={[local.narrowContent, isNarrowCovered && local.hidden]}>{props.children}</View>
             {isMenuOpen && (
               <View style={[local.narrowContent, local.menuScreen]}>
-                <Sidebar {...props} host="narrow" width="100%" />
+                <Sidebar {...sidebarProps} host="narrow" width="100%" />
               </View>
             )}
             {isNarrowChroniclerOpen && !isMenuOpen && <View style={local.narrowContent}>{chroniclerChat}</View>}
@@ -178,35 +254,18 @@ export function Shell(
       </QuestPanelSetter.Provider>
     );
   }
-  // Choosing something in the floating sidebar puts it away, so the panes are not left covered.
-  const choosing = <Args extends unknown[]>(action: (...args: Args) => void) => {
-    return (...args: Args) => {
-      overlay.close();
-      action(...args);
-    };
-  };
   // A docked or pinned sidebar stands in the frame, at the left, or at the window's right edge when pinned there.
   const hasLeftRail = placement === "docked" ? !isHidden : placement === "pinned" && side === "left";
   const hasRightRail = placement === "pinned" && side === "right";
-  // In the Islands layout the content is an island of its own, except where it holds the panes, which are islands each.
-  const isPaneRow = props.location.openMission !== null && ritualForm === null;
+  // In the Islands layout the content is an island of its own, except where it holds the panes, which are islands each:
+  // a quest's panes, or the realm's channel alone.
+  const isPaneRow = hasPanes && ritualForm === null;
   const panelStyle =
     islands === null ? hasLeftRail && local.panelDivider : isPaneRow ? local.panelOfIslands : islands.island;
-  const sidebar = <Sidebar {...props} hasLeftDivider={hasRightRail} host="docked" width={railWidth} />;
+  const sidebar = <Sidebar {...sidebarProps} hasLeftDivider={hasRightRail} host="docked" width={railWidth} />;
   const floatingSidebar = (
     <SidebarOverlay isOpen={overlay.isOpen} side={side} width={railWidth}>
-      <Sidebar
-        {...props}
-        host="overlay"
-        {...(props.onOpenChannel === undefined ? {} : { onOpenChannel: choosing(props.onOpenChannel) })}
-        {...(props.onOpenChronicle === undefined ? {} : { onOpenChronicle: choosing(props.onOpenChronicle) })}
-        onOpenErrands={choosing(props.onOpenErrands)}
-        onOpenMission={choosing(props.onOpenMission)}
-        onOpenQuestsTab={choosing(props.onOpenQuestsTab)}
-        onOpenThread={choosing(props.onOpenThread)}
-        onWorkshop={choosing(props.onWorkshop)}
-        width={railWidth}
-      />
+      <Sidebar {...overlayProps} host="overlay" width={railWidth} />
       <EdgeResizer
         label="Resize the sidebar"
         leastWidth={minRailWidth}
@@ -232,7 +291,7 @@ export function Shell(
             <TopBarShown.Provider value={true}>
               <QuestTabButtonContext.Provider value={column.questTabButton}>
                 <View style={[local.window, islands !== null && local.islandWindow]}>
-                  <TopBar details={null} sidebar={isOverlay ? { isPinned, onToggle: togglePin, side } : undefined} />
+                  <TopBar details={null} sidebar={topBarSidebar} />
                   <View style={[local.body, islands !== null && { gap, paddingBottom: gap, paddingHorizontal: gap }]}>
                     <View style={[local.frame, islands !== null && [local.islandFrame, { gap }]]}>
                       {hasLeftRail && sidebar}
