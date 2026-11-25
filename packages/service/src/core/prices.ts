@@ -58,15 +58,20 @@ const rankOf = (provider: string) => {
 /** A model name without a trailing release date such as `-20251001` or `-2025-10-01`. */
 const withoutDate = (model: string) => model.replace(/-(\d{8}|\d{4}-\d{2}-\d{2})$/, "");
 
+/** A model name without a trailing effort or thinking-level suffix such as `-medium` or `-xhigh`. */
+const withoutEffort = (model: string) => model.replace(/-(low|medium|high|xhigh|max)$/, "");
+
 /**
- * The price of a model among the rows: its exact name, then without a provider prefix such as `anthropic/` (taken as
- * the provider when the rows know it), then without a release date. Null when no row matches; a price is never guessed.
+ * The price of a model among the rows: its exact name, then without a release date, then without a trailing effort suffix (and without both), taking a `provider/` prefix as the provider when present.
+ * Null when no row matches; a price is never guessed.
  */
 export const priceOf = (rows: ReadonlyArray<PriceRow>, model: string): PriceRow | null => {
   const slash = model.indexOf("/");
   const provider = slash === -1 ? null : model.slice(0, slash);
   const name = slash === -1 ? model : model.slice(slash + 1);
-  for (const candidate of [name, withoutDate(name)]) {
+  const undated = withoutDate(name);
+  const base = withoutEffort(name);
+  for (const candidate of new Set([name, undated, base, withoutDate(base), withoutEffort(undated)])) {
     const matches = rows
       .filter((row) => row.model === candidate && (provider === null || row.provider === provider))
       .toSorted((left, right) => rankOf(left.provider) - rankOf(right.provider));

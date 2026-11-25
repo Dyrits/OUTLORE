@@ -1,5 +1,11 @@
 # Work in progress
 
+## Price lookup for effort-suffixed model IDs · 2026-11-25 · built and tested
+
+CHG-0729 on `mission/antigravity-vs-t3code-47229313`: `priceOf()` in `packages/service/src/core/prices.ts` falls back to stripping trailing effort suffixes (`-low`, `-medium`, `-high`, `-xhigh`, `-max`) and date+effort combinations after exact and undated lookups, while keeping exact matches first and returning `null` for unknown base models.
+`packages/service/src/core/priceSnapshot.ts` is refreshed from `models.dev` via `bun run --filter @outlore/service prices:snapshot`, adding `gemini-4-neon` and `gemini-4-hydrogen` to the fallback snapshot.
+Verified with `priceSources.test.ts`, `prices.test.ts`, Biome, and workspace typecheck; no live `agy` turn was run.
+
 ## One account isolation per harness · 2026-11-25 · built and tested against stand-ins; no provider turn or sign-in run
 
 CHG-0728 (Batch 1 of the multi-account plan), branch `mission/antigravity-vs-t3code-5a344e2b`: every harness declares one `AccountIsolation` (`computerOnly` or `directory` with `envOf`), and the launch, sign-in command, sign-in read, model probe, plan limits and the Workshop's **+ Add account** derive from it.
