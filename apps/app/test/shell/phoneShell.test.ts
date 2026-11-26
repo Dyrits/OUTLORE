@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { initialLocation, navigate } from "../../src/shell/location";
 import {
   initialPillScroll,
+  phoneBackOf,
   phoneShellOf,
   phoneTabEventOf,
   phoneTabs,
@@ -167,5 +168,48 @@ describe("the pill's room", () => {
     expect(withOpacity("#172230", 0.92)).toBe("#172230eb");
     expect(withOpacity("#172230", 2)).toBe("#172230ff");
     expect(withOpacity("rgba(0,0,0,.5)", 0.9)).toBe("rgba(0,0,0,.5)");
+  });
+});
+
+describe("the phone's Back", () => {
+  const press = (location: typeof start, showsDetails = false) => {
+    const back = phoneBackOf(location, showsDetails);
+    return back === null || back.type === "closeDetails" ? location : navigate(location, back);
+  };
+
+  it("leaves the app only from the Chronicle", () => {
+    expect(phoneBackOf(start, false)).toBeNull();
+  });
+
+  it("goes from a quest to the Quests tab, then to the place beneath, never back into the quest", () => {
+    const open = navigate(start, { id: quest, type: "quest" });
+    const quests = press(open);
+    expect(quests.isQuestsOpen).toBe(true);
+    const home = press(quests);
+    expect(home.openMission).toBeNull();
+    expect(home.isQuestsOpen).toBe(false);
+    expect(phoneBackOf(home, false)).toBeNull();
+  });
+
+  it("returns a quest to the Chronicle it was opened from", () => {
+    const open = navigate(start, { id: quest, origin: "chronicle", type: "quest" });
+    expect(press(open).openMission).toBeNull();
+    expect(phoneBackOf(press(open), false)).toBeNull();
+  });
+
+  it("closes the quest panel, a quest page, the Menu and a Menu place one layer at a time", () => {
+    const open = navigate(start, { id: quest, type: "quest" });
+    expect(phoneBackOf(open, true)).toEqual({ type: "closeDetails" });
+    const paged = navigate(open, { page: { kind: "budget" } as never, type: "page" });
+    expect(press(paged).page).toBeNull();
+    const lore = navigate(start, { place: "Lore", type: "place" });
+    const menu = press(lore);
+    expect(menu.isMenuOpen).toBe(true);
+    expect(press(menu).isMenuOpen).toBe(false);
+  });
+
+  it("returns a realm's channel to the Quests tab", () => {
+    const channel = navigate(start, { listing: null, type: "channel" });
+    expect(press(channel).isQuestsOpen).toBe(true);
   });
 });

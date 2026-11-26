@@ -1,13 +1,20 @@
 import type { Dispatch, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { BackHandler, StyleSheet, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { PillScrollContext } from "../foundation/pillScroll";
 import { colors } from "../foundation/theme";
 import type { Location, NavigationEvent } from "./location";
 import { MenuScreen } from "./menuScreen";
 import { PhonePill, pillBottom } from "./phonePill";
-import { initialPillScroll, phoneShellOf, phoneTabEventOf, pillClearanceOf, pillScrollOf } from "./phoneShell";
+import {
+  initialPillScroll,
+  phoneBackOf,
+  phoneShellOf,
+  phoneTabEventOf,
+  pillClearanceOf,
+  pillScrollOf,
+} from "./phoneShell";
 import { Sidebar, type SidebarProps } from "./sidebar";
 import { type DetailsToggle, NarrowTopBar } from "./topBar";
 
@@ -66,6 +73,20 @@ export function NarrowShell({
     () => (shell.bottom === "pill" ? { clearance, report } : null),
     [clearance, report, shell.bottom],
   );
+  // The phone's Back goes to the screen before, and leaves the app only from the Chronicle.
+  const backRef = useRef({ details, dispatch, location, showsDetails });
+  backRef.current = { details, dispatch, location, showsDetails };
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      const current = backRef.current;
+      const back = phoneBackOf(current.location, current.showsDetails);
+      if (back === null) return false;
+      if (back.type === "closeDetails") current.details?.onToggle();
+      else current.dispatch(back);
+      return true;
+    });
+    return () => subscription.remove();
+  }, []);
   const isCovered = shell.cover !== null || showsDetails;
   return (
     <PillScrollContext.Provider value={pillScroll}>

@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume dual-auth OAuth connectors and the thirteen missing remote connectors (CHG-0763), read the [current handoff](.agents/handoffs/2026-11-26-1458-dual-auth-and-missing-connectors.md). Handoffs are shared and committed.
-
 - To resume the whole-codebase review (wave 2 merged and pushed, desktop checks and SPEC-07 open), read the [current handoff](.agents/handoffs/2026-11-26-1636-review-wave-2-merged.md). Handoffs are shared and committed.
 
 - To resume phone control (agents use the phone through `phone_*` tools; step 1 built and merged, real-phone check open; CHG-0770), read the [current handoff](.agents/handoffs/2026-11-26-2200-phone-control-step-1-built.md). Handoffs are shared and committed.
+
+- To resume the phone Back button (built, real-phone check and errand Back open; CHG-0772), read the [current handoff](.agents/handoffs/2026-11-26-2330-phone-back-button.md). Handoffs are shared and committed.

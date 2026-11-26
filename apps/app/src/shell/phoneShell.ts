@@ -82,6 +82,31 @@ export const phoneShellOf = (location: Location, showsDetails: boolean): PhoneSh
   };
 };
 
+/** What the phone's Back (the hardware button or gesture) asks: a navigation event, or closing the quest panel. */
+export type PhoneBack = NavigationEvent | { type: "closeDetails" };
+
+/**
+ * What Back does on the phone: it peels the topmost layer or goes to the screen before, so it never leaves the app
+ * from a screen that has somewhere to go back to. Null on the Chronicle, the root, where Back leaves the app.
+ */
+export const phoneBackOf = (location: Location, showsDetails: boolean): PhoneBack | null => {
+  if (location.ritualForm !== null) return { target: null, type: "ritualForm" };
+  if (location.isChroniclerBudgetOpen) return { isOpen: false, type: "chroniclerBudget" };
+  if (location.isMenuOpen) return { isOpen: false, type: "menu" };
+  if (location.isNarrowChroniclerOpen) return { isOpen: false, type: "narrowChronicler" };
+  // The Quests tab over an open quest is where leaving the quest put the owner: Back goes on to the place beneath.
+  if (location.isQuestsOpen)
+    return location.openMission === null ? { isOpen: false, type: "quests" } : { type: "close" };
+  if (showsDetails) return { type: "closeDetails" };
+  if (location.openMission !== null)
+    return location.page === null ? { type: "backFromQuest" } : { page: null, type: "page" };
+  if (location.isPermissionsOpen) return { isOpen: false, type: "permissions" };
+  const { place } = location;
+  if (menuPlaces.some((entry) => entry.place === place)) return { isOpen: true, type: "menu" };
+  if (place === "Channel") return { isOpen: true, type: "quests" };
+  return null;
+};
+
 /** What choosing a tab asks of the window. The Chronicle is a place; the other two cover the content and keep it mounted. */
 export const phoneTabEventOf = (tab: PhoneTab): NavigationEvent => {
   if (tab === "chronicle") return { place: "Chronicle", type: "place" };
