@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outlore — ten mobile shell directions (2026-11-26)</title>
+<style>
+  :root {
+    --ground: #0f1722; --page: #172230; --bubble: #1d2b3d; --bubble-user: #24384f; --border: #2a3a4f; --edge: #34465e;
+    --text: #e8edf4; --muted: #8796ab; --secondary: #b4c0d0; --accent: #8db3ff; --accent-soft: #1f3350; --dot: #e0a537; --on-dot: #1b1305;
+    --ok: #6fcf97; --bezel: #070a0f; --shadow: rgba(0, 0, 0, .5);
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  body.light {
+    --ground: #e9e1d6; --page: #f3eee6; --bubble: #fbf8f3; --bubble-user: #e3eaf4; --border: #e0d6c9; --edge: #d5c9ba;
+    --text: #1c2838; --muted: #6b7686; --secondary: #46546a; --accent: #2f4d80; --accent-soft: #e0e7f2; --dot: #c98a14; --on-dot: #fff8e8;
+    --ok: #2e7d4f; --bezel: #2b303a; --shadow: rgba(60, 40, 10, .28);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 32px 70px; font: 14px/1.45 var(--sans); color: var(--text); background: var(--ground); }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  h2 { margin: 0 0 2px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  h3 { margin: 28px 0 8px; font-size: 16px; }
+  p.lead { max-width: 920px; margin: 0 0 12px; color: var(--muted); }
+  button { font: inherit; color: inherit; }
+  button.theme { margin: 4px 0 22px; padding: 5px 12px; color: var(--text); background: var(--page); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(404px, 1fr)); gap: 22px; align-items: start; }
+  .cell { padding: 16px 16px 14px; background: var(--page); border: 1px solid var(--border); border-radius: 12px; }
+  .ltr { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--accent); color: var(--ground); font-weight: 700; }
+  .idea { margin: 4px 0 12px; color: var(--secondary); font-size: 13px; }
+  .note { margin: 8px 0 0; color: var(--muted); font-size: 12.5px; }
+  .note b { color: var(--secondary); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { padding: 7px 8px; text-align: left; vertical-align: top; border: 1px solid var(--border); }
+  th { background: var(--page); color: var(--secondary); position: sticky; top: 0; }
+  td:first-child, th:first-child { min-width: 118px; background: var(--page); color: var(--secondary); font-weight: 600; }
+  .scroll { overflow-x: auto; border-radius: 10px; }
+  .rec { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .rec > div { padding: 14px 16px; background: var(--page); border: 1px solid var(--border); border-radius: 12px; }
+  .rec p { margin: 6px 0 0; color: var(--secondary); }
+
+  /* ---- the phone frame and the shared parts of every design ---- */
+  .phone { position: relative; width: 360px; height: 740px; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; background: var(--ground); border: 8px solid var(--bezel); border-radius: 38px; box-shadow: 0 10px 28px var(--shadow); font-size: 13px; }
+  .phone::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 104px; height: 4px; margin-left: -52px; border-radius: 2px; background: var(--text); opacity: .3; pointer-events: none; z-index: 30; }
+  .phone svg { flex: none; }
+  .phone button { cursor: pointer; }
+  .status { flex: none; height: 26px; padding: 6px 20px 0; display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 600; color: var(--secondary); }
+  .scrs { position: relative; flex: 1; min-height: 0; }
+  .scr { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--ground); }
+  .scr[hidden] { display: none; }
+  .hd { flex: none; display: flex; align-items: center; gap: 6px; min-height: 46px; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+  .ht { flex: 1; min-width: 0; padding: 0 4px; }
+  .ht b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ht small { display: block; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ib { position: relative; display: grid; place-items: center; width: 36px; height: 36px; flex: none; background: none; border: 0; border-radius: 10px; color: var(--secondary); }
+  .ib:hover { background: var(--accent-soft); }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 12px; border: 0; flex: none; }
+  .body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; padding-bottom: 12px; }
+  .body::-webkit-scrollbar { display: none; }
+  .sec { padding: 14px 14px 4px; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer; }
+  .row:hover { background: var(--accent-soft); }
+  .row .rt { flex: 1; min-width: 0; }
+  .row .rt b { display: block; font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .rt small { display: block; color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .w { color: var(--muted); font-size: 11px; flex: none; }
+  .row.err { padding-left: 38px; position: relative; }
+  .row.err::before { content: ""; position: absolute; left: 22px; top: -6px; width: 10px; height: 20px; border-left: 2px solid var(--edge); border-bottom: 2px solid var(--edge); border-bottom-left-radius: 8px; }
+  .row .ic { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--bubble); color: var(--secondary); flex: none; }
+  .row .chev { color: var(--muted); }
+  .sdot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--muted); }
+  .sdot.att { background: var(--dot); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot) 25%, transparent); }
+  .sdot.run { background: var(--accent); }
+  .sdot.done { background: var(--ok); }
+  .arch { display: none; }
+  .show-arch .arch { display: flex; }
+  .bdg { display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--dot); color: var(--on-dot); font: 700 10px/1 var(--sans); font-style: normal; }
+  .bdg[data-n="0"] { display: none; }
+  .bdg.abs { position: absolute; top: 3px; left: calc(50% + 4px); }
+  em[data-attn] { font-style: normal; }
+  .chips { display: flex; gap: 6px; padding: 10px 14px 4px; overflow-x: auto; scrollbar-width: none; }
+  .chip { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; font-size: 12px; background: var(--bubble); color: var(--secondary); border: 1px solid var(--edge); border-radius: 999px; }
+  .chip.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .seg { display: flex; gap: 2px; margin: 10px 14px 2px; padding: 2px; background: var(--bubble); border: 1px solid var(--edge); border-radius: 10px; }
+  .seg button { flex: 1; padding: 5px 0; background: none; border: 0; border-radius: 8px; color: var(--muted); font-size: 12.5px; }
+  .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .sw { display: flex; align-items: center; justify-content: space-between; margin: 8px 14px 0; padding: 8px 12px; background: var(--bubble); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 12.5px; }
+  .sw i { width: 32px; height: 18px; border-radius: 9px; background: var(--edge); position: relative; transition: background .15s; }
+  .sw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--text); transition: left .15s; }
+  .sw.on i { background: var(--accent); }
+  .sw.on i::after { left: 16px; }
+
+  .brief { margin: 12px 14px 0; padding: 11px 13px; background: var(--accent-soft); border: 1px solid var(--edge); border-radius: 12px; }
+  .brief small { display: flex; align-items: center; gap: 5px; color: var(--accent); font-weight: 600; font-size: 11px; }
+  .brief p { margin: 5px 0 0; font-size: 12.5px; color: var(--text); }
+  .card { margin: 10px 14px 0; padding: 10px 12px; background: var(--bubble); border: 1px solid var(--edge); border-radius: 12px; }
+  .card .ch { display: flex; align-items: center; gap: 8px; }
+  .card .ch b { flex: 1; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .ch small, .card .cr { color: var(--muted); font-size: 11px; }
+  .card .cr { margin: 1px 0 0 17px; }
+  .card p { margin: 6px 0 0; font-size: 12.5px; color: var(--secondary); }
+  .card code, .msg code { font: 11.5px var(--mono); padding: 1px 5px; background: var(--ground); border-radius: 5px; }
+  .acts { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+  .acts small { color: var(--ok); display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; }
+  .act { padding: 5px 12px; font-size: 12px; background: var(--ground); border: 1px solid var(--edge); border-radius: 8px; color: var(--secondary); }
+  .act.ok { background: var(--accent); border-color: var(--accent); color: var(--ground); font-weight: 600; }
+  .resolved { opacity: .6; }
+  .prog { height: 4px; margin-top: 8px; border-radius: 2px; background: var(--edge); overflow: hidden; }
+  .prog i { display: block; height: 100%; background: var(--accent); }
+
+  .msg { max-width: 88%; margin: 10px 14px 0; padding: 9px 12px; border: 1px solid var(--edge); border-radius: 12px; font-size: 12.5px; }
+  .msg small { display: block; margin-bottom: 2px; color: var(--muted); font-size: 10.5px; }
+  .msg.me { margin-left: auto; background: var(--bubble-user); }
+  .msg.ai { background: var(--bubble); }
+  .steps { margin: 8px 14px 0; display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11.5px; }
+  .rl { display: flex; align-items: center; gap: 7px; margin: 12px 14px 0 28px; padding: 2px 4px; font-size: 12px; position: relative; color: var(--secondary); }
+  .rl::before { content: ""; position: absolute; left: -14px; top: -12px; width: 10px; height: 20px; border-left: 2px solid var(--edge); border-bottom: 2px solid var(--edge); border-bottom-left-radius: 8px; }
+  .rl b { color: var(--accent); }
+  .comp { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--ground); border-top: 1px solid var(--border); }
+  .comp .inp { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; padding: 8px 12px; background: var(--bubble); border: 1px solid var(--edge); border-radius: 18px; color: var(--muted); font-size: 12.5px; }
+  .comp .inp span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .comp .send { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border: 0; border-radius: 50%; background: var(--accent); color: var(--ground); }
+  .tag { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 600; border: 0; }
+  .big { display: flex; align-items: center; gap: 12px; margin: 12px 14px 0; padding: 12px 14px; background: var(--bubble); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 14px; }
+  .tile { display: flex; flex-direction: column; gap: 6px; padding: 14px; background: var(--bubble); border: 1px solid var(--border); border-radius: 14px; cursor: pointer; text-align: left; }
+  .tile small { color: var(--muted); font-size: 11px; }
+  .meter { margin: 10px 14px 0; padding: 10px 12px; background: var(--bubble); border: 1px solid var(--border); border-radius: 12px; }
+  .meter div:first-child { display: flex; justify-content: space-between; font-size: 12.5px; }
+
+  /* the bar every design builds on */
+  .bar { position: relative; z-index: 5; flex: none; display: flex; align-items: stretch; padding: 0 4px 16px; background: var(--page); border-top: 1px solid var(--border); }
+  .nobar .bar { display: none; }
+  .bar button { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 4px; background: none; border: 0; color: var(--muted); font-size: 10.5px; }
+  .bar button.on { color: var(--accent); }
+  .bar button.on span { font-weight: 600; }
+
+  /* overlays: a scrim, bottom sheets, and a drawer */
+  .scrim { position: absolute; left: 0; right: 0; top: 0; bottom: var(--bar, 0px); z-index: 20; background: rgba(0, 0, 0, .5); opacity: 0; pointer-events: none; transition: opacity .18s; }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: var(--bar, 0px); z-index: 21; max-height: 80%; overflow-y: auto; padding: 8px 0 14px; background: var(--page); border-radius: 20px 20px 0 0; border-top: 1px solid var(--edge); transform: translateY(calc(100% + var(--bar, 0px) + 12px)); transition: transform .2s; scrollbar-width: none; }
+  .sheet.open { transform: none; }
+  .sheet .grab { width: 38px; height: 4px; margin: 0 auto 8px; border-radius: 2px; background: var(--edge); }
+  .sheet h4 { margin: 4px 14px 2px; font-size: 14px; }
+  .drawer { position: absolute; left: 0; top: 0; bottom: 0; width: 80%; z-index: 21; padding-top: 34px; background: var(--page); border-right: 1px solid var(--edge); transform: translateX(-102%); transition: transform .2s; overflow-y: auto; scrollbar-width: none; }
+  .drawer.open { transform: none; }
+
+  /* A: Slack-like, four labelled tabs; the bar hides in a conversation */
+  .a .bar button { padding-top: 9px; }
+
+  /* B: three slots, the middle one is the composer itself */
+  .b .bar { align-items: center; padding: 6px 8px 17px; gap: 4px; }
+  .b .bar button.tab { padding: 6px 0 2px; }
+  .b .bar .pill { flex: 2.4; flex-direction: row; justify-content: flex-start; gap: 8px; padding: 9px 12px; background: var(--bubble); border: 1px solid var(--edge); border-radius: 22px; color: var(--secondary); font-size: 12.5px; }
+  .b .bar .pill.on { border-color: var(--accent); color: var(--accent); }
+  .b .bar .pill .t2 { display: none; }
+  .b[data-tab="chat"] .bar .pill .t1 { display: none; }
+  .b[data-tab="chat"] .bar .pill .t2 { display: inline; }
+
+  /* C: five slots, the middle one raised */
+  .c .bar { overflow: visible; }
+  .c .bar .raise { flex: none; width: 62px; margin-top: -22px; padding: 0; align-items: center; }
+  .c .bar .raise i { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 3px; border-radius: 50%; background: var(--accent); color: var(--ground); border: 4px solid var(--page); box-shadow: 0 3px 10px var(--shadow); }
+
+  /* E: a floating pill over the content that shrinks to a circle while the owner scrolls down */
+  .e .bar { position: absolute; left: 12px; bottom: 16px; width: 320px; height: 56px; padding: 0 6px; border: 1px solid var(--edge); border-radius: 28px; background: color-mix(in srgb, var(--page) 88%, transparent); backdrop-filter: blur(10px); box-shadow: 0 6px 18px var(--shadow); overflow: hidden; transition: width .22s; z-index: 10; }
+  .e .bar button { padding: 0; justify-content: center; flex-direction: row; gap: 6px; font-size: 12px; white-space: nowrap; }
+  .e .bar button span { display: none; }
+  .e .bar button.on { flex: 1.9; background: var(--accent-soft); border-radius: 22px; margin: 6px 0; }
+  .e .bar button.on span { display: inline; }
+  .e.collapsed .bar { width: 56px; padding: 0; }
+  .e.collapsed .bar button { display: none; }
+  .e.collapsed .bar button.on { display: flex; flex: 1; margin: 0; background: none; }
+  .e.collapsed .bar button.on span { display: none; }
+  .e .body { padding-bottom: 96px; }
+  .e .comp { position: absolute; left: 12px; right: 12px; bottom: 16px; padding: 6px; border: 1px solid var(--edge); border-radius: 28px; background: color-mix(in srgb, var(--page) 90%, transparent); backdrop-filter: blur(10px); box-shadow: 0 6px 18px var(--shadow); z-index: 10; }
+  .e .comp .inp { background: none; border: 0; }
+
+  /* F: a strip of running quests sits between the content and the bar */
+  .strip { position: relative; z-index: 6; flex: none; display: flex; align-items: center; gap: 9px; margin: 0; padding: 8px 12px; background: var(--accent-soft); border-top: 1px solid var(--edge); cursor: pointer; }
+  .strip .rt { flex: 1; min-width: 0; }
+  .strip .rt b { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .strip .rt small { color: var(--muted); font-size: 10.5px; }
+  .strip .more { color: var(--accent); font-size: 11px; font-weight: 600; }
+  .strip .pulse { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .nobar .strip { border-bottom: 0; }
+  .f.nobar .strip { padding-bottom: 18px; }
+
+  /* G: the tabs are realms */
+  .mono { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--bubble); border: 1px solid var(--edge); font-weight: 700; font-size: 12px; color: var(--secondary); }
+  .on .mono { background: var(--accent); border-color: var(--accent); color: var(--ground); }
+
+  /* H: a composer and a two-part bar */
+  .h .bar { padding: 4px 56px 17px; }
+  .h .bar button { flex-direction: row; justify-content: center; gap: 6px; padding: 7px 0; font-size: 12px; }
+  .h .bar button.on { background: var(--accent-soft); border-radius: 14px; }
+  .h .bar .bdg.abs { position: static; }
+
+  /* I: the bar is a segmented control over one inbox */
+  .i .bar { padding: 6px 10px 17px; }
+  .i .bar button { flex-direction: row; justify-content: center; gap: 6px; padding: 9px 0; border-radius: 12px; font-size: 12.5px; }
+  .i .bar button.on { background: var(--accent-soft); }
+
+  /* J: a thin bar of icons, and a sheet with detents */
+  .j .bar { padding: 0 20px 16px; flex-wrap: wrap; }
+  .j .bar .grab, .j .comp .grab { flex: none; width: 100%; height: 18px; padding: 7px 0 0; display: block; background: none; border: 0; }
+  .j .bar .grab i, .j .comp .grab i { display: block; width: 38px; height: 4px; margin: 0 auto; border-radius: 2px; background: var(--edge); }
+  .j .bar button.tab { padding: 4px 0 6px; }
+  .j .comp { flex-wrap: wrap; padding-top: 0; border-top: 1px solid var(--border); }
+  .j .comp .grab { height: 16px; }
+  .j .bar .dotb { position: absolute; top: 3px; left: calc(50% + 6px); width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
+  .j .sheet { padding-top: 0; max-height: none; height: 0; overflow: hidden; transform: none; transition: height .22s; bottom: var(--bar, 0px); }
+  .j[data-detent="1"] .sheet { height: 270px; }
+  .j[data-detent="2"] .sheet { height: 548px; overflow-y: auto; }
+  .j[data-detent="0"] .sheet { border: 0; }
+  .j.nobar { --bar: 72px; }
+  .j .search { margin: 4px 14px 8px; padding: 8px 12px; display: flex; gap: 8px; align-items: center; color: var(--muted); background: var(--bubble); border: 1px solid var(--edge); border-radius: 12px; }
+  .j .places { display: flex; justify-content: space-around; padding: 4px 10px 10px; }
+  .j .places button { display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: 0; color: var(--secondary); font-size: 11px; }
+  .j .places button span.c { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 15px; background: var(--bubble); border: 1px solid var(--edge); }
+</style>
+</head>
+<body>
+<h1>Ten directions for the phone shell</h1>
+<p class="lead">
+  The owner wants the phone to feel like Claude Duet or the Slack mobile app, with a bottom bar like theirs (2026-11-26).
+  Today a narrow window has a flat top bar whose menu button carries the Chronicle's unread count and opens a full-screen list of places: the Chronicle, then realms and quests, then Lore, Archive, Reserves and Settings (<code>NarrowTopBar</code> in <code>topBar.tsx</code>, <code>menuPlaces</code> in <code>placeCatalog.ts</code>).
+  Each phone below is live: press the bar to change screens, press a quest to open its conversation, press Back to return, and answer an Attention card to watch the badge count go down.
+  The ten differ in how the app is organised (what the bar holds, where the realms and the places live, where the Attention count shows), not in icon styling.
+  The data is made up from Outlore's own work; nothing here changes the app.
+</p>
+<p class="lead">
+  Duet's ideas used here: attention first, one ongoing thread with the assistant, a morning brief, approvals shown before action, and seeing and steering what runs (<a style="color:var(--accent)" href="../research/claude-duet-2026-11-22.md">research note</a>).
+  Slack's: bottom tabs Home, DMs, Activity and You, a channel list with unread badges, and a composer pinned above the bar.
+  The glossary says to write Attention, not "needs you", so the badges and sections use Attention.
+</p>
+<button class="theme" onclick="document.body.classList.toggle('light')">Switch dark / light</button>
+
+<div class="grid" id="grid"></div>
+
+<h3>Comparison</h3>
+<div class="scroll">
+<table>
+  <thead><tr><th></th><th>A Slack</th><th>B Duet</th><th>C Raised +</th><th>D Four + More</th><th>E Floating</th><th>F Strip</th><th>G Realm tabs</th><th>H Composer</th><th>I Inbox</th><th>J Gesture</th></tr></thead>
+  <tbody>
+    <tr><td>Thumb reach</td><td>Bar at the bottom; search and compose at the top</td><td>Bar and the centre composer at the bottom; avatar at the top</td><td>Bar and the raised button; the + is the easiest target</td><td>Bar at the bottom; More sheet rises from it</td><td>Best: the pill sits low and to the left, and gets out of the way</td><td>Two bottom targets (strip and bar), a little crowded</td><td>Realm switching at the bottom; the top bar holds the rest</td><td>Composer and two tabs at the bottom; the drawer needs a top-left press</td><td>Segments at the bottom; realm chips and the menu at the top</td><td>Slim bar at the bottom; the menu is a swipe up from it</td></tr>
+    <tr><td>Taps to a quest</td><td>1 (Home lists them)</td><td>2 (Quests, row); 1 from a Chronicle card</td><td>3 (Realms, realm, row); 1 from a card</td><td>2 (Realms or Quests, row)</td><td>2 (Quests, row)</td><td>2; 1 for a running quest via the strip</td><td>2 (realm tab, row)</td><td>2 (Quests, row); 1 from a Chronicle card</td><td>1 for Attention and Running; 2 for Done</td><td>2 (Quests, row); 1 from the sheet's recents</td></tr>
+    <tr><td>Taps to Settings</td><td>2 (You, Settings)</td><td>2 (avatar, Settings)</td><td>2 (You, Settings)</td><td>2 (More, Settings)</td><td>2 (Menu, Settings)</td><td>2 (You, Settings)</td><td>2 (More, Settings)</td><td>2 (menu, Settings)</td><td>2 (menu, Settings)</td><td>2 (handle, Settings)</td></tr>
+    <tr><td>Where the Attention badge lives</td><td>The Activity tab</td><td>The Chronicle tab</td><td>The Chronicle tab</td><td>The Chronicle tab</td><td>The pill's Chronicle icon, and the circle when collapsed</td><td>The Chronicle tab; the strip shows running work</td><td>The Chronicle tab; a dot on each realm with Attention</td><td>The Chronicle tab</td><td>The Attention segment, which is the bar</td><td>The Chronicle icon and a dot on the handle</td></tr>
+    <tr><td>Fit with today's screens</td><td>Medium: Home replaces the menu list, Activity is the Chronicle, You holds the footer places; the Quests tab overlaps Home</td><td>Medium: the Chronicle exists; Chronicler moves from a top-bar toggle to a tab</td><td>Medium: the realm channel and starting a quest exist; the sheet is new</td><td>High: the same sections as the menu today, one tab each; Quests is the History tab's list</td><td>Medium: same screens as D, but a scroll-aware floating bar is new</td><td>Medium: needs a live list of running quests for the strip</td><td>Medium to low: the realm channel is a screen already, but realms outgrow five slots</td><td>Low: the composer changes meaning by screen, a new idea for the conversation's composer</td><td>Low: a new inbox grouped by state, instead of realms</td><td>Medium: the menu overlay becomes a sheet with detents; needs gesture handling</td></tr>
+    <tr><td>Build cost</td><td>Medium</td><td>Medium</td><td>Medium to high</td><td>Low</td><td>Medium to high</td><td>Medium to high</td><td>Medium</td><td>High</td><td>High</td><td>Medium to high</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Recommended: D first, then B</h3>
+<div class="rec">
+  <div>
+    <h2><span class="ltr">D</span> Chronicle / Realms / Quests / More</h2>
+    <p>It is the smallest change that gives the Slack-like bar: the four tabs are the sections the menu already has, so every current screen keeps its place and Back keeps its meaning.</p>
+    <p>The Attention badge sits on the first tab, as the menu button carries it today, and the footer places (Lore, Archive, Reserves, Settings) stay one sheet away, taken straight from <code>menuPlaces</code>.</p>
+    <p>The cost is low, and the bar hides in a conversation so the composer has the bottom to itself.</p>
+  </div>
+  <div>
+    <h2><span class="ltr">B</span> Chronicle / Ask Chronicler / Quests</h2>
+    <p>It is the closest to Duet: attention first on the first tab, with the morning brief and the approvals, and one ongoing thread with the Chronicler as the centre of the bar, so the assistant is always one press away.</p>
+    <p>It also keeps the bar visible in a quest, so the owner can hop to the Chronicle to answer an approval without a Back press.</p>
+    <p>It costs a little more than D (a new Chronicler tab and a places screen behind the avatar), and it could be built on D: D's bar with Chronicler in a centre slot.</p>
+  </div>
+</div>
+
+<script>
+/* ---- icons ---- */
+const P = {
+  chronicle: '<path d="M5 5h14M5 10h14M5 15h9M5 20h6"/>',
+  home: '<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/>',
+  chat: '<path d="M4 5h16v11H9l-5 4z"/>',
+  quests: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+  bell: '<path d="M6 16v-5a6 6 0 0112 0v5l2 2H4z"/><path d="M10 21h4"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
+  realms: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
+  more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  spark: '<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+  book: '<path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11"/>',
+  archive: '<path d="M4 5h16v4H4z"/><path d="M6 9v10h12V9M10 13h4"/>',
+  gauge: '<path d="M4 17a8 8 0 1116 0"/><path d="M12 17l4-5"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  send: '<path d="M4 12l16-8-6 16-3-7z"/>',
+  check: '<path d="M5 12l4 4 10-10"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  chev: '<path d="M9 6l6 6-6 6"/>',
+  down: '<path d="M6 9l6 6 6-6"/>',
+  play: '<path d="M7 5l12 7-12 7z"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+  inbox: '<path d="M4 13l3-8h10l3 8v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/>',
+};
+const ic = (n, s = 22) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+
+/* ---- made-up content, taken from Outlore's own work ---- */
+const Q = {
+  tb: { t: 'Restore usage toolbar', r: 'Outlore', st: 'att', m: 'Waiting: run the tests?', w: '2m', err: 4 },
+  ad: { t: 'Android direct channel', r: 'Outlore', st: 'run', m: 'Building the release APK', w: 'now', err: 2 },
+  hs: { t: 'History shows archived quests', r: 'Outlore', st: 'att', m: 'Asks: keep the switch local?', w: '18m' },
+  tx: { t: 'Autumn tax papers', r: 'Borderlands', st: 'run', m: 'Sorting 14 receipts', w: '6m' },
+  bl: { t: 'Tomato blight research', r: 'Garden Notes', st: 'done', m: 'Finished · 3 sources', w: '1h' },
+  sd: { t: 'Seed order spreadsheet', r: 'Garden Notes', st: 'done', m: 'Finished · 2 errands', w: 'yday' },
+  em: { t: 'Empty errand deletable', r: 'Outlore', st: 'done', m: 'Archived', w: 'Mon', arch: 1 },
+};
+const realms = [
+  { n: 'Outlore', f: '~/Codelab/Outlore', q: ['tb', 'ad', 'hs', 'em'], run: 1, att: 2 },
+  { n: 'Garden Notes', f: 'no folder', q: ['bl', 'sd'], run: 0, att: 0 },
+  { n: 'Borderlands', f: 'quests with no realm', q: ['tx'], run: 1, att: 0 },
+];
+const qrow = (k, o = {}) => {
+  const q = Q[k];
+  const meta = (o.realm ? q.r + ' · ' : '') + q.m + (q.err && !o.noErr ? ` · ${q.err} errands` : '');
+  return `<div class="row ${q.arch ? 'arch' : ''}" data-go="quest"><span class="sdot ${q.st}"></span><div class="rt"><b>${q.t}</b><small>${meta}</small></div><span class="w">${q.w}</span></div>`;
+};
+const errRows = k => k === 'tb' ? `<div class="row err" data-go="quest"><span class="sdot run"></span><div class="rt"><b>Reply line indent</b><small>Errand · running</small></div></div><div class="row err" data-go="quest"><span class="sdot done"></span><div class="rt"><b>Usage tooltip colours</b><small>Errand · finished</small></div></div>` : '';
+
+/* ---- building blocks ---- */
+const bdg = cls => `<i class="bdg ${cls || ''}" data-attn>3</i>`;
+const ib = (icon, attrs = '', extra = '') => `<button class="ib" ${attrs}>${ic(icon, 20)}${extra}</button>`;
+const BACK = ib('back', 'data-back');
+const hd = (title, o = {}) => `<div class="hd">${o.l || ''}<div class="ht"><b>${title}</b>${o.sub ? `<small>${o.sub}</small>` : ''}</div>${o.r || ''}</div>`;
+const scr = (name, o) => `<div class="scr" data-s="${name}" data-tab="${o.tab || ''}" data-bar="${o.bar || ''}">${o.head || ''}<div class="body">${o.body || ''}</div>${o.foot || ''}</div>`;
+const comp = (ph, chip) => `<div class="comp"><div class="inp">${chip ? `<button class="tag" data-open="preset">${ic('spark', 11)} ${chip}</button>` : ''}<span>${ph}</span></div><button class="send">${ic('send', 16)}</button></div>`;
+const sec = (t, r = '') => `<div class="sec"><span>${t}</span><span>${r}</span></div>`;
+const barBtn = (b, extra = '') => `<button class="${b.cls || 'tab'}" ${b.go ? `data-go="${b.go}" data-root` : ''} ${b.open ? `data-open="${b.open}"` : ''} data-tab="${b.tab || ''}" ${extra}>${b.html}</button>`;
+const tabBtn = (icon, label, go, tab, badge) => ({ go, tab, html: `${ic(icon)}<span>${label}</span>${badge ? bdg('abs') : ''}` });
+const scrim = (id = '') => `<div class="scrim" data-close></div>`;
+
+const card = o => `<div class="card" ${o.key ? `data-att="${o.key}"` : ''}><div class="ch"><span class="sdot ${o.st}"></span><b>${o.t}</b><small>${o.w}</small></div><div class="cr">${o.r}</div><p>${o.p}</p>${o.acts ? `<div class="acts">${o.acts}</div>` : ''}</div>`;
+const attCards = () =>
+  card({ key: 'tb', st: 'att', t: 'Restore usage toolbar', w: '2m', r: 'Outlore · quest', p: 'Wants to run <code>bun run test apps/app</code> before it commits.', acts: '<button class="act ok" data-resolve>Allow</button><button class="act" data-resolve>Deny</button><button class="act" data-go="quest">Open</button>' }) +
+  card({ key: 'hs', st: 'att', t: 'History shows archived quests', w: '18m', r: 'Outlore · quest', p: 'Should the archived-quests switch stay local to the tab, or become a setting?', acts: '<button class="act ok" data-resolve>Keep local</button><button class="act" data-resolve>Make a setting</button>' }) +
+  card({ key: 'rs', st: 'att', t: 'Weekly limit at 82%', w: '1h', r: 'Reserves · Claude Max', p: 'Two running quests will reach the limit before Friday at this pace.', acts: '<button class="act ok" data-resolve>Slow them down</button><button class="act" data-go="reserves">Open Reserves</button>' });
+const restCards = () =>
+  card({ st: 'done', t: 'Tomato blight research', w: '1h', r: 'Garden Notes · quest', p: 'Finished with three sources and a short plan for the greenhouse.', acts: '<button class="act" data-go="quest">Open</button>' }) +
+  card({ st: 'run', t: 'Android direct channel', w: 'now', r: 'Outlore · quest', p: 'Building the release APK, then it will try the direct channel on the emulator.' });
+const brief = () => `<div class="brief"><small>${ic('spark', 13)} Morning brief · Chronicler · 7:30</small><p>Three things wait for you: Restore usage toolbar wants to run the tests, History shows archived quests asks a question, and the weekly Claude limit is at 82%. Two quests are running and one finished overnight.</p></div>`;
+const filterChips = () => `<div class="chips"><button class="chip on" data-chip>Attention <em data-attn>3</em></button><button class="chip" data-chip>All</button><button class="chip" data-chip>Missives</button><button class="chip" data-chip>Finished</button></div>`;
+const chron = (o = {}) => (o.noBrief ? '' : brief()) + filterChips() + attCards() + restCards();
+
+const chatBody = () =>
+  `<div class="msg ai"><small>Chronicler</small>Good morning. Three things wait for you, and nothing is blocked overnight. Want me to start the dark-mode quest we talked about?</div>` +
+  `<div class="msg me">Yes, in Outlore. Add dark mode to the quest tree and keep the Balanced preset.</div>` +
+  `<div class="msg ai"><small>Chronicler</small>I would open this quest in <b>Outlore</b> with the Balanced preset (Sonnet 5.5). I ask before I open it.</div>` +
+  `<div class="card"><div class="ch"><span class="sdot att"></span><b>Open “Dark mode for the quest tree”?</b></div><div class="cr">Outlore · Balanced · Sonnet 5.5</div><div class="acts"><button class="act ok" data-go="quest">Open quest</button><button class="act">Change preset</button></div></div>`;
+
+const questBody = () =>
+  `<div class="msg me">I like the new logo without the circles, but I prefer the old tooltip with the usage bar. Can you keep the icon but show the bar as it used to be?</div>` +
+  `<div class="steps">${ic('check', 12)} Read <code>topBar.tsx</code> and <code>usageTooltip.tsx</code> · 3 steps</div>` +
+  `<div class="msg ai"><small>Sonnet 5.5 · Balanced</small>I can bring the usage bar back in the tooltip and keep the new icon. It touches two files. I would like to run the app tests before I commit.</div>` +
+  card({ key: 'tb', st: 'att', t: 'Run a command?', w: 'now', r: 'Approval', p: '<code>bun run test apps/app</code>', acts: '<button class="act ok" data-resolve>Allow</button><button class="act" data-resolve>Deny</button><button class="act">Steer</button>' }) +
+  `<div class="rl"><span class="sdot run"></span><b>4 replies</b><span>Keep new logo, restore bar</span></div>` +
+  `<div class="msg ai"><small>Sonnet 5.5 · Balanced</small>While you decide, an errand is checking the tooltip colours in the light theme.</div>`;
+const questScr = o => scr('quest', { tab: o.tab, bar: o.bar, head: hd('Restore usage toolbar', { l: BACK, sub: 'Outlore · running · Sonnet 5.5', r: o.r || ib('more') }), body: questBody() + (o.after || ''), foot: o.foot || comp('Steer Restore usage toolbar…') });
+const chatScr = o => scr('chat', { tab: o.tab, bar: o.bar, head: hd('Chronicler', { l: o.l === undefined ? BACK : o.l, sub: 'One thread across every realm', r: o.r || '' }), body: chatBody(), foot: o.foot === undefined ? comp('Ask Chronicler…') : o.foot });
+
+const placeScrs = (tab, o = {}) => {
+  const h = (t, s) => hd(t, { l: BACK, sub: s });
+  const row = (icon, t, s, w = '') => `<div class="row"><span class="ic">${ic(icon, 16)}</span><div class="rt"><b>${t}</b><small>${s}</small></div><span class="w">${w}</span></div>`;
+  return scr('lore', { tab, head: h('Lore', 'What quests remember'), body: sec('Global') + row('book', 'Run Biome after edits', 'Rule · every realm') + row('book', 'One sentence per source line', 'Rule · every realm') + sec('Outlore') + row('book', 'Typecheck takes about four minutes', 'Fact · Outlore') + row('book', 'Worktrees live in .worktrees', 'Rule · Outlore') }) +
+    scr('archive', { tab, head: h('Archive', 'Archived quests'), body: sec('This month') + row('archive', 'Empty errand deletable', 'Outlore · archived Mon', 'Mon') + row('archive', 'Codebase review and refactor', 'Outlore · archived Nov 24', '24 Nov') + row('archive', 'Plan usage display', 'Outlore · archived Nov 25', '25 Nov') }) +
+    scr('reserves', { tab, head: h('Reserves', 'Usage and budgets'), body: `<div class="meter"><div><b>Claude Max, weekly</b><span>82%</span></div><div class="prog"><i style="width:82%"></i></div></div><div class="meter"><div><b>Outlore budget</b><span>$18 of $25</span></div><div class="prog"><i style="width:72%"></i></div></div><div class="meter"><div><b>Borderlands budget</b><span>$2 of $10</span></div><div class="prog"><i style="width:20%"></i></div></div>` }) +
+    scr('settings', { tab, head: h('Settings', 'Accounts, Companions, and looks'), body: sec('Workshop') + row('user', 'Accounts', '2 signed in') + row('spark', 'Companions', 'Light, Balanced, Heavy presets') + row('gear', 'Look and feel', 'Iskios theme · dark') + row('clock', 'Rituals', '3 scheduled') + row('realms', 'Remote access', 'Paired to this computer') });
+};
+const placeList = (names) => {
+  const m = { lore: ['book', 'Lore', 'What quests remember'], archive: ['archive', 'Archive', 'Archived quests'], reserves: ['gauge', 'Reserves', 'Usage and budgets'], settings: ['gear', 'Settings', 'Accounts, Companions, and looks'] };
+  return names.map(k => `<div class="row" data-go="${k}"><span class="ic">${ic(m[k][0], 16)}</span><div class="rt"><b>${m[k][1]}</b><small>${m[k][2]}</small></div><span class="chev">${ic('chev', 16)}</span></div>`).join('');
+};
+const ALL = ['lore', 'archive', 'reserves', 'settings'];
+const realmTree = () => realms.map(r => sec(r.n, r.run ? `${r.run} running` : '') + r.q.map(k => qrow(k, { noErr: true }) + (k === 'tb' ? errRows(k) : '')).join('')).join('');
+const allQuests = (o = {}) => realms.flatMap(r => r.q).map(k => qrow(k, { realm: true })).join('');
+const archSwitch = () => `<div class="sw" data-toggle><span>Show archived quests</span><i></i></div>`;
+
+/* ---- the ten designs ---- */
+const designs = [];
+
+/* A */
+designs.push({
+  id: 'A', cls: 'a', home: 'home',
+  title: 'Slack, four tabs',
+  idea: 'Home, Quests, Activity, You: the Slack mobile bar with the Chronicle as Activity.',
+  good: 'Familiar from Slack; the quest list is on the first screen; the bar hides in a conversation so the composer owns the bottom.',
+  cost: 'Home and Quests overlap (both list quests); the Chronicler has no tab of its own, so it hides behind Home’s first row.',
+  screens:
+    scr('home', { tab: 'home', head: hd('Outlore', { l: '<button class="avatar">DG</button>', r: ib('search') + ib('plus') }), body:
+      `<div class="row" data-go="chat"><span class="ic">${ic('spark', 16)}</span><div class="rt"><b>Chronicler</b><small>Your assistant across realms</small></div></div>` +
+      `<div class="row" data-go="activity"><span class="ic">${ic('bell', 16)}</span><div class="rt"><b>Chronicle</b><small>Attention, missives, finished work</small></div>${bdg()}</div>` +
+      `<div class="row" data-go="settings"><span class="ic">${ic('clock', 16)}</span><div class="rt"><b>Rituals</b><small>3 scheduled</small></div></div>` + realmTree() }) +
+    scr('quests', { tab: 'quests', head: hd('Quests', { r: ib('search') }), body: `<div class="chips"><button class="chip on" data-chip>Recent</button><button class="chip" data-chip>Running</button><button class="chip" data-chip>Finished</button></div>` + sec('Today') + allQuests() }) +
+    scr('activity', { tab: 'activity', head: hd('Activity', { r: ib('more') }), body: chron({ noBrief: true }) }) +
+    scr('you', { tab: 'you', head: hd('You'), body:
+      `<div class="big"><span class="avatar">DG</span><div class="rt"><b>Working</b><br><small style="color:var(--muted)">Balanced preset · 2 quests running</small></div></div>` + sec('Places') + placeList(ALL) }) +
+    questScr({ tab: 'home', bar: 'hide' }) + chatScr({ tab: 'home', bar: 'hide' }) + placeScrs('you'),
+  bar: [tabBtn('home', 'Home', 'home', 'home'), tabBtn('chat', 'Quests', 'quests', 'quests'), tabBtn('bell', 'Activity', 'activity', 'activity', 1), tabBtn('user', 'You', 'you', 'you')],
+});
+
+/* B */
+designs.push({
+  id: 'B', cls: 'b', home: 'chronicle',
+  title: 'Duet: the Chronicler is the bar',
+  idea: 'Chronicle, an “Ask Chronicler” field in the middle, Quests; attention first, one ongoing thread.',
+  good: 'Duet’s loop: morning brief, approve, steer. The assistant is one press away from every screen; the bar stays in a quest so approvals are one press away.',
+  cost: 'Three slots hold little; Lore, Archive, Reserves and Settings go behind the avatar, so they are one step further.',
+  screens:
+    scr('chronicle', { tab: 'chronicle', head: hd('Good morning', { sub: 'Thursday 26 November', r: '<button class="avatar" data-go="you">DG</button>' }), body: chron() }) +
+    scr('chat', { tab: 'chat', head: hd('Chronicler', { sub: 'One thread across every realm', r: '<button class="avatar" data-go="you">DG</button>' }), body: chatBody() }) +
+    scr('quests', { tab: 'quests', head: hd('Quests', { r: ib('search') }), body: realmTree() }) +
+    questScr({ tab: 'quests', foot: comp('Steer Restore usage toolbar…') }) +
+    scr('you', { head: hd('You', { l: BACK }), body: `<div class="big"><span class="avatar">DG</span><div class="rt"><b>Dylan</b><br><small style="color:var(--muted)">2 quests running</small></div></div>` + sec('Places') + placeList(ALL) }) +
+    placeScrs(''),
+  bar: [
+    tabBtn('chronicle', 'Chronicle', 'chronicle', 'chronicle', 1),
+    { cls: 'pill', go: 'chat', tab: 'chat', html: `${ic('spark', 16)}<span class="t1">Ask Chronicler…</span><span class="t2">Reply to Chronicler…</span>` },
+    tabBtn('quests', 'Quests', 'quests', 'quests'),
+  ],
+});
+
+/* C */
+designs.push({
+  id: 'C', cls: 'c', home: 'chronicle',
+  title: 'Five slots, a raised “new quest”',
+  idea: 'Chronicle, Realms, a raised +, Chronicler, You; starting a quest is the loudest action.',
+  good: 'Starting a quest is one thumb press from anywhere, with the Companion preset right in the sheet; realms keep their own channel (Quests and History tabs).',
+  cost: 'A quest is three taps deep (Realms, realm, quest); five slots on a narrow phone are tight, and the raised button is one more custom control.',
+  screens:
+    scr('chronicle', { tab: 'chronicle', head: hd('Chronicle', { r: ib('search') }), body: chron() }) +
+    scr('realms', { tab: 'realms', head: hd('Realms'), body: realms.map(r => `<div class="big" data-go="realm"><span class="mono">${r.n[0]}</span><div class="rt" style="flex:1"><b>${r.n}</b><br><small style="color:var(--muted)">${r.f} · ${r.q.length} quests${r.run ? ` · ${r.run} running` : ''}</small></div>${r.att ? `<i class="bdg">${r.att}</i>` : ''}</div>`).join('') }) +
+    scr('realm', { tab: 'realms', head: hd('Outlore', { l: BACK, sub: '~/Codelab/Outlore' }), body: `<div class="seg"><button data-go="realm" class="on">Quests</button><button data-go="history">History</button></div>` + sec('Active') + ['tb', 'ad', 'hs'].map(k => qrow(k)).join('') + sec('Rituals') + `<div class="row"><span class="ic">${ic('clock', 16)}</span><div class="rt"><b>Morning brief</b><small>Daily · 7:30</small></div></div>` }) +
+    scr('history', { tab: 'realms', head: hd('Outlore', { l: BACK, sub: 'History' }), body: `<div class="seg"><button data-go="realm">Quests</button><button class="on">History</button></div>` + archSwitch() + sec('Today') + ['tb', 'ad', 'hs', 'em'].map(k => qrow(k, { noErr: true })).join('') }) +
+    questScr({ tab: 'realms' }) + chatScr({ tab: 'chat', l: '' }) + scr('you', { tab: 'you', head: hd('You'), body: `<div class="big"><span class="avatar">DG</span><div class="rt"><b>Working</b><br><small style="color:var(--muted)">Balanced preset</small></div></div>` + sec('Places') + placeList(ALL) }) + placeScrs('you'),
+  bar: [
+    tabBtn('chronicle', 'Chronicle', 'chronicle', 'chronicle', 1), tabBtn('realms', 'Realms', 'realms', 'realms'),
+    { cls: 'raise', open: 'newq', html: `<i>${ic('plus', 24)}</i>` },
+    tabBtn('spark', 'Chronicler', 'chat', 'chat'), tabBtn('user', 'You', 'you', 'you'),
+  ],
+  over: `<div class="sheet" data-id="newq"><div class="grab"></div><h4>New quest</h4><div class="row"><span class="ic">${ic('realms', 16)}</span><div class="rt"><b>Outlore</b><small>Realm · ~/Codelab/Outlore</small></div><span class="chev">${ic('down', 16)}</span></div><div class="row"><span class="ic">${ic('spark', 16)}</span><div class="rt"><b>Balanced</b><small>Preset · Sonnet 5.5, high effort</small></div><span class="chev">${ic('down', 16)}</span></div><div class="msg" style="max-width:none;color:var(--muted);min-height:70px;background:var(--bubble)">What should it do?</div><div class="acts" style="padding:0 14px"><button class="act ok" data-go="quest">Start quest</button><button class="act" data-close>Cancel</button></div></div>`,
+});
+
+/* D */
+designs.push({
+  id: 'D', cls: 'd', home: 'chronicle', bar_h: 68,
+  title: 'Four tabs and a More sheet',
+  idea: 'Chronicle, Realms, Quests, More; the menu’s sections become tabs, the footer places a sheet.',
+  good: 'The same sections as the menu today, one tab each, so every screen keeps its place; the footer places stay one sheet away; Quests is the History list.',
+  cost: 'Realms and Quests overlap a little (tree against recency); the Chronicler loses its tab and lives in the Chronicle header.',
+  screens:
+    scr('chronicle', { tab: 'chronicle', head: hd('Chronicle', { r: ib('spark', 'data-go="chat"') }), body: chron() }) +
+    scr('realms', { tab: 'realms', head: hd('Realms', { r: ib('plus') }), body: realmTree() }) +
+    scr('quests', { tab: 'quests', head: hd('Quests', { r: ib('search') }), body: `<div class="chips"><button class="chip on" data-chip>Recent</button><button class="chip" data-chip>Running</button><button class="chip" data-chip>Attention</button></div>` + archSwitch() + sec('Today') + allQuests() }) +
+    questScr({ tab: 'realms', bar: 'hide' }) + chatScr({ tab: 'chronicle', bar: 'hide' }) + placeScrs('more'),
+  bar: [tabBtn('chronicle', 'Chronicle', 'chronicle', 'chronicle', 1), tabBtn('realms', 'Realms', 'realms', 'realms'), tabBtn('quests', 'Quests', 'quests', 'quests'), { cls: 'tab', open: 'more', html: `${ic('more')}<span>More</span>` }],
+  over: `<div class="sheet" data-id="more"><div class="grab"></div>${placeList(ALL)}<div class="row"><span class="ic">${ic('clock', 16)}</span><div class="rt"><b>Rituals</b><small>3 scheduled</small></div><span class="chev">${ic('chev', 16)}</span></div></div>`,
+});
+
+/* E */
+designs.push({
+  id: 'E', cls: 'e', home: 'chronicle',
+  title: 'A floating pill that gets out of the way',
+  idea: 'A pill of four icons floats over the content and shrinks to a circle while the owner scrolls down.',
+  good: 'The content gets the whole screen; the pill sits low and left, in easy thumb reach. In a quest the composer is the pill.',
+  cost: 'Content scrolls under it, so lists need bottom padding; the collapse-on-scroll behaviour and the blur are new work and need care on Android.',
+  screens:
+    scr('chronicle', { tab: 'chronicle', head: hd('Chronicle', { r: ib('spark', 'data-go="chat"') }), body: chron() + restCards() }) +
+    scr('quests', { tab: 'quests', head: hd('Quests', { r: ib('search') }), body: realmTree() + sec('Finished') + ['bl', 'sd', 'em'].map(k => qrow(k, { realm: true })).join('') }) +
+    scr('chat', { tab: 'chat', head: hd('Chronicler', { sub: 'One thread across every realm' }), body: chatBody() + `<div class="msg me">And remind me to order seeds on Friday.</div><div class="msg ai"><small>Chronicler</small>Done: a Ritual named “Order seeds” runs Fridays at 9:00.</div>` }) +
+    scr('menu', { tab: 'menu', head: hd('Menu'), body: `<div class="tiles">${[['book', 'Lore', 'lore', 'What quests remember'], ['archive', 'Archive', 'archive', 'Archived quests'], ['gauge', 'Reserves', 'reserves', 'Usage and budgets'], ['gear', 'Settings', 'settings', 'Accounts and looks'], ['clock', 'Rituals', 'settings', '3 scheduled'], ['realms', 'Realms', 'quests', '3 realms']].map(t => `<button class="tile" data-go="${t[2]}">${ic(t[0])}<b>${t[1]}</b><small>${t[3]}</small></button>`).join('')}</div>` }) +
+    questScr({ tab: 'quests', bar: 'hide', foot: `<div class="comp"><button class="ib" data-back>${ic('grid', 20)}</button><div class="inp"><span>Steer Restore usage toolbar…</span></div><button class="send">${ic('send', 16)}</button></div>` }) + placeScrs('menu'),
+  bar: [tabBtn('chronicle', 'Chronicle', 'chronicle', 'chronicle', 1), tabBtn('quests', 'Quests', 'quests', 'quests'), tabBtn('spark', 'Chronicler', 'chat', 'chat'), tabBtn('grid', 'Menu', 'menu', 'menu')],
+  barClass: 'pill',
+});
+
+/* F */
+designs.push({
+  id: 'F', cls: 'f', home: 'chronicle',
+  title: 'A “now working” strip above the bar',
+  idea: 'The usual bar plus a mini-player strip: what is running now, always visible, press to see and steer.',
+  good: 'Duet’s “see and steer” made permanent: the strip stays in a quest, so the owner can watch the other work while reading one.',
+  cost: 'Two layers at the bottom (and three with the composer); needs a live list of running quests; the strip is noise when nothing runs.',
+  screens:
+    scr('chronicle', { tab: 'chronicle', head: hd('Chronicle', { r: ib('search') }), body: chron() }) +
+    scr('quests', { tab: 'quests', head: hd('Quests', { r: ib('search') }), body: realmTree() }) +
+    scr('chat', { tab: 'chat', head: hd('Chronicler', { sub: 'One thread across every realm' }), body: chatBody(), foot: comp('Ask Chronicler…') }) +
+    scr('you', { tab: 'you', head: hd('You'), body: `<div class="big"><span class="avatar">DG</span><div class="rt"><b>Working</b><br><small style="color:var(--muted)">2 quests running</small></div></div>` + sec('Places') + placeList(ALL) }) +
+    questScr({ tab: 'quests', bar: 'hide' }) + placeScrs('you'),
+  strip: `<div class="strip" data-open="running"><span class="pulse"></span><div class="rt"><b>Android direct channel</b><small>Building the release APK · 2:14</small></div><span class="more">+1 more ${ic('chev', 12)}</span></div>`,
+  bar: [tabBtn('chronicle', 'Chronicle', 'chronicle', 'chronicle', 1), tabBtn('quests', 'Quests', 'quests', 'quests'), tabBtn('spark', 'Chronicler', 'chat', 'chat'), tabBtn('user', 'You', 'you', 'you')],
+  over: `<div class="sheet" data-id="running"><div class="grab"></div><h4>Running now · 2</h4>${[['ad', 'Building the release APK · 2:14', 54], ['tx', 'Sorting 14 receipts · 6:02', 30]].map(x => `<div class="card" style="margin-top:8px"><div class="ch"><span class="sdot run"></span><b>${Q[x[0]].t}</b><small>${Q[x[0]].r}</small></div><p>${x[1]}</p><div class="prog"><i style="width:${x[2]}%"></i></div><div class="acts"><button class="act" data-go="quest">Open</button><button class="act">Steer</button><button class="act">Stop</button></div></div>`).join('')}</div>`,
+});
+
+/* G */
+const realmScrs = () => realms.map((r, i) => {
+  const k = r.n[0].toLowerCase(), tab = 'r' + i;
+  const qs = r.q.map(q => qrow(q) + (q === 'tb' ? errRows(q) : '')).join('');
+  return scr(k, { tab, head: hd(r.n, { sub: `${r.f}${r.run ? ' · ' + r.run + ' running' : ''}`, r: ib('search') }), body: `<div class="seg"><button class="on" data-go="${k}">Quests</button><button data-go="${k}h">History</button></div>` + sec('Quests') + qs + sec('Rituals') + `<div class="row"><span class="ic">${ic('clock', 16)}</span><div class="rt"><b>Morning brief</b><small>Daily · 7:30</small></div></div>` }) +
+    scr(k + 'h', { tab, head: hd(r.n, { sub: 'History', r: ib('search') }), body: `<div class="seg"><button data-go="${k}">Quests</button><button class="on">History</button></div>` + archSwitch() + sec('Earlier') + r.q.map(q => qrow(q, { noErr: true })).join('') });
+}).join('');
+designs.push({
+  id: 'G', cls: 'g', home: 'chronicle', bar_h: 64,
+  title: 'Realms as the tabs',
+  idea: 'The bar is a realm switcher: Chronicle, then one tab per realm, then More; quests live inside each realm.',
+  good: 'The realm is the room you are in, as a Slack workspace or Discord server is; each realm tab can carry its own Attention dot.',
+  cost: 'Five slots cap the realms (the rest go in More); people with many realms need an overflow rule; quests across realms are not in one list.',
+  screens:
+    scr('chronicle', { tab: 'chronicle', head: hd('Chronicle', { r: ib('spark', 'data-go="chat"') }), body: chron() }) +
+    realmScrs() + questScr({ tab: 'r0' }) + chatScr({ tab: 'chronicle', bar: 'hide' }) + placeScrs('more'),
+  bar: [
+    tabBtn('chronicle', 'Chronicle', 'chronicle', 'chronicle', 1),
+    { go: 'o', tab: 'r0', html: `<span class="mono">O</span><span>Outlore</span><i class="bdg abs">2</i>` },
+    { go: 'g', tab: 'r1', html: `<span class="mono">G</span><span>Garden</span>` },
+    { go: 'b', tab: 'r2', html: `<span class="mono">B</span><span>Borderlands</span>` },
+    { open: 'more', tab: '', html: `${ic('more')}<span>More</span>` },
+  ],
+  over: `<div class="sheet" data-id="more"><div class="grab"></div><div class="row" data-go="chat"><span class="ic">${ic('spark', 16)}</span><div class="rt"><b>Chronicler</b><small>Your assistant across realms</small></div><span class="chev">${ic('chev', 16)}</span></div>${placeList(ALL)}</div>`,
+});
+
+/* H */
+designs.push({
+  id: 'H', cls: 'h', home: 'chronicle',
+  title: 'Two tabs and one composer',
+  idea: 'Only Chronicle and Quests; one composer with a Companion chip serves the screen (ask, start a quest, steer); a drawer holds the rest.',
+  good: 'The most chat-like: you always have a place to type, and the same field starts a quest, asks the Chronicler or steers one, so the bar stays calm.',
+  cost: 'The composer changes meaning by screen, which has to be made obvious; realms, Lore and Settings are all behind the drawer; the most change to the conversation’s composer.',
+  screens:
+    scr('chronicle', { tab: 'chronicle', head: hd('Chronicle', { l: ib('menu', 'data-open="drawer"'), r: ib('search') }), body: chron(), foot: comp('Ask Chronicler…', 'Balanced') }) +
+    scr('quests', { tab: 'quests', head: hd('Quests', { l: ib('menu', 'data-open="drawer"'), r: ib('search') }), body: `<div class="chips"><button class="chip on" data-chip>Recent</button><button class="chip" data-chip>Running</button></div>` + archSwitch() + realmTree(), foot: comp('Start a quest in Outlore…', 'Balanced') }) +
+    questScr({ tab: 'quests', foot: comp('Steer Restore usage toolbar…', 'Balanced') }) + placeScrs(''),
+  bar: [tabBtn('chronicle', 'Chronicle', 'chronicle', 'chronicle', 1), tabBtn('quests', 'Quests', 'quests', 'quests')],
+  over: `<div class="drawer" data-id="drawer"><div class="sec"><span>Realms</span></div>${realms.map(r => `<div class="row" data-go="quests"><span class="mono">${r.n[0]}</span><div class="rt"><b>${r.n}</b><small>${r.q.length} quests${r.run ? ' · ' + r.run + ' running' : ''}</small></div></div>`).join('')}<div class="sec"><span>Places</span></div>${placeList(ALL)}<div class="row"><span class="ic">${ic('clock', 16)}</span><div class="rt"><b>Rituals</b><small>3 scheduled</small></div></div></div>` +
+    `<div class="sheet" data-id="preset"><div class="grab"></div><h4>Companion preset</h4>${[['Light', 'Haiku 5.5 · small, well-scoped work'], ['Balanced', 'Sonnet 5.5 · ordinary work'], ['Heavy', 'Opus 5.5 · ambiguous or risky work']].map(p => `<div class="row" data-close><span class="ic">${ic('spark', 16)}</span><div class="rt"><b>${p[0]}</b><small>${p[1]}</small></div></div>`).join('')}</div>`,
+});
+
+/* I */
+designs.push({
+  id: 'I', cls: 'i', home: 'att',
+  title: 'The inbox is the app',
+  idea: 'Attention, Running, Done: the bar is a segmented control over one list of quests grouped by state.',
+  good: 'Attention first, by construction: the default screen is what waits for the owner, as Duet’s brief; a quest is one press away.',
+  cost: 'Realms stop being the structure (they become filter chips); a new grouping model; and the Chronicle’s feed and the History tab both fold into it.',
+  screens:
+    scr('att', { tab: 'att', head: hd('Inbox', { l: ib('menu', 'data-open="drawer"'), r: ib('spark', 'data-go="chat"') }), body: `<div class="chips"><button class="chip on" data-chip>All realms</button><button class="chip" data-chip>Outlore</button><button class="chip" data-chip>Garden Notes</button><button class="chip" data-chip>Borderlands</button></div>` + attCards() }) +
+    scr('run', { tab: 'run', head: hd('Inbox', { l: ib('menu', 'data-open="drawer"'), r: ib('spark', 'data-go="chat"') }), body: `<div class="chips"><button class="chip on" data-chip>All realms</button><button class="chip" data-chip>Outlore</button><button class="chip" data-chip>Borderlands</button></div>` + [['ad', 'Building the release APK · 2:14', 54], ['tx', 'Sorting 14 receipts · 6:02', 30]].map(x => `<div class="card"><div class="ch"><span class="sdot run"></span><b>${Q[x[0]].t}</b><small>${Q[x[0]].r}</small></div><p>${x[1]}</p><div class="prog"><i style="width:${x[2]}%"></i></div><div class="acts"><button class="act" data-go="quest">Open</button><button class="act">Steer</button><button class="act">Stop</button></div></div>`).join('') }) +
+    scr('done', { tab: 'done', head: hd('Inbox', { l: ib('menu', 'data-open="drawer"'), r: ib('spark', 'data-go="chat"') }), body: archSwitch() + sec('Today') + ['bl', 'sd', 'em'].map(k => qrow(k, { realm: true })).join('') }) +
+    questScr({ tab: 'att', bar: 'hide' }) + chatScr({ tab: 'att', bar: 'hide' }) + placeScrs(''),
+  bar: [
+    { go: 'att', tab: 'att', html: `<span>Attention</span>${bdg()}` },
+    { go: 'run', tab: 'run', html: `<span>Running</span><i class="bdg" style="background:var(--accent);color:var(--ground)">2</i>` },
+    { go: 'done', tab: 'done', html: `<span>Done</span>` },
+  ],
+  over: `<div class="drawer" data-id="drawer"><div class="sec"><span>Realms</span></div>${realms.map(r => `<div class="row" data-go="att"><span class="mono">${r.n[0]}</span><div class="rt"><b>${r.n}</b><small>${r.q.length} quests</small></div></div>`).join('')}<div class="sec"><span>Places</span></div>${placeList(ALL)}</div>`,
+});
+
+/* J */
+designs.push({
+  id: 'J', cls: 'j', home: 'chronicle', bar_h: 69,
+  title: 'A thin bar and a sheet that expands',
+  idea: 'Three icons and a grab handle; pulling the handle opens a half sheet (places, recents) and then the full menu.',
+  good: 'The calmest screen: nothing but content and a hair of chrome; the full menu is one pull away and always the same one.',
+  cost: 'Discoverability: a hidden menu relies on the handle; the sheet and its detents need gesture handling; fewer visible places than a tab bar.',
+  screens:
+    scr('chronicle', { tab: 'chronicle', head: hd('Chronicle', { sub: 'Thursday 26 November', r: '<button class="avatar">DG</button>' }), body: chron() }) +
+    scr('quests', { tab: 'quests', head: hd('Quests', { r: ib('search') }), body: sec('Running') + ['ad', 'tx'].map(k => qrow(k, { realm: true })).join('') + sec('Attention') + ['tb', 'hs'].map(k => qrow(k, { realm: true })).join('') + sec('Earlier') + ['bl', 'sd'].map(k => qrow(k, { realm: true })).join('') }) +
+    scr('chat', { tab: 'chat', head: hd('Chronicler', { sub: 'One thread across every realm' }), body: chatBody(), foot: comp('Ask Chronicler…') }) +
+    questScr({ tab: 'quests', bar: 'hide', foot: `<div class="comp"><button class="grab" data-cycle><i></i></button><div class="ib" data-back style="cursor:pointer">${ic('back', 20)}</div><div class="inp"><span>Steer Restore usage toolbar…</span></div><button class="send">${ic('send', 16)}</button></div>` }) + placeScrs(''),
+  bar: [
+    { cls: 'grab', html: '<i></i>', raw: 'data-cycle' },
+    tabBtn('chronicle', '', 'chronicle', 'chronicle', 1), tabBtn('spark', '', 'chat', 'chat'), tabBtn('quests', '', 'quests', 'quests'),
+  ],
+  over: `<div class="sheet" data-id="jsheet"><button class="grab-b" data-cycle style="display:block;width:100%;height:20px;background:none;border:0;padding:8px 0 0"><div class="grab" style="margin:0 auto"></div></button><div class="search">${ic('search', 16)} Jump to a quest, realm or place…</div><div class="places">${[['book', 'Lore', 'lore'], ['archive', 'Archive', 'archive'], ['gauge', 'Reserves', 'reserves'], ['gear', 'Settings', 'settings']].map(p => `<button data-go="${p[2]}"><span class="c">${ic(p[0], 20)}</span>${p[1]}</button>`).join('')}</div>${sec('Recent')}${['tb', 'ad'].map(k => qrow(k, { realm: true, noErr: true })).join('')}${sec('Realms')}${realmTree()}</div>`,
+});
+
+/* ---- the page: build the phones ---- */
+const grid = document.getElementById('grid');
+for (const d of designs) {
+  const barHtml = d.bar.map(b => {
+    if (b.raw) return `<button class="${b.cls}" ${b.raw}>${b.html}</button>`;
+    return barBtn(b);
+  }).join('');
+  const cell = document.createElement('section');
+  cell.className = 'cell';
+  cell.innerHTML = `<h2><span class="ltr">${d.id}</span>${d.title}</h2><p class="idea">${d.idea}</p>` +
+    `<div class="phone ${d.cls}" data-home="${d.home}" data-detent="0" style="${d.bar_h ? `--bar:${d.bar_h}px` : ''}"><div class="status"><span>9:41</span><span>5G · 87%</span></div><div class="scrs">${d.screens}</div>${d.strip || ''}<nav class="bar">${barHtml}</nav><div class="scrim" data-close></div>${d.over || ''}</div>` +
+    `<p class="note"><b>Good:</b> ${d.good}</p><p class="note"><b>Costs:</b> ${d.cost}</p>`;
+  grid.appendChild(cell);
+}
+
+/* ---- behaviour: tab switching, back, sheets, chips, answers ---- */
+function wire(p) {
+  const stack = [];
+  const scrs = [...p.querySelectorAll('.scr')];
+  const scrimEl = p.querySelector('.scrim');
+  const count = () => {
+    const n = new Set([...p.querySelectorAll('[data-att]:not(.resolved)')].map(c => c.dataset.att)).size;
+    p.querySelectorAll('[data-attn]').forEach(e => { e.textContent = n; e.dataset.n = n; });
+  };
+  const sync = () => {
+    const opened = [...p.querySelectorAll('.sheet.open,.drawer.open')].map(e => e.dataset.id);
+    const barOwned = [...p.querySelectorAll('.bar [data-open]')].some(b => opened.includes(b.dataset.open));
+    p.querySelectorAll('.bar button').forEach(b => {
+      const own = b.dataset.open ? opened.includes(b.dataset.open) : false;
+      b.classList.toggle('on', barOwned ? own : (!!b.dataset.tab && b.dataset.tab === p.dataset.tab));
+    });
+    scrimEl.classList.toggle('open', opened.length > 0 && !p.classList.contains('j'));
+  };
+  const closeAll = () => { p.querySelectorAll('.sheet.open,.drawer.open').forEach(e => e.classList.remove('open')); p.dataset.detent = 0; };
+  const show = name => {
+    const s = scrs.find(x => x.dataset.s === name);
+    if (!s) return;
+    scrs.forEach(x => { x.hidden = x !== s; });
+    p.dataset.cur = name; p.dataset.tab = s.dataset.tab || '';
+    p.classList.toggle('nobar', s.dataset.bar === 'hide');
+    p.classList.remove('collapsed');
+    const b = s.querySelector('.body'); if (b) b.scrollTop = 0;
+    sync();
+  };
+  p.addEventListener('click', e => {
+    const t = e.target;
+    if (p.classList.contains('collapsed') && t.closest('.bar')) { p.classList.remove('collapsed'); return; }
+    let el;
+    if ((el = t.closest('[data-resolve]'))) {
+      const key = el.closest('[data-att]').dataset.att;
+      p.querySelectorAll(`[data-att="${key}"]`).forEach(c => { c.classList.add('resolved'); const a = c.querySelector('.acts'); if (a) a.innerHTML = `<small>${ic('check', 12)} Answered; the quest carries on</small>`; });
+      count(); return;
+    }
+    if ((el = t.closest('[data-back]'))) { closeAll(); show(stack.pop() || p.dataset.home); return; }
+    if ((el = t.closest('[data-go]'))) {
+      const next = el.dataset.go;
+      if (el.hasAttribute('data-root')) stack.length = 0; else if (next !== p.dataset.cur) stack.push(p.dataset.cur);
+      closeAll(); show(next); return;
+    }
+    if ((el = t.closest('[data-open]'))) {
+      const target = p.querySelector(`[data-id="${el.dataset.open}"]`);
+      const was = target.classList.contains('open'); closeAll(); if (!was) target.classList.add('open'); sync(); return;
+    }
+    if ((el = t.closest('[data-cycle]'))) { p.dataset.detent = (+p.dataset.detent + 1) % 3; p.querySelector('.sheet').classList.toggle('open', p.dataset.detent !== '0'); sync(); return; }
+    if (t.closest('[data-close]')) { closeAll(); sync(); return; }
+    if ((el = t.closest('[data-chip]'))) { [...el.parentNode.children].forEach(c => c.classList.toggle('on', c === el)); return; }
+    if ((el = t.closest('[data-toggle]'))) { el.classList.toggle('on'); p.classList.toggle('show-arch', el.classList.contains('on')); }
+  });
+  if (p.classList.contains('e')) {
+    const last = new WeakMap();
+    p.addEventListener('scroll', e => {
+      const b = e.target; if (!b.classList || !b.classList.contains('body')) return;
+      const d = b.scrollTop - (last.get(b) || 0); last.set(b, b.scrollTop);
+      if (d > 6 && b.scrollTop > 40) p.classList.add('collapsed'); else if (d < -6) p.classList.remove('collapsed');
+    }, true);
+  }
+  count(); show(p.dataset.home);
+}
+document.querySelectorAll('.phone').forEach(wire);
+</script>
+</body>
+</html>
