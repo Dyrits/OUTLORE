@@ -61,4 +61,57 @@ describe("the fetched image cache", () => {
     await Promise.resolve();
     expect(cache.peek("a")).toBe("data:image/png;base64,abc");
   });
+  it("holds an image given to it, so showing it fetches nothing", async () => {
+    const cache = imageCache(100);
+    cache.put("a", "data:image/png;base64,abc");
+    const fetch = vi.fn(async () => "other");
+    expect(cache.peek("a")).toBe("data:image/png;base64,abc");
+    expect(await cache.load("a", fetch)).toBe("data:image/png;base64,abc");
+    expect(fetch).not.toHaveBeenCalled();
+    expect(cache.size).toBe(25);
+  });
+  it("keeps the image it holds when another is given under the same identifier", () => {
+    const cache = imageCache(100);
+    cache.put("a", "first");
+    cache.put("a", "second");
+    expect(cache.peek("a")).toBe("first");
+    expect(cache.size).toBe(5);
+  });
+  it("drops the least recently shown images when an image given to it takes it over the limit", async () => {
+    const cache = imageCache(25);
+    await loaded(cache, "a", "x".repeat(10));
+    cache.put("b", "y".repeat(10));
+    cache.put("c", "z".repeat(10));
+    expect(cache.has("a")).toBe(false);
+    expect(cache.has("b")).toBe(true);
+    expect(cache.has("c")).toBe(true);
+    expect(cache.size).toBe(20);
+  });
+  it("forgets an image and its size, so it is fetched again", async () => {
+    const cache = imageCache(100);
+    cache.put("a", "x".repeat(10));
+    cache.forget("a");
+    expect(cache.has("a")).toBe(false);
+    expect(cache.size).toBe(0);
+    const fetch = vi.fn(async () => "fresh");
+    await cache.load("a", fetch);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it("does not count a forgotten fetch that settles later", async () => {
+    const cache = imageCache(100);
+    let resolve: (data: string) => void = () => {};
+    const pending = cache.load(
+      "a",
+      () =>
+        new Promise<string>((done) => {
+          resolve = done;
+        }),
+    );
+    cache.forget("a");
+    resolve("x".repeat(10));
+    await pending;
+    await Promise.resolve();
+    expect(cache.has("a")).toBe(false);
+    expect(cache.size).toBe(0);
+  });
 });

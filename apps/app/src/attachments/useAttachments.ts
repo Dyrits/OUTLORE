@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { limitRefusalOf, roomLeftOf } from "./attachmentRules";
 import { attachmentNameOf, base64Of, prepareImage } from "./attachments";
+import { dataAddressOf, sentImages } from "./sentImage";
 
 /** One file in the message box: shown at once, with its card once the service has stored it. */
 export type AttachedFile = {
@@ -35,11 +36,13 @@ export function useAttachments(client: ServiceClient | null) {
     change((all) => all.filter((file) => file.key !== key));
     return dropped ?? null;
   };
-  const discard = (service: ServiceClient, attachmentId: AttachmentId) =>
-    service.request({ _tag: "DiscardAttachment", attachmentId }).then(
+  const discard = (service: ServiceClient, attachmentId: AttachmentId) => {
+    sentImages.forget(attachmentId);
+    return service.request({ _tag: "DiscardAttachment", attachmentId }).then(
       () => void 0,
       (reason) => setError(messageOf(reason)),
     );
+  };
 
   const attachOne = async (service: ServiceClient, file: File, key: string) => {
     const { blob } = await prepareImage(file);
@@ -47,11 +50,10 @@ export function useAttachments(client: ServiceClient | null) {
     // The owner took it out again while it was being checked.
     if (!isKept(key)) return URL.revokeObjectURL(previewUrl);
     change((all) => all.map((item) => (item.key === key ? { ...item, previewUrl } : item)));
-    const card = await service.request({
-      _tag: "AddAttachment",
-      data: await base64Of(blob),
-      name: attachmentNameOf(file),
-    });
+    const data = await base64Of(blob);
+    const card = await service.request({ _tag: "AddAttachment", data, name: attachmentNameOf(file) });
+    // The message that carries it shows this picture, so it is not read back from the service.
+    sentImages.put(card.id, dataAddressOf(card.mediaType, data));
     // Or while it was uploading: the draft the service made is erased.
     if (!isKept(key)) return discard(service, card.id);
     change((all) => all.map((item) => (item.key === key ? { ...item, card } : item)));
