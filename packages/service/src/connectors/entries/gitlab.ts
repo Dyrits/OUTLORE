@@ -9,14 +9,20 @@ import { type CatalogEntry, hostedServiceLicence } from "../catalog.ts";
  */
 export const gitlabEntry: CatalogEntry = {
   apps: [],
-  backend: { _tag: "Http", header: "authorization", prefix: "Bearer ", url: "https://gitlab.com/api/v4/mcp" },
+  backend: {
+    _tag: "Http",
+    header: "authorization",
+    oauth: { clientName: "Outlore" },
+    prefix: "Bearer ",
+    url: "https://gitlab.com/api/v4/mcp",
+  },
   description:
     "Search and read GitLab projects, merge requests, issues, pipelines and code, and, after a question, change them.",
   id: "gitlab",
   licence: hostedServiceLicence,
   name: "GitLab",
   notice:
-    "GitLab is a service run by another company. It sees every request a thread makes with your token and returns what the token can reach, including text other people wrote in issues and merge requests, which then goes to the model provider of the thread. You need a GitLab fine-grained personal access token with the MCP tool Execute permission, which Outlore keeps in the Vault on this computer; older token types are refused by GitLab. It works with GitLab.com only. Give the token only the permissions threads need: Outlore asks before each tool that changes something, but the token's own permissions are the stronger guard.",
+    "GitLab is a service run by another company. It sees every request a thread makes and returns what your connection can reach, including text other people wrote in issues and merge requests, which then goes to the model provider of the thread. Sign in on GitLab.com in your browser or enter a GitLab fine-grained personal access token with the MCP tool Execute permission, which Outlore keeps in the Vault on this computer; older token types are refused by GitLab. It works with GitLab.com only. Grant only the permissions threads need: Outlore asks before each tool that changes something, but the connection's own permissions are the stronger guard.",
   platform: "Any",
   secretKind: "Personal access token",
   tools: {

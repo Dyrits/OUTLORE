@@ -48,8 +48,11 @@ export function ConnectorPanel({
               onPress={() => attempt(() => client.request({ _tag: "SignInConnector", connectorId: card.id }))}
             />
           ))}
-        {isInstalled && !isRemoving && card.usesOAuth !== true && card.secretKinds.length > 0 && (
-          <ConnectorSecrets card={card} client={client} onChanged={onChanged} onOpenVault={onOpenVault} />
+        {isInstalled && !isRemoving && card.secretKinds.length > 0 && (
+          <>
+            {card.usesOAuth === true && <Text style={styles.muted}>Or connect with a key:</Text>}
+            <ConnectorSecrets card={card} client={client} onChanged={onChanged} onOpenVault={onOpenVault} />
+          </>
         )}
         {isInstalled && card.usesOAuth !== true && card.secretKinds.length === 0 && card.needs === null && (
           <Text style={styles.muted}>Nothing to connect.</Text>

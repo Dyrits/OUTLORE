@@ -2,7 +2,15 @@ import type { ApplePermissionStatus } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { isToolOffered, type Standing, type ToolStanding } from "./availability.ts";
-import { type CatalogEntry, catalogToolOf, entryOf, listedNameOf } from "./catalog.ts";
+import {
+  type CatalogEntry,
+  catalogToolOf,
+  entryOf,
+  hasStaticSecret,
+  isOAuthEntry,
+  listedNameOf,
+  oauthSecretKind,
+} from "./catalog.ts";
 import {
   type ConnectorRecord,
   readChoices,
@@ -36,13 +44,24 @@ export type StateDependencies = {
   readonly vault: VaultPort["Service"];
 };
 
-/** Whether the owner has given the connector what it needs: no refused sign-in recorded and every secret held. */
-const isConnected = (vault: VaultPort["Service"], entry: CatalogEntry, record: ConnectorRecord) =>
-  record.needs !== null
-    ? Effect.succeed(false)
-    : entry.secretKind === null
-      ? Effect.succeed(true)
-      : vault.holds(entry.id, entry.secretKind).pipe(Effect.catch(() => Effect.succeed(false)));
+/** Whether the owner has given the connector what it needs: no refused sign-in recorded and a valid credential held. */
+const isConnected = (vault: VaultPort["Service"], entry: CatalogEntry, record: ConnectorRecord) => {
+  if (record.needs !== null) return Effect.succeed(false);
+  if (entry.secretKind === null && !isOAuthEntry(entry)) return Effect.succeed(true);
+  if (isOAuthEntry(entry)) {
+    return vault.holds(entry.id, oauthSecretKind).pipe(
+      Effect.catch(() => Effect.succeed(false)),
+      Effect.flatMap((hasOAuth) =>
+        hasOAuth || !hasStaticSecret(entry) || entry.secretKind === null
+          ? Effect.succeed(hasOAuth)
+          : vault.holds(entry.id, entry.secretKind).pipe(Effect.catch(() => Effect.succeed(false))),
+      ),
+    );
+  }
+  return entry.secretKind === null
+    ? Effect.succeed(true)
+    : vault.holds(entry.id, entry.secretKind).pipe(Effect.catch(() => Effect.succeed(false)));
+};
 
 /** The actionable card state when any chosen Apple app still needs a check or a grant. */
 export const appleConnectionNeedOf = (dependencies: StateDependencies, record: ConnectorRecord) => {

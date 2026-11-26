@@ -29,14 +29,25 @@ export class BackendFailure extends Schema.TaggedError<BackendFailure>()("Backen
   upstream: Schema.String,
 }) {}
 
+/** Which credential mode a backend call uses: a static Vault secret (or keyless) or an OAuth 2.1 Bearer access token. */
+export type BackendAuthKind = "Secret" | "OAuth";
+
 /** One connector's server, started on first use. A secret is given per call and never kept. */
 export interface ConnectorBackend {
   /** Calls one tool; the answer is the tool's text. */
-  readonly call: (tool: string, args: unknown, secret: string | null) => Effect.Effect<string, BackendFailure>;
+  readonly call: (
+    tool: string,
+    args: unknown,
+    secret: string | null,
+    auth?: BackendAuthKind,
+  ) => Effect.Effect<string, BackendFailure>;
   /** Stops the server and anything it started. */
   readonly close: Effect.Effect<void>;
   /** The server's own listing of its tools. */
-  readonly listTools: (secret: string | null) => Effect.Effect<ReadonlyArray<BackendTool>, BackendFailure>;
+  readonly listTools: (
+    secret: string | null,
+    auth?: BackendAuthKind,
+  ) => Effect.Effect<ReadonlyArray<BackendTool>, BackendFailure>;
 }
 
 /** Opens the backend a catalog entry names; the service's default does this per entry (backends/defaultBackends.ts). */

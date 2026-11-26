@@ -94,9 +94,8 @@ export type ApprovalTerms = ModeTerms & {
 /** What a thread may use in a turn, and how its actions are approved (CHG-0031). */
 export type ThreadAccess = ApprovalTerms & {
   /**
-   * The connector tools the thread's harness lists this turn, by the name it lists them under (`<connector>__<tool>`);
-   * none under Code Mode. A harness lists its tools when its process starts, so a change of them restarts the process:
-   * they are part of every restart key.
+   * The connector tools offered to the thread this turn, by listed name (`<connector>__<tool>`), including under Code Mode so a change restarts a kept harness process and refreshes `run_code`'s declarations.
+   * A harness lists its tools when its process starts, so a change of them restarts the process: they are part of every restart key.
    */
   readonly connectorTools: ReadonlyArray<string>;
   /** Whether the thread works in a workspace, whose sandbox may fetch dependencies (CHG-0034). */

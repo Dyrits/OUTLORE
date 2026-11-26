@@ -122,22 +122,22 @@ export const makeTurnRunner = (dependencies: TurnRunnerDependencies) => {
     // The tool server answers under the setting this turn starts with, as its harness lists the tools (CHG-0446).
     yield* endpoints.holdCodeMode(threadId, shouldUseCodeMode);
     // The connectors list their tools again, and the thread's snapshot of the tools it is offered for this turn is taken;
-    // with Code Mode on the harness lists none of them, they are reached by code (connectors specification).
+    // connectorTools always carries the snapshot so a kept harness process restarts and re-lists run_code when connectors change under Code Mode, while unaskedTools names individual connector tools only when Code Mode is off (connectors specification).
     const snapshot = yield* connectorGateway.beginTurn(threadId);
-    const connectorTools = shouldUseCodeMode ? [] : snapshot;
+    const directConnectorTools = shouldUseCodeMode ? [] : snapshot;
     active.set(threadId, { turnId: turn.turnId, written: new Set() });
     const outcome = yield* harness
       .runTurn({
         access: {
           ...terms,
-          connectorTools,
+          connectorTools: snapshot,
           isInWorkspace,
           isUsingCodeMode: shouldUseCodeMode,
           mcpUrl,
           unaskedTools: [
             ...unaskedToolNamesOf(toolServerName, shouldUseCodeMode),
             // Claude Code runs only the tools it is told; each connector tool asks for itself in the gateway.
-            ...connectorTools.map((name) => qualifiedToolNameOf(toolServerName, name)),
+            ...directConnectorTools.map((name) => qualifiedToolNameOf(toolServerName, name)),
           ],
         },
         askOwner: askOwnerFor(approvals, sql, threadId),

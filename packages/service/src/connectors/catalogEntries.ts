@@ -1,19 +1,32 @@
 import type { CatalogEntry } from "./catalog.ts";
+import { airtableEntry } from "./entries/airtable.ts";
+import { atlassianEntry } from "./entries/atlassian.ts";
 import { awsKnowledgeEntry } from "./entries/aws_knowledge.ts";
 import { cloudflareEntry } from "./entries/cloudflare.ts";
 import { cloudflareDocsEntry } from "./entries/cloudflare_docs.ts";
 import { context7Entry } from "./entries/context7.ts";
 import { datadogEntry } from "./entries/datadog.ts";
 import { deepwikiEntry } from "./entries/deepwiki.ts";
+import { dropboxEntry } from "./entries/dropbox.ts";
 import { exaEntry } from "./entries/exa.ts";
+import { figmaEntry } from "./entries/figma.ts";
 import { firecrawlEntry } from "./entries/firecrawl.ts";
 import { githubEntry } from "./entries/github.ts";
 import { gitlabEntry } from "./entries/gitlab.ts";
+import { intercomEntry } from "./entries/intercom.ts";
+import { linearEntry } from "./entries/linear.ts";
+import { mondayEntry } from "./entries/monday.ts";
 import { neonEntry } from "./entries/neon.ts";
+import { notionEntry } from "./entries/notion.ts";
+import { paypalEntry } from "./entries/paypal.ts";
+import { posthogEntry } from "./entries/posthog.ts";
+import { postmanEntry } from "./entries/postman.ts";
+import { sentryEntry } from "./entries/sentry.ts";
 import { stripeEntry } from "./entries/stripe.ts";
 import { supabaseEntry } from "./entries/supabase.ts";
 import { tavilyEntry } from "./entries/tavily.ts";
 import { todoistEntry } from "./entries/todoist.ts";
+import { vercelEntry } from "./entries/vercel.ts";
 
 // The two connectors Outlore offers first (connectors specification, Composio and Apple apps). The servers are not run
 // by this build: the Composio entry's tools are the seven it publishes on its own page and in its repo (research note,
@@ -28,14 +41,19 @@ import { todoistEntry } from "./entries/todoist.ts";
  */
 export const composioEntry: CatalogEntry = {
   apps: [],
-  backend: { _tag: "Http", header: "x-consumer-api-key", url: "https://connect.composio.dev/mcp" },
+  backend: {
+    _tag: "Http",
+    header: "x-consumer-api-key",
+    oauth: { clientName: "Outlore" },
+    url: "https://connect.composio.dev/mcp",
+  },
   description:
     "Reach hundreds of web services (mail, calendars, issue trackers, chat) through your own Composio account.",
   id: "composio",
   licence: "MIT",
   name: "Composio",
   notice:
-    "Composio is a service run by another company. It stores the sign-ins of the apps you connect through it and sees what their tools return. Outlore holds none of those sign-ins. You need your own Composio account and its key, which Outlore keeps in the Vault on this computer. You connect each app on Composio's own page, not in Outlore.",
+    "Composio is a service run by another company. It stores the sign-ins of the apps you connect through it and sees what their tools return. Outlore holds none of those sign-ins. Sign in on Composio's page in your browser or enter your Composio API key, which Outlore keeps in the Vault on this computer. You connect each app on Composio's own page, not in Outlore.",
   platform: "Any",
   secretKind: "API key",
   tools: {
@@ -180,4 +198,17 @@ export const defaultCatalog: ReadonlyArray<CatalogEntry> = [
   cloudflareEntry,
   supabaseEntry,
   todoistEntry,
+  linearEntry,
+  notionEntry,
+  atlassianEntry,
+  figmaEntry,
+  vercelEntry,
+  sentryEntry,
+  posthogEntry,
+  intercomEntry,
+  postmanEntry,
+  mondayEntry,
+  airtableEntry,
+  paypalEntry,
+  dropboxEntry,
 ];

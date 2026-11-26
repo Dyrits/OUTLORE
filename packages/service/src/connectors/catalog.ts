@@ -127,6 +127,13 @@ export const isRunnableOn = (entry: CatalogEntry, platform: NodeJS.Platform) =>
 /** Whether an entry authenticates through the generic MCP OAuth 2.1 browser sign-in flow. */
 export const isOAuthEntry = (entry: CatalogEntry) => entry.backend._tag === "Http" && entry.backend.oauth !== undefined;
 
+/** Whether an entry accepts a static secret (such as an API key or personal access token) stored in the Vault. */
+export const hasStaticSecret = (entry: CatalogEntry) =>
+  entry.secretKind !== null && entry.secretKind !== oauthSecretKind;
+
+/** Whether an entry offers both generic MCP OAuth 2.1 browser sign-in and a static Vault secret. */
+export const isDualAuthEntry = (entry: CatalogEntry) => isOAuthEntry(entry) && hasStaticSecret(entry);
+
 /**
  * The tools a server lists that the entry does not name: they are asked about on every call, and a test of the pinned
  * version's listing fails on one so a version bump cannot slip a new write in unseen.

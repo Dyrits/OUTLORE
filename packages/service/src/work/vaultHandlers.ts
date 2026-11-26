@@ -8,7 +8,7 @@ import type {
   VerifyClaudeVaultDenial,
 } from "@outlore/contracts";
 import { Effect } from "effect";
-import type { Connectors } from "../connectors/index.ts";
+import { type Connectors, oauthSecretKind } from "../connectors/index.ts";
 import { Harness, ServiceFailure, type VaultDenial } from "../core/index.ts";
 import { harnessLabelOf, type Vault, type VaultFailure, VaultFolder } from "../vault/index.ts";
 import type { CommandRunner } from "./commands.ts";
@@ -74,13 +74,24 @@ export const vaultHandlers = (commands: CommandRunner, vault: Vault["Service"], 
       Effect.andThen(viewOf(vault)),
       Effect.catchTag("VaultFailure", (failure) => Effect.fail(failureOf(failure))),
     );
+  /** Clears any stale OAuth session when the owner enters a static key so the active credential is never ambiguous. */
+  const clearStaleOAuth = (connectorId: string, kind: string) =>
+    kind === oauthSecretKind ? Effect.void : vault.remove(connectorId, oauthSecretKind).pipe(Effect.ignore);
   return {
     PutSecret: (given: typeof PutSecret.Type) =>
-      changing(vault.put({ connectorId: given.connectorId, kind: given.kind, secret: given.secret })),
+      changing(
+        vault
+          .put({ connectorId: given.connectorId, kind: given.kind, secret: given.secret })
+          .pipe(Effect.andThen(clearStaleOAuth(given.connectorId, given.kind))),
+      ).pipe(Effect.tap(() => connectors.clearNeeds(given.connectorId))),
     ReadVault: (_given: typeof ReadVault.Type) => viewOf(vault),
     RemoveSecret: (given: typeof RemoveSecret.Type) => changing(vault.remove(given.connectorId, given.kind)),
     ReplaceSecret: (given: typeof ReplaceSecret.Type) =>
-      changing(vault.replace({ connectorId: given.connectorId, kind: given.kind, secret: given.secret })).pipe(
+      changing(
+        vault
+          .replace({ connectorId: given.connectorId, kind: given.kind, secret: given.secret })
+          .pipe(Effect.andThen(clearStaleOAuth(given.connectorId, given.kind))),
+      ).pipe(
         // The connector showing Needs connecting is cleared by the new secret, outside the Vault's own change.
         Effect.tap(() => connectors.clearNeeds(given.connectorId)),
       ),

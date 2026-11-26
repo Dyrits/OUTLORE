@@ -8,14 +8,20 @@ import { type CatalogEntry, hostedServiceLicence } from "../catalog.ts";
  */
 export const stripeEntry: CatalogEntry = {
   apps: [],
-  backend: { _tag: "Http", header: "authorization", prefix: "Bearer ", url: "https://mcp.stripe.com" },
+  backend: {
+    _tag: "Http",
+    header: "authorization",
+    oauth: { clientName: "Outlore" },
+    prefix: "Bearer ",
+    url: "https://mcp.stripe.com",
+  },
   description:
     "Look up and change payments, customers, invoices and subscriptions on your Stripe account, and read Stripe's documentation.",
   id: "stripe",
   licence: hostedServiceLicence,
   name: "Stripe",
   notice:
-    "Stripe is a service run by another company. It sees every request a thread makes with your key and returns what the key can reach, including customers' names, emails and payments, which then goes to the model provider of the thread. You need a Stripe agent API key, which Outlore keeps in the Vault on this computer. Create it in your Stripe Dashboard with only the permissions threads need, for example read-only ones: Outlore asks before each tool that changes something, but the key's own permissions are the stronger guard. Stripe may also ask you to confirm sensitive actions in its Dashboard.",
+    "Stripe is a service run by another company. It sees every request a thread makes and returns what your connection can reach, including customers' names, emails and payments, which then goes to the model provider of the thread. Sign in on Stripe's page in your browser or enter a Stripe agent API key, which Outlore keeps in the Vault on this computer. Limit the permissions to what threads need, for example read-only ones: Outlore asks before each tool that changes something, but the connection's own permissions are the stronger guard. Stripe may also ask you to confirm sensitive actions in its Dashboard.",
   platform: "Any",
   secretKind: "Agent API key",
   tools: {

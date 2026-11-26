@@ -9,14 +9,20 @@ import { type CatalogEntry, hostedServiceLicence } from "../catalog.ts";
  */
 export const datadogEntry: CatalogEntry = {
   apps: [],
-  backend: { _tag: "Http", header: "authorization", prefix: "Bearer ", url: "https://mcp.datadoghq.com/v1/mcp" },
+  backend: {
+    _tag: "Http",
+    header: "authorization",
+    oauth: { clientName: "Outlore" },
+    prefix: "Bearer ",
+    url: "https://mcp.datadoghq.com/v1/mcp",
+  },
   description:
     "Search Datadog's logs, metrics, traces, monitors, incidents and dashboards, and, after a question, create notebooks and dashboards.",
   id: "datadog",
   licence: hostedServiceLicence,
   name: "Datadog",
   notice:
-    "Datadog is a service run by another company. It sees every request a thread makes with your token and returns what the token can reach, including logs and traces that may hold customers' data, which then goes to the model provider of the thread. You need a Datadog personal or service access token, which Outlore keeps in the Vault on this computer. Give it only the permissions threads need, for example read-only ones. This connector works for organizations on Datadog's US1 site (datadoghq.com) only.",
+    "Datadog is a service run by another company. It sees every request a thread makes and returns what your connection can reach, including logs and traces that may hold customers' data, which then goes to the model provider of the thread. Sign in on Datadog's page in your browser or enter a Datadog personal or service access token, which Outlore keeps in the Vault on this computer. Grant only the permissions threads need, for example read-only ones. This connector works for organizations on Datadog's US1 site (datadoghq.com) only.",
   platform: "Any",
   secretKind: "Access token",
   tools: {

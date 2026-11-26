@@ -61,21 +61,47 @@ describe("what a harness is told of the connectors at a turn's start", () => {
     },
   );
 
-  it.live("names no connector tool under Code Mode, which reaches them by code", () => {
-    const received: Array<Turn> = [];
-    return inWorld({ harness: recordingHarnessLayer(received) }, () =>
-      Effect.gen(function* () {
-        yield* install("calendar");
-        yield* call({ _tag: "ChangeSettings", change: { shouldUseCodeMode: true } });
-        const started = yield* startMission({ text: "Hello" });
-        yield* untilIdle(started.missionId);
-        const turn = yield* receivedFor(received, started.threadId);
-        expect(turn.access.connectorTools).toEqual([]);
-        expect(turn.access.unaskedTools.filter((name) => name.includes("calendar__"))).toEqual([]);
-        expect(turn.access.unaskedTools).toContain(qualified("run_code"));
-      }),
-    );
-  });
+  it.live(
+    "keeps connectorTools in the restart key under Code Mode while leaving individual connector tools out of unaskedTools",
+    () => {
+      const received: Array<Turn> = [];
+      return inWorld({ harness: recordingHarnessLayer(received) }, () =>
+        Effect.gen(function* () {
+          yield* install("calendar");
+          yield* call({ _tag: "ChangeSettings", change: { shouldUseCodeMode: true } });
+          const started = yield* startMission({ text: "Hello" });
+          yield* untilIdle(started.missionId);
+          const turn = yield* receivedFor(received, started.threadId);
+          expect(turn.access.connectorTools).toEqual(expect.arrayContaining(names));
+          expect(turn.access.unaskedTools.filter((name) => name.includes("calendar__"))).toEqual([]);
+          expect(turn.access.unaskedTools).toContain(qualified("run_code"));
+        }),
+      );
+    },
+  );
+
+  it.live(
+    "changes connectorTools at the next turn under Code Mode when a connector is installed, restarting a kept process",
+    () => {
+      const received: Array<Turn> = [];
+      return inWorld({ harness: recordingHarnessLayer(received) }, () =>
+        Effect.gen(function* () {
+          yield* call({ _tag: "ChangeSettings", change: { shouldUseCodeMode: true } });
+          const started = yield* startMission({ text: "Hello" });
+          yield* untilIdle(started.missionId);
+          const first = yield* receivedFor(received, started.threadId);
+          expect(first.access.connectorTools).toEqual([]);
+          yield* install("calendar");
+          yield* send(started.threadId, "Again");
+          yield* untilReplies(started.missionId, 2);
+          const second = yield* receivedFor(received, started.threadId);
+          expect(second.access.connectorTools).toEqual(expect.arrayContaining(names));
+          expect(second.access.unaskedTools.filter((name) => name.includes("calendar__"))).toEqual([]);
+          expect(second.access.unaskedTools).toContain(qualified("run_code"));
+        }),
+      );
+    },
+  );
 });
 
 describe("the connectors under Code Mode", () => {
