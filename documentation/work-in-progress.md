@@ -1,9 +1,10 @@
 # Work in progress
 
-## Phone control · 2026-11-26 · designed, awaiting the owner's review; no code
+## Phone control step 1 · 2026-11-26 · built, merged on `main` and tested against fakes; emulator and real phone pending
 
-CHG-0767 in `0.2.10-Pre-Alpha`: threads use the phone through `phone_*` tools in the host's tool server, executed by the paired app over the existing P2P and relay link; step 1 is the app's own capabilities, step 2 an accessibility service in the APK.
-Next: the owner reviews the [specifications](capabilities/phone-control/specifications.md), the [blueprint](capabilities/phone-control/blueprint.md) and the proposed [ADR 0028](architecture-decision-record/0028-phone-tools-served-by-the-paired-app-over-the-existing-channel.md), then step 1 is built (wire, `PhoneLink`, executor, settings card) and checked on an emulator and a real phone.
+CHG-0767, CHG-0768 and CHG-0770 in `0.2.10-Pre-Alpha`: six `phone_*` tools in the host's tool server, run by the paired app (`PhoneLink`, `Sessions.sendTo`, `apps/app/src/phone/`), with the phone's per-group switches as the only consent and each call naming its phone; the full suite (3,652 passed) and typecheck pass.
+Next: the owner installs a new APK (six Expo packages and location permissions were added), turns on groups in Menu, Settings, Permissions, and checks each tool from a thread on the real phone (Android prompts, the notification, `Linking`, staying connected in the background, the relay and direct paths); then step 2 (accessibility service) gets its own specification.
+Builders' choices to redirect: `phone_open` links and app names, the notification title default, phone naming by device name; phone tools are not yet listed in the thread panel's tools line.
 
 ## Dual-auth OAuth and 13 missing remote connectors · 2026-11-26 · built and tested against stand-ins; live sign-in and window check pending
 
