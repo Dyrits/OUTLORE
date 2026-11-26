@@ -123,12 +123,13 @@ export const messageStyles = StyleSheet.create({
   questionText: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.base, fontWeight: "600" },
   /** Under a message: what it used or when it was sent on the left, its action icons on the right. */
   replyFooter: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 20 },
-  /** The composer's send button: a squircle ink stamp holding an arrow. */
+  /** The composer's send and stop button: an accent stamp holding its icon in `onAccent`, which reads on the accent in every theme. */
   sendButton: {
-    ...outline,
     alignItems: "center",
-    backgroundColor: colors.edge,
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
     borderRadius: 10,
+    borderWidth: 1,
     height: 32,
     justifyContent: "center",
     width: 32,
