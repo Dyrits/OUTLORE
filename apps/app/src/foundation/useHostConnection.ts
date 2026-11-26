@@ -73,13 +73,16 @@ export function useHostConnection() {
   // The hosts this installation is paired with, and its own computer's name, read from the local service.
   useEffect(() => {
     if (localClient === null) return;
-    const load = () => {
-      localClient.request({ _tag: "ListHosts" }).then(setHosts, () => {});
-      localClient.request({ _tag: "ReadHostName" }).then(setComputerName, () => {});
+    const loadHosts = () => void localClient.request({ _tag: "ListHosts" }).then(setHosts, () => {});
+    const loadName = () => void localClient.request({ _tag: "ReadHostName" }).then(setComputerName, () => {});
+    loadHosts();
+    loadName();
+    const unsubscribeHosts = localClient.subscribe(loadHosts, "ListHosts");
+    const unsubscribeName = localClient.subscribe(loadName, "ReadHostName");
+    return () => {
+      unsubscribeHosts();
+      unsubscribeName();
     };
-    load();
-    const unsubscribe = localClient.subscribe(load);
-    return () => void unsubscribe();
   }, [localClient]);
   // The link to the chosen host opens when it is chosen and closes when another is.
   // biome-ignore lint/correctness/useExhaustiveDependencies: attempt explicitly restarts a failed connection.

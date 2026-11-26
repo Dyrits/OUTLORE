@@ -53,6 +53,7 @@ const recordingRunner = Effect.gen(function* () {
     });
   const commands = makeCommands({
     publish: note("publish"),
+    publishTopics: (topics) => note(`publish ${topics.join(" ")}`),
     removeScratch: (id) => note(`remove scratch ${id}`),
     sql,
     threads: {
@@ -244,5 +245,15 @@ describe("returning a command's follow-ups", () => {
       const removed = yield* sql.withTransaction(setMissionBudget(started.missionId, { cost: null, tokens: null }));
       expect(removed).toEqual(changed(null, { threadsToWake: [started.threadId] }));
     }).pipe(Effect.provide(service())),
+  );
+
+  it.effect("announces only the topics a change touched, and everything for one that names none", () =>
+    Effect.gen(function* () {
+      const { calls, commands } = yield* recordingRunner;
+      yield* commands.run(insertRoot(yield* SqlClient.SqlClient).pipe(Effect.as(changed(null, { topics: ["work"] }))));
+      yield* commands.apply({ ...noFollowUps, isChanged: true });
+      yield* commands.apply({ ...noFollowUps, isChanged: true, topics: ["work", "spend"] });
+      expect(calls.map((call) => call.split(":")[0])).toEqual(["publish work", "publish", "publish work spend"]);
+    }).pipe(Effect.provide(bareStore())),
   );
 });

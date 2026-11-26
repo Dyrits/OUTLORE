@@ -1,3 +1,4 @@
+import type { Topic } from "@outlore/contracts";
 import { Context, Effect } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { recordOnce } from "./commandOutcomes.ts";
@@ -33,15 +34,19 @@ export const makeCommands = (dependencies: {
   readonly stopConnectorCalls?: Effect.Effect<void>;
   readonly sql: SqlClient.SqlClient;
   readonly publish: Effect.Effect<void>;
+  /** Announces a change that touched only some topics; a change that names topics announces as everything when left out. */
+  readonly publishTopics?: (topics: ReadonlyArray<Topic>) => Effect.Effect<void>;
   readonly threads: {
     readonly cancel: (ids: ReadonlyArray<string>) => Effect.Effect<void>;
     readonly wake: (threadId: string) => Effect.Effect<void>;
     readonly wakeMission: (missionId: string, exceptThreadIds?: ReadonlyArray<string>) => Effect.Effect<void>;
   };
 }): CommandRunner => {
-  const { publish, sql, threads } = dependencies;
+  const { publish, publishTopics, sql, threads } = dependencies;
   const apply = Effect.fn("applyFollowUps")(function* (followUps: FollowUps) {
-    if (followUps.isChanged) yield* publish;
+    if (followUps.isChanged) {
+      yield* followUps.topics === null || publishTopics === undefined ? publish : publishTopics(followUps.topics);
+    }
     // Cancelled before any wake, so a woken thread never races a turn that is still ending.
     if (followUps.turnsToCancel.length > 0) yield* threads.cancel(followUps.turnsToCancel);
     for (const id of followUps.threadsToWithdraw) yield* dependencies.withdrawQuestions(id);

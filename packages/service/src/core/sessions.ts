@@ -1,4 +1,4 @@
-import type { ServerFrame, ThreadId } from "@outlore/contracts";
+import type { ServerFrame, ThreadId, Topic } from "@outlore/contracts";
 import { Context, Effect, Layer, PubSub } from "effect";
 import { Changes } from "./changes.ts";
 
@@ -66,6 +66,13 @@ export const sessionsLayer = Layer.effect(
     let latestSequence = 0;
     let sentSequence = 0;
     let isChangedWindowOpen = false;
+    /** Sends one frame for the changes since the last one, naming what they touched when it was only some topics. */
+    const announceChanged = Effect.gen(function* () {
+      sentSequence = latestSequence;
+      const topics: ReadonlyArray<Topic> | null = yield* changes.takeTopics;
+      // Changes an earlier frame already announced, whose own sequence is still on its way here, leave no topic: the frame then only carries the latest sequence.
+      broadcast({ _tag: "Changed", sequence: sentSequence, ...(topics === null ? {} : { topics }) });
+    });
     const changedWindow = Effect.gen(function* () {
       while (true) {
         yield* Effect.sleep(changedWindowMillis);
@@ -73,8 +80,7 @@ export const sessionsLayer = Layer.effect(
           isChangedWindowOpen = false;
           return;
         }
-        sentSequence = latestSequence;
-        broadcast({ _tag: "Changed", sequence: sentSequence });
+        yield* announceChanged;
       }
     });
     yield* relay(changes.pubsub, (sequence) =>
@@ -82,8 +88,7 @@ export const sessionsLayer = Layer.effect(
         latestSequence = Math.max(latestSequence, sequence);
         if (isChangedWindowOpen) return;
         isChangedWindowOpen = true;
-        sentSequence = latestSequence;
-        broadcast({ _tag: "Changed", sequence: sentSequence });
+        yield* announceChanged;
         yield* Effect.forkIn(changedWindow, scope);
       }),
     );

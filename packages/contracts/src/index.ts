@@ -130,6 +130,7 @@ export {
   StopThread,
   UnsteerQueuedMessage,
 } from "./threadRequests.ts";
+export * from "./topics.ts";
 export * from "./usage.ts";
 export * from "./vaultRequests.ts";
 export * from "./workspaceEntries.ts";

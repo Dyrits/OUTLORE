@@ -1,6 +1,8 @@
 import {
   ClientFrameJson,
   draftAfter,
+  isAffectedBy,
+  isQueryTag,
   type Request,
   type RequestTag,
   type ResultOf,
@@ -9,6 +11,7 @@ import {
   type ServiceError,
   type TerminalData,
   type TerminalExit,
+  type Topic,
 } from "@outlore/contracts";
 import { Schema } from "effect";
 import type { DesktopBridge } from "./desktopBridge";
@@ -31,7 +34,12 @@ export class RequestFailed extends Error {
   }
 }
 
-type Pending = { tag: RequestTag; resolve: (value: unknown) => void; reject: (error: Error) => void };
+type Waiter = { resolve: (value: unknown) => void; reject: (error: Error) => void };
+/** A request sent and not yet answered, with everyone who asked it: equal queries asked together share one. */
+type Pending = { tag: RequestTag; waiters: Array<Waiter> };
+
+/** A listener to a committed change, and the read it refetches: it hears only the changes that may alter that read. */
+type ChangeListener = { listener: () => void; tag: RequestTag | null };
 
 /** One connection to the local service, or through it to a paired host: requests with replies, and change announcements. */
 export class ServiceClient {
@@ -42,7 +50,9 @@ export class ServiceClient {
   private nextId = 0;
   private link = initialHostLink;
   private readonly pending = new Map<string, Pending>();
-  private readonly listeners = new Set<() => void>();
+  private readonly listeners = new Set<ChangeListener>();
+  /** The id of the query in flight for each query's text: a query asked again before the next change joins it (idle traffic). */
+  private readonly sharedQueries = new Map<string, string>();
   /** The reply each thread is writing, as far as this connection has been told: appended frames continue it. */
   private readonly drafts = new Map<string, string>();
   private readonly draftListeners = new Set<(threadId: string, text: string) => void>();
@@ -136,9 +146,11 @@ export class ServiceClient {
           this.link = advanceHostLink(this.link, { code, type: "close" });
           for (const listener of this.failureListeners) listener();
           for (const request of this.pending.values()) {
-            request.reject(new Error(failure ?? "The connection to the service closed."));
+            for (const waiter of request.waiters)
+              waiter.reject(new Error(failure ?? "The connection to the service closed."));
           }
           this.pending.clear();
+          this.sharedQueries.clear();
           resolve();
           if (this.link.hasGivenUp) return;
           if (this.socket === socket) this.socket = null;
@@ -178,7 +190,7 @@ export class ServiceClient {
 
   private receive(data: unknown) {
     const frame = decodeFrame(data);
-    if (frame._tag === "Changed") return this.notify();
+    if (frame._tag === "Changed") return this.notify(frame.topics);
     if (frame._tag === "Draft") {
       // A frame that continues text this connection does not hold is a missed one: the whole text comes again soon.
       const text = draftAfter(this.drafts.get(frame.threadId) ?? "", frame);
@@ -195,22 +207,37 @@ export class ServiceClient {
     const request = this.pending.get(frame.id);
     if (request === undefined) return;
     this.pending.delete(frame.id);
-    if (frame._tag === "Failure") return request.reject(new RequestFailed(frame.error));
+    // A command's answer means its change is committed, though its Changed frame may wait for the window.
+    if (isQueryTag(request.tag)) {
+      for (const [key, id] of this.sharedQueries) if (id === frame.id) this.sharedQueries.delete(key);
+    } else this.sharedQueries.clear();
+    if (frame._tag === "Failure") {
+      for (const waiter of request.waiters) waiter.reject(new RequestFailed(frame.error));
+      return;
+    }
     try {
-      request.resolve(Schema.decodeUnknownSync(Results[request.tag] as unknown as Schema.Codec<unknown>)(frame.value));
+      const value = Schema.decodeUnknownSync(Results[request.tag] as unknown as Schema.Codec<unknown>)(frame.value);
+      for (const waiter of request.waiters) waiter.resolve(value);
     } catch (error) {
-      request.reject(error as Error);
+      for (const waiter of request.waiters) waiter.reject(error as Error);
     }
   }
 
-  private notify() {
-    for (const listener of this.listeners) listener();
+  /** Tells the listeners of a change; a change that names its topics reaches only those whose read may have changed. */
+  private notify(topics?: ReadonlyArray<Topic>) {
+    // A query asked after this change must not take the answer of one asked before it, which may predate it.
+    this.sharedQueries.clear();
+    for (const { listener, tag } of this.listeners) if (tag === null || isAffectedBy(tag, topics)) listener();
   }
 
-  /** Calls the listener after every committed change and after reconnecting. */
-  subscribe(listener: () => void) {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+  /**
+   * Calls the listener after every committed change and after reconnecting.
+   * Given the tag of the read it refetches, it hears only the changes that may alter that read.
+   */
+  subscribe(listener: () => void, tag: RequestTag | null = null) {
+    const subscription = { listener, tag };
+    this.listeners.add(subscription);
+    return () => this.listeners.delete(subscription);
   }
 
   /** The reply a thread is writing as far as this connection has been told; empty when it writes none. */
@@ -237,9 +264,20 @@ export class ServiceClient {
         new Error(this.hostId === null ? "Not connected to this computer’s service." : "Not connected to the host."),
       );
     }
+    const queryKey = isQueryTag(request._tag) ? JSON.stringify(request) : null;
+    // A command may change what a query returns before the next Changed frame: a query asked after it asks again.
+    if (queryKey === null) this.sharedQueries.clear();
+    const sharedId = queryKey === null ? undefined : this.sharedQueries.get(queryKey);
+    const shared = sharedId === undefined ? undefined : this.pending.get(sharedId);
     const id = String(++this.nextId);
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { reject, resolve: resolve as (value: unknown) => void, tag: request._tag });
+      const waiter = { reject, resolve: resolve as (value: unknown) => void };
+      if (shared !== undefined) {
+        shared.waiters.push(waiter);
+        return;
+      }
+      if (queryKey !== null) this.sharedQueries.set(queryKey, id);
+      this.pending.set(id, { tag: request._tag, waiters: [waiter] });
       // Encoded through the frame codec, not plain JSON: a Redacted field (a Vault secret) then travels as what was
       // typed, for the service's decoder to wrap again, instead of as its "<redacted>" placeholder.
       socket.send(Schema.encodeSync(ClientFrameJson)({ id, request }));

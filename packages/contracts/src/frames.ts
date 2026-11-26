@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 import { ThreadId } from "./ids.ts";
 import { Request, ServiceError } from "./requests.ts";
+import { Topic } from "./topics.ts";
 
 // Frames on the loopback WebSocket
 
@@ -12,8 +13,14 @@ export type ClientFrame = typeof ClientFrame.Type;
 export const Success = Schema.TaggedStruct("Success", { id: Schema.String, value: Schema.Unknown });
 /** A request's failure, as the app shows it. */
 export const Failure = Schema.TaggedStruct("Failure", { error: ServiceError, id: Schema.String });
-/** Sent after each committed change; clients refetch what they show. */
-export const Changed = Schema.TaggedStruct("Changed", { sequence: Schema.Number });
+/**
+ * Sent after each committed change; clients refetch what they show. With `topics`, the change touched only those, and a
+ * read that depends on none of them stays as it is; without, it may have touched anything.
+ */
+export const Changed = Schema.TaggedStruct("Changed", {
+  sequence: Schema.Number,
+  topics: Schema.optionalKey(Schema.Array(Topic)),
+});
 
 /**
  * The reply a thread is writing, sent only while "Show replies as they're written" is on; never saved.

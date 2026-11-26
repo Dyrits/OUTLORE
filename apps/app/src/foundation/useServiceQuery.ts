@@ -129,7 +129,7 @@ export function useServiceQuery<R extends Request>(client: ServiceClient, reques
     if (current.unsubscribe === null) {
       current.unsubscribe = client.subscribe(() => {
         void loadEntry(client, current);
-      });
+      }, request._tag);
       void loadEntry(client, current);
     } else if (current.data === null && !current.isLoading) {
       void loadEntry(client, current);

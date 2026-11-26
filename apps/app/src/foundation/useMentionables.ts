@@ -41,7 +41,7 @@ export function useMentionables(client: ServiceClient | undefined, isNeeded: boo
     state.listeners.add(listener);
     if (state.unsubscribe === null) {
       void load(client, state);
-      state.unsubscribe = client.subscribe(() => void load(client, state));
+      state.unsubscribe = client.subscribe(() => void load(client, state), "ListMentionables");
     }
     return () => {
       state.listeners.delete(listener);
