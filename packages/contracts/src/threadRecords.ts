@@ -104,7 +104,12 @@ export const ThreadActions = Schema.Struct({
 export type ThreadActions = typeof ThreadActions.Type;
 
 /** A thread's own git worktree of its workspace and its branch (workspace-attachment, Own copy). */
-export const OwnCopyView = Schema.Struct({ branch: Schema.String, path: Schema.String });
+export const OwnCopyView = Schema.Struct({
+  branch: Schema.String,
+  /** Whether the own copy's folder no longer exists; absent from older hosts. */
+  isMissing: Schema.optionalKey(Schema.Boolean),
+  path: Schema.String,
+});
 export type OwnCopyView = typeof OwnCopyView.Type;
 
 /**
@@ -112,6 +117,8 @@ export type OwnCopyView = typeof OwnCopyView.Type;
  * messages, as Slack's thread panel shows the message replied to (conversation panes, Thread root).
  */
 export const ThreadRoot = Schema.Struct({
+  /** The files attached to the root message; absent from older hosts that did not send them. */
+  attachments: Schema.optionalKey(Schema.Array(AttachmentCard)),
   /** The sending thread's title, for a thread message; null otherwise. */
   fromTitle: Schema.NullOr(Schema.String),
   /** The harness that wrote an agent message; null for other messages. */

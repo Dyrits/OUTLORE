@@ -107,14 +107,16 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
       | "permissionMode"
     > & {
       accountLabel: string | null;
+      isGuildmaster: number;
     }
   >`SELECT t.id, t.model, t.effort, t.failure, t.blocker, t.harness, t.account_id AS accountId, a.label AS accountLabel,
-        t.permission_mode AS permissionMode,
+        t.permission_mode AS permissionMode, m.is_guildmaster AS isGuildmaster,
         (SELECT u.harness FROM turns u WHERE u.thread_id = t.id AND u.status = 'running' ORDER BY u.started_at DESC, u.rowid DESC LIMIT 1) AS turnHarness,
         (SELECT u.model FROM turns u WHERE u.thread_id = t.id AND u.status = 'running' ORDER BY u.started_at DESC, u.rowid DESC LIMIT 1) AS turnModel
-      FROM threads t LEFT JOIN accounts a ON a.id = t.account_id WHERE t.id = ${selected.id}`;
+      FROM threads t JOIN missions m ON m.id = t.mission_id LEFT JOIN accounts a ON a.id = t.account_id WHERE t.id = ${selected.id}`;
   if (thread === undefined) return yield* notFound("No such thread in this mission.");
-  const computerName = yield* ownAccountLabelOf(thread.harness);
+  const { isGuildmaster, ...threadFields } = thread;
+  const computerName = yield* ownAccountLabelOf(threadFields.harness);
   const workspace = yield* readThreadWorkspace(selected.id);
   const ownCopy = yield* readOwnCopy(selected.id);
   const workingFolder = yield* readWorkingFolder(selected.id, workspace?.path ?? null);
@@ -139,20 +141,28 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
         ru.cache_creation AS usageCacheCreation, ru.estimate AS usageEstimate, ru.reported AS usageReported
       FROM messages m LEFT JOIN reply_usage ru ON ru.message_id = m.id LEFT JOIN threads s ON s.id = m.sender_thread_id LEFT JOIN missions sm ON sm.id = s.mission_id
       WHERE m.thread_id = ${selected.id} ORDER BY m.sequence`;
-  // The message the thread hangs from, which its pane pins above its own messages. A thread with no anchor, or one
-  // whose opening message repeats it (a quest started from the dashboard, or an errand started from the errand pane,
-  // leaves a copy of its text in the parent conversation), is its own root: its first message is pinned and left out
-  // of the replies, so the first reply is the agent's.
-  const [anchored] = yield* sql<NonNullable<MissionDetail["thread"]["root"]>>`
+  // Chronicler and realm/Borderlands channels are channels rather than threads hanging from a root, so they pin none.
+  // For quests and errands, the message the thread hangs from is pinned above its own messages.
+  // A thread with no anchor, or one whose opening message repeats its anchor, is its own root: its first message is pinned and left out of the replies, so the first reply is the agent's.
+  const isChannel = isGuildmaster === 1 && selected.parentId === null;
+  const [anchored] = isChannel
+    ? []
+    : yield* sql<Omit<NonNullable<MissionDetail["thread"]["root"]>, "attachments">>`
       SELECT m.id, m.sender_kind AS sender, m.harness, m.model, COALESCE(s.title, m.sender_title) AS fromTitle, m.text,
         m.sent_at AS sentAt
       FROM threads t JOIN messages m ON m.id = t.anchor_message_id LEFT JOIN threads s ON s.id = m.sender_thread_id
       WHERE t.id = ${selected.id}`;
+  const cardIds =
+    anchored === undefined
+      ? messages.map((message) => message.id)
+      : [...messages.map((message) => message.id), anchored.id];
+  const cards = yield* readCards(cardIds);
   const first = messages.find((message) => message.sender !== "system");
   const ownRoot =
-    first === undefined || first.isQueued === 1
+    isChannel || first === undefined || first.isQueued === 1
       ? undefined
       : {
+          attachments: cards.get(first.id) ?? [],
           fromTitle: first.fromTitle,
           harness: first.harness,
           id: first.id,
@@ -161,8 +171,10 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
           sentAt: first.sentAt,
           text: first.text,
         };
-  const root = anchored !== undefined && anchored.text !== first?.text ? anchored : ownRoot;
-  const cards = yield* readCards(messages.map((message) => message.id));
+  const root =
+    anchored !== undefined && anchored.text !== first?.text
+      ? { ...anchored, attachments: cards.get(anchored.id) ?? [] }
+      : ownRoot;
   const questions = yield* listThreadQuestions(selected.id);
   const suggestions = yield* listThreadSuggestions(selected.id);
   return {
@@ -199,11 +211,11 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
     questions,
     suggestions,
     thread: {
-      ...thread,
-      accountLabel: accountLabelOf(thread.accountId, thread.accountLabel, computerName),
-      actions: threadActionsOf({ blocker: thread.blocker, depth: selected.depth, state: selected.state }),
+      ...threadFields,
+      accountLabel: accountLabelOf(threadFields.accountId, threadFields.accountLabel, computerName),
+      actions: threadActionsOf({ blocker: threadFields.blocker, depth: selected.depth, state: selected.state }),
       depth: selected.depth,
-      ownCopy: ownCopy === null ? null : { branch: ownCopy.branch, path: ownCopy.path },
+      ownCopy: ownCopy === null ? null : { branch: ownCopy.branch, isMissing: ownCopy.isMissing, path: ownCopy.path },
       parentId: selected.parentId,
       ...(root === undefined ? {} : { root }),
       state: selected.state,

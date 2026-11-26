@@ -8,6 +8,7 @@ import { countedOf } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { useEnding } from "../foundation/useEnding";
 import { EndingConfirmation } from "../quests/missionActions";
+import { missingFolderOf } from "../realms/missingFolder";
 import { MissingFolderNotice } from "../realms/workspaces";
 import { takesTurnsIn } from "../rituals/ritualRow";
 import { ChronicleTargetContext, matchesThread } from "./chronicleTarget";
@@ -62,6 +63,7 @@ export function ThreadPane({
   onSelect: (threadId: ThreadId) => void;
 }) {
   const { thread } = detail;
+  const missingFolder = thread.blocker === "MissingWorkspace" ? missingFolderOf(thread) : null;
   const target = useContext(ChronicleTargetContext);
   const ending = useEnding(client, detail.mission);
   const work = thread.parentId === null ? "quest" : "errand";
@@ -151,6 +153,7 @@ export function ThreadPane({
                 ? "No realm: the quest's scratch folder"
                 : `Realm ${thread.workspace.name} · ${thread.workspace.path}`}
               {thread.workspace?.isMissing === true && " · folder missing"}
+              {thread.workspace?.isMissing !== true && thread.ownCopy?.isMissing === true && " · own copy missing"}
             </Text>
           )}
           {thread.state === "Stopped" && thread.waitingCount > 0 && (
@@ -159,8 +162,13 @@ export function ThreadPane({
               resume this {work}.
             </Text>
           )}
-          {thread.blocker === "MissingWorkspace" && thread.workspace !== null && (
-            <MissingFolderNotice client={client} path={thread.workspace.path} threadId={thread.id} />
+          {thread.blocker === "MissingWorkspace" && missingFolder !== null && (
+            <MissingFolderNotice
+              client={client}
+              isOwnCopy={missingFolder.isOwnCopy}
+              path={missingFolder.path}
+              threadId={thread.id}
+            />
           )}
           <ConversationFailure client={client} conversation={conversation} thread={thread} />
           {tabs}

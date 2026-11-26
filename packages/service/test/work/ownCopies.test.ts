@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { ThreadId } from "@outlore/contracts";
@@ -8,7 +8,7 @@ import { afterEach } from "vitest";
 import { ownCopyNameOf } from "../../src/work/ownCopies.ts";
 import { prepareStartingContext } from "../../src/work/startingContext.ts";
 import { seedLegacyErrand } from "../fixtures/legacyErrands.ts";
-import { fixture, read, settle, start, temporary, tool } from "../fixtures/service.ts";
+import { call, fixture, read, settle, start, temporary, tool } from "../fixtures/service.ts";
 
 const fixtures: ReturnType<typeof fixture>[] = [];
 const live = () => {
@@ -105,8 +105,12 @@ describe("opening a thread with an own copy", () => {
       const { cwd } = yield* prepareStartingContext(childId);
       const branch = git(cwd, "branch", "--show-current");
       // The thread in the copy and the thread sharing it both show it; the quest's top thread shows none.
-      expect((yield* read(started.missionId, childId)).thread.ownCopy).toEqual({ branch, path: cwd });
-      expect((yield* read(started.missionId, grandchildId)).thread.ownCopy).toEqual({ branch, path: cwd });
+      expect((yield* read(started.missionId, childId)).thread.ownCopy).toEqual({ branch, isMissing: false, path: cwd });
+      expect((yield* read(started.missionId, grandchildId)).thread.ownCopy).toEqual({
+        branch,
+        isMissing: false,
+        path: cwd,
+      });
       expect((yield* read(started.missionId, started.threadId)).thread.ownCopy).toBeNull();
     }).pipe(Effect.provide(layer));
   });
@@ -131,4 +135,48 @@ describe("opening a thread with an own copy", () => {
       expect(existsSync(join(folder, ".worktrees"))).toBe(false);
     }).pipe(Effect.provide(layer));
   });
+
+  it.live(
+    "marks ownCopy missing without blaming the realm folder, and keeps both errands Fulfilled when marked done",
+    () => {
+      const { layer } = live();
+      const folder = repository();
+      return Effect.gen(function* () {
+        const started = yield* idleIn(folder);
+        const firstId = openedIdOf(yield* tool(started.threadId, "open_thread", { ownCopy: true, request: "First." }));
+        const secondId = openedIdOf(
+          yield* tool(started.threadId, "open_thread", { ownCopy: true, request: "Second." }),
+        );
+        if (firstId === null || secondId === null) return yield* Effect.die(new Error("not opened"));
+        yield* settle(started.missionId, (detail) =>
+          [firstId, secondId].every((id) => detail.threads.find((t) => t.id === id)?.state === "Resting"),
+        );
+        const firstCopy = (yield* read(started.missionId, firstId)).thread.ownCopy;
+        const secondCopy = (yield* read(started.missionId, secondId)).thread.ownCopy;
+        if (firstCopy === null || secondCopy === null) return yield* Effect.die(new Error("missing ownCopy"));
+
+        // Deleting both worktrees while leaving the realm folder intact holds both errands when messaged.
+        rmSync(firstCopy.path, { recursive: true });
+        rmSync(secondCopy.path, { recursive: true });
+        yield* call({ _tag: "SendMessage", delivery: null, requestId: "m1", text: "Continue.", threadId: firstId });
+        yield* call({ _tag: "SendMessage", delivery: null, requestId: "m2", text: "Continue.", threadId: secondId });
+        yield* settle(started.missionId, (detail) =>
+          [firstId, secondId].every((id) => detail.threads.find((t) => t.id === id)?.state === "Attention"),
+        );
+
+        const heldFirst = (yield* read(started.missionId, firstId)).thread;
+        expect(heldFirst.blocker).toBe("MissingWorkspace");
+        expect(heldFirst.workspace?.isMissing).toBe(false);
+        expect(heldFirst.ownCopy).toMatchObject({ isMissing: true, path: firstCopy.path });
+
+        // Marking the second errand done must not wake the first fulfilled errand back into Attention.
+        yield* call({ _tag: "MarkThreadDone", threadId: firstId });
+        yield* call({ _tag: "MarkThreadDone", threadId: secondId });
+        yield* Effect.sleep("100 millis");
+        const after = yield* read(started.missionId, firstId);
+        expect(after.threads.find((t) => t.id === firstId)?.state).toBe("Fulfilled");
+        expect(after.threads.find((t) => t.id === secondId)?.state).toBe("Fulfilled");
+      }).pipe(Effect.provide(layer));
+    },
+  );
 });

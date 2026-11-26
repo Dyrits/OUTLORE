@@ -739,4 +739,23 @@ describe("Batch 2: parent echoes and one-message reporting", () => {
       );
     }).pipe(Effect.provide(f.layer));
   });
+
+  it.live("pins no root in Chronicler or in a channel conversation", () =>
+    Effect.gen(function* () {
+      const place = yield* guildmaster;
+      yield* say(place.threadId, "Hello Chronicler");
+      const chronicler = yield* settle(
+        place.missionId,
+        (detail) => isIdle(detail) && detail.messages.length > 1,
+        place.threadId,
+      );
+      expect(chronicler.thread.root).toBeUndefined();
+
+      const borderlands = yield* call({ _tag: "ReadGuildmaster", channelId: null });
+      yield* startIdle("Plan the trip");
+      const channel = yield* read(borderlands.missionId, borderlands.threadId);
+      expect(channel.messages.some((message) => message.text === "Plan the trip")).toBe(true);
+      expect(channel.thread.root).toBeUndefined();
+    }).pipe(Effect.provide(setup().layer)),
+  );
 });

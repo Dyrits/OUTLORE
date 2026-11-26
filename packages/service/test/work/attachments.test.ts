@@ -128,6 +128,39 @@ describe("message attachments: images added to the owner's messages", () => {
     ),
   );
 
+  it.live("includes attached images on the thread root of a quest's first message and of an anchored errand", () =>
+    withService(
+      Effect.gen(function* () {
+        const quest = yield* call({ _tag: "StartEmptyQuest", realmId: null, requestId: crypto.randomUUID() });
+        const openingImage = yield* add("opening.png", png());
+        yield* sendWith(quest.threadId, "First message", [openingImage.id]);
+        const detail = yield* settle(quest.missionId, idle);
+        expect(detail.thread.root?.attachments).toEqual([openingImage]);
+
+        const followUpImage = yield* add("reply.png", png());
+        const sent = yield* sendWith(quest.threadId, "Follow up", [followUpImage.id]);
+        yield* settle(quest.missionId, (current) => idle(current) && current.messages.length >= 4);
+        const reply = yield* call({
+          _tag: "ReplyToMessage",
+          accountId: null,
+          effort: "default",
+          harness: "claude",
+          messageId: sent.messageId,
+          model: "default",
+          requestId: crypto.randomUUID(),
+          text: "Discuss image",
+        });
+        const errandDetail = yield* call({
+          _tag: "ReadMission",
+          missionId: quest.missionId,
+          threadId: reply.threadId,
+        });
+        expect(errandDetail.thread.root?.id).toBe(sent.messageId);
+        expect(errandDetail.thread.root?.attachments).toEqual([followUpImage]);
+      }),
+    ),
+  );
+
   it.live("skips a blind backup when a failed message has an image", () =>
     withService(
       Effect.gen(function* () {

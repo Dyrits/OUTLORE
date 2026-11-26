@@ -90,7 +90,8 @@ export const insertMessage = Effect.fnUntraced(function* (message: NewMessage) {
   const [thread] = yield* sql<{
     missionId: string;
     archivedAt: number | null;
-  }>`SELECT mission_id AS missionId, archived_at AS archivedAt FROM threads
+    state: string;
+  }>`SELECT mission_id AS missionId, archived_at AS archivedAt, state FROM threads
     WHERE id = ${message.threadId} AND is_deleting = 0`;
   if (thread === undefined) return yield* notFound("No such thread.");
   if (thread.archivedAt !== null) return yield* invalid("This errand is archived. Restore it to write in it.");
@@ -119,6 +120,11 @@ export const insertMessage = Effect.fnUntraced(function* (message: NewMessage) {
     senderKind: message.fromThreadId === null ? "user" : "thread",
   });
   yield* attachToMessage(messageId, attachmentIds);
+  // A new message continues a Fulfilled thread even if it has to wait for a running slot.
+  // The write is guarded so an ordinary message never touches the threads row: a threads write during a running turn can let a connector tool switched off in that turn run after all (gatewayCalls).
+  if (message.isConversationOnly !== true && thread.state === "Fulfilled") {
+    yield* sql`UPDATE threads SET state = 'Resting' WHERE id = ${message.threadId} AND state = 'Fulfilled'`;
+  }
   // User and thread messages start out undelivered. Conversation-only entries never reach admission.
   const threadsToWake: ReadonlyArray<string> = message.isConversationOnly === true ? [] : [message.threadId];
   return { messageId, threadsToWake };
