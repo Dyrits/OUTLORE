@@ -185,7 +185,8 @@ describe("shared ACP per-launch isolated temp directory", () => {
           prefixArgs: [acpFakeScript],
         });
         yield* harness.runTurn(turnRequestOf({ text: "Hello" }));
-        expect(acpFakeRequest(log, "initialize").launch?.env.TMPDIR).toBe(process.env.TMPDIR);
+        // The stand-in logs a variable the launch did not carry as null, which is what a runner without TMPDIR inherits.
+        expect(acpFakeRequest(log, "initialize").launch?.env.TMPDIR).toBe(process.env.TMPDIR ?? null);
       }),
     ),
   );
