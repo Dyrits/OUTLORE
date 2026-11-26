@@ -40,6 +40,7 @@ import {
   RestoreLoreEntry,
   UndoLoreChange,
 } from "./loreRequests.ts";
+import { AnswerPhoneCall, SetPhoneTools } from "./phoneCalls.ts";
 import {
   AddBrowsableRoot,
   BrowseFolders,
@@ -146,6 +147,8 @@ export const Request = Schema.Union([
   ListHosts,
   AddHost,
   RemoveHost,
+  SetPhoneTools,
+  AnswerPhoneCall,
 ]);
 export type Request = typeof Request.Type;
 /** The name of one kind of request. */

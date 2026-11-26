@@ -95,6 +95,9 @@ export const answerText = (
     if (source.isPairedDevice && sourceRulesOf(frame.request).isHostOnly) {
       return Effect.sync(() => send(failureFrame(frame.id, "AccessRefused", "Only the host itself can do this.")));
     }
+    if (!source.isPairedDevice && sourceRulesOf(frame.request).isPairedOnly) {
+      return Effect.sync(() => send(failureFrame(frame.id, "AccessRefused", "Only a paired device can do this.")));
+    }
     return answerFrame(handle, frame, send, source);
   }
   const id = frameIdOf(raw);

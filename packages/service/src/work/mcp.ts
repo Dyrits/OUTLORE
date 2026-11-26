@@ -13,6 +13,7 @@ import { harnessFacts, toolServerName } from "../harness/index.ts";
 import { Approvals } from "./approvals.ts";
 import { readCallerRefusal } from "./askOwner.ts";
 import { Commands } from "./commands.ts";
+import { PhoneLink } from "./phoneLink.ts";
 import { Suggestions } from "./suggestions.ts";
 import { Threads } from "./threads.ts";
 import { makeToolHandlers } from "./threadToolHandlers.ts";
@@ -60,8 +61,9 @@ export const toolServerLayer = Layer.effectDiscard(
     const threads = yield* Threads;
     const endpoints = yield* Endpoints;
     const gateway = yield* ConnectorGateway;
+    const phone = yield* PhoneLink;
     const executor = yield* CodeExecutor;
-    const handlers = makeToolHandlers({ approvals, commands, suggestions, threads });
+    const handlers = makeToolHandlers({ approvals, commands, phone, suggestions, threads });
     const run = yield* FiberSet.makeRuntimePromise();
 
     const readShouldUseCodeMode = readSettings.pipe(
@@ -123,7 +125,7 @@ export const toolServerLayer = Layer.effectDiscard(
         const answer = yield* answerCodeModeCall(executor, gateway, ownToolsFor(threadId), {
           args,
           name,
-          ownListed: toolListingOf(yield* hasPromptToolOf(threadId)),
+          ownListed: toolListingOf(yield* hasPromptToolOf(threadId), yield* phone.offeredTools),
           shouldUseCodeMode: yield* codeModeOf(threadId),
           threadId,
         });
@@ -143,7 +145,7 @@ export const toolServerLayer = Layer.effectDiscard(
 
     /** The tools the thread's harness lists: `answer_prompt` only for Claude Code, then its connectors' tools. */
     const listTools = Effect.fnUntraced(function* (threadId: string) {
-      const ownListed = toolListingOf(yield* hasPromptToolOf(threadId));
+      const ownListed = toolListingOf(yield* hasPromptToolOf(threadId), yield* phone.offeredTools);
       return offeredToolsOf(
         ownListed,
         yield* gateway.listingFor(threadId),

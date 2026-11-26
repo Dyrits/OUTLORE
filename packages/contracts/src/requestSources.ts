@@ -7,18 +7,21 @@ export type RequestSource = {
   readonly isPairedDevice: boolean;
 };
 
-const shared = Object.assign(() => null, { isHostOnly: false });
-const hostOnly = Object.assign(() => null, { isHostOnly: true });
+const shared = Object.assign(() => null, { isHostOnly: false, isPairedOnly: false });
+const hostOnly = Object.assign(() => null, { isHostOnly: true, isPairedOnly: false });
+/** A request only a paired device makes about itself, such as a phone's answer: the host's own window cannot send it. */
+const pairedOnly = Object.assign(() => null, { isHostOnly: false, isPairedOnly: true });
 
 /** One request rule: its source restriction and the folder it names, in a single line. */
 const rule = <Tag extends RequestTag>(
   isHostOnly: boolean,
   folder: (request: Extract<Request, { _tag: Tag }>) => string | null,
-) => Object.assign(folder, { isHostOnly });
+) => Object.assign(folder, { isHostOnly, isPairedOnly: false });
 
 type SourceRules = {
   readonly [Tag in RequestTag]: ((request: Extract<Request, { _tag: Tag }>) => string | null) & {
     readonly isHostOnly: boolean;
+    readonly isPairedOnly: boolean;
   };
 };
 
@@ -31,6 +34,7 @@ export const requestSourceRules = {
   AddHost: hostOnly,
   AddJournalEntry: shared,
   AnswerChoices: shared,
+  AnswerPhoneCall: pairedOnly,
   AnswerQuestion: shared,
   AnswerSuggestion: rule(false, (given) =>
     Match.valueTags(given.answer, {
@@ -150,6 +154,7 @@ export const requestSourceRules = {
   SetConnectorSwitch: shared,
   SetConnectorTool: shared,
   SetMissionBudget: shared,
+  SetPhoneTools: pairedOnly,
   SetRemoteAccess: hostOnly,
   SetThreadBackups: shared,
   SetThreadPermissionMode: shared,
@@ -181,8 +186,14 @@ export const hostOnlyRequestTags = Object.entries(requestSourceRules)
   .filter(([, rule]) => rule.isHostOnly)
   .map(([tag]) => tag);
 
+/** Request tags the host's own window, a thread and Chronicler may not send: a phone's answers about itself. */
+export const pairedOnlyRequestTags = Object.entries(requestSourceRules)
+  .filter(([, rule]) => rule.isPairedOnly)
+  .map(([tag]) => tag);
+
 /** The source restriction and named folder for one decoded request. */
 export const sourceRulesOf = (request: Request) => ({
   folder: Match.valueTags(request, requestSourceRules),
   isHostOnly: requestSourceRules[request._tag].isHostOnly,
+  isPairedOnly: requestSourceRules[request._tag].isPairedOnly,
 });

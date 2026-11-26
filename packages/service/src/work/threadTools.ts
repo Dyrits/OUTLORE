@@ -3,6 +3,7 @@ import type { ToolAnswer } from "../core/index.ts";
 import { chroniclerToolDefinitions } from "./chroniclerToolDefinitions.ts";
 import { errandToolDefinitions } from "./errandToolDefinitions.ts";
 import { loreToolDefinitions } from "./loreToolDefinitions.ts";
+import { isPhoneToolName, phoneToolDefinitions } from "./phoneToolDefinitions.ts";
 import { ritualToolDefinitions } from "./ritualToolDefinitions.ts";
 
 export { scopeHelp, searchInvalid } from "./loreToolDefinitions.ts";
@@ -18,6 +19,7 @@ export const threadTools = {
   ...chroniclerToolDefinitions,
   ...errandToolDefinitions,
   ...loreToolDefinitions,
+  ...phoneToolDefinitions,
   ...ritualToolDefinitions,
 };
 
@@ -41,10 +43,14 @@ export const toolListing = Object.entries(threadTools).map(([name, tool]) => ({
 
 /**
  * The tools a thread's harness lists: `answer_prompt` only for a harness that asks its permission prompts
- * through it, Claude Code; the others ask the owner in-process.
+ * through it, Claude Code; the others ask the owner in-process. A phone tool only while `phoneTools`, the tools of the
+ * groups a connected phone has on (phone-control), names it.
  */
-export const toolListingOf = (hasPromptTool: boolean) =>
-  hasPromptTool ? toolListing : toolListing.filter((tool) => tool.name !== "answer_prompt");
+export const toolListingOf = (hasPromptTool: boolean, phoneTools: ReadonlySet<string> = new Set()) =>
+  toolListing.filter(
+    (tool) =>
+      (hasPromptTool || tool.name !== "answer_prompt") && (!isPhoneToolName(tool.name) || phoneTools.has(tool.name)),
+  );
 
 /**
  * The tools Code Mode never covers, which stay listed and are called directly (connectors specification, Code Mode):

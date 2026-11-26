@@ -12,10 +12,19 @@ export type SessionSend = (frame: ServerFrame) => void;
 export class Sessions extends Context.Service<
   Sessions,
   {
-    /** Registers a screen; the returned function removes it. */
-    readonly add: (send: SessionSend) => () => void;
+    /**
+     * Registers a screen; the returned function removes it. A paired device gives its identity, the host's own window
+     * none: a frame for one device (`sendTo`) reaches no other screen.
+     */
+    readonly add: (send: SessionSend, deviceId?: string | null) => () => void;
     /** Sends one frame to every connected screen, whichever way each connected. */
     readonly broadcast: (frame: ServerFrame) => void;
+    /** The paired devices connected now, each once. */
+    readonly devices: () => ReadonlyArray<string>;
+    /** Hears of each paired device whose last screen is removed; the returned function stops listening. */
+    readonly onLeave: (listener: (deviceId: string) => void) => () => void;
+    /** Sends one frame to the screens of one paired device only; false when none is connected, so the frame went nowhere. */
+    readonly sendTo: (deviceId: string, frame: ServerFrame) => boolean;
   }
 >()("outlore/Sessions") {}
 
@@ -49,10 +58,13 @@ export const sessionsLayer = Layer.effect(
   Effect.gen(function* () {
     const changes = yield* Changes;
     const scope = yield* Effect.scope;
-    const sinks = new Set<SessionSend>();
+    // Each connected screen with its device's identity; null for the host's own window.
+    const sinks = new Map<SessionSend, string | null>();
+    const leaveListeners = new Set<(deviceId: string) => void>();
     const broadcast = (frame: ServerFrame) => {
-      for (const send of sinks) send(frame);
+      for (const send of sinks.keys()) send(frame);
     };
+    const devices = () => [...new Set([...sinks.values()].filter((deviceId) => deviceId !== null))];
 
     /** Carries every value of `pubsub` to `send` on a fiber of its own, for the layer's lifetime. */
     const relay = <Value>(pubsub: PubSub.PubSub<Value>, send: (value: Value) => Effect.Effect<void>) =>
@@ -145,15 +157,32 @@ export const sessionsLayer = Layer.effect(
     );
 
     return {
-      add: (send: SessionSend) => {
+      add: (send: SessionSend, deviceId: string | null = null) => {
         // A screen that joins mid-reply gets the text so far; the frames after it continue from there.
         for (const [threadId, state] of drafts) {
           if (state.sent !== null) send(draftFrame(threadId, state.sent));
         }
-        sinks.add(send);
-        return () => void sinks.delete(send);
+        sinks.set(send, deviceId);
+        return () => {
+          if (!sinks.delete(send) || deviceId === null) return;
+          if (!devices().includes(deviceId)) for (const listener of leaveListeners) listener(deviceId);
+        };
       },
       broadcast: (frame: ServerFrame) => broadcast(frame),
+      devices,
+      onLeave: (listener: (deviceId: string) => void) => {
+        leaveListeners.add(listener);
+        return () => void leaveListeners.delete(listener);
+      },
+      sendTo: (deviceId: string, frame: ServerFrame) => {
+        let isSent = false;
+        for (const [send, owner] of sinks) {
+          if (owner !== deviceId) continue;
+          send(frame);
+          isSent = true;
+        }
+        return isSent;
+      },
     };
   }),
 );

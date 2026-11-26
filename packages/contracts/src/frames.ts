@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 import { ThreadId } from "./ids.ts";
+import { PhoneCall } from "./phoneCalls.ts";
 import { Request, ServiceError } from "./requests.ts";
 import { Topic } from "./topics.ts";
 
@@ -62,8 +63,11 @@ export const TerminalExit = Schema.TaggedStruct("TerminalExit", {
 });
 export type TerminalExit = typeof TerminalExit.Type;
 
-/** What the service sends the app: an answer, a failure, a committed change, a reply being written, or a shell's output. */
-export const ServerFrame = Schema.Union([Success, Failure, Changed, Draft, TerminalData, TerminalExit]);
+/**
+ * What the service sends the app: an answer, a failure, a committed change, a reply being written, a shell's output, or a
+ * tool call for one paired phone. A client that does not know a frame ignores it.
+ */
+export const ServerFrame = Schema.Union([Success, Failure, Changed, Draft, TerminalData, TerminalExit, PhoneCall]);
 export type ServerFrame = typeof ServerFrame.Type;
 
 /** A client frame as JSON text on the WebSocket. */

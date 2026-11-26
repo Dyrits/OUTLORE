@@ -29,6 +29,8 @@ import {
   loreHandlers,
   messagesHandlers,
   type OwnerHandlers,
+  PhoneLink,
+  phoneHandlers,
   questsHandlers,
   type RequestServices,
   realmHandlers,
@@ -61,6 +63,7 @@ export const makeService = Effect.gen(function* () {
   const commands = yield* Commands;
   const approvals = yield* Approvals;
   const connectors = yield* Connectors;
+  const phoneLink = yield* PhoneLink;
   const vault = yield* Vault;
   const suggestions = yield* Suggestions;
   const prices = yield* PriceTable;
@@ -105,6 +108,7 @@ export const makeService = Effect.gen(function* () {
         ...approvalsHandlers(dependencies, approvals, suggestions, chatterDecisions, deviceLabel),
         ...budgetsHandlers(dependencies, prices),
         ...hostUpdateHandlers(hostUpdate),
+        ...phoneHandlers(phoneLink, source),
         ...workspaceHandlers(dependencies, folderAccess, homeFolder),
         ...settingsHandlers,
       } satisfies OwnerHandlers<RequestTag>;

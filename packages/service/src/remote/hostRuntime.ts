@@ -59,7 +59,7 @@ export const remoteHostLayer = Layer.effectDiscard(
     const runInTransaction: RunWork = (effect) => runPlain(withParts(sql.withTransaction(effect)));
 
     const devices = createDeviceServer({
-      addSession: (send) => sessions.add(send),
+      addSession: (send, deviceId) => sessions.add(send, deviceId),
       admitDevice: (id, close) =>
         runPlain(state.admitDevice(id, close).pipe(Effect.provideService(SqlClient.SqlClient, sql))),
       announce: () => void runPlain(changes.publish).catch(reportFailure),

@@ -7,6 +7,7 @@ import {
   type ThreadToolName,
   threadTools,
   toolListing,
+  toolListingOf,
 } from "../../src/work/threadTools.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: thread tool names (`save_intel`, ...).
@@ -99,5 +100,64 @@ describe("listing the thread tools", () => {
 
   it("names every lore entry kind in save_intel", () => {
     expect(toolListing.find((tool) => tool.name === "save_intel")?.description).toContain("temporary");
+  });
+
+  it("tells the model where a phone tool's result goes and who switches its group on", () => {
+    const phoneTools = toolListing.filter((tool) => tool.name.startsWith("phone_"));
+    expect(phoneTools.map((tool) => tool.name).sort()).toEqual([
+      "phone_clipboard_read",
+      "phone_clipboard_write",
+      "phone_info",
+      "phone_location",
+      "phone_notify",
+      "phone_open",
+    ]);
+    for (const tool of phoneTools) {
+      expect(tool.description, tool.name).toContain("model provider");
+      expect(tool.description, tool.name).toContain("switched this kind of phone use on");
+      expect(inputSchemaOf(tool).properties, tool.name).toHaveProperty("phone");
+      expect(inputSchemaOf(tool).required ?? [], tool.name).not.toContain("phone");
+    }
+  });
+
+  it("takes the arguments each phone tool needs, besides the optional phone", () => {
+    const required = Object.fromEntries(
+      toolListing
+        .filter((tool) => tool.name.startsWith("phone_"))
+        .map((tool) => [tool.name, inputSchemaOf(tool).required ?? []]),
+    );
+    expect(required).toEqual({
+      phone_clipboard_read: [],
+      phone_clipboard_write: ["text"],
+      phone_info: [],
+      phone_location: [],
+      phone_notify: ["text"],
+      phone_open: [],
+    });
+  });
+
+  it("lists a phone tool only when it is offered, and runs it unasked", () => {
+    const names = (offered: ReadonlySet<string>) => toolListingOf(true, offered).map((tool) => tool.name);
+    expect(names(new Set()).filter((name) => name.startsWith("phone_"))).toEqual([]);
+    expect(names(new Set(["phone_info"])).filter((name) => name.startsWith("phone_"))).toEqual(["phone_info"]);
+    expect(unaskedToolNamesOf("outlore", false)).toContain("mcp__outlore__phone_info");
+  });
+
+  it("tells the model which apps and link schemes phone_open accepts", () => {
+    const description = toolListing.find((tool) => tool.name === "phone_open")?.description ?? "";
+    for (const word of [
+      "calendar",
+      "dialer",
+      "email",
+      "maps",
+      "messages",
+      "settings",
+      "spotify",
+      "telegram",
+      "whatsapp",
+      "youtube",
+    ])
+      expect(description).toContain(word);
+    for (const scheme of ["http", "https", "mailto", "tel", "sms", "geo"]) expect(description).toContain(scheme);
   });
 });

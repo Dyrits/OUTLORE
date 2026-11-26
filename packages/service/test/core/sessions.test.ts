@@ -193,3 +193,64 @@ describe("the Draft frames a screen is sent", () => {
     }).pipe(Effect.provide(layer)),
   );
 });
+
+const phoneCall = (deviceId: string): ServerFrame => ({
+  _tag: "PhoneCall",
+  args: {},
+  callId: "call-1",
+  deviceId,
+  tool: "phone_info",
+});
+
+describe("the frames sent to one connected device", () => {
+  it.effect("reaches only the screen that registered with that device's identity", () =>
+    Effect.gen(function* () {
+      const sessions = yield* Sessions;
+      const phone = screen();
+      const tablet = screen();
+      const hostWindow = screen();
+      sessions.add(phone.send, "phone");
+      sessions.add(tablet.send, "tablet");
+      sessions.add(hostWindow.send);
+      expect(sessions.sendTo("phone", phoneCall("phone"))).toBe(true);
+      expect(phone.frames.filter((frame) => frame._tag === "PhoneCall")).toHaveLength(1);
+      expect(tablet.frames).toEqual([]);
+      expect(hostWindow.frames).toEqual([]);
+    }).pipe(Effect.provide(layer)),
+  );
+
+  it.effect("reports that nothing was sent when no screen has that identity", () =>
+    Effect.gen(function* () {
+      const sessions = yield* Sessions;
+      sessions.add(screen().send);
+      expect(sessions.sendTo("ghost", phoneCall("ghost"))).toBe(false);
+    }).pipe(Effect.provide(layer)),
+  );
+
+  it.effect("lists the connected devices, and says when one leaves", () =>
+    Effect.gen(function* () {
+      const sessions = yield* Sessions;
+      const left: string[] = [];
+      sessions.onLeave((deviceId) => left.push(deviceId));
+      const removePhone = sessions.add(screen().send, "phone");
+      sessions.add(screen().send);
+      expect(sessions.devices()).toEqual(["phone"]);
+      removePhone();
+      expect(sessions.devices()).toEqual([]);
+      expect(left).toEqual(["phone"]);
+    }).pipe(Effect.provide(layer)),
+  );
+
+  it.effect("still broadcasts to devices and the host window alike", () =>
+    Effect.gen(function* () {
+      const sessions = yield* Sessions;
+      const phone = screen();
+      const hostWindow = screen();
+      sessions.add(phone.send, "phone");
+      sessions.add(hostWindow.send);
+      sessions.broadcast({ _tag: "Changed", sequence: 9 });
+      expect(phone.changed()).toEqual([9]);
+      expect(hostWindow.changed()).toEqual([9]);
+    }).pipe(Effect.provide(layer)),
+  );
+});

@@ -8,6 +8,8 @@ import { requireReachableFolder } from "./reachedFolders.ts";
 export const admitRequestSource = Effect.fnUntraced(function* (source: RequestSource, request: Request) {
   if (source.isPairedDevice && sourceRulesOf(request).isHostOnly)
     return yield* new ServiceFailure({ kind: "AccessRefused", message: "Only the host itself can do this." });
+  if (!source.isPairedDevice && sourceRulesOf(request).isPairedOnly)
+    return yield* new ServiceFailure({ kind: "AccessRefused", message: "Only a paired device can do this." });
   const folderAccess: FolderAccess = source.isPairedDevice ? "roots" : "anywhere";
   yield* requireReachableFolder(request, folderAccess);
   if (!source.isPairedDevice) return { deviceLabel: "host window", folderAccess };

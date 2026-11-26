@@ -18,6 +18,8 @@ import { loreToolsOf } from "./loreTools.ts";
 import { insertMessage } from "./messaging.ts";
 import { withThreadContext } from "./parentEcho.ts";
 import { readParentMessages } from "./parentMessages.ts";
+import type { PhoneLink } from "./phoneLink.ts";
+import { phoneToolsOf } from "./phoneToolHandlers.ts";
 import { mayMessage } from "./reach.ts";
 import { createRitualByThread, editRitualByThread, refuseRitual } from "./ritualTools.ts";
 import { carryOn, confirmInstead, suggestedAnswerOf } from "./suggestedAnswers.ts";
@@ -31,10 +33,11 @@ import { isBeneath, openThreadByAgent, refusedOf, reportResult } from "./tree.ts
 export const makeToolHandlers = (dependencies: {
   readonly approvals: Approvals["Service"];
   readonly commands: CommandRunner;
+  readonly phone: PhoneLink["Service"];
   readonly suggestions: Suggestions["Service"];
   readonly threads: Threads["Service"];
 }): ToolHandlers => {
-  const { approvals, commands, suggestions, threads } = dependencies;
+  const { approvals, commands, phone, suggestions, threads } = dependencies;
   /**
    * Runs a tool's command. Every thread tool call that reaches the store announces a change, refused or
    * not, as it always has; the operation's other follow-ups apply as it returned them.
@@ -89,6 +92,7 @@ export const makeToolHandlers = (dependencies: {
     ...loreToolsOf(commit),
     ...journalToolsOf(commit),
     ...titleToolsOf(commit),
+    ...phoneToolsOf(phone),
     act_on_mission: (threadId, args) =>
       withProvenance(approvals, commit, threadId, "act_on_mission", args, (authorize) =>
         runTool(

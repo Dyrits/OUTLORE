@@ -323,7 +323,10 @@ describe.each(harnesses)("switching a connector off while a thread on %s is usin
     inWorld({}, () =>
       Effect.gen(function* () {
         yield* install("calendar");
-        const started = yield* startOn(harness, `wait 300\n${use("calendar__list-events", day)}`);
+        // The turn has taken its snapshot once its first tool call shows: the switches then change a turn that is underway,
+        // whatever the order in which the service's fibers happen to start.
+        const started = yield* startOn(harness, `tooluse ready {}\nwait 300\n${use("calendar__list-events", day)}`);
+        yield* settle(started.missionId, (detail) => detail.activities.length > 0);
         yield* call({ _tag: "SetConnectorTool", connectorId: "calendar", isOn: false, tool: "list-events" });
         yield* call({ _tag: "SetConnectorTool", connectorId: "calendar", isOn: true, tool: "list-events" });
         const first = yield* untilIdle(started.missionId);

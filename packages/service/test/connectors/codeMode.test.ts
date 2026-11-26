@@ -17,7 +17,10 @@ const textOf = (answer: { result: { content: ReadonlyArray<{ text: string }> } }
   answer.result.content.map((part) => part.text).join("");
 
 /** The thread tools Code Mode covers, which a thread then lists in the code and not as tools. */
-const coveredNames = Object.keys(threadTools).filter(isCoveredByCodeMode);
+// The phone tools are covered too, but listed only while a phone is connected with their group on (phone-control).
+const coveredNames = Object.keys(threadTools)
+  .filter(isCoveredByCodeMode)
+  .filter((name) => !name.startsWith("phone_"));
 // A Claude Code thread, which the fake harness runs as, is also listed `answer_prompt`, which stays direct.
 const directNames = ["answer_prompt", "report_result", "request_approval", "suggest_mission"];
 

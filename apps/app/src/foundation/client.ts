@@ -181,6 +181,8 @@ export class ServiceClient {
       for (const listener of this.terminalListeners) listener(frame);
       return;
     }
+    // A call for the phone is run by the phone app's executor (phone-control); a screen that is not that phone ignores it.
+    if (frame._tag === "PhoneCall") return;
     this.sharing.answer(frame);
   }
 

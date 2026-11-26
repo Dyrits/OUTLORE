@@ -39,8 +39,8 @@ export type DeviceSession = { readonly handle: (message: string) => void };
 
 /** What serving paired devices needs from the rest of the service. */
 export type DeviceServerParts = {
-  /** Registers a screen for committed changes and drafts; the returned function removes it. */
-  readonly addSession: (send: (frame: ServerFrame) => void) => () => void;
+  /** Registers a device's screen for committed changes, drafts and calls addressed to it; the returned function removes it. */
+  readonly addSession: (send: (frame: ServerFrame) => void, deviceId: string) => () => void;
   /** Registers a connected device so Disconnect can reach it; the returned function removes it. */
   readonly admitDevice: (deviceId: string, close: () => void) => Promise<(() => void) | null>;
   /** Tells the screens that something they show changed, such as a device connecting. */
@@ -143,7 +143,7 @@ export const authenticateDevice = async (
   );
 
   const send = (frame: ServerFrame) => channel.sendText(encodeServerFrame(frame));
-  const removeSession = parts.addSession(send);
+  const removeSession = parts.addSession(send, deviceId);
   channel.onClose(() => {
     removeSession();
     removeConnection();

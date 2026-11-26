@@ -48,6 +48,7 @@ import {
   connectorNoticesLayer,
   guildmasterReportsLayer,
   hostTerminalHost,
+  phoneLinkLayer,
   planLimitsLayer,
   priceRefreshLayer,
   questMaintenanceLayer,
@@ -173,6 +174,8 @@ export const serviceLayer = (options: ServiceOptions) => {
     relayOrigin: options.relayOrigin ?? defaultRelayOrigin,
     release: options.release ?? "development",
   });
+  // The host's link to the paired phones, over the same screens registry the host runtime serves devices through.
+  const phoneLink = phoneLinkLayer().pipe(Layer.provide(sessionsLayer));
   const core = Layer.effect(Service, makeService).pipe(
     Layer.provideMerge(
       Layer.mergeAll(
@@ -193,7 +196,8 @@ export const serviceLayer = (options: ServiceOptions) => {
           Layer.provide(sessionsLayer),
         ),
         sessionsLayer,
-        toolServerLayer,
+        phoneLink,
+        toolServerLayer.pipe(Layer.provide(phoneLink)),
       ),
     ),
     Layer.provideMerge(running),

@@ -95,7 +95,7 @@ export {
   plainNotesOf,
 } from "./releaseChoice.ts";
 export * from "./remote.ts";
-export { type RequestSource, requestSourceRules, sourceRulesOf } from "./requestSources.ts";
+export { pairedOnlyRequestTags, type RequestSource, requestSourceRules, sourceRulesOf } from "./requestSources.ts";
 export * from "./requests.ts";
 export * from "./results.ts";
 export * from "./ritualSchedules.ts";

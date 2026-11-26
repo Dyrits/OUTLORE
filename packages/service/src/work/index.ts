@@ -19,6 +19,8 @@ export { stopThread } from "./lifecycle.ts";
 export { loreHandlers } from "./loreHandlers.ts";
 export { toolServerLayer } from "./mcp.ts";
 export { messagesHandlers } from "./messagesHandlers.ts";
+export { phoneHandlers } from "./phoneHandlers.ts";
+export { PhoneLink, PhoneRefusal, phoneLinkLayer } from "./phoneLink.ts";
 export { planLimitsLayer } from "./planLimits.ts";
 export { priceRefreshLayer } from "./priceRefresh.ts";
 export { questsHandlers } from "./questsHandlers.ts";
