@@ -4,6 +4,7 @@ import { Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, View 
 import { BudgetEditor } from "../editors/budgets";
 import { permissionModeLabels } from "../editors/permissionModes";
 import { useHarnesses } from "../editors/runners";
+import { isMobileApp } from "../foundation/browser/page";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { useHasSidebar, useHasTopBar } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
@@ -18,6 +19,7 @@ import { DefaultCompanionCard } from "./defaultCompanionCard";
 import { LimitsSection } from "./limitsSection";
 import { LookCard } from "./lookCard";
 import { NumberField, NumberSetting } from "./numberSetting";
+import { PhoneUseCard } from "./phoneUse";
 import { PresetsCard } from "./presetsCard";
 import { ProvidersSection } from "./providers";
 import { RemoteAccessCard } from "./remoteAccessCard";
@@ -88,6 +90,7 @@ export function SettingsScreen({
                 summary={permissionModeLabels[settings.defaultPermissionMode]}
                 title="Permissions"
               />
+              {isMobileApp && <PhoneUseCard />}
             </Section>
             <Section active={active} id="defaults">
               <LookCard />

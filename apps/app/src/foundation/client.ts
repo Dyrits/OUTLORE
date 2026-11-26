@@ -2,6 +2,7 @@ import {
   ClientFrameJson,
   draftAfter,
   isQueryTag,
+  PhoneCall,
   type Request,
   type RequestTag,
   type ResultOf,
@@ -25,6 +26,7 @@ declare global {
 }
 
 const decodeFrame = Schema.decodeUnknownSync(ServerFrameJson);
+const isPhoneCall = Schema.is(PhoneCall);
 
 /** One connection to the local service, or through it to a paired host: requests with replies, and change announcements. */
 export class ServiceClient {
@@ -40,6 +42,8 @@ export class ServiceClient {
   private readonly draftListeners = new Set<(threadId: string, text: string) => void>();
   private readonly terminalListeners = new Set<(frame: TerminalData | TerminalExit) => void>();
   private readonly failureListeners = new Set<() => void>();
+  private readonly openListeners = new Set<() => void>();
+  private readonly phoneCallListeners = new Set<(call: PhoneCall) => void>();
 
   private constructor(
     private readonly openTransport: OpenTransport,
@@ -153,6 +157,7 @@ export class ServiceClient {
           this.setFailure(null);
           resolve();
           this.sharing.notify();
+          for (const listener of this.openListeners) listener();
         },
         onText: (data) => {
           this.link = advanceHostLink(this.link, { type: "message" });
@@ -167,6 +172,10 @@ export class ServiceClient {
 
   private receive(data: unknown) {
     const frame = decodeFrame(data);
+    if (isPhoneCall(frame)) {
+      for (const listener of this.phoneCallListeners) listener(frame);
+      return;
+    }
     if (frame._tag === "Changed") return this.sharing.notify(frame.topics);
     if (frame._tag === "Draft") {
       // A frame that continues text this connection does not hold is a missed one: the whole text comes again soon.
@@ -203,6 +212,18 @@ export class ServiceClient {
   subscribeDrafts(listener: (threadId: string, text: string) => void) {
     this.draftListeners.add(listener);
     return () => this.draftListeners.delete(listener);
+  }
+
+  /** Calls the listener each time the link opens, the first time and after each reconnect (phone-control). */
+  subscribeOpen(listener: () => void) {
+    this.openListeners.add(listener);
+    return () => void this.openListeners.delete(listener);
+  }
+
+  /** Calls the listener with each tool call the host sends this phone (phone-control). */
+  subscribePhoneCalls(listener: (call: PhoneCall) => void) {
+    this.phoneCallListeners.add(listener);
+    return () => void this.phoneCallListeners.delete(listener);
   }
 
   /** Calls the listener with each open shell's output and exit, whichever screen it runs on. */

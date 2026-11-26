@@ -102,6 +102,22 @@ describe("the service client's reconnection", () => {
     client.close();
   });
 
+  it("tells the phone each time the link opens, and not after it stops listening", async () => {
+    const client = await connect();
+    let opened = 0;
+    const stopListening = client.subscribeOpen(() => opened++);
+    FakeSocket.all[0]?.close();
+    await vi.advanceTimersByTimeAsync(60_000);
+    FakeSocket.all[1]?.open();
+    expect(opened).toBe(1);
+    stopListening();
+    FakeSocket.all[1]?.close();
+    await vi.advanceTimersByTimeAsync(60_000);
+    FakeSocket.all[2]?.open();
+    expect(opened).toBe(1);
+    client.close();
+  });
+
   it("rebuilds a reply from appended frames, starts a late listener at the text so far, and drops a gapped frame", async () => {
     const client = await connect();
     const threadId = crypto.randomUUID();

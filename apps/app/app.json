@@ -18,6 +18,14 @@
     "plugins": [
       "expo-font",
       "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false,
+          "locationWhenInUsePermission": "Outlore reads this phone's position only when you allow threads to use the phone's location and one asks for it."
+        }
+      ],
       "./plugins/withReleaseSigning",
       "./plugins/withWebRtcRules",
       [
