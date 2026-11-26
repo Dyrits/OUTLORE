@@ -12,7 +12,7 @@ export interface KeyValueStorage {
 }
 
 /** A host this browser can reach, with what it needs to find it and prove itself. */
-export interface StoredHost {
+export type StoredHost = {
   readonly deviceId: string;
   readonly deviceToken: string;
   readonly hostName: string;
@@ -23,7 +23,7 @@ export interface StoredHost {
   readonly pairedAt: number;
   readonly relayOrigin: string;
   readonly room: string;
-}
+};
 
 const hostsKey = "outlore.browserHosts";
 const activeKey = "outlore.browserHost";
@@ -97,4 +97,5 @@ export const createPairedHosts = (storage: KeyValueStorage) => {
   };
 };
 
+/** The paired-hosts registry a controller keeps. */
 export type PairedHosts = ReturnType<typeof createPairedHosts>;

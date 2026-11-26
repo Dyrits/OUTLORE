@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import { hostFrame, relayFrame } from "../src/roomCore.ts";
+import { hostFrame, relayFrame } from "../src/roomFrames.ts";
 import { createFakeRoom, hostFrameOf, idOf } from "./fixtures/fakeRoom.ts";
 
 const bytes = (...values: number[]) => Uint8Array.from(values);

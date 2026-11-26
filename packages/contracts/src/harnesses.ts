@@ -31,8 +31,8 @@ export const harnessDescriptors = {
   vibe: { company: "Mistral", label: "Mistral Vibe", order: 3 },
 } as const satisfies Record<string, HarnessDescriptor>;
 
-/** Every harness, in the order pickers, Settings, and charts list them. */
 // Uses `.sort` on the fresh array returned by `Record.keys` because Hermes on Android lacks `Array.prototype.toSorted`.
+/** Every harness, in the order pickers, Settings, and charts list them. */
 export const harnessNames: ReadonlyArray<keyof typeof harnessDescriptors> = Record.keys(harnessDescriptors).sort(
   (current, next) => harnessDescriptors[current].order - harnessDescriptors[next].order,
 );

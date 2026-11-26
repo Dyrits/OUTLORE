@@ -12,6 +12,7 @@ export const workerSourceFiles = [
   "../channel/src/constantTimeEqual.ts",
   "src/limits.ts",
   "src/roomCore.ts",
+  "src/roomFrames.ts",
   "src/route.ts",
   "src/worker.ts",
   "wrangler.jsonc",

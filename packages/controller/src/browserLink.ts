@@ -15,14 +15,16 @@ import type { PairedHosts } from "./pairedHosts.ts";
 import { hostLinkCodes, type OpenTransport } from "./transport.ts";
 
 /** Settings of the web app's page, or of the mobile app, which links to a host the same way. */
-export interface PageSettings {
+export type PageSettings = {
   readonly allowLocalRelay: boolean;
   /** How this page makes direct channels to a host; absent where the platform has no WebRTC. */
   readonly direct?: DirectSettings;
   /** How this app identifies itself to the host. */
   readonly kind: "browser" | "phone";
   readonly release: string;
-}
+};
+
+const isRtcConnectionClass = (value: unknown): value is RtcConnectionClass => typeof value === "function";
 
 /**
  * Direct channels through the page's own `RTCPeerConnection`; none in a page that has none, such as the mobile app's
@@ -31,8 +33,9 @@ export interface PageSettings {
 export const directSettingsOfPage = (
   stunServers: readonly string[] = defaultStunServers,
 ): DirectSettings | undefined => {
-  const Connection = (globalThis as { RTCPeerConnection?: RtcConnectionClass }).RTCPeerConnection;
-  return Connection === undefined ? void 0 : { peers: rtcPeers(async () => Connection), stunServers };
+  // The DOM library is not loaded here, so the page's own constructor is read by name: absent in a runtime without one.
+  const found: unknown = Reflect.get(globalThis, "RTCPeerConnection");
+  return isRtcConnectionClass(found) ? { peers: rtcPeers(async () => found), stunServers } : void 0;
 };
 
 const browserStore = (hosts: PairedHosts): PairedHostStore => ({

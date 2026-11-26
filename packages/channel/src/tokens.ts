@@ -1,6 +1,7 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import { randomBytes } from "@noble/hashes/utils.js";
 
+/** The length of a device token in bytes. */
 export const deviceTokenBytes = 32;
 
 /** A fresh secret a host gives a paired device so it can resume; 32 random bytes. */

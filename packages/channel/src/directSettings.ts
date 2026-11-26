@@ -23,6 +23,7 @@ export type DirectTimings = {
   readonly openMillis: number;
 };
 
+/** The timings of a direct channel unless the caller overrides them. */
 export const defaultDirectTimings: DirectTimings = {
   afterDropMillis: 5_000,
   answerMillis: 10_000,

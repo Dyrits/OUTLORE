@@ -4,7 +4,7 @@ import { type KeyPair, openInitiator, openResponder } from "./channel.ts";
 import { encodeDirectControl, parseDirectControl } from "./directControl.ts";
 import type { DirectPeer, DirectPeers } from "./directPeer.ts";
 import { type DirectTimings, defaultDirectTimings } from "./directSettings.ts";
-import type { PathLink } from "./pathLink.ts";
+import type { PathLink } from "./pathFrames.ts";
 import type { SecureChannel } from "./secureChannel.ts";
 
 // Making a direct channel (device-pairing, Direct path): the device offers through the relay session, the host answers

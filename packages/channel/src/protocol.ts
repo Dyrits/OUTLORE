@@ -3,11 +3,13 @@ import { pairingSecretBytes } from "./pairingCode.ts";
 import { fail, type Result, succeed } from "./result.ts";
 import { deviceTokenBytes } from "./tokens.ts";
 
+/** The longest device name the host accepts, in characters. */
 export const maxDeviceNameLength = 60;
 const maxNameLength = 200;
 const maxReleaseLength = 60;
 
 const deviceKinds = ["desktop", "phone", "browser"] as const;
+/** What a paired device is: a desktop app, a phone, or a browser. */
 export type DeviceKind = (typeof deviceKinds)[number];
 
 /** What the owner reads for each refusal, the same on every kind of device. */
@@ -22,6 +24,7 @@ export const refusalText = {
   "unknown-device": "The host no longer knows this computer. Pair with it again.",
 } as const;
 
+/** Why the host refused a device. */
 export type RefusalReason = keyof typeof refusalText;
 
 /**
@@ -43,6 +46,7 @@ export type HostReply =
   | { t: "resumed"; hostName: string; release?: string }
   | { t: "refused"; reason: RefusalReason; release?: string };
 
+/** Why a protocol message could not be read. */
 export type ProtocolErrorKind = "malformed";
 
 function isDeviceKind(value: unknown): value is DeviceKind {

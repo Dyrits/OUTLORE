@@ -1,3 +1,4 @@
+import { closeCodes } from "@outlore/relay/browser";
 import { Schema } from "effect";
 import { hostLinkCodes } from "./transport.ts";
 
@@ -76,3 +77,19 @@ export const releaseProblemOf = (
   hostRelease === appRelease
     ? null
     : `${controllerWords[kind].app} is release ${appRelease}, but the host runs ${hostRelease ?? "an older release"}. ${controllerWords[kind].mend}`;
+
+/** Why the relay turned the connection away, from its close code: no host, the host left, the room is full, or the relay limited this connection (trying again later may help). */
+export const relayRefusalOf = (code: number | null) =>
+  code === closeCodes.hostOffline || code === closeCodes.hostLeft
+    ? linkTexts.hostOffline
+    : code === closeCodes.roomFull
+      ? linkTexts.roomFull
+      : code === closeCodes.rateLimited
+        ? linkTexts.busy
+        : linkTexts.timedOut;
+
+/** Wraps an unknown error from the pairing store as a typed link failure. */
+export const linkFailureOf = (reason: unknown): LinkFailure =>
+  reason instanceof LinkFailure
+    ? reason
+    : new LinkFailure("couldNotOpen", reason instanceof Error ? reason.message : linkTexts.unreachable);

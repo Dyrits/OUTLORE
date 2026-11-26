@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 import { MessageId, MissionId, QuestionId, ThreadId, WorkspaceId } from "./ids.ts";
 
+/** One line of the Chronicler's timeline: what happened, when, and the quest, errand, or realm it concerns. */
 export const ChronicleItem = Schema.Struct({
   at: Schema.Number,
   /** How many unread messages one update covers; one for every entry that is not a group of replies. */

@@ -5,7 +5,9 @@
  */
 import { chacha20poly1305 } from "@noble/ciphers/chacha.js";
 
+/** The length of the authentication tag that ends every encrypted Noise message. */
 export const NOISE_TAG_BYTES = 16;
+/** The largest Noise message in bytes, tag included. */
 export const NOISE_MAX_MESSAGE_BYTES = 65535;
 const MAX_NONCE = (1n << 64n) - 1n;
 
