@@ -31,7 +31,7 @@ export function useAttentionNotice(client: ServiceClient | null) {
         () => void 0,
       );
     check();
-    const unsubscribe = client.subscribe(check);
+    const unsubscribe = client.subscribe(check, "ListOpenQuestions");
     return () => {
       isCurrent = false;
       unsubscribe();

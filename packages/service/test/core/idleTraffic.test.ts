@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { draftAfter, type ServerFrame } from "@outlore/contracts";
 import { Effect } from "effect";
-import { Changes, Sessions } from "../../src/core/index.ts";
+import { Changes, changesLayer, Sessions } from "../../src/core/index.ts";
 import { fakeDraftOf } from "../../src/harness/fakeHarness.ts";
 import { encodeServerFrame } from "../../src/remote/index.ts";
 import { fixture, register, settle, startMission } from "../fixtures/service.ts";
@@ -82,4 +82,54 @@ describe("what a connected screen is sent", () => {
       expect(last?._tag === "Changed" ? last.sequence : 0).toBeGreaterThanOrEqual(50);
     }).pipe(Effect.provide(value.layer));
   });
+
+  it.live("names the topics a scoped change touched, and none for a change that may have touched anything", () => {
+    const value = register(fixture());
+    return Effect.gen(function* () {
+      const sessions = yield* Sessions;
+      const changes = yield* Changes;
+      const screen = countingScreen();
+      sessions.add(screen.send);
+      yield* changes.publishTopics(["work"]);
+      yield* Effect.sleep("600 millis");
+      yield* changes.publish;
+      yield* Effect.sleep("600 millis");
+      const changed = screen.frames.flatMap((frame) => (frame._tag === "Changed" ? [frame] : []));
+      expect(changed.map((frame) => frame.topics)).toEqual([["work"], undefined]);
+    }).pipe(Effect.provide(value.layer));
+  });
+
+  it.live("announces a turn's events as the work's only, and its end as the spend's too", () => {
+    const value = register(fixture());
+    return Effect.gen(function* () {
+      const sessions = yield* Sessions;
+      const screen = countingScreen();
+      const started = yield* startMission({ text: "write 3000 3 1\nwait 600" });
+      // The start's own change, which names no topic, goes out before the screen listens.
+      yield* Effect.sleep("400 millis");
+      sessions.add(screen.send);
+      yield* settle(started.missionId, (detail) => detail.thread.state === "Resting");
+      yield* Effect.sleep("600 millis");
+      const topics = screen.frames.flatMap((frame) => (frame._tag === "Changed" ? [frame.topics?.toSorted()] : []));
+      // Nothing after the start left the settings, the Vault or the connectors to refetch: every frame names its topics.
+      expect(topics.length).toBeGreaterThan(0);
+      expect(topics.filter((named) => named === undefined)).toEqual([]);
+      expect(topics.flat()).toContain("spend");
+    }).pipe(Effect.provide(value.layer));
+  });
+
+  it.effect("keeps the topics of the changes not yet announced, until they are taken", () =>
+    Effect.gen(function* () {
+      const changes = yield* Changes;
+      yield* changes.publishTopics(["work"]);
+      yield* changes.publishTopics(["spend"]);
+      expect((yield* changes.takeTopics)?.toSorted()).toEqual(["spend", "work"]);
+      expect(yield* changes.takeTopics).toEqual([]);
+      // One change that may have touched anything leaves the whole burst unscoped.
+      yield* changes.publishTopics(["work"]);
+      yield* changes.publish;
+      expect(yield* changes.takeTopics).toBeNull();
+      expect(yield* changes.takeTopics).toEqual([]);
+    }).pipe(Effect.provide(changesLayer)),
+  );
 });

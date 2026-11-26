@@ -21,11 +21,14 @@ import { moveWorkingFolder } from "./workingFolders.ts";
 
 // Turn operations return follow-ups; the command runner commits and applies them.
 
+/** What a turn's events touch: the quest's conversation, activity and state, never the settings or what a screen shows of them. */
+const workTopics = ["work"] as const;
+
 /** Records a current turn's incremental event in the command's transaction. */
 const recordStep = Effect.fnUntraced(function* <A, E, R>(turn: Admitted, step: Effect.Effect<A, E, R>) {
   if (!(yield* isCurrentTurn(turn.turnId))) return unchanged(null);
   yield* step;
-  return changed(null);
+  return changed(null, { topics: workTopics });
 });
 
 /**
@@ -146,6 +149,8 @@ export const completeTurn = Effect.fnUntraced(function* (threadId: string, turn:
   yield* resetBackupStep(threadId);
   return changed(null, {
     threadsToWake: yield* listThreadsWithPending(turn.missionId, threadId),
+    // The turn's usage is the spend that budgets and the usage view add up.
+    topics: [...workTopics, "spend"],
     turnsToCancel: halted.filter((id) => id !== threadId),
   });
 });
@@ -174,6 +179,7 @@ export const recordTurnFailure = Effect.fnUntraced(function* (
   return changed(null, {
     threadsToWake: [...new Set([...threadsToWake, ...(yield* listThreadsWithPending(turn.missionId, threadId))])],
     threadsToWithdraw: [threadId],
+    topics: workTopics,
   });
 });
 

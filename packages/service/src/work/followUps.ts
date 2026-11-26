@@ -1,3 +1,5 @@
+import type { Topic } from "@outlore/contracts";
+
 /** What a command leaves to do once its storage work has committed. */
 export type FollowUps = {
   /** Whether state the owner sees changed, so open screens refetch. */
@@ -12,6 +14,8 @@ export type FollowUps = {
   readonly threadsToWake: ReadonlyArray<string>;
   /** Threads whose pending owner questions must be withdrawn before any wake. */
   readonly threadsToWithdraw: ReadonlyArray<string>;
+  /** What a change touched, when only some topics (idle traffic): screens refetch only the reads that depend on them; null when it may have touched anything. */
+  readonly topics: ReadonlyArray<Topic> | null;
   /** Threads whose turns the operation invalidated and that must now end. */
   readonly turnsToCancel: ReadonlyArray<string>;
 };
@@ -30,6 +34,7 @@ export const noFollowUps: FollowUps = {
   shouldStopConnectorCalls: false,
   threadsToWake: [],
   threadsToWithdraw: [],
+  topics: null,
   turnsToCancel: [],
 };
 

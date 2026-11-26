@@ -90,12 +90,12 @@ const admit = Effect.fnUntraced(function* (threadId: string, isBackgroundWake: b
   if (workspace?.isMissing === true || (yield* readOwnCopy(threadId))?.isMissing === true) {
     yield* holdThread(threadId, "MissingWorkspace");
     yield* touchMission(thread.missionId, now);
-    yield* sql.afterCommit(changes.publish);
+    yield* sql.afterCommit(changes.publishTopics(["work"]));
     return null;
   }
   if (yield* holdIfReached(threadId, thread.missionId)) {
     yield* touchMission(thread.missionId, now);
-    yield* sql.afterCommit(changes.publish);
+    yield* sql.afterCommit(changes.publishTopics(["work"]));
     return null;
   }
   // A runner change is recorded when it actually runs, not while messages wait for admission.
@@ -112,7 +112,7 @@ const admit = Effect.fnUntraced(function* (threadId: string, isBackgroundWake: b
   );
   yield* startRunning(threadId);
   yield* touchMission(thread.missionId, now);
-  yield* sql.afterCommit(changes.publish);
+  yield* sql.afterCommit(changes.publishTopics(["work"]));
   return {
     accountId: thread.accountId,
     attachments: taken.flatMap((message) => message.attachments),

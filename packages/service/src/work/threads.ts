@@ -215,6 +215,7 @@ export const threadsLayer = Layer.effectContext(
     // Turn events, owner requests, and tools share the runner over these same thread callbacks.
     const commands = makeCommands({
       publish: changes.publish,
+      publishTopics: changes.publishTopics,
       removeScratch: (id) => local(removeScratch(join(scratchRoot, id))).pipe(Effect.orDie),
       sql,
       ...(connectors._tag === "Some" ? { stopConnectorCalls: connectors.value.stopRevokedCalls } : {}),

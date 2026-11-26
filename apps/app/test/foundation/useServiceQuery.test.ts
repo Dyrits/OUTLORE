@@ -87,3 +87,46 @@ it("keeps the shared subscription through Strict Mode's cleanup and remount, and
   expect(sent).toHaveBeenCalledTimes(2);
   client.close();
 });
+
+it("reads again only when a change touched a topic the read follows", async () => {
+  const { client, receive, sent } = await connected();
+  useServiceQuery(client, { _tag: "ReadChronicle" }, "topics-work");
+  useServiceQuery(client, { _tag: "ReadSettings" }, "topics-settings");
+  expect(sent).toHaveBeenCalledTimes(2);
+  receive(JSON.stringify({ _tag: "Success", id: "1", value: [] }));
+  receive(JSON.stringify({ _tag: "Success", id: "2", value: {} }));
+  await Promise.resolve();
+  // A turn's progress touches the work: the chronicle is read again, the settings are not.
+  receive(JSON.stringify({ _tag: "Changed", sequence: 1, topics: ["work"] }));
+  expect(sent).toHaveBeenCalledTimes(3);
+  expect(JSON.parse(String(sent.mock.calls[2]?.[0])).request._tag).toBe("ReadChronicle");
+  receive(JSON.stringify({ _tag: "Success", id: "3", value: [] }));
+  await Promise.resolve();
+  // A change that names no topics may have touched anything.
+  receive(JSON.stringify({ _tag: "Changed", sequence: 2 }));
+  expect(sent).toHaveBeenCalledTimes(5);
+  client.close();
+});
+
+it("shares one request between equal queries asked together, and asks again after a change", async () => {
+  const { client, receive, sent } = await connected();
+  const first = client.request({ _tag: "ReadChronicle" });
+  const second = client.request({ _tag: "ReadChronicle" });
+  client.request({ _tag: "ReadSettings" }).catch(() => void 0);
+  expect(sent).toHaveBeenCalledTimes(2);
+  receive(JSON.stringify({ _tag: "Success", id: "1", value: [] }));
+  await expect(Promise.all([first, second])).resolves.toEqual([[], []]);
+  // Answered, so the next one is a new request.
+  client.request({ _tag: "ReadChronicle" }).catch(() => void 0);
+  expect(sent).toHaveBeenCalledTimes(3);
+  // A change, or a command, ends the sharing: what is asked after it must not take an answer that may predate it.
+  receive(JSON.stringify({ _tag: "Changed", sequence: 1 }));
+  client.request({ _tag: "ReadChronicle" }).catch(() => void 0);
+  expect(sent).toHaveBeenCalledTimes(4);
+  client.request({ _tag: "ReadChronicle" }).catch(() => void 0);
+  expect(sent).toHaveBeenCalledTimes(4);
+  client.request({ _tag: "RefreshPrices" }).catch(() => void 0);
+  client.request({ _tag: "ReadChronicle" }).catch(() => void 0);
+  expect(sent).toHaveBeenCalledTimes(6);
+  client.close();
+});
