@@ -1,8 +1,8 @@
 import type { MissionId, RealmArchivePreview } from "@outlore/contracts";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useBarClearance } from "../foundation/barClearance";
 import type { ServiceClient } from "../foundation/client";
-import { usePillScroll } from "../foundation/pillScroll";
 import { styles } from "../foundation/styles";
 import { colors, outline, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -19,11 +19,11 @@ export function ArchiveScreen({ client, onOpen }: { client: ServiceClient; onOpe
   const { data, error } = useServiceQuery(client, request, `archive:${search}:${attempt}`);
   const realms = useServiceQuery(client, { _tag: "ListArchivedRealms" }, `archived-realms:${attempt}`);
   const [restoring, setRestoring] = useState<RealmArchivePreview | null>(null);
-  const pill = usePillScroll();
+  const barClearance = useBarClearance();
   const shown = matchingArchivedRealmsOf(realms.data ?? [], search);
   return (
     <View style={local.page}>
-      <ScrollView {...pill.scrollProps} contentContainerStyle={[local.content, pill.contentStyle]}>
+      <ScrollView contentContainerStyle={[local.content, barClearance]}>
         <TextInput
           accessibilityLabel="Search archive"
           onChangeText={setSearch}

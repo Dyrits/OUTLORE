@@ -1,9 +1,9 @@
 import type { LoreEntryId, LoreGauge, LoreScope, LoreStateFilter, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { useBarClearance } from "../foundation/barClearance";
 import type { ServiceClient } from "../foundation/client";
 import { loreGaugeLabelOf } from "../foundation/loreLabels";
-import { usePillScroll } from "../foundation/pillScroll";
 import { useHasSidebar, useHasTopBar } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -65,7 +65,7 @@ export function LoreScreen({
 }) {
   const hasSidebar = useHasSidebar();
   const hasTopBar = useHasTopBar();
-  const pill = usePillScroll();
+  const barClearance = useBarClearance();
   const [scope, setScope] = useState<LoreScope | null>(null);
   const [state, setState] = useState<LoreStateFilter | null>(null);
   const [historyOf, setHistoryOf] = useState<LoreEntryId | null>(null);
@@ -102,7 +102,7 @@ export function LoreScreen({
         </Text>
       )}
       {data && (
-        <ScrollView {...pill.scrollProps} contentContainerStyle={pill.contentStyle} style={styles.flex}>
+        <ScrollView contentContainerStyle={barClearance} style={styles.flex}>
           {data.proposals.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.label}>Proposed from how lore is used</Text>

@@ -60,13 +60,21 @@ export function DoneButton({
 }
 
 /** Starts a new errand: the errand's branch with a small plus, as the notch that starts one. */
-export function NewErrandButton({ label = "New errand", onPress }: { label?: string; onPress: () => void }) {
+export function NewErrandButton({
+  label = "New errand",
+  onPress,
+  style,
+}: {
+  label?: string;
+  onPress: () => void;
+  style?: StyleProp<ViewStyle>;
+}) {
   return (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [local.panel, pressed && local.panelActive]}
+      style={({ pressed }) => [local.panel, pressed && local.panelActive, style]}
     >
       <Svg
         fill="none"
@@ -86,13 +94,13 @@ export function NewErrandButton({ label = "New errand", onPress }: { label?: str
 }
 
 /** Starts a new quest in the current realm. */
-export function NewQuestButton({ onPress }: { onPress: () => void }) {
+export function NewQuestButton({ onPress, style }: { onPress: () => void; style?: StyleProp<ViewStyle> }) {
   return (
     <Pressable
       accessibilityLabel="New quest"
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [local.panel, pressed && local.panelActive]}
+      style={({ pressed }) => [local.panel, pressed && local.panelActive, style]}
     >
       <HeaderIcon color={colors.textSecondary}>
         {emblemPaths.sword.map((path) => (
@@ -113,14 +121,22 @@ export function HeaderSeparator() {
  * Shows or hides the quest's panel in the right-hand column: the quest's sword, without the plus that starts a quest. It
  * keeps a fill while the column shows the quest's tab.
  */
-export function QuestPanelButton({ isOpen, onPress }: { isOpen: boolean; onPress: () => void }) {
+export function QuestPanelButton({
+  isOpen,
+  onPress,
+  style,
+}: {
+  isOpen: boolean;
+  onPress: () => void;
+  style?: StyleProp<ViewStyle>;
+}) {
   return (
     <Pressable
       accessibilityLabel={isOpen ? "Hide quest panel" : "Show quest panel"}
       accessibilityRole="button"
       accessibilityState={{ expanded: isOpen }}
       onPress={onPress}
-      style={({ pressed }) => [local.panel, (pressed || isOpen) && local.panelActive]}
+      style={({ pressed }) => [local.panel, (pressed || isOpen) && local.panelActive, style]}
     >
       <HeaderIcon color={isOpen ? colors.accentText : colors.textSecondary}>
         {emblemPaths.sword.map((path) => (

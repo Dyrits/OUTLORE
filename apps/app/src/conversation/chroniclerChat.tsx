@@ -1,6 +1,6 @@
 import type { GuildmasterPlace, MessageId, MissionId, ThreadId, Viewing, WorkspaceId } from "@outlore/contracts";
 import { type ReactNode, useEffect, useRef } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { BudgetScreen, BudgetStopCard } from "../editors/budgets";
 import { newRequestId, type ServiceClient } from "../foundation/client";
 import { companionLabelOf, harnessLabels } from "../foundation/formatting";
@@ -8,11 +8,9 @@ import { usePageNavigation } from "../foundation/pageNavigation";
 import { allMissions } from "../foundation/queries";
 import { realmMarkOf } from "../foundation/realmMark";
 import { styles } from "../foundation/styles";
-import { colors, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { ChipIcon } from "../ui/chips";
 import { Composer } from "../ui/controls";
-import { ChannelHeader, RealmNote } from "./chroniclerHeader";
+import { ChannelHeader, ChroniclerHeader, RealmNote } from "./chroniclerHeader";
 import { chroniclerStyles as local } from "./chroniclerStyles";
 import { type CompanionsTab, CompanionsTabLayout } from "./companionsTabLayout";
 import { ConversationFailure, ConversationFeed } from "./conversationFeed";
@@ -135,41 +133,22 @@ export function ChroniclerChat({
   return (
     <RepliesProvider value={{ start: startReply }}>
       <View style={local.page}>
-        {onBack !== undefined ? (
-          <ChannelHeader
-            actions={
-              canResume && (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}
-                >
-                  <Text style={local.link}>Resume</Text>
-                </Pressable>
-              )
-            }
-            name={channel?.name}
-            onBack={onBack}
-          />
-        ) : (
-          <View style={styles.header}>
-            <View style={{ alignItems: "center", height: 26, justifyContent: "center", width: 26 }}>
-              <ChipIcon
-                color={mark === null ? colors.textMuted : stateTones[mark].color}
-                kind={channel?.id === null ? "borderlands" : "realm"}
-                size={22}
-              />
-            </View>
-            <Text numberOfLines={1} style={[styles.paneTitle, styles.flex]}>
-              {channel?.name ?? "Chronicle"}
-            </Text>
-            {chrome}
-            {canResume && (
-              <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
-                <Text style={local.link}>Resume</Text>
-              </Pressable>
-            )}
-          </View>
-        )}
+        <ChroniclerHeader
+          canResume={canResume}
+          channel={channel}
+          chrome={chrome}
+          mark={mark}
+          onBack={onBack}
+          onNewQuest={() => {
+            if (channel === undefined) return;
+            void act(
+              client
+                .request({ _tag: "StartEmptyQuest", realmId: channel.id, requestId: newRequestId() })
+                .then((started) => onOpenMission(started.missionId)),
+            );
+          }}
+          onResume={() => void act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}
+        />
         {tabs}
         {detail.budgetStop !== null && (
           <BudgetStopCard client={client} onRaise={() => setIsBudgetOpen(true)} stop={detail.budgetStop} />

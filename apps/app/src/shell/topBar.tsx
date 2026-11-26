@@ -1,8 +1,11 @@
 import { memo, type ReactNode, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { headerIconTarget } from "../conversation/mobileHeader";
 import { HostMenuContext } from "../foundation/hostContext";
 import { useIslandFrame } from "../foundation/islands";
+import type { PhoneHeader } from "../foundation/shellContext";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { HeaderSeparator, QuestPanelButton } from "../ui/questHeaderButtons";
 import { UpdateNotice } from "../updates";
 import { HostMenu } from "./hostMenu";
 import { PhoneIcon } from "./phoneIcons";
@@ -102,61 +105,55 @@ export const TopBar = memo(function TopBar({
 });
 
 /**
- * The narrow window's top bar (CHG-0761): the name of the tab shown, the host menu, the quest panel's icon in a quest,
- * and, furthest right on every screen, the Menu button that opens the places the pill's tabs do not cover.
+ * The narrow window's top bar (CHG-0773): the side menu's button at its start, then the name of the screen or, in a
+ * conversation, the title it handed over, and at its end the actions the desktop's pane header carries (new quest or
+ * errand, mark as done, archive) and the quest panel's sword.
  */
 export function NarrowTopBar({
   details,
+  header,
   isMenuOpen,
-  onBack,
   onMenu,
   title,
 }: {
   details: DetailsToggle | null;
+  /** The conversation's own title and actions, which it hands over while it is on show. */
+  header: PhoneHeader | null;
   isMenuOpen: boolean;
-  /** Goes back to the Menu from a place it opened; null on any other screen. */
-  onBack: (() => void) | null;
   onMenu: () => void;
-  /** What the bar names, or null where the screen has a header of its own. */
+  /** What the bar names where the screen has no header of its own. */
   title: string | null;
 }) {
-  const hostMenu = useContext(HostMenuContext);
   return (
-    <View style={local.topBar}>
-      {onBack !== null && (
-        <Pressable
-          accessibilityLabel="Back to the menu"
-          accessibilityRole="button"
-          hitSlop={6}
-          onPress={onBack}
-          style={({ pressed }) => [local.topIcon, pressed && local.topIconActive]}
-        >
-          <Text style={local.backChevron}>‹</Text>
-        </Pressable>
-      )}
-      {title !== null && <Text style={local.narrowTitle}>{title}</Text>}
-      {hostMenu !== null && <HostMenu {...hostMenu} />}
-      <View style={local.spacer} />
-      <UpdateNotice />
-      {details !== null && details.isPinned !== true && (
-        <Pressable
-          accessibilityLabel={details.isOpen ? "Hide quest panel" : "Show quest panel"}
-          accessibilityRole="button"
-          onPress={details.onToggle}
-          style={({ pressed }) => [local.topIcon, (pressed || details.isOpen) && local.topIconActive]}
-        >
-          <PanelIcon side="right" />
-        </Pressable>
-      )}
+    <View style={[local.topBar, local.narrowBar]}>
       <Pressable
         accessibilityLabel={isMenuOpen ? "Close the menu" : "Open the menu"}
         accessibilityRole="button"
         accessibilityState={{ expanded: isMenuOpen }}
         onPress={onMenu}
-        style={({ pressed }) => [local.topIcon, (pressed || isMenuOpen) && local.topIconActive]}
+        style={({ pressed }) => [local.narrowIcon, (pressed || isMenuOpen) && local.topIconActive]}
       >
-        <PhoneIcon color={colors.onGround} name="grid" size={18} />
+        <PhoneIcon color={colors.onGround} name="menu" size={20} />
       </Pressable>
+      <View style={local.narrowTitleBox}>
+        {header !== null ? (
+          header.title
+        ) : (
+          <Text numberOfLines={1} style={local.narrowTitle}>
+            {title}
+          </Text>
+        )}
+      </View>
+      <UpdateNotice />
+      <View style={local.narrowActions}>
+        {header?.actions}
+        {details !== null && details.isPinned !== true && (
+          <>
+            {header !== null && <HeaderSeparator />}
+            <QuestPanelButton isOpen={details.isOpen} onPress={details.onToggle} style={headerIconTarget} />
+          </>
+        )}
+      </View>
     </View>
   );
 }
@@ -220,11 +217,14 @@ export function QuestColumn({
 }
 
 const local = StyleSheet.create({
-  backChevron: { color: colors.onGround, fontSize: 26, lineHeight: 28 },
   crumbCurrent: { color: colors.onGround },
   crumbPinned: { paddingLeft: 6 },
   crumbText: { fontFamily: fonts.sans, fontSize: fontSizes.lg },
+  narrowActions: { alignItems: "center", flexDirection: "row" },
+  narrowBar: { height: 52 },
+  narrowIcon: { alignItems: "center", borderRadius: radii.pill, height: 38, justifyContent: "center", width: 38 },
   narrowTitle: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.lg, fontWeight: "600" },
+  narrowTitleBox: { alignItems: "center", flex: 1, flexDirection: "row", gap: 8, minWidth: 0 },
   panelIcon: {
     borderColor: colors.onGround,
     borderRadius: 3,

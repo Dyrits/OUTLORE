@@ -16,7 +16,7 @@ import {
   QuestPanelButton,
 } from "../ui/questHeaderButtons";
 import { ErrandHeaderActions, hasErrandActions } from "./errandHeaderActions";
-import { MobileHeader, mobileIconTarget } from "./mobileHeader";
+import { headerIconTarget, MobileHeader } from "./mobileHeader";
 import { ThreadTitle } from "./threadTitle";
 
 function RitualRunAction({
@@ -58,6 +58,7 @@ export function ThreadPaneHeader({
   onOpenMission,
   onRitualRunError,
   onSelect,
+  onShowParent,
   canTakeTurns,
 }: {
   act: (promise: Promise<unknown>) => Promise<void>;
@@ -73,10 +74,14 @@ export function ThreadPaneHeader({
   onOpenMission: (missionId: MissionId) => void;
   onRitualRunError: (message: string | null) => void;
   onSelect: (threadId: ThreadId) => void;
+  /** Shows the parent's tab from the title: a quest's Quests tab, an errand's Errands tab. */
+  onShowParent?: () => void;
   canTakeTurns: boolean;
 }) {
   const { thread } = detail;
   const { canResume } = thread.actions;
+  // On a phone the actions are drawn in the top bar, where several share the row.
+  const phoneStyle = onBack === undefined ? null : headerIconTarget;
   const ritualRunAction = canTakeTurns ? null : (
     <RitualRunAction client={client} missionId={detail.mission.id} onError={onRitualRunError} />
   );
@@ -88,7 +93,7 @@ export function ThreadPaneHeader({
       isDisabled={ending.isBusy}
       label={detail.mission.isEmpty ? "Delete quest" : "Archive quest"}
       onPress={() => ending.start("Archived")}
-      style={onBack === undefined ? null : mobileIconTarget}
+      style={phoneStyle}
     />
   );
   // Mark as done is a checkbox: pressing it again takes the mark back (ReopenMission, as the Archive's Reopen does).
@@ -99,13 +104,15 @@ export function ThreadPaneHeader({
           ? ending.run(() => client.request({ _tag: "ReopenMission", missionId: detail.mission.id }))
           : ending.start("Fulfilled")
     : null;
-  const errandActions = <ErrandHeaderActions act={act} client={client} detail={detail} onSelect={onSelect} />;
+  const errandActions = (
+    <ErrandHeaderActions act={act} client={client} detail={detail} onSelect={onSelect} style={phoneStyle} />
+  );
   const doneAction = markDone !== null && (
     <DoneButton
       isDisabled={ending.isBusy || ending.pending !== null}
       isDone={isDone}
       onPress={markDone}
-      style={onBack === undefined ? null : mobileIconTarget}
+      style={phoneStyle}
     />
   );
   const hasActions = isOwnQuest || hasErrandActions(detail);
@@ -118,18 +125,30 @@ export function ThreadPaneHeader({
       {onBack !== undefined && (
         <MobileHeader
           actions={
-            ritualRunAction ??
-            (isOwnQuest ? (
+            ritualRunAction ?? (
               <>
-                {doneAction}
-                {archiveAction}
+                {onNewErrand !== undefined && <NewErrandButton onPress={onNewErrand} style={phoneStyle} />}
+                {isOwnQuest ? (
+                  <>
+                    {doneAction}
+                    {archiveAction}
+                  </>
+                ) : (
+                  errandActions
+                )}
               </>
-            ) : (
-              errandActions
-            ))
+            )
           }
           onBack={onBack}
-          title={<ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />}
+          title={
+            <ThreadTitle
+              client={client}
+              detail={detail}
+              onOpenMission={onOpenMission}
+              onSelect={onSelect}
+              {...(onShowParent === undefined ? {} : { onShowParent })}
+            />
+          }
         />
       )}
       {(onBack === undefined || canResume || canOpenDetails) && (
@@ -137,15 +156,21 @@ export function ThreadPaneHeader({
           {onBack === undefined && (
             <>
               <View style={styles.flex}>
-                <ThreadTitle client={client} detail={detail} onOpenMission={onOpenMission} onSelect={onSelect} />
+                <ThreadTitle
+                  client={client}
+                  detail={detail}
+                  onOpenMission={onOpenMission}
+                  onSelect={onSelect}
+                  {...(onShowParent === undefined ? {} : { onShowParent })}
+                />
               </View>
               {canResume && (
                 <Pressable onPress={() => act(client.request({ _tag: "ResumeThread", threadId: thread.id }))}>
                   <Text style={styles.link}>Resume</Text>
                 </Pressable>
               )}
-              {archiveAction}
               {doneAction}
+              {archiveAction}
               {errandActions}
               {ritualRunAction}
               {ritualRunAction !== null && chrome != null && <HeaderSeparator />}

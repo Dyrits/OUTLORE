@@ -87,6 +87,8 @@ export function ChatterNotices({ client, notices }: { client: ServiceClient; not
       )
       .finally(() => setPending(null));
   };
+  // With nothing to show it draws nothing, so an empty box does not add a gap between the header and the tabs.
+  if (notices.length === 0 && error === null) return null;
   return (
     <View>
       {notices.map((notice) => (

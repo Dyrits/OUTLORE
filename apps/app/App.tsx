@@ -1,5 +1,5 @@
 import type { MissionId, ThreadId } from "@outlore/contracts";
-import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef } from "react";
 import { Pressable, Text, View } from "react-native";
 import { startAndroidUpdates } from "./src/foundation/androidUpdates/platform";
 import { ArchiveNavigation } from "./src/foundation/archiveNavigation";
@@ -48,8 +48,7 @@ export function App() {
     openUpdateLink,
   } = useHostConnection();
   const [location, dispatch] = useReducer(navigate, resumedPlace, initialLocation);
-  const { openMission, openThread, selectedMission, place, guildmasterRealm } = location;
-  const setGuildmasterRealm = useCallback((path: string | null) => dispatch({ path, type: "chroniclerRealm" }), []);
+  const { openMission, openThread, selectedMission, place } = location;
   const rightPanel = useRightPanel(hostId, panelScopeOf(location));
   // The navigation reaches the panels, which skip rendering while their props are the same: it keeps one identity for
   // good, reading what changes (the open quest, the details panel) from refs, so one panel's change never renders another.
@@ -70,11 +69,9 @@ export function App() {
         closeRitualForm: () => dispatch({ target: null, type: "ritualForm" }),
         goTo,
         openChannel,
-        openMenu: () => dispatch({ isOpen: true, type: "menu" }),
         openMission: openMissionFromAnywhere,
         openParent: (quest: { workspaceId: string | null; workspaceName: string | null }) =>
           dispatch({ quest, type: "parent" }),
-        openQuests: () => dispatch({ isOpen: true, type: "quests" }),
         openThread: openSideQuest,
         selectMission: (id: MissionId | null) => {
           dispatch({ id, type: "select" });
@@ -83,6 +80,7 @@ export function App() {
         selectThread: (id: ThreadId | null) => {
           if (openMissionRef.current !== null) dispatch({ id, missionId: openMissionRef.current, type: "thread" });
         },
+        setErrandStarter: (isOpen: boolean) => dispatch({ isOpen, type: "errandStarter" }),
         setPermissions: (isOpen: boolean) => dispatch({ isOpen, type: "permissions" }),
         setSettingsSection: (section: SettingsSectionId) => dispatch({ section, type: "section" }),
         showDetails: (isOpen: boolean) => rightPanelRef.current.show(isOpen ? { tab: "quest" } : null),
@@ -180,10 +178,6 @@ export function App() {
     [detailsMode, isDetailsOpen],
   );
   const view = useMemo(() => windowViewOf(location), [location]);
-  const chronicler = useMemo(
-    () => ({ onRealm: setGuildmasterRealm, realmPath: guildmasterRealm }),
-    [guildmasterRealm, setGuildmasterRealm],
-  );
   // A browser with no host has nothing to show: it pairs first.
   if (status.kind === "pairing" || (status.canPair && isAddingHost)) {
     return (
@@ -247,7 +241,6 @@ export function App() {
   }
   const shell = (
     <Shell
-      chronicler={chronicler}
       client={client}
       details={details}
       dispatch={dispatch}
@@ -262,7 +255,6 @@ export function App() {
       onWorkshop={onWorkshop}
       openMission={openMission}
       openThread={openThread}
-      place={place}
       rightPanel={rightPanel}
     >
       <AppScreen client={client} navigation={navigation} view={view} />

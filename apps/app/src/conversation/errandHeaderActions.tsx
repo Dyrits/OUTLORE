@@ -1,4 +1,5 @@
 import type { MissionDetail, ThreadId, ThreadState } from "@outlore/contracts";
+import type { StyleProp, ViewStyle } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { ArchiveButton } from "../ui/archiveButton";
 import { DoneButton } from "../ui/questHeaderButtons";
@@ -17,11 +18,14 @@ export function ErrandHeaderActions({
   client,
   detail,
   onSelect,
+  style,
 }: {
   act: (request: Promise<unknown>) => Promise<void>;
   client: ServiceClient;
   detail: MissionDetail;
   onSelect: (threadId: ThreadId) => void;
+  /** The look of each button, which a phone's header gives a larger target. */
+  style?: StyleProp<ViewStyle>;
 }) {
   if (!hasErrandActions(detail)) return null;
   const { thread } = detail;
@@ -34,6 +38,7 @@ export function ErrandHeaderActions({
       // A deleted errand leaves its pane for the conversation it hung from.
       onDeleted={() => thread.parentId !== null && onSelect(thread.parentId)}
       state={thread.state}
+      style={style}
       threadId={thread.id}
     />
   );
@@ -46,6 +51,7 @@ export function ErrandEndingButtons({
   isEmpty = false,
   onDeleted,
   state,
+  style,
   threadId,
   title,
 }: {
@@ -57,6 +63,7 @@ export function ErrandEndingButtons({
   /** Called once an empty errand has been deleted. */
   onDeleted?: () => void;
   state: ThreadState;
+  style?: StyleProp<ViewStyle>;
   threadId: ThreadId;
   title?: string;
 }) {
@@ -64,6 +71,13 @@ export function ErrandEndingButtons({
   const doneLabel = isDone ? "Mark as not done" : "Mark as done";
   return (
     <>
+      <DoneButton
+        isDisabled={isDisabled}
+        isDone={isDone}
+        label={title === undefined ? doneLabel : `${doneLabel}: ${title}`}
+        onPress={() => act(() => client.request({ _tag: isDone ? "ReopenThread" : "MarkThreadDone", threadId }))}
+        style={style}
+      />
       <ArchiveButton
         isDelete={isEmpty}
         isDisabled={isDisabled}
@@ -73,12 +87,7 @@ export function ErrandEndingButtons({
             client.request({ _tag: "ArchiveThread", threadId }).then(() => (isEmpty ? onDeleted?.() : undefined)),
           )
         }
-      />
-      <DoneButton
-        isDisabled={isDisabled}
-        isDone={isDone}
-        label={title === undefined ? doneLabel : `${doneLabel}: ${title}`}
-        onPress={() => act(() => client.request({ _tag: isDone ? "ReopenThread" : "MarkThreadDone", threadId }))}
+        style={style}
       />
     </>
   );

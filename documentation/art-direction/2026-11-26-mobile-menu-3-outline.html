@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone menu draft 3 · One outline tree (2026-11-26)</title>
+<style>
+  :root { --bg:#0d1320; --card:#151d2c; --line:#223049; --ink:#e7ecf5; --mute:#8493aa; --acc:#8fa2ff; --acc-bg:#1e2747; --att:#f2a65a; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:12px; padding:24px 16px 40px; background:#070b12; font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:#c8d0dd; }
+  [hidden] { display:none !important; }
+  .intro { width:360px; }
+  .intro h1 { margin:0 0 4px; font-size:17px; color:var(--ink); }
+  .intro p { margin:0; font-size:12.5px; color:var(--mute); }
+  .phone { position:relative; width:360px; height:740px; overflow:hidden; display:flex; flex-direction:column; background:var(--bg); color:var(--ink); border:8px solid #000; border-radius:38px; }
+  svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  .status { flex:none; height:34px; display:flex; justify-content:space-between; align-items:center; padding:0 24px; font-size:12px; font-weight:600; }
+  .top { flex:none; display:flex; align-items:center; gap:10px; padding:4px 12px 10px; }
+  .ib { width:40px; height:40px; display:grid; place-items:center; border:1px solid var(--line); border-radius:12px; background:var(--card); color:var(--ink); cursor:pointer; }
+  .top h1 { margin:0; font-size:22px; letter-spacing:-.01em; }
+  .top small { display:block; color:var(--mute); font-size:12px; }
+  .scroll { flex:1; min-height:0; overflow-y:auto; padding:2px 12px 18px; scrollbar-width:none; }
+  .cap { margin:12px 6px 4px; font-size:10.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); }
+  .label { margin:16px 6px 6px; font-size:10.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); }
+  .row { display:flex; align-items:center; gap:10px; width:100%; margin:6px 0; padding:11px 12px; background:var(--card); border:1px solid var(--line); border-radius:12px; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+  .row.realm { padding:14px 12px; }
+  .row.realm b { font-size:16px; }
+  .car { flex:none; width:14px; text-align:center; font-size:17px; line-height:1; color:var(--mute); transition:transform .2s ease; }
+  .open > .car { transform:rotate(90deg); color:var(--acc); }
+  .tx { flex:1; min-width:0; }
+  .tx b { display:block; font-size:14.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tx small { font-size:12px; color:var(--mute); }
+  .st { flex:none; font-size:11px; padding:2px 8px; border-radius:999px; background:#1f2839; color:#aab4c6; }
+  .st.att { background:#3a2a1a; color:var(--att); }
+  .kids { margin:0 0 4px 16px; padding-left:14px; border-left:1px solid var(--line); }
+  .kids.deep { margin-left:12px; }
+  .row.quest { background:#121a28; }
+  .row.err { background:transparent; border-style:dashed; cursor:default; }
+  .empty { margin:6px 6px 10px; color:var(--mute); font-size:12.5px; }
+  .chron .row { cursor:default; }
+  .tabs { flex:none; height:62px; display:flex; padding-bottom:6px; background:var(--card); border-top:1px solid var(--line); }
+  .tab { position:relative; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border:0; background:none; color:var(--mute); font:600 11px system-ui; cursor:pointer; }
+  .tab.on { color:var(--ink); }
+  .tab.on::before { content:""; position:absolute; top:-1px; left:34%; right:34%; height:2px; border-radius:2px; background:var(--acc); }
+  .scrim { position:absolute; inset:0; background:rgba(3,6,12,.55); opacity:0; pointer-events:none; transition:opacity .2s; }
+  .scrim.on { opacity:1; pointer-events:auto; }
+  .drawer { position:absolute; top:0; bottom:0; left:0; width:84%; display:flex; flex-direction:column; padding:22px 14px 16px; background:#0f1625; border-right:1px solid var(--line); transform:translateX(-102%); transition:transform .25s ease; }
+  .drawer.on { transform:none; }
+  .who { display:flex; align-items:center; gap:10px; padding:2px 6px 14px; margin-bottom:4px; border-bottom:1px solid var(--line); }
+  .who .av { width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:var(--acc-bg); color:var(--acc); font-weight:700; }
+  .who b { display:block; font-size:15px; }
+  .who small { color:var(--mute); font-size:12px; }
+  .mi { display:flex; justify-content:space-between; align-items:center; width:100%; padding:12px 8px; border:0; border-radius:10px; background:none; color:var(--ink); font:inherit; text-align:left; cursor:pointer; }
+  .mi:hover { background:var(--acc-bg); }
+  .mi small { color:var(--mute); font-size:12px; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>3 · One outline tree</h1>
+  <p>No screens to push. Realm is one scrolling outline, like the desktop sidebar: a realm opens into its Quests, a quest opens into its Errands, and the chevron turns as each level appears. Chronicle and Realm are underlined tabs at the bottom. The side menu slides in from the left, full height.</p>
+</div>
+
+<div class="phone">
+  <div class="status"><span>9:41</span><span>5G ▮</span></div>
+  <header class="top">
+    <button class="ib" id="menuBtn" aria-label="Menu">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <div>
+      <h1 id="title"></h1>
+      <small id="sub"></small>
+    </div>
+  </header>
+
+  <main class="scroll" id="chron" hidden></main>
+  <main class="scroll" id="tree"></main>
+
+  <nav class="tabs">
+    <button class="tab" data-tab="chronicle">
+      <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
+      Chronicle
+    </button>
+    <button class="tab" data-tab="realm">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg>
+      Realm
+    </button>
+  </nav>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer" aria-label="Side menu">
+    <div class="who"><span class="av">O</span><div><b>Outlore</b><small>This computer · 0.2.10</small></div></div>
+    <div class="label">The Keep</div>
+    <button class="mi">Library <small>Artifacts</small></button>
+    <button class="mi">Lore <small>Rules and facts</small></button>
+    <button class="mi">Archive <small>Fulfilled quests</small></button>
+    <div class="label">More</div>
+    <button class="mi">Reserves <small>Usage and budgets</small></button>
+    <button class="mi">Workshop <small>Settings</small></button>
+  </aside>
+</div>
+
+<script>
+const realms = [
+  { id: 'outlore', n: 'Outlore', sub: 'Workspace OUTLORE', quests: [
+    { id: 'shell', n: 'Phone shell redesign', s: 'Attention', e: [{ n: 'Draft five menus', s: 'Underway' }, { n: 'Check the Android gesture bar', s: 'Resting' }] },
+    { id: 'control', n: 'Phone control step 1', s: 'Underway', e: [{ n: 'Write the phone_info schema', s: 'Fulfilled' }] },
+    { id: 'wave', n: 'Review wave 2', s: 'Fulfilled', e: [] }] },
+  { id: 'web', n: 'Website', sub: 'No workspace', quests: [
+    { id: 'copy', n: 'Landing copy', s: 'Waiting', e: [{ n: 'Hero line options', s: 'Resting' }] },
+    { id: 'nf', n: 'Fix the 404 page', s: 'Resting', e: [] }] },
+  { id: 'research', n: 'Research', sub: 'No workspace', quests: [
+    { id: 'pricing', n: 'Compare harness pricing', s: 'Underway', e: [] }] },
+  { id: 'borderlands', n: 'Borderlands', sub: 'Quests with no realm', bl: true, quests: [
+    { id: 'lisbon', n: 'Plan a week in Lisbon', s: 'Resting', e: [] }] }
+];
+const feed = [
+  { s: 'Attention', t: 'Phone shell redesign needs your answer', w: 'Outlore · 10 min ago' },
+  { s: 'Underway', t: 'Compare harness pricing has started', w: 'Research · 1 h ago' },
+  { s: 'Fulfilled', t: 'Review wave 2 was fulfilled', w: 'Outlore · yesterday' }];
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const open = new Set(['r:outlore']); // open realms are "r:<id>", open quests "q:<id>"
+let tab = 'realm';
+
+function tree() {
+  return realms.map((r) => {
+    const isOpen = open.has('r:' + r.id);
+    const head = `${r.bl ? '<div class="label">Borderlands</div>' : ''}<button class="row realm ${isOpen ? 'open' : ''}" data-k="r:${r.id}"><span class="car">›</span><span class="tx"><b>${r.n}</b><small>${r.quests.length} quests · ${r.sub}</small></span></button>`;
+    if (!isOpen) return head;
+    const quests = `<div class="cap">Quests</div>` + r.quests.map((q) => {
+      const qOpen = open.has('q:' + q.id);
+      return `<button class="row quest ${qOpen ? 'open' : ''}" data-k="q:${q.id}"><span class="car">›</span><span class="tx"><b>${q.n}</b><small>${q.e.length} errands</small></span><span class="st ${q.s === 'Attention' ? 'att' : ''}">${q.s}</span></button>`
+        + (qOpen ? `<div class="kids deep"><div class="cap">Errands</div>${q.e.length ? q.e.map((e) => `<div class="row err"><span class="tx"><b>${e.n}</b></span><span class="st">${e.s}</span></div>`).join('') : '<p class="empty">No errands yet.</p>'}</div>` : '');
+    }).join('');
+    return head + `<div class="kids">${quests}</div>`;
+  }).join('');
+}
+
+function render() {
+  $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.tab === tab));
+  $('#chron').hidden = tab !== 'chronicle';
+  $('#tree').hidden = tab !== 'realm';
+  if (tab === 'chronicle') {
+    $('#title').textContent = 'Chronicle';
+    $('#sub').textContent = 'Updates across realms';
+    $('#chron').innerHTML = feed.map((f) => `<div class="row"><span class="tx"><b>${f.t}</b><small>${f.w}</small></span><span class="st ${f.s === 'Attention' ? 'att' : ''}">${f.s}</span></div>`).join('');
+  } else {
+    $('#title').textContent = 'Realm';
+    $('#sub').textContent = 'Outlore and the Borderlands';
+    $('#tree').innerHTML = tree();
+  }
+}
+
+$$('.tab').forEach((t) => t.addEventListener('click', () => { tab = t.dataset.tab; openMenu(false); render(); }));
+$('#tree').addEventListener('click', (e) => {
+  const k = e.target.closest('[data-k]');
+  if (!k) return;
+  const key = k.dataset.k;
+  if (open.has(key)) open.delete(key); else open.add(key);
+  render();
+});
+function openMenu(on) {
+  $('#drawer').classList.toggle('on', on);
+  $('#scrim').classList.toggle('on', on);
+}
+$('#menuBtn').addEventListener('click', () => openMenu(true));
+$('#scrim').addEventListener('click', () => openMenu(false));
+render();
+</script>
+</body>
+</html>

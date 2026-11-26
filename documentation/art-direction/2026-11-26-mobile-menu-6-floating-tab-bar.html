@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone menu draft 6 · Floating tab bar (2026-11-26)</title>
+<style>
+  :root { --bg:#eef0f4; --card:#ffffff; --ink:#15171c; --mute:#6f7684; --line:#dfe3ea; --acc:#3d5afe; --acc-soft:#e6ebff; --att:#d9480f; --att-soft:#ffe9df; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:12px; padding:24px 16px 40px; background:#c9ced8; font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); }
+  [hidden] { display:none !important; }
+  .intro { width:360px; }
+  .intro h1 { margin:0 0 4px; font-size:17px; }
+  .intro p { margin:0; font-size:12.5px; color:#363b46; }
+  .phone { position:relative; width:360px; height:740px; overflow:hidden; display:flex; flex-direction:column; background:var(--bg); border:8px solid #1d1f24; border-radius:38px; }
+  svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  .status { flex:none; height:34px; display:flex; justify-content:space-between; align-items:center; padding:0 24px; font-size:12px; font-weight:600; }
+  .top { flex:none; height:52px; display:flex; align-items:center; gap:6px; padding:0 10px; }
+  .ib { flex:none; width:40px; height:40px; display:grid; place-items:center; border:0; border-radius:50%; background:var(--card); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08); cursor:pointer; }
+  .ttl { flex:1; min-width:0; padding:0 6px; }
+  .ttl b { display:block; font-size:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ttl small { display:block; font-size:11.5px; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .body { flex:1; min-height:0; overflow-y:auto; padding:6px 14px 120px; scrollbar-width:none; }
+  .label { margin:16px 4px 6px; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); }
+  .row { width:100%; display:flex; align-items:center; gap:12px; margin-bottom:8px; padding:12px; background:var(--card); border:0; border-radius:16px; box-shadow:0 1px 2px rgba(0,0,0,.05); font:inherit; color:inherit; text-align:left; cursor:pointer; }
+  .sw { flex:none; width:38px; height:38px; display:grid; place-items:center; border-radius:12px; background:var(--acc-soft); color:var(--acc); font-weight:700; }
+  .tx { flex:1; min-width:0; }
+  .tx b { display:block; font-size:15px; font-weight:600; }
+  .tx small { font-size:12px; color:var(--mute); }
+  .chev { color:#b3b9c5; font-size:20px; }
+  .st { flex:none; font-size:11px; padding:3px 9px; border-radius:999px; background:#eceff4; color:#4f5664; }
+  .st.att { background:var(--att-soft); color:var(--att); }
+  .add { width:100%; margin-top:2px; padding:12px; border:1.5px dashed #b6bcc8; border-radius:16px; background:none; font:inherit; color:var(--mute); cursor:pointer; }
+  .empty { color:var(--mute); font-size:13px; margin:8px 4px; }
+  /* The floating bar: detached from the edges, rounded, glass over the content, with a shadow. */
+  .tabbar { position:absolute; left:18px; right:18px; bottom:20px; z-index:10; height:66px; display:flex; padding:6px; border-radius:33px; background:rgba(255,255,255,.82); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.7); box-shadow:0 12px 32px rgba(20,24,36,.22), 0 2px 6px rgba(20,24,36,.12); }
+  .tab { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:0; border-radius:27px; background:none; color:var(--mute); font:600 11px system-ui,sans-serif; cursor:pointer; transition:background .2s, color .2s; }
+  .tab.on { color:var(--acc); background:var(--acc-soft); }
+  .tab .dot { position:absolute; top:7px; left:calc(50% + 7px); min-width:17px; height:17px; padding:0 5px; border-radius:9px; background:var(--att); color:#fff; font-size:10px; line-height:17px; text-align:center; }
+  .scrim { position:absolute; inset:0; background:rgba(15,18,26,.38); opacity:0; pointer-events:none; transition:opacity .2s; z-index:20; }
+  .scrim.on { opacity:1; pointer-events:auto; }
+  .drawer { position:absolute; top:0; bottom:0; left:0; width:80%; z-index:30; display:flex; flex-direction:column; padding:22px 16px 18px; background:var(--card); transform:translateX(-102%); transition:transform .28s cubic-bezier(.2,.8,.2,1); box-shadow:8px 0 30px rgba(0,0,0,.2); border-radius:0 26px 26px 0; }
+  .drawer.on { transform:none; }
+  .who { display:flex; align-items:center; gap:10px; padding:4px 6px 16px; margin-bottom:6px; border-bottom:1px solid var(--line); }
+  .who b { display:block; font-size:15px; }
+  .who small { color:var(--mute); font-size:12px; }
+  .mi { display:flex; justify-content:space-between; align-items:center; width:100%; padding:12px 8px; border:0; border-radius:12px; background:none; font:inherit; color:var(--ink); text-align:left; cursor:pointer; }
+  .mi:hover { background:var(--acc-soft); }
+  .mi small { color:var(--mute); font-size:12px; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>6 · Floating tab bar</h1>
+  <p>A floating capsule of two tabs sits above the bottom edge: Chronicle and Realm. Realm drills down the way the push stack does: Realms, then a realm's Quests, then a quest's Errands. The top-left button opens the side menu. Content scrolls under the capsule, which stays on every screen.</p>
+</div>
+
+<div class="phone">
+  <div class="status"><span>9:41</span><span>5G ▮</span></div>
+  <header class="top">
+    <button class="ib" id="lead" aria-label="Menu"></button>
+    <div class="ttl"><b id="title"></b><small id="sub"></small></div>
+  </header>
+  <main class="body" id="body"></main>
+
+  <nav class="tabbar">
+    <button class="tab" data-tab="chronicle">
+      <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
+      Chronicle<span class="dot">2</span>
+    </button>
+    <button class="tab" data-tab="realm">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg>
+      Realm
+    </button>
+  </nav>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer" aria-label="Side menu">
+    <div class="who"><span class="sw">O</span><div><b>Outlore</b><small>This computer · 0.2.10</small></div></div>
+    <div class="label">The Keep</div>
+    <button class="mi">Library <small>Artifacts</small></button>
+    <button class="mi">Lore <small>Rules and facts</small></button>
+    <button class="mi">Archive <small>Fulfilled quests</small></button>
+    <div class="label">More</div>
+    <button class="mi">Reserves <small>Usage and budgets</small></button>
+    <button class="mi">Workshop <small>Settings</small></button>
+  </aside>
+</div>
+
+<script>
+const realms = [
+  { id: 'outlore', n: 'Outlore', sub: 'Workspace OUTLORE', quests: [
+    { id: 'shell', n: 'Phone shell redesign', s: 'Attention', e: [{ n: 'Draft five menus', s: 'Underway' }, { n: 'Check the Android gesture bar', s: 'Resting' }] },
+    { id: 'control', n: 'Phone control step 1', s: 'Underway', e: [{ n: 'Write the phone_info schema', s: 'Fulfilled' }] },
+    { id: 'wave', n: 'Review wave 2', s: 'Fulfilled', e: [] }] },
+  { id: 'web', n: 'Website', sub: 'No workspace', quests: [
+    { id: 'copy', n: 'Landing copy', s: 'Waiting', e: [{ n: 'Hero line options', s: 'Resting' }] },
+    { id: 'nf', n: 'Fix the 404 page', s: 'Resting', e: [] }] },
+  { id: 'research', n: 'Research', sub: 'No workspace', quests: [
+    { id: 'pricing', n: 'Compare harness pricing', s: 'Underway', e: [] }] },
+  { id: 'borderlands', n: 'Borderlands', sub: 'Quests with no realm', bl: true, quests: [
+    { id: 'lisbon', n: 'Plan a week in Lisbon', s: 'Resting', e: [] }] }
+];
+const feed = [
+  { s: 'Attention', t: 'Phone shell redesign needs your answer', w: 'Outlore · 10 min ago' },
+  { s: 'Underway', t: 'Compare harness pricing has started', w: 'Research · 1 h ago' },
+  { s: 'Fulfilled', t: 'Review wave 2 was fulfilled', w: 'Outlore · yesterday' }];
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const byId = (id) => realms.find((r) => r.id === id);
+const ic = { menu: '<path d="M4 7h16M4 12h16M4 17h16"/>', back: '<path d="M15 5l-7 7 7 7"/>' };
+const svg = (p) => `<svg viewBox="0 0 24 24">${p}</svg>`;
+
+let tab = 'realm';
+let stack = []; // {level:'quests', realm} or {level:'errands', realm, quest}
+const body = $('#body');
+const lead = $('#lead');
+
+function setLead(kind) {
+  lead.dataset.kind = kind;
+  lead.innerHTML = svg(kind === 'back' ? ic.back : ic.menu);
+  lead.setAttribute('aria-label', kind === 'back' ? 'Back' : 'Menu');
+}
+function rowRealm(r) {
+  return `<button class="row" data-go="${r.id}"><span class="sw">${r.n[0]}</span><span class="tx"><b>${r.n}</b><small>${r.sub} · ${r.quests.length} quests</small></span><span class="chev">›</span></button>`;
+}
+function rowQuest(q) {
+  return `<button class="row" data-quest="${q.id}"><span class="tx"><b>${q.n}</b><small>${q.e.length} errands</small></span><span class="st ${q.s === 'Attention' ? 'att' : ''}">${q.s}</span><span class="chev">›</span></button>`;
+}
+function rowErrand(e) {
+  return `<div class="row"><span class="tx"><b>${e.n}</b></span><span class="st">${e.s}</span></div>`;
+}
+function render() {
+  $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.tab === tab));
+  const cur = stack[stack.length - 1];
+  if (tab === 'chronicle') {
+    $('#title').textContent = 'Chronicle';
+    $('#sub').textContent = 'Updates across realms';
+    body.innerHTML = '<div class="label">Latest</div>' + feed.map((f) => `<div class="row"><span class="tx"><b>${f.t}</b><small>${f.w}</small></span><span class="st ${f.s === 'Attention' ? 'att' : ''}">${f.s}</span></div>`).join('');
+    setLead('menu');
+  } else if (!cur) {
+    $('#title').textContent = 'Realms';
+    $('#sub').textContent = 'Choose a realm to see its quests';
+    body.innerHTML = '<div class="label">Realms</div>' + realms.filter((r) => !r.bl).map(rowRealm).join('') + '<div class="label">Borderlands</div>' + rowRealm(byId('borderlands'));
+    setLead('menu');
+  } else if (cur.level === 'quests') {
+    const r = byId(cur.realm);
+    $('#title').textContent = r.n;
+    $('#sub').textContent = 'Quests';
+    body.innerHTML = '<div class="label">Quests</div>' + r.quests.map(rowQuest).join('') + '<button class="add">+ New quest</button>';
+    setLead('back');
+  } else {
+    const r = byId(cur.realm);
+    const q = r.quests.find((x) => x.id === cur.quest);
+    $('#title').textContent = q.n;
+    $('#sub').textContent = 'Errands';
+    body.innerHTML = `<button class="row"><span class="sw">↗</span><span class="tx"><b>Open the quest</b><small>${q.s}</small></span><span class="chev">›</span></button><div class="label">Errands</div>` + (q.e.length ? q.e.map(rowErrand).join('') : '<p class="empty">No errands yet.</p>') + '<button class="add">+ New errand</button>';
+    setLead('back');
+  }
+}
+
+$$('.tab').forEach((t) => t.addEventListener('click', () => { tab = t.dataset.tab; stack = []; openMenu(false); render(); }));
+body.addEventListener('click', (e) => {
+  const go = e.target.closest('[data-go]');
+  const quest = e.target.closest('[data-quest]');
+  if (go) stack = [{ level: 'quests', realm: go.dataset.go }];
+  else if (quest) stack.push({ level: 'errands', realm: stack[stack.length - 1].realm, quest: quest.dataset.quest });
+  else return;
+  render();
+});
+lead.addEventListener('click', () => {
+  if (lead.dataset.kind === 'back') { stack.pop(); render(); }
+  else openMenu(true);
+});
+function openMenu(on) {
+  $('#drawer').classList.toggle('on', on);
+  $('#scrim').classList.toggle('on', on);
+}
+$('#scrim').addEventListener('click', () => openMenu(false));
+render();
+</script>
+</body>
+</html>

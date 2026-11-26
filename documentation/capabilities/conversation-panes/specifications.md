@@ -48,8 +48,9 @@ The Workshop (Settings) is not a pane and not a sheet: it is the page that takes
 
 The pane chain is **channel → quest → errand**. The desktop sidebar opens the channel or a quest. A quest defaults to its **Missives** tab (its messages, where anchored Reply lines open errands; formerly Messages, CHG-0571). Its Errands tab lists the quest’s errands with their state and attention indicators and opens the same third pane. A realm's channel has a Missives tab (its conversation), a **Quests** tab that lists the realm's quests in the same pane, not a pane of its own (the owner, 2026-11-20), and a **History** tab with every quest of the realm by recency, grouped Today, Yesterday, and by month, with each quest's errands, foldable; it replaces the realm's quest-list page (the owner, 2026-11-24, CHG-0686). The History tab follows Rituals on the desktop and phone tab rows alike; the Borderlands has the Missives, Quests, Rituals, and History tabs over the quests in no realm. The sidebar shows attention at quest level. The existing phone sidebar keeps its errand rows. Narrow desktop windows can fold earlier panes to notches.
 
-The quest title in the conversation header switches to another non-archived quest in the current realm or, for a Borderlands quest, in the Borderlands.
-The errand title switches to another errand in the same quest, including existing sub-errands.
+In a pane, the quest title shows the realm's **Quests** tab and the errand title shows its quest's **Errands** tab, as the notches beside the panes do (the owner, 2026-11-27); a Ritual's title keeps its switcher.
+The narrow header's quest title switches to another non-archived quest in the current realm or, for a Borderlands quest, in the Borderlands.
+The narrow header's errand title switches to another errand in the same quest, including existing sub-errands.
 The New errand title also opens this picker when the quest has two or more errands.
 The switchers also appear in the narrow header when another conversation of the same kind is available.
 
@@ -108,24 +109,36 @@ The blocks appear whether or not the lists already have entries.
 - When the last open desktop pane is a realm channel or the Borderlands, its right edge has **New quest** and **Quests**. When it is an ordinary quest, the edge has **New errand** and **Errands**. A Ritual offers **Errands** for its runs. The create notch has a plus on its icon and starts a quest or opens the errand starter.
 - The list notch opens its tab in the same pane, even when the list is empty. It shows the most urgent active child's state and provides the route to open a folded child from the list. Rituals remain available from the channel's Rituals tab.
 - When multiple conversation panes are visible, each desktop pane header offers a **Fold** button with a pane-and-arrow icon. The quest and errand can fold even when they are the deepest conversation.
-- On a phone (a narrow window) one pane shows at a time with a Back chevron, as the [phone view](../mission-tracking/specifications.md#simplified-left-navigation) does today.
+- On a phone (a narrow window) one pane shows at a time, the realm's, the quest's or the errand's, chosen on the floating bar and landing in its chat ([the phone's bar](#the-phones-bar), CHG-0773). Back goes up one level.
 
 #### Phone channels
 
-- Tap a realm name or **Borderlands** on the phone's Quests tab to open its channel. Tap a realm's **Show all** shortcut to open its Quests tab.
+- Choosing a realm or **Borderlands** on the phone's bar opens its channel, on its Missives tab. A realm's **Show all** shortcut opens its Quests tab on a wide window only.
 - The channel shows one view at a time. Its tab row scrolls horizontally when needed. It offers Missives, Quests, Rituals, and Companions. A realm also offers its Realm tab.
-- Back in the channel opens the Quests tab. Back in a quest opened from the channel returns to the same channel and tab. This includes quests opened from a linked Missive. A quest picked directly from the Quests tab returns there, and one opened from Chronicler returns to Chronicler.
-- The Quests tab and a quest's own header offer Mark as done, Mark as not done, and Archive or Delete. They use the same quest ending rules as desktop, including confirmation when required.
+- Back in the channel opens the Chronicle. Back in a quest opened from the channel or from the bar returns to its realm's channel, and one opened from the Chronicle returns to the Chronicle (an errand returns to its quest first).
+- A quest's own header offers Mark as done, Mark as not done, and Archive or Delete, at the top right of the phone's top bar. They use the same quest ending rules as desktop, including confirmation when required.
 - Panes are resized by dragging their edges; the widths are remembered.
 - **Equal widths** sits above the conversation row and gives the open panes the same share again (a third each with three) and forgets the dragged shares; folded panes stay folded.
 - When multiple conversation panes are visible, the **Expand pane** button uses outward arrows and gives its pane the available width. Folded parents become left-edge notches, and child conversations are available from the tabs. A full-width pane omits the layout buttons.
 
+#### The phone's bar
+
+The owner chose the growing bar of [draft 8](../../art-direction/2026-11-26-mobile-menu-8-growing-bar.html) and asked that a choice land in the chat with the composer above the bar ([draft 9](../../art-direction/2026-11-26-mobile-menu-9-chat-landing.html), 2026-11-26, CHG-0773). The earlier drafts, one to seven, stay in [art direction](../../art-direction/) as the record of the options.
+
+- A floating capsule of tabs sits above the bottom edge: **Chronicle** (its icon alone, with the unread count), **Realms**, **Quests** and **Errands**. Chronicler is not a tab on the phone.
+- **Quests** shows only once a realm is chosen, and **Errands** only once a quest is; each grows in with an animation that widens the bar around its centre, and goes away again when its parent is changed. The Quests tab draws two swords until a quest is chosen, then one.
+- Choosing lands in the chat: the realm's channel, the quest's conversation, or the errand's. Returning to the already-chosen realm by tapping **Realms** keeps whichever sub-tab was open there; choosing another realm opens on **Missives**. The composer floats above the bar, which hides while the keyboard is open. The conversation's own tabs (Missives, Quests, Rituals, History, Realm, Companions on a channel; the Errands list and the quest panel on a quest) stay where the app draws them today.
+- A **tap** on a tab shows what it holds; while it holds nothing it opens a floating sheet above the bar to choose. A **hold** of half a second opens the sheet to change the choice, and a line fills along the tab's foot while it is held. The sheet lists the realms (with the Borderlands), the chosen realm's quests with their states, or the chosen quest's errands with theirs; a press outside it closes it.
+- Choosing another realm clears the quest and errand chosen; choosing another quest clears the errand. The Chronicle and the places of the side menu keep the choices, so the tabs lead back.
+- The top bar has the side menu's button at the left, the conversation's title, and at the right the actions of the desktop pane header: **New quest** on a realm's channel; **New errand**, **Mark as done** (or as not done), **Archive** (or Delete) and the **Quest panel**'s sword on a quest; the first three on an errand. New errand opens the errand starter over the quest, which a phone has no pane for.
+- The **side menu** slides in from the left over a scrim. It lists the hosts (this computer and every paired host, with **Add a host**), then the Keep (Lore, Archive) and Reserves and Settings (the Workshop).
+
 #### The phone's Chronicle
 
 - The phone's first tab is the **Chronicle**, carrying its unread count as a badge, as the desktop sidebar's row does.
-- The floating pill, which holds the tabs, shows on every phone screen but a quest or errand, so the count shows without opening anything.
+- The floating bar, which holds the tabs, shows on every phone screen but the quest panel and the Ritual form, so the count shows without opening anything.
 - The Chronicle's Attention filters wrap on a narrow screen, and every row and conversation heading is a touch target.
-- Back in a quest or errand opened from the Chronicle returns to the Chronicle, as a channel quest returns to its channel; a quest picked directly from the menu returns there.
+- Back in a quest or errand opened from the Chronicle returns to the Chronicle, as a channel quest returns to its channel.
 
 Realm and Borderlands channels omit the Chronicler, harness, and model line on both Missives and Quests.
 

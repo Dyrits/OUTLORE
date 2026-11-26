@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone menu draft 4 · Stacked sheets, black and white (2026-11-26)</title>
+<style>
+  :root { --ink:#000; --paper:#fff; --mute:#5c5c5c; --soft:#f2f2f2; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:12px; padding:24px 16px 40px; background:#e6e6e6; font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); }
+  [hidden] { display:none !important; }
+  .intro { width:360px; }
+  .intro h1 { margin:0 0 4px; font-size:17px; }
+  .intro p { margin:0; font-size:12.5px; color:#333; }
+  .phone { position:relative; width:360px; height:740px; overflow:hidden; display:flex; flex-direction:column; background:var(--paper); border:8px solid #000; border-radius:38px; }
+  svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  .status { flex:none; height:34px; display:flex; justify-content:space-between; align-items:center; padding:0 24px; font-size:12px; font-weight:700; }
+  .top { flex:none; display:flex; align-items:center; justify-content:space-between; padding:6px 14px 0; }
+  .ib { width:42px; height:42px; display:grid; place-items:center; border:2px solid #000; border-radius:50%; background:var(--paper); color:#000; cursor:pointer; }
+  .big { flex:none; margin:12px 16px 12px; font:800 34px/1 system-ui,-apple-system,sans-serif; letter-spacing:-.03em; }
+  .big small { display:block; margin-top:6px; font:600 12px system-ui; letter-spacing:.02em; color:var(--mute); }
+  .grid { flex:1; min-height:0; overflow-y:auto; display:grid; grid-template-columns:1fr 1fr; gap:10px; align-content:start; padding:0 14px 14px; scrollbar-width:none; }
+  .lbl { grid-column:1 / -1; margin-top:6px; font:700 11px system-ui; letter-spacing:.1em; text-transform:uppercase; }
+  .tile { aspect-ratio:1; display:flex; flex-direction:column; justify-content:space-between; padding:12px; border:2px solid #000; border-radius:8px; background:var(--paper); color:#000; font:inherit; text-align:left; cursor:pointer; }
+  .tile.att { background:#000; color:#fff; }
+  .tile .n { font:800 12px system-ui; }
+  .tile b { font:800 19px/1.05 system-ui; }
+  .tile small { font-size:11.5px; color:inherit; opacity:.7; }
+  .tabs { flex:none; display:flex; height:64px; border-top:2px solid #000; }
+  .tab { flex:1; border:0; background:var(--paper); color:#000; font:700 15px system-ui; cursor:pointer; }
+  .tab.on { background:#000; color:#fff; }
+  .scrim { position:absolute; inset:0; background:rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:opacity .25s; z-index:20; }
+  .scrim.on { opacity:1; pointer-events:auto; }
+  .sheets { position:absolute; inset:0; pointer-events:none; z-index:21; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; height:74%; display:flex; flex-direction:column; padding:10px 16px 18px; background:var(--paper); border-top:2px solid #000; border-radius:22px 22px 0 0; pointer-events:auto; transition:transform .35s cubic-bezier(.2,.8,.2,1); }
+  .sheet.errands { height:56%; }
+  .sheet.under { transform:translateY(-16px) scale(.93); transform-origin:50% 100%; filter:brightness(.7); }
+  .sheet.enter { animation:rise .38s cubic-bezier(.2,.8,.2,1); }
+  @keyframes rise { from { transform:translateY(105%); } to { transform:none; } }
+  .grab { align-self:center; width:44px; height:5px; margin:0 0 12px; border-radius:3px; background:#000; }
+  .sh { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
+  .sh small { display:block; font:700 11px system-ui; letter-spacing:.1em; text-transform:uppercase; }
+  .sh h2 { margin:3px 0 0; font:800 26px/1.05 system-ui; letter-spacing:-.02em; }
+  .close { flex:none; width:40px; height:40px; border:2px solid #000; border-radius:50%; background:var(--paper); font:700 18px system-ui; cursor:pointer; }
+  .sub { font:700 11px system-ui; letter-spacing:.1em; text-transform:uppercase; margin:6px 0 8px; }
+  .list { flex:1; min-height:0; overflow-y:auto; scrollbar-width:none; }
+  .qc { display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; margin-bottom:10px; padding:14px; border:2px solid #000; border-radius:14px; background:var(--paper); color:#000; font:inherit; text-align:left; cursor:pointer; }
+  .qc.att { background:#000; color:#fff; }
+  .qc b { display:block; font-size:16px; }
+  .qc small { font-size:12px; opacity:.7; }
+  .qc .tag { flex:none; font:700 11px system-ui; border:1.5px solid currentColor; border-radius:999px; padding:2px 8px; }
+  .er { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid #000; }
+  .er b { font-size:15px; }
+  .er span { font:700 11px system-ui; text-transform:uppercase; letter-spacing:.06em; }
+  .empty { color:var(--mute); font-size:13px; margin:12px 0; }
+  .drawer { position:absolute; top:0; bottom:0; left:0; width:80%; display:flex; flex-direction:column; padding:22px 16px 18px; background:var(--paper); border-right:2px solid #000; transform:translateX(-103%); transition:transform .25s ease; z-index:30; }
+  .drawer.on { transform:none; }
+  .drawer h3 { margin:0 0 10px; font:700 11px system-ui; letter-spacing:.1em; text-transform:uppercase; }
+  .drawer .who { font:800 22px/1.1 system-ui; margin-bottom:14px; }
+  .drawer .who small { display:block; font:500 12px system-ui; color:var(--mute); margin-top:4px; }
+  .mi { display:flex; justify-content:space-between; align-items:center; width:100%; padding:14px 2px; border:0; border-bottom:1px solid #000; background:none; color:#000; font:700 17px system-ui; text-align:left; cursor:pointer; }
+  .mi small { font:500 12px system-ui; color:var(--mute); }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>4 · Stacked sheets, black and white</h1>
+  <p>The Realm tab is a grid of realm tiles. Tap a realm and its Quests rise as a sheet; tap a quest and its Errands rise as a second sheet, the first one stepping back behind it. Each sheet closes by its ×, or by a tap on the dimmed page. The side menu is a plain white panel from the left.</p>
+</div>
+
+<div class="phone" id="phone">
+  <div class="status"><span>9:41</span><span>5G ▮</span></div>
+  <header class="top">
+    <button class="ib" id="menuBtn" aria-label="Menu">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </header>
+
+  <section id="pageChron" hidden style="flex:1; min-height:0; display:flex; flex-direction:column;">
+    <h2 class="big">Chronicle<small>Updates across realms</small></h2>
+    <div class="grid" id="feed" style="grid-template-columns:1fr;"></div>
+  </section>
+
+  <section id="pageRealm" style="flex:1; min-height:0; display:flex; flex-direction:column;">
+    <h2 class="big">Realms<small>Choose one to see its quests</small></h2>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab" data-tab="chronicle">Chronicle</button>
+    <button class="tab" data-tab="realm">Realm</button>
+  </nav>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="sheets" id="sheets"></div>
+
+  <aside class="drawer" id="drawer" aria-label="Side menu">
+    <div class="who">Outlore<small>This computer · 0.2.10</small></div>
+    <h3>The Keep</h3>
+    <button class="mi">Library <small>Artifacts</small></button>
+    <button class="mi">Lore <small>Rules and facts</small></button>
+    <button class="mi">Archive <small>Fulfilled quests</small></button>
+    <h3 style="margin-top:14px;">More</h3>
+    <button class="mi">Reserves <small>Usage and budgets</small></button>
+    <button class="mi">Workshop <small>Settings</small></button>
+  </aside>
+</div>
+
+<script>
+const realms = [
+  { id: 'outlore', n: 'Outlore', sub: 'Workspace OUTLORE', quests: [
+    { id: 'shell', n: 'Phone shell redesign', s: 'Attention', e: [{ n: 'Draft five menus', s: 'Underway' }, { n: 'Check the Android gesture bar', s: 'Resting' }] },
+    { id: 'control', n: 'Phone control step 1', s: 'Underway', e: [{ n: 'Write the phone_info schema', s: 'Fulfilled' }] },
+    { id: 'wave', n: 'Review wave 2', s: 'Fulfilled', e: [] }] },
+  { id: 'web', n: 'Website', sub: 'No workspace', quests: [
+    { id: 'copy', n: 'Landing copy', s: 'Waiting', e: [{ n: 'Hero line options', s: 'Resting' }] },
+    { id: 'nf', n: 'Fix the 404 page', s: 'Resting', e: [] }] },
+  { id: 'research', n: 'Research', sub: 'No workspace', quests: [
+    { id: 'pricing', n: 'Compare harness pricing', s: 'Underway', e: [] }] },
+  { id: 'borderlands', n: 'Borderlands', sub: 'Quests with no realm', bl: true, quests: [
+    { id: 'lisbon', n: 'Plan a week in Lisbon', s: 'Resting', e: [] }] }
+];
+const feedItems = [
+  { s: 'Attention', t: 'Phone shell redesign needs your answer', w: 'Outlore · 10 min ago' },
+  { s: 'Underway', t: 'Compare harness pricing has started', w: 'Research · 1 h ago' },
+  { s: 'Fulfilled', t: 'Review wave 2 was fulfilled', w: 'Outlore · yesterday' }];
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const byId = (id) => realms.find((r) => r.id === id);
+let tab = 'realm';
+let sheets = []; // {level:'quests', realm} or {level:'errands', realm, quest}; the last one is on top
+
+function renderGrid() {
+  $('#grid').innerHTML = '<div class="lbl">Realms</div>'
+    + realms.filter((r) => !r.bl).map((r) => `<button class="tile ${r.quests.some((q) => q.s === 'Attention') ? 'att' : ''}" data-realm="${r.id}"><span class="n">${r.quests.length} quests</span><div><b>${r.n}</b><small>${r.sub}</small></div></button>`).join('')
+    + `<div class="lbl">Borderlands</div><button class="tile" data-realm="borderlands"><span class="n">1 quest</span><div><b>Borderlands</b><small>Quests with no realm</small></div></button>`;
+}
+function renderSheets() {
+  const host = $('#sheets');
+  host.innerHTML = '';
+  sheets.forEach((s, i) => {
+    const top = i === sheets.length - 1;
+    const el = document.createElement('section');
+    const fresh = s.fresh;
+    s.fresh = false;
+    const r = byId(s.realm);
+    el.className = `sheet ${s.level === 'errands' ? 'errands' : ''} ${top ? '' : 'under'} ${fresh ? 'enter' : ''}`;
+    if (s.level === 'quests') {
+      el.innerHTML = `<div class="grab"></div><div class="sh"><div><small>Realm</small><h2>${r.n}</h2></div><button class="close" data-close aria-label="Close">×</button></div>`
+        + `<div class="sub">Quests</div><div class="list">` + r.quests.map((q) => `<button class="qc ${q.s === 'Attention' ? 'att' : ''}" data-quest="${q.id}"><div><b>${q.n}</b><small>${q.e.length} errands</small></div><span class="tag">${q.s}</span></button>`).join('') + `</div>`;
+    } else {
+      const q = r.quests.find((x) => x.id === s.quest);
+      el.innerHTML = `<div class="grab"></div><div class="sh"><div><small>${r.n}</small><h2>${q.n}</h2></div><button class="close" data-close aria-label="Close">×</button></div>`
+        + `<div class="sub">Errands</div><div class="list">` + (q.e.length ? q.e.map((e) => `<div class="er"><b>${e.n}</b><span>${e.s}</span></div>`).join('') : '<p class="empty">No errands yet.</p>') + `</div>`;
+    }
+    host.appendChild(el);
+  });
+  $('#scrim').classList.toggle('on', sheets.length > 0);
+}
+function renderPages() {
+  $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.tab === tab));
+  $('#pageChron').hidden = tab !== 'chronicle';
+  $('#pageRealm').hidden = tab !== 'realm';
+  $('#feed').innerHTML = feedItems.map((f) => `<div class="er" style="align-items:flex-start;"><div><b>${f.t}</b><br><small style="color:var(--mute)">${f.w}</small></div><span>${f.s}</span></div>`).join('');
+}
+
+$$('.tab').forEach((t) => t.addEventListener('click', () => {
+  tab = t.dataset.tab;
+  sheets = [];
+  openMenu(false);
+  renderPages(); renderSheets();
+}));
+$('#grid').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-realm]');
+  if (!t) return;
+  sheets = [{ level: 'quests', realm: t.dataset.realm, fresh: true }];
+  renderSheets();
+});
+$('#sheets').addEventListener('click', (e) => {
+  const quest = e.target.closest('[data-quest]');
+  if (quest) {
+    const top = sheets[sheets.length - 1];
+    sheets.push({ level: 'errands', realm: top.realm, quest: quest.dataset.quest, fresh: true });
+  } else if (e.target.closest('[data-close]')) {
+    sheets.pop();
+  } else return;
+  renderSheets();
+});
+$('#scrim').addEventListener('click', () => { sheets.pop(); renderSheets(); });
+function openMenu(on) { $('#drawer').classList.toggle('on', on); }
+$('#menuBtn').addEventListener('click', () => openMenu(true));
+
+renderGrid();
+renderPages();
+renderSheets();
+</script>
+</body>
+</html>

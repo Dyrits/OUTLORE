@@ -1,167 +1,103 @@
-import type { MissionId } from "@outlore/contracts";
+import type { MissionId, ThreadId } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import { initialLocation, navigate } from "../../src/shell/location";
+import type { PhoneRealm } from "../../src/shell/phoneSelection";
 import {
-  initialPillScroll,
+  barBottomGap,
+  barClearanceOf,
+  barHeight,
+  chronicleEvent,
   phoneBackOf,
   phoneShellOf,
-  phoneTabEventOf,
   phoneTabs,
-  pillBottomGap,
-  pillClearanceOf,
-  pillHeight,
-  pillScrollOf,
   withOpacity,
 } from "../../src/shell/phoneShell";
 
 const quest = "quest" as MissionId;
+const errand = "errand" as ThreadId;
 const start = initialLocation(null);
+const realm: PhoneRealm = { id: "realm", name: "Realm" };
+const listing = { id: "realm", name: "Realm" };
 
-describe("the phone's tabs", () => {
-  it("are the Chronicle, Quests and Chronicler, in that order", () => {
-    expect(phoneTabs.map((tab) => tab.label)).toEqual(["Chronicle", "Quests", "Chronicler"]);
+describe("choosing the phone's tabs", () => {
+  it("are the Chronicle, Realms, Quests and Errands, in that order", () => {
+    expect(phoneTabs.map((tab) => tab.label)).toEqual(["Chronicle", "Realms", "Quests", "Errands"]);
   });
 
-  it("start on the Chronicle, with the pill and the top bar naming it", () => {
+  it("start on the Chronicle, with the bar and the top bar naming it", () => {
     expect(phoneShellOf(start, false)).toMatchObject({
-      bottom: "pill",
-      cover: null,
+      hasBar: true,
       tab: "chronicle",
       title: "Chronicle",
     });
-    const chronicle = navigate(start, { place: "Chronicle", type: "place" });
-    expect(phoneShellOf(chronicle, false).tab).toBe("chronicle");
+    expect(phoneShellOf(navigate(start, chronicleEvent), false).tab).toBe("chronicle");
   });
 
-  it("light the tab each choice opens, and each tab is a full screen of its own", () => {
-    for (const tab of phoneTabs) {
-      const next = navigate(start, phoneTabEventOf(tab.id));
-      const shell = phoneShellOf(next, false);
-      expect(shell.tab).toBe(tab.id);
-      expect(shell.bottom).toBe("pill");
-      expect(shell.title).toBe(tab.label);
-    }
-    expect(phoneShellOf(navigate(start, phoneTabEventOf("quests")), false).cover).toBe("quests");
-    expect(phoneShellOf(navigate(start, phoneTabEventOf("chronicler")), false).cover).toBe("chronicler");
-    expect(phoneShellOf(navigate(start, phoneTabEventOf("chronicle")), false).cover).toBeNull();
+  it("light Realms on a realm's channel, which is a conversation the top bar leaves to its own header", () => {
+    const channel = navigate(start, { listing, type: "channel" });
+    expect(phoneShellOf(channel, false)).toMatchObject({
+      hasBar: true,
+      tab: "realms",
+      title: null,
+    });
+    expect(phoneShellOf(navigate(start, { listing: null, type: "channel" }), false).tab).toBe("realms");
   });
 
-  it("go from one tab to another, leaving no cover of the one before", () => {
-    const chronicler = navigate(start, phoneTabEventOf("chronicler"));
-    const quests = navigate(chronicler, phoneTabEventOf("quests"));
-    expect(phoneShellOf(quests, false).cover).toBe("quests");
-    const chronicle = navigate(quests, phoneTabEventOf("chronicle"));
-    expect(phoneShellOf(chronicle, false)).toMatchObject({ cover: null, tab: "chronicle" });
+  it("light Quests on a quest and Errands on an errand, both conversations", () => {
+    const opened = navigate(start, { id: quest, type: "quest" });
+    expect(phoneShellOf(opened, false)).toMatchObject({ hasBar: true, tab: "quests" });
+    const inErrand = navigate(opened, { id: errand, missionId: quest, type: "thread" });
+    expect(phoneShellOf(inErrand, false)).toMatchObject({ hasBar: true, tab: "errands" });
+    expect(phoneShellOf(navigate(inErrand, { id: null, missionId: quest, type: "thread" }), false).tab).toBe("quests");
   });
 
-  it("keep a realm's channel under the Quests tab", () => {
-    const channel = navigate(start, { listing: { id: "realm", name: "Realm" }, type: "channel" });
-    expect(phoneShellOf(channel, false)).toMatchObject({ bottom: "pill", cover: null, tab: "quests" });
+  it("have a conversation keep clear of the bar, so its composer sits above it", () => {
+    const opened = navigate(start, { id: quest, type: "quest" });
+    expect(phoneShellOf(opened, false).isClearOfBar).toBe(true);
+    expect(phoneShellOf(navigate(start, { listing: null, type: "channel" }), false).isClearOfBar).toBe(true);
   });
 });
 
-describe("the pill and the composer", () => {
-  it("gives way to the conversation's own composer in a quest or errand", () => {
-    const opened = navigate(start, { id: quest, type: "quest" });
-    expect(phoneShellOf(opened, false)).toMatchObject({ bottom: "composer", tab: null });
-  });
-
-  it("is back once the Quests tab, the Menu or Chronicler covers a quest", () => {
-    const opened = navigate(start, { id: quest, type: "quest" });
-    expect(phoneShellOf(navigate(opened, { type: "backFromQuest" }), false)).toMatchObject({
-      bottom: "pill",
-      cover: "quests",
-      tab: "quests",
-    });
-    expect(phoneShellOf(navigate(opened, { isOpen: true, type: "menu" }), false).bottom).toBe("pill");
-    expect(phoneShellOf(navigate(opened, { isOpen: true, type: "narrowChronicler" }), false).bottom).toBe("pill");
-  });
-
+describe("showing or hiding the bar", () => {
   it("is absent under the Ritual form and the quest panel, which have their own buttons", () => {
     const opened = navigate(start, { id: quest, type: "quest" });
-    expect(phoneShellOf(opened, true).bottom).toBe("none");
+    expect(phoneShellOf(opened, true).hasBar).toBe(false);
     const form = navigate(opened, {
       target: { kind: "create", originMissionId: null, realmPath: null },
       type: "ritualForm",
     });
-    expect(phoneShellOf(form, false).bottom).toBe("none");
-    expect(phoneShellOf(navigate(start, { place: "Chronicle", type: "place" }), true).bottom).toBe("none");
-  });
-});
-
-describe("the Menu", () => {
-  it("covers the content with no tab lit, named in the top bar", () => {
-    const menu = navigate(start, { isOpen: true, type: "menu" });
-    expect(phoneShellOf(menu, false)).toMatchObject({ bottom: "pill", cover: "menu", tab: null, title: "Menu" });
+    expect(phoneShellOf(form, false).hasBar).toBe(false);
+    expect(phoneShellOf(navigate(start, chronicleEvent), true).hasBar).toBe(false);
   });
 
-  it("opens a place with the pill still there and no tab lit", () => {
-    for (const place of ["Lore", "Archived", "Reserves", "Settings"] as const) {
-      const shell = phoneShellOf(
-        navigate(navigate(start, { isOpen: true, type: "menu" }), { place, type: "place" }),
-        false,
-      );
-      expect(shell).toMatchObject({ bottom: "pill", cover: null, tab: null });
-    }
-  });
-
-  it("names each place in the top bar, which goes back to the Menu, and no other screen has that Back", () => {
-    const shellOf = (place: "Lore" | "Archived" | "Reserves" | "Settings" | "Chronicle" | "Channel") =>
+  it("stays under a place of the side menu, with no tab lit and the place named in the top bar", () => {
+    const shellOf = (place: "Lore" | "Archived" | "Reserves" | "Settings") =>
       phoneShellOf(navigate(start, { place, type: "place" }), false);
     expect([shellOf("Lore"), shellOf("Archived"), shellOf("Reserves"), shellOf("Settings")]).toMatchObject([
-      { hasBack: true, title: "Lore" },
-      { hasBack: true, title: "Archive" },
-      { hasBack: true, title: "Reserves" },
-      { hasBack: true, title: "Settings" },
+      { hasBar: true, tab: null, title: "Lore" },
+      { hasBar: true, tab: null, title: "Archive" },
+      { hasBar: true, tab: null, title: "Reserves" },
+      { hasBar: true, tab: null, title: "Settings" },
     ]);
-    expect(shellOf("Chronicle").hasBack).toBe(false);
-    expect(shellOf("Channel").hasBack).toBe(false);
-    expect(phoneShellOf(navigate(start, { isOpen: true, type: "menu" }), false).hasBack).toBe(false);
   });
 
-  it("keeps the screens that cannot scroll beneath the pill clear of it", () => {
-    const clear = (place: "Lore" | "Archived" | "Reserves" | "Settings" | "Chronicle" | "Channel") =>
-      phoneShellOf(navigate(start, { place, type: "place" }), false).isClearOfPill;
-    expect(clear("Chronicle")).toBe(false);
-    expect(clear("Lore")).toBe(false);
-    expect(clear("Archived")).toBe(false);
-    expect(clear("Reserves")).toBe(false);
+  it("keeps the screens that cannot scroll beneath the bar clear of it", () => {
+    const clear = (place: "Lore" | "Archived" | "Reserves" | "Settings" | "Chronicle") =>
+      phoneShellOf(navigate(start, { place, type: "place" }), false).isClearOfBar;
+    expect([clear("Chronicle"), clear("Lore"), clear("Archived"), clear("Reserves")]).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
     expect(clear("Settings")).toBe(true);
-    expect(clear("Channel")).toBe(true);
-    expect(phoneShellOf(navigate(start, phoneTabEventOf("chronicler")), false).isClearOfPill).toBe(true);
   });
 });
 
-describe("the pill's collapse while scrolling", () => {
-  it("stays whole near the top of a screen", () => {
-    expect(pillScrollOf(initialPillScroll, 30).isCollapsed).toBe(false);
-  });
-
-  it("shrinks to a circle on a scroll down past the threshold, and returns on a scroll up", () => {
-    const down = pillScrollOf(initialPillScroll, 120);
-    expect(down.isCollapsed).toBe(true);
-    const further = pillScrollOf(down, 200);
-    expect(further.isCollapsed).toBe(true);
-    expect(pillScrollOf(further, 150).isCollapsed).toBe(false);
-  });
-
-  it("ignores a tremor smaller than the slop", () => {
-    const down = pillScrollOf(initialPillScroll, 300);
-    expect(pillScrollOf(down, 296)).toBe(down);
-    const up = pillScrollOf(down, 280);
-    expect(up.isCollapsed).toBe(false);
-    expect(pillScrollOf(up, 284)).toBe(up);
-  });
-
-  it("returns at the top however far the owner came", () => {
-    expect(pillScrollOf(pillScrollOf(initialPillScroll, 900), 10).isCollapsed).toBe(false);
-  });
-});
-
-describe("the pill's room", () => {
-  it("clears the pill, its gap and a little more", () => {
-    expect(pillClearanceOf(pillBottomGap.web)).toBeGreaterThan(pillHeight + pillBottomGap.web);
-    expect(pillClearanceOf(pillBottomGap.native)).toBeGreaterThan(pillClearanceOf(pillBottomGap.web));
+describe("sizing the bar's clearance", () => {
+  it("clears the bar, its gap and a little more", () => {
+    expect(barClearanceOf(barBottomGap.web)).toBeGreaterThan(barHeight + barBottomGap.web);
+    expect(barClearanceOf(barBottomGap.native)).toBeGreaterThan(barClearanceOf(barBottomGap.web));
   });
 
   it("gives a six-digit color an opacity, and leaves any other color as it is", () => {
@@ -171,45 +107,79 @@ describe("the pill's room", () => {
   });
 });
 
-describe("the phone's Back", () => {
-  const press = (location: typeof start, showsDetails = false) => {
-    const back = phoneBackOf(location, showsDetails);
-    return back === null || back.type === "closeDetails" ? location : navigate(location, back);
+describe("pressing the phone's Back", () => {
+  const press = (location: typeof start, realmHeld = realm, showsDetails = false) => {
+    const back = phoneBackOf(location, showsDetails, realmHeld);
+    return back === null || back.type === "closeChooser" || back.type === "closeDetails"
+      ? location
+      : navigate(location, back);
   };
 
   it("leaves the app only from the Chronicle", () => {
-    expect(phoneBackOf(start, false)).toBeNull();
+    expect(phoneBackOf(start, false, null)).toBeNull();
   });
 
-  it("goes from a quest to the Quests tab, then to the place beneath, never back into the quest", () => {
+  it("goes from an errand to its quest, then to its realm's channel, then to the Chronicle", () => {
+    const inErrand = navigate(navigate(start, { id: quest, type: "quest" }), {
+      id: errand,
+      missionId: quest,
+      type: "thread",
+    });
+    const toQuest = press(inErrand);
+    expect(toQuest).toMatchObject({ openMission: quest, openThread: null });
+    const toRealm = press(toQuest);
+    expect(toRealm).toMatchObject({ listedRealm: listing, openMission: null, place: "Channel" });
+    const toChronicle = press(toRealm);
+    expect(toChronicle.place).toBe("Chronicle");
+    expect(phoneBackOf(toChronicle, false, realm)).toBeNull();
+  });
+
+  it("returns the Borderlands' quest to the Borderlands' channel", () => {
+    const toRealm = press(navigate(start, { id: quest, type: "quest" }), { id: null, name: "Borderlands" });
+    expect(toRealm).toMatchObject({ listedRealm: null, openMission: null, place: "Channel" });
+  });
+
+  it("returns a quest to the Chronicle it was opened from, whatever realm the bar holds", () => {
+    const opened = navigate(start, { id: quest, origin: "chronicle", type: "quest" });
+    expect(press(opened)).toMatchObject({ openMission: null, place: "Chronicle" });
+  });
+
+  it("returns a quest to the Chronicle while the bar holds no realm yet", () => {
+    const opened = navigate(start, { id: quest, type: "quest" });
+    expect(phoneBackOf(opened, false, null)).toEqual({ type: "backFromQuest" });
+  });
+
+  it("closes the chooser sheet, quest panel, a quest page and the side menu one layer at a time", () => {
     const open = navigate(start, { id: quest, type: "quest" });
-    const quests = press(open);
-    expect(quests.isQuestsOpen).toBe(true);
-    const home = press(quests);
-    expect(home.openMission).toBeNull();
-    expect(home.isQuestsOpen).toBe(false);
-    expect(phoneBackOf(home, false)).toBeNull();
-  });
-
-  it("returns a quest to the Chronicle it was opened from", () => {
-    const open = navigate(start, { id: quest, origin: "chronicle", type: "quest" });
-    expect(press(open).openMission).toBeNull();
-    expect(phoneBackOf(press(open), false)).toBeNull();
-  });
-
-  it("closes the quest panel, a quest page, the Menu and a Menu place one layer at a time", () => {
-    const open = navigate(start, { id: quest, type: "quest" });
-    expect(phoneBackOf(open, true)).toEqual({ type: "closeDetails" });
+    expect(phoneBackOf(open, false, realm, true)).toEqual({ type: "closeChooser" });
+    expect(phoneBackOf(open, true, realm)).toEqual({ type: "closeDetails" });
     const paged = navigate(open, { page: { kind: "budget" } as never, type: "page" });
     expect(press(paged).page).toBeNull();
-    const lore = navigate(start, { place: "Lore", type: "place" });
-    const menu = press(lore);
-    expect(menu.isMenuOpen).toBe(true);
+    const menu = navigate(open, { isOpen: true, type: "menu" });
     expect(press(menu).isMenuOpen).toBe(false);
   });
 
-  it("returns a realm's channel to the Quests tab", () => {
-    const channel = navigate(start, { listing: null, type: "channel" });
-    expect(press(channel).isQuestsOpen).toBe(true);
+  it("closes the side menu before a chooser sheet behind it, and closes the errand starter without leaving the quest", () => {
+    const inErrand = navigate(navigate(start, { id: quest, type: "quest" }), {
+      id: errand,
+      missionId: quest,
+      type: "thread",
+    });
+    const menu = navigate(inErrand, { isOpen: true, type: "menu" });
+    expect(phoneBackOf(menu, false, realm, true)).toEqual({ isOpen: false, type: "menu" });
+    const starting = navigate(inErrand, { isOpen: true, type: "errandStarter" });
+    expect(phoneShellOf(starting, false)).toEqual({
+      hasBar: false,
+      isClearOfBar: false,
+      tab: null,
+      title: "New errand",
+    });
+    expect(phoneBackOf(starting, false, realm)).toEqual({ isOpen: false, type: "errandStarter" });
+    expect(press(starting)).toMatchObject({ isErrandStarterOpen: false, openMission: quest, openThread: errand });
+  });
+
+  it("returns a place of the side menu to the Chronicle", () => {
+    const lore = navigate(start, { place: "Lore", type: "place" });
+    expect(press(lore).place).toBe("Chronicle");
   });
 });

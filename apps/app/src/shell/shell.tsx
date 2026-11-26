@@ -1,7 +1,7 @@
 import type { Dispatch, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
-import { ChroniclerConversation } from "../conversation/guildmaster";
+import { useActiveHost } from "../foundation/hostContext";
 import { useIslandFrame } from "../foundation/islands";
 import {
   CompanionDockActions,
@@ -25,13 +25,12 @@ import {
   rememberRailWidth,
 } from "./railStorage";
 import { handleSize, shellStyles as local } from "./shellStyles";
-import { type Place, Sidebar, type SidebarProps } from "./sidebar";
+import { Sidebar, type SidebarProps } from "./sidebar";
 import { sidebarPlacementOf } from "./sidebarMode";
 import { SidebarOverlay } from "./sidebarOverlay";
 import { type DetailsToggle, PanelIcon, TopBar } from "./topBar";
 import { useDetailsColumn } from "./useDetailsColumn";
 import { useSidebarOverlay } from "./useSidebarOverlay";
-import { viewingOf } from "./viewing";
 import { hasConversationPanes } from "./windowView";
 
 /** The window width from which the sidebar shows beside the content; narrower windows keep the screens' own links. */
@@ -42,19 +41,16 @@ const sidebarBreakpoint = 820;
  * beside them (CHG-0560), under a top bar over the content; on a narrow one the content alone.
  */
 export function Shell(
-  props: Omit<SidebarProps, "hasLeftDivider" | "host" | "width"> & {
+  props: Omit<SidebarProps, "hasLeftDivider" | "width"> & {
     children: ReactNode;
     location: Location;
     dispatch: Dispatch<NavigationEvent>;
     details: DetailsToggle | null;
-    /** The place the content shows, told to Chronicler. */
-    place: Place | null;
     rightPanel: RightPanel;
-    /** The realm chosen for Chronicler's next message, from a realm's page, and how to clear it. */
-    chronicler: { onRealm: (path: string | null) => void; realmPath: string | null };
   },
 ) {
   const { width } = useWindowDimensions();
+  const { hostId } = useActiveHost();
   const hasRail = width >= sidebarBreakpoint;
   // The Islands layout floats the sidebar, each pane, the content, and the quest panel as panels on a canvas, in any
   // theme (CHG-0672); the narrow window below keeps its flat frame.
@@ -86,7 +82,7 @@ export function Shell(
     side,
     windowWidth: width,
   });
-  const { isNarrowChroniclerOpen, ritualForm } = props.location;
+  const { ritualForm } = props.location;
   const { close: closeSidebar } = overlay;
   useEffect(() => {
     if (ritualForm !== null) closeSidebar();
@@ -96,7 +92,7 @@ export function Shell(
   const column = useDetailsColumn({
     details,
     hasRail,
-    isChroniclerOpen: hasRail ? hasPanes : isNarrowChroniclerOpen,
+    isChroniclerOpen: hasRail && hasPanes,
     isQuestOpen: props.openMission !== null,
     rightPanel,
   });
@@ -197,33 +193,21 @@ export function Shell(
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [hasRail]);
-  // The Chronicle is the first pane beside every screen but the Workshop, which takes the whole content area; a narrow
-  // window gives Chronicler a full screen of its own, its pill tab, and a quest opened from it returns there on Back.
-  const chroniclerChat = (
-    <ChroniclerConversation
-      chrome={null}
-      client={props.client}
-      onOpenMission={(id) => props.dispatch({ id, origin: "chronicler", type: "quest" })}
-      onRealm={props.chronicler.onRealm}
-      realmPath={props.chronicler.realmPath}
-      viewing={viewingOf(props.place, props.openMission)}
-    />
-  );
-  // A narrow window has the top bar over the content alone, and the floating pill of three tabs over both (CHG-0761).
+  // A narrow window has the top bar over the content, and the floating bar of tabs over both (CHG-0773).
   const showsDetails = ritualForm === null && column.isPanelShown;
   if (!hasRail) {
     return (
       <QuestPanelSetter.Provider value={column.setPanel}>
         <TopBarShown.Provider value={true}>
           <NarrowShell
-            chronicler={chroniclerChat}
             client={props.client}
             details={details}
             dispatch={props.dispatch}
+            // The bar's choices belong to one computer: another host starts with none.
+            key={hostId ?? "this-computer"}
             location={props.location}
             panelColumn={column.panelColumn}
             showsDetails={showsDetails}
-            sidebarProps={sidebarProps}
           >
             {props.children}
           </NarrowShell>
@@ -239,10 +223,10 @@ export function Shell(
   const isPaneRow = hasPanes && ritualForm === null;
   const panelStyle =
     islands === null ? hasLeftRail && local.panelDivider : isPaneRow ? local.panelOfIslands : islands.island;
-  const sidebar = <Sidebar {...sidebarProps} hasLeftDivider={hasRightRail} host="docked" width={railWidth} />;
+  const sidebar = <Sidebar {...sidebarProps} hasLeftDivider={hasRightRail} width={railWidth} />;
   const floatingSidebar = (
     <SidebarOverlay isOpen={overlay.isOpen} side={side} width={railWidth}>
-      <Sidebar {...overlayProps} host="overlay" width={railWidth} />
+      <Sidebar {...overlayProps} width={railWidth} />
       <EdgeResizer
         label="Resize the sidebar"
         leastWidth={minRailWidth}

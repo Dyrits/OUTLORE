@@ -1,31 +1,42 @@
 import type { Dispatch, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, StyleSheet, View } from "react-native";
+import { BarClearanceContext } from "../foundation/barClearance";
 import type { ServiceClient } from "../foundation/client";
-import { PillScrollContext } from "../foundation/pillScroll";
+import { useKeyboardHeight } from "../foundation/keyboardHeight";
+import { allMissions, listedMissions } from "../foundation/queries";
+import { type PhoneHeader, PhoneHeaderSetter } from "../foundation/shellContext";
 import { colors } from "../foundation/theme";
+import { useServiceQuery } from "../foundation/useServiceQuery";
 import type { Location, NavigationEvent } from "./location";
-import { MenuScreen } from "./menuScreen";
-import { PhonePill, pillBottom } from "./phonePill";
+import { barBottom, PhoneBar } from "./phoneBar";
+import { choiceTitleOf, errandChoicesOf, questChoicesOf, realmChoicesOf } from "./phoneChoices";
+import { PhoneChooser } from "./phoneChooser";
 import {
-  initialPillScroll,
-  phoneBackOf,
-  phoneShellOf,
-  phoneTabEventOf,
-  pillClearanceOf,
-  pillScrollOf,
-} from "./phoneShell";
-import { Sidebar, type SidebarProps } from "./sidebar";
+  type Choice,
+  type ChoiceKind,
+  type ChoosingTab,
+  chosenEventOf,
+  emptySelection,
+  heldChoiceOf,
+  questRealmOf,
+  reconcileSelection,
+  selectionOf,
+  tappedTabOf,
+} from "./phoneSelection";
+import { barClearanceOf, chronicleEvent, phoneBackOf, phoneShellOf } from "./phoneShell";
+import { placementsOf } from "./questTree";
+import { SideMenu } from "./sideMenu";
 import { type DetailsToggle, NarrowTopBar } from "./topBar";
 
 /**
- * The phone's frame (CHG-0761): a top bar over the content, which the Menu, the Quests tab and Chronicler each cover as a
- * full screen of their own, and the floating pill of the three tabs over it all. In a quest or errand the pill gives
- * way to the conversation's own composer. A quest panel, the Menu, the Quests tab and Chronicler take the content's
- * place while it stays mounted beneath, so the open conversation and its draft are kept.
+ * The phone's frame (CHG-0773): a top bar over the content, and the floating bar of tabs over it all. The bar grows as
+ * the owner chooses: the Chronicle and Realms tabs, then Quests once a realm is chosen and Errands once a quest is. A
+ * choice lands in that one's chat, whose composer sits above the bar; a tab is tapped to show its choice and held to
+ * change it. The side menu holds the hosts and the places the bar leaves out. The quest panel and the side menu take
+ * the content's place or lie over it while the open conversation stays mounted, so it and its draft are kept.
  */
 export function NarrowShell({
-  chronicler,
   children,
   client,
   details,
@@ -33,10 +44,7 @@ export function NarrowShell({
   location,
   panelColumn,
   showsDetails,
-  sidebarProps,
 }: {
-  /** Chronicler's chat, shown on the Chronicler tab. */
-  chronicler: ReactNode;
   children: ReactNode;
   client: ServiceClient;
   details: DetailsToggle | null;
@@ -45,95 +53,142 @@ export function NarrowShell({
   /** The quest panel, shown in the content's place while it is open. */
   panelColumn: ReactNode;
   showsDetails: boolean;
-  sidebarProps: Omit<SidebarProps, "hasLeftDivider" | "host" | "width">;
 }) {
   const shell = phoneShellOf(location, showsDetails);
-  const clearance = pillClearanceOf(pillBottom);
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const scroll = useRef(initialPillScroll);
-  const offset = useRef(0);
-  const report = useCallback((next: number) => {
-    offset.current = next;
-    scroll.current = pillScrollOf(scroll.current, next);
-    setIsCollapsed(scroll.current.isCollapsed);
-  }, []);
-  // Another screen starts at its top with the whole pill.
-  const screenKey = `${shell.cover}:${shell.tab}:${location.place}`;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the key is the screen the pill resets for.
-  useEffect(() => {
-    scroll.current = initialPillScroll;
-    offset.current = 0;
-    setIsCollapsed(false);
-  }, [screenKey]);
-  const expand = useCallback(() => {
-    scroll.current = { anchor: offset.current, isCollapsed: false };
-    setIsCollapsed(false);
-  }, []);
-  const pillScroll = useMemo(
-    () => (shell.bottom === "pill" ? { clearance, report } : null),
-    [clearance, report, shell.bottom],
+  const isKeyboardOpen = useKeyboardHeight() > 0;
+  const isBarShown = shell.hasBar && !isKeyboardOpen;
+  const clearance = barClearanceOf(barBottom);
+  // The realm, quest and errand the bar holds follow the screen on show, and stay while another screen shows.
+  const { data: listed } = useServiceQuery(client, listedMissions.request, listedMissions.key);
+  const questRealm = questRealmOf(listed?.missions.find((mission) => mission.id === location.openMission) ?? null);
+  const [selection, setSelection] = useState(emptySelection);
+  const [chooser, setChooser] = useState<ChoiceKind | null>(null);
+  const [header, setHeader] = useState<PhoneHeader | null>(null);
+  // The sheet closes whenever another screen or the side menu comes on show.
+  const { isMenuOpen, listedRealm, openMission, openThread, place } = location;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the screen or side menu on show is what closes the sheet.
+  useEffect(() => setChooser(null), [isMenuOpen, listedRealm, openMission, openThread, place]);
+  const { data: everything } = useServiceQuery(
+    client,
+    chooser === "realm" || chooser === "quest" ? allMissions.request : null,
+    allMissions.key,
   );
+  const { data: questDetail } = useServiceQuery(
+    client,
+    chooser === "errand" && selection.quest !== null
+      ? { _tag: "ReadMission", missionId: selection.quest, threadId: null }
+      : null,
+    `${selection.quest}:top`,
+  );
+  const followed = selectionOf(selection, location, questRealm);
+  const reconciled =
+    listed === null
+      ? followed
+      : reconcileSelection(
+          followed,
+          listed,
+          location,
+          questDetail === null ? null : { missionId: questDetail.mission.id, threads: questDetail.threads },
+        );
+  if (reconciled !== selection) setSelection(reconciled);
+  const choices = useMemo(() => {
+    if (chooser === "errand") return errandChoicesOf(questDetail?.threads ?? [], selection);
+    if (everything === null) return [];
+    const placements = placementsOf(everything.missions, everything.workspaces);
+    return chooser === "realm" ? realmChoicesOf(placements, selection) : questChoicesOf(placements, selection);
+  }, [chooser, everything, questDetail, selection]);
+  const tapTab = (tab: ChoosingTab) => {
+    const result = tappedTabOf(tab, selection, shell.tab);
+    if (result.kind === "dismiss") setChooser(null);
+    else if (result.kind === "navigate") {
+      setChooser(null);
+      dispatch(result.event);
+    } else setChooser(result.choice);
+  };
+  const choose = (choice: Choice) => {
+    setChooser(null);
+    const event = chosenEventOf(choice, selection);
+    if (event !== null) dispatch(event);
+  };
   // The phone's Back goes to the screen before, and leaves the app only from the Chronicle.
-  const backRef = useRef({ details, dispatch, location, showsDetails });
-  backRef.current = { details, dispatch, location, showsDetails };
+  const backRef = useRef({ chooser, details, dispatch, location, selection, showsDetails });
+  backRef.current = { chooser, details, dispatch, location, selection, showsDetails };
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
       const current = backRef.current;
-      const back = phoneBackOf(current.location, current.showsDetails);
+      const back = phoneBackOf(
+        current.location,
+        current.showsDetails,
+        current.selection.realm,
+        current.chooser !== null,
+      );
       if (back === null) return false;
-      if (back.type === "closeDetails") current.details?.onToggle();
+      if (back.type === "closeChooser") setChooser(null);
+      else if (back.type === "closeDetails") current.details?.onToggle();
       else current.dispatch(back);
       return true;
     });
     return () => subscription.remove();
   }, []);
-  const isCovered = shell.cover !== null || showsDetails;
   return (
-    <PillScrollContext.Provider value={pillScroll}>
-      <View style={local.narrow}>
-        <NarrowTopBar
-          details={location.ritualForm === null && shell.cover === null ? details : null}
-          isMenuOpen={location.isMenuOpen}
-          onBack={shell.hasBack ? () => dispatch({ isOpen: true, type: "menu" }) : null}
-          onMenu={() => dispatch({ isOpen: !location.isMenuOpen, type: "menu" })}
-          title={shell.title}
-        />
-        <View style={local.body}>
-          <View
-            style={[
-              local.content,
-              isCovered && local.hidden,
-              shell.isClearOfPill && shell.cover === null && { paddingBottom: clearance },
-            ]}
-          >
-            {children}
+    <PhoneHeaderSetter.Provider value={setHeader}>
+      <BarClearanceContext.Provider value={isBarShown && !shell.isClearOfBar ? clearance : 0}>
+        <View style={local.narrow}>
+          <NarrowTopBar
+            details={
+              location.ritualForm === null && !location.isErrandStarterOpen && location.openThread === null
+                ? details
+                : null
+            }
+            header={showsDetails || location.isErrandStarterOpen ? null : header}
+            isMenuOpen={location.isMenuOpen}
+            onMenu={() => {
+              if (!location.isMenuOpen) setChooser(null);
+              dispatch({ isOpen: !location.isMenuOpen, type: "menu" });
+            }}
+            title={shell.title}
+          />
+          <View style={local.body}>
+            <View
+              style={[
+                local.content,
+                showsDetails && local.hidden,
+                shell.isClearOfBar && isBarShown && { paddingBottom: clearance },
+              ]}
+            >
+              {children}
+            </View>
+            {showsDetails && panelColumn}
+            {isBarShown && (
+              <PhoneBar
+                client={client}
+                onChronicle={() => {
+                  setChooser(null);
+                  dispatch(chronicleEvent);
+                }}
+                onHold={(tab) => setChooser(heldChoiceOf(tab, selection))}
+                onTap={tapTab}
+                selection={selection}
+                tab={shell.tab}
+              />
+            )}
+            {isBarShown && chooser !== null && (
+              <PhoneChooser
+                choices={choices}
+                onChoose={choose}
+                onClose={() => setChooser(null)}
+                title={choiceTitleOf(chooser, selection, questDetail?.mission.title ?? null)}
+              />
+            )}
           </View>
-          {shell.cover === "menu" && (
-            <View style={local.content}>
-              <MenuScreen onOpen={(place) => dispatch({ place, type: "place" })} />
-            </View>
-          )}
-          {shell.cover === "quests" && (
-            <View style={[local.content, local.questsScreen]}>
-              <Sidebar {...sidebarProps} host="narrow" width="100%" />
-            </View>
-          )}
-          {shell.cover === "chronicler" && (
-            <View style={[local.content, { paddingBottom: clearance }]}>{chronicler}</View>
-          )}
-          {shell.cover === null && showsDetails && panelColumn}
-          {shell.bottom === "pill" && (
-            <PhonePill
-              active={shell.tab}
-              client={client}
-              isCollapsed={isCollapsed}
-              onExpand={expand}
-              onSelect={(tab) => dispatch(phoneTabEventOf(tab))}
-            />
-          )}
+          <SideMenu
+            isOpen={location.isMenuOpen}
+            onClose={() => dispatch({ isOpen: false, type: "menu" })}
+            onOpen={(next) => dispatch({ place: next, type: "place" })}
+          />
         </View>
-      </View>
-    </PillScrollContext.Provider>
+      </BarClearanceContext.Provider>
+    </PhoneHeaderSetter.Provider>
   );
 }
 
@@ -142,6 +197,4 @@ const local = StyleSheet.create({
   content: { flex: 1 },
   hidden: { display: "none" },
   narrow: { backgroundColor: colors.page, flex: 1 },
-  // A row, so the sidebar stretches to the screen's height, as in the wide frame.
-  questsScreen: { flexDirection: "row" },
 });

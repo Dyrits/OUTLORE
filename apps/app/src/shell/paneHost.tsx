@@ -305,6 +305,7 @@ export const PaneHost = memo(function PaneHost({
                 isQuest={isQuest}
                 listRequest={listRequest?.id === id ? listRequest : isQuest ? (errandsRequest ?? void 0) : void 0}
                 missionId={missionId}
+                onOpenList={openList}
                 onOpenMission={onOpenMission}
                 questId={quest ?? null}
                 revealThread={revealThread}

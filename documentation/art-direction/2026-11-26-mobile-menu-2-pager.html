@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone menu draft 2 · Pager with breadcrumbs (2026-11-26)</title>
+<style>
+  :root { --bg:#15161a; --card:#1e2025; --line:#2c2f36; --ink:#ece9e1; --mute:#8a8f99; --sep:#4a4f59; --acc:#e8a33d; --acc-ink:#1a1204; --att:#f08a4b; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:12px; padding:24px 16px 40px; background:#0b0c0e; font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:#d6d3cb; }
+  [hidden] { display:none !important; }
+  .intro { width:360px; }
+  .intro h1 { margin:0 0 4px; font-size:17px; color:var(--ink); }
+  .intro p { margin:0; font-size:12.5px; color:var(--mute); }
+  .phone { position:relative; width:360px; height:740px; overflow:hidden; display:flex; flex-direction:column; background:var(--bg); color:var(--ink); border:8px solid #000; border-radius:38px; }
+  svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  .status { flex:none; height:34px; display:flex; justify-content:space-between; align-items:center; padding:0 24px; font-size:12px; font-weight:600; }
+  .top { flex:none; height:50px; display:flex; align-items:center; justify-content:space-between; padding:0 10px 0 18px; }
+  .brand { font-size:17px; font-weight:700; letter-spacing:.02em; }
+  .brand span { color:var(--acc); }
+  .ib { width:40px; height:40px; display:grid; place-items:center; border:0; border-radius:12px; background:var(--card); color:var(--ink); cursor:pointer; }
+  .seg { flex:none; display:flex; margin:4px 14px 10px; padding:4px; background:var(--card); border:1px solid var(--line); border-radius:13px; }
+  .seg button { flex:1; height:34px; border:0; border-radius:9px; background:none; color:var(--mute); font:600 13.5px system-ui; cursor:pointer; }
+  .seg button.on { background:var(--acc); color:var(--acc-ink); }
+  .scroll { flex:1; min-height:0; overflow-y:auto; padding:4px 14px 20px; scrollbar-width:none; }
+  .label { margin:14px 2px 8px; font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); }
+  .crumbs { flex:none; display:flex; align-items:center; gap:4px; padding:0 14px 10px; overflow-x:auto; scrollbar-width:none; white-space:nowrap; }
+  .crumb { flex:none; border:0; background:none; padding:4px 2px; color:var(--mute); font:600 12.5px system-ui; cursor:pointer; }
+  .crumb.on { color:var(--acc); }
+  .sep { color:var(--sep); font-size:13px; }
+  .pager { flex:1; min-height:0; overflow:hidden; }
+  .track { height:100%; display:flex; transform:translateX(calc(var(--d, 0) * -100%)); transition:transform .35s cubic-bezier(.2,.8,.2,1); }
+  .col { flex:0 0 100%; height:100%; overflow-y:auto; padding:0 14px 20px; scrollbar-width:none; }
+  .card { display:flex; flex-direction:column; align-items:flex-start; gap:3px; width:100%; margin-bottom:10px; padding:14px; background:var(--card); border:1px solid var(--line); border-radius:16px; color:inherit; font:inherit; text-align:left; cursor:pointer; position:relative; }
+  .card b { font-size:16px; font-weight:600; }
+  .card small { color:var(--mute); font-size:12px; }
+  .card .st { position:absolute; right:12px; top:14px; font-size:11px; padding:2px 8px; border-radius:999px; background:#2a2d35; color:#b9bcc4; }
+  .card .st.att { background:#3b2619; color:var(--att); }
+  .empty { margin:24px 6px; color:var(--mute); font-size:13px; }
+  .drawer { position:absolute; top:0; bottom:0; right:0; width:84%; display:flex; flex-direction:column; padding:22px 16px 18px; background:#1a1c21; border-left:1px solid var(--line); transform:translateX(102%); transition:transform .25s ease; box-shadow:-8px 0 28px rgba(0,0,0,.45); }
+  .drawer.on { transform:none; }
+  .drawer h3 { margin:0 0 12px; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); font-weight:600; }
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .tile { aspect-ratio:1.15; display:flex; flex-direction:column; justify-content:flex-end; padding:14px; border:0; border-radius:16px; background:#24272e; color:var(--ink); font:600 15px system-ui; text-align:left; cursor:pointer; }
+  .tile small { margin-top:2px; font-size:11.5px; font-weight:400; color:var(--mute); }
+  .tile svg { position:absolute; }
+  .wide { margin-top:10px; display:flex; justify-content:space-between; align-items:center; width:100%; padding:16px 14px; border:0; border-radius:16px; background:#24272e; color:var(--ink); font:600 15px system-ui; cursor:pointer; }
+  .wide small { color:var(--mute); font-weight:400; font-size:12px; }
+  .scrim { position:absolute; inset:0; background:rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:opacity .2s; }
+  .scrim.on { opacity:1; pointer-events:auto; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>2 · Pager with breadcrumbs</h1>
+  <p>A segmented control replaces the bottom bar: Chronicle or Realm. Realm is one horizontal pager of three columns, Realms, Quests and Errands. Each choice slides the next column in; the breadcrumb above names the path and jumps back to any step. The side menu comes from the right and uses the four-square Menu grid.</p>
+</div>
+
+<div class="phone">
+  <div class="status"><span>9:41</span><span>5G ▮</span></div>
+  <header class="top">
+    <div class="brand">Outlore<span>.</span></div>
+    <button class="ib" id="menuBtn" aria-label="Menu">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg>
+    </button>
+  </header>
+  <div class="seg">
+    <button id="segChron">Chronicle</button>
+    <button id="segRealm">Realm</button>
+  </div>
+
+  <section id="feed" class="scroll" hidden></section>
+
+  <section id="realmView" style="flex:1; min-height:0; display:flex; flex-direction:column;">
+    <nav class="crumbs" id="crumbs"></nav>
+    <div class="pager">
+      <div class="track" id="track">
+        <div class="col" id="colRealms"></div>
+        <div class="col" id="colQuests"></div>
+        <div class="col" id="colErrands"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer" aria-label="Side menu">
+    <h3>The Keep and more</h3>
+    <div class="tiles">
+      <button class="tile">Library<small>Artifacts</small></button>
+      <button class="tile">Lore<small>Rules and facts</small></button>
+      <button class="tile">Archive<small>Fulfilled quests</small></button>
+      <button class="tile">Reserves<small>Usage and budgets</small></button>
+    </div>
+    <button class="wide">Workshop <small>Settings</small></button>
+  </aside>
+</div>
+
+<script>
+const realms = [
+  { id: 'outlore', n: 'Outlore', sub: 'Workspace OUTLORE', quests: [
+    { id: 'shell', n: 'Phone shell redesign', s: 'Attention', e: [{ n: 'Draft five menus', s: 'Underway' }, { n: 'Check the Android gesture bar', s: 'Resting' }] },
+    { id: 'control', n: 'Phone control step 1', s: 'Underway', e: [{ n: 'Write the phone_info schema', s: 'Fulfilled' }] },
+    { id: 'wave', n: 'Review wave 2', s: 'Fulfilled', e: [] }] },
+  { id: 'web', n: 'Website', sub: 'No workspace', quests: [
+    { id: 'copy', n: 'Landing copy', s: 'Waiting', e: [{ n: 'Hero line options', s: 'Resting' }] },
+    { id: 'nf', n: 'Fix the 404 page', s: 'Resting', e: [] }] },
+  { id: 'research', n: 'Research', sub: 'No workspace', quests: [
+    { id: 'pricing', n: 'Compare harness pricing', s: 'Underway', e: [] }] },
+  { id: 'borderlands', n: 'Borderlands', sub: 'Quests with no realm', bl: true, quests: [
+    { id: 'lisbon', n: 'Plan a week in Lisbon', s: 'Resting', e: [] }] }
+];
+const feed = [
+  { s: 'Attention', t: 'Phone shell redesign needs your answer', w: 'Outlore · 10 min ago' },
+  { s: 'Underway', t: 'Compare harness pricing has started', w: 'Research · 1 h ago' },
+  { s: 'Fulfilled', t: 'Review wave 2 was fulfilled', w: 'Outlore · yesterday' }];
+
+const $ = (s) => document.querySelector(s);
+const byId = (id) => realms.find((r) => r.id === id);
+const empty = (t) => `<p class="empty">${t}</p>`;
+const card = (attrs, title, sub, extra = '') => `<button class="card" ${attrs}><b>${title}</b><small>${sub}</small>${extra}</button>`;
+
+let seg = 'realm';
+let depth = 0; // 0 Realms, 1 Quests, 2 Errands
+let pick = { realm: null, quest: null };
+const questOf = () => byId(pick.realm).quests.find((q) => q.id === pick.quest);
+
+function render() {
+  $('#segChron').classList.toggle('on', seg === 'chronicle');
+  $('#segRealm').classList.toggle('on', seg === 'realm');
+  $('#feed').hidden = seg !== 'chronicle';
+  $('#realmView').hidden = seg !== 'realm';
+  if (seg === 'chronicle') {
+    $('#feed').innerHTML = feed.map((f) => card('', f.t, f.w, `<span class="st ${f.s === 'Attention' ? 'att' : ''}">${f.s}</span>`)).join('');
+    return;
+  }
+  const crumbs = [{ t: 'Realms', d: 0 }];
+  if (pick.realm) crumbs.push({ t: byId(pick.realm).n, d: 1 });
+  if (pick.quest) crumbs.push({ t: questOf().n, d: 2 });
+  $('#crumbs').innerHTML = crumbs.map((c, i) => (i ? '<span class="sep">›</span>' : '') + `<button class="crumb ${c.d === depth ? 'on' : ''}" data-d="${c.d}">${c.t}</button>`).join('');
+  $('#track').style.setProperty('--d', depth);
+  $('#colRealms').innerHTML = '<div class="label">Realms</div>'
+    + realms.filter((r) => !r.bl).map((r) => card(`data-realm="${r.id}"`, r.n, `${r.sub} · ${r.quests.length} quests`)).join('')
+    + '<div class="label">Borderlands</div>' + card(`data-realm="borderlands"`, 'Borderlands', 'Quests with no realm');
+  $('#colQuests').innerHTML = pick.realm
+    ? '<div class="label">Quests</div>' + byId(pick.realm).quests.map((q) => card(`data-quest="${q.id}"`, q.n, `${q.e.length} errands`, `<span class="st ${q.s === 'Attention' ? 'att' : ''}">${q.s}</span>`)).join('')
+    : empty('Choose a realm to see its quests.');
+  $('#colErrands').innerHTML = pick.quest
+    ? '<div class="label">Errands</div>' + (questOf().e.map((e) => card('', e.n, e.s)).join('') || empty('No errands yet.'))
+    : empty('Choose a quest to see its errands.');
+}
+
+$('#segChron').addEventListener('click', () => { seg = 'chronicle'; openMenu(false); render(); });
+$('#segRealm').addEventListener('click', () => { seg = 'realm'; render(); });
+$('#realmView').addEventListener('click', (e) => {
+  const crumb = e.target.closest('[data-d]');
+  const realm = e.target.closest('[data-realm]');
+  const quest = e.target.closest('[data-quest]');
+  if (crumb) depth = Number(crumb.dataset.d);
+  else if (realm) { pick = { realm: realm.dataset.realm, quest: null }; depth = 1; }
+  else if (quest) { pick.quest = quest.dataset.quest; depth = 2; }
+  else return;
+  render();
+});
+function openMenu(on) {
+  $('#drawer').classList.toggle('on', on);
+  $('#scrim').classList.toggle('on', on);
+}
+$('#menuBtn').addEventListener('click', () => openMenu(true));
+$('#scrim').addEventListener('click', () => openMenu(false));
+render();
+</script>
+</body>
+</html>

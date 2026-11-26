@@ -19,6 +19,18 @@ export const useHasTopBar = () => useContext(TopBarShown);
 export type QuestTabButton = { isOpen: boolean; onPress: () => void };
 export const QuestTabButtonContext = createContext<QuestTabButton | null>(null);
 
+/**
+ * What a conversation puts in the narrow window's top bar (CHG-0773): its title and, at the bar's right, the actions the
+ * desktop's pane header carries (new quest or errand, mark as done, archive).
+ */
+export type PhoneHeader = { actions: ReactNode; title: ReactNode };
+
+/**
+ * How the narrow window's top bar is handed a conversation's header. Null where a conversation draws its own header (a
+ * wide window has none) or where it is not the screen on show, so a parked one never takes the bar.
+ */
+export const PhoneHeaderSetter = createContext<((header: PhoneHeader | null) => void) | null>(null);
+
 export const QuestPanelSetter = createContext<(panel: ReactNode, title: string) => void>(() => {});
 
 /**

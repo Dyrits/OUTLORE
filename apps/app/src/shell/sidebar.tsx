@@ -6,7 +6,6 @@ import { PlanUsageDots } from "../editors/planUsageDots";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { canHover } from "../foundation/inputModality";
 import { useIslandFrame } from "../foundation/islands";
-import { usePillScroll } from "../foundation/pillScroll";
 import { listedMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -43,7 +42,7 @@ const useToggles = () => {
 /** What the sidebar shows and asks: its callbacks keep one identity, so it skips rendering for another panel's change. */
 export type SidebarProps = {
   client: ServiceClient;
-  /** The open rail's width, as dragged; the whole width on a phone, where this is the Quests tab. */
+  /** The open rail's width, as dragged. */
   width: DimensionValue;
   onOpenMission: (id: MissionId) => void;
   onOpenErrands: (id: MissionId) => void;
@@ -53,8 +52,6 @@ export type SidebarProps = {
   onOpenChronicle?: (() => void) | undefined;
   /** Opens an errand of a quest. */
   onOpenThread: (missionId: MissionId, threadId: ThreadId) => void;
-  /** Where the sidebar is shown. */
-  host: "narrow" | "overlay" | "docked";
   hasLeftDivider?: boolean;
   /** Whether the Workshop (Settings) is the screen shown, which its row shows. */
   isWorkshopOpen: boolean;
@@ -80,7 +77,6 @@ export const Sidebar = memo(function Sidebar({
   onOpenChronicle,
   onOpenThread,
   hasLeftDivider,
-  host,
   isWorkshopOpen,
   onWorkshop,
   openMission,
@@ -92,10 +88,6 @@ export const Sidebar = memo(function Sidebar({
   const { data: chronicle } = useServiceQuery(client, { _tag: "ReadChronicle" }, "chronicle-badge");
   const unreadCount = unreadCountOf(chronicle ?? []);
   const placements = placementsOf(data?.missions ?? [], data?.workspaces ?? []);
-  const isNarrow = host === "narrow";
-  // On the phone this is the Quests tab (CHG-0761): it scrolls beneath the floating pill, and the Chronicle and the
-  // Workshop are the pill's tab and the Menu's Settings there, so it leaves out their rows.
-  const pill = usePillScroll();
   const islands = useIslandFrame();
   // The menu that makes a realm, tied to a folder or to none.
   const [isCreating, setIsCreating] = useState(false);
@@ -104,13 +96,9 @@ export const Sidebar = memo(function Sidebar({
   const foldedSections = useToggles();
   const isFolded = (section: Section) => foldedSections.set.has(section);
   const openQuests = useToggles();
-  // The narrow Borderlands list expands in place when the owner asks for the rest.
-  const [isEveryBorderlandShown, setEveryBorderlandShown] = useState(false);
   const collapsedThreads = useToggles();
   const outline = railOutlineOf(placements, openMission, openQuests.set);
-  const borderlandQuests = isEveryBorderlandShown
-    ? outline.borderlands.quests.ranked
-    : outline.borderlands.quests.preview;
+  const borderlandQuests = outline.borderlands.quests.preview;
   const questProps = {
     client,
     collapsed: collapsedThreads.set,
@@ -181,7 +169,7 @@ export const Sidebar = memo(function Sidebar({
   const realmRow = ({ roster, workspace }: (typeof outline.realms)[number]) => {
     const realm = { id: workspace.id, name: workspace.name, path: workspace.path };
     const isEmpty = isRosterEmpty(roster);
-    const isClosed = realmFolds.get(realm.id) ?? (!isNarrow && isEmpty);
+    const isClosed = realmFolds.get(realm.id) ?? isEmpty;
     return (
       <DropTarget
         key={realm.id}
@@ -204,11 +192,7 @@ export const Sidebar = memo(function Sidebar({
             />
           </RealmDragSource>
           {failureUnder(realm.id)}
-          {!isClosed && isEmpty && (
-            <Text style={isNarrow ? local.emptyGroup : local.emptyRealm}>
-              {isNarrow ? "No quest in this realm yet." : "No quests yet"}
-            </Text>
-          )}
+          {!isClosed && isEmpty && <Text style={local.emptyRealm}>No quests yet</Text>}
           {!isClosed && (
             <PlacementRows
               isQuestOpen={outline.isQuestOpen}
@@ -234,18 +218,14 @@ export const Sidebar = memo(function Sidebar({
     <View
       style={[
         local.sidebar,
-        !isNarrow && local.sidebarDesktop,
+        local.sidebarDesktop,
         hasLeftDivider && local.sidebarLeftDivider,
-        !isNarrow && islands?.island,
+        islands?.island,
         { width },
       ]}
     >
-      <ScrollView
-        {...pill.scrollProps}
-        contentContainerStyle={[local.group, !isNarrow && local.groupWithChronicle, pill.contentStyle]}
-        style={local.flex}
-      >
-        {onOpenChronicle !== undefined && !isNarrow && (
+      <ScrollView contentContainerStyle={[local.group, local.groupWithChronicle]} style={local.flex}>
+        {onOpenChronicle !== undefined && (
           <>
             <Pressable
               accessibilityRole="button"
@@ -304,16 +284,14 @@ export const Sidebar = memo(function Sidebar({
         {!isFolded("Borderlands") && outline.borderlands.quests.count > borderlandQuests.length && (
           <ShowAll
             label={`Show all ${outline.borderlands.quests.count} quests`}
-            onPress={() => (isNarrow ? setEveryBorderlandShown(true) : onOpenQuestsTab(null))}
+            onPress={() => onOpenQuestsTab(null)}
             subject="the Borderlands"
           />
         )}
       </ScrollView>
-      {!isNarrow && (
-        <View style={local.footer}>
-          <SidebarFoot client={client} isWorkshopOpen={isWorkshopOpen} onWorkshop={onWorkshop} />
-        </View>
-      )}
+      <View style={local.footer}>
+        <SidebarFoot client={client} isWorkshopOpen={isWorkshopOpen} onWorkshop={onWorkshop} />
+      </View>
       {pendingMove !== null && (
         <MoveQuestModal
           confirmation={pendingMove.confirmation}

@@ -2,7 +2,6 @@ import type { MissionId, ThreadId } from "@outlore/contracts";
 import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { type ChronicleTarget, ChronicleTargetContext } from "../conversation/chronicleTarget";
-import { Conversation } from "../conversation/conversation";
 import { PermissionsScreen } from "../editors/permissions";
 import type { ServiceClient } from "../foundation/client";
 import { CompanionDockActions, useHasSidebar } from "../foundation/shellContext";
@@ -12,37 +11,36 @@ import { SettingsScreen } from "../settings/settings";
 import type { SettingsSectionId } from "../settings/settingsSections";
 import { UsageScreen } from "../usage";
 import { ArchiveScreen } from "./archivePage";
-import { ChannelPane, type ChannelTabMemory } from "./channelPane";
+import type { ChannelTabMemory } from "./channelPane";
 import { ChronicleActivity } from "./chronicleActivity";
 import { HomeScreen } from "./homeScreen";
 import type { QuestOrigin } from "./location";
+import { NarrowAppScreen } from "./narrowAppScreen";
 import { PaneHost } from "./paneHost";
 import type { RealmListing } from "./questTree";
 import type { Place } from "./sidebar";
 
 import type { windowViewOf } from "./windowView";
 
-type Destination = ReturnType<typeof windowViewOf>;
+/** Derived view of the window's active destination, open conversation, and covering layers. */
+export type Destination = ReturnType<typeof windowViewOf>;
 
 /** Navigation operations exposed to the selected page, with top-level state kept in App. */
-interface Navigation {
+export interface Navigation {
   backFromQuest: () => void;
   /** Closes the Ritual form covering the conversation area, going back to what showed beneath it. */
   closeRitualForm: () => void;
   goTo: (place: Place) => void;
   openChannel: (listing: RealmListing | null) => void;
-  /** Shows the narrow window's Menu of places. */
-  openMenu: () => void;
   /** Opens a quest; the origin says where its Back returns in a narrow window. */
   openMission: (id: MissionId, origin?: QuestOrigin) => void;
   /** Goes to a quest's parent view: its realm's channel, or the home screen for a quest in no realm. */
   openParent: (quest: { workspaceId: string | null; workspaceName: string | null }) => void;
-  /** Shows the narrow window's Quests tab: the realms and their quests as a full screen. */
-  openQuests: () => void;
   /** Opens a quest's errand; the origin says where its Back returns in a narrow window. */
   openThread: (missionId: MissionId, threadId: ThreadId, origin?: QuestOrigin) => void;
   selectMission: (id: MissionId | null) => void;
   selectThread: (id: ThreadId | null) => void;
+  setErrandStarter: (isOpen: boolean) => void;
   setPermissions: (isOpen: boolean) => void;
   setSettingsSection: (section: SettingsSectionId) => void;
   showDetails: (isOpen: boolean) => void;
@@ -108,8 +106,8 @@ function AppScreenContent({
   }, []);
   // A narrow window has no sidebar and shows a quest as one conversation at a time; a wide one shows panes.
   const hasPanes = useHasSidebar();
-  // A place the Menu opened goes back to the Menu; a wide window has the Home screen to go back to.
-  const leave = hasPanes ? () => navigation.goTo("Home") : navigation.openMenu;
+  // A place the side menu opened goes back to the Chronicle; a wide window has the Home screen to go back to.
+  const leave = () => navigation.goTo(hasPanes ? "Home" : "Chronicle");
   const home = <HomeScreen client={client} onOpen={navigation.openMission} />;
   const chronicle = (
     <ChronicleActivity
@@ -204,49 +202,16 @@ function AppScreenContent({
       </>
     );
   }
-  const conversation =
-    view.openMission === null ? null : (
-      <Conversation
+  if (!hasPanes) {
+    return (
+      <NarrowAppScreen
+        channelTab={channelTab}
         client={client}
-        key={`${view.openMission}:${view.openCount}`}
-        missionId={view.openMission}
-        onBack={navigation.backFromQuest}
-        onOpenMission={(id) => navigation.openMission(id, view.questReturn ?? undefined)}
-        onSelectThread={navigation.selectThread}
-        onSetDetails={navigation.showDetails}
-        selectedThreadId={view.openThread}
-        shouldShowErrandsInitially={view.errandsRequest !== null}
+        navigation={navigation}
+        ritualForm={ritualForm}
+        screens={screens}
+        view={view}
       />
-    );
-  if (!hasPanes && channel !== null) {
-    const showsChannel = view.place === "Channel" && conversation === null && view.ritualForm === null;
-    return (
-      <>
-        <View style={showsChannel ? local.fill : local.parked}>
-          <ChannelPane
-            channel={channel}
-            client={client}
-            listRequest={channel.questsRequest ?? void 0}
-            onBack={navigation.openQuests}
-            onOpenMission={(id) => navigation.openMission(id, "channel")}
-            onOpenThread={(missionId, threadId) => navigation.openThread(missionId, threadId, "channel")}
-            tabMemory={channelTab}
-          />
-        </View>
-        {conversation !== null && (
-          <View style={view.ritualForm === null ? local.fill : local.parked}>{conversation}</View>
-        )}
-        {ritualForm ?? (conversation === null && view.place !== "Channel" && screens[view.place])}
-      </>
-    );
-  }
-  if (conversation !== null) {
-    // The Ritual form can cover the quest's conversation, which stays mounted beneath it (CHG-0643).
-    return (
-      <>
-        <View style={view.ritualForm === null ? local.fill : local.parked}>{conversation}</View>
-        {ritualForm}
-      </>
     );
   }
   return view.ritualForm !== null ? ritualForm : screens[view.place];

@@ -27,7 +27,6 @@ describe("navigating the window", () => {
     expect(windowViewOf(opened).questReturn).toBe("channel");
     const back = navigate(opened, { type: "backFromQuest" });
     expect(back.openMission).toBeNull();
-    expect(back.isQuestsOpen).toBe(false);
     expect(windowViewOf(back).channel?.id).toBe(listing.id);
     expect(windowViewOf(back).channel?.questsRequest).toBe(channel.listRequest);
   });
@@ -42,7 +41,6 @@ describe("navigating the window", () => {
     expect(back.openMission).toBeNull();
     expect(back.openThread).toBeNull();
     expect(back.place).toBe("Chronicle");
-    expect(back.isQuestsOpen).toBe(false);
   });
 
   it("returns an errand the Chronicle opened itself to the Chronicle", () => {
@@ -52,32 +50,17 @@ describe("navigating the window", () => {
     expect(navigate(errand, { type: "backFromQuest" }).place).toBe("Chronicle");
   });
 
-  it("opens the Quests tab when backing out of a quest picked directly from it", () => {
+  it("returns a quest picked from the bar to the Chronicle when no realm is told, however the quest was reached", () => {
     const channel = navigate(initialLocation(null), { listing: null, type: "channel" });
     const opened = navigate(channel, { id: quest, type: "quest" });
-    expect(navigate(opened, { type: "backFromQuest" }).isQuestsOpen).toBe(true);
-    // Also when the Chronicle is the place beneath the tab: a Quests pick is not a Chronicle pick.
-    const inChronicle = navigate(initialLocation(null), { place: "Chronicle", type: "place" });
-    const picked = navigate({ ...inChronicle, isQuestsOpen: true }, { id: quest, type: "quest" });
-    expect(navigate(picked, { type: "backFromQuest" }).isQuestsOpen).toBe(true);
-  });
-
-  it("returns a quest Chronicler opened to Chronicler's tab, and not to the Quests tab", () => {
-    const chronicler = navigate(initialLocation(null), { isOpen: true, type: "narrowChronicler" });
-    const opened = navigate(chronicler, { id: quest, origin: "chronicler", type: "quest" });
-    expect(opened.isNarrowChroniclerOpen).toBe(false);
-    expect(windowViewOf(opened).questReturn).toBe("chronicler");
     const back = navigate(opened, { type: "backFromQuest" });
-    expect(back.openMission).toBeNull();
-    expect(back.isNarrowChroniclerOpen).toBe(true);
-    expect(back.isQuestsOpen).toBe(false);
+    expect(back).toMatchObject({ openMission: null, openThread: null, place: "Chronicle" });
   });
 
-  it("keeps the quest mounted beneath the Quests tab it backed out to", () => {
+  it("returns a quest to its realm's channel with a parent event, as the bar's Back does", () => {
     const opened = navigate(initialLocation(null), { id: quest, type: "quest" });
-    const back = navigate(opened, { type: "backFromQuest" });
-    expect(back.openMission).toBe(quest);
-    expect(back.isQuestsOpen).toBe(true);
+    const back = navigate(opened, { quest: { workspaceId: "realm", workspaceName: "Realm" }, type: "parent" });
+    expect(back).toMatchObject({ listedRealm: { id: "realm", name: "Realm" }, openMission: null, place: "Channel" });
   });
 
   it("opens the requested realm or Borderlands on its Quests tab on every press", () => {
@@ -101,11 +84,11 @@ describe("navigating the window", () => {
     });
     expect(windowViewOf(navigate(next, { id: quest, type: "quest" })).errandsRequest).toBeNull();
   });
-  it("uncovers a quest opened from the narrow window's Chronicler", () => {
-    const covered = navigate(initialLocation(null), { isOpen: true, type: "narrowChronicler" });
-    const next = navigate(covered, { id: quest, type: "quest" });
+  it("closes the side menu when a quest opens", () => {
+    const menu = navigate(initialLocation(null), { isOpen: true, type: "menu" });
+    const next = navigate(menu, { id: quest, type: "quest" });
     expect(next.openMission).toBe(quest);
-    expect(next.isNarrowChroniclerOpen).toBe(false);
+    expect(next.isMenuOpen).toBe(false);
   });
   it("closes Journal, Lore and Budget when choosing an errand without remounting the quest", () => {
     const opened = navigate(initialLocation(null), { id: quest, type: "quest" });
@@ -127,22 +110,14 @@ describe("navigating the window", () => {
     expect(next.openMission).toBeNull();
     expect(next.openThread).toBeNull();
   });
-  it("keeps the narrow window's Menu, Quests tab and Chronicler exclusive and closes all on a destination", () => {
-    const chronicler = navigate(initialLocation(null), { isOpen: true, type: "narrowChronicler" });
-    const menu = navigate(chronicler, { isOpen: true, type: "menu" });
-    expect(menu.isNarrowChroniclerOpen).toBe(false);
+  it("opens the side menu over the screen and closes it on any destination", () => {
+    const menu = navigate(initialLocation(null), { isOpen: true, type: "menu" });
     expect(menu.isMenuOpen).toBe(true);
-    const quests = navigate(menu, { isOpen: true, type: "quests" });
-    expect(quests).toMatchObject({ isMenuOpen: false, isNarrowChroniclerOpen: false, isQuestsOpen: true });
-    const again = navigate(quests, { isOpen: true, type: "narrowChronicler" });
-    expect(again).toMatchObject({ isMenuOpen: false, isNarrowChroniclerOpen: true, isQuestsOpen: false });
-    for (const open of [menu, quests, again])
-      expect(navigate(open, { place: "Settings", type: "place" })).toMatchObject({
-        isMenuOpen: false,
-        isNarrowChroniclerOpen: false,
-        isQuestsOpen: false,
-        place: "Settings",
-      });
+    expect(navigate(menu, { place: "Settings", type: "place" })).toMatchObject({
+      isMenuOpen: false,
+      place: "Settings",
+    });
+    expect(navigate(menu, { listing: null, type: "channel" }).isMenuOpen).toBe(false);
   });
   it("closes the Menu again, leaving the screen beneath it as it was", () => {
     const lore = navigate(initialLocation(null), { place: "Lore", type: "place" });
@@ -163,21 +138,21 @@ describe("navigating the window", () => {
     const next = navigate(
       {
         ...initialLocation(null),
-        guildmasterRealm: "/realm",
+        listedRealm: { id: "realm", name: "Realm" },
         openMission: quest,
         openThread: thread,
       },
       { type: "host" },
     );
     expect(next).toMatchObject({
-      guildmasterRealm: null,
+      listedRealm: null,
       openMission: null,
       openThread: null,
     });
   });
   it("scopes the panel to its page without changing scope for a covering layer", () => {
     const initial = initialLocation(null);
-    expect(panelScopeOf(navigate(initial, { isOpen: true, type: "narrowChronicler" }))).toEqual(panelScopeOf(initial));
+    expect(panelScopeOf(navigate(initial, { isOpen: true, type: "menu" }))).toEqual(panelScopeOf(initial));
     expect(panelScopeOf(navigate(initial, { page: { kind: "journal" }, type: "page" }))).not.toEqual(
       panelScopeOf(initial),
     );
@@ -241,21 +216,34 @@ describe("the Ritual form over the conversation area", () => {
     expect(saved.openMission).toBe(ritual);
   });
 
-  it("closes the Menu and the Quests tab it was opened from, as any newly opened screen's own coverings", () => {
+  it("closes the side menu it was opened from, as any newly opened screen's own coverings", () => {
     const menu = navigate(initialLocation(null), { isOpen: true, type: "menu" });
-    const quests = navigate(initialLocation(null), { isOpen: true, type: "quests" });
-    for (const from of [menu, quests]) {
-      const covered = navigate(from, {
-        target: { kind: "create", originMissionId: null, realmPath: null },
-        type: "ritualForm",
-      });
-      expect(covered.isMenuOpen).toBe(false);
-      expect(covered.isQuestsOpen).toBe(false);
-    }
     const covered = navigate(menu, {
       target: { kind: "create", originMissionId: null, realmPath: null },
       type: "ritualForm",
     });
+    expect(covered.isMenuOpen).toBe(false);
     expect(windowViewOf(covered).ritualForm).toEqual({ kind: "create", originMissionId: null, realmPath: null });
+  });
+});
+
+describe("the errand starter over a narrow quest", () => {
+  it("covers the quest or errand without leaving it, and closes on navigation", () => {
+    const inErrand = navigate(navigate(initialLocation(null), { id: quest, type: "quest" }), {
+      id: thread,
+      missionId: quest,
+      type: "thread",
+    });
+    const started = navigate(inErrand, { isOpen: true, type: "errandStarter" });
+    expect(started).toMatchObject({
+      isErrandStarterOpen: true,
+      openCount: inErrand.openCount,
+      openMission: quest,
+      openThread: thread,
+    });
+    expect(windowViewOf(started).isErrandStarterOpen).toBe(true);
+    const closed = navigate(started, { isOpen: false, type: "errandStarter" });
+    expect(closed).toMatchObject({ isErrandStarterOpen: false, openMission: quest, openThread: thread });
+    expect(navigate(started, { place: "Chronicle", type: "place" }).isErrandStarterOpen).toBe(false);
   });
 });

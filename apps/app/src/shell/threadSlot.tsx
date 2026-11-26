@@ -5,6 +5,7 @@ import { PaneThread } from "../conversation/paneThread";
 import type { ServiceClient } from "../foundation/client";
 import { colors } from "../foundation/theme";
 import { ExpandPaneButton, FoldPaneButton } from "../ui/questHeaderButtons";
+import { channelId, type PaneId } from "./paneIds";
 
 /**
  * One thread's island in the pane row: every prop is a value or a callback that keeps its identity,
@@ -19,6 +20,7 @@ export const ThreadSlot = memo(function ThreadSlot({
   isQuest,
   listRequest,
   missionId,
+  onOpenList,
   onOpenMission,
   questId,
   revealThread,
@@ -34,6 +36,8 @@ export const ThreadSlot = memo(function ThreadSlot({
   isQuest: boolean;
   listRequest: object | undefined;
   missionId: MissionId;
+  /** Opens a pane's list tab: the channel's Quests, or a quest's Errands; the same as the notches beside the panes. */
+  onOpenList: (id: PaneId) => void;
   onOpenMission: (missionId: MissionId) => void;
   /** The quest's own thread, which an errand pane's New errand icon starts an errand under. */
   questId: ThreadId | null;
@@ -56,6 +60,9 @@ export const ThreadSlot = memo(function ThreadSlot({
     () => (!isQuest && questId !== null ? () => startErrand(questId) : void 0),
     [isQuest, questId, startErrand],
   );
+  // The title leads to the parent's tab: a quest's Quests tab in the channel, an errand's Errands tab in its quest.
+  const parentId: PaneId | null = isQuest ? channelId : questId;
+  const onShowParent = useMemo(() => (parentId === null ? void 0 : () => onOpenList(parentId)), [onOpenList, parentId]);
   const onStartErrand = useCallback(() => startErrand(threadId), [startErrand, threadId]);
   const onPointerDown = useCallback(() => setFocused(threadId), [setFocused, threadId]);
   return (
@@ -68,6 +75,7 @@ export const ThreadSlot = memo(function ThreadSlot({
         onNewErrand={onNewErrand}
         onOpenMission={onOpenMission}
         onOpenThread={revealThread}
+        {...(onShowParent === undefined ? {} : { onShowParent })}
         onStartErrand={onStartErrand}
         threadId={threadId}
       />

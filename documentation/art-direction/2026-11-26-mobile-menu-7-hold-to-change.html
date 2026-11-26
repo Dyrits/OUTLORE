@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone menu draft 7 · Floating tab bar, hold to change (2026-11-26)</title>
+<style>
+  :root { --bg:#eef0f4; --card:#ffffff; --ink:#15171c; --mute:#6f7684; --line:#dfe3ea; --acc:#3d5afe; --acc-soft:#e6ebff; --att:#d9480f; --att-soft:#ffe9df; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:12px; padding:24px 16px 40px; background:#c9ced8; font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); }
+  [hidden] { display:none !important; }
+  .intro { width:360px; }
+  .intro h1 { margin:0 0 4px; font-size:17px; }
+  .intro p { margin:0; font-size:12.5px; color:#363b46; }
+  .phone { position:relative; width:360px; height:740px; overflow:hidden; display:flex; flex-direction:column; background:var(--bg); border:8px solid #1d1f24; border-radius:38px; }
+  svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  .status { flex:none; height:34px; display:flex; justify-content:space-between; align-items:center; padding:0 24px; font-size:12px; font-weight:600; }
+  .top { flex:none; height:52px; display:flex; align-items:center; gap:6px; padding:0 10px; }
+  .ib { flex:none; width:40px; height:40px; display:grid; place-items:center; border:0; border-radius:50%; background:var(--card); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08); cursor:pointer; }
+  .ttl { flex:1; min-width:0; padding:0 6px; }
+  .ttl b { display:block; font-size:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ttl small { display:block; font-size:11.5px; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .body { flex:1; min-height:0; overflow-y:auto; padding:6px 14px 120px; scrollbar-width:none; }
+  .label { margin:16px 4px 6px; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); }
+  .row { width:100%; display:flex; align-items:center; gap:12px; margin-bottom:8px; padding:12px; background:var(--card); border:0; border-radius:16px; box-shadow:0 1px 2px rgba(0,0,0,.05); font:inherit; color:inherit; text-align:left; cursor:pointer; }
+  .sw { flex:none; width:38px; height:38px; display:grid; place-items:center; border-radius:12px; background:var(--acc-soft); color:var(--acc); font-weight:700; }
+  .tx { flex:1; min-width:0; }
+  .tx b { display:block; font-size:15px; font-weight:600; }
+  .tx small { font-size:12px; color:var(--mute); }
+  .chev { color:#b3b9c5; font-size:20px; }
+  .st { flex:none; font-size:11px; padding:3px 9px; border-radius:999px; background:#eceff4; color:#4f5664; }
+  .st.att { background:var(--att-soft); color:var(--att); }
+  .card { margin-bottom:10px; padding:14px; background:var(--card); border-radius:18px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+  .card b { display:block; font-size:16px; }
+  .card small { color:var(--mute); font-size:12.5px; }
+  .card .st { display:inline-block; margin-top:8px; }
+  .note { color:var(--mute); font-size:13px; margin:6px 4px; }
+  .empty { color:var(--mute); font-size:13px; margin:8px 4px; }
+
+  /* The floating bar: detached from the edges, glass, with a shadow. Long-press is not text selection. */
+  .tabbar { position:absolute; left:14px; right:14px; bottom:18px; z-index:12; height:66px; display:flex; padding:6px; border-radius:33px; background:rgba(255,255,255,.84); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.7); box-shadow:0 12px 32px rgba(20,24,36,.22), 0 2px 6px rgba(20,24,36,.12); user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  .tab { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; height:100%; border:0; border-radius:27px; background:none; color:var(--mute); font:600 10.5px system-ui,sans-serif; cursor:pointer; touch-action:manipulation; transition:background .2s, color .2s; }
+  .tab.on { color:var(--acc); background:var(--acc-soft); }
+  .tab .ico { display:grid; place-items:center; }
+  /* While the owner holds a tab, a bar fills along its foot; it reaches the end at 0.5 s and the sheet opens. */
+  .tab.holding::after { content:""; position:absolute; left:22%; right:22%; bottom:4px; height:3px; border-radius:2px; background:var(--acc); transform-origin:left; animation:fill .5s linear forwards; }
+  @keyframes fill { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+
+  .scrim { position:absolute; inset:0; z-index:9; background:rgba(15,18,26,.18); opacity:0; pointer-events:none; transition:opacity .2s; }
+  .scrim.on { opacity:1; pointer-events:auto; }
+  .sheet { position:absolute; left:14px; right:14px; bottom:96px; z-index:11; max-height:52%; display:flex; flex-direction:column; padding:10px 12px 12px; border-radius:24px; background:var(--card); box-shadow:0 18px 44px rgba(20,24,36,.28); opacity:0; transform:translateY(16px) scale(.98); pointer-events:none; transition:opacity .22s, transform .28s cubic-bezier(.2,.8,.2,1); }
+  .sheet.on { opacity:1; transform:none; pointer-events:auto; }
+  .grab { align-self:center; width:38px; height:5px; border-radius:3px; background:#d4d9e2; margin:0 0 10px; }
+  .sheet h2 { margin:0 4px 8px; font-size:15px; }
+  .opts { overflow-y:auto; scrollbar-width:none; display:flex; flex-direction:column; gap:6px; }
+  .opt { display:flex; align-items:center; gap:10px; width:100%; padding:11px 12px; border:0; border-radius:14px; background:#f5f7fa; font:inherit; color:inherit; text-align:left; cursor:pointer; }
+  .opt.on { background:var(--acc-soft); }
+  .opt b { display:block; font-size:14.5px; font-weight:600; }
+  .opt small { color:var(--mute); font-size:12px; }
+  .opt .tick { margin-left:auto; color:var(--acc); font-weight:700; font-size:13px; }
+
+  .drawer { position:absolute; top:0; bottom:0; left:0; width:80%; z-index:30; display:flex; flex-direction:column; padding:22px 16px 18px; background:var(--card); transform:translateX(-102%); transition:transform .28s cubic-bezier(.2,.8,.2,1); box-shadow:8px 0 30px rgba(0,0,0,.2); border-radius:0 26px 26px 0; }
+  .drawer.on { transform:none; }
+  .who { display:flex; align-items:center; gap:10px; padding:4px 6px 16px; margin-bottom:6px; border-bottom:1px solid var(--line); }
+  .who b { display:block; font-size:15px; }
+  .who small { color:var(--mute); font-size:12px; }
+  .label-m { margin:14px 6px 4px; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); }
+  .mi { display:flex; justify-content:space-between; align-items:center; width:100%; padding:12px 8px; border:0; border-radius:12px; background:none; font:inherit; color:var(--ink); text-align:left; cursor:pointer; }
+  .mi small { color:var(--mute); font-size:12px; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>7 · Floating tab bar, hold to change</h1>
+  <p>Four floating tabs: Chronicle (logo only), Realms, Quests and Errands. Tap a tab to show what is chosen; if nothing is chosen yet, it opens a floating sheet to choose one. Hold a tab for 0.5 s to open the sheet and change the choice. Quests show two swords until a quest is chosen, then one sword. Choosing a realm clears its quest and errand; choosing a quest clears its errand.</p>
+</div>
+
+<div class="phone">
+  <div class="status"><span>9:41</span><span>5G ▮</span></div>
+  <header class="top">
+    <button class="ib" id="menuBtn" aria-label="Menu"></button>
+    <div class="ttl"><b id="title"></b><small id="sub"></small></div>
+  </header>
+  <main class="body" id="body"></main>
+
+  <div class="scrim" id="scrim"></div>
+
+  <div class="sheet" id="sheet" role="dialog" aria-label="Choose">
+    <div class="grab"></div>
+    <h2 id="sheetTitle"></h2>
+    <div class="opts" id="opts"></div>
+  </div>
+
+  <nav class="tabbar" id="tabbar">
+    <button class="tab" data-tab="chron" aria-label="Chronicle"><span class="ico"></span></button>
+    <button class="tab" data-tab="realm"><span class="ico"></span><span>Realms</span></button>
+    <button class="tab" data-tab="quest"><span class="ico"></span><span>Quests</span></button>
+    <button class="tab" data-tab="errand"><span class="ico"></span><span>Errands</span></button>
+  </nav>
+
+  <aside class="drawer" id="drawer" aria-label="Side menu">
+    <div class="who"><span class="sw">O</span><div><b>Outlore</b><small>This computer · 0.2.10</small></div></div>
+    <div class="label-m">The Keep</div>
+    <button class="mi">Library <small>Artifacts</small></button>
+    <button class="mi">Lore <small>Rules and facts</small></button>
+    <button class="mi">Archive <small>Fulfilled quests</small></button>
+    <div class="label-m">More</div>
+    <button class="mi">Reserves <small>Usage and budgets</small></button>
+    <button class="mi">Workshop <small>Settings</small></button>
+  </aside>
+</div>
+
+<script>
+const realms = [
+  { id: 'outlore', n: 'Outlore', sub: 'Workspace OUTLORE', quests: [
+    { id: 'shell', n: 'Phone shell redesign', s: 'Attention', e: [{ n: 'Draft five menus', s: 'Underway' }, { n: 'Check the Android gesture bar', s: 'Resting' }] },
+    { id: 'control', n: 'Phone control step 1', s: 'Underway', e: [{ n: 'Write the phone_info schema', s: 'Fulfilled' }] },
+    { id: 'wave', n: 'Review wave 2', s: 'Fulfilled', e: [] }] },
+  { id: 'web', n: 'Website', sub: 'No workspace', quests: [
+    { id: 'copy', n: 'Landing copy', s: 'Waiting', e: [{ n: 'Hero line options', s: 'Resting' }] },
+    { id: 'nf', n: 'Fix the 404 page', s: 'Resting', e: [] }] },
+  { id: 'research', n: 'Research', sub: 'No workspace', quests: [
+    { id: 'pricing', n: 'Compare harness pricing', s: 'Underway', e: [] }] },
+  { id: 'borderlands', n: 'Borderlands', sub: 'Quests with no realm', bl: true, quests: [
+    { id: 'lisbon', n: 'Plan a week in Lisbon', s: 'Resting', e: [] }] }
+];
+const feed = [
+  { s: 'Attention', t: 'Phone shell redesign needs your answer', w: 'Outlore · 10 min ago' },
+  { s: 'Underway', t: 'Compare harness pricing has started', w: 'Research · 1 h ago' },
+  { s: 'Fulfilled', t: 'Review wave 2 was fulfilled', w: 'Outlore · yesterday' }];
+
+const ICON = {
+  chron: '<path d="M5 4h11a3 3 0 0 1 3 3v12a1 1 0 0 1-1 1H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>',
+  realm: '<path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z"/><path d="M12 8.5v7M8.6 10.5l3.4-2 3.4 2"/>',
+  twoSwords: '<path d="M4 20L18 6M5.5 13.5l5 5M2.5 21.5L4 20M20 20L6 6M13.5 13.5l5 5M21.5 21.5L20 20"/>',
+  oneSword: '<path d="M4 20L18 6M5.5 13.5l5 5M2.5 21.5L4 20"/>',
+  errand: '<circle cx="6" cy="5.5" r="2"/><circle cx="6" cy="18.5" r="2"/><circle cx="18" cy="11" r="2"/><path d="M6 7.5v9M6 13c0-1.5 3-2 10-2"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+};
+const svgOf = (p) => `<svg viewBox="0 0 24 24">${p}</svg>`;
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const byId = (id) => realms.find((r) => r.id === id);
+const HOLD_MS = 500;
+
+const state = { tab: 'chron', realm: null, quest: null, errand: null }; // errand is an index into the quest's errands
+let sheet = null;   // 'realm' | 'quest' | 'errand' | null: the floating sheet that is open
+let menuOpen = false;
+const questOf = () => byId(state.realm).quests.find((q) => q.id === state.quest);
+
+// Which sheet chooses this kind: a missing parent sends the owner to the parent first.
+function need(kind) {
+  if (kind !== 'realm' && !state.realm) return 'realm';
+  if (kind === 'errand' && !state.quest) return 'quest';
+  return kind;
+}
+const chosen = { realm: () => state.realm, quest: () => state.quest, errand: () => state.errand };
+
+// A tap shows the choice when there is one; otherwise it opens the sheet that makes it.
+function tap(kind) {
+  menuOpen = false;
+  if (kind === 'chron') { state.tab = 'chron'; sheet = null; render(); return; }
+  if (chosen[kind]() !== null) { state.tab = kind; sheet = null; }
+  else sheet = need(kind);
+  render();
+}
+// A hold always opens the sheet, so a choice can be changed.
+function hold(kind) {
+  menuOpen = false;
+  sheet = need(kind);
+  render();
+}
+function pick(kind, id) {
+  menuOpen = false;
+  if (kind === 'realm') {
+    if (state.realm !== id) { state.realm = id; state.quest = null; state.errand = null; }
+  } else if (kind === 'quest') {
+    if (state.quest !== id) { state.quest = id; state.errand = null; }
+  } else {
+    state.errand = Number(id);
+  }
+  state.tab = kind;
+  sheet = null;
+  render();
+}
+
+// Tap and hold on one button: a press shorter than 0.5 s is a tap; a press that reaches 0.5 s is a hold.
+function bind(btn, onTap, onHold) {
+  let timer = null;
+  let held = false;
+  const stop = () => { clearTimeout(timer); timer = null; btn.classList.remove('holding'); };
+  btn.addEventListener('pointerdown', () => {
+    held = false;
+    btn.classList.add('holding');
+    timer = setTimeout(() => {
+      held = true;
+      stop();
+      if (navigator.vibrate) navigator.vibrate(12);
+      onHold();
+    }, HOLD_MS);
+  });
+  btn.addEventListener('pointerup', () => { const wasHeld = held; stop(); if (!wasHeld) onTap(); });
+  btn.addEventListener('pointerleave', stop);
+  btn.addEventListener('pointercancel', stop);
+  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  // A keyboard activation has no pointer; it counts as a tap.
+  btn.addEventListener('click', (e) => { if (e.detail === 0) onTap(); });
+}
+
+function iconFor(kind) {
+  if (kind === 'chron') return ICON.chron;
+  if (kind === 'realm') return ICON.realm;
+  if (kind === 'quest') return state.quest !== null ? ICON.oneSword : ICON.twoSwords;
+  return ICON.errand;
+}
+function sheetItems() {
+  if (sheet === 'realm') return realms.filter((r) => !r.bl).concat([byId('borderlands')]).map((r) => ({ kind: 'realm', id: r.id, t: r.n, s: `${r.quests.length} quests · ${r.sub}`, on: r.id === state.realm }));
+  if (sheet === 'quest') return byId(state.realm).quests.map((q) => ({ kind: 'quest', id: q.id, t: q.n, s: `${q.e.length} errands · ${q.s}`, on: q.id === state.quest }));
+  return questOf().e.map((e, i) => ({ kind: 'errand', id: String(i), t: e.n, s: e.s, on: state.errand === i }));
+}
+function renderSheet() {
+  $('#sheet').classList.toggle('on', sheet !== null);
+  $('#scrim').classList.toggle('on', sheet !== null || menuOpen);
+  if (sheet === null) return;
+  $('#sheetTitle').textContent = sheet === 'realm' ? 'Choose a realm'
+    : sheet === 'quest' ? `Choose a quest in ${byId(state.realm).n}`
+    : `Choose an errand in ${questOf().n}`;
+  const items = sheetItems();
+  $('#opts').innerHTML = items.length
+    ? items.map((i) => `<button class="opt ${i.on ? 'on' : ''}" data-kind="${i.kind}" data-id="${i.id}"><div style="flex:1;min-width:0"><b>${i.t}</b><small>${i.s}</small></div>${i.on ? '<span class="tick">✓</span>' : ''}</button>`).join('')
+    : '<p class="empty">Nothing here yet.</p>';
+}
+const rowOf = (kind, id, title, sub, stateText) => `<button class="row" data-kind="${kind}" data-id="${id}"><span class="tx"><b>${title}</b><small>${sub}</small></span>${stateText ? `<span class="st ${stateText === 'Attention' ? 'att' : ''}">${stateText}</span>` : ''}<span class="chev">›</span></button>`;
+function renderBody() {
+  const b = $('#body');
+  if (state.tab === 'chron') {
+    $('#title').textContent = 'Chronicle';
+    $('#sub').textContent = 'Updates across realms';
+    b.innerHTML = '<div class="label">Latest</div>' + feed.map((f) => `<div class="card"><b>${f.t}</b><small>${f.w}</small><br><span class="st ${f.s === 'Attention' ? 'att' : ''}">${f.s}</span></div>`).join('');
+  } else if (state.tab === 'realm') {
+    const r = byId(state.realm);
+    $('#title').textContent = r.n;
+    $('#sub').textContent = `${r.sub} · ${r.quests.length} quests`;
+    b.innerHTML = '<div class="label">Quests</div>' + r.quests.map((q) => rowOf('quest', q.id, q.n, `${q.e.length} errands`, q.s)).join('');
+  } else if (state.tab === 'quest') {
+    const q = questOf();
+    $('#title').textContent = q.n;
+    $('#sub').textContent = byId(state.realm).n;
+    b.innerHTML = `<div class="card"><b>${q.n}</b><small>${q.e.length} errands</small><br><span class="st ${q.s === 'Attention' ? 'att' : ''}">${q.s}</span></div><div class="label">Errands</div>`
+      + (q.e.length ? q.e.map((e, i) => rowOf('errand', String(i), e.n, e.s)).join('') : '<p class="empty">No errands yet.</p>');
+  } else {
+    const q = questOf();
+    const e = q.e[state.errand];
+    $('#title').textContent = e.n;
+    $('#sub').textContent = `${byId(state.realm).n} · ${q.n}`;
+    b.innerHTML = `<div class="card"><b>${e.n}</b><small>${q.n}</small><br><span class="st">${e.s}</span></div><div class="label">Conversation</div><p class="note">The errand's conversation appears here.</p>`;
+  }
+}
+function render() {
+  $('#drawer').classList.toggle('on', menuOpen);
+  $$('.tab').forEach((t) => {
+    const kind = t.dataset.tab;
+    t.classList.toggle('on', kind === state.tab);
+    t.querySelector('.ico').innerHTML = svgOf(iconFor(kind));
+  });
+  renderBody();
+  renderSheet();
+}
+
+$$('.tab').forEach((btn) => {
+  const kind = btn.dataset.tab;
+  if (kind === 'chron') btn.addEventListener('click', () => tap('chron'));
+  else bind(btn, () => tap(kind), () => hold(kind));
+});
+$('#opts').addEventListener('click', (e) => {
+  const o = e.target.closest('[data-kind]');
+  if (o) pick(o.dataset.kind, o.dataset.id);
+});
+$('#body').addEventListener('click', (e) => {
+  const r = e.target.closest('[data-kind]');
+  if (r) pick(r.dataset.kind, r.dataset.id);
+});
+$('#scrim').addEventListener('click', () => { sheet = null; menuOpen = false; render(); });
+$('#menuBtn').innerHTML = svgOf(ICON.menu);
+$('#menuBtn').addEventListener('click', () => { sheet = null; menuOpen = true; render(); });
+render();
+</script>
+</body>
+</html>

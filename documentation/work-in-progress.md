@@ -1,5 +1,11 @@
 # Work in progress
 
+## Phone growing bar and side menu · 2026-11-26 · built, refactored, spec fixes green; real phone pending
+
+CHG-0773 in `0.2.10-Pre-Alpha`: the phone's three-tab pill is replaced by a floating bar of Chronicle, Realms, Quests and Errands that grows as a realm and a quest are chosen; a tap shows a choice, a hold of half a second opens a sheet to change it, and each lands in its chat with the composer above the bar. The top bar carries the desktop pane header's actions, and a side menu holds the hosts, the Keep, Reserves and Settings (`phoneBar.tsx`, `phoneChooser.tsx`, `phoneSelection.ts`, `sideMenu.tsx`, `narrowShell.tsx`, `narrowAppScreen.tsx`). Nine HTML drafts are kept in `documentation/art-direction/2026-11-26-mobile-menu-*.html`.
+Review, refactor, and spec fixes (2026-11-26/27, base `fb27963e`, uncommitted): Standards 9/9 resolved (`STD-01`–`STD-09`); Specifications 9/10 resolved (`SPEC-01` `topThreadId` normalization via `selectedThreadOf`; `SPEC-02` `reconcileSelection` clearing archived/deleted realms, quests and errands; `SPEC-03` `isErrandStarterOpen` on `Location` with Back and `"New errand"` header; `SPEC-04` Quest panel sword omitted on errands and Done ordered before Archive everywhere; `SPEC-05` `barSlotsOf` keeping Quests visible when `quest !== null`; `SPEC-06` closing chooser on SideMenu open and prioritizing SideMenu on Back; `SPEC-07` `SideMenu` `ScrollView`; `SPEC-08` settled by owner: tapping Realms returns to the realm's last sub-tab while picking a new realm opens on Missives; `SPEC-09` hiding New errand on archived quests and restoring `"Chronicle, N unread"` accessibility label; plus web hold `userSelect`/`WebkitTouchCallout` suppression). Verified with `bunx biome check apps/app` (583 files clean), 7-workspace `bun run typecheck`, and `CI=1 bun run test apps/app` (126 files, 1,027 passed, 6 skipped).
+Next: install an APK or open the web build on a phone for `SPEC-10` (bar growth, hold, sheet, composer with keyboard open, New errand, side menu hosts, Back), commit/handoff when ready, and decide whether Chronicler needs a way back on the phone.
+
 ## Phone control step 1 · 2026-11-26 · built, merged on `main` and tested against fakes; emulator and real phone pending
 
 CHG-0767, CHG-0768 and CHG-0770 in `0.2.10-Pre-Alpha`: six `phone_*` tools in the host's tool server, run by the paired app (`PhoneLink`, `Sessions.sendTo`, `apps/app/src/phone/`), with the phone's per-group switches as the only consent and each call naming its phone; the full suite (3,652 passed) and typecheck pass.
@@ -13,7 +19,7 @@ CHG-0763 in `0.2.10-Pre-Alpha` (base `431e71f4`): enabled dual authentication (g
 Unlisted runtime-discovered tools default safely to Unclassified (asks every time); vendored stdio connectors (Playwright, Chrome DevTools, Brave Search, MCP Fetch) stay deferred to a later batch, and non-DCR OAuth vendors (GitHub OAuth, Slack, Asana, HubSpot, Box, Google Workspace, Microsoft 365) remain blocked on pre-registered OAuth apps.
 Next: open the Charter in the desktop window to check dual-auth connector panels (e.g., Composio, Stripe, Linear) and run a live OAuth sign-in on at least one dual-auth and one newly added connector.
 
-## Phone floating pill shell · 2026-11-26 · built and checked in a phone-width browser; real phone pending
+## Phone floating pill shell · 2026-11-26 · superseded by the growing bar (CHG-0773)
 
 CHG-0761 in `0.2.10-Pre-Alpha`: the narrow window has a floating pill of three tabs (Chronicle, Quests, Chronicler), a Menu button in the top bar (Lore, Archive, Reserves, Settings), and the conversation's own composer in a quest (`narrowShell.tsx`, `phoneShell.ts`, `phonePill.tsx`, `menuScreen.tsx`, `pillScroll.ts`).
 Next: the owner tries it on a phone (the pill's gap above the Android gesture or three-button bar, the collapse while scrolling, Back from a quest to the tab it came from) and decides whether the composer also needs a Back button, whether Rituals need a place on the phone, and whether a safe-area package is wanted. [Handoff](../.agents/handoffs/2026-11-26-1445-phone-floating-pill.md).

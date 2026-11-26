@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useContext, useEffect } from "react";
 import { Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { PhoneHeaderSetter } from "../foundation/shellContext";
 import { colors, radii } from "../foundation/theme";
 
 /** A thumb-sized target for an icon action in phone lists and headers. */
@@ -11,8 +12,25 @@ export const mobileIconTarget = {
   width: 44,
 } satisfies ViewStyle;
 
-/** Shows the menu button, conversation title and state, and available conversation actions in a narrow window. */
+/** The target of an action in the narrow top bar, where several share the row (CHG-0773). */
+export const headerIconTarget = {
+  alignItems: "center",
+  height: 36,
+  justifyContent: "center",
+  width: 36,
+} satisfies ViewStyle;
+
+/**
+ * Shows the conversation title and state, and its available actions, in a narrow window. The narrow window's top bar
+ * draws them when it has handed this header the bar (CHG-0773), as the quest panel is handed to the frame: the header
+ * then draws nothing here and leaves with its screen. Without the bar it draws a Back button, the title and the actions.
+ */
 export function MobileHeader({ actions, onBack, title }: { actions: ReactNode; onBack: () => void; title: ReactNode }) {
+  const setHeader = useContext(PhoneHeaderSetter);
+  // The bar redraws without this screen, so publishing after every render cannot loop.
+  useEffect(() => setHeader?.({ actions, title }));
+  useEffect(() => () => setHeader?.(null), [setHeader]);
+  if (setHeader !== null) return null;
   return (
     <View style={local.header}>
       <Pressable

@@ -15,12 +15,17 @@ import { useShownThreadsRead } from "./useShownThreadsRead";
 
 const ritualErrandsRequest = {};
 
+/** Normalizes a quest's own top thread to null so navigation treats it as the quest rather than an errand. */
+export const selectedThreadOf = (threadId: ThreadId | null, topThreadId: ThreadId | null): ThreadId | null =>
+  threadId !== null && threadId === topThreadId ? null : threadId;
+
 /** A mission: its thread tree on the side, the selected thread's conversation beside it. */
 export function Conversation({
   client,
   shouldShowErrandsInitially = false,
   missionId,
   onBack,
+  onNewErrand,
   onOpenMission,
   onSelectThread,
   onSetDetails,
@@ -37,6 +42,8 @@ export function Conversation({
   onSetDetails: (isOpen: boolean) => void;
   /** Goes to the quest's parent view: its realm's quests, or the Borderlands; null while the quest has not loaded. */
   onBack: (quest: { workspaceId: string | null; workspaceName: string | null } | null) => void;
+  /** Starts an errand of the quest, from the header's icon on a narrow window; none where the window has panes. */
+  onNewErrand?: (() => void) | undefined;
   /** Opens another mission, such as where an off-topic request went. */
   onOpenMission: (missionId: MissionId) => void;
 }) {
@@ -46,7 +53,6 @@ export function Conversation({
   const [isTreeOpen, setIsTreeOpen] = useState(shouldShowErrandsInitially);
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const selectedId = selectedThreadId;
-  const setSelectedId = onSelectThread;
   const hasTopBar = useHasTopBar();
   const hasSidebar = useHasSidebar();
   const { data, error } = useServiceQuery(
@@ -61,6 +67,8 @@ export function Conversation({
   // The quest's side panel is shown by the window's frame, beside the top bar's icon, not by this screen. It holds
   // the open thread's groups too: while another thread loads, the one before stays.
   const shown = detail ?? data;
+  const setSelectedId = (threadId: ThreadId | null) =>
+    onSelectThread(selectedThreadOf(threadId, shown?.mission.topThreadId ?? null));
   // The conversation on show is read (CHG-0569): its replies, results and requests are no longer unread.
   const shownId = shown?.thread.id ?? null;
   useShownThreadsRead(client, shownId === null ? [] : [shownId], true);
@@ -121,6 +129,10 @@ export function Conversation({
             key={detail.thread.id}
             {...(hasSidebar ? {} : { onBack: goBack })}
             onOpenBudget={() => pages.openBudget(detail.budgetStop?.scope ?? "Mission")}
+            // A Ritual's runs are its only errands (CHG-0616), and archived quests take no new errands.
+            {...(onNewErrand === undefined || detail.mission.ritual !== null || detail.mission.state === "Archived"
+              ? {}
+              : { onNewErrand })}
             onOpenDetails={() => onSetDetails(true)}
             onOpenMission={onOpenMission}
             onSelect={setSelectedId}

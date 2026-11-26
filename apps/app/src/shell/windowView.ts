@@ -24,6 +24,7 @@ export const windowViewOf = (location: Location) => {
             questsRequest: channel.listRequest?.tab === "quests" ? channel.listRequest : null,
           },
     errandsRequest: location.listRequest?.tab === "errands" ? location.listRequest : null,
+    isErrandStarterOpen: location.isErrandStarterOpen,
     isPermissionsOpen: location.isPermissionsOpen,
     listedRealm: location.listedRealm,
     openCount: location.openCount,

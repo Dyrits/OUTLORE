@@ -2,8 +2,8 @@ import type { ChronicleItem, MissionId, ThreadId } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { type ChronicleTarget, targetOf } from "../conversation/chronicleTarget";
+import { useBarClearance } from "../foundation/barClearance";
 import type { ServiceClient } from "../foundation/client";
-import { usePillScroll } from "../foundation/pillScroll";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import {
@@ -52,7 +52,7 @@ export function ChronicleActivity({
   const { data, error } = useServiceQuery(client, { _tag: "ReadChronicle" }, "chronicle-activity");
   const [tab, setTab] = useState<Tab>("Attention");
   const [filter, setFilter] = useState<Filter>("All");
-  const pill = usePillScroll();
+  const barClearance = useBarClearance();
   const open = (item: ChronicleItem) => {
     if (item.missionId !== null) {
       const target = targetOf(item);
@@ -79,7 +79,7 @@ export function ChronicleActivity({
   const history = historyOf(data ?? [], now);
   const isEmpty = tab === "Attention" ? feed.length === 0 : history.length === 0;
   return (
-    <ScrollView {...pill.scrollProps} contentContainerStyle={[local.content, pill.contentStyle]} style={local.page}>
+    <ScrollView contentContainerStyle={[local.content, barClearance]} style={local.page}>
       <Text accessibilityRole="header" style={local.title}>
         Chronicle
       </Text>

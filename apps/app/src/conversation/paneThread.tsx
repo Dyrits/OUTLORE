@@ -28,6 +28,7 @@ export const PaneThread = memo(function PaneThread({
   onOpenMission,
   onNewErrand,
   onOpenThread,
+  onShowParent,
   onStartErrand,
   threadId,
 }: {
@@ -39,6 +40,8 @@ export const PaneThread = memo(function PaneThread({
   missionId: MissionId;
   onBack?: (() => void) | undefined;
   onOpenMission: (missionId: MissionId) => void;
+  /** Shows the parent's tab from the title: the realm's Quests tab for a quest, the quest's Errands tab for an errand. */
+  onShowParent?: (() => void) | undefined;
   /** The header's icon that starts an errand of the quest; none on the quest's own pane. */
   onNewErrand?: (() => void) | undefined;
   /** Opens another thread of the quest: a reply line here opens its errand in the pane beside this one. */
@@ -120,6 +123,7 @@ export const PaneThread = memo(function PaneThread({
             onOpenDetails={() => {}}
             onOpenMission={onOpenMission}
             onSelect={onOpenThread}
+            {...(onShowParent === undefined ? {} : { onShowParent })}
             tabs={
               <PaneTabs
                 isTouch={onBack !== undefined}
@@ -189,5 +193,6 @@ const local = StyleSheet.create({
   hidden: { display: "none" },
   list: { gap: 8 },
   page: { flex: 1 },
-  pane: { flex: 1, gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  // The same padding as the channel pane, so the header and tabs of neighboring panes line up.
+  pane: { flex: 1, gap: 8, paddingBottom: 14, paddingHorizontal: 16, paddingTop: 12 },
 });

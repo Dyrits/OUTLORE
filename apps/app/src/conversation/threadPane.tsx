@@ -39,9 +39,12 @@ export function ThreadPane({
   onOpenDetails,
   onBack,
   onNewErrand,
+  onShowParent,
 }: {
   /** Starts an errand of the quest: an icon among the header's actions, before the separator. */
   onNewErrand?: () => void;
+  /** In a pane: the title shows the parent's tab (a quest's Quests tab, an errand's Errands tab) rather than a menu. */
+  onShowParent?: () => void;
   /** In a narrow window, which has no sidebar: the header's back chevron, which opens the main menu. */
   onBack?: () => void;
   /** The buttons at the end of the header of a pane among several: fold and close; none in the quest's own screen. */
@@ -107,7 +110,8 @@ export function ThreadPane({
   return (
     <CommentsProvider value={comments}>
       <RepliesProvider value={canReply ? { start: startReply } : null}>
-        <View style={[styles.flex, styles.pane]}>
+        {/* In a pane the rows keep the channel pane's gap, so the header and tabs line up across panes. */}
+        <View style={[styles.flex, styles.pane, isInPane && { gap: 8 }]}>
           <ThreadPaneHeader
             act={act}
             canOpenDetails={canOpenDetails}
@@ -123,6 +127,7 @@ export function ThreadPane({
             onOpenMission={onOpenMission}
             onRitualRunError={setRitualRunError}
             onSelect={onSelect}
+            {...(onShowParent === undefined ? {} : { onShowParent })}
           />
           <EndingConfirmation ending={ending} />
           {ending.error !== null && <Text style={styles.error}>{ending.error}</Text>}

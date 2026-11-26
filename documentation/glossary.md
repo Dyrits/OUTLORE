@@ -90,7 +90,7 @@ _Avoid_: Mission dashboard, index, mission list, board, kanban
 The name of Chronicler's permanent conversation outside every quest. CHG-0449 retires the Guild Hall hub page and keeps the conversation in Chronicler's own panel. [Quest coordination](capabilities/mission-coordination/specifications.md#place)
 
 **Chronicler** (the assistant; formerly **Guildmaster**, CHG-0173):
-The app-wide assistant the user talks with in desktop conversation panes or from the narrow-screen top bar.
+The app-wide assistant the user talks with in desktop conversation panes. The narrow screen's bar has no tab for it (CHG-0773).
 It asks for the user's confirmation before opening a quest.
 _Avoid_: Coordinator, dispatcher, orchestrator, main thread, Mission control
 
@@ -99,7 +99,7 @@ The action that starts a quest from a channel message or an errand from a quest 
 _Avoid_: Sub-thread, fork (alone)
 
 **Chronicle**:
-The desktop sidebar destination for updates and reminders across realms and the Borderlands. The attention feed and History split are specified in CHG-0569. [Conversation panes](capabilities/conversation-panes/specifications.md#main-conversations-and-channels)
+The desktop sidebar destination, and the first tab of the narrow screen's bar, for updates and reminders across realms and the Borderlands. The attention feed and History split are specified in CHG-0569. [Conversation panes](capabilities/conversation-panes/specifications.md#main-conversations-and-channels)
 _Avoid_: Log, Guild Hall (the retired hub's name, kept for Chronicler's permanent conversation in the older specifications)
 
 **Missive**:
@@ -164,17 +164,20 @@ The place for generated and uploaded artifacts, including those from quests with
 Collection and lifecycle behavior remain to be specified.
 
 **Workshop**:
-The application settings page, opened from the gear in the desktop top bar or the Workshop row in the narrow-screen menu.
+The application settings page, opened from the gear in the desktop top bar or the Settings row in the narrow-screen side menu.
 It shows one section at a time from Permissions, Look and feel, Providers, Companions, Connectors, Remote access, Messaging, Limits, Reserves, and Updates.
 
 **Charter**:
 The former sidebar destination for Connectors and The Vault.
 The owner now manages them under **Workshop → Connectors** (CHG-0449, CHG-0457).
 
-**The menu**:
-On a narrow screen, the top bar's Menu button, a grid of four squares at its right on every screen, opens a screen of tiles for the places the tabs do not cover: Lore, Archive, Reserves, and Settings (the Workshop) (CHG-0761).
-The realms and quests are the Quests tab of the floating pill beside the Chronicle and Chronicler tabs.
-The pill is replaced by the conversation's own composer in a quest or errand.
+**The bar**:
+On a narrow screen, the capsule of tabs floating above the bottom edge (CHG-0773): the Chronicle (its icon alone), Realms, and, once a realm and a quest are chosen, Quests and Errands, which grow in. A tap shows a tab's choice and a hold of half a second opens the sheet to change it. The conversation's composer sits above it.
+_Avoid_: Pill (the three-tab bar it replaced, CHG-0761), tab bar (alone)
+
+**The side menu**:
+On a narrow screen, the top bar's button of three lines at its left opens a panel that slides in from the left with the hosts (the computer, the paired hosts, and a way to pair another), the Keep (Lore, Archive), Reserves, and Settings (the Workshop) (CHG-0773).
+Before it, the top bar's Menu button of four squares opened a screen of tiles (CHG-0761).
 
 **Connector**:
 A named integration that gives threads the tools of one outside service or app, installed once by the owner from the list Outlore offers. It is **installed** (on this computer, global), **connected** (given a key, a sign-in or a permission) and **enabled** (switched on for a realm, the Borderlands or a quest); a thread can use it only when all three hold ([connectors](capabilities/connectors/specifications.md)).
