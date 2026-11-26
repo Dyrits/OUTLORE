@@ -3,7 +3,7 @@
 ## Phone floating pill shell · 2026-11-26 · built and checked in a phone-width browser; real phone pending
 
 CHG-0761 in `0.2.10-Pre-Alpha`: the narrow window has a floating pill of three tabs (Chronicle, Quests, Chronicler), a Menu button in the top bar (Lore, Archive, Reserves, Settings), and the conversation's own composer in a quest (`narrowShell.tsx`, `phoneShell.ts`, `phonePill.tsx`, `menuScreen.tsx`, `pillScroll.ts`).
-Next: the owner tries it on a phone (the pill's gap above the Android gesture or three-button bar, the collapse while scrolling, Back from a quest to the tab it came from) and decides whether the composer also needs a Back button, whether Rituals need a place on the phone, and whether a safe-area package is wanted. [Handoff](../.agents/handoffs/2026-11-26-1400-phone-floating-pill.md).
+Next: the owner tries it on a phone (the pill's gap above the Android gesture or three-button bar, the collapse while scrolling, Back from a quest to the tab it came from) and decides whether the composer also needs a Back button, whether Rituals need a place on the phone, and whether a safe-area package is wanted. [Handoff](../.agents/handoffs/2026-11-26-1445-phone-floating-pill.md).
 
 ## Direct channels on the Android app · 2026-11-26 · built and run on an emulator; real phone pending
 
