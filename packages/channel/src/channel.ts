@@ -12,17 +12,21 @@ import { type SecureChannel, Session } from "./secureChannel.ts";
 /** An X25519 key pair, 32 bytes each: the host's long-term identity. */
 export type KeyPair = NoiseKeyPair;
 
+/** Why a secure channel could not be opened or ended. */
 export type ChannelErrorKind = "handshake-failed" | "handshake-timeout" | "carrier-closed";
 
+/** The typed failure of opening a secure channel. */
 export class ChannelFailure extends Schema.TaggedError<ChannelFailure>()("ChannelFailure", {
   kind: Schema.Literals(["handshake-failed", "handshake-timeout", "carrier-closed"]),
 }) {}
 
+/** What the caller may adjust when it opens a secure channel. */
 export type ChannelOptions = {
   /** How long the handshake may take before it gives up; defaults to 15 seconds. */
   handshakeTimeoutMs?: number;
 };
 
+/** How long a handshake may take by default, in milliseconds. */
 export const defaultHandshakeTimeoutMs = 15_000;
 const emptyPayload = new Uint8Array(0);
 

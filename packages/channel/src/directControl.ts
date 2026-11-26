@@ -18,12 +18,14 @@ export const DirectRefusal = Schema.TaggedStruct("DirectRefusal", {
   reason: Schema.Literals(["busy", "off"]),
 });
 
+/** A message of the direct-path upgrade's own conversation: an offer, an answer, or a refusal. */
 export const DirectControl = Schema.Union([DirectOffer, DirectAnswer, DirectRefusal]);
 export type DirectControl = typeof DirectControl.Type;
 
 /** A control message as the JSON text the link carries. */
 export const DirectControlJson = Schema.fromJsonString(DirectControl);
 
+/** Writes a control message as the JSON text the link carries. */
 export const encodeDirectControl = Schema.encodeSync(DirectControlJson);
 /** Reads a control message; null for anything off-shape, which the caller ignores. */
 export const parseDirectControl = (text: string): DirectControl | null => {

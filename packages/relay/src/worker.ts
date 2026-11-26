@@ -1,7 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import { Clock, Effect } from "effect";
 import { SourceGate } from "./limits.ts";
-import { closeWithReason, type Member, RoomCore, type RoomPorts } from "./roomCore.ts";
+import { type Member, RoomCore, type RoomPorts } from "./roomCore.ts";
+import { closeWithReason } from "./roomFrames.ts";
 import { legacyClaimUntil, offersRelayProtocol, parseConnect, relayProtocol } from "./route.ts";
 
 /** The Worker's bindings. */
@@ -73,7 +74,7 @@ export class Room extends DurableObject<Env> {
           return new Response(null, { status: 404 });
         // Visible in the Worker's logs for as long as hosts of an earlier release use the address form.
         if (connect.isLegacyClaim)
-          console.warn("A host sent its claim in the address; the address form ends at legacyClaimUntil.");
+          yield* Effect.logWarning("A host sent its claim in the address; the address form ends at legacyClaimUntil.");
         const rejection = yield* core.screen(connect.role, connect.claim);
         const pair = new WebSocketPair();
         const [client, server] = [pair[0], pair[1]];

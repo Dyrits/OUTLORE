@@ -2,7 +2,8 @@ import { it as effectIt } from "@effect/vitest";
 import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { describe, expect, it } from "vitest";
-import { defaultRoomLimits, relayFrame } from "../src/roomCore.ts";
+import { defaultRoomLimits } from "../src/roomCore.ts";
+import { relayFrame } from "../src/roomFrames.ts";
 import { createFakeRoom } from "./fixtures/fakeRoom.ts";
 
 const bytes = (...values: number[]) => Uint8Array.from(values);

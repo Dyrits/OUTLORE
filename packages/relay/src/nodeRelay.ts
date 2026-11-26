@@ -3,7 +3,8 @@ import type { Duplex } from "node:stream";
 import { Clock, Effect, Schema } from "effect";
 import { type WebSocket, WebSocketServer } from "ws";
 import { SourceGate, type SourceLimits } from "./limits.ts";
-import { closeCodes, closeWithReason, defaultRoomLimits, type Member, RoomCore, type RoomLimits } from "./roomCore.ts";
+import { defaultRoomLimits, type Member, RoomCore, type RoomLimits } from "./roomCore.ts";
+import { closeCodes, closeWithReason } from "./roomFrames.ts";
 import { legacyClaimUntil, parseConnect, relayProtocol } from "./route.ts";
 
 /** What `startNodeRelay` accepts. */

@@ -15,17 +15,25 @@ import {
   runDeviceUpgrade,
   type SecureChannel,
 } from "@outlore/channel";
-import { closeCodes, connectClient } from "@outlore/relay/browser";
+import { connectClient } from "@outlore/relay/browser";
 import { Clock, Deferred, Effect, type Fiber } from "effect";
 import type { HostLinkRecord, PairedHostStore } from "./hostStore.ts";
-import { type ControllerKind, controllerWords, LinkFailure, linkTexts, releaseProblemOf } from "./linkFailure.ts";
+import {
+  type ControllerKind,
+  controllerWords,
+  LinkFailure,
+  linkFailureOf,
+  linkTexts,
+  relayRefusalOf,
+  releaseProblemOf,
+} from "./linkFailure.ts";
 
 // A controller's link to a host (device-pairing): it pairs with a code, resumes with its token, and holds the end-to-end
 // encrypted channel. The desktop app runs it in its service (`service/src/remote/controller.ts`) and the web app in
 // the browser (browser access, 0019); only the store of pairings differs. Nothing here needs Node.
 
 /** What the controller running this link is, and what it accepts. */
-export interface LinkSettings {
+export type LinkSettings = {
   /** Whether a pairing code may name a relay on this computer: only a test or a development run, or a local page. */
   readonly allowLocalRelay: boolean;
   /**
@@ -36,7 +44,7 @@ export interface LinkSettings {
   readonly kind: ControllerKind;
   /** The release this controller runs; the host must run the same one (0019, Versions). */
   readonly release: string;
-}
+};
 
 /** An open link to a host, its answer read; what the host sends next waits until `listen` is called. */
 export interface HostLink {
@@ -87,24 +95,7 @@ const tapChannel = (channel: SecureChannel) => {
 
 type Hello = Parameters<typeof encodeClientHello>[0];
 
-/**
- * Why the relay turned the connection away, from its close code: no host, the host left, the room is full, or the
- * relay limited this connection (trying again later may help).
- */
-const relayRefusalOf = (code: number | null) =>
-  code === closeCodes.hostOffline || code === closeCodes.hostLeft
-    ? linkTexts.hostOffline
-    : code === closeCodes.roomFull
-      ? linkTexts.roomFull
-      : code === closeCodes.rateLimited
-        ? linkTexts.busy
-        : linkTexts.timedOut;
-
-/**
- * Opens the secure channel to a host, saying who this controller is with `hello`, and reads its answer. The relay
- * connection and the channel close when the fiber is interrupted or anything below fails; once the answer is read, the
- * caller owns the channel.
- */
+/** Opens the secure channel to a host, saying who this controller is with `hello`, and reads its answer. The relay connection and the channel close when the fiber is interrupted or anything below fails; once the answer is read, the caller owns the channel. */
 const openToHost = Effect.fnUntraced(function* (
   link: Omit<HostLinkRecord, "deviceId" | "deviceToken" | "hostName">,
   hello: Hello,
@@ -132,11 +123,6 @@ const openToHost = Effect.fnUntraced(function* (
     return { channel, listen: tap.listen, reply: reply.value satisfies HostReply };
   }).pipe(Effect.onError(() => Effect.sync(() => channel.close())));
 });
-
-const linkFailureOf = (reason: unknown): LinkFailure =>
-  reason instanceof LinkFailure
-    ? reason
-    : new LinkFailure("couldNotOpen", reason instanceof Error ? reason.message : linkTexts.unreachable);
 
 /** Pairs with the host that made `code`, a raw pairing code or a pairing link; keeps the host and returns it for the host menu. */
 export const pairWithCode = Effect.fnUntraced(function* (
@@ -218,13 +204,13 @@ const startUpgrade = (
   });
 
 /** What else a resumed link may be asked to be. */
-export interface ResumeOptions {
+export type ResumeOptions = {
   /**
    * Keep the link when the host runs another release than this controller. Only the link that updates the host uses
    * it (app-updates, Updating a host from a paired device): it sends the two requests about updating and nothing else.
    */
   readonly acceptOtherRelease?: boolean;
-}
+};
 
 /** Opens a link to a kept host: the secure channel, resumed, or the reason it could not be. */
 export const resumeHost = Effect.fnUntraced(function* (

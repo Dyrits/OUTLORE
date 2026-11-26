@@ -3,9 +3,11 @@ import { bytesToHex, hexToBytes, randomBytes } from "@noble/hashes/utils.js";
 import { decodeBase64Url, encodeBase64Url } from "./base64url.ts";
 import { fail, type Result, succeed } from "./result.ts";
 
+/** The text every pairing code starts with, which also names its version. */
 export const pairingCodePrefix = "outlore1-";
 const publicKeyBytes = 32;
 const roomBytes = 16;
+/** The length of the one-time secret a pairing code carries, in bytes. */
 export const pairingSecretBytes = 16;
 const checksumBytes = 4;
 const maxOriginBytes = 255;
@@ -23,6 +25,7 @@ export type PairingCode = {
   secret: Uint8Array;
 };
 
+/** Why a pairing code could not be read. */
 export type PairingCodeErrorKind = "malformed" | "unsupported-version" | "bad-checksum";
 
 /** A fresh room name: 16 random bytes as 32 lowercase hex characters. */

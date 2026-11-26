@@ -33,6 +33,8 @@ interface RtcDescription {
 }
 
 interface RtcDataChannel {
+  /** Absent in an implementation that has no event listeners; `drain` then runs on each send. */
+  addEventListener?(type: string, listener: () => void): void;
   binaryType: string;
   readonly bufferedAmount: number;
   bufferedAmountLowThreshold: number;
@@ -45,6 +47,7 @@ interface RtcDataChannel {
   send(data: Uint8Array): void;
 }
 
+/** The part of a WebRTC peer connection the direct path uses, so a fake can stand in for the platform's. */
 export interface RtcConnection {
   addEventListener(type: string, listener: (event: unknown) => void): void;
   close(): void;
@@ -117,8 +120,7 @@ export const dataChannelCarrier = (channel: RtcDataChannel): Carrier => {
   channel.onerror = end;
   // The event is named in the standard way by both implementations; where one does not emit it, `drain` also runs on
   // each send, which is enough for a stream that keeps sending.
-  const watcher = channel as unknown as { addEventListener?: (type: string, listener: () => void) => void };
-  watcher.addEventListener?.("bufferedamountlow", drain);
+  channel.addEventListener?.("bufferedamountlow", drain);
 
   return {
     close: () => {

@@ -4,7 +4,7 @@ import { TestClock } from "effect/testing";
 import { afterEach, beforeEach, describe, expect, vi } from "vitest";
 import { WebSocketServer } from "ws";
 import { connectClient as clientEffect, connectHost as hostEffect, keepAlive } from "../src/client.ts";
-import { closingFrame } from "../src/roomCore.ts";
+import { closingFrame } from "../src/roomFrames.ts";
 import { claimProtocolOf, relayProtocol } from "../src/route.ts";
 import { room } from "./fixtures/wsClient.ts";
 

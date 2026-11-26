@@ -17,7 +17,9 @@ import { x25519 } from "@noble/curves/ed25519.js";
 import { type CipherState, NOISE_MAX_MESSAGE_BYTES, NoiseProtocolError } from "./cipherState.ts";
 import { concat, SymmetricState } from "./symmetricState.ts";
 
+/** The name of the Noise pattern the handshake runs, hashed into its starting state. */
 export const NOISE_NK_PROTOCOL_NAME = "Noise_NK_25519_ChaChaPoly_SHA256";
+/** The length of an X25519 key in bytes. */
 export const DH_BYTES = 32;
 
 /** An X25519 key pair, 32 bytes each. */
@@ -26,6 +28,7 @@ export type NoiseKeyPair = {
   secretKey: Uint8Array;
 };
 
+/** What the initiating side of a handshake needs: the responder's known public key. */
 export type NoiseInitiatorOptions = {
   /** Test injection only; production generates a fresh ephemeral. */
   ephemeral?: NoiseKeyPair;
@@ -34,6 +37,7 @@ export type NoiseInitiatorOptions = {
   remoteStatic: Uint8Array;
 };
 
+/** What the responding side of a handshake needs: its own long-term key pair. */
 export type NoiseResponderOptions = {
   /** Test injection only; production generates a fresh ephemeral. */
   ephemeral?: NoiseKeyPair;
@@ -66,11 +70,13 @@ const NK_MESSAGES: ReadonlyArray<ReadonlyArray<Token>> = [
   ["e", "ee"],
 ];
 
+/** Makes a fresh X25519 key pair. */
 export function generateNoiseKeyPair(): NoiseKeyPair {
   const secretKey = x25519.utils.randomSecretKey();
   return { publicKey: x25519.getPublicKey(secretKey), secretKey };
 }
 
+/** Starts a handshake as the side that knows the responder's public key. */
 export function createNoiseInitiator(options: NoiseInitiatorOptions): NoiseHandshake {
   requireKeyLength(options.remoteStatic, "remote static key");
   return new HandshakeState({
@@ -82,6 +88,7 @@ export function createNoiseInitiator(options: NoiseInitiatorOptions): NoiseHands
   });
 }
 
+/** Starts a handshake as the side that holds the long-term key pair. */
 export function createNoiseResponder(options: NoiseResponderOptions): NoiseHandshake {
   requireKeyLength(options.localStatic.publicKey, "local static public key");
   requireKeyLength(options.localStatic.secretKey, "local static secret key");

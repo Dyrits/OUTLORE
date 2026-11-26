@@ -1,5 +1,6 @@
 import { Effect } from "effect";
-import { closeWithReason, type Member, RoomCore, type RoomLimits, type RoomPeer } from "../../src/roomCore.ts";
+import { type Member, RoomCore, type RoomLimits } from "../../src/roomCore.ts";
+import { closeWithReason, type RoomPeer } from "../../src/roomFrames.ts";
 import type { Role } from "../../src/route.ts";
 
 /** A stand-in connection that records what the room sent and how it was closed. */

@@ -13,6 +13,31 @@ export * from "./chronicle.ts";
 export * from "./companions.ts";
 export * from "./connectorRequests.ts";
 export * from "./contextGauge.ts";
+export {
+  Answer,
+  AnswerChoices,
+  AnswerQuestion,
+  AnswerSuggestion,
+  ForceUpdateHost,
+  ListOpenQuestions,
+  ReadBudget,
+  ReadChronicle,
+  ReadGuildHallRecap,
+  ReadGuildmaster,
+  ReadHostUpdate,
+  ReadPermissions,
+  ReadSettings,
+  ReadStartChoices,
+  ReadUsage,
+  RemovePermission,
+  ResolveChatter,
+  SetMissionBudget,
+  StopAtBudget,
+  SuggestionAnswer,
+  UpdateHost,
+  VisitGuildHall,
+  WidenPermission,
+} from "./controlRequests.ts";
 export * from "./dictation.ts";
 export * from "./exchanges.ts";
 export * from "./frames.ts";
@@ -27,6 +52,18 @@ export * from "./mentions.ts";
 export { isRecord } from "./objects.ts";
 export * from "./pickerRequests.ts";
 export * from "./questions.ts";
+export {
+  EndMission,
+  ListMissions,
+  MoveQuest,
+  PreviewEnding,
+  ReadMission,
+  ReadThreadTree,
+  RenameMission,
+  ReopenMission,
+  StartEmptyQuest,
+  StartMission,
+} from "./questRequests.ts";
 export {
   ArchiveRealm,
   CreateRealm,
@@ -67,6 +104,32 @@ export * from "./settingsRequests.ts";
 export * from "./skills.ts";
 export * from "./terminalRequests.ts";
 export * from "./threadAnchors.ts";
+export * from "./threadRecords.ts";
+export {
+  ArchiveThread,
+  ChangeThreadRunner,
+  DeleteThread,
+  DeletionPreview,
+  EditQueuedMessage,
+  InterruptThread,
+  MarkThreadDone,
+  MarkThreadRead,
+  OpenThread,
+  PreviewDeletion,
+  PreviewStartingContext,
+  ReadThreadPanel,
+  RemoveQueuedMessage,
+  ReopenThread,
+  RestoreThread,
+  ResumeThread,
+  RetryThread,
+  SendMessage,
+  SetThreadBackups,
+  SetThreadPermissionMode,
+  SteerQueuedMessage,
+  StopThread,
+  UnsteerQueuedMessage,
+} from "./threadRequests.ts";
 export * from "./usage.ts";
 export * from "./vaultRequests.ts";
 export * from "./workspaceEntries.ts";

@@ -20,8 +20,9 @@ export {
   newRoomName,
 } from "./pairingCode.ts";
 export { appPairingLinkOf, pairingInputOf, readPairingInput, webPairingLinkOf } from "./pairingLink.ts";
-export type { PathKind, PathLink, PathLinkOptions } from "./pathLink.ts";
-export { makePathLink, maxLinkMessageBytes, pathTimings } from "./pathLink.ts";
+export type { PathKind, PathLink, PathLinkOptions } from "./pathFrames.ts";
+export { maxLinkMessageBytes, pathTimings } from "./pathFrames.ts";
+export { makePathLink } from "./pathLink.ts";
 export { roomPrologue } from "./prologue.ts";
 export type { ClientHello, DeviceKind, HostReply, ProtocolErrorKind, RefusalReason } from "./protocol.ts";
 export {

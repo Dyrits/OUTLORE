@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { Effect, Exit, Scope } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type NodeRelay, startNodeRelay } from "../src/index.ts";
-import { readClosingFrame } from "../src/roomCore.ts";
+import { readClosingFrame } from "../src/roomFrames.ts";
 import { clientPath, connect, hostPath, open, room, type Session } from "./fixtures/wsClient.ts";
 
 let relay: NodeRelay;

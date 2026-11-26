@@ -13,6 +13,7 @@ export const ChangeSettings = Schema.TaggedStruct("ChangeSettings", {
     tiers: Schema.optionalKey(fields.tiers.mapFields(Struct.map(Schema.optionalKey))),
   })),
 });
+/** One change to the owner's settings, as `ChangeSettings` carries it. */
 export type SettingsChange = typeof ChangeSettings.Type.change;
 
 /** Changes one preset against the host's current library. */
@@ -24,4 +25,5 @@ export const ChangeCompanionPreset = Schema.TaggedStruct("ChangeCompanionPreset"
     Schema.TaggedStruct("SetStack", { name: PresetName, stack: Tier }),
   ]),
 });
+/** One edit to a companion preset, as `ChangeCompanionPreset` carries it. */
 export type CompanionPresetEdit = typeof ChangeCompanionPreset.Type.edit;

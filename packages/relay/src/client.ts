@@ -1,7 +1,7 @@
 import type { Carrier } from "@outlore/channel";
 import { encodeBase64Url } from "@outlore/channel/base64url";
 import { Effect, Schema } from "effect";
-import { clientIdBytes, hostFrame, readClosingFrame, relayFrame } from "./roomCore.ts";
+import { clientIdBytes, hostFrame, readClosingFrame, relayFrame } from "./roomFrames.ts";
 import { claimProtocolOf, relayProtocol } from "./route.ts";
 
 // The relay as its users see it: a host keeps one connection and hears from its clients by their identifiers; a client
@@ -10,6 +10,7 @@ import { claimProtocolOf, relayProtocol } from "./route.ts";
 /** Whole messages between two peers, in order; the shape the secure channel asks of any carrier. */
 export type RelayCarrier = Carrier;
 
+/** The typed failure of reaching the relay. */
 export class ConnectFailure extends Schema.TaggedError<ConnectFailure>()("ConnectFailure", {
   kind: Schema.Literal("unreachable"),
 }) {}
