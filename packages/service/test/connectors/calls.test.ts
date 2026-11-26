@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Deferred, Effect, Fiber } from "effect";
-import { ConnectorCalls, connectorCallsLayer } from "../../src/connectors/index.ts";
+import { ConnectorCalls, connectorCallsLayer } from "../../src/connectors/calls.ts";
 
 const inRegistry = <A, E>(body: Effect.Effect<A, E, ConnectorCalls>) => body.pipe(Effect.provide(connectorCallsLayer));
 

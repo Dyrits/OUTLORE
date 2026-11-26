@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Deferred, Effect, Fiber } from "effect";
+import { maxWorkStartsPerRun } from "../../src/connectors/codeMode.ts";
 import { noConnectorsLayer } from "../../src/connectors/gateway.ts";
-import { maxWorkStartsPerRun } from "../../src/connectors/index.ts";
 import { Endpoints } from "../../src/core/index.ts";
 import { isCoveredByCodeMode, threadTools } from "../../src/work/threadTools.ts";
 import { fakeGateway, serviceWithGateway } from "../fixtures/connectors.ts";

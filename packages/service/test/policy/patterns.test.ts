@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changedFilesOf, targetOf } from "../../src/policy/index.ts";
-import { matchesPattern } from "../../src/policy/patterns.ts";
+import { changedFilesOf, matchesPattern, targetOf } from "../../src/policy/patterns.ts";
 
 // action-approval, Standing permissions: a permission covers only the exact action and target it was saved for, so a
 // multi-file edit's target names every file it changes (CHG-0274, audit SA-09).

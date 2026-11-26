@@ -1,61 +1,33 @@
-import { tmpdir } from "node:os";
-import type { ApprovalLevel, BillingKind, HarnessName, TokenUsage } from "@outlore/contracts";
-import { type Duration, Effect, Layer, Queue } from "effect";
-
+import type { ApprovalLevel, HarnessName } from "@outlore/contracts";
+import { type Duration, Effect, Layer } from "effect";
 import {
   type Containment,
   fieldOf,
   Harness,
   type HarnessAdapter,
-  HarnessFailure,
-  type ImageAttachment,
-  type PlanLimitReport,
   type PlanLimitsReport,
-  readImages,
   reducedEnvironmentOf,
-  runShortCommand,
-  type StreamJsonProcess,
   startStreamJsonProcess,
   type TurnRequest,
   textFieldOf,
-  turnMessageOf,
 } from "../core/index.ts";
-import {
-  type AccessOptions,
-  accessArgsOf,
-  baseArgsOf,
-  isSandboxedOf,
-  networkHostOf,
-  noTimeLimit,
-} from "./claudeArgs.ts";
-import {
-  backgroundTaskNoticeOf,
-  billingOf,
-  compactionNoticeOf,
-  failureReasonOf,
-  reportedModelOf,
-  reportedWindowOf,
-  textOf,
-  toolCallsOf,
-  toolServerFailureOf,
-  usageOf,
-} from "./claudeEvents.ts";
-import { claudeToolCallOf } from "./claudeToolCalls.ts";
+import { type AccessOptions, accessArgsOf, baseArgsOf, isSandboxedOf, noTimeLimit } from "./claudeArgs.ts";
+import { probeClaudePlanLimits } from "./claudePlanLimits.ts";
+import { type ClaudeConnection, claudeMessageContentOf, runClaudeTurn } from "./claudeTurn.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
-  type HarnessConnection,
   type HarnessProtocol,
   makeHarnessProcesses,
   type PooledTurn,
   type ProcessSignals,
 } from "./harnessProcesses.ts";
 import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
-import { addUsage, contextOf } from "./tokenUsage.ts";
-import { toolServerName } from "./toolNames.ts";
 import { readClaudeVaultDenial, runClaudeVaultDenialLive } from "./vaultDenials.ts";
 import { listThreadWorktrees } from "./worktrees.ts";
 
 // Claude Code through `claude -p` in stream-json mode (ADR 0008; CHG-0027): one process per thread.
+
+export { planLimitsOf } from "./claudePlanLimits.ts";
 
 /** How the Claude Code adapter starts its harness. */
 export type ClaudeOptions = AccessOptions & {
@@ -67,73 +39,9 @@ export type ClaudeOptions = AccessOptions & {
   readonly prefixArgs?: ReadonlyArray<string>;
 };
 
-interface ClaudeConnection extends HarnessConnection {
-  /**
-   * What the process says between turns (probe of 2026-11-20, Claude Code 2.1.328): the background tasks it still runs,
-   * from `background_tasks_changed`, and whether a `task_notification` woke it and no turn has read that yet.
-   */
-  readonly background: { hasBackgroundWake: boolean; tasks: number };
-  /** How the process was signed in, from the init event; Unknown until it reports (budget-control, Billing kind). */
-  billing: BillingKind;
-  /** The cost Claude Code last reported for this process, which it adds up across turns (provisional, unprobed). */
-  lastTotalCost: number;
-  readonly process: StreamJsonProcess;
-}
-
-/** The plan windows Claude Code reports in a `rate_limit_event`, by name, with their length in minutes. */
-const planWindows = [
-  { minutes: 300, name: "five_hour" },
-  { minutes: 10_080, name: "seven_day" },
-] as const;
-
-/**
- * The plan limits a `rate_limit_event` carries (probe of 2026-11-12, Claude Code 2.1.322): `unifiedWindows` holds the
- * 5-hour and weekly windows, each with `utilization` (0 to 1) and `resetsAt` (seconds). Null when the event has none.
- */
-export const planLimitsOf = (event: unknown, billing: BillingKind): PlanLimitsReport | null => {
-  const windows = fieldOf(fieldOf(event, "rate_limit_info"), "unifiedWindows");
-  if (typeof windows !== "object" || windows === null) return null;
-  const reported = planWindows.flatMap(({ minutes, name }): Array<PlanLimitReport> => {
-    const window = fieldOf(windows, name);
-    const utilization = fieldOf(window, "utilization");
-    const resetsAt = fieldOf(window, "resetsAt");
-    return typeof utilization === "number" && typeof resetsAt === "number"
-      ? [
-          {
-            resetsAtSeconds: resetsAt,
-            usedPercent: Math.round(utilization * 1000) / 10,
-            windowMinutes: minutes,
-          },
-        ]
-      : [];
-  });
-  return reported.length === 0 ? null : { billing, windows: reported };
-};
-
-/** The turn's own cost from the result's running total; a total that fell means a fresh count. */
-const turnCostOf = (connection: ClaudeConnection, total: unknown): number | null => {
-  if (typeof total !== "number" || !Number.isFinite(total)) return null;
-  const cost = total >= connection.lastTotalCost ? total - connection.lastTotalCost : total;
-  connection.lastTotalCost = total;
-  return Math.round(cost * 1e6) / 1e6;
-};
-
 /** The child's environment, signed in with the turn's account (provider-accounts). */
 const childEnvironment = (configDirectory: string | null) =>
   reducedEnvironmentOf({ ...accountEnvironmentOf("claude", configDirectory), MCP_TOOL_TIMEOUT: String(noTimeLimit) });
-
-/** A user message's content: the text alone, or the text then one base64 image block per image (message-attachments). */
-const contentOf = Effect.fnUntraced(function* (text: string, images: ReadonlyArray<ImageAttachment>) {
-  if (images.length === 0) return text;
-  const read = yield* readImages(images);
-  return [
-    { text, type: "text" },
-    ...read.map((image) => ({
-      source: { data: image.data, media_type: image.mediaType, type: "base64" },
-      type: "image",
-    })),
-  ];
-});
 
 /** Claude Code's protocol: a user message per turn, read until its result. */
 const claudeProtocolOf = (
@@ -150,8 +58,7 @@ const claudeProtocolOf = (
       return true;
     }),
 
-  // A changed level, set of permissions, set of workspace instructions, model, effort, folder, or account
-  // restarts the process, resuming its conversation; the journal and lore ride on the turn's message instead.
+  // A changed level, set of permissions, set of workspace instructions, model, effort, folder, or account restarts the process, resuming its conversation; the journal and lore ride on the turn's message instead.
   restartKeyOf: (request) =>
     JSON.stringify([
       accessArgsOf(request.access, request.context, options, listThreadWorktrees(request)),
@@ -167,143 +74,11 @@ const claudeProtocolOf = (
       request.model,
     ]),
 
-  runTurn: Effect.fnUntraced(function* (connection: ClaudeConnection, request: TurnRequest, turn: PooledTurn) {
-    const promptId = request.isBackgroundWake === true ? null : crypto.randomUUID();
-    if (promptId !== null) {
-      const content = yield* contentOf(turnMessageOf(request), request.images);
-      connection.process.write({ message: { content, role: "user" }, type: "user", uuid: promptId });
-    }
-    let draft = "";
-    let reportedError: string | null = null;
-    let hasNoticedWake = false;
-    let isPromptPending = promptId !== null;
-    let hasWakeBeforePrompt = false;
-    let totalUsage: TokenUsage | null = null;
-    let totalCost: number | null = null;
-    // The latest call's own usage is the context then; the result's usage sums every call of the turn.
-    let context: number | null = null;
-    // The model that wrote the latest reply, which names its entry in the result's `modelUsage`.
-    let replyModel: string | null = null;
-    for (;;) {
-      const item = yield* Queue.take(connection.process.incoming);
-      if (item._tag === "Exit") return yield* new HarnessFailure({ reason: item.reason });
-      const event = item.message;
-      const type = textFieldOf(event, "type");
-      if (type === "system" && textFieldOf(event, "subtype") === "init") {
-        connection.billing = billingOf(event, connection.billing);
-        // Without its thread tools the turn could not reach Outlore: it fails, with Retry, instead of running blind.
-        const toolFailure = toolServerFailureOf(event, toolServerName);
-        if (toolFailure !== null) return yield* new HarnessFailure({ reason: toolFailure });
-      } else if (type === "system" && textFieldOf(event, "subtype") === "task_notification") {
-        // A turn takes in the wake, whether it began the turn or arrived during it.
-        connection.background.hasBackgroundWake = false;
-        if (isPromptPending) hasWakeBeforePrompt = true;
-        const notice =
-          !hasNoticedWake && (request.isBackgroundWake === true || hasWakeBeforePrompt)
-            ? backgroundTaskNoticeOf(event)
-            : null;
-        if (notice !== null) yield* request.onEvent({ _tag: "Notice", text: notice });
-        hasNoticedWake = true;
-      } else if (type === "system" && textFieldOf(event, "subtype") === "compact_boundary") {
-        // Claude Code compacted the conversation: a line in the thread says so, where the context then falls.
-        const notice = compactionNoticeOf(event);
-        if (notice !== null) yield* request.onEvent({ _tag: "Notice", text: notice });
-      } else if (type === "control_request") {
-        // Inside the enforced sandbox a blocked host is allowed (CHG-0208): the sandbox contains file and process
-        // damage, and egress is open. Only that one ask is answered; every other ask, such as a Bash call outside
-        // the sandbox, is left to the permission prompt tool, and none is answered without a sandbox.
-        const askedRequest = fieldOf(event, "request");
-        const host = request.access.containment === "Sandboxed" ? networkHostOf(askedRequest) : null;
-        const requestId = textFieldOf(event, "request_id");
-        if (host !== null && requestId !== null)
-          connection.process.write({
-            response: {
-              request_id: requestId,
-              response: { behavior: "allow", updatedInput: fieldOf(askedRequest, "input") },
-              subtype: "success",
-            },
-            type: "control_response",
-          });
-      } else if (type === "rate_limit_event") {
-        // Kept for the plan's limits, which then cost no read of their own.
-        const report = planLimitsOf(event, connection.billing);
-        if (report !== null) reports.set(request.configDirectory ?? "", report);
-      } else if (type === "user") {
-        // The initial prompt echo identifies the result boundary, while steered message echoes confirm delivery.
-        const uuid = textFieldOf(event, "uuid");
-        if (uuid !== null && uuid === promptId) isPromptPending = false;
-        else if (uuid !== null) yield* turn.deliver(uuid);
-      } else if (type === "stream_event") {
-        const inner = fieldOf(event, "event");
-        const innerType = textFieldOf(inner, "type");
-        const delta = fieldOf(inner, "delta");
-        if (innerType === "message_start") draft = "";
-        if (innerType === "content_block_delta" && textFieldOf(delta, "type") === "text_delta") {
-          draft += textFieldOf(delta, "text") ?? "";
-          yield* request.onEvent({ _tag: "Draft", text: draft });
-        }
-      } else if (type === "assistant") {
-        const message = fieldOf(event, "message");
-        const text = textOf(fieldOf(message, "content"));
-        const error = fieldOf(event, "error");
-        replyModel = reportedModelOf(message) ?? replyModel;
-        const callUsage = usageOf(fieldOf(message, "usage"));
-        const callContext = contextOf(callUsage);
-        // A synthetic message reports zeros, which are no measure.
-        if (callContext !== null && callContext > 0) context = callContext;
-        draft = "";
-        // Each tool call is a step of the turn, shown as it starts (action-approval).
-        for (const call of toolCallsOf(fieldOf(message, "content"))) {
-          yield* request.onEvent(yield* claudeToolCallOf(call, request.cwd));
-        }
-        // A synthetic assistant message carrying `error` reports a failure, not a reply.
-        if (error !== undefined && error !== null) reportedError = text || String(error);
-        else if (text.trim() !== "")
-          yield* request.onEvent({
-            _tag: "Reply",
-            model: reportedModelOf(message),
-            text,
-            usage: callUsage !== null && callContext !== null && callContext > 0 ? callUsage : null,
-          });
-      } else if (type === "result") {
-        // An interrupted turn ends with an error result, which is no failure (probe of 2026-11-06).
-        totalUsage = addUsage(totalUsage, usageOf(fieldOf(event, "usage")));
-        const cost = turnCostOf(connection, fieldOf(event, "total_cost_usd"));
-        if (cost !== null) totalCost = Math.round(((totalCost ?? 0) + cost) * 1e6) / 1e6;
-        const contextWindow = reportedWindowOf(fieldOf(event, "modelUsage"), replyModel);
-        if (turn.isInterrupting())
-          return {
-            billing: connection.billing,
-            context,
-            contextWindow,
-            cost: totalCost,
-            isInterrupted: true,
-            usage: totalUsage,
-          };
-        // A background command can wake Claude before it takes the prompt, and that wake has its own result.
-        if (hasWakeBeforePrompt && isPromptPending) {
-          hasWakeBeforePrompt = false;
-          hasNoticedWake = false;
-          reportedError = null;
-          continue;
-        }
-        if (fieldOf(event, "is_error") === true || reportedError !== null)
-          return yield* new HarnessFailure({ reason: failureReasonOf(event, reportedError) });
-        return {
-          billing: connection.billing,
-          context,
-          contextWindow,
-          cost: totalCost,
-          isInterrupted: false,
-          usage: totalUsage,
-        };
-      }
-    }
-  }),
+  runTurn: (connection: ClaudeConnection, request: TurnRequest, turn: PooledTurn) =>
+    runClaudeTurn(connection, request, turn, reports),
 
   start: Effect.fnUntraced(function* (request: TurnRequest, signals: ProcessSignals) {
-    // A thread folder that is a link asks the owner; allowed, Claude Code starts where it really points, under its
-    // own sandbox, which then writes there (threadFolder.ts).
+    // A thread folder that is a link asks the owner; allowed, Claude Code starts where it really points, under its own sandbox, which then writes there (threadFolder.ts).
     const cwd = yield* resolveStartFolder(request, "Claude Code");
     const isResuming = request.sessionId !== null;
     const sessionId = request.sessionId ?? crypto.randomUUID();
@@ -322,8 +97,7 @@ const claudeProtocolOf = (
       // The folder it was started in, as a shell it starts takes it.
       env: { ...childEnvironment(request.configDirectory), PWD: cwd },
       label: "Claude Code",
-      // Between turns nothing reads the process: a background task ending wakes Claude Code, which then works on its
-      // own, and the pool asks for a turn so that work is recorded and its commands may run.
+      // Between turns nothing reads the process: a background task ending wakes Claude Code, which then works on its own, and the pool asks for a turn so that work is recorded and its commands may run.
       observe: (message) => {
         if (textFieldOf(message, "type") !== "system") return;
         const subtype = textFieldOf(message, "subtype");
@@ -349,10 +123,9 @@ const claudeProtocolOf = (
     } satisfies ClaudeConnection;
   }),
 
-  // A user message written mid-turn joins it after the current tool call; its uuid comes back in the echo
-  // once taken in (probe of 2026-11-06, Claude Code 2.1.302).
+  // A user message written mid-turn joins it after the current tool call; its uuid comes back in the echo once taken in (probe of 2026-11-06, Claude Code 2.1.302).
   steer: (connection, message) =>
-    contentOf(message.text, message.images).pipe(
+    claudeMessageContentOf(message.text, message.images).pipe(
       Effect.map((content) => {
         connection.process.write({ message: { content, role: "user" }, type: "user", uuid: message.id });
         return true;
@@ -361,59 +134,9 @@ const claudeProtocolOf = (
     ),
 });
 
-/** The arguments of the smallest turn that makes Claude Code report the plan's limits: one word to its cheapest model. */
-const probeArgs = [
-  "-p",
-  "ok",
-  "--output-format",
-  "stream-json",
-  "--verbose",
-  "--max-turns",
-  "1",
-  "--model",
-  "haiku",
-  "--tools",
-  "",
-  "--no-session-persistence",
-  "--setting-sources",
-  "",
-  "--disable-slash-commands",
-  "--strict-mcp-config",
-];
-
 /**
- * Asks Claude Code for an account's plan limits with one minimal turn, in an empty folder: the stream's
- * `rate_limit_event` answers. Null when it reports none. No token or credential is read here.
- */
-const probeClaudePlanLimits = Effect.fnUntraced(function* (options: ClaudeOptions, configDirectory: string | null) {
-  const run = yield* runShortCommand(
-    options.command,
-    [...(options.prefixArgs ?? []), ...probeArgs],
-    accountEnvironmentOf("claude", configDirectory),
-    60_000,
-    tmpdir(),
-  );
-  let billing: BillingKind = "Unknown";
-  let report: PlanLimitsReport | null = null;
-  for (const line of run.stdout.split("\n")) {
-    let event: unknown;
-    try {
-      event = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (textFieldOf(event, "type") === "system" && textFieldOf(event, "subtype") === "init")
-      billing = billingOf(event, billing);
-    else if (textFieldOf(event, "type") === "rate_limit_event") report = planLimitsOf(event, billing) ?? report;
-  }
-  if (report === null && run.code !== 0)
-    return yield* new HarnessFailure({ reason: "Claude Code gave no plan limits." });
-  return billing === "ApiKey" ? ({ billing, windows: [] } satisfies PlanLimitsReport) : report;
-});
-
-/**
- * The Claude Code adapter, whose processes close with the scope that made it. Its plan limits come from the
- * `rate_limit_event` of the account's latest turn; an account with none yet is probed once per run.
+ * The Claude Code adapter, whose processes close with the scope that made it.
+ * Its plan limits come from the `rate_limit_event` of the account's latest turn; an account with none yet is probed once per run.
  */
 export const makeClaudeHarness = Effect.fnUntraced(function* (options: ClaudeOptions) {
   const reports = new Map<string, PlanLimitsReport>();
@@ -431,8 +154,7 @@ export const makeClaudeHarness = Effect.fnUntraced(function* (options: ClaudeOpt
       Effect.tapError(() => Effect.sync(() => probed.delete(key))),
     );
   };
-  // Claude Code runs its commands in its own sandbox at the default level, unless the host cannot start one
-  // (core/sandbox.ts); at "Also commands and edits" it runs without it, and every prompt asks as for an unprotected harness.
+  // Claude Code runs its commands in its own sandbox at the default level, unless the host cannot start one (core/sandbox.ts); at "Also commands and edits" it runs without it, and every prompt asks as for an unprotected harness.
   const containmentOf = (_harness: unknown, level: ApprovalLevel): Containment =>
     isSandboxedOf(level, options) ? "Sandboxed" : "Unprotected";
   const readVaultDenial = (harness: HarnessName, folder: string) => readClaudeVaultDenial(options, harness, folder);

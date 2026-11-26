@@ -6,10 +6,8 @@ export { hostNameOf, ownAccountLabelOf, readHostRecord, renameHost } from "./hos
 export { makeHostControl } from "./hostControl.ts";
 export { remoteHostLayer } from "./hostRuntime.ts";
 export { forgetHost, listKnownHosts } from "./knownHosts.ts";
-export { cloudflareApiFor, type DeployResult, deployRelayToCloudflare, ownRelayTag } from "./ownRelay.ts";
+export { cloudflareApiFor, type DeployResult, deployRelayToCloudflare } from "./ownRelay.ts";
 export {
-  HostPresence,
   HostPresence as RemoteState,
-  hostPresenceLayer,
   hostPresenceLayer as remoteStateLayer,
 } from "./presence.ts";

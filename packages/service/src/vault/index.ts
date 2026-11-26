@@ -1,9 +1,7 @@
-export { type CommandResult, CommandRunner, commandRunnerLayer } from "./commandRunner.ts";
 export { isInsideVaultFolder, searchReachesVaultFolder } from "./folderAccess.ts";
-export { custodiesOf } from "./keyCustody/index.ts";
-export type { KeyCustody, KeyRead } from "./keyCustody.ts";
-export { harnessLabelOf, type Protection, protectionOf } from "./protection.ts";
-export type { HolderInfo, HolderName, VaultEntry, VaultState } from "./types.ts";
+export type { KeyCustody } from "./keyCustody.ts";
+export { harnessLabelOf } from "./protection.ts";
+export type { VaultState } from "./types.ts";
 export { VaultFailure } from "./types.ts";
-export { makeVault, type SecretRequest, Vault, VaultFolder, type VaultOptions } from "./vault.ts";
+export { Vault, VaultFolder } from "./vault.ts";
 export { vaultLayer } from "./vaultLayer.ts";

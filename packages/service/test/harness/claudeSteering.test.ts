@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { MissionDetail } from "@outlore/contracts";
 import { Effect, Layer } from "effect";
-import { ConnectorGateway, noConnectorsLayer } from "../../src/connectors/index.ts";
+import { ConnectorGateway, noConnectorsLayer } from "../../src/connectors/gateway.ts";
 import { withClaude, withoutNote } from "../fixtures/claude.ts";
 import { call, read, sendTo, settle, startMission } from "../fixtures/service.ts";
 import { idleWith } from "../fixtures/standIns.ts";
