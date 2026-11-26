@@ -63,6 +63,6 @@ Latest handoffs:
 
 - To resume the whole-codebase review (wave 2 merged and pushed, desktop checks and SPEC-07 open), read the [current handoff](.agents/handoffs/2026-11-26-1636-review-wave-2-merged.md). Handoffs are shared and committed.
 
-- To resume phone control (agents use the phone through `phone_*` tools; step 1 built and merged, real-phone check open; CHG-0770), read the [current handoff](.agents/handoffs/2026-11-26-2200-phone-control-step-1-built.md). Handoffs are shared and committed.
+- To resume phone control (agents use the phone through `phone_*` tools; step 1 delivered, step 2 headless spike awaiting the owner; CHG-0770, CHG-0771), read the [current handoff](.agents/handoffs/2026-11-26-2354-phone-control-headless-spike.md). Handoffs are shared and committed.
 
 - To resume the phone Back button (built, real-phone check and errand Back open; CHG-0772), read the [current handoff](.agents/handoffs/2026-11-26-2330-phone-back-button.md). Handoffs are shared and committed.
