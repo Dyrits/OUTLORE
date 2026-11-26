@@ -43,6 +43,18 @@ describe("a plan's usage as the popup's table", () => {
     expect(groups[0]?.rows.map((row) => row.name)).toEqual(["5-hour", "Weekly"]);
   });
 
+  it("lists the shorter window first inside a group even when the harness reports the weekly one first", () => {
+    const { groups } = planUsageOf(
+      [
+        { ...weekly, label: "Gemini · Weekly" },
+        { ...fiveHour, label: "Gemini · 5-hour" },
+        { ...weekly, label: "Others · Weekly", usedPercent: 100 },
+      ],
+      now,
+    );
+    expect(groups.map((group) => group.rows.map((row) => row.name))).toEqual([["5-hour", "Weekly"], ["Weekly"]]);
+  });
+
   it("says 'not started' for a limit with no reset time, never a date in 1970", () => {
     const { groups } = planUsageOf([{ label: "Gemini · Weekly", resetsAt: 0, usedPercent: 0 }], now);
     expect(groups[0]?.rows[0]).toEqual({

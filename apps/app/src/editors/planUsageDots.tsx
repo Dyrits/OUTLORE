@@ -2,18 +2,11 @@ import type { HarnessName, PlanLimitWindow } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
-import { meterLevelOf, planLimitTextOf } from "../foundation/labels";
+import { planLimitTextOf } from "../foundation/labels";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ProviderMark } from "../ui/providerMarks";
-import {
-  currentWindowsOf,
-  type DotLevel,
-  leftPercentOf,
-  planUsageOf,
-  type RowLevel,
-  resetsInTextOf,
-} from "./planUsage";
+import { type DotLevel, planUsageOf, type RowLevel, type UsageRow } from "./planUsage";
 
 const logoSize = 26;
 const dotColors: Record<DotLevel | RowLevel, string> = {
@@ -38,25 +31,23 @@ function Dot({ level, style }: { level: DotLevel | RowLevel; style?: object }) {
   );
 }
 
-/** One window in the hover card: its name, what is left and when it starts over, and a bar of what is left. */
-function WindowBar({ now, window }: { now: number; window: PlanLimitWindow }) {
-  const level = meterLevelOf(window.usedPercent, 100);
-  const resetText = window.resetsAt <= 0 ? "not started" : resetsInTextOf(window.resetsAt - now);
+/** One limit in the hover card: its name, what is left and when it starts over, and a bar of what is left. */
+function LimitBar({ row }: { row: UsageRow }) {
   return (
     <View style={local.window}>
       <View style={local.windowText}>
-        <Text style={local.windowName}>{window.label}</Text>
-        <Text style={local.windowLeft}>{leftPercentOf(window)}% left</Text>
-        <Text style={local.windowReset}>{resetText}</Text>
+        <Text style={local.windowName}>{row.name}</Text>
+        <Text style={local.windowLeft}>{row.leftPercent}% left</Text>
+        <Text style={local.windowReset}>{row.resetText}</Text>
       </View>
       <View style={local.track}>
-        <View style={[local.bar, { backgroundColor: dotColors[level], width: `${leftPercentOf(window)}%` }]} />
+        <View style={[local.bar, { backgroundColor: dotColors[row.level], width: `${row.leftPercent}%` }]} />
       </View>
     </View>
   );
 }
 
-/** What hovering or focusing a provider opens: a card above the rail with each window spelled out, as a bar of what is left. */
+/** What hovering or focusing a provider opens: a card above the rail with the limits grouped by model group, each as a bar of what is left. */
 function UsageCard({
   harness,
   name,
@@ -66,15 +57,20 @@ function UsageCard({
   name: string;
   windows: readonly PlanLimitWindow[];
 }) {
-  const now = Date.now();
+  const { groups } = planUsageOf(windows, Date.now());
   return (
     <View pointerEvents="none" style={local.card}>
       <View style={local.provider}>
         <ProviderMark harness={harness} size={16} />
         <Text style={local.providerName}>{name}</Text>
       </View>
-      {windows.map((window) => (
-        <WindowBar key={window.label} now={now} window={window} />
+      {groups.map((group) => (
+        <View key={group.name ?? ""} style={local.groupBlock}>
+          {group.name !== null && <Text style={local.groupName}>{group.name}</Text>}
+          {group.rows.map((row) => (
+            <LimitBar key={row.name} row={row} />
+          ))}
+        </View>
       ))}
     </View>
   );
@@ -86,9 +82,8 @@ const accessibilityTextOf = (name: string, windows: readonly PlanLimitWindow[]) 
 /**
  * The plan limits each subscription's harness reports, as the rail shows them beside the reserves: each provider's
  * logo with one status dot, green until 80% used, orange from 80% and red at 100%, taken from its tightest limit.
- * Hovering or focusing a provider (a tap on a phone) opens a card with each window's share left as a bar and the time
- * to its reset, or "not started" for a limit nobody has used. An account whose harness reports none shows nothing
- * here (its Charter row says "Limits not reported"), and nothing is shown before a reading arrives.
+ * Hovering or focusing a provider (a tap on a phone) opens a card with the limits grouped by model group, each with its share left as a bar and the time to its reset, or "not started" for a limit nobody has used, in the order planUsageOf gives.
+ * An account whose harness reports none shows nothing here (its Charter row says "Limits not reported"), and nothing is shown before a reading arrives.
  */
 export function PlanUsageDots({ client }: { client: ServiceClient }) {
   const { data: budgets } = useServiceQuery(client, { _tag: "ReadAccountBudgets" }, "plan-limits");
@@ -104,7 +99,7 @@ export function PlanUsageDots({ client }: { client: ServiceClient }) {
         <UsageCard
           harness={detailed.harness}
           name={detailed.accountId === null ? detailed.harness : detailed.label}
-          windows={currentWindowsOf(detailed.planLimits?.windows ?? [], now)}
+          windows={detailed.planLimits?.windows ?? []}
         />
       )}
       <View style={local.row}>
@@ -169,6 +164,8 @@ const local = StyleSheet.create({
   entry: { alignItems: "center", borderRadius: radii.pill, height: 40, justifyContent: "center", width: 40 },
   entryLifted: { backgroundColor: colors.controlHover },
   group: { paddingTop: 6 },
+  groupBlock: { gap: 8 },
+  groupName: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.sm, fontWeight: "700" },
   provider: { alignItems: "center", flexDirection: "row", gap: 8 },
   providerName: {
     color: colors.text,
