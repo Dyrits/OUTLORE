@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import type { BackendFailure, ConnectorBackend } from "../../src/connectors/backend.ts";
-import { type StdioMcpOptions, stdioMcpBackend } from "../../src/connectors/backends/stdioMcp.ts";
+import { stdioMcpBackend } from "../../src/connectors/backends/stdioMcp.ts";
+import type { StdioMcpOptions } from "../../src/connectors/backends/stdioMcpCommand.ts";
 import { temporary } from "../fixtures/service.ts";
 import { isAlive, waitFor } from "../fixtures/standIns.ts";
 

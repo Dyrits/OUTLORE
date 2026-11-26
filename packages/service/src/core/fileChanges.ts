@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 import { type DiffLine, type DiffLineKind, maxDiffBytes } from "@outlore/contracts";
 import { Effect } from "effect";
-import type { ReportedFileEdit } from "./execution.ts";
+import type { ReportedFileEdit } from "./executionTypes.ts";
 import { countsOf, lineDiffOf, withContextOf } from "./lineDiffs.ts";
 import { fieldOf, textFieldOf } from "./records.ts";
 

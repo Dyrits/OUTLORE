@@ -1,16 +1,11 @@
 import { execFile } from "node:child_process";
 import { Effect } from "effect";
 import type { CatalogBackend } from "../catalog.ts";
-import {
-  buildAuthorizationUrl,
-  exchangeAuthorizationCode,
-  generatePkce,
-  generateState,
-  openLoopbackCallback,
-  registerDynamicClient,
-} from "./client.ts";
-import { discoverOAuthMetadata, OAuthFailure } from "./discovery.ts";
+import { buildAuthorizationUrl, generatePkce, generateState, openLoopbackCallback } from "./authorization.ts";
+import { exchangeAuthorizationCode, registerDynamicClient } from "./client.ts";
+import { discoverOAuthMetadata } from "./discovery.ts";
 import type { OAuthSession } from "./session.ts";
+import { OAuthFailure } from "./types.ts";
 
 // End-to-end host-side MCP OAuth 2.1 browser sign-in flow: discovery, ephemeral loopback callback, dynamic client
 // registration, PKCE S256 browser redirect, state verification, and token exchange.

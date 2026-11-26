@@ -1,7 +1,8 @@
 import { Effect, Layer } from "effect";
 import { ConnectorBackends } from "../backend.ts";
 import { httpMcpBackend } from "./httpMcp.ts";
-import { stdioCommandOf, stdioMcpBackend } from "./stdioMcp.ts";
+import { stdioMcpBackend } from "./stdioMcp.ts";
+import { stdioCommandOf } from "./stdioMcpCommand.ts";
 
 // The service's default backends (connectors blueprint, Order step 4): an HTTP entry opens the Streamable-HTTP adapter,
 // which holds no process; a Stdio entry runs its pinned vendored server as a child of the host, started on first use.

@@ -3,14 +3,13 @@ import { join } from "node:path";
 import { Clock, Context, Effect, Schema, Semaphore } from "effect";
 import * as Secret from "effect/Redacted";
 import type { VaultDenial } from "../core/index.ts";
-import { prepareVaultFolder, removeVaultFile, type WriteFile, writeFileWhole } from "./files.ts";
-import { type Inspection, inspect, stateOf } from "./inspection.ts";
+import { removeVaultFile, type WriteFile, writeFileWhole } from "./files.ts";
+import { inspect, stateOf } from "./inspection.ts";
 import type { KeyCustody } from "./keyCustody.ts";
 import { type Protection, protectionOf } from "./protection.ts";
 import {
   type Header,
   headerFileName,
-  newKey,
   openRecord,
   type RecordsFile,
   recordsFileNameOf,
@@ -18,6 +17,7 @@ import {
   sealRecord,
 } from "./records.ts";
 import { ConnectorId, type HolderName, SecretKind, type VaultEntry, VaultFailure, type VaultState } from "./types.ts";
+import { createVault, moveVaultKey, unusable, type VaultKeyContext } from "./vaultKeyOperations.ts";
 
 /** A secret as it enters: `Redacted` from the request until it is sealed. */
 export type SecretRequest = {
@@ -30,14 +30,10 @@ export type SecretRequest = {
 const longestSecret = 8192;
 
 const fail = (kind: VaultFailure["kind"], message: string) => new VaultFailure({ kind, message });
-
 const isConnectorId = Schema.is(ConnectorId);
 const isSecretKind = Schema.is(SecretKind);
 
-/**
- * The Vault (ADR 0022, connectors blueprint): connector secrets, encrypted, on the host. `withSecret` is the only read,
- * and nothing lists, returns or logs a value. Writers run one at a time.
- */
+/** The Vault (ADR 0022, connectors blueprint): connector secrets, encrypted, on the host, where `withSecret` is the only read. */
 export class Vault extends Context.Service<
   Vault,
   {
@@ -72,32 +68,12 @@ export class VaultFolder extends Context.Service<VaultFolder, string>()("outlore
 /** What a Vault is made from; a check passes fakes for all of it. */
 export type VaultOptions = {
   readonly custodies: ReadonlyArray<KeyCustody>;
-  /**
-   * The probe report: one denial per harness, as the adapters gave them, read afresh at each protection check — a
-   * report kept between checks could outlive a harness's install, upgrade or removal and allow a stale storing.
-   */
+  /** The probe report: one denial per harness, read afresh at each protection check. */
   readonly denials: Effect.Effect<ReadonlyArray<VaultDenial>>;
   readonly folder: string;
   /** Replaces the whole-file write, so a check can fail it at one step. */
   readonly writeFile?: WriteFile;
 };
-
-/** The failure for a Vault that is not Ready: its state and why, in a plain sentence. */
-const unusable = (inspection: Inspection) => {
-  const state = stateOf(inspection);
-  return fail(
-    "Unavailable",
-    `The Vault is ${state._tag.toLowerCase()}. ${"reason" in state ? state.reason : ""}`.trim(),
-  );
-};
-
-/** Keeps `key` in `custody` and reads it back; false when the holder would not keep it or answered otherwise. */
-const keepsKey = (custody: KeyCustody, keyId: string, key: Buffer) =>
-  custody.write(keyId, key).pipe(
-    Effect.flatMap(() => custody.read(keyId)),
-    Effect.map((read) => read._tag === "Found" && read.key.equals(key)),
-    Effect.catch(() => Effect.succeed(false)),
-  );
 
 /** The Vault over a folder, a set of key holders and a probe report. */
 export const makeVault = (options: VaultOptions) =>
@@ -117,7 +93,7 @@ export const makeVault = (options: VaultOptions) =>
       Effect.flatMap(protectionFor(holder), (protection) =>
         protection.isAllowed ? Effect.void : Effect.fail(fail("NotProtected", protection.reason ?? "")),
       );
-    const ignoring = (work: Effect.Effect<void, VaultFailure>) => Effect.catch(work, () => Effect.void);
+    const keyContext: VaultKeyContext = { custodies, folder, mustBeProtected, writeHeader, writeRecords };
 
     const checked = (request: SecretRequest) => {
       const value = Secret.value(request.secret);
@@ -145,36 +121,15 @@ export const makeVault = (options: VaultOptions) =>
         ),
       );
 
-    /** The first adapter that keeps a new key and answers it back becomes the holder; the rule is checked before anything is stored. */
-    const createVault = (request: SecretRequest, value: string) =>
-      Effect.gen(function* () {
-        yield* prepareVaultFolder(folder);
-        const key = newKey();
-        let custody: KeyCustody | null = null;
-        for (const candidate of custodies) {
-          if (yield* keepsKey(candidate, key.id, key.key)) {
-            custody = candidate;
-            break;
-          }
-          yield* ignoring(candidate.remove(key.id));
-        }
-        if (custody === null)
-          return yield* fail("WriteFailed", "No place on this computer would keep the Vault's key.");
-        const kept = custody;
-        yield* mustBeProtected(kept.holder).pipe(Effect.tapError(() => ignoring(kept.remove(key.id))));
-        const header: Header = { holder: kept.holder.name, keyId: key.id, version: 1 };
-        const record = yield* sealed(request, value, key.key, key.id);
-        yield* writeHeader(header).pipe(Effect.tapError(() => ignoring(kept.remove(key.id))));
-        yield* writeRecords(header, { records: [record], version: 1 });
-      });
-
     const store = (request: SecretRequest, isNew: boolean) =>
       writer.withPermit(
         Effect.gen(function* () {
           const value = yield* checked(request);
           const inspection = yield* inspect(folder, custodies);
           if (inspection._tag === "Absent")
-            return isNew ? yield* createVault(request, value) : yield* fail("Missing", "No such secret is stored.");
+            return isNew
+              ? yield* createVault(keyContext, (key, keyId) => sealed(request, value, key, keyId))
+              : yield* fail("Missing", "No such secret is stored.");
           if (inspection._tag !== "Ready") return yield* unusable(inspection);
           yield* mustBeProtected(inspection.custody.holder);
           const same = (record: SealedRecord) =>
@@ -191,7 +146,7 @@ export const makeVault = (options: VaultOptions) =>
         }),
       );
 
-    /** Removes the records a predicate names. A Lost Vault may be emptied (its key is gone and nothing can open its records); then it is Absent again. */
+    /** Removes the records a predicate names; a Lost Vault becomes Absent again once emptied. */
     const removeWhere = (matches: (record: SealedRecord) => boolean) =>
       writer.withPermit(
         Effect.gen(function* () {
@@ -206,47 +161,6 @@ export const makeVault = (options: VaultOptions) =>
             return;
           }
           yield* writeRecords(inspection.header, { records: left, version: 1 });
-        }),
-      );
-
-    const moveKey = (to: HolderName) =>
-      writer.withPermit(
-        Effect.gen(function* () {
-          const inspection = yield* inspect(folder, custodies);
-          if (inspection._tag !== "Ready") return yield* unusable(inspection);
-          const target = custodies.find((candidate) => candidate.holder.name === to);
-          if (target === undefined) return yield* fail("Invalid", "This computer has no such place for the key.");
-          if (target.holder.name === inspection.header.holder)
-            return yield* fail("Invalid", "The key is already kept there.");
-          yield* mustBeProtected(target.holder);
-          const next = newKey();
-          const header: Header = { holder: target.holder.name, keyId: next.id, version: 1 };
-          const undo = Effect.all([
-            ignoring(target.remove(next.id)),
-            removeVaultFile(folder, recordsFileNameOf(next.id)),
-          ]);
-          if (!(yield* keepsKey(target, next.id, next.key)))
-            return yield* fail("WriteFailed", "The new place would not keep the key; nothing changed.").pipe(
-              Effect.tapError(() => undo),
-            );
-          // The records go to a new file under the new key's name; the header, renamed last, is the one commit point.
-          const records: RecordsFile = {
-            records: inspection.records.records.map((record) =>
-              sealRecord(
-                next.key,
-                next.id,
-                { addedAt: record.addedAt, connectorId: record.connectorId, id: record.id, kind: record.kind },
-                openRecord(inspection.key, record) ?? "",
-              ),
-            ),
-            version: 1,
-          };
-          yield* writeRecords(header, records).pipe(
-            Effect.flatMap(() => writeHeader(header)),
-            Effect.tapError(() => undo),
-          );
-          yield* removeVaultFile(folder, recordsFileNameOf(inspection.header.keyId));
-          yield* inspection.custody.remove(inspection.header.keyId);
         }),
       );
 
@@ -278,7 +192,7 @@ export const makeVault = (options: VaultOptions) =>
           kind,
         }));
       }),
-      moveKey,
+      moveKey: (to) => writer.withPermit(moveVaultKey(keyContext, to)),
       protection: Effect.gen(function* () {
         const state = stateOf(yield* looked);
         const holder = "holder" in state ? state.holder : (custodies[0]?.holder ?? null);

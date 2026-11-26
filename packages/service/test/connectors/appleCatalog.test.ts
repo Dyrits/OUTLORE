@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import { stdioCommandOf, stdioMcpBackend } from "../../src/connectors/backends/stdioMcp.ts";
+import { stdioMcpBackend } from "../../src/connectors/backends/stdioMcp.ts";
+import { stdioCommandOf } from "../../src/connectors/backends/stdioMcpCommand.ts";
 import { catalogToolOf, unnamedToolsOf } from "../../src/connectors/catalog.ts";
 import { appleEntry } from "../../src/connectors/catalogEntries.ts";
 import { startRpcProcess } from "../../src/core/index.ts";

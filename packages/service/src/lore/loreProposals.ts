@@ -6,7 +6,8 @@ import { type LoreEntryRow, type LoreEntrySqlRow, loreEntryRowOf, scopeLabelOf, 
 import { isSameOf } from "./loreDuplicates.ts";
 import { type Fading, halfLifeDaysOf, readFading, stateOfLoreEntry } from "./loreFading.ts";
 import { owner } from "./loreHistory.ts";
-import { mergeLoreEntries, moveLoreEntry } from "./loreStore.ts";
+import { moveLoreEntry } from "./loreStore.ts";
+import { mergeLoreEntries } from "./loreStoreMaintenance.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: table and column names (`intels`, `intel_id`, ...).
 

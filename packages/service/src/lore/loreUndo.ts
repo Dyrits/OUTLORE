@@ -1,7 +1,7 @@
 import { Clock, Effect } from "effect";
 import { invalid, notFound } from "../core/index.ts";
 import { isFadingEntryId, readEntry, readSnapshot, type Snapshot } from "./loreHistory.ts";
-import { writeUndo } from "./loreStore.ts";
+import { writeUndo } from "./loreStoreMaintenance.ts";
 
 // Undoing a change to lore (scoped-intel, History and undo): the owner puts back what one change changed,
 // recorded as a new entry that can itself be undone. This module decides what an undo puts back; the lore
