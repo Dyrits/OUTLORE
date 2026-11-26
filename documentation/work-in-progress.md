@@ -1,5 +1,10 @@
 # Work in progress
 
+## Direct channels on the Android app · 2026-11-26 · built and run on an emulator; real phone pending
+
+CHG-0754 in `0.2.9-Pre-Alpha`: the Android app loads `RTCPeerConnection` from `react-native-webrtc` at its first try and moves its link onto a direct channel like the web app (`phoneDirect.native.ts`, `directSettingsOfLoader`); the release build needs the R8 rule of `plugins/withWebRtcRules.js`. On an Android 36 emulator against a disposable host the host listed the phone as connected and direct, a quest and a message went through, and a restart resumed the direct channel. Not exercised: a real NAT or mobile network, the real phone, battery and memory. The phone's original "reads but cannot operate" symptom is not explained by this work.
+Next: install a release-signed APK on the phone and check Workshop shows it as direct on home Wi-Fi and on mobile data; read the Cloudflare Metrics for `outlore`. [Handoff](../.agents/handoffs/2026-11-26-0900-android-direct-channel.md).
+
 ## Whole-codebase review and refactor · 2026-11-26 · merged on `main` and verified by checks; desktop check pending
 
 CHG-0750 to CHG-0752 in `0.2.8-Pre-Alpha`: image flicker, panel islands including the standalone channel, quest-read broadcasts, spec fixes SPEC-03 to SPEC-06, the Reply starting-context warning, and the standards sweeps.

@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume Reply opening the child thread, on-demand parent search, opener tail, and reply strip alignment (CHG-0746, CHG-0748, CHG-0749), read the [current handoff](.agents/handoffs/2026-11-25-2028-reply-opens-child-and-parent-search.md). Handoffs are shared and committed.
+- To resume the Android app's direct channels (CHG-0754), read the [current handoff](.agents/handoffs/2026-11-26-0900-android-direct-channel.md). Handoffs are shared and committed.
 
-- To verify and continue the instruction that stops agents announcing an opened errand (CHG-0745), read the [current handoff](.agents/handoffs/2026-11-25-1855-no-errand-announcement.md). Handoffs are shared and committed.
+- To resume Reply opening the child thread, on-demand parent search, opener tail, and reply strip alignment (CHG-0746, CHG-0748, CHG-0749), read the [current handoff](.agents/handoffs/2026-11-25-2028-reply-opens-child-and-parent-search.md). Handoffs are shared and committed.
 
 - To resume the whole-codebase review and refactor after its merge (CHG-0750 to CHG-0752), read the [current handoff](.agents/handoffs/2026-11-26-0725-codebase-review-and-refactor-merged.md). Handoffs are shared and committed.
