@@ -1,5 +1,10 @@
 # Work in progress
 
+## Phone control · 2026-11-26 · designed, awaiting the owner's review; no code
+
+CHG-0767 in `0.2.10-Pre-Alpha`: threads use the phone through `phone_*` tools in the host's tool server, executed by the paired app over the existing P2P and relay link; step 1 is the app's own capabilities, step 2 an accessibility service in the APK.
+Next: the owner reviews the [specifications](capabilities/phone-control/specifications.md), the [blueprint](capabilities/phone-control/blueprint.md) and the proposed [ADR 0028](architecture-decision-record/0028-phone-tools-served-by-the-paired-app-over-the-existing-channel.md), then step 1 is built (wire, `PhoneLink`, executor, settings card) and checked on an emulator and a real phone.
+
 ## Dual-auth OAuth and 13 missing remote connectors · 2026-11-26 · built and tested against stand-ins; live sign-in and window check pending
 
 CHG-0763 in `0.2.10-Pre-Alpha` (base `431e71f4`): enabled dual authentication (generic MCP OAuth 2.1 browser sign-in alongside static API keys/tokens, with mutual credential cleanup in the Vault and OAuth Bearer + session switching in `httpMcp.ts`) on the 6 DCR-capable existing connectors (Composio, Tavily, Stripe, Neon, GitLab, Datadog) and added 13 missing DCR-capable remote connectors (Linear, Notion, Atlassian `/v2/mcp`, Figma, Vercel, Sentry, PostHog, Intercom, Postman, monday.com, Airtable, PayPal, Dropbox).

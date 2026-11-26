@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the Chronicle pinning no thread root (CHG-0762), read the [current handoff](.agents/handoffs/2026-11-26-1455-chronicle-no-root.md). Handoffs are shared and committed.
-
 - To resume dual-auth OAuth connectors and the thirteen missing remote connectors (CHG-0763), read the [current handoff](.agents/handoffs/2026-11-26-1458-dual-auth-and-missing-connectors.md). Handoffs are shared and committed.
 
 - To resume the whole-codebase review (wave 2 merged and pushed, desktop checks and SPEC-07 open), read the [current handoff](.agents/handoffs/2026-11-26-1636-review-wave-2-merged.md). Handoffs are shared and committed.
+
+- To resume phone control (agents use the phone through `phone_*` tools; design done, step 1 to build; CHG-0767), read the [current handoff](.agents/handoffs/2026-11-26-1700-phone-control-design.md). Handoffs are shared and committed.
