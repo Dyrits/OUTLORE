@@ -65,4 +65,4 @@ Latest handoffs:
 
 - To resume deleting an empty errand a Reply opened (CHG-0755), read the [current handoff](.agents/handoffs/2026-11-26-0929-empty-reply-errand-deletable.md). Handoffs are shared and committed.
 
-- To resume the whole-codebase review and refactor after its merge (CHG-0750 to CHG-0752), read the [current handoff](.agents/handoffs/2026-11-26-0725-codebase-review-and-refactor-merged.md). Handoffs are shared and committed.
+- To resume the History tab's archived quests switch (CHG-0756), read the [current handoff](.agents/handoffs/2026-11-26-1050-history-shows-archived-quests.md). Handoffs are shared and committed.
