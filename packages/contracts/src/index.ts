@@ -50,6 +50,7 @@ export * from "./lore.ts";
 export * from "./loreRequests.ts";
 export * from "./mentions.ts";
 export { isRecord } from "./objects.ts";
+export * from "./phoneCalls.ts";
 export * from "./pickerRequests.ts";
 export * from "./questions.ts";
 export {

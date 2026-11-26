@@ -22,7 +22,7 @@ The behavior is in the [phone control specification](../capabilities/phone-contr
 - **The phone consents, not the host.**
   The phone's own settings hold a switch per capability group, all off by default, changeable only on the phone.
   A call to a group that is off fails at the phone with a plain refusal.
-  Android's own permission prompt is the second gate; the host's per-use approval ([action-approval](../capabilities/action-approval/specifications.md)) is the third.
+  Android's own permission prompt is the second gate. The owner chose on 2026-11-26 that the switch is enough: no per-call approval from the host.
 - **Two steps of capability.**
   Step 1 (the app's own capabilities, standard Android permissions, Expo modules): information, location, clipboard, open a link or an app, notification.
   Step 2 (whole-screen control: read the screen, screenshot, tap, type, swipe, global buttons): an Android `AccessibilityService` in a Kotlin Expo module of the APK, enabled by the owner in Android settings.
@@ -48,5 +48,5 @@ The behavior is in the [phone control specification](../capabilities/phone-contr
 
 - That a `PhoneCall` frame reaches one chosen device through `Sessions`, including over the relay path and the direct path. `Sessions.add` takes an anonymous sink today, so it needs the device's identity.
 - How long an Android app keeps its channel in the background, and whether step 1 needs a foreground service.
-- Which phone answers when several are paired: the proposal is the one with a group on, and a refusal if two are.
+- Which phone answers when several are paired: decided on 2026-11-26, each call names its phone (`phone` argument), and a call that names none while several are connected fails naming them.
 - Whether Play-style restrictions on accessibility apply: the APK is sideloaded through Outlore's own updater, so not for now.

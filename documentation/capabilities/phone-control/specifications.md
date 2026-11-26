@@ -2,7 +2,7 @@
 
 ## Implementation status · 2026-11-26
 
-**Step 1 is agreed in outline by the owner's choices below, not built.** Step 2 (whole-screen control) is a direction only and needs its own specification and decision record before any work.
+**Step 1 is agreed (owner, 2026-11-26: switch only, calls name their phone), not built.** Step 2 (whole-screen control) is a direction only and needs its own specification and decision record before any work.
 Design: [blueprint](blueprint.md) and [0028](../../architecture-decision-record/0028-phone-tools-served-by-the-paired-app-over-the-existing-channel.md) (proposed).
 
 ## Problem and outcome
@@ -29,8 +29,8 @@ The outcome: a thread calls a `phone_*` tool; the paired Outlore app on the owne
 | Open | `phone_open` | Opens a link, or an installed app by name. | none |
 | Notify | `phone_notify` | Shows a notification with a title and text from the thread. | notifications, asked by Android when first used |
 
-- **Approval per use.** Each call asks the owner through the same attention path as other approvals, answerable from any device, as a capability named after the group ("Use the phone's location"). Allow covers that one call; Always allow stores a standing permission scoped like any other. `phone_info` asks nothing.
-- **Only a connected phone.** With no phone connected a call fails at once with "No phone connected. Open Outlore on the phone." and never waits. With two phones connected, a call is refused until one is chosen (proposal: the one whose switch is on; both on is refused with a plain message).
+- **The switch is the consent (owner, 2026-11-26).** Once a group's switch is on, the phone runs its calls without asking again: there is no per-call approval and no Always allow for `phone_*` tools. Android's own permission prompt (location, notifications) still appears on first use.
+- **Only a connected phone, and the call names it (owner, 2026-11-26).** With no phone connected a call fails at once with "No phone connected. Open Outlore on the phone." and never waits. Every `phone_*` tool takes an optional `phone` argument naming a paired phone; it can be left out while exactly one phone with the group on is connected. With several, a call without `phone` fails at once naming the connected phones ("Several phones are connected: Pixel, Galaxy. Name one in `phone`."); a named phone that is not connected or has the group off fails with its own sentence.
 - **The app must be open.** Step 1 works only while the app is running and connected; keeping it connected in the background is a later decision.
 - **Nothing is kept.** Outlore stores no location, clipboard text or screenshot from a call; the result goes to the thread's model provider like any tool result, and the card says so before a switch is turned on.
 - **Failures are plain.** A switch off, a refused Android permission, a closed app and a timeout (30 seconds) each return one sentence the thread can read and relay.
