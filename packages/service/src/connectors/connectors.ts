@@ -13,7 +13,14 @@ import { ConnectorAsking, ConnectorNotices } from "./asking.ts";
 import { isUsableBy } from "./availability.ts";
 import { ConnectorBackends } from "./backend.ts";
 import { ConnectorCalls } from "./calls.ts";
-import { type CatalogEntry, defaultAppsOf, entryOf, isOAuthEntry, oauthSecretKind } from "./catalog.ts";
+import {
+  type CatalogEntry,
+  defaultAppsOf,
+  entryOf,
+  hasStaticSecret,
+  isOAuthEntry,
+  oauthSecretKind,
+} from "./catalog.ts";
 import { defaultCatalog } from "./catalogEntries.ts";
 import {
   type CallDependencies,
@@ -290,6 +297,9 @@ const make = (options: ConnectorsOptions) =>
               ),
             ),
           );
+          if (hasStaticSecret(entry) && entry.secretKind !== null) {
+            yield* vault.remove(entry.id, entry.secretKind).pipe(Effect.ignore);
+          }
           yield* writeNeeds(entry.id, null).pipe(provided);
           yield* refreshFor(entry, null);
           yield* changes.publish;

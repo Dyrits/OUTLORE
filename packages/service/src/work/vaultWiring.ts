@@ -64,6 +64,14 @@ export const vaultPortOf = (vault: Vault["Service"]): VaultPort["Service"] => ({
             : Effect.flatMap(unavailableOf(vault, failure), Effect.fail),
         ),
       ),
+  remove: (connector, kind) =>
+    vault
+      .remove(connector, kind)
+      .pipe(
+        Effect.catchTag("VaultFailure", (failure) =>
+          failure.kind === "Missing" ? Effect.void : Effect.flatMap(unavailableOf(vault, failure), Effect.fail),
+        ),
+      ),
   removeAllOf: (connector) =>
     vault
       .removeAllOf(connector)

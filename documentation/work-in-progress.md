@@ -1,5 +1,11 @@
 # Work in progress
 
+## Dual-auth OAuth and 13 missing remote connectors · 2026-11-26 · built and tested against stand-ins; live sign-in and window check pending
+
+CHG-0763 in `0.2.10-Pre-Alpha` (base `431e71f4`): enabled dual authentication (generic MCP OAuth 2.1 browser sign-in alongside static API keys/tokens, with mutual credential cleanup in the Vault and OAuth Bearer + session switching in `httpMcp.ts`) on the 6 DCR-capable existing connectors (Composio, Tavily, Stripe, Neon, GitLab, Datadog) and added 13 missing DCR-capable remote connectors (Linear, Notion, Atlassian `/v2/mcp`, Figma, Vercel, Sentry, PostHog, Intercom, Postman, monday.com, Airtable, PayPal, Dropbox).
+Unlisted runtime-discovered tools default safely to Unclassified (asks every time); vendored stdio connectors (Playwright, Chrome DevTools, Brave Search, MCP Fetch) stay deferred to a later batch, and non-DCR OAuth vendors (GitHub OAuth, Slack, Asana, HubSpot, Box, Google Workspace, Microsoft 365) remain blocked on pre-registered OAuth apps.
+Next: open the Charter in the desktop window to check dual-auth connector panels (e.g., Composio, Stripe, Linear) and run a live OAuth sign-in on at least one dual-auth and one newly added connector.
+
 ## Phone floating pill shell · 2026-11-26 · built and checked in a phone-width browser; real phone pending
 
 CHG-0761 in `0.2.10-Pre-Alpha`: the narrow window has a floating pill of three tabs (Chronicle, Quests, Chronicler), a Menu button in the top bar (Lore, Archive, Reserves, Settings), and the conversation's own composer in a quest (`narrowShell.tsx`, `phoneShell.ts`, `phonePill.tsx`, `menuScreen.tsx`, `pillScroll.ts`).

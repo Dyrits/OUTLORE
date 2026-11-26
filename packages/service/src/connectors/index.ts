@@ -1,7 +1,7 @@
 export { ConnectorAsking, ConnectorNotices, type ToolUse } from "./asking.ts";
 export { type ConnectorBackend, ConnectorBackends } from "./backend.ts";
 export { connectorBackendsLayer } from "./backends/index.ts";
-export type { CatalogEntry } from "./catalog.ts";
+export { type CatalogEntry, oauthSecretKind } from "./catalog.ts";
 export { CodeExecutor } from "./codeExecutor.ts";
 export { answerCodeModeCall, codeToolName, type OwnTools, offeredToolsOf } from "./codeMode.ts";
 export { Connectors, connectorServicesLayer } from "./connectors.ts";

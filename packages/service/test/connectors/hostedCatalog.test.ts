@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasStaticSecret,
   hostedServiceLicence,
+  isDualAuthEntry,
   isOAuthEntry,
   isToolName,
   listedNameOf,
@@ -11,15 +13,17 @@ import { defaultCatalog } from "../../src/connectors/catalogEntries.ts";
 import { qualifiedToolNameOf } from "../../src/harness/toolNames.ts";
 import { hostedListings } from "../fixtures/hostedListings.ts";
 
-// Wave 1's hosted connectors (connectors specification): each entry is checked against the listing recorded from a
-// primary source, so a tool the server lists but the catalog does not name, or a name the catalog invented, fails here.
+// Wave 1 and Wave 2 hosted connectors (connectors specification): each entry with classified tools is checked against
+// the listing recorded from a primary source, while closed-source or dynamically scoped OAuth servers without a public
+// static listing leave `tools` empty so every runtime-discovered tool is Unclassified and asks on each call.
 
 const hostedEntries = defaultCatalog.filter((entry) => entry.id !== "composio" && entry.backend._tag === "Http");
+const listedHostedEntries = hostedEntries.filter((entry) => Object.keys(entry.tools).length > 0);
 const openLicences = ["MIT", "Apache-2.0"];
 
 describe("the hosted connectors of Waves 1 and 2", () => {
-  it("have a recorded listing, and every catalog entry of one is a hosted connector with a listing", () => {
-    expect(Object.keys(hostedListings).sort()).toEqual(hostedEntries.map((entry) => entry.id).sort());
+  it("match recorded listings for every entry with classified tools, and have no stray fixtures", () => {
+    expect(Object.keys(hostedListings).sort()).toEqual(listedHostedEntries.map((entry) => entry.id).sort());
   });
 
   for (const entry of hostedEntries) {
@@ -56,9 +60,13 @@ describe("the hosted connectors of Waves 1 and 2", () => {
           expect(entry.backend.header).toBe("authorization");
           expect(entry.backend.prefix).toBe("Bearer ");
         }
-        if (isOAuthEntry(entry)) {
+        if (isOAuthEntry(entry) && !hasStaticSecret(entry)) {
           expect(entry.secretKind).toBe(oauthSecretKind);
           expect(entry.backend.shouldUseSession).toBe(true);
+        }
+        if (isDualAuthEntry(entry)) {
+          expect(entry.secretKind).not.toBeNull();
+          expect(entry.secretKind).not.toBe(oauthSecretKind);
         }
       });
 

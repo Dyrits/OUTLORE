@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume deleting an empty errand a Reply opened (CHG-0755), read the [current handoff](.agents/handoffs/2026-11-26-0929-empty-reply-errand-deletable.md). Handoffs are shared and committed.
-
-- To resume the History tab's archived quests switch (CHG-0756), read the [current handoff](.agents/handoffs/2026-11-26-1050-history-shows-archived-quests.md). Handoffs are shared and committed.
-
 - To resume the phone's floating pill shell (CHG-0761), read the [current handoff](.agents/handoffs/2026-11-26-1445-phone-floating-pill.md). Handoffs are shared and committed.
+
+- To resume first-message image display and the image lightbox panel, read the [current handoff](.agents/handoffs/2026-11-26-1455-first-message-image-and-lightbox.md). Handoffs are shared and committed.
+
+- To resume dual-auth OAuth connectors and the thirteen missing remote connectors (CHG-0762), read the [current handoff](.agents/handoffs/2026-11-26-1458-dual-auth-and-missing-connectors.md). Handoffs are shared and committed.

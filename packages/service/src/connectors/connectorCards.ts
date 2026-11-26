@@ -2,7 +2,7 @@ import type { ConnectorCard, ConnectorToolCard } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { isUsableBy } from "./availability.ts";
-import { type CatalogEntry, catalogToolOf, entryOf, isOAuthEntry, isRunnableOn } from "./catalog.ts";
+import { type CatalogEntry, catalogToolOf, entryOf, hasStaticSecret, isOAuthEntry, isRunnableOn } from "./catalog.ts";
 import { appleConnectionNeedOf, readStanding, readToolStanding, type StateDependencies } from "./connectorState.ts";
 import {
   type ConnectorRecord,
@@ -42,6 +42,7 @@ export const cardOf = Effect.fnUntraced(function* (dependencies: CardDependencie
   const provided = Effect.provideService(SqlClient.SqlClient, dependencies.sql);
   const record = yield* readConnectorRecord(entry.id).pipe(provided);
   const usesOAuth = isOAuthEntry(entry);
+  const staticSecretKind = hasStaticSecret(entry) ? entry.secretKind : null;
   const base = {
     apps: entry.apps.map((app) => ({
       id: app.id,
@@ -53,7 +54,7 @@ export const cardOf = Effect.fnUntraced(function* (dependencies: CardDependencie
     id: entry.id,
     name: entry.name,
     notice: entry.notice,
-    secretKinds: usesOAuth || entry.secretKind === null ? [] : [entry.secretKind],
+    secretKinds: staticSecretKind === null ? [] : [staticSecretKind],
     usesOAuth,
   };
   if (record === null) {
@@ -73,11 +74,13 @@ export const cardOf = Effect.fnUntraced(function* (dependencies: CardDependencie
     entry.apps.length > 0
       ? appleConnectionNeedOf(dependencies, record)
       : (record.needs ??
-        (standing.isConnected || entry.secretKind === null
+        (standing.isConnected || (entry.secretKind === null && !usesOAuth)
           ? null
-          : usesOAuth
-            ? "Sign in in your browser to connect."
-            : `Add your ${entry.secretKind} below.`));
+          : usesOAuth && staticSecretKind !== null
+            ? `Sign in in your browser or add your ${staticSecretKind} below.`
+            : usesOAuth
+              ? "Sign in in your browser to connect."
+              : `Add your ${entry.secretKind} below.`));
   return {
     ...base,
     borderlandsChoice: choices.borderlands,

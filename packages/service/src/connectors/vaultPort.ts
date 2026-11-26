@@ -22,6 +22,8 @@ export class VaultPort extends Context.Service<
     readonly holds: (connector: string, kind: string) => Effect.Effect<boolean, VaultUnavailable>;
     /** Stores or replaces a secret of this kind for the connector, used for OAuth sessions and token refreshes. */
     readonly putOrReplace: (connector: string, kind: string, secret: string) => Effect.Effect<void, VaultUnavailable>;
+    /** Removes one secret kind of the connector; removing a missing secret succeeds so switching auth modes is safe. */
+    readonly remove: (connector: string, kind: string) => Effect.Effect<void, VaultUnavailable>;
     /** Removes every secret of the connector; removing none is not a failure, so a resumed removal repeats it safely. */
     readonly removeAllOf: (connector: string) => Effect.Effect<void, VaultUnavailable>;
     /** Hands the secret to the callback and keeps nothing: the only read of a secret. */
@@ -37,6 +39,7 @@ export class VaultPort extends Context.Service<
 export const emptyVaultLayer = Layer.succeed(VaultPort, {
   holds: () => Effect.succeed(false),
   putOrReplace: () => Effect.fail(new VaultUnavailable({ reason: "Failed" })),
+  remove: () => Effect.void,
   removeAllOf: () => Effect.void,
   withSecret: (connector, kind) => Effect.fail(new SecretMissing({ connector, kind })),
 });

@@ -140,8 +140,8 @@ const dispatch = Effect.fnUntraced(function* (
   // A write is never retried by Outlore: a cancelled or failed one may already have happened. A read may be, once.
   const isRead = catalogToolOf(entry, tool)?.class === "Read";
   invocation.markDispatched();
-  const attempt = dependencies.listing.withCredentials(entry, (backend, secret, redactionSecrets) =>
-    backend.call(tool, args, secret).pipe(Effect.map((text) => cappedOf(redactedOf(text, redactionSecrets)))),
+  const attempt = dependencies.listing.withCredentials(entry, (backend, secret, redactionSecrets, auth) =>
+    backend.call(tool, args, secret, auth).pipe(Effect.map((text) => cappedOf(redactedOf(text, redactionSecrets)))),
   );
   const outcome = yield* (
     isRead

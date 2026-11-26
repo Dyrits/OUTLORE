@@ -8,13 +8,19 @@ import type { CatalogEntry } from "../catalog.ts";
  */
 export const tavilyEntry: CatalogEntry = {
   apps: [],
-  backend: { _tag: "Http", header: "authorization", prefix: "Bearer ", url: "https://mcp.tavily.com/mcp/" },
+  backend: {
+    _tag: "Http",
+    header: "authorization",
+    oauth: { clientName: "Outlore" },
+    prefix: "Bearer ",
+    url: "https://mcp.tavily.com/mcp/",
+  },
   description: "Search the web, read pages, map and crawl websites, and research a question.",
   id: "tavily",
   licence: "MIT",
   name: "Tavily",
   notice:
-    "Tavily is a service run by another company. It sees each search phrase, web address and question a thread sends it, and fetches the pages for it. A thread can put anything it has read in a search phrase or an address, and that leaves this computer. You need your own Tavily account and API key, which Outlore keeps in the Vault on this computer; each call spends credits of your account.",
+    "Tavily is a service run by another company. It sees each search phrase, web address and question a thread sends it, and fetches the pages for it. A thread can put anything it has read in a search phrase or an address, and that leaves this computer. Sign in on Tavily's page in your browser or enter your Tavily API key, which Outlore keeps in the Vault on this computer; each call spends credits of your account.",
   platform: "Any",
   secretKind: "API key",
   tools: {

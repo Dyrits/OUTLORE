@@ -111,7 +111,13 @@ Threads can act only on the computer and on what their harness already reaches. 
 - Because the loopback callback runs on the host computer, `SignInConnector` is host-only; paired devices show that browser sign-in happens on the host computer.
   Vendors that do not support generic RFC 7591 dynamic client registration (such as Slack, Asana, Google Workspace, and Microsoft 365) are skipped.
 - Three initial Wave 2 OAuth 2.1 connectors are offered whose endpoints advertise RFC 9728/8414/7591 dynamic client registration and whose complete tool lists were verified from their official open-source repositories on 2026-11-25: Cloudflare (`mcp.cloudflare.com/mcp`, 5 tools, Apache-2.0), Supabase (`mcp.supabase.com/mcp`, 42 tools, Apache-2.0), and Todoist (`ai.todoist.net/mcp`, 52 tools, MIT).
-  Notion, Atlassian, Figma, Vercel, Linear, Intercom, Postman, monday.com, and Airtable are deferred until their exact hosted tool lists can be verified from a primary source or an authenticated `tools/list`.
+- On 2026-11-26 (CHG-0763), thirteen additional DCR-capable remote MCP servers were added: Linear (`mcp.linear.app/mcp`), Notion (`mcp.notion.com/mcp`), Atlassian Jira & Confluence (`mcp.atlassian.com/v2/mcp`), Figma (`mcp.figma.com/mcp`), Vercel (`mcp.vercel.com`), Sentry (`mcp.sentry.dev/mcp`), PostHog (`mcp.posthog.com/mcp`), Intercom (`mcp.intercom.com/mcp`), Postman (`mcp.postman.com/mcp`), monday.com (`mcp.monday.com/mcp`), Airtable (`mcp.airtable.com/mcp`), PayPal (`mcp.paypal.com/mcp`), and Dropbox (`mcp.dropbox.com/mcp`).
+  Documented tool names from primary sources are classified for Figma, Notion, and Sentry; any tool a hosted server lists at runtime that the catalog does not name defaults to Unclassified and asks the owner on every call.
+- **Dual authentication (OAuth 2.1 or static key).**
+  Remote connectors that support both generic OAuth 2.1 DCR and a static API key or token offer both options on their panel: Composio, Tavily, Stripe, Neon, GitLab, Datadog, Linear, Sentry, and PostHog.
+  Signing in via browser OAuth stores `OAuth session` in the Vault and removes any prior static key for that connector; storing or replacing a static key removes any prior `OAuth session` and clears `Needs connecting`, so the active credential is never ambiguous.
+  When using an OAuth session, the HTTP backend sends `Authorization: Bearer <accessToken>` with an MCP session handshake even if the connector's static key uses another header (such as Composio's `x-consumer-api-key`).
+  GitHub remains PAT-only because `github.com/login/oauth` does not advertise RFC 7591 dynamic client registration; Slack, Asana, HubSpot, Box, Google Workspace, and Microsoft 365 remain deferred for the same reason.
 
 ### Apple apps
 

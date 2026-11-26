@@ -12,6 +12,7 @@ export const neonEntry: CatalogEntry = {
   backend: {
     _tag: "Http",
     header: "authorization",
+    oauth: { clientName: "Outlore" },
     prefix: "Bearer ",
     url: "https://mcp.neon.tech/mcp?category=projects&category=branches&category=endpoints&category=querying&category=schema",
   },
@@ -20,7 +21,7 @@ export const neonEntry: CatalogEntry = {
   licence: "MIT",
   name: "Neon",
   notice:
-    "Neon is a service run by another company. It sees every request a thread makes with your key and returns what the key can reach, including the data in your databases when a thread runs SQL, which then goes to the model provider of the thread. You need a Neon API key, which Outlore keeps in the Vault on this computer. A key made for one organization limits threads to that organization's projects. Outlore asks before each tool that changes something or runs SQL, but a key that reaches only what you want is the stronger guard.",
+    "Neon is a service run by another company. It sees every request a thread makes and returns what your connection can reach, including the data in your databases when a thread runs SQL, which then goes to the model provider of the thread. Sign in on Neon's page in your browser or enter a Neon API key, which Outlore keeps in the Vault on this computer. A key made for one organization limits threads to that organization's projects. Outlore asks before each tool that changes something or runs SQL, but a connection that reaches only what you want is the stronger guard.",
   platform: "Any",
   secretKind: "API key",
   tools: {

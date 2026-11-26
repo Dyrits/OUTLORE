@@ -1,13 +1,14 @@
 import { Clock, Effect, Semaphore } from "effect";
 import { fieldOf } from "../core/index.ts";
 import {
+  type BackendAuthKind,
   BackendFailure,
   type BackendTool,
   type ConnectorBackend,
   type ConnectorBackends,
   type ConnectorErrorClass,
 } from "./backend.ts";
-import { type CatalogEntry, isOAuthEntry, isToolName, oauthSecretKind } from "./catalog.ts";
+import { type CatalogEntry, hasStaticSecret, isOAuthEntry, isToolName, oauthSecretKind } from "./catalog.ts";
 import { redactedOf } from "./connectorErrors.ts";
 import {
   decodeOAuthSession,
@@ -16,7 +17,7 @@ import {
   oauthSecretsOf,
   refreshOAuthToken,
 } from "./oauth/index.ts";
-import type { SecretMissing, VaultPort, VaultUnavailable } from "./vaultPort.ts";
+import { SecretMissing, type VaultPort, type VaultUnavailable } from "./vaultPort.ts";
 
 // A connector's server and what it last listed (connectors blueprint, Gateway: the listing is "read from the backend's
 // `tools/list` cached per connector and refreshed on install, on a failed call and at each turn start").
@@ -153,15 +154,28 @@ export const makeToolListing = (dependencies: {
       backend: ConnectorBackend,
       secret: string | null,
       redactionSecrets: ReadonlyArray<string>,
+      auth: BackendAuthKind,
     ) => Effect.Effect<A, E, R>,
   ): Effect.Effect<A, E | BackendFailure | SecretMissing | VaultUnavailable, R> =>
     Effect.gen(function* () {
       const backend = yield* backendOf(entry);
-      if (entry.secretKind === null) return yield* use(backend, null, []);
+      if (entry.secretKind === null && !isOAuthEntry(entry)) return yield* use(backend, null, [], "Secret");
       if (!isOAuthEntry(entry)) {
-        return yield* vault.withSecret(entry.id, entry.secretKind, (secret) => use(backend, secret, [secret]));
+        if (entry.secretKind === null) return yield* use(backend, null, [], "Secret");
+        return yield* vault.withSecret(entry.id, entry.secretKind, (secret) =>
+          use(backend, secret, [secret], "Secret"),
+        );
       }
-      const initialRaw = yield* vault.withSecret(entry.id, entry.secretKind, (raw) => Effect.succeed(raw));
+      const hasOAuth = yield* vault.holds(entry.id, oauthSecretKind);
+      if (!hasOAuth) {
+        if (hasStaticSecret(entry) && entry.secretKind !== null) {
+          return yield* vault.withSecret(entry.id, entry.secretKind, (secret) =>
+            use(backend, secret, [secret], "Secret"),
+          );
+        }
+        return yield* new SecretMissing({ connector: entry.id, kind: oauthSecretKind });
+      }
+      const initialRaw = yield* vault.withSecret(entry.id, oauthSecretKind, (raw) => Effect.succeed(raw));
       const initial = decodeOAuthSession(initialRaw);
       if (initial === null) {
         return yield* new BackendFailure({
@@ -177,7 +191,7 @@ export const makeToolListing = (dependencies: {
         active = refreshed.session;
         secrets = [...secrets, ...refreshed.secrets];
       }
-      const firstAttempt = yield* use(backend, active.accessToken, secrets).pipe(Effect.result);
+      const firstAttempt = yield* use(backend, active.accessToken, secrets, "OAuth").pipe(Effect.result);
       if (firstAttempt._tag === "Success") return firstAttempt.success;
       const failure = firstAttempt.failure;
       const isDisconnected =
@@ -185,13 +199,13 @@ export const makeToolListing = (dependencies: {
       if (!isDisconnected || active.refreshToken === null) return yield* Effect.fail(failure);
       const refreshed = yield* refreshOAuthSession(entry.id, active.accessToken);
       const allSecrets = [...secrets, ...refreshed.secrets];
-      return yield* use(backend, refreshed.session.accessToken, allSecrets);
+      return yield* use(backend, refreshed.session.accessToken, allSecrets, "OAuth");
     });
 
   /** Asks the server for its tools again, keeping them on success and forgetting them on failure. */
   const refresh = (entry: CatalogEntry): Effect.Effect<Listing> =>
-    withCredentials(entry, (backend, secret, redactionSecrets) =>
-      backend.listTools(secret).pipe(Effect.map((tools) => redactedTools(tools, redactionSecrets))),
+    withCredentials(entry, (backend, secret, redactionSecrets, auth) =>
+      backend.listTools(secret, auth).pipe(Effect.map((tools) => redactedTools(tools, redactionSecrets))),
     ).pipe(
       Effect.map((tools): Listing => {
         const usable = usableNamesOf(tools);

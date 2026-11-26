@@ -88,6 +88,12 @@ export const fakeVault = () => {
         secrets.set(keyOf(connector, kind), secret);
         return Effect.void;
       }),
+    remove: (connector, kind) =>
+      Effect.suspend(() => {
+        if (state.isFailingRemoval) return Effect.fail(new VaultUnavailable({ reason: "Failed" }));
+        secrets.delete(keyOf(connector, kind));
+        return Effect.void;
+      }),
     removeAllOf: (connector) =>
       Effect.suspend(() => {
         if (state.isFailingRemoval) return Effect.fail(new VaultUnavailable({ reason: "Failed" }));

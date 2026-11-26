@@ -1,6 +1,12 @@
 import { Effect } from "effect";
 import { fieldOf, isRecord, numberFieldOf, textFieldOf } from "../../core/index.ts";
-import { BackendFailure, type BackendTool, type ConnectorBackend, type ConnectorErrorClass } from "../backend.ts";
+import {
+  type BackendAuthKind,
+  BackendFailure,
+  type BackendTool,
+  type ConnectorBackend,
+  type ConnectorErrorClass,
+} from "../backend.ts";
 import type { CatalogBackend } from "../catalog.ts";
 import { redactedOf } from "../connectorErrors.ts";
 
@@ -90,12 +96,23 @@ const readEventReply = async (response: Response, id: number) => {
 };
 
 /** Headers sent with one Streamable-HTTP MCP request, including the credential and session identifier when present. */
-const headersOf = (transport: HttpTransport, secret: string | null, sessionId: string | null) => ({
+const headersOf = (
+  transport: HttpTransport,
+  secret: string | null,
+  sessionId: string | null,
+  auth: BackendAuthKind,
+) => ({
   accept: "application/json, text/event-stream",
   "content-type": "application/json",
   "mcp-protocol-version": protocolVersion,
   ...(sessionId === null ? {} : { "mcp-session-id": sessionId }),
-  ...(secret === null || transport.header === null ? {} : { [transport.header]: `${transport.prefix ?? ""}${secret}` }),
+  ...(secret === null
+    ? {}
+    : auth === "OAuth"
+      ? { authorization: `Bearer ${secret}` }
+      : transport.header === null
+        ? {}
+        : { [transport.header]: `${transport.prefix ?? ""}${secret}` }),
 });
 
 /** One JSON-RPC request to the server: its answer message and any session header, or the transport's failure. */
@@ -107,13 +124,14 @@ const ask = (
   sessionId: string | null,
   counter: number,
   timeoutMillis: number,
+  auth: BackendAuthKind,
 ) =>
   Effect.tryPromise({
     catch: (problem) => (problem instanceof HttpRefusal ? problem.failure : refuse("Unreachable")),
     try: (signal) =>
       fetch(transport.url, {
         body: JSON.stringify({ id: counter, jsonrpc: "2.0", method, params }),
-        headers: headersOf(transport, secret, sessionId),
+        headers: headersOf(transport, secret, sessionId, auth),
         // Never followed: a redirect would send the key's header to whatever origin the server names (a different
         // host, or a plainer scheme), so the adapter takes the answer itself and refuses it below.
         method: "POST",
@@ -141,13 +159,14 @@ const notify = (
   secret: string | null,
   sessionId: string | null,
   timeoutMillis: number,
+  auth: BackendAuthKind,
 ) =>
   Effect.tryPromise({
     catch: (problem) => (problem instanceof HttpRefusal ? problem.failure : refuse("Unreachable")),
     try: (signal) =>
       fetch(transport.url, {
         body: JSON.stringify({ jsonrpc: "2.0", method }),
-        headers: headersOf(transport, secret, sessionId),
+        headers: headersOf(transport, secret, sessionId, auth),
         method: "POST",
         redirect: "manual",
         signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMillis)]),
@@ -222,12 +241,18 @@ export const httpMcpBackend = (
   let counter = 0;
   let sessionId: string | null = null;
   let isInitialized = false;
-  const shouldUseSession = transport.shouldUseSession === true || transport.oauth !== undefined;
+  let sessionAuth: BackendAuthKind | null = null;
+  const shouldUseSessionFor = (auth: BackendAuthKind) => transport.shouldUseSession === true || auth === "OAuth";
   const timeoutMillis = options.requestTimeoutMillis ?? 60_000;
 
-  /** Performs the MCP Streamable HTTP session handshake when required by the transport. */
-  const ensureSession = Effect.fnUntraced(function* (secret: string | null) {
-    if (!shouldUseSession || isInitialized) return;
+  /** Performs the MCP Streamable HTTP session handshake when required by the transport or auth mode. */
+  const ensureSession = Effect.fnUntraced(function* (secret: string | null, auth: BackendAuthKind) {
+    if (sessionAuth !== null && sessionAuth !== auth) {
+      sessionId = null;
+      isInitialized = false;
+    }
+    sessionAuth = auth;
+    if (!shouldUseSessionFor(auth) || isInitialized) return;
     counter += 1;
     const initialized = yield* ask(
       transport,
@@ -237,18 +262,24 @@ export const httpMcpBackend = (
       null,
       counter,
       timeoutMillis,
+      auth,
     );
     const initError = fieldOf(initialized.message, "error");
     if (initError !== void 0) return yield* Effect.fail(refuse("Failed"));
     sessionId = initialized.sessionId;
-    yield* notify(transport, "notifications/initialized", secret, sessionId, timeoutMillis);
+    yield* notify(transport, "notifications/initialized", secret, sessionId, timeoutMillis, auth);
     isInitialized = true;
   });
 
-  const sendRequest = Effect.fnUntraced(function* (method: string, params: unknown, secret: string | null) {
-    yield* ensureSession(secret);
+  const sendRequest = Effect.fnUntraced(function* (
+    method: string,
+    params: unknown,
+    secret: string | null,
+    auth: BackendAuthKind,
+  ) {
+    yield* ensureSession(secret, auth);
     counter += 1;
-    const reply = yield* ask(transport, method, params, secret, sessionId, counter, timeoutMillis);
+    const reply = yield* ask(transport, method, params, secret, sessionId, counter, timeoutMillis, auth);
     if (reply.sessionId !== null) sessionId = reply.sessionId;
     const error = fieldOf(reply.message, "error");
     if (error !== void 0)
@@ -256,21 +287,21 @@ export const httpMcpBackend = (
     return fieldOf(reply.message, "result");
   });
 
-  const askServer = (method: string, params: unknown, secret: string | null) =>
-    sendRequest(method, params, secret).pipe(
+  const askServer = (method: string, params: unknown, secret: string | null, auth: BackendAuthKind) =>
+    sendRequest(method, params, secret, auth).pipe(
       Effect.catch((failure) => {
-        if (shouldUseSession && failure.upstream === sessionExpiredWords) {
+        if (shouldUseSessionFor(auth) && failure.upstream === sessionExpiredWords) {
           sessionId = null;
           isInitialized = false;
-          return sendRequest(method, params, secret);
+          return sendRequest(method, params, secret, auth);
         }
         return Effect.fail(failure);
       }),
     );
 
   return {
-    call: (tool, args, secret) =>
-      askServer("tools/call", { arguments: args, name: tool }, secret).pipe(
+    call: (tool, args, secret, auth = "Secret") =>
+      askServer("tools/call", { arguments: args, name: tool }, secret, auth).pipe(
         Effect.flatMap((result) => {
           const text = textOf(result);
           return fieldOf(result, "isError") === true || text === null
@@ -282,9 +313,10 @@ export const httpMcpBackend = (
     close: Effect.sync(() => {
       sessionId = null;
       isInitialized = false;
+      sessionAuth = null;
     }),
-    listTools: (secret) =>
-      askServer("tools/list", {}, secret).pipe(
+    listTools: (secret, auth = "Secret") =>
+      askServer("tools/list", {}, secret, auth).pipe(
         Effect.flatMap((result) => {
           const tools = toolsOf(result);
           return tools === null ? Effect.fail(refuse("Failed")) : Effect.succeed(tools);
