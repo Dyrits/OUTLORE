@@ -102,7 +102,7 @@ describe("one definition per ACP provider", () => {
     const hermes = acpProviders.hermes;
     expect(hermes).toBeDefined();
     if (hermes === undefined) return;
-    expect(hermes.isolation).toMatchObject({ kind: "directory", needsConfiguredHome: true });
+    expect(hermes.isolation).toMatchObject({ isConfiguredHomeRequired: true, kind: "directory" });
     // The computer's own sign-in redirects nothing; an account's folder is HERMES_HOME in the launch and in the sign-in alike.
     expect(acpLaunchOf(hermes).env).not.toHaveProperty("HERMES_HOME");
     expect(acpLaunchOf(hermes, { configDirectory: "/accounts/h" }).env).toEqual({ HERMES_HOME: "/accounts/h" });

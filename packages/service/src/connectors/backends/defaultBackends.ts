@@ -8,13 +8,16 @@ import { stdioCommandOf, stdioMcpBackend } from "./stdioMcp.ts";
 
 /** Opens the backend a catalog entry names: the Streamable-HTTP adapter for an Http entry, a stdio child for a Stdio entry. */
 export const connectorBackendsLayer = Layer.succeed(ConnectorBackends, {
-  open: (entry) =>
-    entry.backend._tag === "Http"
-      ? Effect.succeed(httpMcpBackend(entry.backend))
-      : stdioMcpBackend({
-          command: stdioCommandOf(entry.backend.server),
-          ...(entry.backend.env === undefined ? {} : { env: entry.backend.env }),
-          label: entry.name,
-          usesAppleAutomation: entry.platform === "macOS" && entry.apps.length > 0,
-        }),
+  open: (entry) => {
+    const { backend } = entry;
+    if (backend._tag === "Http") return Effect.succeed(httpMcpBackend(backend));
+    return Effect.flatMap(stdioCommandOf(backend.server), (command) =>
+      stdioMcpBackend({
+        command,
+        ...(backend.env === undefined ? {} : { env: backend.env }),
+        hasAppleAutomation: entry.platform === "macOS" && entry.apps.length > 0,
+        label: entry.name,
+      }),
+    );
+  },
 });

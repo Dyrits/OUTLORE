@@ -213,7 +213,7 @@ const textOf = (result: unknown): string | null => {
 /**
  * One HTTP connector's server: each request is one POST with the key in the entry's header, an interrupted or stopped
  * call gives up waiting, and the answer's text has the key's spellings redacted before it leaves.
- * Entries with `usesSession` or `oauth` perform MCP `initialize` + `notifications/initialized` and send `Mcp-Session-Id`.
+ * Entries with `shouldUseSession` or `oauth` perform MCP `initialize` + `notifications/initialized` and send `Mcp-Session-Id`.
  */
 export const httpMcpBackend = (
   transport: HttpTransport,
@@ -222,46 +222,44 @@ export const httpMcpBackend = (
   let counter = 0;
   let sessionId: string | null = null;
   let isInitialized = false;
-  const usesSession = transport.usesSession === true || transport.oauth !== undefined;
+  const shouldUseSession = transport.shouldUseSession === true || transport.oauth !== undefined;
   const timeoutMillis = options.requestTimeoutMillis ?? 60_000;
 
   /** Performs the MCP Streamable HTTP session handshake when required by the transport. */
-  const ensureSession = (secret: string | null) =>
-    Effect.gen(function* () {
-      if (!usesSession || isInitialized) return;
-      counter += 1;
-      const initialized = yield* ask(
-        transport,
-        "initialize",
-        { capabilities: {}, clientInfo, protocolVersion },
-        secret,
-        null,
-        counter,
-        timeoutMillis,
-      );
-      const initError = fieldOf(initialized.message, "error");
-      if (initError !== void 0) return yield* Effect.fail(refuse("Failed"));
-      sessionId = initialized.sessionId;
-      yield* notify(transport, "notifications/initialized", secret, sessionId, timeoutMillis);
-      isInitialized = true;
-    });
+  const ensureSession = Effect.fnUntraced(function* (secret: string | null) {
+    if (!shouldUseSession || isInitialized) return;
+    counter += 1;
+    const initialized = yield* ask(
+      transport,
+      "initialize",
+      { capabilities: {}, clientInfo, protocolVersion },
+      secret,
+      null,
+      counter,
+      timeoutMillis,
+    );
+    const initError = fieldOf(initialized.message, "error");
+    if (initError !== void 0) return yield* Effect.fail(refuse("Failed"));
+    sessionId = initialized.sessionId;
+    yield* notify(transport, "notifications/initialized", secret, sessionId, timeoutMillis);
+    isInitialized = true;
+  });
 
-  const sendRequest = (method: string, params: unknown, secret: string | null) =>
-    Effect.gen(function* () {
-      yield* ensureSession(secret);
-      counter += 1;
-      const reply = yield* ask(transport, method, params, secret, sessionId, counter, timeoutMillis);
-      if (reply.sessionId !== null) sessionId = reply.sessionId;
-      const error = fieldOf(reply.message, "error");
-      if (error !== void 0)
-        return yield* Effect.fail(refuse(numberFieldOf(error, "code") === -32602 ? "InvalidArguments" : "Failed"));
-      return fieldOf(reply.message, "result");
-    });
+  const sendRequest = Effect.fnUntraced(function* (method: string, params: unknown, secret: string | null) {
+    yield* ensureSession(secret);
+    counter += 1;
+    const reply = yield* ask(transport, method, params, secret, sessionId, counter, timeoutMillis);
+    if (reply.sessionId !== null) sessionId = reply.sessionId;
+    const error = fieldOf(reply.message, "error");
+    if (error !== void 0)
+      return yield* Effect.fail(refuse(numberFieldOf(error, "code") === -32602 ? "InvalidArguments" : "Failed"));
+    return fieldOf(reply.message, "result");
+  });
 
   const askServer = (method: string, params: unknown, secret: string | null) =>
     sendRequest(method, params, secret).pipe(
       Effect.catch((failure) => {
-        if (usesSession && failure.upstream === sessionExpiredWords) {
+        if (shouldUseSession && failure.upstream === sessionExpiredWords) {
           sessionId = null;
           isInitialized = false;
           return sendRequest(method, params, secret);

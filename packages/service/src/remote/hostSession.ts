@@ -50,7 +50,7 @@ export type RunWork = <Value, Error>(
 type Session = { readonly handle: (message: string) => void };
 
 /** What serving paired devices needs from the rest of the service. */
-export interface DeviceServerParts {
+export type DeviceServerParts = {
   /** Registers a screen for committed changes and drafts; the returned function removes it. */
   readonly addSession: (send: (frame: ServerFrame) => void) => () => void;
   /** Registers a connected device so Disconnect can reach it; the returned function removes it. */
@@ -67,7 +67,7 @@ export interface DeviceServerParts {
   readonly run: RunWork;
   /** Runs work in one transaction, as redeeming a pairing code must. */
   readonly runInTransaction: RunWork;
-}
+};
 
 /** What the supervisor feeds: each client of the room, and what happens when its connection ends. */
 export interface DeviceServer {
@@ -276,7 +276,7 @@ export const createDeviceServer = (parts: DeviceServerParts): DeviceServer => {
   };
 };
 
-/** A failure of background storage work has no screen to show it on: it goes to the service's log. */
+/** A failure of background storage work has no screen to show it on: it goes to the service's log, which the process top sets up. */
 export const reportFailure = (reason: unknown) => {
-  console.error("Outlore device pairing:", reason);
+  Effect.runFork(Effect.logError("Outlore device pairing", reason));
 };

@@ -41,7 +41,7 @@ describe("the test router runs the registry's registration glue", () => {
       // The fake advertises no HTTP MCP support, so the registry's adapter hands over the stdio bridge to the thread's own tool server.
       const params = (session?.params ?? {}) as { mcpServers?: Array<{ args: Array<string> }> };
       expect(params.mcpServers).toHaveLength(1);
-      expect(params.mcpServers?.[0]?.args[0]).toBe(acpMcpBridgePathOf());
+      expect(params.mcpServers?.[0]?.args[0]).toBe(yield* acpMcpBridgePathOf);
     }).pipe(Effect.provide(layer));
   });
 });

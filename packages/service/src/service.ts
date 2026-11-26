@@ -181,7 +181,7 @@ const make = Effect.gen(function* () {
 });
 
 /** Where the service keeps its data and how it reaches the harnesses. */
-export interface ServiceOptions {
+export type ServiceOptions = {
   /** Where provider accounts added in Outlore keep their folders; beside the database when left out. */
   readonly accountsRoot?: string;
   /** Where attached files are kept; beside the database when left out (message-attachments). */
@@ -235,7 +235,7 @@ export interface ServiceOptions {
    * with the Vault's folder hidden and the terminals' own temporary folder, when left out.
    */
   readonly terminalHost?: TerminalHost;
-}
+};
 
 /**
  * The whole local service over one SQLite file. Approvals and suggestions come before Threads, which

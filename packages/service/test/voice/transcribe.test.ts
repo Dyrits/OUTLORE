@@ -90,7 +90,7 @@ describe("reading the transcriber's settings", () => {
       const settings = yield* readTranscriberSettings.pipe(
         withVariables({ OUTLORE_WHISPER_CLI: "/bin/whisper-cli", OUTLORE_WHISPER_MODEL: "/m.bin" }),
       );
-      expect(settings).toEqual({ binary: "/bin/whisper-cli", language: "auto", model: "/m.bin", useGpu: true });
+      expect(settings).toEqual({ binary: "/bin/whisper-cli", language: "auto", model: "/m.bin", shouldUseGpu: true });
     }),
   );
 });
@@ -111,7 +111,7 @@ describe.skipIf(!hasEngine)("transcribing a recording with whisper.cpp", () => {
         binary: engine.binary ?? "",
         language: "en",
         model: engine.model ?? "",
-        useGpu: process.env.OUTLORE_WHISPER_GPU !== "false",
+        shouldUseGpu: process.env.OUTLORE_WHISPER_GPU !== "false",
       });
       expect(transcript.toLowerCase()).toContain("ask not what your country can do for you");
     }),
@@ -124,7 +124,7 @@ describe.skipIf(!hasEngine)("transcribing a recording with whisper.cpp", () => {
           binary: engine.binary ?? "",
           language: "en",
           model: engine.model ?? "",
-          useGpu: false,
+          shouldUseGpu: false,
         }),
       );
       expect(Exit.isFailure(exit)).toBe(true);
@@ -143,7 +143,7 @@ describe("transcribing when the engine is missing", () => {
           binary: join(directory, "no-such-whisper-cli"),
           language: "auto",
           model: join(directory, "no-such-model.bin"),
-          useGpu: false,
+          shouldUseGpu: false,
         }),
       );
       expect(Exit.isFailure(exit)).toBe(true);

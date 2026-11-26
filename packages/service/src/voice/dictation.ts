@@ -19,7 +19,12 @@ const readBundledSettings = Effect.gen(function* () {
   const binary = yield* Config.NonEmptyString("OUTLORE_BUNDLED_WHISPER_CLI");
   const dataDirectory = yield* Config.NonEmptyString("OUTLORE_DATA_DIR");
   const language = yield* Config.String("OUTLORE_WHISPER_LANGUAGE").pipe(Config.withDefault("auto"));
-  return { binary, language, model: bundledModelPath(dataDirectory), useGpu: false } satisfies TranscriberSettings;
+  return {
+    binary,
+    language,
+    model: bundledModelPath(dataDirectory),
+    shouldUseGpu: false,
+  } satisfies TranscriberSettings;
 });
 
 const canAccess = (path: string, mode: number) =>

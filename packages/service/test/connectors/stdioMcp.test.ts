@@ -135,7 +135,7 @@ describe("the stdio MCP backend", () => {
   it("maps a tool error answer to Failed", async () => {
     const { backend } = standInBackend(
       [{ mode: "isError", name: "break", text: "the tool broke: permission denied opening a file" }],
-      { usesAppleAutomation: true },
+      { hasAppleAutomation: true },
     );
     const server = await backend;
     try {

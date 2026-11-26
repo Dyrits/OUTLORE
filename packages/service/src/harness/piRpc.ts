@@ -32,7 +32,7 @@ export interface PiProcess {
 }
 
 /** How to start one Pi RPC process. */
-export interface PiProcessOptions {
+export type PiProcessOptions = {
   /** Pi's own arguments, after `--mode rpc`. */
   readonly args: ReadonlyArray<string>;
   readonly command: string;
@@ -42,7 +42,7 @@ export interface PiProcessOptions {
   readonly label: string;
   /** Arguments placed before Pi's own, used to run a stand-in script in checks. */
   readonly prefixArgs?: ReadonlyArray<string>;
-}
+};
 
 /** Starts a Pi RPC process; it lives until `close`, or until it exits on its own. */
 export const startPiProcess = Effect.fnUntraced(function* (options: PiProcessOptions) {
@@ -93,8 +93,8 @@ export const startPiProcess = Effect.fnUntraced(function* (options: PiProcessOpt
       return;
     }
     const id = textFieldOf(record, "id");
-    const deferred = id === null ? undefined : pending.get(id);
-    if (id === null || deferred === undefined) return;
+    const deferred = id === null ? null : (pending.get(id) ?? null);
+    if (id === null || deferred === null) return;
     pending.delete(id);
     Deferred.doneUnsafe(
       deferred,

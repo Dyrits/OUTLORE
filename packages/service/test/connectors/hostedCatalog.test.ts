@@ -58,7 +58,7 @@ describe("the hosted connectors of Waves 1 and 2", () => {
         }
         if (isOAuthEntry(entry)) {
           expect(entry.secretKind).toBe(oauthSecretKind);
-          expect(entry.backend.usesSession).toBe(true);
+          expect(entry.backend.shouldUseSession).toBe(true);
         }
       });
 

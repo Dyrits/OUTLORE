@@ -121,24 +121,23 @@ const make = Effect.gen(function* () {
     }
   }).pipe(Effect.orDie);
 
-  const begin = (isForced: boolean) =>
-    Effect.gen(function* () {
-      const status = yield* updater.state;
-      const current = yield* Ref.get(progress);
-      if (status._tag === "Unsupported" || current.isInstalling) return yield* read;
-      if (current.isArmed) {
-        if (isForced) yield* Ref.update(progress, (armed) => ({ ...armed, isForced: true }));
-        return yield* read;
-      }
-      yield* Ref.set(progress, {
-        ...initial,
-        isArmed: true,
-        isChecking: status._tag === "Idle" || status._tag === "Failed",
-        isForced,
-      });
-      yield* Effect.forkIn(run, scope);
+  const begin = Effect.fnUntraced(function* (isForced: boolean) {
+    const status = yield* updater.state;
+    const current = yield* Ref.get(progress);
+    if (status._tag === "Unsupported" || current.isInstalling) return yield* read;
+    if (current.isArmed) {
+      if (isForced) yield* Ref.update(progress, (armed) => ({ ...armed, isForced: true }));
       return yield* read;
+    }
+    yield* Ref.set(progress, {
+      ...initial,
+      isArmed: true,
+      isChecking: status._tag === "Idle" || status._tag === "Failed",
+      isForced,
     });
+    yield* Effect.forkIn(run, scope);
+    return yield* read;
+  });
 
   return { arm: begin(false), force: begin(true), read } satisfies HostUpdate["Service"];
 });

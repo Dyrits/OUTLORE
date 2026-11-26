@@ -3,7 +3,7 @@ import { createServer, type IncomingHttpHeaders, type IncomingMessage } from "no
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { connectorBackendsLayer } from "../../../src/connectors/backends/defaultBackends.ts";
-import { type CatalogEntry, oauthSecretKind } from "../../../src/connectors/index.ts";
+import { type CatalogEntry, oauthSecretKind } from "../../../src/connectors/catalog.ts";
 import {
   decodeOAuthSession,
   discoverOAuthMetadata,
@@ -351,8 +351,8 @@ const oauthEntryOf = (url: string): CatalogEntry => ({
     header: "authorization",
     oauth: { clientName: "Outlore" },
     prefix: "Bearer ",
+    shouldUseSession: true,
     url,
-    usesSession: true,
   },
   description: "A test remote MCP server using OAuth 2.1.",
   id: "oauth_notes",

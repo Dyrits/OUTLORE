@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { Config, Effect } from "effect";
 import { toolServerName } from "./toolNames.ts";
 
 /** The Node executable that runs the stdio-to-HTTP MCP bridge: `process.execPath` outside Electron, and a system Node inside Electron where the `RunAsNode` fuse is off (ST-H-09). */
@@ -12,13 +13,17 @@ export const bridgeNodePathOf = (): string => {
 };
 
 /** The bridge script path: the unpacked resource the desktop app passes in `OUTLORE_ACP_MCP_BRIDGE` (in both dev and packaged builds), or the sibling script beside this module when running from source. */
-export const acpMcpBridgePathOf = (): string =>
-  process.env.OUTLORE_ACP_MCP_BRIDGE ?? join(import.meta.dirname, "acpMcpBridge.mjs");
+export const acpMcpBridgePathOf = Config.String("OUTLORE_ACP_MCP_BRIDGE").pipe(
+  Config.withDefault(join(import.meta.dirname, "acpMcpBridge.mjs")),
+  Effect.orDie,
+);
 
 /** An ACP `McpServerStdio` entry bridging stdio JSON-RPC to the thread's local HTTP MCP tool server. */
-export const acpStdioMcpServerOf = (mcpUrl: string) => ({
-  args: [acpMcpBridgePathOf(), mcpUrl],
-  command: bridgeNodePathOf(),
-  env: [] as ReadonlyArray<never>,
-  name: toolServerName,
+export const acpStdioMcpServerOf = Effect.fnUntraced(function* (mcpUrl: string) {
+  return {
+    args: [yield* acpMcpBridgePathOf, mcpUrl],
+    command: bridgeNodePathOf(),
+    env: [] as ReadonlyArray<never>,
+    name: toolServerName,
+  };
 });

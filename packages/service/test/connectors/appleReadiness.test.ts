@@ -65,8 +65,8 @@ describe("Apple app readiness", () => {
               { errorFlag, errorText: upstream, name: "list-events" },
             ]),
           },
+          hasAppleAutomation: true,
           label: "Apple apps",
-          usesAppleAutomation: true,
         }),
         (server) => server.close,
       );

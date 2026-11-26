@@ -1,6 +1,6 @@
 import { relayWorkerBundle } from "@outlore/relay";
 import { describe, expect, it } from "vitest";
-import { cloudflareApiFor, deployRelayToCloudflare, ownRelayTag } from "../../src/remote/index.ts";
+import { cloudflareApiFor, deployRelayToCloudflare, ownRelayTag } from "../../src/remote/ownRelay.ts";
 import { fakeCloudflareApi, newFakeAccount } from "./fakeCloudflare.ts";
 
 // Deploying the relay Worker to a user's own Cloudflare account with one API token (device-pairing, own relay).
@@ -42,7 +42,7 @@ describe("deploying the relay to the user's own Cloudflare account", () => {
     const result = await deploy(account);
     expect(account.subdomain).toMatch(/^outlore-[0-9a-f]{8}$/);
     expect(result).toMatchObject({
-      createdSubdomain: true,
+      hasCreatedSubdomain: true,
       ok: true,
       origin: `https://outlore-relay.${account.subdomain}.workers.dev`,
     });

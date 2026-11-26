@@ -115,7 +115,7 @@ const museApprovalOf = (asked: ApprovalRequestParams): MuseApproval => ({
 /** Ends the running turn, leaving the reason for `runTurn` to fail with. */
 const stopFailedTurn = (connection: MuseConnection, reason: string) => {
   connection.mediationProblem ??= reason;
-  void connection.running?.interrupt().catch(() => undefined);
+  void connection.running?.interrupt().catch(() => void 0);
 };
 
 /**
@@ -135,7 +135,8 @@ const museApproverOf =
         connection,
         `${approval.toolName}: Muse offered no once-scoped approval${answer.isAllowed ? "" : ", nor any deny"}, so the turn stopped rather than guess.`,
       );
-      throw new Error("Muse approval not mediated");
+      // The SDK takes a rejected promise as an approval it could not answer; the turn already carries the reason.
+      return Promise.reject(new Error("Muse approval not mediated"));
     }
     const chosen = approval.availableChoices.find((candidate) => candidate.choiceId === choiceId);
     const feedback = answer.text.trim() === "" || chosen?.acceptsFeedback !== true ? {} : { feedback: answer.text };
@@ -358,37 +359,36 @@ const museProtocolOf = (options: MuseOptions): HarnessProtocol<MuseConnection> =
         exited.done = true;
       },
     );
-    const connection: MuseConnection = {
-      client,
-      close: () => {
-        void client.close().catch(() => undefined);
-      },
-      complaints: [],
-      context: { used: null, window: null },
-      exited: false,
-      handoverNotes: null,
-      hasExited: () => exited.done,
-      mediationProblem: null,
-      running: null,
-      session: undefined as unknown as Session<unknown>,
-      sessionId: "muse-session-pending",
-      steered: new Map(),
-    };
+    // Listeners start before the session opens, so nothing the host says while it opens is lost.
+    const complaints: Array<string> = [];
+    const context: MuseConnection["context"] = { used: null, window: null };
     client.onProtocolError((error) => {
-      connection.complaints.push(error.message);
+      complaints.push(error.message);
     });
     client.onNotification((frame) => {
       if (frame.method !== "session/contextUsage") return;
-      const used = numberFieldOf(frame.params, "usedTokens");
       const window = numberFieldOf(frame.params, "windowTokens");
-      connection.context = { used, window: window === 0 ? null : window };
+      context.used = numberFieldOf(frame.params, "usedTokens");
+      context.window = window === 0 ? null : window;
     });
-    const opened = yield* openMuseSession(client, request).pipe(
-      Effect.tapError(() => Effect.sync(() => connection.close())),
-    );
-    connection.session = opened.session;
-    connection.handoverNotes = opened.handoverNotes;
-    connection.sessionId = opened.session.sessionId;
+    const closeClient = () => {
+      void client.close().catch(() => void 0);
+    };
+    const opened = yield* openMuseSession(client, request).pipe(Effect.tapError(() => Effect.sync(closeClient)));
+    const connection: MuseConnection = {
+      client,
+      close: closeClient,
+      complaints,
+      context,
+      exited: false,
+      handoverNotes: opened.handoverNotes,
+      hasExited: () => exited.done,
+      mediationProblem: null,
+      running: null,
+      session: opened.session,
+      sessionId: opened.session.sessionId,
+      steered: new Map(),
+    };
     return connection;
   }),
 
