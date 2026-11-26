@@ -156,9 +156,9 @@ const openCodeDialectOf = (options: OpenCodeOptions): AcpDialect => {
     });
 
   return {
-    announcesToolCalls: false,
-    contextFromUsage: true,
+    canResumeSessions: false,
     fileEdits: "opencode",
+    isContextFromUsage: true,
     label: "OpenCode",
     launchOf: Effect.fnUntraced(function* (request: TurnRequest) {
       const instructionsPath = yield* writeInstructions(request);
@@ -191,9 +191,9 @@ const openCodeDialectOf = (options: OpenCodeOptions): AcpDialect => {
       };
     }),
     questionIdPrefix: null,
-    repromptsRefusals: true,
-    resumesSessions: false,
     setsOptions: "always",
+    shouldAnnounceToolCalls: false,
+    shouldRepromptRefusals: true,
     toolServer: "launch",
     usage: "perPrompt",
   };
@@ -206,12 +206,13 @@ const openCodeDialectOf = (options: OpenCodeOptions): AcpDialect => {
 export const makeOpenCodeHarness = (options: OpenCodeOptions) =>
   Effect.map(
     Effect.andThen(
-      Effect.promise(async () => {
-        const sandbox = options.sandbox;
-        if (sandbox === null) return;
-        const left = await sweepOrphans(writeOwnerMarker(sandbox));
-        if (left.length > 0) console.error(`OpenCode: lost processes still running: ${left.join(", ")}`);
-      }),
+      Effect.promise(async () =>
+        options.sandbox === null ? [] : await sweepOrphans(writeOwnerMarker(options.sandbox)),
+      ).pipe(
+        Effect.flatMap((left) =>
+          left.length > 0 ? Effect.logError(`OpenCode: lost processes still running: ${left.join(", ")}`) : Effect.void,
+        ),
+      ),
       makeAcpHarness({
         command: options.command,
         dialect: openCodeDialectOf(options),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { modelsDevSourceLayer, PriceSource, priceOf, rowsOfModelsDev } from "../../src/core/index.ts";
+import { modelsDevSourceLayer, rowsOfModelsDev } from "../../src/core/priceSources.ts";
+import { PriceSource, priceOf } from "../../src/core/prices.ts";
 
 const row = (provider: string, model: string, input = 1) => ({
   cacheRead: null,

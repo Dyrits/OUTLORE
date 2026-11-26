@@ -5,7 +5,7 @@ import type { AcpProviderDefinition } from "./acpProviderDefinition.ts";
 // pipes, with logs on stderr so stdout stays clean JSON-RPC. Its home must be a configured account home
 // first - `HERMES_HOME=<dir> hermes pm repair`, then a config.yaml default model: an empty home fails
 // session/new with a misleading -32603 "storage_unavailable", because the session receipt's empty model
-// is refused by the gateway's restore_policy. So Hermes declares needsConfiguredHome: the probe and the turn
+// is refused by the gateway's restore_policy. So Hermes declares isConfiguredHomeRequired: the probe and the turn
 // adapter take only the account's folder, and run nothing without one, never the computer's own directory. Also: stdout must stay a pipe (a regular file crashes the acp
 // client's connect_write_pipe), and each home grows a detached `--idle-exit` gateway that survives the
 // killed RPC process tree (keep per-account HERMES_HOME paths short enough for its gateway.sock; the

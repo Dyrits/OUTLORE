@@ -23,6 +23,7 @@ export type VibeOptions = {
  * Its prompt answers sum the whole session, its results carry the edited file's contents, and `_account/read` says how the account is billed (a subscription when it says nothing).
  */
 const vibeDialect: AcpDialect = {
+  canResumeSessions: false,
   fileEdits: "vibe",
   label: "Mistral Vibe",
   launchOf: (request) => Effect.succeed({ args: [], env: childEnvironment(request.configDirectory) }),
@@ -34,7 +35,6 @@ const vibeDialect: AcpDialect = {
         Result.isSuccess(account) ? billingOf(fieldOf(account.success, "plan")) : "Subscription",
       ),
     ),
-  resumesSessions: false,
   toolServer: "http",
   usage: "cumulative",
 };

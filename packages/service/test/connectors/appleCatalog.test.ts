@@ -62,7 +62,7 @@ describe("the Apple apps entry against the pinned server's recorded listing", ()
 // and fails when it lists anything the recorded fixture does not, or names another version.
 describe.runIf(process.env.OUTLORE_LIVE_APPLE_SERVER === "1")("the vendored Apple server, run live", () => {
   it("answers the opening exchange as the recorded server and lists exactly the recorded tools", async () => {
-    const command = stdioCommandOf("mcp-icloud");
+    const command = await Effect.runPromise(stdioCommandOf("mcp-icloud"));
     const server = await Effect.runPromise(
       stdioMcpBackend({
         command,

@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { Config, Effect, Option } from "effect";
 import { wrappedFencedCommandOf } from "../core/index.ts";
 import { packageCacheFolders } from "./claudeArgs.ts";
 
@@ -54,6 +55,19 @@ const probeCommand = (command: string, args: ReadonlyArray<string>) => {
   }
 };
 
+/** The computer's XDG config and data folders, as the environment names them. */
+export type XdgHomes = { readonly config?: string; readonly data?: string };
+
+/** Reads `XDG_CONFIG_HOME` and `XDG_DATA_HOME`, leaving out a folder the environment does not name. */
+export const xdgHomesOf = Effect.gen(function* () {
+  const config = yield* Config.String("XDG_CONFIG_HOME").pipe(Config.option, Effect.orDie);
+  const data = yield* Config.String("XDG_DATA_HOME").pipe(Config.option, Effect.orDie);
+  return {
+    ...(Option.isSome(config) ? { config: config.value } : {}),
+    ...(Option.isSome(data) ? { data: data.value } : {}),
+  } satisfies XdgHomes;
+});
+
 /**
  * The sandbox OpenCode runs in here, or null when none can: then every action OpenCode asks about asks the owner, as
  * before. The host's sandbox problem (core/sandbox.ts) counts too, so the harnesses agree on whether one runs.
@@ -63,6 +77,8 @@ export const detectOpenCodeSandbox = (host: {
   readonly root: string;
   readonly sandboxProblem: string | null;
   readonly caches?: ReadonlyArray<string>;
+  /** The computer's XDG config and data folders, as `xdgHomesOf` reads them; under the home folder when left out. */
+  readonly homes?: XdgHomes;
   /** Folders to hide from reading, such as the Vault's; each is made (mode 0700) if missing, so bubblewrap can cover it. */
   readonly hidden?: ReadonlyArray<string>;
   readonly which?: (name: string) => string | null;
@@ -71,8 +87,8 @@ export const detectOpenCodeSandbox = (host: {
   if (host.sandboxProblem !== null) return null;
   const facts = {
     caches: host.caches ?? packageCachesOf(homedir()),
-    computerConfigHome: process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"),
-    computerDataHome: process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"),
+    computerConfigHome: host.homes?.config ?? join(homedir(), ".config"),
+    computerDataHome: host.homes?.data ?? join(homedir(), ".local", "share"),
     hidden: (host.hidden ?? []).map((folder) => makeRealFolder(folder, 0o700)),
     root: host.root,
   };

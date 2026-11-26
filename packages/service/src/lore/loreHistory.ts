@@ -1,5 +1,5 @@
-import type { LoreActor, LoreHistoryKind, LoreKind, LoreOrigin, LoreScope } from "@outlore/contracts";
-import { Effect } from "effect";
+import { type LoreActor, type LoreHistoryKind, LoreKind, LoreOrigin, LoreScope } from "@outlore/contracts";
+import { Effect, Option, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { type Fading, fadingStepsOf } from "./loreFading.ts";
 
@@ -9,26 +9,28 @@ import { type Fading, fadingStepsOf } from "./loreFading.ts";
 // and fading step, with who or what made it and when, and each change's state before and after so it can
 // be undone. The lore store (loreStore.ts) writes it; this module reads it.
 
+const snapshotSchema = Schema.Struct({
+  id: Schema.String,
+  isPinned: Schema.Number,
+  kind: LoreKind,
+  lastUsedAt: Schema.Number,
+  originEntry: Schema.NullOr(Schema.Number),
+  originExcerpt: Schema.NullOr(Schema.String),
+  originFrom: Schema.NullOr(Schema.String),
+  originKind: Schema.NullOr(LoreOrigin.fields.kind),
+  savedAt: Schema.Number,
+  savedByThreadId: Schema.NullOr(Schema.String),
+  savedByTitle: Schema.NullOr(Schema.String),
+  scope: LoreScope,
+  text: Schema.String,
+  threadId: Schema.NullOr(Schema.String),
+  updatedAt: Schema.Number,
+  uses: Schema.Number,
+  workspaceId: Schema.NullOr(Schema.String),
+});
+
 /** A lore entry's stored state, kept with each history entry so the owner can undo the change. */
-export type Snapshot = {
-  readonly id: string;
-  readonly isPinned: number;
-  readonly kind: LoreKind;
-  readonly lastUsedAt: number;
-  readonly originEntry: number | null;
-  readonly originExcerpt: string | null;
-  readonly originFrom: string | null;
-  readonly originKind: LoreOrigin["kind"] | null;
-  readonly savedAt: number;
-  readonly savedByThreadId: string | null;
-  readonly savedByTitle: string | null;
-  readonly scope: LoreScope;
-  readonly text: string;
-  readonly threadId: string | null;
-  readonly updatedAt: number;
-  readonly uses: number;
-  readonly workspaceId: string | null;
-};
+export type Snapshot = typeof snapshotSchema.Type;
 
 /** Who made a change: a thread, or the owner. */
 export type Actor = { readonly kind: "Thread"; readonly threadId: string } | { readonly kind: "Owner" };
@@ -82,9 +84,11 @@ export type EntryRow = {
   readonly undoneAt: number | null;
 };
 
-/** A state stored as JSON, or null. */
+const decodeSnapshot = Schema.decodeUnknownOption(Schema.fromJsonString(snapshotSchema));
+
+/** A state stored as JSON, or null when there is none or it does not read as a lore entry's state. */
 export const stateOf = (json: string | null): Snapshot | null =>
-  json === null ? null : (JSON.parse(json) as Snapshot);
+  json === null ? null : Option.getOrNull(decodeSnapshot(json));
 
 /** Selects history entries; callers add the condition and order. */
 export const selectEntries = (sql: SqlClient.SqlClient) => sql`

@@ -176,8 +176,8 @@ const dialectOf = (
   ...(definition.protocol?.minimumAgentVersion === undefined
     ? {}
     : { minimumAgentVersion: definition.protocol.minimumAgentVersion }),
+  canResumeSessions: definition.protocol?.canResumeSessions === true,
   questionIdPrefix: definition.protocol?.questionIdPrefix ?? null,
-  resumesSessions: definition.protocol?.resumesSessions === true,
   ...(definition.protocol?.systemPromptNamespace === undefined
     ? {}
     : { systemPromptNamespace: definition.protocol.systemPromptNamespace }),

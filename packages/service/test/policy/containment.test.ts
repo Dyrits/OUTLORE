@@ -5,7 +5,8 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import type { Containment } from "../../src/core/index.ts";
-import { type ActionFacts, capabilities, isUnaskedAt, needsOf } from "../../src/policy/index.ts";
+import { type ActionFacts, isUnaskedAt, needsOf } from "../../src/policy/containment.ts";
+import { capabilities } from "../../src/policy/index.ts";
 
 const directories: string[] = [];
 afterEach(() => {

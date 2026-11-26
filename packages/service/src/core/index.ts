@@ -52,13 +52,10 @@ export {
 export { newId } from "./ids.ts";
 export {
   type CommandRun,
-  type LineProcessOptions,
   type RpcIncoming,
-  type RpcOptions,
   type RpcProcess,
   reducedEnvironmentOf,
   runShortCommand,
-  type StreamItem,
   type StreamJsonProcess,
   startRpcProcess,
   startStreamJsonProcess,
@@ -72,13 +69,10 @@ export {
   periodStartOf,
   shiftDays,
 } from "./localCalendar.ts";
-export { modelsDevSourceLayer, noPriceSourceLayer, rowsOfModelsDev } from "./priceSources.ts";
+export { modelsDevSourceLayer, noPriceSourceLayer } from "./priceSources.ts";
 export {
-  PriceReadFailed,
-  type PriceRow,
   PriceSource,
   PriceTable,
-  priceOf,
   priceTableLayer,
 } from "./prices.ts";
 export {

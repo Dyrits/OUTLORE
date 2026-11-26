@@ -1,7 +1,8 @@
 import type { Choice } from "@outlore/contracts";
 import { Effect } from "effect";
-import { fieldOf, type RpcIncoming, type RpcProcess, type TurnRequest, textFieldOf } from "../core/index.ts";
-import type { AcpDialect, AcpLaunch } from "./acpHarness.ts";
+import { fieldOf, isRecord, type RpcIncoming, type RpcProcess, type TurnRequest, textFieldOf } from "../core/index.ts";
+import type { AcpDialect } from "./acpDialect.ts";
+import type { AcpLaunch } from "./acpLaunch.ts";
 import { permissionOptionIdOf } from "./acpSession.ts";
 import { findFirstOutside, promptOf, refusalOf } from "./openCodePrompts.ts";
 
@@ -54,7 +55,7 @@ const answerQuestion = Effect.fnUntraced(function* (
     input: { options: options.map((option) => option.name), question },
     toolName: "request_user_input",
   });
-  const chosen = answer.isAllowed ? answer.answers?.[0]?.[0] : undefined;
+  const chosen = answer.isAllowed ? answer.answers?.[0]?.[0] : null;
   const picked = options.find((option) => option.name === chosen);
   connection.rpc.respond(
     incoming.id,
@@ -86,14 +87,14 @@ export const answerAcpRequest = Effect.fnUntraced(function* (
     return connection.rpc.respondError(incoming.id, `Outlore does not answer ${incoming.method}.`);
   const named = fieldOf(incoming.params, "toolCall");
   const toolCallId = textFieldOf(named, "toolCallId");
-  const seen = toolCallId === null ? undefined : connection.toolCalls.get(toolCallId);
-  const toolCall = seen === undefined || seen === null ? named : { ...(seen as object), ...(named as object) };
+  const seen = toolCallId === null ? null : (connection.toolCalls.get(toolCallId) ?? null);
+  const toolCall = seen === null ? named : { ...(isRecord(seen) ? seen : {}), ...(isRecord(named) ? named : {}) };
   if (dialect.questionIdPrefix !== null && toolCallId?.startsWith(dialect.questionIdPrefix) === true)
     return yield* answerQuestion(connection, dialect, request, incoming, toolCall);
   const context = { launch: connection.launch, request, rpc: connection.rpc, toolCall } satisfies AcpPermissionContext;
   const prompt = yield* (dialect.promptOf ?? standardPromptOf)(context);
   const answer = yield* request.askOwner(prompt);
-  if (!answer.isAllowed && dialect.repromptsRefusals === true) refusals.push(refusalOf(prompt, answer));
+  if (!answer.isAllowed && dialect.shouldRepromptRefusals === true) refusals.push(refusalOf(prompt, answer));
   const optionId = permissionOptionIdOf(incoming.params, answer.isAllowed ? "allow_once" : "reject_once");
   // An agent that offers no such option hears the request cancelled, never an option id it did not offer.
   connection.rpc.respond(

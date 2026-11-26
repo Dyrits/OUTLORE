@@ -45,17 +45,16 @@ type ChangeRow = Omit<LoreChange, "scopeLabel"> & {
   workspaceName: string | null;
 };
 
-const changeOf = ({ scopeThreadTitle, missionTitle, isTopThread, workspaceName, ...row }: ChangeRow) =>
-  ({
-    ...row,
-    scopeLabel: scopeLabelOf({
-      isTopThread: isTopThread === 1,
-      missionTitle,
-      scope: row.scope,
-      threadTitle: scopeThreadTitle,
-      workspaceName,
-    }),
-  }) as LoreChange;
+const changeOf = ({ scopeThreadTitle, missionTitle, isTopThread, workspaceName, ...row }: ChangeRow) => ({
+  ...row,
+  scopeLabel: scopeLabelOf({
+    isTopThread: isTopThread === 1,
+    missionTitle,
+    scope: row.scope,
+    threadTitle: scopeThreadTitle,
+    workspaceName,
+  }),
+});
 
 /** Every change awaiting the owner's approval, oldest first. */
 const listAwaitingChanges = Effect.gen(function* () {

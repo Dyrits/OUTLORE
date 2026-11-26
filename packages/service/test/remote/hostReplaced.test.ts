@@ -8,7 +8,7 @@ import { Effect, Layer } from "effect";
 import { TestClock } from "effect/testing";
 import { WebSocketServer } from "ws";
 import { fakeHarnessLayer, Service, serviceLayer } from "../../src/index.ts";
-import { HostPresence } from "../../src/remote/index.ts";
+import { HostPresence } from "../../src/remote/presence.ts";
 
 // How the host keeps its connection to the relay over time, on the test clock: it backs off when the relay cannot be
 // reached, waits the long retry when another host replaced it (device-pairing, SP-H-04), starts over at once when

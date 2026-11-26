@@ -71,7 +71,7 @@ interface Deployment {
 
 const deployed = (origin: string): DeployResult => ({
   accountName: "Owner Account",
-  createdSubdomain: false,
+  hasCreatedSubdomain: false,
   ok: true,
   origin,
   wasUpdated: false,

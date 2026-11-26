@@ -77,10 +77,10 @@ export const runShortCommand = (
   });
 
 /** What the transport hands its framing: each parsed line, then once the reason the process ended. */
-interface LineHandlers {
+type LineHandlers = {
   readonly onExit: (reason: string) => void;
   readonly onMessage: (message: unknown) => void;
-}
+};
 
 /** Spawns the process; a line that is not JSON is skipped, and a missing executable reads as its exit. */
 const spawnLineProcess = (options: LineProcessOptions, handlers: LineHandlers) => {
@@ -95,7 +95,8 @@ const spawnLineProcess = (options: LineProcessOptions, handlers: LineHandlers) =
     stdio: ["pipe", "pipe", "pipe"],
   });
   const reportLeft = (left: ReadonlyArray<number>) => {
-    if (left.length > 0) console.error(`${options.label}: processes still running after close: ${left.join(", ")}`);
+    if (left.length > 0)
+      Effect.runFork(Effect.logError(`${options.label}: processes still running after close: ${left.join(", ")}`));
   };
   const end = (reason: string) => {
     if (hasExited) return;

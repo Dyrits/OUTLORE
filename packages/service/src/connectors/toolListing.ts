@@ -1,4 +1,5 @@
 import { Clock, Effect, Semaphore } from "effect";
+import { fieldOf } from "../core/index.ts";
 import {
   BackendFailure,
   type BackendTool,
@@ -180,12 +181,7 @@ export const makeToolListing = (dependencies: {
       if (firstAttempt._tag === "Success") return firstAttempt.success;
       const failure = firstAttempt.failure;
       const isDisconnected =
-        typeof failure === "object" &&
-        failure !== null &&
-        Object.hasOwn(failure, "_tag") &&
-        (failure as { _tag?: unknown })._tag === "BackendFailure" &&
-        Object.hasOwn(failure, "class") &&
-        (failure as { class?: unknown }).class === "Disconnected";
+        fieldOf(failure, "_tag") === "BackendFailure" && fieldOf(failure, "class") === "Disconnected";
       if (!isDisconnected || active.refreshToken === null) return yield* Effect.fail(failure);
       const refreshed = yield* refreshOAuthSession(entry.id, active.accessToken);
       const allSecrets = [...secrets, ...refreshed.secrets];

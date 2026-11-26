@@ -1,11 +1,9 @@
 export { answersProblemOf } from "./choices.ts";
-export { type ActionFacts, isUnaskedAt, isUnaskedUnder, needsOf } from "./containment.ts";
+export { isUnaskedUnder, needsOf } from "./containment.ts";
 export { isNamedByOwner, type NamedAction } from "./ownerRequests.ts";
 export {
   capabilities,
-  changedFilesOf,
   consequences,
-  isFileWriting,
   plainActionOf,
   reasonOf,
   targetOf,

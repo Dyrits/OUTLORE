@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { HarnessName } from "@outlore/contracts";
 import { Effect } from "effect";
-import { runShortCommand, type VaultDenial } from "../core/index.ts";
+import { fieldOf, runShortCommand, type VaultDenial } from "../core/index.ts";
 import { sandboxSettingsOf } from "./claudeArgs.ts";
 import {
   denialStampKeyOf,
@@ -128,8 +128,7 @@ export const runClaudeVaultDenialLive = (
           if (result.code === null) return null;
           try {
             const parsed: unknown = JSON.parse(result.stdout);
-            const answer =
-              typeof parsed === "object" && parsed !== null ? (parsed as { result?: unknown }).result : null;
+            const answer = fieldOf(parsed, "result");
             return typeof answer === "string" ? answer : null;
           } catch {
             return null;

@@ -4,7 +4,7 @@ import {
   guildmasterInstructionsOf,
   noToolServerInstructions,
   threadInstructionsOf,
-} from "../../src/harness/index.ts";
+} from "../../src/harness/instructions.ts";
 
 const access = {
   approvalLevel: "RiskyOnly",

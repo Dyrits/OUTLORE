@@ -2,14 +2,11 @@ import { Deferred, Effect, Layer } from "effect";
 import {
   BackendFailure,
   type BackendTool,
-  type CatalogEntry,
   type ConnectorBackend,
   ConnectorBackends,
   type ConnectorErrorClass,
-  SecretMissing,
-  VaultPort,
-  VaultUnavailable,
-} from "../../src/connectors/index.ts";
+} from "../../src/connectors/backend.ts";
+import { type CatalogEntry, SecretMissing, VaultPort, VaultUnavailable } from "../../src/connectors/index.ts";
 
 // Test doubles for what the connectors stand on: a scripted fake backend (reads, writes, a failing tool, a slow one, one
 // the catalog does not name, and one that echoes its secret), a fake Vault and a test catalog (connectors blueprint, Seams).

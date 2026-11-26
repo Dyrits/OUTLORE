@@ -185,7 +185,7 @@ describe("shared ACP per-launch isolated temp directory", () => {
           prefixArgs: [acpFakeScript],
         });
         yield* harness.runTurn(turnRequestOf({ text: "Hello" }));
-        expect(acpFakeRequest(log, "initialize").launch?.env.TMPDIR ?? "").not.toContain("outlore-acp-tmp-");
+        expect(acpFakeRequest(log, "initialize").launch?.env.TMPDIR).toBe(process.env.TMPDIR);
       }),
     ),
   );

@@ -7,7 +7,8 @@ import { Effect, Layer, Schema, Stream } from "effect";
 import { SqlClient } from "effect/sql";
 import { afterEach } from "vitest";
 import { fakeHarnessLayer, Service, serveLoopback, serviceLayer } from "../../../src/index.ts";
-import { HostPresence, openHostChannel } from "../../../src/remote/index.ts";
+import { openHostChannel } from "../../../src/remote/index.ts";
+import { HostPresence } from "../../../src/remote/presence.ts";
 
 // Two whole services, each over its own database, joined by a real local relay: the host accepts paired devices and
 // the controller pairs with it and steers it through its own loopback socket (device-pairing).

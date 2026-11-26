@@ -13,14 +13,12 @@ export { type CodexOptions, makeCodexHarness } from "./codex.ts";
 export { fakeHarnessLayer } from "./fakeHarness.ts";
 export {
   claudeCheapestModel,
-  claudeModels,
   commandEnvVarOf,
   defaultCommandOf,
   harnessFacts,
   harnessLabels,
   harnessNames,
   refusesAddedAccounts,
-  type SandboxAdvice,
 } from "./harnessCatalog.ts";
 export { harnesses, type LaunchOverride, makeHarnessRouter } from "./harnesses.ts";
 export {
@@ -28,19 +26,17 @@ export {
   fakeHarnessToolsLayer,
   HarnessTools,
   liveHarnessToolsLayer,
-  type SignInLaunch,
   type SignInStatus,
 } from "./harnessTools.ts";
 export {
   approvalInstructionsOf,
   guildmasterInstructionsOf,
-  noToolServerInstructions,
   positionLineOf,
   type ThreadPosition,
   threadInstructionsOf,
 } from "./instructions.ts";
 export { type MuseOptions, makeMuseHarness } from "./muse.ts";
-export { listMuseModels, readMuseSignIn } from "./museAccount.ts";
+export { readMuseSignIn } from "./museAccount.ts";
 export { listOpenCodeEfforts, makeOpenCodeHarness, type OpenCodeOptions } from "./opencode.ts";
 export { makePiHarness, type PiOptions, type PiProvider } from "./pi.ts";
 export { probePiModels } from "./piRpc.ts";

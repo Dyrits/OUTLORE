@@ -118,16 +118,16 @@ export const thinkingConfigIdOf = (configOptions: unknown): string | null => {
  * - `http`: always the HTTP server (ACP `HttpMcpServer`), for an agent that validates the entry and answers anything else -32602 Invalid params.
  * - `negotiated`: the HTTP server when the agent advertises `mcpCapabilities.http`, and otherwise the stdio bridge to it, since stdio is the transport ACP requires every agent to take.
  */
-export const acpToolServersOf = (
+export const acpToolServersOf = Effect.fnUntraced(function* (
   transport: "http" | "negotiated",
   access: ThreadAccess,
   advertisesHttp: boolean,
-): ReadonlyArray<object> => {
+) {
   if (access.mcpUrl === "") return [];
   if (transport === "http" || advertisesHttp)
     return [{ headers: [], name: toolServerName, type: "http", url: access.mcpUrl }];
-  return [acpStdioMcpServerOf(access.mcpUrl)];
-};
+  return [yield* acpStdioMcpServerOf(access.mcpUrl)];
+});
 
 /** The usage a prompt's answer reports (ACP `PromptResponse.usage`), thoughts counted as output; null when it reports none. */
 export const acpPromptUsageOf = (usage: unknown): TokenUsage | null =>

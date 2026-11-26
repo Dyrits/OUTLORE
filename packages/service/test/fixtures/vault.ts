@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { Effect, Redacted } from "effect";
 import type { VaultDenial } from "../../src/core/index.ts";
-import type { HolderInfo } from "../../src/vault/index.ts";
-import { type KeyCustody, type KeyRead, makeVault, type VaultOptions } from "../../src/vault/index.ts";
-import { VaultFailure } from "../../src/vault/types.ts";
+import type { KeyCustody, KeyRead } from "../../src/vault/keyCustody.ts";
+import { type HolderInfo, VaultFailure } from "../../src/vault/types.ts";
+import { makeVault, type VaultOptions } from "../../src/vault/vault.ts";
 import { temporary } from "./service.ts";
 
 /** A key holder that keeps keys in memory and can be told to be locked, to lose a key, or to refuse writes. */

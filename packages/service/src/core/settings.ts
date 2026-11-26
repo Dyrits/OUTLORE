@@ -9,6 +9,7 @@ import {
 import { Effect, Exit, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, ServiceFailure } from "./errors.ts";
+import { fieldOf } from "./records.ts";
 import { mayWriteSetting, type SettingWriter, settingAuthority } from "./settingAuthority.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: settings keys (`intelHalfLives`, `intelWarningPercent`).
@@ -130,14 +131,19 @@ const canonicalOf = (value: unknown): string =>
       : inner,
   );
 
+/** Whether a name is one of the settings' fields. */
+const isSettingKey = (key: string): key is keyof Settings => Object.hasOwn(Settings.fields, key);
+
 /** The fields of the saved settings that the writer changes but may not (settingAuthority.ts). */
-const refusedFieldsOf = (writer: SettingWriter, saved: Settings, next: Settings) =>
-  Object.keys(Settings.fields).filter(
-    (key): key is keyof Settings =>
-      Object.hasOwn(saved, key) &&
-      !mayWriteSetting(writer, key as keyof Settings) &&
-      canonicalOf(saved[key as keyof Settings]) !== canonicalOf(next[key as keyof Settings]),
-  );
+const refusedFieldsOf = (writer: SettingWriter, saved: Settings, next: Readonly<Record<string, unknown>>) =>
+  Object.keys(Settings.fields)
+    .filter(isSettingKey)
+    .filter(
+      (key) =>
+        Object.hasOwn(saved, key) &&
+        !mayWriteSetting(writer, key) &&
+        canonicalOf(saved[key]) !== canonicalOf(next[key]),
+    );
 
 /**
  * Stores the owner's settings, refusing any that do not decode and any change to a setting the writer may not change
@@ -148,8 +154,8 @@ export const writeSettings = Effect.fnUntraced(function* (writer: SettingWriter,
   const saved = yield* readSettings;
   const omitted = Object.fromEntries(
     Object.keys(Settings.fields)
-      .filter((key) => (settings as Record<string, unknown>)[key] === undefined)
-      .map((key) => [key, (saved as Record<string, unknown>)[key]]),
+      .filter((key) => fieldOf(settings, key) === void 0)
+      .map((key) => [key, fieldOf(saved, key)]),
   );
   const complete = {
     ...settings,
@@ -158,7 +164,7 @@ export const writeSettings = Effect.fnUntraced(function* (writer: SettingWriter,
       settings.backgroundCheckIns === undefined ? (saved.backgroundCheckIns ?? null) : settings.backgroundCheckIns,
     companionPresets: settings.companionPresets ?? saved.companionPresets ?? { custom: [], tierNames: {} },
   };
-  const refused = refusedFieldsOf(writer, saved, complete as Settings);
+  const refused = refusedFieldsOf(writer, saved, complete);
   if (refused.length > 0)
     return yield* new ServiceFailure({
       kind: "AccessRefused",

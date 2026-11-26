@@ -4,8 +4,8 @@ import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import type { CommandResult } from "../../src/vault/index.ts";
-import { custodiesOf } from "../../src/vault/index.ts";
+import type { CommandResult } from "../../src/vault/commandRunner.ts";
+import { custodiesOf } from "../../src/vault/keyCustody/index.ts";
 import { keyFile } from "../../src/vault/keyCustody/keyFile.ts";
 import { macKeychain } from "../../src/vault/keyCustody/macKeychain.ts";
 import { secretService } from "../../src/vault/keyCustody/secretService.ts";
@@ -156,7 +156,9 @@ const canUseKeychain = (() => {
 describe.skipIf(!canUseKeychain)("the real macOS Keychain", () => {
   it.effect("keeps, reads back and removes a disposable key, tells a removed one from a locked Keychain", () =>
     Effect.gen(function* () {
-      const { commandRunnerLayer, CommandRunner } = yield* Effect.promise(() => import("../../src/vault/index.ts"));
+      const { commandRunnerLayer, CommandRunner } = yield* Effect.promise(
+        () => import("../../src/vault/commandRunner.ts"),
+      );
       const runner = yield* Effect.service(CommandRunner).pipe(Effect.provide(commandRunnerLayer));
       const custody = macKeychain(runner.run);
       const keyId = randomBytes(8).toString("hex");

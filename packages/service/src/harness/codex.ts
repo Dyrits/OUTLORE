@@ -1,353 +1,36 @@
-import { tmpdir } from "node:os";
-import type { BillingKind, EffortChoice, HarnessName, TokenUsage } from "@outlore/contracts";
-import { type Duration, Effect, Queue } from "effect";
+import type { BillingKind, HarnessName } from "@outlore/contracts";
+import { Effect } from "effect";
 import {
   type Containment,
   fieldOf,
   HarnessFailure,
-  type ImageAttachment,
-  numberFieldOf,
-  type PlanLimitsReport,
-  type RpcIncoming,
-  type RpcProcess,
   reducedEnvironmentOf,
   type SteeredMessage,
   startRpcProcess,
-  type ThreadAccess,
   type TurnRequest,
   textFieldOf,
   turnMessageOf,
 } from "../core/index.ts";
-import { noTimeLimit } from "./claudeArgs.ts";
-import { codexAnswersOf, codexChoicesOf } from "./codexChoices.ts";
-import { type GitGrants, gitGrantsOf } from "./codexGitGrants.ts";
-import { vaultProfileArgsOf, vaultProfileName } from "./codexVaultProfile.ts";
-import { codexFileEditsOf } from "./fileEditEvents.ts";
-import { accountEnvironmentOf } from "./harnessCatalog.ts";
 import {
-  type HarnessConnection,
-  type HarnessProtocol,
-  makeHarnessProcesses,
-  type PooledTurn,
-} from "./harnessProcesses.ts";
-import { approvalInstructionsOf } from "./instructions.ts";
+  billingOf,
+  type CodexConnection,
+  type CodexOptions,
+  effortOf,
+  inputOf,
+  profileOf,
+  readCodexPlanLimits,
+  threadSettingsOf,
+} from "./codexProtocol.ts";
+import { readCodexTurn } from "./codexTurn.ts";
+import { vaultProfileArgsOf, vaultProfileName } from "./codexVaultProfile.ts";
+import { accountEnvironmentOf } from "./harnessCatalog.ts";
+import { type HarnessProtocol, makeHarnessProcesses, type PooledTurn } from "./harnessProcesses.ts";
 import { resolvedFolderOf, resolveStartFolder } from "./threadFolder.ts";
-import { toolServerName } from "./toolNames.ts";
 import { readCodexVaultDenial } from "./vaultDenials.ts";
 
-// Codex through its app server (ADR 0008; protocol of codex-cli 0.160.1, probed 2026-11-07): one
-// `codex app-server` process per thread, one Codex thread per Outlore thread.
+// Codex through its app server (ADR 0008; protocol of codex-cli 0.160.1, probed 2026-11-07): one `codex app-server` process per thread, one Codex thread per Outlore thread.
 
-/** How the Codex adapter starts its harness. */
-export type CodexOptions = {
-  /** The executable; `codex` on the PATH by default. */
-  readonly command: string;
-  /** How long an idle thread keeps its process. */
-  readonly idleTimeout: Duration.Input;
-  /** Arguments placed before the app server's own, used to run a stand-in script in checks. */
-  readonly prefixArgs?: ReadonlyArray<string>;
-  /** The Vault's folder, hidden from the sandbox by a permission profile (ADR 0022); `workspace-write` when left out and outside a Git repository. */
-  readonly vaultFolder?: string;
-};
-
-interface CodexConnection extends HarnessConnection {
-  /** How the account is billed, from Codex's own `account/read` at start; Unknown when it did not say. */
-  readonly billing: BillingKind;
-  readonly rpc: RpcProcess;
-  /** Codex's id of the running turn, once Codex started it; null between turns. */
-  turnId: string | null;
-}
-
-/** The longest wait Codex accepts for a thread tool, in seconds: a question waits with no time limit. */
-const noTimeLimitSeconds = Math.floor(noTimeLimit / 1000);
-
-/** Codex's own effort names; Outlore's match them, and default leaves the model's own. */
-const effortOf = (effort: EffortChoice) => (effort === "default" ? null : effort);
-
-/**
- * How Codex asks, by approval level (CHG-0031, CHG-0208). Commands always run in Codex's own workspace sandbox, never
- * its full-access mode. At the default level they ask only to leave it, and every such request asks the owner with
- * the exact command. At "Also commands and edits" every command it does not trust asks.
- */
-const policyOf = (access: ThreadAccess, profile: CodexProfile | null) => ({
-  approvalPolicy: access.approvalLevel === "RiskyOnly" ? "on-request" : "untrusted",
-  // With a Vault folder to hide or a Git repository to commit in, the named profile that keeps `workspace-write`'s
-  // rules, denies reading the folder and lets Git write its folder except its hooks and config (codexVaultProfile.ts);
-  // the two cannot be combined in a request.
-  ...(profile === null ? { sandbox: "workspace-write" } : { permissions: vaultProfileName }),
-});
-
-/** What the named profile holds for a thread: the Vault's folder to hide and the Git grants for its repository. */
-type CodexProfile = { readonly grants: GitGrants; readonly vaultFolder: string | null };
-
-/** The thread's profile; null when there is neither a folder to hide nor a repository, so `workspace-write` serves. */
-const profileOf = (cwd: string, vaultFolder: string | null): CodexProfile | null => {
-  const grants = gitGrantsOf(cwd);
-  return vaultFolder === null && Object.keys(grants).length === 0 ? null : { grants, vaultFolder };
-};
-
-/** A turn's input: the text, then one `localImage` item per image, by the stored path (message-attachments). */
-const inputOf = (text: string, images: ReadonlyArray<ImageAttachment>) => [
-  { text, text_elements: [], type: "text" },
-  ...images.map((image) => ({ path: image.path, type: "localImage" })),
-];
-
-/** The thread's settings: its tools at its own endpoint, no native subagents, and Outlore's context. */
-const threadSettingsOf = (request: TurnRequest, cwd: string, profile: CodexProfile | null) => ({
-  ...policyOf(request.access, profile),
-  config: {
-    // One thread is one Codex conversation; threads open threads with open_thread instead (ADR 0007).
-    "features.multi_agent": false,
-    [`mcp_servers.${toolServerName}.tool_timeout_sec`]: noTimeLimitSeconds,
-    [`mcp_servers.${toolServerName}.url`]: request.access.mcpUrl,
-    // The starting context already holds the folder's own instructions (workspaces.ts).
-    project_doc_max_bytes: 0,
-    // The sandbox contains file and process damage, not data: its network is open, so a command can reach any host
-    // (verified with command/exec on Codex 0.167.2, 2026-11-12); the Vault profile opens it the same way.
-    "sandbox_workspace_write.network_access": true,
-  },
-  cwd,
-  developerInstructions: `${request.context}\n\n${approvalInstructionsOf(request.access, "codex")}`,
-  ...(request.model === "default" ? {} : { model: request.model }),
-});
-
-/** A turn's usage from Codex's per-call counts, whose input includes the cached part. */
-const usageOf = (calls: ReadonlyArray<unknown>): TokenUsage | null => {
-  if (calls.length === 0) return null;
-  const sum = (key: string) => calls.reduce<number>((total, call) => total + numberFieldOf(call, key), 0);
-  return {
-    cacheCreation: sum("cacheWriteInputTokens"),
-    cacheRead: sum("cachedInputTokens"),
-    input: Math.max(0, sum("inputTokens") - sum("cachedInputTokens") - sum("cacheWriteInputTokens")),
-    output: sum("outputTokens"),
-  };
-};
-
-/**
- * The context window Codex reports beside a token count, `tokenUsage.modelContextWindow` of a `thread/tokenUsage/updated`
- * notification (a nullable integer in the app-server schema of Codex 0.169.0), or null.
- */
-const contextWindowOf = (tokenUsage: unknown): number | null => {
-  const window = numberFieldOf(tokenUsage, "modelContextWindow");
-  return window > 0 ? window : null;
-};
-
-/** What the thread's context held after the latest call, whose input includes the cached part. */
-const contextOf = (calls: ReadonlyArray<unknown>): number | null => {
-  const last = calls.at(-1);
-  return last === undefined ? null : numberFieldOf(last, "inputTokens") + numberFieldOf(last, "outputTokens");
-};
-
-/**
- * How Codex's account is billed, from its own `account/read`: a ChatGPT sign-in is a subscription and an API key is
- * an API key. A server that does not answer in a few seconds, or answers otherwise, says Unknown (probe of 2026-11-11, Codex 0.167).
- */
-const billingOf = (rpc: RpcProcess): Effect.Effect<BillingKind> =>
-  rpc.request("account/read", { refreshToken: false }).pipe(
-    Effect.timeout("5 seconds"),
-    Effect.map((result): BillingKind => {
-      const type = textFieldOf(fieldOf(result, "account"), "type");
-      return type === "chatgpt" ? "Subscription" : type === "apiKey" ? "ApiKey" : "Unknown";
-    }),
-    Effect.catch(() => Effect.succeed<BillingKind>("Unknown")),
-  );
-
-/** A window of Codex's rate limits as reported, or none when it carries no use. */
-const windowOf = (window: unknown) =>
-  typeof fieldOf(window, "usedPercent") === "number" && typeof fieldOf(window, "windowDurationMins") === "number"
-    ? [
-        {
-          resetsAtSeconds: numberFieldOf(window, "resetsAt"),
-          usedPercent: numberFieldOf(window, "usedPercent"),
-          windowMinutes: numberFieldOf(window, "windowDurationMins"),
-        },
-      ]
-    : [];
-
-/**
- * The limits of the plan behind an account, asked of a short `codex app-server` run in the account's own folder:
- * `account/rateLimits/read` answers with the plan's windows (probe of 2026-11-11). An API key has no plan limits. Null
- * when Codex cannot answer. The server's own sign-in is used; no token is read here.
- */
-const readCodexPlanLimits = Effect.fnUntraced(function* (options: CodexOptions, configDirectory: string | null) {
-  const rpc = yield* startRpcProcess({
-    args: [...(options.prefixArgs ?? []), "app-server"],
-    command: options.command,
-    cwd: tmpdir(),
-    env: reducedEnvironmentOf(accountEnvironmentOf("codex", configDirectory)),
-    isJsonRpc2: false,
-    label: "Codex",
-  });
-  return yield* Effect.gen(function* () {
-    yield* rpc.request("initialize", {
-      capabilities: { experimentalApi: true, requestAttestation: false },
-      clientInfo: { name: "outlore", title: "Outlore", version: "0.0.0" },
-    });
-    rpc.notify("initialized", {});
-    const billing = yield* billingOf(rpc);
-    if (billing === "ApiKey") return { billing, windows: [] } satisfies PlanLimitsReport;
-    const limits = fieldOf(yield* rpc.request("account/rateLimits/read", {}), "rateLimits");
-    return {
-      billing,
-      windows: [...windowOf(fieldOf(limits, "primary")), ...windowOf(fieldOf(limits, "secondary"))],
-    } satisfies PlanLimitsReport;
-  }).pipe(
-    Effect.timeout("15 seconds"),
-    Effect.mapError((error) => new HarnessFailure({ reason: `Codex gave no plan limits: ${String(error)}` })),
-    Effect.ensuring(Effect.sync(() => rpc.close())),
-  );
-});
-
-/** The files of a file change item, for its approval question. */
-const changedPathsOf = (item: unknown) => {
-  const changes = fieldOf(item, "changes");
-  return Array.isArray(changes) ? changes.flatMap((change) => textFieldOf(change, "path") ?? []) : [];
-};
-
-/** Answers one of Codex's own requests, which may wait on the owner without a time limit. */
-const answerRequest = Effect.fnUntraced(function* (
-  connection: CodexConnection,
-  request: TurnRequest,
-  incoming: Extract<RpcIncoming, { _tag: "Request" }>,
-  fileChanges: Map<string, ReadonlyArray<string>>,
-) {
-  const { id, method, params } = incoming;
-  const { rpc } = connection;
-  // At the default level Codex asks only to go beyond its sandbox, so each of its requests is an escape. At "Also
-  // commands and edits" it asks before commands it does not trust, which run inside the sandbox once allowed.
-  const isEscape = request.access.approvalLevel === "RiskyOnly";
-  const ask = (toolName: string, input: object) =>
-    request
-      .askOwner({ input, ...(isEscape ? { isOutsideSandbox: true } : {}), toolName })
-      .pipe(Effect.map((answer) => answer.isAllowed));
-  if (method === "item/commandExecution/requestApproval") {
-    const isAllowed = yield* ask("Bash", {
-      command: textFieldOf(params, "command") ?? "",
-      description: textFieldOf(params, "reason") ?? "",
-    });
-    return rpc.respond(id, { decision: isAllowed ? "accept" : "decline" });
-  }
-  if (method === "item/fileChange/requestApproval") {
-    const paths = fileChanges.get(textFieldOf(params, "itemId") ?? "") ?? [];
-    const isAllowed = yield* ask("Edit", {
-      description: textFieldOf(params, "reason") ?? "",
-      file_path: paths.join(", ") || (textFieldOf(params, "grantRoot") ?? "a file"),
-    });
-    return rpc.respond(id, { decision: isAllowed ? "accept" : "decline" });
-  }
-  if (method === "item/permissions/requestApproval") {
-    const isAllowed = yield* ask("Permissions", {
-      description: textFieldOf(params, "reason") ?? "Widen the sandbox",
-      query: JSON.stringify(fieldOf(params, "permissions") ?? {}),
-    });
-    return rpc.respond(id, { permissions: isAllowed ? (fieldOf(params, "permissions") ?? {}) : {}, scope: "turn" });
-  }
-  // Outlore's own tools need no confirmation; another server's question is declined.
-  if (method === "mcpServer/elicitation/request") {
-    const isOwn = textFieldOf(params, "serverName") === toolServerName;
-    return rpc.respond(id, { _meta: null, action: isOwn ? "accept" : "decline", content: null });
-  }
-  if (method === "item/tool/requestUserInput") {
-    const questions = codexChoicesOf(params);
-    if (questions === null) return rpc.respond(id, { answers: {} });
-    const answer = yield* request.askOwner({
-      choices: questions.map((question) => question.choice),
-      input: params,
-      toolName: "request_user_input",
-    });
-    return rpc.respond(id, codexAnswersOf(questions, answer.isAllowed ? (answer.answers ?? null) : null));
-  }
-  return rpc.respondError(id, `Outlore does not answer ${method}.`);
-});
-
-/** Reads Codex's notifications for one turn until its completion. */
-const readTurn = Effect.fnUntraced(function* (
-  connection: CodexConnection,
-  request: TurnRequest,
-  turn: PooledTurn,
-  codexTurnId: string,
-) {
-  const calls: Array<unknown> = [];
-  let contextWindow: number | null = null;
-  const fileChanges = new Map<string, ReadonlyArray<string>>();
-  let draft = "";
-  for (;;) {
-    const incoming = yield* Queue.take(connection.rpc.incoming);
-    if (incoming._tag === "Exit") return yield* new HarnessFailure({ reason: incoming.reason });
-    if (incoming._tag === "Request") {
-      // Answered beside the turn: a question may wait on the owner while events keep coming.
-      yield* turn.fork(answerRequest(connection, request, incoming, fileChanges));
-      continue;
-    }
-    const { method, params } = incoming;
-    // Without its thread tools the turn could not reach Outlore: it fails, with Retry, instead of running blind.
-    // The status carries a thread id, or none when it speaks for the process.
-    if (
-      method === "mcpServer/startupStatus/updated" &&
-      textFieldOf(params, "name") === toolServerName &&
-      textFieldOf(params, "status") === "failed" &&
-      [connection.sessionId, null].includes(textFieldOf(params, "threadId"))
-    )
-      return yield* new HarnessFailure({
-        reason: `Outlore's thread tools did not load: Codex reports its server "${toolServerName}" as failed${
-          textFieldOf(params, "error") === null ? "" : ` (${textFieldOf(params, "error")})`
-        }. Retry once it can start.`,
-      });
-    if (textFieldOf(params, "threadId") !== connection.sessionId) continue;
-    const item = fieldOf(params, "item");
-    const itemType = textFieldOf(item, "type");
-    if (method === "item/started" && itemType === "userMessage") {
-      const clientId = textFieldOf(item, "clientId");
-      if (clientId !== null) yield* turn.deliver(clientId);
-    } else if (method === "item/started" && itemType === "agentMessage") {
-      draft = "";
-    } else if (method === "item/started" && itemType === "fileChange") {
-      fileChanges.set(textFieldOf(item, "id") ?? "", changedPathsOf(item));
-    } else if (
-      method === "item/completed" &&
-      itemType === "fileChange" &&
-      textFieldOf(params, "turnId") === codexTurnId
-    ) {
-      for (const event of codexFileEditsOf(item, codexTurnId)) yield* request.onEvent(event);
-    } else if (method === "item/agentMessage/delta") {
-      draft += textFieldOf(params, "delta") ?? "";
-      yield* request.onEvent({ _tag: "Draft", text: draft });
-    } else if (method === "item/completed" && itemType === "agentMessage") {
-      const text = textFieldOf(item, "text") ?? "";
-      draft = "";
-      if (text.trim() !== "") yield* request.onEvent({ _tag: "Reply", text });
-    } else if (method === "thread/tokenUsage/updated") {
-      const tokenUsage = fieldOf(params, "tokenUsage");
-      calls.push(fieldOf(tokenUsage, "last"));
-      contextWindow = contextWindowOf(tokenUsage) ?? contextWindow;
-      turn.reportUsage(usageOf(calls));
-    } else if (method === "turn/completed") {
-      const completed = fieldOf(params, "turn");
-      if (textFieldOf(completed, "id") !== codexTurnId) continue;
-      const status = textFieldOf(completed, "status");
-      if (status === "interrupted" || turn.isInterrupting())
-        return {
-          billing: connection.billing,
-          context: contextOf(calls),
-          contextWindow,
-          isInterrupted: true,
-          usage: usageOf(calls),
-        };
-      if (status === "failed") {
-        return yield* new HarnessFailure({
-          reason: textFieldOf(fieldOf(completed, "error"), "message") ?? "Codex reported a failed turn.",
-        });
-      }
-      return {
-        billing: connection.billing,
-        context: contextOf(calls),
-        contextWindow,
-        isInterrupted: false,
-        usage: usageOf(calls),
-      };
-    }
-  }
-});
+export type { CodexOptions } from "./codexProtocol.ts";
 
 /** Asks Codex to end its turn; the turn's own completion, as interrupted, ends it, so the answer is not awaited. */
 const askToInterrupt = (connection: CodexConnection, turnId: string) =>
@@ -358,14 +41,12 @@ const askToInterrupt = (connection: CodexConnection, turnId: string) =>
 /** Codex's app-server protocol: one Codex thread per Outlore thread, one Codex turn per turn. */
 const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection> => ({
   interrupt: Effect.fnUntraced(function* (connection: CodexConnection) {
-    // Before Codex answers `turn/start` there is no turn id to name: the turn, which the pool already counts as
-    // interrupting, asks for the interrupt as soon as it has the id.
+    // Before Codex answers `turn/start` there is no turn id to name: the turn, which the pool already counts as interrupting, asks for the interrupt as soon as it has the id.
     if (connection.turnId !== null) yield* askToInterrupt(connection, connection.turnId);
     return true;
   }),
 
-  // A changed level, set of permissions, context, model, folder, or account restarts the process, resuming
-  // its thread; the effort goes with each turn.
+  // A changed level, set of permissions, context, model, folder, or account restarts the process, resuming its thread; the effort goes with each turn.
   // Where the folder really points too: a link pointed elsewhere restarts the process, whose start checks it again.
   restartKeyOf: (request) => {
     const profile = profileOf(request.cwd, options.vaultFolder ?? null);
@@ -393,21 +74,18 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
     const codexTurnId = textFieldOf(fieldOf(started, "turn"), "id") ?? "";
     connection.turnId = codexTurnId;
     if (turn.isInterrupting()) yield* askToInterrupt(connection, codexTurnId);
-    return yield* readTurn(connection, request, turn, codexTurnId).pipe(
+    return yield* readCodexTurn(connection, request, turn, codexTurnId).pipe(
       Effect.ensuring(Effect.sync(() => (connection.turnId = null))),
     );
   }),
 
   start: Effect.fnUntraced(function* (request: TurnRequest) {
-    // A thread folder that is a link asks the owner; allowed, Codex starts where it really points, as its process
-    // folder and its thread's, so its workspace sandbox writes there (threadFolder.ts). Codex 0.167.2 refuses a
-    // writable root holding a link, and treats its process folder, resolved by the system, as writable (CHG-0208).
+    // A thread folder that is a link asks the owner; allowed, Codex starts where it really points, as its process folder and its thread's, so its workspace sandbox writes there (threadFolder.ts).
+    // Codex 0.167.2 refuses a writable root holding a link, and treats its process folder, resolved by the system, as writable (CHG-0208).
     const cwd = yield* resolveStartFolder(request, "Codex");
-    // The named profile is defined on the process, not in `thread/start`'s `config`: a turn reloads the settings
-    // without that thread's overrides, finds no such profile, and fails with "failed to load workspace
-    // requirements: invalid input parameter" (Codex 0.170.0, 2026-11-20). A profile in the process settings also
-    // needs `default_permissions`.
-    // Folder approval may have waited on the owner. Read the grants fresh at the actual start.
+    // The named profile is defined on the process, not in `thread/start`'s `config`: a turn reloads the settings without that thread's overrides, finds no such profile, and fails with "failed to load workspace requirements: invalid input parameter" (Codex 0.170.0, 2026-11-20).
+    // A profile in the process settings also needs `default_permissions`.
+    // Folder approval may have waited on the owner, so read the grants fresh at the actual start.
     const profile = yield* Effect.sync(() => profileOf(cwd, options.vaultFolder ?? null));
     const profileArgs =
       profile === null
@@ -453,8 +131,7 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
     } satisfies CodexConnection;
   }),
 
-  // A message steered mid-turn joins Codex's active turn; its userMessage item, carrying our id as
-  // clientId, says it was taken in.
+  // A message steered mid-turn joins Codex's active turn; its userMessage item, carrying our id as clientId, says it was taken in.
   steer: Effect.fnUntraced(function* (connection: CodexConnection, message: SteeredMessage) {
     if (connection.turnId === null) return false;
     return yield* connection.rpc

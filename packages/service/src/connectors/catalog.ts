@@ -49,7 +49,7 @@ export type CatalogBackend =
       readonly prefix?: string;
       readonly url: string;
       /** When true, the adapter performs MCP initialize and sends Mcp-Session-Id; OAuth entries always use a session. */
-      readonly usesSession?: boolean;
+      readonly shouldUseSession?: boolean;
     }
   | {
       readonly _tag: "Stdio";

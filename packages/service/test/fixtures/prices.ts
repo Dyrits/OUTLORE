@@ -1,5 +1,5 @@
 import { Effect, Layer } from "effect";
-import { PriceReadFailed, type PriceRow, PriceSource } from "../../src/core/index.ts";
+import { PriceReadFailed, type PriceRow, PriceSource } from "../../src/core/prices.ts";
 
 /** A stand-in for the public price table: it answers with the rows it was given, or fails, and counts its reads. */
 export const fakePriceSource = (initial: ReadonlyArray<PriceRow>) => {
