@@ -18,3 +18,9 @@ export const listedMissions = {
     workspaceId: null,
   },
 } as const;
+
+/** Every archived mission, for the History tab when the owner shows archived quests. */
+export const archivedMissions = {
+  key: "missions:archived",
+  request: { _tag: "ListMissions", isArchived: true, search: null, state: null, workspaceId: null },
+} as const;

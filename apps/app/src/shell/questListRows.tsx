@@ -20,6 +20,7 @@ import { ArchiveIcon, DeleteIcon } from "./railActions";
 function QuestLine({
   depth,
   harness,
+  isArchived = false,
   isOpen,
   lastActivityAt,
   model,
@@ -32,6 +33,8 @@ function QuestLine({
 }: {
   depth: number;
   harness: MissionSummary["harness"];
+  /** Whether the quest is archived, which the line says in place of an archive button. */
+  isArchived?: boolean;
   isOpen: boolean;
   lastActivityAt: number;
   model: MissionSummary["model"];
@@ -77,9 +80,10 @@ function QuestLine({
         {title}
       </Text>
       <Text numberOfLines={1} style={local.meta}>
+        {isArchived && "Archived · "}
         {harnessLabels[harness]} · {modelLabelOf(model)} · {agoOf(lastActivityAt, now)}
       </Text>
-      {onArchive !== null && (
+      {onArchive !== null && !isArchived && (
         <Pressable
           accessibilityLabel={onArchive.label}
           accessibilityRole="button"
@@ -205,6 +209,7 @@ function RitualLine({
 export function QuestTreeLines({
   client,
   collapsed,
+  isArchived = false,
   mission,
   now,
   onOpen,
@@ -215,6 +220,8 @@ export function QuestTreeLines({
 }: {
   client: ServiceClient;
   collapsed: ReadonlySet<string>;
+  /** Whether the quest is archived: its lines say so and offer no archive button. */
+  isArchived?: boolean;
   mission: MissionSummary;
   now: number;
   onOpen: (missionId: MissionId) => void;
@@ -254,6 +261,7 @@ export function QuestTreeLines({
         <QuestLine
           depth={row.depth}
           harness={row.thread?.harness ?? mission.harness}
+          isArchived={isArchived}
           isOpen={!collapsed.has(row.id)}
           key={row.id}
           lastActivityAt={row.thread?.lastActivityAt ?? mission.lastActivityAt}

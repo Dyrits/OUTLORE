@@ -2,7 +2,7 @@ import { type MissionSummary, ThreadSummary, type WorkspaceChoice } from "@outlo
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import { errandRowsOf } from "../../src/conversation/errandRoster";
-import { agoOf, recencyGroupsOf } from "../../src/shell/questRecency";
+import { agoOf, historyQuestsOf, recencyGroupsOf } from "../../src/shell/questRecency";
 import {
   areActionsShown,
   folderCueOf,
@@ -168,6 +168,20 @@ describe("the quest list page's groups", () => {
     expect(agoOf(now - 60 * minute, now)).toBe("1 hour ago");
     expect(agoOf(now - 3 * 24 * 60 * minute, now)).toBe("3 days ago");
     expect(agoOf(now - 14 * 24 * 60 * minute, now)).toBe("2 weeks ago");
+  });
+});
+
+describe("the quests the History tab lists", () => {
+  const active = [quest("a", "r1", 1), quest("b", "r2", 2)];
+  const archived = [quest("c", "r1", 3), quest("d", null, 4)];
+
+  it("leaves archived quests out until they are shown", () => {
+    expect(historyQuestsOf(active, archived, "r1" as never, false).map((each) => each.id)).toEqual(["a"]);
+  });
+
+  it("adds the realm's archived quests when shown, and none of another realm's", () => {
+    expect(historyQuestsOf(active, archived, "r1" as never, true).map((each) => each.id)).toEqual(["a", "c"]);
+    expect(historyQuestsOf(active, archived, null, true).map((each) => each.id)).toEqual(["d"]);
   });
 });
 

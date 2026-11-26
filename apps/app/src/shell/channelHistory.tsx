@@ -2,12 +2,13 @@ import type { MissionId, ThreadId, WorkspaceId } from "@outlore/contracts";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
-import { listedMissions } from "../foundation/queries";
+import { archivedMissions, listedMissions } from "../foundation/queries";
 import { colors, fontSizes, fonts } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { EmptyBoard } from "../ui/brand";
+import { ToggleRow } from "../ui/toggleRow";
 import { QuestTreeLines } from "./questListRows";
-import { recencyGroupsOf } from "./questRecency";
+import { historyQuestsOf, recencyGroupsOf } from "./questRecency";
 import { toggledFold } from "./questTree";
 
 /**
@@ -33,11 +34,16 @@ export function ChannelHistory({
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const toggle = (id: string) => setCollapsed((current) => toggledFold(current, id));
   const { data } = useServiceQuery(client, listedMissions.request, listedMissions.key);
+  // Archived quests stay out until the owner asks; they are read from the Archived view and drawn among the rest.
+  const [isArchivedShown, setIsArchivedShown] = useState(false);
+  const { data: archived } = useServiceQuery(client, archivedMissions.request, archivedMissions.key);
   // The realm's things: its quests and, beside them, its Rituals (CHG-0616).
-  const missions = (data?.missions ?? []).filter((mission) => mission.workspaceId === realmId);
+  const missions = historyQuestsOf(data?.missions ?? [], archived?.missions ?? [], realmId, isArchivedShown);
+  const archivedIds: ReadonlySet<string> = new Set((archived?.missions ?? []).map((mission) => mission.id));
   const now = Date.now();
   return (
     <ScrollView contentContainerStyle={[local.content, isTouch && local.touchContent]} style={local.page}>
+      <ToggleRow label="Show archived quests" onChange={setIsArchivedShown} value={isArchivedShown} />
       {data !== null && data !== undefined && missions.length === 0 && (
         <EmptyBoard line={realmId === null ? "No quest here yet." : "No quest in this realm yet."} />
       )}
@@ -48,6 +54,7 @@ export function ChannelHistory({
             <QuestTreeLines
               client={client}
               collapsed={collapsed}
+              isArchived={archivedIds.has(mission.id)}
               key={mission.id}
               mission={mission}
               now={now}

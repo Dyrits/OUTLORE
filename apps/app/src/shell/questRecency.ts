@@ -39,3 +39,15 @@ export const recencyGroupsOf = (missions: ReadonlyArray<MissionSummary>, now: nu
   }
   return groups;
 };
+
+/**
+ * The quests the History tab lists for one realm (null for the Borderlands): its active quests, with its archived ones
+ * among them when the owner asks, latest first once grouped.
+ */
+export const historyQuestsOf = (
+  active: ReadonlyArray<MissionSummary>,
+  archived: ReadonlyArray<MissionSummary>,
+  realmId: MissionSummary["workspaceId"],
+  isArchivedShown: boolean,
+): ReadonlyArray<MissionSummary> =>
+  [...active, ...(isArchivedShown ? archived : [])].filter((mission) => mission.workspaceId === realmId);
