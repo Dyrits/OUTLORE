@@ -104,7 +104,12 @@ export const ThreadActions = Schema.Struct({
 export type ThreadActions = typeof ThreadActions.Type;
 
 /** A thread's own git worktree of its workspace and its branch (workspace-attachment, Own copy). */
-export const OwnCopyView = Schema.Struct({ branch: Schema.String, path: Schema.String });
+export const OwnCopyView = Schema.Struct({
+  branch: Schema.String,
+  /** Whether the own copy's folder no longer exists; absent from older hosts. */
+  isMissing: Schema.optionalKey(Schema.Boolean),
+  path: Schema.String,
+});
 export type OwnCopyView = typeof OwnCopyView.Type;
 
 /**

@@ -215,7 +215,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
       accountLabel: accountLabelOf(threadFields.accountId, threadFields.accountLabel, computerName),
       actions: threadActionsOf({ blocker: threadFields.blocker, depth: selected.depth, state: selected.state }),
       depth: selected.depth,
-      ownCopy: ownCopy === null ? null : { branch: ownCopy.branch, path: ownCopy.path },
+      ownCopy: ownCopy === null ? null : { branch: ownCopy.branch, isMissing: ownCopy.isMissing, path: ownCopy.path },
       parentId: selected.parentId,
       ...(root === undefined ? {} : { root }),
       state: selected.state,

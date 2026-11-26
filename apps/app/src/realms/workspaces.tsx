@@ -97,10 +97,12 @@ function Chip({ children, isSelected, onPress }: { children: ReactNode; isSelect
  */
 export function MissingFolderNotice({
   client,
+  isOwnCopy = false,
   path,
   threadId,
 }: {
   client: ServiceClient;
+  isOwnCopy?: boolean;
   path: string;
   threadId: ThreadId;
 }) {
@@ -112,7 +114,9 @@ export function MissingFolderNotice({
     );
   return (
     <View style={styles.failure}>
-      <Text style={styles.error}>The realm folder {path} no longer exists.</Text>
+      <Text style={styles.error}>
+        {isOwnCopy ? `The own copy ${path} no longer exists.` : `The realm folder ${path} no longer exists.`}
+      </Text>
       <Text style={styles.muted}>Your messages wait. Put the folder back, then retry.</Text>
       <Pressable onPress={retry} style={styles.button}>
         <Text style={styles.buttonText}>Retry</Text>
