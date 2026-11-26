@@ -33,7 +33,7 @@ The Workshop (Settings) is not a pane and not a sheet: it is the page that takes
 
 - Its icon, the gear, stands at the far right of the top bar, where the Chronicler button was. It shows as selected while the Workshop is open.
 - Pressed, it opens the Workshop over the whole content area, sidebar kept. Pressed again, the Workshop closes and the owner is where they were, with the pane chain exactly as left: the folds, the shares, the pane in focus, the selected tabs, the drafts, and a pinned sidebar. The panes wait mounted beneath the Workshop, out of sight.
-- The sidebar's foot has no Workshop row on a desktop window; the phone's full-screen menu, which has no top bar, keeps it.
+- The sidebar's foot has no Workshop row on a desktop window; the phone's Menu lists Settings, which is the Workshop (CHG-0760).
 - The Workshop screen itself is unchanged. No keyboard shortcut for it yet.
 
 ### Main conversations and channels
@@ -112,9 +112,9 @@ The blocks appear whether or not the lists already have entries.
 
 #### Phone channels
 
-- Tap a realm name or **Borderlands** in the phone menu to open its channel. Tap a realm's **Show all** shortcut to open its Quests tab.
+- Tap a realm name or **Borderlands** on the phone's Quests tab to open its channel. Tap a realm's **Show all** shortcut to open its Quests tab.
 - The channel shows one view at a time. Its tab row scrolls horizontally when needed. It offers Missives, Quests, Rituals, and Companions. A realm also offers its Realm tab.
-- Back in the channel opens the menu. Back in a quest opened from the channel returns to the same channel and tab. This includes quests opened from a linked Missive. A quest picked directly from the menu returns there.
+- Back in the channel opens the Quests tab. Back in a quest opened from the channel returns to the same channel and tab. This includes quests opened from a linked Missive. A quest picked directly from the Quests tab returns there, and one opened from Chronicler returns to Chronicler.
 - The Quests tab and a quest's own header offer Mark as done, Mark as not done, and Archive or Delete. They use the same quest ending rules as desktop, including confirmation when required.
 - Panes are resized by dragging their edges; the widths are remembered.
 - **Equal widths** sits above the conversation row and gives the open panes the same share again (a third each with three) and forgets the dragged shares; folded panes stay folded.
@@ -122,8 +122,8 @@ The blocks appear whether or not the lists already have entries.
 
 #### The phone's Chronicle
 
-- The phone menu's first row is the **Chronicle**, carrying its unread count as a badge, as the desktop sidebar's row does.
-- The narrow top bar's menu button carries the same unread count, so what needs the owner shows from every phone screen without opening the menu.
+- The phone's first tab is the **Chronicle**, carrying its unread count as a badge, as the desktop sidebar's row does.
+- The floating pill, which holds the tabs, shows on every phone screen but a quest or errand, so the count shows without opening anything.
 - The Chronicle's Attention filters wrap on a narrow screen, and every row and conversation heading is a touch target.
 - Back in a quest or errand opened from the Chronicle returns to the Chronicle, as a channel quest returns to its channel; a quest picked directly from the menu returns there.
 
@@ -152,7 +152,7 @@ Realm and Borderlands channels omit the Chronicler, harness, and model line on b
 - Open an errand from its channel and quest, then open a legacy sub-errand and return to its parent within the same pane.
 - Check persisted Reply anchors, including proposal messages, duplicate Replies and the errand brief. An errand agent's follow-up appears in the quest, and only the owner's Reply starts it.
 - Open the Chronicle from the sidebar and verify that the attention feed is the default and routine events appear under History. Open an unread approval request from the feed, check that its unread indicator clears and it remains in Needs attention, then answer it and check that it leaves the filter. Check that reminders are deduplicated. Move a quest and check that the other channel receives its originating message.
-- On a paired phone, open the Chronicle from the menu, follow an unread request into its quest or errand, answer it, and press Back to return to the Chronicle; check that the menu button's badge clears with the read.
+- On a paired phone, open the Chronicle tab, follow an unread request into its quest or errand, answer it, and press Back to return to the Chronicle; check that the tab's badge clears with the read.
 - Check the in-pane tabs and composer model buttons with a channel, quest, and errand open together.
 - Check draft preservation, pane-local Journal, Lore, and Budget, sidebar pinning, and return from the Workshop in a desktop window.
 - Preserve phone access until the phone batch.

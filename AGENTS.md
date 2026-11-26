@@ -65,4 +65,4 @@ Latest handoffs:
 
 - To resume the History tab's archived quests switch (CHG-0756), read the [current handoff](.agents/handoffs/2026-11-26-1050-history-shows-archived-quests.md). Handoffs are shared and committed.
 
-- To resume choosing the phone shell's bottom bar (CHG-0757), read the [current handoff](.agents/handoffs/2026-11-26-1130-mobile-shell-options.md). Handoffs are shared and committed.
+- To resume the phone's floating pill shell (CHG-0760), read the [current handoff](.agents/handoffs/2026-11-26-1400-phone-floating-pill.md). Handoffs are shared and committed.

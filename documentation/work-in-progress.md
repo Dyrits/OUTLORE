@@ -1,5 +1,10 @@
 # Work in progress
 
+## Phone floating pill shell · 2026-11-26 · built and checked in a phone-width browser; real phone pending
+
+CHG-0760 in `0.2.10-Pre-Alpha`: the narrow window has a floating pill of three tabs (Chronicle, Quests, Chronicler), a Menu button in the top bar (Lore, Archive, Reserves, Settings), and the conversation's own composer in a quest (`narrowShell.tsx`, `phoneShell.ts`, `phonePill.tsx`, `menuScreen.tsx`, `pillScroll.ts`).
+Next: the owner tries it on a phone (the pill's gap above the Android gesture or three-button bar, the collapse while scrolling, Back from a quest to the tab it came from) and decides whether the composer also needs a Back button, whether Rituals need a place on the phone, and whether a safe-area package is wanted. [Handoff](../.agents/handoffs/2026-11-26-1400-phone-floating-pill.md).
+
 ## Direct channels on the Android app · 2026-11-26 · built and run on an emulator; real phone pending
 
 CHG-0754 in `0.2.9-Pre-Alpha`: the Android app loads `RTCPeerConnection` from `react-native-webrtc` at its first try and moves its link onto a direct channel like the web app (`phoneDirect.native.ts`, `directSettingsOfLoader`); the release build needs the R8 rule of `plugins/withWebRtcRules.js`. On an Android 36 emulator against a disposable host the host listed the phone as connected and direct, a quest and a message went through, and a restart resumed the direct channel. Not exercised: a real NAT or mobile network, the real phone, battery and memory. The phone's original "reads but cannot operate" symptom is not explained by this work.
