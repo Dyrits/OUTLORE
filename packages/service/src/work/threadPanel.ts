@@ -8,6 +8,7 @@ import { readContextLimit } from "../lore/index.ts";
 import { accountOfThread } from "./budgetScopes.ts";
 import { readThreadConsumption } from "./consumption.ts";
 import { readLatestContextUsed } from "./contextReadings.ts";
+import type { PhoneLink } from "./phoneLink.ts";
 import { PlanLimits } from "./planLimits.ts";
 import { readSentContextSize } from "./startingContext.ts";
 import { toolListingOf } from "./threadTools.ts";
@@ -62,12 +63,17 @@ const readThreadPlanLimits = Effect.fnUntraced(function* (threadId: string) {
 });
 
 /** What the panel shows of a thread: its context gauge, its own spending, and its quest's budget. */
-export const readThreadPanel = Effect.fnUntraced(function* (threadId: string, connectors: Connectors["Service"]) {
+export const readThreadPanel = Effect.fnUntraced(function* (
+  threadId: string,
+  connectors: Connectors["Service"],
+  phone: PhoneLink["Service"],
+) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{ backups: string; missionId: string; model: string }>`
       SELECT mission_id AS missionId, model, backups FROM threads WHERE id = ${threadId}`;
   if (thread === undefined) return yield* notFound("No such thread.");
   const harness = yield* readAuthorityHarness(threadId);
+  const phoneTools = yield* phone.offeredTools;
   const [spent] = yield* sql<{ cost: number; tokens: number; turnCount: number }>`
       SELECT ${sql.literal(spendingColumns)}, COUNT(*) AS turnCount FROM usage u WHERE u.thread_id = ${threadId}`;
   return {
@@ -76,7 +82,9 @@ export const readThreadPanel = Effect.fnUntraced(function* (threadId: string, co
     connectorTools: yield* connectors.panelTools(threadId),
     consumption: yield* readThreadConsumption(threadId),
     context: yield* readContextGauge(threadId, thread.model),
-    outloreTools: toolListingOf(harness !== null && harnessFacts[harness].hasPromptTool).map((tool) => tool.name),
+    outloreTools: toolListingOf(harness !== null && harnessFacts[harness].hasPromptTool, phoneTools).map(
+      (tool) => tool.name,
+    ),
     planLimits: yield* readThreadPlanLimits(threadId),
     spending: { cost: spent?.cost ?? 0, tokens: spent?.tokens ?? 0 },
     turnCount: spent?.turnCount ?? 0,

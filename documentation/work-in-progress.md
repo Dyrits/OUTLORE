@@ -4,7 +4,7 @@
 
 CHG-0767, CHG-0768 and CHG-0770 in `0.2.10-Pre-Alpha`: six `phone_*` tools in the host's tool server, run by the paired app (`PhoneLink`, `Sessions.sendTo`, `apps/app/src/phone/`), with the phone's per-group switches as the only consent and each call naming its phone; the full suite (3,652 passed) and typecheck pass.
 Next: the owner installs a new APK (six Expo packages and location permissions were added), turns on groups in Menu, Settings, Permissions, and checks each tool from a thread on the real phone (Android prompts, the notification, `Linking`, staying connected in the background, the relay and direct paths); then step 2 (accessibility service) gets its own specification.
-Builders' choices to redirect: `phone_open` links and app names, the notification title default, phone naming by device name; phone tools are not yet listed in the thread panel's tools line.
+Builders' choices to redirect: `phone_open` links and app names, the notification title default, phone naming by device name.
 
 ## Dual-auth OAuth and 13 missing remote connectors · 2026-11-26 · built and tested against stand-ins; live sign-in and window check pending
 

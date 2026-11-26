@@ -15,6 +15,7 @@ import { readGuildHallRecap, visitGuildHall } from "./guildHall.ts";
 import { readGuildmaster } from "./guildmasterPlace.ts";
 import { readMission, readThreadTree } from "./missionDetail.ts";
 import { insertMission, insertQuest } from "./missions.ts";
+import type { PhoneLink } from "./phoneLink.ts";
 import { moveQuest } from "./questMoves.ts";
 import { placeQuestOrigin } from "./questOrigins.ts";
 import { readThreadAnchors, replyToMessage } from "./replies.ts";
@@ -28,6 +29,7 @@ import { openThreadByOwner } from "./tree.ts";
 export const questsHandlers = (
   { commands, change, threads }: Pick<HandlerDependencies, "commands" | "change" | "threads">,
   connectors: Connectors["Service"],
+  phone: PhoneLink["Service"],
 ) =>
   ({
     ArchiveThread: (given) => commands.run(archiveThread(given.threadId)),
@@ -84,7 +86,7 @@ export const questsHandlers = (
     ReadGuildmaster: ({ channelId }) => commands.run(readGuildmaster(channelId)),
     ReadMission: (read) => readMission(read.missionId, read.threadId),
     ReadThreadAnchors: (read) => readThreadAnchors(read.threadId),
-    ReadThreadPanel: (read) => readThreadPanel(read.threadId, connectors),
+    ReadThreadPanel: (read) => readThreadPanel(read.threadId, connectors, phone),
     ReadThreadTree: (read) => readThreadTree(read.missionId),
     RenameMission: (rename) => change(renameMission(rename.missionId, rename.title)),
     ReopenMission: (reopen) => commands.run(reopenMission(reopen.missionId)),

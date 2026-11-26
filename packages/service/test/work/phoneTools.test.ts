@@ -16,7 +16,7 @@ const phoneTools = [
   "phone_notify",
   "phone_open",
 ];
-const phoneToolsOf = (names: ReadonlyArray<string>) => names.filter((name) => name.startsWith("phone_")).sort();
+const phoneToolsOf = (names: readonly string[]) => names.filter((name) => name.startsWith("phone_")).sort();
 
 /** A clipboard the fake phone keeps, as the app's device seam would. */
 const clipboardPhone = () => {
@@ -49,6 +49,24 @@ describe("a thread using the phone", () => {
         yield* phone.setGroups(["Notify"]);
         phone.leave();
         expect(phoneToolsOf(yield* listToolNames(threadId))).toEqual([]);
+      }),
+    ),
+  );
+
+  it.live("shows in the thread panel only the phone tools of the groups on", () =>
+    withService(
+      Effect.gen(function* () {
+        const { threadId } = yield* start("Hello");
+        const service = yield* Service;
+        const panelTools = () =>
+          service
+            .handle({ _tag: "ReadThreadPanel", threadId }, { isPairedDevice: false })
+            .pipe(Effect.map((panel) => phoneToolsOf((panel as { outloreTools: readonly string[] }).outloreTools)));
+        expect(yield* panelTools()).toEqual([]);
+        const phone = yield* connectFakePhone("pixel", "Pixel", ["Clipboard"]);
+        expect(yield* panelTools()).toEqual(["phone_clipboard_read", "phone_clipboard_write"]);
+        phone.leave();
+        expect(yield* panelTools()).toEqual([]);
       }),
     ),
   );

@@ -99,7 +99,7 @@ export const makeService = Effect.gen(function* () {
         ...accountsHandlers(dependencies, terminals, terminalScope),
         ...remoteHandlers(dependencies),
         ...messagesHandlers(dependencies),
-        ...questsHandlers(dependencies, connectors),
+        ...questsHandlers(dependencies, connectors, phoneLink),
         ...ritualsHandlers(dependencies),
         ...terminalHandlers(terminals, terminalScope),
         ...connectorHandlers(commands, connectors),
