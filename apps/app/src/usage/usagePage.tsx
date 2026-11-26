@@ -2,6 +2,7 @@ import type { UsageDimension, UsageFilter, UsagePeriod } from "@outlore/contract
 import { type ReactNode, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
+import { usePillScroll } from "../foundation/pillScroll";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { Choice } from "../ui/pickers";
@@ -29,10 +30,13 @@ const metrics: ReadonlyArray<UsageMetric> = ["Cost", "Tokens"];
  */
 /** The report's body: scrolling on a page of its own, plain where a Workshop section already scrolls. */
 function Body({ children, isEmbedded }: { children: ReactNode; isEmbedded: boolean }) {
+  const pill = usePillScroll();
   return isEmbedded ? (
     <View style={local.content}>{children}</View>
   ) : (
-    <ScrollView contentContainerStyle={local.content}>{children}</ScrollView>
+    <ScrollView {...pill.scrollProps} contentContainerStyle={[local.content, pill.contentStyle]}>
+      {children}
+    </ScrollView>
   );
 }
 

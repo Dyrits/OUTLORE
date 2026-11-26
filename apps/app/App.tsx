@@ -74,6 +74,7 @@ export function App() {
         openMission: openMissionFromAnywhere,
         openParent: (quest: { workspaceId: string | null; workspaceName: string | null }) =>
           dispatch({ quest, type: "parent" }),
+        openQuests: () => dispatch({ isOpen: true, type: "quests" }),
         openThread: openSideQuest,
         selectMission: (id: MissionId | null) => {
           dispatch({ id, type: "select" });

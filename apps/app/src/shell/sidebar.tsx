@@ -6,6 +6,7 @@ import { PlanUsageDots } from "../editors/planUsageDots";
 import { messageOf, newRequestId, type ServiceClient } from "../foundation/client";
 import { canHover } from "../foundation/inputModality";
 import { useIslandFrame } from "../foundation/islands";
+import { usePillScroll } from "../foundation/pillScroll";
 import { listedMissions } from "../foundation/queries";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -42,7 +43,7 @@ const useToggles = () => {
 /** What the sidebar shows and asks: its callbacks keep one identity, so it skips rendering for another panel's change. */
 export type SidebarProps = {
   client: ServiceClient;
-  /** The open rail's width, as dragged; the whole width on a phone, where this is the menu screen. */
+  /** The open rail's width, as dragged; the whole width on a phone, where this is the Quests tab. */
   width: DimensionValue;
   onOpenMission: (id: MissionId) => void;
   onOpenErrands: (id: MissionId) => void;
@@ -92,6 +93,9 @@ export const Sidebar = memo(function Sidebar({
   const unreadCount = unreadCountOf(chronicle ?? []);
   const placements = placementsOf(data?.missions ?? [], data?.workspaces ?? []);
   const isNarrow = host === "narrow";
+  // On the phone this is the Quests tab (CHG-0760): it scrolls beneath the floating pill, and the Chronicle and the
+  // Workshop are the pill's tab and the Menu's Settings there, so it leaves out their rows.
+  const pill = usePillScroll();
   const islands = useIslandFrame();
   // The menu that makes a realm, tied to a folder or to none.
   const [isCreating, setIsCreating] = useState(false);
@@ -236,18 +240,17 @@ export const Sidebar = memo(function Sidebar({
         { width },
       ]}
     >
-      <ScrollView contentContainerStyle={[local.group, !isNarrow && local.groupWithChronicle]} style={local.flex}>
-        {onOpenChronicle !== undefined && (
+      <ScrollView
+        {...pill.scrollProps}
+        contentContainerStyle={[local.group, !isNarrow && local.groupWithChronicle, pill.contentStyle]}
+        style={local.flex}
+      >
+        {onOpenChronicle !== undefined && !isNarrow && (
           <>
             <Pressable
               accessibilityRole="button"
               onPress={onOpenChronicle}
-              style={(state) => [
-                local.chronicleRow,
-                // The phone menu's rows are touch targets first (CHG-0292's 44 pt rows).
-                isNarrow && { minHeight: 44 },
-                (state.pressed || isHovered(state)) && local.rowHovered,
-              ]}
+              style={(state) => [local.chronicleRow, (state.pressed || isHovered(state)) && local.rowHovered]}
             >
               <Text style={local.chronicleTitle}>Chronicle</Text>
               {unreadCount > 0 && (
@@ -306,9 +309,11 @@ export const Sidebar = memo(function Sidebar({
           />
         )}
       </ScrollView>
-      <View style={local.footer}>
-        <SidebarFoot client={client} isWorkshopOpen={isWorkshopOpen} onWorkshop={onWorkshop} />
-      </View>
+      {!isNarrow && (
+        <View style={local.footer}>
+          <SidebarFoot client={client} isWorkshopOpen={isWorkshopOpen} onWorkshop={onWorkshop} />
+        </View>
+      )}
       {pendingMove !== null && (
         <MoveQuestModal
           confirmation={pendingMove.confirmation}
