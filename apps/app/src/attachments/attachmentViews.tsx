@@ -3,8 +3,7 @@ import { memo, useEffect, useMemo, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
-import { imageCache } from "./imageCache";
-import { loadSentImage, type SentImage } from "./sentImage";
+import { loadSentImage, type SentImage, sentImages } from "./sentImage";
 import type { AttachedFile } from "./useAttachments";
 
 // How attached images show (message-attachments): thumbnails above the message box with a × to remove them, and on the messages sent.
@@ -59,18 +58,15 @@ export function AttachmentStrip({
   );
 }
 
-/** The images already fetched, so a refresh or a scroll does not fetch a sent image again; bounded, as each one is held as base64. */
-const fetched = imageCache(64 * 1024 * 1024);
-
 const SentImageTile = memo(function SentImageTile({ card, client }: { card: AttachmentCard; client: ServiceClient }) {
   const [image, setImage] = useState<SentImage | null>(() => {
-    const cached = fetched.peek(card.id);
+    const cached = sentImages.peek(card.id);
     return cached === null ? null : { status: "ready", uri: cached };
   });
   const [attempt, setAttempt] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new attempt is the retry the owner asked for.
   useEffect(() => {
-    const cached = fetched.peek(card.id);
+    const cached = sentImages.peek(card.id);
     if (cached !== null) {
       setImage((current) =>
         current?.status === "ready" && current.uri === cached ? current : { status: "ready", uri: cached },
@@ -79,7 +75,7 @@ const SentImageTile = memo(function SentImageTile({ card, client }: { card: Atta
     }
     let isCurrent = true;
     setImage(null);
-    loadSentImage(fetched, card.id, () => client.request({ _tag: "ReadAttachment", attachmentId: card.id })).then(
+    loadSentImage(sentImages, card.id, () => client.request({ _tag: "ReadAttachment", attachmentId: card.id })).then(
       (loaded) => isCurrent && setImage(loaded),
     );
     return () => {

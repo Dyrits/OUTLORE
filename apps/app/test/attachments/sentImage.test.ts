@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { imageCache } from "../../src/attachments/imageCache";
-import { loadSentImage } from "../../src/attachments/sentImage";
+import { dataAddressOf, loadSentImage } from "../../src/attachments/sentImage";
 
 const content = { data: "AAAA", mediaType: "image/png" };
 
@@ -24,5 +24,15 @@ describe("loading the image of a sent message", () => {
     await Promise.resolve();
     expect((await loadSentImage(cache, "a", read)).status).toBe("ready");
     expect(read).toHaveBeenCalledTimes(2);
+  });
+  it("shows an image the app uploaded without reading it back", async () => {
+    const cache = imageCache(100);
+    cache.put("a", dataAddressOf("image/png", "AAAA"));
+    const read = vi.fn().mockResolvedValue(content);
+    expect(await loadSentImage(cache, "a", read)).toEqual({ status: "ready", uri: "data:image/png;base64,AAAA" });
+    expect(read).not.toHaveBeenCalled();
+  });
+  it("writes a data address from a media type and base64 data", () => {
+    expect(dataAddressOf("image/webp", "QQ==")).toBe("data:image/webp;base64,QQ==");
   });
 });
