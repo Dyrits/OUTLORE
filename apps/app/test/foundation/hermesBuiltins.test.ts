@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 const sources = import.meta.glob(
   [
     "../../src/**/*.{ts,tsx}",
+    "../../../../packages/channel/src/**/*.{ts,tsx}",
     "../../../../packages/contracts/src/**/*.{ts,tsx}",
     "../../../../packages/controller/src/**/*.{ts,tsx}",
   ],

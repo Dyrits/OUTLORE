@@ -27,15 +27,33 @@ export type PageSettings = {
 const isRtcConnectionClass = (value: unknown): value is RtcConnectionClass => typeof value === "function";
 
 /**
- * Direct channels through the page's own `RTCPeerConnection`; none in a page that has none, such as the mobile app's
- * JavaScript runtime, which then stays on the relay (device-pairing, Direct path).
+ * Direct channels through a WebRTC library the platform loads, such as the mobile app's native module, which is not
+ * loaded until the first peer is asked for. A load that fails, or gives no connection class, fails that try, and the
+ * link stays on the relay as for any failed try (device-pairing, Direct path).
+ */
+export const directSettingsOfLoader = (
+  load: () => Promise<unknown>,
+  stunServers: readonly string[] = defaultStunServers,
+): DirectSettings => ({
+  peers: rtcPeers(async () => {
+    const found = await load();
+    if (!isRtcConnectionClass(found)) throw new Error("The WebRTC library gave no RTCPeerConnection.");
+    return found;
+  }),
+  stunServers,
+});
+
+/**
+ * Direct channels through the page's own `RTCPeerConnection`; none in a page that has none, which then stays on the
+ * relay (device-pairing, Direct path). The mobile app's JavaScript runtime has none of its own: it loads its native
+ * module through {@link directSettingsOfLoader}.
  */
 export const directSettingsOfPage = (
   stunServers: readonly string[] = defaultStunServers,
 ): DirectSettings | undefined => {
   // The DOM library is not loaded here, so the page's own constructor is read by name: absent in a runtime without one.
   const found: unknown = Reflect.get(globalThis, "RTCPeerConnection");
-  return isRtcConnectionClass(found) ? { peers: rtcPeers(async () => found), stunServers } : void 0;
+  return isRtcConnectionClass(found) ? directSettingsOfLoader(async () => found, stunServers) : void 0;
 };
 
 const browserStore = (hosts: PairedHosts): PairedHostStore => ({

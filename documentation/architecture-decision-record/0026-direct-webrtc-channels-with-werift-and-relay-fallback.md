@@ -23,12 +23,12 @@ Authorized by the owner on 2026-11-25 in the quest "Relay outage and P2P", after
 - **WebRTC runtimes.**
   - Host service and desktop controller: `werift` (`^0.28.0`, MIT, lazy-loaded on the first direct channel, with `iceUseDefaultStunServer: false` so werift's built-in STUN server is never queried).
   - Web app: the browser's built-in `RTCPeerConnection`.
-  - Mobile app (Android/Hermes): stays on the relay for now; Hermes has no `RTCPeerConnection`, and adding `react-native-webrtc` carries native build and APK size tradeoffs left for a later owner decision.
+  - Mobile app (Android/Hermes): `react-native-webrtc` (MIT, over Jitsi's build of WebRTC M155, `org.jitsi:webrtc`; data channels only; no Expo module offers WebRTC; amended 2026-11-26, CHG-0754). Hermes has no `RTCPeerConnection`, so the app loads the library's class on the first try and hands it to the same adapter as a browser. A build without the native module (Expo Go) stays on the relay. It adds about 12.5 MB of native code to the arm64 APK and one R8 rule (`apps/app/plugins/withWebRtcRules.js`). The library's manifest also declares a `MediaProjectionService` the app never starts; it adds no permission.
 - **Public STUN only, no TURN.** Default STUN server is `stun:stun.cloudflare.com:3478`—chosen because the shared relay already runs on Cloudflare, so no additional provider learns the owner's IP address (to confirm with the owner). Configurable via `OUTLORE_STUN_SERVERS` (comma-separated `stun:` URIs) and disableable via `OUTLORE_DIRECT=false`.
 
 ## Consequences
 
 - Once a direct channel is up, the relay forwards zero application frames for that session; the Workshop shows the device as `connected now, direct`.
 - Packaging for Electron and a future standalone host adds no native C++ binaries or platform-specific build steps.
-- Sessions behind symmetric NATs or on the mobile app continue working transparently over the relay, with no lost state on fallback.
+- Sessions behind symmetric NATs, or on a phone build without the native module, continue working transparently over the relay, with no lost state on fallback.
 - Real-network NAT traversal from a phone or separate network could not be exercised in the sandbox; only in-process loopback WebRTC (real `werift` peers + real local relay + full host service) and Effect `TestClock` timer tests are verified so far.
