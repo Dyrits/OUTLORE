@@ -2,6 +2,7 @@ import { type MissionId, type ThreadId, type ThreadSummary, WorkspaceId } from "
 import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 import { listedErrandsOf } from "../conversation/errandRoster";
+import type { QuestTabMemory } from "../conversation/questTabMemory";
 import { OpenPanes } from "../conversation/replyLine";
 import { useShownThreadsRead } from "../conversation/useShownThreadsRead";
 import type { ServiceClient } from "../foundation/client";
@@ -47,6 +48,7 @@ export const PaneHost = memo(function PaneHost({
   openCount = 0,
   openThread,
   questsRequest,
+  questTabMemory,
   tabMemory,
 }: {
   client: ServiceClient;
@@ -70,6 +72,8 @@ export const PaneHost = memo(function PaneHost({
   openCount?: number;
   /** The deepest thread of the chain, or null for the quest's own thread. */
   openThread: ThreadId | null;
+  /** The quest pane's last tab, so the pane of the next quest to open starts on it. */
+  questTabMemory: QuestTabMemory;
   /** The channel pane's last tab, so the pane of the next quest to open starts on it. */
   tabMemory?: ChannelTabMemory | undefined;
   /** A request from the channel's own page to list its quests; each new object opens the Quests tab. */
@@ -311,6 +315,7 @@ export const PaneHost = memo(function PaneHost({
                 revealThread={revealThread}
                 setFocused={setFocused}
                 startErrand={startErrand}
+                tabMemory={questTabMemory}
                 threadId={threadId}
               />,
             );

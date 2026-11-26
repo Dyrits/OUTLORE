@@ -2,6 +2,7 @@ import type { MissionId, ThreadId } from "@outlore/contracts";
 import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { type ChronicleTarget, ChronicleTargetContext } from "../conversation/chronicleTarget";
+import type { QuestTabMemory } from "../conversation/questTabMemory";
 import { PermissionsScreen } from "../editors/permissions";
 import type { ServiceClient } from "../foundation/client";
 import { CompanionDockActions, useHasSidebar } from "../foundation/shellContext";
@@ -101,6 +102,8 @@ function AppScreenContent({
   }, [openMission, place]);
   // The tab the channel's pane showed: the panes remount for each quest, and the channel stays on its tab.
   const channelTab: ChannelTabMemory = useRef(null);
+  // Likewise the tab a quest's pane showed: the next quest opens on it, so Errands can be browsed quest by quest.
+  const questTab: QuestTabMemory = useRef(null);
   const setChannelOpen = useCallback((isOpen: boolean) => {
     isChannelOpen.current = isOpen;
   }, []);
@@ -194,6 +197,7 @@ function AppScreenContent({
               openCount={quest?.openCount ?? 0}
               openThread={quest?.openThread ?? null}
               questsRequest={quest === null ? (channel?.questsRequest ?? null) : null}
+              questTabMemory={questTab}
               tabMemory={channelTab}
             />
           </CompanionDockActions.Provider>

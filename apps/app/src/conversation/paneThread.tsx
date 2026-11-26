@@ -12,6 +12,7 @@ import { childErrandsOf } from "./errandRoster";
 import { PaneTabs } from "./paneTabs";
 import { useQuestPages } from "./questPages";
 import { questPanelOf } from "./questPanelOf";
+import { initialQuestTabOf, type PaneTabName, type QuestTabMemory } from "./questTabMemory";
 import { NewReplyCard, ReplyLine } from "./replyLine";
 import { ThreadPane } from "./threadPane";
 
@@ -30,6 +31,7 @@ export const PaneThread = memo(function PaneThread({
   onOpenThread,
   onShowParent,
   onStartErrand,
+  tabMemory,
   threadId,
 }: {
   /** The fold and close buttons of the pane's header. */
@@ -47,6 +49,8 @@ export const PaneThread = memo(function PaneThread({
   /** Opens another thread of the quest: a reply line here opens its errand in the pane beside this one. */
   onOpenThread: (threadId: ThreadId) => void;
   onStartErrand?: (() => void) | undefined;
+  /** Given to a quest's pane: the tab it opens on is the one the last quest showed, and it keeps the memory current. */
+  tabMemory?: QuestTabMemory | undefined;
   threadId: ThreadId;
 }) {
   const { data, error } = useServiceQuery(
@@ -56,9 +60,12 @@ export const PaneThread = memo(function PaneThread({
   );
   // A query for a newly opened thread answers after the previous one; draw only what matches.
   const detail = data !== null && data.thread.id === threadId ? data : null;
-  const [tab, setTab] = useState<"Missives" | "Errands" | "Quest" | "Ritual" | "Errand" | "Companions">(
-    listRequest === undefined ? "Missives" : "Errands",
+  const [tab, setTab] = useState<PaneTabName>(() =>
+    initialQuestTabOf({ hasListRequest: listRequest !== undefined, remembered: tabMemory?.current ?? null }),
   );
+  useEffect(() => {
+    if (tabMemory !== undefined) tabMemory.current = tab;
+  }, [tab, tabMemory]);
   useEffect(() => {
     if (listRequest !== undefined) setTab("Errands");
   }, [listRequest]);

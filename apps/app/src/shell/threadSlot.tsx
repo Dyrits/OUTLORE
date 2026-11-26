@@ -2,6 +2,7 @@ import type { MissionId, ThreadId } from "@outlore/contracts";
 import { memo, useCallback, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import { PaneThread } from "../conversation/paneThread";
+import type { QuestTabMemory } from "../conversation/questTabMemory";
 import type { ServiceClient } from "../foundation/client";
 import { colors } from "../foundation/theme";
 import { ExpandPaneButton, FoldPaneButton } from "../ui/questHeaderButtons";
@@ -26,6 +27,7 @@ export const ThreadSlot = memo(function ThreadSlot({
   revealThread,
   setFocused,
   startErrand,
+  tabMemory,
   threadId,
 }: {
   client: ServiceClient;
@@ -44,6 +46,8 @@ export const ThreadSlot = memo(function ThreadSlot({
   revealThread: (threadId: ThreadId) => void;
   setFocused: (id: ThreadId) => void;
   startErrand: (questId: ThreadId) => void;
+  /** The tab the last quest's pane showed, given to a quest's pane only: an errand's tabs are its own. */
+  tabMemory: QuestTabMemory;
   threadId: ThreadId;
 }) {
   const chrome = useMemo(
@@ -77,6 +81,7 @@ export const ThreadSlot = memo(function ThreadSlot({
         onOpenThread={revealThread}
         {...(onShowParent === undefined ? {} : { onShowParent })}
         onStartErrand={onStartErrand}
+        tabMemory={isQuest ? tabMemory : void 0}
         threadId={threadId}
       />
     </View>

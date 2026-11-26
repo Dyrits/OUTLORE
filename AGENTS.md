@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume phone control (agents use the phone through `phone_*` tools; step 1 delivered, step 2 headless spike awaiting the owner; CHG-0770, CHG-0771), read the [current handoff](.agents/handoffs/2026-11-26-2354-phone-control-headless-spike.md). Handoffs are shared and committed.
-
 - To resume the pane titles that lead to the parent tab and the pane header alignment (built, no screen seen yet), read the [current handoff](.agents/handoffs/2026-11-27-0033-pane-title-parent-tab.md). Handoffs are shared and committed.
 
 - To resume the phone's growing floating bar, side menu and landing in the chat (refactored and `SPEC-01`–`SPEC-09` fixed; real-phone check `SPEC-10` pending; CHG-0773, which also changes Back), read the [current handoff](.agents/handoffs/2026-11-27-0033-phone-growing-bar.md). Handoffs are shared and committed.
+
+- To resume the quest pane that opens on the tab the last quest showed (built and tested; desktop window check pending; CHG-0774), read the [current handoff](.agents/handoffs/2026-11-27-0039-quest-pane-remembers-tab.md). Handoffs are shared and committed.
