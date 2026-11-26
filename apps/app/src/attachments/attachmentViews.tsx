@@ -3,6 +3,8 @@ import { memo, useEffect, useMemo, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
+import { ImageLightbox } from "./imageLightbox";
+import type { LightboxImage } from "./imageLightboxLogic";
 import { loadSentImage, type SentImage, sentImages } from "./sentImage";
 import type { AttachedFile } from "./useAttachments";
 
@@ -12,9 +14,11 @@ const thumbnail = 56;
 
 const AttachmentTile = memo(function AttachmentTile({
   file,
+  onOpen,
   onRemove,
 }: {
   file: AttachedFile;
+  onOpen: () => void;
   onRemove: (key: string) => void;
 }) {
   const source = useMemo(() => (file.previewUrl === null ? null : { uri: file.previewUrl }), [file.previewUrl]);
@@ -25,9 +29,16 @@ const AttachmentTile = memo(function AttachmentTile({
           {file.name}
         </Text>
       ) : (
-        <Image accessibilityLabel={file.name} resizeMode="cover" source={source} style={local.image} />
+        <Pressable
+          accessibilityLabel={`View ${file.name} larger`}
+          accessibilityRole="button"
+          onPress={onOpen}
+          style={local.tilePress}
+        >
+          <Image accessibilityLabel={file.name} resizeMode="cover" source={source} style={local.image} />
+        </Pressable>
       )}
-      {file.card === null && file.previewUrl !== null && <View style={local.uploading} />}
+      {file.card === null && file.previewUrl !== null && <View pointerEvents="none" style={local.uploading} />}
       <Pressable
         accessibilityLabel={`Remove ${file.name}`}
         accessibilityRole="button"
@@ -48,17 +59,42 @@ export function AttachmentStrip({
   files: ReadonlyArray<AttachedFile>;
   onRemove: (key: string) => void;
 }) {
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const previewItems = useMemo(
+    (): ReadonlyArray<LightboxImage> =>
+      files.flatMap((file) =>
+        file.previewUrl === null
+          ? []
+          : [{ key: file.key, kind: "preview", name: file.name, uri: file.previewUrl } satisfies LightboxImage],
+      ),
+    [files],
+  );
+  const openIndex =
+    openKey === null ? -1 : previewItems.findIndex((item) => item.kind === "preview" && item.key === openKey);
   if (files.length === 0) return null;
   return (
-    <View style={local.strip}>
-      {files.map((file) => (
-        <AttachmentTile file={file} key={file.key} onRemove={onRemove} />
-      ))}
-    </View>
+    <>
+      <View style={local.strip}>
+        {files.map((file) => (
+          <AttachmentTile file={file} key={file.key} onOpen={() => setOpenKey(file.key)} onRemove={onRemove} />
+        ))}
+      </View>
+      {openIndex >= 0 && (
+        <ImageLightbox initialIndex={openIndex} items={previewItems} onClose={() => setOpenKey(null)} />
+      )}
+    </>
   );
 }
 
-const SentImageTile = memo(function SentImageTile({ card, client }: { card: AttachmentCard; client: ServiceClient }) {
+const SentImageTile = memo(function SentImageTile({
+  card,
+  client,
+  onOpen,
+}: {
+  card: AttachmentCard;
+  client: ServiceClient;
+  onOpen: () => void;
+}) {
   const [image, setImage] = useState<SentImage | null>(() => {
     const cached = sentImages.peek(card.id);
     return cached === null ? null : { status: "ready", uri: cached };
@@ -86,7 +122,14 @@ const SentImageTile = memo(function SentImageTile({ card, client }: { card: Atta
   return (
     <View style={[local.sent, image?.status === "failed" && local.sentFailed]}>
       {source !== null ? (
-        <Image accessibilityLabel={card.name} resizeMode="cover" source={source} style={local.sentImage} />
+        <Pressable
+          accessibilityLabel={`View ${card.name} larger`}
+          accessibilityRole="button"
+          onPress={onOpen}
+          style={local.sentPress}
+        >
+          <Image accessibilityLabel={card.name} resizeMode="cover" source={source} style={local.sentImage} />
+        </Pressable>
       ) : (
         <Text numberOfLines={2} style={local.tileName}>
           {card.name}
@@ -110,7 +153,7 @@ const SentImageTile = memo(function SentImageTile({ card, client }: { card: Atta
   );
 });
 
-/** The images a sent message carries, as thumbnails under its text. */
+/** The images a sent message carries, as thumbnails under its text; pressing one opens it larger in a panel. */
 export const MessageImages = memo(function MessageImages({
   cards,
   client,
@@ -118,13 +161,24 @@ export const MessageImages = memo(function MessageImages({
   cards: ReadonlyArray<AttachmentCard>;
   client: ServiceClient;
 }) {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const items = useMemo(
+    (): ReadonlyArray<LightboxImage> =>
+      cards.map((card) => ({ attachmentId: card.id, kind: "sent", name: card.name }) satisfies LightboxImage),
+    [cards],
+  );
   if (cards.length === 0) return null;
   return (
-    <View style={local.strip}>
-      {cards.map((card) => (
-        <SentImageTile card={card} client={client} key={card.id} />
-      ))}
-    </View>
+    <>
+      <View style={local.strip}>
+        {cards.map((card, index) => (
+          <SentImageTile card={card} client={client} key={card.id} onOpen={() => setOpenIndex(index)} />
+        ))}
+      </View>
+      {openIndex !== null && (
+        <ImageLightbox client={client} initialIndex={openIndex} items={items} onClose={() => setOpenIndex(null)} />
+      )}
+    </>
   );
 });
 
@@ -155,6 +209,7 @@ const local = StyleSheet.create({
   },
   sentFailed: { height: "auto", minHeight: 96, overflow: "visible" },
   sentImage: { height: 96, width: 96 },
+  sentPress: { height: 96, width: 96 },
   strip: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingTop: 6 },
   tile: {
     backgroundColor: colors.surface,
@@ -164,5 +219,6 @@ const local = StyleSheet.create({
     width: thumbnail,
   },
   tileName: { color: colors.textDim, fontFamily: fonts.sans, fontSize: fontSizes.sm, padding: 4 },
+  tilePress: { borderRadius: radii.md, height: thumbnail, width: thumbnail },
   uploading: { backgroundColor: colors.canvas, borderRadius: radii.md, inset: 0, opacity: 0.5, position: "absolute" },
 });

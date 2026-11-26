@@ -143,16 +143,22 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
   // whose opening message repeats it (a quest started from the dashboard, or an errand started from the errand pane,
   // leaves a copy of its text in the parent conversation), is its own root: its first message is pinned and left out
   // of the replies, so the first reply is the agent's.
-  const [anchored] = yield* sql<NonNullable<MissionDetail["thread"]["root"]>>`
+  const [anchored] = yield* sql<Omit<NonNullable<MissionDetail["thread"]["root"]>, "attachments">>`
       SELECT m.id, m.sender_kind AS sender, m.harness, m.model, COALESCE(s.title, m.sender_title) AS fromTitle, m.text,
         m.sent_at AS sentAt
       FROM threads t JOIN messages m ON m.id = t.anchor_message_id LEFT JOIN threads s ON s.id = m.sender_thread_id
       WHERE t.id = ${selected.id}`;
+  const cardIds =
+    anchored === undefined
+      ? messages.map((message) => message.id)
+      : [...messages.map((message) => message.id), anchored.id];
+  const cards = yield* readCards(cardIds);
   const first = messages.find((message) => message.sender !== "system");
   const ownRoot =
     first === undefined || first.isQueued === 1
       ? undefined
       : {
+          attachments: cards.get(first.id) ?? [],
           fromTitle: first.fromTitle,
           harness: first.harness,
           id: first.id,
@@ -161,8 +167,10 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
           sentAt: first.sentAt,
           text: first.text,
         };
-  const root = anchored !== undefined && anchored.text !== first?.text ? anchored : ownRoot;
-  const cards = yield* readCards(messages.map((message) => message.id));
+  const root =
+    anchored !== undefined && anchored.text !== first?.text
+      ? { ...anchored, attachments: cards.get(anchored.id) ?? [] }
+      : ownRoot;
   const questions = yield* listThreadQuestions(selected.id);
   const suggestions = yield* listThreadSuggestions(selected.id);
   return {

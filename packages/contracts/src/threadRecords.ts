@@ -112,6 +112,8 @@ export type OwnCopyView = typeof OwnCopyView.Type;
  * messages, as Slack's thread panel shows the message replied to (conversation panes, Thread root).
  */
 export const ThreadRoot = Schema.Struct({
+  /** The files attached to the root message; absent from older hosts that did not send them. */
+  attachments: Schema.optionalKey(Schema.Array(AttachmentCard)),
   /** The sending thread's title, for a thread message; null otherwise. */
   fromTitle: Schema.NullOr(Schema.String),
   /** The harness that wrote an agent message; null for other messages. */

@@ -1,5 +1,6 @@
 import type { HarnessName, MissionId, Skill, ThreadId, ThreadRoot } from "@outlore/contracts";
 import { Text, View } from "react-native";
+import { MessageImages } from "../attachments/attachmentViews";
 import type { ServiceClient } from "../foundation/client";
 import { clockOf, replyWriterOf, stampOf } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
@@ -18,10 +19,12 @@ import { SuggestionCard, SuggestionLine } from "./suggestions";
  * and time, then a rule that counts the replies. Read-only: it takes no Reply or comment.
  */
 function ThreadRootView({
+  client,
   harness,
   replyCount,
   root,
 }: {
+  client: ServiceClient;
   /** The harness the thread runs on now: the writer of an agent root that records none. */
   harness: HarnessName;
   replyCount: number;
@@ -36,7 +39,8 @@ function ThreadRootView({
           <Text style={styles.senderName}>{sender}</Text>
           <Text style={styles.senderTime}>{stampOf(root.sentAt)}</Text>
         </View>
-        <Markdown text={root.text} />
+        {root.text !== "" && <Markdown text={root.text} />}
+        <MessageImages cards={root.attachments ?? []} client={client} />
       </View>
       <View style={styles.threadRootDivider}>
         <Text style={styles.muted}>{replyCount === 1 ? "1 reply" : `${replyCount} replies`}</Text>
@@ -72,7 +76,7 @@ export function EntryView({
 }) {
   if (entry._tag === "LiveFooter") return null;
   if (entry._tag === "Root")
-    return <ThreadRootView harness={harness} replyCount={entry.replyCount} root={entry.root} />;
+    return <ThreadRootView client={client} harness={harness} replyCount={entry.replyCount} root={entry.root} />;
   if (entry._tag === "ThreadOpened") return <ReplyLine isCompact onOpen={onSelectThread} thread={entry.thread} />;
   if (entry._tag === "Steps")
     return <StepsGroup client={client} seconds={entry.seconds} steps={entry.steps} threadId={entry.threadId} />;
