@@ -138,3 +138,13 @@ export const eraseEmptyQuest = Effect.fn("eraseEmptyQuest")(function* (threadId:
   yield* eraseSubtree(rows, root);
   return changed(null, { missionsToRemoveScratch: [root.missionId], turnsToCancel: marked.followUps.turnsToCancel });
 });
+
+/** Erases an errand already checked empty by the archive policy, in that policy's transaction. */
+export const eraseEmptyErrand = Effect.fn("eraseEmptyErrand")(function* (threadId: string) {
+  const rows = yield* readSubtree(threadId);
+  const root = rows[0];
+  if (root === undefined || root.parentId === null) return yield* invalid("No errand to delete.");
+  const marked = yield* markDeleting(threadId, previewOf(rows).confirmation);
+  const erased = yield* eraseSubtree(rows, root);
+  return changed(null, { ...erased.followUps, turnsToCancel: marked.followUps.turnsToCancel });
+});

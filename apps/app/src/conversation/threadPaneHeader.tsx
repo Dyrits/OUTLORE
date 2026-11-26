@@ -99,7 +99,7 @@ export function ThreadPaneHeader({
           ? ending.run(() => client.request({ _tag: "ReopenMission", missionId: detail.mission.id }))
           : ending.start("Fulfilled")
     : null;
-  const errandActions = <ErrandHeaderActions act={act} client={client} detail={detail} />;
+  const errandActions = <ErrandHeaderActions act={act} client={client} detail={detail} onSelect={onSelect} />;
   const doneAction = markDone !== null && (
     <DoneButton
       isDisabled={ending.isBusy || ending.pending !== null}

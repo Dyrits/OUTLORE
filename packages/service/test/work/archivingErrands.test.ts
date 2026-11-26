@@ -35,6 +35,32 @@ describe("archiving an errand on its own", () => {
     ),
   );
 
+  it.live("deletes an errand that holds nothing instead of archiving it", () =>
+    withService(
+      Effect.gen(function* () {
+        const { missionId, threadId } = yield* start("Hello");
+        const detail = yield* settle(missionId, (current) => current.thread.state === "Resting");
+        const message = detail.messages.find((candidate) => candidate.sender === "agent");
+        if (message === undefined) return yield* Effect.die("No reply");
+        const opened = yield* call({
+          _tag: "ReplyToMessage",
+          accountId: detail.thread.accountId,
+          effort: detail.thread.effort,
+          harness: detail.thread.harness,
+          messageId: message.id,
+          model: detail.thread.model,
+          requestId: "empty-errand",
+        });
+        expect((yield* read(missionId, opened.threadId)).threads.find((t) => t.id === opened.threadId)?.isEmpty).toBe(
+          true,
+        );
+        yield* call({ _tag: "ArchiveThread", threadId: opened.threadId });
+        expect((yield* call({ _tag: "ReadThreadTree", missionId })).map((thread) => thread.id)).toEqual([threadId]);
+        expect((yield* read(missionId)).threads.map((thread) => thread.id)).toEqual([threadId]);
+      }),
+    ),
+  );
+
   it.live("refuses the quest's own thread", () =>
     withService(
       Effect.gen(function* () {

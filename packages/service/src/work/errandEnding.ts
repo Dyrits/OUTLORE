@@ -1,6 +1,8 @@
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, notFound, touchMission } from "../core/index.ts";
+import { eraseEmptyErrand } from "./deleting.ts";
+import { emptyErrandCondition } from "./emptyQuest.ts";
 import { changed } from "./followUps.ts";
 import { activeStates, haltThreads, relaxAncestors } from "./lifecycle.ts";
 
@@ -70,11 +72,16 @@ const readErrandTree = Effect.fnUntraced(function* (threadId: string) {
 
 /**
  * The owner archives an errand on its own: it and the errands beneath it stop if they are at work, and leave the
- * lists, their conversations kept. Each parent left Waiting with nothing at work beneath it returns to Resting.
+ * lists, their conversations kept; an errand holding nothing is deleted instead. Each parent left Waiting with nothing at work beneath it returns to Resting.
  */
 export const archiveThread = Effect.fn("archiveThread")(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* readErrandTree(threadId);
+  const [empty] = yield* sql<{
+    isEmpty: number;
+  }>`SELECT ${sql.literal(emptyErrandCondition("t.id"))} AS isEmpty FROM threads t WHERE t.id = ${threadId}`;
+  // An errand that holds nothing is deleted rather than kept, as an empty quest is.
+  if (empty?.isEmpty === 1) return yield* eraseEmptyErrand(threadId);
   const ids = rows.map((row) => row.id);
   const working = rows.filter((row) => activeStates.includes(row.state)).map((row) => row.id);
   const now = yield* Clock.currentTimeMillis;

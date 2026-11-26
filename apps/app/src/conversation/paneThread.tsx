@@ -167,6 +167,7 @@ function ListedErrand({
             act={act}
             client={client}
             isDisabled={isBusy}
+            isEmpty={thread.isEmpty === true}
             state={thread.state}
             threadId={thread.id}
             title={thread.title}

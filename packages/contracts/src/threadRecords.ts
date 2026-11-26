@@ -63,6 +63,8 @@ export const ThreadSummary = Schema.Struct({
   isArchived: Schema.optionalKey(Schema.Boolean),
   /** Whether it holds an off-topic request the owner kept as an aside (thread-tree, Off-topic requests). */
   isAside: Schema.Boolean,
+  /** Whether an errand holds nothing of its own (no message, turn, or errand beneath it): archiving it deletes it. */
+  isEmpty: Schema.optionalKey(Schema.Boolean),
   /** Whether a thread opened it with `open_thread`, rather than the owner. */
   isOpenedByAgent: Schema.Boolean,
   /** The time of its latest message, or of its opening while it has none. */

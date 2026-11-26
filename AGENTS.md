@@ -63,6 +63,6 @@ Latest handoffs:
 
 - To resume the Android app's direct channels (CHG-0754), read the [current handoff](.agents/handoffs/2026-11-26-0900-android-direct-channel.md). Handoffs are shared and committed.
 
-- To resume Reply opening the child thread, on-demand parent search, opener tail, and reply strip alignment (CHG-0746, CHG-0748, CHG-0749), read the [current handoff](.agents/handoffs/2026-11-25-2028-reply-opens-child-and-parent-search.md). Handoffs are shared and committed.
+- To resume deleting an empty errand a Reply opened (CHG-0755), read the [current handoff](.agents/handoffs/2026-11-26-0929-empty-reply-errand-deletable.md). Handoffs are shared and committed.
 
 - To resume the whole-codebase review and refactor after its merge (CHG-0750 to CHG-0752), read the [current handoff](.agents/handoffs/2026-11-26-0725-codebase-review-and-refactor-merged.md). Handoffs are shared and committed.

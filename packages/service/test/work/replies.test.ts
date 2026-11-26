@@ -321,6 +321,8 @@ describe("replying to a message", () => {
         const errand = yield* read(started.missionId, opened.threadId);
         expect(errand.thread.parentId).toBe(started.threadId);
         expect(errand.messages).toHaveLength(0);
+        // Hung from a message of its parent, it holds nothing of its own: archiving it deletes it.
+        expect(errand.threads.find((thread) => thread.id === opened.threadId)?.isEmpty).toBe(true);
         expect(errand.thread.state).toBe("Resting");
         expect(yield* anchorsOf(started.threadId)).toEqual([
           { messageId: message.id, missionId: started.missionId, threadId: opened.threadId, title: "Errand" },

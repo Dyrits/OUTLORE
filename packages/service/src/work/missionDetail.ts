@@ -9,6 +9,7 @@ import { listThreadActivities } from "./activities.ts";
 import { readCards } from "./attachments.ts";
 import { listBudgetEvents, readHeldStop } from "./budgetViews.ts";
 import { readChatter } from "./chatter.ts";
+import { emptyErrandCondition } from "./emptyQuest.ts";
 import { lastSampleOf, replyCountOf } from "./exchangeSamples.ts";
 import { listHandovers } from "./handover.ts";
 import { threadActionsOf } from "./lifecycle.ts";
@@ -22,8 +23,12 @@ import { readThreadWorkspace } from "./workspaces.ts";
 
 // What the owner reads of one mission: its thread tree and one thread's conversation.
 
-type ThreadRow = Omit<ThreadSummary, "isOpenedByAgent" | "isAside" | "isArchived" | "lastExchange" | "shownState"> & {
+type ThreadRow = Omit<
+  ThreadSummary,
+  "isOpenedByAgent" | "isAside" | "isArchived" | "isEmpty" | "lastExchange" | "shownState"
+> & {
   isArchived: number;
+  isEmpty: number;
   isOpenedByAgent: number;
   isAside: number;
   lastOwnerText: string | null;
@@ -41,7 +46,8 @@ const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId:
         FROM threads t JOIN tree ON t.parent_id = tree.id
       )
       SELECT t.id, t.parent_id AS parentId, t.title, t.state, tree.depth, tree.path,
-        (t.archived_at IS NOT NULL) AS isArchived, t.is_opened_by_agent AS isOpenedByAgent, t.is_aside AS isAside,
+        (t.archived_at IS NOT NULL) AS isArchived, ${sql.literal(emptyErrandCondition("t.id"))} AS isEmpty,
+        t.is_opened_by_agent AS isOpenedByAgent, t.is_aside AS isAside,
         (SELECT COALESCE(MIN(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS openedAt,
         (SELECT COALESCE(MAX(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS lastActivityAt,
         t.harness, t.model,
@@ -55,6 +61,7 @@ const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId:
     ...row,
     isArchived: row.isArchived === 1,
     isAside: row.isAside === 1,
+    isEmpty: row.parentId !== null && row.isEmpty === 1,
     isOpenedByAgent: row.isOpenedByAgent === 1,
     lastExchange: { owner: lastOwnerText, reply: lastReplyText },
   }));

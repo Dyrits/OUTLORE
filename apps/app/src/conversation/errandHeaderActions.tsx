@@ -16,15 +16,26 @@ export function ErrandHeaderActions({
   act,
   client,
   detail,
+  onSelect,
 }: {
   act: (request: Promise<unknown>) => Promise<void>;
   client: ServiceClient;
   detail: MissionDetail;
+  onSelect: (threadId: ThreadId) => void;
 }) {
   if (!hasErrandActions(detail)) return null;
   const { thread } = detail;
+  const isEmpty = detail.threads.find((candidate) => candidate.id === thread.id)?.isEmpty === true;
   return (
-    <ErrandEndingButtons act={(work) => void act(work())} client={client} state={thread.state} threadId={thread.id} />
+    <ErrandEndingButtons
+      act={(work) => void act(work())}
+      client={client}
+      isEmpty={isEmpty}
+      // A deleted errand leaves its pane for the conversation it hung from.
+      onDeleted={() => thread.parentId !== null && onSelect(thread.parentId)}
+      state={thread.state}
+      threadId={thread.id}
+    />
   );
 }
 
@@ -32,6 +43,8 @@ export function ErrandEndingButtons({
   act,
   client,
   isDisabled = false,
+  isEmpty = false,
+  onDeleted,
   state,
   threadId,
   title,
@@ -39,6 +52,10 @@ export function ErrandEndingButtons({
   act: (work: () => Promise<unknown>) => void;
   client: ServiceClient;
   isDisabled?: boolean;
+  /** Whether the errand holds nothing of its own, so archiving it deletes it. */
+  isEmpty?: boolean;
+  /** Called once an empty errand has been deleted. */
+  onDeleted?: () => void;
   state: ThreadState;
   threadId: ThreadId;
   title?: string;
@@ -48,9 +65,14 @@ export function ErrandEndingButtons({
   return (
     <>
       <ArchiveButton
+        isDelete={isEmpty}
         isDisabled={isDisabled}
-        label={title === undefined ? "Archive errand" : `Archive errand: ${title}`}
-        onPress={() => act(() => client.request({ _tag: "ArchiveThread", threadId }))}
+        label={`${isEmpty ? "Delete" : "Archive"} errand${title === undefined ? "" : `: ${title}`}`}
+        onPress={() =>
+          act(() =>
+            client.request({ _tag: "ArchiveThread", threadId }).then(() => (isEmpty ? onDeleted?.() : undefined)),
+          )
+        }
       />
       <DoneButton
         isDisabled={isDisabled}
