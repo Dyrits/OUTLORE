@@ -1,13 +1,11 @@
 import { memo, type ReactNode, useContext } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import type { ServiceClient } from "../foundation/client";
 import { HostMenuContext } from "../foundation/hostContext";
 import { useIslandFrame } from "../foundation/islands";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
-import { useServiceQuery } from "../foundation/useServiceQuery";
 import { UpdateNotice } from "../updates";
-import { unreadCountOf } from "./chronicleFeed";
 import { HostMenu } from "./hostMenu";
+import { PhoneIcon } from "./phoneIcons";
 
 // The window's top bar: the host menu, the spending, the quest panel's icon, and the column that
 // holds the quest panel.
@@ -40,27 +38,21 @@ export function PanelIcon({ side = "left" }: { side?: "left" | "right" }) {
 }
 
 /**
- * The top bar: the host menu at its start and, at the end, the quest panel's icon and, furthest right like its panel, Chronicler's mark. It names no place: the rail and the screens say where the owner is.
+ * The wide window's top bar: the host menu at its start and, at the end, the quest panel's icon and the sidebar's pin button. It names no place: the rail and the screens say where the owner is.
  */
 export const TopBar = memo(function TopBar({
   details,
-  chronicler,
-  menu,
   sidebar,
 }: {
   /** The icon that shows or hides the quest's side panel; none outside a quest. */
   details: DetailsToggle | null;
-  /** The button that opens or folds Chronicler's screen in a window too narrow for panes; where the Chronicle is a pane, none. */
-  chronicler?: { isOpen: boolean; onToggle: () => void };
-  /** The button that opens or closes the full-screen menu, in a window too narrow for the sidebar; none where it shows. */
-  menu?: { isOpen: boolean; onToggle: () => void; unreadCount?: number };
   /** The button that pins or unpins the overlay sidebar, on the side the sidebar belongs to; none when it is docked. */
   sidebar?: { isPinned: boolean; onToggle: () => void; side: "left" | "right" };
 }) {
   const hostMenu = useContext(HostMenuContext);
   const islands = useIslandFrame();
   // On the Islands canvas, the canvas's own color would hide the pressed state.
-  const isOnCanvas = islands !== null && menu === undefined;
+  const isOnCanvas = islands !== null;
   const active = isOnCanvas ? local.topIconOnCanvas : local.topIconActive;
   const sidebarButton = sidebar !== undefined && (
     <Pressable
@@ -85,29 +77,6 @@ export const TopBar = memo(function TopBar({
       ]}
     >
       {sidebar?.side === "left" && sidebarButton}
-      {menu !== undefined && (
-        <Pressable
-          accessibilityLabel={
-            menu.isOpen
-              ? "Close the menu"
-              : menu.unreadCount !== undefined && menu.unreadCount > 0
-                ? `Open the menu, ${menu.unreadCount} unread`
-                : "Open the menu"
-          }
-          accessibilityRole="button"
-          accessibilityState={{ expanded: menu.isOpen }}
-          onPress={menu.onToggle}
-          style={({ pressed }) => [local.topIcon, (pressed || menu.isOpen) && active, noDragRegion]}
-        >
-          <PanelIcon />
-          {menu.unreadCount !== undefined && menu.unreadCount > 0 && (
-            // What needs the owner, seen from every phone screen: the Chronicle's unread count on the menu button.
-            <View style={local.menuBadge}>
-              <Text style={local.menuBadgeText}>{menu.unreadCount}</Text>
-            </View>
-          )}
-        </Pressable>
-      )}
       {hostMenu !== null && (
         <View style={noDragRegion}>
           <HostMenu {...hostMenu} />
@@ -127,40 +96,69 @@ export const TopBar = memo(function TopBar({
           <PanelIcon side="right" />
         </Pressable>
       )}
-      {chronicler !== undefined && (
-        <Pressable
-          accessibilityLabel={chronicler.isOpen ? "Fold Chronicler" : "Ask Chronicler"}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: chronicler.isOpen }}
-          onPress={chronicler.onToggle}
-          style={({ pressed }) => [local.topIcon, (pressed || chronicler.isOpen) && active, noDragRegion]}
-        >
-          <Text style={local.chroniclerMark}>✦</Text>
-        </Pressable>
-      )}
       {sidebar?.side === "right" && sidebarButton}
     </View>
   );
 });
 
 /**
- * The narrow window's top bar: its menu button carries the Chronicle's unread count, so what needs the owner shows
- * from every phone screen without opening the menu.
+ * The narrow window's top bar (CHG-0761): the name of the tab shown, the host menu, the quest panel's icon in a quest,
+ * and, furthest right on every screen, the Menu button that opens the places the pill's tabs do not cover.
  */
 export function NarrowTopBar({
-  chronicler,
-  client,
   details,
-  menu,
+  isMenuOpen,
+  onBack,
+  onMenu,
+  title,
 }: {
-  chronicler: { isOpen: boolean; onToggle: () => void };
-  client: ServiceClient;
   details: DetailsToggle | null;
-  menu: { isOpen: boolean; onToggle: () => void };
+  isMenuOpen: boolean;
+  /** Goes back to the Menu from a place it opened; null on any other screen. */
+  onBack: (() => void) | null;
+  onMenu: () => void;
+  /** What the bar names, or null where the screen has a header of its own. */
+  title: string | null;
 }) {
-  const { data: chronicle } = useServiceQuery(client, { _tag: "ReadChronicle" }, "chronicle-menu-badge");
-  const unreadCount = unreadCountOf(chronicle ?? []);
-  return <TopBar chronicler={chronicler} details={details} menu={{ ...menu, unreadCount }} />;
+  const hostMenu = useContext(HostMenuContext);
+  return (
+    <View style={local.topBar}>
+      {onBack !== null && (
+        <Pressable
+          accessibilityLabel="Back to the menu"
+          accessibilityRole="button"
+          hitSlop={6}
+          onPress={onBack}
+          style={({ pressed }) => [local.topIcon, pressed && local.topIconActive]}
+        >
+          <Text style={local.backChevron}>‹</Text>
+        </Pressable>
+      )}
+      {title !== null && <Text style={local.narrowTitle}>{title}</Text>}
+      {hostMenu !== null && <HostMenu {...hostMenu} />}
+      <View style={local.spacer} />
+      <UpdateNotice />
+      {details !== null && details.isPinned !== true && (
+        <Pressable
+          accessibilityLabel={details.isOpen ? "Hide quest panel" : "Show quest panel"}
+          accessibilityRole="button"
+          onPress={details.onToggle}
+          style={({ pressed }) => [local.topIcon, (pressed || details.isOpen) && local.topIconActive]}
+        >
+          <PanelIcon side="right" />
+        </Pressable>
+      )}
+      <Pressable
+        accessibilityLabel={isMenuOpen ? "Close the menu" : "Open the menu"}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isMenuOpen }}
+        onPress={onMenu}
+        style={({ pressed }) => [local.topIcon, (pressed || isMenuOpen) && local.topIconActive]}
+      >
+        <PhoneIcon color={colors.onGround} name="grid" size={18} />
+      </Pressable>
+    </View>
+  );
 }
 
 /**
@@ -222,25 +220,11 @@ export function QuestColumn({
 }
 
 const local = StyleSheet.create({
-  chroniclerMark: { color: colors.accentText, fontSize: fontSizes.lg },
+  backChevron: { color: colors.onGround, fontSize: 26, lineHeight: 28 },
   crumbCurrent: { color: colors.onGround },
   crumbPinned: { paddingLeft: 6 },
   crumbText: { fontFamily: fonts.sans, fontSize: fontSizes.lg },
-  // The Chronicle's unread count on the narrow menu button, at its corner like an app icon's badge.
-  menuBadge: {
-    alignItems: "center",
-    backgroundColor: colors.marker,
-    borderColor: colors.accentText,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    justifyContent: "center",
-    minWidth: 15,
-    paddingHorizontal: 3,
-    position: "absolute",
-    right: -6,
-    top: -5,
-  },
-  menuBadgeText: { color: colors.accentText, fontFamily: fonts.sans, fontSize: 9, fontWeight: "600" },
+  narrowTitle: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.lg, fontWeight: "600" },
   panelIcon: {
     borderColor: colors.onGround,
     borderRadius: 3,

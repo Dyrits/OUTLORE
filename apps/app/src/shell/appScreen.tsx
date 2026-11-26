@@ -31,12 +31,14 @@ interface Navigation {
   closeRitualForm: () => void;
   goTo: (place: Place) => void;
   openChannel: (listing: RealmListing | null) => void;
-  /** Shows the narrow window's main menu: the sidebar as a full screen. */
+  /** Shows the narrow window's Menu of places. */
   openMenu: () => void;
   /** Opens a quest; the origin says where its Back returns in a narrow window. */
   openMission: (id: MissionId, origin?: QuestOrigin) => void;
   /** Goes to a quest's parent view: its realm's channel, or the home screen for a quest in no realm. */
   openParent: (quest: { workspaceId: string | null; workspaceName: string | null }) => void;
+  /** Shows the narrow window's Quests tab: the realms and their quests as a full screen. */
+  openQuests: () => void;
   /** Opens a quest's errand; the origin says where its Back returns in a narrow window. */
   openThread: (missionId: MissionId, threadId: ThreadId, origin?: QuestOrigin) => void;
   selectMission: (id: MissionId | null) => void;
@@ -104,26 +106,32 @@ function AppScreenContent({
   const setChannelOpen = useCallback((isOpen: boolean) => {
     isChannelOpen.current = isOpen;
   }, []);
+  // A narrow window has no sidebar and shows a quest as one conversation at a time; a wide one shows panes.
+  const hasPanes = useHasSidebar();
+  // A place the Menu opened goes back to the Menu; a wide window has the Home screen to go back to.
+  const leave = hasPanes ? () => navigation.goTo("Home") : navigation.openMenu;
   const home = <HomeScreen client={client} onOpen={navigation.openMission} />;
+  const chronicle = (
+    <ChronicleActivity
+      client={client}
+      onOpenChannel={navigation.openChannel}
+      onOpenMission={(missionId, target) => {
+        onTarget(missionId, target);
+        navigation.openMission(missionId, "chronicle");
+      }}
+      onOpenThread={(missionId, threadId, target) => {
+        onTarget(missionId, target);
+        navigation.openThread(missionId, threadId, "chronicle");
+      }}
+    />
+  );
   const screens = {
     Archived: <ArchiveScreen client={client} onOpen={navigation.openMission} />,
     Channel: home,
-    Chronicle: (
-      <ChronicleActivity
-        client={client}
-        onOpenChannel={navigation.openChannel}
-        onOpenMission={(missionId, target) => {
-          onTarget(missionId, target);
-          navigation.openMission(missionId, "chronicle");
-        }}
-        onOpenThread={(missionId, threadId, target) => {
-          onTarget(missionId, target);
-          navigation.openThread(missionId, threadId, "chronicle");
-        }}
-      />
-    ),
-    Home: home,
-    Lore: <LoreScreen client={client} onBack={() => navigation.goTo("Home")} threadId={null} title="All lore" />,
+    Chronicle: chronicle,
+    // The phone's first screen is its Chronicle tab (CHG-0761); the Home screen's start button is the wide window's.
+    Home: hasPanes ? home : chronicle,
+    Lore: <LoreScreen client={client} onBack={leave} threadId={null} title="All lore" />,
     Reserves: <UsageScreen client={client} />,
     Settings: view.isPermissionsOpen ? (
       <PermissionsScreen client={client} onBack={() => navigation.setPermissions(false)} />
@@ -131,14 +139,12 @@ function AppScreenContent({
       <SettingsScreen
         active={view.settingsSection}
         client={client}
-        onBack={() => navigation.goTo("Home")}
+        onBack={leave}
         onPermissions={() => navigation.setPermissions(true)}
         onSection={navigation.setSettingsSection}
       />
     ),
   } satisfies Record<Place, ReactNode>;
-  // A wide window shows a quest as a chain of panes; a narrow one keeps one conversation at a time.
-  const hasPanes = useHasSidebar();
   // The Ritual form stands over the conversation area (CHG-0643): it is a screen of the middle panel, not a modal,
   // so it covers both the panes and the screens, and closing it returns to whatever was showing before it.
   const ritualForm =
@@ -221,7 +227,7 @@ function AppScreenContent({
             channel={channel}
             client={client}
             listRequest={channel.questsRequest ?? void 0}
-            onBack={navigation.openMenu}
+            onBack={navigation.openQuests}
             onOpenMission={(id) => navigation.openMission(id, "channel")}
             onOpenThread={(missionId, threadId) => navigation.openThread(missionId, threadId, "channel")}
             tabMemory={channelTab}

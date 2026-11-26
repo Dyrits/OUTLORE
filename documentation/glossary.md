@@ -172,8 +172,9 @@ The former sidebar destination for Connectors and The Vault.
 The owner now manages them under **Workshop → Connectors** (CHG-0449, CHG-0457).
 
 **The menu**:
-On a narrow screen, the top bar's menu button opens the sidebar as a screen.
-The Workshop row is at its foot.
+On a narrow screen, the top bar's Menu button, a grid of four squares at its right on every screen, opens a screen of tiles for the places the tabs do not cover: Lore, Archive, Reserves, and Settings (the Workshop) (CHG-0761).
+The realms and quests are the Quests tab of the floating pill beside the Chronicle and Chronicler tabs.
+The pill is replaced by the conversation's own composer in a quest or errand.
 
 **Connector**:
 A named integration that gives threads the tools of one outside service or app, installed once by the owner from the list Outlore offers. It is **installed** (on this computer, global), **connected** (given a key, a sign-in or a permission) and **enabled** (switched on for a realm, the Borderlands or a quest); a thread can use it only when all three hold ([connectors](capabilities/connectors/specifications.md)).

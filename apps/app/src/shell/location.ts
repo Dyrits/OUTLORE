@@ -6,8 +6,11 @@ import { archiveParentOf, resumablePlaces } from "./navigation";
 import type { RealmListing } from "./questTree";
 import type { Place } from "./sidebar";
 
-/** Where a quest opened in a narrow window returns to on Back: the channel or the Chronicle it was opened from. */
-export type QuestOrigin = "channel" | "chronicle";
+/**
+ * Where a quest opened in a narrow window returns to on Back: the channel, the Chronicle, or Chronicler's chat it was
+ * opened from.
+ */
+export type QuestOrigin = "channel" | "chronicle" | "chronicler";
 
 /** The window's destination, conversation page, and transient covering layers. */
 export type Location = {
@@ -26,8 +29,12 @@ export type Location = {
   /** The Ritual form covering the conversation area (CHG-0643), or null when none is. */
   ritualForm: RitualFormTarget | null;
   isChroniclerBudgetOpen: boolean;
+  /** The narrow window's Menu of places (Lore, Archive, Reserves, Settings) covering the content (CHG-0761). */
   isMenuOpen: boolean;
+  /** The narrow window's Chronicler tab covering the content. */
   isNarrowChroniclerOpen: boolean;
+  /** The narrow window's Quests tab, the realms and their quests, covering the content (CHG-0761). */
+  isQuestsOpen: boolean;
   /** Where the owner was when the Workshop was opened from its icon; pressing the icon again goes back there. */
   workshopReturn: Location | null;
 };
@@ -51,6 +58,7 @@ export type NavigationEvent =
   | { type: "chroniclerRealm"; path: string | null }
   | { type: "chroniclerBudget"; isOpen: boolean }
   | { type: "menu"; isOpen: boolean }
+  | { type: "quests"; isOpen: boolean }
   | { type: "narrowChronicler"; isOpen: boolean };
 
 /** Starts without a quest; only destinations independent of a saved selection resume. */
@@ -60,6 +68,7 @@ export const initialLocation = (resumed: string | null): Location => ({
   isMenuOpen: false,
   isNarrowChroniclerOpen: false,
   isPermissionsOpen: false,
+  isQuestsOpen: false,
   listedRealm: null,
   listRequest: null,
   openCount: 0,
@@ -80,6 +89,7 @@ const uncovered = (location: Location): Location => ({
   isMenuOpen: false,
   isNarrowChroniclerOpen: false,
   isPermissionsOpen: false,
+  isQuestsOpen: false,
   listRequest: null,
   page: null,
   questReturn: null,
@@ -148,12 +158,14 @@ const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "w
       selectedMission: null,
     };
   if (event.type === "backFromQuest")
-    // A quest opened from the channel or the Chronicle returns there; any other opens the narrow window's menu.
+    // A quest opened from the channel, the Chronicle or Chronicler returns there; any other opens the narrow window's
+    // Quests tab, over the quest, which stays mounted beneath it.
     return location.questReturn === null
-      ? { ...location, isMenuOpen: true, isNarrowChroniclerOpen: false }
+      ? { ...location, isMenuOpen: false, isNarrowChroniclerOpen: false, isQuestsOpen: true }
       : {
           ...uncovered(location),
           ...(location.questReturn === "channel" ? { listRequest: location.listRequest } : {}),
+          ...(location.questReturn === "chronicler" ? { isNarrowChroniclerOpen: true } : {}),
           openMission: null,
           openThread: null,
         };
@@ -191,11 +203,15 @@ const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "w
     return {
       ...location,
       guildmasterRealm: event.path,
-      ...(event.path === null ? {} : { isMenuOpen: false, isNarrowChroniclerOpen: true }),
+      ...(event.path === null ? {} : { isMenuOpen: false, isNarrowChroniclerOpen: true, isQuestsOpen: false }),
     };
   if (event.type === "chroniclerBudget") return { ...location, isChroniclerBudgetOpen: event.isOpen };
-  if (event.type === "menu") return { ...location, isMenuOpen: event.isOpen, isNarrowChroniclerOpen: false };
-  return { ...location, isMenuOpen: false, isNarrowChroniclerOpen: event.isOpen };
+  // The narrow window's three covers, the Menu, the Quests tab and Chronicler, are exclusive.
+  if (event.type === "menu")
+    return { ...location, isMenuOpen: event.isOpen, isNarrowChroniclerOpen: false, isQuestsOpen: false };
+  if (event.type === "quests")
+    return { ...location, isMenuOpen: false, isNarrowChroniclerOpen: false, isQuestsOpen: event.isOpen };
+  return { ...location, isMenuOpen: false, isNarrowChroniclerOpen: event.isOpen, isQuestsOpen: false };
 };
 
 /** The panel follows the destination and page, without copying the frame's layer state. */

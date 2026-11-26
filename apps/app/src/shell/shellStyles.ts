@@ -50,15 +50,9 @@ export const shellStyles = StyleSheet.create({
     paddingRight: 3,
     width: handleSize * 0.75,
   },
-  hidden: { display: "none" },
   // The Islands layout's frame: the canvas shows through, and the islands' shadows are not cut at its edge.
   islandFrame: { backgroundColor: "transparent", overflow: "visible" },
   islandWindow: { backgroundColor: "transparent" },
-  // The full-screen menu is a row so the sidebar stretches to the window's height, as in the wide frame, and its foot
-  // sits at the bottom of the screen.
-  menuScreen: { flexDirection: "row" },
-  narrow: { backgroundColor: colors.page, flex: 1 },
-  narrowContent: { flex: 1 },
   panel: { backgroundColor: colors.page, flex: 1, overflow: "hidden" },
   panelDivider: { borderColor: colors.edge, borderLeftWidth: 1 },
   // The content when it holds the panes: they are the islands, so the panel is nothing and the shadows are not cut.
