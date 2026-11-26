@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the History tab's archived quests switch (CHG-0756), read the [current handoff](.agents/handoffs/2026-11-26-1050-history-shows-archived-quests.md). Handoffs are shared and committed.
-
 - To resume the phone's floating pill shell (CHG-0761), read the [current handoff](.agents/handoffs/2026-11-26-1445-phone-floating-pill.md). Handoffs are shared and committed.
 
 - To resume first-message image display and the image lightbox panel, read the [current handoff](.agents/handoffs/2026-11-26-1455-first-message-image-and-lightbox.md). Handoffs are shared and committed.
+
+- To resume the Chronicle pinning no thread root (CHG-0762), read the [current handoff](.agents/handoffs/2026-11-26-1455-chronicle-no-root.md). Handoffs are shared and committed.
