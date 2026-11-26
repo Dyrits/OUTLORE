@@ -25,7 +25,6 @@ export {
   type FakeUpdates,
   fakeHarnessToolsLayer,
   HarnessTools,
-  liveHarnessToolsLayer,
   type SignInStatus,
 } from "./harnessTools.ts";
 export {
@@ -35,6 +34,7 @@ export {
   type ThreadPosition,
   threadInstructionsOf,
 } from "./instructions.ts";
+export { liveHarnessToolsLayer } from "./liveHarnessTools.ts";
 export { type MuseOptions, makeMuseHarness } from "./muse.ts";
 export { readMuseSignIn } from "./museAccount.ts";
 export { listOpenCodeEfforts, makeOpenCodeHarness, type OpenCodeOptions } from "./opencode.ts";

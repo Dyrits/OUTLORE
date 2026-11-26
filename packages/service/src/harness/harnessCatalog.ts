@@ -1,107 +1,24 @@
-import {
-  type EffortChoice,
-  type HarnessName,
-  harnessDescriptors,
-  harnessLabels,
-  harnessNames,
-  type ModelOption,
-} from "@outlore/contracts";
+import { type HarnessName, harnessDescriptors, harnessLabels, harnessNames } from "@outlore/contracts";
 import { Record } from "effect";
-import {
-  type AccountIsolation,
-  computerOnlyIsolation,
-  isComputerOnly,
-  isolationEnvOf,
-  singleVarIsolation,
-} from "./accountIsolation.ts";
-import {
-  type AcpProviderDefinition,
-  type AcpSignInCommand,
-  acpSignInOf,
-  type VersionGate,
-} from "./acpProviderDefinition.ts";
+import { isComputerOnly, isolationEnvOf } from "./accountIsolation.ts";
+import { acpHarnessServiceFacts } from "./acpHarnessFacts.ts";
+import { type AcpSignInCommand, acpSignInOf, type VersionGate } from "./acpProviderDefinition.ts";
 import { acpProviders } from "./acpProviderRoster.ts";
-import { antigravity } from "./antigravityProvider.ts";
-import { cline } from "./clineProvider.ts";
-import { copilot } from "./copilotProvider.ts";
-import { cursor } from "./cursorProvider.ts";
-import { devin } from "./devinProvider.ts";
-import { hermes } from "./hermesProvider.ts";
+import {
+  claudeCheapestModel,
+  claudeModels,
+  type HarnessServiceFacts,
+  nativeHarnessServiceFacts,
+  type SandboxAdvice,
+} from "./nativeHarnessFacts.ts";
 
-export { harnessLabels, harnessNames };
+export { claudeCheapestModel, claudeModels, harnessLabels, harnessNames, type SandboxAdvice };
 
-// What Outlore knows of each harness without running it (provider-accounts). The registry (harnesses.ts)
-// adds how each one runs; these facts stay apart so the modules a harness's adapter needs can read them.
+// What Outlore knows of each harness without running it (provider-accounts).
+// The registry (harnesses.ts) adds how each one runs; these facts stay apart so the modules a harness's adapter needs can read them.
 
-/**
- * The effort levels Claude Code offers for each model below, as its own model list says (`supportedEffortLevels` in
- * its initialize reply, read on 2026-11-11, matching its `--effort` values); check again when adding a model.
- */
-const claudeEfforts: ReadonlyArray<EffortChoice> = ["low", "medium", "high", "xhigh", "max"];
-
-/** The cheapest model Outlore knows for Claude Code, where Chronicler, which only routes, starts. */
-export const claudeCheapestModel = "claude-haiku-5-5";
-
-/**
- * Claude Code's models, each by its full identifier so the owner picks a version, newest family first. The
- * aliases (`opus`, `sonnet`) stay valid for threads that already use them but are no longer offered.
- */
-export const claudeModels: ReadonlyArray<ModelOption> = [
-  { efforts: claudeEfforts, id: "claude-fable-5-2", label: "Fable 5.2" },
-  { efforts: claudeEfforts, id: "claude-opus-5-5", label: "Opus 5.5" },
-  { efforts: claudeEfforts, id: "claude-sonnet-5-5", label: "Sonnet 5.5" },
-  { efforts: claudeEfforts, id: claudeCheapestModel, label: "Haiku 5.5" },
-];
-
-/** How a thread on a sandboxed harness is told to leave its sandbox, when allowed or when asking. */
-export type SandboxAdvice = {
-  readonly allowed: string;
-  readonly asking: string | null;
-};
-
-/** Service-owned facts for one harness before merging shared identity fields from `@outlore/contracts`. */
-type HarnessServiceFacts = {
-  /** What a command approved through `request_approval` needs on this harness, appended to that rule. */
-  readonly approvedCommandAdvice: string;
-  /** The default executable name when no `OUTLORE_<HARNESS>_PATH` override is set. */
-  readonly defaultExecutable: string;
-  /** The harness's own fixed list of models, or null when its tool lists them. */
-  readonly fixedModels: ReadonlyArray<ModelOption> | null;
-  /** Whether an account's own folder isolates the harness's sign-in and sessions, and which variables point it there; every surface derives from it. */
-  readonly isolation: AccountIsolation;
-  /** Whether the harness asks its permission prompts through the `answer_prompt` thread tool (ADR 0005). */
-  readonly hasPromptTool: boolean;
-  /** The distribution method the Workshop uses to install the harness. */
-  readonly installVia: "npm" | "uv" | "script";
-  /** An older executable name preferred when already installed on `PATH`, or omitted when none exists. */
-  readonly legacyExecutable?: string;
-  /** The package whose newest release is the harness's newest; read from its registry (`releaseRegistry`). */
-  readonly packageName: string;
-  /** Where the newest release's version is read: the npm registry, PyPI's JSON API, or "none" for a harness that reports no registry version (its Update stays the harness's own command). */
-  readonly releaseRegistry: "npm" | "pypi" | "none";
-  /** How to leave this harness's sandbox, when its adapter runs a native escalation; omitted for unprotected harnesses. */
-  readonly sandboxAdvice?: SandboxAdvice;
-  /**
-   * The arguments of the harness's own sign-in command, for a harness with its own adapter; null when no sign-in command of the harness's own is
-   * verified (its Sign-in explains the provider's own flow instead of running anything).
-   * Absent for an ACP provider, whose sign-in belongs to its definition (`acpProviders`) and is read through `signIn` below.
-   */
-  readonly signInArgs?: ReadonlyArray<string> | null;
-  /**
-   * The environment that sign-in command runs with, such as the flag that keeps a link flow from opening a browser itself; left out when it needs none.
-   * Running a turn never carries it: it belongs to the sign-in surface alone.
-   */
-  readonly signInEnv?: Readonly<Record<string, string>>;
-  /**
-   * Whether the sign-in runs without a terminal: it opens the browser itself and ends when the browser's answer reaches
-   * a local port. Otherwise it is an interactive screen that needs a terminal window.
-   */
-  readonly canSignInWithoutTerminal: boolean;
-  /** The arguments of the harness's own command that updates it, which knows how it was installed; null when the harness has no update command (its Update explains instead). */
-  readonly updateArgs: ReadonlyArray<string> | null;
-  /** The executable the update command runs on when it is not the harness's own command; else null. */
-  readonly updateCommand: string | null;
-};
+/** A harness's own sign-in command: its arguments and the environment it runs with. */
+export type SignInCommand = AcpSignInCommand;
 
 /** What Outlore knows of one harness without running it. */
 export type HarnessFacts = Omit<
@@ -116,250 +33,15 @@ export type HarnessFacts = Omit<
   readonly legacyExecutable: string | null;
   /** How to leave this harness's sandbox, or null when no native sandbox escalation applies. */
   readonly sandboxAdvice: SandboxAdvice | null;
-  /**
-   * The harness's own sign-in command for one account's folder, with the environment it runs with; null when none is verified.
-   * An ACP provider derives it from its definition, so it can only open the state home the launch reads.
-   */
+  /** The harness's own sign-in command for one account's folder with its environment, or null when none is verified. */
   readonly signIn: (configDirectory: string | null) => SignInCommand | null;
   /** The generation the executable must report to run, or null when no gate is verified; `inspect` refuses a version it rejects. */
   readonly versionGate: VersionGate | null;
 };
 
-/** A harness's own sign-in command: its arguments and the environment it runs with. */
-export type SignInCommand = AcpSignInCommand;
-
-/** What the catalog takes from an ACP provider's definition instead of spelling again: its executables and its account isolation. */
-const identityOf = (definition: AcpProviderDefinition) => ({
-  defaultExecutable: definition.executable,
-  isolation: definition.isolation,
-  ...(definition.legacyExecutable === undefined ? {} : { legacyExecutable: definition.legacyExecutable }),
-});
-
 const harnessServiceFacts = {
-  antigravity: {
-    // A plain ACP server mediated by the generic adapter, so it asks the owner through its protocol's permission
-    // requests and has no `answer_prompt` tool.
-    approvedCommandAdvice: "",
-    // The executable (the vendor installer's `agy`, or the legacy `antigravity` binary when present on PATH) and the
-    // home variable come from the definition. Added accounts stay blocked until a live CLI check proves which of the
-    // home's two channels, the flag or GEMINI_HOME, wins (antigravityProvider.ts).
-    ...identityOf(antigravity),
-    canSignInWithoutTerminal: false,
-    fixedModels: null,
-    hasPromptTool: false,
-    installVia: "script",
-    // The newest version is what the GitHub releases carry; no registry holds one to read.
-    packageName: "",
-    releaseRegistry: "none",
-    updateArgs: null,
-    updateCommand: null,
-  },
-  claude: {
-    approvedCommandAdvice:
-      "; keep the sandbox for it, unless the owner allowed that exact command outside the sandbox: then set dangerouslyDisableSandbox to true",
-    canSignInWithoutTerminal: true,
-    defaultExecutable: "claude",
-    fixedModels: claudeModels,
-    hasPromptTool: true,
-    installVia: "npm",
-    isolation: singleVarIsolation("CLAUDE_CONFIG_DIR"),
-    packageName: "@anthropic-ai/claude-code",
-    releaseRegistry: "npm",
-    sandboxAdvice: {
-      allowed:
-        "Your commands run in Claude Code's sandbox, which writes your working folder and the git worktrees git lists for its repository. The owner has allowed you to work outside the sandbox: when it blocks a command you need, run it again with dangerouslyDisableSandbox set to true and it runs without a question. Keep to the sandbox for work in your folder and its worktrees, and still ask before the consequential actions above, which the sandbox does not make safe.",
-      asking:
-        "Your commands run in Claude Code's sandbox, which writes your working folder and the git worktrees git lists for its repository. Do not run a command outside the sandbox for work in them. When the sandbox blocks a command you need for any other reason, run it again with dangerouslyDisableSandbox set to true: Outlore asks the owner about that exact command and nothing broader. Never chain anything else to it.",
-    },
-    signInArgs: ["auth", "login"],
-    updateArgs: ["update"],
-    updateCommand: null,
-  },
-  cline: {
-    // A plain ACP server mediated by the generic adapter, so it asks the owner through its protocol's permission
-    // requests and has no `answer_prompt` tool.
-    approvedCommandAdvice: "",
-    // Upstream has no accounts entry for Cline, and CLINE_DIR/CLINE_DATA_DIR only steer its process confinement:
-    // no verified account surface exists, so Cline takes the computer's own sign-in only.
-    ...identityOf(cline),
-    canSignInWithoutTerminal: false,
-    fixedModels: null,
-    hasPromptTool: false,
-    installVia: "npm",
-    packageName: "cline",
-    releaseRegistry: "none",
-    // No update command of Cline's own exists upstream; its self-update stays squeezed off by the sign-in and
-    // launch environment, and Update explains instead of running anything.
-    updateArgs: null,
-    updateCommand: null,
-  },
-  codex: {
-    approvedCommandAdvice: "",
-    canSignInWithoutTerminal: true,
-    defaultExecutable: "codex",
-    fixedModels: null,
-    hasPromptTool: false,
-    installVia: "npm",
-    isolation: singleVarIsolation("CODEX_HOME"),
-    packageName: "@openai/codex",
-    releaseRegistry: "npm",
-    sandboxAdvice: {
-      allowed:
-        "If the sandbox blocks a local command you need, retry it through Codex's own per-command escalation. Outlore approves that escalation automatically in Full access. Use request_approval for consequential actions listed above. A request to widen the sandbox for the turn still asks.",
-      asking: null,
-    },
-    signInArgs: ["login"],
-    updateArgs: ["update"],
-    updateCommand: null,
-  },
-  copilot: {
-    // A plain ACP server mediated by the generic adapter, so it asks the owner through its protocol's permission
-    // requests and has no `answer_prompt` tool.
-    approvedCommandAdvice: "",
-    // The driver upstream keeps no accounts entry for Copilot and its sign-in sits in the system keychain, so only
-    // the computer's own sign-in is offered and added accounts are refused rather than silently shared.
-    ...identityOf(copilot),
-    // `copilot login` opens its browser sign-in; a live check verifies the browser flow's completion.
-    canSignInWithoutTerminal: false,
-    fixedModels: null,
-    hasPromptTool: false,
-    installVia: "npm",
-    packageName: "@github/copilot",
-    releaseRegistry: "none",
-    // No update command of Copilot's own exists upstream and its self-update is squeezed off by the environment,
-    // so Update explains instead of running anything.
-    updateArgs: null,
-    updateCommand: null,
-  },
-  cursor: {
-    // A plain ACP server mediated by the generic adapter, so it asks the owner through its protocol's permission
-    // requests and has no `answer_prompt` tool.
-    approvedCommandAdvice: "",
-    // CURSOR_CONFIG_DIR moves Cursor's settings only, never its sign-in (the Keychain keeps one credential per
-    // computer user, and a key account would hand Outlore a credential it must never hold), so an added account
-    // has no home to isolate: only the computer's own sign-in is offered.
-    // The executable is `cursor-agent`, never `cursor` (which launches the editor).
-    ...identityOf(cursor),
-    // `cursor-agent login` never opens its page on its own (NO_OPEN_BROWSER prints the sign-in link for the
-    // owner to open); a live check verifies the link flow.
-    canSignInWithoutTerminal: false,
-    fixedModels: null,
-    hasPromptTool: false,
-    installVia: "script",
-    packageName: "",
-    releaseRegistry: "none",
-    updateArgs: null,
-    updateCommand: null,
-  },
-  devin: {
-    // A plain ACP server mediated by the generic adapter, so it asks the owner through its protocol's permission
-    // requests and has no `answer_prompt` tool.
-    approvedCommandAdvice: "",
-    // Upstream keeps no accounts entry for Devin and its state sits under the machine-wide XDG data root, so only
-    // the computer's own sign-in is offered and added accounts are refused rather than unisolated.
-    ...identityOf(devin),
-    // No sign-in command of the CLI's own is verified: its sign-in is the ACP `devin-browser` flow, so Sign-in
-    // explains and the owner signs in inside the provider's own surface, then presses Refresh.
-    canSignInWithoutTerminal: false,
-    fixedModels: null,
-    hasPromptTool: false,
-    installVia: "script",
-    packageName: "",
-    releaseRegistry: "none",
-    updateArgs: null,
-    updateCommand: null,
-  },
-  hermes: {
-    // The generic ACP adapter mediates every permission request itself, so it has no `answer_prompt` tool.
-    approvedCommandAdvice: "",
-    // Fixed by the adapter: an account's own folder is Hermes's `HERMES_HOME`; turns refuse the user's own
-    // Hermes directory (provider-accounts), and models come from the ACP probe, so nothing is fixed here.
-    ...identityOf(hermes),
-    canSignInWithoutTerminal: false,
-    fixedModels: null,
-    hasPromptTool: false,
-    installVia: "script",
-    // The newest version is what its own `hermes update --check` knows; no registry holds it.
-    packageName: "",
-    releaseRegistry: "none",
-    updateArgs: ["update"],
-    updateCommand: null,
-  },
-  muse: {
-    // The Muse adapter mediates approvals itself, so it has no `answer_prompt` tool.
-    approvedCommandAdvice: "",
-    canSignInWithoutTerminal: false,
-    defaultExecutable: "muse",
-    fixedModels: null,
-    hasPromptTool: false,
-    installVia: "script",
-    // No per-account state home is verified (its root is the shared XDG data dir), so only the computer's own
-    // sign-in is offered and added accounts are refused rather than silently sharing it (Muse, 2026-11-22).
-    isolation: computerOnlyIsolation("No per-account state home is verified: its root is the shared XDG data dir."),
-    // The newest version is what the muse-stable channel carries; no registry holds the CLI.
-    packageName: "",
-    releaseRegistry: "none",
-    // `muse login` opens its device page only from a real terminal, so sign-in opens one.
-    signInArgs: ["login"],
-    // The CLI has no update command; Outlore sets MUSE_NO_AUTO_UPDATE on every spawn, so it never updates
-    // itself through us, and Update explains instead of running anything.
-    updateArgs: null,
-    updateCommand: null,
-  },
-  opencode: {
-    approvedCommandAdvice: "",
-    canSignInWithoutTerminal: false,
-    // OpenCode keeps its sign-ins and sessions under its data folder (`$XDG_DATA_HOME/opencode`).
-    defaultExecutable: "opencode",
-    fixedModels: null,
-    hasPromptTool: false,
-    installVia: "npm",
-    isolation: singleVarIsolation("XDG_DATA_HOME"),
-    packageName: "opencode-ai",
-    releaseRegistry: "npm",
-    signInArgs: ["auth", "login"],
-    updateArgs: ["upgrade"],
-    updateCommand: null,
-  },
-  pi: {
-    // Pi's fail-closed adapter never runs a tool Outlore did not approve (piTools.ts), so it asks the owner about
-    // nothing through an `answer_prompt` tool.
-    approvedCommandAdvice: "",
-    canSignInWithoutTerminal: false,
-    // Each account is Pi's own state directory (`PI_CODING_AGENT_DIR`, default `~/.pi/agent`), holding the
-    // sign-in (auth.json), settings, and sessions; the computer's own sign-in is the unredirected default.
-    defaultExecutable: "pi",
-    fixedModels: null,
-    hasPromptTool: false,
-    installVia: "npm",
-    isolation: singleVarIsolation("PI_CODING_AGENT_DIR"),
-    packageName: "@earendil-works/pi-coding-agent",
-    releaseRegistry: "none",
-    // Sign-in is `/login` inside Pi's own interactive screen in a terminal window, closed when it is done; a
-    // plain `pi` run opens it, so the arguments list is empty.
-    signInArgs: [],
-    // No update command of Pi's own is verified (its `update --models` only refreshes the model catalog), so
-    // Update explains a reinstall from the GitHub releases instead of running anything.
-    updateArgs: null,
-    updateCommand: null,
-  },
-  vibe: {
-    approvedCommandAdvice: "",
-    // `vibe-acp --setup` is an interactive screen, so it needs a Terminal window (like OpenCode).
-    canSignInWithoutTerminal: false,
-    // Mistral Vibe keeps its sign-in, sessions, and configuration under `$VIBE_HOME` (default `~/.vibe`).
-    defaultExecutable: "vibe-acp",
-    fixedModels: null,
-    hasPromptTool: false,
-    // Vibe's update command prompts in a terminal, while uv upgrades the package without one.
-    installVia: "uv",
-    isolation: singleVarIsolation("VIBE_HOME"),
-    packageName: "mistral-vibe",
-    releaseRegistry: "pypi",
-    signInArgs: ["--setup"],
-    updateArgs: ["tool", "upgrade", "mistral-vibe"],
-    updateCommand: "uv",
-  },
+  ...acpHarnessServiceFacts,
+  ...nativeHarnessServiceFacts,
 } as const satisfies Record<HarnessName, HarnessServiceFacts>;
 
 /** Each harness's facts, by name, with its shared label and company derived from `@outlore/contracts`. */

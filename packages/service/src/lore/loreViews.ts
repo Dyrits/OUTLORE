@@ -9,16 +9,16 @@ import {
   loreEntryOf,
   loreEntryRowOf,
   loreLinesOf,
-  readGauge,
   readScopeChain,
   scopeLabelOf,
   selectLoreEntries,
 } from "./lore.ts";
 import type { ToolScope } from "./loreChanges.ts";
+import { readGauge } from "./loreContext.ts";
 import { readFading, stateOfLoreEntry } from "./loreFading.ts";
 import { listDeletedLore } from "./loreHistoryViews.ts";
 import { listLoreProposals } from "./loreProposals.ts";
-import { countUses } from "./loreStore.ts";
+import { countUses } from "./loreStoreMaintenance.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: table and column names (`intels`, `intel_id`, ...) and thread tool names (`save_intel`, ...).
 

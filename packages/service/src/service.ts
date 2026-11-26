@@ -1,35 +1,24 @@
 import { dirname, join } from "node:path";
 import type { DirectSettings } from "@outlore/channel";
-import type { Request, RequestSource, RequestTag, ResultOf } from "@outlore/contracts";
-import { Effect, Layer, Match, Semaphore } from "effect";
-import type { SqlError } from "effect/sql";
+import { Layer } from "effect";
 import {
   type BrowserOpener,
   type CatalogEntry,
   type ConnectorBackends,
   type ConnectorGateway,
-  Connectors,
   connectorBackendsLayer,
   connectorServicesLayer,
   connectorsLayer,
   type VaultPort,
 } from "./connectors/index.ts";
 import {
-  Changes,
-  changeCompanionPreset,
   changesLayer,
   endpointsLayer,
   type Harness,
   HomeFolder,
-  mergedSettings,
   noPriceSourceLayer,
   type PriceSource,
-  PriceTable,
   priceTableLayer,
-  readSettings,
-  readStartChoices,
-  ServiceFailure,
-  type SettingWriter,
   seedBrowsableRoots,
   sessionsLayer,
   storeLayer,
@@ -42,143 +31,38 @@ import {
   type DeployResult,
   defaultRelayOrigin,
   deployRelayToCloudflare,
-  makeHostControl,
   RemoteConfig,
-  RemoteState,
   remoteHostLayer,
   remoteStateLayer,
 } from "./remote/index.ts";
+import { makeService } from "./serviceHandler.ts";
 import { Service } from "./serviceTag.ts";
-import { HostUpdate, type HostUpdater, hostUpdateLayer, noHostUpdaterLayer } from "./update/index.ts";
-import { type KeyCustody, Vault, vaultLayer } from "./vault/index.ts";
+import { type HostUpdater, hostUpdateLayer, noHostUpdaterLayer } from "./update/index.ts";
+import { type KeyCustody, vaultLayer } from "./vault/index.ts";
 import {
   AccountsRoot,
-  Approvals,
   AttachmentsRoot,
-  accountsHandlers,
-  admitRequestSource,
-  approvalsHandlers,
   approvalsLayer,
   budgetPeriodsLayer,
-  budgetsHandlers,
-  Commands,
-  changed,
   connectorAskingLayer,
-  connectorHandlers,
   connectorNoticesLayer,
   guildmasterReportsLayer,
   hostTerminalHost,
-  hostUpdateHandlers,
-  loreHandlers,
-  messagesHandlers,
-  type OwnerHandlers,
   planLimitsLayer,
   priceRefreshLayer,
   questMaintenanceLayer,
-  questsHandlers,
-  type RequestServices,
-  realmHandlers,
-  remoteHandlers,
-  ritualsHandlers,
   ritualsLayer,
   ScratchRoot,
-  Suggestions,
-  saveSettings,
   startupCleanupLayer,
   suggestionsLayer,
   type TerminalHost,
-  type TerminalScope,
-  Terminals,
-  Threads,
-  terminalHandlers,
   terminalsLayer,
   threadsLayer,
   toolServerLayer,
-  vaultHandlers,
   vaultPortLayer,
-  workspaceHandlers,
 } from "./work/index.ts";
 
-// Stored and wire names keep `intel` so existing data and agents still work: request tags (`"ListIntel"`, ...).
-
 export { Service };
-
-const storageFailure = (error: SqlError.SqlError) =>
-  new ServiceFailure({ kind: "ExecutionFailure", message: `Storage failed: ${error.message}` });
-
-const make = Effect.gen(function* () {
-  const changes = yield* Changes;
-  const remote = yield* RemoteState;
-  const remoteConfig = yield* RemoteConfig;
-  const threads = yield* Threads;
-  const homeFolder = yield* HomeFolder;
-  /** The host's conversation shells (conversation-terminal, ADR 0020), from the layer that ends them. */
-  const terminals = yield* Terminals;
-  const commands = yield* Commands;
-  const approvals = yield* Approvals;
-  const connectors = yield* Connectors;
-  const vault = yield* Vault;
-  const suggestions = yield* Suggestions;
-  const prices = yield* PriceTable;
-  const hostUpdate = yield* HostUpdate;
-  /** Runs storage work as a command whose only follow-up is announcing the change. */
-  const change = <A, E, R>(work: Effect.Effect<A, E, R>) => commands.run(Effect.map(work, (value) => changed(value)));
-  const hostControl = makeHostControl({ change, config: remoteConfig, state: remote });
-  const chatterDecisions = yield* Semaphore.make(1);
-
-  const dependencies = { change, changes, commands, hostControl, threads };
-  const context = yield* Effect.context<RequestServices>();
-
-  /**
-   * Answers one request. A paired device's folder requests reach only the browsable roots; the host's own window,
-   * the default, reaches any folder (device-pairing, CHG-0253).
-   */
-  const answer = (request: Request, source: RequestSource): Effect.Effect<ResultOf<RequestTag>, ServiceFailure> =>
-    Effect.gen(function* () {
-      const { folderAccess, deviceLabel } = yield* admitRequestSource(source, request);
-      // A paired device writes settings as the owner, the host's own window as the owner at the host (settingAuthority.ts).
-      const settingWriter: SettingWriter = source.isPairedDevice ? "Owner" : "HostOwner";
-      const terminalScope: TerminalScope = source.isPairedDevice ? "remote" : "host";
-      const settingsHandlers = {
-        ChangeCompanionPreset: ({ edit }) => change(changeCompanionPreset(edit)),
-        ChangeSettings: (given) => saveSettings(settingWriter, (saved) => mergedSettings(saved, given.change)),
-        ReadSettings: () => readSettings,
-        ReadStartChoices: () => readStartChoices,
-        UpdateSettings: (update) => saveSettings(settingWriter, () => update.settings),
-      } satisfies OwnerHandlers<
-        "ChangeCompanionPreset" | "ChangeSettings" | "ReadSettings" | "ReadStartChoices" | "UpdateSettings"
-      >;
-      // One handler per request tag, each answering its result schema; the table fails to compile when a tag has none
-      // or one answers something its schema cannot encode.
-      const table = {
-        ...loreHandlers(dependencies),
-        ...accountsHandlers(dependencies, terminals, terminalScope),
-        ...remoteHandlers(dependencies),
-        ...messagesHandlers(dependencies),
-        ...questsHandlers(dependencies, connectors),
-        ...ritualsHandlers(dependencies),
-        ...terminalHandlers(terminals, terminalScope),
-        ...connectorHandlers(commands, connectors),
-        ...vaultHandlers(commands, vault, connectors),
-        ...realmHandlers(commands, folderAccess),
-        ...approvalsHandlers(dependencies, approvals, suggestions, chatterDecisions, deviceLabel),
-        ...budgetsHandlers(dependencies, prices),
-        ...hostUpdateHandlers(hostUpdate),
-        ...workspaceHandlers(dependencies, folderAccess, homeFolder),
-        ...settingsHandlers,
-      } satisfies OwnerHandlers<RequestTag>;
-      return yield* Match.valueTags(request, table);
-    }).pipe(Effect.provideContext(context), Effect.catchTag("SqlError", storageFailure));
-
-  /** Answers one request with its own result: the type follows the request's tag, which the table above guarantees. */
-  const handle = <R extends Request>(
-    request: R,
-    source: RequestSource = { isPairedDevice: false },
-  ): Effect.Effect<ResultOf<R["_tag"]>, ServiceFailure> =>
-    answer(request, source) as Effect.Effect<ResultOf<R["_tag"]>, ServiceFailure>;
-
-  return { handle };
-});
 
 /** Where the service keeps its data and how it reaches the harnesses. */
 export type ServiceOptions = {
@@ -192,10 +76,7 @@ export type ServiceOptions = {
   readonly connectorBackends?: Layer.Layer<ConnectorBackends>;
   /** The catalog of connectors the Charter offers; Composio and Apple apps when left out. */
   readonly connectorCatalog?: ReadonlyArray<CatalogEntry>;
-  /**
-   * The connector gateway, replacing the service's own over the stored connectors: a stand-in for a test of what stands
-   * on the gateway, such as Code Mode (CHG-0441). Left out, threads use the connectors the owner installed.
-   */
+  /** The connector gateway replacing the service's own over stored connectors, used as a test stand-in (CHG-0441). */
   readonly connectorGateway?: Layer.Layer<ConnectorGateway>;
   /** The gateway's browser opener for MCP OAuth 2.1 sign-in; the operating system's default browser when left out. */
   readonly connectorOpenBrowser?: BrowserOpener;
@@ -205,10 +86,7 @@ export type ServiceOptions = {
   readonly connectorVault?: Layer.Layer<VaultPort>;
   /** Deploys the relay to the Cloudflare account a token reaches (device-pairing, own relay); the real deployment when left out. */
   readonly deployOwnRelay?: (token: string) => Promise<DeployResult>;
-  /**
-   * How this installation makes direct channels (device-pairing, Direct path); none when left out, so that only the
-   * desktop app's own service, which passes werift's, and tests that exercise it make any.
-   */
+  /** How this installation makes direct channels (device-pairing, Direct path); none when left out. */
   readonly direct?: DirectSettings | null;
   readonly filename: string;
   readonly harness: Layer.Layer<Harness>;
@@ -230,22 +108,15 @@ export type ServiceOptions = {
   readonly release?: string;
   /** The folder holding each mission's scratch folder. */
   readonly scratchRoot: string;
-  /**
-   * The host's conversation shells (conversation-terminal, ADR 0020); the owner's home, login shell and OS sandbox,
-   * with the Vault's folder hidden and the terminals' own temporary folder, when left out.
-   */
+  /** The host's conversation shells (conversation-terminal, ADR 0020); defaults to the host terminal sandbox. */
   readonly terminalHost?: TerminalHost;
 };
 
-/**
- * The whole local service over one SQLite file. Approvals and suggestions come before Threads, which
- * withdraws them and exposes its command runner; the tool server comes after the runner, which it calls.
- * Threads and the tool server meet at the endpoints.
- */
+/** Assembles the whole local service layer over one SQLite file, wiring approvals, threads, tool server, and remote host. */
 export const serviceLayer = (options: ServiceOptions) => {
   const attachmentsRoot = options.attachmentsRoot ?? join(dirname(options.filename), "attachments");
-  // The Vault, made and probed at start; it needs the harness adapters' denial reports (ADR 0022). The connectors'
-  // port over it is built from this one instance, so a stand-in given as `connectorVault` replaces only the port.
+  // The Vault, made and probed at start; it needs the harness adapters' denial reports (ADR 0022).
+  // The connectors' port over it is built from this one instance, so a stand-in given as `connectorVault` replaces only the port.
   const vault = vaultLayer(vaultFolderOf(dirname(options.filename)), options.keyCustodies).pipe(
     Layer.provide(options.harness),
   );
@@ -273,8 +144,7 @@ export const serviceLayer = (options: ServiceOptions) => {
     Layer.provideMerge(priceTableLayer.pipe(Layer.provide(options.priceSource ?? noPriceSourceLayer))),
     Layer.provideMerge(storeLayer(options.filename)),
   );
-  // The connectors come after the approvals, which they ask through, and before the threads, whose turns take each
-  // thread's snapshot of its connector tools from them.
+  // The connectors come after the approvals, which they ask through, and before the threads, whose turns take each thread's snapshot of its connector tools from them.
   const connectorServices = connectorServicesLayer({
     ...(options.connectorCatalog === undefined ? {} : { catalog: options.connectorCatalog }),
     ...(options.connectorOpenBrowser === undefined ? {} : { openBrowser: options.connectorOpenBrowser }),
@@ -303,7 +173,7 @@ export const serviceLayer = (options: ServiceOptions) => {
     relayOrigin: options.relayOrigin ?? defaultRelayOrigin,
     release: options.release ?? "development",
   });
-  const core = Layer.effect(Service, make).pipe(
+  const core = Layer.effect(Service, makeService).pipe(
     Layer.provideMerge(
       Layer.mergeAll(
         remoteConfigLayer,

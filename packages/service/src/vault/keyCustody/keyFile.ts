@@ -1,6 +1,7 @@
 import { chmodSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Effect } from "effect";
+import { fieldOf } from "../../core/index.ts";
 import type { KeyCustody, KeyRead } from "../keyCustody.ts";
 import { VaultFailure } from "../types.ts";
 
@@ -9,7 +10,7 @@ const readOf = (path: string): KeyRead => {
   try {
     text = readFileSync(path, "utf8").trim();
   } catch (error) {
-    return error instanceof Error && "code" in error && error.code === "ENOENT"
+    return fieldOf(error, "code") === "ENOENT"
       ? { _tag: "Gone" }
       : { _tag: "Unreachable", reason: "The key file cannot be read." };
   }

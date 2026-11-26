@@ -9,7 +9,7 @@ export function imageCache(limit: number) {
   const evict = (keep: string) => {
     for (const [id, entry] of entries) {
       if (total <= limit) return;
-      // Only fetched images count against the limit, and the one just fetched stays however large.
+      // An image still being fetched counts nothing yet, and the one just fetched or put stays however large.
       if (entry.size === 0 || id === keep) continue;
       total -= entry.size;
       entries.delete(id);

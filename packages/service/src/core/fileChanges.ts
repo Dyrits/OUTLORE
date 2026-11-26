@@ -2,7 +2,6 @@ import { readFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 import { type DiffLine, type DiffLineKind, maxDiffBytes } from "@outlore/contracts";
 import { Effect } from "effect";
-import type { ReportedFileEdit } from "./execution.ts";
 import { countsOf, lineDiffOf, withContextOf } from "./lineDiffs.ts";
 import { fieldOf, textFieldOf } from "./records.ts";
 
@@ -102,6 +101,12 @@ export const fileChangeOf = Effect.fnUntraced(function* (toolName: string, input
   const before = yield* readPrevious(isAbsolute(path) ? path : resolve(folder, path));
   return "note" in before ? unknownChange(before.note) : writeChangeOf(before.text, content);
 });
+
+/** The patch, text or captured change a harness reports for a file edit. */
+export type ReportedFileEdit =
+  | { readonly patch: string; readonly movedTo: string | null }
+  | { readonly pairs: ReadonlyArray<{ readonly previous: string; readonly next: string }> | null }
+  | { readonly change: FileChange };
 
 /** Converts a native patch or reported before and after text to the stored diff. */
 export const reportedChangeOf = (edit: ReportedFileEdit): FileChange => {

@@ -16,10 +16,13 @@ Next: the owner tries it on a phone (the pill's gap above the Android gesture or
 CHG-0754 in `0.2.9-Pre-Alpha`: the Android app loads `RTCPeerConnection` from `react-native-webrtc` at its first try and moves its link onto a direct channel like the web app (`phoneDirect.native.ts`, `directSettingsOfLoader`); the release build needs the R8 rule of `plugins/withWebRtcRules.js`. On an Android 36 emulator against a disposable host the host listed the phone as connected and direct, a quest and a message went through, and a restart resumed the direct channel. Not exercised: a real NAT or mobile network, the real phone, battery and memory. The phone's original "reads but cannot operate" symptom is not explained by this work.
 Next: install a release-signed APK on the phone and check Workshop shows it as direct on home Wi-Fi and on mobile data; read the Cloudflare Metrics for `outlore`. [Handoff](../.agents/handoffs/2026-11-26-0900-android-direct-channel.md).
 
-## Whole-codebase review and refactor · 2026-11-26 · merged on `main` and verified by checks; desktop check pending
+## Whole-codebase review and refactor · 2026-11-26 · wave 2 built, merged and re-reviewed; desktop check pending
 
 CHG-0750 to CHG-0752 in `0.2.8-Pre-Alpha`: image flicker, panel islands including the standalone channel, quest-read broadcasts, spec fixes SPEC-03 to SPEC-06, the Reply starting-context warning, and the standards sweeps.
-Next: the owner checks the flicker, the realm panel and the first quest opened from a standalone channel in the desktop window; wave 2 (scoped `Changed` topics, attachment byte caching, the cross-package boolean renames, the 21 service files still past 256 lines, the `QuestTitle` re-render audit, and a re-review); the owner decides Fresh or Resting for an empty errand (SPEC-07).
+Wave 2 merged on `main` (`0.2.10-Pre-Alpha`): attachment byte caching (CHG-0757), scoped `Changed` topics and shared identical queries (CHG-0758), and cross-package boolean renames, cast removals, and `QuestTitle` memoization (CHG-0759).
+Wave 2 merged on `main` (`0.2.10-Pre-Alpha`): 20 of 21 oversized service files outside `work/` split to <= 256 lines (CHG-0765; generated `core/priceSnapshot.ts` kept unsplit at 434 lines), and the standards re-review's findings addressed (CHG-0766: request sharing in its own module, the core types cycle broken, core imported through its index, `fieldOf` for caught errors' keys, the stale `imageCache` comment).
+Both re-reviews passed on the merged tree: the standards axis (naming, JSDoc, one-way imports, sizes) and the specifications axis (attachment caching, `Changed`-topics compatibility, no wire or stored name broken, behavior-neutral splits); the pre-existing debt they recorded (the connectors parent-child ring, the relocated generic-result casts, grown `App.tsx` and `questListRows.tsx`) waits for the next pass.
+Next: check the flicker, realm panel, and standalone-channel first quest in the desktop window, and decide Fresh or Resting for an empty errand (SPEC-07).
 
 ## Child reads parent on demand · 2026-11-25 · built and verified by tests; desktop check pending
 

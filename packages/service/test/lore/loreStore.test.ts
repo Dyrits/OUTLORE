@@ -12,16 +12,14 @@ import type { Placement } from "../../src/lore/lore.ts";
 import { owner, readSnapshot, type Snapshot, stateOf, threadActor } from "../../src/lore/loreHistory.ts";
 import {
   correctLoreEntry,
-  countUses,
   deleteLoreEntry,
-  eraseThreadsLore,
   insertLoreEntry,
-  mergeLoreEntries,
   moveLoreEntry,
   pinLoreEntry,
   replaceLoreEntry,
   restoreLoreEntry,
 } from "../../src/lore/loreStore.ts";
+import { countUses, eraseThreadsLore, mergeLoreEntries } from "../../src/lore/loreStoreMaintenance.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: table and column names (`intels`, `intel_id`, ...).
 

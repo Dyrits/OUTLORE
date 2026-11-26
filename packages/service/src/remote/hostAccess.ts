@@ -1,145 +1,42 @@
-import {
-  constantTimeEqual,
-  encodeBase64Url,
-  generateKeyPair,
-  hashToken,
-  newDeviceToken,
-  newPairingSecret,
-  newRoomName,
-} from "@outlore/channel";
-import {
-  type DeviceId,
-  type DeviceKind,
-  maxNameLength,
-  type PairedDevice,
-  type RemoteAccessView,
-} from "@outlore/contracts";
+import { constantTimeEqual, encodeBase64Url, hashToken, newDeviceToken, newPairingSecret } from "@outlore/channel";
+import type { DeviceId, DeviceKind, PairedDevice, RemoteAccessView } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, newId } from "../core/index.ts";
-import { computerNameOf, RemoteConfig, webAppOrigin } from "./config.ts";
+import { webAppOrigin } from "./config.ts";
+import {
+  ensureHostRecord,
+  type HostRecord,
+  hostNameOf,
+  hostReleaseOf,
+  ownAccountLabelOf,
+  readHostRecord,
+  relayOriginOf,
+  renameHost,
+  setRelayOrigin,
+  setRemoteAccess,
+} from "./hostIdentity.ts";
 import { bytesOf } from "./knownHosts.ts";
 
-// This installation as a host: its identity, its pairing codes and its paired devices (device-pairing). Everything
-// here is storage; the connections are in the host runtime.
+export {
+  ensureHostRecord,
+  type HostRecord,
+  hostNameOf,
+  hostReleaseOf,
+  ownAccountLabelOf,
+  readHostRecord,
+  relayOriginOf,
+  renameHost,
+  setRelayOrigin,
+  setRemoteAccess,
+};
+
+// Pairing codes and paired devices stored for this host (device-pairing); the connections live in the host runtime.
 
 /** A pairing code lives ten minutes. */
 export const pairingCodeMillis = 10 * 60 * 1000;
 
 const hashText = (bytes: Uint8Array) => encodeBase64Url(hashToken(bytes));
-
-/** This installation as a host: its keys, its room on the relay, and its settings. */
-export type HostRecord = {
-  readonly claimSecret: Uint8Array;
-  readonly hostName: string | null;
-  readonly isEnabled: boolean;
-  readonly publicKey: Uint8Array;
-  readonly relayOrigin: string | null;
-  readonly room: string;
-  readonly secretKey: Uint8Array;
-};
-
-type HostRow = {
-  claimSecret: string;
-  hostName: string | null;
-  isEnabled: number;
-  publicKey: string;
-  relayOrigin: string | null;
-  room: string;
-  secretKey: string;
-};
-
-const hostOf = (row: HostRow): HostRecord => ({
-  claimSecret: bytesOf(row.claimSecret),
-  hostName: row.hostName,
-  isEnabled: row.isEnabled === 1,
-  publicKey: bytesOf(row.publicKey),
-  relayOrigin: row.relayOrigin,
-  room: row.room,
-  secretKey: bytesOf(row.secretKey),
-});
-
-/** The host record, or null before the owner first turns pairing on or asks for a code. */
-export const readHostRecord = Effect.gen(function* () {
-  const sql = yield* SqlClient.SqlClient;
-  const [row] = yield* sql<HostRow>`SELECT claim_secret AS claimSecret, host_name AS hostName, is_enabled AS isEnabled,
-    public_key AS publicKey, relay_origin AS relayOrigin, room, secret_key AS secretKey FROM host_identity WHERE id = 1`;
-  return row === undefined ? null : hostOf(row);
-});
-
-/** The host record, made with fresh keys, a fresh room and a fresh claim secret the first time. */
-export const ensureHostRecord = Effect.gen(function* () {
-  const sql = yield* SqlClient.SqlClient;
-  const existing = yield* readHostRecord;
-  if (existing !== null) return existing;
-  const keys = generateKeyPair();
-  yield* sql`INSERT INTO host_identity (id, claim_secret, host_name, is_enabled, public_key, relay_origin, room, secret_key)
-    VALUES (1, ${encodeBase64Url(newDeviceToken())}, NULL, 0, ${encodeBase64Url(keys.publicKey)}, NULL, ${newRoomName()}, ${encodeBase64Url(keys.secretKey)})`;
-  const inserted = yield* readHostRecord;
-  if (inserted === null) return yield* invalid("The host record could not be made.");
-  return inserted;
-});
-
-/** The release this host runs. */
-export const hostReleaseOf = Effect.gen(function* () {
-  const config = yield* RemoteConfig;
-  return config.release;
-});
-
-/** The name the host shows: the owner's choice, else the computer's. */
-export const hostNameOf = Effect.fnUntraced(function* (record: HostRecord | null) {
-  const config = yield* RemoteConfig;
-  return record?.hostName ?? config.computerName;
-});
-
-/**
- * What the computer's own sign-ins and spending are called in the app: the host's name as the owner chose it, else the
- * machine's. It reads the database alone, so any screen can ask for it without the pairing settings.
- */
-const ownAccountLabel = Effect.gen(function* () {
-  const sql = yield* SqlClient.SqlClient;
-  const [row] = yield* sql<{ hostName: string | null }>`SELECT host_name AS hostName FROM host_identity WHERE id = 1`;
-  return row?.hostName ?? (yield* Effect.sync(computerNameOf));
-});
-
-/** What one harness's own sign-in is called: the owner's name for it, else the host's name ({@link ownAccountLabel}). */
-export const ownAccountLabelOf = Effect.fnUntraced(function* (harness: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const [row] = yield* sql<{ label: string }>`SELECT label FROM own_account_labels WHERE harness = ${harness}`;
-  return row?.label ?? (yield* ownAccountLabel);
-});
-
-/** Names the host; a blank name returns it to the computer's. */
-export const renameHost = Effect.fnUntraced(function* (name: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const trimmed = name.trim();
-  if (trimmed.length > maxNameLength) return yield* invalid(`A host's name is at most ${maxNameLength} characters.`);
-  yield* ensureHostRecord;
-  yield* sql`UPDATE host_identity SET host_name = ${trimmed === "" ? null : trimmed} WHERE id = 1`;
-  return yield* hostNameOf(yield* readHostRecord);
-});
-
-/** Turns "Allow paired devices" on or off, making the host record the first time it is turned on. */
-export const setRemoteAccess = Effect.fnUntraced(function* (isEnabled: boolean) {
-  const sql = yield* SqlClient.SqlClient;
-  if (isEnabled) yield* ensureHostRecord;
-  // A code the owner made before switching off must not come back to life when pairing is switched on again.
-  else yield* sql`DELETE FROM pairing_codes WHERE used_at IS NULL`;
-  yield* sql`UPDATE host_identity SET is_enabled = ${isEnabled ? 1 : 0} WHERE id = 1`;
-});
-
-/** Where a new pairing code points: the host's own relay setting, else the default. */
-export const relayOriginOf = Effect.fnUntraced(function* (record: HostRecord | null) {
-  const config = yield* RemoteConfig;
-  return record?.relayOrigin ?? config.relayOrigin;
-});
-
-/** Uses the relay at `origin`, or the shared relay when it is null; the host record is made first if it never was. */
-export const setRelayOrigin = Effect.fnUntraced(function* (origin: string | null) {
-  const sql = yield* SqlClient.SqlClient;
-  yield* ensureHostRecord;
-  yield* sql`UPDATE host_identity SET relay_origin = ${origin} WHERE id = 1`;
-});
 
 /** Makes a pairing code's secret, remembering only its hash, and returns the secret with its expiry. */
 export const makePairingSecret = Effect.fnUntraced(function* (now: number) {
@@ -184,11 +81,7 @@ export const redeemPairingSecret = Effect.fnUntraced(function* (
   return { codeId: code.id, device: { deviceId, token } satisfies NewDevice } as const;
 });
 
-/**
- * Takes back a pairing that never delivered its token, as when the connection drops mid-handshake: the device row goes,
- * so the Workshop lists nothing nobody holds, and the code pairs again — but only while pairing is still on, so a code
- * from before an Off does not come back to life (see setRemoteAccess).
- */
+/** Takes back a pairing that never delivered its token, deleting the device row and restoring the code while pairing stays enabled. */
 export const abandonPairing = Effect.fnUntraced(function* (codeId: string, deviceId: string) {
   const sql = yield* SqlClient.SqlClient;
   const gone = yield* sql<{ id: string }>`DELETE FROM paired_devices WHERE id = ${deviceId} RETURNING id`;

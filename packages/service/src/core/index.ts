@@ -4,34 +4,36 @@ export { changeCompanionPreset } from "./companionPresets.ts";
 export { Endpoints, endpointsLayer } from "./endpoints.ts";
 export { errorMessageOf, invalid, notFound, ServiceFailure } from "./errors.ts";
 export {
+  Harness,
+  type HarnessAdapter,
+  interruptedOutcomeOf,
+  interruptGraceMillis,
+  readImages,
+  routeHarnesses,
+  turnMessageOf,
+} from "./execution.ts";
+export {
   type ApprovalTerms,
   type BackgroundWakeListener,
   type Containment,
-  Harness,
-  type HarnessAdapter,
   type HarnessEvent,
   HarnessFailure,
   type HarnessPrompt,
   type ImageAttachment,
-  interruptedOutcomeOf,
-  interruptGraceMillis,
   type ModeTerms,
   type PlanLimitReport,
   type PlanLimitsReport,
   type PromptAnswer,
-  type ReportedFileEdit,
-  readImages,
-  routeHarnesses,
   type SteeredMessage,
   type ThreadAccess,
   type TurnOutcome,
   type TurnRequest,
-  turnMessageOf,
-} from "./execution.ts";
+} from "./executionTypes.ts";
 export {
   type FileChange,
   fileChangeOf,
   linesOfStoredDiff,
+  type ReportedFileEdit,
   reportedChangeOf,
   storedDiffOf,
 } from "./fileChanges.ts";
@@ -52,12 +54,9 @@ export {
 export { newId } from "./ids.ts";
 export {
   type CommandRun,
-  type RpcIncoming,
-  type RpcProcess,
   reducedEnvironmentOf,
   runShortCommand,
   type StreamJsonProcess,
-  startRpcProcess,
   startStreamJsonProcess,
 } from "./lineProcess.ts";
 export {
@@ -84,6 +83,7 @@ export {
   readProcessTree,
 } from "./processTree.ts";
 export { fieldOf, isRecord, numberFieldOf, textFieldOf } from "./records.ts";
+export { type RpcIncoming, type RpcProcess, startRpcProcess } from "./rpcProcess.ts";
 export { sandboxProblem } from "./sandbox.ts";
 export { removeScratch } from "./scratch.ts";
 export { Service } from "./serviceTag.ts";
