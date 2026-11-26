@@ -109,7 +109,7 @@ export type ThreadAccess = ApprovalTerms & {
    * Whether the thread's tools are listed under Code Mode this turn (connectors specification, Code Mode). A harness
    * lists its tools when its process starts, so a change of it restarts the process: it is part of every restart key.
    */
-  readonly usesCodeMode: boolean;
+  readonly isUsingCodeMode: boolean;
 };
 
 /** One action a harness asks permission for, named as Claude Code names its tools (`Bash`, `Edit`, …). */

@@ -28,7 +28,7 @@ export const claimProtocolOf = (claim: Uint8Array): string => `${claimProtocolPr
  * THE TRANSITION MARKER (SP-H-09). Until this instant a host may still send its claim in the address
  * (`?claim=`), so that hosts of earlier releases keep working against this relay, and a host of this release can
  * still reach a relay of an earlier release. From it on the relay refuses the address form. When it has passed in
- * every release in use, delete the legacy path: `allowLegacyClaim` here, `legacyFallback` in `client.ts`, and the
+ * every release in use, delete the legacy path: `shouldAllowLegacyClaim` here, `shouldFallBackToLegacyClaim` in `client.ts`, and the
  * tests that name this constant.
  */
 export const legacyClaimUntil = Date.parse("2027-02-01T00:00:00Z");
@@ -46,10 +46,14 @@ const claimOf = (bytes: Uint8Array | null): Uint8Array | null =>
 /**
  * Reads `/r/<room>?role=host` with the claim in the offered subprotocols (`protocols`, the request's
  * `Sec-WebSocket-Protocol` header) or `/r/<room>?role=client`; any other URL gives null so that the caller answers 404
- * and nothing about the relay is readable. While `allowLegacyClaim` is true, `/r/<room>?role=host&claim=<secret>` is
+ * and nothing about the relay is readable. While `shouldAllowLegacyClaim` is true, `/r/<room>?role=host&claim=<secret>` is
  * read too and marked as the legacy form (see `legacyClaimUntil`).
  */
-export const parseConnect = (url: string, protocols: string | null, allowLegacyClaim: boolean): Connect | null => {
+export const parseConnect = (
+  url: string,
+  protocols: string | null,
+  shouldAllowLegacyClaim: boolean,
+): Connect | null => {
   const parsed = URL.canParse(url, "http://relay.invalid") ? new URL(url, "http://relay.invalid") : null;
   if (parsed === null) return null;
   const [, prefix, room, ...rest] = parsed.pathname.split("/");
@@ -65,7 +69,7 @@ export const parseConnect = (url: string, protocols: string | null, allowLegacyC
     const claim = claimOf(decodeBase64Url(offered.slice(claimProtocolPrefix.length)));
     return claim === null ? null : { claim, isLegacyClaim: false, role, room };
   }
-  if (!allowLegacyClaim) return null;
+  if (!shouldAllowLegacyClaim) return null;
   const claim = claimOf(decodeBase64Url(parsed.searchParams.get("claim") ?? ""));
   return claim === null ? null : { claim, isLegacyClaim: true, role, room };
 };

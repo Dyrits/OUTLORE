@@ -23,7 +23,7 @@ export const acpStdioMcpServerOf = Effect.fnUntraced(function* (mcpUrl: string) 
   return {
     args: [yield* acpMcpBridgePathOf, mcpUrl],
     command: bridgeNodePathOf(),
-    env: [] as ReadonlyArray<never>,
+    env: [],
     name: toolServerName,
   };
 });

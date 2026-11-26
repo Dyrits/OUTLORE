@@ -161,7 +161,7 @@ const makeWorld = Effect.gen(function* () {
   return { hostDirectory, pairedHost, relayOrigin, startHost };
 });
 
-const pageOf = (release: string) => ({ allowLocalRelay: true, kind: "browser", release }) as const;
+const pageOf = (release: string) => ({ kind: "browser", release, shouldAllowLocalRelay: true }) as const;
 
 describe("updating a host from a device of a later release", () => {
   it.live("the host updates on the device's word, installs once, and the same pairing resumes after its restart", () =>
@@ -184,7 +184,7 @@ describe("updating a host from a device of a later release", () => {
         expect(plain.closed).toMatchObject({ code: 4003 });
 
         // The update link keeps the host of another release, and reads where its update stands.
-        const updating = driven(openBrowserTransport(hosts, host.id, laterPage, { acceptOtherRelease: true }));
+        const updating = driven(openBrowserTransport(hosts, host.id, laterPage, { shouldAcceptOtherRelease: true }));
         expect(yield* updating.ask({ _tag: "ReadHostUpdate" })).toMatchObject({
           _tag: "Success",
           value: { release: earlier, status: { _tag: "Idle" } },
@@ -227,7 +227,9 @@ describe("updating a host from a device of a later release", () => {
         const hosts = createPairedHosts(memoryStorage());
         const paired = yield* Effect.promise(() => pairFromBrowser(code, "Pixel", hosts, pageOf(earlier)));
         yield* host.startRunningTurn;
-        const updating = driven(openBrowserTransport(hosts, paired.id, pageOf(later), { acceptOtherRelease: true }));
+        const updating = driven(
+          openBrowserTransport(hosts, paired.id, pageOf(later), { shouldAcceptOtherRelease: true }),
+        );
         expect(yield* updating.ask({ _tag: "UpdateHost" })).toMatchObject({ _tag: "Success" });
         yield* until(() =>
           updating.ask({ _tag: "ReadHostUpdate" }).pipe(
@@ -257,7 +259,7 @@ describe("updating a host from a device of a later release", () => {
         const code = yield* world.pairedHost(host);
         const hosts = createPairedHosts(memoryStorage());
         const paired = yield* Effect.promise(() => pairFromBrowser(code, "Pixel", hosts, pageOf(earlier)));
-        const open = openBrowserTransport(hosts, paired.id, pageOf(later), { acceptOtherRelease: true });
+        const open = openBrowserTransport(hosts, paired.id, pageOf(later), { shouldAcceptOtherRelease: true });
         // A host from before this feature decodes no ForceUpdateHost; a tag this host does not know stands in for it.
         const link = driven((handlers) => {
           const transport = open(handlers);
@@ -301,7 +303,7 @@ describe("updating a host from a device of a later release", () => {
             };
           };
         const link = driven(
-          asUnknown(openBrowserTransport(hosts, paired.id, pageOf(later), { acceptOtherRelease: true })),
+          asUnknown(openBrowserTransport(hosts, paired.id, pageOf(later), { shouldAcceptOtherRelease: true })),
         );
         expect(yield* link.ask({ _tag: "ReadHostUpdate" })).toMatchObject({
           _tag: "Failure",

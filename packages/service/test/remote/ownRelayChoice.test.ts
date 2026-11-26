@@ -72,9 +72,9 @@ interface Deployment {
 const deployed = (origin: string): DeployResult => ({
   accountName: "Owner Account",
   hasCreatedSubdomain: false,
+  isUpdated: false,
   ok: true,
   origin,
-  wasUpdated: false,
   workerName: "outlore-relay",
 });
 

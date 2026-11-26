@@ -13,9 +13,9 @@ it("reports an invalid pairing code as a typed failure without touching storage"
         "browser",
         { link: unused, save: unused, touch: unused },
         {
-          allowLocalRelay: false,
           kind: "browser",
           release: "test",
+          shouldAllowLocalRelay: false,
         },
       ),
     ),

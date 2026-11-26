@@ -49,7 +49,7 @@ const failureOf = (failure: LinkFailure) =>
 
 /** The link settings both controller calls send: this desktop's release, local relay left to the origin. */
 const linkOptionsOf = (config: RemoteSettings): LinkSettings => ({
-  allowLocalRelay: isLocalOrigin(config.relayOrigin),
+  shouldAllowLocalRelay: isLocalOrigin(config.relayOrigin),
   ...(config.direct === null ? {} : { direct: config.direct }),
   kind: "desktop",
   release: config.release,
@@ -63,7 +63,7 @@ export const pairWithHost = Effect.fn("pairWithHost")(function* (code: string, d
 });
 
 /**
- * Resumes a desktop link, retaining host frames until the loopback bridge listens. `acceptOtherRelease` keeps the link
+ * Resumes a desktop link, retaining host frames until the loopback bridge listens. `shouldAcceptOtherRelease` keeps the link
  * to a host of another release, for the one that updates it.
  */
 export const openHostChannel = Effect.fn("openHostChannel")(function* (hostId: string, options: ResumeOptions = {}) {

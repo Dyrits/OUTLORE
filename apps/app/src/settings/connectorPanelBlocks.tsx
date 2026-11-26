@@ -18,7 +18,7 @@ import { SettingsRule } from "./settingsParts";
 
 /** Runs one request for a panel: the panel is busy meanwhile, and shows the refusal in its own words. */
 export function useAttempt(onChanged: () => void) {
-  const [busy, setBusy] = useState(false);
+  const [isBusy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const attempt = (work: () => Promise<unknown>, after?: () => void) => {
     setBusy(true);
@@ -36,7 +36,7 @@ export function useAttempt(onChanged: () => void) {
       )
       .finally(() => setBusy(false));
   };
-  return { attempt, busy, error };
+  return { attempt, error, isBusy };
 }
 
 /** Runs an asynchronous connector action while tracking busy and error state. */
@@ -56,13 +56,13 @@ export function PanelBlock({ children, title }: { children: ReactNode; title: st
 /** Installing a connector: the notice, the apps to offer, and the confirmation that installs it. */
 export function InstallBlock({
   attempt,
-  busy,
+  isBusy,
   card,
   client,
   isRemote,
 }: {
   attempt: Attempt;
-  busy: boolean;
+  isBusy: boolean;
   card: ConnectorCard;
   client: ServiceClient;
   isRemote: boolean;
@@ -75,7 +75,7 @@ export function InstallBlock({
       {card.notice !== null && <Text style={styles.body}>{card.notice}</Text>}
       {card.apps.map((app) => (
         <ToggleRow
-          isDisabled={busy}
+          isDisabled={isBusy}
           key={app.id}
           label={app.name}
           onChange={(value) => setApps(value ? [...apps, app.id] : apps.filter((id) => id !== app.id))}
@@ -83,7 +83,7 @@ export function InstallBlock({
         />
       ))}
       <Button
-        isDisabled={busy}
+        isDisabled={isBusy}
         label="I have read this · Install"
         onPress={() =>
           attempt(
@@ -103,7 +103,7 @@ export function InstallBlock({
           )
         }
       />
-      <Button isDisabled={busy} isPrimary={false} label="Cancel" onPress={() => setInstalling(false)} />
+      <Button isDisabled={isBusy} isPrimary={false} label="Cancel" onPress={() => setInstalling(false)} />
     </View>
   );
 }
@@ -111,13 +111,13 @@ export function InstallBlock({
 /** The apps of a connector that has some (Apple apps): which are chosen, and where macOS permission stands. */
 export function AppsBlock({
   attempt,
-  busy,
+  isBusy,
   card,
   client,
   isRemote,
 }: {
   attempt: Attempt;
-  busy: boolean;
+  isBusy: boolean;
   card: ConnectorCard;
   client: ServiceClient;
   isRemote: boolean;
@@ -127,7 +127,7 @@ export function AppsBlock({
       {card.apps.map((app) => (
         <View key={app.id} style={local.tight}>
           <ToggleRow
-            isDisabled={busy}
+            isDisabled={isBusy}
             label={app.name}
             onChange={(value) =>
               attempt(() =>
@@ -149,7 +149,7 @@ export function AppsBlock({
         <Text style={styles.muted}>{remotePermissionNote}</Text>
       ) : (
         <Button
-          isDisabled={busy}
+          isDisabled={isBusy}
           isPrimary={false}
           label="Request Apple permission"
           onPress={() => attempt(() => client.request({ _tag: "RequestApplePermission", connectorId: card.id }))}
@@ -162,12 +162,12 @@ export function AppsBlock({
 /** A connector's tools, grouped by app when it has apps, each with its switch and whether it asks first. */
 export function ToolsBlock({
   attempt,
-  busy,
+  isBusy,
   card,
   client,
 }: {
   attempt: Attempt;
-  busy: boolean;
+  isBusy: boolean;
   card: ConnectorCard;
   client: ServiceClient;
 }) {
@@ -181,7 +181,7 @@ export function ToolsBlock({
           {group.tools.map((tool) => (
             <View key={tool.name} style={local.tight}>
               <ToggleRow
-                isDisabled={busy}
+                isDisabled={isBusy}
                 label={tool.description}
                 onChange={(isOn) =>
                   attempt(() =>

@@ -65,7 +65,7 @@ describe("holding a controller host link", () => {
           },
         };
         const opening = Effect.runPromise(
-          resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" }),
+          resumeHost(store, host.id, { kind: "desktop", release: "development", shouldAllowLocalRelay: true }),
         );
         yield* Effect.promise(() => ready);
         yield* world.host({ _tag: "SetRemoteAccess", isEnabled: false });
@@ -102,12 +102,12 @@ describe("holding a controller host link", () => {
             isClosed = true;
           },
           closeClient: () => {},
+          isUsingLegacyClaim: false,
           onClientData: () => {},
           onClientJoined: () => {},
           onClientLeft: () => {},
           onClose: () => {},
           sendToClient: () => {},
-          usesLegacyClaim: false,
         };
         expect(presence.attachRelay(stale, generation)).toBe(false);
         expect(isClosed).toBe(true);
@@ -143,7 +143,7 @@ describe("holding a controller host link", () => {
           },
         };
         const opening = Effect.runPromise(
-          resumeHost(store, host.id, { allowLocalRelay: true, kind: "desktop", release: "development" }),
+          resumeHost(store, host.id, { kind: "desktop", release: "development", shouldAllowLocalRelay: true }),
         );
         yield* Effect.promise(() => ready);
         yield* Effect.sleep("100 millis");
@@ -170,7 +170,7 @@ describe("holding a controller host link", () => {
               },
             },
             host.id,
-            { allowLocalRelay: true, kind: "desktop", release: "development" },
+            { kind: "desktop", release: "development", shouldAllowLocalRelay: true },
           ),
         );
         yield* Effect.promise(() => touching);
@@ -184,7 +184,7 @@ describe("holding a controller host link", () => {
               },
             },
             host.id,
-            { allowLocalRelay: true, kind: "desktop", release: "development" },
+            { kind: "desktop", release: "development", shouldAllowLocalRelay: true },
           ),
         );
         yield* Effect.promise(() => expect(failed).rejects.toThrow("store failed"));

@@ -96,7 +96,7 @@ type HarnessServiceFacts = {
    * Whether the sign-in runs without a terminal: it opens the browser itself and ends when the browser's answer reaches
    * a local port. Otherwise it is an interactive screen that needs a terminal window.
    */
-  readonly signInNeedsNoTerminal: boolean;
+  readonly canSignInWithoutTerminal: boolean;
   /** The arguments of the harness's own command that updates it, which knows how it was installed; null when the harness has no update command (its Update explains instead). */
   readonly updateArgs: ReadonlyArray<string> | null;
   /** The executable the update command runs on when it is not the harness's own command; else null. */
@@ -144,19 +144,20 @@ const harnessServiceFacts = {
     // home variable come from the definition. Added accounts stay blocked until a live CLI check proves which of the
     // home's two channels, the flag or GEMINI_HOME, wins (antigravityProvider.ts).
     ...identityOf(antigravity),
+    canSignInWithoutTerminal: false,
     fixedModels: null,
     hasPromptTool: false,
     installVia: "script",
     // The newest version is what the GitHub releases carry; no registry holds one to read.
     packageName: "",
     releaseRegistry: "none",
-    signInNeedsNoTerminal: false,
     updateArgs: null,
     updateCommand: null,
   },
   claude: {
     approvedCommandAdvice:
       "; keep the sandbox for it, unless the owner allowed that exact command outside the sandbox: then set dangerouslyDisableSandbox to true",
+    canSignInWithoutTerminal: true,
     defaultExecutable: "claude",
     fixedModels: claudeModels,
     hasPromptTool: true,
@@ -171,7 +172,6 @@ const harnessServiceFacts = {
         "Your commands run in Claude Code's sandbox, which writes your working folder and the git worktrees git lists for its repository. Do not run a command outside the sandbox for work in them. When the sandbox blocks a command you need for any other reason, run it again with dangerouslyDisableSandbox set to true: Outlore asks the owner about that exact command and nothing broader. Never chain anything else to it.",
     },
     signInArgs: ["auth", "login"],
-    signInNeedsNoTerminal: true,
     updateArgs: ["update"],
     updateCommand: null,
   },
@@ -182,12 +182,12 @@ const harnessServiceFacts = {
     // Upstream has no accounts entry for Cline, and CLINE_DIR/CLINE_DATA_DIR only steer its process confinement:
     // no verified account surface exists, so Cline takes the computer's own sign-in only.
     ...identityOf(cline),
+    canSignInWithoutTerminal: false,
     fixedModels: null,
     hasPromptTool: false,
     installVia: "npm",
     packageName: "cline",
     releaseRegistry: "none",
-    signInNeedsNoTerminal: false,
     // No update command of Cline's own exists upstream; its self-update stays squeezed off by the sign-in and
     // launch environment, and Update explains instead of running anything.
     updateArgs: null,
@@ -195,6 +195,7 @@ const harnessServiceFacts = {
   },
   codex: {
     approvedCommandAdvice: "",
+    canSignInWithoutTerminal: true,
     defaultExecutable: "codex",
     fixedModels: null,
     hasPromptTool: false,
@@ -208,7 +209,6 @@ const harnessServiceFacts = {
       asking: null,
     },
     signInArgs: ["login"],
-    signInNeedsNoTerminal: true,
     updateArgs: ["update"],
     updateCommand: null,
   },
@@ -219,13 +219,13 @@ const harnessServiceFacts = {
     // The driver upstream keeps no accounts entry for Copilot and its sign-in sits in the system keychain, so only
     // the computer's own sign-in is offered and added accounts are refused rather than silently shared.
     ...identityOf(copilot),
+    // `copilot login` opens its browser sign-in; a live check verifies the browser flow's completion.
+    canSignInWithoutTerminal: false,
     fixedModels: null,
     hasPromptTool: false,
     installVia: "npm",
     packageName: "@github/copilot",
     releaseRegistry: "none",
-    // `copilot login` opens its browser sign-in; a live check verifies the browser flow's completion.
-    signInNeedsNoTerminal: false,
     // No update command of Copilot's own exists upstream and its self-update is squeezed off by the environment,
     // so Update explains instead of running anything.
     updateArgs: null,
@@ -240,14 +240,14 @@ const harnessServiceFacts = {
     // has no home to isolate: only the computer's own sign-in is offered.
     // The executable is `cursor-agent`, never `cursor` (which launches the editor).
     ...identityOf(cursor),
+    // `cursor-agent login` never opens its page on its own (NO_OPEN_BROWSER prints the sign-in link for the
+    // owner to open); a live check verifies the link flow.
+    canSignInWithoutTerminal: false,
     fixedModels: null,
     hasPromptTool: false,
     installVia: "script",
     packageName: "",
     releaseRegistry: "none",
-    // `cursor-agent login` never opens its page on its own (NO_OPEN_BROWSER prints the sign-in link for the
-    // owner to open); a live check verifies the link flow.
-    signInNeedsNoTerminal: false,
     updateArgs: null,
     updateCommand: null,
   },
@@ -258,14 +258,14 @@ const harnessServiceFacts = {
     // Upstream keeps no accounts entry for Devin and its state sits under the machine-wide XDG data root, so only
     // the computer's own sign-in is offered and added accounts are refused rather than unisolated.
     ...identityOf(devin),
+    // No sign-in command of the CLI's own is verified: its sign-in is the ACP `devin-browser` flow, so Sign-in
+    // explains and the owner signs in inside the provider's own surface, then presses Refresh.
+    canSignInWithoutTerminal: false,
     fixedModels: null,
     hasPromptTool: false,
     installVia: "script",
     packageName: "",
     releaseRegistry: "none",
-    // No sign-in command of the CLI's own is verified: its sign-in is the ACP `devin-browser` flow, so Sign-in
-    // explains and the owner signs in inside the provider's own surface, then presses Refresh.
-    signInNeedsNoTerminal: false,
     updateArgs: null,
     updateCommand: null,
   },
@@ -275,19 +275,20 @@ const harnessServiceFacts = {
     // Fixed by the adapter: an account's own folder is Hermes's `HERMES_HOME`; turns refuse the user's own
     // Hermes directory (provider-accounts), and models come from the ACP probe, so nothing is fixed here.
     ...identityOf(hermes),
+    canSignInWithoutTerminal: false,
     fixedModels: null,
     hasPromptTool: false,
     installVia: "script",
     // The newest version is what its own `hermes update --check` knows; no registry holds it.
     packageName: "",
     releaseRegistry: "none",
-    signInNeedsNoTerminal: false,
     updateArgs: ["update"],
     updateCommand: null,
   },
   muse: {
     // The Muse adapter mediates approvals itself, so it has no `answer_prompt` tool.
     approvedCommandAdvice: "",
+    canSignInWithoutTerminal: false,
     defaultExecutable: "muse",
     fixedModels: null,
     hasPromptTool: false,
@@ -300,7 +301,6 @@ const harnessServiceFacts = {
     releaseRegistry: "none",
     // `muse login` opens its device page only from a real terminal, so sign-in opens one.
     signInArgs: ["login"],
-    signInNeedsNoTerminal: false,
     // The CLI has no update command; Outlore sets MUSE_NO_AUTO_UPDATE on every spawn, so it never updates
     // itself through us, and Update explains instead of running anything.
     updateArgs: null,
@@ -308,6 +308,7 @@ const harnessServiceFacts = {
   },
   opencode: {
     approvedCommandAdvice: "",
+    canSignInWithoutTerminal: false,
     // OpenCode keeps its sign-ins and sessions under its data folder (`$XDG_DATA_HOME/opencode`).
     defaultExecutable: "opencode",
     fixedModels: null,
@@ -317,7 +318,6 @@ const harnessServiceFacts = {
     packageName: "opencode-ai",
     releaseRegistry: "npm",
     signInArgs: ["auth", "login"],
-    signInNeedsNoTerminal: false,
     updateArgs: ["upgrade"],
     updateCommand: null,
   },
@@ -325,6 +325,7 @@ const harnessServiceFacts = {
     // Pi's fail-closed adapter never runs a tool Outlore did not approve (piTools.ts), so it asks the owner about
     // nothing through an `answer_prompt` tool.
     approvedCommandAdvice: "",
+    canSignInWithoutTerminal: false,
     // Each account is Pi's own state directory (`PI_CODING_AGENT_DIR`, default `~/.pi/agent`), holding the
     // sign-in (auth.json), settings, and sessions; the computer's own sign-in is the unredirected default.
     defaultExecutable: "pi",
@@ -337,7 +338,6 @@ const harnessServiceFacts = {
     // Sign-in is `/login` inside Pi's own interactive screen in a terminal window, closed when it is done; a
     // plain `pi` run opens it, so the arguments list is empty.
     signInArgs: [],
-    signInNeedsNoTerminal: false,
     // No update command of Pi's own is verified (its `update --models` only refreshes the model catalog), so
     // Update explains a reinstall from the GitHub releases instead of running anything.
     updateArgs: null,
@@ -345,6 +345,8 @@ const harnessServiceFacts = {
   },
   vibe: {
     approvedCommandAdvice: "",
+    // `vibe-acp --setup` is an interactive screen, so it needs a Terminal window (like OpenCode).
+    canSignInWithoutTerminal: false,
     // Mistral Vibe keeps its sign-in, sessions, and configuration under `$VIBE_HOME` (default `~/.vibe`).
     defaultExecutable: "vibe-acp",
     fixedModels: null,
@@ -355,8 +357,6 @@ const harnessServiceFacts = {
     packageName: "mistral-vibe",
     releaseRegistry: "pypi",
     signInArgs: ["--setup"],
-    // `vibe-acp --setup` is an interactive screen, so it needs a Terminal window (like OpenCode).
-    signInNeedsNoTerminal: false,
     updateArgs: ["tool", "upgrade", "mistral-vibe"],
     updateCommand: "uv",
   },
@@ -378,7 +378,7 @@ export const harnessFacts: Record<HarnessName, HarnessFacts> = Record.map(
       return {
         args: facts.signInArgs,
         env: { ...accountEnvironmentOf(name, configDirectory), ...facts.signInEnv },
-        keepsPath: false,
+        shouldKeepPath: false,
       };
     },
     versionGate: acpProviders[name]?.version ?? null,

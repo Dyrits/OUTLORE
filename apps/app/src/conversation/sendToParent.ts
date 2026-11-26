@@ -12,5 +12,5 @@ export const parentTargetLabelOf = (detail: MissionDetail): string | null => {
 };
 
 /** Resolves the `sendToParent` scope from the checkbox and context toggle. */
-export const sendToParentScopeOf = (isChecked: boolean, includeFullContext: boolean): SendToParentScope | null =>
-  isChecked ? (includeFullContext ? "FullContext" : "MessageOnly") : null;
+export const sendToParentScopeOf = (isChecked: boolean, shouldIncludeFullContext: boolean): SendToParentScope | null =>
+  isChecked ? (shouldIncludeFullContext ? "FullContext" : "MessageOnly") : null;

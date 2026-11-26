@@ -133,13 +133,13 @@ export function InlineTerminal({
             client={client}
             cwd={cwd}
             height={height}
-            hideExitBar={mode === "command"}
             id={terminalId}
             key={terminalId}
             onExit={handleExit}
             onReady={() => onReady?.()}
             ref={panelRef}
             scope={scope}
+            shouldHideExitBar={mode === "command"}
           />
           <View
             accessibilityLabel={`Resize ${title} terminal`}

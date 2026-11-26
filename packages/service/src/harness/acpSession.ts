@@ -121,10 +121,10 @@ export const thinkingConfigIdOf = (configOptions: unknown): string | null => {
 export const acpToolServersOf = Effect.fnUntraced(function* (
   transport: "http" | "negotiated",
   access: ThreadAccess,
-  advertisesHttp: boolean,
+  isHttpAdvertised: boolean,
 ) {
   if (access.mcpUrl === "") return [];
-  if (transport === "http" || advertisesHttp)
+  if (transport === "http" || isHttpAdvertised)
     return [{ headers: [], name: toolServerName, type: "http", url: access.mcpUrl }];
   return [yield* acpStdioMcpServerOf(access.mcpUrl)];
 });

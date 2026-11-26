@@ -36,7 +36,11 @@ type ThreadRow = Omit<
 };
 
 /** The mission's threads with their depth and kept messages, each parent before the threads beneath it. */
-const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId: string, includeArchived: boolean) {
+const listThreads = Effect.fnUntraced(function* (
+  missionId: string,
+  topThreadId: string,
+  shouldIncludeArchived: boolean,
+) {
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql<ThreadRow & { path: string }>`
       WITH RECURSIVE tree(id, depth, path) AS (
@@ -55,7 +59,7 @@ const listThreads = Effect.fnUntraced(function* (missionId: string, topThreadId:
         ${sql.literal(replyCountOf("t"))} AS replyCount,
         ${sql.literal(lastSampleOf("t.id", "user"))} AS lastOwnerText, ${sql.literal(lastSampleOf("t.id", "agent"))} AS lastReplyText
       FROM tree JOIN threads t ON t.id = tree.id
-      WHERE t.mission_id = ${missionId} AND (${includeArchived ? 1 : 0} = 1 OR t.archived_at IS NULL)
+      WHERE t.mission_id = ${missionId} AND (${shouldIncludeArchived ? 1 : 0} = 1 OR t.archived_at IS NULL)
       ORDER BY tree.path`;
   const threads = rows.map(({ lastOwnerText, lastReplyText, path: _path, ...row }) => ({
     ...row,

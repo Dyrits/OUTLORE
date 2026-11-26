@@ -132,13 +132,13 @@ export const makeTurnRunner = (dependencies: TurnRunnerDependencies) => {
           ...terms,
           connectorTools,
           isInWorkspace,
+          isUsingCodeMode: shouldUseCodeMode,
           mcpUrl,
           unaskedTools: [
             ...unaskedToolNamesOf(toolServerName, shouldUseCodeMode),
             // Claude Code runs only the tools it is told; each connector tool asks for itself in the gateway.
             ...connectorTools.map((name) => qualifiedToolNameOf(toolServerName, name)),
           ],
-          usesCodeMode: shouldUseCodeMode,
         },
         askOwner: askOwnerFor(approvals, sql, threadId),
         awaitSettlement,

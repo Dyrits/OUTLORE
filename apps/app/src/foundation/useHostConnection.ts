@@ -118,7 +118,7 @@ export function useHostConnection() {
         : pairedHosts === null
           ? ServiceClient.connect(hostId, true)
           : ServiceClient.connectThrough(
-              openBrowserTransport(pairedHosts, hostId, pageSettings(), { acceptOtherRelease: true }),
+              openBrowserTransport(pairedHosts, hostId, pageSettings(), { shouldAcceptOtherRelease: true }),
               hostId,
             ),
     [hostId, pairedHosts],
@@ -194,7 +194,7 @@ export function useHostConnection() {
         hasConnected: client.hasConnected,
         hasGivenUp: client.hasGivenUp,
         hasReleaseMismatch: client.hasReleaseMismatch,
-        needsPairing: client.needsPairing,
+        isPairingNeeded: client.isPairingNeeded,
       });
     update();
     const unsubscribe = client.subscribeFailure(update);

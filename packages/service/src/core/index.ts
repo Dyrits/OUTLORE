@@ -2,7 +2,7 @@ export { inactivityMissiveHours, touchMission } from "./activity.ts";
 export { Changes, changesLayer } from "./changes.ts";
 export { changeCompanionPreset } from "./companionPresets.ts";
 export { Endpoints, endpointsLayer } from "./endpoints.ts";
-export { invalid, notFound, ServiceFailure } from "./errors.ts";
+export { errorMessageOf, invalid, notFound, ServiceFailure } from "./errors.ts";
 export {
   type ApprovalTerms,
   type BackgroundWakeListener,

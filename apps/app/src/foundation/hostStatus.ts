@@ -5,7 +5,7 @@ export type HostLink = {
   failure: string | null;
   hasConnected: boolean;
   hasGivenUp: boolean;
-  needsPairing: boolean;
+  isPairingNeeded: boolean;
   hasReleaseMismatch: boolean;
 };
 
@@ -22,8 +22,8 @@ export const hostStatusOf = (input: {
   const failure = input.link?.failure ?? input.failure;
   const hasConnected = input.link?.hasConnected === true;
   return {
-    canPair: input.isBrowser && (isPairing || input.link?.needsPairing === true),
-    canRetry: failure !== null && input.link?.needsPairing !== true,
+    canPair: input.isBrowser && (isPairing || input.link?.isPairingNeeded === true),
+    canRetry: failure !== null && input.link?.isPairingNeeded !== true,
     canUseComputer: !input.isBrowser && input.hostId !== null,
     failure,
     hasReleaseMismatch: input.link?.hasReleaseMismatch === true,
@@ -44,7 +44,7 @@ export const initialHostLink: HostLinkState = {
   hasConnected: false,
   hasGivenUp: false,
   hasReleaseMismatch: false,
-  needsPairing: false,
+  isPairingNeeded: false,
 };
 
 /** Advances a link's life; final closes and explicit cancellation stop later attempts. */
@@ -67,6 +67,6 @@ export const advanceHostLink = (
     failures: state.failures + 1,
     hasGivenUp: isFinalLinkClose(event.code),
     hasReleaseMismatch: event.code === hostLinkCodes.otherRelease,
-    needsPairing: isRefusedLinkClose(event.code),
+    isPairingNeeded: isRefusedLinkClose(event.code),
   };
 };

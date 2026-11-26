@@ -7,7 +7,7 @@ type QueryEntry = {
   error: string | null;
   isLoading: boolean;
   listeners: Set<() => void>;
-  needsRefresh: boolean;
+  shouldRefresh: boolean;
   request: Request;
   serialized: string | null;
   unsubscribe: (() => void) | null;
@@ -38,12 +38,12 @@ const notify = (entry: QueryEntry) => {
 
 const loadEntry = async (client: ServiceClient, entry: QueryEntry) => {
   if (entry.isLoading) {
-    entry.needsRefresh = true;
+    entry.shouldRefresh = true;
     return;
   }
   entry.isLoading = true;
   do {
-    entry.needsRefresh = false;
+    entry.shouldRefresh = false;
     try {
       const value = await client.request(entry.request);
       const nextSerialized = serializedOf(value);
@@ -61,7 +61,7 @@ const loadEntry = async (client: ServiceClient, entry: QueryEntry) => {
         notify(entry);
       }
     }
-  } while (entry.listeners.size > 0 && entry.needsRefresh);
+  } while (entry.listeners.size > 0 && entry.shouldRefresh);
   entry.isLoading = false;
 };
 
@@ -74,9 +74,9 @@ const entryFor = (client: ServiceClient, request: Request, key: string): QueryEn
       error: null,
       isLoading: false,
       listeners: new Set(),
-      needsRefresh: false,
       request,
       serialized: null,
+      shouldRefresh: false,
       unsubscribe: null,
     };
     cache.set(key, entry);

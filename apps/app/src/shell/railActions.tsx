@@ -116,8 +116,9 @@ export function FolderCue({ path }: { path: string | null }) {
   const cue = folderCueOf({ path });
   if (cue === null) return null;
   const setTitle = (element: unknown) => {
-    const node = element as { setAttribute?: (name: string, value: string) => void } | null;
-    if (Platform.OS === "web") node?.setAttribute?.("title", cue);
+    // On the web the ref is the DOM element, which React Native's types do not describe.
+    if (Platform.OS !== "web" || !(element instanceof Element)) return;
+    element.setAttribute("title", cue);
   };
   return (
     <View accessibilityLabel={cue} ref={setTitle} style={local.folderCue}>

@@ -22,7 +22,7 @@ describe("opening the window", () => {
 describe("navigating the window", () => {
   it("returns from a channel quest to the same realm and Quests request", () => {
     const listing = { id: "realm", name: "Realm" };
-    const channel = navigate(initialLocation(null), { listing, showQuests: true, type: "channel" });
+    const channel = navigate(initialLocation(null), { listing, shouldShowQuests: true, type: "channel" });
     const opened = navigate(channel, { id: quest, origin: "channel", type: "quest" });
     expect(windowViewOf(opened).questReturn).toBe("channel");
     const back = navigate(opened, { type: "backFromQuest" });
@@ -64,7 +64,7 @@ describe("navigating the window", () => {
 
   it("opens the requested realm or Borderlands on its Quests tab on every press", () => {
     for (const listing of [{ id: "realm", name: "Realm" }, null]) {
-      const action = { listing, showQuests: true, type: "channel" } as const;
+      const action = { listing, shouldShowQuests: true, type: "channel" } as const;
       const first = navigate(initialLocation(null), action);
       const second = navigate(first, action);
       expect(windowViewOf(first).channel?.id).toBe(listing?.id ?? null);
@@ -75,7 +75,7 @@ describe("navigating the window", () => {
   });
   it("opens the quest itself on Errands, including when an errand was selected", () => {
     const before = navigate(initialLocation(null), { id: thread, missionId: quest, type: "thread" });
-    const next = navigate(before, { id: quest, showErrands: true, type: "quest" });
+    const next = navigate(before, { id: quest, shouldShowErrands: true, type: "quest" });
     expect(windowViewOf(next)).toMatchObject({
       errandsRequest: { tab: "errands" },
       openMission: quest,

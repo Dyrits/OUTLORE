@@ -101,7 +101,7 @@ export const antigravity: AcpProviderDefinition = {
   // A signed-out Antigravity answers `session/new` with -32000 "Authentication required" (CLI 1.5.16, live check 2026-11-24).
   signedOutCode: -32000,
   // The sign-in is the launch's own argv with --login, so it can only open the home the launch will read.
-  signIn: { argv: (home) => [...argvOf(home), "--login"], extraEnv: {}, keepsPath: true },
+  signIn: { argv: (home) => [...argvOf(home), "--login"], extraEnv: {}, shouldKeepPath: true },
   spawnEnv: { AGY_CLI_DISABLE_AUTO_UPDATE: "true" },
   version: majorVersionAtLeast(1),
 };

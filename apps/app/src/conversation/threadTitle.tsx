@@ -1,4 +1,5 @@
-import type { MissionDetail, MissionId, MissionState, ThreadId, ThreadState } from "@outlore/contracts";
+import type { MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
+import { memo, useMemo, useRef } from "react";
 import { Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { listedMissions } from "../foundation/queries";
@@ -8,6 +9,7 @@ import { colors, stateLabels, stateTones } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
 import { ChipIcon } from "../ui/chips";
 import { Menu } from "../ui/pickers";
+import { sameTitleChoices, type TitleChoice } from "./titleChoices";
 
 function TitleMenu<Id extends string>({
   kind,
@@ -16,8 +18,8 @@ function TitleMenu<Id extends string>({
   onSelect,
 }: {
   kind: "quest" | "ritual" | "errand";
-  current: { id: Id; title: string; state?: ThreadState | MissionState };
-  choices: ReadonlyArray<{ id: Id; title: string; state?: ThreadState | MissionState }>;
+  current: TitleChoice<Id>;
+  choices: ReadonlyArray<TitleChoice<Id>>;
   onSelect: (id: Id) => void;
 }) {
   const titles = new Map(choices.map((choice) => [choice.id, choice.title]));
@@ -58,6 +60,27 @@ function TitleMenu<Id extends string>({
   );
 }
 
+/** The quest's menu, memoized so it renders again only when its own choices, state or callback change. */
+const QuestTitleMenu = memo(function QuestTitleMenu(props: {
+  choices: ReadonlyArray<TitleChoice<MissionId>>;
+  current: TitleChoice<MissionId>;
+  kind: "quest" | "ritual";
+  onSelect: (id: MissionId) => void;
+}) {
+  return <TitleMenu {...props} />;
+});
+
+/** Keeps the previous list while a new one draws the same menu, so the memoized menu below it does not render again. */
+function useStableChoices<Id extends string>(choices: ReadonlyArray<TitleChoice<Id>>) {
+  const kept = useRef(choices);
+  if (!sameTitleChoices(kept.current, choices)) kept.current = choices;
+  return kept.current;
+}
+
+/**
+ * The quest's title with a menu of the realm's quests.
+ * The shared missions query changes whenever any quest does, so this re-renders then; the menu below renders again only when its own choices or state differ.
+ */
 function QuestTitle({
   client,
   detail,
@@ -69,18 +92,19 @@ function QuestTitle({
 }) {
   const { data } = useServiceQuery(client, listedMissions.request, listedMissions.key);
   const isRitual = detail.mission.ritual !== null;
-  const current = {
-    id: detail.mission.id,
-    state: data?.missions.find((mission) => mission.id === detail.mission.id)?.state ?? detail.thread.state,
-    title: detail.thread.title,
-  };
+  const id = detail.mission.id;
+  const state = data?.missions.find((mission) => mission.id === id)?.state ?? detail.thread.state;
+  const title = detail.thread.title;
+  const current = useMemo(() => ({ id, state, title }), [id, state, title]);
+  const choices = useStableChoices(
+    inRealmOf(data?.missions ?? [], detail.mission.workspaceId, isRitual ? "Ritual" : "Quest").map((mission) => ({
+      id: mission.id,
+      state: mission.state,
+      title: mission.title,
+    })),
+  );
   return (
-    <TitleMenu
-      choices={inRealmOf(data?.missions ?? [], detail.mission.workspaceId, isRitual ? "Ritual" : "Quest")}
-      current={current}
-      kind={isRitual ? "ritual" : "quest"}
-      onSelect={onOpenMission}
-    />
+    <QuestTitleMenu choices={choices} current={current} kind={isRitual ? "ritual" : "quest"} onSelect={onOpenMission} />
   );
 }
 

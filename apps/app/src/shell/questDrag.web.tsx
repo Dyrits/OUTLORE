@@ -70,7 +70,7 @@ export function DropTarget({ children, onDropQuest, onDropRealm }: DropTargetPro
     <div
       onDragLeave={(event) => {
         // Moving between this place's own rows is not leaving it.
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(null);
+        if (!(event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))) setOver(null);
       }}
       onDragOver={(event) => {
         const isRealm = event.dataTransfer.types.includes(realmDragType);

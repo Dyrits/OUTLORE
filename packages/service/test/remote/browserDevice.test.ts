@@ -128,9 +128,9 @@ const makeWorld = () =>
       const storage = settings.storage ?? memoryStorage();
       const hosts = createPairedHosts(storage);
       const page = {
-        allowLocalRelay: true,
         kind: settings.kind ?? "browser",
         release: settings.release ?? hostRelease,
+        shouldAllowLocalRelay: true,
       };
       return {
         hosts,
@@ -283,9 +283,9 @@ describe("a browser pairing with a running host and using it", () => {
         const elsewhere = createPairedHosts(memoryStorage());
         const refused = yield* Effect.promise(() =>
           pairFromBrowser(fresh, "Firefox", elsewhere, {
-            allowLocalRelay: false,
             kind: "browser",
             release: hostRelease,
+            shouldAllowLocalRelay: false,
           }).catch((error: Error) => error),
         );
         expect(String((refused as Error).message)).toContain("relay on this computer");
@@ -332,9 +332,9 @@ describe("a browser pairing with a running host and using it", () => {
         const host = yield* Effect.promise(async () => matching.pair(await Effect.runPromise(scene.newCode())));
         const link = driven(
           openBrowserTransport(createPairedHosts(matching.storage), host.id, {
-            allowLocalRelay: true,
             kind: "browser",
             release: "0.1.9-Prototype",
+            shouldAllowLocalRelay: true,
           }),
         );
         const closed = yield* until(() => link.closed ?? undefined);

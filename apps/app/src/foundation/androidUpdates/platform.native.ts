@@ -18,7 +18,7 @@ type InstallerModule = {
   };
   canInstallPackages(): boolean;
   discard(fileName: string): Promise<void>;
-  download(url: string, fileName: string, userAgent: string, allowsMetered: boolean): Promise<string>;
+  download(url: string, fileName: string, userAgent: string, shouldAllowMetered: boolean): Promise<string>;
   install(fileName: string): Promise<void>;
   isNetworkMetered(): boolean;
   isStoreInstall(): boolean;
@@ -31,12 +31,12 @@ const installerOf = (native: InstallerModule): AndroidInstaller => ({
   allowInstalling: () => native.openInstallSettings(),
   canInstallPackages: () => native.canInstallPackages(),
   discard: (fileName) => native.discard(fileName),
-  download: async ({ allowsMetered, fileName, url, userAgent }, onProgress) => {
+  download: async ({ shouldAllowMetered, fileName, url, userAgent }, onProgress) => {
     const subscription = native.addListener("onDownloadProgress", (event) => {
       if (event.fileName === fileName) onProgress(event.percent);
     });
     try {
-      return await native.download(url, fileName, userAgent, allowsMetered);
+      return await native.download(url, fileName, userAgent, shouldAllowMetered);
     } finally {
       subscription.remove();
     }

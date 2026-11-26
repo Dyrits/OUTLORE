@@ -55,7 +55,7 @@ const codexProtocolOf = (options: CodexOptions): HarnessProtocol<CodexConnection
       // Worktrees and submodules can change the grants without changing the type of profile.
       profile?.grants ?? {},
       // The tools are listed when the process starts, so a change of Code Mode restarts it.
-      request.access.usesCodeMode,
+      request.access.isUsingCodeMode,
       request.access.connectorTools,
       request.configDirectory,
       resolvedFolderOf(request.cwd),

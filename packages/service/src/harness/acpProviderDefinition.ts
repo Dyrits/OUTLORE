@@ -66,7 +66,7 @@ export type AcpSignIn = {
   /** Environment only the sign-in carries, such as the flag that keeps a link flow from opening a browser. */
   readonly extraEnv: Readonly<Record<string, string>>;
   /** Whether a terminal window the sign-in opens keeps this process's `PATH`, so the window finds the executable by its bare name. */
-  readonly keepsPath?: boolean;
+  readonly shouldKeepPath?: boolean;
 };
 
 /**
@@ -163,7 +163,7 @@ export const acpLaunchOf = (definition: AcpProviderDefinition, options: AcpResol
 export type AcpSignInCommand = {
   readonly args: ReadonlyArray<string>;
   readonly env: Readonly<Record<string, string>>;
-  readonly keepsPath: boolean;
+  readonly shouldKeepPath: boolean;
 };
 
 /**
@@ -179,6 +179,6 @@ export const acpSignInOf = (
   return {
     args: definition.signIn.argv(isolation.home),
     env: { ...definition.spawnEnv, ...isolation.env, ...definition.signIn.extraEnv },
-    keepsPath: definition.signIn.keepsPath === true,
+    shouldKeepPath: definition.signIn.shouldKeepPath === true,
   };
 };

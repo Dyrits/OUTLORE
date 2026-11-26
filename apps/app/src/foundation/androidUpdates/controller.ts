@@ -205,7 +205,7 @@ export class AndroidUpdateController {
   }
 
   /** Downloads the APK and keeps it only when its hash is the one the release lists. */
-  private async fetchApk(release: FoundRelease, allowsMetered: boolean) {
+  private async fetchApk(release: FoundRelease, shouldAllowMetered: boolean) {
     const { installer } = this.options;
     const fileName = release.installer.name;
     this.status = { _tag: "Downloading", percent: 0, version: release.version };
@@ -220,7 +220,12 @@ export class AndroidUpdateController {
       if (sha512 === undefined)
         throw new RequestFailure(`The checksums of release ${release.version} list no ${fileName}.`);
       const hash = await installer.download(
-        { allowsMetered, fileName, url: release.installer.url, userAgent: `Outlore/${this.options.currentVersion}` },
+        {
+          fileName,
+          shouldAllowMetered,
+          url: release.installer.url,
+          userAgent: `Outlore/${this.options.currentVersion}`,
+        },
         (percent) => {
           this.status = { _tag: "Downloading", percent, version: release.version };
           this.publish();

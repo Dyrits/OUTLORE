@@ -81,6 +81,8 @@ export interface HostConnection {
   close(): void;
   /** Closes one client's connection. */
   closeClient(clientId: string): void;
+  /** Whether the claim went in the address because the relay is of an earlier release (see `legacyClaimUntil`). */
+  readonly isUsingLegacyClaim: boolean;
   /** Runs when a client's frame arrives. */
   onClientData(listener: (clientId: string, data: Uint8Array) => void): void;
   /** Runs when a client connects to the room. */
@@ -90,12 +92,10 @@ export interface HostConnection {
   /** Runs once when the connection ends, with the relay's close code (1006 when it dropped without one). */
   onClose(listener: (code: number, reason: string) => void): void;
   sendToClient(clientId: string, data: Uint8Array): void;
-  /** Whether the claim went in the address because the relay is of an earlier release (see `legacyClaimUntil`). */
-  readonly usesLegacyClaim: boolean;
 }
 
 /** The host's side of an open socket. */
-const hostConnectionOf = (socket: WebSocket, usesLegacyClaim: boolean): HostConnection => {
+const hostConnectionOf = (socket: WebSocket, isUsingLegacyClaim: boolean): HostConnection => {
   const joined: Array<(clientId: string) => void> = [];
   const left: Array<(clientId: string) => void> = [];
   const data: Array<(clientId: string, data: Uint8Array) => void> = [];
@@ -142,6 +142,7 @@ const hostConnectionOf = (socket: WebSocket, usesLegacyClaim: boolean): HostConn
   return {
     close: () => socket.close(1000, "host closed"),
     closeClient: (clientId) => send(framed(hostFrame.disconnect, clientId, new Uint8Array(0))),
+    isUsingLegacyClaim,
     onClientData: (listener) => void data.push(listener),
     onClientJoined: (listener) => void joined.push(listener),
     onClientLeft: (listener) => void left.push(listener),
@@ -150,7 +151,6 @@ const hostConnectionOf = (socket: WebSocket, usesLegacyClaim: boolean): HostConn
       else closed.push(listener);
     },
     sendToClient: (clientId, payload) => send(framed(hostFrame.forward, clientId, payload)),
-    usesLegacyClaim,
   };
 };
 
@@ -212,7 +212,7 @@ const clientConnectionOf = (socket: WebSocket): ClientConnection => {
 
 /**
  * Connects as the host of `room`, claiming it with `claim` (the first claim keeps the room); an unreachable relay is
- * the typed failure. The claim travels in the WebSocket subprotocols, not in the address. With `legacyFallback`, any
+ * the typed failure. The claim travels in the WebSocket subprotocols, not in the address. With `shouldFallBackToLegacyClaim`, any
  * failure of that first try is followed by a second one with the claim in the address, as earlier hosts sent it; the
  * caller must therefore set it only when it has reason to think the relay is of an earlier release (the service does,
  * in `mayFallBackToLegacyClaim`). It is for the transition only (see `legacyClaimUntil`). The keep-alive runs until the
@@ -220,22 +220,22 @@ const clientConnectionOf = (socket: WebSocket): ClientConnection => {
  */
 export const connectHost = Effect.fnUntraced(function* (options: {
   claim: Uint8Array;
-  legacyFallback?: boolean;
+  shouldFallBackToLegacyClaim?: boolean;
   relayOrigin: string;
   room: string;
 }) {
   const withSubprotocol = open(socketUrl(options.relayOrigin, options.room, { role: "host" }), [
     relayProtocol,
     claimProtocolOf(options.claim),
-  ]).pipe(Effect.map((socket) => ({ socket, usesLegacyClaim: false })));
+  ]).pipe(Effect.map((socket) => ({ isUsingLegacyClaim: false, socket })));
   const inAddress = open(
     socketUrl(options.relayOrigin, options.room, { claim: encodeBase64Url(options.claim), role: "host" }),
-  ).pipe(Effect.map((socket) => ({ socket, usesLegacyClaim: true })));
-  const { socket, usesLegacyClaim } = yield* options.legacyFallback === true
+  ).pipe(Effect.map((socket) => ({ isUsingLegacyClaim: true, socket })));
+  const { socket, isUsingLegacyClaim } = yield* options.shouldFallBackToLegacyClaim === true
     ? withSubprotocol.pipe(Effect.catch(() => inAddress))
     : withSubprotocol;
   yield* Effect.forkDetach(keepAlive(socket));
-  return hostConnectionOf(socket, usesLegacyClaim);
+  return hostConnectionOf(socket, isUsingLegacyClaim);
 });
 
 /**

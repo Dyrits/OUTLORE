@@ -195,6 +195,6 @@ describe("the update link to a host that restarts to install", () => {
     const client = await connecting;
     hostEnds(FakeSocket.all[0], 4002, "The host no longer knows this computer.");
     expect(client.hasGivenUp).toBe(true);
-    expect(client.needsPairing).toBe(true);
+    expect(client.isPairingNeeded).toBe(true);
   });
 });

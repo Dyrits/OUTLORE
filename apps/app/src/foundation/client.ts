@@ -101,8 +101,8 @@ export class ServiceClient {
   }
 
   /** Whether the host refused this installation, so only pairing again helps (not a host of another release). */
-  get needsPairing() {
-    return this.link.needsPairing;
+  get isPairingNeeded() {
+    return this.link.isPairingNeeded;
   }
 
   /** Whether the host refused the app because it runs a different release. */
@@ -219,7 +219,8 @@ export class ServiceClient {
       const value = Schema.decodeUnknownSync(Results[request.tag] as unknown as Schema.Codec<unknown>)(frame.value);
       for (const waiter of request.waiters) waiter.resolve(value);
     } catch (error) {
-      for (const waiter of request.waiters) waiter.reject(error as Error);
+      const failure = error instanceof Error ? error : new Error(String(error));
+      for (const waiter of request.waiters) waiter.reject(failure);
     }
   }
 

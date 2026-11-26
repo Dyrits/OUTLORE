@@ -10,15 +10,15 @@ export const matchesPattern = (pattern: string, target: string) => {
 };
 
 /** Each harness tool's plain action, and whether it changes files with the harness's own tool, outside any command sandbox. */
-const toolFacts: Record<string, { action: string; writesFiles: boolean }> = {
-  Bash: { action: "Run a command", writesFiles: false },
-  Edit: { action: "Change a file", writesFiles: true },
-  MultiEdit: { action: "Change a file", writesFiles: true },
-  NotebookEdit: { action: "Change a notebook", writesFiles: true },
-  Read: { action: "Read a file", writesFiles: false },
-  WebFetch: { action: "Open a web page", writesFiles: false },
-  WebSearch: { action: "Search the web", writesFiles: false },
-  Write: { action: "Write a file", writesFiles: true },
+const toolFacts: Record<string, { action: string; canWriteFiles: boolean }> = {
+  Bash: { action: "Run a command", canWriteFiles: false },
+  Edit: { action: "Change a file", canWriteFiles: true },
+  MultiEdit: { action: "Change a file", canWriteFiles: true },
+  NotebookEdit: { action: "Change a notebook", canWriteFiles: true },
+  Read: { action: "Read a file", canWriteFiles: false },
+  WebFetch: { action: "Open a web page", canWriteFiles: false },
+  WebSearch: { action: "Search the web", canWriteFiles: false },
+  Write: { action: "Write a file", canWriteFiles: true },
 };
 
 /** Claude Code's own reason for a tool call, without its final period, or null when it gives none. */
@@ -113,7 +113,7 @@ export const kindOfPermission = (sentence: string) => (capabilityNames.has(sente
 
 // The harness tools that change files themselves, outside any command sandbox.
 /** Whether a harness tool call changes files with the harness's own tool rather than a command. */
-export const isFileWriting = (toolName: string) => toolFacts[toolName]?.writesFiles === true;
+export const isFileWriting = (toolName: string) => toolFacts[toolName]?.canWriteFiles === true;
 
 const pathFieldOf = (input: unknown) =>
   textFieldOf(input, "file_path") ?? textFieldOf(input, "notebook_path") ?? textFieldOf(input, "path");

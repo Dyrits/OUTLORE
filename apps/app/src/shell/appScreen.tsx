@@ -202,7 +202,6 @@ function AppScreenContent({
     view.openMission === null ? null : (
       <Conversation
         client={client}
-        initiallyShowErrands={view.errandsRequest !== null}
         key={`${view.openMission}:${view.openCount}`}
         missionId={view.openMission}
         onBack={navigation.backFromQuest}
@@ -210,6 +209,7 @@ function AppScreenContent({
         onSelectThread={navigation.selectThread}
         onSetDetails={navigation.showDetails}
         selectedThreadId={view.openThread}
+        shouldShowErrandsInitially={view.errandsRequest !== null}
       />
     );
   if (!hasPanes && channel !== null) {

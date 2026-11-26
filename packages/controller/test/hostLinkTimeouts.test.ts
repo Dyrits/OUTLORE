@@ -10,7 +10,7 @@ import { linkTexts } from "../src/linkFailure.ts";
 // test clock, over a real local relay and a stand-in host that stops answering at a chosen point.
 
 const room = "abcdefghijklmnopqrstuvwxyz012345";
-const settings = { allowLocalRelay: true, kind: "desktop", release: "development" } as const;
+const settings = { kind: "desktop", release: "development", shouldAllowLocalRelay: true } as const;
 const turn = Effect.promise(() => new Promise<void>((resolve) => setImmediate(resolve)));
 
 /** One client of the host's room as the secure channel's carrier. */

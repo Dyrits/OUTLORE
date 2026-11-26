@@ -98,7 +98,7 @@ describe("one ACP definition drives the launch, the sign-in and the probe alike"
         kind: "directory",
       },
       pinnedHome: { resolve: (env) => env.PIN_DEFAULT ?? "/computer/home", variable: "PIN_HOME" },
-      signIn: { argv: (home) => [...argv(home), "--login"], extraEnv: {}, keepsPath: true },
+      signIn: { argv: (home) => [...argv(home), "--login"], extraEnv: {}, shouldKeepPath: true },
       spawnEnv: acpFakeEnv(log, { logEnv: logged, mode: "probe" }),
     });
   };
