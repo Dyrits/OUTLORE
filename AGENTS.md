@@ -65,4 +65,4 @@ Latest handoffs:
 
 - To verify and continue the instruction that stops agents announcing an opened errand (CHG-0745), read the [current handoff](.agents/handoffs/2026-11-25-1855-no-errand-announcement.md). Handoffs are shared and committed.
 
-- To resume the whole-codebase review and refactor (CHG-0750), read the [current handoff](.agents/handoffs/2026-11-25-2240-codebase-review-and-refactor.md). Handoffs are shared and committed.
+- To resume the whole-codebase review and refactor after its merge (CHG-0750 to CHG-0752), read the [current handoff](.agents/handoffs/2026-11-26-0725-codebase-review-and-refactor-merged.md). Handoffs are shared and committed.

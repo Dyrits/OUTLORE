@@ -1,9 +1,9 @@
 # Work in progress
 
-## Whole-codebase review and refactor · 2026-11-25 · first pass committed; follow-up errands in flight; desktop check pending
+## Whole-codebase review and refactor · 2026-11-26 · merged on `main` and verified by checks; desktop check pending
 
-CHG-0750 in `0.2.8-Pre-Alpha`: image flicker, panel islands, quest-read broadcasts, spec fixes SPEC-03 to SPEC-06, and the first convention fixes.
-Next: the owner checks the flicker and the realm panel in the desktop window; the follow-up errands finish the standalone-channel island, the Reply starting-context warning, Pi tests, scoped `Changed`, and the standards sweeps; the owner decides Fresh or Resting for an empty errand (SPEC-07).
+CHG-0750 to CHG-0752 in `0.2.8-Pre-Alpha`: image flicker, panel islands including the standalone channel, quest-read broadcasts, spec fixes SPEC-03 to SPEC-06, the Reply starting-context warning, and the standards sweeps.
+Next: the owner checks the flicker, the realm panel and the first quest opened from a standalone channel in the desktop window; wave 2 (scoped `Changed` topics, attachment byte caching, the cross-package boolean renames, the 21 service files still past 256 lines, the `QuestTitle` re-render audit, and a re-review); the owner decides Fresh or Resting for an empty errand (SPEC-07).
 
 ## Child reads parent on demand · 2026-11-25 · built and verified by tests; desktop check pending
 
