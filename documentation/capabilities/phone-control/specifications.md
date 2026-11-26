@@ -35,6 +35,11 @@ The outcome: a thread calls a `phone_*` tool; the paired Outlore app on the owne
 - **Nothing is kept.** Outlore stores no location, clipboard text or screenshot from a call; the result goes to the thread's model provider like any tool result, and the card says so before a switch is turned on.
 - **Failures are plain.** A switch off, a refused Android permission, a closed app and a timeout (30 seconds) each return one sentence the thread can read and relay.
 
+## Direction for step 2 (owner, 2026-11-26)
+
+The best step 2 is headless control: the agent works in the background and does not take over the screen while the owner uses the phone.
+An accessibility service on the real screen would take over it, so whether Android allows background control on stock phones (a virtual display, accessibility on another display, or a wireless-debugging bridge) is being researched first, in `documentation/research/phone-headless-control-2026-11-26.md`; step 2 is specified after that note, with its own record.
+
 ## Not in step 1
 
 Reading the screen, screenshots, taps, typing, SMS, calls, contacts, photos and files, the camera, and anything in the background.
