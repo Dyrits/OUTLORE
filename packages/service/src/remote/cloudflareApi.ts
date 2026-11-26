@@ -1,7 +1,7 @@
 import { newRoomName } from "@outlore/channel";
 import { closeCodes, connectClient } from "@outlore/relay";
 import { Effect } from "effect";
-import { fieldOf, isRecord } from "../core/records.ts";
+import { fieldOf, isRecord } from "../core/index.ts";
 
 /** Where Cloudflare's API lives; the token is sent nowhere else. */
 export const cloudflareApiBase = "https://api.cloudflare.com/client/v4";

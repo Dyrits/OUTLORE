@@ -1,6 +1,6 @@
 import { relayWorkerBundle, relayWorkerCompatibilityDate } from "@outlore/relay";
 import { Duration, Effect, Schema } from "effect";
-import { fieldOf } from "../core/records.ts";
+import { fieldOf } from "../core/index.ts";
 import {
   accountsOf,
   type CloudflareAnswer,

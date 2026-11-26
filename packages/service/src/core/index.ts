@@ -24,7 +24,6 @@ export {
   type PlanLimitReport,
   type PlanLimitsReport,
   type PromptAnswer,
-  type ReportedFileEdit,
   type SteeredMessage,
   type ThreadAccess,
   type TurnOutcome,
@@ -34,6 +33,7 @@ export {
   type FileChange,
   fileChangeOf,
   linesOfStoredDiff,
+  type ReportedFileEdit,
   reportedChangeOf,
   storedDiffOf,
 } from "./fileChanges.ts";

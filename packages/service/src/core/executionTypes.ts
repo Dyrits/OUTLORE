@@ -10,13 +10,7 @@ import type {
   TokenUsage,
 } from "@outlore/contracts";
 import { type Effect, Schema } from "effect";
-import type { FileChange } from "./fileChanges.ts";
-
-/** The patch, text or captured change a harness reports for a file edit. */
-export type ReportedFileEdit =
-  | { readonly patch: string; readonly movedTo: string | null }
-  | { readonly pairs: ReadonlyArray<{ readonly previous: string; readonly next: string }> | null }
-  | { readonly change: FileChange };
+import type { ReportedFileEdit } from "./fileChanges.ts";
 
 /** What a harness reports while a turn runs. */
 export type HarnessEvent =

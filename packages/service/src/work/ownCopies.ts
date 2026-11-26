@@ -3,7 +3,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync } fro
 import { join, resolve } from "node:path";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { errorMessageOf, invalid, realFolderOf } from "../core/index.ts";
+import { errorMessageOf, fieldOf, invalid, realFolderOf } from "../core/index.ts";
 
 // Own copy (workspace-attachment, CHG-0441): a thread's own git worktree of its git workspace, on its own branch. The
 // service makes it, outside any sandbox, because Claude Code's sandbox never writes `.git/worktrees` of the folder a
@@ -76,7 +76,7 @@ const runGit = (folder: string, args: ReadonlyArray<string>) => {
     });
     return { isDone: true, text: output.trim() } as const;
   } catch (error) {
-    const stderr = error instanceof Error && "stderr" in error ? error.stderr : undefined;
+    const stderr = fieldOf(error, "stderr");
     const text = typeof stderr === "string" && stderr.trim() !== "" ? stderr.trim() : errorMessageOf(error);
     return { isDone: false, text } as const;
   }
