@@ -102,6 +102,19 @@ describe("the service client's reconnection", () => {
     client.close();
   });
 
+  it("hands a call for the phone to the screens that listen, and not after they stop", async () => {
+    const client = await connect();
+    const seen: string[] = [];
+    const stopListening = client.subscribePhoneCalls((call) => seen.push(`${call.deviceId}:${call.tool}`));
+    const frame = { _tag: "PhoneCall", args: {}, callId: "c1", deviceId: "d1", tool: "phone_info" };
+    FakeSocket.all[0]?.onmessage?.({ data: JSON.stringify(frame) });
+    expect(seen).toEqual(["d1:phone_info"]);
+    stopListening();
+    FakeSocket.all[0]?.onmessage?.({ data: JSON.stringify(frame) });
+    expect(seen).toHaveLength(1);
+    client.close();
+  });
+
   it("tells the phone each time the link opens, and not after it stops listening", async () => {
     const client = await connect();
     let opened = 0;

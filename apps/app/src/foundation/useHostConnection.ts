@@ -2,6 +2,7 @@ import type { KnownHost } from "@outlore/contracts";
 import { createPairedHosts } from "@outlore/controller";
 import { openBrowserTransport, pairFromBrowser } from "@outlore/controller/browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePhoneUse } from "../phone/usePhoneUse";
 import { isMobileApp, isRemoteOnly, pageSettings } from "./browser/page";
 import { ServiceClient } from "./client";
 import { type HostLink, hostStatusOf } from "./hostStatus";
@@ -110,6 +111,8 @@ export function useHostConnection() {
       setHostClient(null);
     };
   }, [hostId, pairedHosts, attempt]);
+  // The phone app serves the host's phone_* calls over this link; no other screen does (phone-control).
+  usePhoneUse(isMobileApp ? hostClient : null, hostId === null ? null : (pairedHosts?.link(hostId)?.deviceId ?? null));
   // The link that updates the selected host when it runs another release than this device: a second link that keeps it.
   const openUpdateLink = useCallback(
     () =>
