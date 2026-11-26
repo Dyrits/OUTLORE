@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
-import { loreInstructions, scopeLabelOf } from "../../src/lore/lore.ts";
+import { scopeLabelOf } from "../../src/lore/lore.ts";
+import { loreInstructions } from "../../src/lore/loreContext.ts";
 import { scopeHelp } from "../../src/work/threadTools.ts";
 
 describe("naming lore scopes", () => {

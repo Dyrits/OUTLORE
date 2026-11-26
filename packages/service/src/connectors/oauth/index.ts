@@ -1,22 +1,17 @@
 export {
   buildAuthorizationUrl,
-  exchangeAuthorizationCode,
   generatePkce,
   generateState,
   openLoopbackCallback,
   type PkcePair,
+} from "./authorization.ts";
+export {
+  exchangeAuthorizationCode,
   type RegisteredClient,
   refreshOAuthToken,
   registerDynamicClient,
 } from "./client.ts";
-export {
-  type BearerChallenge,
-  type DiscoveredOAuth,
-  discoverOAuthMetadata,
-  isAllowedOAuthUrl,
-  OAuthFailure,
-  parseWwwAuthenticate,
-} from "./discovery.ts";
+export { discoverOAuthMetadata } from "./discovery.ts";
 export { type BrowserOpener, defaultOpenBrowser, runOAuthSignIn } from "./flow.ts";
 export {
   decodeOAuthSession,
@@ -26,3 +21,10 @@ export {
   oauthSecretsOf,
   redactionSecretsOf,
 } from "./session.ts";
+export {
+  type BearerChallenge,
+  type DiscoveredOAuth,
+  isAllowedOAuthUrl,
+  OAuthFailure,
+  parseWwwAuthenticate,
+} from "./types.ts";

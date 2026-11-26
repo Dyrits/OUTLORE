@@ -4,6 +4,7 @@ import { contextReadingsMigrations } from "./contextReadingsMigrations.ts";
 import { earlyStoreMigrations } from "./earlyStoreMigrations.ts";
 import { inactivityMissiveMigrations } from "./inactivityMissiveMigrations.ts";
 import { lateStoreMigrations } from "./lateStoreMigrations.ts";
+import { latestStoreMigrations } from "./latestStoreMigrations.ts";
 import { midStoreMigrations } from "./midStoreMigrations.ts";
 import { recentStoreMigrations } from "./recentStoreMigrations.ts";
 
@@ -13,6 +14,7 @@ export const migrations = {
   ...midStoreMigrations,
   ...lateStoreMigrations,
   ...recentStoreMigrations,
+  ...latestStoreMigrations,
   ...inactivityMissiveMigrations,
   ...contextReadingsMigrations,
 };
