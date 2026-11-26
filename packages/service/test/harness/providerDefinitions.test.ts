@@ -126,17 +126,17 @@ describe("one definition per ACP provider", () => {
     expect(harnessFacts.cursor.signIn(null)).toEqual({
       args: ["login"],
       env: { NO_OPEN_BROWSER: "1" },
-      keepsPath: false,
+      shouldKeepPath: false,
     });
     expect(harnessFacts.copilot.signIn(null)).toEqual({
       args: ["login"],
       env: { COPILOT_AUTO_UPDATE: "false" },
-      keepsPath: false,
+      shouldKeepPath: false,
     });
     expect(harnessFacts.cline.signIn(null)).toEqual({
       args: ["auth", "-p", "cline"],
       env: { CLINE_NO_AUTO_UPDATE: "1", CLINE_SESSION_BACKEND_MODE: "local" },
-      keepsPath: false,
+      shouldKeepPath: false,
     });
     expect(harnessFacts.devin.signIn(null)).toBeNull();
   });
@@ -145,9 +145,9 @@ describe("one definition per ACP provider", () => {
     expect(harnessFacts.claude.signIn("/accounts/c")).toEqual({
       args: ["auth", "login"],
       env: { CLAUDE_CONFIG_DIR: "/accounts/c" },
-      keepsPath: false,
+      shouldKeepPath: false,
     });
-    expect(harnessFacts.pi.signIn(null)).toEqual({ args: [], env: {}, keepsPath: false });
+    expect(harnessFacts.pi.signIn(null)).toEqual({ args: [], env: {}, shouldKeepPath: false });
   });
 });
 

@@ -52,7 +52,8 @@ export const cloudflareApiFor = (token: string, fetchImpl: typeof fetch = fetch)
     });
     const text = await response.text();
     try {
-      return { json: JSON.parse(text) as unknown, status: response.status };
+      const json: unknown = JSON.parse(text);
+      return { json, status: response.status };
     } catch {
       return { json: null, status: response.status };
     }
@@ -82,7 +83,7 @@ export type DeployResult =
       readonly ok: true;
       readonly origin: string;
       /** Whether this replaced a relay this feature deployed before. */
-      readonly wasUpdated: boolean;
+      readonly isUpdated: boolean;
       readonly workerName: string;
     }
   | { readonly failure: DeployFailureKind; readonly message: string; readonly ok: false };
@@ -293,9 +294,9 @@ const deploymentOf = (options: DeployOptions) => {
     return {
       accountName: account.name,
       hasCreatedSubdomain: hasCreated,
+      isUpdated: isUpdate,
       ok: true as const,
       origin,
-      wasUpdated: isUpdate,
       workerName,
     };
   });

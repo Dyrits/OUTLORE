@@ -63,7 +63,7 @@ const claudeProtocolOf = (
     JSON.stringify([
       accessArgsOf(request.access, request.context, options, listThreadWorktrees(request)),
       // The tools are listed when the process starts, so a change of Code Mode restarts it.
-      request.access.usesCodeMode,
+      request.access.isUsingCodeMode,
       // So are the connector tools it may run unasked and lists (connectors blueprint, Open: tool listing at a turn's start).
       request.access.connectorTools,
       request.configDirectory,

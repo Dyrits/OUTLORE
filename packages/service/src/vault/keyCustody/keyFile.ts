@@ -9,7 +9,7 @@ const readOf = (path: string): KeyRead => {
   try {
     text = readFileSync(path, "utf8").trim();
   } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "ENOENT"
+    return error instanceof Error && "code" in error && error.code === "ENOENT"
       ? { _tag: "Gone" }
       : { _tag: "Unreachable", reason: "The key file cannot be read." };
   }

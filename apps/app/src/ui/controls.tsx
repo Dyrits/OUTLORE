@@ -110,7 +110,7 @@ export function Composer({
       files.clear(sentIds);
       setError(null);
     } catch (reason) {
-      setError((reason as Error).message);
+      setError(messageOf(reason));
     } finally {
       setIsSending(false);
     }

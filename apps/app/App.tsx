@@ -89,9 +89,10 @@ export function App() {
       sidebar: {
         onOpenChannel: openChannel,
         onOpenChronicle: () => goTo("Chronicle"),
-        onOpenErrands: (id: MissionId) => dispatch({ id, showErrands: true, type: "quest" }),
+        onOpenErrands: (id: MissionId) => dispatch({ id, shouldShowErrands: true, type: "quest" }),
         onOpenMission: openMissionFromAnywhere,
-        onOpenQuestsTab: (listing: RealmListing | null) => dispatch({ listing, showQuests: true, type: "channel" }),
+        onOpenQuestsTab: (listing: RealmListing | null) =>
+          dispatch({ listing, shouldShowQuests: true, type: "channel" }),
         onOpenThread: openSideQuest,
       },
     };

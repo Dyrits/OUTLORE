@@ -20,7 +20,7 @@ export function ConnectorChoicePanel({
 }) {
   const { data, error } = useServiceQuery(client, { _tag: "ReadConnectorChoices", level }, levelKeyOf(level));
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [isBusy, setBusy] = useState(false);
   const save = (connectorId: string, choice: "On" | "Off" | "Reset") => {
     setBusy(true);
     client
@@ -42,7 +42,7 @@ export function ConnectorChoicePanel({
           <View key={card.connectorId} style={{ gap: 4 }}>
             <View style={{ alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               <Toggle
-                isDisabled={busy || view.isDisabled}
+                isDisabled={isBusy || view.isDisabled}
                 label={card.name}
                 onValueChange={(value) => save(card.connectorId, choiceOfSwitch(value))}
                 value={view.isOn}
@@ -50,7 +50,7 @@ export function ConnectorChoicePanel({
               <Text style={styles.body}>{card.name}</Text>
               {view.canReset && (
                 <Button
-                  isDisabled={busy}
+                  isDisabled={isBusy}
                   isPrimary={false}
                   label="Reset to inherit"
                   onPress={() => save(card.connectorId, "Reset")}

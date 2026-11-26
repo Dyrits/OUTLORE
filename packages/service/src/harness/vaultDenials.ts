@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { HarnessName } from "@outlore/contracts";
 import { Effect } from "effect";
-import { fieldOf, runShortCommand, type VaultDenial } from "../core/index.ts";
+import { errorMessageOf, fieldOf, runShortCommand, type VaultDenial } from "../core/index.ts";
 import { sandboxSettingsOf } from "./claudeArgs.ts";
 import {
   denialStampKeyOf,
@@ -182,7 +182,7 @@ export const runClaudeVaultDenialLive = (
     } catch (error) {
       return {
         harness,
-        reason: `The live probe could not be set up: ${(error as Error).message}`,
+        reason: `The live probe could not be set up: ${errorMessageOf(error)}`,
         status: "Unverified",
       } satisfies VaultDenial;
     } finally {

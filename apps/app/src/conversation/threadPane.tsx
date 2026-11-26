@@ -77,9 +77,9 @@ export function ThreadPane({
   const { actionError, comments, act } = conversation;
   // A Reply is offered in a quest's own conversation only: it opens an errand beneath (CHG-0559); an errand's pane has none.
   // A Ritual's own conversation has no composer at all: no thread takes turns there, and its runs are its only errands (CHG-0616), so a Reply is not offered there either.
-  const takesTurns = takesTurnsIn(thread, detail.mission.ritual);
+  const canTakeTurns = takesTurnsIn(thread, detail.mission.ritual);
   const [ritualRunError, setRitualRunError] = useState<string | null>(null);
-  const canReply = thread.parentId === null && takesTurns;
+  const canReply = thread.parentId === null && canTakeTurns;
   const parent = detail.threads.find((candidate) => candidate.id === thread.parentId);
   const startReply = (message: { id: MessageId; text: string }) => {
     const existing = conversation.anchors.find((anchor) => anchor.messageId === message.id);
@@ -116,11 +116,11 @@ export function ThreadPane({
             isInPane={isInPane}
             {...(onBack === undefined ? {} : { onBack })}
             {...(onNewErrand === undefined ? {} : { onNewErrand })}
+            canTakeTurns={canTakeTurns}
             onOpenDetails={onOpenDetails}
             onOpenMission={onOpenMission}
             onRitualRunError={setRitualRunError}
             onSelect={onSelect}
-            takesTurns={takesTurns}
           />
           <EndingConfirmation ending={ending} />
           {ending.error !== null && <Text style={styles.error}>{ending.error}</Text>}
@@ -172,12 +172,12 @@ export function ThreadPane({
               composer={(accessory) => (
                 <ThreadPaneComposer
                   accessory={accessory}
+                  canTakeTurns={canTakeTurns}
                   client={client}
                   conversation={conversation}
                   detail={detail}
                   isInPane={isInPane}
                   onSelect={onSelect}
-                  takesTurns={takesTurns}
                 />
               )}
               conversation={conversation}

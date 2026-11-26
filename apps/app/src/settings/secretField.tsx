@@ -25,7 +25,7 @@ export function SecretField({
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [secret, setSecret] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [isBusy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const save = () => {
     setBusy(true);
@@ -49,7 +49,7 @@ export function SecretField({
       <Text style={styles.muted}>{slot.entry === null ? "Not stored" : addedTextOf(slot.entry)}</Text>
       {!editing && (
         <Button
-          isDisabled={refusal !== null || busy}
+          isDisabled={refusal !== null || isBusy}
           label={slot.entry === null ? "Add secret" : "Replace secret"}
           onPress={() => setEditing(true)}
         />
@@ -61,15 +61,15 @@ export function SecretField({
             accessibilityLabel={`${slot.connectorName} ${slot.kind}`}
             autoCapitalize="none"
             autoCorrect={false}
-            editable={!busy}
+            editable={!isBusy}
             onChangeText={setSecret}
             secureTextEntry
             style={{ borderColor: colors.edge, borderWidth: 1, color: colors.text, padding: 8 }}
             value={secret}
           />
-          <Button isDisabled={busy || secret.length === 0 || refusal !== null} label="Save secret" onPress={save} />
+          <Button isDisabled={isBusy || secret.length === 0 || refusal !== null} label="Save secret" onPress={save} />
           <Button
-            isDisabled={busy}
+            isDisabled={isBusy}
             isPrimary={false}
             label="Cancel"
             onPress={() => {
@@ -80,13 +80,13 @@ export function SecretField({
         </>
       )}
       {slot.entry !== null && !removing && (
-        <Button isDisabled={busy} isPrimary={false} label="Remove secret" onPress={() => setRemoving(true)} />
+        <Button isDisabled={isBusy} isPrimary={false} label="Remove secret" onPress={() => setRemoving(true)} />
       )}
       {removing && (
         <>
           <Text style={styles.muted}>Remove this secret? The connector will need it again.</Text>
           <Button
-            isDisabled={busy}
+            isDisabled={isBusy}
             label="Confirm removal"
             onPress={() => {
               setBusy(true);
@@ -103,7 +103,7 @@ export function SecretField({
                 .finally(() => setBusy(false));
             }}
           />
-          <Button isDisabled={busy} isPrimary={false} label="Cancel" onPress={() => setRemoving(false)} />
+          <Button isDisabled={isBusy} isPrimary={false} label="Cancel" onPress={() => setRemoving(false)} />
         </>
       )}
       {error !== null && <Text style={styles.error}>{error}</Text>}

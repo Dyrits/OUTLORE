@@ -35,7 +35,7 @@ import {
 /** What the controller running this link is, and what it accepts. */
 export type LinkSettings = {
   /** Whether a pairing code may name a relay on this computer: only a test or a development run, or a local page. */
-  readonly allowLocalRelay: boolean;
+  readonly shouldAllowLocalRelay: boolean;
   /**
    * How this controller makes direct channels to a host that runs its release (device-pairing, Direct path); without
    * it, or where the platform has no WebRTC, a link stays on the relay.
@@ -140,7 +140,7 @@ export const pairWithCode = Effect.fnUntraced(function* (
   }
   const pairing = decoded.value;
   // A pasted code must not point this controller at a relay on this computer, unless it runs from here itself.
-  if (isLocalOrigin(pairing.relayOrigin) && !settings.allowLocalRelay) {
+  if (isLocalOrigin(pairing.relayOrigin) && !settings.shouldAllowLocalRelay) {
     return yield* new LinkFailure("invalid", linkTexts.localRelay);
   }
   const name = deviceName.trim();
@@ -209,7 +209,7 @@ export type ResumeOptions = {
    * Keep the link when the host runs another release than this controller. Only the link that updates the host uses
    * it (app-updates, Updating a host from a paired device): it sends the two requests about updating and nothing else.
    */
-  readonly acceptOtherRelease?: boolean;
+  readonly shouldAcceptOtherRelease?: boolean;
 };
 
 /** Opens a link to a kept host: the secure channel, resumed, or the reason it could not be. */
@@ -236,7 +236,7 @@ export const resumeHost = Effect.fnUntraced(function* (
       return yield* new LinkFailure("couldNotOpen", linkTexts.timedOut);
     }
     const mismatch = releaseProblemOf(reply.release, settings.release, settings.kind);
-    if (mismatch !== null && options.acceptOtherRelease !== true) {
+    if (mismatch !== null && options.shouldAcceptOtherRelease !== true) {
       return yield* new LinkFailure("otherRelease", mismatch);
     }
     // Only a host of this very release is known to speak frames and to make direct channels.

@@ -8,7 +8,10 @@ const maxComparedPairs = 4_000_000;
 
 /** A text's lines, with whether it ends in a newline; the empty text has no lines. */
 const linesOf = (text: string) => {
-  if (text === "") return { endsInNewline: true, lines: [] as Array<string> };
+  if (text === "") {
+    const none: Array<string> = [];
+    return { endsInNewline: true, lines: none };
+  }
   const lines = text.split("\n");
   const endsInNewline = lines.at(-1) === "";
   if (endsInNewline) lines.pop();

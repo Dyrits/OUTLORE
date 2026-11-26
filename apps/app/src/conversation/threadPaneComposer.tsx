@@ -21,7 +21,7 @@ export function ThreadPaneComposer({
   detail,
   isInPane,
   onSelect,
-  takesTurns,
+  canTakeTurns,
 }: {
   accessory: ReactNode;
   client: ServiceClient;
@@ -29,15 +29,15 @@ export function ThreadPaneComposer({
   detail: MissionDetail;
   isInPane: boolean;
   onSelect: (threadId: ThreadId) => void;
-  takesTurns: boolean;
+  canTakeTurns: boolean;
 }) {
   const { thread } = detail;
   const { act, comments, skills, terminal } = conversation;
   const { canOpenBeneath, canStop } = thread.actions;
   const [isOpening, setIsOpening] = useState(false);
   const [alsoSendToParent, setAlsoSendToParent] = useState(false);
-  const [includeFullContext, setIncludeFullContext] = useState(false);
-  const parentLabel = takesTurns ? parentTargetLabelOf(detail) : null;
+  const [shouldIncludeFullContext, setIncludeFullContext] = useState(false);
+  const parentLabel = canTakeTurns ? parentTargetLabelOf(detail) : null;
   if (isOpening) {
     return (
       <OpenThreadForm
@@ -51,7 +51,7 @@ export function ThreadPaneComposer({
       />
     );
   }
-  if (!takesTurns) {
+  if (!canTakeTurns) {
     // No composer in a Ritual's own conversation (CHG-0616): the conversation is its runs' history, written by the runs alone; Run now, in its panel, is the on-the-spot start.
     return <Text style={styles.muted}>This conversation shows the Ritual's runs.</Text>;
   }
@@ -84,7 +84,7 @@ export function ThreadPaneComposer({
         skills={skills}
         {...(canStop ? { onStop: conversation.stop } : {})}
         onSend={async (text, attachmentIds) => {
-          const scope = parentLabel === null ? null : sendToParentScopeOf(alsoSendToParent, includeFullContext);
+          const scope = parentLabel === null ? null : sendToParentScopeOf(alsoSendToParent, shouldIncludeFullContext);
           await conversation.send(text, attachmentIds, scope);
           if (alsoSendToParent) {
             setAlsoSendToParent(false);
@@ -95,12 +95,12 @@ export function ThreadPaneComposer({
       />
       {parentLabel !== null && (
         <SendToParentControl
-          includeFullContext={includeFullContext}
           isChecked={alsoSendToParent}
           onToggleChecked={() => setAlsoSendToParent((current) => !current)}
           onToggleFullContext={setIncludeFullContext}
           parentKind={thread.parentId === null ? "realm" : "quest"}
           parentLabel={parentLabel}
+          shouldIncludeFullContext={shouldIncludeFullContext}
         />
       )}
     </>

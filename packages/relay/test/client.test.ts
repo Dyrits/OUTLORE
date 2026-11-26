@@ -229,7 +229,7 @@ describe("a host's claim on the wire", () => {
       protocols: `${relayProtocol}, ${claimProtocolOf(claim)}`,
       url: `/r/${room}?role=host`,
     });
-    if (result.ok) expect(result.value.usesLegacyClaim).toBe(false);
+    if (result.ok) expect(result.value.isUsingLegacyClaim).toBe(false);
   });
 
   // A relay of an earlier release: it knows only the address form, so it turns away a connection that offers subprotocols.
@@ -245,9 +245,9 @@ describe("a host's claim on the wire", () => {
   it("falls back to the address form for a relay of an earlier release, when told to, and says so", async () => {
     const urls: (string | undefined)[] = [];
     const relayOrigin = await serve((_socket, request) => urls.push(request.url), earlier);
-    const result = await connectHost({ claim, legacyFallback: true, relayOrigin, room });
+    const result = await connectHost({ claim, relayOrigin, room, shouldFallBackToLegacyClaim: true });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.usesLegacyClaim).toBe(true);
+    if (result.ok) expect(result.value.isUsingLegacyClaim).toBe(true);
     await vi.waitFor(() => expect(urls).toHaveLength(1));
     expect(urls[0]).toMatch(/^\/r\/[^?]+\?claim=[A-Za-z0-9_-]+&role=host$/);
   });
@@ -255,7 +255,7 @@ describe("a host's claim on the wire", () => {
   it("does not use the address when the subprotocol form worked", async () => {
     const urls: (string | undefined)[] = [];
     const relayOrigin = await serve((_socket, request) => urls.push(request.url));
-    await connectHost({ claim, legacyFallback: true, relayOrigin, room });
+    await connectHost({ claim, relayOrigin, room, shouldFallBackToLegacyClaim: true });
     await vi.waitFor(() => expect(urls).toHaveLength(1));
     expect(urls[0]).not.toContain("claim=");
   });

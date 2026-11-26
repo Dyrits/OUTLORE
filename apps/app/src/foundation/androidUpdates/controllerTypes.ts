@@ -13,7 +13,7 @@ export type AndroidInstaller = {
   /** Downloads a file into the app's private folder and returns its SHA-512 as hex, reporting how much has arrived. */
   readonly download: (
     request: {
-      readonly allowsMetered: boolean;
+      readonly shouldAllowMetered: boolean;
       readonly fileName: string;
       readonly url: string;
       readonly userAgent: string;

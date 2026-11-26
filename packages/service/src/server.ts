@@ -118,7 +118,7 @@ export const serveLoopback = (options: {
       if (hostPath?.[1] !== undefined) {
         // `/host/<id>/update` is the link that updates a host of another release: it keeps that link where the plain one
         // would end with the release mismatch.
-        bridgeToHost(socket, hostPath[1], hostPath[2] === undefined ? {} : { acceptOtherRelease: true });
+        bridgeToHost(socket, hostPath[1], hostPath[2] === undefined ? {} : { shouldAcceptOtherRelease: true });
         return;
       }
       const send = sendTo(socket);

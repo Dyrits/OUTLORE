@@ -60,6 +60,7 @@ const droppedPairing = (dropAt: DropPoint) =>
       const connection: HostConnection = {
         close: () => {},
         closeClient: () => {},
+        isUsingLegacyClaim: false,
         onClientData: () => {},
         onClientJoined: () => {},
         onClientLeft: () => {},
@@ -70,7 +71,6 @@ const droppedPairing = (dropAt: DropPoint) =>
               listener(data);
             }),
           ),
-        usesLegacyClaim: false,
       };
       const carrier: Carrier = {
         close: () => server.left("client"),

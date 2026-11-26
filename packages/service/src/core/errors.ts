@@ -11,3 +11,6 @@ export class ServiceFailure extends Schema.TaggedError<ServiceFailure>()("Servic
 export const invalid = (message: string) => new ServiceFailure({ kind: "InvalidInput", message });
 /** A request naming something that does not exist, with the reason the owner reads. */
 export const notFound = (message: string) => new ServiceFailure({ kind: "NotFound", message });
+
+/** What a thrown or rejected value says: an `Error`'s message, otherwise the value as text. */
+export const errorMessageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));

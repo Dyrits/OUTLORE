@@ -27,7 +27,7 @@ describe("presenting the selected host link", () => {
   });
   it("offers pairing after refusal instead of retrying revoked keys", () => {
     expect(
-      hostStatusOf({ ...input, link: { ...link, failure: "Revoked", hasGivenUp: true, needsPairing: true } }),
+      hostStatusOf({ ...input, link: { ...link, failure: "Revoked", hasGivenUp: true, isPairingNeeded: true } }),
     ).toMatchObject({ canPair: true, canRetry: false, isRetrying: false });
   });
   it("exposes a release mismatch without offering to pair again", () => {

@@ -91,8 +91,8 @@ export class ServiceClient {
   }
 
   /** Whether the host refused this installation, so only pairing again helps (not a host of another release). */
-  get needsPairing() {
-    return this.link.needsPairing;
+  get isPairingNeeded() {
+    return this.link.isPairingNeeded;
   }
 
   /** Whether the host refused the app because it runs a different release. */
@@ -199,7 +199,7 @@ export class ServiceClient {
     try {
       request.resolve(Schema.decodeUnknownSync(Results[request.tag] as unknown as Schema.Codec<unknown>)(frame.value));
     } catch (error) {
-      request.reject(error as Error);
+      request.reject(error instanceof Error ? error : new Error(String(error)));
     }
   }
 

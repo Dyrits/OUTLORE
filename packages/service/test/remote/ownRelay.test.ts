@@ -74,7 +74,7 @@ describe("deploying the relay to the user's own Cloudflare account", () => {
     const account = newFakeAccount(token);
     await deploy(account);
     const again = await deploy(account);
-    expect(again).toMatchObject({ ok: true, wasUpdated: true });
+    expect(again).toMatchObject({ isUpdated: true, ok: true });
     expect(account.scripts.get("outlore-relay")?.migrationTag).toBe("v1");
   });
 

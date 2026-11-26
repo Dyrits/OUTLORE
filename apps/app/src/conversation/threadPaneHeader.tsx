@@ -58,7 +58,7 @@ export function ThreadPaneHeader({
   onOpenMission,
   onRitualRunError,
   onSelect,
-  takesTurns,
+  canTakeTurns,
 }: {
   act: (promise: Promise<unknown>) => Promise<void>;
   canOpenDetails: boolean;
@@ -73,11 +73,11 @@ export function ThreadPaneHeader({
   onOpenMission: (missionId: MissionId) => void;
   onRitualRunError: (message: string | null) => void;
   onSelect: (threadId: ThreadId) => void;
-  takesTurns: boolean;
+  canTakeTurns: boolean;
 }) {
   const { thread } = detail;
   const { canResume } = thread.actions;
-  const ritualRunAction = takesTurns ? null : (
+  const ritualRunAction = canTakeTurns ? null : (
     <RitualRunAction client={client} missionId={detail.mission.id} onError={onRitualRunError} />
   );
   // Only a quest's own thread archives it, and not a Ritual or one already archived.
@@ -149,7 +149,7 @@ export function ThreadPaneHeader({
               {errandActions}
               {ritualRunAction}
               {ritualRunAction !== null && chrome != null && <HeaderSeparator />}
-              {isInPane && thread.parentId === null && takesTurns && (
+              {isInPane && thread.parentId === null && canTakeTurns && (
                 <>
                   <HeaderSeparator />
                   <NewQuestButton
@@ -191,7 +191,7 @@ export function ThreadPaneHeader({
           )}
           {canOpenDetails && (
             <Pressable onPress={onOpenDetails}>
-              <Text style={styles.link}>{takesTurns ? "Quest panel" : "Ritual panel"}</Text>
+              <Text style={styles.link}>{canTakeTurns ? "Quest panel" : "Ritual panel"}</Text>
             </Pressable>
           )}
         </View>

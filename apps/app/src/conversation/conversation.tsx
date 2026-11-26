@@ -18,7 +18,7 @@ const ritualErrandsRequest = {};
 /** A mission: its thread tree on the side, the selected thread's conversation beside it. */
 export function Conversation({
   client,
-  initiallyShowErrands = false,
+  shouldShowErrandsInitially = false,
   missionId,
   onBack,
   onOpenMission,
@@ -27,7 +27,7 @@ export function Conversation({
   selectedThreadId,
 }: {
   client: ServiceClient;
-  initiallyShowErrands?: boolean;
+  shouldShowErrandsInitially?: boolean;
   missionId: MissionId;
   /** Shows another thread of this quest; the window keeps which one, so the sidebar can show it too. */
   onSelectThread: (threadId: ThreadId | null) => void;
@@ -43,7 +43,7 @@ export function Conversation({
   const { width } = useWindowDimensions();
   const isCompact = width < 820;
   // On a narrow window the errands list is folded to one line until it is wanted, so the conversation keeps the room.
-  const [isTreeOpen, setIsTreeOpen] = useState(initiallyShowErrands);
+  const [isTreeOpen, setIsTreeOpen] = useState(shouldShowErrandsInitially);
   const { data: settings } = useServiceQuery(client, { _tag: "ReadSettings" }, "settings");
   const selectedId = selectedThreadId;
   const setSelectedId = onSelectThread;
@@ -71,7 +71,7 @@ export function Conversation({
       <PaneThread
         chrome={null}
         client={client}
-        listRequest={initiallyShowErrands ? ritualErrandsRequest : void 0}
+        listRequest={shouldShowErrandsInitially ? ritualErrandsRequest : void 0}
         missionId={missionId}
         onBack={goBack}
         onOpenMission={onOpenMission}

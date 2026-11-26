@@ -4,17 +4,17 @@ import { ChipIcon, type ChipKind } from "../ui/chips";
 
 /** Slack-like "Also send to <parent>" checkbox with a message-only vs. full-context toggle. */
 export function SendToParentControl({
-  includeFullContext,
+  shouldIncludeFullContext,
   isChecked,
   onToggleChecked,
   onToggleFullContext,
   parentKind,
   parentLabel,
 }: {
-  includeFullContext: boolean;
+  shouldIncludeFullContext: boolean;
   isChecked: boolean;
   onToggleChecked: () => void;
-  onToggleFullContext: (includeFullContext: boolean) => void;
+  onToggleFullContext: (shouldIncludeFullContext: boolean) => void;
   /** What the target is: a realm for a quest, shown with the hash that names it, or the quest an errand sits in. */
   parentKind: Extract<ChipKind, "quest" | "realm">;
   parentLabel: string;
@@ -42,19 +42,19 @@ export function SendToParentControl({
         <View style={local.scopeGroup}>
           <Pressable
             accessibilityRole="radio"
-            accessibilityState={{ selected: !includeFullContext }}
+            accessibilityState={{ selected: !shouldIncludeFullContext }}
             onPress={() => onToggleFullContext(false)}
-            style={[local.scopePill, !includeFullContext && local.scopePillActive]}
+            style={[local.scopePill, !shouldIncludeFullContext && local.scopePillActive]}
           >
-            <Text style={[local.scopeText, !includeFullContext && local.scopeTextActive]}>This message</Text>
+            <Text style={[local.scopeText, !shouldIncludeFullContext && local.scopeTextActive]}>This message</Text>
           </Pressable>
           <Pressable
             accessibilityRole="radio"
-            accessibilityState={{ selected: includeFullContext }}
+            accessibilityState={{ selected: shouldIncludeFullContext }}
             onPress={() => onToggleFullContext(true)}
-            style={[local.scopePill, includeFullContext && local.scopePillActive]}
+            style={[local.scopePill, shouldIncludeFullContext && local.scopePillActive]}
           >
-            <Text style={[local.scopeText, includeFullContext && local.scopeTextActive]}>Full context</Text>
+            <Text style={[local.scopeText, shouldIncludeFullContext && local.scopeTextActive]}>Full context</Text>
           </Pressable>
         </View>
       )}

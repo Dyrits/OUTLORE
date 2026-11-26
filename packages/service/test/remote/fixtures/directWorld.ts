@@ -177,15 +177,15 @@ export const directWorld = Effect.gen(function* () {
     const code = ((yield* host({ _tag: "CreatePairingCode" })) as { code: string }).code;
     const hosts = createPairedHosts(memoryStorage());
     const page = {
-      allowLocalRelay: true,
       direct: settingsOf(deviceSide.peers),
       kind: "browser" as const,
       release: hostRelease,
+      shouldAllowLocalRelay: true,
     };
     const known = yield* Effect.promise(() => pairFromBrowser(code, "Firefox", hosts, page));
     if (options.linkRelease === void 0) return driven(openBrowserTransport(hosts, known.id, page));
     const other = { ...page, release: options.linkRelease };
-    return driven(openBrowserTransport(hosts, known.id, other, { acceptOtherRelease: true }));
+    return driven(openBrowserTransport(hosts, known.id, other, { shouldAcceptOtherRelease: true }));
   });
   return { device, deviceSide, host, hostSide, pairedLink, relay, untilDirect };
 });

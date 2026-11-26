@@ -114,14 +114,14 @@ export const remoteHostLayer = Layer.effectDiscard(
         // Until the transition ends, a relay of an earlier release (an owner's own, not yet redeployed) still takes the
         // claim in the address. Only a relay that turned the new form away twice in a row is tried that way.
         const key = originKey(relayOrigin) ?? relayOrigin;
-        const legacyFallback = mayFallBackToLegacyClaim({
+        const shouldFallBackToLegacyClaim = mayFallBackToLegacyClaim({
           acceptedOrigins,
           failures: failures.get(key) ?? 0,
           now: yield* Clock.currentTimeMillis,
           origin: relayOrigin,
         });
         return yield* Effect.acquireUseRelease(
-          connectHost({ claim: record.claimSecret, legacyFallback, relayOrigin, room: record.room }).pipe(
+          connectHost({ claim: record.claimSecret, relayOrigin, room: record.room, shouldFallBackToLegacyClaim }).pipe(
             Effect.tapError(() =>
               Effect.sync(() => failures.set(key, (failures.get(key) ?? 0) + 1)).pipe(
                 Effect.andThen(state.setStatus("Unreachable")),
@@ -129,7 +129,7 @@ export const remoteHostLayer = Layer.effectDiscard(
             ),
             Effect.tap((connection) =>
               Effect.sync(() => {
-                if (connection.usesLegacyClaim) return;
+                if (connection.isUsingLegacyClaim) return;
                 acceptedOrigins.add(key);
                 failures.delete(key);
               }),
@@ -139,7 +139,7 @@ export const remoteHostLayer = Layer.effectDiscard(
           Effect.fnUntraced(function* (connection) {
             // The switch may have gone off while the relay was answering; a connection made then must not serve anyone.
             if (!state.attachRelay(connection, generation)) return;
-            if (connection.usesLegacyClaim)
+            if (connection.isUsingLegacyClaim)
               yield* Effect.logWarning(
                 `The relay at ${relayOrigin} turned the host claim away in the WebSocket subprotocol ${failuresBeforeFallback} times in a row and took it in the address, so it is probably deployed from an earlier release. Redeploy it before ${new Date(legacyClaimUntil).toISOString().slice(0, 10)}, when this host stops sending it that way.`,
               );

@@ -27,7 +27,7 @@ export function ConnectorPanel({
   onOpenVault: () => void;
 }) {
   const isRemote = useIsRemoteHost();
-  const { attempt, busy, error } = useAttempt(onChanged);
+  const { attempt, isBusy, error } = useAttempt(onChanged);
   const isInstalled = isInstalledCard(card);
   const isRemoving = card.state === "Removing";
   return (
@@ -42,7 +42,7 @@ export function ConnectorPanel({
             <Text style={styles.muted}>{remoteOAuthNote}</Text>
           ) : (
             <Button
-              isDisabled={busy}
+              isDisabled={isBusy}
               isPrimary={card.state !== "Ready"}
               label={card.state === "Ready" ? "Sign in again" : "Sign in in browser"}
               onPress={() => attempt(() => client.request({ _tag: "SignInConnector", connectorId: card.id }))}
@@ -55,14 +55,14 @@ export function ConnectorPanel({
           <Text style={styles.muted}>Nothing to connect.</Text>
         )}
         {canInstallCard(card) && (
-          <InstallBlock attempt={attempt} busy={busy} card={card} client={client} isRemote={isRemote} />
+          <InstallBlock attempt={attempt} card={card} client={client} isBusy={isBusy} isRemote={isRemote} />
         )}
       </PanelBlock>
       {isInstalled && !isRemoving && (
         <>
           <PanelBlock title="Availability">
             <ToggleRow
-              isDisabled={busy}
+              isDisabled={isBusy}
               label="On everywhere"
               onChange={(value) =>
                 attempt(() =>
@@ -81,12 +81,12 @@ export function ConnectorPanel({
             </Text>
           </PanelBlock>
           {card.apps.length > 0 && (
-            <AppsBlock attempt={attempt} busy={busy} card={card} client={client} isRemote={isRemote} />
+            <AppsBlock attempt={attempt} card={card} client={client} isBusy={isBusy} isRemote={isRemote} />
           )}
-          <ToolsBlock attempt={attempt} busy={busy} card={card} client={client} />
+          <ToolsBlock attempt={attempt} card={card} client={client} isBusy={isBusy} />
         </>
       )}
-      {isInstalled && <RemoveBlock attempt={attempt} busy={busy} card={card} client={client} />}
+      {isInstalled && <RemoveBlock attempt={attempt} card={card} client={client} isBusy={isBusy} />}
       {error !== null && <Text style={styles.error}>{error}</Text>}
     </SettingsCard>
   );

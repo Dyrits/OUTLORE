@@ -29,7 +29,7 @@ With no connector, on the real thread catalogue, the JSON a thread is listed (na
 ## Not checked
 
 - No live Claude Code, Codex or OpenCode: whether a model writes working code against the declarations, and how often it prefers it, was not tried.
-- A harness's restart on a changed setting was checked in the restart keys and with the fake harness only, not on a live kept process. OpenCode's key holds all of `access`, so `usesCodeMode` is part of it without a line of its own.
+- A harness's restart on a changed setting was checked in the restart keys and with the fake harness only, not on a live kept process. OpenCode's key holds all of `access`, so `isUsingCodeMode` is part of it without a line of its own.
 - Whether Claude Code accepts `run_code`'s calls to the covered tools without a permission prompt of its own: its own prompt is skipped for the one `run_code` call (it is in `--allowedTools` only while Code Mode is on); not run against a live Claude Code.
 - The Charter's switch was not seen in a window or on a phone.
 - No real connector; the fake gateway answers the connector part.

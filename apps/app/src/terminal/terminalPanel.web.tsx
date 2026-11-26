@@ -16,7 +16,7 @@ export function TerminalPanel({
   id,
   cwd,
   height,
-  hideExitBar,
+  shouldHideExitBar,
   scope,
   ref,
   onExit,
@@ -177,7 +177,7 @@ export function TerminalPanel({
   };
   return (
     <View style={{ backgroundColor: colors.accentSoft, borderRadius: 8, gap: 4, padding: 8 }}>
-      {!isRunning && !hideExitBar && (
+      {!isRunning && !shouldHideExitBar && (
         <View style={styles.row}>
           <Text style={{ color: colors.textSecondary }}>Shell exited</Text>
           <Pressable onPress={restart}>

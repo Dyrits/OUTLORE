@@ -258,7 +258,7 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
         return yield* invalid(
           `${facts.label} has no sign-in command of its own: its sign-in happens inside the provider's own surface (the pinned upstream carries no CLI sign-in to run). Sign in there yourself, then press Refresh.`,
         );
-      if (facts.signInNeedsNoTerminal) {
+      if (facts.canSignInWithoutTerminal) {
         // No window: the tool opens the browser itself and ends once the browser's answer reaches its local port.
         const run = yield* runShortCommand(commands[harness], signIn.args, signIn.env, signInTimeoutMillis);
         if (run.code !== 0) {
@@ -272,7 +272,9 @@ export const liveHarnessToolsLayer = (commands: HarnessCommands, runUpdate: type
       // Run inside Outlore's host-side PTY terminal instead of spawning an external terminal window.
       const command = [quoted(commands[harness]), ...signIn.args.map(shellWord)].join(" ");
       const env =
-        signIn.keepsPath && process.env.PATH !== undefined ? { ...signIn.env, PATH: process.env.PATH } : signIn.env;
+        signIn.shouldKeepPath && process.env.PATH !== undefined
+          ? { ...signIn.env, PATH: process.env.PATH }
+          : signIn.env;
       return { _tag: "Terminal" as const, command, env, label: facts.label };
     });
 
@@ -319,7 +321,7 @@ export const fakeHarnessToolsLayer = (
     openSignIn: (harness, configDirectory) =>
       Effect.sync(() => {
         signIns.push(`${harness}:${configDirectory ?? ""}`);
-        return harnessFacts[harness].signInNeedsNoTerminal
+        return harnessFacts[harness].canSignInWithoutTerminal
           ? ({ _tag: "Finished" } as const)
           : ({ _tag: "Terminal", command: "true", env: {}, label: harnessFacts[harness].label } as const);
       }),

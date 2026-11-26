@@ -27,7 +27,7 @@ export type AcpProbeOptions = {
   readonly env?: Readonly<Record<string, string>>;
   readonly prefixArgs?: ReadonlyArray<string>;
   /** Keep JSON-RPC error codes when the caller needs to distinguish authentication failures. */
-  readonly preserveProviderErrors?: boolean;
+  readonly shouldPreserveProviderErrors?: boolean;
 };
 
 /**
@@ -58,7 +58,7 @@ export const probeAcpProviderModels = Effect.fnUntraced(function* (options: AcpP
     return yield* Effect.gen(function* () {
       const probeFailure = (step: string) =>
         Effect.mapError((failure: unknown) =>
-          options.preserveProviderErrors === true && failure instanceof HarnessFailure
+          options.shouldPreserveProviderErrors === true && failure instanceof HarnessFailure
             ? failure
             : new HarnessFailure({ reason: `${launch.label} did not answer ${step} in time.` }),
         );
@@ -110,7 +110,7 @@ export const readAcpProviderSignIn = (options: AcpSignInReadOptions): Effect.Eff
   probeAcpProviderModels({
     command: options.command,
     definition: options.definition,
-    preserveProviderErrors: true,
+    shouldPreserveProviderErrors: true,
     ...(options.configDirectory === undefined ? {} : { configDirectory: options.configDirectory }),
     ...(options.env === undefined ? {} : { env: options.env }),
     ...(options.prefixArgs === undefined ? {} : { prefixArgs: options.prefixArgs }),

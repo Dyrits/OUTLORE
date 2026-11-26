@@ -22,9 +22,9 @@ export const pageSettings = (): PageSettings =>
   isMobileApp
     ? // The phone's JavaScript runtime has no WebRTC of its own: its native module makes the direct channels, and a
       // build without that module stays on the relay.
-      { allowLocalRelay: false, ...directOf(directSettingsOfPhone()), kind: "phone", release: appRelease }
+      { shouldAllowLocalRelay: false, ...directOf(directSettingsOfPhone()), kind: "phone", release: appRelease }
     : {
-        allowLocalRelay: ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname),
+        shouldAllowLocalRelay: ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname),
         // A browser has WebRTC of its own.
         ...directOf(directSettingsOfPage()),
         kind: "browser",

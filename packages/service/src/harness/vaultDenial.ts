@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { HarnessName } from "@outlore/contracts";
 import { Effect } from "effect";
-import { type CommandRun, runShortCommand, type VaultDenial } from "../core/index.ts";
+import { type CommandRun, errorMessageOf, runShortCommand, type VaultDenial } from "../core/index.ts";
 
 // The probe behind "Protected, or no secrets" (ADR 0022, connectors blueprint): for one harness, whether a process
 // inside its sandbox can read a marker file in the Vault's folder. The marker is a disposable random string, never a
@@ -122,7 +122,7 @@ export const probeVaultDenial = (
         return denial(
           harness,
           "Unverified",
-          `This service cannot write and read back a file in the Vault's folder, so nothing was tried (it may run inside a sandbox): ${(error as Error).message}`,
+          `This service cannot write and read back a file in the Vault's folder, so nothing was tried (it may run inside a sandbox): ${errorMessageOf(error)}`,
         );
       }
       const wrapped = (path: string) => {
@@ -143,7 +143,7 @@ export const probeVaultDenial = (
         secrets,
       );
     } catch (error) {
-      return denial(harness, "Unverified", `The probe could not be run: ${(error as Error).message}`);
+      return denial(harness, "Unverified", `The probe could not be run: ${errorMessageOf(error)}`);
     } finally {
       // Cleaning up must not hide the report: a folder that cannot be used cannot hold the marker either.
       try {

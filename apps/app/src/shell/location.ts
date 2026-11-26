@@ -36,11 +36,11 @@ export type Location = {
 export type NavigationEvent =
   | { type: "place"; place: Place }
   | { type: "workshop" }
-  | { type: "quest"; id: MissionId; origin?: QuestOrigin; showErrands?: boolean }
+  | { type: "quest"; id: MissionId; origin?: QuestOrigin; shouldShowErrands?: boolean }
   | { type: "backFromQuest" }
   | { type: "thread"; missionId: MissionId; id: ThreadId | null; origin?: QuestOrigin }
   | { type: "select"; id: MissionId | null }
-  | { type: "channel"; listing: RealmListing | null; showQuests?: boolean }
+  | { type: "channel"; listing: RealmListing | null; shouldShowQuests?: boolean }
   | { type: "parent"; quest: { workspaceId: string | null; workspaceName: string | null } }
   | { type: "close" }
   | { type: "host" }
@@ -126,7 +126,11 @@ const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "w
   if (event.type === "quest")
     return {
       ...uncovered(location),
-      listRequest: event.showErrands ? { tab: "errands" } : event.origin === "channel" ? location.listRequest : null,
+      listRequest: event.shouldShowErrands
+        ? { tab: "errands" }
+        : event.origin === "channel"
+          ? location.listRequest
+          : null,
       openCount: location.openCount + 1,
       openMission: event.id,
       openThread: null,
@@ -167,7 +171,7 @@ const resolved = (location: Location, event: Exclude<NavigationEvent, { type: "w
     return {
       ...resolved(location, { place: "Channel", type: "place" }),
       listedRealm: event.listing,
-      listRequest: event.showQuests ? { tab: "quests" } : null,
+      listRequest: event.shouldShowQuests ? { tab: "quests" } : null,
     };
   if (event.type === "parent") {
     const parent = archiveParentOf(event.quest);

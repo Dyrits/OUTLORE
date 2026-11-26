@@ -10,12 +10,12 @@ import { type Attempt, PanelBlock } from "./connectorPanelBlocks";
 /** Removing a connector, behind a warning of what it forgets. */
 export function RemoveBlock({
   attempt,
-  busy,
+  isBusy,
   card,
   client,
 }: {
   attempt: Attempt;
-  busy: boolean;
+  isBusy: boolean;
   card: ConnectorCard;
   client: ServiceClient;
 }) {
@@ -26,7 +26,7 @@ export function RemoveBlock({
         <>
           <Text style={styles.body}>{removalWarning}</Text>
           <Button
-            isDisabled={busy}
+            isDisabled={isBusy}
             label="Remove connector"
             onPress={() =>
               attempt(
@@ -35,7 +35,7 @@ export function RemoveBlock({
               )
             }
           />
-          <Button isDisabled={busy} isPrimary={false} label="Cancel" onPress={() => setRemoving(false)} />
+          <Button isDisabled={isBusy} isPrimary={false} label="Cancel" onPress={() => setRemoving(false)} />
         </>
       ) : (
         <>
@@ -43,7 +43,7 @@ export function RemoveBlock({
             Remove {card.name} and its switches from this computer. You can install it again later.
           </Text>
           <Button
-            isDisabled={busy}
+            isDisabled={isBusy}
             isPrimary={false}
             label={card.state === "Removing" ? "Retry removal" : "Remove"}
             onPress={() => setRemoving(true)}

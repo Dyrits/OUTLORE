@@ -183,23 +183,26 @@ function RitualLine({
       {isRealmArchived && <Text style={[local.meta, { paddingLeft: 22 }]}>{realmArchivedNotice}</Text>}
       {questListRowsOf(mission, threads, collapsed, shouldShowAgentThreads)
         // The Ritual's own row is drawn above; only its runs' errand rows follow beneath it.
-        .filter((row) => row.thread !== null)
-        .map((row) => (
-          <QuestLine
-            depth={row.depth}
-            harness={row.thread?.harness ?? mission.harness}
-            isOpen={!collapsed.has(row.id)}
-            key={row.id}
-            lastActivityAt={row.thread?.lastActivityAt ?? mission.lastActivityAt}
-            model={row.thread?.model ?? mission.model}
-            now={now}
-            onArchive={null}
-            onOpen={() => onOpenThread(mission.id, row.thread?.id as ThreadId)}
-            onToggle={row.hasChildren ? () => onToggle(row.id) : null}
-            state={row.thread?.state ?? mission.state}
-            title={row.thread?.title ?? mission.title}
-          />
-        ))}
+        .flatMap(({ depth, hasChildren, id, thread }) =>
+          thread === null
+            ? []
+            : [
+                <QuestLine
+                  depth={depth}
+                  harness={thread.harness}
+                  isOpen={!collapsed.has(id)}
+                  key={id}
+                  lastActivityAt={thread.lastActivityAt}
+                  model={thread.model}
+                  now={now}
+                  onArchive={null}
+                  onOpen={() => onOpenThread(mission.id, thread.id)}
+                  onToggle={hasChildren ? () => onToggle(id) : null}
+                  state={thread.state}
+                  title={thread.title}
+                />,
+              ],
+        )}
       {error !== null && <Text style={local.error}>{error}</Text>}
     </>
   );
@@ -277,9 +280,7 @@ export function QuestTreeLines({
                 }
               : null
           }
-          onOpen={() =>
-            row.thread === null ? onOpen(mission.id) : onOpenThread(mission.id, row.thread.id as ThreadId)
-          }
+          onOpen={() => (row.thread === null ? onOpen(mission.id) : onOpenThread(mission.id, row.thread.id))}
           onToggle={row.hasChildren ? () => onToggle(row.id) : null}
           state={row.thread?.state ?? mission.state}
           title={row.thread?.title ?? mission.title}

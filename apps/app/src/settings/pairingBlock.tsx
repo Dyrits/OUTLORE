@@ -16,7 +16,7 @@ const qrWidth = 220;
  * with a Copy button each, and the pairing code on its own, as the fallback, with its own Copy button.
  */
 export function PairingBlock({ now, pairing }: { now: number; pairing: PairingCode }) {
-  const { copied, copy } = useCopiedText();
+  const { copied: copiedKey, copy } = useCopiedText();
   const qr = pairingQrOf(pairing.webLink);
   const pixels = qr.size * Math.max(3, Math.floor(qrWidth / qr.size));
   return (
@@ -32,13 +32,13 @@ export function PairingBlock({ now, pairing }: { now: number; pairing: PairingCo
       <Text style={styles.muted}>{codeLifeOf(pairing.expiresAt, now)}</Text>
       <Text style={styles.muted}>{pairingHelp}</Text>
       <LinkRow
-        copied={copied === "web"}
+        isCopied={copiedKey === "web"}
         label="Link that opens the web app"
         onCopy={() => void copy("web", pairing.webLink)}
         text={pairing.webLink}
       />
       <LinkRow
-        copied={copied === "app"}
+        isCopied={copiedKey === "app"}
         label="Link that opens the Outlore app"
         onCopy={() => void copy("app", pairing.appLink)}
         text={pairing.appLink}
@@ -51,7 +51,7 @@ export function PairingBlock({ now, pairing }: { now: number; pairing: PairingCo
         </Text>
         <Button
           isPrimary={false}
-          label={copied === "code" ? "Copied" : "Copy the code"}
+          label={copiedKey === "code" ? "Copied" : "Copy the code"}
           onPress={() => void copy("code", pairing.code)}
         />
       </View>
@@ -60,12 +60,12 @@ export function PairingBlock({ now, pairing }: { now: number; pairing: PairingCo
 }
 
 function LinkRow({
-  copied,
+  isCopied,
   label,
   onCopy,
   text,
 }: {
-  copied: boolean;
+  isCopied: boolean;
   label: string;
   onCopy: () => void;
   text: string;
@@ -78,7 +78,7 @@ function LinkRow({
           {text}
         </Text>
       </View>
-      <Button isPrimary={false} label={copied ? "Copied" : "Copy"} onPress={onCopy} />
+      <Button isPrimary={false} label={isCopied ? "Copied" : "Copy"} onPress={onCopy} />
     </View>
   );
 }

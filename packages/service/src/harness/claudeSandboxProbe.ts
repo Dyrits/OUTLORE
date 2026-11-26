@@ -1,7 +1,7 @@
 import { tmpdir } from "node:os";
 import type { HarnessName } from "@outlore/contracts";
 import { Effect, Semaphore } from "effect";
-import { runShortCommand, type VaultDenial } from "../core/index.ts";
+import { errorMessageOf, runShortCommand, type VaultDenial } from "../core/index.ts";
 import { sandboxSettingsOf } from "./claudeArgs.ts";
 import { nestedSandboxReasonOf, probeVaultDenial, type RunCommand } from "./vaultDenial.ts";
 
@@ -46,7 +46,7 @@ export const probeClaudeSandbox = (harness: HarnessName, folder: string, run?: R
       const nested = yield* nestedSandboxReasonOf(run);
       if (nested !== null) return unverified(harness, nested);
       const library = yield* Effect.tryPromise({
-        catch: (error) => (error as Error).message,
+        catch: errorMessageOf,
         try: () => import("@anthropic-ai/sandbox-runtime"),
       }).pipe(Effect.option);
       if (library._tag === "None")
@@ -59,7 +59,7 @@ export const probeClaudeSandbox = (harness: HarnessName, folder: string, run?: R
         return unverified(harness, `Claude Code's sandbox cannot run here: ${missing.errors.join(" ")}`);
       return yield* Effect.acquireUseRelease(
         Effect.tryPromise({
-          catch: (error) => (error as Error).message,
+          catch: errorMessageOf,
           try: () => SandboxManager.initialize(configOf(folder)),
         }).pipe(Effect.result),
         (started) =>
