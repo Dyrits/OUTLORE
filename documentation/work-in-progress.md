@@ -1,5 +1,10 @@
 # Work in progress
 
+## Companions tab: prototype layout · 2026-11-28 · built and tested; window and phone not looked at
+
+CHG-0796 in `0.2.14-Pre-Alpha` (branch `feat/companion-menu-prototype`): the Companions tab is two equal columns of cards (numbered models, provider icon, effort; no "Presets" header, no Custom entry, dashed **+ Add a companion**) with one chain editor (rows named by model, Primary pill, remove cross, **FALLBACK ORDER**, dashed **+ Add a model**, Discard, Save as new, primary Overwrite), replacing CHG-0789's Custom entry and edit mode. [Proof](verification/2026-11-28-companion-menu-prototype.md): Biome, app typecheck and 136 test files pass; C4 (stack handover after Overwrite and Save as new) unproven, C5 and C6 await the owner.
+Next: the owner said the result "feels like it lacks fluidity": find what (animation of unfolding, remount of the editor when choosing a card, drag) in a running window, then fix it; add a component test for C4.
+
 ## Run shell commands from message code blocks · 2026-11-27 · built, reviewed, and proof reproduced; desktop and browser check pending
 
 Starting revision `b5abfbc9` (branch `feat/run-command-from-message`): fenced shell code blocks (`bash`, `sh`, `zsh`, `shell`, `fish`, `console`, `powershell`, `pwsh`, `cmd`, `bat`) in completed messages now show a play **Run command** icon beside **Copy code** whenever terminals are available on the screen (`markdownRules.ts`, `runButton.tsx`, `markdown.tsx`, `agentReply.tsx`, `messageBubble.tsx`, `conversationEntries.tsx`, `conversationFeed.tsx`, `threadPane.tsx`, `useThreadConversation.ts`).

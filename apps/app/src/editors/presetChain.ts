@@ -87,13 +87,24 @@ export const accountNameOf = (harnesses: HarnessList | null, runner: Runner): st
   return info.accounts.find((account) => account.id === accountId)?.label ?? null;
 };
 
-/** A Companion as a row names it: its model, the account in brackets when it tells two apart, and its effort, such as "Sonnet 5.5 (Personal) · High". */
-export const chainLabelOf = (harnesses: HarnessList | null, runner: Runner): string => {
+/** A Companion split into its model/account label and its effort label (empty when default). */
+export const chainPartsOf = (
+  harnesses: HarnessList | null,
+  runner: Runner,
+): { readonly effort: string; readonly label: string } => {
   const info = harnesses?.harnesses.find((candidate) => candidate.name === runner.harness);
   const models = info?.accounts.find((account) => account.id === runner.accountId)?.models ?? info?.models;
   const account = accountNameOf(harnesses, runner);
-  const effort = runner.effort === "default" ? "" : ` · ${effortName(runner.effort)}`;
-  return `${modelLabelOf(runner.model, models)}${account === null ? "" : ` (${account})`}${effort}`;
+  return {
+    effort: runner.effort === "default" ? "" : effortName(runner.effort),
+    label: `${modelLabelOf(runner.model, models)}${account === null ? "" : ` (${account})`}`,
+  };
+};
+
+/** A Companion as a row names it: its model, the account in brackets when it tells two apart, and its effort, such as "Sonnet 5.5 (Personal) · High". */
+export const chainLabelOf = (harnesses: HarnessList | null, runner: Runner): string => {
+  const parts = chainPartsOf(harnesses, runner);
+  return parts.effort === "" ? parts.label : `${parts.label} · ${parts.effort}`;
 };
 
 const chainPlaceOf = (open: string | null): number | null =>
@@ -117,20 +128,22 @@ export const openAfterRemove = (open: string | null, removed: number): string | 
   return place > removed ? `chain-${place - 1}` : open;
 };
 
-/** What the chain editor's footer shows: its status line, and which of Overwrite, Save as new and Discard it offers. */
+/** What the chain editor's footer shows: its status line, which controls it offers, and whether they are enabled. */
 export const footerOf = ({
+  canOverwrite = true,
   canSaveAs,
   isChanged,
   isNew,
 }: {
+  canOverwrite?: boolean;
   canSaveAs: boolean;
   isChanged: boolean;
   isNew: boolean;
-}): { canOverwrite: boolean; canSaveAs: boolean; hasControls: boolean; status: string } => ({
-  canOverwrite: !isNew,
+}): { canOverwrite: boolean; canSaveAs: boolean; isDirty: boolean; status: string } => ({
+  canOverwrite: !isNew && canOverwrite,
   canSaveAs,
-  hasControls: isChanged || isNew,
-  status: isNew ? "Not saved yet." : isChanged ? "You changed this preset." : "Nothing changed yet.",
+  isDirty: isChanged || isNew,
+  status: isNew ? "Not saved yet." : isChanged ? "You changed this companion." : "Nothing changed yet.",
 });
 
 /** What follows a successful Save as new: the draft became the new preset, so the source preset goes back to its saved chain and the list drops the draft. */

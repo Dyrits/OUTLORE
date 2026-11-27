@@ -26,12 +26,12 @@ export const companionStyles = StyleSheet.create({
   details: { flex: 1, gap: 14, minWidth: 0 },
   draftActions: { alignItems: "flex-start", flexDirection: "row", flexWrap: "wrap", gap: 8 },
   error: { color: colors.dangerText, fontFamily: fonts.sans, fontSize: fontSizes.sm },
-  nav: { gap: 4, width: 176 },
-  navStacked: { gap: 4 },
+  nav: { flex: 1, gap: 10, minWidth: 0 },
+  navStacked: { gap: 10 },
   note: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
   // The column's tabs sit 20 px above the first row (its own 12 px of padding, shortened to 6 for this panel) and the rows 8 px apart; every gap is 14 px.
-  panel: { gap: 14 },
-  split: { flexDirection: "row" },
+  panel: { gap: 16 },
+  split: { alignItems: "flex-start", flexDirection: "row" },
   tab: {
     alignItems: "center",
     borderColor: colors.edge,
@@ -44,6 +44,13 @@ export const companionStyles = StyleSheet.create({
   tabs: { flexDirection: "row", gap: 6 },
   tabText: { color: colors.textSecondary, fontSize: 13, fontWeight: "500" },
   tabTextActive: { color: colors.accentText, fontWeight: "700" },
-  tier: { gap: 8 },
+  tier: {
+    backgroundColor: colors.surface,
+    borderColor: colors.edge,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    gap: 12,
+    padding: 16,
+  },
   title: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
 });

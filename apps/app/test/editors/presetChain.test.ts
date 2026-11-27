@@ -212,25 +212,26 @@ describe("unfolding a row of a chain", () => {
 });
 
 describe("showing the footer of the chain editor", () => {
-  it("offers nothing while an existing preset is unchanged", () => {
+  it("keeps controls inactive while an existing companion is unchanged", () => {
     expect(footerOf({ canSaveAs: true, isChanged: false, isNew: false })).toMatchObject({
-      hasControls: false,
+      canOverwrite: true,
+      isDirty: false,
       status: "Nothing changed yet.",
     });
   });
 
-  it("offers Overwrite once an existing preset changed", () => {
+  it("enables Overwrite once an existing companion changed", () => {
     expect(footerOf({ canSaveAs: true, isChanged: true, isNew: false })).toMatchObject({
       canOverwrite: true,
-      hasControls: true,
-      status: "You changed this preset.",
+      isDirty: true,
+      status: "You changed this companion.",
     });
   });
 
-  it("offers no Overwrite for a preset not made yet", () => {
+  it("offers no Overwrite for a companion not made yet", () => {
     expect(footerOf({ canSaveAs: true, isChanged: false, isNew: true })).toMatchObject({
       canOverwrite: false,
-      hasControls: true,
+      isDirty: true,
       status: "Not saved yet.",
     });
   });

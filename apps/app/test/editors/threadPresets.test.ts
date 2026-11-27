@@ -35,19 +35,14 @@ describe("editing a preset from a thread's Companions tab", () => {
     expect(client.sent.some((request) => request._tag === "ChangeThreadRunner")).toBe(false);
   });
 
-  it("moves a thread that was on the preset to Custom, and pressing the preset's row hands it over", async () => {
+  it("unselects a preset when the thread's stack no longer matches it, and pressing the preset's card hands it over", async () => {
     const client = clientOf();
     const threadStack = claude("claude-opus-5-5");
     const before = presetChoiceOf(client, "thread-1" as never, settingsOf(threadStack), [], () => {});
-    expect(entriesOf(before.presets, threadStack).map((entry) => [entry.kind, entry.isChosen])).toEqual([
-      ["preset", true],
-    ]);
-    // The host now holds the edited preset; the thread keeps the stack it had.
+    expect(entriesOf(before.presets, threadStack).map((entry) => entry.isChosen)).toEqual([true]);
+    // The host now holds the edited preset; the thread keeps the stack it had until the preset is chosen again.
     const after = presetChoiceOf(client, "thread-1" as never, settingsOf(claude("claude-sonnet-5-5")), [], () => {});
-    expect(entriesOf(after.presets, threadStack).map((entry) => [entry.kind, entry.isChosen])).toEqual([
-      ["preset", false],
-      ["custom", true],
-    ]);
+    expect(entriesOf(after.presets, threadStack).map((entry) => entry.isChosen)).toEqual([false]);
     const [edited] = after.presets;
     if (edited === undefined) throw new Error("Missing preset");
     after.onPreset(edited);

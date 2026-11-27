@@ -10,10 +10,12 @@ import { Button } from "../ui/button";
  */
 export function PresetOverwrite({
   isDisabled = false,
+  isPrimary = false,
   name,
   onOverwrite,
 }: {
   isDisabled?: boolean;
+  isPrimary?: boolean;
   name: string;
   onOverwrite: () => Promise<unknown>;
 }) {
@@ -55,7 +57,7 @@ export function PresetOverwrite({
       ) : (
         <Button
           isDisabled={isBusy}
-          isPrimary={false}
+          isPrimary={isPrimary}
           label={`Overwrite “${name}”`}
           onPress={() => setIsConfirming(true)}
         />

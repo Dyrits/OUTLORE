@@ -1,45 +1,35 @@
-import { type ReactElement, useContext, useEffect, useId, useRef, useState } from "react";
+import { type ReactElement, useContext, useEffect, useId, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { CompanionPickerProps } from "../foundation/companionPickerProps";
-import { effortName, modelLabelOf } from "../foundation/formatting";
+import { effortName, modelLabelOf, runnerSummaryOf } from "../foundation/formatting";
 import { CompanionDockActions, CompanionTabOf } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
-import { FoldGroup } from "../ui/fold";
+import { Fold, FoldGroup } from "../ui/fold";
 import { ProviderMark } from "../ui/providerMarks";
+import { CompanionBody } from "./companionBody";
+import { chainLabelOf } from "./presetChain";
 import { PresetChooser } from "./presetChooser";
-import { detailsModeOf, entriesOf, navWidth, panelLayoutOf, splitGap } from "./presetEntries";
+import { ThreadPresetCard } from "./presetEditor";
+import { entriesOf, panelLayoutOf, splitGap } from "./presetEntries";
 import { presetChangeOf } from "./presets";
-import { ThreadCompanionDetails } from "./threadCompanionDetails";
-import { ThreadPresetEditor } from "./threadPresetEditor";
-import { type KeptDrafts, keptRenamed, keptWith, keptWithout, liveDraftsOf, ownValue } from "./useDraftStack";
+import { type KeptDrafts, keptRenamed, keptWith, keptWithout, liveDraftsOf } from "./useDraftStack";
 
 /** The width of the picker's panel in a window with no right-hand column to hold it: a mini sidebar. */
 const miniWidth = 288;
 
 /**
- * The Companions tab: the presets when there are any (a list of rows, then a Custom entry for a stack none of them holds), then a fold for the thread's own Companion, unfolded first, and under it what belongs to the thread alone (`extra`: its backup Companions, one fold each).
- * One fold is unfolded at a time.
- * Wide enough (`splitLeastWidth`, measured on the panel itself), the list stands at the left and the details at the right; narrower, they are stacked.
- * Edit on a selected preset swaps the details for the preset's own editors (edit mode), which change the preset and never the thread.
+ * The Companions tab: balanced two-column layout when wide enough (`splitLeastWidth`), stacked when narrow.
+ * Left column lists each saved companion card with its numbered fallback chain plus "+ Add a companion".
+ * Right column is the unified chain editor for the selected companion (or a new/unsaved companion draft).
  */
 export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { onClose?: () => void }) {
   const { extra, panel, ...picker } = props;
   const { presetChoice = null } = picker;
   const onSavePreset = presetChoice?.onSavePreset;
-  const onOverwritePreset = presetChoice?.onOverwritePreset;
   const backups = presetChoice?.backups;
-  // The preset last chosen in this tab: what a changed Companion can be written back to.
-  const [basedOn, setBasedOn] = useState<string | null>(null);
-  // The preset in edit mode, by name; `editSession` invalidates late async completions after navigation.
-  const [editing, setEditing] = useState<string | null>(null);
-  const editSession = useRef(0);
-  const changeEditing = (next: string | null, session?: number) => {
-    if (session !== undefined && editSession.current !== session) return;
-    editSession.current += 1;
-    setEditing(next);
-  };
-  // Each preset's unsaved chain from edit mode, kept until it is saved or discarded and shown in the list at once.
+  const [isAdding, setIsAdding] = useState(false);
+  // Each companion's unsaved chain, kept until it is saved or discarded and previewed on its card at once.
   const [kept, setKept] = useState<KeptDrafts>({});
   const [width, setWidth] = useState<number | null>(null);
   const layout = panelLayoutOf(width);
@@ -49,104 +39,84 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
       : { accountId: props.accountId, backups, effort: props.effort, harness: props.harness, model: props.model };
   const presets = presetChoice?.presets ?? [];
   const entries = entriesOf(presets, stack);
-  const chosen = entries.find((entry) => entry.kind === "preset" && entry.isChosen);
-  const isCustomStack = entries.some((entry) => entry.kind === "custom");
-  const overwritten = presets.find((preset) => preset.name === basedOn);
-  const details = detailsModeOf(presets, editing);
+  const chosen = entries.find((entry) => entry.isChosen)?.preset;
   const drafts = liveDraftsOf(kept, (name) => {
     const found = presets.find((preset) => preset.name === name);
     return found === undefined ? null : presetChangeOf(found);
   });
   const isSplit = layout === "split";
+  const hasList = presetChoice !== null && (entries.length > 0 || onSavePreset !== undefined);
   return (
-    <FoldGroup initial="main">
-      <View
-        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-        style={[local.body, panel !== undefined && local.bodyOfPanel]}
-      >
-        {onClose !== undefined && (
-          <View style={local.title}>
-            <Text style={local.titleText}>Companions</Text>
-            <Pressable accessibilityLabel="Close the menu" accessibilityRole="button" onPress={onClose}>
-              <Text style={local.titleClose}>✕</Text>
-            </Pressable>
-          </View>
-        )}
-        <ScrollView contentContainerStyle={[local.stack, isSplit && local.split]} style={local.scroll}>
-          {panel ?? (
+    <View
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+      style={[local.body, panel !== undefined && local.bodyOfPanel]}
+    >
+      {onClose !== undefined && (
+        <View style={local.title}>
+          <Text style={local.titleText}>Companions</Text>
+          <Pressable accessibilityLabel="Close the menu" accessibilityRole="button" onPress={onClose}>
+            <Text style={local.titleClose}>✕</Text>
+          </Pressable>
+        </View>
+      )}
+      <ScrollView contentContainerStyle={[local.stack, isSplit && hasList && local.split]} style={local.scroll}>
+        {panel ??
+          (presetChoice !== null && stack !== null ? (
             <>
-              {presetChoice !== null && entries.length > 0 && (
+              {hasList && (
                 <View style={isSplit && local.nav}>
                   <PresetChooser
                     drafts={drafts}
-                    editing={details.mode === "edit" ? details.preset.name : null}
                     entries={entries}
                     harnesses={props.harnesses}
+                    isAdding={isAdding}
                     isChainListed={true}
-                    isNav={isSplit}
                     onPreset={(preset) => {
-                      setBasedOn(preset.name);
-                      // Choosing a preset is a handover of the thread, which ends the edit of a preset.
-                      changeEditing(null);
+                      setIsAdding(false);
                       presetChoice.onPreset(preset);
                     }}
+                    {...(onSavePreset === undefined ? {} : { onAdd: () => setIsAdding(true) })}
                   />
                 </View>
               )}
-              <View style={[local.details, isSplit && entries.length > 0 && local.detailsSplit]}>
-                {details.mode === "edit" && presetChoice !== null && onOverwritePreset !== undefined ? (
-                  <ThreadPresetEditor
-                    choice={{
-                      ...presetChoice,
-                      ...(presetChoice.onRenamePreset === undefined
-                        ? {}
-                        : {
-                            onRenamePreset: async (from: string, to: string) => {
-                              await presetChoice.onRenamePreset?.(from, to);
-                              setKept((current) => keptRenamed(current, from, to));
-                            },
-                          }),
-                      ...(presetChoice.onDeletePreset === undefined
-                        ? {}
-                        : {
-                            onDeletePreset: async (name: string) => {
-                              await presetChoice.onDeletePreset?.(name);
-                              setKept((current) => keptWithout(current, name));
-                            },
-                          }),
-                    }}
-                    editSession={editSession.current}
-                    harnesses={props.harnesses}
-                    initial={ownValue(drafts, details.preset.name)}
-                    key={details.preset.name}
-                    onDraft={(next) =>
-                      setKept((current) => keptWith(current, details.preset.name, presetChangeOf(details.preset), next))
-                    }
-                    onEditing={changeEditing}
-                    onOverwrite={onOverwritePreset}
-                    preset={details.preset}
-                  />
-                ) : (
-                  <ThreadCompanionDetails
-                    backups={backups}
-                    chosen={chosen}
-                    entriesCount={entries.length}
-                    extra={extra}
-                    isCustomStack={isCustomStack}
-                    onEdit={changeEditing}
-                    onOverwritePreset={onOverwritePreset}
-                    onSavePreset={onSavePreset}
-                    overwritten={overwritten}
-                    picker={picker}
-                    stack={stack}
-                  />
-                )}
+              <View style={[local.details, isSplit && hasList && local.detailsSplit]}>
+                <ThreadPresetCard
+                  chosen={chosen}
+                  drafts={drafts}
+                  harnesses={props.harnesses}
+                  isAdding={isAdding}
+                  onCancelAdd={() => setIsAdding(false)}
+                  onDelete={async (name) => {
+                    await presetChoice.onDeletePreset?.(name);
+                    setKept((current) => keptWithout(current, name));
+                  }}
+                  onDraft={(name, saved, next) => setKept((current) => keptWith(current, name, saved, next))}
+                  onRename={async (from, to) => {
+                    await presetChoice.onRenamePreset?.(from, to);
+                    setKept((current) => keptRenamed(current, from, to));
+                  }}
+                  presetChoice={presetChoice}
+                  stack={stack}
+                />
               </View>
             </>
-          )}
-        </ScrollView>
-      </View>
-    </FoldGroup>
+          ) : (
+            <FoldGroup initial="main">
+              <View style={local.details}>
+                <Fold
+                  harness={picker.harness}
+                  id="main"
+                  summary={runnerSummaryOf(picker.harnesses, picker)}
+                  title={chainLabelOf(picker.harnesses, picker)}
+                >
+                  <CompanionBody {...picker} />
+                </Fold>
+                {extra}
+              </View>
+            </FoldGroup>
+          ))}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -231,10 +201,9 @@ const local = StyleSheet.create({
   body: { backgroundColor: colors.page, flex: 1, gap: 8, padding: 12 },
   // A panel of its own starts with tabs, which sit closer to the column's.
   bodyOfPanel: { paddingTop: 6 },
-  // The details stand under the list when stacked, and beside it when split; the Overwrite and save forms keep their 8 px.
-  details: { gap: 8 },
+  details: { gap: 12 },
   detailsSplit: { flex: 1, minWidth: 0 },
-  nav: { width: navWidth },
+  nav: { flex: 1, minWidth: 0 },
   // A narrow window's stand-in for the column: a panel over the right edge, below the top bar.
   overlay: {
     borderColor: colors.border,
@@ -247,7 +216,7 @@ const local = StyleSheet.create({
   },
   scroll: { flex: 1 },
   split: { alignItems: "flex-start", flexDirection: "row", gap: splitGap },
-  stack: { gap: 8 },
+  stack: { gap: 12 },
   title: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   titleClose: { color: colors.textMuted, fontSize: fontSizes.md, paddingHorizontal: 4 },
   titleText: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },
