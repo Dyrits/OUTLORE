@@ -5,6 +5,7 @@ import type { ServiceClient } from "../foundation/client";
 import { clockOf, replyWriterOf, stampOf } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
 import { LoreChangeCard, LoreChangeLine } from "../lore/lore";
+import { ChipText } from "../ui/chips";
 import { QuestionCard, QuestionLine } from "../ui/questions";
 import { ChoiceBubbles } from "./choiceBubbleViews";
 import type { Entry } from "./entries";
@@ -23,12 +24,17 @@ function ThreadRootView({
   harness,
   replyCount,
   root,
+  skills,
+  workspacePath,
 }: {
   client: ServiceClient;
   /** The harness the thread runs on now: the writer of an agent root that records none. */
   harness: HarnessName;
   replyCount: number;
   root: ThreadRoot;
+  /** The skills and workspace the owner's words are read against, to draw what they named as chips. */
+  skills: ReadonlyArray<Skill>;
+  workspacePath: string | null;
 }) {
   const sender =
     root.sender === "user" ? "You" : root.sender === "agent" ? replyWriterOf(root, harness).label : senderLabelOf(root);
@@ -39,7 +45,12 @@ function ThreadRootView({
           <Text style={styles.senderName}>{sender}</Text>
           <Text style={styles.senderTime}>{stampOf(root.sentAt)}</Text>
         </View>
-        {root.text !== "" && <Markdown text={root.text} />}
+        {root.text !== "" &&
+          (root.sender === "user" ? (
+            <ChipText client={client} skills={skills} text={root.text} workspacePath={workspacePath} />
+          ) : (
+            <Markdown text={root.text} />
+          ))}
         <MessageImages cards={root.attachments ?? []} client={client} />
       </View>
       <View style={styles.threadRootDivider}>
@@ -76,7 +87,16 @@ export function EntryView({
 }) {
   if (entry._tag === "LiveFooter") return null;
   if (entry._tag === "Root")
-    return <ThreadRootView client={client} harness={harness} replyCount={entry.replyCount} root={entry.root} />;
+    return (
+      <ThreadRootView
+        client={client}
+        harness={harness}
+        replyCount={entry.replyCount}
+        root={entry.root}
+        skills={skills}
+        workspacePath={workspacePath}
+      />
+    );
   if (entry._tag === "ThreadOpened") return <ReplyLine isCompact onOpen={onSelectThread} thread={entry.thread} />;
   if (entry._tag === "Steps")
     return <StepsGroup client={client} seconds={entry.seconds} steps={entry.steps} threadId={entry.threadId} />;

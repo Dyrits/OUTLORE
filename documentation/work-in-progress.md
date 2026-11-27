@@ -1,5 +1,10 @@
 # Work in progress
 
+## Thread root draws chips · 2026-11-27 · built and tested; window and phone not looked at
+
+CHG-0784 in `0.2.12-Pre-Alpha`: `ThreadRootView` in `apps/app/src/conversation/conversationEntries.tsx` draws an owner's root with `ChipText` (it drew `Markdown`, so `$debug` showed as plain words above "1 reply"); test `apps/app/test/conversation/threadRootChips.test.ts`. Root cause found by rendering the root with a skill in it: the pure `chipsOf` already returned the chip, the component never called it.
+Next: look at a thread whose first message names a skill, a file, a quest and a Companion in the window and on the phone; check that a root holding comments or a terminal snapshot (the bubble splits those with `commentsOf` and `terminalSnapshotOf`, the root does not) reads well.
+
 ## Phone bar remarks: dot, quarter-second hold, creation rows, top bar order · 2026-11-27 · built and tested; no phone check yet
 
 CHG-0782 in `0.2.12-Pre-Alpha`: the Quests tab draws crossed swords with a gold dot once a quest is chosen; a tab opens its sheet after 250 ms; each sheet starts with a New realm, New quest or New errand row (`creationOf`, `PhoneChooser`, `narrowShell.tsx`, `useStartQuest`); on a quest the phone's top bar runs Mark as done, Archive, New quest, New errand, sword as the desktop does. [Proof](verification/2026-11-27-phone-quest-tab-and-sheets.md): rows' content proven by tests that fail when broken; the dot, the hold, pressing a row and the top bar's order are unproven until looked at on a phone.
