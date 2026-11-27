@@ -10,7 +10,7 @@ import { QuestionCard, QuestionLine } from "../ui/questions";
 import { ChoiceBubbles } from "./choiceBubbleViews";
 import type { AnchoredReply, Entry } from "./entries";
 import { ExchangeFrame } from "./exchangeFrame";
-import { Markdown } from "./markdown";
+import { type CommandRunner, Markdown } from "./markdown";
 import { MessageBubble, senderLabelOf } from "./messageBubble";
 import { QuestReplyLine, ReplyLine } from "./replyLine";
 import { StepsGroup } from "./stepsGroup";
@@ -23,6 +23,7 @@ import { SuggestionCard, SuggestionLine } from "./suggestions";
 function ThreadRootView({
   client,
   harness,
+  onRunCommand,
   replyCount,
   root,
   skills,
@@ -31,6 +32,7 @@ function ThreadRootView({
   client: ServiceClient;
   /** The harness the thread runs on now: the writer of an agent root that records none. */
   harness: HarnessName;
+  onRunCommand: CommandRunner | null;
   replyCount: number;
   root: ThreadRoot;
   /** The skills and workspace the owner's words are read against, to draw what they named as chips. */
@@ -50,7 +52,7 @@ function ThreadRootView({
           (root.sender === "user" ? (
             <ChipText client={client} skills={skills} text={root.text} workspacePath={workspacePath} />
           ) : (
-            <Markdown text={root.text} />
+            <Markdown onRunCommand={onRunCommand} text={root.text} />
           ))}
         <MessageImages cards={root.attachments ?? []} client={client} />
       </View>
@@ -70,6 +72,7 @@ export function EntryView({
   entry,
   harness,
   onOpenMission,
+  onRunCommand = null,
   onSelectThread,
   skills,
   workspacePath,
@@ -84,6 +87,8 @@ export function EntryView({
   skills: ReadonlyArray<Skill>;
   workspacePath: string | null;
   onOpenMission: (missionId: MissionId) => void;
+  /** Runs a fenced shell command in the conversation's inline terminal, or null when unavailable. */
+  onRunCommand?: CommandRunner | null;
   onSelectThread: (threadId: ThreadId) => void;
 }) {
   if (entry._tag === "LiveFooter") return null;
@@ -92,6 +97,7 @@ export function EntryView({
       <ThreadRootView
         client={client}
         harness={harness}
+        onRunCommand={onRunCommand}
         replyCount={entry.replyCount}
         root={entry.root}
         skills={skills}
@@ -159,6 +165,7 @@ export function EntryView({
       key={parts.key}
       message={message}
       onOpenMission={onOpenMission}
+      onRunCommand={onRunCommand}
       onSelectThread={onSelectThread}
       replies={parts.replies}
       replyToText={parts.replyToText}

@@ -61,9 +61,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume running shell commands from message code blocks (fenced shell blocks, play button beside Copy, `!` terminal reuse with single-attempt exited-shell restart, reviewed and proof reproduced at `64339a82`; live desktop/browser check C4 remaining), read the [current handoff](.agents/handoffs/2026-11-27-1922-run-command-from-message.md). Handoffs are shared and committed.
+
 - To resume the connector access diagnosis (why installed connectors reach no thread: composio without a key, gitlab.com refusing a self-hosted token, github's silent tools/list failure, atlassian's unstored sign-in; documented with live evidence, fixes not built), read the [current handoff](.agents/handoffs/2026-11-27-1431-connector-access-diagnosis.md). Handoffs are shared and committed.
 
 - To resume Companion answer frames, in-frame follow-ups, opt-in context, the side-chat jump menu, and usage-limit refusal by model group (CHG-0786, CHG-0787, CHG-0788 with the Standards and Specifications review fixes; live desktop and phone check and a live Antigravity turn remaining), read the [current handoff](.agents/handoffs/2026-11-27-1220-companion-frames.md). Handoffs are shared and committed.
-
-- To resume quest tab switching dropping stale Errands list requests (fixed in `paneSession.ts` at `fab6138b` with regression tests and reproduced proof; live desktop check C4 and deferred `SPEC-1` realm-switch channel `listRequest` follow-up remaining), read the [current handoff](.agents/handoffs/2026-11-27-1138-quest-tab-list-request.md). Handoffs are shared and committed.
 

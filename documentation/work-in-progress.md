@@ -1,5 +1,14 @@
 # Work in progress
 
+## Run shell commands from message code blocks · 2026-11-27 · built, reviewed, and proof reproduced; desktop and browser check pending
+
+Starting revision `b5abfbc9` (branch `feat/run-command-from-message`): fenced shell code blocks (`bash`, `sh`, `zsh`, `shell`, `fish`, `console`, `powershell`, `pwsh`, `cmd`, `bat`) in completed messages now show a play **Run command** icon beside **Copy code** whenever terminals are available on the screen (`markdownRules.ts`, `runButton.tsx`, `markdown.tsx`, `agentReply.tsx`, `messageBubble.tsx`, `conversationEntries.tsx`, `conversationFeed.tsx`, `threadPane.tsx`, `useThreadConversation.ts`).
+Clicking Run opens or reveals the conversation's `!` inline terminal bubble below the feed, restarts it at most once if the shell had exited, scrolls it into view, and writes the block directly to the PTY (`terminalScope.ts`, `terminalPanelTypes.ts`, `terminalPanel.web.tsx`, `useTerminal.tsx`).
+Hidden on non-shell or untagged blocks, empty blocks, streaming draft replies, Ritual top threads without a composer (`canRunCommands={canTakeTurns}`), the native phone app, and paired web screens while **Allow terminals from paired devices** is off.
+Reviewed across Standards (`STD-1`–`STD-6` resolved) and Specifications (`SPEC-1`–`SPEC-3` resolved, `SPEC-4` covered for `EntryView`/pure terminal state; residual runtime `useTerminal`/`TerminalPanel` integration test gap noted).
+[Proof](verification/2026-11-27-run-command-from-message.md): C1–C3 proven and reproduced in a fresh context (`bunx biome check` 16 files clean, 7-workspace `bun run typecheck` exit 0, `CI=1 bun run test apps/app` 133 files / 1,099 passed / 6 skipped); C4 awaiting human judgment.
+Next: look at the Run button beside Copy in a live desktop window (light and dark themes), click Run on a single-line and multi-line `bash` block when the terminal is closed, hidden, running, and exited, and record Delivery once accepted.
+
 ## Connector access diagnosis · 2026-11-27 · diagnosed and documented; fixes not built
 
 No CHG number (debug only, nothing changed): a thread receives no connector tools although the owner connected them, and each of the four installed connectors is unusable for its own reason — composio was never given its API key; gitlab's stored PAT is refused by the hardcoded `https://gitlab.com/api/v4/mcp` (the owner's GitLab is self-hosted); github's PAT is stored and Ready but its sessionless `tools/list` fails silently (class `Failed`: no thread warning, no mark, empty cache), so it offers no tools; atlassian's browser sign-in stored no session under the pre-CHG-0785 app. The full claims, live evidence and reproduction commands are in [the diagnosis](verification/2026-11-27-connector-access-diagnosis.md), the session state in [the handoff](../.agents/handoffs/2026-11-27-1431-connector-access-diagnosis.md).

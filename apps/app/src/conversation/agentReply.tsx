@@ -5,7 +5,7 @@ import { replyUsageTextOf } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { ProviderMark } from "../ui/providerMarks";
 import { Commentable } from "./commentable";
-import { Markdown } from "./markdown";
+import { type CommandRunner, Markdown } from "./markdown";
 import { MessageActions } from "./messageActions";
 
 /** A reply or notice title cut for a one-line label. */
@@ -21,6 +21,7 @@ export function AgentReply({
   isDraft = false,
   label,
   messageId = null,
+  onRunCommand = null,
   replies = null,
   replyToText,
   text,
@@ -32,6 +33,8 @@ export function AgentReply({
   label: string;
   /** The message this reply is, which the owner can comment on; null for a draft, which is not a message yet. */
   messageId?: MessageId | null;
+  /** Runs a fenced shell command in the conversation's inline terminal, or null when unavailable. */
+  onRunCommand?: CommandRunner | null;
   replies?: ReactNode;
   replyToText?: string;
   text: string;
@@ -57,7 +60,7 @@ export function AgentReply({
             {time !== null && <Text style={styles.senderTime}>{time}</Text>}
           </View>
           {replyToText ? <Text style={styles.muted}>Replying to: {shortened(replyToText)}</Text> : null}
-          <Markdown text={text} />
+          <Markdown onRunCommand={isDraft ? null : onRunCommand} text={text} />
           {(usage !== null || !isDraft) && (
             <View style={styles.replyFooter}>
               {usage !== null && <Text style={styles.muted}>{replyUsageTextOf(usage)}</Text>}

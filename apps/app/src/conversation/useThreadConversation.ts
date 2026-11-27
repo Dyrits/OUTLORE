@@ -47,6 +47,14 @@ export function useThreadConversation(
     thread?.actions.isInTurn ?? false,
     options.isChronicler ? "Chronicler" : thread?.parentId === null ? "this quest" : "this errand",
   );
+  const runInTerminal = terminal.run;
+  const runCommand =
+    runInTerminal === null
+      ? null
+      : (command: string) => {
+          runInTerminal(command);
+          followNewest.follow();
+        };
   const send = (
     text: string,
     attachmentIds: ReadonlyArray<AttachmentId>,
@@ -83,6 +91,7 @@ export function useThreadConversation(
     presetChoice,
     refusal: thread === null ? null : imageRefusalOf(harnesses, thread.harness, thread.model),
     removeQueued: (messageId: MessageId) => client.request({ _tag: "RemoveQueuedMessage", messageId }),
+    runCommand,
     send,
     skills,
     steer: (messageId: MessageId) => client.request({ _tag: "SteerQueuedMessage", messageId }),

@@ -14,7 +14,8 @@ import { Linking, StyleSheet, Text, type TextStyle, View } from "react-native";
 import { channelTextOf } from "../foundation/colorMix";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { CopyButton } from "../ui/copyButton";
-import { linkTargetOf, listMarkerOf } from "./markdownRules";
+import { RunButton } from "../ui/runButton";
+import { linkTargetOf, listMarkerOf, runnableCommandOf } from "./markdownRules";
 
 /**
  * A veil of the text color over whatever the message sits on, so code reads apart from prose in every theme: it
@@ -25,6 +26,7 @@ const codeVeil = `rgba(${channelTextOf(colors.text).replaceAll(" ", ", ")}, 0.08
 const styles = StyleSheet.create({
   blockquote: { borderLeftColor: colors.edge, borderLeftWidth: 3, gap: 6, paddingLeft: 10 },
   bold: { fontWeight: "700" },
+  codeActions: { flexDirection: "row", gap: 8, position: "absolute", right: 10, top: 10 },
   codeBlock: {
     backgroundColor: codeVeil,
     borderColor: colors.edge,
@@ -33,8 +35,8 @@ const styles = StyleSheet.create({
     padding: 10,
     paddingRight: 36,
   },
+  codeBlockRunnable: { paddingRight: 60 },
   codeBlockText: { color: colors.text, fontFamily: fonts.mono, fontSize: fontSizes.md, lineHeight: 18 },
-  codeCopy: { position: "absolute", right: 10, top: 10 },
   codeSpan: { backgroundColor: codeVeil, fontFamily: fonts.mono, fontSize: fontSizes.md },
   deleted: { textDecorationLine: "line-through" },
   heading: { color: colors.text, fontFamily: fonts.sans, fontWeight: "700" },
@@ -105,7 +107,10 @@ const Paragraph = ({ tokens }: { tokens: ReadonlyArray<Token> }) => (
   </Text>
 );
 
-function ListView({ list }: { list: Tokens.List }) {
+/** Runs a fenced shell code block in the conversation's inline terminal. */
+export type CommandRunner = (command: string) => void;
+
+function ListView({ list, onRunCommand }: { list: Tokens.List; onRunCommand: CommandRunner | null }) {
   return (
     <View style={styles.list}>
       {list.items.map((item, index) => (
@@ -113,7 +118,7 @@ function ListView({ list }: { list: Tokens.List }) {
         <View key={index} style={styles.itemRow}>
           <Text style={[styles.text, styles.marker]}>{listMarkerOf(list, index)}</Text>
           <View style={styles.itemBody}>
-            <Blocks tokens={item.tokens} />
+            <Blocks onRunCommand={onRunCommand} tokens={item.tokens} />
           </View>
         </View>
       ))}
@@ -143,7 +148,7 @@ function TableView({ table }: { table: Tokens.Table }) {
 }
 
 /** The block tokens, each as the view of its kind; kinds with nothing to show, such as a blank line, draw nothing. */
-const blockOf = (token: Token, key: string): ReactNode => {
+const blockOf = (token: Token, key: string, onRunCommand: CommandRunner | null): ReactNode => {
   if (token.type === "paragraph" || token.type === "text")
     return <Paragraph key={key} tokens={token.tokens ?? [token]} />;
   if (token.type === "heading") {
@@ -154,21 +159,25 @@ const blockOf = (token: Token, key: string): ReactNode => {
       </Text>
     );
   }
-  if (isList(token)) return <ListView key={key} list={token} />;
+  if (isList(token)) return <ListView key={key} list={token} onRunCommand={onRunCommand} />;
   if (token.type === "code") {
+    const command = onRunCommand === null ? null : runnableCommandOf(token.lang, token.text);
     return (
-      <View key={key} style={styles.codeBlock}>
+      <View key={key} style={[styles.codeBlock, command !== null && styles.codeBlockRunnable]}>
         <Text selectable style={styles.codeBlockText}>
           {token.text}
         </Text>
-        <CopyButton label="Copy code" style={styles.codeCopy} text={token.text} />
+        <View style={styles.codeActions}>
+          {command !== null && onRunCommand !== null && <RunButton onPress={() => onRunCommand(command)} />}
+          <CopyButton label="Copy code" text={token.text} />
+        </View>
       </View>
     );
   }
   if (token.type === "blockquote") {
     return (
       <View key={key} style={styles.blockquote}>
-        <Blocks tokens={token.tokens ?? []} />
+        <Blocks onRunCommand={onRunCommand} tokens={token.tokens ?? []} />
       </View>
     );
   }
@@ -178,16 +187,23 @@ const blockOf = (token: Token, key: string): ReactNode => {
   return null;
 };
 
-function Blocks({ tokens }: { tokens: ReadonlyArray<Token> }) {
-  return <>{tokens.map((token, index) => blockOf(token, `${index}`))}</>;
+function Blocks({ onRunCommand, tokens }: { onRunCommand: CommandRunner | null; tokens: ReadonlyArray<Token> }) {
+  return <>{tokens.map((token, index) => blockOf(token, `${index}`, onRunCommand))}</>;
 }
 
 /** An agent's reply drawn as Markdown: paragraphs, lists, code, quotes, tables, and links in the guild's type. */
-export function Markdown({ text }: { text: string }) {
+export function Markdown({
+  onRunCommand = null,
+  text,
+}: {
+  /** Runs a fenced shell code block in the conversation's inline terminal, or null when unavailable. */
+  onRunCommand?: CommandRunner | null;
+  text: string;
+}) {
   const tokens = useMemo(() => lexer(text), [text]);
   return (
     <View style={styles.root}>
-      <Blocks tokens={tokens} />
+      <Blocks onRunCommand={onRunCommand} tokens={tokens} />
     </View>
   );
 }

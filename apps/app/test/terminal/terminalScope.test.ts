@@ -6,6 +6,9 @@ import {
   isTerminalAvailable,
   maxTerminalHeight,
   minTerminalHeight,
+  nextTerminalRunActionOf,
+  shouldAutoRestartTerminalOf,
+  terminalCommandInputOf,
   terminalKeyOf,
 } from "../../src/terminal/terminalScope";
 
@@ -59,5 +62,49 @@ describe("the inline terminal status and height bounds", () => {
     expect(clampTerminalHeight(50)).toBe(minTerminalHeight);
     expect(clampTerminalHeight(320.4)).toBe(320);
     expect(clampTerminalHeight(2000)).toBe(maxTerminalHeight);
+  });
+});
+
+describe("running a command in the conversation terminal", () => {
+  it("formats a command for PTY submission with carriage returns", () => {
+    expect(terminalCommandInputOf("git status")).toBe("git status\r");
+    expect(terminalCommandInputOf("echo one\necho two")).toBe("echo one\recho two\r");
+    expect(terminalCommandInputOf("echo one\r\necho two")).toBe("echo one\recho two\r");
+  });
+
+  it("writes immediately when the shell is ready and running", () => {
+    expect(nextTerminalRunActionOf({ isReady: true, isRunning: true })).toBe("write");
+  });
+
+  it("restarts the shell when it is ready but has already exited", () => {
+    expect(nextTerminalRunActionOf({ isReady: true, isRunning: false })).toBe("restart");
+  });
+
+  it("retries opening when a prior OpenTerminal attempt failed", () => {
+    expect(nextTerminalRunActionOf({ hasOpenFailed: true, isReady: false, isRunning: true })).toBe("reopen");
+    expect(nextTerminalRunActionOf({ hasOpenFailed: true, isReady: false, isRestarting: true, isRunning: true })).toBe(
+      "queue",
+    );
+  });
+
+  it("queues the command while the shell is still opening or already restarting", () => {
+    expect(nextTerminalRunActionOf({ isReady: false, isRunning: true })).toBe("queue");
+    expect(nextTerminalRunActionOf({ isReady: false, isRunning: false })).toBe("queue");
+    expect(nextTerminalRunActionOf({ isReady: true, isRestarting: true, isRunning: false })).toBe("queue");
+  });
+
+  it("auto-restarts an exited shell at most once when commands are queued", () => {
+    expect(shouldAutoRestartTerminalOf({ hasAutoRestarted: false, hasPendingCommands: true, isRunning: false })).toBe(
+      true,
+    );
+    expect(shouldAutoRestartTerminalOf({ hasAutoRestarted: true, hasPendingCommands: true, isRunning: false })).toBe(
+      false,
+    );
+    expect(shouldAutoRestartTerminalOf({ hasAutoRestarted: false, hasPendingCommands: false, isRunning: false })).toBe(
+      false,
+    );
+    expect(shouldAutoRestartTerminalOf({ hasAutoRestarted: false, hasPendingCommands: true, isRunning: true })).toBe(
+      false,
+    );
   });
 });
