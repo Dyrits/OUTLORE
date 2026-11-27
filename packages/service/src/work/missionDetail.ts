@@ -123,7 +123,8 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
   const ownCopy = yield* readOwnCopy(selected.id);
   const workingFolder = yield* readWorkingFolder(selected.id, workspace?.path ?? null);
   const messages = yield* sql<
-    Omit<Message, "attachments" | "isResult" | "isQueued" | "isDelivered" | "usage"> & {
+    Omit<Message, "attachments" | "isCompanionAnswer" | "isResult" | "isQueued" | "isDelivered" | "usage"> & {
+      isCompanionAnswer: number;
       isResult: number;
       isDelivered: number;
       isQueued: number;
@@ -137,6 +138,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
   >`
       SELECT m.id, m.thread_id AS threadId, m.reply_to_message_id AS replyToMessageId, m.sender_kind AS sender, m.model, m.harness, m.text, m.sequence, m.sent_at AS sentAt,
         m.sender_thread_id AS fromThreadId, COALESCE(s.title, m.sender_title) AS fromTitle, m.is_result AS isResult,
+        EXISTS (SELECT 1 FROM companion_exchanges ce WHERE ce.reply_message_id = m.id) AS isCompanionAnswer,
         CASE WHEN ${isQuestKindOf(sql, "owner", "sm")} THEN s.mission_id END AS fromMissionId,
         (m.is_queued = 1 AND m.delivered_turn_id IS NULL) AS isQueued, (m.delivered_turn_id IS NOT NULL OR m.is_conversation_only = 1) AS isDelivered,
         ru.input AS usageInput, ru.output AS usageOutput, ru.cache_read AS usageCacheRead,
@@ -194,6 +196,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
       ({ usageCacheCreation, usageCacheRead, usageEstimate, usageInput, usageOutput, usageReported, ...message }) => ({
         ...message,
         attachments: cards.get(message.id) ?? [],
+        isCompanionAnswer: message.isCompanionAnswer === 1,
         isDelivered: message.isDelivered === 1,
         isQueued: message.isQueued === 1,
         isResult: message.isResult === 1,

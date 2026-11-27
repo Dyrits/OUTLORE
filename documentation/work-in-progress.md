@@ -1,5 +1,13 @@
 # Work in progress
 
+## Companion answers framed under their message · 2026-11-27 · built and tested; window and phone check pending
+
+CHG-0786 in `0.2.12-Pre-Alpha` (branch `mission/companion-answer-grouped-under-its-messa-c2182b35`): `Message.isCompanionAnswer` (optional) is set by `missionDetail.ts` from `companion_exchanges.reply_message_id`.
+`entriesOf` groups Companion answers under their tagged message (`companionAnswers.ts`) and falls back to placing an answer just after a non-drawn tagged message with Companion tokens stripped from `replyToText`.
+`EntryView` renders the tagged message and its answers inside `exchangeFrame` without the redundant "Replying to" line, and both conversation search and Chronicle targeting match answers inside the frame.
+[Proof](verification/2026-11-27-companion-answer-frame.md): Biome, 7-workspace typecheck, and 23 focused test files (150 tests) pass; desktop window and phone visual review in light and dark themes are pending.
+Next: look at the framed exchange in a real window and on a phone (light and dark themes, single and multiple `@` mentions); settle the owner's follow-up idea (follow-ups inside the same frame, opt-in "add to context" action, optional tab for side conversations).
+
 ## Connectors OAuth sign-in fixes and Standards refactors · 2026-11-27 · built and tested against mock OAuth server; live Atlassian sign-in and window check pending
 
 CHG-0785 in `0.2.12-Pre-Alpha`: fixed the OAuth sign-in failure paths (`SPEC-1`–`SPEC-4`, `SPEC-8`, `SPEC-10`–`SPEC-12`, `BUG-1`, `BUG-3`–`BUG-7`), completed all 25 Standards refactors (`STD-1`–`STD-25`), and updated `documentation/capabilities/connectors/specifications.md` (`SPEC-5`–`SPEC-7`, `SPEC-9`). [Proof](verification/2026-11-27-connectors-oauth-review-and-fixes.md): Biome clean, service + app typecheck exit 0, 374 connector tests + 11 app tests passed.

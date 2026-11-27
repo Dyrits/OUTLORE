@@ -56,6 +56,17 @@ export const messageStyles = StyleSheet.create({
     paddingVertical: 6,
     rowGap: 4,
   },
+  /** An owner's message and the Companions' answers to it, drawn as one exchange: a soft frame the cards sit in. */
+  exchangeFrame: {
+    alignItems: "stretch",
+    alignSelf: "stretch",
+    borderColor: colors.border,
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    marginVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
   /** A conversation's messages, kept clear of the scrollbar that shows over their right edge. */
   feed: { paddingRight: 16 },
   /** The provider's medallion: a notch on the top left edge of an agent's reply, so the card keeps the full width. */

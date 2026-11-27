@@ -23,6 +23,9 @@ describe("asking a Companion with @", () => {
         expect(reply?.fromTitle).not.toBeNull();
         const owner = detail.messages.find((message) => message.id === sent.messageId);
         expect(owner).toMatchObject({ isDelivered: true, isQueued: false, sender: "user" });
+        // The host says which message is a Companion's answer, so no client has to guess from the reply anchor.
+        expect(reply?.isCompanionAnswer).toBe(true);
+        expect(detail.messages.filter((message) => message.isCompanionAnswer === true)).toHaveLength(1);
         yield* Effect.sleep("150 millis");
         expect(repliesOf(yield* read(quest.missionId), "gpt-5")).toHaveLength(1);
       }),

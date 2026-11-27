@@ -28,6 +28,11 @@ export const Message = Schema.Struct({
   /** The harness that wrote an agent reply, which a handover leaves behind; null for other messages. */
   harness: Schema.NullOr(HarnessName),
   id: MessageId,
+  /**
+   * Whether it is a mentioned Companion's answer to the owner's message `replyToMessageId` (thread-messaging, Mentioning
+   * a Companion with @); a host that omits it, or an older one, sends none as an answer.
+   */
+  isCompanionAnswer: Schema.optionalKey(Schema.Boolean),
   /** Whether a running turn or a new turn has taken it in; an owner message not yet delivered is drawn faint. */
   isDelivered: Schema.Boolean,
   /** Whether it is an owner message sent as Queue that still waits for the thread's next turn. */

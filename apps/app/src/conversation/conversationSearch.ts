@@ -3,12 +3,17 @@ import { type Entry, newestFirstOf } from "./entries";
 /** A matching message and its position in the inverted feed. */
 export type MessageMatch = { key: string; index: number };
 
-/** Searches the conversation's message text in the same order as its inverted feed. */
+/** Searches the conversation's message text in the same order as its inverted feed; a Companion's answer is found at its message's frame. */
 export function matchingMessages(entries: ReadonlyArray<Entry>, query: string): ReadonlyArray<MessageMatch> {
   const term = query.trim().toLowerCase();
   if (term === "") return [];
   return newestFirstOf(entries).flatMap((entry, index) =>
-    entry._tag === "Message" && entry.message.text.toLowerCase().includes(term) ? [{ index, key: entry.key }] : [],
+    entry._tag === "Message" &&
+    [entry.message, ...(entry.answers ?? []).map((answer) => answer.message)].some((message) =>
+      message.text.toLowerCase().includes(term),
+    )
+      ? [{ index, key: entry.key }]
+      : [],
   );
 }
 

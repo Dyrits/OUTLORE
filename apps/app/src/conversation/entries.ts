@@ -1,18 +1,20 @@
-import type {
-  BudgetEvent,
-  Handover,
-  LoreChange,
-  Message,
-  MissionDetail,
-  MissionId,
-  Question,
-  Suggestion,
-  ThreadAnchor,
-  ThreadId,
-  ThreadRoot,
-  ThreadSummary,
+import {
+  type BudgetEvent,
+  type Handover,
+  type LoreChange,
+  type Message,
+  type MissionDetail,
+  type MissionId,
+  type Question,
+  type Suggestion,
+  type ThreadAnchor,
+  type ThreadId,
+  type ThreadRoot,
+  type ThreadSummary,
+  withoutCompanionTokens,
 } from "@outlore/contracts";
 import { settledSuggestionLabelOf } from "../foundation/labels";
+import { answersUnderOf, isCompanionAnswer } from "./companionAnswers";
 import { isPendingOwnerMessage } from "./queuedMessages";
 import { type Step, stepGroupsOf } from "./stepGroups";
 
@@ -26,10 +28,15 @@ export type AnchoredReply =
   | { _tag: "ThreadOpened"; key: string; thread: ThreadSummary }
   | ({ _tag: "QuestLink" } & QuestLink);
 
+/** A mentioned Companion's answer, drawn in the frame of the message it answers, with the reply lines hung from it. */
+export type CompanionAnswer = { key: string; message: Message; replies?: ReadonlyArray<AnchoredReply> };
+
 /** One entry of a thread's conversation, with the key the list keeps it by. */
 export type Entry = { key: string; at: number } & (
   | {
       _tag: "Message";
+      /** The Companions' answers to this message, oldest first, drawn with it as one framed exchange. */
+      answers?: ReadonlyArray<CompanionAnswer>;
       message: Message;
       fromQuest: MissionId | null;
       replies?: ReadonlyArray<AnchoredReply>;
@@ -76,7 +83,8 @@ export const entriesOf = (
   const messages = detail.messages.filter(
     (message) => (message.sender !== "system" || message.fromMissionId != null) && !isPendingOwnerMessage(message),
   );
-  const replies = messages.filter((message) => message.sender === "agent");
+  // A mentioned Companion's answer is not the thread's own reply: it confirms nothing the thread's agent did.
+  const replies = messages.filter((message) => message.sender === "agent" && !isCompanionAnswer(message));
   /** The message an anchor names, if it is one of this conversation's. */
   const anchorCard = new Map(messages.map((message) => [message.id, message]));
   const anchorOf = new Map(anchors.map((anchor) => [anchor.threadId, anchor]));
@@ -118,11 +126,18 @@ export const entriesOf = (
   // A thread's own first message is its root, pinned above, so it does not repeat among the replies.
   const visibleMessages = messages.filter((message) => message.id !== root?.id);
   const visibleMessageIds = new Set(visibleMessages.map((message) => message.id));
+  // A Companion's answer hangs under the message it answers when that is drawn; otherwise it stands just after it.
+  const answersUnder = answersUnderOf(visibleMessages, (messageId) => visibleMessageIds.has(messageId));
+  const framedIds = new Set([...answersUnder.values()].flatMap((answers) => answers.map((answer) => answer.id)));
   const repliesByMessageId = new Map<Message["id"], Array<AnchoredReply>>();
   const attachReply = (messageId: Message["id"], reply: AnchoredReply) => {
     const existing = repliesByMessageId.get(messageId);
     if (existing === undefined) repliesByMessageId.set(messageId, [reply]);
     else existing.push(reply);
+  };
+  const repliesFieldOf = (messageId: Message["id"]) => {
+    const hung = repliesByMessageId.get(messageId);
+    return hung === undefined ? {} : { replies: hung };
   };
   const standaloneThreads: Array<Entry> = [];
   for (const thread of detail.threads) {
@@ -181,23 +196,36 @@ export const entriesOf = (
       }),
     ),
     ...standaloneThreads,
-    ...visibleMessages.map((message): Entry => {
-      const messageReplies = repliesByMessageId.get(message.id);
-      return {
-        _tag: "Message",
-        at: message.sentAt,
-        fromQuest:
-          (message.sender === "thread" || message.sender === "system") && message.fromMissionId !== detail.mission.id
-            ? message.fromMissionId
-            : null,
-        key: message.id,
-        message,
-        ...(messageReplies === undefined ? {} : { replies: messageReplies }),
-        ...(message.replyToMessageId == null
-          ? {}
-          : { replyToText: anchorCard.get(message.replyToMessageId)?.text ?? "" }),
-      };
-    }),
+    ...visibleMessages
+      .filter((message) => !framedIds.has(message.id))
+      .map((message): Entry => {
+        const answers = answersUnder.get(message.id)?.map(
+          (answer): CompanionAnswer => ({
+            key: answer.id,
+            message: answer,
+            ...repliesFieldOf(answer.id),
+          }),
+        );
+        const tagged = message.replyToMessageId == null ? undefined : anchorCard.get(message.replyToMessageId);
+        // The raw token of a Companion is no words to quote.
+        const taggedText = isCompanionAnswer(message)
+          ? withoutCompanionTokens(tagged?.text ?? "")
+          : (tagged?.text ?? "");
+        return {
+          _tag: "Message",
+          // A Companion's answer whose message is not drawn (the pinned root) stands just after that message.
+          at: isCompanionAnswer(message) && tagged !== undefined ? tagged.sentAt + afterReply : message.sentAt,
+          ...(answers === undefined ? {} : { answers }),
+          fromQuest:
+            (message.sender === "thread" || message.sender === "system") && message.fromMissionId !== detail.mission.id
+              ? message.fromMissionId
+              : null,
+          key: message.id,
+          message,
+          ...repliesFieldOf(message.id),
+          ...(message.replyToMessageId == null ? {} : { replyToText: taggedText }),
+        };
+      }),
     // A quest a Reply started, when its anchor is not drawn as a message above.
     ...standaloneAnchoredQuests,
     ...questLinks,
