@@ -23,6 +23,7 @@ import {
   trimmedLabel,
 } from "./accountKeys.ts";
 import { keyAccountModelsOf, keySignInOf } from "./keyAccounts.ts";
+import { isNotBeingDeletedOf, isQuestStandingOf } from "./questVisibility.ts";
 import type { TerminalScope } from "./terminalHost.ts";
 import type { ConversationTerminals } from "./terminalSessions.ts";
 import { openCommandTerminal } from "./terminals.ts";
@@ -199,7 +200,7 @@ export const removeAccount = Effect.fnUntraced(function* (vault: Vault["Service"
   const account = yield* readAccount(accountId);
   const [use] = yield* sql<{ count: number }>`
     SELECT COUNT(*) AS count FROM threads t JOIN missions m ON m.id = t.mission_id
-    WHERE t.account_id = ${accountId} AND m.ending IS NULL AND t.is_deleting = 0`;
+    WHERE t.account_id = ${accountId} AND ${isQuestStandingOf(sql, ["open"])} AND ${isNotBeingDeletedOf(sql)}`;
   if ((use?.count ?? 0) > 0)
     return yield* invalid(
       `Not removed: ${use?.count} thread(s) in missions not yet ended run on "${account.label}". End or archive those missions first.`,

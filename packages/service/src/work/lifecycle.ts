@@ -3,6 +3,7 @@ import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { touchMission } from "../core/index.ts";
 import { changed, unchanged } from "./followUps.ts";
+import { isNotBeingDeletedOf } from "./questVisibility.ts";
 import type { MainTurnScope } from "./turnScopes.ts";
 
 // The thread lifecycle: the one module that writes a thread's state and blocker (thread-tree, Thread
@@ -109,7 +110,7 @@ export const resumeInTurn = Effect.fnUntraced(function* (threadId: string) {
 export const holdThread = Effect.fnUntraced(function* (threadId: string, reason: HoldReason) {
   const sql = yield* SqlClient.SqlClient;
   yield* sql`UPDATE threads SET state = 'Attention', blocker = ${reason}
-      WHERE id = ${threadId} AND state != 'Stopped' AND is_deleting = 0`;
+      WHERE id = ${threadId} AND state != 'Stopped' AND ${isNotBeingDeletedOf(sql, "threads")}`;
 });
 
 /**
@@ -119,7 +120,7 @@ export const holdThread = Effect.fnUntraced(function* (threadId: string, reason:
 export const holdQuestionHolder = Effect.fnUntraced(function* (threadId: string, reason: HoldReason) {
   const sql = yield* SqlClient.SqlClient;
   yield* sql`UPDATE threads SET state = 'Attention', blocker = ${reason}
-      WHERE id = ${threadId} AND state NOT IN ('Stopped', 'Underway', 'Failed') AND is_deleting = 0
+      WHERE id = ${threadId} AND state NOT IN ('Stopped', 'Underway', 'Failed') AND ${isNotBeingDeletedOf(sql, "threads")}
         AND (blocker IS NULL OR blocker = ${reason})`;
 });
 

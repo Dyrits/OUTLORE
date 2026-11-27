@@ -5,6 +5,7 @@ import { invalid, notFound } from "../core/index.ts";
 import { attachToMessage } from "./attachments.ts";
 import { resetOwnerChatter, resetResultChatter } from "./chatter.ts";
 import { appendMessage } from "./messageStorage.ts";
+import { isErrandArchivedOf, isNotBeingDeletedOf } from "./questVisibility.ts";
 import { requireActiveQuestRealm } from "./realmAccess.ts";
 
 // The thread inbox routes messages and tracks what still waits for delivery (thread-messaging).
@@ -89,12 +90,12 @@ export const insertMessage = Effect.fnUntraced(function* (message: NewMessage) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{
     missionId: string;
-    archivedAt: number | null;
+    isArchived: number;
     state: string;
-  }>`SELECT mission_id AS missionId, archived_at AS archivedAt, state FROM threads
-    WHERE id = ${message.threadId} AND is_deleting = 0`;
+  }>`SELECT mission_id AS missionId, ${isErrandArchivedOf(sql, "threads")} AS isArchived, state FROM threads
+    WHERE id = ${message.threadId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   if (thread === undefined) return yield* notFound("No such thread.");
-  if (thread.archivedAt !== null) return yield* invalid("This errand is archived. Restore it to write in it.");
+  if (thread.isArchived === 1) return yield* invalid("This errand is archived. Restore it to write in it.");
   yield* requireActiveQuestRealm(thread.missionId);
   if (message.fromThreadId === null) {
     yield* resetOwnerChatter(message.threadId);

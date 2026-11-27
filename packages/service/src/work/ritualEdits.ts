@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
+import { isNotBeingDeletedOf, isQuestKindOf } from "./questVisibility.ts";
 import { readRitual } from "./ritualStore.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 import { ritualTitleOf } from "./titles.ts";
@@ -18,7 +19,7 @@ export const readRitualEdit = Effect.fnUntraced(function* (
   const [caller] = yield* sql<{ realmId: string | null }>`
     SELECT top.workspace_id AS realmId
     FROM threads t JOIN missions m ON m.id = t.mission_id JOIN threads top ON top.id = m.top_thread_id
-    WHERE t.id = ${callerId} AND t.is_deleting = 0 AND m.is_guildmaster = 0
+    WHERE t.id = ${callerId} AND ${isNotBeingDeletedOf(sql)} AND ${isQuestKindOf(sql, "owner")}
       AND NOT EXISTS (SELECT 1 FROM rituals WHERE mission_id = m.id)`;
   if (caller === undefined) return refusal("Edit a Ritual from an ordinary quest or errand.");
   const target = ritual.trim();
@@ -31,7 +32,7 @@ export const readRitualEdit = Effect.fnUntraced(function* (
     SELECT r.id, m.id AS missionId, w.id AS realmId, w.name AS realmName
     FROM rituals r JOIN missions m ON m.id = r.mission_id JOIN threads t ON t.id = m.top_thread_id
     LEFT JOIN workspaces w ON w.id = t.workspace_id
-    WHERE t.workspace_id IS ${caller.realmId} AND t.is_deleting = 0 AND w.archived_at IS NULL
+    WHERE t.workspace_id IS ${caller.realmId} AND ${isNotBeingDeletedOf(sql)} AND w.archived_at IS NULL
       AND (r.id = ${target} OR m.title = ${target})`;
   const row = matches.find(({ id }) => id === target) ?? (matches.length === 1 ? matches[0] : undefined);
   if (row === undefined)

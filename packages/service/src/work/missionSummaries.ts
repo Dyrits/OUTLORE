@@ -16,6 +16,12 @@ import { consumptionOf } from "./consumption.ts";
 import { emptyQuestCondition } from "./emptyQuest.ts";
 import { lastSampleOf, replyCountOf } from "./exchangeSamples.ts";
 import { questStateOf, threadStatesOf } from "./missionStates.ts";
+import {
+  isNotArchivedErrandOf,
+  isNotBeingDeletedOf,
+  isVisibleQuestOf,
+  unarchivedStandings,
+} from "./questVisibility.ts";
 import { runStateOf, scheduleOf } from "./ritualSchedule.ts";
 
 // The quest lists the owner sees: each quest's summary, its state, and what it has used so far.
@@ -113,8 +119,8 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
   sql<MissionRow>`
     SELECT m.id, m.title, m.top_thread_id AS topThreadId, top.harness AS harness, top.model AS model, m.last_activity_at AS lastActivityAt,
       (SELECT group_concat(t.state) FROM threads t WHERE t.mission_id = m.id AND t.id != m.top_thread_id
-        AND t.archived_at IS NULL) AS otherStates,
-      (SELECT COUNT(*) FROM threads t WHERE t.mission_id = m.id AND t.archived_at IS NULL) AS threadCount,
+        AND ${isNotArchivedErrandOf(sql)}) AS otherStates,
+      (SELECT COUNT(*) FROM threads t WHERE t.mission_id = m.id AND ${isNotArchivedErrandOf(sql)}) AS threadCount,
       ${sql.literal(emptyQuestCondition("m.id"))} AS isEmpty,
       m.ending, m.is_title_by_user AS isTitleByUser, m.is_asking_done AS isAskingDone,
       ${sql.literal(consumptionColumns)},
@@ -126,7 +132,7 @@ const missionRowsOf = (sql: SqlClient.SqlClient, where: Statement.Fragment) =>
       r.id AS ritualId, r.is_on AS ritualIsOn, r.last_run_at AS ritualLastRunAt, r.last_run_state AS ritualLastRunState,
       r.next_run_at AS ritualNextRunAt, r.origin_mission_id AS ritualOriginMissionId,
       r.schedule AS ritualSchedule, top.state AS topState,
-      (SELECT e.state FROM threads e WHERE e.parent_id = m.top_thread_id AND e.is_deleting = 0
+      (SELECT e.state FROM threads e WHERE e.parent_id = m.top_thread_id AND ${isNotBeingDeletedOf(sql, "e")}
         AND e.is_aside = 0 ORDER BY e.rowid DESC LIMIT 1) AS runThreadState
     FROM missions m
       JOIN threads top ON top.id = m.top_thread_id
@@ -152,11 +158,6 @@ export const listMissionSummaries = Effect.fnUntraced(function* (missionIds: Rea
  */
 export const listViewSummaries = Effect.fnUntraced(function* (isArchived: boolean, shouldIncludeRituals = false) {
   const sql = yield* SqlClient.SqlClient;
-  const rows = yield* missionRowsOf(
-    sql,
-    isArchived
-      ? sql`m.ending = 'Archived' AND m.is_guildmaster = 0`
-      : sql`(m.ending IS NULL OR m.ending = 'Fulfilled') AND m.is_guildmaster = 0`,
-  );
+  const rows = yield* missionRowsOf(sql, isVisibleQuestOf(sql, isArchived ? ["archived"] : unarchivedStandings));
   return rows.filter((row) => shouldIncludeRituals || row.ritualId === null).map(summaryOf);
 });

@@ -15,6 +15,7 @@ import { readGuildmasterContext } from "./guildmasterContext.ts";
 import { journalContextOf, journalInstructions } from "./journal.ts";
 import { openerContextOf } from "./openerContext.ts";
 import { readOwnCopy } from "./ownCopies.ts";
+import { isQuestKindOf } from "./questVisibility.ts";
 import { namingLineOf } from "./titles.ts";
 import { prepareWorkingFolder, readThreadWorkspace, ScratchRoot } from "./workspaces.ts";
 
@@ -109,10 +110,10 @@ export const readThreadSubject = Effect.fnUntraced(function* (threadId: string) 
   }>`
       SELECT t.mission_id AS missionId, t.harness, t.title, t.parent_id AS parentId, p.title AS parentTitle,
         t.is_aside AS isAside, t.opener_messages AS openerMessages, t.opener_tail AS openerTail,
-        m.is_guildmaster AS isGuildmaster, m.is_title_by_user AS isTitleByUser,
+        ${isQuestKindOf(sql, "chronicler")} AS isGuildmaster, m.is_title_by_user AS isTitleByUser,
         (m.chronicler_channel IS NOT NULL) AS isChannel,
         (SELECT COUNT(*) FROM turns u WHERE u.thread_id = t.id) AS turnCount,
-        (SELECT g.top_thread_id FROM missions g WHERE g.is_guildmaster = 1 AND g.chronicler_channel IS NULL LIMIT 1) AS guildmasterId
+        (SELECT g.top_thread_id FROM missions g WHERE ${isQuestKindOf(sql, "chronicler", "g")} AND g.chronicler_channel IS NULL LIMIT 1) AS guildmasterId
       FROM threads t JOIN missions m ON m.id = t.mission_id LEFT JOIN threads p ON p.id = t.parent_id
       WHERE t.id = ${threadId}`;
   if (row === undefined) return yield* notFound("No such thread.");

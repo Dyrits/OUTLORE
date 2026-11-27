@@ -1,8 +1,9 @@
 import { Effect } from "effect";
-import { SqlClient } from "effect/sql";
+import type { SqlClient } from "effect/sql";
 import { toolText } from "../core/index.ts";
 import { forgetLoreEntry, relyOnLore, saveLoreEntry, searchLoreText, updateLoreEntry } from "../lore/index.ts";
 import { searchInvalid } from "./loreToolDefinitions.ts";
+import { isChroniclerTopThread } from "./questVisibility.ts";
 import type { ToolHandlers } from "./threadTools.ts";
 
 // Stored and wire names keep `intel` so existing data and agents still work: thread tool names (`save_intel`, ...).
@@ -20,10 +21,8 @@ export const loreToolsOf = (
       ? Effect.succeed(searchInvalid)
       : commit(
           Effect.gen(function* () {
-            const sql = yield* SqlClient.SqlClient;
-            const chronicler =
-              yield* sql`SELECT id FROM missions WHERE is_guildmaster = 1 AND top_thread_id = ${threadId}`;
-            return yield* searchLoreText(threadId, query ?? null, ids ?? [], scope ?? null, chronicler.length > 0);
+            const isChronicler = yield* isChroniclerTopThread(threadId);
+            return yield* searchLoreText(threadId, query ?? null, ids ?? [], scope ?? null, isChronicler);
           }),
         ).pipe(Effect.map(toolText)),
   update_intel: (threadId, { id, scope, text }) => commit(updateLoreEntry(threadId, id, text ?? null, scope ?? null)),

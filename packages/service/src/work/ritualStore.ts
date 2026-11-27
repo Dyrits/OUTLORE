@@ -15,6 +15,7 @@ import { invalid, newId, nextRunAfter, notFound } from "../core/index.ts";
 import { deleteThread, previewDeletion } from "./deleting.ts";
 import { changed } from "./followUps.ts";
 import { insertQuest } from "./missions.ts";
+import { isNotBeingDeletedOf } from "./questVisibility.ts";
 import { runStateOf, scheduleOf } from "./ritualSchedule.ts";
 
 // The Rituals' stored side (rituals): reading a Ritual with where its run stands, and creating, updating, and deleting
@@ -77,9 +78,9 @@ export const readRows = Effect.fnUntraced(function* (
         EXISTS (SELECT 1 FROM workspaces w WHERE w.id = t.workspace_id AND w.archived_at IS NOT NULL) AS isRealmArchived,
         r.next_run_at AS nextRunAt, r.last_run_at AS lastRunAt, r.last_run_state AS lastRunState,
         r.fallback_step AS fallbackStep, r.created_at AS createdAt, r.origin_mission_id AS originMissionId,
-        EXISTS (SELECT 1 FROM threads e WHERE e.parent_id = m.top_thread_id AND e.is_deleting = 0
+        EXISTS (SELECT 1 FROM threads e WHERE e.parent_id = m.top_thread_id AND ${isNotBeingDeletedOf(sql, "e")}
           AND e.state IN ${sql.in(busyStates)}) AS isRunUnderway,
-        (SELECT e.state FROM threads e WHERE e.parent_id = m.top_thread_id AND e.is_deleting = 0
+        (SELECT e.state FROM threads e WHERE e.parent_id = m.top_thread_id AND ${isNotBeingDeletedOf(sql, "e")}
           AND e.is_aside = 0 ORDER BY e.rowid DESC LIMIT 1) AS runThreadState
       FROM rituals r JOIN missions m ON m.id = r.mission_id JOIN threads t ON t.id = m.top_thread_id
       WHERE ${where}`;
@@ -128,7 +129,7 @@ const originRealmOf = Effect.fnUntraced(function* (originMissionId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [origin] = yield* sql<{ realmId: string | null }>`
       SELECT t.workspace_id AS realmId FROM missions m JOIN threads t ON t.id = m.top_thread_id
-      WHERE m.id = ${originMissionId} AND t.is_deleting = 0`;
+      WHERE m.id = ${originMissionId} AND ${isNotBeingDeletedOf(sql)}`;
   if (origin === undefined) return yield* notFound("No such quest.");
   return origin.realmId;
 });

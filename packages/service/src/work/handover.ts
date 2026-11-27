@@ -6,6 +6,7 @@ import { checkAccount, checkBackups, harnessLabels, type Runner } from "../harne
 import { readContextLimit } from "../lore/index.ts";
 import { readStoredAttachments } from "./attachments.ts";
 import { changed, unchanged } from "./followUps.ts";
+import { isNotBeingDeletedOf } from "./questVisibility.ts";
 
 // Handover (thread-handover): the owner changes a thread's harness, account, model, or effort between turns.
 // A harness's own session cannot be resumed by another harness or under another account, so such a change
@@ -56,7 +57,7 @@ export const changeThreadRunner = Effect.fnUntraced(function* (
     missionId: string;
     model: ModelChoice;
   }>`SELECT mission_id AS missionId, harness, account_id AS accountId, model, effort
-      FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+      FROM threads WHERE id = ${threadId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   if (thread === undefined) return yield* notFound("No such thread.");
   yield* checkAccount(runner);
   // A chosen preset's backups replace the thread's in the same step, so a refusal leaves both as they were.

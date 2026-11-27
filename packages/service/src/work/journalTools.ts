@@ -2,6 +2,7 @@ import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
 import { type ToolAnswer, toolRefusal, toolText } from "../core/index.ts";
 import { journalTextOf, missionOf, readJournalText, updateJournal } from "./journal.ts";
+import { isVisibleQuestOf } from "./questVisibility.ts";
 import { mayReadJournal } from "./reach.ts";
 import type { ToolHandlers } from "./threadTools.ts";
 import { isAside } from "./tree.ts";
@@ -22,7 +23,7 @@ export const journalToolsOf = (
           );
         const sql = yield* SqlClient.SqlClient;
         const rows = yield* sql<{ id: string }>`SELECT m.id FROM missions m JOIN threads top ON top.id = m.top_thread_id
-          WHERE m.id = ${mission} AND m.is_guildmaster = 0 AND top.is_deleting = 0`;
+          WHERE m.id = ${mission} AND ${isVisibleQuestOf(sql)}`;
         if (rows.length === 0) return toolRefusal("No such quest.");
         return toolText(yield* readJournalText(threadId, before ?? null, count ?? null, mission));
       }),

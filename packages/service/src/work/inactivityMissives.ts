@@ -8,6 +8,7 @@ import { changed, unchanged } from "./followUps.ts";
 import { ensureGuildmaster } from "./guildmasterPlace.ts";
 import { appendMessage } from "./messageStorage.ts";
 import { questStateOf, shownStatesOf } from "./missionStates.ts";
+import { isErrandShownOf, isQuestKindOf, isQuestStandingOf, isVisibleQuestOf } from "./questVisibility.ts";
 import { timedSweep } from "./timedSweep.ts";
 
 const hour = 60 * 60 * 1000;
@@ -40,8 +41,8 @@ const postDueMissives = Effect.gen(function* () {
         WHERE msg.thread_id = t.id AND msg.sender_kind IN ('user', 'agent') AND msg.is_conversation_only = 0
         ORDER BY msg.sequence DESC LIMIT 1
       ) AND last.id IS NOT t.inactivity_warned_message_id
-    WHERE t.archived_at IS NULL AND t.is_deleting = 0 AND w.archived_at IS NULL
-      AND m.ending IS NULL AND m.is_guildmaster = 0
+    WHERE ${isErrandShownOf(sql)} AND w.archived_at IS NULL
+      AND ${isQuestStandingOf(sql, ["open"])} AND ${isQuestKindOf(sql, "owner")}
       AND NOT EXISTS (SELECT 1 FROM rituals WHERE mission_id = m.id)
     ORDER BY m.id, t.id`;
   const quests = Map.groupBy(threads, (thread) => thread.missionId);
@@ -117,7 +118,7 @@ const inactivityMissivesLayer = Layer.effectDiscard(
       const [candidate] = yield* sql<{ id: string }>`
         SELECT m.id FROM missions m JOIN threads top ON top.id = m.top_thread_id
           JOIN workspaces w ON w.id = top.workspace_id
-        WHERE w.archived_at IS NULL AND m.ending IS NULL AND m.is_guildmaster = 0
+        WHERE w.archived_at IS NULL AND ${isVisibleQuestOf(sql, ["open"])}
           AND NOT EXISTS (SELECT 1 FROM rituals WHERE mission_id = m.id)
         LIMIT 1`;
       if (candidate === undefined) return null;

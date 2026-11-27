@@ -13,6 +13,7 @@ import { SqlClient } from "effect/sql";
 import { invalid, notFound } from "../core/index.ts";
 import { changed, unchanged } from "./followUps.ts";
 import { insertQuest } from "./missions.ts";
+import { isErrandArchivedOf, isNotBeingDeletedOf, isQuestKindOf, isQuestStandingOf } from "./questVisibility.ts";
 import { newQuestTitle } from "./titles.ts";
 import { openEmptyThreadByOwner, openThreadByOwner } from "./tree.ts";
 
@@ -25,7 +26,7 @@ export const readThreadAnchors = Effect.fnUntraced(function* (threadId: string) 
   const rows = yield* sql<{ messageId: string; missionId: string; threadId: string; title: string }>`
       SELECT t.anchor_message_id AS messageId, t.mission_id AS missionId, t.id AS threadId, t.title AS title
       FROM threads t JOIN messages m ON m.id = t.anchor_message_id
-      WHERE m.thread_id = ${threadId} AND t.is_deleting = 0
+      WHERE m.thread_id = ${threadId} AND ${isNotBeingDeletedOf(sql)}
       ORDER BY m.sequence, t.rowid`;
   return rows.map((row) => ({
     messageId: MessageId.make(row.messageId),
@@ -59,21 +60,22 @@ export const replyToMessage = Effect.fnUntraced(function* (input: {
 }) {
   const sql = yield* SqlClient.SqlClient;
   const [message] = yield* sql<{
-    archivedAt: number | null;
-    ending: string | null;
+    isErrandArchived: number;
+    isQuestArchived: number;
     channel: string | null;
     workspaceId: string | null;
     isGuildmaster: number;
     parentId: string | null;
     threadId: string;
   }>`
-      SELECT m.thread_id AS threadId, t.parent_id AS parentId, t.archived_at AS archivedAt, q.ending AS ending,
-        q.is_guildmaster AS isGuildmaster, q.chronicler_channel AS channel, t.workspace_id AS workspaceId
+      SELECT m.thread_id AS threadId, t.parent_id AS parentId, ${isErrandArchivedOf(sql)} AS isErrandArchived,
+        ${isQuestStandingOf(sql, ["archived"], "q")} AS isQuestArchived,
+        ${isQuestKindOf(sql, "chronicler", "q")} AS isGuildmaster, q.chronicler_channel AS channel, t.workspace_id AS workspaceId
       FROM messages m JOIN threads t ON t.id = m.thread_id JOIN missions q ON q.id = t.mission_id
-      WHERE m.id = ${input.messageId} AND t.is_deleting = 0`;
+      WHERE m.id = ${input.messageId} AND ${isNotBeingDeletedOf(sql)}`;
   if (message === undefined) return yield* notFound("No such message.");
   const [existing] = yield* sql<{ missionId: string; threadId: string }>`
-      SELECT id AS threadId, mission_id AS missionId FROM threads WHERE anchor_message_id = ${input.messageId} AND is_deleting = 0`;
+      SELECT id AS threadId, mission_id AS missionId FROM threads WHERE anchor_message_id = ${input.messageId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   if (existing !== undefined)
     return unchanged<ReplyToMessageResult>({
       isNew: false,
@@ -109,7 +111,7 @@ export const replyToMessage = Effect.fnUntraced(function* (input: {
   }
   if (message.parentId !== null)
     return yield* invalid("An errand takes no Reply: write in it, or reply in the quest to open another errand.");
-  if (message.archivedAt !== null || message.ending === "Archived")
+  if (message.isErrandArchived === 1 || message.isQuestArchived === 1)
     return yield* invalid("This quest is archived. Restore it to reply.");
   const runner = {
     accountId: input.choice.accountId,

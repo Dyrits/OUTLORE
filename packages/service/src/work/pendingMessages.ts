@@ -4,6 +4,7 @@ import { SqlClient } from "effect/sql";
 import { invalid } from "../core/index.ts";
 import { readStoredAttachments, type StoredAttachment } from "./attachments.ts";
 import { isOwnerMessageOf, readMentionNote } from "./mentions.ts";
+import { isNotArchivedErrandOf } from "./questVisibility.ts";
 import { addSkillInstructions, listSkills } from "./skills.ts";
 import { readThreadWorkspace } from "./workspaces.ts";
 
@@ -86,7 +87,7 @@ export const listThreadsWithPending = Effect.fnUntraced(function* (missionId: st
       SELECT DISTINCT m.thread_id AS threadId FROM messages m JOIN threads t ON t.id = m.thread_id
       WHERE m.mission_id = ${missionId} AND ${isPendingDeliveryOf(sql)}
         AND t.state NOT IN ('Underway', 'Attention', 'Stopped', 'Failed', 'Fulfilled')
-        AND t.archived_at IS NULL AND t.id != ${exceptThreadId}`;
+        AND ${isNotArchivedErrandOf(sql)} AND t.id != ${exceptThreadId}`;
   return rows.map((row) => row.threadId);
 });
 

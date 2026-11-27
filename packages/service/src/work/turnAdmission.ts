@@ -8,6 +8,7 @@ import { recordPendingHandover } from "./handover.ts";
 import { holdThread, startRunning } from "./lifecycle.ts";
 import { readOwnCopy } from "./ownCopies.ts";
 import { deliverMessages, listPending } from "./pendingMessages.ts";
+import { isErrandShownOf, isQuestStandingOf } from "./questVisibility.ts";
 import { isQuestRealmArchived } from "./realmAccess.ts";
 import { effectiveModeOf } from "./threadPermissionMode.ts";
 import { maxRunning, runningCountOf } from "./treeLimits.ts";
@@ -76,8 +77,8 @@ const admit = Effect.fnUntraced(function* (threadId: string, isBackgroundWake: b
     permissionMode: ThreadPermissionMode | null;
   }>`SELECT t.state, t.mission_id AS missionId, t.session_id AS sessionId, t.model, t.effort, t.harness,
             t.account_id AS accountId, t.permission_mode AS permissionMode FROM threads t JOIN missions m ON m.id = t.mission_id
-          WHERE t.id = ${threadId} AND t.archived_at IS NULL AND t.is_deleting = 0
-            AND (${!isBackgroundWake} OR m.ending IS NULL)`;
+          WHERE t.id = ${threadId} AND ${isErrandShownOf(sql)}
+            AND (${!isBackgroundWake} OR ${isQuestStandingOf(sql, ["open"])})`;
   // Attention can hold a turn still running in its harness; Stopped always needs an explicit resume.
   if (thread === undefined || ["Underway", "Attention", "Stopped"].includes(thread.state)) return null;
   if (yield* isQuestRealmArchived(thread.missionId)) return null;

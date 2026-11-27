@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { ensureGuildmaster } from "./guildmasterPlace.ts";
 import { insertMessage } from "./messaging.ts";
+import { isQuestKindOf } from "./questVisibility.ts";
 
 /** Puts the quest's originating message in its channel, keeping an existing anchor's identity. */
 export const placeQuestOrigin = Effect.fnUntraced(function* (threadId: string, opening?: string) {
@@ -37,7 +38,7 @@ export const placeQuestOrigin = Effect.fnUntraced(function* (threadId: string, o
 export const copyOpeningToParent = Effect.fnUntraced(function* (threadId: string, text: string) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{ anchorId: string | null; isGuildmaster: number; parentId: string | null }>`
-    SELECT t.anchor_message_id AS anchorId, t.parent_id AS parentId, m.is_guildmaster AS isGuildmaster
+    SELECT t.anchor_message_id AS anchorId, t.parent_id AS parentId, ${isQuestKindOf(sql, "chronicler")} AS isGuildmaster
     FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${threadId}`;
   if (thread === undefined || thread.anchorId !== null || thread.isGuildmaster === 1) return;
   if (thread.parentId === null) return yield* placeQuestOrigin(threadId, text);

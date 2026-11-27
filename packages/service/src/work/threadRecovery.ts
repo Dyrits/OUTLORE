@@ -4,13 +4,14 @@ import { invalid } from "../core/index.ts";
 import { requireChatterDecision } from "./chatter.ts";
 import { changed } from "./followUps.ts";
 import { releaseThread, resumeStopped } from "./lifecycle.ts";
+import { isNotBeingDeletedOf } from "./questVisibility.ts";
 
 /** The owner continues a stopped thread after resolving any chatter pause. */
 export const resumeThread = Effect.fnUntraced(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{
     state: string;
-  }>`SELECT state FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+  }>`SELECT state FROM threads WHERE id = ${threadId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   if (thread?.state !== "Stopped") return yield* invalid("This thread is not stopped.");
   yield* requireChatterDecision(threadId);
   yield* resumeStopped(threadId);
@@ -21,7 +22,7 @@ export const resumeThread = Effect.fnUntraced(function* (threadId: string) {
 export const retryThread = Effect.fnUntraced(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{ blocker: string | null; failure: string | null; state: string }>`
-              SELECT blocker, failure, state FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+              SELECT blocker, failure, state FROM threads WHERE id = ${threadId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   // After a failed turn, its messages wait undelivered: Retry runs them again, on the current runner.
   if (thread !== undefined && thread.blocker === null && thread.failure !== null) {
     if (thread.state === "Underway" || thread.state === "Attention" || thread.state === "Stopped")

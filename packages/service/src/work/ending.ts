@@ -9,6 +9,7 @@ import { changed, unchanged } from "./followUps.ts";
 import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { updateJournal } from "./journal.ts";
 import { activeStates, haltThreads } from "./lifecycle.ts";
+import { isNotBeingDeletedOf, isQuestStandingOf } from "./questVisibility.ts";
 import { requireActiveQuestRealm } from "./realmAccess.ts";
 import { timedSweep } from "./timedSweep.ts";
 
@@ -38,7 +39,7 @@ export const readWorkingIds = Effect.fn("readWorkingIds")(function* (missionId: 
   if (mission === undefined) return yield* notFound("No such mission.");
   yield* refuseGuildmaster(missionId, "ended or archived");
   const rows = yield* sql<{ id: string }>`SELECT id FROM threads
-    WHERE mission_id = ${missionId} AND is_deleting = 0 AND state IN ${sql.in(activeStates)} ORDER BY id`;
+    WHERE mission_id = ${missionId} AND ${isNotBeingDeletedOf(sql, "threads")} AND state IN ${sql.in(activeStates)} ORDER BY id`;
   return rows.map((row) => row.id);
 });
 
@@ -141,7 +142,7 @@ const archiveDueMissions = Effect.gen(function* () {
   if (!settings.shouldAutoArchive) return unchanged(null);
   const now = yield* Clock.currentTimeMillis;
   const due = yield* sql<{ id: string }>`SELECT id FROM missions
-    WHERE ending = 'Fulfilled' AND done_at IS NOT NULL AND done_at <= ${now - settings.autoArchiveDays * dayMillis}`;
+    WHERE ${isQuestStandingOf(sql, ["done"], "missions")} AND done_at IS NOT NULL AND done_at <= ${now - settings.autoArchiveDays * dayMillis}`;
   const missionsToRemoveScratch: string[] = [];
   const turnsToCancel: string[] = [];
   for (const { id } of due) {
@@ -164,7 +165,7 @@ export const autoArchiveLayer = Layer.effectDiscard(
       const settings = yield* readSettings;
       if (!settings.shouldAutoArchive) return null;
       const [earliest] = yield* sql<{ doneAt: number | null }>`SELECT MIN(done_at) AS doneAt FROM missions
-        WHERE ending = 'Fulfilled' AND done_at IS NOT NULL`;
+        WHERE ${isQuestStandingOf(sql, ["done"], "missions")} AND done_at IS NOT NULL`;
       if (earliest?.doneAt == null) return dayMillis;
       const now = yield* Clock.currentTimeMillis;
       return Math.max(1, Math.min(earliest.doneAt + settings.autoArchiveDays * dayMillis - now, hourMillis));

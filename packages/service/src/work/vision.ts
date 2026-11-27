@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { HarnessTools, harnessLabels, type Runner } from "../harness/index.ts";
 import { configDirectoryOf } from "./accounts.ts";
+import { isNotBeingDeletedOf } from "./questVisibility.ts";
 import { AccountsRoot } from "./threads.ts";
 
 // Whether a runner reads images (message-attachments): the service refuses a message with images for one that
@@ -30,6 +31,6 @@ export const readThreadRunner = Effect.fnUntraced(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<
     Pick<Runner, "accountId" | "harness" | "model">
-  >`SELECT account_id AS accountId, harness, model FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+  >`SELECT account_id AS accountId, harness, model FROM threads WHERE id = ${threadId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   return row ?? null;
 });

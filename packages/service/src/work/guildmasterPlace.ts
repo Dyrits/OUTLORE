@@ -5,6 +5,13 @@ import { invalid, readSettings, type SettingWriter } from "../core/index.ts";
 import { claudeCheapestModel } from "../harness/index.ts";
 import { changed, unchanged } from "./followUps.ts";
 import { insertQuest } from "./missions.ts";
+import {
+  isChroniclerChannelThread,
+  isChroniclerQuest,
+  isChroniclerThread,
+  makeQuestChronicler,
+  readChroniclerPlace,
+} from "./questVisibility.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 import { findRealmMatches } from "./realmResolution.ts";
 
@@ -26,9 +33,8 @@ export const ensureGuildmaster = Effect.fnUntraced(function* (channelId?: string
   const realmId = channelId ?? null;
   const channel = channelId === undefined ? null : (channelId ?? "borderlands");
   const sql = yield* SqlClient.SqlClient;
-  const [existing] = yield* sql<{ missionId: string; threadId: string }>`
-    SELECT id AS missionId, top_thread_id AS threadId FROM missions WHERE is_guildmaster = 1 AND chronicler_channel IS ${channel}`;
-  if (existing !== undefined) return { ...existing, isCreated: false } as const;
+  const existing = yield* readChroniclerPlace(channel);
+  if (existing !== null) return { ...existing, isCreated: false } as const;
   if (realmId !== null) yield* requireActiveRealm(realmId);
   const settings = yield* readSettings;
   const started = yield* insertQuest(
@@ -45,7 +51,8 @@ export const ensureGuildmaster = Effect.fnUntraced(function* (channelId?: string
     null,
   );
   // The default quest budget is for quests; Chronicler's own is the owner's to set (budget-control).
-  yield* sql`UPDATE missions SET is_guildmaster = 1, chronicler_channel = ${channel}, budget_cost = NULL, budget_tokens = NULL WHERE id = ${started.missionId}`;
+  yield* makeQuestChronicler(started.missionId, channel);
+  yield* sql`UPDATE missions SET budget_cost = NULL, budget_tokens = NULL WHERE id = ${started.missionId}`;
   return { isCreated: true, missionId: started.missionId, threadId: started.threadId } as const;
 });
 
@@ -61,21 +68,10 @@ export const readGuildmaster = (channelId?: string | null) =>
   );
 
 /** Whether the thread belongs to Chronicler. */
-export const isGuildmasterThread = Effect.fnUntraced(function* (threadId: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const rows = yield* sql<{ id: string }>`
-      SELECT t.id FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${threadId} AND m.is_guildmaster = 1`;
-  return rows.length > 0;
-});
+export const isGuildmasterThread = isChroniclerThread;
 
 /** Whether the thread is a realm or Borderlands channel conversation rather than the global Chronicler thread. */
-export const isChannelThread = Effect.fnUntraced(function* (threadId: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const rows = yield* sql<{ id: string }>`
-      SELECT t.id FROM threads t JOIN missions m ON m.id = t.mission_id
-      WHERE t.id = ${threadId} AND m.is_guildmaster = 1 AND m.chronicler_channel IS NOT NULL`;
-  return rows.length > 0;
-});
+export const isChannelThread = isChroniclerChannelThread;
 
 /** Who a structural tool's caller writes settings as: Chronicler in its own conversation, otherwise a Ritual's run. */
 export const settingWriterOfCaller = Effect.fnUntraced(function* (threadId: string) {
@@ -85,11 +81,7 @@ export const settingWriterOfCaller = Effect.fnUntraced(function* (threadId: stri
 });
 
 /** Whether the quest is Chronicler's. */
-export const isGuildmasterQuest = Effect.fnUntraced(function* (missionId: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const rows = yield* sql<{ id: string }>`SELECT id FROM missions WHERE id = ${missionId} AND is_guildmaster = 1`;
-  return rows.length > 0;
-});
+export const isGuildmasterQuest = isChroniclerQuest;
 
 /** Refuses to end, delete, or rename Chronicler's quest: it is permanent (quest coordination, Place). */
 export const refuseGuildmaster = Effect.fnUntraced(function* (missionId: string, action: string) {
