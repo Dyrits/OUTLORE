@@ -16,6 +16,7 @@ import { insertReply } from "./messaging.ts";
 import { deliverMessages, listThreadsWithPending } from "./pendingMessages.ts";
 import { fallBackAfterFailure, finishRitualRun } from "./rituals.ts";
 import { type Admitted, isCurrentTurn } from "./turnAdmission.ts";
+import type { TurnScope } from "./turnScopes.ts";
 import { attachTurnRemainder, estimateCost, modelOfTurn } from "./turnUsage.ts";
 import { moveWorkingFolder } from "./workingFolders.ts";
 
@@ -103,9 +104,15 @@ export const saveTurnNotice = (threadId: string, turn: Admitted, text: string) =
   );
 
 /**
- * Ends a completed or interrupted turn (CHG-0039), with cancellation and wake follow-ups after its usage commits.
+ * Ends a completed or interrupted turn (CHG-0039), with cancellation and wake follow-ups after its usage commits. The
+ * thread's own state and session are written only when the run is the thread's main scope.
  */
-export const completeTurn = Effect.fnUntraced(function* (threadId: string, turn: Admitted, outcome: TurnOutcome) {
+export const completeTurn = Effect.fnUntraced(function* (
+  threadId: string,
+  turn: Admitted,
+  outcome: TurnOutcome,
+  scope: TurnScope,
+) {
   const sql = yield* SqlClient.SqlClient;
   const prices = yield* PriceTable;
   if (!(yield* isCurrentTurn(turn.turnId))) return unchanged(null);
@@ -141,7 +148,7 @@ export const completeTurn = Effect.fnUntraced(function* (threadId: string, turn:
   const status = isInterrupted ? "interrupted" : "completed";
   yield* sql`UPDATE turns SET status = ${status}, ended_at = ${now} WHERE id = ${turn.turnId}`;
   // The owner may have changed the harness or account during the turn: its session is then not the thread's.
-  yield* endTurn(threadId, turn.turnId, (yield* isSessionOfThread(threadId, turn)) ? sessionId : null);
+  if (scope.kind === "main") yield* endTurn(scope, (yield* isSessionOfThread(threadId, turn)) ? sessionId : null);
   yield* finishRitualRun(threadId, isInterrupted ? "Interrupted" : "Done");
   yield* touchMission(turn.missionId, now);
   // Spending is known at the turn's end: a reached budget stops the work under it.

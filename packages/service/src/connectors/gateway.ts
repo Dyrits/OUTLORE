@@ -23,11 +23,12 @@ export class ConnectorGateway extends Context.Service<
   {
     /**
      * A turn starts: the thread's connectors list their tools again, one that fails warns and is left out, and the
-     * thread's snapshot of the tools it is offered for the turn is taken. Answers the listed names in the snapshot.
+     * thread's snapshot of the tools it is offered for the turn is taken, kept under the run's key (the thread's id for
+     * its main run). Answers the listed names in the snapshot.
      */
-    readonly beginTurn: (threadId: string) => Effect.Effect<ReadonlyArray<string>>;
-    /** The thread's turn ends: its snapshot is forgotten. */
-    readonly endTurn: (threadId: string) => Effect.Effect<void>;
+    readonly beginTurn: (threadId: string, runKey?: string) => Effect.Effect<ReadonlyArray<string>>;
+    /** The run's turn ends: its snapshot is forgotten, and no other run's. */
+    readonly endTurn: (runKey: string) => Effect.Effect<void>;
     /** The usable, switched-on connector tools of the thread, those its turn's snapshot holds. */
     readonly listingFor: (threadId: string) => Effect.Effect<ReadonlyArray<ConnectorTool>>;
     /** Calls one connector tool for the thread; a refusal or a failure is an error answer, never a failure. */

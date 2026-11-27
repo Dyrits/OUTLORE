@@ -21,6 +21,7 @@ import { type Asked, allowingOutcomes, makeQuestions, type Resolution, textOf } 
 
 const connectorAllowedText = "Allowed. The call runs now.";
 
+import { makeAllowances } from "./allowances.ts";
 import { readRunningTurnId } from "./turnAdmission.ts";
 
 /** Approvals over the store, holding the open questions and one-time allowances in memory. */
@@ -29,11 +30,6 @@ export const approvalsLayer = Layer.effect(
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     const changes = yield* Changes;
-    // Targets approved through `request_approval` that the next matching harness prompt may run once.
-    const allowances = new Map<
-      string,
-      Array<{ readonly target: string; readonly turnId: string; readonly isOutsideSandbox: boolean }>
-    >();
     // The real path the owner last allowed a harness to start in, by thread, for a thread folder that is a link.
     const allowedFolders = new Map<string, string>();
 
@@ -49,36 +45,22 @@ export const approvalsLayer = Layer.effect(
     const readTurnId = (threadId: string) =>
       readRunningTurnId(threadId).pipe(Effect.provideService(SqlClient.SqlClient, sql));
 
-    const allowOnce = (threadId: string, target: string, turnId: string, isOutsideSandbox: boolean) =>
-      Effect.sync(() =>
-        allowances.set(threadId, [
-          ...(allowances.get(threadId) ?? []),
-          { isOutsideSandbox, target: target.trim(), turnId },
-        ]),
-      );
+    const allowances = makeAllowances(readTurnId);
 
-    const takeAllowance = Effect.fnUntraced(function* (threadId: string, target: string, isOutsideSandbox: boolean) {
-      const turnId = yield* readTurnId(threadId);
-      const targets = allowances.get(threadId) ?? [];
-      const index = targets.findIndex(
-        (grant) =>
-          grant.target === target.trim() && grant.turnId === turnId && grant.isOutsideSandbox === isOutsideSandbox,
-      );
-      if (index === -1) return false;
-      allowances.set(threadId, targets.toSpliced(index, 1));
-      return true;
-    });
-
-    const questions = makeQuestions(sql, changes, (threadId) => allowances.delete(threadId));
+    const questions = makeQuestions(sql, changes, allowances.forgetThread);
     const { ask, record, answer, answerChoices, withdraw } = questions;
     const answerPrompt = yield* makePromptPolicy({
       allowedFolderOf: (id) => allowedFolders.get(id),
       missionOf,
       questions,
       readTurnId,
-      takeAllowance,
+      takeAllowance: allowances.take,
     });
-    const requestApproval = Effect.fnUntraced(function* (threadId: string, request: ApprovalRequest) {
+    const requestApproval = Effect.fnUntraced(function* (
+      threadId: string,
+      request: ApprovalRequest,
+      runKey: string = threadId,
+    ) {
       const missionId = yield* missionOf(threadId);
       if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
       const turnId = yield* readTurnId(threadId);
@@ -101,12 +83,12 @@ export const approvalsLayer = Layer.effect(
       if (covering !== null) {
         const resolution: Resolution = { message: covering.sentence, outcome: "AllowedByPermission" };
         yield* record(asked, resolution);
-        yield* allowOnce(threadId, request.command, turnId, isOutsideSandbox);
+        yield* allowances.allow(threadId, runKey, request.command, turnId, isOutsideSandbox);
         return { isAllowed: true, text: textOf(resolution, isOutsideSandbox) } satisfies Decision;
       }
       const resolution = yield* ask(asked);
       const isAllowed = allowingOutcomes.includes(resolution.outcome) && (yield* readTurnId(threadId)) === turnId;
-      if (isAllowed) yield* allowOnce(threadId, request.command, turnId, isOutsideSandbox);
+      if (isAllowed) yield* allowances.allow(threadId, runKey, request.command, turnId, isOutsideSandbox);
       return { isAllowed, text: textOf(resolution, isOutsideSandbox) } satisfies Decision;
     }, Effect.orDie);
 
@@ -196,7 +178,7 @@ export const approvalsLayer = Layer.effect(
     return {
       answer,
       answerChoices,
-      answerPrompt: (threadId, prompt, toolUseId = null) =>
+      answerPrompt: (threadId, prompt, toolUseId = null, runKey = threadId) =>
         markActivity(threadId, toolUseId).pipe(
           Effect.andThen(
             answerPrompt(
@@ -205,6 +187,7 @@ export const approvalsLayer = Layer.effect(
               prompt.input,
               prompt.isOutsideSandbox ?? false,
               prompt.isUnsandboxed ?? false,
+              runKey,
             ),
           ),
           Effect.provideService(SqlClient.SqlClient, sql),
@@ -234,7 +217,7 @@ export const approvalsLayer = Layer.effect(
         Effect.provideService(SqlClient.SqlClient, sql),
         Effect.orDie,
       ),
-      endTurn: (threadId) => Effect.sync(() => allowances.delete(threadId)).pipe(Effect.asVoid),
+      endTurn: allowances.end,
       recordDecision: Effect.fnUntraced(function* (threadId, summary, details, outcome, evidence) {
         const missionId = yield* missionOf(threadId);
         if (missionId === null) return;
@@ -243,8 +226,8 @@ export const approvalsLayer = Layer.effect(
           { message: evidence, outcome },
         );
       }, Effect.orDie),
-      requestApproval: (threadId, request) =>
-        requestApproval(threadId, request).pipe(Effect.provideService(SqlClient.SqlClient, sql)),
+      requestApproval: (threadId, request, runKey = threadId) =>
+        requestApproval(threadId, request, runKey).pipe(Effect.provideService(SqlClient.SqlClient, sql)),
       withdraw,
     };
   }),

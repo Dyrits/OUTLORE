@@ -1,7 +1,6 @@
 import { join } from "node:path";
 import { Effect, Match } from "effect";
 import type { SqlClient, SqlError } from "effect/sql";
-import type { ConnectorGateway } from "../connectors/index.ts";
 import {
   type Changes,
   type Endpoints,
@@ -23,9 +22,10 @@ import type { CommandRunner } from "./commands.ts";
 import { mightMoveFolder } from "./folderMoves.ts";
 import { readConversationSoFar, readInterruptedConversation } from "./handover.ts";
 import { prepareStartingContext } from "./startingContext.ts";
-import type { AccountsRoot, ActiveTurn } from "./threads.ts";
+import type { AccountsRoot } from "./threads.ts";
 import { unaskedToolNamesOf } from "./threadToolAccess.ts";
 import type { Admitted } from "./turnAdmission.ts";
+import type { TurnScopes } from "./turnScopes.ts";
 import {
   completeTurn,
   deliverSteered,
@@ -46,11 +46,8 @@ export type LayerServices = SqlClient.SqlClient | Changes | PriceTable | Scratch
 /** What a turn runs with, taken from the Threads layer that owns the thread's state. */
 export type TurnRunnerDependencies = {
   readonly accountsRoot: string;
-  /** The turns the harness is running, by thread, so messages can be steered into them. */
-  readonly active: Map<string, ActiveTurn>;
   readonly approvals: Approvals["Service"];
   readonly commands: Pick<CommandRunner, "run">;
-  readonly connectorGateway: ConnectorGateway["Service"];
   readonly endpoints: Endpoints["Service"];
   readonly harness: Harness["Service"];
   readonly imagesOf: (files: ReadonlyArray<StoredAttachment>) => ReadonlyArray<ImageAttachment>;
@@ -58,6 +55,8 @@ export type TurnRunnerDependencies = {
   readonly local: <A, E>(step: Effect.Effect<A, E, LayerServices>) => Effect.Effect<A, E>;
   readonly publishDraft: (threadId: string, text: string) => Effect.Effect<unknown>;
   readonly scratchRoot: string;
+  /** What a turn holds while it runs, opened for it and released when it ends. */
+  readonly scopes: TurnScopes;
   readonly sql: SqlClient.SqlClient;
   /** The Vault, which holds an API key account's key until a turn on that account starts. */
   readonly vault: Vault["Service"];
@@ -67,10 +66,8 @@ export type TurnRunnerDependencies = {
 export const makeTurnRunner = (dependencies: TurnRunnerDependencies) => {
   const {
     accountsRoot,
-    active,
     approvals,
     commands,
-    connectorGateway,
     endpoints,
     harness,
     imagesOf,
@@ -78,6 +75,7 @@ export const makeTurnRunner = (dependencies: TurnRunnerDependencies) => {
     local,
     publishDraft,
     scratchRoot,
+    scopes,
     sql,
     vault,
   } = dependencies;
@@ -124,62 +122,56 @@ export const makeTurnRunner = (dependencies: TurnRunnerDependencies) => {
           }).pipe(Effect.orDie),
       });
     if (!(yield* isCurrent(turn.turnId))) return;
-    // The tool server answers under the setting this turn starts with, as its harness lists the tools (CHG-0446).
-    yield* endpoints.holdCodeMode(threadId, shouldUseCodeMode);
-    // The connectors list their tools again, and the thread's snapshot of the tools it is offered for this turn is taken;
+    // The turn's scope holds what it needs while it runs, and releases it however it ends: its code mode, its snapshot of
+    // the connector tools it is offered, its place among the thread's running turns, and what the owner allowed once in it.
     // connectorTools always carries the snapshot so a kept harness process restarts and re-lists run_code when connectors change under Code Mode, while unaskedTools names individual connector tools only when Code Mode is off (connectors specification).
-    const snapshot = yield* connectorGateway.beginTurn(threadId);
-    const directConnectorTools = shouldUseCodeMode ? [] : snapshot;
-    active.set(threadId, { turnId: turn.turnId, written: new Set() });
     // An API key account's key is read from the Vault into the harness's environment; a sign-in account has none.
     yield* local(prepareAccountKey(vault, accountsRoot, turn.accountId)).pipe(Effect.orDie);
-    const outcome = yield* harness
-      .runTurn({
-        access: {
-          ...terms,
-          connectorTools: snapshot,
-          isInWorkspace,
-          isUsingCodeMode: shouldUseCodeMode,
-          mcpUrl,
-          unaskedTools: [
-            ...unaskedToolNamesOf(toolServerName, shouldUseCodeMode),
-            // Claude Code runs only the tools it is told; each connector tool asks for itself in the gateway.
-            ...directConnectorTools.map((name) => qualifiedToolNameOf(toolServerName, name)),
-          ],
-        },
-        askOwner: askOwnerFor(approvals, sql, threadId),
-        awaitSettlement,
-        configDirectory: turn.accountId === null ? null : join(accountsRoot, turn.accountId),
-        context,
-        conversationSoFar: local(readConversationSoFar(threadId, turn.turnId, turn.model)).pipe(Effect.orDie),
-        cwd,
-        effort: turn.effort,
-        folderRoot: isInWorkspace ? cwd : scratchRoot,
-        harness: turn.harness,
-        images: imagesOf([...(interrupted?.attachments ?? []), ...turn.attachments]),
-        ...(turn.isBackgroundWake ? { isBackgroundWake: true } : {}),
-        model: turn.model,
-        note: history === null ? note : `${history}\n\n${note}`,
-        onEvent,
-        sessionId: turn.sessionId,
-        text: turn.messages.join("\n\n"),
-        threadId,
-      })
-      .pipe(
-        Effect.result,
-        // However the turn ends, what was allowed once in it is spent (action-approval, CHG-0063).
-        Effect.ensuring(
-          Effect.sync(() => active.delete(threadId)).pipe(
-            Effect.andThen(approvals.endTurn(threadId)),
-            Effect.andThen(connectorGateway.endTurn(threadId)),
-          ),
-        ),
-      );
+    const { outcome, scope } = yield* Effect.gen(function* () {
+      const scope = yield* scopes.open({ isUsingCodeMode: shouldUseCodeMode, threadId, turnId: turn.turnId });
+      const { snapshot } = scope;
+      const directConnectorTools = shouldUseCodeMode ? [] : snapshot;
+      const outcome = yield* harness
+        .runTurn({
+          access: {
+            ...terms,
+            connectorTools: snapshot,
+            isInWorkspace,
+            isUsingCodeMode: shouldUseCodeMode,
+            mcpUrl,
+            unaskedTools: [
+              ...unaskedToolNamesOf(toolServerName, shouldUseCodeMode),
+              // Claude Code runs only the tools it is told; each connector tool asks for itself in the gateway.
+              ...directConnectorTools.map((name) => qualifiedToolNameOf(toolServerName, name)),
+            ],
+          },
+          askOwner: askOwnerFor(approvals, sql, threadId, scope.runKey),
+          awaitSettlement,
+          configDirectory: turn.accountId === null ? null : join(accountsRoot, turn.accountId),
+          context,
+          conversationSoFar: local(readConversationSoFar(threadId, turn.turnId, turn.model)).pipe(Effect.orDie),
+          cwd,
+          effort: turn.effort,
+          folderRoot: isInWorkspace ? cwd : scratchRoot,
+          harness: turn.harness,
+          images: imagesOf([...(interrupted?.attachments ?? []), ...turn.attachments]),
+          ...(turn.isBackgroundWake ? { isBackgroundWake: true } : {}),
+          model: turn.model,
+          note: history === null ? note : `${history}\n\n${note}`,
+          onEvent,
+          runKey: scope.runKey,
+          sessionId: turn.sessionId,
+          text: turn.messages.join("\n\n"),
+          threadId,
+        })
+        .pipe(Effect.result);
+      return { outcome, scope };
+    }).pipe(Effect.scoped);
     yield* publishDraft(threadId, "");
     if (outcome._tag === "Failure") {
       return yield* commands.run(local(recordTurnFailure(threadId, turn, outcome.failure.reason))).pipe(Effect.orDie);
     }
-    yield* commands.run(local(completeTurn(threadId, turn, outcome.success))).pipe(Effect.orDie);
+    yield* commands.run(local(completeTurn(threadId, turn, outcome.success, scope))).pipe(Effect.orDie);
     return true;
   });
 

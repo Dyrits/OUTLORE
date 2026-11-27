@@ -56,6 +56,7 @@ type PromptPolicyDependencies = {
   readonly readTurnId: (id: string) => Effect.Effect<string | null, SqlError.SqlError>;
   readonly takeAllowance: (
     id: string,
+    runKey: string,
     target: string,
     isOutsideSandbox: boolean,
   ) => Effect.Effect<boolean, SqlError.SqlError>;
@@ -120,6 +121,7 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
     input: unknown,
     isOutsideSandbox: boolean,
     isUnsandboxed: boolean,
+    runKey: string = threadId,
   ) {
     // A prompt from a harness still exiting after Stop runs nothing and asks nobody.
     if ((yield* readTurnId(threadId)) === null)
@@ -137,7 +139,8 @@ export const makePromptPolicy = Effect.fnUntraced(function* ({
     // What an allowance or a grant names: the file or command the action acts on.
     const target = targetOf(toolName, input);
     const isEscape = isOutsideSandbox || (toolName === "Bash" && fieldOf(input, "dangerouslyDisableSandbox") === true);
-    if (yield* takeAllowance(threadId, target, isEscape)) return { isAllowed: true, text: "" } satisfies Decision;
+    if (yield* takeAllowance(threadId, runKey, target, isEscape))
+      return { isAllowed: true, text: "" } satisfies Decision;
     const missionId = yield* missionOf(threadId);
     if (missionId === null) return { isAllowed: false, text: "Unknown thread." } satisfies Decision;
     // The mode the running turn was admitted with (readModeOfTurn), so a change during the turn applies next turn.

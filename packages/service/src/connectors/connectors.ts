@@ -171,7 +171,7 @@ const make = (options: ConnectorsOptions) =>
       vault,
     };
 
-    const beginTurn = Effect.fnUntraced(function* (threadId: string) {
+    const beginTurn = Effect.fnUntraced(function* (threadId: string, runKey: string = threadId) {
       const subject = yield* readSubject(threadId).pipe(provided);
       if (subject === null) return [];
       for (const record of yield* readConnectorRecords.pipe(provided)) {
@@ -181,7 +181,7 @@ const make = (options: ConnectorsOptions) =>
           yield* refreshFor(entry, threadId);
       }
       const names = (yield* readOfferedTools(callDependencies, threadId)).map((tool) => tool.listedName);
-      yield* calls.takeSnapshot(threadId, names);
+      yield* calls.takeSnapshot(threadId, names, runKey);
       return names;
     }, Effect.orDie);
 
@@ -208,7 +208,7 @@ const make = (options: ConnectorsOptions) =>
       gateway: {
         beginTurn,
         call: makeCall(callDependencies),
-        endTurn: (threadId: string) => calls.dropSnapshot(threadId),
+        endTurn: (runKey: string) => calls.dropSnapshot(runKey),
         listingFor: (threadId: string) =>
           listOfferedTools(callDependencies, threadId).pipe(
             Effect.map((tools) => tools.map(toolOf)),

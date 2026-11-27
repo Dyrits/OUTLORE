@@ -3,6 +3,7 @@ import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { touchMission } from "../core/index.ts";
 import { changed, unchanged } from "./followUps.ts";
+import type { MainTurnScope } from "./turnScopes.ts";
 
 // The thread lifecycle: the one module that writes a thread's state and blocker (thread-tree, Thread
 // states). Callers decide which threads and which transition; each transition keeps the tree's rules,
@@ -65,9 +66,12 @@ export const startRunning = Effect.fnUntraced(function* (threadId: string) {
 
 /**
  * A turn ends: the thread is Fulfilled if it reported its result in it, Waiting with work still at work
- * beneath it, otherwise Resting; its parents relax.
+ * beneath it, otherwise Resting; its parents relax. Only the thread's main scope may end it, and keep a session as the
+ * thread's own (work/turnScopes.ts): a run beside the main turn has a session of its own.
  */
-export const endTurn = Effect.fnUntraced(function* (threadId: string, turnId: string, sessionId: string | null) {
+export const endTurn = Effect.fnUntraced(function* (scope: MainTurnScope, sessionId: string | null) {
+  const { threadId } = scope;
+  const turnId = scope.turn.turnId;
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<{ reportedTurnId: string | null; active: number }>`
       SELECT reported_turn_id AS reportedTurnId,

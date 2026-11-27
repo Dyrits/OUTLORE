@@ -67,4 +67,26 @@ describe("the calls underway", () => {
       }),
     ),
   );
+
+  it.live(
+    "keeps a snapshot for each run of a thread, narrows each by its thread, and drops one without the other",
+    () =>
+      inRegistry(
+        Effect.gen(function* () {
+          const calls = yield* ConnectorCalls;
+          yield* calls.takeSnapshot("t1", ["a", "b"]);
+          yield* calls.takeSnapshot("t1", ["a", "b"], "t1#side");
+          const asked: Array<string> = [];
+          yield* calls.narrowSnapshots((threadId) =>
+            Effect.sync(() => asked.push(threadId)).pipe(Effect.as(new Set(["a"]))),
+          );
+          // Each run's snapshot is narrowed by the choices of its thread, not of its run key.
+          expect(asked).toEqual(["t1", "t1"]);
+          expect([...(calls.snapshotOf("t1#side") ?? [])]).toEqual(["a"]);
+          yield* calls.dropSnapshot("t1#side");
+          expect(calls.snapshotOf("t1#side")).toBeNull();
+          expect([...(calls.snapshotOf("t1") ?? [])]).toEqual(["a"]);
+        }),
+      ),
+  );
 });

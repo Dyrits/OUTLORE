@@ -24,6 +24,7 @@ export {
   type PlanLimitReport,
   type PlanLimitsReport,
   type PromptAnswer,
+  runKeyOf,
   type SteeredMessage,
   type ThreadAccess,
   type TurnOutcome,
