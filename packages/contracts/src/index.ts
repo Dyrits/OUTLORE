@@ -129,6 +129,7 @@ export {
   SendMessage,
   SetThreadBackups,
   SetThreadPermissionMode,
+  ShareCompanionFrame,
   SteerQueuedMessage,
   StopThread,
   UnsteerQueuedMessage,

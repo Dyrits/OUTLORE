@@ -9,6 +9,7 @@ import { ChipText } from "../ui/chips";
 import { QuestionCard, QuestionLine } from "../ui/questions";
 import { ChoiceBubbles } from "./choiceBubbleViews";
 import type { AnchoredReply, Entry } from "./entries";
+import { ExchangeFrame } from "./exchangeFrame";
 import { Markdown } from "./markdown";
 import { MessageBubble, senderLabelOf } from "./messageBubble";
 import { QuestReplyLine, ReplyLine } from "./replyLine";
@@ -167,13 +168,14 @@ export function EntryView({
   );
   const message = bubble(entry.message, entry);
   if (entry.answers === undefined || entry.answers.length === 0) return message;
-  // The message and what the Companions it names answered, one exchange in one frame; the answers need no "Replying to" line.
+  // The message, follow-ups, and Companion answers sit in one frame; answers omit the redundant "Replying to" line.
   return (
-    <View style={styles.exchangeFrame}>
-      {message}
-      {entry.answers.map((answer) =>
-        bubble(answer.message, { fromQuest: null, key: answer.key, replies: answer.replies }),
-      )}
-    </View>
+    <ExchangeFrame
+      answers={entry.answers}
+      client={client}
+      opening={message}
+      openingMessage={entry.message}
+      renderItem={(answer) => bubble(answer.message, { fromQuest: null, key: answer.key, replies: answer.replies })}
+    />
   );
 }

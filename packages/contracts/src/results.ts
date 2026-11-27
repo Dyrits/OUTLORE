@@ -161,6 +161,7 @@ export const Results = {
   SetRemoteAccess: RemoteAccessView,
   SetThreadBackups: Schema.Null,
   SetThreadPermissionMode: Schema.Null,
+  ShareCompanionFrame: Schema.Null,
   SignInAccount: SignInResult,
   StartEmptyQuest: StartEmptyQuestResult,
   StartMission: StartMissionResult,

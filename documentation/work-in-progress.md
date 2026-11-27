@@ -2,11 +2,10 @@
 
 ## Companion answers framed under their message · 2026-11-27 · built and tested; window and phone check pending
 
-CHG-0786 in `0.2.12-Pre-Alpha` (branch `mission/companion-answer-grouped-under-its-messa-c2182b35`): `Message.isCompanionAnswer` (optional) is set by `missionDetail.ts` from `companion_exchanges.reply_message_id`.
-`entriesOf` groups Companion answers under their tagged message (`companionAnswers.ts`) and falls back to placing an answer just after a non-drawn tagged message with Companion tokens stripped from `replyToText`.
-`EntryView` renders the tagged message and its answers inside `exchangeFrame` without the redundant "Replying to" line, and both conversation search and Chronicle targeting match answers inside the frame.
-[Proof](verification/2026-11-27-companion-answer-frame.md): Biome, 7-workspace typecheck, and 23 focused test files (150 tests) pass; desktop window and phone visual review in light and dark themes are pending.
-Next: look at the framed exchange in a real window and on a phone (light and dark themes, single and multiple `@` mentions); settle the owner's follow-up idea (follow-ups inside the same frame, opt-in "add to context" action, optional tab for side conversations).
+CHG-0786 and CHG-0787 in `0.2.12-Pre-Alpha`: `Message.isCompanionAnswer`, `companionFrameId`, and `companionFrameContext` (`"None" | "Shared" | "Outdated"`) are populated by `missionDetail.ts` from `companion_exchanges` (migration `0083_companion_frames`).
+`entriesOf` groups follow-ups and Companion answers inside the opening message's frame (`companionAnswers.ts`, `exchangeFrame.tsx`), with inline **Follow up** (defaulting to the frame's Companions, with `@` able to pull in more), opt-in **Add to context** / **Update context** (`ShareCompanionFrame`, passive context only), and a conditional **N side chat(s)** jump menu beside **Find** (`sideChats.ts`, `sideChatsMenu.tsx`).
+[Proof (CHG-0786)](verification/2026-11-27-companion-answer-frame.md), [Proof (CHG-0787)](verification/2026-11-27-companion-frame-follow-ups.md): Biome, 7-workspace typecheck, and 24 focused test files (162 tests) pass; desktop window and phone visual review in light and dark themes are pending.
+Next: look at the framed exchange, inline follow-up composer, context controls, and side-chat jump popover in a real window and on a phone (light and dark themes).
 
 ## Connectors OAuth sign-in fixes and Standards refactors · 2026-11-27 · built and tested against mock OAuth server; live Atlassian sign-in and window check pending
 

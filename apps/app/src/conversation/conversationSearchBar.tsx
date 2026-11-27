@@ -4,6 +4,7 @@ import { styles } from "../foundation/styles";
 import { colors } from "../foundation/theme";
 import { type MessageMatch, matchingMessages, nextMatchOf } from "./conversationSearch";
 import type { Entry } from "./entries";
+import { SideChatsMenu } from "./sideChatsMenu";
 
 /** Finds and reveals matching messages without filtering the conversation feed. */
 export function ConversationSearchBar({
@@ -60,6 +61,7 @@ export function ConversationSearchBar({
           <SearchButton glyph="↓" isDisabled={matches.length === 0} label="Next match" onPress={() => move(1)} />
         </>
       )}
+      <SideChatsMenu entries={entries} onSelect={onSelect} selectedKey={selectedKey} />
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: isOpen }}

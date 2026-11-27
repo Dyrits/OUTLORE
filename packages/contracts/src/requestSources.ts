@@ -161,6 +161,7 @@ export const requestSourceRules = {
   SetRemoteAccess: hostOnly,
   SetThreadBackups: shared,
   SetThreadPermissionMode: shared,
+  ShareCompanionFrame: shared,
   SignInAccount: shared,
   SignInConnector: hostOnly,
   StartEmptyQuest: shared,

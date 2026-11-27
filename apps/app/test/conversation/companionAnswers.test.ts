@@ -3,15 +3,19 @@ import { describe, expect, it } from "vitest";
 import { targetIndexOf } from "../../src/conversation/chronicleTarget";
 import { matchingMessages } from "../../src/conversation/conversationSearch";
 import { entriesOf } from "../../src/conversation/entries";
+import { sideChatsOf } from "../../src/conversation/sideChats";
 import { detailOf } from "../fixtures/conversation";
 
-// A Companion's answer is drawn inside a frame under the owner's message it answers (thread-messaging, Mentioning a Companion with @; CHG-0785).
+// A Companion's answer is drawn inside a frame under the owner's message it answers (thread-messaging, Mentioning a Companion with @; CHG-0785, CHG-0786).
 
 const mention = companionTokenOf({ accountId: null, harness: "claude", model: "claude-haiku-5-5" });
 
 type Row = {
+  companionFrameContext?: "None" | "Shared" | "Outdated";
+  companionFrameId?: string;
   id: string;
   isCompanionAnswer?: boolean;
+  model?: string | null;
   replyToMessageId?: string;
   sender: string;
   sentAt: number;
@@ -132,5 +136,58 @@ describe("finding a message inside a frame", () => {
       waitingAt: null,
     };
     expect(targetIndexOf(entries, target)).toBe(2);
+  });
+});
+
+describe("in-frame follow-ups and side-chat jump list", () => {
+  it("groups owner follow-ups and their answers into the opening message's frame in order", () => {
+    const entries = entriesOf(
+      detailWith([
+        { ...owner("asked", 10, `${mention} first?`), companionFrameContext: "Outdated" },
+        reply("main", 20),
+        { ...answer("haiku-1", 30, "asked"), companionFrameId: "asked", model: "claude-haiku-5-5" },
+        { ...owner("follow", 40, "and next?"), companionFrameId: "asked", replyToMessageId: "asked" },
+        { ...answer("haiku-2", 50, "follow"), companionFrameId: "asked", model: "claude-haiku-5-5" },
+      ]),
+    );
+    expect(entries.map((entry) => entry.key)).toEqual(["asked", "main"]);
+    const [asked] = entries;
+    expect(asked?._tag === "Message" ? asked.answers?.map((item) => item.key) : null).toEqual([
+      "haiku-1",
+      "follow",
+      "haiku-2",
+    ]);
+    expect(matchingMessages(entries, "and next")).toEqual([{ index: 1, key: "asked" }]);
+  });
+
+  it("lists framed side conversations newest first with stripped preview, count, and context state", () => {
+    const entries = entriesOf(
+      detailWith([
+        { ...owner("first", 10, `${mention} first question`), companionFrameContext: "Shared" },
+        { ...answer("a1", 20, "first"), companionFrameId: "first", model: "claude-haiku-5-5" },
+        owner("plain", 30, "normal message"),
+        { ...owner("second", 40, `${mention} second question`), companionFrameContext: "None" },
+        { ...answer("a2", 50, "second"), companionFrameId: "second", model: "claude-haiku-5-5" },
+      ]),
+    );
+    expect(sideChatsOf(entries)).toEqual([
+      {
+        contextState: "None",
+        count: 1,
+        index: 0,
+        key: "second",
+        models: ["Haiku 5.5"],
+        preview: "second question",
+      },
+      {
+        contextState: "Shared",
+        count: 1,
+        index: 2,
+        key: "first",
+        models: ["Haiku 5.5"],
+        preview: "first question",
+      },
+    ]);
+    expect(sideChatsOf(entriesOf(detailWith([owner("plain", 10, "no side chats")])))).toEqual([]);
   });
 });

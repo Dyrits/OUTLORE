@@ -12,10 +12,18 @@ import { MissionSummary, SenderKind, ThreadState } from "./records.ts";
 import { Suggestion } from "./suggestions.ts";
 import { Workspace } from "./workspaces.ts";
 
+/** Whether a Companion frame's answered exchanges have been shared as context with the main Companion (CHG-0786). */
+export const CompanionFrameContext = Schema.Literals(["None", "Shared", "Outdated"]);
+export type CompanionFrameContext = typeof CompanionFrameContext.Type;
+
 /** One message in a thread's conversation. */
 export const Message = Schema.Struct({
   /** The files attached to it, in the order the owner added them (message-attachments). */
   attachments: Schema.Array(AttachmentCard),
+  /** On a Companion frame's opening message, whether its answers are shared as context with the main Companion (CHG-0786). */
+  companionFrameContext: Schema.optionalKey(CompanionFrameContext),
+  /** On a follow-up or Companion answer inside a frame, the id of the frame's opening message (CHG-0786). */
+  companionFrameId: Schema.optionalKey(MessageId),
   /**
    * The quest the sending thread belongs to, for a thread message, so a conversation can link to it; null otherwise and
    * for a message from the Chronicler, whose quest has no page of its own.

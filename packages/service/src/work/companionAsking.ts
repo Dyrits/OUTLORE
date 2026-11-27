@@ -7,6 +7,7 @@ import {
 } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
+import { notFound } from "../core/index.ts";
 import { openExchange, refuseExchanges } from "./companionExchanges.ts";
 import { readCompanionRefusal } from "./companionRefusals.ts";
 import { ensureCompanionThread } from "./companionThreads.ts";
@@ -87,6 +88,37 @@ const promptOf = (words: string, context: { readonly kept: ReadonlyArray<string>
         ]),
   ].join("\n\n");
 
+type CompanionTarget = Pick<CompanionToken, "accountId" | "harness" | "model">;
+
+/** The distinct Companions already participating in a frame, in the order they were first asked. */
+const frameCompanionsOf = Effect.fnUntraced(function* (parentThreadId: string, frameMessageId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ accountId: string | null; harness: string; model: string }>`
+    SELECT t.harness, t.account_id AS accountId, t.model
+    FROM companion_exchanges e JOIN threads t ON t.id = e.companion_thread_id
+    WHERE e.parent_thread_id = ${parentThreadId} AND COALESCE(e.frame_message_id, e.owner_message_id) = ${frameMessageId}
+    GROUP BY t.harness, t.account_id, t.model
+    ORDER BY MIN(e.asked_at), MIN(e.rowid)`;
+  return rows.map((row): CompanionTarget => ({ accountId: row.accountId, harness: row.harness, model: row.model }));
+});
+
+/** Combines a frame's Companions with any newly `@`-mentioned ones, deduplicated and capped at five. */
+const mergeCompanionTokens = (
+  existing: ReadonlyArray<CompanionTarget>,
+  mentioned: ReadonlyArray<CompanionTarget>,
+): ReadonlyArray<CompanionTarget> => {
+  const seen = new Set<string>();
+  const combined: Array<CompanionTarget> = [];
+  for (const token of [...existing, ...mentioned]) {
+    const key = `${token.harness}:${token.accountId ?? "-"}:${token.model}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    combined.push(token);
+    if (combined.length >= 5) break;
+  }
+  return combined;
+};
+
 /**
  * Asks each Companion the message names: one thread per model and conversation, found or made; a Companion that cannot
  * answer now answers so at once, in the conversation, and the others are given the question. Returns the Companions'
@@ -96,7 +128,8 @@ export const askCompanions = Effect.fnUntraced(function* (
   parentThreadId: string,
   ownerMessageId: string,
   text: string,
-  tokens: ReadonlyArray<CompanionToken>,
+  tokens: ReadonlyArray<CompanionTarget>,
+  frameMessageId?: string | null,
 ) {
   const sql = yield* SqlClient.SqlClient;
   const words = withoutCompanionTokens(text);
@@ -120,6 +153,7 @@ export const askCompanions = Effect.fnUntraced(function* (
     });
     yield* openExchange({
       companionThreadId: companion.threadId,
+      frameMessageId: frameMessageId ?? ownerMessageId,
       ownerMessageId,
       parentThreadId,
       promptMessageId: promptId,
@@ -132,12 +166,14 @@ export const askCompanions = Effect.fnUntraced(function* (
 });
 
 /**
- * Records the owner's message in a conversation. A message that names Companions with `@` is theirs to answer: it joins the
- * conversation as written, delivered to no one, and each Companion named is asked; any other message is delivered as
- * always. Chronicler's conversation opens nothing, so `@` words there stay plain text.
+ * Records the owner's message in a conversation. A message that names Companions with `@`, or follows up inside an
+ * existing Companion frame (`frameMessageId`), is theirs to answer: it joins the conversation as written, delivered to
+ * no one, and each Companion named is asked; any other message is delivered as always. Chronicler's conversation opens
+ * nothing, so `@` words there stay plain text.
  */
 export const insertOwnerMessage = Effect.fnUntraced(function* (message: {
   readonly attachmentIds: ReadonlyArray<string>;
+  readonly frameMessageId?: string | null;
   readonly isQueued: boolean;
   readonly realmPath: string | null;
   readonly sentToParent: SendToParentScope | null;
@@ -145,9 +181,30 @@ export const insertOwnerMessage = Effect.fnUntraced(function* (message: {
   readonly threadId: string;
   readonly viewing: string | null;
 }) {
-  const { attachmentIds, isQueued, realmPath, sentToParent, text, threadId, viewing } = message;
-  const tokens = (yield* isChroniclerThread(threadId)) ? [] : companionTokensOf(text);
-  if (tokens.length === 0)
+  const { attachmentIds, frameMessageId = null, isQueued, realmPath, sentToParent, text, threadId, viewing } = message;
+  const sql = yield* SqlClient.SqlClient;
+  const isChronicler = yield* isChroniclerThread(threadId);
+  const mentioned = isChronicler ? [] : companionTokensOf(text);
+  if (frameMessageId !== null) {
+    if (isChronicler) return yield* notFound("No such side conversation.");
+    const existing = yield* frameCompanionsOf(threadId, frameMessageId);
+    const tokens = mergeCompanionTokens(existing, mentioned);
+    if (tokens.length === 0) return yield* notFound("No such side conversation.");
+    const { messageId } = yield* insertMessage({
+      attachmentIds,
+      fromThreadId: null,
+      isConversationOnly: true,
+      isQueued: false,
+      isResult: false,
+      text,
+      threadId,
+      viewing,
+    });
+    yield* sql`UPDATE messages SET reply_to_message_id = ${frameMessageId} WHERE id = ${messageId}`;
+    const threadsToWake = yield* askCompanions(threadId, messageId, text, tokens, frameMessageId);
+    return { threadsToWake, value: { messageId } };
+  }
+  if (mentioned.length === 0)
     return yield* insertUserMessage(threadId, text, isQueued, attachmentIds, realmPath, viewing, sentToParent);
   const { messageId } = yield* insertMessage({
     attachmentIds,
@@ -159,6 +216,6 @@ export const insertOwnerMessage = Effect.fnUntraced(function* (message: {
     threadId,
     viewing,
   });
-  const threadsToWake = yield* askCompanions(threadId, messageId, text, tokens);
+  const threadsToWake = yield* askCompanions(threadId, messageId, text, mentioned, messageId);
   return { threadsToWake, value: { messageId } };
 });

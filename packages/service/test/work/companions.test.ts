@@ -106,14 +106,29 @@ describe("asking a Companion with @", () => {
     ),
   );
 
-  it.live("tells the main Companion of the message and the answer once, as context that starts no turn", () =>
+  it.live("keeps a frame out of the main Companion's context until shared, then tells it once without waking it", () =>
     withService(
       Effect.gen(function* () {
         const quest = yield* restedQuest;
-        yield* send(quest.threadId, `${token("gpt-5")} Sky colour?`);
-        yield* settle(quest.missionId, (detail) => repliesOf(detail, "gpt-5").length === 1);
+        const sent = yield* send(quest.threadId, `${token("gpt-5")} Sky colour?`);
+        const answered = yield* settle(quest.missionId, (detail) => repliesOf(detail, "gpt-5").length === 1);
+        expect(answered.messages.find((message) => message.id === sent.messageId)?.companionFrameContext).toBe("None");
         yield* Effect.sleep("100 millis");
         expect(yield* turnCountOf(quest.threadId)).toBe(1);
+        // Before sharing, the main Companion does not receive the side conversation as context.
+        yield* send(quest.threadId, "Before sharing");
+        const before = yield* settle(
+          quest.missionId,
+          (current) => isRested(current) && current.messages.at(-1)?.text.includes("Before sharing") === true,
+        );
+        expect(before.messages.at(-1)?.text).not.toContain("Sky colour?");
+        // Sharing marks the frame as Shared without waking the main Companion.
+        yield* call({ _tag: "ShareCompanionFrame", frameMessageId: sent.messageId, threadId: quest.threadId });
+        const shared = yield* read(quest.missionId);
+        expect(shared.messages.find((message) => message.id === sent.messageId)?.companionFrameContext).toBe("Shared");
+        yield* Effect.sleep("100 millis");
+        expect(yield* turnCountOf(quest.threadId)).toBe(2);
+        // The main Companion's next turn receives the shared exchange once.
         yield* send(quest.threadId, "Carry on");
         const detail = yield* settle(
           quest.missionId,
@@ -129,9 +144,69 @@ describe("asking a Companion with @", () => {
           (current) => isRested(current) && current.messages.at(-1)?.text.includes("Once more") === true,
         );
         expect(later.messages.at(-1)?.text).not.toContain("Sky colour?");
-        expect(yield* turnCountOf(quest.threadId)).toBe(3);
+        expect(yield* turnCountOf(quest.threadId)).toBe(4);
       }),
     ),
+  );
+
+  it.live(
+    "follows up in the same frame without re-typing @, tracks outdated context, and can pull in another model",
+    () =>
+      withService(
+        Effect.gen(function* () {
+          const quest = yield* restedQuest;
+          const opening = yield* send(quest.threadId, `${token("gpt-5")} First question`);
+          yield* settle(quest.missionId, (detail) => repliesOf(detail, "gpt-5").length === 1);
+          yield* call({ _tag: "ShareCompanionFrame", frameMessageId: opening.messageId, threadId: quest.threadId });
+          // Follow up inside the frame without re-typing @gpt-5.
+          const followUp = yield* call({
+            _tag: "SendMessage",
+            attachmentIds: [],
+            delivery: null,
+            frameMessageId: opening.messageId,
+            requestId: "req-follow-up-1",
+            text: "Tell me more",
+            threadId: quest.threadId,
+          });
+          const afterFollowUp = yield* settle(quest.missionId, (detail) => repliesOf(detail, "gpt-5").length === 2);
+          expect(yield* turnCountOf(quest.threadId)).toBe(1);
+          expect(
+            afterFollowUp.messages.find((message) => message.id === opening.messageId)?.companionFrameContext,
+          ).toBe("Outdated");
+          expect(afterFollowUp.messages.find((message) => message.id === followUp.messageId)?.companionFrameId).toBe(
+            opening.messageId,
+          );
+          expect(repliesOf(afterFollowUp, "gpt-5")[1]?.companionFrameId).toBe(opening.messageId);
+          // Pulling another Companion into the same frame addresses both and groups both answers into the frame.
+          yield* call({
+            _tag: "SendMessage",
+            attachmentIds: [],
+            delivery: null,
+            frameMessageId: opening.messageId,
+            requestId: "req-follow-up-2",
+            text: `${token("gpt-6")} Second opinion?`,
+            threadId: quest.threadId,
+          });
+          const withSecond = yield* settle(
+            quest.missionId,
+            (detail) => repliesOf(detail, "gpt-5").length === 3 && repliesOf(detail, "gpt-6").length === 1,
+          );
+          expect(repliesOf(withSecond, "gpt-6")[0]?.companionFrameId).toBe(opening.messageId);
+          // Updating context marks the frame Shared again and delivers the new exchanges on the next main turn.
+          yield* call({ _tag: "ShareCompanionFrame", frameMessageId: opening.messageId, threadId: quest.threadId });
+          const updated = yield* read(quest.missionId);
+          expect(updated.messages.find((message) => message.id === opening.messageId)?.companionFrameContext).toBe(
+            "Shared",
+          );
+          yield* send(quest.threadId, "Main carry on");
+          const mainTurn = yield* settle(
+            quest.missionId,
+            (current) => isRested(current) && current.messages.at(-1)?.text.includes("Main carry on") === true,
+          );
+          expect(mainTurn.messages.at(-1)?.text).toContain("Tell me more");
+          expect(mainTurn.messages.at(-1)?.text).toContain("Second opinion?");
+        }),
+      ),
   );
 });
 

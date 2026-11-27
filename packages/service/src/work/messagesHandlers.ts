@@ -3,6 +3,7 @@ import { readDictationStatus, transcribeDictation } from "../voice/index.ts";
 import { admitOwnerText, nonBlank, runnerOfThread } from "./admission.ts";
 import { addAttachment, discardAttachment, readAttachment } from "./attachments.ts";
 import { insertOwnerMessage } from "./companionAsking.ts";
+import { shareCompanionFrame } from "./companionExchanges.ts";
 import { changed } from "./followUps.ts";
 import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
@@ -64,6 +65,7 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
             ),
             insertOwnerMessage({
               attachmentIds,
+              frameMessageId: send.frameMessageId ?? null,
               isQueued: delivery === "Queue",
               realmPath: send.realmPath ?? null,
               sentToParent: send.sendToParent ?? null,
@@ -85,6 +87,8 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
         ),
       );
     }),
+    ShareCompanionFrame: (given) =>
+      commands.run(shareCompanionFrame(given.threadId, given.frameMessageId).pipe(Effect.as(changed(null)))),
     SteerQueuedMessage: (given) =>
       commands.run(
         releaseQueued(given.messageId).pipe(Effect.map((threadId) => changed(null, { threadsToWake: [threadId] }))),
@@ -102,6 +106,7 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
     | "RemoveQueuedMessage"
     | "RewriteBriefing"
     | "SendMessage"
+    | "ShareCompanionFrame"
     | "SteerQueuedMessage"
     | "TranscribeDictation"
     | "UnsteerQueuedMessage"
