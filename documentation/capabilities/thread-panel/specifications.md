@@ -10,6 +10,9 @@ Status: agreed by the owner's instruction to build the backlog entry "Thread pan
 
 On desktop, the Quest and Companions tabs belong to each [conversation pane](../conversation-panes/specifications.md#the-window).
 The Companions tab holds the primary and backup editors.
+When the owner has presets, it also lists them with a **Custom** entry for an unsaved stack and an **Edit** mode for a preset ([companion presets](../companion-presets/specifications.md#agreed-behavior), owner's request of 2026-11-27).
+The tab measures its own width: from `splitLeastWidth` (480) up, the list is a left navigation and the thread's Companion details (the Companion fold, the backup folds, Overwrite, Save as a preset) sit to its right; narrower, in the phone, the mini panel and a narrow column, the list is the Preset card above the details, with Custom as its last row.
+Edit mode replaces the details with the preset's own editors under the title "Editing <name>" and a **Done** button at the top right; it never changes the thread's Companion.
 The narrow single-conversation layout uses its existing Quest panel and Companion picker.
 The panel details below describe the controls regardless of their placement.
 
