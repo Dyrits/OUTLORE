@@ -75,4 +75,21 @@ describe("the Workshop's draft preset", () => {
     await pending;
     expect(workshopSaving.isSaving("Light")).toBe(false);
   });
+
+  it("moves an in-flight save lock to the renamed focus key until the original save settles", async () => {
+    const deferred = { resolve: () => {} };
+    const pending = workshopSaving.track(
+      "custom:Old",
+      () =>
+        new Promise<void>((resolve) => {
+          deferred.resolve = resolve;
+        }),
+    );
+    workshopSaving.rename("custom:Old", "custom:New");
+    expect(workshopSaving.isSaving("custom:Old")).toBe(false);
+    expect(workshopSaving.isSaving("custom:New")).toBe(true);
+    deferred.resolve();
+    await pending;
+    expect(workshopSaving.isSaving("custom:New")).toBe(false);
+  });
 });

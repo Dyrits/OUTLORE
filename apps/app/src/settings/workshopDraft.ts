@@ -53,11 +53,15 @@ export const workshopKept = {
 /** The kept unsaved chains. */
 export const useWorkshopKept = () => useSyncExternalStore(workshopKept.subscribe, workshopKept.get);
 
-/** Active save counts by Workshop focus key, so switching presets and returning keeps the editor locked until an in-flight save settles. */
+/** Active save counts by Workshop focus key, so switching presets or renaming keeps the editor locked until an in-flight save settles. */
+type ActiveSave = { key: string };
+const activeSaves = new Set<ActiveSave>();
 let savingCounts: Readonly<Record<string, number>> = {};
 const savingListeners = new Set<() => void>();
 
-const setSavingCounts = (next: Readonly<Record<string, number>>) => {
+const publishSavingCounts = () => {
+  const next: Record<string, number> = {};
+  for (const entry of activeSaves) next[entry.key] = (ownValue(next, entry.key) ?? 0) + 1;
   savingCounts = next;
   for (const listener of savingListeners) listener();
 };
@@ -65,6 +69,16 @@ const setSavingCounts = (next: Readonly<Record<string, number>>) => {
 export const workshopSaving = {
   get: () => savingCounts,
   isSaving: (key: string) => (ownValue(savingCounts, key) ?? 0) > 0,
+  rename: (from: string, to: string) => {
+    if (from === to) return;
+    let hasMoved = false;
+    for (const entry of activeSaves) {
+      if (entry.key !== from) continue;
+      entry.key = to;
+      hasMoved = true;
+    }
+    if (hasMoved) publishSavingCounts();
+  },
   subscribe: (listener: () => void) => {
     savingListeners.add(listener);
     return () => {
@@ -72,18 +86,14 @@ export const workshopSaving = {
     };
   },
   track: async <Result>(key: string, action: () => Promise<Result>): Promise<Result> => {
-    const before = ownValue(savingCounts, key) ?? 0;
-    setSavingCounts({ ...savingCounts, [key]: before + 1 });
+    const entry: ActiveSave = { key };
+    activeSaves.add(entry);
+    publishSavingCounts();
     try {
       return await action();
     } finally {
-      const current = ownValue(savingCounts, key) ?? 0;
-      if (current <= 1) {
-        const { [key]: _done, ...others } = savingCounts;
-        setSavingCounts(others);
-      } else {
-        setSavingCounts({ ...savingCounts, [key]: current - 1 });
-      }
+      activeSaves.delete(entry);
+      publishSavingCounts();
     }
   },
 };

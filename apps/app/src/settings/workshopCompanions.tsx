@@ -190,7 +190,7 @@ export function WorkshopCompanions({
                     await workshopSaving.track(preset.focus, () =>
                       savePresetEdit(client, { _tag: "Add", name, stack: next }),
                     );
-                    if (focusRef.current === preset.focus) onFocus(customFocusOf(name));
+                    if (focusRef.current === preset.focus && workshopDraft.get() === null) onFocus(customFocusOf(name));
                   }}
                   stack={stack}
                 />
@@ -203,8 +203,9 @@ export function WorkshopCompanions({
                     const nextFocus = renamedFocusOf(preset.focus, nextName);
                     if (nextFocus !== preset.focus) {
                       setKept((current) => keptRenamed(current, preset.focus, nextFocus));
+                      workshopSaving.rename(preset.focus, nextFocus);
                     }
-                    if (focusRef.current === preset.focus) onFocus(nextFocus);
+                    if (focusRef.current === preset.focus && workshopDraft.get() === null) onFocus(nextFocus);
                   }}
                 />
               </>
