@@ -6,6 +6,7 @@ import { styles } from "../foundation/styles";
 import { Button } from "../ui/button";
 import { ProviderMark } from "../ui/providerMarks";
 import { AccountRow, AddAccount, StatusPill } from "./accountRows";
+import { AddKeyAccount } from "./keyAccountForm";
 import { canAddAccount, versionOf } from "./providerRules";
 import { providerStyles } from "./providerStyles";
 
@@ -87,6 +88,7 @@ export function HarnessCard({
           ) : (
             <Text style={styles.muted}>Uses this computer's sign-in only.</Text>
           )}
+          <AddKeyAccount client={client} harness={harness.name} onChanged={onChanged} onError={onError} />
         </View>
       )}
     </View>

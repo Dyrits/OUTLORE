@@ -15,6 +15,7 @@ export const providerStyles = StyleSheet.create({
   card: { ...outline, ...round, backgroundColor: colors.canvas, overflow: "hidden" },
   head: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 14, padding: 14 },
   intro: { alignItems: "flex-start", flexDirection: "row", gap: 16 },
+  keyForm: { gap: 8, paddingTop: 4 },
   more: { alignItems: "flex-start" },
   name: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.lg, fontWeight: "700" },
   pill: {

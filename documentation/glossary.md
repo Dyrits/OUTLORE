@@ -244,6 +244,10 @@ _Avoid_: Vendor
 One sign-in a harness runs with: the computer's own, named after the computer's name, or one added in Outlore with its own folder, such as a second Claude account named "Work".
 _Avoid_: Profile, login, credential
 
+**API key account**:
+A provider account whose credential is an API key instead of a sign-in: the key is sealed in the Vault, and the account runs a harness (Claude Code) against the provider's own endpoint, such as Z.ai or Kimi. It has its own folder like any added account.
+_Avoid_: Key profile, custom provider
+
 **Companion preset**:
 A name for a complete stack of one primary Companion (harness, provider account, model, effort) and its ordered backup Companions, which the owner picks instead of choosing each part by hand. An empty backup list is part of the stack too. The interface says preset. Light, Balanced, and Heavy are presets; see [companion presets](capabilities/companion-presets/specifications.md).
 _Avoid_: Profile, template, tier (a tier is one of the three presets Chronicler picks among)

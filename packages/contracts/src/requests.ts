@@ -1,12 +1,14 @@
 import { Schema } from "effect";
 import {
   AddAccount,
+  AddKeyAccount,
   InstallHarness,
   ListHarnesses,
   ListModelEfforts,
   RemoveAccount,
   RenameAccount,
   RenameOwnAccount,
+  ReplaceAccountKey,
   SignInAccount,
   UpdateHarness,
 } from "./accountRequests.ts";
@@ -130,6 +132,8 @@ export const Request = Schema.Union([
   ListHarnesses,
   ListModelEfforts,
   AddAccount,
+  AddKeyAccount,
+  ReplaceAccountKey,
   RenameAccount,
   RenameOwnAccount,
   RemoveAccount,

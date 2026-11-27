@@ -13,6 +13,8 @@ import {
   reportedChangeOf,
 } from "../core/index.ts";
 import { type HarnessTools, qualifiedToolNameOf, removedAccountReasonOf, toolServerName } from "../harness/index.ts";
+import type { Vault } from "../vault/index.ts";
+import { prepareAccountKey } from "./accountKeys.ts";
 import type { Approvals } from "./approvals.ts";
 import { readApprovalTerms } from "./approvalTerms.ts";
 import { askOwnerFor } from "./askOwner.ts";
@@ -57,6 +59,8 @@ export type TurnRunnerDependencies = {
   readonly publishDraft: (threadId: string, text: string) => Effect.Effect<unknown>;
   readonly scratchRoot: string;
   readonly sql: SqlClient.SqlClient;
+  /** The Vault, which holds an API key account's key until a turn on that account starts. */
+  readonly vault: Vault["Service"];
 };
 
 /** Makes the step that runs one admitted turn through the harness and records how it ended. */
@@ -75,6 +79,7 @@ export const makeTurnRunner = (dependencies: TurnRunnerDependencies) => {
     publishDraft,
     scratchRoot,
     sql,
+    vault,
   } = dependencies;
   const runAdmitted = Effect.fnUntraced(function* (
     threadId: string,
@@ -126,6 +131,8 @@ export const makeTurnRunner = (dependencies: TurnRunnerDependencies) => {
     const snapshot = yield* connectorGateway.beginTurn(threadId);
     const directConnectorTools = shouldUseCodeMode ? [] : snapshot;
     active.set(threadId, { turnId: turn.turnId, written: new Set() });
+    // An API key account's key is read from the Vault into the harness's environment; a sign-in account has none.
+    yield* local(prepareAccountKey(vault, accountsRoot, turn.accountId)).pipe(Effect.orDie);
     const outcome = yield* harness
       .runTurn({
         access: {

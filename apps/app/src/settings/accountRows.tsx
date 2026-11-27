@@ -9,6 +9,7 @@ import { InlineTerminal } from "../terminal/inlineTerminal";
 import { ActionMenu } from "../ui/actionMenu";
 import { Button } from "../ui/button";
 import { RowIcon } from "../ui/rowIcons";
+import { ReplaceKey } from "./keyAccountForm";
 import { providerStyles } from "./providerStyles";
 
 /** What a sign-in state says on an account's badge. */
@@ -50,6 +51,8 @@ export function AccountRow({
   >(null);
   // The new name while renaming; null when not. A harness's own sign-in may be left blank to take the computer's name.
   const [name, setName] = useState<string | null>(null);
+  // Whether the field that replaces an API key account's key is open.
+  const [isReplacingKey, setReplacingKey] = useState(false);
   const refreshHarnesses = () =>
     void client.request({ _tag: "ListHarnesses" }).then(
       (list) => onChanged(list),
@@ -100,7 +103,10 @@ export function AccountRow({
       );
   const accountId = account.id;
   const actions = [
-    { label: account.signIn === "SignedIn" ? "Sign in again" : "Sign in", onPress: signIn },
+    // An API key account has no sign-in to run: its key is what it takes.
+    account.keyProvider === undefined
+      ? { label: account.signIn === "SignedIn" ? "Sign in again" : "Sign in", onPress: signIn }
+      : { label: "Replace API key", onPress: () => setReplacingKey(true) },
     ...(accountId === null ? [] : [{ label: "Remove", onPress: () => remove(accountId) }]),
   ];
   return (
@@ -156,6 +162,16 @@ export function AccountRow({
           actions={actions}
         />
       </View>
+      {isReplacingKey && accountId !== null && (
+        <ReplaceKey
+          accountId={accountId}
+          client={client}
+          label={account.label}
+          onChanged={onChanged}
+          onClose={() => setReplacingKey(false)}
+          onError={onError}
+        />
+      )}
       {signingIn?._tag === "Terminal" && (
         <InlineTerminal
           client={client}

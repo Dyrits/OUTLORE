@@ -65,4 +65,4 @@ Latest handoffs:
 
 - To resume the composer's send and stop buttons, now filled with the accent so they read in every theme (built, no screen seen yet), read the [current handoff](.agents/handoffs/2026-11-27-0045-composer-send-button-visibility.md). Handoffs are shared and committed.
 
-- To resume the quest pane that opens on the tab the last quest showed (built and tested; desktop window check pending; CHG-0774), read the [current handoff](.agents/handoffs/2026-11-27-0039-quest-pane-remembers-tab.md). Handoffs are shared and committed.
+- To resume provider API key accounts (CHG-0775: built, Standards-refactored and committed; Specifications findings open), read the [current handoff](.agents/handoffs/2026-11-27-0131-provider-api-key-accounts.md). Handoffs are shared and committed.

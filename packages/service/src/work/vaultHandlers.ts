@@ -11,6 +11,7 @@ import { Effect } from "effect";
 import { type Connectors, oauthSecretKind } from "../connectors/index.ts";
 import { Harness, ServiceFailure, type VaultDenial } from "../core/index.ts";
 import { harnessLabelOf, type Vault, type VaultFailure, VaultFolder } from "../vault/index.ts";
+import { isAccountKeyConnector } from "./accountKeys.ts";
 import type { CommandRunner } from "./commands.ts";
 import { changed } from "./followUps.ts";
 
@@ -43,12 +44,15 @@ const viewOf = Effect.fnUntraced(function* (vault: Vault["Service"]): Effect.fn.
   const protection = yield* vault.protection;
   const holder = "holder" in state ? state.holder : null;
   return {
-    entries: entries.map((entry) => ({
-      addedAt: entry.addedAt,
-      connectorId: entry.connectorId,
-      holder: entry.holder,
-      kind: entry.kind,
-    })),
+    // An API key account's key is shown on its account's row in Providers, not here among the connectors' secrets.
+    entries: entries
+      .filter((entry) => !isAccountKeyConnector(entry.connectorId))
+      .map((entry) => ({
+        addedAt: entry.addedAt,
+        connectorId: entry.connectorId,
+        holder: entry.holder,
+        kind: entry.kind,
+      })),
     holder: holder === null ? null : { isReadableFromSandbox: holder.isReadableFromSandbox, label: holder.label },
     protection: {
       isAllowed: protection.isAllowed,

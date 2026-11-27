@@ -129,4 +129,11 @@ export const latestStoreMigrations = {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`ALTER TABLE threads ADD COLUMN opener_tail TEXT`;
   }),
+  // API key accounts (provider-accounts): the provider an account's key is for and the models the owner named for it,
+  // as a JSON array; both null for a sign-in account. The key itself is in the Vault, never in the store.
+  "0081_key_accounts": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE accounts ADD COLUMN key_provider TEXT`;
+    yield* sql`ALTER TABLE accounts ADD COLUMN key_models TEXT`;
+  }),
 };

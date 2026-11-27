@@ -96,7 +96,7 @@ export const makeService = Effect.gen(function* () {
       // One handler per request tag, each answering its result schema; the table fails to compile when a tag has none or one answers something its schema cannot encode.
       const table = {
         ...loreHandlers(dependencies),
-        ...accountsHandlers(dependencies, terminals, terminalScope),
+        ...accountsHandlers(dependencies, terminals, terminalScope, vault),
         ...remoteHandlers(dependencies),
         ...messagesHandlers(dependencies),
         ...questsHandlers(dependencies, connectors, phoneLink),

@@ -40,6 +40,8 @@ export interface ClaudeConnection extends HarnessConnection {
   readonly background: { hasBackgroundWake: boolean; tasks: number };
   /** How the process was signed in, from the init event; Unknown until it reports (budget-control, Billing kind). */
   billing: BillingKind;
+  /** Whether the process runs an API key account, whose turns are billed to its key whatever Claude Code's init event says of a token (it reports `none` for `ANTHROPIC_AUTH_TOKEN`; probe of 2026-11-27, 2.1.330). */
+  readonly isKeyAccount: boolean;
   /** The cost Claude Code last reported for this process, which it adds up across turns (provisional, unprobed). */
   lastTotalCost: number;
   readonly process: StreamJsonProcess;
@@ -98,7 +100,7 @@ export const runClaudeTurn = Effect.fnUntraced(function* (
     const event = item.message;
     const type = textFieldOf(event, "type");
     if (type === "system" && textFieldOf(event, "subtype") === "init") {
-      connection.billing = billingOf(event, connection.billing);
+      connection.billing = connection.isKeyAccount ? "ApiKey" : billingOf(event, connection.billing);
       // Without its thread tools the turn could not reach Outlore: it fails, with Retry, instead of running blind.
       const toolFailure = toolServerFailureOf(event, toolServerName);
       if (toolFailure !== null) return yield* new HarnessFailure({ reason: toolFailure });

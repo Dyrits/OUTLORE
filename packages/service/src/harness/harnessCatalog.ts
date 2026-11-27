@@ -1,6 +1,7 @@
 import { type HarnessName, harnessDescriptors, harnessLabels, harnessNames } from "@outlore/contracts";
 import { Record } from "effect";
 import { isComputerOnly, isolationEnvOf } from "./accountIsolation.ts";
+import { keyEnvironmentOf } from "./accountKeys.ts";
 import { acpHarnessServiceFacts } from "./acpHarnessFacts.ts";
 import { type AcpSignInCommand, acpSignInOf, type VersionGate } from "./acpProviderDefinition.ts";
 import { acpProviders } from "./acpProviderRoster.ts";
@@ -84,4 +85,6 @@ export const refusesAddedAccounts = (harness: HarnessName): boolean => isCompute
 /** The environment that points a harness at an account's folder; empty for the computer's own sign-in. */
 export const accountEnvironmentOf = (harness: HarnessName, configDirectory: string | null): Record<string, string> => ({
   ...isolationEnvOf(harnessFacts[harness].isolation, configDirectory),
+  // An API key account's key and endpoint, read from the Vault by the service (accountKeys.ts).
+  ...keyEnvironmentOf(configDirectory),
 });

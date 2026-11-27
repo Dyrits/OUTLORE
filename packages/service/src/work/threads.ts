@@ -12,6 +12,7 @@ import {
   type ServiceFailure,
 } from "../core/index.ts";
 import { HarnessTools } from "../harness/index.ts";
+import { Vault } from "../vault/index.ts";
 import { Approvals } from "./approvals.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
 import { Commands, makeCommands } from "./commands.ts";
@@ -70,6 +71,7 @@ export const threadsLayer = Layer.effectContext(
     const prices = yield* PriceTable;
     const harnessTools = yield* HarnessTools;
     const accountsRoot = yield* AccountsRoot;
+    const vault = yield* Vault;
     const attachmentsRoot = yield* AttachmentsRoot;
     /** The stored files as a harness takes them: where each is kept. */
     const imagesOf = (files: ReadonlyArray<StoredAttachment>): ReadonlyArray<ImageAttachment> =>
@@ -154,6 +156,7 @@ export const threadsLayer = Layer.effectContext(
       publishDraft,
       scratchRoot,
       sql,
+      vault,
     });
 
     const run = Effect.fnUntraced(function* (threadId: string, turn: Admitted): Effect.fn.Return<void, unknown> {

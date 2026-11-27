@@ -1,10 +1,10 @@
 import { mkdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
 import type { AccountId, AccountStatus, HarnessInfo, HarnessList, HarnessName } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid, newId, notFound } from "../core/index.ts";
 import {
+  forgetKeyEnvironment,
   HarnessTools,
   harnessLabels,
   harnessNames,
@@ -12,6 +12,17 @@ import {
   type SignInStatus,
 } from "../harness/index.ts";
 import { ownAccountLabelOf } from "../remote/index.ts";
+import type { Vault } from "../vault/index.ts";
+import {
+  type AccountRow,
+  accountFolderOf,
+  isKeyProvider,
+  keyConnectorIdOf,
+  loadAccountKeys,
+  readAccount,
+  trimmedLabel,
+} from "./accountKeys.ts";
+import { keyAccountModelsOf, keySignInOf } from "./keyAccounts.ts";
 import type { TerminalScope } from "./terminalHost.ts";
 import type { ConversationTerminals } from "./terminalSessions.ts";
 import { openCommandTerminal } from "./terminals.ts";
@@ -19,15 +30,6 @@ import { AccountsRoot } from "./threads.ts";
 
 // Provider accounts (provider-accounts): each harness's own sign-in on this computer, and accounts the owner
 // adds, each with its own folder where the harness keeps that account's sign-in and sessions.
-
-type AccountRow = {
-  readonly harness: HarnessName;
-  readonly id: string;
-  readonly label: string;
-};
-
-/** An added account's folder. */
-const accountFolderOf = (accountsRoot: string, accountId: string) => join(accountsRoot, accountId);
 
 /** The config directory of an account's sign-in: the added account's folder, or null for the harness's own. */
 export const configDirectoryOf = (accountsRoot: string, accountId: string | null) =>
@@ -40,12 +42,13 @@ const readHarness = Effect.fnUntraced(function* (harness: HarnessName, rows: Rea
   const installation = yield* tools.inspect(harness);
   const ownLabel = yield* ownAccountLabelOf(harness);
   const listed = [
-    { configDirectory: null, id: null, label: ownLabel },
+    { configDirectory: null, id: null, keyProvider: null, label: ownLabel },
     ...rows
       .filter((row) => row.harness === harness)
       .map((row) => ({
         configDirectory: accountFolderOf(accountsRoot, row.id),
         id: row.id as AccountId,
+        keyProvider: isKeyProvider(row.keyProvider) ? { models: row.keyModels, name: row.keyProvider } : null,
         label: row.label,
       })),
   ];
@@ -53,29 +56,37 @@ const readHarness = Effect.fnUntraced(function* (harness: HarnessName, rows: Rea
   const accounts = yield* Effect.forEach(
     listed,
     (account) =>
-      (installation.problem === null
-        ? tools.readSignIn(harness, account.configDirectory)
-        : Effect.succeed({ detail: null, signIn: "Unknown" } satisfies SignInStatus)
+      (account.keyProvider !== null
+        ? // A key account is signed in while its key is held; the harness's own status command knows nothing of it.
+          Effect.succeed(keySignInOf(account.keyProvider.name, account.configDirectory ?? ""))
+        : installation.problem === null
+          ? tools.readSignIn(harness, account.configDirectory)
+          : Effect.succeed({ detail: null, signIn: "Unknown" } satisfies SignInStatus)
       ).pipe(
         Effect.map((status): AccountStatus & { configDirectory: string | null } => ({
           ...status,
           configDirectory: account.configDirectory,
           id: account.id,
+          ...(account.keyProvider === null ? {} : { keyProvider: account.keyProvider.name }),
           label: account.label,
         })),
       ),
     { concurrency: "unbounded" },
   );
-  const signedIn = accounts.find((account) => account.signIn === "SignedIn") ?? accounts[0];
+  // The harness's own list comes from a sign-in account: a key account lists its provider's models instead.
+  const signedIn =
+    accounts.find((account) => account.signIn === "SignedIn" && account.keyProvider === undefined) ?? accounts[0];
   const models =
     installation.problem === null ? yield* tools.listModels(harness, signedIn?.configDirectory ?? null) : [];
   // Each account's own list, read at once and kept per account; a signed-out account lists none.
   const accountModels = yield* Effect.forEach(
-    accounts,
-    (account) =>
-      installation.problem !== null || account.signIn === "SignedOut"
-        ? Effect.succeed(null)
-        : tools.listModels(harness, account.configDirectory),
+    accounts.map((account, index) => ({ account, keyProvider: listed[index]?.keyProvider ?? null })),
+    ({ account, keyProvider }) =>
+      keyProvider !== null
+        ? Effect.succeed(keyAccountModelsOf(keyProvider.name, keyProvider.models))
+        : installation.problem !== null || account.signIn === "SignedOut"
+          ? Effect.succeed(null)
+          : tools.listModels(harness, account.configDirectory),
     { concurrency: "unbounded" },
   );
   const update = installation.problem === null ? yield* tools.findUpdate(harness, installation.version) : null;
@@ -110,9 +121,13 @@ export const listModelEfforts = Effect.fnUntraced(function* (
 });
 
 /** Every harness, with its accounts and models (ListHarnesses). */
-export const listHarnesses = Effect.gen(function* () {
+export const listHarnesses = Effect.fnUntraced(function* (vault: Vault["Service"]) {
   const sql = yield* SqlClient.SqlClient;
-  const rows = yield* sql<AccountRow>`SELECT id, harness, label FROM accounts ORDER BY created_at, rowid`;
+  const accountsRoot = yield* AccountsRoot;
+  const rows =
+    yield* sql<AccountRow>`SELECT id, harness, label, key_provider AS keyProvider, key_models AS keyModels FROM accounts ORDER BY created_at, rowid`;
+  // A key account's key is read from the Vault when its environment is not held yet, as after a start.
+  yield* loadAccountKeys(vault, accountsRoot, rows);
   const harnesses = yield* Effect.forEach(harnessNames, (harness) => readHarness(harness, rows), {
     concurrency: "unbounded",
   });
@@ -140,16 +155,6 @@ export const installHarness = Effect.fn("installHarness")(function* (harness: Ha
       `Installation finished, but ${after.problem} Check your PATH or configured harness path, then press Refresh.`,
     );
 });
-
-const readAccount = Effect.fnUntraced(function* (accountId: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const [row] = yield* sql<AccountRow>`SELECT id, harness, label FROM accounts WHERE id = ${accountId}`;
-  if (row === undefined) return yield* notFound("No such account.");
-  return row;
-});
-
-const trimmedLabel = (label: string) =>
-  label.trim() === "" ? invalid("Give the account a name.") : Effect.succeed(label.trim());
 
 /** Adds an account with its own empty folder; it is signed out until the owner signs in. */
 export const addAccount = Effect.fnUntraced(function* (harness: HarnessName, label: string) {
@@ -188,19 +193,22 @@ export const renameOwnAccount = Effect.fnUntraced(function* (harness: HarnessNam
  * Removes an account and its folder, with the sign-in and sessions the harness kept there. Refused while a
  * mission that is not ended has a thread on it, whose conversation lives in that folder.
  */
-export const removeAccount = Effect.fnUntraced(function* (accountId: string) {
+export const removeAccount = Effect.fnUntraced(function* (vault: Vault["Service"], accountId: string) {
   const sql = yield* SqlClient.SqlClient;
   const accountsRoot = yield* AccountsRoot;
   const account = yield* readAccount(accountId);
   const [use] = yield* sql<{ count: number }>`
-      SELECT COUNT(*) AS count FROM threads t JOIN missions m ON m.id = t.mission_id
-      WHERE t.account_id = ${accountId} AND m.ending IS NULL AND t.is_deleting = 0`;
+    SELECT COUNT(*) AS count FROM threads t JOIN missions m ON m.id = t.mission_id
+    WHERE t.account_id = ${accountId} AND m.ending IS NULL AND t.is_deleting = 0`;
   if ((use?.count ?? 0) > 0)
     return yield* invalid(
       `Not removed: ${use?.count} thread(s) in missions not yet ended run on "${account.label}". End or archive those missions first.`,
     );
   yield* sql`DELETE FROM account_budgets WHERE account_id = ${accountId}`;
   yield* sql`DELETE FROM accounts WHERE id = ${accountId}`;
+  // A key account's key goes with it; a Vault that cannot answer leaves the sealed secret, which nothing reads once the account is gone.
+  if (isKeyProvider(account.keyProvider)) yield* vault.removeAllOf(keyConnectorIdOf(accountId)).pipe(Effect.ignore);
+  yield* Effect.sync(() => forgetKeyEnvironment(accountFolderOf(accountsRoot, accountId)));
   yield* Effect.sync(() => rmSync(accountFolderOf(accountsRoot, accountId), { force: true, recursive: true }));
 });
 
@@ -219,6 +227,8 @@ export const signInAccount = Effect.fnUntraced(function* (
   if (accountId !== null) {
     const account = yield* readAccount(accountId);
     if (account.harness !== harness) return yield* invalid(`That account is not a ${harnessLabels[harness]} account.`);
+    if (isKeyProvider(account.keyProvider))
+      return yield* invalid(`"${account.label}" uses an API key; replace the key instead of signing in.`);
   }
   const launch = yield* tools.openSignIn(harness, configDirectoryOf(accountsRoot, accountId));
   if (launch._tag === "Finished") return { _tag: "Finished" as const };

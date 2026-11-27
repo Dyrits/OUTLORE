@@ -9,6 +9,7 @@ import {
   runShortCommand,
   textFieldOf,
 } from "../core/index.ts";
+import { hasKeyEnvironment } from "./accountKeys.ts";
 import { billingOf } from "./claudeEvents.ts";
 import { accountEnvironmentOf } from "./harnessCatalog.ts";
 
@@ -72,6 +73,9 @@ export const probeClaudePlanLimits = Effect.fnUntraced(function* (
   options: { readonly command: string; readonly prefixArgs?: ReadonlyArray<string> },
   configDirectory: string | null,
 ) {
+  // An API key account has no plan: the probe is a real turn, which would be billed to the key for nothing.
+  if (configDirectory !== null && hasKeyEnvironment(configDirectory))
+    return { billing: "ApiKey", windows: [] } satisfies PlanLimitsReport;
   const run = yield* runShortCommand(
     options.command,
     [...(options.prefixArgs ?? []), ...probeArgs],

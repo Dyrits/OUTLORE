@@ -11,6 +11,7 @@ import {
   type TurnRequest,
   textFieldOf,
 } from "../core/index.ts";
+import { hasKeyEnvironment } from "./accountKeys.ts";
 import { type AccessOptions, accessArgsOf, baseArgsOf, isSandboxedOf, noTimeLimit } from "./claudeArgs.ts";
 import { probeClaudePlanLimits } from "./claudePlanLimits.ts";
 import { type ClaudeConnection, claudeMessageContentOf, runClaudeTurn } from "./claudeTurn.ts";
@@ -117,6 +118,7 @@ const claudeProtocolOf = (
       hasBackgroundWake: () => background.hasBackgroundWake,
       hasBackgroundWork: () => background.tasks > 0,
       hasExited: process.hasExited,
+      isKeyAccount: request.configDirectory !== null && hasKeyEnvironment(request.configDirectory),
       lastTotalCost: 0,
       process,
       sessionId,

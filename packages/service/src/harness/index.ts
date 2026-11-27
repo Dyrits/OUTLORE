@@ -1,4 +1,10 @@
 export {
+  claudeKeyEnvironmentOf,
+  forgetKeyEnvironment,
+  hasKeyEnvironment,
+  rememberKeyEnvironment,
+} from "./accountKeys.ts";
+export {
   type AcpProviderDefinition,
   type AcpProviderLaunch,
   acpLaunchOf,

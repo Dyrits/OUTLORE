@@ -53,6 +53,89 @@ export const harnessCompanies: Record<HarnessName, string> = Record.map(
   (descriptor) => descriptor.company,
 );
 
+/** One model a key provider offers, by the identifier its endpoint takes. */
+export type KeyProviderModel = { readonly id: string; readonly label: string };
+
+/**
+ * A provider an API key can be added for (provider-accounts, API key accounts): the harness that runs it, where its
+ * endpoint is, and the models it lists, as its own documentation names them on 2026-11-27. The owner can change the
+ * model list when an added account is made, since these names move often.
+ */
+export type KeyProvider = {
+  /** The harness that runs this provider's models. */
+  readonly harness: "claude";
+  /** The endpoint the harness is pointed at, or null for the harness's own vendor. */
+  readonly baseUrl: string | null;
+  /** The provider's name as the owner reads it. */
+  readonly label: string;
+  /** The models offered by default; empty when the owner names them (OpenRouter lists hundreds). */
+  readonly models: ReadonlyArray<KeyProviderModel>;
+};
+
+/** Every provider an API key can be added for, keyed by wire name: the single source of truth for pickers, Settings and launches. */
+export const keyProviders = {
+  anthropic: {
+    baseUrl: null,
+    harness: "claude",
+    label: "Anthropic API",
+    models: [
+      { id: "claude-fable-5-2", label: "Fable 5.2" },
+      { id: "claude-opus-5-5", label: "Opus 5.5" },
+      { id: "claude-sonnet-5-5", label: "Sonnet 5.5" },
+      { id: "claude-haiku-5-5", label: "Haiku 5.5" },
+    ],
+  },
+  deepseek: {
+    baseUrl: "https://api.deepseek.com/anthropic",
+    harness: "claude",
+    label: "DeepSeek",
+    models: [
+      { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+      { id: "deepseek-flash", label: "DeepSeek Flash" },
+    ],
+  },
+  kimi: {
+    baseUrl: "https://api.moonshot.ai/anthropic",
+    harness: "claude",
+    label: "Kimi",
+    models: [
+      { id: "kimi-k3.1-pro", label: "Kimi K3.1 Pro" },
+      { id: "kimi-k3.1-pro-highspeed", label: "Kimi K3.1 Pro Highspeed" },
+    ],
+  },
+  minimax: {
+    baseUrl: "https://api.minimax.io/anthropic",
+    harness: "claude",
+    label: "MiniMax",
+    models: [{ id: "MiniMax-M3.1-Flash", label: "MiniMax M3.1 Flash" }],
+  },
+  openrouter: { baseUrl: "https://openrouter.ai/api", harness: "claude", label: "OpenRouter", models: [] },
+  qwen: {
+    baseUrl: "https://coding-intl.dashscope.aliyuncs.com/apps/anthropic",
+    harness: "claude",
+    label: "Qwen (Alibaba)",
+    models: [
+      { id: "qwen3.5-plus", label: "Qwen 3.5 Plus" },
+      { id: "qwen3-coder-next", label: "Qwen 3 Coder Next" },
+    ],
+  },
+  zai: {
+    baseUrl: "https://api.z.ai/api/anthropic",
+    harness: "claude",
+    label: "Z.ai",
+    models: [
+      { id: "glm-5.4", label: "GLM 5.4" },
+      { id: "glm-5.3-flash", label: "GLM 5.3 Flash" },
+    ],
+  },
+} as const satisfies Record<string, KeyProvider>;
+
+/** The wire names of the providers an API key can be added for, in the order the owner reads them. */
+export const keyProviderNames: ReadonlyArray<keyof typeof keyProviders> = Record.keys(keyProviders);
+/** The provider an API key account is for, derived from `keyProviders`. */
+export const KeyProviderName = Schema.Literals(keyProviderNames);
+export type KeyProviderName = typeof KeyProviderName.Type;
+
 /**
  * The effort a thread runs with, by the provider's own name for the level, such as "low", "xhigh", or OpenCode's
  * "none"; "default" leaves the model's own. The pickers offer only the levels the provider lists for the model.
@@ -86,6 +169,8 @@ export const AccountStatus = Schema.Struct({
   /** Who the harness says is signed in, such as an email or "ChatGPT", or null when it does not say. */
   detail: Schema.NullOr(Schema.String),
   id: Schema.NullOr(AccountId),
+  /** The provider an API key account is for; absent for a sign-in account (and from an older host). */
+  keyProvider: Schema.optionalKey(KeyProviderName),
   label: Schema.String,
   /**
    * The models this account's harness offers it, since what a subscription lists can differ from another's; absent

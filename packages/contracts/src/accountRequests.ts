@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import { ModelChoice } from "./companions.ts";
-import { HarnessList, HarnessName } from "./harnesses.ts";
+import { HarnessList, HarnessName, KeyProviderName } from "./harnesses.ts";
 import { AccountId } from "./ids.ts";
 import { TerminalId } from "./terminalRequests.ts";
 import { NameText } from "./texts.ts";
@@ -20,6 +20,25 @@ export const ListModelEfforts = Schema.TaggedStruct("ListModelEfforts", {
 
 /** Adds a provider account to a harness, with its own folder; it is signed out until the owner signs in. */
 export const AddAccount = Schema.TaggedStruct("AddAccount", { harness: HarnessName, label: NameText });
+
+/**
+ * Adds an API key account for a provider (provider-accounts): the key crosses only as `Redacted`, is sealed in the Vault,
+ * and is never echoed. `models` replaces the provider's listed models when given, since vendors rename them.
+ */
+export const AddKeyAccount = Schema.TaggedStruct("AddKeyAccount", {
+  key: Schema.RedactedFromValue(Schema.String),
+  label: NameText,
+  models: Schema.optionalKey(
+    Schema.Array(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(120))).check(Schema.isMaxLength(40)),
+  ),
+  provider: KeyProviderName,
+});
+
+/** Replaces the key of an API key account; the old one is gone once the new one is sealed. */
+export const ReplaceAccountKey = Schema.TaggedStruct("ReplaceAccountKey", {
+  accountId: AccountId,
+  key: Schema.RedactedFromValue(Schema.String),
+});
 
 /** Renames a provider account added in Outlore. */
 export const RenameAccount = Schema.TaggedStruct("RenameAccount", { accountId: AccountId, label: NameText });
