@@ -1,5 +1,11 @@
 # Backlog
 
+- **ACP v2 dual-stack client support, tracking only** (owner request, 2026-11-27; [research note](research/acp-v2-preview-2026-11-27.md)).
+  ACP v2 reached Preview on 2026-11-20 (`schema-v2.0.0-beta.4`, not frozen), and none of Outlore's eight ACP harnesses serve v2 yet (local probes confirmed OpenCode `v2.2.0`, Vibe `3.1.4`, and Antigravity `1.5.18` all negotiate down to `protocolVersion: 1`; OpenCode tracks v2 in `anomalyco/opencode#44877`).
+  Do not build now; revisit once v2 freezes or a primary ACP harness (OpenCode, Mistral Vibe, or Antigravity) ships v2.
+  When built, add a v2 protocol adapter alongside v1 behind `HarnessProtocol` / `AcpDialect` (`state_update` turn loop, `session/resume` with `replay_complete`, `changes` + `git_patch` diffs, `command`/`tool_call` permission subjects, `session.mcp.stdio`, and baseline `subagent_update` child-session routing).
+  Near-term v1 wins (`sessionCapabilities.systemPrompt` and structured `elicitation/create`) do not wait on v2.
+
 - **Island frame and live layout-editing toggle (audit P3)** (owner note, 2026-11-24). Unify flat and Islands surface geometry in one `Island` frame module so components stop branching on `islands === null`. Separate quest idea from the owner: add a toggle to enter edition mode and tweak the layout in real time from any place in the app.
 
 - **Window composition as data or state machine (audit P4)** (owner note, 2026-11-24). Deepen `windowViewOf` into a pure window composition (or a state machine if necessary) so `appScreen.tsx` and `shell.tsx` stop duplicating layer visibility predicates.
