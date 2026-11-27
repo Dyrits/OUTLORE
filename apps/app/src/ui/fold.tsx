@@ -20,6 +20,9 @@ export function FoldGroup({ children, initial }: { children: ReactNode; initial:
 /** Unfolds a fold of the enclosing group, for one just added. */
 export const useOpenFold = () => useContext(FoldContext).setOpen;
 
+/** Which fold of the enclosing group is unfolded, and how to unfold another, for a group whose folds move. */
+export const useFoldState = () => useContext(FoldContext);
+
 /**
  * One fold of a group: a header saying what it is (its title, then, in short, the choice it holds, with its harness's
  * logo) that unfolds its content below, and folds the group's other one away.
@@ -29,6 +32,7 @@ export function Fold({
   grip,
   harness,
   id,
+  isSummaryFixed = false,
   summary,
   title,
 }: {
@@ -37,6 +41,8 @@ export function Fold({
   grip?: ReactNode;
   harness?: HarnessName;
   id: string;
+  /** Whether the summary keeps its whole width and the title wraps instead, for a short badge beside a long title. */
+  isSummaryFixed?: boolean;
   /** What the fold holds, in a few words. */
   summary: string;
   title: string;
@@ -56,7 +62,7 @@ export function Fold({
         >
           <Text style={local.title}>{title}</Text>
           <FoldChevron color={colors.textMuted} isOpen={isOpen} size={15} />
-          <View style={local.summary}>
+          <View style={[local.summary, isSummaryFixed && local.summaryFixed]}>
             {harness !== undefined && <ProviderMark harness={harness} size={13} />}
             <Text numberOfLines={1} style={local.summaryText}>
               {summary}
@@ -77,6 +83,7 @@ const local = StyleSheet.create({
   pressed: { opacity: 0.8 },
   row: { alignItems: "center", flexDirection: "row", paddingLeft: 6 },
   summary: { alignItems: "center", flex: 1, flexDirection: "row", gap: 6, justifyContent: "flex-end", minWidth: 0 },
+  summaryFixed: { flexBasis: "auto", flexGrow: 0, flexShrink: 0, marginLeft: "auto" },
   summaryText: { color: colors.textSecondary, flexShrink: 1, fontFamily: fonts.sans, fontSize: fontSizes.sm },
-  title: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
+  title: { color: colors.text, flexShrink: 1, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
 });

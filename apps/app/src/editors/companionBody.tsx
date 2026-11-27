@@ -4,8 +4,8 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import { effortName, harnessLabels, modelLabelOf } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, outline, radii, round } from "../foundation/theme";
+import { EffortBar } from "../ui/effortBar";
 import { modelsMatching } from "../ui/modelSearch";
-import { Steps } from "../ui/pickers";
 import { ProviderMark } from "../ui/providerMarks";
 import { type PickerTab, tabsOf } from "./accountModels";
 
@@ -132,7 +132,7 @@ export function CompanionBody(props: CompanionBodyProps) {
       {isEffortChosen && (
         <View style={local.footer}>
           <Text style={local.footerName}>Effort</Text>
-          <Steps
+          <EffortBar
             accessibilityLabel="Effort"
             label={effortName}
             onChange={props.onEffort}

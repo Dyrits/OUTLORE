@@ -1,18 +1,18 @@
-import type { SettingsChange, Tier } from "@outlore/contracts";
+import type { Tier } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { RunnerPickers, useHarnesses } from "../editors/runners";
+import { PresetChainEditor } from "../editors/presetChainEditor";
+import { PresetChooser } from "../editors/presetChooser";
+import { type PresetEntry, panelLayoutOf } from "../editors/presetEntries";
+import { useHarnesses } from "../editors/runners";
+import { type KeptDrafts, keptRenamed, keptWith, keptWithout, liveDraftsOf } from "../editors/useDraftStack";
 import { messageOf, type ServiceClient } from "../foundation/client";
-import { runnerSummaryOf } from "../foundation/formatting";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
-import { Fold, FoldGroup } from "../ui/fold";
 import { companionStyles } from "./companionStyles";
-import { Tabs } from "./companionTabs";
-import { CustomPresets } from "./customPresets";
+import { DraftPreset } from "./draftPreset";
 import { PresetActions, savePresetEdit } from "./presetActions";
-import { tierNameOf, tierNames } from "./tierNames";
-import { DraftPreset, WorkshopBackups } from "./workshopBackups";
+import { tierNames } from "./tierNames";
 import { useWorkshopDraft, workshopDraft } from "./workshopDraft";
 import { customFocusOf, type WorkshopFocus, type WorkshopPreset } from "./workshopTabs";
 
@@ -34,10 +34,9 @@ export function WorkshopCompanions({
   const { data: harnesses } = useHarnesses(client);
   const draft = useWorkshopDraft();
   const [error, setError] = useState<string | null>(null);
-  const save = (change: SettingsChange) => {
-    setError(null);
-    client.request({ _tag: "ChangeSettings", change }).catch((reason) => setError(messageOf(reason)));
-  };
+  const [width, setWidth] = useState<number | null>(null);
+  // Each tab's unsaved chain, kept while another tab is open and shown in the list at once.
+  const [kept, setKept] = useState<KeptDrafts>({});
   if (settings === null) return <Text style={companionStyles.note}>Reading the settings…</Text>;
   const defaults = {
     accountId: null,
@@ -62,100 +61,137 @@ export function WorkshopCompanions({
       stack,
     })),
   ];
-  const selected = focus === "Default" ? lastPreset : focus;
+  const defaultStack = { ...defaults, backups: settings.backups };
+  const drafts = liveDraftsOf(kept, (key) =>
+    key === "Default" ? defaultStack : (presets.find((candidate) => candidate.focus === key)?.stack ?? null),
+  );
+  const selected = focus;
   const preset = presets.find((candidate) => candidate.focus === selected);
   const isDraft = draft !== null;
-  const isPresets = isDraft || (focus !== "Default" && preset !== undefined);
   const stack = preset?.stack ?? null;
   const saveStack = (next: Tier) => {
     setError(null);
     preset?.save(next).catch((reason) => setError(messageOf(reason)));
   };
+  const isSplit = panelLayoutOf(width) === "split";
+  const rows = [{ focus: "Default" as WorkshopFocus, hint: null, name: "Default", stack: defaultStack }, ...presets];
+  const entries: ReadonlyArray<PresetEntry> = rows.map((row) => ({
+    isChosen: !isDraft && row.focus === selected,
+    kind: "preset",
+    preset: { backups: row.stack?.backups ?? [], name: row.name, runner: row.stack ?? defaults },
+  }));
+  const notes = Object.fromEntries(
+    rows.filter((row) => row.stack === null).map((row) => [row.name, "Not set: starts on the default Companion"]),
+  );
+  const draftsByName = Object.fromEntries(
+    rows.flatMap((row) => (drafts[row.focus] === undefined ? [] : [[row.name, drafts[row.focus]]])),
+  ) as Record<string, Tier>;
   return (
-    <View style={companionStyles.panel}>
-      <Tabs
-        onChange={(next) => onFocus(next === "Presets" ? (preset?.focus ?? "Light") : "Default")}
-        options={["Default", "Presets"]}
-        value={isPresets ? "Presets" : "Default"}
-      />
-      {isPresets && (
-        <>
-          <Tabs
-            labelOf={(option) => presets.find((candidate) => candidate.focus === option)?.name ?? option}
-            onChange={onFocus}
-            options={tierNames.map(({ name }) => name)}
-            value={isDraft ? null : tierNameOf(selected)}
-          />
-          <CustomPresets
-            harnesses={harnesses}
-            isDraft={isDraft}
-            onAdd={() => workshopDraft.set(stack ?? { ...defaults, backups: [] })}
-            onFocus={onFocus}
-            presets={presets.filter((candidate) => candidate.focus.startsWith("custom:"))}
-            selected={selected}
-          />
-        </>
-      )}
-      {draft !== null ? (
-        <DraftPreset client={client} draft={draft} lastPreset={lastPreset} onFocus={onFocus} />
-      ) : !isPresets || preset === undefined ? (
-        <FoldGroup initial="main" key="default">
-          <Fold harness={defaults.harness} id="main" summary={runnerSummaryOf(harnesses, defaults)} title="Companion">
-            <RunnerPickers
+    <View
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+      style={[companionStyles.panel, isSplit && companionStyles.split]}
+    >
+      <View style={isSplit ? companionStyles.nav : companionStyles.navStacked}>
+        <PresetChooser
+          drafts={draftsByName}
+          entries={entries}
+          harnesses={harnesses}
+          isChainListed={true}
+          isNav={isSplit}
+          notes={notes}
+          onPreset={(chosen) => {
+            const row = rows.find((candidate) => candidate.name === chosen.name);
+            if (row !== undefined) onFocus(row.focus);
+          }}
+        />
+        {isDraft ? (
+          <View style={[companionStyles.customRow, companionStyles.tabActive]}>
+            <Text style={[companionStyles.customName, companionStyles.tabTextActive]}>New preset</Text>
+            <Text style={companionStyles.customSummary}>Not saved yet</Text>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => workshopDraft.set(stack ?? { ...defaults, backups: [] })}
+            style={companionStyles.customRow}
+          >
+            <Text style={styles.link}>+ Add preset</Text>
+          </Pressable>
+        )}
+      </View>
+      <View style={companionStyles.details}>
+        {draft !== null ? (
+          <DraftPreset client={client} draft={draft} lastPreset={lastPreset} onFocus={onFocus} />
+        ) : selected === "Default" || preset === undefined ? (
+          <View key="default" style={companionStyles.tier}>
+            <Text style={companionStyles.note}>
+              The Companion a quest starts on when no preset applies, then the backups it carries on with when a turn
+              fails, as when a usage limit is reached.
+            </Text>
+            <PresetChainEditor
               client={client}
               harnesses={harnesses}
+              initial={drafts.Default ?? null}
               isAccountShown={false}
-              isCompact={false}
-              isPanel={true}
-              onChange={(runner) =>
-                save({ defaultEffort: runner.effort, defaultHarness: runner.harness, defaultModel: runner.model })
+              name="Default"
+              onDraft={(next) => setKept((current) => keptWith(current, "Default", defaultStack, next))}
+              onSave={(next) =>
+                client.request({
+                  _tag: "ChangeSettings",
+                  change: {
+                    backups: next.backups,
+                    defaultEffort: next.effort,
+                    defaultHarness: next.harness,
+                    defaultModel: next.model,
+                  },
+                })
               }
-              value={defaults}
+              stack={defaultStack}
             />
-          </Fold>
-          <WorkshopBackups
-            backups={settings.backups}
-            client={client}
-            note="When a turn fails, as when a usage limit is reached, a quest carries on with the first of these that differs from its own Companion."
-            onSave={(backups) => client.request({ _tag: "ChangeSettings", change: { backups } })}
-          />
-        </FoldGroup>
-      ) : (
-        <View key={preset.focus} style={companionStyles.tier}>
-          {preset.hint !== null && <Text style={companionStyles.note}>{preset.hint}</Text>}
-          {stack === null ? (
-            <>
-              <Text style={companionStyles.note}>Not set: this work starts on the default Companion.</Text>
-              <Pressable accessibilityRole="button" onPress={() => saveStack({ ...defaults, backups: [] })}>
-                <Text style={styles.link}>Set a Companion</Text>
-              </Pressable>
-            </>
-          ) : (
-            <FoldGroup initial="main">
-              <Fold harness={stack.harness} id="main" summary={runnerSummaryOf(harnesses, stack)} title="Companion">
-                <RunnerPickers
+          </View>
+        ) : (
+          <View key={preset.focus} style={companionStyles.tier}>
+            {preset.hint !== null && <Text style={companionStyles.note}>{preset.hint}</Text>}
+            {stack === null ? (
+              <>
+                <Text style={companionStyles.note}>Not set: this work starts on the default Companion.</Text>
+                <Pressable accessibilityRole="button" onPress={() => saveStack({ ...defaults, backups: [] })}>
+                  <Text style={styles.link}>Set a Companion</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={companionStyles.note}>
+                  {`Work started on ${preset.name} carries on with the first backup when a turn fails. Choosing ${preset.name} for a quest puts the whole chain in place.`}
+                </Text>
+                <PresetChainEditor
                   client={client}
                   harnesses={harnesses}
-                  isCompact={false}
-                  isPanel={true}
-                  onChange={(runner) => saveStack({ ...runner, backups: stack.backups })}
-                  value={stack}
+                  initial={drafts[preset.focus] ?? null}
+                  name={preset.name}
+                  onDraft={(next) => setKept((current) => keptWith(current, preset.focus, stack, next))}
+                  onSave={(next) => preset.save(next)}
+                  onSaveAs={async (name, next) => {
+                    await savePresetEdit(client, { _tag: "Add", name, stack: next });
+                    onFocus(customFocusOf(name));
+                  }}
+                  stack={stack}
                 />
-              </Fold>
-              <WorkshopBackups
-                backups={stack.backups}
-                client={client}
-                // The folds belong to this preset alone.
-                key={preset.focus}
-                note={`Work started on ${preset.name} carries on with the first of these when a turn fails. Choosing ${preset.name} for a quest puts them in place with the Companion.`}
-                onSave={(backups) => preset.save({ ...stack, backups })}
-              />
-              <PresetActions client={client} key={preset.name} name={preset.name} />
-            </FoldGroup>
-          )}
-        </View>
-      )}
-      {error !== null && <Text style={companionStyles.error}>{error}</Text>}
+                <PresetActions
+                  client={client}
+                  key={preset.name}
+                  name={preset.name}
+                  onDeleted={() => setKept((current) => keptWithout(current, preset.focus))}
+                  onRenamed={(nextName) =>
+                    setKept((current) => keptRenamed(current, preset.focus, customFocusOf(nextName)))
+                  }
+                />
+              </>
+            )}
+          </View>
+        )}
+        {error !== null && <Text style={companionStyles.error}>{error}</Text>}
+      </View>
     </View>
   );
 }

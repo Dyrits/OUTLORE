@@ -19,9 +19,12 @@ export const presetChoiceOf = (
   setError: (error: string | null) => void,
 ): PresetChoice => ({
   backups,
+  onDeletePreset: (name) => client.request({ _tag: "ChangeCompanionPreset", edit: { _tag: "Delete", name } }),
   onOverwritePreset: (name, stack) => client.request(presetStackRequest(name, stack)),
   onPreset: (preset) =>
     actWith(setError)(client.request({ _tag: "ChangeThreadRunner", ...presetChangeOf(preset), threadId })),
+  onRenamePreset: (name, nextName) =>
+    client.request({ _tag: "ChangeCompanionPreset", edit: { _tag: "Rename", name, nextName } }),
   onSavePreset: (name, stack) => client.request({ _tag: "ChangeCompanionPreset", edit: { _tag: "Add", name, stack } }),
   presets: presetsOf(settings.tiers, settings.companionPresets),
 });

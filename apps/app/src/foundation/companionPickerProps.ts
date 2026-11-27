@@ -26,6 +26,9 @@ export type PresetChoice = {
   readonly onSavePreset?: (name: string, stack: Tier) => Promise<unknown>;
   /** Replaces a saved preset's whole stack, such as the one a thread's Companion was changed from. */
   readonly onOverwritePreset?: (name: string, stack: Tier) => Promise<unknown>;
+  /** Renames a saved preset; with `onDeletePreset`, edit mode offers the Workshop's Rename and Delete. */
+  readonly onRenamePreset?: (name: string, nextName: string) => Promise<unknown>;
+  readonly onDeletePreset?: (name: string) => Promise<unknown>;
 };
 
 /** What the picker shows and can change; `RunnerPickers` owns the rules for each change. */
