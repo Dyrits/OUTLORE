@@ -284,6 +284,77 @@ describe("a Companion that cannot answer", () => {
     ),
   );
 
+  // The owner's real reading (2026-11-27): Gemini has room, "Others" (Claude and GPT models) is used up until Dec 2.
+  const antigravityWindows = (geminiWeekly: number, resetsAt: number) => [
+    { label: "Gemini · Weekly", resetsAt: resetsAt + 1_000, usedPercent: geminiWeekly, windowMinutes: 10_080 },
+    { label: "Gemini · 5-hour", resetsAt: resetsAt + 2_000, usedPercent: 0, windowMinutes: 300 },
+    { label: "Others · Weekly", resetsAt, usedPercent: 100, windowMinutes: 10_080 },
+  ];
+  const storeAntigravityWindows = (windows: ReadonlyArray<object>) =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* sql`INSERT INTO plan_limits (account_key, windows, read_at) VALUES ('antigravity:', ${JSON.stringify(windows)}, ${Date.now()})`;
+    });
+
+  it.live("does not refuse a Gemini model for the used-up limit of the other model group", () =>
+    withService(
+      Effect.gen(function* () {
+        const quest = yield* restedQuest;
+        yield* storeAntigravityWindows(antigravityWindows(39.85, Date.now() + 3_600_000));
+        const model = "gemini-4-neon-medium";
+        yield* send(quest.threadId, `${token(model, "antigravity")} Do you have access to Composio?`);
+        const detail = yield* settle(quest.missionId, (current) => repliesOf(current, model).length === 1);
+        expect(repliesOf(detail, model)[0]?.text).not.toContain("Cannot answer");
+      }),
+    ),
+  );
+
+  it.live("refuses a model of the used-up group, with that group's reset", () =>
+    withService(
+      Effect.gen(function* () {
+        const quest = yield* restedQuest;
+        yield* storeAntigravityWindows(antigravityWindows(39.85, Date.now() + 3_600_000));
+        yield* send(quest.threadId, `${token("claude-opus-5-5", "antigravity")} anyone?`);
+        const detail = yield* settle(quest.missionId, (current) => repliesOf(current, "claude-opus-5-5").length === 1);
+        expect(repliesOf(detail, "claude-opus-5-5")[0]?.text).toContain(
+          "Cannot answer: its usage limit is reached (resets at ",
+        );
+      }),
+    ),
+  );
+
+  it.live("refuses a Gemini model when its own group's window is used up", () =>
+    withService(
+      Effect.gen(function* () {
+        const quest = yield* restedQuest;
+        yield* storeAntigravityWindows(antigravityWindows(100, Date.now() + 3_600_000));
+        const model = "gemini-4-neon-medium";
+        yield* send(quest.threadId, `${token(model, "antigravity")} anyone?`);
+        const detail = yield* settle(quest.missionId, (current) => repliesOf(current, model).length === 1);
+        expect(repliesOf(detail, model)[0]?.text).toContain("Cannot answer: its usage limit is reached");
+      }),
+    ),
+  );
+
+  it.live("tells the latest reset when several of its limits are used up", () =>
+    withService(
+      Effect.gen(function* () {
+        const quest = yield* restedQuest;
+        const soon = Date.now() + 3_600_000;
+        const later = Date.now() + 5 * 86_400_000;
+        yield* storeAntigravityWindows([
+          { label: "Gemini · 5-hour", resetsAt: soon, usedPercent: 100, windowMinutes: 300 },
+          { label: "Gemini · Weekly", resetsAt: later, usedPercent: 100, windowMinutes: 10_080 },
+        ]);
+        const model = "gemini-4-neon-medium";
+        yield* send(quest.threadId, `${token(model, "antigravity")} anyone?`);
+        const detail = yield* settle(quest.missionId, (current) => repliesOf(current, model).length === 1);
+        const day = new Date(later).toLocaleDateString([], { day: "numeric", month: "short" });
+        expect(repliesOf(detail, model)[0]?.text).toContain(day);
+      }),
+    ),
+  );
+
   it.live("says why a turn that failed did, and gives the question to no one else", () =>
     withService(
       Effect.gen(function* () {

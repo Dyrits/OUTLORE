@@ -1,6 +1,6 @@
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { HarnessTools, harnessLabels } from "../harness/index.ts";
+import { antigravityLimitAppliesTo, HarnessTools, harnessLabels } from "../harness/index.ts";
 import { configDirectoryOf } from "./accounts.ts";
 import { type AccountRef, reachedScopesOf } from "./budgetScopes.ts";
 import type { CompanionThread } from "./companionThreads.ts";
@@ -22,12 +22,26 @@ const resetTextOf = (resetsAt: number, now: number) => {
     : `${at.toLocaleDateString([], { day: "numeric", month: "short" })}, ${time}`;
 };
 
-/** The first window of the plan's limits that is used up and not yet reset, as words; null when none. */
-const usageLimitOf = Effect.fnUntraced(function* (account: AccountRef) {
+/**
+ * Whether a window of the plan's limits applies to the Companion's model.
+ * Only Antigravity names groups ("Gemini · Weekly", "Others · Weekly"), so there a grouped window binds only models of its group; any other window binds every model of its harness.
+ */
+const limitAppliesTo = (companion: CompanionThread, label: string) =>
+  companion.harness !== "antigravity" || antigravityLimitAppliesTo(label, companion.model);
+
+/**
+ * The used-up, not yet reset windows of the plan's limits that apply to the Companion's model, told as one reason, or null when none.
+ * With several used up it gives the latest reset, because the Companion can answer only once all have reset.
+ */
+const usageLimitOf = Effect.fnUntraced(function* (companion: CompanionThread, account: AccountRef) {
   const reading = yield* (yield* PlanLimits).latest(account);
   const now = yield* Clock.currentTimeMillis;
-  const used = reading?.windows.find((window) => window.usedPercent >= 100 && window.resetsAt > now);
-  return used === undefined ? null : `its usage limit is reached (resets at ${resetTextOf(used.resetsAt, now)})`;
+  const used = (reading?.windows ?? []).filter(
+    (window) => window.usedPercent >= 100 && window.resetsAt > now && limitAppliesTo(companion, window.label),
+  );
+  if (used.length === 0) return null;
+  const resetsAt = Math.max(...used.map((window) => window.resetsAt));
+  return `its usage limit is reached (resets at ${resetTextOf(resetsAt, now)})`;
 });
 
 /**
@@ -58,5 +72,5 @@ export const readCompanionRefusal = Effect.fnUntraced(function* (companion: Comp
   }
   const [reached] = yield* reachedScopesOf(companion.missionId, account);
   if (reached !== undefined) return `${whoseBudget[reached._tag]} budget is reached; only the owner can raise it`;
-  return yield* usageLimitOf(account);
+  return yield* usageLimitOf(companion, account);
 });

@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "@effect/vitest";
 import { Effect } from "effect";
+import { antigravityLimitAppliesTo } from "../../src/harness/antigravityPlanLimits.ts";
 import { acpFakeEnv, acpFakeScript, readAcpFakeLog } from "../fixtures/acpFake.ts";
 import { standInHarness } from "../fixtures/providerStandIns.ts";
 
@@ -170,5 +171,16 @@ describe("reading the Antigravity plan limits", () => {
         { label: "Gemini · 5-hour", resetsAtSeconds: 1_796_083_200, usedPercent: 75, windowMinutes: 300 },
       ]);
     });
+  });
+});
+
+describe("which limits apply to a model", () => {
+  it("binds a Gemini model to the Gemini limits, any other model to Others, and any model to an ungrouped limit", () => {
+    expect(antigravityLimitAppliesTo("Gemini · Weekly", "gemini-4-neon-medium")).toBe(true);
+    expect(antigravityLimitAppliesTo("Others · Weekly", "gemini-4-neon-medium")).toBe(false);
+    expect(antigravityLimitAppliesTo("Others · Weekly", "claude-opus-5-5")).toBe(true);
+    expect(antigravityLimitAppliesTo("Gemini · 5-hour", "gpt-5")).toBe(false);
+    expect(antigravityLimitAppliesTo("Weekly", "gemini-4-neon-medium")).toBe(true);
+    expect(antigravityLimitAppliesTo("Weekly", "claude-opus-5-5")).toBe(true);
   });
 });

@@ -19,8 +19,23 @@ const windows: Readonly<Record<string, { readonly label: string; readonly minute
   weekly: { label: "Weekly", minutes: 10_080 },
 };
 
-/** The owner reads two groups: the Gemini models, and every other model (the CLI names the latter "Claude and GPT models"). */
-const groupLabelOf = (name: string) => (/^gemini\b/i.test(name) ? "Gemini" : "Others");
+/**
+ * The group of a model, or of the name the CLI gives a group: the Gemini models, and every other model (the CLI names the latter "Claude and GPT models").
+ * A limit is labelled with it, and a Companion is refused only by the limits of its own group.
+ */
+export const antigravityGroupOf = (name: string) => (/^gemini/i.test(name) ? "Gemini" : "Others");
+
+/** The separator between a limit's group and its window in a label. */
+const groupSeparator = " · ";
+
+/** The label of a limit of a group and window, such as "Gemini · Weekly". */
+const limitLabelOf = (group: string, window: string) => `${group}${groupSeparator}${window}`;
+
+/** Whether a limit applies to a model: a grouped limit applies only to models of its group, and a limit with no group applies to every model. */
+export const antigravityLimitAppliesTo = (label: string, model: string) => {
+  const separator = label.indexOf(groupSeparator);
+  return separator === -1 || label.slice(0, separator) === antigravityGroupOf(model);
+};
 
 /** The CLI's reset time of a bucket that has not started counting: the Unix epoch. It reads as 0 seconds. */
 const untouchedResetSeconds = 0;
@@ -50,7 +65,7 @@ export const antigravityPlanLimitsOf = (answer: unknown): PlanLimitsReport | nul
       if (window === undefined || typeof remaining !== "number" || Number.isNaN(resetsAtMillis)) return [];
       return [
         {
-          label: `${groupLabelOf(name)} · ${window.label}`,
+          label: limitLabelOf(antigravityGroupOf(name), window.label),
           resetsAtSeconds: resetsAtMillis <= 0 ? untouchedResetSeconds : resetsAtMillis / 1000,
           usedPercent: usedPercentOf(remaining),
           windowMinutes: window.minutes,
