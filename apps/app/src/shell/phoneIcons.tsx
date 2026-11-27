@@ -1,5 +1,5 @@
 import Svg, { Circle, G, Path } from "react-native-svg";
-import { emblemPaths } from "../foundation/emblems";
+import { crossedSwordsPaths, emblemPaths } from "../foundation/emblems";
 import { chipIcons } from "../ui/chips";
 
 /** The quest's sword, the app's own emblem. */
@@ -28,12 +28,7 @@ const drawings = {
   menu: <Path d="M4 7h16M4 12h16M4 17h16" />,
   realms: keepPaths,
   sword: swordPaths,
-  swords: (
-    <>
-      <G transform="translate(-1 0)">{swordPaths}</G>
-      <G transform="matrix(-1 0 0 1 25 0)">{swordPaths}</G>
-    </>
-  ),
+  swords: crossedSwordsPaths.map((path) => <Path d={path} key={path} />),
 } as const;
 
 /** The names of the icons the phone shell draws: the bar's four tabs, the top bar's menu button, and the side menu's places. */

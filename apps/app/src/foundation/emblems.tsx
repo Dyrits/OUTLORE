@@ -24,6 +24,12 @@ export const emblemPaths = {
   tower: ["M8 21V9l-2-3V3h12v3l-2 3v12z", "M10 21v-4h4v4", "M12 11v2"],
 } as const satisfies Record<string, readonly string[]>;
 
+/** The quest list's mark: two crossed swords on a 24 by 24 grid, drawn once for the desktop's notch and the phone's bar. */
+export const crossedSwordsPaths = [
+  "M7 15L18 4h2v2L9 17M5 13l6 6M7 17l-3 3",
+  "M10.5 8.5L6 4H4v2l4.5 4.5M19 13l-6 6M17 17l3 3",
+] as const;
+
 /** The names of the emblems a realm or a quest can wear. */
 export type EmblemName = keyof typeof emblemPaths;
 
