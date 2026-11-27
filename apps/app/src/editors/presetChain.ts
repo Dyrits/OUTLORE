@@ -1,5 +1,6 @@
 import { type AccountId, type HarnessList, maxBackups, type Tier } from "@outlore/contracts";
 import { effortName, modelLabelOf } from "../foundation/formatting";
+import { modelsOf } from "./accountModels";
 import type { Runner } from "./runner";
 
 /** The most Companions a preset's chain holds: the primary and its backups (companion-presets, Agreed behavior). */
@@ -22,6 +23,27 @@ export const canAddTo = (chain: ReadonlyArray<Runner>) => chain.length < maxChai
 /** Whether a Companion can be taken out: the chain always keeps its primary. */
 export const canRemoveFrom = (chain: ReadonlyArray<Runner>) => chain.length > 1;
 
+/** Whether the Companion at `index` can be removed without leaving an empty chain or promoting an explicit-account backup into a primary that cannot hold one. */
+export const canRemoveAt = (chain: ReadonlyArray<Runner>, index: number, isPrimaryAccountShown = true): boolean =>
+  canRemoveFrom(chain) && (isPrimaryAccountShown || index !== 0 || chain[1]?.accountId === null);
+
+/** Whether moving `from` to `to` is allowed: when the primary cannot hold a provider account, a backup with one cannot become row 0. */
+export const canMoveIn = (
+  chain: ReadonlyArray<Runner>,
+  from: number,
+  to: number,
+  isPrimaryAccountShown = true,
+): boolean => {
+  if (from === to || to < 0 || to >= chain.length) return false;
+  if (isPrimaryAccountShown) return true;
+  const moved = chain[from];
+  if (moved === undefined) return false;
+  if (to === 0 && moved.accountId !== null) return false;
+  // Moving row 0 down promotes row 1 into row 0, so block that too when row 1 holds an explicit account.
+  if (from === 0 && to > 0 && chain[1]?.accountId !== null) return false;
+  return true;
+};
+
 /** The chain with the Companion at `from` moved to `to`; the chain as it was when either place is outside it. */
 export const movedIn = (chain: ReadonlyArray<Runner>, from: number, to: number): ReadonlyArray<Runner> => {
   if (from === to || to < 0 || to >= chain.length) return chain;
@@ -40,15 +62,16 @@ export const replacedIn = (chain: ReadonlyArray<Runner>, index: number, runner: 
 export const removedFrom = (chain: ReadonlyArray<Runner>, index: number): ReadonlyArray<Runner> =>
   canRemoveFrom(chain) ? chain.filter((_, place) => place !== index) : chain;
 
-/** The Companion a new row starts as: the first installed harness, on its first account (none where accounts are not shown) and first listed model. */
+/** The Companion a new row starts as: the first installed harness, on its first account (none where accounts are not shown) and that account's first listed model. */
 export const newRunnerOf = (harnesses: HarnessList | null, isAccountShown = true): Runner => {
   const first = harnesses?.harnesses.find((candidate) => candidate.problem === null && candidate.models.length > 0);
+  const accountId = isAccountShown ? (first?.accounts[0]?.id ?? null) : null;
   return {
     // Where no account can be chosen, none is chosen for the row either.
-    accountId: isAccountShown ? (first?.accounts[0]?.id ?? null) : null,
+    accountId,
     effort: "default",
     harness: first?.name ?? "claude",
-    model: first?.models[0]?.id ?? "default",
+    model: modelsOf(first, accountId)[0]?.id ?? "default",
   };
 };
 

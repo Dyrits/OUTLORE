@@ -51,6 +51,27 @@ describe("saving presets", () => {
     ),
   );
 
+  it.live("refuses the reserved name Default when adding or renaming any preset", () =>
+    withService(
+      Effect.gen(function* () {
+        const added = yield* Effect.flip(
+          call({ _tag: "ChangeCompanionPreset", edit: { _tag: "Add", name: " default ", stack: heavy } }),
+        );
+        expect(added.kind).toBe("InvalidInput");
+        yield* call({ _tag: "ChangeCompanionPreset", edit: { _tag: "Add", name: "Digest", stack: heavy } });
+        const renamedCustom = yield* Effect.flip(
+          call({ _tag: "ChangeCompanionPreset", edit: { _tag: "Rename", name: "Digest", nextName: "DEFAULT" } }),
+        );
+        expect(renamedCustom.kind).toBe("InvalidInput");
+        yield* call({ _tag: "ChangeSettings", change: { tiers: { Heavy: heavy } } });
+        const renamedTier = yield* Effect.flip(
+          call({ _tag: "ChangeCompanionPreset", edit: { _tag: "Rename", name: "Heavy", nextName: "Default" } }),
+        );
+        expect(renamedTier.kind).toBe("InvalidInput");
+      }),
+    ),
+  );
+
   it.live("saves a preset with its backups", () =>
     withService(
       Effect.gen(function* () {

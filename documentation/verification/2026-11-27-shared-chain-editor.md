@@ -109,12 +109,19 @@
 
 ## Reproduce
 
+From a fresh checkout (unit tests, typecheck, and lint):
+
 ```sh
 git checkout worktree/shared-companion-editor
 bun install
 bunx vitest run apps/app
 (cd apps/app && bunx tsc --noEmit)
 bunx biome check
+```
+
+The browser click-throughs below used an external verification archive (`repro-kit.tgz`, kept outside git; not present in a fresh checkout). With that archive unpacked into `kit`:
+
+```sh
 tar xzf repro-kit.tgz && cd kit
 # needs Playwright for Python and Google Chrome; picks a free HTTP port, stops if it is busy
 REPO=/path/to/OUTLORE EXPORT_DIR=/tmp/webout OUT=/tmp/shots bash run.sh drive_all.py

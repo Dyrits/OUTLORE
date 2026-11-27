@@ -45,8 +45,13 @@ export const liveDraftsOf = (
     }),
   );
 
+/** The own entry of `record` at `key`, or null when `key` is absent or inherited from `Object.prototype`. */
+export const ownValue = <Value>(record: Readonly<Record<string, Value>>, key: string): Value | null =>
+  Object.hasOwn(record, key) ? (record[key] ?? null) : null;
+
 /** The drafts with the one of `from` moved to `to`, as when its preset is renamed: it follows the preset instead of staying under the old name. */
 export const keptRenamed = (drafts: KeptDrafts, from: string, to: string): KeptDrafts => {
+  if (!Object.hasOwn(drafts, from)) return drafts;
   const { [from]: moved, ...others } = drafts;
   return moved === undefined ? drafts : { ...others, [to]: moved };
 };

@@ -9,6 +9,7 @@ import { type Preset, presetChangeOf } from "./presets";
  */
 export function ThreadPresetEditor({
   choice,
+  editSession,
   harnesses,
   initial,
   onDraft,
@@ -17,12 +18,14 @@ export function ThreadPresetEditor({
   preset,
 }: {
   choice: PresetChoice;
+  /** The active edit-session token, so a late async completion cannot reopen edit mode after Done or preset selection. */
+  editSession: number;
   harnesses: HarnessList | null;
   /** The draft kept from an earlier visit to this preset. */
   initial: Tier | null;
   onDraft: (stack: Tier | null) => void;
   /** Which preset is in edit mode: another name after Save as new or Rename, none after Delete or Done. */
-  onEditing: (name: string | null) => void;
+  onEditing: (name: string | null, session?: number) => void;
   /** Replaces the saved preset with the whole draft. */
   onOverwrite: (name: string, stack: Tier) => Promise<unknown>;
   preset: Preset;
@@ -43,12 +46,14 @@ export function ThreadPresetEditor({
         : {
             management: {
               onDelete: async () => {
+                const started = editSession;
                 await onDeletePreset(preset.name);
-                onEditing(null);
+                onEditing(null, started);
               },
               onRename: async (nextName: string) => {
+                const started = editSession;
                 await onRenamePreset(preset.name, nextName);
-                onEditing(nextName);
+                onEditing(nextName, started);
               },
             },
           })}
@@ -56,8 +61,9 @@ export function ThreadPresetEditor({
         ? {}
         : {
             onSaveAs: async (name: string, next: Tier) => {
+              const started = editSession;
               await onSavePreset(name, next);
-              onEditing(name);
+              onEditing(name, started);
             },
           })}
     />

@@ -1,4 +1,4 @@
-import { type ReactElement, useContext, useEffect, useId, useState } from "react";
+import { type ReactElement, useContext, useEffect, useId, useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { CompanionPickerProps } from "../foundation/companionPickerProps";
 import { effortName, modelLabelOf } from "../foundation/formatting";
@@ -12,7 +12,7 @@ import { detailsModeOf, entriesOf, navWidth, panelLayoutOf, splitGap } from "./p
 import { presetChangeOf } from "./presets";
 import { ThreadCompanionDetails } from "./threadCompanionDetails";
 import { ThreadPresetEditor } from "./threadPresetEditor";
-import { type KeptDrafts, keptRenamed, keptWith, keptWithout, liveDraftsOf } from "./useDraftStack";
+import { type KeptDrafts, keptRenamed, keptWith, keptWithout, liveDraftsOf, ownValue } from "./useDraftStack";
 
 /** The width of the picker's panel in a window with no right-hand column to hold it: a mini sidebar. */
 const miniWidth = 288;
@@ -31,8 +31,14 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
   const backups = presetChoice?.backups;
   // The preset last chosen in this tab: what a changed Companion can be written back to.
   const [basedOn, setBasedOn] = useState<string | null>(null);
-  // The preset in edit mode, by name.
+  // The preset in edit mode, by name; `editSession` invalidates late async completions after navigation.
   const [editing, setEditing] = useState<string | null>(null);
+  const editSession = useRef(0);
+  const changeEditing = (next: string | null, session?: number) => {
+    if (session !== undefined && editSession.current !== session) return;
+    editSession.current += 1;
+    setEditing(next);
+  };
   // Each preset's unsaved chain from edit mode, kept until it is saved or discarded and shown in the list at once.
   const [kept, setKept] = useState<KeptDrafts>({});
   const [width, setWidth] = useState<number | null>(null);
@@ -81,7 +87,7 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
                     onPreset={(preset) => {
                       setBasedOn(preset.name);
                       // Choosing a preset is a handover of the thread, which ends the edit of a preset.
-                      setEditing(null);
+                      changeEditing(null);
                       presetChoice.onPreset(preset);
                     }}
                   />
@@ -109,13 +115,14 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
                             },
                           }),
                     }}
+                    editSession={editSession.current}
                     harnesses={props.harnesses}
-                    initial={drafts[details.preset.name] ?? null}
+                    initial={ownValue(drafts, details.preset.name)}
                     key={details.preset.name}
                     onDraft={(next) =>
                       setKept((current) => keptWith(current, details.preset.name, presetChangeOf(details.preset), next))
                     }
-                    onEditing={setEditing}
+                    onEditing={changeEditing}
                     onOverwrite={onOverwritePreset}
                     preset={details.preset}
                   />
@@ -126,7 +133,7 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
                     entriesCount={entries.length}
                     extra={extra}
                     isCustomStack={isCustomStack}
-                    onEdit={setEditing}
+                    onEdit={changeEditing}
                     onOverwritePreset={onOverwritePreset}
                     onSavePreset={onSavePreset}
                     overwritten={overwritten}
@@ -150,6 +157,7 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
  */
 export function CompanionPicker({
   isTabOpen = false,
+  onDismiss,
   onOpenTab,
   rank = 0,
   trigger,
@@ -157,6 +165,8 @@ export function CompanionPicker({
 }: CompanionPickerProps & {
   /** Whether the composer's own pane shows the Companions tab; the button is then selected, and pressing it leaves. */
   isTabOpen?: boolean;
+  /** Runs when the narrow overlay is closed by its button, backdrop, or native dismiss. */
+  onDismiss?: (() => void) | undefined;
   /** Opens the Companions tab in the composer’s own pane, or leaves it when it is shown. */
   onOpenTab?: (() => void) | undefined;
   rank?: number;
@@ -181,6 +191,10 @@ export function CompanionPicker({
     harnesses?.harnesses.find((candidate) => candidate.name === harness)?.models,
   );
   const press = onOpenTab ?? (() => (dock === null ? setIsOverlayOpen(!isOverlayOpen) : dock.open(id)));
+  const closeOverlay = () => {
+    setIsOverlayOpen(false);
+    onDismiss?.();
+  };
   return (
     <View style={[styles.menu, trigger !== undefined && local.triggerFrame]}>
       {trigger === undefined ? (
@@ -202,14 +216,10 @@ export function CompanionPicker({
         trigger({ isOpen, onPress: press })
       )}
       {dock === null && onOpenTab === undefined && (
-        <Modal animationType="none" onRequestClose={() => setIsOverlayOpen(false)} transparent visible={isOverlayOpen}>
-          <Pressable
-            accessibilityLabel="Close the menu"
-            onPress={() => setIsOverlayOpen(false)}
-            style={StyleSheet.absoluteFill}
-          />
+        <Modal animationType="none" onRequestClose={closeOverlay} transparent visible={isOverlayOpen}>
+          <Pressable accessibilityLabel="Close the menu" onPress={closeOverlay} style={StyleSheet.absoluteFill} />
           <View style={local.overlay}>
-            <CompanionPanel {...props} onClose={() => setIsOverlayOpen(false)} />
+            <CompanionPanel {...props} onClose={closeOverlay} />
           </View>
         </Modal>
       )}

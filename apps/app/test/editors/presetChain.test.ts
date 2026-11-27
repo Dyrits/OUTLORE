@@ -2,6 +2,8 @@ import { maxBackups, type Tier } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import {
   appendedTo,
+  canMoveIn,
+  canRemoveAt,
   canRemoveFrom,
   chainLabelOf,
   chainOf,
@@ -67,6 +69,20 @@ describe("building a preset's chain", () => {
     expect(removedFrom(only, 0)).toBe(only);
   });
 
+  it("prevents promoting an explicit-account backup into a primary that cannot hold an account", () => {
+    const localPrimary = runner("claude-opus-5-5");
+    const explicitBackup = { ...runner("claude-sonnet-5-5"), accountId: "account-1" as never };
+    const localBackup = runner("claude-haiku-4-5");
+    const chain = [localPrimary, explicitBackup, localBackup];
+    expect(canMoveIn(chain, 1, 0, false)).toBe(false);
+    expect(canMoveIn(chain, 0, 1, false)).toBe(false);
+    expect(canRemoveAt(chain, 0, false)).toBe(false);
+    expect(canMoveIn(chain, 2, 0, false)).toBe(true);
+    expect(canMoveIn(chain, 1, 2, false)).toBe(true);
+    expect(canMoveIn(chain, 1, 0, true)).toBe(true);
+    expect(canRemoveAt(chain, 0, true)).toBe(true);
+  });
+
   it("holds the primary and no more than the backups the contract allows", () => {
     expect(maxChain).toBe(6);
     expect(maxChain).toBe(maxBackups + 1);
@@ -127,6 +143,38 @@ describe("starting a new row", () => {
 
   it("takes no account where accounts are not shown, as for the Workshop's default", () => {
     expect(newRunnerOf(harnesses, false).accountId).toBeNull();
+  });
+
+  it("takes the selected account's first model when that account lists its own models", () => {
+    const accountScoped = {
+      harnesses: [
+        {
+          accounts: [
+            {
+              id: "account-0",
+              label: "Personal",
+              models: [{ id: "claude-haiku-4-5", label: "Haiku 4.5" }],
+              signIn: "SignedIn",
+            },
+          ],
+          models: [{ id: "claude-opus-5-5", label: "Opus 5.5" }],
+          name: "claude",
+          problem: null,
+        },
+      ],
+    } as never;
+    expect(newRunnerOf(accountScoped)).toEqual({
+      accountId: "account-0",
+      effort: "default",
+      harness: "claude",
+      model: "claude-haiku-4-5",
+    });
+    expect(newRunnerOf(accountScoped, false)).toEqual({
+      accountId: null,
+      effort: "default",
+      harness: "claude",
+      model: "claude-opus-5-5",
+    });
   });
 
   it("falls back to no account before the harnesses are read", () => {

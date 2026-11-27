@@ -1,6 +1,13 @@
 import type { Tier } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
-import { keptRenamed, keptWith, keptWithout, liveDraftsOf, shownStackOf } from "../../src/editors/useDraftStack";
+import {
+  keptRenamed,
+  keptWith,
+  keptWithout,
+  liveDraftsOf,
+  ownValue,
+  shownStackOf,
+} from "../../src/editors/useDraftStack";
 
 const stack = (model: string, backups: Tier["backups"] = []): Tier => ({
   accountId: null,
@@ -77,6 +84,13 @@ describe("keeping drafts through a rename and a delete", () => {
 
   it("leaves the drafts as they were when the renamed preset had none", () => {
     expect(keptRenamed(drafts, "Light", "Soft")).toBe(drafts);
+  });
+
+  it("ignores inherited Object.prototype keys when reading or renaming drafts", () => {
+    expect(ownValue({}, "constructor")).toBeNull();
+    expect(ownValue({}, "toString")).toBeNull();
+    expect(keptRenamed(drafts, "constructor", "Renamed")).toBe(drafts);
+    expect(keptRenamed(drafts, "toString", "Renamed")).toBe(drafts);
   });
 
   it("drops the draft when its preset is deleted", () => {

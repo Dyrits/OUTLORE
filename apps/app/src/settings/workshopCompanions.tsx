@@ -5,7 +5,7 @@ import { PresetChainEditor } from "../editors/presetChainEditor";
 import { PresetChooser } from "../editors/presetChooser";
 import { type PresetEntry, panelLayoutOf } from "../editors/presetEntries";
 import { useHarnesses } from "../editors/runners";
-import { keptRenamed, keptWith, keptWithout, liveDraftsOf } from "../editors/useDraftStack";
+import { keptRenamed, keptWith, keptWithout, liveDraftsOf, ownValue } from "../editors/useDraftStack";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -13,7 +13,14 @@ import { companionStyles } from "./companionStyles";
 import { DraftPreset } from "./draftPreset";
 import { PresetActions, savePresetEdit } from "./presetActions";
 import { tierNames } from "./tierNames";
-import { useWorkshopDraft, useWorkshopKept, workshopDraft, workshopKept } from "./workshopDraft";
+import {
+  draftSeedOf,
+  renamedFocusOf,
+  useWorkshopDraft,
+  useWorkshopKept,
+  workshopDraft,
+  workshopKept,
+} from "./workshopDraft";
 import { customFocusOf, type WorkshopFocus, type WorkshopPreset } from "./workshopTabs";
 
 /** The Workshop's Companions panel opens on the default stack or the selected preset. */
@@ -85,7 +92,10 @@ export function WorkshopCompanions({
     rows.filter((row) => row.stack === null).map((row) => [row.name, "Not set: starts on the default Companion"]),
   );
   const draftsByName = Object.fromEntries(
-    rows.flatMap((row) => (drafts[row.focus] === undefined ? [] : [[row.name, drafts[row.focus]]])),
+    rows.flatMap((row) => {
+      const value = ownValue(drafts, row.focus);
+      return value === null ? [] : [[row.name, value]];
+    }),
   ) as Record<string, Tier>;
   return (
     <View
@@ -113,7 +123,7 @@ export function WorkshopCompanions({
         ) : (
           <Pressable
             accessibilityRole="button"
-            onPress={() => workshopDraft.set(stack ?? { ...defaults, backups: [] })}
+            onPress={() => workshopDraft.set(draftSeedOf({ defaultStack, defaults, drafts, selected, stack }))}
             style={companionStyles.customRow}
           >
             <Text style={styles.link}>+ Add preset</Text>
@@ -132,8 +142,8 @@ export function WorkshopCompanions({
             <PresetChainEditor
               client={client}
               harnesses={harnesses}
-              initial={drafts.Default ?? null}
-              isAccountShown={false}
+              initial={ownValue(drafts, "Default")}
+              isPrimaryAccountShown={false}
               name="Default"
               onDraft={(next) => setKept((current) => keptWith(current, "Default", defaultStack, next))}
               onSave={(next) =>
@@ -168,7 +178,7 @@ export function WorkshopCompanions({
                 <PresetChainEditor
                   client={client}
                   harnesses={harnesses}
-                  initial={drafts[preset.focus] ?? null}
+                  initial={ownValue(drafts, preset.focus)}
                   name={preset.name}
                   onDraft={(next) => setKept((current) => keptWith(current, preset.focus, stack, next))}
                   onSave={(next) => preset.save(next)}
@@ -184,8 +194,11 @@ export function WorkshopCompanions({
                   name={preset.name}
                   onDeleted={() => setKept((current) => keptWithout(current, preset.focus))}
                   onRenamed={(nextName) => {
-                    setKept((current) => keptRenamed(current, preset.focus, customFocusOf(nextName)));
-                    onFocus(customFocusOf(nextName));
+                    const nextFocus = renamedFocusOf(preset.focus, nextName);
+                    if (nextFocus !== preset.focus) {
+                      setKept((current) => keptRenamed(current, preset.focus, nextFocus));
+                    }
+                    onFocus(nextFocus);
                   }}
                 />
               </>

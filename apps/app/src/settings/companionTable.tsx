@@ -84,6 +84,7 @@ export function CompanionTable({
           isAccountShown={false}
           isCompact={true}
           onChange={onChange}
+          onDismiss={tabs.clearDrafts}
           // The tab's own content, the same from every table: it follows the shared focus.
           panel={
             <WorkshopCompanions

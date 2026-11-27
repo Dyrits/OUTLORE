@@ -8,6 +8,7 @@ import { ProviderMark } from "../ui/providerMarks";
 import { chainLabelOf, chainOf } from "./presetChain";
 import { customHint, customName, type PresetEntry } from "./presetEntries";
 import type { Preset } from "./presets";
+import { ownValue } from "./useDraftStack";
 
 /**
  * The preset list of the Companions tab: a row for each preset, putting its whole stack in place with one press, and the Custom entry when the thread's stack is none of them.
@@ -43,7 +44,8 @@ export function PresetChooser({
         {entries.map((entry) => {
           const label = entry.kind === "custom" ? customName : entry.preset.name;
           const isEditing = entry.kind === "preset" && entry.preset.name === editing;
-          const unsaved = entry.kind === "preset" ? (drafts[entry.preset.name] ?? null) : null;
+          const unsaved = entry.kind === "preset" ? ownValue(drafts, entry.preset.name) : null;
+          const note = entry.kind === "preset" ? ownValue(notes, entry.preset.name) : null;
           const summary =
             entry.kind === "custom"
               ? customHint
@@ -51,7 +53,7 @@ export function PresetChooser({
                 ? `unsaved · ${countedOf(unsaved.backups.length, "backup")}`
                 : `${runnerSummaryOf(harnesses, entry.preset.runner)} · ${countedOf(entry.preset.backups.length, "backup")}`;
           const chain =
-            isChainListed && entry.kind === "preset" && notes[entry.preset.name] === undefined
+            isChainListed && entry.kind === "preset" && note === null
               ? chainOf(unsaved ?? { ...entry.preset.runner, backups: entry.preset.backups })
               : [];
           const rowStyle = [
@@ -78,7 +80,7 @@ export function PresetChooser({
                         : "unsaved"
                       : isEditing
                         ? "editing"
-                        : (notes[entry.kind === "preset" ? entry.preset.name : ""] ?? summary)}
+                        : (note ?? summary)}
                   </Text>
                 )}
                 {chain.map((runner, index) => (

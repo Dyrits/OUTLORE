@@ -1,6 +1,8 @@
 import type { Tier } from "@outlore/contracts";
 import { useSyncExternalStore } from "react";
-import type { KeptDrafts } from "../editors/useDraftStack";
+import type { Runner } from "../editors/runner";
+import { type KeptDrafts, ownValue } from "../editors/useDraftStack";
+import type { WorkshopFocus } from "./workshopTabs";
 
 /**
  * The preset being made in the Workshop, not yet saved under a name.
@@ -50,3 +52,23 @@ export const workshopKept = {
 
 /** The kept unsaved chains. */
 export const useWorkshopKept = () => useSyncExternalStore(workshopKept.subscribe, workshopKept.get);
+
+/** The Workshop focus after renaming `focus` to `nextName`: built-in tiers keep their tier key, while custom presets move to the new name. */
+export const renamedFocusOf = (focus: WorkshopFocus, nextName: string): WorkshopFocus =>
+  focus.startsWith("custom:") ? `custom:${nextName}` : focus;
+
+/** The chain a new Workshop preset draft starts from: the selected live draft, else the selected saved chain (including Default's backups), else the defaults with no backups. */
+export const draftSeedOf = ({
+  defaults,
+  defaultStack,
+  drafts,
+  selected,
+  stack,
+}: {
+  defaults: Runner;
+  defaultStack: Tier;
+  drafts: Readonly<Record<string, Tier>>;
+  selected: WorkshopFocus;
+  stack: Tier | null;
+}): Tier =>
+  ownValue(drafts, selected) ?? (selected === "Default" ? defaultStack : stack) ?? { ...defaults, backups: [] };

@@ -52,6 +52,28 @@ describe("listing the presets beside the details", () => {
     expect(markup).not.toContain("unsaved");
   });
 
+  it("renders presets named like Object.prototype keys without treating inherited members as drafts or notes", () => {
+    const inheritedEntries = [
+      { isChosen: false, kind: "preset" as const, preset: { ...heavy, name: "constructor" } },
+      { isChosen: false, kind: "preset" as const, preset: { ...heavy, name: "toString" } },
+    ];
+    const markup = renderToStaticMarkup(
+      createElement(PresetChooser, {
+        drafts: {},
+        entries: inheritedEntries,
+        harnesses: null,
+        isChainListed: true,
+        isNav: true,
+        notes: {},
+        onPreset: () => {},
+      }),
+    );
+    expect(markup).toContain("constructor");
+    expect(markup).toContain("toString");
+    expect(markup).toContain("Opus 5.5");
+    expect(markup).not.toContain("unsaved");
+  });
+
   it("stacked, shows no chain under the name", () => {
     expect(chooserMarkup(null, false)).not.toContain("Sonnet 5.5 ·");
   });

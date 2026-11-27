@@ -1,6 +1,6 @@
 import type { Tier } from "@outlore/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { workshopDraft, workshopKept } from "../../src/settings/workshopDraft";
+import { draftSeedOf, renamedFocusOf, workshopDraft, workshopKept } from "../../src/settings/workshopDraft";
 
 const stack: Tier = { accountId: null, backups: [], effort: "high", harness: "claude", model: "opus" };
 
@@ -31,5 +31,26 @@ describe("the Workshop's draft preset", () => {
     expect(workshopKept.get()).toEqual({});
     expect(heard).toHaveBeenCalledTimes(2);
     stop();
+  });
+
+  it("keeps a built-in tier's focus on rename and moves only custom presets to the new custom key", () => {
+    expect(renamedFocusOf("Light", "Lighter")).toBe("Light");
+    expect(renamedFocusOf("Heavy", "Deep")).toBe("Heavy");
+    expect(renamedFocusOf("custom:Mine", "Renamed")).toBe("custom:Renamed");
+  });
+
+  it("seeds a new preset draft from the selected live draft, then Default's full stack or the preset's saved stack", () => {
+    const defaults = { accountId: null, effort: "default" as const, harness: "claude" as const, model: "sonnet" };
+    const backup = { accountId: null, effort: "low" as const, harness: "codex" as const, model: "gpt-5" };
+    const defaultStack: Tier = { ...defaults, backups: [backup] };
+    const liveDraft: Tier = { ...stack, model: "opus-draft" };
+    expect(draftSeedOf({ defaultStack, defaults, drafts: { Light: liveDraft }, selected: "Light", stack })).toEqual(
+      liveDraft,
+    );
+    expect(draftSeedOf({ defaultStack, defaults, drafts: {}, selected: "Default", stack: null })).toEqual(defaultStack);
+    expect(draftSeedOf({ defaultStack, defaults, drafts: {}, selected: "Light", stack: null })).toEqual({
+      ...defaults,
+      backups: [],
+    });
   });
 });
