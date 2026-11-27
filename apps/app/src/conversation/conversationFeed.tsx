@@ -19,12 +19,20 @@ type Conversation = ReturnType<typeof useThreadConversation>;
 
 /** The conversation list and its inverted footer, with navigation supplied by the host. */
 export function ConversationFeed({
+  canRunCommands = true,
   client,
   conversation,
   thread,
   workspacePath,
   ...navigation
-}: Navigation & { client: ServiceClient; conversation: Conversation; thread: Thread; workspacePath: string | null }) {
+}: Navigation & {
+  /** False in conversations with no composer (such as a Ritual's own history thread), hiding the Run button. */
+  canRunCommands?: boolean;
+  client: ServiceClient;
+  conversation: Conversation;
+  thread: Thread;
+  workspacePath: string | null;
+}) {
   const footer = <ConversationFooter draft={conversation.draft} thread={thread} />;
   const hasPendingMessages = conversation.entries.some((entry) => entry._tag === "LiveFooter");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -60,6 +68,7 @@ export function ConversationFeed({
                 client={client}
                 entry={item}
                 harness={thread.harness}
+                onRunCommand={canRunCommands ? conversation.runCommand : null}
                 skills={conversation.skills}
                 workspacePath={workspacePath}
               />

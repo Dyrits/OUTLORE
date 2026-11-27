@@ -7,7 +7,7 @@ import { messageOf } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { colors, fonts } from "../foundation/theme";
 import type { TerminalPanelProps } from "./terminalPanelTypes";
-import { terminalKeyOf } from "./terminalScope";
+import { nextTerminalRunActionOf, shouldAutoRestartTerminalOf, terminalKeyOf } from "./terminalScope";
 import { terminalTextOf } from "./terminalSnapshot";
 
 /** The host's conversation shell, whose output can be attached to the next message from any screen (ADR 0020). */
@@ -26,6 +26,11 @@ export function TerminalPanel({
   const surface = useRef<Terminal | null>(null);
   const folder = useRef("");
   const isReady = useRef(false);
+  const isRestartingRef = useRef(false);
+  const isRunningRef = useRef(true);
+  const hasAutoRestartedRef = useRef(false);
+  const pendingCommands = useRef<string[]>([]);
+  const restartRef = useRef<() => void>(() => {});
   const ready = useRef(onReady);
   ready.current = onReady;
   const exited = useRef(onExit);
@@ -33,8 +38,46 @@ export function TerminalPanel({
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(true);
   const [generation, setGeneration] = useState(0);
+  const restart = () => {
+    if (isRestartingRef.current) return;
+    isRestartingRef.current = true;
+    void client
+      .request({ _tag: "CloseTerminal", id })
+      .then(() => {
+        isRestartingRef.current = false;
+        setError(null);
+        setGeneration((value) => value + 1);
+      })
+      .catch((reason) => {
+        isRestartingRef.current = false;
+        pendingCommands.current.length = 0;
+        hasAutoRestartedRef.current = false;
+        setError(messageOf(reason));
+      });
+  };
+  restartRef.current = restart;
   useImperativeHandle(ref, () => ({
     focus: () => surface.current?.focus(),
+    run: (input: string) => {
+      hasAutoRestartedRef.current = false;
+      const action = nextTerminalRunActionOf({
+        isReady: isReady.current,
+        isRestarting: isRestartingRef.current,
+        isRunning: isRunningRef.current,
+      });
+      if (action === "write") {
+        void client
+          .request({ _tag: "WriteTerminalInput", data: input, id })
+          .catch((reason) => setError(messageOf(reason)));
+        surface.current?.focus();
+        return;
+      }
+      pendingCommands.current.push(input);
+      if (action === "restart") {
+        hasAutoRestartedRef.current = true;
+        restartRef.current();
+      }
+    },
     snapshot: () =>
       new Promise((resolve, reject) => {
         const terminal = surface.current;
@@ -89,6 +132,8 @@ export function TerminalPanel({
     terminal.loadAddon(fit);
     terminal.open(element);
     const onError = (reason: unknown) => {
+      pendingCommands.current.length = 0;
+      hasAutoRestartedRef.current = false;
       if (isActive) setError(String(reason));
     };
     const write = (text: string, next: number) => {
@@ -112,6 +157,7 @@ export function TerminalPanel({
       if (!isActive || frame.id !== key) return;
       if (frame._tag === "TerminalData") write(frame.data, frame.sequence);
       else {
+        isRunningRef.current = false;
         setIsRunning(false);
         notifyExit(frame.exitCode ?? null);
       }
@@ -132,24 +178,46 @@ export function TerminalPanel({
         })
         .catch(onError);
     };
+    const tryAutoRestart = (isShellRunning: boolean) => {
+      if (
+        shouldAutoRestartTerminalOf({
+          hasAutoRestarted: hasAutoRestartedRef.current,
+          hasPendingCommands: pendingCommands.current.length > 0,
+          isRunning: isShellRunning,
+        })
+      ) {
+        hasAutoRestartedRef.current = true;
+        restartRef.current();
+        return true;
+      }
+      pendingCommands.current.length = 0;
+      hasAutoRestartedRef.current = false;
+      return false;
+    };
     const observer = new ResizeObserver(resize);
     void client
       .request({ _tag: "OpenTerminal", cwd, id })
       .then((session) => {
         if (!isActive) return;
         folder.current = session.cwd;
+        isRunningRef.current = session.isRunning;
         setIsRunning(session.isRunning);
-        if (!session.isRunning) notifyExit(session.exitCode ?? null);
+        if (!session.isRunning) {
+          // A queued command from a Run button restarts a previously exited shell once so it executes immediately.
+          if (tryAutoRestart(session.isRunning)) return;
+          notifyExit(session.exitCode ?? null);
+        }
         sequence = session.sequence;
         terminal.write(session.output);
         for (const chunk of pending) write(chunk.text, chunk.sequence);
         terminal.write("", () => {
-          if (isActive) {
-            isReady.current = true;
-            for (const data of pendingInput.splice(0))
-              void client.request({ _tag: "WriteTerminalInput", data, id }).catch(onError);
-            ready.current();
-          }
+          if (!isActive) return;
+          if (!isRunningRef.current && pendingCommands.current.length > 0 && tryAutoRestart(false)) return;
+          isReady.current = true;
+          hasAutoRestartedRef.current = false;
+          for (const data of [...pendingInput.splice(0), ...pendingCommands.current.splice(0)])
+            void client.request({ _tag: "WriteTerminalInput", data, id }).catch(onError);
+          ready.current();
         });
         resize();
         observer.observe(element);
@@ -166,15 +234,6 @@ export function TerminalPanel({
       terminal.dispose();
     };
   }, [id, cwd, generation, client, scope]);
-  const restart = () => {
-    void client
-      .request({ _tag: "CloseTerminal", id })
-      .then(() => {
-        setError(null);
-        setGeneration((value) => value + 1);
-      })
-      .catch((reason) => setError(messageOf(reason)));
-  };
   return (
     <View style={{ backgroundColor: colors.accentSoft, borderRadius: 8, gap: 4, padding: 8 }}>
       {!isRunning && !shouldHideExitBar && (

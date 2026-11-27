@@ -13,7 +13,7 @@ import { AgentReply, CommentableCard, shortened } from "./agentReply";
 import { commentsOf } from "./comments";
 import { SentComments } from "./commentViews";
 import type { AnchoredReply, QuestLink } from "./entries";
-import { Markdown } from "./markdown";
+import { type CommandRunner, Markdown } from "./markdown";
 import { MessageActions } from "./messageActions";
 import { QuestReplyLine, ReplyLine } from "./replyLine";
 
@@ -101,6 +101,7 @@ export function MessageBubble({
   harness,
   message,
   onOpenMission,
+  onRunCommand = null,
   onSelectThread,
   replies,
   replyToText,
@@ -115,6 +116,8 @@ export function MessageBubble({
   replies?: ReadonlyArray<AnchoredReply>;
   replyToText?: string;
   onOpenMission: (missionId: MissionId) => void;
+  /** Runs a fenced shell command in the conversation's inline terminal, or null when unavailable. */
+  onRunCommand?: CommandRunner | null;
   onSelectThread: (threadId: ThreadId) => void;
   skills: ReadonlyArray<Skill>;
   workspacePath: string | null;
@@ -137,6 +140,7 @@ export function MessageBubble({
         harness={writer.harness}
         label={writer.label}
         messageId={message.id}
+        onRunCommand={onRunCommand}
         replies={anchored}
         replyToText={replyToText}
         text={message.text}
@@ -204,7 +208,7 @@ export function MessageBubble({
               <ChipText client={client} skills={skills} text={sent.body} workspacePath={workspacePath} />
             )
           ) : (
-            <Markdown text={message.text} />
+            <Markdown onRunCommand={onRunCommand} text={message.text} />
           )}
           <SentComments items={sent.items} />
           <MessageImages cards={message.attachments} client={client} />

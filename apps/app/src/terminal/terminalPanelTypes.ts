@@ -5,6 +5,8 @@ import type { TerminalScope } from "./terminalScope";
 /** The visible shell's rendered output, flushed before the owner sends it. */
 export interface TerminalPanelHandle {
   focus(): void;
+  /** Sends a command directly to the shell, restarting it first if it has already exited. */
+  run(input: string): void;
   snapshot(): Promise<{ cwd: string; text: string }>;
 }
 

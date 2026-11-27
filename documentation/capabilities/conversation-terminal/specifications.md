@@ -7,6 +7,8 @@ Amended on 2026-11-22 (CHG-0644): the shells run in the host service and reach e
 ## Behavior
 
 - In a desktop conversation, typing `!` on an empty composer line opens the owner's default login shell as an interactive owner-message bubble in the conversation, without triggering the Companion.
+- On a completed message (never while an agent reply is streaming), fenced shell code blocks (`bash`, `sh`, `zsh`, `shell`, `fish`, `console`, `powershell`, `pwsh`, `cmd`, `bat`) show a Run button beside Copy in their top-right corner whenever terminals are available on that screen.
+- Clicking Run opens or reveals the conversation's usual inline terminal bubble below the feed, restarts it if the previous shell exited, scrolls it into view, and submits the block's command directly to that shell.
 - On Windows, which has no login shell, `!` opens the command shell named by `ComSpec` (the Windows system shell), and the app keeps the launcher's `;`-separated `PATH` instead of reading a login shell's (CHG-0356).
 - An exclamation mark in ordinary text stays text; paste and input composition do not trigger a shell.
 - With a workspace-backed Realm, the starting folder is that Realm's root, including the Realm selected in the Guild Hall.
@@ -35,7 +37,7 @@ One terminal per conversation and starting folder in each scope (the host's wind
 The replay buffer holds at most 200,000 characters; the emulator holds 3,000 scrollback lines and a sent snapshot includes at most the latest 20,000 rendered characters, with an omission marker when trimmed.
 Snapshots show visible output rather than hidden password keystrokes or a complete shell audit log.
 Sessions do not survive stopping the host; sent snapshots remain in the conversation.
-Multiple terminal blocks, background-terminal selection, and Delta's shell-code prefill are outside this increment.
+Multiple terminal blocks and background-terminal selection are outside this increment.
 
 ## Verification
 

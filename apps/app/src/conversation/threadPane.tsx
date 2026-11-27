@@ -197,6 +197,7 @@ export function ThreadPane({
               feed={
                 <ConversationFeed
                   canOpenAside={thread.parentId === null}
+                  canRunCommands={canTakeTurns}
                   client={client}
                   conversation={conversation}
                   onOpenMission={onOpenMission}

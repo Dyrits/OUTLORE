@@ -37,3 +37,23 @@ export const commandTerminalStatusOf = (
   if (status.exitCode === 0) return "Finished";
   return status.exitCode === null ? "Ended" : `Did not finish (exit ${status.exitCode})`;
 };
+
+/** Formats a runnable shell block for direct PTY submission using carriage returns. */
+export const terminalCommandInputOf = (command: string) => `${command.replace(/\r?\n/g, "\r")}\r`;
+
+/** Decides whether a command sent to the conversation terminal writes now, restarts an exited shell, or waits for open. */
+export const nextTerminalRunActionOf = (state: {
+  readonly isReady: boolean;
+  readonly isRestarting?: boolean;
+  readonly isRunning: boolean;
+}): "queue" | "restart" | "write" => {
+  if (state.isRestarting || !state.isReady) return "queue";
+  return state.isRunning ? "write" : "restart";
+};
+
+/** Whether an exited shell with queued commands should auto-restart once instead of writing to a dead PTY or looping. */
+export const shouldAutoRestartTerminalOf = (state: {
+  readonly hasAutoRestarted: boolean;
+  readonly hasPendingCommands: boolean;
+  readonly isRunning: boolean;
+}) => !state.isRunning && state.hasPendingCommands && !state.hasAutoRestarted;
